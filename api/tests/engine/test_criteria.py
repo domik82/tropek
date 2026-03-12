@@ -8,7 +8,6 @@ from app.modules.quality_gate.engine.criteria import (
     parse_criteria_string,
 )
 
-
 # --- parse_criteria_string ---
 
 def test_parse_fixed_lt() -> None:
