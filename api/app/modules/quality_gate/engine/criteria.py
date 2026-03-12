@@ -1,17 +1,17 @@
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass
 from enum import Enum
 
+from pydantic import BaseModel
 
-class CriteriaType(Enum):
+
+class CriteriaType(str, Enum):
     FIXED = "fixed"
     RELATIVE = "relative"
 
 
-@dataclass
-class ParsedCriteria:
+class ParsedCriteria(BaseModel):
     raw: str
     operator: str
     type: CriteriaType
@@ -32,19 +32,18 @@ class ParsedCriteria:
 
 _PATTERN = re.compile(
     r"^(?P<op><=|>=|<|>|=)"
-    r"\s*"                          # optional whitespace after operator
+    r"\s*"
     r"(?P<sign>[+-])?"
     r"(?P<value>\d+(?:\.\d+)?)"
-    r"\s*"                          # optional whitespace before %
+    r"\s*"
     r"(?P<pct>%)?"
     r"$"
 )
 
 
 def parse_criteria_string(raw: str) -> ParsedCriteria:
-    # Normalise: strip outer whitespace, collapse inner whitespace
-    raw = raw.strip()
-    normalised = re.sub(r"\s+", "", raw)  # remove all internal whitespace
+    # Normalise: strip outer whitespace, collapse internal whitespace
+    normalised = re.sub(r"\s+", "", raw.strip())
 
     m = _PATTERN.match(normalised)
     if not m:
@@ -55,8 +54,8 @@ def parse_criteria_string(raw: str) -> ParsedCriteria:
     value = float(m.group("value"))
     is_pct = m.group("pct") is not None
 
-    # A sign (+ or -) without % still means relative (e.g. "<=+10" means
-    # "baseline + 10", matching Keptn lighthouse-service behaviour).
+    # An explicit sign (+ or -) without % still means relative (e.g. "<=+10"
+    # means "baseline + 10"), matching Keptn lighthouse-service behaviour.
     is_relative = is_pct or sign is not None
 
     if is_relative:
@@ -75,10 +74,36 @@ def parse_criteria_string(raw: str) -> ParsedCriteria:
     )
 
 
-def aggregate_values(values: list[float], function: str) -> float:
-    """Aggregate a list of baseline values using the specified function.
+def _compare(operator: str, value: float, target: float) -> bool:
+    match operator:
+        case "<":  return value < target
+        case "<=": return value <= target
+        case ">":  return value > target
+        case ">=": return value >= target
+        case "=":  return value == target
+        case _:    return False
 
-    Supported: avg, p50, p90, p95, p99
+
+def evaluate_criteria(
+    criteria: ParsedCriteria,
+    value: float,
+    baseline: float | None,
+) -> bool:
+    """Evaluate a single parsed criteria against a metric value.
+
+    Relative criteria with no baseline always pass — no history means
+    we cannot penalise.
+    """
+    if criteria.type == CriteriaType.RELATIVE and baseline is None:
+        return True
+    target = criteria.compute_target_value(baseline)
+    return _compare(criteria.operator, value, target)
+
+
+def aggregate_values(values: list[float], function: str) -> float:
+    """Aggregate baseline values using the specified function.
+
+    Supported: avg, p50, p90, p95, p99.
     Matches Keptn lighthouse-service aggregateValues() behaviour.
     """
     if not values:
@@ -100,35 +125,7 @@ def aggregate_values(values: list[float], function: str) -> float:
 
 
 def _percentile(sorted_values: list[float], pct: int) -> float:
-    """Return the pct-th percentile of a pre-sorted list."""
     if not sorted_values:
         raise ValueError("Cannot calculate percentile of empty list")
     idx = int(len(sorted_values) * pct / 100)
-    # Clamp to last index
     return sorted_values[min(idx, len(sorted_values) - 1)]
-
-
-def _compare(operator: str, value: float, target: float) -> bool:
-    match operator:
-        case "<":  return value < target
-        case "<=": return value <= target
-        case ">":  return value > target
-        case ">=": return value >= target
-        case "=":  return value == target
-        case _:    return False
-
-
-def evaluate_criteria(
-    criteria: ParsedCriteria,
-    value: float,
-    baseline: float | None,
-) -> bool:
-    """Evaluate a single parsed criteria against a metric value.
-
-    Relative criteria with no baseline always pass — no history yet means
-    we cannot penalise.
-    """
-    if criteria.type == CriteriaType.RELATIVE and baseline is None:
-        return True
-    target = criteria.compute_target_value(baseline)
-    return _compare(criteria.operator, value, target)

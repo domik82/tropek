@@ -48,7 +48,6 @@ def build_variables(
         variables.setdefault("start", start)
     if end:
         variables.setdefault("end", end)
-    # Convenience alias
     if "ip" in variables:
         variables.setdefault("asset_ip", variables["ip"])
     return variables

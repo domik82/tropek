@@ -119,12 +119,23 @@ total_score:
 
 # --- calculate_total_score ---
 
+def _make_result(objective, status, score, contributes, key_sli_failed):
+    """Helper: construct ObjectiveResult with keyword args (Pydantic requirement)."""
+    return ObjectiveResult(
+        objective=objective,
+        status=status,
+        score=score,
+        contributes_to_score=contributes,
+        key_sli_failed=key_sli_failed,
+    )
+
+
 def test_total_score_all_pass(slo_data) -> None:
     slo = _slo(slo_data)
     results = [
-        ObjectiveResult(slo.objectives[0], IndicatorStatus.PASS, 2.0, True, False),
-        ObjectiveResult(slo.objectives[1], IndicatorStatus.PASS, 1.0, True, False),
-        ObjectiveResult(slo.objectives[2], IndicatorStatus.INFO, 0.0, False, False),
+        _make_result(slo.objectives[0], IndicatorStatus.PASS, 2.0, True, False),
+        _make_result(slo.objectives[1], IndicatorStatus.PASS, 1.0, True, False),
+        _make_result(slo.objectives[2], IndicatorStatus.INFO, 0.0, False, False),
     ]
     total = calculate_total_score(results, slo.total_score)
     assert total.result == "pass"
@@ -134,9 +145,9 @@ def test_total_score_all_pass(slo_data) -> None:
 def test_total_score_key_sli_fails_regardless_of_score(slo_data) -> None:
     slo = _slo(slo_data)
     results = [
-        ObjectiveResult(slo.objectives[0], IndicatorStatus.PASS, 2.0, True, False),
-        ObjectiveResult(slo.objectives[1], IndicatorStatus.FAIL, 0.0, True, True),
-        ObjectiveResult(slo.objectives[2], IndicatorStatus.INFO, 0.0, False, False),
+        _make_result(slo.objectives[0], IndicatorStatus.PASS, 2.0, True, False),
+        _make_result(slo.objectives[1], IndicatorStatus.FAIL, 0.0, True, True),
+        _make_result(slo.objectives[2], IndicatorStatus.INFO, 0.0, False, False),
     ]
     total = calculate_total_score(results, slo.total_score)
     assert total.result == "fail"
@@ -154,7 +165,7 @@ total_score:
   pass: "90%"
   warning: "75%"
 """)
-    results = [ObjectiveResult(slo.objectives[0], IndicatorStatus.INFO, 0.0, False, False)]
+    results = [_make_result(slo.objectives[0], IndicatorStatus.INFO, 0.0, False, False)]
     total = calculate_total_score(results, slo.total_score)
     assert total.result == "pass"
     assert total.score == 100.0
@@ -164,9 +175,9 @@ def test_total_score_warning_band(slo_data) -> None:
     slo = _slo(slo_data)
     # achieved=1 of max=3 → 33% → below 75% → fail
     results = [
-        ObjectiveResult(slo.objectives[0], IndicatorStatus.FAIL, 0.0, True, False),
-        ObjectiveResult(slo.objectives[1], IndicatorStatus.PASS, 1.0, True, False),
-        ObjectiveResult(slo.objectives[2], IndicatorStatus.INFO, 0.0, False, False),
+        _make_result(slo.objectives[0], IndicatorStatus.FAIL, 0.0, True, False),
+        _make_result(slo.objectives[1], IndicatorStatus.PASS, 1.0, True, False),
+        _make_result(slo.objectives[2], IndicatorStatus.INFO, 0.0, False, False),
     ]
     total = calculate_total_score(results, slo.total_score)
     assert total.result == "fail"
@@ -192,8 +203,8 @@ total_score:
   warning: "50%"
 """)
     results = [
-        ObjectiveResult(slo.objectives[0], IndicatorStatus.PASS, 1.0, True, False),
-        ObjectiveResult(slo.objectives[1], IndicatorStatus.FAIL, 0.0, True, False),
+        _make_result(slo.objectives[0], IndicatorStatus.PASS, 1.0, True, False),
+        _make_result(slo.objectives[1], IndicatorStatus.FAIL, 0.0, True, False),
     ]
     total = calculate_total_score(results, slo.total_score)
     assert total.result == "warning"
