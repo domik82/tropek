@@ -62,9 +62,12 @@ def test_build_variables_merges_metadata() -> None:
     assert variables["test_name"] == "compilation-test"
 
 
-def test_build_variables_ip_alias() -> None:
-    variables = build_variables({"ip": "10.0.0.1"})
-    assert variables["asset_ip"] == "10.0.0.1"
+def test_build_variables_arbitrary_metadata_passthrough() -> None:
+    variables = build_variables({"abc123": "custom-value", "region": "eu-west-1"})
+    assert variables["abc123"] == "custom-value"
+    assert variables["region"] == "eu-west-1"
+    result = substitute_variables("$abc123 in $region", variables)
+    assert result == "custom-value in eu-west-1"
 
 
 def test_build_variables_start_end() -> None:
