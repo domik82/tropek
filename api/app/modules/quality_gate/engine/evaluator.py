@@ -5,13 +5,13 @@ from __future__ import annotations
 from typing import Any
 
 from app.modules.quality_gate.engine.criteria import evaluate_criteria, parse_criteria_string
-from app.modules.quality_gate.engine.models import (
+from app.modules.quality_gate.engine.result_models import (
     EvaluationResult,
     ObjectiveResult,
-    SLOObjective,
     TotalScore,
 )
 from app.modules.quality_gate.engine.scoring import calculate_total_score, score_objective
+from app.modules.quality_gate.engine.slo_models import SLOObjective
 from app.modules.quality_gate.engine.slo_parser import parse_slo
 
 

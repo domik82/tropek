@@ -4,13 +4,8 @@ from __future__ import annotations
 
 from app.modules.quality_gate.engine.constants import EvaluationOutcome, IndicatorStatus
 from app.modules.quality_gate.engine.criteria import evaluate_criteria, parse_criteria_string
-from app.modules.quality_gate.engine.models import (
-    ObjectiveResult,
-    SLOCriteria,
-    SLOObjective,
-    SLOTotalScore,
-    TotalScore,
-)
+from app.modules.quality_gate.engine.result_models import ObjectiveResult, TotalScore
+from app.modules.quality_gate.engine.slo_models import SLOCriteria, SLOObjective, SLOTotalScore
 
 
 def _evaluate_criteria_block(

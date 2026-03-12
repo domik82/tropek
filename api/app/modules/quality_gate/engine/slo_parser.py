@@ -11,7 +11,7 @@ from app.modules.quality_gate.engine.constants import (
     CompareWith,
     IncludeResultWithScore,
 )
-from app.modules.quality_gate.engine.models import (
+from app.modules.quality_gate.engine.slo_models import (
     SLO,
     SLOComparison,
     SLOCriteria,

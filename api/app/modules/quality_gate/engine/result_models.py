@@ -12,7 +12,7 @@ from typing import Any
 from pydantic import BaseModel, Field
 
 from app.modules.quality_gate.engine.constants import EvaluationOutcome, IndicatorStatus
-from app.modules.quality_gate.engine.slo import SLOObjective
+from app.modules.quality_gate.engine.slo_models import SLOObjective
 
 
 class ObjectiveResult(BaseModel):
