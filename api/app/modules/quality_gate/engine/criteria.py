@@ -82,7 +82,9 @@ def parse_criteria_string(raw: str) -> ParsedCriteria:
     Raises:
         ValueError: If the string cannot be parsed.
     """
-    normalised = re.sub(r"\s+", "", raw.strip())
+    # str.split() on no argument splits on any whitespace; join eliminates all spaces.
+    # This normalises "  <=+10   %" → "<=+10%" without needing a regex.
+    normalised = "".join(raw.split())
 
     m = _PATTERN.match(normalised)
     if not m:
