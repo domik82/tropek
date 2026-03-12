@@ -3,6 +3,7 @@ from __future__ import annotations
 import pytest
 from app.modules.quality_gate.engine.criteria import (
     CriteriaType,
+    aggregate_values,
     evaluate_criteria,
     parse_criteria_string,
 )
@@ -54,6 +55,36 @@ def test_parse_relative_no_sign_defaults_plus() -> None:
     c = parse_criteria_string("<=10%")
     assert c.type == CriteriaType.RELATIVE
     assert c.relative_direction == "+"
+
+
+def test_parse_decimal_percentage() -> None:
+    c = parse_criteria_string("<=+10.5%")
+    assert c.type == CriteriaType.RELATIVE
+    assert c.relative_pct == 10.5
+
+
+def test_parse_whitespace_in_criteria() -> None:
+    """Keptn lighthouse allowed whitespace around operator and % sign."""
+    c = parse_criteria_string("  <=+10   %")
+    assert c.type == CriteriaType.RELATIVE
+    assert c.operator == "<="
+    assert c.relative_pct == 10.0
+    assert c.relative_direction == "+"
+
+
+def test_parse_sign_without_pct_is_relative() -> None:
+    """<=+10 (no %) with explicit sign → relative, matching Go behaviour."""
+    c = parse_criteria_string("<=+10")
+    assert c.type == CriteriaType.RELATIVE
+    assert c.relative_pct == 10.0
+    assert c.relative_direction == "+"
+
+
+def test_parse_negative_sign_without_pct_is_relative() -> None:
+    c = parse_criteria_string(">=-10")
+    assert c.type == CriteriaType.RELATIVE
+    assert c.relative_direction == "-"
+    assert c.relative_pct == 10.0
 
 
 def test_invalid_criteria_raises() -> None:
@@ -124,3 +155,45 @@ def test_target_value_relative_minus() -> None:
 
 def test_target_value_relative_no_baseline() -> None:
     assert parse_criteria_string("<=+10%").compute_target_value(None) == 0.0
+
+
+# --- aggregate_values (matches Go's aggregateValues) ---
+
+def test_aggregate_avg() -> None:
+    assert aggregate_values([10.0, 5.0, 15.0], "avg") == pytest.approx(10.0)
+
+
+def test_aggregate_p50() -> None:
+    # Go test: p50 of [10.0, 5.0] sorted → [5.0, 10.0], idx=1 → 10.0
+    # Our impl: idx = int(2 * 50 / 100) = 1 → sorted[1] = 10.0
+    result = aggregate_values([10.0, 5.0], "p50")
+    assert result == pytest.approx(10.0)
+
+
+def test_aggregate_p90() -> None:
+    # 10 values, idx = int(10 * 90/100) = 9, sorted[9] = 10.0
+    # Matches Go's calculatePercentile behaviour exactly
+    values = [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0]
+    result = aggregate_values(values, "p90")
+    assert result == pytest.approx(10.0)
+
+
+def test_aggregate_p95() -> None:
+    values = list(range(1, 21))  # 1..20
+    result = aggregate_values([float(v) for v in values], "p95")
+    # idx = int(20 * 95 / 100) = 19, sorted[19] = 20.0
+    assert result == pytest.approx(20.0)
+
+
+def test_aggregate_single_value() -> None:
+    assert aggregate_values([42.0], "avg") == pytest.approx(42.0)
+
+
+def test_aggregate_unknown_function_raises() -> None:
+    with pytest.raises(ValueError, match="Unknown aggregate function"):
+        aggregate_values([1.0, 2.0], "median")
+
+
+def test_aggregate_empty_raises() -> None:
+    with pytest.raises(ValueError, match="empty"):
+        aggregate_values([], "avg")

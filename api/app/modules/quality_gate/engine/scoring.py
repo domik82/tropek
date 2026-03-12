@@ -62,7 +62,11 @@ def score_objective(
     value: float | None,
     baseline: float | None,
 ) -> ObjectiveResult:
-    has_pass = bool(objective.pass_criteria)
+    # Bug 2231 parity: an empty list of criteria blocks (pass: []) is treated
+    # the same as no pass criteria at all — informational only.
+    has_pass = bool(objective.pass_criteria) and any(
+        block.criteria for block in objective.pass_criteria
+    )
 
     if not has_pass:
         return ObjectiveResult(objective, IndicatorStatus.INFO, 0.0, False, False)
