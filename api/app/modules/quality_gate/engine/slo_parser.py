@@ -5,58 +5,15 @@ from __future__ import annotations
 from typing import Any
 
 import yaml
-from pydantic import BaseModel, Field
 
-
-class SLOParseError(ValueError):
-    """Raised when an SLO YAML document is invalid or references unknown indicators."""
-
-
-class SLOCriteria(BaseModel):
-    """A single block of criteria strings evaluated with AND logic.
-
-    Multiple SLOCriteria on the same objective use OR logic across blocks.
-    """
-
-    criteria: list[str]
-
-
-class SLOObjective(BaseModel):
-    """A single SLO objective — one metric with pass/warning thresholds and weighting."""
-
-    sli: str
-    display_name: str = ""
-    pass_criteria: list[SLOCriteria] = Field(default_factory=list)
-    warning_criteria: list[SLOCriteria] = Field(default_factory=list)
-    weight: int = 1
-    key_sli: bool = False
-
-
-class SLOComparison(BaseModel):
-    """Configuration for historical baseline comparison used in relative criteria."""
-
-    compare_with: str = "single_result"
-    number_of_comparison_results: int = 3
-    include_result_with_score: str = "all"
-    aggregate_function: str = "avg"
-    scope_tags: list[str] = Field(default_factory=lambda: ["os"])
-
-
-class SLOTotalScore(BaseModel):
-    """Pass and warning percentage thresholds for the overall weighted score."""
-
-    pass_pct: float = 90.0
-    warning_pct: float = 75.0
-
-
-class SLO(BaseModel):
-    """Parsed and validated SLO document combining indicators, objectives, and thresholds."""
-
-    spec_version: str
-    indicators: dict[str, str]
-    objectives: list[SLOObjective]
-    comparison: SLOComparison
-    total_score: SLOTotalScore
+from app.modules.quality_gate.engine.models import (
+    SLO,
+    SLOComparison,
+    SLOCriteria,
+    SLOObjective,
+    SLOParseError,
+    SLOTotalScore,
+)
 
 
 def _parse_pct(value: str) -> float:

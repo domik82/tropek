@@ -3,56 +3,8 @@
 from __future__ import annotations
 
 import re
-from enum import StrEnum
 
-from pydantic import BaseModel
-
-
-class CriteriaType(StrEnum):
-    """Whether a criterion compares against a fixed value or a relative baseline."""
-
-    FIXED = "fixed"
-    RELATIVE = "relative"
-
-
-class ParsedCriteria(BaseModel):
-    """A single parsed criterion ready for evaluation.
-
-    Attributes:
-        raw: Original criteria string as written in the SLO YAML.
-        operator: Comparison operator: <, <=, =, >=, >.
-        type: FIXED for absolute thresholds; RELATIVE for baseline-percentage comparisons.
-        threshold: Target value for FIXED criteria.
-        relative_pct: Percentage delta for RELATIVE criteria.
-        relative_direction: '+' means baseline + pct; '-' means baseline - pct.
-    """
-
-    raw: str
-    operator: str
-    type: CriteriaType
-    threshold: float = 0.0
-    relative_pct: float = 0.0
-    relative_direction: str = "+"
-
-    def compute_target_value(self, baseline: float | None) -> float:
-        """Compute the concrete target value to compare the metric against.
-
-        Args:
-            baseline: Aggregated value from previous evaluations. Required for
-                RELATIVE criteria; ignored for FIXED.
-
-        Returns:
-            The target value. Returns 0.0 for RELATIVE criteria when baseline is None.
-        """
-        if self.type == CriteriaType.FIXED:
-            return self.threshold
-        if baseline is None:
-            return 0.0
-        delta = baseline * (self.relative_pct / 100.0)
-        if self.relative_direction == "+":
-            return baseline + delta
-        return baseline - delta
-
+from app.modules.quality_gate.engine.models import CriteriaType, ParsedCriteria
 
 # re.VERBOSE allows whitespace and # comments inside the pattern for readability.
 # Matches criteria strings such as: <600  <=+10%  >=-5%  <=+10  =0  >=10
@@ -93,7 +45,7 @@ def parse_criteria_string(raw: str) -> ParsedCriteria:
         ValueError: If the string cannot be parsed.
     """
     # str.split() on no argument splits on any whitespace; join eliminates all spaces.
-    # This normalises "  <=+10   %" → "<=+10%" without needing a regex.
+    # This normalises "  <=+10   %" -> "<=+10%" without needing a regex.
     normalised = "".join(raw.split())
 
     m = _PATTERN.match(normalised)
