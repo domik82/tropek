@@ -1,0 +1,38 @@
+# Full evaluation test SLO — used in evaluator integration tests.
+# Covers: fixed threshold AND relative criteria in same block,
+#         key_sli veto, missing metric handling, baseline comparison.
+spec_version: '1.0'
+comparison:
+  compare_with: several_results
+  number_of_comparison_results: 3
+  include_result_with_score: pass_or_warn
+  aggregate_function: avg
+  scope_tags:
+    - os
+indicators:
+  response_time_p99: 'histogram_quantile(0.99, rate(http_request_duration_seconds_bucket[5m]))'
+  error_rate: 'rate(http_requests_total{status=~"5.."}[5m])'
+  compilation_s: 'avg_over_time(compilation_duration_seconds[5m])'
+objectives:
+  - sli: response_time_p99
+    displayName: "Response Time P99 (ms)"
+    pass:
+      - criteria: ["<600", "<=+10%"]
+    warning:
+      - criteria: ["<800"]
+    weight: 2
+    key_sli: false
+  - sli: error_rate
+    displayName: "Error Rate"
+    pass:
+      - criteria: ["=0"]
+    weight: 3
+    key_sli: true
+  - sli: compilation_s
+    displayName: "Compilation Duration (s)"
+    pass:
+      - criteria: ["<=+5%"]
+    weight: 1
+total_score:
+  pass: "90%"
+  warning: "75%"

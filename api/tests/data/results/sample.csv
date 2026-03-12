@@ -1,0 +1,5 @@
+metric_name,value,aggregation
+response_time_p99,450.3,p99
+error_rate,0.02,avg
+throughput_mbps,945.3,avg
+compilation_duration_s,42.1,avg
