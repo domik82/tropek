@@ -8,37 +8,11 @@ from app.modules.quality_gate.engine.scoring import (
     calculate_total_score,
     score_objective,
 )
-
-SIMPLE_SLO = """
-spec_version: '1.0'
-indicators:
-  m1: 'q()'
-  m2: 'q()'
-  m3: 'q()'
-objectives:
-  - sli: m1
-    pass:
-      - criteria: ["<100"]
-    warning:
-      - criteria: ["<200"]
-    weight: 2
-    key_sli: false
-  - sli: m2
-    pass:
-      - criteria: ["<50"]
-    weight: 1
-    key_sli: true
-  - sli: m3
-    displayName: Info only
-    weight: 1
-total_score:
-  pass: "90%"
-  warning: "75%"
-"""
+from tests.conftest import load_slo
 
 
 def _slo():
-    return parse_slo(SIMPLE_SLO)
+    return parse_slo(load_slo("multi_objective_weighted.yaml"))
 
 
 # --- score_objective ---
