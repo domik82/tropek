@@ -105,6 +105,50 @@ def test_key_sli_pass_not_flagged() -> None:
     assert result.key_sli_failed is False
 
 
+def test_empty_pass_criteria_list_is_informational() -> None:
+    """Bug 2231: pass: [] (empty list) must be treated same as no pass criteria."""
+    slo = parse_slo("""
+spec_version: '1.0'
+indicators:
+  m: 'q()'
+objectives:
+  - sli: m
+    pass: []
+    weight: 1
+total_score:
+  pass: "90%"
+  warning: "75%"
+""")
+    result = score_objective(slo.objectives[0], value=50.0, baseline=None)
+    assert result.status == IndicatorStatus.INFO
+    assert result.contributes_to_score is False
+    assert result.score == 0.0
+
+
+def test_sign_without_pct_relative_scoring() -> None:
+    """<=+10 without % sign should be treated as relative (baseline + 10)."""
+    slo = parse_slo("""
+spec_version: '1.0'
+indicators:
+  m: 'q()'
+objectives:
+  - sli: m
+    pass:
+      - criteria: ["<=+10"]
+    weight: 1
+total_score:
+  pass: "90%"
+  warning: "75%"
+""")
+    # baseline=100, target=110, value=105 → pass
+    result = score_objective(slo.objectives[0], value=105.0, baseline=100.0)
+    assert result.status == IndicatorStatus.PASS
+
+    # baseline=100, target=110, value=115 → fail
+    result2 = score_objective(slo.objectives[0], value=115.0, baseline=100.0)
+    assert result2.status == IndicatorStatus.FAIL
+
+
 # --- calculate_total_score ---
 
 def test_total_score_all_pass() -> None:
