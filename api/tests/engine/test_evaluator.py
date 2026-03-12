@@ -28,7 +28,8 @@ def test_relative_criteria_with_baseline_pass(slo_data) -> None:
     metrics = {"response_time_p99": 550.0, "error_rate": 0.0, "compilation_s": 45.0}
     # AND block: ["<600", "<=+10%"] — baseline=500, target=550 → both pass
     result = evaluate(
-        slo_data("full_evaluation.yaml"), metrics,
+        slo_data("full_evaluation.yaml"),
+        metrics,
         baselines={"response_time_p99": 500.0},
     )
     rt = next(r for r in result.indicator_results if r["metric"] == "response_time_p99")
@@ -39,7 +40,8 @@ def test_relative_criteria_exceeded_falls_to_warning(slo_data) -> None:
     metrics = {"response_time_p99": 700.0, "error_rate": 0.0, "compilation_s": 45.0}
     # baseline=550, +10%=605 → 700 fails pass; warning <800 → passes
     result = evaluate(
-        slo_data("full_evaluation.yaml"), metrics,
+        slo_data("full_evaluation.yaml"),
+        metrics,
         baselines={"response_time_p99": 550.0},
     )
     rt = next(r for r in result.indicator_results if r["metric"] == "response_time_p99")
@@ -62,7 +64,8 @@ def test_indicator_results_contain_all_metrics(slo_data) -> None:
 def test_change_relative_pct_computed(slo_data) -> None:
     metrics = {"response_time_p99": 550.0, "error_rate": 0.0, "compilation_s": 45.0}
     result = evaluate(
-        slo_data("full_evaluation.yaml"), metrics,
+        slo_data("full_evaluation.yaml"),
+        metrics,
         baselines={"response_time_p99": 500.0},
     )
     rt = next(r for r in result.indicator_results if r["metric"] == "response_time_p99")
@@ -73,8 +76,10 @@ def test_change_relative_pct_computed(slo_data) -> None:
 def test_compared_evaluation_ids_stored(slo_data) -> None:
     metrics = {"response_time_p99": 550.0, "error_rate": 0.0, "compilation_s": 45.0}
     result = evaluate(
-        slo_data("full_evaluation.yaml"), metrics,
-        baselines={}, compared_evaluation_ids=["id1", "id2"],
+        slo_data("full_evaluation.yaml"),
+        metrics,
+        baselines={},
+        compared_evaluation_ids=["id1", "id2"],
     )
     assert result.compared_evaluation_ids == ["id1", "id2"]
 
@@ -82,7 +87,8 @@ def test_compared_evaluation_ids_stored(slo_data) -> None:
 def test_pass_targets_included(slo_data) -> None:
     metrics = {"response_time_p99": 550.0, "error_rate": 0.0, "compilation_s": 45.0}
     result = evaluate(
-        slo_data("full_evaluation.yaml"), metrics,
+        slo_data("full_evaluation.yaml"),
+        metrics,
         baselines={"response_time_p99": 500.0},
     )
     rt = next(r for r in result.indicator_results if r["metric"] == "response_time_p99")

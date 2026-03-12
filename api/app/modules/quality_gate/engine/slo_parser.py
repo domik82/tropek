@@ -57,9 +57,7 @@ def parse_slo(yaml_text: str) -> SLO:
     if "spec_version" not in data:
         raise SLOParseError("Missing required field: spec_version")
 
-    indicators: dict[str, str] = {
-        str(k): str(v) for k, v in (data.get("indicators") or {}).items()
-    }
+    indicators: dict[str, str] = {str(k): str(v) for k, v in (data.get("indicators") or {}).items()}
 
     raw_cmp = data.get("comparison") or {}
     comparison = SLOComparison(
@@ -94,14 +92,16 @@ def parse_slo(yaml_text: str) -> SLO:
             for block in (raw_obj.get("warning") or [])
         ]
 
-        objectives.append(SLOObjective(
-            sli=sli_name,
-            display_name=str(raw_obj.get("displayName", sli_name)),
-            pass_criteria=pass_criteria,
-            warning_criteria=warning_criteria,
-            weight=int(raw_obj.get("weight", 1)),
-            key_sli=bool(raw_obj.get("key_sli", False)),
-        ))
+        objectives.append(
+            SLOObjective(
+                sli=sli_name,
+                display_name=str(raw_obj.get("displayName", sli_name)),
+                pass_criteria=pass_criteria,
+                warning_criteria=warning_criteria,
+                weight=int(raw_obj.get("weight", 1)),
+                key_sli=bool(raw_obj.get("key_sli", False)),
+            )
+        )
 
     return SLO(
         spec_version=str(data["spec_version"]),

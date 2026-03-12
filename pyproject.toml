@@ -21,3 +21,8 @@ ignore_missing_imports = true
 asyncio_mode = "auto"
 testpaths = ["api/tests", "adapters/prometheus/tests"]
 pythonpath = ["api", "adapters/prometheus"]   # makes 'app' importable from workspace root
+
+[dependency-groups]
+dev = [
+    "pre-commit>=4.5.1",
+]
