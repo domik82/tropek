@@ -8,41 +8,40 @@ from app.modules.quality_gate.engine.scoring import (
     calculate_total_score,
     score_objective,
 )
-from tests.conftest import load_slo
 
 
-def _slo():
-    return parse_slo(load_slo("multi_objective_weighted.yaml"))
+def _slo(slo_data):
+    return parse_slo(slo_data("multi_objective_weighted.yaml"))
 
 
 # --- score_objective ---
 
-def test_objective_passes() -> None:
-    result = score_objective(_slo().objectives[0], value=80.0, baseline=None)
+def test_objective_passes(slo_data) -> None:
+    result = score_objective(_slo(slo_data).objectives[0], value=80.0, baseline=None)
     assert result.status == IndicatorStatus.PASS
     assert result.score == 2.0
 
 
-def test_objective_warns() -> None:
-    result = score_objective(_slo().objectives[0], value=150.0, baseline=None)
+def test_objective_warns(slo_data) -> None:
+    result = score_objective(_slo(slo_data).objectives[0], value=150.0, baseline=None)
     assert result.status == IndicatorStatus.WARNING
     assert result.score == 1.0  # 0.5 * weight(2)
 
 
-def test_objective_fails() -> None:
-    result = score_objective(_slo().objectives[0], value=250.0, baseline=None)
+def test_objective_fails(slo_data) -> None:
+    result = score_objective(_slo(slo_data).objectives[0], value=250.0, baseline=None)
     assert result.status == IndicatorStatus.FAIL
     assert result.score == 0.0
 
 
-def test_objective_missing_metric_fails() -> None:
-    result = score_objective(_slo().objectives[0], value=None, baseline=None)
+def test_objective_missing_metric_fails(slo_data) -> None:
+    result = score_objective(_slo(slo_data).objectives[0], value=None, baseline=None)
     assert result.status == IndicatorStatus.FAIL
     assert result.score == 0.0
 
 
-def test_objective_no_pass_criteria_is_informational() -> None:
-    result = score_objective(_slo().objectives[2], value=999.0, baseline=None)
+def test_objective_no_pass_criteria_is_informational(slo_data) -> None:
+    result = score_objective(_slo(slo_data).objectives[2], value=999.0, baseline=None)
     assert result.status == IndicatorStatus.INFO
     assert result.score == 0.0
     assert result.contributes_to_score is False
@@ -68,14 +67,14 @@ total_score:
     assert result.status == IndicatorStatus.PASS
 
 
-def test_key_sli_failure_flagged() -> None:
-    result = score_objective(_slo().objectives[1], value=999.0, baseline=None)
+def test_key_sli_failure_flagged(slo_data) -> None:
+    result = score_objective(_slo(slo_data).objectives[1], value=999.0, baseline=None)
     assert result.status == IndicatorStatus.FAIL
     assert result.key_sli_failed is True
 
 
-def test_key_sli_pass_not_flagged() -> None:
-    result = score_objective(_slo().objectives[1], value=10.0, baseline=None)
+def test_key_sli_pass_not_flagged(slo_data) -> None:
+    result = score_objective(_slo(slo_data).objectives[1], value=10.0, baseline=None)
     assert result.key_sli_failed is False
 
 
@@ -100,7 +99,7 @@ total_score:
 
 
 def test_sign_without_pct_relative_scoring() -> None:
-    """<=+10 without % sign should be treated as relative (baseline + 10)."""
+    """<=+10 without % treated as relative (baseline + 10), matching Go behaviour."""
     slo = parse_slo("""
 spec_version: '1.0'
 indicators:
@@ -114,19 +113,14 @@ total_score:
   pass: "90%"
   warning: "75%"
 """)
-    # baseline=100, target=110, value=105 → pass
-    result = score_objective(slo.objectives[0], value=105.0, baseline=100.0)
-    assert result.status == IndicatorStatus.PASS
-
-    # baseline=100, target=110, value=115 → fail
-    result2 = score_objective(slo.objectives[0], value=115.0, baseline=100.0)
-    assert result2.status == IndicatorStatus.FAIL
+    assert score_objective(slo.objectives[0], value=105.0, baseline=100.0).status == IndicatorStatus.PASS
+    assert score_objective(slo.objectives[0], value=115.0, baseline=100.0).status == IndicatorStatus.FAIL
 
 
 # --- calculate_total_score ---
 
-def test_total_score_all_pass() -> None:
-    slo = _slo()
+def test_total_score_all_pass(slo_data) -> None:
+    slo = _slo(slo_data)
     results = [
         ObjectiveResult(slo.objectives[0], IndicatorStatus.PASS, 2.0, True, False),
         ObjectiveResult(slo.objectives[1], IndicatorStatus.PASS, 1.0, True, False),
@@ -137,8 +131,8 @@ def test_total_score_all_pass() -> None:
     assert total.score == pytest.approx(100.0)
 
 
-def test_total_score_key_sli_fails_regardless_of_score() -> None:
-    slo = _slo()
+def test_total_score_key_sli_fails_regardless_of_score(slo_data) -> None:
+    slo = _slo(slo_data)
     results = [
         ObjectiveResult(slo.objectives[0], IndicatorStatus.PASS, 2.0, True, False),
         ObjectiveResult(slo.objectives[1], IndicatorStatus.FAIL, 0.0, True, True),
@@ -166,9 +160,9 @@ total_score:
     assert total.score == 100.0
 
 
-def test_total_score_warning_band() -> None:
-    slo = _slo()
-    # achieved=1 of max=3 → 33% → below 75% warning → fail
+def test_total_score_warning_band(slo_data) -> None:
+    slo = _slo(slo_data)
+    # achieved=1 of max=3 → 33% → below 75% → fail
     results = [
         ObjectiveResult(slo.objectives[0], IndicatorStatus.FAIL, 0.0, True, False),
         ObjectiveResult(slo.objectives[1], IndicatorStatus.PASS, 1.0, True, False),

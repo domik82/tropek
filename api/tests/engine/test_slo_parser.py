@@ -2,11 +2,10 @@ from __future__ import annotations
 
 import pytest
 from app.modules.quality_gate.engine.slo_parser import SLOParseError, parse_slo
-from tests.conftest import load_slo
 
 
-def test_parse_minimal_slo() -> None:
-    slo = parse_slo(load_slo("minimal.yaml"))
+def test_parse_minimal_slo(slo_data) -> None:
+    slo = parse_slo(slo_data("minimal.yaml"))
     assert slo.spec_version == "1.0"
     assert len(slo.objectives) == 1
     assert slo.objectives[0].sli == "response_time_p99"
@@ -16,15 +15,15 @@ def test_parse_minimal_slo() -> None:
     assert slo.total_score.warning_pct == 75.0
 
 
-def test_parse_indicators_block() -> None:
-    slo = parse_slo(load_slo("minimal.yaml"))
+def test_parse_indicators_block(slo_data) -> None:
+    slo = parse_slo(slo_data("minimal.yaml"))
     assert "response_time_p99" in slo.indicators
     assert slo.indicators["response_time_p99"] == "avg_over_time(http_duration_seconds[5m])"
 
 
-def test_parse_comparison_defaults() -> None:
+def test_parse_comparison_defaults(slo_data) -> None:
     """A minimal SLO without a comparison block gets sensible defaults."""
-    slo = parse_slo(load_slo("minimal.yaml"))
+    slo = parse_slo(slo_data("minimal.yaml"))
     assert slo.comparison.compare_with == "single_result"
     assert slo.comparison.number_of_comparison_results == 3
     assert slo.comparison.include_result_with_score == "all"
@@ -32,20 +31,20 @@ def test_parse_comparison_defaults() -> None:
     assert slo.comparison.scope_tags == ["os"]
 
 
-def test_parse_relative_slo_comparison() -> None:
-    slo = parse_slo(load_slo("relative_comparison.yaml"))
+def test_parse_relative_slo_comparison(slo_data) -> None:
+    slo = parse_slo(slo_data("relative_comparison.yaml"))
     assert slo.comparison.compare_with == "several_results"
     assert slo.comparison.scope_tags == ["os", "arch"]
 
 
-def test_parse_key_sli() -> None:
-    slo = parse_slo(load_slo("relative_comparison.yaml"))
+def test_parse_key_sli(slo_data) -> None:
+    slo = parse_slo(slo_data("relative_comparison.yaml"))
     assert slo.objectives[0].key_sli is True
 
 
-def test_parse_weight_default() -> None:
+def test_parse_weight_default(slo_data) -> None:
     """Objectives without an explicit weight default to 1."""
-    slo = parse_slo(load_slo("minimal.yaml"))
+    slo = parse_slo(slo_data("minimal.yaml"))
     assert slo.objectives[0].weight == 1
 
 

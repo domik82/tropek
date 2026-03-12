@@ -1,0 +1,6 @@
+{
+  "include": ["api", "adapters"],
+  "extraPaths": ["api", "adapters/prometheus"],
+  "pythonVersion": "3.13",
+  "typeCheckingMode": "basic"
+}
