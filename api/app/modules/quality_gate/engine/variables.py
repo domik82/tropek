@@ -4,7 +4,20 @@ from __future__ import annotations
 
 import re
 
-_VAR_RE = re.compile(r"\$([a-zA-Z_][a-zA-Z0-9_]*)")
+# Matches $variable_name tokens in SLI query strings and SLO YAML.
+# Group 1 captures the name (without $) following Python identifier rules:
+#   first char: letter or underscore
+#   subsequent chars: letters, digits, or underscores
+_VAR_RE = re.compile(
+    r"""
+    \$                      # literal dollar sign — variable prefix
+    (                       # capture group 1: the variable name
+        [a-zA-Z_]           # first character: letter or underscore (not a digit)
+        [a-zA-Z0-9_]*       # subsequent characters: letters, digits, underscores
+    )
+    """,
+    re.VERBOSE,
+)
 
 
 class UnresolvedVariableError(ValueError):
