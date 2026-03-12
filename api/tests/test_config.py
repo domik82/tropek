@@ -8,7 +8,7 @@ import pytest
 
 
 @pytest.fixture(autouse=True)
-def clear_lru_cache():
+def _clear_lru_cache():
     """Clear the settings cache before each test."""
     yield
     import app.config as config_module

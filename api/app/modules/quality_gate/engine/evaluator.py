@@ -21,7 +21,7 @@ class EvaluationResult(BaseModel):
 
     Attributes:
         result: Overall result: 'pass', 'warning', or 'fail'.
-        score: Weighted score as a percentage (0.0–100.0).
+        score: Weighted score as a percentage (0.0-100.0).
         indicator_results: Per-SLI breakdown with values, targets, and violation flags.
         compared_evaluation_ids: IDs of previous evaluations used as comparison baseline.
     """
