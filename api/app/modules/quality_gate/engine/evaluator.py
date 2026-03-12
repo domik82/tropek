@@ -1,3 +1,5 @@
+"""Top-level evaluation function — orchestrates parsing, scoring, and result assembly."""
+
 from __future__ import annotations
 
 from typing import Any
@@ -15,6 +17,15 @@ from app.modules.quality_gate.engine.slo_parser import SLOObjective, parse_slo
 
 
 class EvaluationResult(BaseModel):
+    """Result of evaluating a full SLO against a set of metric values.
+
+    Attributes:
+        result: Overall result: 'pass', 'warning', or 'fail'.
+        score: Weighted score as a percentage (0.0–100.0).
+        indicator_results: Per-SLI breakdown with values, targets, and violation flags.
+        compared_evaluation_ids: IDs of previous evaluations used as comparison baseline.
+    """
+
     result: str
     score: float
     indicator_results: list[dict[str, Any]] = Field(default_factory=list)
@@ -27,6 +38,7 @@ def _build_targets(
     baseline: float | None,
     is_pass: bool,
 ) -> list[dict[str, Any]]:
+    """Build the pass or warning target list for a single objective's indicator result."""
     blocks = objective.pass_criteria if is_pass else objective.warning_criteria
     targets = []
     for block in blocks:
@@ -50,16 +62,20 @@ def evaluate(
     baselines: dict[str, float | None],
     compared_evaluation_ids: list[str] | None = None,
 ) -> EvaluationResult:
-    """Pure evaluation function — no I/O, no database calls.
+    """Evaluate a set of metric values against an SLO definition.
+
+    This is a pure function — no I/O, no database calls. Fully unit-testable
+    in isolation. Ported from Keptn's lighthouse-service Go implementation.
 
     Args:
-        slo_yaml: Full SLO YAML text (with indicators block).
-        metrics: Metric name → scalar value (None = missing/failed).
+        slo_yaml: Full SLO YAML text including the indicators block.
+        metrics: Metric name → scalar value. None means the metric was not retrieved.
         baselines: Metric name → aggregated baseline value for relative criteria.
-        compared_evaluation_ids: IDs of previous evaluations used for baseline.
+            Values are sourced from previous passing evaluations.
+        compared_evaluation_ids: IDs of the evaluations used to compute the baselines.
 
     Returns:
-        EvaluationResult with result, score, and per-indicator breakdown.
+        EvaluationResult with overall result, score, and per-indicator breakdown.
     """
     slo = parse_slo(slo_yaml)
     objective_results: list[ObjectiveResult] = []

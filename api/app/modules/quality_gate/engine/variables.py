@@ -1,3 +1,5 @@
+"""SLO variable substitution — replaces $placeholders with evaluation metadata."""
+
 from __future__ import annotations
 
 import re
@@ -6,10 +8,23 @@ _VAR_RE = re.compile(r"\$([a-zA-Z_][a-zA-Z0-9_]*)")
 
 
 class UnresolvedVariableError(ValueError):
-    pass
+    """Raised when a $variable in an SLI query has no corresponding value."""
 
 
 def substitute_variables(template: str, variables: dict[str, str]) -> str:
+    """Replace all $variable tokens in a template string.
+
+    Args:
+        template: String containing $variable placeholders.
+        variables: Mapping of variable names (without $) to their values.
+
+    Returns:
+        Template with all $variables replaced.
+
+    Raises:
+        UnresolvedVariableError: If any $variable has no corresponding key in variables.
+    """
+
     def replace(match: re.Match[str]) -> str:
         name = match.group(1)
         if name not in variables:
@@ -22,7 +37,18 @@ def substitute_variables(template: str, variables: dict[str, str]) -> str:
 
 
 def substitute_slo_variables(slo_yaml: str, variables: dict[str, str]) -> str:
-    """Substitute $variables throughout a full SLO YAML string."""
+    """Substitute $variables throughout a full SLO YAML string.
+
+    Args:
+        slo_yaml: Raw SLO YAML text, possibly containing $variable tokens.
+        variables: Variable name → value mapping.
+
+    Returns:
+        SLO YAML with all $variables replaced.
+
+    Raises:
+        UnresolvedVariableError: If any $variable remains unresolved.
+    """
     return substitute_variables(slo_yaml, variables)
 
 
@@ -33,11 +59,21 @@ def build_variables(
     start: str | None = None,
     end: str | None = None,
 ) -> dict[str, str]:
-    """Merge all variable sources into one dict.
+    """Merge all variable sources into a single substitution dict.
 
-    Priority (later overrides earlier):
-    - metadata fields from the evaluation request
-    - reserved vars derived from the request ($asset_name, $test_name, $start, $end)
+    Metadata fields take the lowest priority; reserved variables derived from
+    the request ($asset_name, $test_name, $start, $end) are added if not already
+    present in metadata.
+
+    Args:
+        metadata: Caller-provided key-value pairs from the evaluation request.
+        asset_name: Primary asset name — sets $asset_name if not in metadata.
+        test_name: Test identifier — sets $test_name if not in metadata.
+        start: ISO timestamp — sets $start if not in metadata.
+        end: ISO timestamp — sets $end if not in metadata.
+
+    Returns:
+        Merged variable dict ready for use with substitute_variables().
     """
     variables: dict[str, str] = dict(metadata)
     if asset_name:

@@ -1,3 +1,5 @@
+"""Per-objective scoring and total score calculation."""
+
 from __future__ import annotations
 
 from enum import StrEnum
@@ -9,6 +11,8 @@ from app.modules.quality_gate.engine.slo_parser import SLOObjective, SLOTotalSco
 
 
 class IndicatorStatus(StrEnum):
+    """Result status of a single SLI evaluation."""
+
     PASS = "pass"
     WARNING = "warning"
     FAIL = "fail"
@@ -17,6 +21,16 @@ class IndicatorStatus(StrEnum):
 
 
 class ObjectiveResult(BaseModel):
+    """Evaluation result for a single SLO objective.
+
+    Attributes:
+        objective: The SLO objective that was evaluated.
+        status: Pass / warning / fail / info result for this indicator.
+        score: Points contributed to the total (0, 0.5×weight, or weight).
+        contributes_to_score: False for informational-only objectives (no pass criteria).
+        key_sli_failed: True if this is a key SLI and it failed — vetoes the overall result.
+    """
+
     objective: SLOObjective
     status: IndicatorStatus
     score: float
@@ -27,8 +41,15 @@ class ObjectiveResult(BaseModel):
 
 
 class TotalScore(BaseModel):
-    result: str  # pass | warning | fail
-    score: float  # 0–100
+    """Overall evaluation result after applying weights and thresholds.
+
+    Attributes:
+        result: 'pass', 'warning', or 'fail'.
+        score: Achieved percentage (0–100).
+    """
+
+    result: str
+    score: float
 
 
 def _evaluate_criteria_block(
@@ -36,7 +57,7 @@ def _evaluate_criteria_block(
     value: float,
     baseline: float | None,
 ) -> bool:
-    """AND logic: all criteria in the block must pass."""
+    """Evaluate a single criteria block with AND logic — all must pass."""
     for raw in criteria_list:
         c = parse_criteria_string(raw)
         if not evaluate_criteria(c, value, baseline):
@@ -49,7 +70,7 @@ def _evaluate_or_blocks(
     value: float,
     baseline: float | None,
 ) -> bool:
-    """OR logic across blocks: any single block passing means overall pass."""
+    """Evaluate multiple criteria blocks with OR logic — any one passing is sufficient."""
     if not criteria_blocks:
         return False
     return any(
@@ -62,6 +83,16 @@ def score_objective(
     value: float | None,
     baseline: float | None,
 ) -> ObjectiveResult:
+    """Score a single SLO objective against a metric value and optional baseline.
+
+    Args:
+        objective: The SLO objective containing criteria and weight.
+        value: Current metric value. None means the metric was not retrieved.
+        baseline: Aggregated value from previous evaluations for relative criteria.
+
+    Returns:
+        ObjectiveResult with status, score contribution, and key_sli_failed flag.
+    """
     # Bug 2231 parity: pass: [] (empty list) treated same as no pass criteria.
     has_pass = bool(objective.pass_criteria) and any(
         block.criteria for block in objective.pass_criteria
@@ -116,10 +147,22 @@ def calculate_total_score(
     results: list[ObjectiveResult],
     total_score: SLOTotalScore,
 ) -> TotalScore:
+    """Calculate the overall evaluation result from individual objective scores.
+
+    A key_sli failure immediately forces 'fail' regardless of the total percentage.
+    If no objectives have pass criteria (maximum achievable score is zero),
+    returns pass at 100% — matches Keptn lighthouse-service behaviour.
+
+    Args:
+        results: Scored results for every objective in the SLO.
+        total_score: Pass and warning percentage thresholds.
+
+    Returns:
+        TotalScore with the overall result string and achieved percentage.
+    """
     maximum = sum(r.objective.weight for r in results if r.contributes_to_score)
 
     if maximum == 0:
-        # No objectives have pass criteria — informational SLO, always passes
         return TotalScore(result="pass", score=100.0)
 
     achieved = sum(r.score for r in results)

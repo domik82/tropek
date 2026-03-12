@@ -1,3 +1,5 @@
+"""SLO YAML parser — converts raw YAML text into validated SLO domain models."""
+
 from __future__ import annotations
 
 from typing import Any
@@ -7,14 +9,21 @@ from pydantic import BaseModel, Field
 
 
 class SLOParseError(ValueError):
-    pass
+    """Raised when an SLO YAML document is invalid or references unknown indicators."""
 
 
 class SLOCriteria(BaseModel):
+    """A single block of criteria strings evaluated with AND logic.
+
+    Multiple SLOCriteria on the same objective use OR logic across blocks.
+    """
+
     criteria: list[str]
 
 
 class SLOObjective(BaseModel):
+    """A single SLO objective — one metric with pass/warning thresholds and weighting."""
+
     sli: str
     display_name: str = ""
     pass_criteria: list[SLOCriteria] = Field(default_factory=list)
@@ -24,6 +33,8 @@ class SLOObjective(BaseModel):
 
 
 class SLOComparison(BaseModel):
+    """Configuration for historical baseline comparison used in relative criteria."""
+
     compare_with: str = "single_result"
     number_of_comparison_results: int = 3
     include_result_with_score: str = "all"
@@ -32,11 +43,15 @@ class SLOComparison(BaseModel):
 
 
 class SLOTotalScore(BaseModel):
+    """Pass and warning percentage thresholds for the overall weighted score."""
+
     pass_pct: float = 90.0
     warning_pct: float = 75.0
 
 
 class SLO(BaseModel):
+    """Parsed and validated SLO document combining indicators, objectives, and thresholds."""
+
     spec_version: str
     indicators: dict[str, str]
     objectives: list[SLOObjective]
@@ -49,6 +64,18 @@ def _parse_pct(value: str) -> float:
 
 
 def parse_slo(yaml_text: str) -> SLO:
+    """Parse and validate an SLO YAML document.
+
+    Args:
+        yaml_text: Full SLO YAML content including the indicators block.
+
+    Returns:
+        Validated SLO model with defaults applied.
+
+    Raises:
+        SLOParseError: If the YAML is invalid, missing spec_version, or an
+            objective references an indicator not defined in the indicators block.
+    """
     try:
         data: dict[str, Any] = yaml.safe_load(yaml_text) or {}
     except yaml.YAMLError as e:
