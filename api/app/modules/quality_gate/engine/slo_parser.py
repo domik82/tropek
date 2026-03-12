@@ -6,6 +6,11 @@ from typing import Any
 
 import yaml
 
+from app.modules.quality_gate.engine.constants import (
+    AggregateFunction,
+    CompareWith,
+    IncludeResultWithScore,
+)
 from app.modules.quality_gate.engine.models import (
     SLO,
     SLOComparison,
@@ -45,10 +50,12 @@ def parse_slo(yaml_text: str) -> SLO:
 
     raw_cmp = data.get("comparison") or {}
     comparison = SLOComparison(
-        compare_with=raw_cmp.get("compare_with", "single_result"),
+        compare_with=raw_cmp.get("compare_with", CompareWith.SINGLE_RESULT),
         number_of_comparison_results=int(raw_cmp.get("number_of_comparison_results", 3)),
-        include_result_with_score=raw_cmp.get("include_result_with_score", "all"),
-        aggregate_function=raw_cmp.get("aggregate_function", "avg"),
+        include_result_with_score=raw_cmp.get(
+            "include_result_with_score", IncludeResultWithScore.ALL
+        ),
+        aggregate_function=raw_cmp.get("aggregate_function", AggregateFunction.AVG),
         scope_tags=list(raw_cmp.get("scope_tags", ["os"])),
     )
 

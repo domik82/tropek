@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import pytest
 from app.modules.quality_gate.engine.slo_parser import SLOParseError, parse_slo
+from pydantic import ValidationError
 
 
 def test_parse_minimal_slo(slo_data) -> None:
@@ -92,3 +93,63 @@ total_score:
 """
     slo = parse_slo(yaml_with_cpd)
     assert slo.objectives[0].sli == "m"
+
+
+def test_invalid_aggregate_function_raises() -> None:
+    """aggregate_function values not in AggregateFunction are rejected by Pydantic."""
+    bad_yaml = """
+spec_version: '1.0'
+comparison:
+  aggregate_function: median
+indicators:
+  m: 'query()'
+objectives:
+  - sli: m
+    pass:
+      - criteria: ["<100"]
+total_score:
+  pass: "90%"
+  warning: "75%"
+"""
+    with pytest.raises(ValidationError):
+        parse_slo(bad_yaml)
+
+
+def test_invalid_compare_with_raises() -> None:
+    """compare_with values not in CompareWith are rejected by Pydantic."""
+    bad_yaml = """
+spec_version: '1.0'
+comparison:
+  compare_with: rolling_window
+indicators:
+  m: 'query()'
+objectives:
+  - sli: m
+    pass:
+      - criteria: ["<100"]
+total_score:
+  pass: "90%"
+  warning: "75%"
+"""
+    with pytest.raises(ValidationError):
+        parse_slo(bad_yaml)
+
+
+def test_invalid_include_result_with_score_raises() -> None:
+    """include_result_with_score values not in IncludeResultWithScore are rejected."""
+    bad_yaml = """
+spec_version: '1.0'
+comparison:
+  include_result_with_score: only_green
+indicators:
+  m: 'query()'
+objectives:
+  - sli: m
+    pass:
+      - criteria: ["<100"]
+total_score:
+  pass: "90%"
+  warning: "75%"
+"""
+    with pytest.raises(ValidationError):
+        parse_slo(bad_yaml)
