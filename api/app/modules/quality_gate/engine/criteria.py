@@ -54,14 +54,24 @@ class ParsedCriteria(BaseModel):
         return baseline - delta
 
 
+# re.VERBOSE allows whitespace and # comments inside the pattern for readability.
+# Matches criteria strings such as: <600  <=+10%  >=-5%  <=+10  =0  >=10
 _PATTERN = re.compile(
-    r"^(?P<op><=|>=|<|>|=)"
-    r"\s*"
-    r"(?P<sign>[+-])?"
-    r"(?P<value>\d+(?:\.\d+)?)"
-    r"\s*"
-    r"(?P<pct>%)?"
-    r"$"
+    r"""
+    ^                       # start of string — no leading garbage allowed
+    (?P<op> <=|>=|<|>|=)   # comparison operator; longest alternatives listed first
+                            # to prevent '<' matching before '<='
+    \s*                     # optional whitespace between operator and sign/value
+    (?P<sign> [+-])?        # optional sign: '+' = increase, '-' = decrease
+                            # presence of sign (without %) also marks a relative criterion
+    (?P<value> \d+          # integer part of the numeric threshold or percentage
+               (?:\.\d+)?  # optional decimal part (e.g. 10.5%)
+    )
+    \s*                     # optional whitespace before %
+    (?P<pct> %)?            # optional '%' suffix — marks a percentage/relative criterion
+    $                       # end of string — no trailing garbage allowed
+    """,
+    re.VERBOSE,
 )
 
 
