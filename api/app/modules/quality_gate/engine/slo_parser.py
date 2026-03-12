@@ -1,47 +1,42 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field
 from typing import Any
 
 import yaml
+from pydantic import BaseModel, Field
 
 
 class SLOParseError(ValueError):
     pass
 
 
-@dataclass
-class SLOCriteria:
+class SLOCriteria(BaseModel):
     criteria: list[str]
 
 
-@dataclass
-class SLOObjective:
+class SLOObjective(BaseModel):
     sli: str
     display_name: str = ""
-    pass_criteria: list[SLOCriteria] = field(default_factory=list)
-    warning_criteria: list[SLOCriteria] = field(default_factory=list)
+    pass_criteria: list[SLOCriteria] = Field(default_factory=list)
+    warning_criteria: list[SLOCriteria] = Field(default_factory=list)
     weight: int = 1
     key_sli: bool = False
 
 
-@dataclass
-class SLOComparison:
+class SLOComparison(BaseModel):
     compare_with: str = "single_result"
     number_of_comparison_results: int = 3
     include_result_with_score: str = "all"
     aggregate_function: str = "avg"
-    scope_tags: list[str] = field(default_factory=lambda: ["os"])
+    scope_tags: list[str] = Field(default_factory=lambda: ["os"])
 
 
-@dataclass
-class SLOTotalScore:
+class SLOTotalScore(BaseModel):
     pass_pct: float = 90.0
     warning_pct: float = 75.0
 
 
-@dataclass
-class SLO:
+class SLO(BaseModel):
     spec_version: str
     indicators: dict[str, str]
     objectives: list[SLOObjective]

@@ -1,12 +1,10 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field
 from typing import Any
 
-from app.modules.quality_gate.engine.criteria import (
-    evaluate_criteria,
-    parse_criteria_string,
-)
+from pydantic import BaseModel, Field
+
+from app.modules.quality_gate.engine.criteria import evaluate_criteria, parse_criteria_string
 from app.modules.quality_gate.engine.scoring import (
     ObjectiveResult,
     TotalScore,
@@ -16,12 +14,11 @@ from app.modules.quality_gate.engine.scoring import (
 from app.modules.quality_gate.engine.slo_parser import SLOObjective, parse_slo
 
 
-@dataclass
-class EvaluationResult:
-    result: str          # pass | warning | fail
+class EvaluationResult(BaseModel):
+    result: str
     score: float
-    indicator_results: list[dict[str, Any]] = field(default_factory=list)
-    compared_evaluation_ids: list[str] = field(default_factory=list)
+    indicator_results: list[dict[str, Any]] = Field(default_factory=list)
+    compared_evaluation_ids: list[str] = Field(default_factory=list)
 
 
 def _build_targets(
@@ -90,17 +87,13 @@ def evaluate(
             "key_sli": obj.key_sli,
             "pass_targets": pass_targets,
             "warning_targets": warning_targets if obj.warning_criteria else None,
+            "change_absolute": (value - baseline) if value is not None and baseline is not None else None,
+            "change_relative_pct": (
+                ((value / baseline) - 1) * 100
+                if value is not None and baseline is not None and baseline != 0
+                else None
+            ),
         }
-
-        if value is not None and baseline is not None:
-            ir["change_absolute"] = value - baseline
-            ir["change_relative_pct"] = (
-                ((value / baseline) - 1) * 100 if baseline != 0 else None
-            )
-        else:
-            ir["change_absolute"] = None
-            ir["change_relative_pct"] = None
-
         indicator_results.append(ir)
 
     total: TotalScore = calculate_total_score(objective_results, slo.total_score)

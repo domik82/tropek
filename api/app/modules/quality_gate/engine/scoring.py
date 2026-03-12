@@ -1,7 +1,8 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
 from enum import Enum
+
+from pydantic import BaseModel
 
 from app.modules.quality_gate.engine.criteria import evaluate_criteria, parse_criteria_string
 from app.modules.quality_gate.engine.slo_parser import SLOObjective, SLOTotalScore
@@ -15,17 +16,17 @@ class IndicatorStatus(str, Enum):
     ERROR = "error"
 
 
-@dataclass
-class ObjectiveResult:
+class ObjectiveResult(BaseModel):
     objective: SLOObjective
     status: IndicatorStatus
     score: float
     contributes_to_score: bool
     key_sli_failed: bool
 
+    model_config = {"arbitrary_types_allowed": True}
 
-@dataclass
-class TotalScore:
+
+class TotalScore(BaseModel):
     result: str   # pass | warning | fail
     score: float  # 0–100
 
@@ -44,7 +45,7 @@ def _evaluate_criteria_block(
 
 
 def _evaluate_or_blocks(
-    criteria_blocks: list,  # list[SLOCriteria]
+    criteria_blocks: list,
     value: float,
     baseline: float | None,
 ) -> bool:
@@ -62,32 +63,53 @@ def score_objective(
     value: float | None,
     baseline: float | None,
 ) -> ObjectiveResult:
-    # Bug 2231 parity: an empty list of criteria blocks (pass: []) is treated
-    # the same as no pass criteria at all — informational only.
+    # Bug 2231 parity: pass: [] (empty list) treated same as no pass criteria.
     has_pass = bool(objective.pass_criteria) and any(
         block.criteria for block in objective.pass_criteria
     )
 
     if not has_pass:
-        return ObjectiveResult(objective, IndicatorStatus.INFO, 0.0, False, False)
+        return ObjectiveResult(
+            objective=objective,
+            status=IndicatorStatus.INFO,
+            score=0.0,
+            contributes_to_score=False,
+            key_sli_failed=False,
+        )
 
     if value is None:
         return ObjectiveResult(
-            objective, IndicatorStatus.FAIL, 0.0, True, objective.key_sli
+            objective=objective,
+            status=IndicatorStatus.FAIL,
+            score=0.0,
+            contributes_to_score=True,
+            key_sli_failed=objective.key_sli,
         )
 
     if _evaluate_or_blocks(objective.pass_criteria, value, baseline):
         return ObjectiveResult(
-            objective, IndicatorStatus.PASS, float(objective.weight), True, False
+            objective=objective,
+            status=IndicatorStatus.PASS,
+            score=float(objective.weight),
+            contributes_to_score=True,
+            key_sli_failed=False,
         )
 
     if _evaluate_or_blocks(objective.warning_criteria, value, baseline):
         return ObjectiveResult(
-            objective, IndicatorStatus.WARNING, 0.5 * objective.weight, True, False
+            objective=objective,
+            status=IndicatorStatus.WARNING,
+            score=0.5 * objective.weight,
+            contributes_to_score=True,
+            key_sli_failed=False,
         )
 
     return ObjectiveResult(
-        objective, IndicatorStatus.FAIL, 0.0, True, objective.key_sli
+        objective=objective,
+        status=IndicatorStatus.FAIL,
+        score=0.0,
+        contributes_to_score=True,
+        key_sli_failed=objective.key_sli,
     )
 
 
