@@ -7,7 +7,7 @@ from enum import StrEnum
 from pydantic import BaseModel
 
 from app.modules.quality_gate.engine.criteria import evaluate_criteria, parse_criteria_string
-from app.modules.quality_gate.engine.slo_parser import SLOObjective, SLOTotalScore
+from app.modules.quality_gate.engine.slo_parser import SLOCriteria, SLOObjective, SLOTotalScore
 
 
 class IndicatorStatus(StrEnum):
@@ -26,7 +26,7 @@ class ObjectiveResult(BaseModel):
     Attributes:
         objective: The SLO objective that was evaluated.
         status: Pass / warning / fail / info result for this indicator.
-        score: Points contributed to the total (0, 0.5×weight, or weight).
+        score: Points contributed to the total (0, 0.5 * weight, or weight).
         contributes_to_score: False for informational-only objectives (no pass criteria).
         key_sli_failed: True if this is a key SLI and it failed — vetoes the overall result.
     """
@@ -45,7 +45,7 @@ class TotalScore(BaseModel):
 
     Attributes:
         result: 'pass', 'warning', or 'fail'.
-        score: Achieved percentage (0–100).
+        score: Achieved percentage (0-100).
     """
 
     result: str
@@ -66,7 +66,7 @@ def _evaluate_criteria_block(
 
 
 def _evaluate_or_blocks(
-    criteria_blocks: list,
+    criteria_blocks: list[SLOCriteria],
     value: float,
     baseline: float | None,
 ) -> bool:

@@ -9,12 +9,33 @@ line-length = 100
 target-version = "py313"
 
 [tool.ruff.lint]
-select = ["E", "F", "I", "UP", "B", "SIM", "D"]
+select = [
+    "E",     # pycodestyle errors
+    "W",     # pycodestyle warnings
+    "F",     # pyflakes
+    "I",     # isort
+    "N",     # pep8-naming
+    "UP",    # pyupgrade
+    "B",     # flake8-bugbear
+    "SIM",   # flake8-simplify
+    "D",     # pydocstyle
+    "S",     # flake8-bandit (security)
+    "DTZ",   # flake8-datetimez (timezone-aware datetimes)
+    "RUF",   # ruff-native rules
+    "PT",    # flake8-pytest-style
+    "C90",   # McCabe complexity
+    "PERF",  # perflint
+    "TRY",   # tryceratops (exception handling)
+]
 ignore = [
-    "E501",   # line too long — handled by ruff format
-    "D104",   # missing docstring in public package (__init__.py)
-    "D105",   # missing docstring in magic method
-    "D107",   # missing docstring in __init__
+    "E501",    # line too long — handled by ruff format
+    "D104",    # missing docstring in public package (__init__.py)
+    "D105",    # missing docstring in magic method
+    "D107",    # missing docstring in __init__
+    "S101",    # use of assert — required in tests
+    "TRY003",  # long exception messages — we use these intentionally for clarity
+    "TRY300",  # consider moving return into else — stylistic, disagree
+    "S105",    # hardcoded password — false positive on enum values like PASS = "pass"
 ]
 
 [tool.ruff.lint.pydocstyle]

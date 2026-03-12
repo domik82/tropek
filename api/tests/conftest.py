@@ -22,7 +22,7 @@ import pytest
 _DATA_DIR = Path(__file__).parent / "data"
 
 
-@pytest.fixture
+@pytest.fixture()
 def slo_data():
     """Fixture: load an SLO YAML file from tests/data/slo/ by filename."""
 
@@ -36,7 +36,7 @@ def slo_data():
     return _load
 
 
-@pytest.fixture
+@pytest.fixture()
 def result_data():
     """Fixture: load a result file from tests/data/results/ by filename."""
 
