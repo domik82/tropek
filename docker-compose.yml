@@ -1,0 +1,97 @@
+services:
+  timescaledb:
+    image: timescale/timescaledb:latest-pg16
+    environment:
+      POSTGRES_USER: ${QG_DB_USER}
+      POSTGRES_PASSWORD: ${QG_DB_PASSWORD}
+      POSTGRES_DB: tropek
+    ports:
+      - "5432:5432"
+    volumes:
+      - timescaledb_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${QG_DB_USER} -d tropek"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    command: redis-server --appendonly yes --requirepass ${QG_REDIS_PASSWORD}
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${QG_REDIS_PASSWORD}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      QG_DB_USER: ${QG_DB_USER}
+      QG_DB_PASSWORD: ${QG_DB_PASSWORD}
+      QG_REDIS_PASSWORD: ${QG_REDIS_PASSWORD}
+      QG_SECRET_KEY: ${QG_SECRET_KEY}
+      QG_CONFIG_PATH: /app/config.yaml
+    volumes:
+      - ./config.yaml:/app/config.yaml:ro
+      - results_data:/data/results
+    depends_on:
+      timescaledb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  worker:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    command: ["uv", "run", "arq", "app.worker.WorkerSettings"]
+    environment:
+      QG_DB_USER: ${QG_DB_USER}
+      QG_DB_PASSWORD: ${QG_DB_PASSWORD}
+      QG_REDIS_PASSWORD: ${QG_REDIS_PASSWORD}
+      QG_SECRET_KEY: ${QG_SECRET_KEY}
+      QG_CONFIG_PATH: /app/config.yaml
+    volumes:
+      - ./config.yaml:/app/config.yaml:ro
+      - results_data:/data/results
+    depends_on:
+      timescaledb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    deploy:
+      replicas: 2
+
+  adapter-prometheus:
+    build:
+      context: ./adapters/prometheus
+      dockerfile: Dockerfile
+    ports:
+      - "8081:8081"
+    environment:
+      PROMETHEUS_URL: ${PROMETHEUS_URL:-http://prometheus:9090}
+      QG_ADAPTER_PROMETHEUS_USERNAME: ${QG_ADAPTER_PROMETHEUS_USERNAME:-}
+      QG_ADAPTER_PROMETHEUS_PASSWORD: ${QG_ADAPTER_PROMETHEUS_PASSWORD:-}
+
+  ui:
+    build:
+      context: ./ui
+      dockerfile: Dockerfile
+    ports:
+      - "3000:80"
+    depends_on:
+      - api
+
+volumes:
+  timescaledb_data:
+  redis_data:
+  results_data:
