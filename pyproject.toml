@@ -7,6 +7,16 @@ members = [
 [tool.ruff]
 line-length = 100
 target-version = "py313"
+# Exclude specific directories
+exclude = [
+    ".bzr",
+    ".direnv",
+    ".eggs",
+    ".git",
+    ".venv",
+    "__pycache__",
+    "node_modules",
+]
 
 [tool.ruff.lint]
 select = [

@@ -4,32 +4,15 @@ from __future__ import annotations
 
 from typing import Any
 
-from pydantic import BaseModel, Field
-
 from app.modules.quality_gate.engine.criteria import evaluate_criteria, parse_criteria_string
-from app.modules.quality_gate.engine.scoring import (
+from app.modules.quality_gate.engine.models import (
+    EvaluationResult,
     ObjectiveResult,
+    SLOObjective,
     TotalScore,
-    calculate_total_score,
-    score_objective,
 )
-from app.modules.quality_gate.engine.slo_parser import SLOObjective, parse_slo
-
-
-class EvaluationResult(BaseModel):
-    """Result of evaluating a full SLO against a set of metric values.
-
-    Attributes:
-        result: Overall result: 'pass', 'warning', or 'fail'.
-        score: Weighted score as a percentage (0.0-100.0).
-        indicator_results: Per-SLI breakdown with values, targets, and violation flags.
-        compared_evaluation_ids: IDs of previous evaluations used as comparison baseline.
-    """
-
-    result: str
-    score: float
-    indicator_results: list[dict[str, Any]] = Field(default_factory=list)
-    compared_evaluation_ids: list[str] = Field(default_factory=list)
+from app.modules.quality_gate.engine.scoring import calculate_total_score, score_objective
+from app.modules.quality_gate.engine.slo_parser import parse_slo
 
 
 def _build_targets(

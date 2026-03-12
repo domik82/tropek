@@ -2,54 +2,15 @@
 
 from __future__ import annotations
 
-from enum import StrEnum
-
-from pydantic import BaseModel
-
+from app.modules.quality_gate.engine.constants import EvaluationOutcome, IndicatorStatus
 from app.modules.quality_gate.engine.criteria import evaluate_criteria, parse_criteria_string
-from app.modules.quality_gate.engine.slo_parser import SLOCriteria, SLOObjective, SLOTotalScore
-
-
-class IndicatorStatus(StrEnum):
-    """Result status of a single SLI evaluation."""
-
-    PASS = "pass"
-    WARNING = "warning"
-    FAIL = "fail"
-    INFO = "info"
-    ERROR = "error"
-
-
-class ObjectiveResult(BaseModel):
-    """Evaluation result for a single SLO objective.
-
-    Attributes:
-        objective: The SLO objective that was evaluated.
-        status: Pass / warning / fail / info result for this indicator.
-        score: Points contributed to the total (0, 0.5 * weight, or weight).
-        contributes_to_score: False for informational-only objectives (no pass criteria).
-        key_sli_failed: True if this is a key SLI and it failed — vetoes the overall result.
-    """
-
-    objective: SLOObjective
-    status: IndicatorStatus
-    score: float
-    contributes_to_score: bool
-    key_sli_failed: bool
-
-    model_config = {"arbitrary_types_allowed": True}
-
-
-class TotalScore(BaseModel):
-    """Overall evaluation result after applying weights and thresholds.
-
-    Attributes:
-        result: 'pass', 'warning', or 'fail'.
-        score: Achieved percentage (0-100).
-    """
-
-    result: str
-    score: float
+from app.modules.quality_gate.engine.models import (
+    ObjectiveResult,
+    SLOCriteria,
+    SLOObjective,
+    SLOTotalScore,
+    TotalScore,
+)
 
 
 def _evaluate_criteria_block(
@@ -163,16 +124,16 @@ def calculate_total_score(
     maximum = sum(r.objective.weight for r in results if r.contributes_to_score)
 
     if maximum == 0:
-        return TotalScore(result="pass", score=100.0)
+        return TotalScore(result=EvaluationOutcome.PASS, score=100.0)
 
     achieved = sum(r.score for r in results)
     pct = 100.0 * achieved / maximum
 
     key_sli_failed = any(r.key_sli_failed for r in results)
     if key_sli_failed:
-        return TotalScore(result="fail", score=pct)
+        return TotalScore(result=EvaluationOutcome.FAIL, score=pct)
     if pct >= total_score.pass_pct:
-        return TotalScore(result="pass", score=pct)
+        return TotalScore(result=EvaluationOutcome.PASS, score=pct)
     if pct >= total_score.warning_pct:
-        return TotalScore(result="warning", score=pct)
-    return TotalScore(result="fail", score=pct)
+        return TotalScore(result=EvaluationOutcome.WARNING, score=pct)
+    return TotalScore(result=EvaluationOutcome.FAIL, score=pct)
