@@ -12,14 +12,13 @@ def clear_lru_cache():
     """Clear the settings cache before each test."""
     yield
     import app.config as config_module
+
     config_module.get_settings.cache_clear()
 
 
 def test_config_loads_from_yaml(tmp_path: Path) -> None:
     cfg_file = tmp_path / "config.yaml"
-    cfg_file.write_text(
-        "database:\n  host: myhost\n  port: 5432\n  name: testdb\n"
-    )
+    cfg_file.write_text("database:\n  host: myhost\n  port: 5432\n  name: testdb\n")
 
     os.environ["QG_CONFIG_PATH"] = str(cfg_file)
     os.environ["QG_DB_USER"] = "testuser"
@@ -28,6 +27,7 @@ def test_config_loads_from_yaml(tmp_path: Path) -> None:
     os.environ["QG_SECRET_KEY"] = "testsecret"
 
     import app.config as config_module
+
     importlib.reload(config_module)
 
     settings = config_module.get_settings()
@@ -48,6 +48,7 @@ def test_env_overrides_yaml(tmp_path: Path) -> None:
     os.environ["QG_SECRET_KEY"] = "secret"
 
     import app.config as config_module
+
     importlib.reload(config_module)
 
     settings = config_module.get_settings()
@@ -65,6 +66,7 @@ def test_async_db_url_format(tmp_path: Path) -> None:
     os.environ["QG_SECRET_KEY"] = "s"
 
     import app.config as config_module
+
     importlib.reload(config_module)
 
     url = config_module.get_settings().database.async_url
@@ -84,6 +86,7 @@ def test_cache_url_includes_password(tmp_path: Path) -> None:
     os.environ["QG_SECRET_KEY"] = "s"
 
     import app.config as config_module
+
     importlib.reload(config_module)
 
     url = config_module.get_settings().cache.url
@@ -99,6 +102,7 @@ def test_missing_config_file_uses_defaults(tmp_path: Path) -> None:
     os.environ["QG_SECRET_KEY"] = "s"
 
     import app.config as config_module
+
     importlib.reload(config_module)
 
     settings = config_module.get_settings()

@@ -27,7 +27,7 @@ class ObjectiveResult(BaseModel):
 
 
 class TotalScore(BaseModel):
-    result: str   # pass | warning | fail
+    result: str  # pass | warning | fail
     score: float  # 0–100
 
 
@@ -53,8 +53,7 @@ def _evaluate_or_blocks(
     if not criteria_blocks:
         return False
     return any(
-        _evaluate_criteria_block(block.criteria, value, baseline)
-        for block in criteria_blocks
+        _evaluate_criteria_block(block.criteria, value, baseline) for block in criteria_blocks
     )
 
 

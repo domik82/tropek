@@ -16,6 +16,7 @@ def _slo(slo_data):
 
 # --- score_objective ---
 
+
 def test_objective_passes(slo_data) -> None:
     result = score_objective(_slo(slo_data).objectives[0], value=80.0, baseline=None)
     assert result.status == IndicatorStatus.PASS
@@ -113,11 +114,18 @@ total_score:
   pass: "90%"
   warning: "75%"
 """)
-    assert score_objective(slo.objectives[0], value=105.0, baseline=100.0).status == IndicatorStatus.PASS
-    assert score_objective(slo.objectives[0], value=115.0, baseline=100.0).status == IndicatorStatus.FAIL
+    assert (
+        score_objective(slo.objectives[0], value=105.0, baseline=100.0).status
+        == IndicatorStatus.PASS
+    )
+    assert (
+        score_objective(slo.objectives[0], value=115.0, baseline=100.0).status
+        == IndicatorStatus.FAIL
+    )
 
 
 # --- calculate_total_score ---
+
 
 def _make_result(objective, status, score, contributes, key_sli_failed):
     """Helper: construct ObjectiveResult with keyword args (Pydantic requirement)."""

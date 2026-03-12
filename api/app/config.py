@@ -77,14 +77,14 @@ class QueueSettings(BaseSettings):
 class ReliabilitySettings(BaseSettings):
     adapter_timeout_seconds: int = _yaml.get("reliability", {}).get("adapter_timeout_seconds", 30)
     adapter_retry_attempts: int = _yaml.get("reliability", {}).get("adapter_retry_attempts", 3)
-    adapter_retry_backoff_seconds: int = (
-        _yaml.get("reliability", {}).get("adapter_retry_backoff_seconds", 2)
+    adapter_retry_backoff_seconds: int = _yaml.get("reliability", {}).get(
+        "adapter_retry_backoff_seconds", 2
     )
-    watchdog_interval_seconds: int = (
-        _yaml.get("reliability", {}).get("watchdog_interval_seconds", 60)
+    watchdog_interval_seconds: int = _yaml.get("reliability", {}).get(
+        "watchdog_interval_seconds", 60
     )
-    stuck_job_threshold_seconds: int = (
-        _yaml.get("reliability", {}).get("stuck_job_threshold_seconds", 180)
+    stuck_job_threshold_seconds: int = _yaml.get("reliability", {}).get(
+        "stuck_job_threshold_seconds", 180
     )
 
 
@@ -95,8 +95,8 @@ class AdapterInstanceSettings:
 
 
 class AdaptersSettings(BaseSettings):
-    max_concurrent_queries_per_adapter: int = (
-        _yaml.get("adapters", {}).get("max_concurrent_queries_per_adapter", 10)
+    max_concurrent_queries_per_adapter: int = _yaml.get("adapters", {}).get(
+        "max_concurrent_queries_per_adapter", 10
     )
 
     @property
@@ -109,8 +109,8 @@ class EvaluationSettings(BaseSettings):
 
 
 class FileIngestionSettings(BaseSettings):
-    allowed_path_prefix: str = (
-        _yaml.get("file_ingestion", {}).get("allowed_path_prefix", "/data/results")
+    allowed_path_prefix: str = _yaml.get("file_ingestion", {}).get(
+        "allowed_path_prefix", "/data/results"
     )
     max_file_size_mb: int = _yaml.get("file_ingestion", {}).get("max_file_size_mb", 50)
 

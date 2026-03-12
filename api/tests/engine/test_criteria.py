@@ -10,6 +10,7 @@ from app.modules.quality_gate.engine.criteria import (
 
 # --- parse_criteria_string ---
 
+
 def test_parse_fixed_lt() -> None:
     c = parse_criteria_string("<600")
     assert c.operator == "<"
@@ -93,6 +94,7 @@ def test_invalid_criteria_raises() -> None:
 
 # --- evaluate_criteria fixed ---
 
+
 def test_fixed_lt_pass() -> None:
     assert evaluate_criteria(parse_criteria_string("<600"), 550.0, None) is True
 
@@ -119,6 +121,7 @@ def test_fixed_gt_pass() -> None:
 
 # --- evaluate_criteria relative ---
 
+
 def test_relative_plus_within_threshold() -> None:
     # value=110, baseline=100, +10% → target=110 → 110 <= 110 → pass
     assert evaluate_criteria(parse_criteria_string("<=+10%"), 110.0, 100.0) is True
@@ -140,6 +143,7 @@ def test_relative_no_baseline_always_passes() -> None:
 
 # --- compute_target_value ---
 
+
 def test_target_value_fixed() -> None:
     assert parse_criteria_string("<600").compute_target_value(None) == 600.0
 
@@ -157,6 +161,7 @@ def test_target_value_relative_no_baseline() -> None:
 
 
 # --- aggregate_values (matches Go's aggregateValues) ---
+
 
 def test_aggregate_avg() -> None:
     assert aggregate_values([10.0, 5.0, 15.0], "avg") == pytest.approx(10.0)
