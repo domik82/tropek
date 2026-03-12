@@ -9,8 +9,21 @@ line-length = 100
 target-version = "py313"
 
 [tool.ruff.lint]
-select = ["E", "F", "I", "UP", "B", "SIM"]
-ignore = ["E501"]
+select = ["E", "F", "I", "UP", "B", "SIM", "D"]
+ignore = [
+    "E501",   # line too long — handled by ruff format
+    "D104",   # missing docstring in public package (__init__.py)
+    "D105",   # missing docstring in magic method
+    "D107",   # missing docstring in __init__
+]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.lint.per-file-ignores]
+# Test function names are self-documenting — docstrings add noise, not value
+"**/tests/**" = ["D"]
+"**/test_*.py" = ["D"]
 
 [tool.mypy]
 python_version = "3.13"
