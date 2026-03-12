@@ -1,0 +1,57 @@
+server:
+  host: "0.0.0.0"
+  port: 8080
+
+database:
+  host: "timescaledb"
+  port: 5432
+  name: "tropek"
+  pool_size: 10
+  max_overflow: 20
+
+cache:
+  backend: "redis"
+  host: "redis"
+  port: 6379
+  db: 0
+  ttl_seconds:
+    trend: 60
+    evaluation_list: 30
+    evaluation_detail: 300
+    slo_definition: 600
+
+queue:
+  backend: "redis"
+  db_index: 1
+  max_retries: 3
+  retry_delay_seconds: 10
+  job_timeout_seconds: 120
+  keep_result_seconds: 3600
+
+reliability:
+  adapter_timeout_seconds: 30
+  adapter_retry_attempts: 3
+  adapter_retry_backoff_seconds: 2
+  watchdog_interval_seconds: 60
+  stuck_job_threshold_seconds: 180
+
+evaluation:
+  async_threshold_metrics: 10
+
+adapters:
+  prometheus:
+    url: "http://adapter-prometheus:8081"
+    timeout_seconds: 30
+  max_concurrent_queries_per_adapter: 10
+
+db_writer:
+  workers: 5
+  batch_size: 100
+
+file_ingestion:
+  allowed_path_prefix: "/data/results"
+  max_file_size_mb: 50
+
+logging:
+  level: "INFO"
+  format: "json"
