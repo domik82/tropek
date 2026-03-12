@@ -1,13 +1,13 @@
 from __future__ import annotations
 
 import pytest
-from app.modules.quality_gate.engine.slo_parser import parse_slo
 from app.modules.quality_gate.engine.scoring import (
     IndicatorStatus,
     ObjectiveResult,
     calculate_total_score,
     score_objective,
 )
+from app.modules.quality_gate.engine.slo_parser import parse_slo
 
 
 def _slo(slo_data):

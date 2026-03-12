@@ -1,12 +1,12 @@
 from __future__ import annotations
 
 import re
-from enum import Enum
+from enum import StrEnum
 
 from pydantic import BaseModel
 
 
-class CriteriaType(str, Enum):
+class CriteriaType(StrEnum):
     FIXED = "fixed"
     RELATIVE = "relative"
 
@@ -76,12 +76,18 @@ def parse_criteria_string(raw: str) -> ParsedCriteria:
 
 def _compare(operator: str, value: float, target: float) -> bool:
     match operator:
-        case "<":  return value < target
-        case "<=": return value <= target
-        case ">":  return value > target
-        case ">=": return value >= target
-        case "=":  return value == target
-        case _:    return False
+        case "<":
+            return value < target
+        case "<=":
+            return value <= target
+        case ">":
+            return value > target
+        case ">=":
+            return value >= target
+        case "=":
+            return value == target
+        case _:
+            return False
 
 
 def evaluate_criteria(

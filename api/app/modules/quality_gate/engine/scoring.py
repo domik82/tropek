@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from enum import Enum
+from enum import StrEnum
 
 from pydantic import BaseModel
 
@@ -8,7 +8,7 @@ from app.modules.quality_gate.engine.criteria import evaluate_criteria, parse_cr
 from app.modules.quality_gate.engine.slo_parser import SLOObjective, SLOTotalScore
 
 
-class IndicatorStatus(str, Enum):
+class IndicatorStatus(StrEnum):
     PASS = "pass"
     WARNING = "warning"
     FAIL = "fail"
