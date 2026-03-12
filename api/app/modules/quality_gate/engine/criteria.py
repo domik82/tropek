@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import re
 
+from app.modules.quality_gate.engine.constants import AggregateFunction
 from app.modules.quality_gate.engine.models import CriteriaType, ParsedCriteria
 
 # re.VERBOSE allows whitespace and # comments inside the pattern for readability.
@@ -114,15 +115,14 @@ def evaluate_criteria(
     return _compare(criteria.operator, value, target)
 
 
-def aggregate_values(values: list[float], function: str) -> float:
+def aggregate_values(values: list[float], function: AggregateFunction) -> float:
     """Aggregate a list of baseline values using the specified function.
 
     Matches Keptn lighthouse-service `aggregateValues()` behaviour exactly.
-    Supported functions: avg, p50, p90, p95, p99.
 
     Args:
         values: Non-empty list of floats to aggregate.
-        function: One of 'avg', 'p50', 'p90', 'p95', 'p99'.
+        function: Aggregation function — one of the :class:`AggregateFunction` values.
 
     Returns:
         The aggregated scalar value.
@@ -134,15 +134,15 @@ def aggregate_values(values: list[float], function: str) -> float:
         raise ValueError("Cannot aggregate empty values list")
     sorted_vals = sorted(values)
     match function:
-        case "avg":
+        case AggregateFunction.AVG:
             return sum(sorted_vals) / len(sorted_vals)
-        case "p50":
+        case AggregateFunction.P50:
             return _percentile(sorted_vals, 50)
-        case "p90":
+        case AggregateFunction.P90:
             return _percentile(sorted_vals, 90)
-        case "p95":
+        case AggregateFunction.P95:
             return _percentile(sorted_vals, 95)
-        case "p99":
+        case AggregateFunction.P99:
             return _percentile(sorted_vals, 99)
         case _:
             raise ValueError(f"Unknown aggregate function: {function!r}")

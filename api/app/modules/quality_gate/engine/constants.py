@@ -37,3 +37,33 @@ class EvaluationOutcome(StrEnum):
     PASS = "pass"
     WARNING = "warning"
     FAIL = "fail"
+
+
+class CompareWith(StrEnum):
+    """Selects how many previous evaluations are used as the comparison baseline."""
+
+    SINGLE_RESULT = "single_result"
+    SEVERAL_RESULTS = "several_results"
+
+
+class IncludeResultWithScore(StrEnum):
+    """Filter that determines which previous evaluations are eligible as baselines."""
+
+    ALL = "all"
+    PASS_OR_WARN = "pass_or_warn"
+    PASS = "pass"
+
+
+class AggregateFunction(StrEnum):
+    """Aggregation function applied to a set of baseline values.
+
+    Used in both :mod:`slo_parser` (SLO comparison defaults) and
+    :mod:`criteria` (``aggregate_values`` implementation) — the single source
+    of truth for valid function names across both modules.
+    """
+
+    AVG = "avg"
+    P50 = "p50"
+    P90 = "p90"
+    P95 = "p95"
+    P99 = "p99"

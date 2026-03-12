@@ -11,16 +11,22 @@ from typing import Any
 from pydantic import BaseModel, Field
 
 from app.modules.quality_gate.engine.constants import (
+    AggregateFunction,
+    CompareWith,
     CriteriaType,
     EvaluationOutcome,
+    IncludeResultWithScore,
     IndicatorStatus,
 )
 
 __all__ = [
     "SLO",
+    "AggregateFunction",
+    "CompareWith",
     "CriteriaType",
     "EvaluationOutcome",
     "EvaluationResult",
+    "IncludeResultWithScore",
     "IndicatorStatus",
     "ObjectiveResult",
     "ParsedCriteria",
@@ -70,10 +76,10 @@ class SLOObjective(BaseModel):
 class SLOComparison(BaseModel):
     """Configuration for historical baseline comparison used in relative criteria."""
 
-    compare_with: str = "single_result"
+    compare_with: CompareWith = CompareWith.SINGLE_RESULT
     number_of_comparison_results: int = 3
-    include_result_with_score: str = "all"
-    aggregate_function: str = "avg"
+    include_result_with_score: IncludeResultWithScore = IncludeResultWithScore.ALL
+    aggregate_function: AggregateFunction = AggregateFunction.AVG
     scope_tags: list[str] = Field(default_factory=lambda: ["os"])
 
 
