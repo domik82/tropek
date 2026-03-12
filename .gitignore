@@ -150,6 +150,11 @@ cython_debug/
 # PyPI configuration file
 .pypirc
 
+# IDEs
+.idea/
+.vscode/
+*.iml
+
 # Cursor
 .cursorignore
 .cursorindexingignore
