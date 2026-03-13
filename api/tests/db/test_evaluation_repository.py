@@ -20,7 +20,7 @@ def _make_snapshot(os: str = "windows-11", arch: str = "x64") -> dict:
     return {"name": "vm-test-01", "tags": {"os": os, "arch": arch}}
 
 
-@pytest.mark.integration()
+@pytest.mark.integration
 async def test_create_pending_returns_evaluation(db_session: AsyncSession) -> None:
     repo = EvaluationRepository(db_session)
     ev = await repo.create_pending(
@@ -36,7 +36,7 @@ async def test_create_pending_returns_evaluation(db_session: AsyncSession) -> No
     assert ev.id is not None
 
 
-@pytest.mark.integration()
+@pytest.mark.integration
 async def test_get_returns_evaluation(db_session: AsyncSession) -> None:
     repo = EvaluationRepository(db_session)
     ev = await repo.create_pending(
@@ -52,7 +52,7 @@ async def test_get_returns_evaluation(db_session: AsyncSession) -> None:
     assert fetched.id == ev.id
 
 
-@pytest.mark.integration()
+@pytest.mark.integration
 async def test_mark_completed_updates_fields(db_session: AsyncSession) -> None:
     repo = EvaluationRepository(db_session)
     ev = await repo.create_pending(
@@ -77,7 +77,7 @@ async def test_mark_completed_updates_fields(db_session: AsyncSession) -> None:
     assert fetched.score == 95.0
 
 
-@pytest.mark.integration()
+@pytest.mark.integration
 async def test_mark_running_sets_status(db_session: AsyncSession) -> None:
     repo = EvaluationRepository(db_session)
     ev = await repo.create_pending(
@@ -94,7 +94,7 @@ async def test_mark_running_sets_status(db_session: AsyncSession) -> None:
     assert fetched.status == "running"
 
 
-@pytest.mark.integration()
+@pytest.mark.integration
 async def test_list_evaluations_filters_by_name(db_session: AsyncSession) -> None:
     repo = EvaluationRepository(db_session)
     for name in ("alpha", "alpha", "beta"):
@@ -111,7 +111,7 @@ async def test_list_evaluations_filters_by_name(db_session: AsyncSession) -> Non
     assert all(e.name == "alpha" for e in results)
 
 
-@pytest.mark.integration()
+@pytest.mark.integration
 async def test_get_baselines_filters_by_os_tag(db_session: AsyncSession) -> None:
     repo = EvaluationRepository(db_session)
     for os in ("windows-11", "windows-11", "ubuntu-22"):
@@ -142,7 +142,7 @@ async def test_get_baselines_filters_by_os_tag(db_session: AsyncSession) -> None
         assert b.asset_snapshot["tags"]["os"] == "windows-11"
 
 
-@pytest.mark.integration()
+@pytest.mark.integration
 async def test_add_and_list_annotations(db_session: AsyncSession) -> None:
     repo = EvaluationRepository(db_session)
     ev = await repo.create_pending(
@@ -160,7 +160,7 @@ async def test_add_and_list_annotations(db_session: AsyncSession) -> None:
     assert fetched.annotations[0].content == "Defender update applied"
 
 
-@pytest.mark.integration()
+@pytest.mark.integration
 async def test_write_and_read_sli_values(db_session: AsyncSession) -> None:
     repo = EvaluationRepository(db_session)
     ev = await repo.create_pending(

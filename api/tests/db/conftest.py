@@ -33,7 +33,7 @@ def db_url() -> str:
 
 
 @pytest_asyncio.fixture(scope="session")
-async def db_engine(db_url: str) -> AsyncGenerator[AsyncEngine, None]:
+async def db_engine(db_url: str) -> AsyncGenerator[AsyncEngine, None]:  # noqa: UP043
     """Create engine and tables once per test session, drop on teardown."""
     engine = create_async_engine(db_url, echo=False)
     async with engine.begin() as conn:
@@ -45,7 +45,7 @@ async def db_engine(db_url: str) -> AsyncGenerator[AsyncEngine, None]:
 
 
 @pytest_asyncio.fixture()
-async def db_session(db_engine: AsyncEngine) -> AsyncGenerator[AsyncSession, None]:
+async def db_session(db_engine: AsyncEngine) -> AsyncGenerator[AsyncSession, None]:  # noqa: UP043
     """Yield a session bound to a rolled-back connection — no DB pollution between tests."""
     async with db_engine.connect() as conn:
         await conn.begin()

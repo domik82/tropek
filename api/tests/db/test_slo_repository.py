@@ -14,7 +14,7 @@ YAML_V1 = "spec_version: '1.0'\ntotal_score:\n  pass: '90%'\n  warning: '75%'\n"
 YAML_V2 = "spec_version: '1.0'\ntotal_score:\n  pass: '95%'\n  warning: '80%'\n"
 
 
-@pytest.mark.integration()
+@pytest.mark.integration
 async def test_create_first_version(db_session: AsyncSession) -> None:
     repo = SLORepository(db_session)
     slo = await repo.create("my-slo", YAML_V1, notes="Initial", author="alice")
@@ -23,7 +23,7 @@ async def test_create_first_version(db_session: AsyncSession) -> None:
     assert slo.author == "alice"
 
 
-@pytest.mark.integration()
+@pytest.mark.integration
 async def test_create_second_version_increments(db_session: AsyncSession) -> None:
     repo = SLORepository(db_session)
     await repo.create("versioned-slo", YAML_V1)
@@ -31,7 +31,7 @@ async def test_create_second_version_increments(db_session: AsyncSession) -> Non
     assert v2.version == 2
 
 
-@pytest.mark.integration()
+@pytest.mark.integration
 async def test_get_latest_returns_highest_version(db_session: AsyncSession) -> None:
     repo = SLORepository(db_session)
     await repo.create("latest-slo", YAML_V1)
@@ -42,7 +42,7 @@ async def test_get_latest_returns_highest_version(db_session: AsyncSession) -> N
     assert latest.slo_yaml == YAML_V2
 
 
-@pytest.mark.integration()
+@pytest.mark.integration
 async def test_get_version_specific(db_session: AsyncSession) -> None:
     repo = SLORepository(db_session)
     await repo.create("specific-slo", YAML_V1)
@@ -52,7 +52,7 @@ async def test_get_version_specific(db_session: AsyncSession) -> None:
     assert v1.slo_yaml == YAML_V1
 
 
-@pytest.mark.integration()
+@pytest.mark.integration
 async def test_list_versions_newest_first(db_session: AsyncSession) -> None:
     repo = SLORepository(db_session)
     await repo.create("list-slo", YAML_V1)
@@ -63,7 +63,7 @@ async def test_list_versions_newest_first(db_session: AsyncSession) -> None:
     assert versions[1].version == 1
 
 
-@pytest.mark.integration()
+@pytest.mark.integration
 async def test_soft_delete_hides_from_get_latest(db_session: AsyncSession) -> None:
     repo = SLORepository(db_session)
     await repo.create("delete-slo", YAML_V1)
@@ -73,7 +73,7 @@ async def test_soft_delete_hides_from_get_latest(db_session: AsyncSession) -> No
     assert result is None
 
 
-@pytest.mark.integration()
+@pytest.mark.integration
 async def test_get_latest_nonexistent_returns_none(db_session: AsyncSession) -> None:
     repo = SLORepository(db_session)
     result = await repo.get_latest("does-not-exist")

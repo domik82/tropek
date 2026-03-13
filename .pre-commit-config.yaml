@@ -1,6 +1,6 @@
 repos:
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.4.10
+    rev: v0.15.5
     hooks:
       - id: ruff
         name: ruff (lint + autofix)
@@ -11,7 +11,7 @@ repos:
         types_or: [python, pyi]
 
   - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.10.0
+    rev: v1.19.1
     hooks:
       - id: mypy
         name: mypy (type check — api)
@@ -32,3 +32,4 @@ repos:
           - pydantic>=2.7
           - fastapi>=0.115
           - types-pyyaml
+          - sqlalchemy[asyncio]>=2.0
