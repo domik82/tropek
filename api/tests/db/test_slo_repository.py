@@ -67,7 +67,8 @@ async def test_list_versions_newest_first(db_session: AsyncSession) -> None:
 async def test_soft_delete_hides_from_get_latest(db_session: AsyncSession) -> None:
     repo = SLORepository(db_session)
     await repo.create("delete-slo", YAML_V1)
-    await repo.soft_delete("delete-slo")
+    deleted = await repo.soft_delete("delete-slo")
+    assert deleted == 1
     result = await repo.get_latest("delete-slo")
     assert result is None
 

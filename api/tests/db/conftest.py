@@ -16,7 +16,11 @@ from collections.abc import AsyncGenerator
 import pytest
 import pytest_asyncio
 from app.db.models import Base
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.ext.asyncio import (
+    AsyncEngine,
+    AsyncSession,
+    create_async_engine,
+)
 
 
 @pytest.fixture(scope="session")
@@ -29,7 +33,7 @@ def db_url() -> str:
 
 
 @pytest_asyncio.fixture(scope="session")
-async def db_engine(db_url: str):
+async def db_engine(db_url: str) -> AsyncGenerator[AsyncEngine, None]:
     """Create engine and tables once per test session, drop on teardown."""
     engine = create_async_engine(db_url, echo=False)
     async with engine.begin() as conn:
@@ -41,9 +45,12 @@ async def db_engine(db_url: str):
 
 
 @pytest_asyncio.fixture()
-async def db_session(db_engine) -> AsyncGenerator[AsyncSession, None]:
-    """Yield a session that is rolled back after each test — no DB pollution."""
-    factory = async_sessionmaker(db_engine, expire_on_commit=False, class_=AsyncSession)
-    async with factory() as session, session.begin():
-        yield session
-        await session.rollback()
+async def db_session(db_engine: AsyncEngine) -> AsyncGenerator[AsyncSession, None]:
+    """Yield a session bound to a rolled-back connection — no DB pollution between tests."""
+    async with db_engine.connect() as conn:
+        await conn.begin()
+        session = AsyncSession(bind=conn, expire_on_commit=False)
+        try:
+            yield session
+        finally:
+            await conn.rollback()
