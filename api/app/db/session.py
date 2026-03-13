@@ -43,7 +43,7 @@ def get_session_factory() -> async_sessionmaker[AsyncSession]:
 
 
 @asynccontextmanager
-async def get_session() -> AsyncGenerator[AsyncSession, None]:
+async def get_session() -> AsyncGenerator[AsyncSession, None]:  # noqa: UP043
     """Async context manager that yields a session with auto commit/rollback.
 
     Yields:
