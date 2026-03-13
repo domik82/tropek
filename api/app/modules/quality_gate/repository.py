@@ -75,6 +75,7 @@ class EvaluationRepository:
             eval_id: Evaluation to update.
             worker_id: Identifier of the worker process claiming this job.
         """
+        # TODO extract statuses to const
         await self._session.execute(
             update(Evaluation)
             .where(Evaluation.id == eval_id)
@@ -162,6 +163,7 @@ class EvaluationRepository:
             .values(status="partial", job_stats=job_stats or {})
         )
 
+    # TODO get_evaluation - get to simple
     async def get(self, eval_id: uuid.UUID) -> Evaluation | None:
         """Fetch a single evaluation with annotations eagerly loaded.
 
@@ -246,6 +248,10 @@ class EvaluationRepository:
             Evaluation.status == "completed",
             Evaluation.invalidated == False,  # noqa: E712
         )
+        # TODO this should be probably a provided filter - heatmap will have to show all statuses
+        # Get_status types should be probably added so that user have idea what are available in each version
+        # there might be need to show only failed
+
         if include_result_with_score == "pass":
             q = q.where(Evaluation.result == "pass")
         elif include_result_with_score == "pass_or_warn":
@@ -374,6 +380,7 @@ class EvaluationRepository:
         ]
 
     # --- Annotations ---
+    # TODO : quesion should it be some form of append or replace?
 
     async def add_annotation(
         self,
