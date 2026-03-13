@@ -35,17 +35,15 @@ class Asset(Base):
 
     __tablename__ = "assets"
 
+    # fmt: off
+
     id: Mapped[uuid.UUID] = mapped_column(UUID, primary_key=True, default=uuid.uuid4)
     name: Mapped[str] = mapped_column(Text, unique=True, nullable=False)
-    tags: Mapped[dict[str, Any]] = mapped_column(
-        JSONB, nullable=False, server_default=text("'{}'"), default=dict
-    )
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now(), nullable=False
-    )
-    updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
-    )
+    tags: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, server_default=text("'{}'"), default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
+
+    # fmt: on
 
 
 class SLODefinition(Base):
@@ -59,21 +57,19 @@ class SLODefinition(Base):
         Index("idx_slo_definitions_latest", "name", text("version DESC")),
     )
 
+    # fmt: off
+
     id: Mapped[uuid.UUID] = mapped_column(UUID, primary_key=True, default=uuid.uuid4)
     name: Mapped[str] = mapped_column(Text, nullable=False)
     version: Mapped[int] = mapped_column(Integer, nullable=False)
     slo_yaml: Mapped[str] = mapped_column(Text, nullable=False)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     author: Mapped[str | None] = mapped_column(Text, nullable=True)
-    meta: Mapped[dict[str, Any]] = mapped_column(
-        JSONB, nullable=False, server_default=text("'{}'"), default=dict
-    )
-    active: Mapped[bool] = mapped_column(
-        Boolean, nullable=False, server_default=true(), default=True
-    )
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now(), nullable=False
-    )
+    meta: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, server_default=text("'{}'"), default=dict)
+    active: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=true(), default=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+    # fmt: on
 
 
 class Evaluation(Base):
@@ -108,12 +104,12 @@ class Evaluation(Base):
         ),
     )
 
+    # fmt: off
+
     id: Mapped[uuid.UUID] = mapped_column(UUID, primary_key=True, default=uuid.uuid4)
     name: Mapped[str] = mapped_column(Text, nullable=False)
     asset_id: Mapped[uuid.UUID | None] = mapped_column(UUID, ForeignKey("assets.id"), nullable=True)
-    asset_snapshot: Mapped[dict[str, Any]] = mapped_column(
-        JSONB, nullable=False, server_default=text("'{}'"), default=dict
-    )
+    asset_snapshot: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, server_default=text("'{}'"), default=dict)
     start_time: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     end_time: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     result: Mapped[str | None] = mapped_column(Text, nullable=True)  # null while pending
@@ -121,33 +117,20 @@ class Evaluation(Base):
     slo_yaml: Mapped[str | None] = mapped_column(Text, nullable=True)
     slo_name: Mapped[str | None] = mapped_column(Text, nullable=True)
     slo_version: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    indicator_results: Mapped[list[Any]] = mapped_column(
-        JSONB, nullable=False, server_default=text("'[]'"), default=list
-    )
-    evaluation_metadata: Mapped[dict[str, Any]] = mapped_column(
-        JSONB, nullable=False, server_default=text("'{}'"), default=dict
-    )
+    indicator_results: Mapped[list[Any]] = mapped_column(JSONB, nullable=False, server_default=text("'[]'"), default=list)
+    evaluation_metadata: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, server_default=text("'{}'"), default=dict)
     ingestion_mode: Mapped[str] = mapped_column(Text, nullable=False)
     adapter_used: Mapped[str | None] = mapped_column(Text, nullable=True)
-    invalidated: Mapped[bool] = mapped_column(
-        Boolean, nullable=False, server_default=false(), default=False
-    )
+    invalidated: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=false(), default=False)
     invalidation_note: Mapped[str | None] = mapped_column(Text, nullable=True)
     # Job lifecycle
-    status: Mapped[str] = mapped_column(
-        Text, nullable=False, server_default=text("'pending'"), default="pending"
-    )
+    status: Mapped[str] = mapped_column(Text, nullable=False, server_default=text("'pending'"), default="pending")
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    job_stats: Mapped[dict[str, Any]] = mapped_column(
-        JSONB, nullable=False, server_default=text("'{}'"), default=dict
-    )
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now(), nullable=False
-    )
+    job_stats: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, server_default=text("'{}'"), default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    annotations: Mapped[list[EvaluationAnnotation]] = relationship("EvaluationAnnotation", back_populates="evaluation", cascade="all, delete-orphan")
 
-    annotations: Mapped[list[EvaluationAnnotation]] = relationship(
-        "EvaluationAnnotation", back_populates="evaluation", cascade="all, delete-orphan"
-    )
+    # fmt: on
 
 
 class EvaluationAnnotation(Base):
@@ -156,23 +139,18 @@ class EvaluationAnnotation(Base):
     __tablename__ = "evaluation_annotations"
     __table_args__ = (Index("idx_annotations_evaluation", "evaluation_id"),)
 
+    # fmt: off
+
     id: Mapped[uuid.UUID] = mapped_column(UUID, primary_key=True, default=uuid.uuid4)
-    evaluation_id: Mapped[uuid.UUID] = mapped_column(
-        UUID,
-        ForeignKey("evaluations.id", ondelete="CASCADE"),
-        nullable=False,
-    )
+    evaluation_id: Mapped[uuid.UUID] = mapped_column(UUID, ForeignKey("evaluations.id", ondelete="CASCADE"), nullable=False, )
     content: Mapped[str] = mapped_column(Text, nullable=False)
     author: Mapped[str | None] = mapped_column(Text, nullable=True)
     category: Mapped[str | None] = mapped_column(Text, nullable=True)
-    meta: Mapped[dict[str, Any]] = mapped_column(
-        JSONB, nullable=False, server_default=text("'{}'"), default=dict
-    )
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now(), nullable=False
-    )
-
+    meta: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, server_default=text("'{}'"), default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     evaluation: Mapped[Evaluation] = relationship("Evaluation", back_populates="annotations")
+
+    # fmt: on
 
 
 class SLIValue(Base):
@@ -188,15 +166,15 @@ class SLIValue(Base):
     __tablename__ = "sli_values"
     __table_args__ = (Index("idx_sli_values_lookup", "test_name", "metric_name", "eval_start"),)
 
-    eval_id: Mapped[uuid.UUID] = mapped_column(
-        UUID, ForeignKey("evaluations.id"), nullable=False, primary_key=True
-    )
-    eval_start: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, primary_key=True
-    )
+    # fmt: off
+
+    eval_id: Mapped[uuid.UUID] = mapped_column(UUID, ForeignKey("evaluations.id"), nullable=False, primary_key=True)
+    eval_start: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, primary_key=True)
     metric_name: Mapped[str] = mapped_column(Text, nullable=False, primary_key=True)
     aggregation: Mapped[str] = mapped_column(Text, nullable=False, primary_key=True)
     value: Mapped[float] = mapped_column(Float, nullable=False)
     asset_name: Mapped[str | None] = mapped_column(Text, nullable=True)
     test_name: Mapped[str | None] = mapped_column(Text, nullable=True)
     os_tag: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    # fmt: on
