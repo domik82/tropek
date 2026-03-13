@@ -25,6 +25,8 @@ from sqlalchemy import (
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
+# TODO docstring what each value holds?
+
 
 class Base(DeclarativeBase):
     """Shared declarative base for all ORM models."""
@@ -110,10 +112,12 @@ class Evaluation(Base):
     name: Mapped[str] = mapped_column(Text, nullable=False)
     asset_id: Mapped[uuid.UUID | None] = mapped_column(UUID, ForeignKey("assets.id"), nullable=True)
     asset_snapshot: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, server_default=text("'{}'"), default=dict)
+    # TODO evaluation_start_time / end_time | evaluation_period?
     start_time: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     end_time: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     result: Mapped[str | None] = mapped_column(Text, nullable=True)  # null while pending
     score: Mapped[float | None] = mapped_column(Float, nullable=True)
+    # TODO why we would keep the yaml? maybe only link to ID if history is preserved
     slo_yaml: Mapped[str | None] = mapped_column(Text, nullable=True)
     slo_name: Mapped[str | None] = mapped_column(Text, nullable=True)
     slo_version: Mapped[int | None] = mapped_column(Integer, nullable=True)
@@ -125,6 +129,7 @@ class Evaluation(Base):
     invalidation_note: Mapped[str | None] = mapped_column(Text, nullable=True)
     # Job lifecycle
     status: Mapped[str] = mapped_column(Text, nullable=False, server_default=text("'pending'"), default="pending")
+    # TODO a bit confusing evaluation_start_time and started_at - migt get wrongly used
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     job_stats: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, server_default=text("'{}'"), default=dict)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
@@ -148,6 +153,7 @@ class EvaluationAnnotation(Base):
     category: Mapped[str | None] = mapped_column(Text, nullable=True)
     meta: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, server_default=text("'{}'"), default=dict)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    # TODO: updated_at
     evaluation: Mapped[Evaluation] = relationship("Evaluation", back_populates="annotations")
 
     # fmt: on
@@ -167,6 +173,7 @@ class SLIValue(Base):
     __table_args__ = (Index("idx_sli_values_lookup", "test_name", "metric_name", "eval_start"),)
 
     # fmt: off
+    # TODO : probably to flat stucture - joins should probably be used in Grafana - not convinced this is good
 
     eval_id: Mapped[uuid.UUID] = mapped_column(UUID, ForeignKey("evaluations.id"), nullable=False, primary_key=True)
     eval_start: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, primary_key=True)
