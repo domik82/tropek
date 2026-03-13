@@ -69,7 +69,6 @@ async def test_mark_completed_updates_fields(db_session: AsyncSession) -> None:
         score=95.0,
         slo_yaml="spec_version: '1.0'\n",
         indicator_results=[{"metric": "cpu", "status": "pass"}],
-        compared_evaluation_ids=[],
     )
     fetched = await repo.get(ev.id)
     assert fetched is not None
@@ -89,7 +88,7 @@ async def test_mark_running_sets_status(db_session: AsyncSession) -> None:
         asset_snapshot=_make_snapshot(),
         metadata={},
     )
-    await repo.mark_running(ev.id, worker_id="worker-1")
+    await repo.mark_running(ev.id)
     fetched = await repo.get(ev.id)
     assert fetched is not None
     assert fetched.status == "running"
@@ -130,7 +129,6 @@ async def test_get_baselines_filters_by_os_tag(db_session: AsyncSession) -> None
             score=90.0,
             slo_yaml="",
             indicator_results=[],
-            compared_evaluation_ids=[],
         )
     baselines = await repo.get_baselines(
         name="scope-test",

@@ -7,7 +7,6 @@ from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from sqlalchemy import delete, insert, select, update
-from sqlalchemy.engine import CursorResult
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -29,6 +28,7 @@ class EvaluationRepository:
         ingestion_mode: str,
         asset_snapshot: dict[str, Any],
         metadata: dict[str, Any],
+        asset_id: uuid.UUID | None = None,
         slo_name: str | None = None,
         slo_version: int | None = None,
         adapter_used: str | None = None,
@@ -42,6 +42,7 @@ class EvaluationRepository:
             ingestion_mode: One of "pull", "push", "file".
             asset_snapshot: Denormalised asset state at trigger time.
             metadata: Caller-provided key-value pairs.
+            asset_id: Optional UUID of the associated asset.
             slo_name: Named SLO used, if any.
             slo_version: Version of the named SLO, if any.
             adapter_used: Adapter name, if pull mode (e.g. "prometheus").
@@ -57,6 +58,7 @@ class EvaluationRepository:
             ingestion_mode=ingestion_mode,
             asset_snapshot=asset_snapshot,
             metadata_=metadata,
+            asset_id=asset_id,
             slo_name=slo_name,
             slo_version=slo_version,
             adapter_used=adapter_used,
@@ -66,7 +68,7 @@ class EvaluationRepository:
         await self._session.flush()
         return ev
 
-    async def mark_running(self, eval_id: uuid.UUID, worker_id: str) -> None:
+    async def mark_running(self, eval_id: uuid.UUID, worker_id: str | None = None) -> None:
         """Transition evaluation to running status, recording worker and start time.
 
         Args:
@@ -79,7 +81,7 @@ class EvaluationRepository:
             .values(
                 status="running",
                 started_at=datetime.now(tz=UTC),
-                job_stats={"worker_id": worker_id},
+                job_stats={"worker_id": worker_id} if worker_id else {},
             )
         )
 
@@ -91,7 +93,10 @@ class EvaluationRepository:
         score: float,
         slo_yaml: str,
         indicator_results: list[Any],
-        compared_evaluation_ids: list[str],
+        slo_name: str | None = None,
+        slo_version: int | None = None,
+        job_stats: dict[str, Any] | None = None,
+        compared_evaluation_ids: list[str] | None = None,
     ) -> None:
         """Write final result and transition to completed.
 
@@ -101,8 +106,14 @@ class EvaluationRepository:
             score: Weighted score 0.0-100.0.
             slo_yaml: Resolved SLO YAML (after variable substitution).
             indicator_results: Full per-SLI breakdown as serialisable list.
+            slo_name: Named SLO used, if any.
+            slo_version: Version of the named SLO, if any.
+            job_stats: Optional dict of job execution stats to merge.
             compared_evaluation_ids: IDs of evaluations used for relative criteria.
         """
+        merged_stats: dict[str, Any] = dict(job_stats or {})
+        if compared_evaluation_ids is not None:
+            merged_stats["compared_evaluation_ids"] = compared_evaluation_ids
         await self._session.execute(
             update(Evaluation)
             .where(Evaluation.id == eval_id)
@@ -111,39 +122,44 @@ class EvaluationRepository:
                 result=result,
                 score=score,
                 slo_yaml=slo_yaml,
+                slo_name=slo_name,
+                slo_version=slo_version,
                 indicator_results=indicator_results,
-                job_stats={"compared_evaluation_ids": compared_evaluation_ids},
+                job_stats=merged_stats,
             )
         )
 
-    async def mark_failed(self, eval_id: uuid.UUID, *, error: str, retry_count: int) -> None:
+    async def mark_failed(
+        self, eval_id: uuid.UUID, job_stats: dict[str, Any] | None = None
+    ) -> None:
         """Transition evaluation to failed, recording error info.
 
         Args:
             eval_id: Evaluation to update.
-            error: Error message or exception repr.
-            retry_count: How many times this job has been retried.
+            job_stats: Job stats dict may include error, retry_count, etc.
         """
         await self._session.execute(
             update(Evaluation)
             .where(Evaluation.id == eval_id)
             .values(
                 status="failed",
-                job_stats={"error": error, "retry_count": retry_count},
+                job_stats=job_stats or {},
             )
         )
 
-    async def mark_partial(self, eval_id: uuid.UUID, *, stats: dict[str, Any]) -> None:
+    async def mark_partial(
+        self, eval_id: uuid.UUID, job_stats: dict[str, Any] | None = None
+    ) -> None:
         """Transition evaluation to partial — job crashed mid-execution.
 
         Args:
             eval_id: Evaluation to update.
-            stats: Partial execution stats (indicators_attempted, _completed, etc.).
+            job_stats: Partial execution stats (indicators_attempted, _completed, etc.).
         """
         await self._session.execute(
             update(Evaluation)
             .where(Evaluation.id == eval_id)
-            .values(status="partial", job_stats=stats)
+            .values(status="partial", job_stats=job_stats or {})
         )
 
     async def get(self, eval_id: uuid.UUID) -> Evaluation | None:
@@ -392,16 +408,12 @@ class EvaluationRepository:
         await self._session.flush()
         return ann
 
-    async def delete_annotation(self, annotation_id: uuid.UUID) -> bool:
+    async def delete_annotation(self, annotation_id: uuid.UUID) -> None:
         """Delete an annotation by ID.
 
         Args:
             annotation_id: Annotation to delete.
-
-        Returns:
-            True if a row was deleted, False if not found.
         """
-        cursor: CursorResult[Any] = await self._session.execute(  # type: ignore[assignment]
+        await self._session.execute(
             delete(EvaluationAnnotation).where(EvaluationAnnotation.id == annotation_id)
         )
-        return cursor.rowcount > 0
