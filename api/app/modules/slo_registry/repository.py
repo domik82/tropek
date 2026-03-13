@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import uuid
-from typing import Any
+from typing import Any, cast
 
 from sqlalchemy import select, update
 from sqlalchemy.engine import CursorResult
@@ -150,7 +150,10 @@ class SLORepository:
         Returns:
             Number of rows affected (versions deactivated).
         """
-        cursor: CursorResult[Any] = await self._session.execute(  # type: ignore[assignment]
-            update(SLODefinition).where(SLODefinition.name == name).values(active=False)
+        cursor = cast(
+            "CursorResult[Any]",
+            await self._session.execute(
+                update(SLODefinition).where(SLODefinition.name == name).values(active=False)
+            ),
         )
         return cursor.rowcount

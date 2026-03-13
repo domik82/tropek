@@ -256,7 +256,7 @@ class EvaluationRepository:
         current_tags = asset_snapshot.get("tags", {})
         for tag in scope_tags:
             tag_value = current_tags.get(tag)
-            if tag_value:
+            if tag_value is not None:
                 q = q.where(Evaluation.asset_snapshot[("tags", tag)].as_string() == tag_value)
 
         q = q.order_by(Evaluation.start_time.desc()).limit(limit)
