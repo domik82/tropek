@@ -1,0 +1,113 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## Project Overview
+
+**TROPEK** = Trend Reporting and Objective Evaluation toolKit — a standalone quality gate and performance test evaluation platform. It is a Python rewrite/extraction of Keptn's `lighthouse-service`, deployable without Kubernetes via Docker Compose.
+
+Stack: Python 3.13, FastAPI, PostgreSQL + TimescaleDB, Redis (arq job queue), uv (package manager).
+
+## Common Commands
+
+```bash
+# Dependencies
+uv sync                                               # Install all workspace dependencies
+
+# Run unit tests (no infrastructure required)
+uv run pytest api/tests/ -m "not integration" -q
+
+# Run integration tests (requires TimescaleDB + Redis running)
+uv run pytest api/tests/ -m integration -v
+
+# Run a single test
+uv run pytest api/tests/engine/test_evaluator.py::TestName -v
+
+# Lint and format
+uv run ruff check api/ adapters/
+uv run ruff format api/ adapters/
+uv run mypy api/app adapters/prometheus/app
+
+# Start infrastructure only
+docker compose up timescaledb redis -d
+
+# Apply DB migrations
+cd api && uv run alembic upgrade head && cd ..
+
+# Start all services
+docker compose up --build
+```
+
+## Architecture
+
+### Service Topology (Docker Compose)
+
+| Service | Port | Role |
+|---|---|---|
+| `api` | 8080 | FastAPI REST API |
+| `worker` | — | arq job workers (×2) for async evaluation |
+| `adapter-prometheus` | 8081 | Prometheus query adapter |
+| `timescaledb` | 5432 | PostgreSQL + TimescaleDB (metrics, evaluations, SLOs) |
+| `redis` | 6379 | Job queue + response cache |
+| `ui` | 3000 | React SPA (Phase 1, in progress) |
+
+### Evaluation Flow
+
+1. Client POSTs to `/evaluations`
+2. API validates SLO, enqueues job to Redis
+3. Worker dequeues, queries adapter (e.g., Prometheus) for SLI values
+4. Core engine evaluates SLI values against SLO criteria — pure function, no I/O
+5. Results written to TimescaleDB, cached in Redis
+6. Client fetches result via GET
+
+### Core Evaluation Engine (`api/app/modules/quality_gate/engine/`)
+
+Zero-I/O pure Python logic ported from Keptn's Go lighthouse-service. All unit-testable without database or network:
+
+- `evaluator.py` — Top-level `evaluate()` entry point
+- `slo_parser.py` — Parse and validate SLO YAML
+- `criteria.py` — Parse criteria strings, evaluate pass/warning/fail conditions
+- `scoring.py` — Per-objective scoring and total score calculation
+- `variables.py` — Template variable substitution in SLI queries
+
+### Workspace Layout
+
+```
+tropek/
+├── api/                          # FastAPI app, worker, DB models, repositories
+│   ├── app/
+│   │   ├── modules/
+│   │   │   ├── quality_gate/     # Evaluation router + engine
+│   │   │   └── slo_registry/     # Versioned SLO CRUD
+│   │   └── ...
+│   ├── tests/
+│   │   ├── engine/               # Pure unit tests
+│   │   ├── db/                   # Integration tests (mark: integration)
+│   │   └── data/slo/             # YAML fixtures for engine tests
+│   └── pyproject.toml
+├── adapters/prometheus/          # Standalone Prometheus query adapter (separate package)
+├── config.yaml                   # Non-secret runtime config template
+├── .env.example                  # Secrets template (DB, Redis, API key)
+└── pyproject.toml                # UV workspace root + ruff/mypy/pytest config
+```
+
+### SLO File Format
+
+TROPEK's SLO format is a superset of Keptn 1.0: **SLI queries are embedded** in the SLO YAML under an `indicators` block (no separate SLI file). Criteria support fixed thresholds (`<600`), relative percent (`<=+10%`), and relative absolute (`<=+50`) comparisons against a configurable baseline.
+
+### Repository/Database Layer
+
+SQLAlchemy async ORM (asyncpg driver) with Alembic migrations. Repositories in `api/app/modules/*/repositories.py` wrap DB access. Integration tests hit a real database — no mocks for DB layer.
+
+## Code Conventions
+
+- Python 3.13, strict MyPy, ruff with rules: E, W, F, I, N, UP, B, SIM, D, S, DTZ, RUF, PT, C90, PERF, TRY
+- Line length: 100 chars
+- Pytest: `asyncio_mode = auto`, mark infra-requiring tests with `@pytest.mark.integration`
+- Error messages: lowercase, no trailing period, prefer `"could not ..."` phrasing
+- Pre-commit runs ruff (lint + format) and mypy automatically
+
+## Configuration
+
+- Non-secret config: `config.yaml` (server, DB pool, cache TTLs, queue settings, adapter URLs, logging)
+- Secrets: environment variables prefixed `QG_` (e.g., `QG_DB_PASSWORD`, `QG_REDIS_PASSWORD`, `QG_SECRET_KEY`)

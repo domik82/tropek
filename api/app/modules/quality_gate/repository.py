@@ -57,7 +57,7 @@ class EvaluationRepository:
             end_time=end_time,
             ingestion_mode=ingestion_mode,
             asset_snapshot=asset_snapshot,
-            metadata_=metadata,
+            evaluation_metadata=metadata,
             asset_id=asset_id,
             slo_name=slo_name,
             slo_version=slo_version,
