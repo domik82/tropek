@@ -34,4 +34,5 @@ dev-dependencies = [
     "ruff>=0.4",
     "types-pyyaml",
     "types-redis",
+    "sqlalchemy[mypy]>=2.0",
 ]
