@@ -1,6 +1,6 @@
 # TROPEK
 
-**Trend Reporting and Objective Evaluation toolKit**
+**Trend Reporting and Objective Evaluation toolkit**
 
 A standalone quality gate and performance test evaluation platform. Evaluates SLI/SLO metrics from Prometheus, CSV files, JMeter results, or any source that can POST JSON — and decides pass / warning / fail.
 

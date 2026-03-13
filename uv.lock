@@ -1016,6 +1016,9 @@ wheels = [
 asyncio = [
     { name = "greenlet" },
 ]
+mypy = [
+    { name = "mypy" },
+]
 
 [[package]]
 name = "starlette"
@@ -1050,7 +1053,7 @@ wheels = [
 [[package]]
 name = "tropek-adapter-prometheus"
 version = "0.1.0"
-source = { virtual = "adapters/prometheus" }
+source = { editable = "adapters/prometheus" }
 dependencies = [
     { name = "fastapi" },
     { name = "httpx" },
@@ -1095,7 +1098,7 @@ dev = [
 [[package]]
 name = "tropek-api"
 version = "0.1.0"
-source = { virtual = "api" }
+source = { editable = "api" }
 dependencies = [
     { name = "alembic" },
     { name = "arq" },
@@ -1121,6 +1124,7 @@ dev = [
     { name = "pytest-asyncio" },
     { name = "pytest-httpx" },
     { name = "ruff" },
+    { name = "sqlalchemy", extra = ["mypy"] },
     { name = "types-pyyaml" },
     { name = "types-redis" },
 ]
@@ -1151,6 +1155,7 @@ dev = [
     { name = "pytest-asyncio", specifier = ">=0.23" },
     { name = "pytest-httpx", specifier = ">=0.30" },
     { name = "ruff", specifier = ">=0.4" },
+    { name = "sqlalchemy", extras = ["mypy"], specifier = ">=2.0" },
     { name = "types-pyyaml" },
     { name = "types-redis" },
 ]

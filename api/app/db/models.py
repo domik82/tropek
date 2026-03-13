@@ -7,7 +7,9 @@ from datetime import datetime
 from typing import Any
 
 from sqlalchemy import (
+    UUID,
     Boolean,
+    CheckConstraint,
     DateTime,
     Float,
     ForeignKey,
@@ -15,9 +17,12 @@ from sqlalchemy import (
     Integer,
     Text,
     UniqueConstraint,
+    false,
     func,
+    text,
+    true,
 )
-from sqlalchemy.dialects.postgresql import JSONB, UUID
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 
@@ -30,9 +35,11 @@ class Asset(Base):
 
     __tablename__ = "assets"
 
-    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id: Mapped[uuid.UUID] = mapped_column(UUID, primary_key=True, default=uuid.uuid4)
     name: Mapped[str] = mapped_column(Text, unique=True, nullable=False)
-    tags: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
+    tags: Mapped[dict[str, Any]] = mapped_column(
+        JSONB, nullable=False, server_default=text("'{}'"), default=dict
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
@@ -48,17 +55,22 @@ class SLODefinition(Base):
     __table_args__ = (
         UniqueConstraint("name", "version", name="uq_slo_name_version"),
         Index("idx_slo_definitions_name", "name"),
-        Index("idx_slo_definitions_latest", "name", "version"),
+        # version DESC so get_latest() queries hit this index efficiently
+        Index("idx_slo_definitions_latest", "name", text("version DESC")),
     )
 
-    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id: Mapped[uuid.UUID] = mapped_column(UUID, primary_key=True, default=uuid.uuid4)
     name: Mapped[str] = mapped_column(Text, nullable=False)
     version: Mapped[int] = mapped_column(Integer, nullable=False)
     slo_yaml: Mapped[str] = mapped_column(Text, nullable=False)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     author: Mapped[str | None] = mapped_column(Text, nullable=True)
-    meta: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
-    active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    meta: Mapped[dict[str, Any]] = mapped_column(
+        JSONB, nullable=False, server_default=text("'{}'"), default=dict
+    )
+    active: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default=true(), default=True
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
@@ -80,16 +92,28 @@ class Evaluation(Base):
             "idx_evaluations_stuck",
             "status",
             "started_at",
-            postgresql_where="status = 'running'",
+            postgresql_where=text("status = 'running'"),
+        ),
+        CheckConstraint(
+            "status IN ('pending','running','completed','failed','partial')",
+            name="ck_evaluations_status",
+        ),
+        CheckConstraint(
+            "ingestion_mode IN ('pull','push','file')",
+            name="ck_evaluations_ingestion_mode",
+        ),
+        CheckConstraint(
+            "result IN ('pass','warning','fail','error') OR result IS NULL",
+            name="ck_evaluations_result",
         ),
     )
 
-    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id: Mapped[uuid.UUID] = mapped_column(UUID, primary_key=True, default=uuid.uuid4)
     name: Mapped[str] = mapped_column(Text, nullable=False)
-    asset_id: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("assets.id"), nullable=True
+    asset_id: Mapped[uuid.UUID | None] = mapped_column(UUID, ForeignKey("assets.id"), nullable=True)
+    asset_snapshot: Mapped[dict[str, Any]] = mapped_column(
+        JSONB, nullable=False, server_default=text("'{}'"), default=dict
     )
-    asset_snapshot: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
     start_time: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     end_time: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     result: Mapped[str | None] = mapped_column(Text, nullable=True)  # null while pending
@@ -97,19 +121,26 @@ class Evaluation(Base):
     slo_yaml: Mapped[str | None] = mapped_column(Text, nullable=True)
     slo_name: Mapped[str | None] = mapped_column(Text, nullable=True)
     slo_version: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    indicator_results: Mapped[list[Any]] = mapped_column(JSONB, nullable=False, default=list)
-    # Column named 'metadata' in DB; metadata_ avoids conflict with SQLAlchemy internals
-    metadata_: Mapped[dict[str, Any]] = mapped_column(
-        "metadata", JSONB, nullable=False, default=dict
+    indicator_results: Mapped[list[Any]] = mapped_column(
+        JSONB, nullable=False, server_default=text("'[]'"), default=list
     )
-    ingestion_mode: Mapped[str] = mapped_column(Text, nullable=False)  # pull | push | file
+    evaluation_metadata: Mapped[dict[str, Any]] = mapped_column(
+        JSONB, nullable=False, server_default=text("'{}'"), default=dict
+    )
+    ingestion_mode: Mapped[str] = mapped_column(Text, nullable=False)
     adapter_used: Mapped[str | None] = mapped_column(Text, nullable=True)
-    invalidated: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    invalidated: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default=false(), default=False
+    )
     invalidation_note: Mapped[str | None] = mapped_column(Text, nullable=True)
     # Job lifecycle
-    status: Mapped[str] = mapped_column(Text, nullable=False, default="pending")
+    status: Mapped[str] = mapped_column(
+        Text, nullable=False, server_default=text("'pending'"), default="pending"
+    )
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    job_stats: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
+    job_stats: Mapped[dict[str, Any]] = mapped_column(
+        JSONB, nullable=False, server_default=text("'{}'"), default=dict
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
@@ -125,16 +156,18 @@ class EvaluationAnnotation(Base):
     __tablename__ = "evaluation_annotations"
     __table_args__ = (Index("idx_annotations_evaluation", "evaluation_id"),)
 
-    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id: Mapped[uuid.UUID] = mapped_column(UUID, primary_key=True, default=uuid.uuid4)
     evaluation_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
+        UUID,
         ForeignKey("evaluations.id", ondelete="CASCADE"),
         nullable=False,
     )
     content: Mapped[str] = mapped_column(Text, nullable=False)
     author: Mapped[str | None] = mapped_column(Text, nullable=True)
     category: Mapped[str | None] = mapped_column(Text, nullable=True)
-    meta: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
+    meta: Mapped[dict[str, Any]] = mapped_column(
+        JSONB, nullable=False, server_default=text("'{}'"), default=dict
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
@@ -148,13 +181,15 @@ class SLIValue(Base):
     Partitioned by eval_start for efficient time-range queries in Grafana.
     Composite PK required: TimescaleDB needs the partition key in the PK.
     Denormalised columns (asset_name, test_name, os_tag) avoid joins in Grafana SQL.
+    No ORM relationship to Evaluation is intentional — prevents accidental lazy-loading
+    of potentially thousands of hypertable rows.
     """
 
     __tablename__ = "sli_values"
     __table_args__ = (Index("idx_sli_values_lookup", "test_name", "metric_name", "eval_start"),)
 
     eval_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("evaluations.id"), nullable=False, primary_key=True
+        UUID, ForeignKey("evaluations.id"), nullable=False, primary_key=True
     )
     eval_start: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, primary_key=True
