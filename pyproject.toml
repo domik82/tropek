@@ -60,11 +60,15 @@ convention = "google"
 python_version = "3.13"
 strict = true
 ignore_missing_imports = true
+plugins = ["sqlalchemy.ext.mypy.plugin"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["api/tests", "adapters/prometheus/tests"]
 pythonpath = ["api", "adapters/prometheus"]   # makes 'app' importable from workspace root
+markers = [
+    "integration: requires a running TimescaleDB instance (deselect with -m 'not integration')",
+]
 
 [dependency-groups]
 dev = [
