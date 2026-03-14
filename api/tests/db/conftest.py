@@ -46,11 +46,21 @@ async def db_engine(db_url: str) -> AsyncGenerator[AsyncEngine, None]:  # noqa: 
 
 @pytest_asyncio.fixture()
 async def db_session(db_engine: AsyncEngine) -> AsyncGenerator[AsyncSession, None]:  # noqa: UP043
-    """Yield a session bound to a rolled-back connection — no DB pollution between tests."""
+    """Yield a session bound to a rolled-back connection — no DB pollution between tests.
+
+    join_transaction_mode="create_savepoint" ensures the session joins the outer
+    transaction rather than starting its own, which is required for asyncpg compatibility
+    when queries use SELECT ... FOR UPDATE.
+    """
     async with db_engine.connect() as conn:
         await conn.begin()
-        session = AsyncSession(bind=conn, expire_on_commit=False)
+        session = AsyncSession(
+            bind=conn,
+            expire_on_commit=False,
+            join_transaction_mode="create_savepoint",
+        )
         try:
             yield session
         finally:
+            await session.close()
             await conn.rollback()
