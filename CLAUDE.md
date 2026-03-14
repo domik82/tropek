@@ -17,9 +17,6 @@ uv sync                                               # Install all workspace de
 # Run unit tests (no infrastructure required)
 uv run pytest api/tests/ -m "not integration" -q
 
-# Run integration tests (requires TimescaleDB + Redis running)
-uv run pytest api/tests/ -m integration -v
-
 # Run a single test
 uv run pytest api/tests/engine/test_evaluator.py::TestName -v
 
@@ -28,15 +25,44 @@ uv run ruff check api/ adapters/
 uv run ruff format api/ adapters/
 uv run mypy api/app adapters/prometheus/app
 
-# Start infrastructure only
+# Start infrastructure only (dev)
 docker compose up timescaledb redis -d
 
-# Apply DB migrations
-cd api && uv run alembic upgrade head && cd ..
+# Apply DB migrations (dev)
+uv run --directory api alembic upgrade head
 
 # Start all services
 docker compose up --build
 ```
+
+## Integration Tests — REQUIRED STEPS
+
+Integration tests require a **dedicated test database** on port 5433 — completely separate from the
+dev database (port 5432). **Never run integration tests against the dev database.**
+
+### First-time setup
+
+```bash
+cp .env.test.example .env.test   # fill in values (defaults match the test container)
+```
+
+### Running integration tests
+
+Each step is a separate command — do NOT chain them or prefix env vars inline:
+
+```bash
+# Step 1: Start test infrastructure (idempotent — safe to re-run)
+./start_test_infra.sh
+
+# Step 2: Run integration tests (.env.test is loaded automatically by pytest-dotenv)
+uv run pytest api/tests/ -m integration -v
+
+# Step 3: Tear down when done (removes container + volume)
+./stop_test_infra.sh
+```
+
+`pytest-dotenv` loads `.env.test` automatically — **never** pass `TEST_DATABASE_URL` or `QG_*`
+vars as shell prefixes or inline exports. The scripts handle env loading for migrations.
 
 ## Architecture
 
