@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.db.models import Evaluation, EvaluationAnnotation, SLIValue
+from app.modules.quality_gate.engine.constants import EvaluationStatus
 
 
 class EvaluationRepository:
@@ -62,7 +63,7 @@ class EvaluationRepository:
             slo_name=slo_name,
             slo_version=slo_version,
             adapter_used=adapter_used,
-            status="pending",
+            status=EvaluationStatus.PENDING,
         )
         self._session.add(ev)
         await self._session.flush()
@@ -75,12 +76,11 @@ class EvaluationRepository:
             eval_id: Evaluation to update.
             worker_id: Identifier of the worker process claiming this job.
         """
-        # TODO extract statuses to const
         await self._session.execute(
             update(Evaluation)
             .where(Evaluation.id == eval_id)
             .values(
-                status="running",
+                status=EvaluationStatus.RUNNING,
                 started_at=datetime.now(tz=UTC),
                 job_stats={"worker_id": worker_id} if worker_id else {},
             )
@@ -119,7 +119,7 @@ class EvaluationRepository:
             update(Evaluation)
             .where(Evaluation.id == eval_id)
             .values(
-                status="completed",
+                status=EvaluationStatus.COMPLETED,
                 result=result,
                 score=score,
                 slo_yaml=slo_yaml,
@@ -143,7 +143,7 @@ class EvaluationRepository:
             update(Evaluation)
             .where(Evaluation.id == eval_id)
             .values(
-                status="failed",
+                status=EvaluationStatus.FAILED,
                 job_stats=job_stats or {},
             )
         )
@@ -160,11 +160,10 @@ class EvaluationRepository:
         await self._session.execute(
             update(Evaluation)
             .where(Evaluation.id == eval_id)
-            .values(status="partial", job_stats=job_stats or {})
+            .values(status=EvaluationStatus.PARTIAL, job_stats=job_stats or {})
         )
 
-    # TODO get_evaluation - get to simple
-    async def get(self, eval_id: uuid.UUID) -> Evaluation | None:
+    async def get_by_id(self, eval_id: uuid.UUID) -> Evaluation | None:
         """Fetch a single evaluation with annotations eagerly loaded.
 
         Args:
@@ -245,7 +244,7 @@ class EvaluationRepository:
         """
         q = select(Evaluation).where(
             Evaluation.name == name,
-            Evaluation.status == "completed",
+            Evaluation.status == EvaluationStatus.COMPLETED,
             Evaluation.invalidated == False,  # noqa: E712
         )
         # TODO this should be probably a provided filter - heatmap will have to show all statuses
@@ -283,7 +282,7 @@ class EvaluationRepository:
         cutoff = datetime.now(tz=UTC) - timedelta(seconds=threshold_seconds)
         result = await self._session.execute(
             select(Evaluation).where(
-                Evaluation.status == "running",
+                Evaluation.status == EvaluationStatus.RUNNING,
                 Evaluation.started_at < cutoff,
             )
         )
