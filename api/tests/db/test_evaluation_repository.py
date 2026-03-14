@@ -100,8 +100,8 @@ async def test_list_evaluations_filters_by_name(db_session: AsyncSession) -> Non
     for name in ("alpha", "alpha", "beta"):
         await repo.create_pending(
             name=name,
-            start_time=_START,
-            end_time=_END,
+            period_start=_START,
+            period_end=_END,
             ingestion_mode="push",
             asset_snapshot=_make_snapshot(),
             metadata={},
@@ -117,8 +117,8 @@ async def test_get_baselines_filters_by_os_tag(db_session: AsyncSession) -> None
     for os in ("windows-11", "windows-11", "ubuntu-22"):
         ev = await repo.create_pending(
             name="scope-test",
-            start_time=_START,
-            end_time=_END,
+            period_start=_START,
+            period_end=_END,
             ingestion_mode="push",
             asset_snapshot=_make_snapshot(os=os),
             metadata={},

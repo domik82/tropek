@@ -249,7 +249,7 @@ class EvaluationRepository:
             limit: Maximum number of baseline evaluations to return.
 
         Returns:
-            Matching completed evaluations ordered by start_time descending.
+            Matching completed evaluations ordered by period_start descending.
         """
         q = select(Evaluation).where(
             Evaluation.name == name,
