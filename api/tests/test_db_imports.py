@@ -15,6 +15,7 @@ def test_orm_models_importable() -> None:
         AssetGroupMember,
         AssetGroupSLOLink,
         AssetSLOLink,
+        AssetType,
         Base,
         DataSource,
         Evaluation,
@@ -28,6 +29,7 @@ def test_orm_models_importable() -> None:
     table_names = set(Base.metadata.tables.keys())
     assert table_names == {
         "assets",
+        "asset_types",
         "asset_groups",
         "asset_group_members",
         "asset_group_links",

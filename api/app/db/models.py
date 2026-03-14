@@ -32,20 +32,41 @@ class Base(DeclarativeBase):
     """Shared declarative base for all ORM models."""
 
 
+class AssetType(Base):
+    """User-extensible asset type vocabulary. One row may be marked as the default."""
+
+    __tablename__ = "asset_types"
+    __table_args__ = (
+        Index("idx_asset_types_name", "name"),
+        # Enforces at most one default at the DB level
+        Index(
+            "uq_asset_types_default",
+            "is_default",
+            unique=True,
+            postgresql_where=text("is_default = true"),
+        ),
+    )
+
+    # fmt: off
+    id:         Mapped[uuid.UUID] = mapped_column(UUID, primary_key=True, default=uuid.uuid4)
+    name:       Mapped[str]       = mapped_column(Text, unique=True, nullable=False)
+    is_default: Mapped[bool]      = mapped_column(Boolean, nullable=False, server_default=false(), default=False)
+    # fmt: on
+
+
 class Asset(Base):
     """A named entity under test — VM, service, container, or endpoint."""
 
     __tablename__ = "assets"
 
     # fmt: off
-
-    id: Mapped[uuid.UUID] = mapped_column(UUID, primary_key=True, default=uuid.uuid4)
-    name: Mapped[str] = mapped_column(Text, unique=True, nullable=False)
-    display_name: Mapped[str | None] = mapped_column(Text, nullable=True)
-    tags: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, server_default=text("'{}'"), default=dict)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
-    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
-
+    id:           Mapped[uuid.UUID]      = mapped_column(UUID, primary_key=True, default=uuid.uuid4)
+    name:         Mapped[str]            = mapped_column(Text, unique=True, nullable=False)
+    display_name: Mapped[str | None]     = mapped_column(Text, nullable=True)
+    type_name:    Mapped[str]            = mapped_column(Text, ForeignKey("asset_types.name"), nullable=False, default="vm")
+    labels:       Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, server_default=text("'{}'"), default=dict)
+    created_at:   Mapped[datetime]       = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    updated_at:   Mapped[datetime]       = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
     # fmt: on
 
 
