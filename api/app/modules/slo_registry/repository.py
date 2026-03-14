@@ -118,7 +118,7 @@ class SLORepository:
         )
         return list(result.scalars().all())
 
-    async def list_all_latest(self) -> list[SLODefinition]:
+    async def list_all(self) -> list[SLODefinition]:
         """Return the latest active version of every named SLO.
 
         Uses DISTINCT ON (name) ORDER BY name, version DESC — PostgreSQL-specific.
@@ -142,7 +142,7 @@ class SLORepository:
         )
         return list(result.scalars().all())
 
-    async def soft_delete(self, name: str) -> int:
+    async def deactivate(self, name: str) -> int:
         """Mark all versions of a named SLO as inactive.
 
         Evaluations that used this SLO are unaffected — they store the resolved YAML.

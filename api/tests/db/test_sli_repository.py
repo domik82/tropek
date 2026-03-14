@@ -65,3 +65,26 @@ async def test_deactivate_hides_from_get_latest(db_session: AsyncSession) -> Non
     await repo.deactivate("gone-sli")
     result = await repo.get_latest("gone-sli")
     assert result is None
+
+
+@pytest.mark.integration
+async def test_list_versions_newest_first(db_session: AsyncSession) -> None:
+    repo = SLIRepository(db_session)
+    await repo.create(name="history-sli", indicators={"a": "q1"})
+    await repo.create(name="history-sli", indicators={"a": "q2"})
+    versions = await repo.list_versions("history-sli")
+    assert len(versions) == 2
+    assert versions[0].version == 2
+    assert versions[1].version == 1
+
+
+@pytest.mark.integration
+async def test_list_all_returns_latest_per_name(db_session: AsyncSession) -> None:
+    repo = SLIRepository(db_session)
+    await repo.create(name="sli-a", indicators={"x": "q1"})
+    await repo.create(name="sli-a", indicators={"x": "q2"})
+    await repo.create(name="sli-b", indicators={"y": "q1"})
+    results = await repo.list_all()
+    name_to_version = {r.name: r.version for r in results}
+    assert name_to_version["sli-a"] == 2
+    assert name_to_version["sli-b"] == 1
