@@ -1,6 +1,9 @@
 # Superpowers brainstorming sessions
 .superpowers/
 
+# Git worktrees
+.worktrees/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]
