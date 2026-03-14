@@ -72,7 +72,6 @@ pythonpath = ["api", "adapters/prometheus"]   # makes 'app' importable from work
 markers = [
     "integration: requires a running TimescaleDB instance (deselect with -m 'not integration')",
 ]
-env_files = [".env.test"]   # loaded by pytest-dotenv before any test runs
 
 [dependency-groups]
 dev = [
