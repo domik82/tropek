@@ -51,3 +51,24 @@ async def test_delete_removes_record(db_session: AsyncSession) -> None:
     await repo.delete(ds.id)
     result = await repo.get_by_name("to-delete")
     assert result is None
+
+
+@pytest.mark.integration
+async def test_update_adapter_url(db_session: AsyncSession) -> None:
+    repo = DataSourceRepository(db_session)
+    await repo.create(**_ds_kwargs(name="ds-update"))
+    updated = await repo.update("ds-update", adapter_url="http://new-addr:9090")
+    assert updated.adapter_url == "http://new-addr:9090"
+
+
+@pytest.mark.integration
+async def test_list_all_filter_by_adapter_type(db_session: AsyncSession) -> None:
+    repo = DataSourceRepository(db_session)
+    await repo.create(**_ds_kwargs(name="prom-1", adapter_type="prometheus"))
+    await repo.create(
+        **_ds_kwargs(name="pg-1", adapter_type="postgres", adapter_url="http://pg:5432")
+    )
+    prom_only = await repo.list_all(adapter_type="prometheus")
+    names = {ds.name for ds in prom_only}
+    assert "prom-1" in names
+    assert "pg-1" not in names
