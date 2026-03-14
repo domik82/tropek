@@ -25,8 +25,8 @@ async def test_create_pending_returns_evaluation(db_session: AsyncSession) -> No
     repo = EvaluationRepository(db_session)
     ev = await repo.create_pending(
         name="compile-test",
-        start_time=_START,
-        end_time=_END,
+        period_start=_START,
+        period_end=_END,
         ingestion_mode="push",
         asset_snapshot=_make_snapshot(),
         metadata={},
@@ -41,13 +41,13 @@ async def test_get_returns_evaluation(db_session: AsyncSession) -> None:
     repo = EvaluationRepository(db_session)
     ev = await repo.create_pending(
         name="get-test",
-        start_time=_START,
-        end_time=_END,
+        period_start=_START,
+        period_end=_END,
         ingestion_mode="push",
         asset_snapshot=_make_snapshot(),
         metadata={},
     )
-    fetched = await repo.get(ev.id)
+    fetched = await repo.get_by_id(ev.id)
     assert fetched is not None
     assert fetched.id == ev.id
 
@@ -57,8 +57,8 @@ async def test_mark_completed_updates_fields(db_session: AsyncSession) -> None:
     repo = EvaluationRepository(db_session)
     ev = await repo.create_pending(
         name="complete-test",
-        start_time=_START,
-        end_time=_END,
+        period_start=_START,
+        period_end=_END,
         ingestion_mode="push",
         asset_snapshot=_make_snapshot(),
         metadata={},
@@ -70,7 +70,7 @@ async def test_mark_completed_updates_fields(db_session: AsyncSession) -> None:
         slo_yaml="spec_version: '1.0'\n",
         indicator_results=[{"metric": "cpu", "status": "pass"}],
     )
-    fetched = await repo.get(ev.id)
+    fetched = await repo.get_by_id(ev.id)
     assert fetched is not None
     assert fetched.status == "completed"
     assert fetched.result == "pass"
@@ -82,14 +82,14 @@ async def test_mark_running_sets_status(db_session: AsyncSession) -> None:
     repo = EvaluationRepository(db_session)
     ev = await repo.create_pending(
         name="running-test",
-        start_time=_START,
-        end_time=_END,
+        period_start=_START,
+        period_end=_END,
         ingestion_mode="pull",
         asset_snapshot=_make_snapshot(),
         metadata={},
     )
     await repo.mark_running(ev.id)
-    fetched = await repo.get(ev.id)
+    fetched = await repo.get_by_id(ev.id)
     assert fetched is not None
     assert fetched.status == "running"
 
@@ -147,14 +147,14 @@ async def test_add_and_list_annotations(db_session: AsyncSession) -> None:
     repo = EvaluationRepository(db_session)
     ev = await repo.create_pending(
         name="ann-test",
-        start_time=_START,
-        end_time=_END,
+        period_start=_START,
+        period_end=_END,
         ingestion_mode="push",
         asset_snapshot=_make_snapshot(),
         metadata={},
     )
     await repo.add_annotation(ev.id, content="Defender update applied", author="ops")
-    fetched = await repo.get(ev.id)
+    fetched = await repo.get_by_id(ev.id)
     assert fetched is not None
     assert len(fetched.annotations) == 1
     assert fetched.annotations[0].content == "Defender update applied"
@@ -165,8 +165,8 @@ async def test_write_and_read_sli_values(db_session: AsyncSession) -> None:
     repo = EvaluationRepository(db_session)
     ev = await repo.create_pending(
         name="sli-test",
-        start_time=_START,
-        end_time=_END,
+        period_start=_START,
+        period_end=_END,
         ingestion_mode="push",
         asset_snapshot=_make_snapshot(),
         metadata={},

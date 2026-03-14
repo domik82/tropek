@@ -41,6 +41,7 @@ class Asset(Base):
 
     id: Mapped[uuid.UUID] = mapped_column(UUID, primary_key=True, default=uuid.uuid4)
     name: Mapped[str] = mapped_column(Text, unique=True, nullable=False)
+    display_name: Mapped[str | None] = mapped_column(Text, nullable=True)
     tags: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, server_default=text("'{}'"), default=dict)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
@@ -63,6 +64,7 @@ class SLODefinition(Base):
 
     id: Mapped[uuid.UUID] = mapped_column(UUID, primary_key=True, default=uuid.uuid4)
     name: Mapped[str] = mapped_column(Text, nullable=False)
+    display_name: Mapped[str | None] = mapped_column(Text, nullable=True)
     version: Mapped[int] = mapped_column(Integer, nullable=False)
     slo_yaml: Mapped[str] = mapped_column(Text, nullable=False)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -82,7 +84,7 @@ class Evaluation(Base):
         Index("idx_evaluations_name", "name"),
         Index("idx_evaluations_asset", "asset_id"),
         Index("idx_evaluations_result", "result"),
-        Index("idx_evaluations_start", "start_time"),
+        Index("idx_evaluations_start", "period_start"),
         Index("idx_evaluations_status", "status"),
         Index("idx_evaluations_slo", "slo_name", "slo_version"),
         # Partial index for watchdog: find stuck running jobs efficiently
@@ -112,15 +114,16 @@ class Evaluation(Base):
     name: Mapped[str] = mapped_column(Text, nullable=False)
     asset_id: Mapped[uuid.UUID | None] = mapped_column(UUID, ForeignKey("assets.id"), nullable=True)
     asset_snapshot: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, server_default=text("'{}'"), default=dict)
-    # TODO evaluation_start_time / end_time | evaluation_period?
-    start_time: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
-    end_time: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    period_start: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    period_end:   Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     result: Mapped[str | None] = mapped_column(Text, nullable=True)  # null while pending
     score: Mapped[float | None] = mapped_column(Float, nullable=True)
-    # TODO why we would keep the yaml? maybe only link to ID if history is preserved
     slo_yaml: Mapped[str | None] = mapped_column(Text, nullable=True)
     slo_name: Mapped[str | None] = mapped_column(Text, nullable=True)
     slo_version: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    sli_name: Mapped[str | None] = mapped_column(Text, nullable=True)
+    sli_version: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    data_source_name: Mapped[str | None] = mapped_column(Text, nullable=True)
     indicator_results: Mapped[list[Any]] = mapped_column(JSONB, nullable=False, server_default=text("'[]'"), default=list)
     evaluation_metadata: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, server_default=text("'{}'"), default=dict)
     ingestion_mode: Mapped[str] = mapped_column(Text, nullable=False)
@@ -129,7 +132,6 @@ class Evaluation(Base):
     invalidation_note: Mapped[str | None] = mapped_column(Text, nullable=True)
     # Job lifecycle
     status: Mapped[str] = mapped_column(Text, nullable=False, server_default=text("'pending'"), default="pending")
-    # TODO a bit confusing evaluation_start_time and started_at - migt get wrongly used
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     job_stats: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, server_default=text("'{}'"), default=dict)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
@@ -153,7 +155,9 @@ class EvaluationAnnotation(Base):
     category: Mapped[str | None] = mapped_column(Text, nullable=True)
     meta: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, server_default=text("'{}'"), default=dict)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
-    # TODO: updated_at
+    updated_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), onupdate=func.now(), nullable=True
+    )
     evaluation: Mapped[Evaluation] = relationship("Evaluation", back_populates="annotations")
 
     # fmt: on

@@ -24,8 +24,8 @@ class EvaluationRepository:
         self,
         *,
         name: str,
-        start_time: datetime,
-        end_time: datetime,
+        period_start: datetime,
+        period_end: datetime,
         ingestion_mode: str,
         asset_snapshot: dict[str, Any],
         metadata: dict[str, Any],
@@ -33,13 +33,16 @@ class EvaluationRepository:
         slo_name: str | None = None,
         slo_version: int | None = None,
         adapter_used: str | None = None,
+        sli_name: str | None = None,
+        sli_version: int | None = None,
+        data_source_name: str | None = None,
     ) -> Evaluation:
         """Create a new evaluation record in pending status.
 
         Args:
             name: Test identifier (e.g. "compilation-test").
-            start_time: Evaluation window start.
-            end_time: Evaluation window end.
+            period_start: Evaluation window start.
+            period_end: Evaluation window end.
             ingestion_mode: One of "pull", "push", "file".
             asset_snapshot: Denormalised asset state at trigger time.
             metadata: Caller-provided key-value pairs.
@@ -47,6 +50,9 @@ class EvaluationRepository:
             slo_name: Named SLO used, if any.
             slo_version: Version of the named SLO, if any.
             adapter_used: Adapter name, if pull mode (e.g. "prometheus").
+            sli_name: Named SLI definition used, if any.
+            sli_version: Version of the named SLI definition, if any.
+            data_source_name: Data source used for metric collection, if any.
 
         Returns:
             Newly created Evaluation in pending status.
@@ -54,8 +60,8 @@ class EvaluationRepository:
         ev = Evaluation(
             id=uuid.uuid4(),
             name=name,
-            start_time=start_time,
-            end_time=end_time,
+            period_start=period_start,
+            period_end=period_end,
             ingestion_mode=ingestion_mode,
             asset_snapshot=asset_snapshot,
             evaluation_metadata=metadata,
@@ -63,6 +69,9 @@ class EvaluationRepository:
             slo_name=slo_name,
             slo_version=slo_version,
             adapter_used=adapter_used,
+            sli_name=sli_name,
+            sli_version=sli_version,
+            data_source_name=data_source_name,
             status=EvaluationStatus.PENDING,
         )
         self._session.add(ev)
@@ -212,10 +221,10 @@ class EvaluationRepository:
         if result:
             q = q.where(Evaluation.result == result)
         if from_:
-            q = q.where(Evaluation.start_time >= from_)
+            q = q.where(Evaluation.period_start >= from_)
         if to:
-            q = q.where(Evaluation.start_time <= to)
-        q = q.order_by(Evaluation.start_time.desc()).limit(limit).offset(offset)
+            q = q.where(Evaluation.period_start <= to)
+        q = q.order_by(Evaluation.period_start.desc()).limit(limit).offset(offset)
         rows = await self._session.execute(q)
         return list(rows.scalars().all())
 
@@ -247,10 +256,6 @@ class EvaluationRepository:
             Evaluation.status == EvaluationStatus.COMPLETED,
             Evaluation.invalidated == False,  # noqa: E712
         )
-        # TODO this should be probably a provided filter - heatmap will have to show all statuses
-        # Get_status types should be probably added so that user have idea what are available in each version
-        # there might be need to show only failed
-
         if include_result_with_score == "pass":
             q = q.where(Evaluation.result == "pass")
         elif include_result_with_score == "pass_or_warn":
@@ -264,7 +269,7 @@ class EvaluationRepository:
             if tag_value is not None:
                 q = q.where(Evaluation.asset_snapshot[("tags", tag)].as_string() == tag_value)
 
-        q = q.order_by(Evaluation.start_time.desc()).limit(limit)
+        q = q.order_by(Evaluation.period_start.desc()).limit(limit)
         rows = await self._session.execute(q)
         return list(rows.scalars().all())
 
@@ -379,7 +384,6 @@ class EvaluationRepository:
         ]
 
     # --- Annotations ---
-    # TODO : quesion should it be some form of append or replace?
 
     async def add_annotation(
         self,
