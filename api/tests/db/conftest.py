@@ -1,26 +1,36 @@
 """Database fixtures for integration tests.
 
-Requires TEST_DATABASE_URL env var pointing to a real TimescaleDB instance.
-Tables are created fresh per test session and dropped on teardown.
+Requires a running test database. Start it with:
+    ./start_test_infra.sh
+
+The .env.test file is loaded automatically from the repo root when this
+conftest is imported, so no env var injection or shell sourcing is needed.
 
 Usage:
-    export TEST_DATABASE_URL="postgresql+asyncpg://user:pass@localhost:5432/tropek_test"
-    uv run pytest api/tests/db/ -m integration -v
+    uv run pytest api/tests/ -m integration -v
 """
 
 from __future__ import annotations
 
 import os
 from collections.abc import AsyncGenerator
+from pathlib import Path
 
 import pytest
 import pytest_asyncio
 from app.db.models import Base
+from dotenv import load_dotenv
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
     AsyncSession,
     create_async_engine,
 )
+
+# Load .env.test (repo root) so TEST_DATABASE_URL and QG_DB_* are available.
+# override=False: shell env vars take precedence if already set.
+# Must come after imports but before fixtures — pydantic-settings reads env vars
+# lazily when settings objects are instantiated inside test fixtures, not here.
+load_dotenv(Path(__file__).parents[4] / ".env.test", override=False)
 
 
 @pytest.fixture(scope="session")
