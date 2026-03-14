@@ -10,9 +10,17 @@ def test_orm_models_importable() -> None:
     """Verify ORM models import and register expected table names."""
     from app.db.models import (  # noqa: F401
         Asset,
+        AssetGroup,
+        AssetGroupLink,
+        AssetGroupMember,
+        AssetGroupSLOLink,
+        AssetSLOLink,
         Base,
+        DataSource,
         Evaluation,
         EvaluationAnnotation,
+        EvaluationBatch,
+        SLIDefinition,
         SLIValue,
         SLODefinition,
     )
@@ -20,8 +28,16 @@ def test_orm_models_importable() -> None:
     table_names = set(Base.metadata.tables.keys())
     assert table_names == {
         "assets",
+        "asset_groups",
+        "asset_group_members",
+        "asset_group_links",
+        "asset_slo_links",
+        "asset_group_slo_links",
+        "data_sources",
+        "sli_definitions",
         "slo_definitions",
         "evaluations",
         "evaluation_annotations",
+        "evaluation_batches",
         "sli_values",
     }

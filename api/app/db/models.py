@@ -49,6 +49,116 @@ class Asset(Base):
     # fmt: on
 
 
+class AssetGroup(Base):
+    """Named container of assets or other groups.
+
+    Supports flat groups (linux_boxes = [vm-01, vm-02]) and
+    group-of-groups (software_xyz = [linux_boxes, windows_vms]).
+    """
+
+    __tablename__ = "asset_groups"
+
+    # fmt: off
+
+    id:           Mapped[uuid.UUID]  = mapped_column(UUID, primary_key=True, default=uuid.uuid4)
+    name:         Mapped[str]        = mapped_column(Text, unique=True, nullable=False)
+    display_name: Mapped[str | None] = mapped_column(Text, nullable=True)
+    description:  Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at:   Mapped[datetime]   = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    updated_at:   Mapped[datetime]   = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
+
+    # fmt: on
+
+
+class AssetGroupMember(Base):
+    """Associates individual assets with an asset group, with optional weight."""
+
+    __tablename__ = "asset_group_members"
+    __table_args__ = (
+        Index("idx_asset_group_members_group", "group_id"),
+        Index("idx_asset_group_members_asset", "asset_id"),
+    )
+
+    # fmt: off
+
+    group_id:  Mapped[uuid.UUID] = mapped_column(UUID, ForeignKey("asset_groups.id", ondelete="CASCADE"), nullable=False, primary_key=True)
+    asset_id:  Mapped[uuid.UUID] = mapped_column(UUID, ForeignKey("assets.id", ondelete="CASCADE"), nullable=False, primary_key=True)
+    weight:    Mapped[float]     = mapped_column(Float, nullable=False, default=1.0)
+
+    # fmt: on
+
+
+class AssetGroupLink(Base):
+    """Links a child group inside a parent group (group-of-groups)."""
+
+    __tablename__ = "asset_group_links"
+    __table_args__ = (Index("idx_asset_group_links_parent", "parent_group_id"),)
+
+    # fmt: off
+
+    parent_group_id: Mapped[uuid.UUID] = mapped_column(UUID, ForeignKey("asset_groups.id", ondelete="CASCADE"), nullable=False, primary_key=True)
+    child_group_id:  Mapped[uuid.UUID] = mapped_column(UUID, ForeignKey("asset_groups.id", ondelete="CASCADE"), nullable=False, primary_key=True)
+    weight:          Mapped[float]     = mapped_column(Float, nullable=False, default=1.0)
+
+    # fmt: on
+
+
+class DataSource(Base):
+    """Named pointer to a running adapter service instance.
+
+    The adapter manages its own connection credentials via env vars.
+    TROPEK stores only where to send queries (adapter_url) and free-form
+    labels for discovery. Names are unique across the deployment.
+    """
+
+    __tablename__ = "data_sources"
+    __table_args__ = (Index("idx_data_sources_name", "name"),)
+
+    # fmt: off
+
+    id:           Mapped[uuid.UUID]        = mapped_column(UUID, primary_key=True, default=uuid.uuid4)
+    name:         Mapped[str]              = mapped_column(Text, unique=True, nullable=False)
+    display_name: Mapped[str | None]       = mapped_column(Text, nullable=True)
+    adapter_type: Mapped[str]              = mapped_column(Text, nullable=False)
+    adapter_url:  Mapped[str]              = mapped_column(Text, nullable=False)
+    labels:       Mapped[dict[str, Any]]   = mapped_column(JSONB, nullable=False, server_default=text("'{}'"), default=dict)
+    created_at:   Mapped[datetime]         = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    updated_at:   Mapped[datetime]         = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
+
+    # fmt: on
+
+
+class SLIDefinition(Base):
+    """Versioned set of indicator queries for one adapter type.
+
+    Rows are immutable after insert — same versioning pattern as SLODefinition.
+    Each indicator maps a name to an adapter-specific query string (PromQL, SQL, etc.).
+    Variable tokens ($vm_ip, $period_start, etc.) are substituted at evaluation time.
+    """
+
+    __tablename__ = "sli_definitions"
+    __table_args__ = (
+        UniqueConstraint("name", "version", name="uq_sli_name_version"),
+        Index("idx_sli_definitions_name", "name"),
+        Index("idx_sli_definitions_latest", "name", text("version DESC")),
+    )
+
+    # fmt: off
+
+    id:           Mapped[uuid.UUID]        = mapped_column(UUID, primary_key=True, default=uuid.uuid4)
+    name:         Mapped[str]              = mapped_column(Text, nullable=False)
+    display_name: Mapped[str | None]       = mapped_column(Text, nullable=True)
+    version:      Mapped[int]              = mapped_column(Integer, nullable=False)
+    indicators:   Mapped[dict[str, Any]]   = mapped_column(JSONB, nullable=False, server_default=text("'{}'"), default=dict)
+    notes:        Mapped[str | None]       = mapped_column(Text, nullable=True)
+    author:       Mapped[str | None]       = mapped_column(Text, nullable=True)
+    meta:         Mapped[dict[str, Any]]   = mapped_column(JSONB, nullable=False, server_default=text("'{}'"), default=dict)
+    active:       Mapped[bool]             = mapped_column(Boolean, nullable=False, server_default=true(), default=True)
+    created_at:   Mapped[datetime]         = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+    # fmt: on
+
+
 class SLODefinition(Base):
     """Versioned SLO definition — rows are immutable after insert."""
 
@@ -187,5 +297,76 @@ class SLIValue(Base):
     asset_name: Mapped[str | None] = mapped_column(Text, nullable=True)
     test_name: Mapped[str | None] = mapped_column(Text, nullable=True)
     os_tag: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    # fmt: on
+
+
+class AssetSLOLink(Base):
+    """Permanent named binding of an asset to a SLO + SLI + DataSource triple.
+
+    Callers trigger evaluations by group/asset name — the system resolves which
+    SLO, SLI, and DataSource to use from these bindings at trigger time.
+    SLO, SLI, and DataSource names resolve to their latest active version.
+    """
+
+    __tablename__ = "asset_slo_links"
+    __table_args__ = (
+        Index("idx_asset_slo_links_asset", "asset_id"),
+        UniqueConstraint("asset_id", "link_name", name="uq_asset_slo_link_name"),
+    )
+
+    # fmt: off
+
+    id:               Mapped[uuid.UUID]  = mapped_column(UUID, primary_key=True, default=uuid.uuid4)
+    link_name:        Mapped[str]        = mapped_column(Text, nullable=False)
+    asset_id:         Mapped[uuid.UUID]  = mapped_column(UUID, ForeignKey("assets.id", ondelete="CASCADE"), nullable=False)
+    slo_name:         Mapped[str]        = mapped_column(Text, nullable=False)
+    sli_name:         Mapped[str]        = mapped_column(Text, nullable=False)
+    data_source_name: Mapped[str]        = mapped_column(Text, nullable=False)
+    created_at:       Mapped[datetime]   = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+    # fmt: on
+
+
+class AssetGroupSLOLink(Base):
+    """Same as AssetSLOLink but bound to an asset group instead of a single asset."""
+
+    __tablename__ = "asset_group_slo_links"
+    __table_args__ = (
+        Index("idx_asset_group_slo_links_group", "group_id"),
+        UniqueConstraint("group_id", "link_name", name="uq_asset_group_slo_link_name"),
+    )
+
+    # fmt: off
+
+    id:               Mapped[uuid.UUID]  = mapped_column(UUID, primary_key=True, default=uuid.uuid4)
+    link_name:        Mapped[str]        = mapped_column(Text, nullable=False)
+    group_id:         Mapped[uuid.UUID]  = mapped_column(UUID, ForeignKey("asset_groups.id", ondelete="CASCADE"), nullable=False)
+    slo_name:         Mapped[str]        = mapped_column(Text, nullable=False)
+    sli_name:         Mapped[str]        = mapped_column(Text, nullable=False)
+    data_source_name: Mapped[str]        = mapped_column(Text, nullable=False)
+    created_at:       Mapped[datetime]   = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+    # fmt: on
+
+
+class EvaluationBatch(Base):
+    """Groups all evaluations spawned by a single trigger call.
+
+    When a group with N bindings across M assets is triggered, one batch is
+    created containing up to N×M evaluation IDs. Callers poll batch status
+    instead of tracking individual evaluation IDs.
+    """
+
+    __tablename__ = "evaluation_batches"
+    __table_args__ = (Index("idx_evaluation_batches_status", "status"),)
+
+    # fmt: off
+
+    id:             Mapped[uuid.UUID]        = mapped_column(UUID, primary_key=True, default=uuid.uuid4)
+    status:         Mapped[str]              = mapped_column(Text, nullable=False, server_default=text("'pending'"), default="pending")
+    trigger_params: Mapped[dict[str, Any]]   = mapped_column(JSONB, nullable=False, server_default=text("'{}'"), default=dict)
+    evaluation_ids: Mapped[list[Any]]        = mapped_column(JSONB, nullable=False, server_default=text("'[]'"), default=list)
+    created_at:     Mapped[datetime]         = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
     # fmt: on
