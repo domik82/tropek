@@ -6,7 +6,7 @@ import uuid
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
-from sqlalchemy import delete, insert, select, update
+from sqlalchemy import String, delete, insert, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -297,6 +297,157 @@ class EvaluationRepository:
             )
         )
         return list(result.scalars().all())
+
+    async def list_with_counts(
+        self,
+        *,
+        asset_id: uuid.UUID | None = None,
+        slo_name: str | None = None,
+        result: str | None = None,
+        date_prefix: str | None = None,
+        asset_ids: list[uuid.UUID] | None = None,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> tuple[list[Evaluation], int, dict[uuid.UUID, int]]:
+        """Return (page, total_count, annotation_count_map) with optional filters.
+
+        asset_id and asset_ids are DB FK lookups (not JSONB snapshot).
+        annotation_count_map: {eval_id -> count} for the returned page only.
+        """
+        from sqlalchemy import func as sqlfunc
+
+        q = select(Evaluation)
+        if asset_id:
+            q = q.where(Evaluation.asset_id == asset_id)
+        if slo_name:
+            q = q.where(Evaluation.slo_name == slo_name)
+        if result:
+            q = q.where(Evaluation.result == result)
+        if date_prefix:
+            q = q.where(Evaluation.period_start.cast(String).like(f"{date_prefix}%"))
+        if asset_ids:
+            q = q.where(Evaluation.asset_id.in_(asset_ids))
+        count_q = select(sqlfunc.count()).select_from(q.subquery())
+        total_result = await self._session.execute(count_q)
+        total = total_result.scalar_one()
+        q = q.order_by(Evaluation.period_start.desc()).limit(limit).offset(offset)
+        rows = await self._session.execute(q)
+        evals = list(rows.scalars().all())
+        count_map: dict[uuid.UUID, int] = {}
+        if evals:
+            eval_ids = [ev.id for ev in evals]
+            cnt_rows = await self._session.execute(
+                select(EvaluationAnnotation.evaluation_id, sqlfunc.count().label("cnt"))
+                .where(EvaluationAnnotation.evaluation_id.in_(eval_ids))
+                .group_by(EvaluationAnnotation.evaluation_id)
+            )
+            count_map = {row.evaluation_id: row.cnt for row in cnt_rows}
+        return evals, total, count_map
+
+    async def invalidate(self, eval_id: uuid.UUID, *, note: str) -> Evaluation | None:
+        """Mark an evaluation as invalidated."""
+        await self._session.execute(
+            update(Evaluation)
+            .where(Evaluation.id == eval_id)
+            .values(invalidated=True, invalidation_note=note)
+        )
+        return await self.get_by_id(eval_id)
+
+    async def restore(self, eval_id: uuid.UUID) -> Evaluation | None:
+        """Clear invalidation flag."""
+        await self._session.execute(
+            update(Evaluation)
+            .where(Evaluation.id == eval_id)
+            .values(invalidated=False, invalidation_note=None)
+        )
+        return await self.get_by_id(eval_id)
+
+    async def get_annotation_by_id(self, annotation_id: uuid.UUID) -> EvaluationAnnotation | None:
+        """Fetch a single annotation by its ID."""
+        result = await self._session.execute(
+            select(EvaluationAnnotation).where(EvaluationAnnotation.id == annotation_id)
+        )
+        return result.scalar_one_or_none()
+
+    async def update_annotation(
+        self,
+        annotation_id: uuid.UUID,
+        *,
+        content: str | None = None,
+        author: str | None = None,
+        category: str | None = None,
+        meta: dict[str, Any] | None = None,
+    ) -> EvaluationAnnotation | None:
+        """Update mutable annotation fields."""
+        values: dict[str, Any] = {}
+        if content is not None:
+            values["content"] = content
+        if author is not None:
+            values["author"] = author
+        if category is not None:
+            values["category"] = category
+        if meta is not None:
+            values["meta"] = meta
+        if values:
+            await self._session.execute(
+                update(EvaluationAnnotation)
+                .where(EvaluationAnnotation.id == annotation_id)
+                .values(**values)
+            )
+        return await self.get_annotation_by_id(annotation_id)
+
+    async def get_trend_by_domain(
+        self,
+        *,
+        asset_id: uuid.UUID,
+        slo_name: str,
+        metric_name: str,
+        limit: int = 50,
+    ) -> list[dict[str, Any]]:
+        """Return time-series trend points for a specific asset+SLO+metric combination.
+
+        Fetches the most recent `limit` evaluations DESC, then returns them ASC.
+        Baseline extracted from indicator_results JSONB array.
+        Excludes invalidated evaluations and those with asset_id=NULL.
+        """
+        inner = (
+            select(
+                Evaluation.period_start,
+                SLIValue.value,
+                SLIValue.eval_id,
+                Evaluation.result,
+                Evaluation.indicator_results,
+            )
+            .join(Evaluation, SLIValue.eval_id == Evaluation.id)
+            .where(
+                Evaluation.asset_id == asset_id,
+                Evaluation.slo_name == slo_name,
+                SLIValue.metric_name == metric_name,
+                Evaluation.invalidated == False,  # noqa: E712
+                Evaluation.result.is_not(None),
+            )
+            .order_by(Evaluation.period_start.desc())
+            .limit(limit)
+            .subquery()
+        )
+        rows = await self._session.execute(select(inner).order_by(inner.c.period_start))
+        points = []
+        for r in rows:
+            baseline: float | None = None
+            for ind in r.indicator_results or []:
+                if ind.get("metric") == metric_name:
+                    baseline = ind.get("compared_value")
+                    break
+            points.append(
+                {
+                    "timestamp": r.period_start.isoformat(),
+                    "value": r.value,
+                    "eval_id": str(r.eval_id),
+                    "result": r.result,
+                    "baseline": baseline,
+                }
+            )
+        return points
 
     # --- SLI Values ---
 
