@@ -67,3 +67,13 @@ class AggregateFunction(StrEnum):
     P90 = "p90"
     P95 = "p95"
     P99 = "p99"
+
+
+class EvaluationStatus(StrEnum):
+    """Job lifecycle status of an evaluation record."""
+
+    PENDING = "pending"
+    RUNNING = "running"
+    COMPLETED = "completed"
+    FAILED = "failed"
+    PARTIAL = "partial"
