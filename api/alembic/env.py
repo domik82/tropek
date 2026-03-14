@@ -3,13 +3,22 @@
 from __future__ import annotations
 
 import asyncio
+import os
 from logging.config import fileConfig
+from pathlib import Path
 
 from alembic import context
 from app.config import get_settings
 from app.db.models import Base
+from dotenv import load_dotenv
 from sqlalchemy import pool
 from sqlalchemy.ext.asyncio import async_engine_from_config
+
+# Load the env file specified by ENV_FILE (default: .env).
+# This lets `uv run alembic upgrade head` work without shell sourcing tricks —
+# pass ENV_FILE=.env.test as a single env var prefix when targeting the test DB.
+_env_file = Path(os.environ.get("ENV_FILE", ".env"))
+load_dotenv(_env_file, override=False)  # env vars already in shell take precedence
 
 config = context.config
 if config.config_file_name is not None:

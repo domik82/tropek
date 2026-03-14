@@ -31,6 +31,9 @@ docker compose up timescaledb redis -d
 # Apply DB migrations (dev)
 uv run --directory api alembic upgrade head
 
+# Apply DB migrations (test DB — single command, no chaining needed)
+ENV_FILE=.env.test uv run --directory api alembic upgrade head
+
 # Start all services
 docker compose up --build
 ```
@@ -63,6 +66,17 @@ uv run pytest api/tests/ -m integration -v
 
 `pytest-dotenv` loads `.env.test` automatically — **never** pass `TEST_DATABASE_URL` or `QG_*`
 vars as shell prefixes or inline exports. The scripts handle env loading for migrations.
+
+### Re-running migrations only (container already running)
+
+If the container is already up and you only need to re-apply migrations:
+
+```bash
+ENV_FILE=.env.test uv run --directory api alembic upgrade head
+```
+
+This is a single command — `alembic/env.py` uses `python-dotenv` to load `ENV_FILE` internally.
+Never use `set -a && source .env.test && set +a` or any bash chaining for this purpose.
 
 ## Architecture
 
