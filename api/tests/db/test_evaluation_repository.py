@@ -16,7 +16,7 @@ _START = datetime(2026, 3, 12, 10, 0, 0, tzinfo=UTC)
 _END = datetime(2026, 3, 12, 10, 30, 0, tzinfo=UTC)
 
 
-def _make_snapshot(os: str = "windows-11", arch: str = "x64") -> dict:
+def _make_snapshot(os: str = "windows-11", arch: str = "x64") -> dict[str, str | dict[str, str]]:
     return {"name": "vm-test-01", "tags": {"os": os, "arch": arch}}
 
 
@@ -188,3 +188,38 @@ async def test_write_and_read_sli_values(db_session: AsyncSession) -> None:
     assert len(stored) == 1
     assert stored[0].metric_name == "cpu_usage"
     assert stored[0].value == pytest.approx(72.3)
+
+
+@pytest.mark.integration
+async def test_get_baselines_filters_by_sli_name(db_session: AsyncSession) -> None:
+    repo = EvaluationRepository(db_session)
+    # Create evaluations with different sli_name values
+    for sli_name in ("cpu_usage", "cpu_usage", "memory_usage"):
+        ev = await repo.create_pending(
+            name="metric-filter-test",
+            period_start=_START,
+            period_end=_END,
+            ingestion_mode="push",
+            asset_snapshot=_make_snapshot(),
+            metadata={},
+            sli_name=sli_name,
+        )
+        await repo.mark_completed(
+            ev.id,
+            result="pass",
+            score=90.0,
+            slo_yaml="",
+            indicator_results=[],
+        )
+    # Query baselines with sli_name filter
+    baselines = await repo.get_baselines(
+        name="metric-filter-test",
+        scope_tags=["os"],
+        asset_snapshot=_make_snapshot(),
+        include_result_with_score="pass",
+        limit=10,
+        sli_name="cpu_usage",
+    )
+    assert len(baselines) == 2
+    for b in baselines:
+        assert b.sli_name == "cpu_usage"

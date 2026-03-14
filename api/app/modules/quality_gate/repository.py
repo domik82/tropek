@@ -236,6 +236,7 @@ class EvaluationRepository:
         asset_snapshot: dict[str, Any],
         include_result_with_score: str,
         limit: int,
+        sli_name: str | None = None,
     ) -> list[Evaluation]:
         """Fetch previous completed evaluations for relative criteria comparison.
 
@@ -247,6 +248,7 @@ class EvaluationRepository:
             asset_snapshot: Current evaluation's asset snapshot — provides tag values to match.
             include_result_with_score: "pass", "pass_or_warn", or "all".
             limit: Maximum number of baseline evaluations to return.
+            sli_name: Optional SLI name to match (for filtering baselines by metric).
 
         Returns:
             Matching completed evaluations ordered by period_start descending.
@@ -261,6 +263,9 @@ class EvaluationRepository:
         elif include_result_with_score == "pass_or_warn":
             q = q.where(Evaluation.result.in_(["pass", "warning"]))
         # "all" — no result filter
+
+        if sli_name:
+            q = q.where(Evaluation.sli_name == sli_name)
 
         # Scope by asset snapshot tags
         current_tags = asset_snapshot.get("tags", {})
