@@ -354,7 +354,7 @@ class EvaluationBatch(Base):
     """Groups all evaluations spawned by a single trigger call.
 
     When a group with N bindings across M assets is triggered, one batch is
-    created containing up to N×M evaluation IDs. Callers poll batch status
+    created containing up to NxM evaluation IDs. Callers poll batch status
     instead of tracking individual evaluation IDs.
     """
 
