@@ -587,6 +587,11 @@ latest active version per name only (no inactive filtering in Phase 1).
    then re-sort the result `ASC` for display (wrap in CTE or subquery).
    A plain `ORDER BY ASC LIMIT N` returns the N oldest, not the N most recent.
 
+**`asset_id` nullability:** `Evaluation.asset_id` is nullable (push/file-mode evaluations may have
+`asset_id = NULL`). The trend query filters on `evaluations.asset_id = :asset_id`, so push/file-mode
+evaluations are silently excluded from trend results. This is correct behaviour — trend is only
+meaningful for pull-mode evaluations tied to a known asset.
+
 **Silent failure mode note:** Never call `EvaluationSummary.model_validate(orm_obj)` with a bare
 ORM object. The computed fields `annotation_count`, `latest_annotation`, and `top_failures` have
 defaults (`0`, `None`, `[]`) so Pydantic will not raise — it will silently return wrong data.
