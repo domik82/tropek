@@ -78,3 +78,28 @@ async def test_get_latest_nonexistent_returns_none(db_session: AsyncSession) -> 
     repo = SLORepository(db_session)
     result = await repo.get_latest("does-not-exist")
     assert result is None
+
+
+@pytest.mark.integration
+async def test_create_with_display_name_stores_and_retrieves(db_session: AsyncSession) -> None:
+    repo = SLORepository(db_session)
+    slo = await repo.create(
+        "display-name-slo",
+        YAML_V1,
+        display_name="My Test SLO",
+        author="alice",
+    )
+    assert slo.display_name == "My Test SLO"
+    fetched = await repo.get_latest("display-name-slo")
+    assert fetched is not None
+    assert fetched.display_name == "My Test SLO"
+
+
+@pytest.mark.integration
+async def test_create_without_display_name_defaults_to_none(db_session: AsyncSession) -> None:
+    repo = SLORepository(db_session)
+    slo = await repo.create("no-display-slo", YAML_V1)
+    assert slo.display_name is None
+    fetched = await repo.get_latest("no-display-slo")
+    assert fetched is not None
+    assert fetched.display_name is None

@@ -22,6 +22,7 @@ class SLORepository:
         self,
         name: str,
         slo_yaml: str,
+        display_name: str | None = None,
         notes: str | None = None,
         author: str | None = None,
         meta: dict[str, Any] | None = None,
@@ -33,6 +34,7 @@ class SLORepository:
         Args:
             name: Stable external identifier for the SLO.
             slo_yaml: Full SLO YAML content.
+            display_name: Optional human-readable display name for the SLO.
             notes: Optional description of changes in this version.
             author: Optional identifier of who created this version.
             meta: Optional arbitrary key-value metadata.
@@ -55,6 +57,7 @@ class SLORepository:
             name=name,
             version=next_version,
             slo_yaml=slo_yaml,
+            display_name=display_name,
             notes=notes,
             author=author,
             meta=meta or {},
