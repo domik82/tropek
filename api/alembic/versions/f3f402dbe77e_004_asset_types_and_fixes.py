@@ -59,6 +59,21 @@ def upgrade() -> None:
         unique=True,
         postgresql_where=sa.text("is_default = true"),
     )
+    # Seed default asset types (omit id — let DB generate UUIDs)
+    op.bulk_insert(
+        sa.table(
+            "asset_types",
+            sa.column("name", sa.Text()),
+            sa.column("is_default", sa.Boolean()),
+        ),
+        [
+            {"name": "vm", "is_default": True},
+            {"name": "server", "is_default": False},
+            {"name": "container", "is_default": False},
+            {"name": "endpoint", "is_default": False},
+            {"name": "sensor", "is_default": False},
+        ],
+    )
     op.create_table(
         "data_sources",
         sa.Column("id", sa.UUID(), nullable=False),
