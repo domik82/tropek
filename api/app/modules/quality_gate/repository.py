@@ -306,6 +306,8 @@ class EvaluationRepository:
         result: str | None = None,
         date_prefix: str | None = None,
         asset_ids: list[uuid.UUID] | None = None,
+        from_ts: datetime | None = None,
+        to_ts: datetime | None = None,
         limit: int = 50,
         offset: int = 0,
     ) -> tuple[list[Evaluation], int, dict[uuid.UUID, int]]:
@@ -327,6 +329,10 @@ class EvaluationRepository:
             q = q.where(Evaluation.period_start.cast(String).like(f"{date_prefix}%"))
         if asset_ids:
             q = q.where(Evaluation.asset_id.in_(asset_ids))
+        if from_ts:
+            q = q.where(Evaluation.period_start >= from_ts)
+        if to_ts:
+            q = q.where(Evaluation.period_start <= to_ts)
         count_q = select(sqlfunc.count()).select_from(q.subquery())
         total_result = await self._session.execute(count_q)
         total = total_result.scalar_one()
