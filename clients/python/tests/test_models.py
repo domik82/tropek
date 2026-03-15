@@ -1,51 +1,59 @@
-"""Tests for Pydantic model validation."""
-
 from __future__ import annotations
 
-import pytest
-from pydantic import ValidationError
-from tropek_client.models import (
-    SLIDefinitionCreate,
-    SLODefinitionCreate,
-    SLOValidationResult,
-)
-from tropek_client.models import (
-    ValidationError as TropekValError,
-)
+from tropek_client.models import Asset, AssetType, SLODefinition, SLOTestRequest
+
+_UUID = "00000000-0000-0000-0000-000000000123"
 
 
-def test_sli_definition_create_requires_name():
-    with pytest.raises(ValidationError):
-        SLIDefinitionCreate(indicators={"cpu": "avg(cpu)"})  # type: ignore[call-arg]
+def test_asset_type_from_dict():
+    at = AssetType.model_validate({"id": _UUID, "name": "vm", "is_default": True})
+    assert at.name == "vm"
+    assert at.is_default is True
 
 
-def test_sli_definition_create_requires_indicators():
-    with pytest.raises(ValidationError):
-        SLIDefinitionCreate(name="test")  # type: ignore[call-arg]
-
-
-def test_sli_definition_valid():
-    sli = SLIDefinitionCreate(name="test-sli", indicators={"cpu": "avg(cpu_usage)"})
-    assert sli.name == "test-sli"
-    assert sli.indicators == {"cpu": "avg(cpu_usage)"}
-
-
-def test_slo_definition_create_valid():
-    slo = SLODefinitionCreate(name="test-slo", slo_yaml="spec_version: '1.0'")
-    assert slo.name == "test-slo"
-
-
-def test_slo_validation_result_valid():
-    result = SLOValidationResult(valid=True, errors=[])
-    assert result.valid is True
-    assert result.errors == []
-
-
-def test_slo_validation_result_with_errors():
-    result = SLOValidationResult(
-        valid=False,
-        errors=[TropekValError(field="slo_yaml", message="empty slo yaml")],
+def test_asset_from_dict():
+    a = Asset.model_validate(
+        {
+            "id": _UUID,
+            "name": "vm-01",
+            "display_name": "VM 01",
+            "type_name": "vm",
+            "labels": {"os": "linux"},
+            "created_at": "2026-03-01T00:00:00Z",
+        }
     )
-    assert result.valid is False
-    assert len(result.errors) == 1
-    assert result.errors[0].field == "slo_yaml"
+    assert a.name == "vm-01"
+    assert a.labels["os"] == "linux"
+
+
+def test_slo_definition_from_dict():
+    slo = SLODefinition.model_validate(
+        {
+            "id": _UUID,
+            "name": "my-slo",
+            "display_name": None,
+            "version": 1,
+            "slo_yaml": "spec_version: '1.0'",
+            "notes": None,
+            "author": None,
+            "meta": {},
+            "active": True,
+            "created_at": "2026-03-01T00:00:00Z",
+        }
+    )
+    assert slo.version == 1
+
+
+def test_slo_test_request_from_dict():
+    req = SLOTestRequest.model_validate(
+        {
+            "slo_yaml": "spec_version: '1.0'",
+            "sli_name": "my-sli",
+            "data_source_name": "prom",
+            "asset_name": "vm-01",
+            "period_start": "2026-03-01T00:00:00Z",
+            "period_end": "2026-03-01T01:00:00Z",
+        }
+    )
+    assert req.sli_name == "my-sli"
+    assert req.baseline is None

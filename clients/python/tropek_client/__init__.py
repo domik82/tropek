@@ -1,33 +1,17 @@
-"""TROPEK Python client SDK."""
+"""TROPEK Python client — typed API client with declarative YAML setup."""
 
 from tropek_client.client import TropekClient
 from tropek_client.exceptions import (
     TropekAPIError,
-    TropekConnectionError,
-    TropekError,
+    TropekConflictError,
     TropekNotFoundError,
     TropekValidationError,
 )
-from tropek_client.manifest import (
-    ActionType,
-    ReconcileAction,
-    ReconcileResult,
-    apply,
-    load_manifest,
-    plan,
-)
 
 __all__ = [
-    "ActionType",
-    "ReconcileAction",
-    "ReconcileResult",
     "TropekAPIError",
     "TropekClient",
-    "TropekConnectionError",
-    "TropekError",
+    "TropekConflictError",
     "TropekNotFoundError",
     "TropekValidationError",
-    "apply",
-    "load_manifest",
-    "plan",
 ]

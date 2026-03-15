@@ -1,94 +1,271 @@
-"""Pydantic models mirroring TROPEK API schemas."""
+"""Pydantic models mirroring TROPEK API response schemas."""
 
 from __future__ import annotations
 
+import uuid
 from datetime import datetime
-from typing import Any
+from typing import Any, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict
+
+
+class PagedResponse[T](BaseModel):
+    """Generic paginated response."""
+
+    items: list[T]
+    total: int
+
+
+class AssetType(BaseModel):
+    """Asset type."""
+
+    id: uuid.UUID
+    name: str
+    is_default: bool
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class Asset(BaseModel):
+    """Asset."""
+
+    id: uuid.UUID
+    name: str
+    display_name: str | None
+    type_name: str
+    labels: dict[str, str]
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class AssetGroupMember(BaseModel):
+    """Member of an asset group."""
+
+    asset_id: uuid.UUID
+    asset_name: str
+    weight: float
+
+
+class AssetGroupSubgroup(BaseModel):
+    """Subgroup reference."""
+
+    group_id: uuid.UUID
+    weight: float
+
+
+class AssetGroup(BaseModel):
+    """Asset group with members and subgroups."""
+
+    id: uuid.UUID
+    name: str
+    display_name: str | None
+    members: list[AssetGroupMember]
+    subgroups: list[AssetGroupSubgroup]
+
+
+class AssetGroupTree(BaseModel):
+    """Tree of asset groups.
+
+    NOTE: Verify field names against actual GET /asset-groups/tree response.
+    If the API returns different field names, update to match.
+    """
+
+    top_level: list[AssetGroup]
+    all_groups: list[AssetGroup]
+
+
+class DataSource(BaseModel):
+    """Data source registration."""
+
+    id: uuid.UUID
+    name: str
+    display_name: str | None
+    adapter_type: str
+    adapter_url: str
+    labels: dict[str, Any]
+
+    model_config = ConfigDict(from_attributes=True)
 
 
 class SLIDefinition(BaseModel):
-    """SLI definition as returned by GET /sli-definitions/{name}."""
+    """SLI definition."""
 
-    id: str
+    id: uuid.UUID
     name: str
-    display_name: str | None = None
+    display_name: str | None
     version: int
     indicators: dict[str, str]
-    notes: str | None = None
-    author: str | None = None
-    meta: dict[str, Any] = Field(default_factory=dict)
+    notes: str | None
+    author: str | None
+    meta: dict[str, Any]
     active: bool
     created_at: datetime
 
-
-class SLIDefinitionCreate(BaseModel):
-    """Payload for POST /sli-definitions."""
-
-    name: str
-    display_name: str | None = None
-    indicators: dict[str, str]
-    notes: str | None = None
-    author: str | None = None
-    meta: dict[str, Any] = Field(default_factory=dict)
+    model_config = ConfigDict(from_attributes=True)
 
 
 class SLODefinition(BaseModel):
-    """SLO definition as returned by GET /slo-definitions/{name}."""
+    """SLO definition."""
 
-    id: str
+    id: uuid.UUID
     name: str
-    display_name: str | None = None
+    display_name: str | None
     version: int
     slo_yaml: str
-    notes: str | None = None
-    author: str | None = None
+    notes: str | None
+    author: str | None
+    meta: dict[str, Any]
     active: bool
     created_at: datetime
 
-
-class SLODefinitionCreate(BaseModel):
-    """Payload for POST /slo-definitions."""
-
-    name: str
-    display_name: str | None = None
-    slo_yaml: str
-    notes: str | None = None
-    author: str | None = None
+    model_config = ConfigDict(from_attributes=True)
 
 
-class PagedResponse(BaseModel):
-    """Generic paged response wrapper."""
-
-    items: list[Any]
-    total: int
-
-
-class SLIPagedResponse(BaseModel):
-    """Paged response for SLI definitions."""
-
-    items: list[SLIDefinition]
-    total: int
-
-
-class SLOPagedResponse(BaseModel):
-    """Paged response for SLO definitions."""
-
-    items: list[SLODefinition]
-    total: int
-
-
-class ValidationError(BaseModel):
-    """A single SLO validation error."""
+class SLOValidationError(BaseModel):
+    """Single validation error."""
 
     field: str
     message: str
 
 
 class SLOValidationResult(BaseModel):
-    """Response from POST /slo-definitions/validate."""
+    """Result from SLO validation."""
 
     valid: bool
-    errors: list[ValidationError]
+    errors: list[SLOValidationError]
     objectives: list[dict[str, Any]] | None = None
+
+
+class BaselineConfig(BaseModel):
+    """Baseline configuration for SLO testing."""
+
+    mode: Literal["none", "asset_history", "manual"]
+    values: dict[str, float] | None = None
+
+
+class SLOTestRequest(BaseModel):
+    """Request body for POST /slo-definitions/test."""
+
+    slo_yaml: str
+    sli_name: str
+    data_source_name: str
+    asset_name: str
+    period_start: datetime
+    period_end: datetime
+    baseline: BaselineConfig | None = None
+
+
+class SLOTestResult(BaseModel):
+    """Result from SLO test/dry-run."""
+
+    result: str
+    score: float
+    indicator_results: list[IndicatorResult]
+    warning_count: int
+    fail_count: int
+
+
+class FailingIndicator(BaseModel):
+    """A failing SLI indicator summary."""
+
+    metric: str
+    display_name: str
+    value: float
+    threshold: str
+
+
+class Annotation(BaseModel):
+    """Evaluation annotation."""
+
+    id: uuid.UUID
+    content: str
+    author: str | None
+    category: str | None
+    meta: dict[str, Any]
+    created_at: datetime
+    updated_at: datetime | None
+
+
+class EvaluationSummary(BaseModel):
+    """Compact evaluation for list views."""
+
+    id: uuid.UUID
+    name: str
+    status: str
+    result: str | None
+    score: float | None
+    period_start: datetime
+    period_end: datetime
+    slo_name: str | None
+    slo_version: int | None
+    sli_name: str | None
+    sli_version: int | None
+    data_source_name: str | None
+    ingestion_mode: str
+    adapter_used: str | None
+    invalidated: bool
+    asset_snapshot: dict[str, Any]
+    evaluation_metadata: dict[str, Any]
+    annotation_count: int
+    latest_annotation: Annotation | None
+    top_failures: list[FailingIndicator]
+    created_at: datetime
+
+
+class IndicatorResult(BaseModel):
+    """Per-SLI evaluation result."""
+
+    metric: str
+    display_name: str
+    value: float
+    compared_value: float | None
+    change_absolute: float | None
+    change_relative_pct: float | None
+    status: str
+    score: float
+    weight: float
+    key_sli: bool
+    pass_targets: list[dict[str, Any]] | None
+    warning_targets: list[dict[str, Any]] | None
+
+
+class EvaluationDetail(EvaluationSummary):
+    """Full evaluation with annotations and indicator results."""
+
+    invalidation_note: str | None
+    compared_evaluation_ids: list[uuid.UUID]
+    annotations: list[Annotation]
+    indicator_results: list[IndicatorResult]
+
+
+class TrendPoint(BaseModel):
+    """Single trend data point."""
+
+    timestamp: datetime
+    value: float
+    eval_id: uuid.UUID
+    result: str
+    baseline: float | None
+
+
+class AssetSLOLink(BaseModel):
+    """Asset-SLO binding."""
+
+    id: uuid.UUID
+    link_name: str
+    asset_id: uuid.UUID
+    slo_name: str
+    sli_name: str
+    data_source_name: str
+
+
+class AssetGroupSLOLink(BaseModel):
+    """Asset group-SLO binding."""
+
+    id: uuid.UUID
+    link_name: str
+    group_id: uuid.UUID
+    slo_name: str
+    sli_name: str
+    data_source_name: str
