@@ -20,7 +20,8 @@ structured to the API.
 
 ### `features/slos/types.ts`
 
-`SloObjective` flattens the old Keptn-inherited nested criteria structure:
+`SloObjective` flattens the old Keptn-inherited nested criteria structure. `tab_group` and
+`labels` are dropped — they have no equivalent in the new backend schema:
 
 ```typescript
 export interface SloObjective {
@@ -54,10 +55,22 @@ export interface SloDefinition {
 }
 ```
 
-`SloValidationResult.objectives` updates to `SloObjective[] | undefined`.
+`SloValidationResult` full updated interface:
+
+```typescript
+export interface SloValidationResult {
+  valid: boolean
+  errors: { field: string; message: string }[]
+  objectives?: SloObjective[]   // was: SloObjective[] using old nested criteria shape
+}
+```
 
 `SliQuery` and `SloScoreThresholds` are deleted — they existed only to bridge the old YAML
 blob workflow.
+
+`comparison` on `SloDefinition` stays typed as `Record<string, unknown>` — no dedicated
+`SloComparison` TypeScript interface is introduced. The comparison UI is out of scope for this
+refactor; the opaque type is intentional and sufficient.
 
 ### `features/slos/api.ts`
 
@@ -80,12 +93,15 @@ export async function createSloDefinition(payload: {
   objectives: SloObjective[]
   total_score_pass_pct: number
   total_score_warning_pct: number
-  comparison?: Record<string, unknown>
+  comparison: Record<string, unknown>   // required; pass {} for all-default comparison settings
   display_name?: string
   notes?: string
   author?: string
 }): Promise<SloDefinition>
 ```
+
+`comparison: {}` is a valid payload — the backend treats an empty dict as all-default
+comparison settings (`compare_with: single_result`, `number_of_comparison_results: 3`, etc.).
 
 `fetchSlos`, `fetchSloDetail`, `fetchSloVersions` — signatures unchanged; return types update
 automatically via the new `SloDefinition`.
@@ -121,13 +137,24 @@ export function parseSloManifest(
 ): { ok: true; value: ParsedSloManifest } | { ok: false; error: ParseSloManifestError }
 ```
 
-- Detects `---` separator after the first line → returns `{ ok: false, error: { kind: 'multi_document' } }`
+- **Multi-document detection**: split the input on `\n` and count lines matching `/^---$/`.
+  If two or more such lines exist, the file contains multiple documents → return
+  `{ ok: false, error: { kind: 'multi_document' } }`. A single leading `---` (valid YAML
+  front matter) is permitted. This is a heuristic — a `notes` field containing `---` on its
+  own line would be a false positive. This edge case is acceptable given that manifests are
+  machine-generated and unlikely to embed bare `---` lines in prose fields.
 - Uses `js-yaml.load()` to parse the document
 - Extracts fields from the new manifest format:
-  - `metadata.name/display_name/author/notes` → top-level fields
-  - `spec.total_score.pass_pct/warning_pct` → `total_score_pass_pct/warning_pct`
+  - `metadata.name/display_name/author/notes` → top-level string fields (default `""` if absent)
+  - `spec.total_score.pass_pct/warning_pct` → `total_score_pass_pct/warning_pct` (default 90/75)
   - `spec.objectives[]` → `SloObjective[]` with `sort_order` assigned from array index
-- Returns a typed result union instead of `null`, so callers can distinguish error kinds
+  - `spec.comparison` → `comparison` (default `{}`)
+- The manifest format uses `sli:` at the objective level (not `sli_name:` from the old format).
+  The parser handles only the new format — files using `sli_name:` will fail with
+  `{ kind: 'invalid_structure' }`.
+- Returns a typed result union instead of `null`, so callers can distinguish error kinds.
+  **Callers must branch on `result.ok`, not on truthiness** — `{ ok: false, error: ... }` is
+  a truthy object and would silently pass a null-guard check.
 
 ### `toSloManifest`
 
@@ -140,8 +167,9 @@ Reconstructs a manifest YAML string from a `SloDefinition`. Used by:
 - `SloYamlViewer` — generates YAML for the `<pre>` display in history panel
 
 Null metadata fields (`display_name`, `author`, `notes`) are emitted as empty strings, not
-omitted. Objectives are emitted in `sort_order` order. Uses `js-yaml.dump()` with
-`lineWidth: -1` to prevent unwanted line-wrapping of criteria strings.
+omitted. Objectives are emitted in `sort_order` order. The `sort_order` field itself is not
+included in the YAML output — strip it from each objective before passing to `js-yaml.dump()`.
+Uses `js-yaml.dump()` with `lineWidth: -1` to prevent unwanted line-wrapping of criteria strings.
 
 Output format:
 
@@ -182,18 +210,25 @@ spec:
 ### `SloYamlUpload.tsx`
 
 - Calls `parseSloManifest` (from `lib/sloManifest.ts`) instead of the old parser
-- Multi-document error → shows "Multi-document files are not supported — upload one SLO at a time"
-- Other parse errors → show the error message from the result
-- Preview shows structured content: objectives table, score thresholds, comparison block
+- Branches on `result.ok` (not truthiness — see Section 2 note):
+  - `multi_document` → "Multi-document files are not supported — upload one SLO at a time"
+  - `parse_error` / `invalid_structure` → show `error.message`
+- Preview shows structured content: objectives table with columns **Indicator** (`sli`),
+  **Display Name**, **Pass Criteria**, **Warning Criteria**, **Weight**, **Key SLI**; plus
+  score thresholds and comparison block. `tab_group` and `sort_order` are not shown.
 - On save: calls `createSloDefinition` with structured fields extracted from `ParsedSloManifest`
 
 ### `SloYamlEditor.tsx` (Raw Edit tab — round-trip)
 
 - On open: calls `toSloManifest(slo)` to populate the textarea from the current structured definition
-- On save: calls `parseSloManifest(editedText)`:
-  - Parse error → show error, do not submit
-  - Success → call `validateSlo(parsed)`, show validation errors if any
-  - Valid → call `createSloDefinition` with structured fields (creates a new version)
+- On save: branches on `result.ok` from `parseSloManifest(editedText)`:
+  - `multi_document` → "Multi-document files are not supported — upload one SLO at a time"
+  - `parse_error` / `invalid_structure` → show `error.message`, do not submit
+  - Success → call `validateSlo(result.value)`, show validation errors if any
+  - Valid → call `createSloDefinition` passing all fields from `result.value`
+    (`objectives`, `total_score_pass_pct`, `total_score_warning_pct`, `comparison`) plus
+    the existing SLO's `name`, `display_name`, `author`, `notes` (the editor does not update
+    SLO metadata, only its score and objectives) — creates a new version
 
 ### `SloYamlViewer.tsx`
 
@@ -213,13 +248,39 @@ spec:
 
 ### `SloObjectiveEditor.tsx`
 
-- Objective form state uses flat `pass_criteria`/`warning_criteria` arrays
-- Submits structured fields to `createSloDefinition` instead of rebuilding YAML
+Props: receives the full `SloDefinition` being edited plus an `onSave` callback. Internally
+manages a list of `SloObjective` items with flat `pass_criteria`/`warning_criteria` arrays.
+On save: calls `createSloDefinition` with the SLO's existing metadata fields plus the updated
+objectives list, `total_score_pass_pct`, `total_score_warning_pct`, and `comparison` —
+creates a new version.
+
+### `features/slos/hooks.ts`
+
+`useSloValidation` currently calls `validateSloYaml`. Update it to call `validateSlo` with
+the structured payload shape:
+
+```typescript
+// Before
+useSloValidation(yaml: string)  →  calls validateSloYaml(yaml)
+
+// After
+useSloValidation(payload: {
+  objectives: SloObjective[]
+  total_score_pass_pct: number
+  total_score_warning_pct: number
+  comparison: Record<string, unknown>
+})  →  calls validateSlo(payload)
+```
+
+Callers (`SloYamlEditor`, `SloObjectiveEditor`) pass the structured payload directly.
 
 ### `SloCreateForm.tsx`
 
 - Drops the YAML-building step before submission — submits structured fields directly
-- The "paste YAML" tab calls `parseSloManifest` instead of the old parser
+- The "paste YAML" tab calls `parseSloManifest` and branches on `result.ok`:
+  - `multi_document` → "Multi-document files are not supported — upload one SLO at a time"
+  - `parse_error` / `invalid_structure` → show `error.message` inline
+  - Success → pre-fill form fields from `result.value`
 - Internal form state uses flat `pass_criteria`/`warning_criteria`
 
 ### Pages
@@ -284,6 +345,7 @@ All 5 entries replace `slo_yaml` with structured fields. Shape per entry:
 |---|---|
 | `features/slos/types.ts` | Update |
 | `features/slos/api.ts` | Update |
+| `features/slos/hooks.ts` | Update (`useSloValidation` wired to new `validateSlo`) |
 | `lib/parseSloYaml.ts` | Delete |
 | `lib/parseSloYaml.test.ts` | Delete |
 | `lib/sloManifest.ts` | Create |
