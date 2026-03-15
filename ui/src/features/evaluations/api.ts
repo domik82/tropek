@@ -10,12 +10,14 @@ import type {
   TriggerEvaluationPayload,
   Annotation,
 } from './types'
+import type { MetricHeatmapResponse } from '@/features/navigator/types'
 
 const BASE = '/api'
 
 function toParams(filters: EvaluationFilters): string {
   const p = new URLSearchParams()
   if (filters.group_name) p.set('group_name', filters.group_name)
+  if (filters.asset_name) p.set('asset_name', filters.asset_name)
   if (filters.date) p.set('date', filters.date)
   if (filters.from) p.set('from', filters.from)
   if (filters.to) p.set('to', filters.to)
@@ -79,5 +81,11 @@ export async function invalidateEvaluation(
     body: JSON.stringify({ invalidation_note: note }),
   })
   if (!res.ok) throw new Error(`invalidateEvaluation: ${res.status}`)
+  return res.json()
+}
+
+export async function fetchMetricHeatmap(assetName: string): Promise<MetricHeatmapResponse> {
+  const res = await fetch(`${BASE}/evaluations/metric-heatmap?asset_name=${encodeURIComponent(assetName)}`)
+  if (!res.ok) throw new Error(`fetchMetricHeatmap: ${res.status}`)
   return res.json()
 }
