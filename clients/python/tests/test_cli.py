@@ -1,7 +1,11 @@
 from __future__ import annotations
 
+from unittest.mock import MagicMock
+
+import tropek_client.cli as cli_mod
 from click.testing import CliRunner
 from tropek_client.cli import cli
+from tropek_client.manifest import ApplyPlan, PlanAction
 
 
 def test_validate_valid_manifest(tmp_path):
@@ -33,10 +37,6 @@ metadata:
 
 
 def test_apply_dry_run(tmp_path, monkeypatch):
-    from unittest.mock import MagicMock
-
-    from tropek_client.manifest import ApplyPlan, PlanAction
-
     f = tmp_path / "test.yaml"
     f.write_text("""
 api_version: tropek/v1
@@ -49,11 +49,11 @@ spec:
     mock_client = MagicMock()
     mock_plan = ApplyPlan(
         actions=[
-            PlanAction("CREATE", "AssetType", "vm", "not found in current state"),
+            PlanAction(
+                operation="CREATE", kind="AssetType", name="vm", reason="not found in current state"
+            ),
         ]
     )
-
-    import tropek_client.cli as cli_mod
 
     monkeypatch.setattr(cli_mod, "TropekClient", lambda **kw: mock_client)
 

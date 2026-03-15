@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import contextlib
 from typing import Any
 
 import httpx
@@ -37,10 +36,11 @@ def _raise_for_status(resp: httpx.Response) -> None:
     """Raise typed exception for non-2xx responses."""
     if resp.is_success:
         return
-    detail = resp.text
-    with contextlib.suppress(Exception):
-        raw = resp.json().get("detail", resp.text)
-        detail = raw if isinstance(raw, str) else str(raw)
+    try:
+        data = resp.json()
+        detail = data.get("detail", resp.text) if isinstance(data, dict) else resp.text
+    except Exception:
+        detail = resp.text
     match resp.status_code:
         case 404:
             raise TropekNotFoundError(detail)
@@ -339,9 +339,25 @@ class _SLODefinitions:
             total=data["total"],
         )
 
-    def create(self, name: str, slo_yaml: str, **kwargs: Any) -> SLODefinition:
+    def create(
+        self,
+        name: str,
+        objectives: list[dict],
+        total_score_pass_pct: float = 90.0,
+        total_score_warning_pct: float = 75.0,
+        *,
+        comparison: dict | None = None,
+        **kwargs: Any,
+    ) -> SLODefinition:
         """Create an SLO definition."""
-        body = {"name": name, "slo_yaml": slo_yaml, **kwargs}
+        body = {
+            "name": name,
+            "objectives": objectives,
+            "total_score_pass_pct": total_score_pass_pct,
+            "total_score_warning_pct": total_score_warning_pct,
+            "comparison": comparison or {},
+            **kwargs,
+        }
         resp = self._http.post("/slo-definitions", json=body)
         _raise_for_status(resp)
         return SLODefinition.model_validate(resp.json())
