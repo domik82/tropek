@@ -29,18 +29,18 @@ export const RESULT_COLOUR: Record<Theme, ResultColours> = {
     invalidated: '#b0b0b0',
   },
   forest: {
-    pass:        'oklch(64.8% 0.15 160)',
-    warning:     'oklch(84.71% 0.199 83.87)',
-    fail:        'oklch(71.76% 0.221 22.18)',
-    error:       'oklch(50% 0 0)',
-    invalidated: 'oklch(65% 0 0)',
+    pass:        '#0a9f66',  // oklch(64.8% 0.15 160)
+    warning:     '#ffb800',  // oklch(84.71% 0.199 83.87)
+    fail:        '#ff4e57',  // oklch(71.76% 0.221 22.18)
+    error:       '#595959',  // oklch(50% 0 0)
+    invalidated: '#878787',  // oklch(65% 0 0)
   },
   corporate: {
-    pass:        'oklch(62% 0.194 149.214)',
-    warning:     'oklch(85% 0.199 91.936)',
-    fail:        'oklch(70% 0.191 22.216)',
-    error:       'oklch(50% 0 0)',
-    invalidated: 'oklch(65% 0 0)',
+    pass:        '#37a266',  // oklch(62% 0.194 149.214)
+    warning:     '#d4b030',  // oklch(85% 0.199 91.936)
+    fail:        '#e05050',  // oklch(70% 0.191 22.216)
+    error:       '#595959',  // oklch(50% 0 0)
+    invalidated: '#878787',  // oklch(65% 0 0)
   },
 }
 
@@ -53,16 +53,16 @@ export const CHART_THEME: Record<Theme, ChartTheme> = {
     grid:      '#1a2030',
   },
   forest:    {
-    bg:        'oklch(16.203% 0.007 17.911)',
-    border:    'oklch(30% 0.039 171.364 / 60%)',
-    axisLabel: 'oklch(55% 0.001 17.911)',
-    grid:      'oklch(18% 0.007 171.364)',
+    bg:        '#1a1714',              // oklch(16.203% 0.007 17.911)
+    border:    'rgba(28, 44, 36, 0.6)', // oklch(30% 0.039 171.364 / 60%)
+    axisLabel: '#656260',              // oklch(55% 0.001 17.911)
+    grid:      '#14201a',              // oklch(18% 0.007 171.364)
   },
   corporate: {
-    bg:        'oklch(93% 0 0)',
-    border:    'oklch(80% 0 0)',
-    axisLabel: 'oklch(50% 0 0)',
-    grid:      'oklch(88% 0 0)',
+    bg:        '#ededed',              // oklch(93% 0 0)
+    border:    '#cccccc',              // oklch(80% 0 0)
+    axisLabel: '#595959',              // oklch(50% 0 0)
+    grid:      '#e0e0e0',              // oklch(88% 0 0)
   },
 }
 
