@@ -22,7 +22,7 @@ class SLORepository:
     async def create(
         self,
         name: str,
-        objectives: list[dict[str, Any]] | None = None,
+        objectives: list[dict[str, Any]],
         total_score_pass_pct: float = 90.0,
         total_score_warning_pct: float = 75.0,
         comparison: dict[str, Any] | None = None,
@@ -37,7 +37,7 @@ class SLORepository:
 
         Args:
             name: Stable external identifier for the SLO.
-            objectives: List of objective dicts; None is treated as empty (no objectives inserted).
+            objectives: List of objective dicts; must be non-empty (caller must supply at least one).
             total_score_pass_pct: Minimum score percentage to pass. Default 90.0.
             total_score_warning_pct: Minimum score percentage to warn. Default 75.0.
             comparison: Optional comparison config dict. None uses defaults.
@@ -75,7 +75,7 @@ class SLORepository:
         self._session.add(slo)
         await self._session.flush()
 
-        for i, obj_dict in enumerate(objectives or []):
+        for i, obj_dict in enumerate(objectives):
             obj = SLOObjectiveORM(
                 id=uuid.uuid4(),
                 slo_definition_id=slo.id,
