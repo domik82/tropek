@@ -61,12 +61,12 @@ class IndicatorResult(BaseModel):
 
     metric: str
     display_name: str
-    tab_group: str
-    value: float
+    tab_group: str | None = None
+    value: float | None
     compared_value: float | None
     change_absolute: float | None
     change_relative_pct: float | None
-    aggregation: str
+    aggregation: str | None = None
     status: str
     score: float
     weight: float
