@@ -37,7 +37,9 @@
 
 import ReactECharts from 'echarts-for-react'
 import { useMemo } from 'react'
-import { RESULT_COLOUR } from '../constants'
+import { useTheme } from '@/lib/theme-context'
+import { RESULT_COLOUR, CHART_THEME } from '@/lib/theme'
+import type { ResultColours } from '@/lib/theme'
 import { fmtSlot, fmtDateTime } from '@/lib/format'
 import type { EvaluationSummary } from '../types'
 
@@ -50,7 +52,6 @@ interface Props {
 // Severity ranking — higher number = worse result.
 // Used to pick the worst result when multiple evaluations fall in the same cell.
 const RESULT_RANK: Record<string, number> = { pass: 0, warning: 1, fail: 2, error: 3, invalidated: 4 }
-const EMPTY_COLOUR = '#1e2433'
 const SELECTED_BORDER = '#ffffff'
 
 // Each cell in the grid carries its grid position (value), display info, and
@@ -72,12 +73,14 @@ interface CellData {
  *   2. Group evaluations by (row, slot) — if duplicates exist in the same cell,
  *      keep the worst result and running-average the score
  *   3. For every (column, row) position, emit a CellData with:
- *      - Color from RESULT_COLOUR (or EMPTY_COLOUR if no evaluation exists there)
+ *      - Color from colours (or emptyColour if no evaluation exists there)
  *      - White border if this column is currently selected, transparent otherwise
  */
 function buildHeatmapData(
   evals: EvaluationSummary[],
   selectedDate: string | null,
+  colours: ResultColours,
+  emptyColour: string,
 ) {
   // Step 1: build sorted axes
   const slots = Array.from(new Set(evals.map(e => e.period_start))).sort()
@@ -119,8 +122,8 @@ function buildHeatmapData(
       const key = `${rows[yi]}::${slots[xi]}`
       const cell = cellMap.get(key)
       const colour = cell
-        ? (RESULT_COLOUR as Record<string, string>)[cell.result] ?? EMPTY_COLOUR
-        : EMPTY_COLOUR
+        ? colours[cell.result as keyof ResultColours] ?? emptyColour
+        : emptyColour
       data.push({
         value: [xi, yi],
         result: cell?.result ?? 'none',
@@ -139,24 +142,29 @@ function buildHeatmapData(
 }
 
 export function EvaluationHeatmap({ evaluations, selectedDate, onDateSelect }: Props) {
+  const { theme } = useTheme()
+  const colours = RESULT_COLOUR[theme]
+  const ct = CHART_THEME[theme]
+  const emptyColour = ct.bg
+
   // Recompute grid whenever evaluations change or a different column is selected.
   // Selection lives in the data (per-cell border style) so it must be a dependency.
   const { slots, rows, data, pad } = useMemo(
-    () => buildHeatmapData(evaluations, selectedDate),
-    [evaluations, selectedDate],
+    () => buildHeatmapData(evaluations, selectedDate, colours, emptyColour),
+    [evaluations, selectedDate, colours, emptyColour],
   )
 
   const option = {
     backgroundColor: 'transparent',
     tooltip: {
       trigger: 'item' as const,
-      backgroundColor: '#1a2030',
-      borderColor: '#374151',
-      textStyle: { color: '#e2e8f0' },
+      backgroundColor: ct.bg,
+      borderColor: ct.border,
+      textStyle: { color: ct.axisLabel },
       formatter: (p: { data: CellData }) => {
         const d = p.data
         if (d.result === 'none') return `${d.row}<br/>${fmtDateTime(d.slot)}<br/><em>no data</em>`
-        const rc = (RESULT_COLOUR as Record<string, string>)[d.result] ?? '#ccc'
+        const rc = colours[d.result as keyof ResultColours] ?? '#ccc'
         return [
           `<b>${d.row}</b>`,
           fmtDateTime(d.slot),
@@ -167,16 +175,16 @@ export function EvaluationHeatmap({ evaluations, selectedDate, onDateSelect }: P
     xAxis: {
       type: 'category' as const,
       data: slots.map(fmtSlot),
-      axisLabel: { rotate: 45, fontSize: 11, color: '#8892a4' },
-      axisLine: { lineStyle: { color: '#2d3748' } },
+      axisLabel: { rotate: 45, fontSize: 11, color: ct.axisLabel },
+      axisLine: { lineStyle: { color: ct.grid } },
       splitLine: { show: false },
     },
     yAxis: {
       type: 'category' as const,
       data: rows,
-      axisLabel: { fontSize: 11, color: '#c8d0e0', width: 210, overflow: 'truncate' as const },
-      axisLine: { lineStyle: { color: '#2d3748' } },
-      splitLine: { lineStyle: { color: '#1a2030' } },
+      axisLabel: { fontSize: 11, color: ct.axisLabel, width: 210, overflow: 'truncate' as const },
+      axisLine: { lineStyle: { color: ct.grid } },
+      splitLine: { lineStyle: { color: ct.bg } },
     },
     series: [
       {
@@ -230,7 +238,7 @@ export function EvaluationHeatmap({ evaluations, selectedDate, onDateSelect }: P
             <span key={r} className="flex items-center gap-1">
               <span
                 className="inline-block w-3 h-3 rounded-sm"
-                style={{ backgroundColor: RESULT_COLOUR[r] }}
+                style={{ backgroundColor: colours[r] }}
               />
               {r}
             </span>
