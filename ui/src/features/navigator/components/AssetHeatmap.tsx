@@ -6,8 +6,7 @@ import { useTheme } from '@/lib/theme-context'
 import { RESULT_COLOUR, CHART_THEME } from '@/lib/theme'
 import { fmtSlot, fmtDateTime } from '@/lib/format'
 import { buildAssetHeatmapData } from '../utils'
-import type { MetricHeatmapResponse } from '../types'
-import type { HeatmapCell } from '../types'
+import type { MetricHeatmapResponse, HeatmapCell } from '../types'
 
 interface Props {
   data: MetricHeatmapResponse
@@ -37,7 +36,7 @@ export function AssetHeatmap({ data }: Props) {
     [cells, colours, ct],
   )
 
-  const option = {
+  const option = useMemo(() => ({
     backgroundColor: 'transparent',
     tooltip: {
       trigger: 'item' as const,
@@ -95,7 +94,7 @@ export function AssetHeatmap({ data }: Props) {
       encode: { x: 0, y: 1 },
     }],
     grid: { top: 10, bottom: 80, left: 190, right: 20 },
-  }
+  }), [slots, rows, chartCells, ct, colours])
 
   return (
     <ReactECharts
