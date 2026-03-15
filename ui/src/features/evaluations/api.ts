@@ -85,7 +85,7 @@ export async function invalidateEvaluation(
 }
 
 export async function fetchMetricHeatmap(assetName: string): Promise<MetricHeatmapResponse> {
-  const res = await fetch(`/api/evaluations/metric-heatmap?asset_name=${encodeURIComponent(assetName)}`)
+  const res = await fetch(`${BASE}/evaluations/metric-heatmap?asset_name=${encodeURIComponent(assetName)}`)
   if (!res.ok) throw new Error(`fetchMetricHeatmap: ${res.status}`)
   return res.json()
 }
