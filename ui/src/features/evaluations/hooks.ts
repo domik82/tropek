@@ -26,10 +26,10 @@ export function useEvaluations(filters: EvaluationFilters = {}) {
 
 // ── Detail ────────────────────────────────────────────────────────────────────
 
-export function useEvaluationDetail(id: string) {
+export function useEvaluationDetail(id: string | undefined) {
   return useQuery({
-    queryKey: evaluationKeys.detail(id),
-    queryFn: () => fetchEvaluationDetail(id),
+    queryKey: evaluationKeys.detail(id ?? ''),
+    queryFn: () => fetchEvaluationDetail(id!),
     enabled: !!id,
   })
 }
