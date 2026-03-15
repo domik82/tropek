@@ -1,0 +1,437 @@
+"""YAML manifest loader and desired-state reconciler."""
+
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+from pathlib import Path
+from typing import Any
+
+import yaml
+
+# Processing order — dependencies must come first
+_KIND_ORDER = [
+    "AssetType",
+    "DataSource",
+    "Asset",
+    "SLI",
+    "SLO",
+    "AssetGroup",
+    "AssetSLOLink",
+    "AssetGroupSLOLink",
+]
+
+
+@dataclass
+class ManifestDocument:
+    """A single parsed manifest document."""
+
+    api_version: str
+    kind: str
+    metadata: dict[str, Any]
+    spec: dict[str, Any]
+
+
+@dataclass
+class PlanAction:
+    """A single action in a reconciliation plan."""
+
+    operation: str  # CREATE | UPDATE | SKIP
+    kind: str
+    name: str
+    reason: str
+
+
+@dataclass
+class ApplyPlan:
+    """Result of dry_run — list of planned actions."""
+
+    actions: list[PlanAction] = field(default_factory=list)
+
+
+@dataclass
+class ApplyError:
+    """A single error during apply."""
+
+    kind: str
+    name: str
+    error: str
+
+
+@dataclass
+class ApplyResult:
+    """Result of apply — counts and errors."""
+
+    created: int = 0
+    updated: int = 0
+    skipped: int = 0
+    failed: int = 0
+    errors: list[ApplyError] = field(default_factory=list)
+
+
+def load_manifests(path: str) -> list[ManifestDocument]:
+    """Load and topologically sort manifests from a file or directory."""
+    p = Path(path)
+    raw_docs: list[dict[str, Any]] = []
+
+    if p.is_dir():
+        for f in sorted(p.glob("*.yaml")):
+            raw_docs.extend(_load_file(f))
+        for f in sorted(p.glob("*.yml")):
+            raw_docs.extend(_load_file(f))
+    else:
+        raw_docs.extend(_load_file(p))
+
+    docs = [_parse_document(d) for d in raw_docs]
+    return _topological_sort(docs)
+
+
+def _load_file(path: Path) -> list[dict[str, Any]]:
+    """Load all YAML documents from a single file."""
+    text = path.read_text(encoding="utf-8")
+    return [doc for doc in yaml.safe_load_all(text) if doc]
+
+
+def _parse_document(raw: dict[str, Any]) -> ManifestDocument:
+    """Validate and parse a raw YAML document into a ManifestDocument."""
+    if "api_version" not in raw:
+        raise ValueError("manifest document missing required field: api_version")
+    if "kind" not in raw:
+        raise ValueError("manifest document missing required field: kind")
+    if "metadata" not in raw:
+        raise ValueError("manifest document missing required field: metadata")
+    if raw["kind"] not in _KIND_ORDER:
+        raise ValueError(f"unknown kind: {raw['kind']}. valid: {_KIND_ORDER}")
+
+    return ManifestDocument(
+        api_version=raw["api_version"],
+        kind=raw["kind"],
+        metadata=raw["metadata"],
+        spec=raw.get("spec", {}),
+    )
+
+
+def _topological_sort(docs: list[ManifestDocument]) -> list[ManifestDocument]:
+    """Sort documents by kind dependency order, preserving file order within a kind."""
+
+    def sort_key(doc: ManifestDocument) -> int:
+        try:
+            return _KIND_ORDER.index(doc.kind)
+        except ValueError:
+            return len(_KIND_ORDER)
+
+    return sorted(docs, key=sort_key)
+
+
+def validate_manifests(path: str) -> list[str]:
+    """Validate manifest files without making API calls. Returns list of errors."""
+    errors: list[str] = []
+    try:
+        docs = load_manifests(path)
+    except (ValueError, OSError) as e:
+        errors.append(str(e))
+        return errors
+
+    # Cross-reference validation (warnings, not errors — refs may exist in API)
+    names_by_kind: dict[str, set[str]] = {}
+    for doc in docs:
+        names_by_kind.setdefault(doc.kind, set()).add(doc.metadata["name"])
+
+    for doc in docs:
+        if doc.kind == "Asset":
+            type_name = doc.spec.get("type_name")
+            if type_name and type_name not in names_by_kind.get("AssetType", set()):
+                errors.append(
+                    f"WARNING: Asset '{doc.metadata['name']}' references AssetType "
+                    f"'{type_name}' not found in manifest (may exist in API)"
+                )
+        elif doc.kind in ("AssetSLOLink", "AssetGroupSLOLink"):
+            for ref_field, ref_kind in [
+                ("slo_name", "SLO"),
+                ("sli_name", "SLI"),
+                ("data_source_name", "DataSource"),
+            ]:
+                ref_val = doc.spec.get(ref_field)
+                if ref_val and ref_val not in names_by_kind.get(ref_kind, set()):
+                    errors.append(
+                        f"WARNING: {doc.kind} '{doc.metadata['name']}' references {ref_kind} "
+                        f"'{ref_val}' not found in manifest (may exist in API)"
+                    )
+
+    return errors
+
+
+def dry_run(client: Any, manifests: list[ManifestDocument]) -> ApplyPlan:
+    """Compare manifests against API state and return planned actions."""
+    plan = ApplyPlan()
+    for doc in manifests:
+        name = doc.metadata.get("name", "unknown")
+        try:
+            existing = _lookup(client, doc)
+            if existing is None:
+                plan.actions.append(
+                    PlanAction("CREATE", doc.kind, name, "not found in current state")
+                )
+            elif _has_diff(doc, existing):
+                reason = _diff_reason(doc, existing)
+                plan.actions.append(PlanAction("UPDATE", doc.kind, name, reason))
+            else:
+                plan.actions.append(
+                    PlanAction("SKIP", doc.kind, name, "already exists, no changes")
+                )
+        except Exception as e:
+            plan.actions.append(PlanAction("CREATE", doc.kind, name, f"lookup failed: {e}"))
+    return plan
+
+
+def apply(client: Any, manifests: list[ManifestDocument]) -> ApplyResult:
+    """Apply manifests using desired-state reconciliation."""
+    plan = dry_run(client, manifests)
+    result = ApplyResult()
+    blocked_kinds: set[str] = set()
+
+    for action, doc in zip(plan.actions, manifests, strict=False):
+        name = doc.metadata.get("name", "unknown")
+        if action.operation == "SKIP":
+            result.skipped += 1
+            continue
+        if doc.kind in blocked_kinds:
+            result.failed += 1
+            result.errors.append(ApplyError(doc.kind, name, "blocked by prior error"))
+            continue
+        try:
+            if action.operation == "CREATE":
+                _create(client, doc)
+                result.created += 1
+            elif action.operation == "UPDATE":
+                _update(client, doc)
+                result.updated += 1
+        except Exception as e:
+            result.failed += 1
+            result.errors.append(ApplyError(doc.kind, name, str(e)))
+            # Block only kinds that depend on the failed kind
+            for dep_kind in _dependents_of(doc.kind):
+                blocked_kinds.add(dep_kind)
+
+    return result
+
+
+_KIND_DEPS: dict[str, set[str]] = {
+    "AssetType": {"Asset"},
+    "DataSource": {"AssetSLOLink", "AssetGroupSLOLink"},
+    "Asset": {"AssetGroup", "AssetSLOLink"},
+    "SLI": {"AssetSLOLink", "AssetGroupSLOLink"},
+    "SLO": {"AssetSLOLink", "AssetGroupSLOLink"},
+    "AssetGroup": {"AssetGroupSLOLink"},
+}
+
+
+def _dependents_of(kind: str) -> set[str]:
+    """Return the set of kinds that depend on the given kind (transitively)."""
+    result: set[str] = set()
+    stack = [kind]
+    while stack:
+        k = stack.pop()
+        for dep in _KIND_DEPS.get(k, set()):
+            if dep not in result:
+                result.add(dep)
+                stack.append(dep)
+    return result
+
+
+def _lookup(client: Any, doc: ManifestDocument) -> Any | None:
+    """Look up an existing entity by name via the client."""
+    name = doc.metadata["name"]
+    try:
+        match doc.kind:
+            case "AssetType":
+                types = client.asset_types.list()
+                return next((t for t in types if t.name == name), None)
+            case "Asset":
+                return client.assets.get(name)
+            case "AssetGroup":
+                return client.asset_groups.get(name)
+            case "DataSource":
+                return client.datasources.get(name)
+            case "SLI":
+                return client.sli_definitions.get(name)
+            case "SLO":
+                return client.slo_definitions.get(name)
+            case "AssetSLOLink":
+                asset_name = doc.spec.get("asset_name", "")
+                links = client.asset_slo_links.list(asset_name)
+                return next((lnk for lnk in links if lnk.link_name == name), None)
+            case "AssetGroupSLOLink":
+                group_name = doc.spec.get("group_name", "")
+                links = client.group_slo_links.list(group_name)
+                return next((lnk for lnk in links if lnk.link_name == name), None)
+            case _:
+                return None
+    except Exception:
+        return None
+
+
+def _has_diff(doc: ManifestDocument, existing: Any) -> bool:
+    """Check if the manifest differs from the existing entity."""
+    match doc.kind:
+        case "AssetType":
+            return doc.spec.get("is_default") != getattr(existing, "is_default", None)
+        case "Asset":
+            return doc.metadata.get("display_name") != getattr(
+                existing, "display_name", None
+            ) or doc.metadata.get("labels", {}) != getattr(existing, "labels", {})
+        case "AssetGroup":
+            # Member/subgroup sync not yet implemented; skip updates
+            return False
+        case "DataSource":
+            return (
+                doc.metadata.get("display_name") != getattr(existing, "display_name", None)
+                or doc.spec.get("adapter_url") != getattr(existing, "adapter_url", None)
+                or doc.metadata.get("labels", {}) != getattr(existing, "labels", {})
+            )
+        case "SLI":
+            return doc.spec.get("indicators") != getattr(existing, "indicators", {})
+        case "SLO":
+            return doc.spec.get("slo_yaml") != getattr(existing, "slo_yaml", "")
+        case "AssetSLOLink" | "AssetGroupSLOLink":
+            return (
+                doc.spec.get("slo_name") != getattr(existing, "slo_name", None)
+                or doc.spec.get("sli_name") != getattr(existing, "sli_name", None)
+                or doc.spec.get("data_source_name") != getattr(existing, "data_source_name", None)
+            )
+        case _:
+            return False
+
+
+def _diff_reason(doc: ManifestDocument, existing: Any) -> str:
+    """Generate a human-readable diff reason."""
+    match doc.kind:
+        case "SLI":
+            return "indicators differ (new version will be created)"
+        case "SLO":
+            return "slo_yaml differs (new version will be created)"
+        case _:
+            return "fields differ"
+
+
+def _create(client: Any, doc: ManifestDocument) -> None:
+    """Create a new entity via the client."""
+    name = doc.metadata["name"]
+    match doc.kind:
+        case "AssetType":
+            client.asset_types.create(name, is_default=doc.spec.get("is_default", False))
+        case "Asset":
+            client.assets.create(
+                name,
+                type_name=doc.spec.get("type_name", "vm"),
+                display_name=doc.metadata.get("display_name"),
+                labels=doc.metadata.get("labels"),
+            )
+        case "AssetGroup":
+            client.asset_groups.create(name)
+        case "DataSource":
+            client.datasources.create(
+                name,
+                adapter_type=doc.spec["adapter_type"],
+                adapter_url=doc.spec["adapter_url"],
+                display_name=doc.metadata.get("display_name"),
+                labels=doc.metadata.get("labels"),
+            )
+        case "SLI":
+            client.sli_definitions.create(
+                name,
+                indicators=doc.spec["indicators"],
+                display_name=doc.metadata.get("display_name"),
+                notes=doc.metadata.get("notes"),
+                author=doc.metadata.get("author"),
+            )
+        case "SLO":
+            client.slo_definitions.create(
+                name,
+                slo_yaml=doc.spec["slo_yaml"],
+                display_name=doc.metadata.get("display_name"),
+                notes=doc.metadata.get("notes"),
+                author=doc.metadata.get("author"),
+            )
+        case "AssetSLOLink":
+            asset_name = doc.spec["asset_name"]
+            client.asset_slo_links.create(
+                asset_name,
+                name,
+                doc.spec["slo_name"],
+                doc.spec["sli_name"],
+                doc.spec["data_source_name"],
+            )
+        case "AssetGroupSLOLink":
+            group_name = doc.spec["group_name"]
+            client.group_slo_links.create(
+                group_name,
+                name,
+                doc.spec["slo_name"],
+                doc.spec["sli_name"],
+                doc.spec["data_source_name"],
+            )
+
+
+def _update(client: Any, doc: ManifestDocument) -> None:
+    """Update an existing entity via the client."""
+    name = doc.metadata["name"]
+    match doc.kind:
+        case "AssetType":
+            client.asset_types.set_default(name) if doc.spec.get("is_default") else None
+        case "Asset":
+            client.assets.update(
+                name,
+                display_name=doc.metadata.get("display_name"),
+                labels=doc.metadata.get("labels"),
+            )
+        case "AssetGroup":
+            # TODO: sync members/subgroups — requires add/remove member API calls
+            # For v1, log that group exists but member sync is not yet implemented
+            pass
+        case "DataSource":
+            client.datasources.update(
+                name,
+                display_name=doc.metadata.get("display_name"),
+                adapter_url=doc.spec.get("adapter_url"),
+                labels=doc.metadata.get("labels"),
+            )
+        case "SLI":
+            # Creates new version
+            client.sli_definitions.create(
+                name,
+                indicators=doc.spec["indicators"],
+                display_name=doc.metadata.get("display_name"),
+                notes=doc.metadata.get("notes"),
+                author=doc.metadata.get("author"),
+            )
+        case "SLO":
+            # Creates new version
+            client.slo_definitions.create(
+                name,
+                slo_yaml=doc.spec["slo_yaml"],
+                display_name=doc.metadata.get("display_name"),
+                notes=doc.metadata.get("notes"),
+                author=doc.metadata.get("author"),
+            )
+        case "AssetSLOLink":
+            # Delete + recreate
+            asset_name = doc.spec["asset_name"]
+            client.asset_slo_links.delete(asset_name, name)
+            client.asset_slo_links.create(
+                asset_name,
+                name,
+                doc.spec["slo_name"],
+                doc.spec["sli_name"],
+                doc.spec["data_source_name"],
+            )
+        case "AssetGroupSLOLink":
+            # Delete + recreate
+            group_name = doc.spec["group_name"]
+            client.group_slo_links.delete(group_name, name)
+            client.group_slo_links.create(
+                group_name,
+                name,
+                doc.spec["slo_name"],
+                doc.spec["sli_name"],
+                doc.spec["data_source_name"],
+            )

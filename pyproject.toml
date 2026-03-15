@@ -2,6 +2,7 @@
 members = [
     "api",
     "adapters/prometheus",
+    "clients/python",
 ]
 
 [tool.ruff]
@@ -68,7 +69,7 @@ asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "session"
 asyncio_default_test_loop_scope = "session"
 testpaths = ["api/tests", "adapters/prometheus/tests"]
-pythonpath = ["api", "adapters/prometheus"]   # makes 'app' importable from workspace root
+pythonpath = ["api", "adapters/prometheus", "clients/python"]   # makes 'app' importable from workspace root
 markers = [
     "integration: requires a running TimescaleDB instance (deselect with -m 'not integration')",
 ]
