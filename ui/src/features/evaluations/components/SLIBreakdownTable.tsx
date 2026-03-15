@@ -1,4 +1,5 @@
 // src/features/evaluations/components/SLIBreakdownTable.tsx
+import { useState } from 'react'
 import { fmt } from '@/lib/format'
 import type { IndicatorResult } from '../types'
 
@@ -20,10 +21,17 @@ interface Props {
 }
 
 export function SLIBreakdownTable({ indicators, onIndicatorClick }: Props) {
+  const [selectedMetric, setSelectedMetric] = useState<string | null>(null)
+
+  function handleRowClick(metric: string, tabGroup: string) {
+    setSelectedMetric(metric)
+    onIndicatorClick?.(metric, tabGroup)
+  }
+
   return (
-    <div className="overflow-x-auto rounded-lg border border-slate-700">
+    <div className="overflow-x-auto rounded-lg border border-slate-700 bg-gray-900">
       <table className="w-full text-sm text-left">
-        <thead className="text-xs uppercase text-slate-400 bg-slate-800/60 border-b border-slate-700">
+        <thead className="text-xs uppercase text-slate-400 bg-gray-800 border-b border-slate-700">
           <tr>
             <th className="px-2 py-3 text-center w-6 text-cyan-500/70" title="Key SLI">◆</th>
             <th className="px-4 py-3">Indicator</th>
@@ -33,12 +41,23 @@ export function SLIBreakdownTable({ indicators, onIndicatorClick }: Props) {
             <th className="px-4 py-3 text-right">Weight</th>
             <th className="px-4 py-3 text-right">Score</th>
             <th className="px-4 py-3">Status</th>
-            <th className="px-4 py-3">Criteria</th>
+            <th className="px-4 py-3">Pass criteria</th>
+            <th className="px-4 py-3">Warn criteria</th>
           </tr>
         </thead>
-        <tbody className="divide-y divide-slate-800">
-          {indicators.map(ind => (
-            <tr key={ind.metric} className="hover:bg-slate-800/40 transition-colors group">
+        <tbody>
+          {indicators.map((ind, idx) => {
+            const isSelected = ind.metric === selectedMetric
+            const zebraBase = idx % 2 === 0 ? 'bg-gray-900' : 'bg-gray-800/50'
+            const rowBg = isSelected ? 'bg-gray-600/40' : zebraBase
+            const rowHover = isSelected ? 'hover:bg-gray-600/50' : 'hover:bg-gray-700/50'
+            const rowRing = isSelected ? 'ring-1 ring-inset ring-slate-400/60' : ''
+            return (
+            <tr
+              key={ind.metric}
+              onClick={() => handleRowClick(ind.metric, ind.tab_group ?? 'summary')}
+              className={`transition-colors group border-b border-slate-800/60 last:border-0 cursor-pointer ${rowBg} ${rowHover} ${rowRing}`}
+            >
               <td className="px-2 py-3 text-center">
                 {ind.key_sli && (
                   <span className="text-cyan-400 text-xs leading-none" title="Key SLI">◆</span>
@@ -47,7 +66,6 @@ export function SLIBreakdownTable({ indicators, onIndicatorClick }: Props) {
               <td className="px-4 py-3 font-medium whitespace-nowrap">
                 {onIndicatorClick ? (
                   <button
-                    onClick={() => onIndicatorClick(ind.metric, ind.tab_group ?? 'summary')}
                     className="text-left group/name"
                     title={`${ind.metric} — click to go to trend chart`}
                   >
@@ -78,20 +96,21 @@ export function SLIBreakdownTable({ indicators, onIndicatorClick }: Props) {
               <td className={`px-4 py-3 font-semibold uppercase text-xs ${STATUS_TEXT[ind.status] ?? ''}`}>
                 {ind.status}
               </td>
-              <td className="px-4 py-3 text-xs text-slate-400 space-y-1">
+              <td className="px-4 py-3 text-xs text-slate-400">
                 {ind.pass_targets?.map((t, i) => (
-                  <div key={i} className={t.violated ? 'text-red-400' : ''}>
-                    pass: {t.criteria}{t.violated && ' ✗'}
-                  </div>
-                ))}
-                {ind.warning_targets?.map((t, i) => (
-                  <div key={i} className="text-slate-500">
-                    warn: {t.criteria}
+                  <div key={i} className={`font-mono ${t.violated ? 'text-red-400' : ''}`}>
+                    {t.criteria}{t.violated && ' ✗'}
                   </div>
                 ))}
               </td>
+              <td className="px-4 py-3 text-xs text-slate-500">
+                {ind.warning_targets?.map((t, i) => (
+                  <div key={i} className="font-mono">{t.criteria}</div>
+                ))}
+              </td>
             </tr>
-          ))}
+            )
+          })}
         </tbody>
       </table>
     </div>
