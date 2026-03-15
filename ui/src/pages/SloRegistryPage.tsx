@@ -171,7 +171,7 @@ export function SloRegistryPage() {
                   </span>
                   <span className="text-xs text-slate-500 shrink-0">v{slo.version}</span>
                   {slo.active
-                    ? <span className="text-xs bg-[#7dc540]/20 text-[#7dc540] border border-[#7dc540]/30 px-1.5 py-0.5 rounded-full shrink-0">active</span>
+                    ? <span className="text-xs bg-pass/20 text-pass border border-pass/30 px-1.5 py-0.5 rounded-full shrink-0">active</span>
                     : <span className="text-xs bg-slate-700/40 text-slate-500 border border-slate-600/40 px-1.5 py-0.5 rounded-full shrink-0">inactive</span>
                   }
                 </div>

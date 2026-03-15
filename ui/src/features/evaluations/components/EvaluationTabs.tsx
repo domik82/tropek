@@ -23,7 +23,7 @@ export function EvaluationTabs({ availableGroups, allCount, counts, activeTab, o
           onClick={() => onTabChange(tab)}
           className={`px-4 py-2.5 text-sm font-medium transition-colors border-b-2 -mb-px ${
             activeTab === tab
-              ? 'border-[#7dc540] text-[#7dc540]'
+              ? 'border-pass text-pass'
               : 'border-transparent text-slate-400 hover:text-slate-200'
           }`}
         >
