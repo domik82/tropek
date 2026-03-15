@@ -2,6 +2,9 @@
 import { useState } from 'react'
 import { useAssetGroups } from '@/features/assets/hooks'
 import type { AssetGroup, AssetGroupTree } from '@/features/assets/types'
+import { countLeafMembers } from './treeUtils'
+
+export { countLeafMembers }
 
 interface Props {
   selectedGroup?: string
@@ -49,9 +52,12 @@ function TreeNode({ group, tree, depth, filter, selectedGroup, selectedAsset, on
       >
         <span className="text-xs w-3 shrink-0">{open ? '▾' : '▸'}</span>
         <span className="truncate">{group.display_name ?? group.name}</span>
-        {group.members.length > 0 && (
-          <span className="text-xs text-muted-foreground/60 ml-auto shrink-0">{group.members.length}</span>
-        )}
+        {(() => {
+          const leafCount = countLeafMembers(group, tree)
+          return leafCount > 0 ? (
+            <span className="text-xs text-muted-foreground/60 ml-auto shrink-0">{leafCount}</span>
+          ) : null
+        })()}
       </button>
 
       {open && (
