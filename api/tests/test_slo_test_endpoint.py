@@ -8,6 +8,8 @@ from app.db.session import get_session
 from app.main import app
 from fastapi.testclient import TestClient
 
+VALID_OBJECTIVES = [{"sli": "response_time_p99", "pass_criteria": ["<600"], "weight": 1}]
+
 
 @pytest.fixture
 def client():
@@ -26,11 +28,11 @@ def client():
     app.dependency_overrides.clear()
 
 
-def test_slo_test_rejects_invalid_yaml(client):
+def test_slo_test_rejects_empty_objectives(client):
     resp = client.post(
         "/slo-definitions/test",
         json={
-            "slo_yaml": "{{invalid",
+            "objectives": [],
             "sli_name": "my-sli",
             "data_source_name": "prometheus",
             "asset_name": "vm-01",
@@ -39,13 +41,13 @@ def test_slo_test_rejects_invalid_yaml(client):
         },
     )
     assert resp.status_code == 422
-    assert "yaml" in resp.json()["detail"].lower() or "parse" in resp.json()["detail"].lower()
+    assert "invalid slo" in resp.json()["detail"].lower() or "slo" in resp.json()["detail"].lower()
 
 
 def test_slo_test_rejects_missing_required_fields(client):
     resp = client.post(
         "/slo-definitions/test",
-        json={"slo_yaml": "spec_version: '1.0'"},
+        json={"objectives": VALID_OBJECTIVES},
     )
     assert resp.status_code == 422
 
@@ -59,18 +61,7 @@ def test_slo_test_accepts_valid_request_shape(client):
     resp = client.post(
         "/slo-definitions/test",
         json={
-            "slo_yaml": (
-                "spec_version: '1.0'\n"
-                "indicators:\n"
-                "  cpu: query\n"
-                "objectives:\n"
-                "  - sli: cpu\n"
-                "    pass:\n"
-                "      - criteria: ['<100']\n"
-                "total_score:\n"
-                "  pass: '90%'\n"
-                "  warning: '75%'"
-            ),
+            "objectives": VALID_OBJECTIVES,
             "sli_name": "nonexistent-sli",
             "data_source_name": "nonexistent-ds",
             "asset_name": "nonexistent-asset",

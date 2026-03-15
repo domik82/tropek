@@ -23,6 +23,9 @@ class SLORepository:
         self,
         name: str,
         objectives: list[dict[str, Any]] | None = None,
+        total_score_pass_pct: float = 90.0,
+        total_score_warning_pct: float = 75.0,
+        comparison: dict[str, Any] | None = None,
         display_name: str | None = None,
         notes: str | None = None,
         author: str | None = None,
@@ -35,6 +38,9 @@ class SLORepository:
         Args:
             name: Stable external identifier for the SLO.
             objectives: List of objective dicts; None is treated as empty (no objectives inserted).
+            total_score_pass_pct: Minimum score percentage to pass. Default 90.0.
+            total_score_warning_pct: Minimum score percentage to warn. Default 75.0.
+            comparison: Optional comparison config dict. None uses defaults.
             display_name: Optional human-readable display name for the SLO.
             notes: Optional description of changes in this version.
             author: Optional identifier of who created this version.
@@ -57,6 +63,9 @@ class SLORepository:
             id=uuid.uuid4(),
             name=name,
             version=next_version,
+            total_score_pass_pct=total_score_pass_pct,
+            total_score_warning_pct=total_score_warning_pct,
+            comparison=comparison or {},
             display_name=display_name,
             notes=notes,
             author=author,
