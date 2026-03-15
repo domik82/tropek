@@ -5,6 +5,8 @@ import { EvaluationsPage } from './pages/EvaluationsPage'
 import { EvaluationDetailPage } from './pages/EvaluationDetailPage'
 import { SloRegistryPage } from './pages/SloRegistryPage'
 import { AssetsPage } from './pages/AssetsPage'
+import { AssetNavigatorPage } from './pages/AssetNavigatorPage'
+import { MetricExplorerPage } from './pages/MetricExplorerPage'
 import { ThemeProvider, useTheme } from './lib/theme-context'
 
 const queryClient = new QueryClient({
@@ -12,6 +14,7 @@ const queryClient = new QueryClient({
 })
 
 const NAV_ITEMS = [
+  { to: '/navigator', label: 'Navigator' },
   { to: '/evaluations', label: 'Evaluations' },
   { to: '/slos', label: 'SLOs' },
   { to: '/assets', label: 'Assets' },
@@ -19,7 +22,6 @@ const NAV_ITEMS = [
 
 function NavControls() {
   const { theme, setTheme, fontSize, setFontSize } = useTheme()
-  const isDark = theme !== 'corporate'
 
   return (
     <div className="flex items-center gap-2 ml-auto">
@@ -85,7 +87,9 @@ export default function App() {
             </nav>
             <main>
               <Routes>
-                <Route path="/" element={<Navigate to="/evaluations" replace />} />
+                <Route path="/" element={<Navigate to="/navigator" replace />} />
+                <Route path="/navigator" element={<AssetNavigatorPage />} />
+                <Route path="/explorer" element={<MetricExplorerPage />} />
                 <Route path="/evaluations" element={<EvaluationsPage />} />
                 <Route path="/evaluations/:id" element={<EvaluationDetailPage />} />
                 <Route path="/slos" element={<SloRegistryPage />} />
