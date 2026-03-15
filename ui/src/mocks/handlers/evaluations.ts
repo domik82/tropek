@@ -9,12 +9,20 @@ export const evaluationHandlers = [
   http.get('/api/evaluations', async ({ request }) => {
     const url = new URL(request.url)
     const group_name = url.searchParams.get('group_name') ?? undefined
+    const asset_name = url.searchParams.get('asset_name') ?? undefined
     const date = url.searchParams.get('date') ?? undefined
     const from = url.searchParams.get('from') ?? undefined
     const to = url.searchParams.get('to') ?? undefined
     const { getEvaluations } = await gen()
-    const items = getEvaluations({ group_name, date, from, to })
+    const items = getEvaluations({ group_name, asset_name, date, from, to })
     return HttpResponse.json({ items, total: items.length })
+  }),
+
+  http.get('/api/evaluations/metric-heatmap', async ({ request }) => {
+    const url = new URL(request.url)
+    const assetName = url.searchParams.get('asset_name') ?? ''
+    const { getMetricHeatmap } = await gen()
+    return HttpResponse.json(getMetricHeatmap(assetName))
   }),
 
   http.get('/api/evaluations/:id', async ({ params }) => {

@@ -5,6 +5,7 @@
 
 import type { EvaluationSummary, EvaluationDetail, IndicatorResult, TrendPoint, FailingIndicator } from '../features/evaluations/types'
 import type { AssetGroup } from '../features/assets/types'
+import type { MetricHeatmapResponse } from '../features/navigator/types'
 import { computeChangePct } from '../utils/metrics'
 
 // ---------------------------------------------------------------------------
@@ -542,6 +543,7 @@ function allEvals(): EvaluationSummary[] {
 
 export interface EvaluationListFilters {
   group_name?: string
+  asset_name?: string
   date?: string
   from?: string
   to?: string
@@ -550,6 +552,7 @@ export interface EvaluationListFilters {
 export function getEvaluations(filters: EvaluationListFilters = {}): EvaluationSummary[] {
   let evals = allEvals()
   if (filters.group_name) evals = evals.filter(e => e.asset_snapshot.tags?.['lab'] === filters.group_name)
+  if (filters.asset_name) evals = evals.filter(e => e.asset_snapshot.name === filters.asset_name)
   if (filters.date) evals = evals.filter(e => e.period_start.startsWith(filters.date!))
   if (filters.from) evals = evals.filter(e => e.period_start >= filters.from!)
   if (filters.to) evals = evals.filter(e => e.period_start <= filters.to!)
@@ -637,6 +640,45 @@ export function getAssetGroupTree() {
 
 export function getSloDefinitions() {
   return (sloFixture as { items: unknown[] }).items
+}
+
+export function getMetricHeatmap(assetName: string): MetricHeatmapResponse {
+  const assetEvals = allEvals()
+    .filter(e => e.asset_snapshot.name === assetName)
+    .sort((a, b) => a.period_start.localeCompare(b.period_start))
+
+  if (!assetEvals.length) {
+    return { asset_name: assetName, slots: [], metrics: [], cells: [] }
+  }
+
+  const slots = Array.from(new Set(assetEvals.map(e => e.period_start))).sort()
+
+  // Use the first evaluation's detail to get the metric list
+  const sampleDetail = generateEvaluationDetail(assetEvals[0].id, allEvals())
+  const metrics = sampleDetail.indicator_results.map(ind => ({
+    name: ind.metric,
+    display_name: ind.display_name,
+    tab_group: ind.tab_group,
+  }))
+
+  const cells: MetricHeatmapResponse['cells'] = []
+  for (const slot of slots) {
+    const ev = assetEvals.find(e => e.period_start === slot)
+    if (!ev) continue
+    const detail = generateEvaluationDetail(ev.id, allEvals())
+    for (const ind of detail.indicator_results) {
+      cells.push({
+        slot,
+        metric: ind.metric,
+        display_name: ind.display_name,
+        result: ind.status,
+        score: ind.score,
+        eval_id: ev.id,
+      })
+    }
+  }
+
+  return { asset_name: assetName, slots, metrics, cells }
 }
 
 // SLI definitions — sourced from static fixture in mocks/data/
