@@ -1,7 +1,6 @@
 // ui/src/features/navigator/components/AssetHeatmap.tsx
 import ReactECharts from 'echarts-for-react'
 import { useMemo } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { useTheme } from '@/lib/theme-context'
 import { RESULT_COLOUR, CHART_THEME } from '@/lib/theme'
 import { fmtSlot, fmtDateTime } from '@/lib/format'
@@ -10,12 +9,13 @@ import type { MetricHeatmapResponse, HeatmapCell } from '../types'
 
 interface Props {
   data: MetricHeatmapResponse
+  selectedEvalId?: string
+  onEvalSelect?: (evalId: string) => void
 }
 
 const PAD = 2
 
-export function AssetHeatmap({ data }: Props) {
-  const navigate = useNavigate()
+export function AssetHeatmap({ data, selectedEvalId, onEvalSelect }: Props) {
   const { theme } = useTheme()
   const colours = RESULT_COLOUR[theme]
   const ct = CHART_THEME[theme]
@@ -23,17 +23,20 @@ export function AssetHeatmap({ data }: Props) {
   const { slots, rows, cells } = useMemo(() => buildAssetHeatmapData(data), [data])
 
   const chartCells = useMemo(
-    () => cells.map(cell => ({
-      ...cell,
-      itemStyle: {
-        color: cell.result === 'none'
-          ? ct.bg
-          : colours[cell.result as keyof typeof colours] ?? ct.bg,
-        borderColor: 'transparent',
-        borderWidth: 0,
-      },
-    })),
-    [cells, colours, ct],
+    () => cells.map(cell => {
+      const isSelected = !!selectedEvalId && cell.evalId === selectedEvalId
+      return {
+        ...cell,
+        itemStyle: {
+          color: cell.result === 'none'
+            ? ct.bg
+            : colours[cell.result as keyof typeof colours] ?? ct.bg,
+          borderColor: isSelected ? '#ffffff' : 'transparent',
+          borderWidth: isSelected ? 2 : 0,
+        },
+      }
+    }),
+    [cells, colours, ct, selectedEvalId],
   )
 
   const option = useMemo(() => ({
@@ -51,7 +54,7 @@ export function AssetHeatmap({ data }: Props) {
           `<b>${d.rowLabel}</b>`,
           fmtDateTime(d.slot),
           `Score: <b style="color:${rc}">${d.score}</b> · <b style="color:${rc}">${d.result.toUpperCase()}</b>`,
-          d.evalId ? `<span style="color:#888;font-size:10px">Click to open evaluation detail</span>` : '',
+          d.evalId ? `<span style="color:#888;font-size:10px">Click to select this evaluation</span>` : '',
         ].join('<br/>')
       },
     },
@@ -103,8 +106,8 @@ export function AssetHeatmap({ data }: Props) {
       opts={{ renderer: 'svg' }}
       onEvents={{
         click: (p: { data: HeatmapCell }) => {
-          if (p?.data?.evalId) {
-            navigate(`/evaluations/${p.data.evalId}`)
+          if (p?.data?.evalId && onEvalSelect) {
+            onEvalSelect(p.data.evalId)
           }
         },
       }}
