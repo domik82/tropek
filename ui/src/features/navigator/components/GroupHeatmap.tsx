@@ -41,7 +41,7 @@ export function GroupHeatmap({ evaluations, groupName }: Props) {
     [cells, colours, ct],
   )
 
-  const option = {
+  const option = useMemo(() => ({
     backgroundColor: 'transparent',
     tooltip: {
       trigger: 'item' as const,
@@ -99,7 +99,7 @@ export function GroupHeatmap({ evaluations, groupName }: Props) {
       encode: { x: 0, y: 1 },
     }],
     grid: { top: 10, bottom: 80, left: 190, right: 20 },
-  }
+  }), [slots, rows, chartCells, ct, colours])
 
   return (
     <ReactECharts
