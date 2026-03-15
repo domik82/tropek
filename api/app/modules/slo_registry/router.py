@@ -2,14 +2,35 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends
+import httpx
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_session
+from app.modules.assets.repository import AssetRepository
 from app.modules.common.errors import raise_not_found
 from app.modules.common.schemas import PagedResponse
+from app.modules.datasource.repository import DataSourceRepository
+from app.modules.quality_gate.engine.criteria import aggregate_values, parse_criteria_string
+from app.modules.quality_gate.engine.evaluator import evaluate
+from app.modules.quality_gate.engine.slo_models import SLOParseError
+from app.modules.quality_gate.engine.slo_parser import parse_slo
+from app.modules.quality_gate.engine.variables import build_variables, substitute_variables
+from app.modules.quality_gate.repository import EvaluationRepository
+from app.modules.sli_registry.repository import SLIRepository
 from app.modules.slo_registry.repository import SLORepository
-from app.modules.slo_registry.schemas import SLODefinitionCreate, SLODefinitionRead
+from app.modules.slo_registry.schemas import (
+    BaselineConfig,
+    SLODefinitionCreate,
+    SLODefinitionRead,
+    SLOTestRequest,
+    SLOTestResult,
+    SLOValidateRequest,
+    SLOValidationResult,
+)
+from app.modules.slo_registry.schemas import (
+    SLOValidationError as SLOValError,
+)
 
 router = APIRouter()
 
@@ -42,6 +63,206 @@ async def create_slo_definition(
         meta=body.meta,
     )
     return SLODefinitionRead.model_validate(slo)
+
+
+@router.post("/slo-definitions/validate", response_model=SLOValidationResult)
+async def validate_slo(body: SLOValidateRequest) -> SLOValidationResult:  # noqa: C901
+    """Validate SLO YAML structure without saving."""
+    errors: list[SLOValError] = []
+
+    if not body.slo_yaml or not body.slo_yaml.strip():
+        return SLOValidationResult(
+            valid=False,
+            errors=[SLOValError(field="slo_yaml", message="empty slo yaml")],
+        )
+
+    try:
+        slo = parse_slo(body.slo_yaml)
+    except SLOParseError as e:
+        return SLOValidationResult(
+            valid=False,
+            errors=[SLOValError(field="slo_yaml", message=str(e))],
+        )
+    except Exception as e:
+        return SLOValidationResult(
+            valid=False,
+            errors=[SLOValError(field="slo_yaml", message=f"parse error: {e}")],
+        )
+
+    # Validate all criteria strings
+    for i, obj in enumerate(slo.objectives):
+        for block in obj.pass_criteria:
+            for raw in block.criteria:
+                try:
+                    parse_criteria_string(raw)
+                except ValueError as e:
+                    errors.append(
+                        SLOValError(
+                            field=f"objectives[{i}].pass.criteria",
+                            message=str(e),
+                        )
+                    )
+        for block in obj.warning_criteria:
+            for raw in block.criteria:
+                try:
+                    parse_criteria_string(raw)
+                except ValueError as e:
+                    errors.append(
+                        SLOValError(
+                            field=f"objectives[{i}].warning.criteria",
+                            message=str(e),
+                        )
+                    )
+
+    # Validate total_score percentages
+    if not (0 <= slo.total_score.pass_pct <= 100):
+        errors.append(SLOValError(field="total_score.pass", message="must be 0-100"))
+    if not (0 <= slo.total_score.warning_pct <= 100):
+        errors.append(SLOValError(field="total_score.warning", message="must be 0-100"))
+
+    if errors:
+        return SLOValidationResult(valid=False, errors=errors)
+
+    objectives_dicts = [obj.model_dump() for obj in slo.objectives]
+    return SLOValidationResult(valid=True, errors=[], objectives=objectives_dicts)
+
+
+@router.post("/slo-definitions/test", response_model=SLOTestResult)
+async def test_slo(  # noqa: C901
+    body: SLOTestRequest,
+    session: AsyncSession = Depends(get_session),  # noqa: B008, PT028
+) -> SLOTestResult:
+    """Dry-run SLO evaluation — fetch metrics, evaluate, return result without persisting."""
+    # 1. Validate SLO YAML
+    try:
+        slo = parse_slo(body.slo_yaml)
+    except SLOParseError as e:
+        raise HTTPException(status_code=422, detail=f"invalid slo yaml: {e}") from e
+    except Exception as e:
+        raise HTTPException(status_code=422, detail=f"could not parse slo yaml: {e}") from e
+
+    # 2. Resolve SLI definition
+    sli_repo = SLIRepository(session)
+    sli_def = await sli_repo.get_latest(body.sli_name)
+    if sli_def is None:
+        raise_not_found("sli definition", body.sli_name)
+
+    # 3. Resolve data source
+    ds_repo = DataSourceRepository(session)
+    ds = await ds_repo.get_by_name(body.data_source_name)
+    if ds is None:
+        raise_not_found("data source", body.data_source_name)
+
+    # 4. Resolve asset
+    asset_repo = AssetRepository(session)
+    asset = await asset_repo.get_by_name(body.asset_name)
+    if asset is None:
+        raise_not_found("asset", body.asset_name)
+
+    # 5. Build variables and substitute in SLI queries
+    asset_labels: dict[str, str] = {
+        str(k): str(v) for k, v in (getattr(asset, "labels", {}) or {}).items()
+    }
+    variables = build_variables(
+        metadata={**asset_labels, **body.metadata},
+        asset_name=asset.name,
+        start=body.period_start.isoformat(),
+        end=body.period_end.isoformat(),
+    )
+
+    resolved_queries: dict[str, str] = {}
+    for indicator_name, query_template in sli_def.indicators.items():
+        try:
+            resolved_queries[indicator_name] = substitute_variables(query_template, variables)
+        except Exception as e:
+            resolved_queries[indicator_name] = f"ERROR: {e}"
+
+    # 6. Query adapter
+    metrics_fetched: dict[str, float] = {}
+    fetch_errors: dict[str, str] = {}
+
+    try:
+        async with httpx.AsyncClient(timeout=30.0) as http_client:
+            adapter_resp = await http_client.post(
+                f"{ds.adapter_url}/query",
+                json={
+                    "queries": resolved_queries,
+                    "start": body.period_start.isoformat(),
+                    "end": body.period_end.isoformat(),
+                },
+            )
+            adapter_resp.raise_for_status()
+            adapter_data = adapter_resp.json()
+            for name, val in adapter_data.get("values", {}).items():
+                if val is not None:
+                    metrics_fetched[name] = float(val)
+            for name, err in adapter_data.get("errors", {}).items():
+                fetch_errors[name] = str(err)
+    except httpx.ConnectError as e:
+        raise HTTPException(
+            status_code=502,
+            detail=f"could not reach adapter at {ds.adapter_url}",
+        ) from e
+    except httpx.TimeoutException as e:
+        raise HTTPException(
+            status_code=504,
+            detail="adapter query timed out after 30s",
+        ) from e
+    except httpx.HTTPStatusError as e:
+        raise HTTPException(
+            status_code=502,
+            detail=f"adapter returned {e.response.status_code}",
+        ) from e
+
+    # 7. Resolve baselines
+    baseline_cfg = body.baseline or BaselineConfig()
+    baselines: dict[str, float | None] = {}
+    compared_values: dict[str, float] | None = None
+
+    if baseline_cfg.mode == "manual" and baseline_cfg.values:
+        baselines = {k: v for k, v in baseline_cfg.values.items()}
+        compared_values = dict(baseline_cfg.values)
+    elif baseline_cfg.mode == "asset_history":
+        eval_repo = EvaluationRepository(session)
+        past_evals = await eval_repo.get_baselines(
+            name=asset.name,
+            scope_tags=slo.comparison.scope_tags,
+            asset_snapshot={"tags": asset_labels},
+            include_result_with_score=slo.comparison.include_result_with_score.value,
+            limit=baseline_cfg.limit,
+            sli_name=body.sli_name,
+        )
+        if past_evals:
+            compared_values = {}
+            for indicator_name in sli_def.indicators:
+                vals: list[float] = []
+                for ev in past_evals:
+                    vals.extend(
+                        float(ind["value"])
+                        for ind in ev.indicator_results or []
+                        if ind.get("metric") == indicator_name and ind.get("value") is not None
+                    )
+                if vals:
+                    agg = aggregate_values(vals, slo.comparison.aggregate_function)
+                    baselines[indicator_name] = agg
+                    compared_values[indicator_name] = agg
+
+    # 8. Evaluate
+    eval_result = evaluate(
+        body.slo_yaml,
+        {k: v for k, v in metrics_fetched.items()},
+        {k: v for k, v in baselines.items() if v is not None},
+    )
+
+    return SLOTestResult(
+        result=eval_result.result.value,
+        score=eval_result.score,
+        indicator_results=eval_result.indicator_results,
+        baseline_mode=baseline_cfg.mode,
+        metrics_fetched=metrics_fetched,
+        fetch_errors=fetch_errors,
+        compared_values=compared_values,
+    )
 
 
 @router.get("/slo-definitions/{name}", response_model=SLODefinitionRead)
