@@ -1,0 +1,28 @@
+# SLI definitions — reusable, versioned sets of indicator queries.
+# Each name here (response_time_p99, error_rate, …) must match the
+# indicator keys in the paired SLO definition's YAML.
+
+api_version: tropek/v1
+kind: SLI
+metadata:
+  name: http-service-sli
+  display_name: HTTP Service Indicators
+  author: bootstrap
+  notes: Standard latency, error-rate and availability indicators for HTTP services.
+spec:
+  indicators:
+    response_time_p99: 'histogram_quantile(0.99, rate(http_request_duration_seconds_bucket[5m]))'
+    error_rate: 'rate(http_requests_total{status=~"5.."}[5m]) / rate(http_requests_total[5m])'
+    availability: 'avg_over_time(up[5m])'
+---
+api_version: tropek/v1
+kind: SLI
+metadata:
+  name: db-sli
+  display_name: PostgreSQL Indicators
+  author: bootstrap
+  notes: Query latency and connection saturation indicators for PostgreSQL.
+spec:
+  indicators:
+    query_latency_p99: 'histogram_quantile(0.99, rate(pg_query_duration_seconds_bucket[5m]))'
+    connection_saturation: 'pg_stat_activity_count / pg_settings_max_connections'

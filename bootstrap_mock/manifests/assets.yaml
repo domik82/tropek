@@ -1,0 +1,43 @@
+api_version: tropek/v1
+kind: Asset
+metadata:
+  name: checkout-api
+  display_name: Checkout API
+  labels:
+    team: payments
+    env: dev
+spec:
+  type_name: service
+---
+api_version: tropek/v1
+kind: Asset
+metadata:
+  name: product-catalog
+  display_name: Product Catalog Service
+  labels:
+    team: catalog
+    env: dev
+spec:
+  type_name: service
+---
+api_version: tropek/v1
+kind: Asset
+metadata:
+  name: user-service
+  display_name: User & Auth Service
+  labels:
+    team: platform
+    env: dev
+spec:
+  type_name: service
+---
+api_version: tropek/v1
+kind: Asset
+metadata:
+  name: orders-db
+  display_name: Orders PostgreSQL
+  labels:
+    team: payments
+    env: dev
+spec:
+  type_name: database

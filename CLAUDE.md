@@ -152,3 +152,28 @@ SQLAlchemy async ORM (asyncpg driver) with Alembic migrations. Repositories in `
 
 - Non-secret config: `config.yaml` (server, DB pool, cache TTLs, queue settings, adapter URLs, logging)
 - Secrets: environment variables prefixed `QG_` (e.g., `QG_DB_PASSWORD`, `QG_REDIS_PASSWORD`, `QG_SECRET_KEY`)
+
+## Git commands
+
+When working with git in worktrees, always issue git add and git commit as 
+separate bash calls, never chained with &&.
+
+Never use `cd <path> && git <command>` patterns. Always use `git -C <path> <command>` instead.
+
+✗ cd /mnt/d/DEV/keptn_rewrite/tropek/.worktrees/theme-system && git add ui/src/index.css
+✓ git -C /mnt/d/DEV/keptn_rewrite/tropek/.worktrees/theme-system add ui/src/index.css
+
+✗ cd .worktrees/theme-system && git add . && git commit -m "..."
+✓ git -C .worktrees/theme-system add . && git -C .worktrees/theme-system commit -m "..."
+
+## Python execution
+
+Never use `python` or `python3` directly. Always use `uv run` to execute 
+Python code and scripts — this ensures the project virtualenv is used, 
+not the system Python.
+
+✗ python script.py
+✗ python3 -m pytest
+✓ uv run python script.py
+✓ uv run pytest
+✓ uv run -m pytest

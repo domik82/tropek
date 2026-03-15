@@ -1,0 +1,26 @@
+# Groups are created empty here.
+# Members are added via slo-links.yaml or the API / CLI:
+#   tropek apply -f manifests/ --base-url http://localhost:8080
+# then manually:
+#   POST /asset-groups/core-services/members  {"asset_id": "<uuid>", "weight": 1.0}
+
+api_version: tropek/v1
+kind: AssetGroup
+metadata:
+  name: core-services
+  display_name: Core Services
+spec: {}
+---
+api_version: tropek/v1
+kind: AssetGroup
+metadata:
+  name: data-tier
+  display_name: Data Tier
+spec: {}
+---
+api_version: tropek/v1
+kind: AssetGroup
+metadata:
+  name: ecommerce-prod
+  display_name: E-Commerce Production
+spec: {}

@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from collections.abc import AsyncGenerator
-from contextlib import asynccontextmanager
 
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
@@ -42,7 +41,6 @@ def get_session_factory() -> async_sessionmaker[AsyncSession]:
     return _session_factory
 
 
-@asynccontextmanager
 async def get_session() -> AsyncGenerator[AsyncSession, None]:  # noqa: UP043
     """Async context manager that yields a session with auto commit/rollback.
 

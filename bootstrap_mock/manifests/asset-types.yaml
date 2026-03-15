@@ -1,0 +1,20 @@
+api_version: tropek/v1
+kind: AssetType
+metadata:
+  name: service
+spec:
+  is_default: true
+---
+api_version: tropek/v1
+kind: AssetType
+metadata:
+  name: database
+spec:
+  is_default: false
+---
+api_version: tropek/v1
+kind: AssetType
+metadata:
+  name: vm
+spec:
+  is_default: false
