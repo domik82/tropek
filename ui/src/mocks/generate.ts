@@ -4,6 +4,8 @@
  */
 
 import type { EvaluationSummary, EvaluationDetail, IndicatorResult, TrendPoint, FailingIndicator } from '../features/evaluations/types'
+import type { AssetGroup } from '../features/assets/types'
+import type { MetricHeatmapResponse } from '../features/navigator/types'
 import { computeChangePct } from '../utils/metrics'
 
 // ---------------------------------------------------------------------------
@@ -541,6 +543,7 @@ function allEvals(): EvaluationSummary[] {
 
 export interface EvaluationListFilters {
   group_name?: string
+  asset_name?: string
   date?: string
   from?: string
   to?: string
@@ -549,6 +552,7 @@ export interface EvaluationListFilters {
 export function getEvaluations(filters: EvaluationListFilters = {}): EvaluationSummary[] {
   let evals = allEvals()
   if (filters.group_name) evals = evals.filter(e => e.asset_snapshot.tags?.['lab'] === filters.group_name)
+  if (filters.asset_name) evals = evals.filter(e => e.asset_snapshot.name === filters.asset_name)
   if (filters.date) evals = evals.filter(e => e.period_start.startsWith(filters.date!))
   if (filters.from) evals = evals.filter(e => e.period_start >= filters.from!)
   if (filters.to) evals = evals.filter(e => e.period_start <= filters.to!)
@@ -590,7 +594,7 @@ export function getAssetGroupTree() {
     'performance-lab-2': 'Performance load test mirror environment (2 runs/day)',
   }
 
-  const allGroups = Array.from(labMap.entries()).map(([lab, members], i) => ({
+  const allGroups: AssetGroup[] = Array.from(labMap.entries()).map(([lab, members], i) => ({
     id: `group-${i}`,
     name: lab,
     display_name: lab.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase()),
@@ -599,11 +603,82 @@ export function getAssetGroupTree() {
     subgroups: [],
   }))
 
-  return { top_level: allGroups, all_groups: allGroups }
+  // Add Linux/Windows subgroups under Performance Lab 1
+  const pl1 = allGroups.find(g => g.name === 'performance-lab-1')
+  if (pl1) {
+    const linuxMembers = pl1.members.filter(m => !m.asset_name.startsWith('win'))
+    const winMembers   = pl1.members.filter(m =>  m.asset_name.startsWith('win'))
+
+    const linuxGroup: AssetGroup = {
+      id: 'group-pl1-linux',
+      name: 'performance-lab-1-linux',
+      display_name: 'Linux',
+      description: 'Linux assets in Performance Lab 1',
+      members: linuxMembers,
+      subgroups: [],
+    }
+    const winGroup: AssetGroup = {
+      id: 'group-pl1-windows',
+      name: 'performance-lab-1-windows',
+      display_name: 'Windows',
+      description: 'Windows assets in Performance Lab 1',
+      members: winMembers,
+      subgroups: [],
+    }
+
+    pl1.members = []
+    pl1.subgroups = [
+      { group_id: 'group-pl1-linux', weight: 1 },
+      { group_id: 'group-pl1-windows', weight: 1 },
+    ]
+
+    allGroups.push(linuxGroup, winGroup)
+  }
+
+  return { top_level: allGroups.filter(g => !['group-pl1-linux','group-pl1-windows'].includes(g.id)), all_groups: allGroups }
 }
 
 export function getSloDefinitions() {
   return (sloFixture as { items: unknown[] }).items
+}
+
+export function getMetricHeatmap(assetName: string): MetricHeatmapResponse {
+  const assetEvals = allEvals()
+    .filter(e => e.asset_snapshot.name === assetName)
+    .sort((a, b) => a.period_start.localeCompare(b.period_start))
+
+  if (!assetEvals.length) {
+    return { asset_name: assetName, slots: [], metrics: [], cells: [] }
+  }
+
+  const slots = Array.from(new Set(assetEvals.map(e => e.period_start))).sort()
+
+  // Use the first evaluation's detail to get the metric list
+  const sampleDetail = generateEvaluationDetail(assetEvals[0].id, allEvals())
+  const metrics = sampleDetail.indicator_results.map(ind => ({
+    name: ind.metric,
+    display_name: ind.display_name,
+    tab_group: ind.tab_group,
+  }))
+
+  const cells: MetricHeatmapResponse['cells'] = []
+  for (const slot of slots) {
+    const ev = assetEvals.find(e => e.period_start === slot)
+    if (!ev) continue
+    const detail = generateEvaluationDetail(ev.id, allEvals())
+    for (const ind of detail.indicator_results) {
+      cells.push({
+        slot,
+        metric: ind.metric,
+        display_name: ind.display_name,
+        result: ind.status,
+        score: ind.score,
+        eval_id: ev.id,
+      })
+    }
+  }
+
+  return { asset_name: assetName, slots, metrics, cells }
 }
 
 // SLI definitions — sourced from static fixture in mocks/data/
