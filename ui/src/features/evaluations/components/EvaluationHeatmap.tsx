@@ -47,6 +47,7 @@ interface Props {
   evaluations: EvaluationSummary[]
   selectedDate: string | null
   onDateSelect: (date: string | null) => void
+  onAssetSelect?: (assetName: string) => void
 }
 
 // Severity ranking — higher number = worse result.
@@ -141,7 +142,7 @@ function buildHeatmapData(
   return { slots, rows, data, pad }
 }
 
-export function EvaluationHeatmap({ evaluations, selectedDate, onDateSelect }: Props) {
+export function EvaluationHeatmap({ evaluations, selectedDate, onDateSelect, onAssetSelect }: Props) {
   const { theme } = useTheme()
   const colours = RESULT_COLOUR[theme]
   const ct = CHART_THEME[theme]
@@ -250,10 +251,18 @@ export function EvaluationHeatmap({ evaluations, selectedDate, onDateSelect }: P
         style={{ height: Math.max(200, rows.length * 28 + 100) }}
         opts={{ renderer: 'svg' }}
         onEvents={{
-          // Toggle column selection: click same slot again to deselect
           click: (p: { data: CellData }) => {
-            if (p?.data?.slot) {
-              onDateSelect(selectedDate === p.data.slot ? null : p.data.slot)
+            if (!p?.data?.slot) return
+            if (selectedDate !== p.data.slot) {
+              // Case 1: column not selected → select it
+              onDateSelect(p.data.slot)
+            } else if (onAssetSelect) {
+              // Case 2: column already selected + onAssetSelect → navigate to asset
+              const assetName = p.data.row.split(' · ')[0]
+              if (assetName.trim()) onAssetSelect(assetName)
+            } else {
+              // Case 3: column already selected + no onAssetSelect → deselect
+              onDateSelect(null)
             }
           },
         }}
