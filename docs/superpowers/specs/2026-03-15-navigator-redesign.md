@@ -184,3 +184,23 @@ User clicks column (eval) in AssetHeatmap
 - Unit: `EvaluationHeatmap` click handler — first click sets selectedDate; second click on same slot calls onAssetSelect with correct asset name (parsed from row label)
 - Unit: `AssetHeatmap` — click calls onEvalSelect, not navigate; selectedEvalId column gets white border cells
 - MSW mocks already exist for all API endpoints; no new endpoints needed
+
+---
+
+## Implementation Rules for Agents
+
+**Use simple, single commands only.** Compound shell commands (pipes `|`, chains `&&`/`||`/`;`,
+subshells `$(...)`, redirects `>`) require manual user approval and slow down the work. Each
+bash call must be one command with no composition.
+
+✗ `cd ui && npx vitest run | head -n 20`
+✓ `npx --prefix ui vitest run`  — then read the output normally
+
+**Use dedicated tools before bash:** Read/Grep/Glob for file access; use `--directory` or
+`--prefix` flags instead of `cd`. If a compound is truly unavoidable, create a named script
+in `scripts/` and call that script — it is version-controlled and auto-approved.
+
+**Git in worktrees:** always `git -C <path> <cmd>`, never `cd <path> && git <cmd>`. Issue
+`git add` and `git commit` as separate bash calls, never chained.
+
+**Tests:** `uv run --directory api pytest ...` — never `cd api && uv run pytest ...`.

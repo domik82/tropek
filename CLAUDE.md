@@ -148,14 +148,41 @@ SQLAlchemy async ORM (asyncpg driver) with Alembic migrations. Repositories in `
 - Error messages: lowercase, no trailing period, prefer `"could not ..."` phrasing
 - Pre-commit runs ruff (lint + format) and mypy automatically
 
+### Python imports
+
+All imports must be at the top of the file. Never place imports inside functions,
+methods, or test bodies. This applies to production code and test files equally.
+
 ## Configuration
 
 - Non-secret config: `config.yaml` (server, DB pool, cache TTLs, queue settings, adapter URLs, logging)
 - Secrets: environment variables prefixed `QG_` (e.g., `QG_DB_PASSWORD`, `QG_REDIS_PASSWORD`, `QG_SECRET_KEY`)
 
+## Shell command discipline
+
+**Avoid compound commands.** Pipes (`|`), chains (`&&`, `||`, `;`), subshells (`$(...)`),
+and redirects (`>`) require manual user approval because they cannot be trusted as a unit.
+Simple, single commands are auto-approved and run without interruption.
+
+Prefer dedicated tools over shell compounds:
+
+✗ cat file.py | grep -n "def "          ← requires approval
+✓ grep -n "def " file.py               ← use the Grep tool directly
+
+✗ ls src/ | head -n 20                  ← requires approval
+✓ ls src/                               ← use the Glob tool instead
+
+✗ cd api && uv run pytest tests/ -q     ← requires approval
+✓ uv run --directory api pytest tests/ -q   ← flags over cd
+
+**When a compound is genuinely unavoidable**, wrap it in a versioned shell script under
+`scripts/` and call the script. The script has a known, reviewable effect and becomes an
+auto-approved command. Example: if you need `npx tool | head -n 10` repeatedly, create
+`scripts/run-tool-preview.sh` — then `./scripts/run-tool-preview.sh` is a single approved call.
+
 ## Git commands
 
-When working with git in worktrees, always issue git add and git commit as 
+When working with git in worktrees, always issue git add and git commit as
 separate bash calls, never chained with &&.
 
 Never use `cd <path> && git <command>` patterns. Always use `git -C <path> <command>` instead.
@@ -164,7 +191,8 @@ Never use `cd <path> && git <command>` patterns. Always use `git -C <path> <comm
 ✓ git -C /mnt/d/DEV/keptn_rewrite/tropek/.worktrees/theme-system add ui/src/index.css
 
 ✗ cd .worktrees/theme-system && git add . && git commit -m "..."
-✓ git -C .worktrees/theme-system add . && git -C .worktrees/theme-system commit -m "..."
+✓ git -C .worktrees/theme-system add .
+✓ git -C .worktrees/theme-system commit -m "..."
 
 ## Python execution
 
