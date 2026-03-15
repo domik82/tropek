@@ -156,6 +156,23 @@ class SLOTestRequest(BaseModel):
     baseline: BaselineConfig | None = None
 
 
+class IndicatorResult(BaseModel):
+    """Per-SLI evaluation result."""
+
+    metric: str
+    display_name: str
+    value: float
+    compared_value: float | None
+    change_absolute: float | None
+    change_relative_pct: float | None
+    status: str
+    score: float
+    weight: float
+    key_sli: bool
+    pass_targets: list[dict[str, Any]] | None
+    warning_targets: list[dict[str, Any]] | None
+
+
 class SLOTestResult(BaseModel):
     """Result from SLO test/dry-run."""
 
@@ -211,23 +228,6 @@ class EvaluationSummary(BaseModel):
     latest_annotation: Annotation | None
     top_failures: list[FailingIndicator]
     created_at: datetime
-
-
-class IndicatorResult(BaseModel):
-    """Per-SLI evaluation result."""
-
-    metric: str
-    display_name: str
-    value: float
-    compared_value: float | None
-    change_absolute: float | None
-    change_relative_pct: float | None
-    status: str
-    score: float
-    weight: float
-    key_sli: bool
-    pass_targets: list[dict[str, Any]] | None
-    warning_targets: list[dict[str, Any]] | None
 
 
 class EvaluationDetail(EvaluationSummary):

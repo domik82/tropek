@@ -39,20 +39,19 @@ def apply(path: str, base_url: str, dry_run: bool, api_key: str | None) -> None:
     from tropek_client.manifest import dry_run as do_dry_run
 
     docs = load_manifests(path)
-    client = TropekClient(base_url=base_url, api_key=api_key)
+    with TropekClient(base_url=base_url, api_key=api_key) as client:
+        if dry_run:
+            plan = do_dry_run(client, docs)
+            for action in plan.actions:
+                click.echo(f"{action.operation:6s}  {action.kind}/{action.name}  {action.reason}")
+            return
 
-    if dry_run:
-        plan = do_dry_run(client, docs)
-        for action in plan.actions:
-            click.echo(f"{action.operation:6s}  {action.kind}/{action.name}  {action.reason}")
-        return
-
-    result = do_apply(client, docs)
-    click.echo(
-        f"{result.created} created, {result.updated} updated, "
-        f"{result.skipped} skipped, {result.failed} failed"
-    )
-    if result.errors:
-        for err in result.errors:
-            click.echo(f"  ERROR: {err.kind}/{err.name}: {err.error}", err=True)
-        sys.exit(1)
+        result = do_apply(client, docs)
+        click.echo(
+            f"{result.created} created, {result.updated} updated, "
+            f"{result.skipped} skipped, {result.failed} failed"
+        )
+        if result.errors:
+            for err in result.errors:
+                click.echo(f"  ERROR: {err.kind}/{err.name}: {err.error}", err=True)
+            sys.exit(1)

@@ -127,7 +127,7 @@ def validate_manifests(path: str) -> list[str]:
     errors: list[str] = []
     try:
         docs = load_manifests(path)
-    except ValueError as e:
+    except (ValueError, OSError) as e:
         errors.append(str(e))
         return errors
 
@@ -280,8 +280,8 @@ def _has_diff(doc: ManifestDocument, existing: Any) -> bool:
                 existing, "display_name", None
             ) or doc.metadata.get("labels", {}) != getattr(existing, "labels", {})
         case "AssetGroup":
-            # Groups are complex — always update to sync members/subgroups
-            return True
+            # Member/subgroup sync not yet implemented; skip updates
+            return False
         case "DataSource":
             return (
                 doc.metadata.get("display_name") != getattr(existing, "display_name", None)
