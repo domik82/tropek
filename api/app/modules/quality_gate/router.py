@@ -285,12 +285,14 @@ async def get_trend(
         resolved_asset_id = ev.asset_id
         resolved_slo_name = ev.slo_name
     else:
+        assert asset_name is not None  # guarded by has_any_asset_param checks above
+        assert slo_name is not None  # guarded by has_any_asset_param checks above
         asset_repo = AssetRepository(session)
-        asset = await asset_repo.get_by_name(asset_name)  # type: ignore[arg-type]
+        asset = await asset_repo.get_by_name(asset_name)
         if asset is None:
-            raise_not_found("asset", asset_name)  # type: ignore[arg-type]
+            raise_not_found("asset", asset_name)
         resolved_asset_id = asset.id
-        resolved_slo_name = slo_name  # type: ignore[assignment]
+        resolved_slo_name = slo_name
 
     points = await eval_repo.get_trend_by_domain(
         asset_id=resolved_asset_id,
