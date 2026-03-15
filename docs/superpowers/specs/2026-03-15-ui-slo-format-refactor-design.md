@@ -134,7 +134,8 @@ No longer needed. `SloHistoryPanel` displays version details using structured fi
 - Reads `obj.pass_criteria` (flat `string[]`) directly instead of `obj.pass[0].criteria`
 - Same for `warning_criteria`
 - Columns: **Indicator** (`sli`), **Display Name**, **Pass Criteria**, **Warning Criteria**,
-  **Weight**, **Key SLI**. `tab_group` and `sort_order` columns removed.
+  **Weight**, **Key SLI**. `tab_group` is dropped from the type entirely; `sort_order` remains
+  on `SloObjective` (server-defined ordering) but is not displayed as a column.
 
 ### `SloObjectiveEditor.tsx`
 
@@ -142,7 +143,9 @@ Props: receives the full `SloDefinition` being edited plus an `onSave` callback.
 manages a list of `SloObjective` items with flat `pass_criteria`/`warning_criteria` arrays.
 On save: calls `createSloDefinition` with the SLO's existing metadata fields plus the updated
 objectives list, `total_score_pass_pct`, `total_score_warning_pct`, and `comparison` —
-creates a new version.
+creates a new version. The `comparison` field is passed through unchanged from the existing
+`SloDefinition` (the editor has no UI surface for it); if absent or `{}`, pass `{}` as
+`createSloDefinition` accepts it as a valid default.
 
 ### `features/slos/hooks.ts`
 
