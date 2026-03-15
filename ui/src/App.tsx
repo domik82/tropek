@@ -15,7 +15,6 @@ const queryClient = new QueryClient({
 
 const NAV_ITEMS = [
   { to: '/navigator', label: 'Navigator' },
-  { to: '/evaluations', label: 'Evaluations' },
   { to: '/slos', label: 'SLOs' },
   { to: '/assets', label: 'Assets' },
 ]
