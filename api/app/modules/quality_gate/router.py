@@ -254,19 +254,19 @@ async def get_trend(
     Exactly one of eval_id or (asset_name + slo_name) must be provided.
     """
     has_eval = eval_id is not None
-    has_asset = asset_name is not None or slo_name is not None
+    has_any_asset_param = asset_name is not None or slo_name is not None
 
-    if has_eval and has_asset:
+    if has_eval and has_any_asset_param:
         raise HTTPException(
             status_code=422,
             detail="provide either eval_id or (asset_name + slo_name), not both",
         )
-    if not has_eval and not has_asset:
+    if not has_eval and not has_any_asset_param:
         raise HTTPException(
             status_code=422,
             detail="provide either eval_id or (asset_name + slo_name)",
         )
-    if has_asset and (asset_name is None or slo_name is None):
+    if has_any_asset_param and (asset_name is None or slo_name is None):
         raise HTTPException(
             status_code=422,
             detail="both asset_name and slo_name are required when not using eval_id",
