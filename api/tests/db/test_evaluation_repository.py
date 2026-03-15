@@ -67,7 +67,6 @@ async def test_mark_completed_updates_fields(db_session: AsyncSession) -> None:
         ev.id,
         result="pass",
         score=95.0,
-        slo_yaml="spec_version: '1.0'\n",
         indicator_results=[{"metric": "cpu", "status": "pass"}],
     )
     fetched = await repo.get_by_id(ev.id)
@@ -127,7 +126,6 @@ async def test_get_baselines_filters_by_os_tag(db_session: AsyncSession) -> None
             ev.id,
             result="pass",
             score=90.0,
-            slo_yaml="",
             indicator_results=[],
         )
     baselines = await repo.get_baselines(
@@ -208,7 +206,6 @@ async def test_get_baselines_filters_by_sli_name(db_session: AsyncSession) -> No
             ev.id,
             result="pass",
             score=90.0,
-            slo_yaml="",
             indicator_results=[],
         )
     # Query baselines with sli_name filter

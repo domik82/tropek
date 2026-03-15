@@ -101,7 +101,6 @@ class EvaluationRepository:
         *,
         result: str,
         score: float,
-        slo_yaml: str,
         indicator_results: list[Any],
         slo_name: str | None = None,
         slo_version: int | None = None,
@@ -114,7 +113,6 @@ class EvaluationRepository:
             eval_id: Evaluation to update.
             result: One of "pass", "warning", "fail", "error".
             score: Weighted score 0.0-100.0.
-            slo_yaml: Resolved SLO YAML (after variable substitution).
             indicator_results: Full per-SLI breakdown as serialisable list.
             slo_name: Named SLO used, if any.
             slo_version: Version of the named SLO, if any.
@@ -131,7 +129,6 @@ class EvaluationRepository:
                 status=EvaluationStatus.COMPLETED,
                 result=result,
                 score=score,
-                slo_yaml=slo_yaml,
                 slo_name=slo_name,
                 slo_version=slo_version,
                 indicator_results=indicator_results,
