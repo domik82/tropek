@@ -7,7 +7,8 @@ import { MetricTrendBlock } from '@/features/evaluations/components/MetricTrendB
 import { ResultBadge } from '@/features/evaluations/components/ResultBadge'
 import { EvaluationTabs, tabLabel } from '@/features/evaluations/components/EvaluationTabs'
 import { AnnotationForm } from '@/features/evaluations/components/AnnotationForm'
-import { RESULT_COLOUR } from '@/features/evaluations/constants'
+import { useTheme } from '@/lib/theme-context'
+import { RESULT_COLOUR } from '@/lib/theme'
 
 
 function scrollTo(id: string) {
@@ -26,6 +27,9 @@ export function EvaluationDetailPage() {
   const [activeTab, setActiveTab] = useState('all')
   const [showInvalidateForm, setShowInvalidateForm] = useState(false)
   const [pendingReason, setPendingReason] = useState('')
+
+  const { theme } = useTheme()
+  const colours = RESULT_COLOUR[theme]
 
   const availableGroups = useMemo(() =>
     [...new Set(ev?.indicator_results.map(i => i.tab_group).filter(Boolean) as string[])],
@@ -97,7 +101,7 @@ export function EvaluationDetailPage() {
         {/* Score + invalidate */}
         <div className="flex flex-col items-center gap-3 shrink-0">
           <div className="text-center">
-            <div className="text-4xl font-bold tabular-nums" style={{ color: RESULT_COLOUR[ev.result] ?? '#ccc' }}>
+            <div className="text-4xl font-bold tabular-nums" style={{ color: colours[ev.result as keyof typeof colours] ?? colours.error }}>
               {ev.score.toFixed(1)}%
             </div>
             <div className="text-xs text-slate-500 mt-0.5">total score</div>

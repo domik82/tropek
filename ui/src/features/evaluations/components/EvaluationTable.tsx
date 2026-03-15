@@ -3,7 +3,9 @@ import type { RefObject } from 'react'
 import { Link } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { RESULT_COLOUR } from '../constants'
+import { useTheme } from '@/lib/theme-context'
+import { RESULT_COLOUR } from '@/lib/theme'
+import type { ResultColours } from '@/lib/theme'
 import { fmtDateTime } from '@/lib/format'
 import { AnnotationCell } from './AnnotationCell'
 import type { EvaluationSummary, ColumnDef } from '../types'
@@ -24,7 +26,7 @@ const STATIC_KEYS = new Set([
   'start', 'score', 'result', 'slo', 'annotations',
 ])
 
-function cell(ev: EvaluationSummary, key: string) {
+function cell(ev: EvaluationSummary, key: string, colours: ResultColours) {
   switch (key) {
     case 'test':
       return (
@@ -53,7 +55,7 @@ function cell(ev: EvaluationSummary, key: string) {
     case 'result':
       return (
         <td key="result" className="px-3 py-2">
-          <Badge style={{ backgroundColor: RESULT_COLOUR[ev.result] ?? '#888', color: '#fff' }}>
+          <Badge style={{ backgroundColor: colours[ev.result as keyof ResultColours] ?? colours.error, color: '#fff' }}>
             {ev.result.toUpperCase()}
           </Badge>
         </td>
@@ -79,6 +81,8 @@ export function EvaluationTable({
   evaluations, dynamicCols: _dynamicCols,
   visibleKeys, allCols, open, setOpen, toggle, pickerRef,
 }: Props) {
+  const { theme } = useTheme()
+  const colours = RESULT_COLOUR[theme]
   const visibleCols = allCols.filter(c => visibleKeys.has(c.key))
 
   return (
@@ -118,7 +122,7 @@ export function EvaluationTable({
               <tr key={ev.id} className="border-b border-gray-800 hover:bg-gray-800/40">
                 {visibleCols.map(col =>
                   STATIC_KEYS.has(col.key)
-                    ? cell(ev, col.key)
+                    ? cell(ev, col.key, colours)
                     : (
                       <td key={col.key} className="px-3 py-2 text-xs text-gray-400">
                         {ev.asset_snapshot.tags?.[col.key] ?? ev.evaluation_metadata?.[col.key] ?? '—'}
