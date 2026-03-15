@@ -283,7 +283,5 @@ function buildYamlFromObjectives(slo: SloDefinition, objectives: FormValues['obj
     if (totalScore.warning) lines.push(`    warning: "${totalScore.warning}"`)
   }
 
-  // Suppress unused var warning
-  void base
   return lines.join('\n')
 }
