@@ -40,6 +40,7 @@ async def test_get_latest_returns_highest_version(db_session: AsyncSession) -> N
     assert latest is not None
     assert latest.version == 2
     assert latest.total_score_pass_pct == 90.0
+    assert latest.objectives[0].pass_criteria == ["<80"]
 
 
 @pytest.mark.integration
@@ -49,6 +50,7 @@ async def test_get_version_specific(db_session: AsyncSession) -> None:
     await repo.create("specific-slo", objectives=OBJECTIVES_V2)
     v1 = await repo.get_version("specific-slo", 1)
     assert v1 is not None
+    assert v1.objectives[0].pass_criteria == ["<100"]
 
 
 @pytest.mark.integration

@@ -10,6 +10,7 @@ from sqlalchemy.engine import CursorResult
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import SLODefinition
+from app.db.models import SLOObjective as SLOObjectiveORM
 
 
 class SLORepository:
@@ -33,7 +34,7 @@ class SLORepository:
 
         Args:
             name: Stable external identifier for the SLO.
-            objectives: List of objective dicts (full bulk-insert logic added in Chunk 3).
+            objectives: List of objective dicts; None is treated as empty (no objectives inserted).
             display_name: Optional human-readable display name for the SLO.
             notes: Optional description of changes in this version.
             author: Optional identifier of who created this version.
@@ -63,6 +64,22 @@ class SLORepository:
             active=True,
         )
         self._session.add(slo)
+        await self._session.flush()
+
+        for i, obj_dict in enumerate(objectives or []):
+            obj = SLOObjectiveORM(
+                id=uuid.uuid4(),
+                slo_definition_id=slo.id,
+                sli=obj_dict["sli"],
+                display_name=obj_dict.get("display_name", ""),
+                weight=obj_dict.get("weight", 1),
+                key_sli=obj_dict.get("key_sli", False),
+                sort_order=i,
+                pass_criteria=obj_dict.get("pass_criteria", []),
+                warning_criteria=obj_dict.get("warning_criteria", []),
+            )
+            self._session.add(obj)
+
         await self._session.flush()
         return slo
 
@@ -144,7 +161,7 @@ class SLORepository:
     async def deactivate(self, name: str) -> int:
         """Mark all versions of a named SLO as inactive.
 
-        Evaluations that used this SLO are unaffected — they store the resolved YAML.
+        Evaluations that used this SLO retain their `slo_name`/`slo_version` snapshots.
 
         Args:
             name: Stable external SLO identifier.
