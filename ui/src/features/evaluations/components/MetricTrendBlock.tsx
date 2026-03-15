@@ -97,7 +97,7 @@ export function MetricTrendBlock({ evalId, indicator }: Props) {
       min: yMin !== '' ? parseFloat(yMin) : undefined,
       max: yMax !== '' ? parseFloat(yMax) : undefined,
       axisLabel: { color: ct.axisLabel, fontSize: Math.round(10 * fontScale) },
-      splitLine: { lineStyle: { color: ct.bg } },
+      splitLine: { lineStyle: { color: ct.grid } },
     },
     series: [
       {
@@ -106,7 +106,7 @@ export function MetricTrendBlock({ evalId, indicator }: Props) {
         symbol: 'circle',
         symbolSize: (_val: unknown, params: { dataIndex: number }) =>
           (trend ?? [])[params.dataIndex]?.eval_id === evalId ? 10 : 6,
-        lineStyle: { color: ct.border, width: 1.5 },
+        lineStyle: { color: ct.line, width: 1.5 },
         ...(markLines.length ? {
           markLine: {
             silent: true,

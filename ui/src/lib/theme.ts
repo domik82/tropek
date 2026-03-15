@@ -14,6 +14,7 @@ export interface ResultColours {
 export interface ChartTheme {
   bg:        string
   border:    string
+  line:      string   // series connector line colour
   axisLabel: string
   grid:      string
 }
@@ -49,18 +50,21 @@ export const CHART_THEME: Record<Theme, ChartTheme> = {
   current:   {
     bg:        '#1a2030',
     border:    '#374151',
+    line:      '#374151',
     axisLabel: '#c0c8d0',
-    grid:      '#1a2030',
+    grid:      '#2a3040',
   },
   forest:    {
     bg:        '#1a1714',              // oklch(16.203% 0.007 17.911)
     border:    'rgba(28, 44, 36, 0.6)', // oklch(30% 0.039 171.364 / 60%)
+    line:      '#374151',             // same gray as Alt — user preference
     axisLabel: '#c0c0c0',
-    grid:      '#14201a',              // oklch(18% 0.007 171.364)
+    grid:      '#2a2a2a',
   },
   corporate: {
     bg:        '#ededed',              // oklch(93% 0 0)
     border:    '#cccccc',              // oklch(80% 0 0)
+    line:      '#cccccc',             // oklch(80% 0 0)
     axisLabel: '#595959',              // oklch(50% 0 0)
     grid:      '#e0e0e0',              // oklch(88% 0 0)
   },
