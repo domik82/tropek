@@ -67,7 +67,7 @@ def test_trend_rejects_neither_eval_id_nor_asset_name(client):
     assert resp.status_code == 422
 
 
-def test_trend_rejects_eval_id_with_partial_asset(client):
+def test_trend_rejects_eval_id_combined_with_asset_name(client):
     resp = client.get(
         "/trend",
         params={
