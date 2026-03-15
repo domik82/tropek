@@ -14,7 +14,7 @@ class FailingIndicator(BaseModel):
 
     metric: str
     display_name: str
-    value: float
+    value: float | None
     threshold: str
 
 
