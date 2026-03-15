@@ -27,16 +27,19 @@ export function GroupHeatmap({ evaluations, groupName }: Props) {
     [evaluations],
   )
 
-  const chartCells = cells.map(cell => ({
-    ...cell,
-    itemStyle: {
-      color: cell.result === 'none'
-        ? ct.bg
-        : colours[cell.result as keyof typeof colours] ?? ct.bg,
-      borderColor: 'transparent',
-      borderWidth: 0,
-    },
-  }))
+  const chartCells = useMemo(
+    () => cells.map(cell => ({
+      ...cell,
+      itemStyle: {
+        color: cell.result === 'none'
+          ? ct.bg
+          : colours[cell.result as keyof typeof colours] ?? ct.bg,
+        borderColor: 'transparent',
+        borderWidth: 0,
+      },
+    })),
+    [cells, colours, ct],
+  )
 
   const option = {
     backgroundColor: 'transparent',
@@ -106,8 +109,16 @@ export function GroupHeatmap({ evaluations, groupName }: Props) {
       onEvents={{
         click: (p: { data: HeatmapCell }) => {
           if (!p?.data?.slot) return
-          const slotEnd = new Date(new Date(p.data.slot).getTime() + 1000).toISOString().slice(0, 19) + 'Z'
-          navigate(`/evaluations?group_name=${encodeURIComponent(groupName)}&from=${p.data.slot}&to=${slotEnd}`)
+          const slotMs = new Date(p.data.slot).getTime()
+          const slotDuration = slots.length >= 2
+            ? new Date(slots[1]).getTime() - new Date(slots[0]).getTime()
+            : 0
+          const to = slotDuration > 0
+            ? new Date(slotMs + slotDuration).toISOString()
+            : undefined
+          const params = new URLSearchParams({ group_name: groupName, from: p.data.slot })
+          if (to) params.set('to', to)
+          navigate(`/evaluations?${params.toString()}`)
         },
       }}
     />
