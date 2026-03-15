@@ -60,7 +60,7 @@ class _AssetTypes:
         """List all asset types."""
         resp = self._http.get("/asset-types")
         _raise_for_status(resp)
-        return [AssetType.model_validate(i) for i in resp.json()]
+        return [AssetType.model_validate(i) for i in resp.json()["items"]]
 
     def create(self, name: str, *, is_default: bool = False) -> AssetType:
         """Create an asset type."""

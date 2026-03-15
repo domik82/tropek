@@ -1,0 +1,10 @@
+api_version: tropek/v1
+kind: DataSource
+metadata:
+  name: prometheus-local
+  display_name: Local Prometheus (dev)
+  labels:
+    env: dev
+spec:
+  adapter_type: prometheus
+  adapter_url: http://localhost:8081
