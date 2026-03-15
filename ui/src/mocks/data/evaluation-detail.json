@@ -1,0 +1,110 @@
+{
+  "id": "f47ac10b-58cc-4372-a567-0e02b2c3d479",
+  "name": "compilation-test",
+  "status": "completed",
+  "result": "pass",
+  "score": 94.44,
+  "start": "2026-03-12T10:00:00Z",
+  "end": "2026-03-12T10:45:00Z",
+  "slo_name": "compilation-test-windows",
+  "slo_version": 2,
+  "ingestion_mode": "pull",
+  "adapter_used": "prometheus",
+  "invalidated": false,
+  "invalidation_note": null,
+  "asset_snapshot": {
+    "name": "vm-win11-01",
+    "tags": { "os": "windows-11", "arch": "x64" },
+    "primary_version": "7.6",
+    "build_ref": "ci-7821",
+    "components": []
+  },
+  "metadata": {
+    "branch": "7.6",
+    "build": "ci-7821",
+    "triggered_by": "github-actions"
+  },
+  "compared_evaluation_ids": [
+    "a1b2c3d4-1111-2222-3333-000000000001",
+    "a1b2c3d4-1111-2222-3333-000000000002"
+  ],
+  "annotations": [
+    {
+      "id": "9a3b1c2d-0000-0000-0000-000000000001",
+      "content": "Windows Defender signature update (version 1.383.1234.0) was applied to this VM approximately 90 minutes before the test window. CPU spikes during definition update may explain the elevated cpu_usage_avg result.",
+      "author": "ops-team",
+      "category": "environment",
+      "meta": { "defender_version": "1.383.1234.0", "affects_baseline": false },
+      "created_at": "2026-03-12T11:45:00Z",
+      "updated_at": "2026-03-12T11:45:00Z"
+    }
+  ],
+  "indicator_results": [
+    {
+      "metric": "compilation_errors",
+      "display_name": "Compilation Errors",
+      "tab_group": "summary",
+      "value": 0,
+      "compared_value": 0,
+      "change_absolute": 0,
+      "change_relative_pct": 0,
+      "aggregation": "raw",
+      "status": "pass",
+      "score": 3.0,
+      "weight": 3,
+      "key_sli": true,
+      "pass_targets": [{ "criteria": "=0", "target_value": 0, "violated": false }],
+      "warning_targets": null
+    },
+    {
+      "metric": "compilation_duration_s",
+      "display_name": "Compilation Duration (seconds)",
+      "tab_group": "summary",
+      "value": 42.1,
+      "compared_value": 41.5,
+      "change_absolute": 0.6,
+      "change_relative_pct": 1.44,
+      "aggregation": "avg",
+      "status": "pass",
+      "score": 2.0,
+      "weight": 2,
+      "key_sli": false,
+      "pass_targets": [{ "criteria": "<=+5%", "target_value": 43.575, "violated": false }],
+      "warning_targets": [{ "criteria": "<=+15%", "target_value": 47.725, "violated": false }]
+    },
+    {
+      "metric": "cpu_usage_avg",
+      "display_name": "CPU Usage (avg %)",
+      "value": 78.3,
+      "compared_value": 71.2,
+      "change_absolute": 7.1,
+      "change_relative_pct": 9.97,
+      "aggregation": "avg",
+      "status": "warning",
+      "score": 1.0,
+      "weight": 2,
+      "key_sli": false,
+      "pass_targets": [
+        { "criteria": "<=+10%", "target_value": 78.32, "violated": true },
+        { "criteria": "<90", "target_value": 90, "violated": false }
+      ],
+      "warning_targets": null
+    },
+    {
+      "metric": "memory_peak_mb",
+      "display_name": "Peak Memory (MB)",
+      "value": 1024.0,
+      "compared_value": null,
+      "change_absolute": null,
+      "change_relative_pct": null,
+      "aggregation": "max",
+      "status": "pass",
+      "score": 1.0,
+      "weight": 1,
+      "key_sli": false,
+      "pass_targets": [{ "criteria": "<2048", "target_value": 2048, "violated": false }],
+      "warning_targets": null
+    }
+  ],
+  "created_at": "2026-03-12T10:46:03Z"
+}
