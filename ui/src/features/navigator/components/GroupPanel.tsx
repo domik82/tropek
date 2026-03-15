@@ -1,20 +1,29 @@
 // ui/src/features/navigator/components/GroupPanel.tsx
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useEvaluations } from '@/features/evaluations/hooks'
-import { GroupHeatmap } from './GroupHeatmap'
+import { useEvaluations, useColumnVisibility } from '@/features/evaluations/hooks'
+import { EvaluationHeatmap } from '@/features/evaluations/components/EvaluationHeatmap'
+import { EvaluationTable } from '@/features/evaluations/components/EvaluationTable'
 import { GroupScoreChart } from './GroupScoreChart'
 
 type ViewMode = 'heatmap' | 'chart'
 
 interface Props {
   groupName: string
+  onSelectAsset: (name: string) => void
 }
 
-export function GroupPanel({ groupName }: Props) {
+export function GroupPanel({ groupName, onSelectAsset }: Props) {
   const [mode, setMode] = useState<ViewMode>('heatmap')
+  const [selectedDate, setSelectedDate] = useState<string | null>(null)
   const navigate = useNavigate()
+
   const { data: evals = [], isLoading } = useEvaluations({ group_name: groupName })
+
+  const colVis = useColumnVisibility([])
+  const tableEvals = selectedDate
+    ? evals.filter(e => e.period_start === selectedDate)
+    : evals
 
   const latestScore = evals.length
     ? Math.round(
@@ -68,18 +77,32 @@ export function GroupPanel({ groupName }: Props) {
       </div>
 
       {/* Content */}
-      <div className="rounded-lg border border-border bg-card p-4">
-        {isLoading && <p className="text-sm text-muted-foreground">Loading…</p>}
-        {!isLoading && evals.length === 0 && (
-          <p className="text-sm text-muted-foreground">No evaluations found for this group.</p>
-        )}
-        {!isLoading && evals.length > 0 && mode === 'heatmap' && (
-          <GroupHeatmap evaluations={evals} groupName={groupName} />
-        )}
-        {!isLoading && evals.length > 0 && mode === 'chart' && (
+      {isLoading && <p className="text-sm text-muted-foreground">Loading…</p>}
+      {!isLoading && evals.length === 0 && (
+        <p className="text-sm text-muted-foreground">No evaluations found for this group.</p>
+      )}
+
+      {!isLoading && evals.length > 0 && mode === 'heatmap' && (
+        <>
+          <div className="rounded-lg border border-border bg-card p-4">
+            <EvaluationHeatmap
+              evaluations={evals}
+              selectedDate={selectedDate}
+              onDateSelect={setSelectedDate}
+              onAssetSelect={onSelectAsset}
+            />
+          </div>
+          <div className="rounded-lg border border-border bg-card p-4">
+            <EvaluationTable evaluations={tableEvals} dynamicCols={[]} {...colVis} />
+          </div>
+        </>
+      )}
+
+      {!isLoading && evals.length > 0 && mode === 'chart' && (
+        <div className="rounded-lg border border-border bg-card p-4">
           <GroupScoreChart evaluations={evals} />
-        )}
-      </div>
+        </div>
+      )}
     </div>
   )
 }
