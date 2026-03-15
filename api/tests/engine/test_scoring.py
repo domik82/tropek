@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from collections.abc import Callable
+
 import pytest
 from app.modules.quality_gate.engine.scoring import (
     IndicatorStatus,
@@ -11,7 +13,8 @@ from app.modules.quality_gate.engine.slo_models import SLO
 from app.modules.quality_gate.engine.slo_parser import build_slo
 
 
-def _slo(slo_fixture) -> SLO:
+# All criteria use AND logic — OR-block semantics were deliberately removed
+def _slo(slo_fixture: Callable[[str], SLO]) -> SLO:
     return slo_fixture("multi_objective_weighted.yaml")
 
 
