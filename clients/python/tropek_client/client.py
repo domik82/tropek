@@ -39,7 +39,7 @@ def _raise_for_status(resp: httpx.Response) -> None:
     try:
         data = resp.json()
         detail = data.get("detail", resp.text) if isinstance(data, dict) else resp.text
-    except Exception:
+    except ValueError:
         detail = resp.text
     match resp.status_code:
         case 404:
