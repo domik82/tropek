@@ -39,7 +39,8 @@ def _raise_for_status(resp: httpx.Response) -> None:
         return
     detail = resp.text
     with contextlib.suppress(Exception):
-        detail = resp.json().get("detail", resp.text)
+        raw = resp.json().get("detail", resp.text)
+        detail = raw if isinstance(raw, str) else str(raw)
     match resp.status_code:
         case 404:
             raise TropekNotFoundError(detail)
@@ -116,9 +117,9 @@ class _Assets:
     ) -> Asset:
         """Create an asset."""
         body: dict[str, Any] = {"name": name, "type_name": type_name}
-        if display_name:
+        if display_name is not None:
             body["display_name"] = display_name
-        if labels:
+        if labels is not None:
             body["labels"] = labels
         resp = self._http.post("/assets", json=body)
         _raise_for_status(resp)
@@ -166,9 +167,9 @@ class _AssetGroups:
     ) -> AssetGroup:
         """Create an asset group."""
         body: dict[str, Any] = {"name": name}
-        if members:
+        if members is not None:
             body["members"] = members
-        if subgroups:
+        if subgroups is not None:
             body["subgroups"] = subgroups
         resp = self._http.post("/asset-groups", json=body)
         _raise_for_status(resp)
@@ -398,15 +399,15 @@ class _Evaluations:
             params["asset_name"] = asset_name
         if slo_name:
             params["slo_name"] = slo_name
-        if result:
+        if result is not None:
             params["result"] = result
-        if date:
+        if date is not None:
             params["date"] = date
         if group_name:
             params["group_name"] = group_name
-        if from_:
+        if from_ is not None:
             params["from"] = from_
-        if to:
+        if to is not None:
             params["to"] = to
         resp = self._http.get("/evaluations", params=params)
         _raise_for_status(resp)
