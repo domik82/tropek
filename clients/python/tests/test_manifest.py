@@ -1,154 +1,168 @@
-"""Tests for manifest loading and reconciliation logic."""
-
 from __future__ import annotations
 
-import textwrap
-from datetime import UTC
-from pathlib import Path
-from unittest.mock import MagicMock
-
-import pytest
-from tropek_client.exceptions import TropekNotFoundError
-from tropek_client.manifest import (
-    ActionType,
-    ResourceKind,
-    load_manifest,
-    plan,
-)
-from tropek_client.models import SLIDefinition
+from tropek_client.manifest import ManifestDocument, load_manifests
 
 
-def test_load_manifest_single_resource(tmp_path: Path):
-    manifest = tmp_path / "test.yaml"
-    manifest.write_text(
-        textwrap.dedent("""
-            kind: SLIDefinition
-            metadata:
-              name: test-sli
-            spec:
-              indicators:
-                cpu: avg(cpu_usage)
-        """)
-    )
-    resources = load_manifest(manifest)
-    assert len(resources) == 1
-    assert resources[0].kind == ResourceKind.SLI_DEFINITION
-    assert resources[0].name == "test-sli"
-    assert resources[0].spec["indicators"] == {"cpu": "avg(cpu_usage)"}
+def test_load_single_document(tmp_path):
+    f = tmp_path / "test.yaml"
+    f.write_text("""
+api_version: tropek/v1
+kind: AssetType
+metadata:
+  name: vm
+spec:
+  is_default: true
+""")
+    docs = load_manifests(str(f))
+    assert len(docs) == 1
+    assert docs[0].kind == "AssetType"
+    assert docs[0].metadata["name"] == "vm"
+    assert docs[0].spec["is_default"] is True
 
 
-def test_load_manifest_multi_document(tmp_path: Path):
-    manifest = tmp_path / "multi.yaml"
-    manifest.write_text(
-        textwrap.dedent("""
-            kind: SLIDefinition
-            metadata:
-              name: sli-one
-            spec:
-              indicators:
-                cpu: avg(cpu)
-            ---
-            kind: SLODefinition
-            metadata:
-              name: slo-one
-            spec:
-              slo_yaml: "spec_version: '1.0'"
-        """)
-    )
-    resources = load_manifest(manifest)
-    assert len(resources) == 2
-    assert resources[0].kind == ResourceKind.SLI_DEFINITION
-    assert resources[1].kind == ResourceKind.SLO_DEFINITION
+def test_load_multi_document(tmp_path):
+    f = tmp_path / "test.yaml"
+    f.write_text("""
+api_version: tropek/v1
+kind: AssetType
+metadata:
+  name: vm
+spec:
+  is_default: true
+---
+api_version: tropek/v1
+kind: Asset
+metadata:
+  name: vm-01
+spec:
+  type_name: vm
+""")
+    docs = load_manifests(str(f))
+    assert len(docs) == 2
+    assert docs[0].kind == "AssetType"
+    assert docs[1].kind == "Asset"
 
 
-def test_load_manifest_missing_kind(tmp_path: Path):
-    manifest = tmp_path / "bad.yaml"
-    manifest.write_text("metadata:\n  name: foo\n")
-    with pytest.raises(ValueError, match="missing 'kind'"):
-        load_manifest(manifest)
+def test_load_directory(tmp_path):
+    (tmp_path / "a.yaml").write_text("""
+api_version: tropek/v1
+kind: AssetType
+metadata:
+  name: vm
+spec:
+  is_default: true
+""")
+    (tmp_path / "b.yaml").write_text("""
+api_version: tropek/v1
+kind: Asset
+metadata:
+  name: vm-01
+spec:
+  type_name: vm
+""")
+    docs = load_manifests(str(tmp_path))
+    assert len(docs) == 2
 
 
-def test_load_manifest_unknown_kind(tmp_path: Path):
-    manifest = tmp_path / "bad.yaml"
-    manifest.write_text("kind: UnknownKind\nmetadata:\n  name: foo\n")
-    with pytest.raises(ValueError, match="unknown resource kind"):
-        load_manifest(manifest)
+def test_topological_sort(tmp_path):
+    f = tmp_path / "test.yaml"
+    f.write_text("""
+api_version: tropek/v1
+kind: Asset
+metadata:
+  name: vm-01
+spec:
+  type_name: vm
+---
+api_version: tropek/v1
+kind: AssetType
+metadata:
+  name: vm
+spec:
+  is_default: true
+""")
+    docs = load_manifests(str(f))
+    kinds = [d.kind for d in docs]
+    assert kinds.index("AssetType") < kinds.index("Asset")
 
 
-def test_plan_creates_for_new_resource():
-    """Plan should return CREATE for a resource that doesn't exist yet."""
-    mock_client = MagicMock()
-    mock_client.sli.get.side_effect = TropekNotFoundError(404, "not found")
+def test_rejects_missing_api_version(tmp_path):
+    f = tmp_path / "test.yaml"
+    f.write_text("""
+kind: AssetType
+metadata:
+  name: vm
+spec:
+  is_default: true
+""")
+    import pytest
 
-    from tropek_client.manifest import ManifestResource
+    with pytest.raises(ValueError, match="api_version"):
+        load_manifests(str(f))
 
-    resources = [
-        ManifestResource(
-            kind=ResourceKind.SLI_DEFINITION,
-            name="new-sli",
-            spec={"indicators": {"cpu": "avg(cpu)"}},
+
+def test_validate_cross_references(tmp_path):
+    """Cross-reference warnings are returned for missing refs within manifest."""
+    from tropek_client.manifest import validate_manifests
+
+    f = tmp_path / "test.yaml"
+    f.write_text("""
+api_version: tropek/v1
+kind: AssetSLOLink
+metadata:
+  name: my-link
+spec:
+  asset_name: vm-01
+  slo_name: missing-slo
+  sli_name: missing-sli
+  data_source_name: missing-ds
+""")
+    errors = validate_manifests(str(f))
+    assert len(errors) == 3
+    assert all("WARNING" in e for e in errors)
+
+
+def test_dry_run_creates_plan():
+    """dry_run produces CREATE actions for missing entities."""
+    from unittest.mock import MagicMock
+
+    from tropek_client.manifest import dry_run
+
+    client = MagicMock()
+    client.asset_types.list.return_value = []  # no existing types
+
+    docs = [
+        ManifestDocument(
+            api_version="tropek/v1",
+            kind="AssetType",
+            metadata={"name": "vm"},
+            spec={"is_default": True},
         )
     ]
-    result = plan(mock_client, resources)
-    assert result.success
-    assert len(result.actions) == 1
-    assert result.actions[0].action == ActionType.CREATE
-    assert result.actions[0].name == "new-sli"
+    plan = dry_run(client, docs)
+    assert len(plan.actions) == 1
+    assert plan.actions[0].operation == "CREATE"
+    assert plan.actions[0].name == "vm"
 
 
-def test_plan_skips_unchanged_resource():
-    """Plan should return SKIP for a resource with identical state."""
-    from datetime import datetime
+def test_apply_creates_entity():
+    """apply calls create on the client for CREATE actions."""
+    from unittest.mock import MagicMock
 
-    mock_client = MagicMock()
-    existing_sli = SLIDefinition(
-        id="test-id",
-        name="existing-sli",
-        version=1,
-        indicators={"cpu": "avg(cpu)"},
-        active=True,
-        created_at=datetime.now(tz=UTC),
-    )
-    mock_client.sli.get.return_value = existing_sli
+    from tropek_client.manifest import apply as do_apply
 
-    from tropek_client.manifest import ManifestResource
+    client = MagicMock()
+    client.asset_types.list.return_value = []  # triggers CREATE
 
-    resources = [
-        ManifestResource(
-            kind=ResourceKind.SLI_DEFINITION,
-            name="existing-sli",
-            spec={"indicators": {"cpu": "avg(cpu)"}},
+    docs = [
+        ManifestDocument(
+            api_version="tropek/v1",
+            kind="AssetType",
+            metadata={"name": "vm"},
+            spec={"is_default": True},
         )
     ]
-    result = plan(mock_client, resources)
-    assert result.success
-    assert result.actions[0].action == ActionType.SKIP
-
-
-def test_plan_updates_changed_resource():
-    """Plan should return UPDATE for a resource with changed indicators."""
-    from datetime import datetime
-
-    mock_client = MagicMock()
-    existing_sli = SLIDefinition(
-        id="test-id",
-        name="existing-sli",
-        version=1,
-        indicators={"cpu": "old_query()"},
-        active=True,
-        created_at=datetime.now(tz=UTC),
-    )
-    mock_client.sli.get.return_value = existing_sli
-
-    from tropek_client.manifest import ManifestResource
-
-    resources = [
-        ManifestResource(
-            kind=ResourceKind.SLI_DEFINITION,
-            name="existing-sli",
-            spec={"indicators": {"cpu": "new_query()"}},
-        )
-    ]
-    result = plan(mock_client, resources)
-    assert result.success
-    assert result.actions[0].action == ActionType.UPDATE
+    result = do_apply(client, docs)
+    assert result.created == 1
+    assert result.failed == 0
+    client.asset_types.create.assert_called_once_with("vm", is_default=True)
