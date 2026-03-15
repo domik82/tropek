@@ -7,6 +7,7 @@ from datetime import datetime
 from typing import Any
 
 from sqlalchemy import (
+    ARRAY,
     UUID,
     Boolean,
     CheckConstraint,
@@ -180,6 +181,25 @@ class SLIDefinition(Base):
     # fmt: on
 
 
+class SLOObjective(Base):
+    """One objective row per SLO definition version — immutable after insert."""
+
+    __tablename__ = "slo_objectives"
+    __table_args__ = (Index("idx_slo_objectives_definition", "slo_definition_id"),)
+
+    # fmt: off
+    id:                Mapped[uuid.UUID]      = mapped_column(UUID, primary_key=True, default=uuid.uuid4)
+    slo_definition_id: Mapped[uuid.UUID]      = mapped_column(UUID, ForeignKey("slo_definitions.id", ondelete="CASCADE"), nullable=False)
+    sli:               Mapped[str]            = mapped_column(Text, nullable=False)
+    display_name:      Mapped[str]            = mapped_column(Text, nullable=False, server_default="")
+    weight:            Mapped[int]            = mapped_column(Integer, nullable=False, server_default=text("1"))
+    key_sli:           Mapped[bool]           = mapped_column(Boolean, nullable=False, server_default=false())
+    sort_order:        Mapped[int]            = mapped_column(Integer, nullable=False)
+    pass_criteria:     Mapped[list[str]]      = mapped_column(ARRAY(Text), nullable=False, server_default=text("'{}'"))
+    warning_criteria:  Mapped[list[str]]      = mapped_column(ARRAY(Text), nullable=False, server_default=text("'{}'"))
+    # fmt: on
+
+
 class SLODefinition(Base):
     """Versioned SLO definition — rows are immutable after insert."""
 
@@ -193,16 +213,24 @@ class SLODefinition(Base):
 
     # fmt: off
 
-    id: Mapped[uuid.UUID] = mapped_column(UUID, primary_key=True, default=uuid.uuid4)
-    name: Mapped[str] = mapped_column(Text, nullable=False)
-    display_name: Mapped[str | None] = mapped_column(Text, nullable=True)
-    version: Mapped[int] = mapped_column(Integer, nullable=False)
-    slo_yaml: Mapped[str] = mapped_column(Text, nullable=False)
-    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
-    author: Mapped[str | None] = mapped_column(Text, nullable=True)
-    meta: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, server_default=text("'{}'"), default=dict)
-    active: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=true(), default=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    id:                      Mapped[uuid.UUID]              = mapped_column(UUID, primary_key=True, default=uuid.uuid4)
+    name:                    Mapped[str]                    = mapped_column(Text, nullable=False)
+    display_name:            Mapped[str | None]             = mapped_column(Text, nullable=True)
+    version:                 Mapped[int]                    = mapped_column(Integer, nullable=False)
+    total_score_pass_pct:    Mapped[float]                  = mapped_column(Float, nullable=False, server_default=text("90.0"))
+    total_score_warning_pct: Mapped[float]                  = mapped_column(Float, nullable=False, server_default=text("75.0"))
+    comparison:              Mapped[dict[str, Any]]         = mapped_column(JSONB, nullable=False, server_default=text("'{}'::jsonb"), default=dict)
+    notes:                   Mapped[str | None]             = mapped_column(Text, nullable=True)
+    author:                  Mapped[str | None]             = mapped_column(Text, nullable=True)
+    meta:                    Mapped[dict[str, Any]]         = mapped_column(JSONB, nullable=False, server_default=text("'{}'"), default=dict)
+    active:                  Mapped[bool]                   = mapped_column(Boolean, nullable=False, server_default=true(), default=True)
+    created_at:              Mapped[datetime]               = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    objectives:              Mapped[list[SLOObjective]]     = relationship(
+        "SLOObjective",
+        order_by="SLOObjective.sort_order",
+        cascade="all, delete-orphan",
+        lazy="selectin",
+    )
 
     # fmt: on
 
@@ -249,7 +277,6 @@ class Evaluation(Base):
     period_end:   Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     result: Mapped[str | None] = mapped_column(Text, nullable=True)  # null while pending
     score: Mapped[float | None] = mapped_column(Float, nullable=True)
-    slo_yaml: Mapped[str | None] = mapped_column(Text, nullable=True)
     slo_name: Mapped[str | None] = mapped_column(Text, nullable=True)
     slo_version: Mapped[int | None] = mapped_column(Integer, nullable=True)
     sli_name: Mapped[str | None] = mapped_column(Text, nullable=True)

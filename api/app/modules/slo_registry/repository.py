@@ -21,7 +21,7 @@ class SLORepository:
     async def create(
         self,
         name: str,
-        slo_yaml: str,
+        objectives: list[dict[str, Any]] | None = None,
         display_name: str | None = None,
         notes: str | None = None,
         author: str | None = None,
@@ -33,7 +33,7 @@ class SLORepository:
 
         Args:
             name: Stable external identifier for the SLO.
-            slo_yaml: Full SLO YAML content.
+            objectives: List of objective dicts (full bulk-insert logic added in Chunk 3).
             display_name: Optional human-readable display name for the SLO.
             notes: Optional description of changes in this version.
             author: Optional identifier of who created this version.
@@ -56,7 +56,6 @@ class SLORepository:
             id=uuid.uuid4(),
             name=name,
             version=next_version,
-            slo_yaml=slo_yaml,
             display_name=display_name,
             notes=notes,
             author=author,
