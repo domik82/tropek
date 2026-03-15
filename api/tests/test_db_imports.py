@@ -24,6 +24,7 @@ def test_orm_models_importable() -> None:
         SLIDefinition,
         SLIValue,
         SLODefinition,
+        SLOObjective,
     )
 
     table_names = set(Base.metadata.tables.keys())
@@ -38,6 +39,7 @@ def test_orm_models_importable() -> None:
         "data_sources",
         "sli_definitions",
         "slo_definitions",
+        "slo_objectives",
         "evaluations",
         "evaluation_annotations",
         "evaluation_batches",

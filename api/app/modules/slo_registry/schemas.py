@@ -11,15 +11,37 @@ from pydantic import BaseModel, ConfigDict, Field
 from app.modules.quality_gate.schemas import IndicatorResult
 
 
+class SLOObjectiveIn(BaseModel):
+    """SLO objective for create/validate requests."""
+
+    sli: str
+    display_name: str = ""
+    pass_criteria: list[str] = Field(default_factory=list)
+    warning_criteria: list[str] = Field(default_factory=list)
+    weight: int = 1
+    key_sli: bool = False
+
+
+class SLOObjectiveRead(SLOObjectiveIn):
+    """SLO objective in responses — includes sort_order for round-trip export."""
+
+    sort_order: int
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 class SLODefinitionCreate(BaseModel):
     """Request body for creating an SLO definition."""
 
     name: str
     display_name: str | None = None
-    slo_yaml: str
+    objectives: list[SLOObjectiveIn]
+    total_score_pass_pct: float = 90.0
+    total_score_warning_pct: float = 75.0
+    comparison: dict[str, Any] = Field(default_factory=dict)
     notes: str | None = None
     author: str | None = None
-    meta: dict[str, Any] = {}
+    meta: dict[str, Any] = Field(default_factory=dict)
 
 
 class SLODefinitionRead(BaseModel):
@@ -29,20 +51,26 @@ class SLODefinitionRead(BaseModel):
     name: str
     display_name: str | None
     version: int
-    slo_yaml: str
+    active: bool
+    objectives: list[SLOObjectiveRead]
+    total_score_pass_pct: float
+    total_score_warning_pct: float
+    comparison: dict[str, Any]
     notes: str | None
     author: str | None
     meta: dict[str, Any]
-    active: bool
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
 
 
 class SLOValidateRequest(BaseModel):
-    """Request body for SLO YAML validation."""
+    """Request body for SLO validation (no save)."""
 
-    slo_yaml: str
+    objectives: list[SLOObjectiveIn]
+    total_score_pass_pct: float = 90.0
+    total_score_warning_pct: float = 75.0
+    comparison: dict[str, Any] = Field(default_factory=dict)
 
 
 class SLOValidationError(BaseModel):
@@ -57,7 +85,7 @@ class SLOValidationResult(BaseModel):
 
     valid: bool
     errors: list[SLOValidationError]
-    objectives: list[dict[str, Any]] | None = None
+    objectives: list[SLOObjectiveIn] | None = None
 
 
 class BaselineConfig(BaseModel):
@@ -71,7 +99,12 @@ class BaselineConfig(BaseModel):
 class SLOTestRequest(BaseModel):
     """Request body for SLO test (dry-run evaluation)."""
 
-    slo_yaml: str
+    # SLO content — replaces slo_yaml
+    objectives: list[SLOObjectiveIn]
+    total_score_pass_pct: float = 90.0
+    total_score_warning_pct: float = 75.0
+    comparison: dict[str, Any] = Field(default_factory=dict)
+    # Evaluation context — unchanged
     sli_name: str
     data_source_name: str
     asset_name: str

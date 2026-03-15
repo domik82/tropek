@@ -14,7 +14,7 @@ from app.modules.datasource.repository import DataSourceRepository
 from app.modules.quality_gate.engine.criteria import aggregate_values, parse_criteria_string
 from app.modules.quality_gate.engine.evaluator import evaluate
 from app.modules.quality_gate.engine.slo_models import SLOParseError
-from app.modules.quality_gate.engine.slo_parser import parse_slo
+from app.modules.quality_gate.engine.slo_parser import build_slo
 from app.modules.quality_gate.engine.variables import build_variables, substitute_variables
 from app.modules.quality_gate.repository import EvaluationRepository
 from app.modules.quality_gate.schemas import IndicatorResult
@@ -57,7 +57,10 @@ async def create_slo_definition(
     repo = SLORepository(session)
     slo = await repo.create(
         body.name,
-        slo_yaml=body.slo_yaml,
+        objectives=[o.model_dump() for o in body.objectives],
+        total_score_pass_pct=body.total_score_pass_pct,
+        total_score_warning_pct=body.total_score_warning_pct,
+        comparison=body.comparison,
         display_name=body.display_name,
         notes=body.notes,
         author=body.author,
@@ -68,64 +71,53 @@ async def create_slo_definition(
 
 @router.post("/slo-definitions/validate", response_model=SLOValidationResult)
 async def validate_slo(body: SLOValidateRequest) -> SLOValidationResult:  # noqa: C901
-    """Validate SLO YAML structure without saving."""
+    """Validate SLO structure without saving."""
     errors: list[SLOValError] = []
 
-    if not body.slo_yaml or not body.slo_yaml.strip():
+    if not body.objectives:
         return SLOValidationResult(
             valid=False,
-            errors=[SLOValError(field="slo_yaml", message="empty slo yaml")],
+            errors=[SLOValError(field="objectives", message="objectives list is empty")],
         )
 
     try:
-        slo = parse_slo(body.slo_yaml)
+        slo = build_slo(
+            objectives=[o.model_dump() for o in body.objectives],
+            total_score_pass_pct=body.total_score_pass_pct,
+            total_score_warning_pct=body.total_score_warning_pct,
+            comparison=body.comparison,
+        )
     except SLOParseError as e:
         return SLOValidationResult(
             valid=False,
-            errors=[SLOValError(field="slo_yaml", message=str(e))],
-        )
-    except Exception as e:
-        return SLOValidationResult(
-            valid=False,
-            errors=[SLOValError(field="slo_yaml", message=f"parse error: {e}")],
+            errors=[SLOValError(field="objectives", message=str(e))],
         )
 
     # Validate all criteria strings
     for i, obj in enumerate(slo.objectives):
-        for block in obj.pass_criteria:
-            for raw in block.criteria:
-                try:
-                    parse_criteria_string(raw)
-                except ValueError as e:
-                    errors.append(
-                        SLOValError(
-                            field=f"objectives[{i}].pass.criteria",
-                            message=str(e),
-                        )
-                    )
-        for block in obj.warning_criteria:
-            for raw in block.criteria:
-                try:
-                    parse_criteria_string(raw)
-                except ValueError as e:
-                    errors.append(
-                        SLOValError(
-                            field=f"objectives[{i}].warning.criteria",
-                            message=str(e),
-                        )
-                    )
+        for raw in obj.pass_criteria:
+            try:
+                parse_criteria_string(raw)
+            except ValueError as e:
+                errors.append(SLOValError(field=f"objectives[{i}].pass_criteria", message=str(e)))
+        for raw in obj.warning_criteria:
+            try:
+                parse_criteria_string(raw)
+            except ValueError as e:
+                errors.append(
+                    SLOValError(field=f"objectives[{i}].warning_criteria", message=str(e))
+                )
 
     # Validate total_score percentages
     if not (0 <= slo.total_score.pass_pct <= 100):
-        errors.append(SLOValError(field="total_score.pass", message="must be 0-100"))
+        errors.append(SLOValError(field="total_score_pass_pct", message="must be 0-100"))
     if not (0 <= slo.total_score.warning_pct <= 100):
-        errors.append(SLOValError(field="total_score.warning", message="must be 0-100"))
+        errors.append(SLOValError(field="total_score_warning_pct", message="must be 0-100"))
 
     if errors:
         return SLOValidationResult(valid=False, errors=errors)
 
-    objectives_dicts = [obj.model_dump() for obj in slo.objectives]
-    return SLOValidationResult(valid=True, errors=[], objectives=objectives_dicts)
+    return SLOValidationResult(valid=True, errors=[], objectives=body.objectives)
 
 
 @router.post("/slo-definitions/test", response_model=SLOTestResult)
@@ -134,13 +126,16 @@ async def test_slo(  # noqa: C901
     session: AsyncSession = Depends(get_session),  # noqa: B008, PT028
 ) -> SLOTestResult:
     """Dry-run SLO evaluation — fetch metrics, evaluate, return result without persisting."""
-    # 1. Validate SLO YAML
+    # 1. Build SLO model from structured request
     try:
-        slo = parse_slo(body.slo_yaml)
+        slo = build_slo(
+            objectives=[o.model_dump() for o in body.objectives],
+            total_score_pass_pct=body.total_score_pass_pct,
+            total_score_warning_pct=body.total_score_warning_pct,
+            comparison=body.comparison,
+        )
     except SLOParseError as e:
-        raise HTTPException(status_code=422, detail=f"invalid slo yaml: {e}") from e
-    except Exception as e:
-        raise HTTPException(status_code=422, detail=f"could not parse slo yaml: {e}") from e
+        raise HTTPException(status_code=422, detail=f"invalid slo: {e}") from e
 
     # 2. Resolve SLI definition
     sli_repo = SLIRepository(session)
@@ -250,7 +245,7 @@ async def test_slo(  # noqa: C901
 
     # 8. Evaluate
     eval_result = evaluate(
-        body.slo_yaml,
+        slo,
         {k: v for k, v in metrics_fetched.items()},
         {k: v for k, v in baselines.items() if v is not None},
     )
