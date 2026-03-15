@@ -1,28 +1,19 @@
-# Three objectives: weighted scoring, key_sli, and informational-only SLI.
-# Used to test: pass/warning/fail scoring, key_sli veto, info status.
-spec_version: '1.0'
-indicators:
-  m1: 'query_m1()'
-  m2: 'query_m2()'
-  m3: 'query_m3()'
+# Three objectives: weighted scoring, key_sli veto, and informational-only SLI.
 objectives:
   - sli: m1
-    displayName: "Response Time"
-    pass:
-      - criteria: ["<100"]
-    warning:
-      - criteria: ["<200"]
+    display_name: "Response Time"
+    pass_criteria: ["<100"]
+    warning_criteria: ["<200"]
     weight: 2
     key_sli: false
   - sli: m2
-    displayName: "Error Count (key)"
-    pass:
-      - criteria: ["<50"]
+    display_name: "Error Count (key)"
+    pass_criteria: ["<50"]
     weight: 1
     key_sli: true
   - sli: m3
-    displayName: "Info Only — no pass criteria"
+    display_name: "Info Only — no pass criteria"
     weight: 1
 total_score:
-  pass: "90%"
-  warning: "75%"
+  pass_pct: 90.0
+  warning_pct: 75.0

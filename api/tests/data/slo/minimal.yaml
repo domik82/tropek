@@ -1,11 +1,7 @@
-spec_version: '1.0'
-indicators:
-  response_time_p99: 'avg_over_time(http_duration_seconds[5m])'
 objectives:
   - sli: response_time_p99
-    pass:
-      - criteria: ["<600"]
+    pass_criteria: ["<600"]
     weight: 1
 total_score:
-  pass: "90%"
-  warning: "75%"
+  pass_pct: 90.0
+  warning_pct: 75.0
