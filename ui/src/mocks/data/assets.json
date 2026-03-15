@@ -1,0 +1,153 @@
+{
+  "items": [
+    { "id": "asset-win-monthly-01",    "name": "win-monthly-01",    "display_name": "Windows 11 Monthly #1",         "type": "vm", "labels": { "os": "windows-11",          "arch": "x64",  "lab": "monthly-lab"       }, "created_at": "2026-01-10T00:00:00Z" },
+    { "id": "asset-linux-monthly-01",  "name": "linux-monthly-01",  "display_name": "Ubuntu 22.04 Monthly #1",       "type": "vm", "labels": { "os": "ubuntu-22.04",        "arch": "x64",  "lab": "monthly-lab"       }, "created_at": "2026-01-10T00:00:00Z" },
+    { "id": "asset-mac-monthly-01",    "name": "mac-monthly-01",    "display_name": "macOS 14 Monthly #1",           "type": "vm", "labels": { "os": "macos-14",            "arch": "arm64", "lab": "monthly-lab"      }, "created_at": "2026-01-10T00:00:00Z" },
+    { "id": "asset-win-toolset-01",    "name": "win-toolset-01",    "display_name": "Windows 11 Toolset #1",         "type": "vm", "labels": { "os": "windows-11",          "arch": "x64",  "lab": "toolset-lab"       }, "created_at": "2026-01-12T00:00:00Z" },
+    { "id": "asset-linux-toolset-01",  "name": "linux-toolset-01",  "display_name": "Ubuntu 22.04 Toolset #1",       "type": "vm", "labels": { "os": "ubuntu-22.04",        "arch": "x64",  "lab": "toolset-lab"       }, "created_at": "2026-01-12T00:00:00Z" },
+    { "id": "asset-mac-toolset-01",    "name": "mac-toolset-01",    "display_name": "macOS 14 Toolset #1",           "type": "vm", "labels": { "os": "macos-14",            "arch": "arm64", "lab": "toolset-lab"      }, "created_at": "2026-01-12T00:00:00Z" },
+    { "id": "asset-win-adhoc-01",      "name": "win-adhoc-01",      "display_name": "Windows 10 Ad-hoc #1",          "type": "vm", "labels": { "os": "windows-10",          "arch": "x64",  "lab": "ad-hoc-lab-1"      }, "created_at": "2026-01-15T00:00:00Z" },
+    { "id": "asset-linux-adhoc-01",    "name": "linux-adhoc-01",    "display_name": "Ubuntu 22.04 Ad-hoc #1",        "type": "vm", "labels": { "os": "ubuntu-22.04",        "arch": "x64",  "lab": "ad-hoc-lab-1"      }, "created_at": "2026-01-15T00:00:00Z" },
+    { "id": "asset-win-adhoc-02",      "name": "win-adhoc-02",      "display_name": "Windows 7 Ad-hoc #2",           "type": "vm", "labels": { "os": "windows-7",           "arch": "x86",  "lab": "ad-hoc-lab-1"      }, "created_at": "2026-01-15T00:00:00Z" },
+    { "id": "asset-centos79-pl1-01",   "name": "centos79-pl1-01",   "display_name": "CentOS 7.9 Perf Lab1 #1",       "type": "vm", "labels": { "os": "centos-7.9",          "arch": "x64",  "lab": "performance-lab-1" }, "created_at": "2026-01-20T00:00:00Z" },
+    { "id": "asset-rocky8-pl1-01",     "name": "rocky8-pl1-01",     "display_name": "Rocky Linux 8 Perf Lab1 #1",    "type": "vm", "labels": { "os": "rocky-8",             "arch": "x64",  "lab": "performance-lab-1" }, "created_at": "2026-01-20T00:00:00Z" },
+    { "id": "asset-rocky9-pl1-01",     "name": "rocky9-pl1-01",     "display_name": "Rocky Linux 9 Perf Lab1 #1",    "type": "vm", "labels": { "os": "rocky-9",             "arch": "x64",  "lab": "performance-lab-1" }, "created_at": "2026-01-20T00:00:00Z" },
+    { "id": "asset-rocky10-pl1-01",    "name": "rocky10-pl1-01",    "display_name": "Rocky Linux 10 Perf Lab1 #1",   "type": "vm", "labels": { "os": "rocky-10",            "arch": "x64",  "lab": "performance-lab-1" }, "created_at": "2026-01-20T00:00:00Z" },
+    { "id": "asset-ubuntu22-pl1-01",   "name": "ubuntu22-pl1-01",   "display_name": "Ubuntu 22.04 Perf Lab1 #1",     "type": "vm", "labels": { "os": "ubuntu-22.04",        "arch": "x64",  "lab": "performance-lab-1" }, "created_at": "2026-01-20T00:00:00Z" },
+    { "id": "asset-ubuntu24-pl1-01",   "name": "ubuntu24-pl1-01",   "display_name": "Ubuntu 24.04 Perf Lab1 #1",     "type": "vm", "labels": { "os": "ubuntu-24.04",        "arch": "x64",  "lab": "performance-lab-1" }, "created_at": "2026-01-20T00:00:00Z" },
+    { "id": "asset-win7-pl1-01",       "name": "win7-pl1-01",       "display_name": "Windows 7 Perf Lab1 #1",        "type": "vm", "labels": { "os": "windows-7",           "arch": "x86",  "lab": "performance-lab-1" }, "created_at": "2026-01-20T00:00:00Z" },
+    { "id": "asset-win10-32-pl1-01",   "name": "win10-32-pl1-01",   "display_name": "Windows 10 x86 Perf Lab1 #1",   "type": "vm", "labels": { "os": "windows-10",          "arch": "x86",  "lab": "performance-lab-1" }, "created_at": "2026-01-20T00:00:00Z" },
+    { "id": "asset-win10-64-pl1-01",   "name": "win10-64-pl1-01",   "display_name": "Windows 10 x64 Perf Lab1 #1",   "type": "vm", "labels": { "os": "windows-10",          "arch": "x64",  "lab": "performance-lab-1" }, "created_at": "2026-01-20T00:00:00Z" },
+    { "id": "asset-win11-pl1-01",      "name": "win11-pl1-01",      "display_name": "Windows 11 Perf Lab1 #1",       "type": "vm", "labels": { "os": "windows-11",          "arch": "x64",  "lab": "performance-lab-1" }, "created_at": "2026-01-20T00:00:00Z" },
+    { "id": "asset-winsrv22-pl1-01",   "name": "winsrv22-pl1-01",   "display_name": "Windows Server 2022 PL1 #1",    "type": "vm", "labels": { "os": "windows-server-2022",  "arch": "x64",  "lab": "performance-lab-1" }, "created_at": "2026-01-20T00:00:00Z" },
+    { "id": "asset-centos79-pl2-01",   "name": "centos79-pl2-01",   "display_name": "CentOS 7.9 Perf Lab2 #1",       "type": "vm", "labels": { "os": "centos-7.9",          "arch": "x64",  "lab": "performance-lab-2" }, "created_at": "2026-01-22T00:00:00Z" },
+    { "id": "asset-rocky8-pl2-01",     "name": "rocky8-pl2-01",     "display_name": "Rocky Linux 8 Perf Lab2 #1",    "type": "vm", "labels": { "os": "rocky-8",             "arch": "x64",  "lab": "performance-lab-2" }, "created_at": "2026-01-22T00:00:00Z" },
+    { "id": "asset-rocky9-pl2-01",     "name": "rocky9-pl2-01",     "display_name": "Rocky Linux 9 Perf Lab2 #1",    "type": "vm", "labels": { "os": "rocky-9",             "arch": "x64",  "lab": "performance-lab-2" }, "created_at": "2026-01-22T00:00:00Z" },
+    { "id": "asset-rocky10-pl2-01",    "name": "rocky10-pl2-01",    "display_name": "Rocky Linux 10 Perf Lab2 #1",   "type": "vm", "labels": { "os": "rocky-10",            "arch": "x64",  "lab": "performance-lab-2" }, "created_at": "2026-01-22T00:00:00Z" },
+    { "id": "asset-ubuntu22-pl2-01",   "name": "ubuntu22-pl2-01",   "display_name": "Ubuntu 22.04 Perf Lab2 #1",     "type": "vm", "labels": { "os": "ubuntu-22.04",        "arch": "x64",  "lab": "performance-lab-2" }, "created_at": "2026-01-22T00:00:00Z" },
+    { "id": "asset-ubuntu24-pl2-01",   "name": "ubuntu24-pl2-01",   "display_name": "Ubuntu 24.04 Perf Lab2 #1",     "type": "vm", "labels": { "os": "ubuntu-24.04",        "arch": "x64",  "lab": "performance-lab-2" }, "created_at": "2026-01-22T00:00:00Z" },
+    { "id": "asset-win7-pl2-01",       "name": "win7-pl2-01",       "display_name": "Windows 7 Perf Lab2 #1",        "type": "vm", "labels": { "os": "windows-7",           "arch": "x86",  "lab": "performance-lab-2" }, "created_at": "2026-01-22T00:00:00Z" },
+    { "id": "asset-win10-32-pl2-01",   "name": "win10-32-pl2-01",   "display_name": "Windows 10 x86 Perf Lab2 #1",   "type": "vm", "labels": { "os": "windows-10",          "arch": "x86",  "lab": "performance-lab-2" }, "created_at": "2026-01-22T00:00:00Z" },
+    { "id": "asset-win10-64-pl2-01",   "name": "win10-64-pl2-01",   "display_name": "Windows 10 x64 Perf Lab2 #1",   "type": "vm", "labels": { "os": "windows-10",          "arch": "x64",  "lab": "performance-lab-2" }, "created_at": "2026-01-22T00:00:00Z" },
+    { "id": "asset-win11-pl2-01",      "name": "win11-pl2-01",      "display_name": "Windows 11 Perf Lab2 #1",       "type": "vm", "labels": { "os": "windows-11",          "arch": "x64",  "lab": "performance-lab-2" }, "created_at": "2026-01-22T00:00:00Z" },
+    { "id": "asset-winsrv22-pl2-01",   "name": "winsrv22-pl2-01",   "display_name": "Windows Server 2022 PL2 #1",    "type": "vm", "labels": { "os": "windows-server-2022",  "arch": "x64",  "lab": "performance-lab-2" }, "created_at": "2026-01-22T00:00:00Z" }
+  ],
+  "groups": [
+    {
+      "id": "monthly-lab",
+      "name": "monthly-lab",
+      "display_name": "Monthly Lab",
+      "description": "Monthly compilation regression tests across Windows, Linux, and macOS",
+      "members": [
+        { "asset_id": "asset-win-monthly-01",   "asset_name": "win-monthly-01",   "weight": 1.0 },
+        { "asset_id": "asset-linux-monthly-01", "asset_name": "linux-monthly-01", "weight": 1.0 },
+        { "asset_id": "asset-mac-monthly-01",   "asset_name": "mac-monthly-01",   "weight": 1.0 }
+      ],
+      "subgroups": []
+    },
+    {
+      "id": "toolset-lab",
+      "name": "toolset-lab",
+      "display_name": "Toolset Lab",
+      "description": "Compilation tests for toolset validation on Win/Linux/macOS",
+      "members": [
+        { "asset_id": "asset-win-toolset-01",   "asset_name": "win-toolset-01",   "weight": 1.0 },
+        { "asset_id": "asset-linux-toolset-01", "asset_name": "linux-toolset-01", "weight": 1.0 },
+        { "asset_id": "asset-mac-toolset-01",   "asset_name": "mac-toolset-01",   "weight": 1.0 }
+      ],
+      "subgroups": []
+    },
+    {
+      "id": "ad-hoc-lab-1",
+      "name": "ad-hoc-lab-1",
+      "display_name": "Ad-hoc Lab 1",
+      "description": "Ad-hoc tests on legacy Windows and Ubuntu machines",
+      "members": [
+        { "asset_id": "asset-win-adhoc-01",   "asset_name": "win-adhoc-01",   "weight": 1.0 },
+        { "asset_id": "asset-linux-adhoc-01", "asset_name": "linux-adhoc-01", "weight": 1.0 },
+        { "asset_id": "asset-win-adhoc-02",   "asset_name": "win-adhoc-02",   "weight": 1.0 }
+      ],
+      "subgroups": []
+    },
+    {
+      "id": "performance-lab-1",
+      "name": "performance-lab-1",
+      "display_name": "Performance Lab 1",
+      "description": "Load testing lab with Linux and Windows subgroups",
+      "members": [],
+      "subgroups": [
+        { "group_id": "pl1-linux",   "weight": 1.0 },
+        { "group_id": "pl1-windows", "weight": 1.0 }
+      ]
+    },
+    {
+      "id": "performance-lab-2",
+      "name": "performance-lab-2",
+      "display_name": "Performance Lab 2",
+      "description": "Second load testing lab with Linux and Windows subgroups",
+      "members": [],
+      "subgroups": [
+        { "group_id": "pl2-linux",   "weight": 1.0 },
+        { "group_id": "pl2-windows", "weight": 1.0 }
+      ]
+    },
+    {
+      "id": "pl1-linux",
+      "name": "pl1-linux",
+      "display_name": "PL1 Linux",
+      "description": "Linux nodes in Performance Lab 1",
+      "members": [
+        { "asset_id": "asset-centos79-pl1-01", "asset_name": "centos79-pl1-01", "weight": 1.0 },
+        { "asset_id": "asset-rocky8-pl1-01",   "asset_name": "rocky8-pl1-01",   "weight": 1.0 },
+        { "asset_id": "asset-rocky9-pl1-01",   "asset_name": "rocky9-pl1-01",   "weight": 1.0 },
+        { "asset_id": "asset-rocky10-pl1-01",  "asset_name": "rocky10-pl1-01",  "weight": 1.0 },
+        { "asset_id": "asset-ubuntu22-pl1-01", "asset_name": "ubuntu22-pl1-01", "weight": 1.0 },
+        { "asset_id": "asset-ubuntu24-pl1-01", "asset_name": "ubuntu24-pl1-01", "weight": 1.0 }
+      ],
+      "subgroups": []
+    },
+    {
+      "id": "pl1-windows",
+      "name": "pl1-windows",
+      "display_name": "PL1 Windows",
+      "description": "Windows nodes in Performance Lab 1",
+      "members": [
+        { "asset_id": "asset-win7-pl1-01",     "asset_name": "win7-pl1-01",     "weight": 1.0 },
+        { "asset_id": "asset-win10-32-pl1-01", "asset_name": "win10-32-pl1-01", "weight": 1.0 },
+        { "asset_id": "asset-win10-64-pl1-01", "asset_name": "win10-64-pl1-01", "weight": 1.0 },
+        { "asset_id": "asset-win11-pl1-01",    "asset_name": "win11-pl1-01",    "weight": 1.0 },
+        { "asset_id": "asset-winsrv22-pl1-01", "asset_name": "winsrv22-pl1-01", "weight": 1.0 }
+      ],
+      "subgroups": []
+    },
+    {
+      "id": "pl2-linux",
+      "name": "pl2-linux",
+      "display_name": "PL2 Linux",
+      "description": "Linux nodes in Performance Lab 2",
+      "members": [
+        { "asset_id": "asset-centos79-pl2-01", "asset_name": "centos79-pl2-01", "weight": 1.0 },
+        { "asset_id": "asset-rocky8-pl2-01",   "asset_name": "rocky8-pl2-01",   "weight": 1.0 },
+        { "asset_id": "asset-rocky9-pl2-01",   "asset_name": "rocky9-pl2-01",   "weight": 1.0 },
+        { "asset_id": "asset-rocky10-pl2-01",  "asset_name": "rocky10-pl2-01",  "weight": 1.0 },
+        { "asset_id": "asset-ubuntu22-pl2-01", "asset_name": "ubuntu22-pl2-01", "weight": 1.0 },
+        { "asset_id": "asset-ubuntu24-pl2-01", "asset_name": "ubuntu24-pl2-01", "weight": 1.0 }
+      ],
+      "subgroups": []
+    },
+    {
+      "id": "pl2-windows",
+      "name": "pl2-windows",
+      "display_name": "PL2 Windows",
+      "description": "Windows nodes in Performance Lab 2",
+      "members": [
+        { "asset_id": "asset-win7-pl2-01",     "asset_name": "win7-pl2-01",     "weight": 1.0 },
+        { "asset_id": "asset-win10-32-pl2-01", "asset_name": "win10-32-pl2-01", "weight": 1.0 },
+        { "asset_id": "asset-win10-64-pl2-01", "asset_name": "win10-64-pl2-01", "weight": 1.0 },
+        { "asset_id": "asset-win11-pl2-01",    "asset_name": "win11-pl2-01",    "weight": 1.0 },
+        { "asset_id": "asset-winsrv22-pl2-01", "asset_name": "winsrv22-pl2-01", "weight": 1.0 }
+      ],
+      "subgroups": []
+    }
+  ]
+}
