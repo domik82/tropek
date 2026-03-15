@@ -46,16 +46,16 @@ function NavControls() {
       <div className="flex border border-border rounded overflow-hidden text-xs">
         <button
           onClick={() => setTheme('forest')}
-          className={`px-3 py-1 transition-colors ${isDark ? 'bg-muted text-foreground font-semibold' : 'text-muted-foreground hover:bg-muted/50'}`}
+          className={`px-3 py-1 transition-colors ${theme === 'forest' ? 'bg-muted text-foreground font-semibold' : 'text-muted-foreground hover:bg-muted/50'}`}
         >
           🌙 Dark
         </button>
         <button
-          onClick={() => setTheme('corporate')}
-          className={`px-3 py-1 transition-colors ${!isDark ? 'bg-muted text-foreground font-semibold' : 'text-muted-foreground hover:bg-muted/50'}`}
-          title="Light theme coming soon"
+          onClick={() => setTheme('current')}
+          className={`px-3 py-1 transition-colors ${theme === 'current' ? 'bg-muted text-foreground font-semibold' : 'text-muted-foreground hover:bg-muted/50'}`}
+          title="Original shadcn neutral dark (comparison)"
         >
-          ☀️ Light
+          ◑ Alt
         </button>
       </div>
     </div>
