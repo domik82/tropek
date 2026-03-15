@@ -3,9 +3,9 @@ import { fmt } from '@/lib/format'
 import type { IndicatorResult } from '../types'
 
 const STATUS_TEXT: Record<string, string> = {
-  pass:    'text-[#7dc540]',
-  warning: 'text-[#e6be00]',
-  fail:    'text-[#dc172a]',
+  pass:    'text-pass',
+  warning: 'text-warning',
+  fail:    'text-fail',
 }
 
 function fmtPct(v: number | null | undefined): string {

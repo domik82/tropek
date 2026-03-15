@@ -21,7 +21,7 @@ export function SloHistoryPanel({ name }: Props) {
           <div className="flex items-center gap-3 px-4 py-3 bg-slate-800/40">
             <span className="text-slate-300 font-mono text-sm font-semibold">v{v.version}</span>
             {v.active
-              ? <span className="text-xs bg-[#7dc540]/20 text-[#7dc540] border border-[#7dc540]/30 px-1.5 py-0.5 rounded-full">active</span>
+              ? <span className="text-xs bg-pass/20 text-pass border border-pass/30 px-1.5 py-0.5 rounded-full">active</span>
               : <span className="text-xs bg-slate-700/40 text-slate-500 border border-slate-600/40 px-1.5 py-0.5 rounded-full">inactive</span>
             }
             {v.author && <span className="text-xs text-slate-500">{v.author}</span>}
