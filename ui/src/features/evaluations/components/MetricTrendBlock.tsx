@@ -2,7 +2,8 @@
 import ReactECharts from 'echarts-for-react'
 import { useState } from 'react'
 import { useTrend } from '../hooks'
-import { RESULT_COLOUR } from '../constants'
+import { useTheme } from '@/lib/theme-context'
+import { RESULT_COLOUR, CHART_THEME } from '@/lib/theme'
 import { computeRelativeThresholdSeries } from '@/utils/metrics'
 import type { IndicatorResult } from '../types'
 
@@ -20,9 +21,9 @@ function scrollToTable() {
 }
 
 const STATUS_TEXT: Record<string, string> = {
-  pass:    'text-[#7dc540]',
-  warning: 'text-[#e6be00]',
-  fail:    'text-[#dc172a]',
+  pass:    'text-pass',
+  warning: 'text-warning',
+  fail:    'text-fail',
 }
 
 export function MetricTrendBlock({ evalId, indicator }: Props) {
@@ -31,6 +32,11 @@ export function MetricTrendBlock({ evalId, indicator }: Props) {
   const [yMax, setYMax] = useState('')
   const [showPass, setShowPass] = useState(true)
   const [showWarn, setShowWarn] = useState(true)
+
+  const { theme, fontSize } = useTheme()
+  const colours = RESULT_COLOUR[theme]
+  const ct = CHART_THEME[theme]
+  const fontScale = fontSize / 14   // scale ECharts labels with the global font size
 
   const passTarget = indicator.pass_targets?.[0] ?? null
   const warnTarget = indicator.warning_targets?.[0] ?? null
@@ -42,7 +48,7 @@ export function MetricTrendBlock({ evalId, indicator }: Props) {
   const chartData = (trend ?? []).map(p => ({
     value: p.value,
     itemStyle: {
-      color: RESULT_COLOUR[p.result] ?? '#6b7280',
+      color: colours[p.result as keyof typeof colours] ?? '#6b7280',
       borderColor: p.eval_id === evalId ? '#ffffff' : 'transparent',
       borderWidth: 2,
     },
@@ -59,14 +65,14 @@ export function MetricTrendBlock({ evalId, indicator }: Props) {
   if (showPass && passTarget?.target_value != null && !passRel.length)
     markLines.push({
       yAxis: passTarget.target_value,
-      lineStyle: { color: RESULT_COLOUR.pass, type: 'dashed', width: 1.5 },
-      label: { formatter: `pass: ${passCriteria ?? passTarget.target_value}`, color: RESULT_COLOUR.pass, fontSize: 10 },
+      lineStyle: { color: colours.pass, type: 'dashed', width: 1.5 },
+      label: { formatter: `pass: ${passCriteria ?? passTarget.target_value}`, color: colours.pass, fontSize: Math.round(10 * fontScale) },
     })
   if (showWarn && warnTarget?.target_value != null && !warnRel.length)
     markLines.push({
       yAxis: warnTarget.target_value,
-      lineStyle: { color: RESULT_COLOUR.warning, type: 'dashed', width: 1.5 },
-      label: { formatter: `warn: ${warnCriteria ?? warnTarget.target_value}`, color: RESULT_COLOUR.warning, fontSize: 10 },
+      lineStyle: { color: colours.warning, type: 'dashed', width: 1.5 },
+      label: { formatter: `warn: ${warnCriteria ?? warnTarget.target_value}`, color: colours.warning, fontSize: Math.round(10 * fontScale) },
     })
 
   const option = {
@@ -75,23 +81,23 @@ export function MetricTrendBlock({ evalId, indicator }: Props) {
     grid: { top: 16, bottom: 52, left: 56, right: 16 },
     tooltip: {
       trigger: 'axis',
-      backgroundColor: '#1a2030',
-      borderColor: '#374151',
-      textStyle: { color: '#e2e8f0', fontSize: 12 },
+      backgroundColor: ct.bg,
+      borderColor: ct.border,
+      textStyle: { color: ct.axisLabel, fontSize: Math.round(12 * fontScale) },
     },
     xAxis: {
       type: 'category',
       data: times,
-      axisLabel: { color: '#6b7280', fontSize: 9, rotate: 35 },
-      axisLine: { lineStyle: { color: '#2d3748' } },
+      axisLabel: { color: ct.axisLabel, fontSize: Math.round(9 * fontScale), rotate: 35 },
+      axisLine: { lineStyle: { color: ct.grid } },
       splitLine: { show: false },
     },
     yAxis: {
       type: 'value',
       min: yMin !== '' ? parseFloat(yMin) : undefined,
       max: yMax !== '' ? parseFloat(yMax) : undefined,
-      axisLabel: { color: '#6b7280', fontSize: 10 },
-      splitLine: { lineStyle: { color: '#1a2030' } },
+      axisLabel: { color: ct.axisLabel, fontSize: Math.round(10 * fontScale) },
+      splitLine: { lineStyle: { color: ct.bg } },
     },
     series: [
       {
@@ -100,7 +106,7 @@ export function MetricTrendBlock({ evalId, indicator }: Props) {
         symbol: 'circle',
         symbolSize: (_val: unknown, params: { dataIndex: number }) =>
           (trend ?? [])[params.dataIndex]?.eval_id === evalId ? 10 : 6,
-        lineStyle: { color: '#374151', width: 1.5 },
+        lineStyle: { color: ct.border, width: 1.5 },
         ...(markLines.length ? {
           markLine: {
             silent: true,
@@ -114,12 +120,12 @@ export function MetricTrendBlock({ evalId, indicator }: Props) {
       },
       ...(passRel.length ? [{
         type: 'line', data: passRel, symbol: 'none', silent: true,
-        lineStyle: { color: RESULT_COLOUR.pass, type: 'dashed' as const, width: 1.5 },
+        lineStyle: { color: colours.pass, type: 'dashed' as const, width: 1.5 },
         tooltip: { show: false },
       }] : []),
       ...(warnRel.length ? [{
         type: 'line', data: warnRel, symbol: 'none', silent: true,
-        lineStyle: { color: RESULT_COLOUR.warning, type: 'dashed' as const, width: 1.5 },
+        lineStyle: { color: colours.warning, type: 'dashed' as const, width: 1.5 },
         tooltip: { show: false },
       }] : []),
     ],
@@ -157,7 +163,7 @@ export function MetricTrendBlock({ evalId, indicator }: Props) {
                   onClick={() => setShowPass(v => !v)}
                   className={`px-2 py-0.5 rounded border text-[10px] font-medium transition-colors ${
                     showPass
-                      ? 'border-[#7dc540]/50 text-[#7dc540] bg-[#7dc540]/10'
+                      ? 'border-pass/50 text-pass bg-pass/10'
                       : 'border-slate-700 text-slate-600 bg-transparent'
                   }`}
                 >
@@ -169,7 +175,7 @@ export function MetricTrendBlock({ evalId, indicator }: Props) {
                   onClick={() => setShowWarn(v => !v)}
                   className={`px-2 py-0.5 rounded border text-[10px] font-medium transition-colors ${
                     showWarn
-                      ? 'border-[#e6be00]/50 text-[#e6be00] bg-[#e6be00]/10'
+                      ? 'border-warning/50 text-warning bg-warning/10'
                       : 'border-slate-700 text-slate-600 bg-transparent'
                   }`}
                 >
