@@ -105,6 +105,18 @@ class SLIDefinition(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+class SLOObjective(BaseModel):
+    """SLO objective in client responses."""
+
+    sli: str
+    display_name: str = ""
+    pass_criteria: list[str] = []
+    warning_criteria: list[str] = []
+    weight: int = 1
+    key_sli: bool = False
+    sort_order: int = 0
+
+
 class SLODefinition(BaseModel):
     """SLO definition."""
 
@@ -112,11 +124,14 @@ class SLODefinition(BaseModel):
     name: str
     display_name: str | None
     version: int
-    slo_yaml: str
+    active: bool
+    objectives: list[SLOObjective]
+    total_score_pass_pct: float
+    total_score_warning_pct: float
+    comparison: dict[str, Any]
     notes: str | None
     author: str | None
     meta: dict[str, Any]
-    active: bool
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)

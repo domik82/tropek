@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
 import yaml
+from pydantic import BaseModel, Field
 
 # Processing order — dependencies must come first
 _KIND_ORDER = [
@@ -21,18 +21,16 @@ _KIND_ORDER = [
 ]
 
 
-@dataclass
-class ManifestDocument:
+class ManifestDocument(BaseModel):
     """A single parsed manifest document."""
 
     api_version: str
     kind: str
     metadata: dict[str, Any]
-    spec: dict[str, Any]
+    spec: dict[str, Any] = Field(default_factory=dict)
 
 
-@dataclass
-class PlanAction:
+class PlanAction(BaseModel):
     """A single action in a reconciliation plan."""
 
     operation: str  # CREATE | UPDATE | SKIP
@@ -41,15 +39,13 @@ class PlanAction:
     reason: str
 
 
-@dataclass
-class ApplyPlan:
+class ApplyPlan(BaseModel):
     """Result of dry_run — list of planned actions."""
 
-    actions: list[PlanAction] = field(default_factory=list)
+    actions: list[PlanAction] = Field(default_factory=list)
 
 
-@dataclass
-class ApplyError:
+class ApplyError(BaseModel):
     """A single error during apply."""
 
     kind: str
@@ -57,15 +53,14 @@ class ApplyError:
     error: str
 
 
-@dataclass
-class ApplyResult:
+class ApplyResult(BaseModel):
     """Result of apply — counts and errors."""
 
     created: int = 0
     updated: int = 0
     skipped: int = 0
     failed: int = 0
-    errors: list[ApplyError] = field(default_factory=list)
+    errors: list[ApplyError] = Field(default_factory=list)
 
 
 def load_manifests(path: str) -> list[ManifestDocument]:
@@ -169,17 +164,33 @@ def dry_run(client: Any, manifests: list[ManifestDocument]) -> ApplyPlan:
             existing = _lookup(client, doc)
             if existing is None:
                 plan.actions.append(
-                    PlanAction("CREATE", doc.kind, name, "not found in current state")
+                    PlanAction(
+                        operation="CREATE",
+                        kind=doc.kind,
+                        name=name,
+                        reason="not found in current state",
+                    )
                 )
             elif _has_diff(doc, existing):
                 reason = _diff_reason(doc, existing)
-                plan.actions.append(PlanAction("UPDATE", doc.kind, name, reason))
+                plan.actions.append(
+                    PlanAction(operation="UPDATE", kind=doc.kind, name=name, reason=reason)
+                )
             else:
                 plan.actions.append(
-                    PlanAction("SKIP", doc.kind, name, "already exists, no changes")
+                    PlanAction(
+                        operation="SKIP",
+                        kind=doc.kind,
+                        name=name,
+                        reason="already exists, no changes",
+                    )
                 )
         except Exception as e:
-            plan.actions.append(PlanAction("CREATE", doc.kind, name, f"lookup failed: {e}"))
+            plan.actions.append(
+                PlanAction(
+                    operation="CREATE", kind=doc.kind, name=name, reason=f"lookup failed: {e}"
+                )
+            )
     return plan
 
 
@@ -196,7 +207,9 @@ def apply(client: Any, manifests: list[ManifestDocument]) -> ApplyResult:
             continue
         if doc.kind in blocked_kinds:
             result.failed += 1
-            result.errors.append(ApplyError(doc.kind, name, "blocked by prior error"))
+            result.errors.append(
+                ApplyError(kind=doc.kind, name=name, error="blocked by prior error")
+            )
             continue
         try:
             if action.operation == "CREATE":
@@ -207,7 +220,7 @@ def apply(client: Any, manifests: list[ManifestDocument]) -> ApplyResult:
                 result.updated += 1
         except Exception as e:
             result.failed += 1
-            result.errors.append(ApplyError(doc.kind, name, str(e)))
+            result.errors.append(ApplyError(kind=doc.kind, name=name, error=str(e)))
             # Block only kinds that depend on the failed kind
             for dep_kind in _dependents_of(doc.kind):
                 blocked_kinds.add(dep_kind)
@@ -291,7 +304,18 @@ def _has_diff(doc: ManifestDocument, existing: Any) -> bool:
         case "SLI":
             return doc.spec.get("indicators") != getattr(existing, "indicators", {})
         case "SLO":
-            return doc.spec.get("slo_yaml") != getattr(existing, "slo_yaml", "")
+            existing_objectives = [
+                {k: v for k, v in o.model_dump().items() if k != "sort_order"}
+                for o in (existing.objectives if hasattr(existing, "objectives") else [])
+            ]
+            return (
+                doc.spec.get("objectives") != existing_objectives
+                or doc.spec.get("total_score", {}).get("pass_pct")
+                != getattr(existing, "total_score_pass_pct", None)
+                or doc.spec.get("total_score", {}).get("warning_pct")
+                != getattr(existing, "total_score_warning_pct", None)
+                or doc.spec.get("comparison", {}) != getattr(existing, "comparison", {})
+            )
         case "AssetSLOLink" | "AssetGroupSLOLink":
             return (
                 doc.spec.get("slo_name") != getattr(existing, "slo_name", None)
@@ -308,7 +332,7 @@ def _diff_reason(doc: ManifestDocument, existing: Any) -> str:
         case "SLI":
             return "indicators differ (new version will be created)"
         case "SLO":
-            return "slo_yaml differs (new version will be created)"
+            return "objectives or score differ (new version will be created)"
         case _:
             return "fields differ"
 
@@ -345,9 +369,13 @@ def _create(client: Any, doc: ManifestDocument) -> None:
                 author=doc.metadata.get("author"),
             )
         case "SLO":
+            total = doc.spec.get("total_score", {})
             client.slo_definitions.create(
                 name,
-                slo_yaml=doc.spec["slo_yaml"],
+                objectives=doc.spec["objectives"],
+                total_score_pass_pct=total.get("pass_pct", 90.0),
+                total_score_warning_pct=total.get("warning_pct", 75.0),
+                comparison=doc.spec.get("comparison", {}),
                 display_name=doc.metadata.get("display_name"),
                 notes=doc.metadata.get("notes"),
                 author=doc.metadata.get("author"),
@@ -406,9 +434,13 @@ def _update(client: Any, doc: ManifestDocument) -> None:
             )
         case "SLO":
             # Creates new version
+            total = doc.spec.get("total_score", {})
             client.slo_definitions.create(
                 name,
-                slo_yaml=doc.spec["slo_yaml"],
+                objectives=doc.spec["objectives"],
+                total_score_pass_pct=total.get("pass_pct", 90.0),
+                total_score_warning_pct=total.get("warning_pct", 75.0),
+                comparison=doc.spec.get("comparison", {}),
                 display_name=doc.metadata.get("display_name"),
                 notes=doc.metadata.get("notes"),
                 author=doc.metadata.get("author"),

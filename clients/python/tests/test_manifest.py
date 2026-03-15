@@ -1,6 +1,20 @@
 from __future__ import annotations
 
-from tropek_client.manifest import ManifestDocument, load_manifests
+from unittest.mock import MagicMock
+
+import pytest
+from pydantic import BaseModel
+from tropek_client.manifest import (
+    ApplyPlan,
+    ManifestDocument,
+    PlanAction,
+    dry_run,
+    load_manifests,
+    validate_manifests,
+)
+from tropek_client.manifest import (
+    apply as do_apply,
+)
 
 
 def test_load_single_document(tmp_path):
@@ -95,16 +109,12 @@ metadata:
 spec:
   is_default: true
 """)
-    import pytest
-
     with pytest.raises(ValueError, match="api_version"):
         load_manifests(str(f))
 
 
 def test_validate_cross_references(tmp_path):
     """Cross-reference warnings are returned for missing refs within manifest."""
-    from tropek_client.manifest import validate_manifests
-
     f = tmp_path / "test.yaml"
     f.write_text("""
 api_version: tropek/v1
@@ -124,10 +134,6 @@ spec:
 
 def test_dry_run_creates_plan():
     """dry_run produces CREATE actions for missing entities."""
-    from unittest.mock import MagicMock
-
-    from tropek_client.manifest import dry_run
-
     client = MagicMock()
     client.asset_types.list.return_value = []  # no existing types
 
@@ -147,10 +153,6 @@ def test_dry_run_creates_plan():
 
 def test_apply_creates_entity():
     """apply calls create on the client for CREATE actions."""
-    from unittest.mock import MagicMock
-
-    from tropek_client.manifest import apply as do_apply
-
     client = MagicMock()
     client.asset_types.list.return_value = []  # triggers CREATE
 
@@ -166,3 +168,10 @@ def test_apply_creates_entity():
     assert result.created == 1
     assert result.failed == 0
     client.asset_types.create.assert_called_once_with("vm", is_default=True)
+
+
+def test_apply_plan_is_pydantic_model() -> None:
+    plan = ApplyPlan()
+    assert isinstance(plan, BaseModel)
+    plan.actions.append(PlanAction(operation="CREATE", kind="Asset", name="vm-01", reason="reason"))
+    assert len(plan.actions) == 1

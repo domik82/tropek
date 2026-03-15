@@ -33,15 +33,19 @@ def test_slo_definition_from_dict():
             "name": "my-slo",
             "display_name": None,
             "version": 1,
-            "slo_yaml": "spec_version: '1.0'",
+            "active": True,
+            "objectives": [],
+            "total_score_pass_pct": 90.0,
+            "total_score_warning_pct": 75.0,
+            "comparison": {},
             "notes": None,
             "author": None,
             "meta": {},
-            "active": True,
             "created_at": "2026-03-01T00:00:00Z",
         }
     )
     assert slo.version == 1
+    assert slo.total_score_pass_pct == 90.0
 
 
 def test_slo_test_request_from_dict():
