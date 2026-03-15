@@ -17,7 +17,10 @@ export function GroupPanel({ groupName }: Props) {
   const { data: evals = [], isLoading } = useEvaluations({ group_name: groupName })
 
   const latestScore = evals.length
-    ? Math.round(evals.filter(e => !e.invalidated).slice(-1)[0]?.score ?? 0)
+    ? Math.round(
+        [...evals].filter(e => !e.invalidated)
+          .sort((a, b) => b.period_start.localeCompare(a.period_start))[0]?.score ?? 0
+      )
     : null
 
   return (

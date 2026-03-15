@@ -2,14 +2,33 @@
 import { useState, useMemo } from 'react'
 import { useSearchParams, Link } from 'react-router-dom'
 import { useEvaluations } from '@/features/evaluations/hooks'
-import { useAssetEvaluations } from '@/features/navigator/hooks'
+import { useAssetEvaluations, useMetricHeatmap } from '@/features/navigator/hooks'
 import { MetricTrendBlock } from '@/features/evaluations/components/MetricTrendBlock'
 import { METRICS } from '@/mocks/generate'
 import type { IndicatorResult } from '@/features/evaluations/types'
+import type { MetricHeatmapResponse } from '@/features/navigator/types'
 
-// Build minimal IndicatorResult stubs from METRICS catalogue
-// MetricTrendBlock fetches its own trend data given evalId + indicator
-function buildIndicatorStubs(): IndicatorResult[] {
+function buildIndicatorStubsFromHeatmap(heatmapData: MetricHeatmapResponse): IndicatorResult[] {
+  return heatmapData.metrics.map(m => ({
+    metric: m.name,
+    display_name: m.display_name,
+    tab_group: m.tab_group,
+    value: 0,
+    compared_value: null,
+    change_absolute: null,
+    change_relative_pct: null,
+    aggregation: 'avg',
+    status: 'pass' as const,
+    score: 0,
+    weight: 1,
+    key_sli: false,
+    pass_targets: null,
+    warning_targets: null,
+  }))
+}
+
+// Fallback for group view (no per-asset heatmap): use the full METRICS catalogue
+function buildIndicatorStubsFromCatalogue(): IndicatorResult[] {
   return METRICS.map(m => ({
     metric: m.name,
     display_name: m.display_name,
@@ -38,6 +57,7 @@ export function MetricExplorerPage() {
     groupName ? { group_name: groupName } : {},
   )
   const { data: assetEvals = [] } = useAssetEvaluations(assetName)
+  const { data: heatmapData } = useMetricHeatmap(assetName)
 
   // Pick the anchor eval for trend charts
   const evals = assetName ? assetEvals : groupEvals
@@ -48,8 +68,16 @@ export function MetricExplorerPage() {
     [evals]
   )
 
-  const allIndicators = useMemo(() => buildIndicatorStubs(), [])
-  const metricGroups = Array.from(new Set(allIndicators.map(i => i.tab_group).filter(Boolean)))
+  // Use asset heatmap metric list when available (accurate per-asset metrics),
+  // fall back to the full METRICS catalogue for group view
+  const allIndicators = useMemo(
+    () => heatmapData ? buildIndicatorStubsFromHeatmap(heatmapData) : buildIndicatorStubsFromCatalogue(),
+    [heatmapData],
+  )
+  const metricGroups = useMemo(
+    () => Array.from(new Set(allIndicators.map(i => i.tab_group).filter(Boolean))),
+    [allIndicators],
+  )
 
   const visibleIndicators = metricGroupFilter === 'all'
     ? allIndicators
