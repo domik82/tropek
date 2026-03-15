@@ -13,7 +13,7 @@ import type { ColumnDef } from '@/features/evaluations/types'
 
 export function EvaluationsPage() {
   const [searchParams, setSearchParams] = useSearchParams()
-  const lab = searchParams.get('lab') ?? undefined
+  const lab = searchParams.get('group_name') ?? undefined
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null)
   const [triggerOpen, setTriggerOpen] = useState(false)
 
@@ -66,7 +66,7 @@ export function EvaluationsPage() {
 
   function selectLab(name: string | undefined) {
     setSelectedSlot(null)
-    if (name) setSearchParams({ lab: name })
+    if (name) setSearchParams({ group_name: name })
     else setSearchParams({})
   }
 

@@ -17,8 +17,8 @@ function scrollTo(id: string) {
 export function EvaluationDetailPage() {
   const { id } = useParams<{ id: string }>()
   const [searchParams] = useSearchParams()
-  const backLab = searchParams.get('lab')
-  const backHref = backLab ? `/evaluations?lab=${backLab}` : '/evaluations'
+  const backLab = searchParams.get('group_name')
+  const backHref = backLab ? `/evaluations?group_name=${backLab}` : '/evaluations'
 
   const { data: ev, isLoading } = useEvaluationDetail(id!)
   const invalidate = useInvalidateEvaluation(id!)
