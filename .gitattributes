@@ -1,0 +1,16 @@
+# Enforce LF line endings for all text files, on all platforms.
+# This prevents CRLF/LF churn between Windows and WSL.
+
+* text=auto eol=lf
+
+# Explicitly mark binary files
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.svg binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.eot binary
