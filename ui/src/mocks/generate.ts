@@ -262,7 +262,6 @@ export function generateAllEvaluations(): EvaluationSummary[] {
               metric: m.name,
               display_name: m.display_name,
               value,
-              unit: m.unit,
               threshold: thresholdStr,
             }
           })
@@ -277,9 +276,9 @@ export function generateAllEvaluations(): EvaluationSummary[] {
           : score * runNoise
         ).toFixed(2)
 
-        const start = isoDate(day, run)
-        const end = new Date(new Date(start).getTime() + 45 * 60 * 1000).toISOString().slice(0, 19) + 'Z'
-        const created = new Date(new Date(end).getTime() + 60 * 1000).toISOString().slice(0, 19) + 'Z'
+        const period_start = isoDate(day, run)
+        const period_end = new Date(new Date(period_start).getTime() + 45 * 60 * 1000).toISOString().slice(0, 19) + 'Z'
+        const created = new Date(new Date(period_end).getTime() + 60 * 1000).toISOString().slice(0, 19) + 'Z'
 
         const evalId = runsPerDay > 1
           ? `${scenario.asset}-${scenario.test}-day${day}-run${run}`
@@ -288,7 +287,6 @@ export function generateAllEvaluations(): EvaluationSummary[] {
         const triggeredBy = scenario.seed % 3 === 0 ? 'jenkins' : scenario.seed % 3 === 1 ? 'github-actions' : 'manual'
 
         const evalResult = hasError ? 'fail' : result
-        const jiraLink = { href: 'https://jira.example.com/browse/PERF-481', label: 'PERF-481' }
 
         // Specific story-driven annotations
         const mockAnnotation = (() => {
@@ -298,10 +296,10 @@ export function generateAllEvaluations(): EvaluationSummary[] {
             return { id: `ann-${evalId}-1`, meta: {}, updated_at: created, content: 'Invalidated — agent crashed mid-run during scheduled maintenance window. Results not representative.', author: 'ops-team', category: 'invalidated', created_at: created }
           if (scenario.seed === 1001 && day === 18)
             // first failure: two notes — investigation + JIRA creation
-            return { id: `ann-${evalId}-1`, meta: {}, updated_at: created, content: 'ABC investigation\nCreated JIRA', author: 'j.kowalski', category: 'investigation', created_at: created, link: jiraLink }
+            return { id: `ann-${evalId}-1`, meta: {}, updated_at: created, content: 'ABC investigation\nCreated JIRA', author: 'j.kowalski', category: 'investigation', created_at: created }
           if (scenario.seed === 1001 && day >= 19 && day <= 22 && (evalResult === 'fail' || evalResult === 'warning'))
-            // following failures: just the JIRA link
-            return { id: `ann-${evalId}-1`, meta: {}, updated_at: created, content: '', author: null, category: null, created_at: created, link: jiraLink }
+            // following failures: no link field (removed from API contract)
+            return { id: `ann-${evalId}-1`, meta: {}, updated_at: created, content: '', author: null, category: null, created_at: created }
 
           // mac-monthly-01 (seed 1003)
           if (scenario.seed === 1003 && day >= 24 && day <= 26 && (evalResult === 'fail' || evalResult === 'warning'))
@@ -318,21 +316,24 @@ export function generateAllEvaluations(): EvaluationSummary[] {
           status: 'completed',
           result: evalResult,
           score: Math.min(100, Math.max(0, runScore)),
-          start,
-          end,
+          period_start,
+          period_end,
           slo_name: scenario.slo,
           slo_version: 1,
+          sli_name: null,
+          sli_version: null,
+          data_source_name: null,
           ingestion_mode: 'pull',
           adapter_used: 'prometheus',
           invalidated: day === 12 && scenario.seed === 1001,
           asset_snapshot: { name: scenario.asset, tags: { os: scenario.os, arch: scenario.arch, lab: scenario.group } },
-          metadata: { branch: 'main', build: `ci-${7800 + day}`, triggered_by: triggeredBy },
+          evaluation_metadata: { branch: 'main', build: `ci-${7800 + day}`, triggered_by: triggeredBy },
           latest_annotation: mockAnnotation ?? undefined,
           annotation_count: mockAnnotation ? (scenario.seed === 1001 && day === 18 ? 2 : 1) : 0,
           created_at: created,
           top_failures: hasError ? [
-            { metric: 'compilation_errors', display_name: 'Compilation Errors', value: 3, unit: '', threshold: '= 0' },
-            { metric: 'link_errors', display_name: 'Link Errors', value: 2, unit: '', threshold: '= 0' },
+            { metric: 'compilation_errors', display_name: 'Compilation Errors', value: 3, threshold: '= 0' },
+            { metric: 'link_errors', display_name: 'Link Errors', value: 2, threshold: '= 0' },
           ] : top_failures,
         })
       }
@@ -437,13 +438,12 @@ export function generateEvaluationDetail(
       primary_version: '7.6',
       build_ref: `ci-${7800 + day}`,
     },
-    metadata: { branch: '7.6', build: `ci-${7800 + day}`, triggered_by: 'github-actions' },
+    evaluation_metadata: { branch: '7.6', build: `ci-${7800 + day}`, triggered_by: 'github-actions' },
     compared_evaluation_ids: day >= 3 ? [
       `${scenario.asset}-${scenario.test}-day${day - 1}`,
       `${scenario.asset}-${scenario.test}-day${day - 2}`,
     ] : [],
     annotations: (() => {
-      const jiraLink = { href: 'https://jira.example.com/browse/PERF-481', label: 'PERF-481' }
       const t = ev.created_at
 
       // win-monthly-01 invalidated
@@ -454,12 +454,12 @@ export function generateEvaluationDetail(
       if (scenario.seed === 1001 && day === 18)
         return [
           { id: `ann-${scenario.seed}-${day}-1`, content: 'ABC investigation — compilation times show ~35% regression across all stages. Correlates with toolchain upgrade on day 17.', author: 'j.kowalski', category: 'investigation', meta: {}, created_at: t, updated_at: t },
-          { id: `ann-${scenario.seed}-${day}-2`, content: 'Created JIRA', author: 'j.kowalski', category: 'investigation', meta: { ticket: 'PERF-481' }, link: jiraLink, created_at: t, updated_at: t },
+          { id: `ann-${scenario.seed}-${day}-2`, content: 'Created JIRA: https://jira.example.com/browse/PERF-481', author: 'j.kowalski', category: 'investigation', meta: { ticket: 'PERF-481' }, created_at: t, updated_at: t },
         ]
 
-      // win-monthly-01 following failures — JIRA link only
+      // win-monthly-01 following failures — JIRA reference in meta
       if (scenario.seed === 1001 && day >= 19 && day <= 22)
-        return [{ id: `ann-${scenario.seed}-${day}-1`, content: '', author: null, category: null, meta: { ticket: 'PERF-481' }, link: jiraLink, created_at: t, updated_at: t }]
+        return [{ id: `ann-${scenario.seed}-${day}-1`, content: '', author: null, category: null, meta: { ticket: 'PERF-481' }, created_at: t, updated_at: t }]
 
       // mac-monthly-01 disk failure days
       if (scenario.seed === 1003 && day >= 24 && day <= 26)
@@ -489,7 +489,7 @@ export function generateTrendData(
 
   const sorted = evaluations
     .filter(e => e.name === testName && e.asset_snapshot.name === assetName)
-    .sort((a, b) => a.start.localeCompare(b.start))
+    .sort((a, b) => a.period_start.localeCompare(b.period_start))
 
   const valueHistory: number[] = []
 
@@ -522,7 +522,7 @@ export function generateTrendData(
     valueHistory.push(value)
 
     const { status } = scoreIndicator(metric, value, baseline)
-    return { timestamp: ev.start, value, eval_id: ev.id, result: status, baseline }
+    return { timestamp: ev.period_start, value, eval_id: ev.id, result: status, baseline }
   })
 }
 
@@ -540,16 +540,18 @@ function allEvals(): EvaluationSummary[] {
 }
 
 export interface EvaluationListFilters {
-  lab?: string
+  group_name?: string
   date?: string
-  slot?: string
+  from?: string
+  to?: string
 }
 
 export function getEvaluations(filters: EvaluationListFilters = {}): EvaluationSummary[] {
   let evals = allEvals()
-  if (filters.lab) evals = evals.filter(e => e.asset_snapshot.tags?.['lab'] === filters.lab)
-  if (filters.date) evals = evals.filter(e => e.start.startsWith(filters.date!))
-  if (filters.slot) evals = evals.filter(e => e.start === filters.slot)
+  if (filters.group_name) evals = evals.filter(e => e.asset_snapshot.tags?.['lab'] === filters.group_name)
+  if (filters.date) evals = evals.filter(e => e.period_start.startsWith(filters.date!))
+  if (filters.from) evals = evals.filter(e => e.period_start >= filters.from!)
+  if (filters.to) evals = evals.filter(e => e.period_start <= filters.to!)
   return evals
 }
 
