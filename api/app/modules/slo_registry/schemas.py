@@ -8,6 +8,8 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.modules.quality_gate.schemas import IndicatorResult
+
 
 class SLODefinitionCreate(BaseModel):
     """Request body for creating an SLO definition."""
@@ -84,7 +86,7 @@ class SLOTestResult(BaseModel):
 
     result: str
     score: float
-    indicator_results: list[dict[str, Any]]
+    indicator_results: list[IndicatorResult]
     baseline_mode: str
     metrics_fetched: dict[str, float]
     fetch_errors: dict[str, str]
