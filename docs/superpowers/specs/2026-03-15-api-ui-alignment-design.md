@@ -518,7 +518,430 @@ contract so that development mode continues to work correctly.
 
 ---
 
-## 10. Summary of All Changes
+## 10. Python Client SDK + Declarative YAML Setup
+
+### 10.1 Problem
+
+Third-party integrations need a typed Python client to interact with TROPEK
+programmatically. Additionally, initial setup (assets, groups, SLIs, SLOs, bindings,
+data sources) should be declarable in YAML files — enabling:
+
+- **Bootstrapping** — spin up a new TROPEK instance and configure it from YAML
+- **Migration** — export from another tool, write YAML, apply to TROPEK
+- **Integration testing** — define fixtures as YAML, apply against a test instance,
+  run evaluations, validate results
+- **GitOps** — store configuration as YAML in a repo, apply on deploy
+
+### 10.2 Python Client Library
+
+A typed client wrapping all TROPEK REST endpoints with Pydantic request/response models.
+Published as a separate installable package (`tropek-client` or within the workspace).
+
+**Package structure:**
+
+```
+clients/python/
+├── pyproject.toml              # standalone package: tropek-client
+├── tropek_client/
+│   ├── __init__.py
+│   ├── client.py               # TropekClient class
+│   ├── models.py               # Pydantic models (mirrors API schemas)
+│   └── exceptions.py           # TropekAPIError, NotFoundError, ConflictError
+```
+
+**Client interface:**
+
+**Model naming convention:** Client models drop the `Read`/`Create` suffix from API
+schema names. `AssetRead` → `Asset`, `SLODefinitionRead` → `SLODefinition`, etc.
+Create/update payloads use kwargs directly — no separate `*Create` models in the
+client's public API.
+
+```python
+from tropek_client import TropekClient
+
+# api_key reserved for future auth — not used in Phase 1
+client = TropekClient(base_url="http://localhost:8080", api_key=None)
+
+# Asset types
+client.asset_types.list() -> list[AssetType]
+client.asset_types.create(name, is_default=False) -> AssetType
+client.asset_types.set_default(name) -> AssetType
+client.asset_types.delete(name) -> None
+
+# Assets
+client.assets.list(type_name=None, label_key=None, label_val=None) -> PagedResponse[Asset]
+client.assets.create(name, type_name="vm", display_name=None, labels={}) -> Asset
+client.assets.get(name) -> Asset
+client.assets.update(name, **kwargs) -> Asset
+
+# Asset groups
+client.asset_groups.list() -> PagedResponse[AssetGroup]
+client.asset_groups.tree() -> AssetGroupTree
+client.asset_groups.create(name, members=[], subgroups=[]) -> AssetGroup
+client.asset_groups.get(name) -> AssetGroup
+client.asset_groups.add_member(group_name, asset_id, weight=1.0) -> AssetGroup
+client.asset_groups.remove_member(group_name, asset_id) -> None
+client.asset_groups.add_subgroup(group_name, child_group_id, weight=1.0) -> AssetGroup
+client.asset_groups.remove_subgroup(group_name, child_group_id) -> None
+
+# SLO links (asset and group)
+client.asset_slo_links.list(asset_name) -> list[AssetSLOLink]
+client.asset_slo_links.create(asset_name, link_name, slo_name, sli_name, data_source_name) -> AssetSLOLink
+client.asset_slo_links.delete(asset_name, link_name) -> None
+client.group_slo_links.list(group_name) -> list[AssetGroupSLOLink]
+client.group_slo_links.create(group_name, link_name, slo_name, sli_name, data_source_name) -> AssetGroupSLOLink
+client.group_slo_links.delete(group_name, link_name) -> None
+
+# Data sources
+client.datasources.list(adapter_type=None) -> PagedResponse[DataSource]
+client.datasources.create(name, adapter_type, adapter_url, **kwargs) -> DataSource
+client.datasources.get(name) -> DataSource
+client.datasources.update(name, **kwargs) -> DataSource
+
+# SLI definitions
+client.sli_definitions.list() -> PagedResponse[SLIDefinition]
+client.sli_definitions.create(name, indicators, **kwargs) -> SLIDefinition
+client.sli_definitions.get(name) -> SLIDefinition
+client.sli_definitions.versions(name) -> list[SLIDefinition]
+client.sli_definitions.delete(name) -> None
+
+# SLO definitions
+client.slo_definitions.list() -> PagedResponse[SLODefinition]
+client.slo_definitions.create(name, slo_yaml, **kwargs) -> SLODefinition
+client.slo_definitions.get(name) -> SLODefinition
+client.slo_definitions.versions(name) -> list[SLODefinition]
+client.slo_definitions.delete(name) -> None
+client.slo_definitions.validate(slo_yaml) -> SLOValidationResult
+client.slo_definitions.test(request: SLOTestRequest) -> SLOTestResult
+
+# Evaluations
+client.evaluations.list(
+    asset_name=None, slo_name=None, result=None,
+    date=None, group_name=None,
+    from_=None, to=None,                          # time-range (Section 3)
+    limit=50, offset=0
+) -> PagedResponse[EvaluationSummary]
+client.evaluations.get(eval_id) -> EvaluationDetail
+client.evaluations.invalidate(eval_id, note) -> EvaluationSummary
+client.evaluations.restore(eval_id) -> EvaluationSummary
+
+# Annotations
+client.annotations.list(eval_id) -> list[Annotation]
+client.annotations.create(eval_id, content, **kwargs) -> Annotation
+client.annotations.update(eval_id, ann_id, **kwargs) -> Annotation
+client.annotations.delete(eval_id, ann_id) -> None
+
+# Trend — exactly one of eval_id or (asset_name + slo_name) must be provided
+client.trend.by_eval(eval_id, metric, limit=50) -> list[TrendPoint]
+client.trend.by_asset(asset_name, slo_name, metric, limit=50) -> list[TrendPoint]
+
+# Health
+client.health() -> dict
+```
+
+**Implementation details:**
+
+- Uses `httpx` for HTTP (async-capable, but sync by default for scripting ergonomics)
+- All response models are Pydantic v2 with `model_validate()`
+- Errors raise typed exceptions: `TropekNotFoundError(404)`, `TropekConflictError(409)`,
+  `TropekValidationError(422)`, `TropekAPIError(other)`
+- Models are generated/mirrored from the API schemas — not manually duplicated.
+  A single source of truth in `api/app/modules/*/schemas.py` with the client
+  re-exporting or importing the same models.
+
+### 10.3 Declarative YAML Configuration
+
+A YAML manifest format for declaring desired state. Multiple documents in one file
+(separated by `---`) or split across files in a directory.
+
+**Manifest format:**
+
+```yaml
+# tropek-setup.yaml
+# api_version matches the domain redesign spec (Section 4)
+---
+api_version: tropek/v1
+kind: AssetType
+metadata:
+  name: vm
+spec:
+  is_default: true
+---
+api_version: tropek/v1
+kind: AssetType
+metadata:
+  name: sensor
+---
+api_version: tropek/v1
+kind: DataSource
+metadata:
+  name: prometheus-prod
+  display_name: "Prometheus Production"
+  labels:
+    env: production
+spec:
+  adapter_type: prometheus
+  adapter_url: "http://adapter-prometheus:8081"
+---
+api_version: tropek/v1
+kind: Asset
+metadata:
+  name: linux-vm-01
+  display_name: "Linux Build VM 01"
+  labels:
+    os: linux
+    arch: x64
+    lab: performance-lab-1
+spec:
+  type_name: vm
+---
+api_version: tropek/v1
+kind: Asset
+metadata:
+  name: linux-vm-02
+  display_name: "Linux Build VM 02"
+  labels:
+    os: linux
+    arch: x64
+    lab: performance-lab-1
+spec:
+  type_name: vm
+---
+api_version: tropek/v1
+kind: AssetGroup
+metadata:
+  name: pl1-linux
+  display_name: "Perf Lab 1 — Linux"
+spec:
+  members:
+    - asset_name: linux-vm-01     # resolved to asset_id by the apply function
+    - asset_name: linux-vm-02
+---
+api_version: tropek/v1
+kind: AssetGroup
+metadata:
+  name: performance-lab-1
+  display_name: "Performance Lab 1"
+spec:
+  subgroups:
+    - group_name: pl1-linux       # resolved to group_id by the apply function
+---
+api_version: tropek/v1
+kind: SLI
+metadata:
+  name: linux-compilation-sli
+  display_name: "Linux Compilation Indicators"
+  author: j.kowalski
+  notes: "Initial version"
+spec:
+  indicators:
+    compilation_duration_s: "avg_over_time(compilation_duration_seconds{instance=\"$vm_ip\"}[5m])"
+    compilation_errors: "compilation_errors_total{instance=\"$vm_ip\"}"
+    cpu_usage_avg: "avg_over_time(process_cpu_seconds_total{instance=\"$vm_ip\"}[$duration])"
+---
+api_version: tropek/v1
+kind: SLO
+metadata:
+  name: linux-compilation-slo
+  display_name: "Linux Compilation Quality Gate"
+  author: j.kowalski
+spec:
+  slo_yaml: |
+    spec:
+      comparison:
+        compare_with: several_results
+        number_of_comparison_results: 3
+        include_result_with_score: pass_or_warn
+        aggregate_function: avg
+      objectives:
+        - sli_name: compilation_errors
+          pass:
+            - criteria: ["=0"]
+          weight: 3
+          key_sli: true
+        - sli_name: compilation_duration_s
+          pass:
+            - criteria: ["<=+5%"]
+          warning:
+            - criteria: ["<=+15%"]
+          weight: 2
+      total_score:
+        pass: "90%"
+        warning: "75%"
+---
+api_version: tropek/v1
+kind: AssetSLOLink
+metadata:
+  link_name: linux-vm-01-compilation
+spec:
+  asset_name: linux-vm-01         # resolved to asset_id by the apply function
+  slo_name: linux-compilation-slo
+  sli_name: linux-compilation-sli
+  data_source_name: prometheus-prod
+---
+api_version: tropek/v1
+kind: AssetGroupSLOLink
+metadata:
+  link_name: pl1-linux-compilation
+spec:
+  group_name: pl1-linux           # resolved to group_id by the apply function
+  slo_name: linux-compilation-slo
+  sli_name: linux-compilation-sli
+  data_source_name: prometheus-prod
+```
+
+**Supported kinds:** `AssetType`, `Asset`, `AssetGroup`, `DataSource`, `SLI`,
+`SLO`, `AssetSLOLink`, `AssetGroupSLOLink`. Kind names match the domain redesign
+spec (Section 4) — `SLI` and `SLO`, not `SLIDefinition`/`SLODefinition`.
+
+**Processing order:** Manifests are topologically sorted by dependency:
+1. `AssetType` (no dependencies)
+2. `DataSource` (no dependencies)
+3. `Asset` (depends on `AssetType`)
+4. `SLI` (no dependencies)
+5. `SLO` (no dependencies)
+6. `AssetGroup` (depends on `Asset`, other `AssetGroup`)
+7. `AssetSLOLink` (depends on `Asset`, `SLO`, `SLI`, `DataSource`)
+8. `AssetGroupSLOLink` (depends on `AssetGroup`, `SLO`, `SLI`, `DataSource`)
+
+Within a kind, documents are processed in file order.
+
+**Name-to-UUID resolution:** Manifests use human-readable names (`asset_name`,
+`group_name`) but the API expects UUIDs for group members, subgroup links, and SLO
+link `asset_id`/`group_id` fields. The apply function resolves names to UUIDs by
+looking up entities via the client (`client.assets.get(name).id`, etc.) during plan
+execution. Referenced entities must either already exist in the API or appear earlier
+in the same manifest (guaranteed by the processing order above).
+
+### 10.4 Apply Command — Desired-State Reconciliation
+
+The apply function compares declared state against current API state and produces
+a plan of create/update/skip actions.
+
+**Python API:**
+
+```python
+from tropek_client import TropekClient
+from tropek_client.manifest import load_manifests, apply, dry_run
+
+client = TropekClient(base_url="http://localhost:8080")
+
+# Load from file or directory
+manifests = load_manifests("tropek-setup.yaml")
+# or: manifests = load_manifests("config/")  # reads all *.yaml files
+
+# Dry run — show what would change without applying
+plan = dry_run(client, manifests)
+for action in plan.actions:
+    print(f"{action.operation:6s}  {action.kind}/{action.name}  {action.reason}")
+# CREATE  Asset/linux-vm-03          not found in current state
+# SKIP    Asset/linux-vm-01          already exists, no changes
+# UPDATE  SLI/linux-sli              indicators differ (new version will be created)
+# CREATE  AssetSLOLink/vm-03-comp    not found in current state
+
+# Apply — execute the plan
+result = apply(client, manifests)
+print(f"{result.created} created, {result.updated} updated, {result.skipped} skipped")
+```
+
+**Reconciliation logic per kind:**
+
+| Kind | Lookup | Create if missing | Update if different | Diff fields |
+|---|---|---|---|---|
+| `AssetType` | by `name` | Yes | `is_default` only | `is_default` |
+| `Asset` | by `name` | Yes | Yes | `display_name`, `type_name`, `labels` |
+| `AssetGroup` | by `name` | Yes | Members/subgroups synced | `members`, `subgroups` |
+| `DataSource` | by `name` | Yes | Yes | `display_name`, `adapter_url`, `labels` |
+| `SLI` | by `name` | Yes | Creates new version | `indicators` content |
+| `SLO` | by `name` | Yes | Creates new version | `slo_yaml` content |
+| `AssetSLOLink` | by `asset_name` + `link_name` | Yes | Delete + recreate | `slo_name`, `sli_name`, `data_source_name` |
+| `AssetGroupSLOLink` | by `group_name` + `link_name` | Yes | Delete + recreate | `slo_name`, `sli_name`, `data_source_name` |
+
+**Key behaviours:**
+
+- **Idempotent** — running apply twice with the same YAML produces no changes on the
+  second run (all actions are SKIP).
+- **Additive by default** — apply never deletes entities not present in the YAML.
+  Entities in the API but absent from the manifest are left untouched.
+- **Version-creating updates** — SLI and SLO updates create new versions (POST), they
+  do not modify existing versions. The diff compares against the latest active version.
+- **Dry-run first** — `apply()` internally calls `dry_run()` to build the plan, then
+  executes it. Users can call `dry_run()` separately to preview.
+- **Continue on error** — if one action fails (e.g., a referenced entity not found),
+  the error is recorded in `result.errors` and apply continues with the remaining
+  actions. Dependent actions that cannot proceed are skipped with reason "blocked by
+  prior error". The `result` object contains `created`, `updated`, `skipped`, `failed`
+  counts and a `errors: list[ApplyError]` with details per failure.
+
+### 10.5 CLI Entrypoint
+
+For convenience, a thin CLI wrapper around the Python API:
+
+```bash
+# Dry run
+tropek apply --dry-run -f tropek-setup.yaml
+tropek apply --dry-run -f config/
+
+# Apply
+tropek apply -f tropek-setup.yaml --base-url http://localhost:8080
+
+# Validate manifest syntax only (no API calls)
+tropek validate -f tropek-setup.yaml
+```
+
+Implemented using `click` in `clients/python/tropek_client/cli.py`.
+
+**`tropek validate`** checks: YAML parse, required `api_version`/`kind`/`metadata`
+fields, known `kind` values, required `spec` fields per kind, and cross-references
+within the manifest (e.g., an `AssetSLOLink` referencing an `asset_name` that doesn't
+appear as an `Asset` kind in the same manifest produces a warning, not an error —
+the asset may already exist in the API).
+
+### 10.6 Integration Testing Use Case
+
+The declarative setup enables clean integration test patterns:
+
+```python
+# conftest.py
+import pytest
+from tropek_client import TropekClient
+from tropek_client.manifest import load_manifests, apply
+
+@pytest.fixture(scope="session")
+def tropek_client():
+    return TropekClient(base_url="http://localhost:8080")
+
+@pytest.fixture(scope="session", autouse=True)
+def setup_fixtures(tropek_client):
+    """Apply test fixtures before running integration tests."""
+    manifests = load_manifests("tests/fixtures/")
+    result = apply(tropek_client, manifests)
+    assert not result.errors
+    yield
+    # teardown: optional — test DB is ephemeral anyway
+```
+
+**Testing modes:**
+
+1. **Full stack** — `docker compose up`, apply fixtures, run tests against real API + DB
+2. **API-only** — start API with test DB, apply fixtures, run tests (no adapters needed
+   for CRUD-only tests)
+
+The same YAML fixtures used for integration tests can be used to bootstrap a demo
+environment or migrate from another system.
+
+### 10.7 Migration Use Case
+
+To migrate from another tool (e.g., Keptn, custom scripts):
+
+1. Write a one-off script that reads the source system and generates TROPEK YAML manifests
+2. `tropek apply --dry-run -f exported/` — preview what will be created
+3. `tropek apply -f exported/` — apply the migration
+4. Re-run is safe — existing entities are skipped
+
+---
+
+## 11. Summary of All Changes
 
 ### API Changes (4 items)
 
@@ -528,6 +951,15 @@ contract so that development mode continues to work correctly.
 | 2 | `GET /evaluations` accepts `from`/`to` params | `quality_gate/router.py`, `repository.py` | Extend endpoint |
 | 3 | `POST /slo-definitions/validate` | `slo_registry/router.py`, `schemas.py` | New endpoint |
 | 4 | `POST /slo-definitions/test` | `slo_registry/router.py`, `schemas.py` | New endpoint |
+
+### Python Client SDK (new package)
+
+| # | Component | Location |
+|---|---|---|
+| 1 | `TropekClient` — typed client wrapping all endpoints | `clients/python/tropek_client/client.py` |
+| 2 | Pydantic models — mirrors API schemas | `clients/python/tropek_client/models.py` |
+| 3 | Manifest loader + desired-state reconciler | `clients/python/tropek_client/manifest.py` |
+| 4 | CLI (`tropek apply`, `tropek validate`) | `clients/python/tropek_client/cli.py` |
 
 ### UI Changes
 
@@ -547,7 +979,7 @@ contract so that development mode continues to work correctly.
 
 ---
 
-## 11. What This Spec Does NOT Cover
+## 12. What This Spec Does NOT Cover
 
 - `POST /evaluations` evaluation trigger — separate spec (chunk 4/5 plans)
 - Worker module implementation — separate spec
