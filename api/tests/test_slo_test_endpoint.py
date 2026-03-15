@@ -13,10 +13,10 @@ from fastapi.testclient import TestClient
 def client():
     """TestClient with mocked DB session for unit tests."""
     mock_session = AsyncMock()
-    # Repository lookups return None (not found) by default
-    mock_session.execute = AsyncMock(
-        return_value=MagicMock(scalar_one_or_none=MagicMock(return_value=None))
-    )
+    # All repository lookups use result.scalar_one_or_none() — return None (not found) for all
+    execute_result = MagicMock()
+    execute_result.scalar_one_or_none = MagicMock(return_value=None)
+    mock_session.execute = AsyncMock(return_value=execute_result)
 
     async def _mock_session():
         yield mock_session

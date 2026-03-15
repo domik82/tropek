@@ -17,6 +17,7 @@ from app.modules.quality_gate.engine.slo_models import SLOParseError
 from app.modules.quality_gate.engine.slo_parser import parse_slo
 from app.modules.quality_gate.engine.variables import build_variables, substitute_variables
 from app.modules.quality_gate.repository import EvaluationRepository
+from app.modules.quality_gate.schemas import IndicatorResult
 from app.modules.sli_registry.repository import SLIRepository
 from app.modules.slo_registry.repository import SLORepository
 from app.modules.slo_registry.schemas import (
@@ -254,10 +255,14 @@ async def test_slo(  # noqa: C901
         {k: v for k, v in baselines.items() if v is not None},
     )
 
+    indicator_results_typed = [
+        IndicatorResult.model_validate(ir) for ir in eval_result.indicator_results
+    ]
+
     return SLOTestResult(
         result=eval_result.result.value,
         score=eval_result.score,
-        indicator_results=eval_result.indicator_results,
+        indicator_results=indicator_results_typed,
         baseline_mode=baseline_cfg.mode,
         metrics_fetched=metrics_fetched,
         fetch_errors=fetch_errors,
