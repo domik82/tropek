@@ -2,6 +2,7 @@
 members = [
     "api",
     "adapters/prometheus",
+    "clients/python",
 ]
 
 [tool.ruff]
