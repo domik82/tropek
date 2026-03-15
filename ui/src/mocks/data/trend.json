@@ -1,0 +1,42 @@
+{
+  "compilation_duration_s": [
+    { "timestamp": "2026-03-01T10:45:00Z", "value": 39.2, "eval_id": "old-1", "result": "pass" },
+    { "timestamp": "2026-03-03T10:45:00Z", "value": 40.1, "eval_id": "old-2", "result": "pass" },
+    { "timestamp": "2026-03-05T10:45:00Z", "value": 41.0, "eval_id": "old-3", "result": "pass" },
+    { "timestamp": "2026-03-07T10:45:00Z", "value": 40.5, "eval_id": "old-4", "result": "pass" },
+    { "timestamp": "2026-03-09T10:47:00Z", "value": 47.8, "eval_id": "a1b2c3d4-1111-2222-3333-000000000003", "result": "fail" },
+    { "timestamp": "2026-03-10T10:47:00Z", "value": 43.9, "eval_id": "a1b2c3d4-1111-2222-3333-000000000002", "result": "warning" },
+    { "timestamp": "2026-03-11T10:46:00Z", "value": 41.5, "eval_id": "a1b2c3d4-1111-2222-3333-000000000001", "result": "pass" },
+    { "timestamp": "2026-03-12T10:46:03Z", "value": 42.1, "eval_id": "f47ac10b-58cc-4372-a567-0e02b2c3d479", "result": "pass" }
+  ],
+  "cpu_usage_avg": [
+    { "timestamp": "2026-03-01T10:45:00Z", "value": 65.2, "eval_id": "old-1", "result": "pass" },
+    { "timestamp": "2026-03-03T10:45:00Z", "value": 67.8, "eval_id": "old-2", "result": "pass" },
+    { "timestamp": "2026-03-05T10:45:00Z", "value": 70.1, "eval_id": "old-3", "result": "pass" },
+    { "timestamp": "2026-03-07T10:45:00Z", "value": 68.9, "eval_id": "old-4", "result": "pass" },
+    { "timestamp": "2026-03-09T10:47:00Z", "value": 89.5, "eval_id": "a1b2c3d4-1111-2222-3333-000000000003", "result": "fail" },
+    { "timestamp": "2026-03-10T10:47:00Z", "value": 82.1, "eval_id": "a1b2c3d4-1111-2222-3333-000000000002", "result": "warning" },
+    { "timestamp": "2026-03-11T10:46:00Z", "value": 71.2, "eval_id": "a1b2c3d4-1111-2222-3333-000000000001", "result": "pass" },
+    { "timestamp": "2026-03-12T10:46:03Z", "value": 78.3, "eval_id": "f47ac10b-58cc-4372-a567-0e02b2c3d479", "result": "pass" }
+  ],
+  "memory_peak_mb": [
+    { "timestamp": "2026-03-01T10:45:00Z", "value": 980.0, "eval_id": "old-1", "result": "pass" },
+    { "timestamp": "2026-03-03T10:45:00Z", "value": 995.0, "eval_id": "old-2", "result": "pass" },
+    { "timestamp": "2026-03-05T10:45:00Z", "value": 1010.0, "eval_id": "old-3", "result": "pass" },
+    { "timestamp": "2026-03-07T10:45:00Z", "value": 1005.0, "eval_id": "old-4", "result": "pass" },
+    { "timestamp": "2026-03-09T10:47:00Z", "value": 1450.0, "eval_id": "a1b2c3d4-1111-2222-3333-000000000003", "result": "fail" },
+    { "timestamp": "2026-03-10T10:47:00Z", "value": 1120.0, "eval_id": "a1b2c3d4-1111-2222-3333-000000000002", "result": "warning" },
+    { "timestamp": "2026-03-11T10:46:00Z", "value": 1000.0, "eval_id": "a1b2c3d4-1111-2222-3333-000000000001", "result": "pass" },
+    { "timestamp": "2026-03-12T10:46:03Z", "value": 1024.0, "eval_id": "f47ac10b-58cc-4372-a567-0e02b2c3d479", "result": "pass" }
+  ],
+  "compilation_errors": [
+    { "timestamp": "2026-03-01T10:45:00Z", "value": 0, "eval_id": "old-1", "result": "pass" },
+    { "timestamp": "2026-03-03T10:45:00Z", "value": 0, "eval_id": "old-2", "result": "pass" },
+    { "timestamp": "2026-03-05T10:45:00Z", "value": 0, "eval_id": "old-3", "result": "pass" },
+    { "timestamp": "2026-03-07T10:45:00Z", "value": 0, "eval_id": "old-4", "result": "pass" },
+    { "timestamp": "2026-03-09T10:47:00Z", "value": 3, "eval_id": "a1b2c3d4-1111-2222-3333-000000000003", "result": "fail" },
+    { "timestamp": "2026-03-10T10:47:00Z", "value": 0, "eval_id": "a1b2c3d4-1111-2222-3333-000000000002", "result": "warning" },
+    { "timestamp": "2026-03-11T10:46:00Z", "value": 0, "eval_id": "a1b2c3d4-1111-2222-3333-000000000001", "result": "pass" },
+    { "timestamp": "2026-03-12T10:46:03Z", "value": 0, "eval_id": "f47ac10b-58cc-4372-a567-0e02b2c3d479", "result": "pass" }
+  ]
+}
