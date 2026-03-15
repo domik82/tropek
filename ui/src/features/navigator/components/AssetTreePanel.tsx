@@ -11,6 +11,7 @@ interface Props {
   selectedAsset?: string
   onSelectGroup: (name: string) => void
   onSelectAsset: (name: string) => void
+  onClearSelection: () => void
 }
 
 interface NodeProps {
@@ -96,7 +97,7 @@ function TreeNode({ group, tree, depth, filter, selectedGroup, selectedAsset, on
   )
 }
 
-export function AssetTreePanel({ selectedGroup, selectedAsset, onSelectGroup, onSelectAsset }: Props) {
+export function AssetTreePanel({ selectedGroup, selectedAsset, onSelectGroup, onSelectAsset, onClearSelection }: Props) {
   const { data: tree, isLoading } = useAssetGroups()
   const [filter, setFilter] = useState('')
 
@@ -113,6 +114,17 @@ export function AssetTreePanel({ selectedGroup, selectedAsset, onSelectGroup, on
       </div>
       <div className="flex-1 overflow-y-auto py-2">
         {isLoading && <p className="px-3 py-2 text-xs text-muted-foreground">Loading…</p>}
+        {!isLoading && (
+          <button
+            className={`flex items-center w-full text-left py-1.5 text-sm gap-1 hover:bg-muted/50 transition-colors ${
+              !selectedGroup && !selectedAsset ? 'bg-muted text-foreground font-medium' : 'text-muted-foreground'
+            }`}
+            style={{ paddingLeft: '12px', paddingRight: '12px' }}
+            onClick={onClearSelection}
+          >
+            All
+          </button>
+        )}
         {tree?.top_level.map(group => (
           <TreeNode
             key={group.id}
