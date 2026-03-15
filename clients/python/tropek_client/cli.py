@@ -9,12 +9,6 @@ import click
 import yaml
 
 from tropek_client.client import TropekClient
-from tropek_client.exceptions import (  # noqa: F401
-    TropekAPIError,
-    TropekConflictError,
-    TropekNotFoundError,
-    TropekValidationError,
-)
 from tropek_client.manifest import (
     apply as do_apply,
 )
