@@ -6,13 +6,13 @@ describe('clampFontSize', () => {
     expect(clampFontSize(10)).toBe(12)
     expect(clampFontSize(0)).toBe(12)
   })
-  it('clamps above maximum to 18', () => {
-    expect(clampFontSize(20)).toBe(18)
-    expect(clampFontSize(100)).toBe(18)
+  it('clamps above maximum to 24', () => {
+    expect(clampFontSize(26)).toBe(24)
+    expect(clampFontSize(100)).toBe(24)
   })
   it('passes through values in range', () => {
     expect(clampFontSize(12)).toBe(12)
     expect(clampFontSize(14)).toBe(14)
-    expect(clampFontSize(18)).toBe(18)
+    expect(clampFontSize(24)).toBe(24)
   })
 })
