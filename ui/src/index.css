@@ -75,12 +75,12 @@
 
 /* ── Forest dark theme ────────────────────────────────────────── */
 [data-theme="forest"] {
-  --background:          oklch(20.84% 0.008 17.911);
-  --foreground:          oklch(83.768% 0.001 17.911);
-  --card:                oklch(18.522% 0.007 17.911);
-  --card-foreground:     oklch(83.768% 0.001 17.911);
-  --popover:             oklch(18.522% 0.007 17.911);
-  --popover-foreground:  oklch(83.768% 0.001 17.911);
+  --background:          oklch(0.145 0 0);
+  --foreground:          oklch(0.985 0 0);
+  --card:                oklch(0.205 0 0);
+  --card-foreground:     oklch(0.985 0 0);
+  --popover:             oklch(0.205 0 0);
+  --popover-foreground:  oklch(0.985 0 0);
   --primary:             oklch(68.628% 0.185 148.958);
   --primary-foreground:  oklch(0% 0 0);
   --secondary:           oklch(30.698% 0.039 171.364);
