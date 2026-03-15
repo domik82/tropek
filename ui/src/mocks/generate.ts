@@ -4,6 +4,7 @@
  */
 
 import type { EvaluationSummary, EvaluationDetail, IndicatorResult, TrendPoint, FailingIndicator } from '../features/evaluations/types'
+import type { AssetGroup } from '../features/assets/types'
 import { computeChangePct } from '../utils/metrics'
 
 // ---------------------------------------------------------------------------
@@ -590,7 +591,7 @@ export function getAssetGroupTree() {
     'performance-lab-2': 'Performance load test mirror environment (2 runs/day)',
   }
 
-  const allGroups = Array.from(labMap.entries()).map(([lab, members], i) => ({
+  const allGroups: AssetGroup[] = Array.from(labMap.entries()).map(([lab, members], i) => ({
     id: `group-${i}`,
     name: lab,
     display_name: lab.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase()),
@@ -599,7 +600,39 @@ export function getAssetGroupTree() {
     subgroups: [],
   }))
 
-  return { top_level: allGroups, all_groups: allGroups }
+  // Add Linux/Windows subgroups under Performance Lab 1
+  const pl1 = allGroups.find(g => g.name === 'performance-lab-1')
+  if (pl1) {
+    const linuxMembers = pl1.members.filter(m => !m.asset_name.startsWith('win'))
+    const winMembers   = pl1.members.filter(m =>  m.asset_name.startsWith('win'))
+
+    const linuxGroup: AssetGroup = {
+      id: 'group-pl1-linux',
+      name: 'performance-lab-1-linux',
+      display_name: 'Linux',
+      description: 'Linux assets in Performance Lab 1',
+      members: linuxMembers,
+      subgroups: [],
+    }
+    const winGroup: AssetGroup = {
+      id: 'group-pl1-windows',
+      name: 'performance-lab-1-windows',
+      display_name: 'Windows',
+      description: 'Windows assets in Performance Lab 1',
+      members: winMembers,
+      subgroups: [],
+    }
+
+    pl1.members = []
+    pl1.subgroups = [
+      { group_id: 'group-pl1-linux', weight: 1 },
+      { group_id: 'group-pl1-windows', weight: 1 },
+    ]
+
+    allGroups.push(linuxGroup, winGroup)
+  }
+
+  return { top_level: allGroups.filter(g => !['group-pl1-linux','group-pl1-windows'].includes(g.id)), all_groups: allGroups }
 }
 
 export function getSloDefinitions() {
