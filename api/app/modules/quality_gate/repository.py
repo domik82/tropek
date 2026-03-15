@@ -6,7 +6,7 @@ import uuid
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
-from sqlalchemy import String, delete, insert, select, update
+from sqlalchemy import String, delete, func, insert, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -306,6 +306,8 @@ class EvaluationRepository:
         result: str | None = None,
         date_prefix: str | None = None,
         asset_ids: list[uuid.UUID] | None = None,
+        from_ts: datetime | None = None,
+        to_ts: datetime | None = None,
         limit: int = 50,
         offset: int = 0,
     ) -> tuple[list[Evaluation], int, dict[uuid.UUID, int]]:
@@ -314,8 +316,6 @@ class EvaluationRepository:
         asset_id and asset_ids are DB FK lookups (not JSONB snapshot).
         annotation_count_map: {eval_id -> count} for the returned page only.
         """
-        from sqlalchemy import func as sqlfunc
-
         q = select(Evaluation)
         if asset_id:
             q = q.where(Evaluation.asset_id == asset_id)
@@ -327,7 +327,11 @@ class EvaluationRepository:
             q = q.where(Evaluation.period_start.cast(String).like(f"{date_prefix}%"))
         if asset_ids:
             q = q.where(Evaluation.asset_id.in_(asset_ids))
-        count_q = select(sqlfunc.count()).select_from(q.subquery())
+        if from_ts:
+            q = q.where(Evaluation.period_start >= from_ts)
+        if to_ts:
+            q = q.where(Evaluation.period_start <= to_ts)
+        count_q = select(func.count()).select_from(q.subquery())
         total_result = await self._session.execute(count_q)
         total = total_result.scalar_one()
         q = q.order_by(Evaluation.period_start.desc()).limit(limit).offset(offset)
@@ -337,7 +341,7 @@ class EvaluationRepository:
         if evals:
             eval_ids = [ev.id for ev in evals]
             cnt_rows = await self._session.execute(
-                select(EvaluationAnnotation.evaluation_id, sqlfunc.count().label("cnt"))
+                select(EvaluationAnnotation.evaluation_id, func.count().label("cnt"))
                 .where(EvaluationAnnotation.evaluation_id.in_(eval_ids))
                 .group_by(EvaluationAnnotation.evaluation_id)
             )
