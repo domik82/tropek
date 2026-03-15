@@ -49,13 +49,13 @@ export const CHART_THEME: Record<Theme, ChartTheme> = {
   current:   {
     bg:        '#1a2030',
     border:    '#374151',
-    axisLabel: '#6b7280',
+    axisLabel: '#c0c8d0',
     grid:      '#1a2030',
   },
   forest:    {
     bg:        '#1a1714',              // oklch(16.203% 0.007 17.911)
     border:    'rgba(28, 44, 36, 0.6)', // oklch(30% 0.039 171.364 / 60%)
-    axisLabel: '#656260',              // oklch(55% 0.001 17.911)
+    axisLabel: '#c0c0c0',
     grid:      '#14201a',              // oklch(18% 0.007 171.364)
   },
   corporate: {

@@ -8,7 +8,7 @@ import {
 import type { Theme } from './theme'
 import { clampFontSize } from './theme-utils'
 
-const FONT_DEFAULT = 14
+const FONT_DEFAULT = 18
 const THEME_DEFAULT: Theme = 'forest'
 
 interface ThemeCtx {
