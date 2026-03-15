@@ -1,103 +1,52 @@
-"""SLO YAML parser — converts raw YAML text into validated SLO domain models."""
+"""SLO constructor — builds validated SLO models from structured data."""
 
 from __future__ import annotations
 
 from typing import Any
 
-import yaml
+from pydantic import ValidationError
 
-from app.modules.quality_gate.engine.constants import (
-    AggregateFunction,
-    CompareWith,
-    IncludeResultWithScore,
-)
 from app.modules.quality_gate.engine.slo_models import (
     SLO,
     SLOComparison,
-    SLOCriteria,
     SLOObjective,
     SLOParseError,
     SLOTotalScore,
 )
 
 
-def _parse_pct(value: str) -> float:
-    return float(str(value).strip().rstrip("%"))
-
-
-def parse_slo(yaml_text: str) -> SLO:
-    """Parse and validate an SLO YAML document.
+def build_slo(
+    objectives: list[dict[str, Any]],
+    total_score_pass_pct: float = 90.0,
+    total_score_warning_pct: float = 75.0,
+    comparison: dict[str, Any] | None = None,
+) -> SLO:
+    """Build and validate an SLO model from structured data.
 
     Args:
-        yaml_text: Full SLO YAML content including the indicators block.
+        objectives: List of objective dicts matching SLOObjective fields.
+        total_score_pass_pct: Minimum % to pass. Default 90.0.
+        total_score_warning_pct: Minimum % to warn. Default 75.0.
+        comparison: Optional comparison config dict. Empty/None uses all defaults.
 
     Returns:
-        Validated SLO model with defaults applied.
+        Validated SLO model.
 
     Raises:
-        SLOParseError: If the YAML is invalid, missing spec_version, or an
-            objective references an indicator not defined in the indicators block.
+        SLOParseError: If objectives is empty or data is structurally invalid.
     """
+    if not objectives:
+        raise SLOParseError("objectives list is empty")
     try:
-        data: dict[str, Any] = yaml.safe_load(yaml_text) or {}
-    except yaml.YAMLError as e:
-        raise SLOParseError(f"Invalid YAML: {e}") from e
-
-    if "spec_version" not in data:
-        raise SLOParseError("Missing required field: spec_version")
-
-    indicators: dict[str, str] = {str(k): str(v) for k, v in (data.get("indicators") or {}).items()}
-
-    raw_cmp = data.get("comparison") or {}
-    comparison = SLOComparison(
-        compare_with=raw_cmp.get("compare_with", CompareWith.SINGLE_RESULT),
-        number_of_comparison_results=int(raw_cmp.get("number_of_comparison_results", 3)),
-        include_result_with_score=raw_cmp.get(
-            "include_result_with_score", IncludeResultWithScore.ALL
-        ),
-        aggregate_function=raw_cmp.get("aggregate_function", AggregateFunction.AVG),
-        scope_tags=list(raw_cmp.get("scope_tags", ["os"])),
-    )
-
-    raw_score = data.get("total_score") or {}
-    total_score = SLOTotalScore(
-        pass_pct=_parse_pct(raw_score.get("pass", "90%")),
-        warning_pct=_parse_pct(raw_score.get("warning", "75%")),
-    )
-
-    objectives: list[SLOObjective] = []
-    for raw_obj in data.get("objectives") or []:
-        sli_name = str(raw_obj.get("sli", ""))
-        if sli_name not in indicators:
-            raise SLOParseError(
-                f"Objective references unknown indicator: {sli_name!r}. "
-                f"Available: {list(indicators)}"
-            )
-
-        pass_criteria = [
-            SLOCriteria(criteria=list(block.get("criteria", [])))
-            for block in (raw_obj.get("pass") or [])
-        ]
-        warning_criteria = [
-            SLOCriteria(criteria=list(block.get("criteria", [])))
-            for block in (raw_obj.get("warning") or [])
-        ]
-
-        objectives.append(
-            SLOObjective(
-                sli=sli_name,
-                display_name=str(raw_obj.get("displayName", sli_name)),
-                pass_criteria=pass_criteria,
-                warning_criteria=warning_criteria,
-                weight=int(raw_obj.get("weight", 1)),
-                key_sli=bool(raw_obj.get("key_sli", False)),
-            )
-        )
-
+        parsed_objectives = [SLOObjective.model_validate(o) for o in objectives]
+        parsed_comparison = SLOComparison.model_validate(comparison or {})
+    except ValidationError as e:
+        raise SLOParseError(f"invalid slo structure: {e}") from e
     return SLO(
-        spec_version=str(data["spec_version"]),
-        indicators=indicators,
-        objectives=objectives,
-        comparison=comparison,
-        total_score=total_score,
+        objectives=parsed_objectives,
+        comparison=parsed_comparison,
+        total_score=SLOTotalScore(
+            pass_pct=total_score_pass_pct,
+            warning_pct=total_score_warning_pct,
+        ),
     )

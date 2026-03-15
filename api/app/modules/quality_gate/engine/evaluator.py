@@ -1,4 +1,4 @@
-"""Top-level evaluation function — orchestrates parsing, scoring, and result assembly."""
+"""Top-level evaluation function — orchestrates scoring and result assembly."""
 
 from __future__ import annotations
 
@@ -11,8 +11,7 @@ from app.modules.quality_gate.engine.result_models import (
     TotalScore,
 )
 from app.modules.quality_gate.engine.scoring import calculate_total_score, score_objective
-from app.modules.quality_gate.engine.slo_models import SLOObjective
-from app.modules.quality_gate.engine.slo_parser import parse_slo
+from app.modules.quality_gate.engine.slo_models import SLO, SLOObjective
 
 
 def _build_targets(
@@ -21,46 +20,42 @@ def _build_targets(
     baseline: float | None,
     is_pass: bool,
 ) -> list[dict[str, Any]]:
-    """Build the pass or warning target list for a single objective's indicator result."""
-    blocks = objective.pass_criteria if is_pass else objective.warning_criteria
+    """Build the pass or warning target list for a single objective."""
+    criteria_list = objective.pass_criteria if is_pass else objective.warning_criteria
     targets = []
-    for block in blocks:
-        for raw in block.criteria:
-            c = parse_criteria_string(raw)
-            target_value = c.compute_target_value(baseline)
-            violated = not evaluate_criteria(c, value, baseline) if value is not None else True
-            targets.append(
-                {
-                    "criteria": raw,
-                    "target_value": target_value,
-                    "violated": violated,
-                }
-            )
+    for raw in criteria_list:
+        c = parse_criteria_string(raw)
+        target_value = c.compute_target_value(baseline)
+        violated = not evaluate_criteria(c, value, baseline) if value is not None else True
+        targets.append(
+            {
+                "criteria": raw,
+                "target_value": target_value,
+                "violated": violated,
+            }
+        )
     return targets
 
 
 def evaluate(
-    slo_yaml: str,
+    slo: SLO,
     metrics: dict[str, float | None],
     baselines: dict[str, float | None],
     compared_evaluation_ids: list[str] | None = None,
 ) -> EvaluationResult:
     """Evaluate a set of metric values against an SLO definition.
 
-    This is a pure function — no I/O, no database calls. Fully unit-testable
-    in isolation. Ported from Keptn's lighthouse-service Go implementation.
+    Pure function — no I/O, no database calls. Fully unit-testable in isolation.
 
     Args:
-        slo_yaml: Full SLO YAML text including the indicators block.
-        metrics: Metric name → scalar value. None means the metric was not retrieved.
-        baselines: Metric name → aggregated baseline value for relative criteria.
-            Values are sourced from previous passing evaluations.
-        compared_evaluation_ids: IDs of the evaluations used to compute the baselines.
+        slo: Validated SLO model containing objectives, comparison, and score thresholds.
+        metrics: Metric name → scalar value. None means not retrieved.
+        baselines: Metric name → aggregated baseline for relative criteria.
+        compared_evaluation_ids: IDs of evaluations used for baseline computation.
 
     Returns:
         EvaluationResult with overall result, score, and per-indicator breakdown.
     """
-    slo = parse_slo(slo_yaml)
     objective_results: list[ObjectiveResult] = []
     indicator_results: list[dict[str, Any]] = []
 

@@ -1,22 +1,15 @@
-spec_version: '1.0'
 comparison:
   compare_with: several_results
   number_of_comparison_results: 3
   include_result_with_score: pass_or_warn
   aggregate_function: avg
-  scope_tags:
-    - os
-    - arch
-indicators:
-  cpu_usage: 'avg_over_time(cpu[5m])'
+  scope_tags: [os, arch]
 objectives:
   - sli: cpu_usage
-    pass:
-      - criteria: ["<=+10%"]
-    warning:
-      - criteria: ["<=+20%"]
+    pass_criteria: ["<=+10%"]
+    warning_criteria: ["<=+20%"]
     weight: 2
     key_sli: true
 total_score:
-  pass: "90%"
-  warning: "75%"
+  pass_pct: 90.0
+  warning_pct: 75.0

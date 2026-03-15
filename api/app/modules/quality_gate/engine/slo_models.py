@@ -1,8 +1,4 @@
-"""SLO definition models — parsed from YAML by slo_parser.
-
-These are the structural representations of the Keptn 1.0 SLO document:
-indicators, objectives, comparison configuration, and pass/warning thresholds.
-"""
+"""SLO definition models — structural representations of SLO objectives and thresholds."""
 
 from __future__ import annotations
 
@@ -16,16 +12,7 @@ from app.modules.quality_gate.engine.constants import (
 
 
 class SLOParseError(ValueError):
-    """Raised when an SLO YAML document is invalid or references unknown indicators."""
-
-
-class SLOCriteria(BaseModel):
-    """A single block of criteria strings evaluated with AND logic.
-
-    Multiple SLOCriteria on the same objective use OR logic across blocks.
-    """
-
-    criteria: list[str]
+    """Raised when SLO data is structurally invalid."""
 
 
 class SLOObjective(BaseModel):
@@ -33,8 +20,8 @@ class SLOObjective(BaseModel):
 
     sli: str
     display_name: str = ""
-    pass_criteria: list[SLOCriteria] = Field(default_factory=list)
-    warning_criteria: list[SLOCriteria] = Field(default_factory=list)
+    pass_criteria: list[str] = Field(default_factory=list)
+    warning_criteria: list[str] = Field(default_factory=list)
     weight: int = 1
     key_sli: bool = False
 
@@ -57,10 +44,8 @@ class SLOTotalScore(BaseModel):
 
 
 class SLO(BaseModel):
-    """Parsed and validated SLO document combining indicators, objectives, and thresholds."""
+    """Validated SLO combining objectives, comparison config, and score thresholds."""
 
-    spec_version: str
-    indicators: dict[str, str]
     objectives: list[SLOObjective]
     comparison: SLOComparison
     total_score: SLOTotalScore
