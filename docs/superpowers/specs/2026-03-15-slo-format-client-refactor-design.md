@@ -157,6 +157,17 @@ validation errors raised by `build_slo` (e.g. empty objectives list, unknown key
 dict). `build_slo` raises `SLOParseError` for invalid input rather than letting pydantic
 `ValidationError` surface directly to callers.
 
+**`build_slo` call sites** — two places call it after the refactor:
+1. **Evaluation worker**: after loading the SLO definition from DB, call
+   `build_slo(objectives=[o.__dict__ for o in definition.objectives], total_score_pass_pct=...,
+   total_score_warning_pct=..., comparison=definition.comparison)` then pass the result to
+   `evaluate(slo=slo, ...)`. Remove the `slo_yaml` argument from the worker's `mark_completed`
+   call at the same time.
+2. **`/slo-definitions/test` router handler**: call `build_slo` using the structured fields
+   from `SLOTestRequest` (objectives, total_score_*, comparison), then pass the resulting
+   `SLO` to `evaluate()`. The router handler owns this call directly — no separate service
+   layer needed.
+
 ### `slo_parser.py`
 
 Repurposed from YAML text parser to a constructor. Rename `parse_slo` to `build_slo`:
@@ -261,11 +272,18 @@ class SLOTestRequest(BaseModel):
 `create()`:
 - Inserts into `slo_definitions` with new columns
 - Bulk-inserts `slo_objectives` rows, assigning `sort_order` from list index (0-based)
+- Returns the ORM `SLODefinition` row (with `objectives` relationship selectin-loaded)
 
-`get_latest()` and `list_all()`:
-- JOIN `slo_objectives` on `slo_definition_id`
-- Order objectives by `sort_order ASC` when assembling response
-- Return fully assembled `SLODefinitionRead`-compatible object
+`get_latest()`, `get_version()`, `list_all()`:
+- No JOIN needed — the `selectin` relationship on `SLODefinition.objectives` loads objective
+  rows automatically when the ORM row is accessed within an open session
+- Return the raw ORM `SLODefinition` object; callers (router handlers) call
+  `SLODefinitionRead.model_validate(row)` to produce the response schema
+
+`SLOValidationResult` response schema: keep the class, update `objectives` field type from
+`list[dict[str, Any]] | None` to `list[SLOObjectiveIn] | None`. The validate endpoint parses
+the request into a `SLO` model (via `build_slo`) and returns the parsed objectives on success,
+so callers can confirm what was understood.
 
 ---
 
@@ -320,8 +338,21 @@ client.slo_definitions.create(
 
 ### `models.py`
 
+Add `SLOObjective` pydantic model (mirrors the API `SLOObjectiveRead`):
+
+```python
+class SLOObjective(BaseModel):
+    sli: str
+    display_name: str = ""
+    pass_criteria: list[str] = []
+    warning_criteria: list[str] = []
+    weight: int = 1
+    key_sli: bool = False
+    sort_order: int = 0
+```
+
 `SLODefinition` drops `slo_yaml`, gains:
-- `objectives: list[dict[str, Any]]`
+- `objectives: list[SLOObjective]`  ← typed model, not raw dict, so `.model_dump()` works
 - `total_score_pass_pct: float`
 - `total_score_warning_pct: float`
 - `comparison: dict[str, Any]`
@@ -409,6 +440,10 @@ required.
 - `comparison` → `spec.comparison` (omit if `{}`)
 
 All other kinds have 1:1 field mapping between API response and manifest spec.
+
+**Iteration for steps 7 and 8:** both `GET /assets` and `GET /asset-groups` return paged
+responses with a `name` field on each item. Iterate using `asset.name` / `group.name` to
+build the per-entity SLO-link fetch URLs.
 
 ### Tests
 
