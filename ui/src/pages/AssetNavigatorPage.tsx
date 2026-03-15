@@ -12,8 +12,13 @@ export function AssetNavigatorPage() {
   function selectGroup(name: string) {
     setParams({ group: name })
   }
+
   function selectAsset(name: string) {
     setParams({ asset: name })
+  }
+
+  function clearSelection() {
+    setParams({})
   }
 
   return (
@@ -24,11 +29,14 @@ export function AssetNavigatorPage() {
           selectedAsset={selectedAsset}
           onSelectGroup={selectGroup}
           onSelectAsset={selectAsset}
+          onClearSelection={clearSelection}
         />
       </div>
       <div className="flex-1 overflow-y-auto">
         {selectedAsset && <AssetPanel assetName={selectedAsset} />}
-        {!selectedAsset && selectedGroup && <GroupPanel groupName={selectedGroup} />}
+        {!selectedAsset && selectedGroup && (
+          <GroupPanel groupName={selectedGroup} onSelectAsset={selectAsset} />
+        )}
         {!selectedAsset && !selectedGroup && (
           <div className="p-8 text-muted-foreground text-sm">
             Select a group or asset from the tree to load evaluations.
