@@ -119,7 +119,7 @@ export function useColumnVisibility(dynamicCols: ColumnDef[]) {
     new Set(DEFAULT_VISIBLE_KEYS)
   )
   const [open, setOpen] = useState(false)
-  const pickerRef = useRef<HTMLDivElement>(null)
+  const pickerRef = useRef<HTMLTableCellElement>(null)
 
   useEffect(() => {
     function handleClick(e: MouseEvent) {

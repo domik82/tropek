@@ -9,6 +9,25 @@ import { GroupScoreChart } from './GroupScoreChart'
 
 type ViewMode = 'heatmap' | 'chart'
 
+function ViewToggle({ mode, setMode }: { mode: ViewMode; setMode: (m: ViewMode) => void }) {
+  return (
+    <div className="flex border border-slate-700 rounded overflow-hidden text-xs">
+      <button
+        onClick={() => setMode('heatmap')}
+        className={`px-3 py-1.5 transition-colors ${mode === 'heatmap' ? 'bg-gray-800 text-slate-200' : 'text-slate-400 hover:bg-gray-800/50'}`}
+      >
+        Heatmap
+      </button>
+      <button
+        onClick={() => setMode('chart')}
+        className={`px-3 py-1.5 transition-colors ${mode === 'chart' ? 'bg-gray-800 text-slate-200' : 'text-slate-400 hover:bg-gray-800/50'}`}
+      >
+        Chart
+      </button>
+    </div>
+  )
+}
+
 interface Props {
   groupName: string
   onSelectAsset: (name: string, evalId?: string) => void
@@ -64,20 +83,7 @@ export function GroupPanel({ groupName, onSelectAsset }: Props) {
             <div className="flex items-center justify-between mb-2">
               <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Evaluation Heatmap</h2>
               <div className="flex items-center gap-3">
-                <div className="flex border border-slate-700 rounded overflow-hidden text-xs">
-                  <button
-                    onClick={() => setMode('heatmap')}
-                    className={`px-3 py-1.5 transition-colors ${mode === 'heatmap' ? 'bg-gray-800 text-slate-200' : 'text-slate-400 hover:bg-gray-800/50'}`}
-                  >
-                    Heatmap
-                  </button>
-                  <button
-                    onClick={() => setMode('chart')}
-                    className={`px-3 py-1.5 transition-colors ${mode === 'chart' ? 'bg-gray-800 text-slate-200' : 'text-slate-400 hover:bg-gray-800/50'}`}
-                  >
-                    Chart
-                  </button>
-                </div>
+                <ViewToggle mode={mode} setMode={setMode} />
                 {explorerButton}
               </div>
             </div>
@@ -101,20 +107,7 @@ export function GroupPanel({ groupName, onSelectAsset }: Props) {
         <>
           <div className="flex justify-end">
             <div className="flex items-center gap-3">
-              <div className="flex border border-slate-700 rounded overflow-hidden text-xs">
-                <button
-                  onClick={() => setMode('heatmap')}
-                  className={`px-3 py-1.5 transition-colors ${mode === 'heatmap' ? 'bg-gray-800 text-slate-200' : 'text-slate-400 hover:bg-gray-800/50'}`}
-                >
-                  Heatmap
-                </button>
-                <button
-                  onClick={() => setMode('chart')}
-                  className={`px-3 py-1.5 transition-colors ${mode === 'chart' ? 'bg-gray-800 text-slate-200' : 'text-slate-400 hover:bg-gray-800/50'}`}
-                >
-                  Chart
-                </button>
-              </div>
+              <ViewToggle mode={mode} setMode={setMode} />
               {explorerButton}
             </div>
           </div>

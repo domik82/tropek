@@ -17,7 +17,7 @@ interface Props {
   open: boolean
   setOpen: (v: boolean) => void
   toggle: (key: string) => void
-  pickerRef: RefObject<HTMLDivElement | null>
+  pickerRef: RefObject<HTMLTableCellElement | null>
   onAssetSelect?: (name: string) => void
   /** When provided, clicking the evaluation name calls this instead of navigating to the detail page. */
   onEvalClick?: (ev: EvaluationSummary) => void
