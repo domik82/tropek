@@ -21,6 +21,7 @@ class SLIRepository:
         self,
         name: str,
         indicators: dict[str, str],
+        adapter_type: str,
         display_name: str | None = None,
         notes: str | None = None,
         author: str | None = None,
@@ -33,6 +34,7 @@ class SLIRepository:
         Args:
             name: Stable external identifier for the SLI.
             indicators: Mapping of indicator name to adapter query string.
+            adapter_type: Type of adapter this SLI targets (e.g. "prometheus").
             display_name: Optional human-readable display name.
             notes: Optional description of changes in this version.
             author: Optional identifier of who created this version.
@@ -54,6 +56,7 @@ class SLIRepository:
         sli = SLIDefinition(
             id=uuid.uuid4(),
             name=name,
+            adapter_type=adapter_type,
             display_name=display_name,
             version=next_version,
             indicators=indicators,
@@ -117,19 +120,26 @@ class SLIRepository:
         )
         return list(result.scalars().all())
 
-    async def list_all(self) -> list[SLIDefinition]:
+    async def list_all(self, *, adapter_type: str | None = None) -> list[SLIDefinition]:
         """Return latest active version of every SLI name.
 
         Uses DISTINCT ON (name) ORDER BY name, version DESC — PostgreSQL-specific.
 
+        Args:
+            adapter_type: When given, only return SLIs targeting this adapter type.
+
         Returns:
             One SLIDefinition per active SLI name, the highest version of each.
         """
+        base = select(SLIDefinition.name, SLIDefinition.version).where(
+            SLIDefinition.active == True  # noqa: E712
+        )
+        if adapter_type is not None:
+            base = base.where(SLIDefinition.adapter_type == adapter_type)
         subq = (
-            select(SLIDefinition.name, SLIDefinition.version)
-            .where(SLIDefinition.active == True)  # noqa: E712
-            .distinct(SLIDefinition.name)
-            .order_by(SLIDefinition.name, SLIDefinition.version.desc())
+            base.distinct(SLIDefinition.name).order_by(
+                SLIDefinition.name, SLIDefinition.version.desc()
+            )
         ).subquery()
 
         result = await self._session.execute(

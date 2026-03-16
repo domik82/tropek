@@ -13,6 +13,7 @@ class SLIDefinitionCreate(BaseModel):
     """Request body for creating an SLI definition."""
 
     name: str
+    adapter_type: str
     display_name: str | None = None
     indicators: dict[str, str]
     notes: str | None = None
@@ -25,6 +26,7 @@ class SLIDefinitionRead(BaseModel):
 
     id: uuid.UUID
     name: str
+    adapter_type: str
     display_name: str | None
     version: int
     indicators: dict[str, str]

@@ -15,7 +15,7 @@ _INDICATORS = {
 @pytest.mark.integration
 async def test_create_first_version(db_session: AsyncSession) -> None:
     repo = SLIRepository(db_session)
-    sli = await repo.create(name="linux-sli", indicators=_INDICATORS)
+    sli = await repo.create(name="linux-sli", indicators=_INDICATORS, adapter_type="prometheus")
     assert sli.version == 1
     assert sli.name == "linux-sli"
     assert sli.indicators == _INDICATORS
@@ -25,16 +25,18 @@ async def test_create_first_version(db_session: AsyncSession) -> None:
 @pytest.mark.integration
 async def test_create_increments_version(db_session: AsyncSession) -> None:
     repo = SLIRepository(db_session)
-    await repo.create(name="versioned-sli", indicators=_INDICATORS)
-    v2 = await repo.create(name="versioned-sli", indicators={"cpu": "some_query"})
+    await repo.create(name="versioned-sli", indicators=_INDICATORS, adapter_type="prometheus")
+    v2 = await repo.create(
+        name="versioned-sli", indicators={"cpu": "some_query"}, adapter_type="prometheus"
+    )
     assert v2.version == 2
 
 
 @pytest.mark.integration
 async def test_get_latest_returns_highest_version(db_session: AsyncSession) -> None:
     repo = SLIRepository(db_session)
-    await repo.create(name="latest-sli", indicators={"a": "q1"})
-    await repo.create(name="latest-sli", indicators={"a": "q2"})
+    await repo.create(name="latest-sli", indicators={"a": "q1"}, adapter_type="prometheus")
+    await repo.create(name="latest-sli", indicators={"a": "q2"}, adapter_type="prometheus")
     latest = await repo.get_latest("latest-sli")
     assert latest is not None
     assert latest.version == 2
@@ -44,8 +46,8 @@ async def test_get_latest_returns_highest_version(db_session: AsyncSession) -> N
 @pytest.mark.integration
 async def test_get_version_returns_specific(db_session: AsyncSession) -> None:
     repo = SLIRepository(db_session)
-    await repo.create(name="pinned-sli", indicators={"a": "q1"})
-    await repo.create(name="pinned-sli", indicators={"a": "q2"})
+    await repo.create(name="pinned-sli", indicators={"a": "q1"}, adapter_type="prometheus")
+    await repo.create(name="pinned-sli", indicators={"a": "q2"}, adapter_type="prometheus")
     v1 = await repo.get_version("pinned-sli", 1)
     assert v1 is not None
     assert v1.indicators == {"a": "q1"}
@@ -61,7 +63,7 @@ async def test_get_latest_returns_none_for_unknown(db_session: AsyncSession) -> 
 @pytest.mark.integration
 async def test_deactivate_hides_from_get_latest(db_session: AsyncSession) -> None:
     repo = SLIRepository(db_session)
-    await repo.create(name="gone-sli", indicators={"a": "q1"})
+    await repo.create(name="gone-sli", indicators={"a": "q1"}, adapter_type="prometheus")
     await repo.deactivate("gone-sli")
     result = await repo.get_latest("gone-sli")
     assert result is None
@@ -70,8 +72,8 @@ async def test_deactivate_hides_from_get_latest(db_session: AsyncSession) -> Non
 @pytest.mark.integration
 async def test_list_versions_newest_first(db_session: AsyncSession) -> None:
     repo = SLIRepository(db_session)
-    await repo.create(name="history-sli", indicators={"a": "q1"})
-    await repo.create(name="history-sli", indicators={"a": "q2"})
+    await repo.create(name="history-sli", indicators={"a": "q1"}, adapter_type="prometheus")
+    await repo.create(name="history-sli", indicators={"a": "q2"}, adapter_type="prometheus")
     versions = await repo.list_versions("history-sli")
     assert len(versions) == 2
     assert versions[0].version == 2
@@ -81,10 +83,31 @@ async def test_list_versions_newest_first(db_session: AsyncSession) -> None:
 @pytest.mark.integration
 async def test_list_all_returns_latest_per_name(db_session: AsyncSession) -> None:
     repo = SLIRepository(db_session)
-    await repo.create(name="sli-a", indicators={"x": "q1"})
-    await repo.create(name="sli-a", indicators={"x": "q2"})
-    await repo.create(name="sli-b", indicators={"y": "q1"})
+    await repo.create(name="sli-a", indicators={"x": "q1"}, adapter_type="prometheus")
+    await repo.create(name="sli-a", indicators={"x": "q2"}, adapter_type="prometheus")
+    await repo.create(name="sli-b", indicators={"y": "q1"}, adapter_type="prometheus")
     results = await repo.list_all()
     name_to_version = {r.name: r.version for r in results}
     assert name_to_version["sli-a"] == 2
     assert name_to_version["sli-b"] == 1
+
+
+@pytest.mark.integration
+async def test_create_with_adapter_type(db_session: AsyncSession) -> None:
+    repo = SLIRepository(db_session)
+    sli = await repo.create(
+        name="typed-sli",
+        indicators=_INDICATORS,
+        adapter_type="prometheus",
+    )
+    assert sli.adapter_type == "prometheus"
+
+
+@pytest.mark.integration
+async def test_list_all_filters_by_adapter_type(db_session: AsyncSession) -> None:
+    repo = SLIRepository(db_session)
+    await repo.create(name="prom-sli", indicators={"a": "q"}, adapter_type="prometheus")
+    await repo.create(name="dyna-sli", indicators={"b": "q"}, adapter_type="dynatrace")
+    result = await repo.list_all(adapter_type="prometheus")
+    assert len(result) == 1
+    assert result[0].name == "prom-sli"
