@@ -47,6 +47,7 @@ interface ChartSectionProps {
   evalId: string | undefined
   dataKey: 'value' | 'score'
   yAxisMax?: number
+  stacked?: boolean
 }
 
 type ChartType = 'line' | 'bar'
@@ -61,6 +62,7 @@ function ChartSection({
   evalId,
   dataKey,
   yAxisMax: yAxisMaxProp,
+  stacked: stackedProp = false,
 }: ChartSectionProps) {
   const [yMin, setYMin] = useState('')
   const [yMax, setYMax] = useState('')
@@ -177,6 +179,7 @@ function ChartSection({
             yAxisMin={yMin !== '' ? parseFloat(yMin) : undefined}
             yAxisMax={yMax !== '' ? parseFloat(yMax) : yAxisMaxProp}
             chartType={chartType}
+            stacked={stackedProp}
             height={280}
           />
         </div>
@@ -278,6 +281,7 @@ export function MetricExplorerPage() {
           evalId={latestEval?.id}
           dataKey="score"
           yAxisMax={100}
+          stacked
         />
       </div>
     </div>
