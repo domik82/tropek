@@ -8,6 +8,8 @@ export interface HeatmapCell {
   slot: string                  // ISO timestamp for column
   rowLabel: string              // asset name (group view) or metric display name (asset view)
   evalId?: string               // defined in asset view — for click navigation
+  hasNote?: boolean             // triggers annotation triangle in HeatmapChart
+  noteContent?: string          // shown in tooltip
 }
 
 // Pre-computed group heatmap: rows=assets, cols=slots
