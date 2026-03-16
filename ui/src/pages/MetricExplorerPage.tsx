@@ -173,15 +173,17 @@ function ChartSection({
             onGroupNone={handleGroupNone}
           />
         </div>
-        <div className="flex-1 min-w-0 p-3">
-          <MultiSeriesChart
-            series={chartSeries}
-            yAxisMin={yMin !== '' ? parseFloat(yMin) : undefined}
-            yAxisMax={yMax !== '' ? parseFloat(yMax) : yAxisMaxProp}
-            chartType={chartType}
-            stacked={stackedProp}
-            height={280}
-          />
+        <div className="flex-1 min-w-0 p-3 flex flex-col">
+          <div className="flex-1 min-h-0">
+            <MultiSeriesChart
+              series={chartSeries}
+              yAxisMin={yMin !== '' ? parseFloat(yMin) : undefined}
+              yAxisMax={yMax !== '' ? parseFloat(yMax) : yAxisMaxProp}
+              chartType={chartType}
+              stacked={stackedProp}
+              height="100%"
+            />
+          </div>
         </div>
       </div>
     </div>
