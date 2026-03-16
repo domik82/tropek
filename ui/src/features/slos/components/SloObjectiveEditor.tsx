@@ -1,23 +1,23 @@
 // src/features/slos/components/SloObjectiveEditor.tsx
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import { useFieldArray, useForm, Controller } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { parseSloYaml } from '@/lib/parseSloYaml'
-import { useSloValidation } from '../hooks'
+import { useCreateSlo, useSloValidation } from '../hooks'
 import type { SloDefinition } from '../types'
 
 const objectiveSchema = z.object({
   sli: z.string().min(1),
   display_name: z.string(),
-  pass_criteria: z.string(),   // optional — an objective may have no pass criteria
+  pass_criteria: z.string(),
   warning_criteria: z.string(),
   weight: z.coerce.number().min(0),
   key_sli: z.boolean(),
-  tab_group: z.string(),
 })
 
 const formSchema = z.object({
+  total_score_pass_pct: z.coerce.number().min(0).max(100),
+  total_score_warning_pct: z.coerce.number().min(0).max(100),
   objectives: z.array(objectiveSchema),
 })
 type FormValues = z.infer<typeof formSchema>
@@ -79,49 +79,82 @@ function IndicatorCombobox({
 }
 
 export function SloObjectiveEditor({ slo, onCancel, onSaved }: Props) {
-  const validation = useSloValidation()
-  const availableIndicators = useMemo(() => {
-    if (!slo.slo_yaml) return []
-    const parsed = parseSloYaml(slo.slo_yaml)
-    return parsed ? parsed.spec.objectives.map(o => o.sli_name) : []
-  }, [slo.slo_yaml])
+  const create = useCreateSlo()
+  const validate = useSloValidation()
+  const availableIndicators = slo.objectives.map(o => o.sli)
 
-  const defaultObjectives = useMemo(() => {
-    if (slo.slo_yaml) {
-      const parsed = parseSloYaml(slo.slo_yaml)
-      if (parsed) {
-        return parsed.spec.objectives.map(obj => ({
-          sli: obj.sli_name,
-          display_name: obj.display_name,
-          pass_criteria: obj.pass.join(', '),
-          warning_criteria: obj.warning.join(', '),
-          weight: obj.weight,
-          key_sli: obj.key_sli,
-          tab_group: obj.tab_group,
-        }))
-      }
-    }
-    return []
-  }, [slo])
+  const defaultObjectives = slo.objectives.map(obj => ({
+    sli: obj.sli,
+    display_name: obj.display_name,
+    pass_criteria: obj.pass_criteria.join(', '),
+    warning_criteria: obj.warning_criteria.join(', '),
+    weight: obj.weight,
+    key_sli: obj.key_sli,
+  }))
 
   const { register, control, handleSubmit } = useForm<FormValues, unknown, FormValues>({
     resolver: zodResolver(formSchema) as import('react-hook-form').Resolver<FormValues>,
-    defaultValues: { objectives: defaultObjectives },
+    defaultValues: {
+      total_score_pass_pct: slo.total_score_pass_pct,
+      total_score_warning_pct: slo.total_score_warning_pct,
+      objectives: defaultObjectives,
+    },
   })
 
   const { fields, append, remove } = useFieldArray({ control, name: 'objectives' })
 
+  function buildPayload(values: FormValues) {
+    return {
+      objectives: values.objectives.map((obj, i) => ({
+        sli: obj.sli,
+        display_name: obj.display_name || obj.sli,
+        pass_criteria: obj.pass_criteria ? obj.pass_criteria.split(',').map(s => s.trim()).filter(Boolean) : [],
+        warning_criteria: obj.warning_criteria ? obj.warning_criteria.split(',').map(s => s.trim()).filter(Boolean) : [],
+        weight: obj.weight,
+        key_sli: obj.key_sli,
+        sort_order: i,
+      })),
+      total_score_pass_pct: values.total_score_pass_pct,
+      total_score_warning_pct: values.total_score_warning_pct,
+      comparison: slo.comparison ?? {},
+    }
+  }
+
   function onSubmit(values: FormValues) {
-    const yaml = buildYamlFromObjectives(slo, values.objectives)
-    validation.mutate(yaml, {
+    const payload = buildPayload(values)
+    validate.mutate(payload, {
       onSuccess: (result) => {
-        if (result.valid) onSaved()
+        if (!result.valid) return
+        create.mutate(
+          {
+            name: slo.name,
+            display_name: slo.display_name ?? undefined,
+            author: slo.author ?? undefined,
+            notes: slo.notes ?? undefined,
+            ...payload,
+          },
+          { onSuccess: () => onSaved() },
+        )
       },
     })
   }
 
+  const inp = 'w-full px-2 py-1.5 bg-slate-800 border border-slate-600 rounded text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500'
+
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-3">
+      {/* Score thresholds */}
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="block text-xs text-slate-500 mb-1">Total Pass %</label>
+          <input {...register('total_score_pass_pct')} type="number" min={0} max={100} className={inp} />
+        </div>
+        <div>
+          <label className="block text-xs text-slate-500 mb-1">Total Warning %</label>
+          <input {...register('total_score_warning_pct')} type="number" min={0} max={100} className={inp} />
+        </div>
+      </div>
+
       <div className="overflow-x-auto rounded-lg border border-slate-700">
         <table className="w-full text-sm">
           <thead className="text-xs uppercase text-slate-400 bg-slate-800/60 border-b border-slate-700">
@@ -131,7 +164,6 @@ export function SloObjectiveEditor({ slo, onCancel, onSaved }: Props) {
               <th className="text-left px-2 py-2 min-w-[120px]">Pass Criteria</th>
               <th className="text-left px-2 py-2 min-w-[120px]">Warn Criteria</th>
               <th className="text-center px-2 py-2 w-16">Weight</th>
-              <th className="text-left px-2 py-2 min-w-[100px]">Tab Group</th>
               <th className="text-center px-2 py-2 w-10">Key</th>
               <th className="w-8"></th>
             </tr>
@@ -180,13 +212,6 @@ export function SloObjectiveEditor({ slo, onCancel, onSaved }: Props) {
                     className="w-full px-2 py-1.5 bg-slate-800 border border-slate-600 rounded text-xs text-slate-200 text-center focus:outline-none focus:border-indigo-500"
                   />
                 </td>
-                <td className="px-2 py-1.5">
-                  <input
-                    {...register(`objectives.${i}.tab_group`)}
-                    className="w-full px-2 py-1.5 bg-slate-800 border border-slate-600 rounded text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500"
-                    placeholder="e.g. summary"
-                  />
-                </td>
                 <td className="px-2 py-1.5 text-center">
                   <input
                     type="checkbox"
@@ -212,20 +237,21 @@ export function SloObjectiveEditor({ slo, onCancel, onSaved }: Props) {
           warning_criteria: '',
           weight: 1,
           key_sli: false,
-          tab_group: '',
         })}
         className="px-3 py-1.5 text-xs rounded border border-slate-600 text-slate-300 hover:border-slate-400 hover:text-slate-100 transition-colors"
       >
         + Add Objective
       </button>
 
-      {validation.data && !validation.data.valid && (
-        <div className="bg-red-900/20 border border-red-700/40 rounded p-3 text-xs space-y-1">
-          <p className="text-red-400 font-semibold">Validation errors:</p>
-          {validation.data.errors.map((e, idx) => (
-            <p key={idx} className="text-red-300">{e.field}: {e.message}</p>
+      {validate.data && !validate.data.valid && (
+        <div className="text-xs text-red-400 space-y-0.5">
+          {validate.data.errors.map((e, i) => (
+            <p key={i}>{e.field}: {e.message}</p>
           ))}
         </div>
+      )}
+      {create.isError && (
+        <p className="text-xs text-red-400">Failed to save — please try again.</p>
       )}
 
       <div className="flex justify-end gap-2">
@@ -238,50 +264,12 @@ export function SloObjectiveEditor({ slo, onCancel, onSaved }: Props) {
         </button>
         <button
           type="submit"
-          disabled={validation.isPending}
+          disabled={validate.isPending || create.isPending}
           className="px-3 py-1.5 text-xs font-medium rounded bg-indigo-600 text-white hover:bg-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
         >
-          {validation.isPending ? 'Validating…' : 'Validate & Save'}
+          {validate.isPending ? 'Validating…' : create.isPending ? 'Saving…' : 'Save Changes'}
         </button>
       </div>
     </form>
   )
-}
-
-function buildYamlFromObjectives(slo: SloDefinition, objectives: FormValues['objectives']): string {
-  const base = slo.slo_yaml ?? ''
-  // Try to preserve metadata and comparison from existing YAML by rebuilding just spec.objectives
-  const lines: string[] = [
-    'api_version: tropek/v1',
-    'kind: SLO',
-    'metadata:',
-    `  name: ${slo.name}`,
-    'spec:',
-    '  objectives:',
-    ...objectives.flatMap(obj => [
-      `    - sli_name: ${obj.sli}`,
-      `      display_name: ${obj.display_name || obj.sli}`,
-      ...(obj.pass_criteria ? [
-        '      pass:',
-        `        - criteria: ["${obj.pass_criteria}"]`,
-      ] : []),
-      ...(obj.warning_criteria ? [
-        '      warning:',
-        `        - criteria: ["${obj.warning_criteria}"]`,
-      ] : []),
-      `      weight: ${obj.weight}`,
-      `      key_sli: ${obj.key_sli}`,
-      ...(obj.tab_group ? [`      tab_group: ${obj.tab_group}`] : []),
-    ]),
-  ]
-
-  const parsed = parseSloYaml(base)
-  const totalScore = parsed?.spec.total_score
-  if (totalScore?.pass || totalScore?.warning) {
-    lines.push('  total_score:')
-    if (totalScore.pass) lines.push(`    pass: "${totalScore.pass}"`)
-    if (totalScore.warning) lines.push(`    warning: "${totalScore.warning}"`)
-  }
-
-  return lines.join('\n')
 }
