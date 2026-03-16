@@ -1,0 +1,206 @@
+// ui/src/components/charts/MetricLabelPanel.tsx
+//
+// Grouped, paginated label panel for MetricExplorerPage.
+// Shows indicator names grouped by tab_group, with per-group All/None toggles
+// and pagination across a flat ordered list of all labels.
+
+import { useState } from 'react'
+
+// ── Types ─────────────────────────────────────────────────────────────────────
+
+interface Indicator {
+  metric: string
+  display_name: string
+  tab_group?: string
+}
+
+interface MetricLabelPanelProps {
+  indicators: Indicator[]
+  colors: Map<string, string>
+  enabled: Set<string>
+  onToggle: (metric: string) => void
+  onGroupAll: (group: string) => void
+  onGroupNone: (group: string) => void
+}
+
+// ── Constants ─────────────────────────────────────────────────────────────────
+
+const LABELS_PER_PAGE = 50 // ~25 rows × 2 columns
+const UNGROUPED_KEY = 'Other'
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+interface GroupedIndicators {
+  groupName: string
+  items: Indicator[]
+}
+
+function groupIndicators(indicators: Indicator[]): GroupedIndicators[] {
+  const groupMap = new Map<string, Indicator[]>()
+
+  for (const ind of indicators) {
+    const key = ind.tab_group ?? UNGROUPED_KEY
+    const existing = groupMap.get(key)
+    if (existing) {
+      existing.push(ind)
+    } else {
+      groupMap.set(key, [ind])
+    }
+  }
+
+  // Move "Other" to the end if present alongside named groups
+  const groups: GroupedIndicators[] = []
+  let otherGroup: GroupedIndicators | null = null
+
+  for (const [groupName, items] of groupMap.entries()) {
+    if (groupName === UNGROUPED_KEY) {
+      otherGroup = { groupName, items }
+    } else {
+      groups.push({ groupName, items })
+    }
+  }
+
+  if (otherGroup) {
+    groups.push(otherGroup)
+  }
+
+  return groups
+}
+
+// Flatten all grouped indicators into a single ordered list
+function flattenGroups(groups: GroupedIndicators[]): Indicator[] {
+  return groups.flatMap((g) => g.items)
+}
+
+// Given a flat paginated slice, re-group them preserving original group order
+function regroupSlice(
+  slice: Indicator[],
+  allGroups: GroupedIndicators[],
+): GroupedIndicators[] {
+  const sliceSet = new Set(slice.map((i) => i.metric))
+  const result: GroupedIndicators[] = []
+
+  for (const group of allGroups) {
+    const items = group.items.filter((i) => sliceSet.has(i.metric))
+    if (items.length > 0) {
+      result.push({ groupName: group.groupName, items })
+    }
+  }
+
+  return result
+}
+
+// ── Component ─────────────────────────────────────────────────────────────────
+
+export function MetricLabelPanel({
+  indicators,
+  colors,
+  enabled,
+  onToggle,
+  onGroupAll,
+  onGroupNone,
+}: MetricLabelPanelProps) {
+  const [page, setPage] = useState(0)
+
+  const allGroups = groupIndicators(indicators)
+  const flat = flattenGroups(allGroups)
+  const totalPages = Math.max(1, Math.ceil(flat.length / LABELS_PER_PAGE))
+
+  // Clamp page to valid range when indicators change
+  const safePage = Math.min(page, totalPages - 1)
+
+  const pageSlice = flat.slice(safePage * LABELS_PER_PAGE, (safePage + 1) * LABELS_PER_PAGE)
+  const visibleGroups = regroupSlice(pageSlice, allGroups)
+
+  return (
+    <div className="flex flex-col h-full">
+      <div className="flex-1 overflow-y-auto space-y-3 pr-1">
+        {visibleGroups.map(({ groupName, items }) => (
+          <div key={groupName}>
+            {/* Group header */}
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide">
+                {groupName}
+              </span>
+              <div className="flex gap-1">
+                <button
+                  onClick={() => onGroupAll(groupName)}
+                  className="text-[10px] text-slate-500 hover:text-slate-300"
+                >
+                  All
+                </button>
+                <button
+                  onClick={() => onGroupNone(groupName)}
+                  className="text-[10px] text-slate-500 hover:text-slate-300"
+                >
+                  None
+                </button>
+              </div>
+            </div>
+
+            {/* Label grid */}
+            <div className="grid grid-cols-2 gap-1">
+              {items.map((ind) => {
+                const isEnabled = enabled.has(ind.metric)
+                const color = colors.get(ind.metric) ?? '#64748b'
+
+                return (
+                  <button
+                    key={ind.metric}
+                    onClick={() => onToggle(ind.metric)}
+                    className={[
+                      'flex items-center gap-1 px-1.5 py-0.5 rounded text-xs truncate text-left',
+                      isEnabled
+                        ? 'bg-[#1e293b] text-slate-200'
+                        : 'bg-transparent border border-transparent text-slate-500',
+                    ].join(' ')}
+                    style={
+                      isEnabled
+                        ? { border: `1px solid ${color}` }
+                        : undefined
+                    }
+                    title={ind.display_name}
+                  >
+                    {/* Color dot */}
+                    <span
+                      className="flex-shrink-0 rounded-sm"
+                      style={{
+                        width: 8,
+                        height: 8,
+                        backgroundColor: isEnabled ? color : '#475569',
+                      }}
+                    />
+                    <span className="truncate">{ind.display_name}</span>
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Pagination footer */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-center gap-2 pt-2 border-t border-slate-700 text-xs text-slate-400">
+          <button
+            disabled={safePage === 0}
+            onClick={() => setPage((p) => p - 1)}
+            className="disabled:opacity-30 hover:text-slate-200"
+          >
+            ◀
+          </button>
+          <span>
+            {safePage + 1}/{totalPages}
+          </span>
+          <button
+            disabled={safePage === totalPages - 1}
+            onClick={() => setPage((p) => p + 1)}
+            className="disabled:opacity-30 hover:text-slate-200"
+          >
+            ▶
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
