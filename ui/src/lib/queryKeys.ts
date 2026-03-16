@@ -30,3 +30,14 @@ export const sliKeys = {
   detail: (name: string) => [...sliKeys.all, name] as const,
   versions: (name: string) => [...sliKeys.detail(name), 'versions'] as const,
 }
+
+export const groupKeys = {
+  all: ['asset-groups'] as const,
+  tree: () => [...groupKeys.all, 'tree'] as const,
+  detail: (name: string) => [...groupKeys.all, name] as const,
+  links: (name: string) => [...groupKeys.detail(name), 'links'] as const,
+}
+
+export const datasourceKeys = {
+  all: ['datasources'] as const,
+}
