@@ -16,11 +16,12 @@ router = APIRouter()
 
 @router.get("/sli-definitions", response_model=PagedResponse[SLIDefinitionRead])
 async def list_sli_definitions(
+    adapter_type: str | None = None,
     session: AsyncSession = Depends(get_session),  # noqa: B008
 ) -> PagedResponse[SLIDefinitionRead]:
     """List all active SLI definitions."""
     repo = SLIRepository(session)
-    items = await repo.list_all()
+    items = await repo.list_all(adapter_type=adapter_type)
     return PagedResponse(
         items=[SLIDefinitionRead.model_validate(i) for i in items], total=len(items)
     )
@@ -36,6 +37,7 @@ async def create_sli_definition(
     sli = await repo.create(
         body.name,
         indicators=body.indicators,
+        adapter_type=body.adapter_type,
         display_name=body.display_name,
         notes=body.notes,
         author=body.author,

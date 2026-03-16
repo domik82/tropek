@@ -169,6 +169,7 @@ class SLIDefinition(Base):
 
     id:           Mapped[uuid.UUID]        = mapped_column(UUID, primary_key=True, default=uuid.uuid4)
     name:         Mapped[str]              = mapped_column(Text, nullable=False)
+    adapter_type: Mapped[str]              = mapped_column(Text, nullable=False)
     display_name: Mapped[str | None]       = mapped_column(Text, nullable=True)
     version:      Mapped[int]              = mapped_column(Integer, nullable=False)
     indicators:   Mapped[dict[str, Any]]   = mapped_column(JSONB, nullable=False, server_default=text("'{}'"), default=dict)
@@ -383,6 +384,7 @@ class AssetGroupSLOLink(Base):
     __table_args__ = (
         Index("idx_asset_group_slo_links_group", "group_id"),
         UniqueConstraint("group_id", "link_name", name="uq_asset_group_slo_link_name"),
+        UniqueConstraint("group_id", "slo_name", name="uq_asset_group_slo_link_group_slo"),
     )
 
     # fmt: off
