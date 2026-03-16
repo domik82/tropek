@@ -522,8 +522,8 @@ export function generateTrendData(
       : null
     valueHistory.push(value)
 
-    const { status } = scoreIndicator(metric, value, baseline)
-    return { timestamp: ev.period_start, value, eval_id: ev.id, result: status, baseline }
+    const { status, score } = scoreIndicator(metric, value, baseline)
+    return { timestamp: ev.period_start, value, score, eval_id: ev.id, result: status, baseline }
   })
 }
 
