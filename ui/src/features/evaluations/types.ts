@@ -81,6 +81,7 @@ export interface EvaluationDetail extends EvaluationSummary {
 export interface TrendPoint {
   timestamp: string
   value: number
+  score: number
   eval_id: string
   result: 'pass' | 'warning' | 'fail'
   baseline?: number | null
