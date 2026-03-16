@@ -12,6 +12,7 @@ import { EvaluationActionsButton, EvaluationActionForm } from '@/features/evalua
 import type { ActionKind } from '@/features/evaluations/components/EvaluationActions'
 import { ViewToggle } from '@/components/charts/ViewToggle'
 import type { ViewMode } from '@/components/charts/ViewToggle'
+import { AssetScoreChart } from './AssetScoreChart'
 
 interface Props {
   assetName: string
@@ -214,6 +215,11 @@ export function AssetPanel({ assetName, initialEvalId }: Props) {
           {/* Toggle back to heatmap */}
           <div className="flex justify-end">
             <ViewToggle mode={mode} setMode={setMode} />
+          </div>
+
+          {/* Score over time */}
+          <div className="rounded-lg border border-slate-700 bg-gray-900 p-4">
+            <AssetScoreChart evaluations={evals} selectedEvalId={effectiveEvalId} />
           </div>
 
           {effectiveEvalId && (
