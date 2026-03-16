@@ -6,7 +6,7 @@
 
 ## Context
 
-The SLO Registry page currently shows a single-column list of SLO definition cards. Asset groups exist in the backend (`POST/GET/PUT/DELETE /asset-groups`, `POST/DELETE /asset-groups/{name}/slo-links`) but have no UI management surface. This spec adds group CRUD, bidirectional SLO linking, and filtered views to the SLO Registry page.
+The SLO Registry page currently shows a single-column list of SLO definition cards. Asset groups exist in the backend (`POST/GET /asset-groups`, `POST/DELETE /asset-groups/{name}/slo-links`) but have no UI management surface and are missing some CRUD endpoints. This spec adds group CRUD, bidirectional SLO linking, and filtered views to the SLO Registry page.
 
 ### Related specs
 
@@ -15,11 +15,38 @@ The SLO Registry page currently shows a single-column list of SLO definition car
 ### Existing backend shapes
 
 ```
-AssetGroupCreate:  { name, display_name?, description?, members[], subgroups[] }
-AssetGroupRead:    { id, name, display_name?, description?, members[], subgroups[], created_at, updated_at }
-AssetGroupSLOLink: { group_name, slo_name, sli_name, data_source_name }
-AssetGroupTreeResponse: { top_level: AssetGroupRead[], all_groups: AssetGroupRead[] }
+AssetGroupCreate:         { name, display_name?, description?, members[], subgroups[] }
+AssetGroupRead:           { id, name, display_name?, description?, members[], subgroups[], created_at, updated_at }
+AssetGroupTreeResponse:   { top_level: AssetGroupRead[], all_groups: AssetGroupRead[] }
+AssetGroupSLOLinkCreate:  { link_name, slo_name, sli_name, data_source_name }
+AssetGroupSLOLinkRead:    { id, link_name, group_id (UUID), slo_name, sli_name, data_source_name, created_at }
 ```
+
+### Existing endpoints (asset groups)
+
+| Method | Path | Status |
+|---|---|---|
+| `GET` | `/asset-groups` | Exists |
+| `GET` | `/asset-groups/tree` | Exists |
+| `POST` | `/asset-groups` | Exists |
+| `GET` | `/asset-groups/{name}` | Exists |
+| `PATCH` | `/asset-groups/{name}` | **Missing — needs to be built** |
+| `DELETE` | `/asset-groups/{name}` | **Missing — needs to be built** |
+| `POST` | `/asset-groups/{name}/members` | Exists |
+| `DELETE` | `/asset-groups/{name}/members/{asset_id}` | Exists |
+| `POST` | `/asset-groups/{name}/subgroups` | Exists |
+| `DELETE` | `/asset-groups/{name}/subgroups/{child_group_id}` | Exists |
+| `GET` | `/asset-groups/{name}/slo-links` | Exists |
+| `POST` | `/asset-groups/{name}/slo-links` | Exists |
+| `DELETE` | `/asset-groups/{name}/slo-links/{link_name}` | Exists |
+
+### Existing endpoints (used by link dialog)
+
+| Method | Path | Status |
+|---|---|---|
+| `GET` | `/datasources?adapter_type=X` | Exists |
+| `GET` | `/slo-definitions` | Exists |
+| `GET` | `/sli-definitions` | Exists (needs `?adapter_type` filter — see Section 6a) |
 
 ## Decisions
 
@@ -30,7 +57,8 @@ AssetGroupTreeResponse: { top_level: AssetGroupRead[], all_groups: AssetGroupRea
 | Bidirectional linking (from group side and SLO side) | Both workflows are natural — "add SLOs to this group" and "add this SLO to a group" |
 | Shared link dialog component | One dialog with pre-filled fields depending on entry point |
 | Datasource selected first, then SLI filtered by adapter_type | People think "I want to monitor from Prometheus" before "which queries" |
-| Unique constraint `(group_name, slo_name)` on links | One link per SLO per group; different environments need distinct SLO names |
+| Unique constraint `(group_id, slo_name)` on links | One link per SLO per group; different environments need distinct SLO names |
+| `link_name` auto-generated as `{slo_name}--{sli_name}` | Users never provide `link_name` in the UI; it becomes a derived key |
 | SLI definitions get `adapter_type` field | Enables filtering SLIs by datasource type in the link dialog |
 | POC migration strategy: regenerate clean `001`, keep manual `002` | No production data to preserve; single clean schema migration |
 | Delete dialog: radio selection + confirmation modal | Safer than two action buttons — forces deliberate choice |
@@ -180,7 +208,7 @@ A shared dialog component used from both entry points.
 
 ### Validation
 
-- If `(group_name, slo_name)` pair already exists, the Link button is disabled with message: "This SLO is already linked to this group"
+- If `(group, slo_name)` pair already exists, the Link button is disabled with message: "This SLO is already linked to this group"
 - Backend returns 409 Conflict for duplicate links
 
 ## 6. Backend Changes
@@ -209,13 +237,23 @@ class SLIDefinitionRead(BaseModel):
 
 ### 6b. Unique constraint on SLO links
 
-Add `UNIQUE (group_name, slo_name)` constraint to the `asset_group_slo_links` table (or equivalent, depending on column names in the model).
+Add `UNIQUE (group_id, slo_name)` constraint to the `asset_group_slo_links` table. The column is `group_id` (UUID FK), not `group_name`.
 
-The API returns **409 Conflict** when a duplicate `(group_name, slo_name)` link is attempted.
+Auto-generate `link_name` as `{slo_name}--{sli_name}` when creating a link — the UI never asks the user to provide it. The `link_name` field stays in the schema for API/CLI use and for the `DELETE /asset-groups/{name}/slo-links/{link_name}` endpoint.
 
-### 6c. Delete group with deactivation option
+The API returns **409 Conflict** when a duplicate `(group_id, slo_name)` link is attempted.
 
-`DELETE /asset-groups/{name}` gains `?deactivate_slos=bool` query parameter (default `false`). When `true`, all SLOs linked to the group (and its subgroups, recursively) are marked inactive before the group is deleted.
+### 6c. New endpoints: PATCH and DELETE for asset groups
+
+**`PATCH /asset-groups/{name}`** — update group properties (`display_name`, `description`). Does not exist today, must be built. Uses a new `AssetGroupUpdate` schema:
+
+```python
+class AssetGroupUpdate(BaseModel):
+    display_name: str | None = None
+    description: str | None = None
+```
+
+**`DELETE /asset-groups/{name}?deactivate_slos=bool`** — delete a group. Does not exist today, must be built. Query parameter `deactivate_slos` (default `false`). When `true`, all SLOs linked to the group (and its subgroups, recursively) are marked inactive before the group is deleted. Subgroups are also deleted (cascade).
 
 ### 6d. Migration strategy (POC)
 
@@ -230,9 +268,12 @@ Track A (Backend)                    Track B (UI — Sidebar + CRUD)
 ─────────────────                    ─────────────────────────────
 1. adapter_type on SLI model         1. Extract GroupTreeRenderer
 2. ?adapter_type filter on GET       2. GroupSidebar component
-3. Unique (group,slo) constraint     3. Create/Edit/Delete dialogs
-4. ?deactivate_slos on DELETE        4. Group context menu
-5. Migration reset (001 regen)
+3. Unique (group_id,slo_name)        3. Create/Edit/Delete dialogs
+4. PATCH /asset-groups/{name}        4. Group context menu
+5. DELETE /asset-groups/{name}
+   with ?deactivate_slos
+6. Auto-generate link_name
+7. Migration reset (001 regen)
                     ╲                ╱
                      ╲              ╱
                       ╲            ╱
