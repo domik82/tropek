@@ -25,7 +25,7 @@ export interface MultiSeriesChartProps {
   yAxisMax?: number
   chartType?: 'line' | 'bar'
   stacked?: boolean
-  height?: number
+  height?: number | string
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
