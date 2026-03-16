@@ -68,13 +68,15 @@ export function MultiSeriesChart({
 
       return {
         name: s.displayName,
-        type: chartType,
+        type: chartType as 'line' | 'bar',
         data,
         lineStyle: { color: s.color, width: 1.5 },
         itemStyle: { color: s.color },
+        showSymbol: true,
         symbol: 'circle',
-        symbolSize: 4,
+        symbolSize: 3,
         connectNulls: false,
+        emphasis: { disabled: true },
         ...(stacked ? { stack: 'total', areaStyle: { opacity: 0.3 } } : {}),
       }
     })
@@ -89,11 +91,10 @@ export function MultiSeriesChart({
         trigger: 'axis' as const,
         backgroundColor: ct.bg,
         borderColor: ct.border,
-        textStyle: { color: ct.axisLabel, fontSize: 13 },
-        extraCssText:
-          series.length > 10
-            ? 'max-height:300px;overflow-y:auto;'
-            : undefined,
+        textStyle: { color: ct.axisLabel, fontSize: 12 },
+        confine: true,
+        enterable: true,
+        extraCssText: 'max-height:280px;overflow-y:auto;',
         formatter: (
           params: Array<{
             seriesName: string
@@ -104,14 +105,15 @@ export function MultiSeriesChart({
         ): string => {
           if (!params || params.length === 0) return ''
           const label = params[0].axisValueLabel
-          const rows = params
+          const visible = params.filter(p => p.value !== null && p.value !== undefined)
+          if (visible.length === 0) return `<b>${label}</b><br/>No data`
+          const rows = visible
             .map(
               p =>
-                `<span style="color:${p.color}">●</span> ${p.seriesName}: ${p.value !== null && p.value !== undefined ? p.value : '—'}`,
+                `<span style="color:${p.color}">●</span> ${p.seriesName}: ${p.value}`,
             )
             .join('<br/>')
-          const inner = `<b>${label}</b><br/>${rows}`
-          return `<div style="max-height:300px;overflow-y:auto">${inner}</div>`
+          return `<b>${label}</b><br/>${rows}`
         },
       },
       xAxis: {
