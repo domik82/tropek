@@ -21,7 +21,9 @@ export interface MultiSeriesChartProps {
     data: Array<{ timestamp: string; value: number }>
   }>
   yAxisLabel?: string
+  yAxisMin?: number
   yAxisMax?: number
+  chartType?: 'line' | 'bar'
   height?: number
 }
 
@@ -30,7 +32,9 @@ export interface MultiSeriesChartProps {
 export function MultiSeriesChart({
   series,
   yAxisLabel,
+  yAxisMin,
   yAxisMax,
+  chartType = 'line',
   height = 300,
 }: MultiSeriesChartProps) {
   const { theme } = useTheme()
@@ -62,7 +66,7 @@ export function MultiSeriesChart({
 
       return {
         name: s.displayName,
-        type: 'line' as const,
+        type: chartType,
         data,
         lineStyle: { color: s.color, width: 1.5 },
         itemStyle: { color: s.color },
@@ -117,6 +121,7 @@ export function MultiSeriesChart({
       yAxis: {
         type: 'value' as const,
         name: yAxisLabel,
+        min: yAxisMin,
         max: yAxisMax,
         axisLabel: { fontSize: 12, color: ct.axisLabel },
         axisLine: { lineStyle: { color: ct.grid } },
@@ -124,7 +129,7 @@ export function MultiSeriesChart({
       },
       series: eChartsSeries,
     }
-  }, [series, allTimestamps, ct, yAxisLabel, yAxisMax])
+  }, [series, allTimestamps, ct, yAxisLabel, yAxisMin, yAxisMax, chartType])
 
   return (
     <ReactECharts
