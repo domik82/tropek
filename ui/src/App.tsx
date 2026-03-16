@@ -69,7 +69,7 @@ export default function App() {
         <BrowserRouter>
           <div className="min-h-screen bg-background text-foreground">
             <nav className="border-b border-border px-6 py-3 flex items-center gap-6">
-              <span className="font-bold text-sm tracking-widest text-primary">TROPEK</span>
+              <span className="font-bold text-sm tracking-widest" style={{ color: 'oklch(68.628% 0.185 148.958)' }}>TROPEK</span>
               {NAV_ITEMS.map(item => (
                 <NavLink
                   key={item.to}

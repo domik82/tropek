@@ -178,5 +178,5 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: system-ui, 'Segoe UI', sans-serif;
+  font-family: ui-monospace, 'Cascadia Code', 'Source Code Pro', Menlo, Consolas, 'DejaVu Sans Mono', monospace;
 }
