@@ -55,15 +55,23 @@ interface Props {
 const RESULT_RANK: Record<string, number> = { pass: 0, warning: 1, fail: 2, error: 3, invalidated: 4 }
 const SELECTED_BORDER = '#ffffff'
 
-// Each cell in the grid carries its grid position (value), display info, and
-// pre-computed styling so ECharts can render it directly without further logic.
+function brighten(hex: string, factor: number): string {
+  const r = Math.min(255, Math.round(parseInt(hex.slice(1, 3), 16) * factor))
+  const g = Math.min(255, Math.round(parseInt(hex.slice(3, 5), 16) * factor))
+  const b = Math.min(255, Math.round(parseInt(hex.slice(5, 7), 16) * factor))
+  return `rgb(${r},${g},${b})`
+}
+
 interface CellData {
-  value: [number, number]  // [xIndex, yIndex] — grid coordinates
-  result: string           // 'pass' | 'warning' | 'fail' | 'error' | 'invalidated' | 'none'
-  score: number            // rounded percentage score
-  slot: string             // original ISO timestamp for this column
-  row: string              // "asset · evaluation" label for this row
+  value: [number, number]
+  result: string
+  score: number
+  slot: string
+  row: string
+  hasNote: boolean
+  noteContent: string
   itemStyle: { color: string; borderColor: string; borderWidth: number }
+  hoverColor: string
 }
 
 /**
@@ -90,7 +98,7 @@ function buildHeatmapData(
   ).sort()
 
   // Step 2: group evaluations into cells, merging duplicates
-  const cellMap = new Map<string, { result: string; score: number; count: number }>()
+  const cellMap = new Map<string, { result: string; score: number; count: number; hasNote: boolean; noteContent: string }>()
 
   for (const e of evals) {
     const rowKey = `${e.asset_snapshot.name} · ${e.name}`
@@ -98,15 +106,18 @@ function buildHeatmapData(
     const key = `${rowKey}::${colKey}`
     const existing = cellMap.get(key)
     const effectiveResult = e.invalidated ? 'invalidated' : e.result
+    const hasNote = (e.annotation_count ?? 0) > 0
+    const note = e.latest_annotation?.content ?? ''
     if (!existing) {
-      cellMap.set(key, { result: effectiveResult, score: e.score, count: 1 })
+      cellMap.set(key, { result: effectiveResult, score: e.score, count: 1, hasNote, noteContent: note })
     } else {
-      // Multiple evaluations in the same cell: keep the worst result, average scores
       const rank = (r: string) => RESULT_RANK[r] ?? 0
       cellMap.set(key, {
         result: rank(effectiveResult) > rank(existing.result) ? effectiveResult : existing.result,
         score: (existing.score * existing.count + e.score) / (existing.count + 1),
         count: existing.count + 1,
+        hasNote: existing.hasNote || hasNote,
+        noteContent: existing.noteContent || note,
       })
     }
   }
@@ -131,6 +142,9 @@ function buildHeatmapData(
         score: cell ? Math.round(cell.score) : 0,
         slot: slots[xi],
         row: rows[yi],
+        hasNote: cell?.hasNote ?? false,
+        noteContent: cell?.noteContent ?? '',
+        hoverColor: colour.startsWith('#') ? brighten(colour, 1.4) : colour,
         itemStyle: {
           color: colour,
           borderColor: isSelected ? SELECTED_BORDER : 'transparent',
@@ -161,29 +175,35 @@ export function EvaluationHeatmap({ evaluations, selectedDate, onDateSelect, onA
       trigger: 'item' as const,
       backgroundColor: ct.bg,
       borderColor: ct.border,
-      textStyle: { color: ct.axisLabel },
+      textStyle: { color: ct.axisLabel, fontSize: 16 },
+      extraCssText: 'max-width:320px;white-space:normal;word-wrap:break-word;',
       formatter: (p: { data: CellData }) => {
         const d = p.data
         if (d.result === 'none') return `${d.row}<br/>${fmtDateTime(d.slot)}<br/><em>no data</em>`
         const rc = colours[d.result as keyof ResultColours] ?? '#ccc'
-        return [
+        const lines = [
           `<b>${d.row}</b>`,
           fmtDateTime(d.slot),
           `Score: <b style="color:${rc}">${d.score}%</b> · <b style="color:${rc}">${d.result.toUpperCase()}</b>`,
-        ].join('<br/>')
+        ]
+        if (d.hasNote && d.noteContent) {
+          const escaped = d.noteContent.replace(/</g, '&lt;').replace(/>/g, '&gt;')
+          lines.push(`<em style="color:#fbbf24">Note: ${escaped}</em>`)
+        }
+        return lines.join('<br/>')
       },
     },
     xAxis: {
       type: 'category' as const,
       data: slots.map(fmtSlot),
-      axisLabel: { rotate: 45, fontSize: 11, color: ct.axisLabel },
+      axisLabel: { rotate: 45, fontSize: 14, color: ct.axisLabel },
       axisLine: { lineStyle: { color: ct.grid } },
       splitLine: { show: false },
     },
     yAxis: {
       type: 'category' as const,
       data: rows,
-      axisLabel: { fontSize: 11, color: ct.axisLabel, width: 210, overflow: 'truncate' as const },
+      axisLabel: { fontSize: 14, color: ct.axisLabel, width: 210, overflow: 'truncate' as const },
       axisLine: { lineStyle: { color: ct.grid } },
       splitLine: { lineStyle: { color: ct.bg } },
     },
@@ -196,32 +216,59 @@ export function EvaluationHeatmap({ evaluations, selectedDate, onDateSelect, onA
         //   api.size([1, 1]) — pixel dimensions of one grid cell
         //   api.style() — returns the itemStyle object we set on each CellData
         renderItem: (
-          _p: unknown,
+          params: { dataIndex: number },
           api: {
             value: (d: number) => number
             coord: (pos: [number, number]) => [number, number]
             size: (sz: [number, number]) => [number, number]
-            style: (extra?: object) => object
           },
         ) => {
           const xi = api.value(0)
           const yi = api.value(1)
-          // Get the pixel center of this cell and the cell dimensions
           const [cx, cy] = api.coord([xi, yi])
           const [w, h] = api.size([1, 1])
-          // Draw a rounded rectangle inset by `pad` pixels to create gaps between cells
-          return {
-            type: 'rect',
-            shape: {
-              x: cx - w / 2 + pad,
-              y: cy - h / 2 + pad,
-              width: w - pad * 2,
-              height: h - pad * 2,
-              r: 3,
+          const rx = cx - w / 2 + pad
+          const ry = cy - h / 2 + pad
+          const rw = w - pad * 2
+          const rh = h - pad * 2
+
+          const cellData = data[params.dataIndex]
+          const is = cellData?.itemStyle
+          const children: object[] = [
+            {
+              type: 'rect',
+              shape: { x: rx, y: ry, width: rw, height: rh, r: 3 },
+              style: {
+                fill: is?.color,
+                stroke: is?.borderColor,
+                lineWidth: is?.borderWidth ?? 0,
+              },
+              emphasis: {
+                style: {
+                  fill: cellData?.hoverColor,
+                  stroke: '#ffffff',
+                  lineWidth: 2,
+                },
+              },
             },
-            style: api.style(),
+          ]
+          if (cellData?.hasNote) {
+            const s = Math.min(6, rw / 3, rh / 3)
+            children.push({
+              type: 'polygon',
+              shape: {
+                points: [
+                  [rx + rw - s, ry],
+                  [rx + rw, ry],
+                  [rx + rw, ry + s],
+                ],
+              },
+              style: { fill: '#ffffff' },
+            })
           }
+          return { type: 'group', children }
         },
+        emphasis: { focus: 'self' },
         data,
         encode: { x: 0, y: 1 },
       },
@@ -251,17 +298,14 @@ export function EvaluationHeatmap({ evaluations, selectedDate, onDateSelect, onA
         style={{ height: Math.max(200, rows.length * 28 + 100) }}
         opts={{ renderer: 'svg' }}
         onEvents={{
-          click: (p: { data: CellData }) => {
+          click: (p: { data?: CellData }) => {
             if (!p?.data?.slot) return
             if (selectedDate !== p.data.slot) {
-              // Case 1: column not selected → select it
               onDateSelect(p.data.slot)
             } else if (onAssetSelect) {
-              // Case 2: column already selected + onAssetSelect → navigate to asset
               const assetName = p.data.row.split(' · ')[0]
               if (assetName.trim()) onAssetSelect(assetName)
             } else {
-              // Case 3: column already selected + no onAssetSelect → deselect
               onDateSelect(null)
             }
           },

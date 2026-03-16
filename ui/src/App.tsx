@@ -1,7 +1,6 @@
 // src/App.tsx
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { BrowserRouter, Routes, Route, NavLink, Navigate } from 'react-router-dom'
-import { EvaluationsPage } from './pages/EvaluationsPage'
 import { EvaluationDetailPage } from './pages/EvaluationDetailPage'
 import { SloRegistryPage } from './pages/SloRegistryPage'
 import { AssetsPage } from './pages/AssetsPage'
@@ -89,7 +88,6 @@ export default function App() {
                 <Route path="/" element={<Navigate to="/navigator" replace />} />
                 <Route path="/navigator" element={<AssetNavigatorPage />} />
                 <Route path="/explorer" element={<MetricExplorerPage />} />
-                <Route path="/evaluations" element={<EvaluationsPage />} />
                 <Route path="/evaluations/:id" element={<EvaluationDetailPage />} />
                 <Route path="/slos" element={<SloRegistryPage />} />
                 <Route path="/assets" element={<AssetsPage />} />

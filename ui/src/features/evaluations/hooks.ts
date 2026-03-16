@@ -10,6 +10,8 @@ import {
   fetchTrend,
   addAnnotation,
   invalidateEvaluation,
+  overrideStatus,
+  pinBaseline,
 } from './api'
 import type { EvaluationFilters, ColumnDef } from './types'
 import { FIXED_COLS, DEFAULT_VISIBLE_KEYS } from './constants'
@@ -62,6 +64,30 @@ export function useInvalidateEvaluation(evalId: string) {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (note: string) => invalidateEvaluation(evalId, note),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: evaluationKeys.detail(evalId) })
+      qc.invalidateQueries({ queryKey: evaluationKeys.all })
+    },
+  })
+}
+
+export function useOverrideStatus(evalId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (payload: { new_result: string; reason: string; author: string }) =>
+      overrideStatus(evalId, payload),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: evaluationKeys.detail(evalId) })
+      qc.invalidateQueries({ queryKey: evaluationKeys.all })
+    },
+  })
+}
+
+export function usePinBaseline(evalId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (payload: { reason: string; author: string }) =>
+      pinBaseline(evalId, payload),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: evaluationKeys.detail(evalId) })
       qc.invalidateQueries({ queryKey: evaluationKeys.all })

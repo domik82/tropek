@@ -39,22 +39,22 @@ export function AssetGroupCard({ group, tree, filterQuery, colourMap, forceExpan
   if (!hasContent && filterQuery) return null
 
   return (
-    <div className="border border-gray-700 rounded-lg mb-3">
+    <div className="border border-slate-700 rounded-lg mb-3 bg-gray-900">
       <Collapsible open={isOpen} onOpenChange={forceExpanded === undefined ? setOpen : undefined}>
-        <CollapsibleTrigger className="flex items-center justify-between w-full px-4 py-3 text-left hover:bg-gray-800/50 rounded-t-lg">
+        <CollapsibleTrigger className="flex items-center justify-between w-full px-4 py-3 text-left hover:bg-slate-800/50 rounded-t-lg">
           <div>
-            <span className="font-semibold">{group.display_name ?? group.name}</span>
-            <span className="text-xs text-gray-500 ml-2">({group.members.length} assets)</span>
+            <span className="font-semibold text-slate-200">{group.display_name ?? group.name}</span>
+            <span className="text-xs text-slate-500 ml-2">({group.members.length} assets)</span>
           </div>
-          <span className="text-gray-500">{isOpen ? '▼' : '▶'}</span>
+          <span className="text-slate-500">{isOpen ? '▼' : '▶'}</span>
         </CollapsibleTrigger>
         <CollapsibleContent>
           <div className="px-4 pb-3">
             {filteredMembers.map(member => (
-              <div key={member.asset_id} className="flex items-center py-1 text-sm text-gray-300">
+              <div key={member.asset_id} className="flex items-center py-1 text-sm text-slate-300">
                 <OsDot os={member.asset_name.split('-')[0]} colourMap={colourMap} />
                 <span className="font-mono">{member.asset_name}</span>
-                <span className="text-gray-500 ml-auto text-xs">weight {member.weight}</span>
+                <span className="text-slate-500 ml-auto text-xs">weight {member.weight}</span>
               </div>
             ))}
             {subGroups.map(sg => (

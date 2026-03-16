@@ -300,8 +300,7 @@ export function generateAllEvaluations(): EvaluationSummary[] {
             // first failure: two notes — investigation + JIRA creation
             return { id: `ann-${evalId}-1`, meta: {}, updated_at: created, content: 'ABC investigation\nCreated JIRA', author: 'j.kowalski', category: 'investigation', created_at: created }
           if (scenario.seed === 1001 && day >= 19 && day <= 22 && (evalResult === 'fail' || evalResult === 'warning'))
-            // following failures: no link field (removed from API contract)
-            return { id: `ann-${evalId}-1`, meta: {}, updated_at: created, content: '', author: null, category: null, created_at: created }
+            return { id: `ann-${evalId}-1`, meta: { ticket: 'PERF-481' }, updated_at: created, content: 'Tracking in JIRA', author: null, category: null, created_at: created }
 
           // mac-monthly-01 (seed 1003)
           if (scenario.seed === 1003 && day >= 24 && day <= 26 && (evalResult === 'fail' || evalResult === 'warning'))
@@ -671,7 +670,7 @@ export function getMetricHeatmap(assetName: string): MetricHeatmapResponse {
         slot,
         metric: ind.metric,
         display_name: ind.display_name,
-        result: ind.status,
+        result: ev.invalidated ? 'invalidated' : ind.status,
         score: ind.score,
         eval_id: ev.id,
       })

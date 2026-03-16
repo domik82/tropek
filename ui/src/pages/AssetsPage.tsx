@@ -12,12 +12,12 @@ export function AssetsPage() {
   const [colourMap, setColourMap] = useState<Record<string, string>>(DEFAULT_OS_COLOUR_MAP)
   const [forceExpanded, setForceExpanded] = useState<boolean | undefined>(undefined)
 
-  if (isLoading) return <p className="p-6 text-gray-400">Loading...</p>
-  if (isError || !tree) return <p className="p-6">Failed to load data.</p>
+  if (isLoading) return <p className="p-6 text-slate-400">Loading...</p>
+  if (isError || !tree) return <p className="p-6 text-slate-300">Failed to load data.</p>
 
   return (
     <div className="p-6 space-y-4">
-      <h1 className="text-xl font-semibold">Asset Registry</h1>
+      <h1 className="text-xl font-semibold text-slate-100">Asset Registry</h1>
       <ColourLegend
         colourMap={colourMap}
         onColourChange={(os, colour) => setColourMap(prev => ({ ...prev, [os]: colour }))}
