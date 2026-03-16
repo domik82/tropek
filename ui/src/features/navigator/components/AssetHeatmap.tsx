@@ -100,6 +100,21 @@ export function AssetHeatmap({ data, selectedEvalId, onEvalSelect }: Props) {
   }), [slots, rows, chartCells, ct, colours])
 
   return (
+    <>
+    <div className="flex items-center justify-between mb-1 px-1">
+      <span className="text-xs text-gray-400">Click a cell to select that evaluation.</span>
+      <div className="flex items-center gap-3 text-xs text-gray-400">
+        {(['pass', 'warning', 'fail', 'error', 'invalidated'] as const).map(r => (
+          <span key={r} className="flex items-center gap-1">
+            <span
+              className="inline-block w-3 h-3 rounded-sm"
+              style={{ backgroundColor: colours[r] }}
+            />
+            {r}
+          </span>
+        ))}
+      </div>
+    </div>
     <ReactECharts
       option={option}
       style={{ height: Math.max(200, rows.length * 22 + 100) }}
@@ -112,5 +127,6 @@ export function AssetHeatmap({ data, selectedEvalId, onEvalSelect }: Props) {
         },
       }}
     />
+    </>
   )
 }

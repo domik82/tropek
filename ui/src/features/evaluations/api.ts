@@ -84,6 +84,32 @@ export async function invalidateEvaluation(
   return res.json()
 }
 
+export async function overrideStatus(
+  evalId: string,
+  payload: { new_result: string; reason: string; author: string }
+): Promise<EvaluationDetail> {
+  const res = await fetch(`${BASE}/evaluations/${evalId}/override-status`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  })
+  if (!res.ok) throw new Error(`overrideStatus: ${res.status}`)
+  return res.json()
+}
+
+export async function pinBaseline(
+  evalId: string,
+  payload: { reason: string; author: string }
+): Promise<EvaluationDetail> {
+  const res = await fetch(`${BASE}/evaluations/${evalId}/pin-baseline`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  })
+  if (!res.ok) throw new Error(`pinBaseline: ${res.status}`)
+  return res.json()
+}
+
 export async function fetchMetricHeatmap(assetName: string): Promise<MetricHeatmapResponse> {
   const res = await fetch(`${BASE}/evaluations/metric-heatmap?asset_name=${encodeURIComponent(assetName)}`)
   if (!res.ok) throw new Error(`fetchMetricHeatmap: ${res.status}`)

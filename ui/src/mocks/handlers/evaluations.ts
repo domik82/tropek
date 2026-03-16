@@ -69,4 +69,26 @@ export const evaluationHandlers = [
       invalidation_note: body.invalidation_note ?? null,
     })
   }),
+
+  http.patch('/api/evaluations/:id/override-status', async ({ params, request }) => {
+    const body = await request.json() as { new_result: string; reason: string; author: string }
+    const { getEvaluationDetail } = await gen()
+    const detail = getEvaluationDetail(params.id as string)
+    return HttpResponse.json({
+      ...detail,
+      result: body.new_result,
+      result_override: { original_result: detail.result, new_result: body.new_result, reason: body.reason, author: body.author },
+    })
+  }),
+
+  http.patch('/api/evaluations/:id/pin-baseline', async ({ params, request }) => {
+    const body = await request.json() as { reason: string; author: string }
+    const { getEvaluationDetail } = await gen()
+    const detail = getEvaluationDetail(params.id as string)
+    return HttpResponse.json({
+      ...detail,
+      baseline_pinned: true,
+      baseline_pin: { reason: body.reason, author: body.author },
+    })
+  }),
 ]

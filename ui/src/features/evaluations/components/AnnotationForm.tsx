@@ -109,6 +109,27 @@ export function AnnotationForm({ evalId, annotations }: Props) {
               <span className="text-slate-600 text-xs ml-auto">{a.created_at.slice(0, 16).replace('T', ' ')}</span>
             </div>
             {a.content && <p className="text-slate-300"><LinkifiedText text={a.content} /></p>}
+            {a.meta && Object.keys(a.meta).length > 0 && (
+              <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-1 text-xs">
+                {Object.entries(a.meta).map(([k, v]) => {
+                  const val = String(v)
+                  const isUrl = /^https?:\/\//.test(val)
+                  return (
+                    <span key={k}>
+                      <span className="text-slate-500">{k}: </span>
+                      {isUrl ? (
+                        <a href={val} target="_blank" rel="noopener noreferrer"
+                          className="text-indigo-400 hover:text-indigo-300 hover:underline break-all">
+                          {val}
+                        </a>
+                      ) : (
+                        <span className="text-slate-300">{val}</span>
+                      )}
+                    </span>
+                  )
+                })}
+              </div>
+            )}
           </div>
         </div>
       ))}

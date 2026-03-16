@@ -4,13 +4,18 @@ import { useNavigate } from 'react-router-dom'
 import { useEvaluations, useColumnVisibility } from '@/features/evaluations/hooks'
 import { EvaluationHeatmap } from '@/features/evaluations/components/EvaluationHeatmap'
 import { EvaluationTable } from '@/features/evaluations/components/EvaluationTable'
+import { EvaluationHeader } from '@/features/evaluations/components/EvaluationHeader'
 import { GroupScoreChart } from './GroupScoreChart'
 
 type ViewMode = 'heatmap' | 'chart'
 
 interface Props {
   groupName: string
-  onSelectAsset: (name: string) => void
+  onSelectAsset: (name: string, evalId?: string) => void
+}
+
+function prettyGroupName(name: string) {
+  return name.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
 }
 
 export function GroupPanel({ groupName, onSelectAsset }: Props) {
@@ -25,83 +30,98 @@ export function GroupPanel({ groupName, onSelectAsset }: Props) {
     ? evals.filter(e => e.period_start === selectedDate)
     : evals
 
-  const latestScore = evals.length
-    ? Math.round(
-        [...evals].filter(e => !e.invalidated)
-          .sort((a, b) => b.period_start.localeCompare(a.period_start))[0]?.score ?? 0
-      )
-    : null
+  const explorerButton = (
+    <button
+      onClick={() => navigate(`/explorer?group=${encodeURIComponent(groupName)}`)}
+      className="p-1.5 rounded border border-slate-600 text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 transition-colors"
+      title="Open Metric Explorer"
+    >
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+        <rect x="1" y="9" width="3" height="6" rx="0.5"/>
+        <rect x="6" y="5" width="3" height="10" rx="0.5"/>
+        <rect x="11" y="2" width="3" height="13" rx="0.5"/>
+      </svg>
+    </button>
+  )
 
   return (
     <div className="p-6 space-y-4">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-lg font-semibold">{groupName.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}</h2>
-          {evals.length > 0 && (
-            <p className="text-xs text-muted-foreground mt-0.5">{evals.length} evaluations</p>
-          )}
-        </div>
-        <div className="flex items-center gap-2">
-          {latestScore != null && (
-            <span className="text-2xl font-bold tabular-nums text-foreground">{latestScore}%</span>
-          )}
-          {/* View toggle */}
-          <div className="flex border border-border rounded overflow-hidden text-xs">
-            <button
-              onClick={() => setMode('heatmap')}
-              className={`px-3 py-1.5 transition-colors ${mode === 'heatmap' ? 'bg-muted text-foreground' : 'text-muted-foreground hover:bg-muted/50'}`}
-            >
-              Heatmap
-            </button>
-            <button
-              onClick={() => setMode('chart')}
-              className={`px-3 py-1.5 transition-colors ${mode === 'chart' ? 'bg-muted text-foreground' : 'text-muted-foreground hover:bg-muted/50'}`}
-            >
-              Chart
-            </button>
-          </div>
-          {/* Explorer icon */}
-          <button
-            onClick={() => navigate(`/explorer?group=${encodeURIComponent(groupName)}`)}
-            className="p-1.5 rounded border border-border text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
-            title="Open Metric Explorer"
-          >
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-              <rect x="1" y="9" width="3" height="6" rx="0.5"/>
-              <rect x="6" y="5" width="3" height="10" rx="0.5"/>
-              <rect x="11" y="2" width="3" height="13" rx="0.5"/>
-            </svg>
-          </button>
-        </div>
-      </div>
+      {/* Header card — group name only */}
+      <EvaluationHeader
+        title={prettyGroupName(groupName)}
+        subtitle={evals.length > 0 ? `${evals.length} evaluations` : undefined}
+      />
 
       {/* Content */}
-      {isLoading && <p className="text-sm text-muted-foreground">Loading…</p>}
+      {isLoading && <p className="text-sm text-slate-400">Loading…</p>}
       {!isLoading && evals.length === 0 && (
-        <p className="text-sm text-muted-foreground">No evaluations found for this group.</p>
+        <p className="text-sm text-slate-400">No evaluations found for this group.</p>
       )}
 
       {!isLoading && evals.length > 0 && mode === 'heatmap' && (
         <>
-          <div className="rounded-lg border border-border bg-card p-4">
+          <div className="rounded-lg border border-slate-700 bg-gray-900 p-4">
+            <div className="flex items-center justify-between mb-2">
+              <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Evaluation Heatmap</h2>
+              <div className="flex items-center gap-3">
+                <div className="flex border border-slate-700 rounded overflow-hidden text-xs">
+                  <button
+                    onClick={() => setMode('heatmap')}
+                    className={`px-3 py-1.5 transition-colors ${mode === 'heatmap' ? 'bg-gray-800 text-slate-200' : 'text-slate-400 hover:bg-gray-800/50'}`}
+                  >
+                    Heatmap
+                  </button>
+                  <button
+                    onClick={() => setMode('chart')}
+                    className={`px-3 py-1.5 transition-colors ${mode === 'chart' ? 'bg-gray-800 text-slate-200' : 'text-slate-400 hover:bg-gray-800/50'}`}
+                  >
+                    Chart
+                  </button>
+                </div>
+                {explorerButton}
+              </div>
+            </div>
             <EvaluationHeatmap
               evaluations={evals}
               selectedDate={selectedDate}
               onDateSelect={setSelectedDate}
-              onAssetSelect={onSelectAsset}
+              onAssetSelect={(assetName) => {
+                const match = selectedDate
+                  ? evals.find(e => e.asset_snapshot.name === assetName && e.period_start === selectedDate)
+                  : undefined
+                onSelectAsset(assetName, match?.id)
+              }}
             />
           </div>
-          <div className="rounded-lg border border-border bg-card p-4">
-            <EvaluationTable evaluations={tableEvals} dynamicCols={[]} {...colVis} />
-          </div>
+          <EvaluationTable evaluations={tableEvals} dynamicCols={[]} {...colVis} onAssetSelect={onSelectAsset} onEvalClick={ev => onSelectAsset(ev.asset_snapshot.name, ev.id)} />
         </>
       )}
 
       {!isLoading && evals.length > 0 && mode === 'chart' && (
-        <div className="rounded-lg border border-border bg-card p-4">
-          <GroupScoreChart evaluations={evals} />
-        </div>
+        <>
+          <div className="flex justify-end">
+            <div className="flex items-center gap-3">
+              <div className="flex border border-slate-700 rounded overflow-hidden text-xs">
+                <button
+                  onClick={() => setMode('heatmap')}
+                  className={`px-3 py-1.5 transition-colors ${mode === 'heatmap' ? 'bg-gray-800 text-slate-200' : 'text-slate-400 hover:bg-gray-800/50'}`}
+                >
+                  Heatmap
+                </button>
+                <button
+                  onClick={() => setMode('chart')}
+                  className={`px-3 py-1.5 transition-colors ${mode === 'chart' ? 'bg-gray-800 text-slate-200' : 'text-slate-400 hover:bg-gray-800/50'}`}
+                >
+                  Chart
+                </button>
+              </div>
+              {explorerButton}
+            </div>
+          </div>
+          <div className="rounded-lg border border-slate-700 bg-gray-900 p-4">
+            <GroupScoreChart evaluations={evals} />
+          </div>
+        </>
       )}
     </div>
   )

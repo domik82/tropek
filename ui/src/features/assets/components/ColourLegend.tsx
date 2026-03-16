@@ -19,7 +19,7 @@ export function ColourLegend({ colourMap, onColourChange }: Props) {
             onChange={e => onColourChange(os, e.target.value)}
             className="w-6 h-6 rounded cursor-pointer border-0"
           />
-          <span className="text-gray-300">{os}</span>
+          <span className="text-slate-300">{os}</span>
         </label>
       ))}
     </div>
