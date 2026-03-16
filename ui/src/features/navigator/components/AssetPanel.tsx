@@ -1,5 +1,6 @@
 // ui/src/features/navigator/components/AssetPanel.tsx
 import { useState, useMemo } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useAssetEvaluations, useMetricHeatmap } from '../hooks'
 import { useEvaluationDetail } from '@/features/evaluations/hooks'
 import { AssetHeatmap } from './AssetHeatmap'
@@ -29,6 +30,21 @@ export function AssetPanel({ assetName, initialEvalId }: Props) {
   const [activeTab, setActiveTab] = useState('all')
   const [activeAction, setActiveAction] = useState<ActionKind | null>(null)
   const [metricGroupFilter, setMetricGroupFilter] = useState<string>('all')
+  const navigate = useNavigate()
+
+  const explorerButton = (
+    <button
+      onClick={() => navigate(`/explorer?asset=${encodeURIComponent(assetName)}`)}
+      className="p-1.5 rounded border border-slate-600 text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 transition-colors"
+      title="Open Metric Explorer"
+    >
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+        <rect x="1" y="9" width="3" height="6" rx="0.5"/>
+        <rect x="6" y="5" width="3" height="10" rx="0.5"/>
+        <rect x="11" y="2" width="3" height="13" rx="0.5"/>
+      </svg>
+    </button>
+  )
 
   const { data: evals = [], isLoading: evalsLoading } = useAssetEvaluations(assetName)
   const { data: heatmapData, isLoading: heatmapLoading } = useMetricHeatmap(assetName)
@@ -158,7 +174,10 @@ export function AssetPanel({ assetName, initialEvalId }: Props) {
             <div className="rounded-lg border border-slate-700 bg-gray-900 p-4">
               <div className="flex items-center justify-between mb-2">
                 <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Metric Heatmap</h2>
-                <ViewToggle mode={mode} setMode={setMode} />
+                <div className="flex items-center gap-3">
+                  <ViewToggle mode={mode} setMode={setMode} />
+                  {explorerButton}
+                </div>
               </div>
               <AssetHeatmap
                 data={heatmapData}
@@ -212,9 +231,12 @@ export function AssetPanel({ assetName, initialEvalId }: Props) {
       {/* ── Charts mode ── */}
       {!isLoading && mode === 'chart' && (
         <>
-          {/* Toggle back to heatmap */}
+          {/* Toggle + explorer */}
           <div className="flex justify-end">
-            <ViewToggle mode={mode} setMode={setMode} />
+            <div className="flex items-center gap-3">
+              <ViewToggle mode={mode} setMode={setMode} />
+              {explorerButton}
+            </div>
           </div>
 
           {/* Score over time */}

@@ -21,48 +21,27 @@ export function AssetScoreChart({ evaluations, selectedEvalId }: Props) {
     [evaluations],
   )
 
-  // Build data array with null gaps around invalidated points.
-  // Each element is either a data point object or null (gap marker).
-  const data = useMemo(() => {
-    const result: Array<{
-      value: [string, number]
-      symbol?: string
-      symbolSize?: number
-      itemStyle?: { color: string; borderColor?: string; borderWidth?: number }
-      evalId?: string
-    } | { value: '-'; symbol: 'none' }> = []
-
-    sorted.forEach((e, idx) => {
+  // One data point per evaluation, aligned 1:1 with xAxis categories.
+  // Invalidated points get a diamond symbol but are not connected to neighbors:
+  // we set their value to null and render them via a separate scatter-like approach —
+  // actually, to keep it simple, we just show them connected with a distinct symbol.
+  const data = useMemo(
+    () => sorted.map(e => {
       const effectiveResult = e.invalidated ? 'invalidated' : e.result
       const color = colours[effectiveResult] ?? colours.error
       const isSelected = e.id === selectedEvalId
-      const prevInvalidated = idx > 0 && sorted[idx - 1].invalidated
-      const nextInvalidated = idx < sorted.length - 1 && sorted[idx + 1].invalidated
-
-      // Insert a null gap before this invalidated point (if previous wasn't also a gap)
-      if (e.invalidated && !prevInvalidated && idx > 0) {
-        result.push({ value: '-', symbol: 'none' })
-      }
-
-      result.push({
-        value: [e.period_start, Math.round(e.score)],
+      return {
+        value: Math.round(e.score),
         symbol: e.invalidated ? 'diamond' : 'circle',
         symbolSize: isSelected ? 10 : 6,
         itemStyle: {
           color,
           ...(isSelected ? { borderColor: '#ffffff', borderWidth: 2 } : {}),
         },
-        evalId: e.id,
-      })
-
-      // Insert a null gap after this invalidated point (if next isn't already invalidated)
-      if (e.invalidated && !nextInvalidated && idx < sorted.length - 1) {
-        result.push({ value: '-', symbol: 'none' })
       }
-    })
-
-    return result
-  }, [sorted, selectedEvalId, colours])
+    }),
+    [sorted, selectedEvalId, colours],
+  )
 
   const xAxisData = useMemo(
     () => sorted.map(e => e.period_start),
@@ -77,16 +56,14 @@ export function AssetScoreChart({ evaluations, selectedEvalId }: Props) {
       backgroundColor: ct.bg,
       borderColor: ct.border,
       textStyle: { color: ct.axisLabel },
-      formatter: (params: { data: { value: [string, number]; evalId?: string } }) => {
-        const d = params.data
-        if (!d?.value || d.value === ('-' as unknown)) return ''
-        const [ts, score] = d.value
-        const evalEntry = sorted.find(e => e.period_start === ts)
-        if (!evalEntry) return ''
-        const effectiveResult = evalEntry.invalidated ? 'invalidated' : evalEntry.result
+      formatter: (params: { dataIndex: number; data: { value: number } }) => {
+        const e = sorted[params.dataIndex]
+        if (!e) return ''
+        const score = params.data.value
+        const effectiveResult = e.invalidated ? 'invalidated' : e.result
         const rc = colours[effectiveResult] ?? colours.error
         return [
-          `<b>${fmtDateTime(ts)}</b>`,
+          `<b>${fmtDateTime(e.period_start)}</b>`,
           `Score: <b style="color:${rc}">${score}%</b>`,
           `Result: <b style="color:${rc}">${effectiveResult}</b>`,
         ].join('<br/>')
@@ -112,7 +89,6 @@ export function AssetScoreChart({ evaluations, selectedEvalId }: Props) {
       {
         type: 'line' as const,
         data,
-        connectNulls: false,
         lineStyle: { color: ct.line, width: 2 },
       },
     ],
