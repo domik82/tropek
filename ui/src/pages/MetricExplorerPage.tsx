@@ -282,8 +282,6 @@ export function MetricExplorerPage() {
           setEnabled={setScoresEnabled}
           evalId={latestEval?.id}
           dataKey="score"
-          yAxisMax={100}
-          stacked
         />
       </div>
     </div>
