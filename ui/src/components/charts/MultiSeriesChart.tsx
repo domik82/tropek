@@ -131,6 +131,7 @@ export function MultiSeriesChart({
       option={option}
       style={{ height }}
       opts={{ renderer: 'svg' }}
+      notMerge
     />
   )
 }
