@@ -24,6 +24,7 @@ from app.modules.assets.schemas import (
     AssetGroupSLOLinkCreate,
     AssetGroupSLOLinkRead,
     AssetGroupTreeResponse,
+    AssetGroupUpdate,
     AssetRead,
     AssetSLOLinkCreate,
     AssetSLOLinkRead,
@@ -247,6 +248,33 @@ async def get_asset_group(
     return group
 
 
+@router.patch("/asset-groups/{name}", response_model=AssetGroupRead)
+async def update_asset_group(
+    name: str,
+    body: AssetGroupUpdate,
+    session: AsyncSession = Depends(get_session),  # noqa: B008
+) -> AssetGroupRead:
+    """Update mutable asset group fields."""
+    repo = AssetGroupRepository(session)
+    group = await repo.update(name, **body.model_dump(exclude_none=True))
+    if group is None:
+        raise_not_found("asset group", name)
+    return group
+
+
+@router.delete("/asset-groups/{name}", status_code=204)
+async def delete_asset_group(
+    name: str,
+    deactivate_slos: bool = False,
+    session: AsyncSession = Depends(get_session),  # noqa: B008
+) -> None:
+    """Delete an asset group and optionally deactivate linked SLOs."""
+    repo = AssetGroupRepository(session)
+    found = await repo.delete_group(name, deactivate_slos=deactivate_slos)
+    if not found:
+        raise_not_found("asset group", name)
+
+
 @router.post("/asset-groups/{name}/members", response_model=AssetGroupRead, status_code=201)
 async def add_group_member(
     name: str,
@@ -337,7 +365,6 @@ async def create_group_slo_link(
     link_repo = AssetGroupSLOLinkRepository(session)
     link = await link_repo.create(
         group_id=group.id,
-        link_name=body.link_name,
         slo_name=body.slo_name,
         sli_name=body.sli_name,
         data_source_name=body.data_source_name,

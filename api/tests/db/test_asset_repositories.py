@@ -12,14 +12,23 @@ from app.modules.assets.repository import (
     AssetSLOLinkRepository,
     AssetTypeRepository,
 )
+from app.modules.slo_registry.repository import SLORepository
+from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 
 @pytest_asyncio.fixture(autouse=True)
 async def seed_asset_types(db_session: AsyncSession) -> None:
-    """Seed the asset types required by FK constraints before each test."""
+    """Seed the asset types required by FK constraints before each test.
+
+    Migration 002 seeds default types including 'vm'. Only insert types
+    that don't already exist to avoid unique-constraint violations.
+    """
     for name in ("vm", "sensor"):
-        db_session.add(AssetType(name=name, is_default=False))
+        result = await db_session.execute(select(AssetType).where(AssetType.name == name))
+        if result.scalar_one_or_none() is None:
+            db_session.add(AssetType(name=name, is_default=False))
     await db_session.flush()
 
 
@@ -181,14 +190,90 @@ async def test_asset_group_slo_link_crud(db_session: AsyncSession) -> None:
     link_repo = AssetGroupSLOLinkRepository(db_session)
     await link_repo.create(
         group_id=group.id,
-        link_name="grp-compilation-check",
         slo_name="linux-slo",
         sli_name="linux-sli",
         data_source_name="prometheus-dc-b",
     )
     links = await link_repo.list_by_group(group.id)
     assert len(links) == 1
-    assert links[0].link_name == "grp-compilation-check"
-    await link_repo.delete(group.id, "grp-compilation-check")
+    assert links[0].link_name == "linux-slo--linux-sli"
+    await link_repo.delete(group.id, "linux-slo--linux-sli")
     links_after = await link_repo.list_by_group(group.id)
     assert len(links_after) == 0
+
+
+@pytest.mark.integration
+async def test_group_slo_link_duplicate_rejected(db_session: AsyncSession) -> None:
+    group_repo = AssetGroupRepository(db_session)
+    group = await group_repo.create("dup-link-grp")
+    link_repo = AssetGroupSLOLinkRepository(db_session)
+    await link_repo.create(
+        group_id=group.id,
+        slo_name="my-slo",
+        sli_name="sli-a",
+        data_source_name="ds-1",
+    )
+    with pytest.raises(IntegrityError):
+        await link_repo.create(
+            group_id=group.id,
+            slo_name="my-slo",
+            sli_name="sli-b",
+            data_source_name="ds-2",
+        )
+
+
+@pytest.mark.integration
+async def test_group_slo_link_name_auto_generated(db_session: AsyncSession) -> None:
+    group_repo = AssetGroupRepository(db_session)
+    group = await group_repo.create("auto-name-grp")
+    link_repo = AssetGroupSLOLinkRepository(db_session)
+    link = await link_repo.create(
+        group_id=group.id,
+        slo_name="error-rate",
+        sli_name="prom-sli",
+        data_source_name="prod-prom",
+    )
+    assert link.link_name == "error-rate--prom-sli"
+
+
+@pytest.mark.integration
+async def test_group_update_properties(db_session: AsyncSession) -> None:
+    repo = AssetGroupRepository(db_session)
+    await repo.create("upd-grp", display_name="Old Name")
+    updated = await repo.update("upd-grp", display_name="New Name", description="desc")
+    assert updated is not None
+    assert updated.display_name == "New Name"
+    assert updated.description == "desc"
+
+
+@pytest.mark.integration
+async def test_group_delete_keeps_slos(db_session: AsyncSession) -> None:
+    repo = AssetGroupRepository(db_session)
+    group = await repo.create("del-grp")
+    link_repo = AssetGroupSLOLinkRepository(db_session)
+    await link_repo.create(
+        group_id=group.id, slo_name="keep-slo", sli_name="sli", data_source_name="ds"
+    )
+    deleted = await repo.delete_group("del-grp", deactivate_slos=False)
+    assert deleted is True
+    assert await repo.get_by_name("del-grp") is None
+
+
+@pytest.mark.integration
+async def test_group_delete_deactivates_slos(db_session: AsyncSession) -> None:
+    slo_repo = SLORepository(db_session)
+    await slo_repo.create(
+        name="deact-slo",
+        objectives=[],
+        total_score_pass_pct=90.0,
+        total_score_warning_pct=75.0,
+    )
+    group_repo = AssetGroupRepository(db_session)
+    group = await group_repo.create("deact-grp")
+    link_repo = AssetGroupSLOLinkRepository(db_session)
+    await link_repo.create(
+        group_id=group.id, slo_name="deact-slo", sli_name="sli", data_source_name="ds"
+    )
+    await group_repo.delete_group("deact-grp", deactivate_slos=True)
+    slo = await slo_repo.get_latest("deact-slo")
+    assert slo is None
