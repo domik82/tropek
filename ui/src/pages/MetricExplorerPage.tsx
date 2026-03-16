@@ -290,7 +290,7 @@ export function MetricExplorerPage() {
         />
         <ChartSection
           title="Scores"
-          subtitle="Per-indicator scores (0–100) over time"
+          subtitle="Weighted contributions — stacks to 100% when all pass"
           indicators={allIndicators}
           colors={colorMap}
           enabled={scoresEnabled}
@@ -298,6 +298,7 @@ export function MetricExplorerPage() {
           evalId={latestEval?.id}
           dataKey="score"
           yAxisMax={100}
+          stacked
         />
       </div>
     </div>
