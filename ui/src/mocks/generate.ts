@@ -523,7 +523,9 @@ export function generateTrendData(
     valueHistory.push(value)
 
     const { status, score } = scoreIndicator(metric, value, baseline)
-    return { timestamp: ev.period_start, value, score, eval_id: ev.id, result: status, baseline }
+    // Normalize score to 0-100 per indicator (score is weighted, e.g. pass=weight, warn=weight*0.5)
+    const pctScore = metric.weight > 0 ? Math.round((score / metric.weight) * 100) : 0
+    return { timestamp: ev.period_start, value, score: pctScore, eval_id: ev.id, result: status, baseline }
   })
 }
 
