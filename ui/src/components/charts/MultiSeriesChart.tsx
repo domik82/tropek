@@ -24,6 +24,7 @@ export interface MultiSeriesChartProps {
   yAxisMin?: number
   yAxisMax?: number
   chartType?: 'line' | 'bar'
+  stacked?: boolean
   height?: number
 }
 
@@ -35,6 +36,7 @@ export function MultiSeriesChart({
   yAxisMin,
   yAxisMax,
   chartType = 'line',
+  stacked = false,
   height = 300,
 }: MultiSeriesChartProps) {
   const { theme } = useTheme()
@@ -73,6 +75,7 @@ export function MultiSeriesChart({
         symbol: 'circle',
         symbolSize: 4,
         connectNulls: false,
+        ...(stacked ? { stack: 'total', areaStyle: { opacity: 0.3 } } : {}),
       }
     })
 
@@ -129,7 +132,7 @@ export function MultiSeriesChart({
       },
       series: eChartsSeries,
     }
-  }, [series, allTimestamps, ct, yAxisLabel, yAxisMin, yAxisMax, chartType])
+  }, [series, allTimestamps, ct, yAxisLabel, yAxisMin, yAxisMax, chartType, stacked])
 
   return (
     <ReactECharts
