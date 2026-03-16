@@ -10,7 +10,23 @@
       "meta": { "review_status": "approved", "tags": ["windows", "compilation"] },
       "created_at": "2026-03-01T09:00:00Z",
       "active": true,
-      "slo_yaml": "api_version: tropek/v1\nkind: SLO\nmetadata:\n  name: compilation-test-windows\n  labels:\n    os: windows\n    test_type: compilation\nspec:\n  comparison:\n    compare_with: several_results\n    number_of_comparison_results: 3\n    include_result_with_score: pass_or_warn\n    aggregate_function: avg\n  objectives:\n    - sli_name: compilation_errors\n      display_name: Compilation Errors\n      pass:\n        - criteria: [\"=0\"]\n      weight: 3\n      key_sli: true\n      tab_group: summary\n    - sli_name: compilation_duration_s\n      display_name: Compilation Duration\n      pass:\n        - criteria: [\"<=+10%\"]\n      warning:\n        - criteria: [\"<=+20%\"]\n      weight: 2\n      key_sli: false\n      tab_group: summary\n    - sli_name: error_rate\n      display_name: Error Rate\n      pass:\n        - criteria: [\"<1.0\"]\n      warning:\n        - criteria: [\"<2.0\"]\n      weight: 3\n      key_sli: true\n      tab_group: summary\n    - sli_name: cpu_usage_avg\n      display_name: CPU Usage Avg\n      pass:\n        - criteria: [\"<80\"]\n      warning:\n        - criteria: [\"<90\"]\n      weight: 2\n      key_sli: false\n      tab_group: resources\n    - sli_name: memory_peak_mb\n      display_name: Peak Memory\n      pass:\n        - criteria: [\"<2048\"]\n      weight: 2\n      key_sli: false\n      tab_group: resources\n    - sli_name: link_errors\n      display_name: Link Errors\n      pass:\n        - criteria: [\"=0\"]\n      weight: 3\n      key_sli: true\n      tab_group: errors\n    - sli_name: test_failures\n      display_name: Test Failures\n      pass:\n        - criteria: [\"=0\"]\n      weight: 3\n      key_sli: true\n      tab_group: errors\n  total_score:\n    pass: \"90%\"\n    warning: \"75%\""
+      "total_score_pass_pct": 90.0,
+      "total_score_warning_pct": 75.0,
+      "comparison": {
+        "compare_with": "several_results",
+        "number_of_comparison_results": 3,
+        "include_result_with_score": "pass_or_warn",
+        "aggregate_function": "avg"
+      },
+      "objectives": [
+        { "sli": "compilation_errors", "display_name": "Compilation Errors", "pass_criteria": ["=0"], "warning_criteria": [], "weight": 3, "key_sli": true, "sort_order": 0 },
+        { "sli": "compilation_duration_s", "display_name": "Compilation Duration", "pass_criteria": ["<=+10%"], "warning_criteria": ["<=+20%"], "weight": 2, "key_sli": false, "sort_order": 1 },
+        { "sli": "error_rate", "display_name": "Error Rate", "pass_criteria": ["<1.0"], "warning_criteria": ["<2.0"], "weight": 3, "key_sli": true, "sort_order": 2 },
+        { "sli": "cpu_usage_avg", "display_name": "CPU Usage Avg", "pass_criteria": ["<80"], "warning_criteria": ["<90"], "weight": 2, "key_sli": false, "sort_order": 3 },
+        { "sli": "memory_peak_mb", "display_name": "Peak Memory", "pass_criteria": ["<2048"], "warning_criteria": [], "weight": 2, "key_sli": false, "sort_order": 4 },
+        { "sli": "link_errors", "display_name": "Link Errors", "pass_criteria": ["=0"], "warning_criteria": [], "weight": 3, "key_sli": true, "sort_order": 5 },
+        { "sli": "test_failures", "display_name": "Test Failures", "pass_criteria": ["=0"], "warning_criteria": [], "weight": 3, "key_sli": true, "sort_order": 6 }
+      ]
     },
     {
       "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567802",
@@ -22,7 +38,21 @@
       "meta": { "review_status": "approved", "tags": ["linux", "compilation"] },
       "created_at": "2026-03-02T10:00:00Z",
       "active": true,
-      "slo_yaml": "api_version: tropek/v1\nkind: SLO\nmetadata:\n  name: compilation-test-linux\n  labels:\n    os: linux\n    test_type: compilation\nspec:\n  comparison:\n    compare_with: several_results\n    number_of_comparison_results: 3\n    include_result_with_score: pass_or_warn\n    aggregate_function: avg\n  objectives:\n    - sli_name: compilation_errors\n      display_name: Compilation Errors\n      pass:\n        - criteria: [\"=0\"]\n      weight: 3\n      key_sli: true\n      tab_group: summary\n    - sli_name: compilation_duration_s\n      display_name: Compilation Duration\n      pass:\n        - criteria: [\"<=+10%\"]\n      warning:\n        - criteria: [\"<=+20%\"]\n      weight: 2\n      key_sli: false\n      tab_group: summary\n    - sli_name: swap_usage_mb\n      display_name: Swap Usage\n      pass:\n        - criteria: [\"<256\"]\n      weight: 1\n      key_sli: false\n      tab_group: resources\n    - sli_name: disk_io_write_mbps\n      display_name: Disk Write\n      pass:\n        - criteria: [\"<100\"]\n      weight: 1\n      key_sli: false\n      tab_group: resources\n    - sli_name: link_errors\n      display_name: Link Errors\n      pass:\n        - criteria: [\"=0\"]\n      weight: 3\n      key_sli: true\n      tab_group: errors\n  total_score:\n    pass: \"90%\"\n    warning: \"75%\""
+      "total_score_pass_pct": 90.0,
+      "total_score_warning_pct": 75.0,
+      "comparison": {
+        "compare_with": "several_results",
+        "number_of_comparison_results": 3,
+        "include_result_with_score": "pass_or_warn",
+        "aggregate_function": "avg"
+      },
+      "objectives": [
+        { "sli": "compilation_errors", "display_name": "Compilation Errors", "pass_criteria": ["=0"], "warning_criteria": [], "weight": 3, "key_sli": true, "sort_order": 0 },
+        { "sli": "compilation_duration_s", "display_name": "Compilation Duration", "pass_criteria": ["<=+10%"], "warning_criteria": ["<=+20%"], "weight": 2, "key_sli": false, "sort_order": 1 },
+        { "sli": "swap_usage_mb", "display_name": "Swap Usage", "pass_criteria": ["<256"], "warning_criteria": [], "weight": 1, "key_sli": false, "sort_order": 2 },
+        { "sli": "disk_io_write_mbps", "display_name": "Disk Write", "pass_criteria": ["<100"], "warning_criteria": [], "weight": 1, "key_sli": false, "sort_order": 3 },
+        { "sli": "link_errors", "display_name": "Link Errors", "pass_criteria": ["=0"], "warning_criteria": [], "weight": 3, "key_sli": true, "sort_order": 4 }
+      ]
     },
     {
       "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567803",
@@ -34,7 +64,20 @@
       "meta": { "review_status": "approved", "tags": ["macos", "arm64", "compilation"] },
       "created_at": "2026-03-05T08:00:00Z",
       "active": true,
-      "slo_yaml": "api_version: tropek/v1\nkind: SLO\nmetadata:\n  name: compilation-test-macos\n  labels:\n    os: macos\n    arch: arm64\n    test_type: compilation\nspec:\n  comparison:\n    compare_with: several_results\n    number_of_comparison_results: 3\n    include_result_with_score: pass_or_warn\n    aggregate_function: avg\n  objectives:\n    - sli_name: compilation_errors\n      display_name: Compilation Errors\n      pass:\n        - criteria: [\"=0\"]\n      weight: 3\n      key_sli: true\n      tab_group: summary\n    - sli_name: compilation_duration_s\n      display_name: Compilation Duration\n      pass:\n        - criteria: [\"<=+15%\"]\n      warning:\n        - criteria: [\"<=+25%\"]\n      weight: 2\n      key_sli: false\n      tab_group: summary\n    - sli_name: cpu_usage_avg\n      display_name: CPU Usage Avg\n      pass:\n        - criteria: [\"<85\"]\n      warning:\n        - criteria: [\"<95\"]\n      weight: 2\n      key_sli: false\n      tab_group: resources\n    - sli_name: link_errors\n      display_name: Link Errors\n      pass:\n        - criteria: [\"=0\"]\n      weight: 3\n      key_sli: true\n      tab_group: errors\n  total_score:\n    pass: \"90%\"\n    warning: \"75%\""
+      "total_score_pass_pct": 90.0,
+      "total_score_warning_pct": 75.0,
+      "comparison": {
+        "compare_with": "several_results",
+        "number_of_comparison_results": 3,
+        "include_result_with_score": "pass_or_warn",
+        "aggregate_function": "avg"
+      },
+      "objectives": [
+        { "sli": "compilation_errors", "display_name": "Compilation Errors", "pass_criteria": ["=0"], "warning_criteria": [], "weight": 3, "key_sli": true, "sort_order": 0 },
+        { "sli": "compilation_duration_s", "display_name": "Compilation Duration", "pass_criteria": ["<=+15%"], "warning_criteria": ["<=+25%"], "weight": 2, "key_sli": false, "sort_order": 1 },
+        { "sli": "cpu_usage_avg", "display_name": "CPU Usage Avg", "pass_criteria": ["<85"], "warning_criteria": ["<95"], "weight": 2, "key_sli": false, "sort_order": 2 },
+        { "sli": "link_errors", "display_name": "Link Errors", "pass_criteria": ["=0"], "warning_criteria": [], "weight": 3, "key_sli": true, "sort_order": 3 }
+      ]
     },
     {
       "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567804",
@@ -46,7 +89,22 @@
       "meta": { "review_status": "approved", "tags": ["linux", "load-test", "performance"] },
       "created_at": "2026-02-15T12:00:00Z",
       "active": true,
-      "slo_yaml": "api_version: tropek/v1\nkind: SLO\nmetadata:\n  name: load-test-linux\n  labels:\n    os: linux\n    test_type: load\nspec:\n  comparison:\n    compare_with: several_results\n    number_of_comparison_results: 5\n    include_result_with_score: pass_or_warn\n    aggregate_function: avg\n  objectives:\n    - sli_name: response_time_p95\n      display_name: Response Time P95\n      pass:\n        - criteria: [\"<550\"]\n      warning:\n        - criteria: [\"<700\"]\n      weight: 2\n      key_sli: true\n      tab_group: timing\n    - sli_name: response_time_p99\n      display_name: Response Time P99\n      pass:\n        - criteria: [\"<=+10%\"]\n      warning:\n        - criteria: [\"<900\"]\n      weight: 2\n      key_sli: true\n      tab_group: timing\n    - sli_name: throughput_rps\n      display_name: Throughput\n      pass:\n        - criteria: [\">1200\"]\n      warning:\n        - criteria: [\">1000\"]\n      weight: 2\n      key_sli: false\n      tab_group: summary\n    - sli_name: error_rate\n      display_name: Error Rate\n      pass:\n        - criteria: [\"<1.0\"]\n      warning:\n        - criteria: [\"<2.0\"]\n      weight: 3\n      key_sli: true\n      tab_group: summary\n    - sli_name: packet_loss_pct\n      display_name: Packet Loss\n      pass:\n        - criteria: [\"<0.1\"]\n      warning:\n        - criteria: [\"<0.5\"]\n      weight: 2\n      key_sli: true\n      tab_group: network\n    - sli_name: connection_errors\n      display_name: Connection Errors\n      pass:\n        - criteria: [\"=0\"]\n      weight: 2\n      key_sli: true\n      tab_group: network\n  total_score:\n    pass: \"90%\"\n    warning: \"75%\""
+      "total_score_pass_pct": 90.0,
+      "total_score_warning_pct": 75.0,
+      "comparison": {
+        "compare_with": "several_results",
+        "number_of_comparison_results": 5,
+        "include_result_with_score": "pass_or_warn",
+        "aggregate_function": "avg"
+      },
+      "objectives": [
+        { "sli": "response_time_p95", "display_name": "Response Time P95", "pass_criteria": ["<550"], "warning_criteria": ["<700"], "weight": 2, "key_sli": true, "sort_order": 0 },
+        { "sli": "response_time_p99", "display_name": "Response Time P99", "pass_criteria": ["<=+10%"], "warning_criteria": ["<900"], "weight": 2, "key_sli": true, "sort_order": 1 },
+        { "sli": "throughput_rps", "display_name": "Throughput", "pass_criteria": [">1200"], "warning_criteria": [">1000"], "weight": 2, "key_sli": false, "sort_order": 2 },
+        { "sli": "error_rate", "display_name": "Error Rate", "pass_criteria": ["<1.0"], "warning_criteria": ["<2.0"], "weight": 3, "key_sli": true, "sort_order": 3 },
+        { "sli": "packet_loss_pct", "display_name": "Packet Loss", "pass_criteria": ["<0.1"], "warning_criteria": ["<0.5"], "weight": 2, "key_sli": true, "sort_order": 4 },
+        { "sli": "connection_errors", "display_name": "Connection Errors", "pass_criteria": ["=0"], "warning_criteria": [], "weight": 2, "key_sli": true, "sort_order": 5 }
+      ]
     },
     {
       "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567805",
@@ -58,7 +116,21 @@
       "meta": { "review_status": "approved", "tags": ["windows", "load-test", "performance"] },
       "created_at": "2026-02-18T12:00:00Z",
       "active": true,
-      "slo_yaml": "api_version: tropek/v1\nkind: SLO\nmetadata:\n  name: load-test-windows\n  labels:\n    os: windows\n    test_type: load\nspec:\n  comparison:\n    compare_with: several_results\n    number_of_comparison_results: 5\n    include_result_with_score: pass_or_warn\n    aggregate_function: avg\n  objectives:\n    - sli_name: response_time_p95\n      display_name: Response Time P95\n      pass:\n        - criteria: [\"<600\"]\n      warning:\n        - criteria: [\"<750\"]\n      weight: 2\n      key_sli: true\n      tab_group: timing\n    - sli_name: response_time_p99\n      display_name: Response Time P99\n      pass:\n        - criteria: [\"<=+10%\"]\n      warning:\n        - criteria: [\"<950\"]\n      weight: 2\n      key_sli: true\n      tab_group: timing\n    - sli_name: throughput_rps\n      display_name: Throughput\n      pass:\n        - criteria: [\">1100\"]\n      warning:\n        - criteria: [\">900\"]\n      weight: 2\n      key_sli: false\n      tab_group: summary\n    - sli_name: error_rate\n      display_name: Error Rate\n      pass:\n        - criteria: [\"<1.5\"]\n      warning:\n        - criteria: [\"<3.0\"]\n      weight: 3\n      key_sli: true\n      tab_group: summary\n    - sli_name: crash_count\n      display_name: Crashes\n      pass:\n        - criteria: [\"=0\"]\n      weight: 3\n      key_sli: true\n      tab_group: errors\n  total_score:\n    pass: \"90%\"\n    warning: \"75%\""
+      "total_score_pass_pct": 90.0,
+      "total_score_warning_pct": 75.0,
+      "comparison": {
+        "compare_with": "several_results",
+        "number_of_comparison_results": 5,
+        "include_result_with_score": "pass_or_warn",
+        "aggregate_function": "avg"
+      },
+      "objectives": [
+        { "sli": "response_time_p95", "display_name": "Response Time P95", "pass_criteria": ["<600"], "warning_criteria": ["<750"], "weight": 2, "key_sli": true, "sort_order": 0 },
+        { "sli": "response_time_p99", "display_name": "Response Time P99", "pass_criteria": ["<=+10%"], "warning_criteria": ["<950"], "weight": 2, "key_sli": true, "sort_order": 1 },
+        { "sli": "throughput_rps", "display_name": "Throughput", "pass_criteria": [">1100"], "warning_criteria": [">900"], "weight": 2, "key_sli": false, "sort_order": 2 },
+        { "sli": "error_rate", "display_name": "Error Rate", "pass_criteria": ["<1.5"], "warning_criteria": ["<3.0"], "weight": 3, "key_sli": true, "sort_order": 3 },
+        { "sli": "crash_count", "display_name": "Crashes", "pass_criteria": ["=0"], "warning_criteria": [], "weight": 3, "key_sli": true, "sort_order": 4 }
+      ]
     }
   ]
 }

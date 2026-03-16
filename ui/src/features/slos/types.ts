@@ -1,24 +1,13 @@
 // src/features/slos/types.ts
 
-export interface SliQuery {
-  indicator: string
-  query: string
-}
-
 export interface SloObjective {
   sli: string
-  display_name?: string
-  pass: { criteria: string[] }[]
-  warning?: { criteria: string[] }[]
+  display_name: string
+  pass_criteria: string[]
+  warning_criteria: string[]
   weight: number
   key_sli: boolean
-  tab_group?: string
-}
-
-export interface SloScoreThresholds {
-  total_pass?: number
-  total_warning?: number
-  comparison?: string
+  sort_order: number
 }
 
 export interface SloDefinition {
@@ -31,7 +20,10 @@ export interface SloDefinition {
   meta: Record<string, unknown>
   created_at: string
   active: boolean
-  slo_yaml: string
+  objectives: SloObjective[]
+  total_score_pass_pct: number
+  total_score_warning_pct: number
+  comparison: Record<string, unknown>
 }
 
 export interface SloValidationResult {

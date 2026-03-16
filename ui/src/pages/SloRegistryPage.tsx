@@ -2,14 +2,11 @@
 import { useState } from 'react'
 import { useSlos, useSloDetail, useDeleteSlo } from '@/features/slos/hooks'
 import { SloObjectiveTable } from '@/features/slos/components/SloObjectiveTable'
-import { SloYamlViewer } from '@/features/slos/components/SloYamlViewer'
 import { SloObjectiveEditor } from '@/features/slos/components/SloObjectiveEditor'
-import { SloYamlEditor } from '@/features/slos/components/SloYamlEditor'
-import { SloYamlUpload } from '@/features/slos/components/SloYamlUpload'
 import { SloHistoryPanel } from '@/features/slos/components/SloHistoryPanel'
 import { SloCreateForm } from '@/features/slos/components/SloCreateForm'
 
-type Mode = 'view' | 'edit-rows' | 'edit-yaml' | 'upload' | 'history'
+type Mode = 'view' | 'edit-rows' | 'history'
 
 function TabBtn({ active, onClick, children }: {
   active: boolean; onClick: () => void; children: React.ReactNode
@@ -38,9 +35,8 @@ function SloDetail({ name }: { name: string }) {
   return (
     <div className="border-t border-slate-800 mt-3 pt-4 space-y-4">
       <div className="flex gap-2 flex-wrap">
-        <TabBtn active={mode === 'upload'} onClick={() => setMode('upload')}>Upload YAML</TabBtn>
+        <TabBtn active={mode === 'view'} onClick={() => setMode('view')}>View</TabBtn>
         <TabBtn active={mode === 'edit-rows'} onClick={() => setMode('edit-rows')}>Edit Rows</TabBtn>
-        <TabBtn active={mode === 'edit-yaml'} onClick={() => setMode('edit-yaml')}>Raw Edit</TabBtn>
         <TabBtn active={mode === 'history'} onClick={() => setMode('history')}>History</TabBtn>
         <button
           disabled
@@ -51,24 +47,11 @@ function SloDetail({ name }: { name: string }) {
         </button>
       </div>
 
-      {mode === 'view' && (
-        <>
-          <SloObjectiveTable slo={slo} />
-          {slo.slo_yaml && <SloYamlViewer yaml={slo.slo_yaml} />}
-        </>
-      )}
+      {mode === 'view' && <SloObjectiveTable slo={slo} />}
       {mode === 'edit-rows' && (
         <SloObjectiveEditor slo={slo} onCancel={() => setMode('view')} onSaved={() => setMode('view')} />
       )}
-      {mode === 'edit-yaml' && (
-        <SloYamlEditor slo={slo} onCancel={() => setMode('view')} onSaved={() => setMode('view')} />
-      )}
-      {mode === 'upload' && (
-        <SloYamlUpload onCancel={() => setMode('view')} onSaved={() => setMode('view')} />
-      )}
-      {mode === 'history' && (
-        <SloHistoryPanel name={name} />
-      )}
+      {mode === 'history' && <SloHistoryPanel name={name} />}
     </div>
   )
 }
@@ -153,7 +136,6 @@ export function SloRegistryPage() {
             >
               {/* Header row */}
               <div className="px-5 py-4 flex items-center gap-4">
-                {/* Expand toggle — left side clickable */}
                 <button
                   onClick={() => setExpandedSlo(prev => prev === slo.name ? null : slo.name)}
                   className="text-slate-500 text-xs w-3 shrink-0 hover:text-slate-300 transition-colors"
@@ -161,7 +143,6 @@ export function SloRegistryPage() {
                   {isExpanded ? '▼' : '▶'}
                 </button>
 
-                {/* Name + version — clickable to expand */}
                 <div
                   className="flex items-center gap-2 min-w-0 flex-1 cursor-pointer"
                   onClick={() => setExpandedSlo(prev => prev === slo.name ? null : slo.name)}
@@ -176,7 +157,6 @@ export function SloRegistryPage() {
                   }
                 </div>
 
-                {/* Tags */}
                 {tags.length > 0 && (
                   <div className="flex items-center gap-1 flex-wrap">
                     {tags.map(tag => (
@@ -187,7 +167,6 @@ export function SloRegistryPage() {
                   </div>
                 )}
 
-                {/* Author + date + actions */}
                 <div className="ml-auto flex items-center gap-4 text-xs text-slate-500 shrink-0">
                   {slo.author && <span>{slo.author}</span>}
                   {slo.notes && (
@@ -197,7 +176,6 @@ export function SloRegistryPage() {
                   )}
                   <span className="text-slate-600">{slo.created_at.slice(0, 10)}</span>
 
-                  {/* Deactivate button */}
                   {slo.active && (
                     <button
                       onClick={e => { e.stopPropagation(); setConfirmDelete(slo.name) }}
@@ -210,17 +188,12 @@ export function SloRegistryPage() {
                 </div>
               </div>
 
-              {/* Delete confirm */}
               {isConfirmingDelete && (
                 <div className="px-5 pb-3">
-                  <DeleteConfirm
-                    name={slo.name}
-                    onDone={() => setConfirmDelete(null)}
-                  />
+                  <DeleteConfirm name={slo.name} onDone={() => setConfirmDelete(null)} />
                 </div>
               )}
 
-              {/* Expanded detail */}
               {isExpanded && (
                 <div className="px-5 pb-5">
                   <SloDetail name={slo.name} />

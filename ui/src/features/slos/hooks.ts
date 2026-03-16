@@ -1,7 +1,7 @@
 // src/features/slos/hooks.ts
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { sloKeys } from '@/lib/queryKeys'
-import { fetchSlos, fetchSloDetail, validateSloYaml, createSloDefinition, deleteSlo, fetchSloVersions } from './api'
+import { fetchSlos, fetchSloDetail, validateSlo, createSloDefinition, deleteSlo, fetchSloVersions } from './api'
 
 export function useSlos() {
   return useQuery({
@@ -20,11 +20,11 @@ export function useSloDetail(name: string) {
 
 export function useSloValidation() {
   return useMutation({
-    mutationFn: validateSloYaml,
+    mutationFn: validateSlo,
   })
 }
 
-export function useUploadSlo() {
+export function useCreateSlo() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (payload: Parameters<typeof createSloDefinition>[0]) => createSloDefinition(payload),

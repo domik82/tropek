@@ -12,8 +12,8 @@ export const sloHandlers = [
       valid: true,
       errors: [],
       objectives: [
-        { sli: 'response_time_p95', pass: [{ criteria: ['<500'] }], warning: [{ criteria: ['<800'] }], weight: 1 },
-        { sli: 'error_rate', pass: [{ criteria: ['<=0.5%'] }], warning: [{ criteria: ['<=2%'] }], weight: 1 },
+        { sli: 'response_time_p95', display_name: 'Response Time P95', pass_criteria: ['<500'], warning_criteria: ['<800'], weight: 1, key_sli: false, sort_order: 0 },
+        { sli: 'error_rate', display_name: 'Error Rate', pass_criteria: ['<=0.5%'], warning_criteria: ['<=2%'], weight: 1, key_sli: false, sort_order: 1 },
       ],
     })
   }),
@@ -38,10 +38,9 @@ export const sloHandlers = [
 
   http.get('/api/slo-definitions/:name/versions', async ({ params }) => {
     const { getSloDefinitions } = await gen()
-    const all = getSloDefinitions() as { name: string; version: number; created_at: string; author?: string | null; notes?: string | null; active: boolean; slo_yaml: string }[]
+    const all = getSloDefinitions() as { name: string; version: number; created_at: string; author?: string | null; notes?: string | null; active: boolean }[]
     const current = all.find(s => s.name === params.name)
     if (!current) return HttpResponse.json({ error: 'Not found' }, { status: 404 })
-    // Return mock history: current version + a couple of older ones
     const history = [
       { ...current },
       {
@@ -64,13 +63,21 @@ export const sloHandlers = [
   }),
 
   http.delete('/api/slo-definitions/:name', async ({ params }) => {
-    // Soft delete — in real API this marks all versions inactive
     console.log('[mock] soft-delete SLO:', params.name)
     return new HttpResponse(null, { status: 204 })
   }),
 
   http.post('/api/slo-definitions', async ({ request }) => {
-    const body = await request.json() as { name: string; slo_yaml: string; display_name?: string; notes?: string; author?: string }
+    const body = await request.json() as {
+      name: string
+      objectives: unknown[]
+      total_score_pass_pct: number
+      total_score_warning_pct: number
+      comparison: Record<string, unknown>
+      display_name?: string
+      notes?: string
+      author?: string
+    }
     return HttpResponse.json({
       id: crypto.randomUUID(),
       name: body.name,
@@ -81,7 +88,10 @@ export const sloHandlers = [
       active: true,
       meta: {},
       created_at: new Date().toISOString(),
-      slo_yaml: body.slo_yaml,
+      objectives: body.objectives,
+      total_score_pass_pct: body.total_score_pass_pct,
+      total_score_warning_pct: body.total_score_warning_pct,
+      comparison: body.comparison,
     }, { status: 201 })
   }),
 ]
