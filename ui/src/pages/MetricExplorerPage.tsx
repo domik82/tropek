@@ -1,57 +1,155 @@
 // ui/src/pages/MetricExplorerPage.tsx
 import { useState, useMemo } from 'react'
 import { useSearchParams, Link } from 'react-router-dom'
-import { useEvaluations } from '@/features/evaluations/hooks'
+import { useQueries } from '@tanstack/react-query'
+import { evaluationKeys } from '@/lib/queryKeys'
+import { useEvaluations, useEvaluationDetail } from '@/features/evaluations/hooks'
+import { fetchTrend } from '@/features/evaluations/api'
 import { useAssetEvaluations, useMetricHeatmap } from '@/features/navigator/hooks'
-import { MetricTrendBlock } from '@/features/evaluations/components/MetricTrendBlock'
-import { METRICS } from '@/mocks/generate'
-import type { IndicatorResult } from '@/features/evaluations/types'
-import type { MetricHeatmapResponse } from '@/features/navigator/types'
+import { MetricLabelPanel } from '@/components/charts/MetricLabelPanel'
+import { MultiSeriesChart } from '@/components/charts/MultiSeriesChart'
+import type { MultiSeriesChartProps } from '@/components/charts/MultiSeriesChart'
+import { buildColorMap } from '@/components/charts/colors'
+import type { TrendPoint } from '@/features/evaluations/types'
 
-function buildIndicatorStubsFromHeatmap(heatmapData: MetricHeatmapResponse): IndicatorResult[] {
-  return heatmapData.metrics.map(m => ({
-    metric: m.name,
-    display_name: m.display_name,
-    tab_group: m.tab_group,
-    value: 0,
-    compared_value: null,
-    change_absolute: null,
-    change_relative_pct: null,
-    aggregation: 'avg',
-    status: 'pass' as const,
-    score: 0,
-    weight: 1,
-    key_sli: false,
-    pass_targets: null,
-    warning_targets: null,
-  }))
+// ── useEnabledTrends ──────────────────────────────────────────────────────────
+
+function useEnabledTrends(
+  evalId: string | undefined,
+  enabledMetrics: string[],
+): Map<string, TrendPoint[]> {
+  const results = useQueries({
+    queries: enabledMetrics.map(metric => ({
+      queryKey: evaluationKeys.trend(evalId ?? '', metric),
+      queryFn: () => fetchTrend(evalId!, metric),
+      enabled: !!evalId,
+      staleTime: Infinity,
+    })),
+  })
+
+  const map = new Map<string, TrendPoint[]>()
+  for (let i = 0; i < enabledMetrics.length; i++) {
+    const data = results[i]?.data
+    if (data) map.set(enabledMetrics[i], data)
+  }
+  return map
 }
 
-// Fallback for group view (no per-asset heatmap): use the full METRICS catalogue
-function buildIndicatorStubsFromCatalogue(): IndicatorResult[] {
-  return METRICS.map(m => ({
-    metric: m.name,
-    display_name: m.display_name,
-    tab_group: m.tab_group,
-    value: 0,
-    compared_value: null,
-    change_absolute: null,
-    change_relative_pct: null,
-    aggregation: 'avg',
-    status: 'pass' as const,
-    score: 0,
-    weight: m.weight,
-    key_sli: m.key_sli,
-    pass_targets: null,
-    warning_targets: null,
-  }))
+// ── ChartSection ─────────────────────────────────────────────────────────────
+
+interface ChartSectionProps {
+  title: string
+  subtitle: string
+  indicators: Array<{ metric: string; display_name: string; tab_group?: string }>
+  colors: Map<string, string>
+  enabled: Set<string>
+  setEnabled: React.Dispatch<React.SetStateAction<Set<string>>>
+  evalId: string | undefined
+  dataKey: 'value' | 'score'
+  yAxisMax?: number
 }
+
+function ChartSection({
+  title,
+  subtitle,
+  indicators,
+  colors,
+  enabled,
+  setEnabled,
+  evalId,
+  dataKey,
+  yAxisMax,
+}: ChartSectionProps) {
+  const trendData = useEnabledTrends(evalId, [...enabled])
+
+  const chartSeries = useMemo(() => {
+    const result: MultiSeriesChartProps['series'] = []
+    for (const [metric, points] of trendData) {
+      const ind = indicators.find(i => i.metric === metric)
+      if (!ind) continue
+      result.push({
+        metric,
+        displayName: ind.display_name,
+        color: colors.get(metric) ?? '#64748b',
+        data: points.map(p => ({ timestamp: p.timestamp, value: p[dataKey] })),
+      })
+    }
+    return result
+  }, [trendData, indicators, colors, dataKey])
+
+  function handleToggle(metric: string) {
+    setEnabled(prev => {
+      const next = new Set(prev)
+      next.has(metric) ? next.delete(metric) : next.add(metric)
+      return next
+    })
+  }
+
+  function handleGroupAll(group: string) {
+    const groupMetrics = indicators
+      .filter(i => (i.tab_group ?? 'Other') === group)
+      .map(i => i.metric)
+    setEnabled(prev => {
+      const next = new Set(prev)
+      for (const m of groupMetrics) next.add(m)
+      return next
+    })
+  }
+
+  function handleGroupNone(group: string) {
+    const groupMetrics = new Set(
+      indicators
+        .filter(i => (i.tab_group ?? 'Other') === group)
+        .map(i => i.metric),
+    )
+    setEnabled(prev => {
+      const next = new Set(prev)
+      for (const m of groupMetrics) next.delete(m)
+      return next
+    })
+  }
+
+  return (
+    <div className="flex flex-col border-b border-slate-700" style={{ minHeight: '50%' }}>
+      {/* Section title bar */}
+      <div className="px-4 py-2 border-b border-slate-700 shrink-0">
+        <span className="text-sm font-semibold text-slate-200">{title}</span>
+        <span className="ml-2 text-xs text-slate-400">{subtitle}</span>
+      </div>
+
+      {/* Label panel + chart */}
+      <div className="flex flex-1 min-h-0">
+        <div className="shrink-0 border-r border-slate-700 p-3 overflow-y-auto" style={{ width: 280 }}>
+          <MetricLabelPanel
+            indicators={indicators}
+            colors={colors}
+            enabled={enabled}
+            onToggle={handleToggle}
+            onGroupAll={handleGroupAll}
+            onGroupNone={handleGroupNone}
+          />
+        </div>
+        <div className="flex-1 min-w-0 p-3">
+          <MultiSeriesChart
+            series={chartSeries}
+            yAxisMax={yAxisMax}
+            height={280}
+          />
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── MetricExplorerPage ────────────────────────────────────────────────────────
 
 export function MetricExplorerPage() {
   const [params] = useSearchParams()
   const groupName = params.get('group') ?? undefined
   const assetName = params.get('asset') ?? undefined
-  const [metricGroupFilter, setMetricGroupFilter] = useState<string>('all')
+
+  const [valuesEnabled, setValuesEnabled] = useState<Set<string>>(new Set())
+  const [scoresEnabled, setScoresEnabled] = useState<Set<string>>(new Set())
 
   const { data: groupEvals = [] } = useEvaluations(
     groupName ? { group_name: groupName } : {},
@@ -59,29 +157,41 @@ export function MetricExplorerPage() {
   const { data: assetEvals = [] } = useAssetEvaluations(assetName)
   const { data: heatmapData } = useMetricHeatmap(assetName)
 
-  // Pick the anchor eval for trend charts
+  // Pick the anchor eval for trend queries
   const evals = assetName ? assetEvals : groupEvals
-  const latestEval = useMemo(() =>
-    [...evals]
-      .filter(e => !e.invalidated)
-      .sort((a, b) => b.period_start.localeCompare(a.period_start))[0],
-    [evals]
+  const latestEval = useMemo(
+    () =>
+      [...evals]
+        .filter(e => !e.invalidated)
+        .sort((a, b) => b.period_start.localeCompare(a.period_start))[0],
+    [evals],
   )
 
-  // Use asset heatmap metric list when available (accurate per-asset metrics),
-  // fall back to the full METRICS catalogue for group view
-  const allIndicators = useMemo(
-    () => heatmapData ? buildIndicatorStubsFromHeatmap(heatmapData) : buildIndicatorStubsFromCatalogue(),
-    [heatmapData],
-  )
-  const metricGroups = useMemo(
-    () => Array.from(new Set(allIndicators.map(i => i.tab_group).filter(Boolean))),
-    [allIndicators],
+  // For group view: load indicator list from the latest eval's detail
+  const { data: latestDetail } = useEvaluationDetail(
+    !assetName && latestEval ? latestEval.id : undefined,
   )
 
-  const visibleIndicators = metricGroupFilter === 'all'
-    ? allIndicators
-    : allIndicators.filter(i => i.tab_group === metricGroupFilter)
+  // Build indicator list
+  const allIndicators = useMemo(() => {
+    if (heatmapData) {
+      return heatmapData.metrics.map(m => ({
+        metric: m.name,
+        display_name: m.display_name,
+        tab_group: m.tab_group,
+      }))
+    }
+    if (latestDetail) {
+      return latestDetail.indicator_results.map(r => ({
+        metric: r.metric,
+        display_name: r.display_name,
+        tab_group: r.tab_group,
+      }))
+    }
+    return []
+  }, [heatmapData, latestDetail])
+
+  const colorMap = useMemo(() => buildColorMap(allIndicators), [allIndicators])
 
   const backHref = assetName
     ? `/navigator?asset=${encodeURIComponent(assetName)}`
@@ -90,55 +200,42 @@ export function MetricExplorerPage() {
     : '/navigator'
 
   return (
-    <div className="p-6 space-y-4">
-      <div className="flex items-center gap-3">
-        <Link to={backHref} className="text-sm text-muted-foreground hover:text-foreground">
+    <div className="flex flex-col" style={{ height: 'calc(100vh - 49px)' }}>
+      {/* Header bar */}
+      <div className="px-6 py-3 border-b border-slate-700 flex items-center gap-3 shrink-0">
+        <Link to={backHref} className="text-sm text-slate-400 hover:text-slate-200">
           ← Back
         </Link>
-        <h1 className="text-xl font-semibold">Metric Explorer</h1>
+        <h1 className="text-lg font-semibold text-slate-100">Metric Explorer</h1>
         {(groupName || assetName) && (
-          <span className="text-sm text-muted-foreground">
-            — {assetName ?? groupName}
-          </span>
+          <span className="text-sm text-slate-400">— {assetName ?? groupName}</span>
         )}
       </div>
 
-      {/* Metric group filter tabs */}
-      <div className="flex flex-wrap gap-2">
-        <button
-          onClick={() => setMetricGroupFilter('all')}
-          className={`px-3 py-1.5 rounded text-sm font-medium transition-colors ${
-            metricGroupFilter === 'all' ? 'bg-muted text-foreground' : 'bg-background text-muted-foreground hover:text-foreground'
-          }`}
-        >
-          All ({allIndicators.length})
-        </button>
-        {metricGroups.map(g => (
-          <button
-            key={g}
-            onClick={() => setMetricGroupFilter(g!)}
-            className={`px-3 py-1.5 rounded text-sm font-medium transition-colors ${
-              metricGroupFilter === g ? 'bg-muted text-foreground' : 'bg-background text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            {g} ({allIndicators.filter(i => i.tab_group === g).length})
-          </button>
-        ))}
+      {/* Two chart sections */}
+      <div className="flex-1 overflow-y-auto">
+        <ChartSection
+          title="Values"
+          subtitle="Raw metric values over time"
+          indicators={allIndicators}
+          colors={colorMap}
+          enabled={valuesEnabled}
+          setEnabled={setValuesEnabled}
+          evalId={latestEval?.id}
+          dataKey="value"
+        />
+        <ChartSection
+          title="Scores"
+          subtitle="Per-indicator scores (0–100) over time"
+          indicators={allIndicators}
+          colors={colorMap}
+          enabled={scoresEnabled}
+          setEnabled={setScoresEnabled}
+          evalId={latestEval?.id}
+          dataKey="score"
+          yAxisMax={100}
+        />
       </div>
-
-      {!latestEval && (
-        <p className="text-sm text-muted-foreground">
-          Select a group or asset from the Navigator to load metric trends.
-        </p>
-      )}
-
-      {latestEval && (
-        <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-          {visibleIndicators.map(ind => (
-            <MetricTrendBlock key={ind.metric} evalId={latestEval.id} indicator={ind} />
-          ))}
-        </div>
-      )}
     </div>
   )
 }
