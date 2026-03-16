@@ -1,5 +1,5 @@
 // src/features/slos/api.ts
-import type { SloDefinition, SloValidationResult } from './types'
+import type { SloDefinition, SloObjective, SloValidationResult } from './types'
 
 const BASE = '/api'
 
@@ -16,19 +16,27 @@ export async function fetchSloDetail(name: string): Promise<SloDefinition> {
   return res.json()
 }
 
-export async function validateSloYaml(yaml: string): Promise<SloValidationResult> {
+export async function validateSlo(payload: {
+  objectives: SloObjective[]
+  total_score_pass_pct: number
+  total_score_warning_pct: number
+  comparison: Record<string, unknown>
+}): Promise<SloValidationResult> {
   const res = await fetch(`${BASE}/slo-definitions/validate`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ slo_yaml: yaml }),
+    body: JSON.stringify(payload),
   })
-  if (!res.ok) throw new Error(`validateSloYaml: ${res.status}`)
+  if (!res.ok) throw new Error(`validateSlo: ${res.status}`)
   return res.json()
 }
 
 export async function createSloDefinition(payload: {
   name: string
-  slo_yaml: string
+  objectives: SloObjective[]
+  total_score_pass_pct: number
+  total_score_warning_pct: number
+  comparison: Record<string, unknown>
   display_name?: string
   notes?: string
   author?: string
