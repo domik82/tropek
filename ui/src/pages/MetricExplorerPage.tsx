@@ -49,6 +49,8 @@ interface ChartSectionProps {
   yAxisMax?: number
 }
 
+type ChartType = 'line' | 'bar'
+
 function ChartSection({
   title,
   subtitle,
@@ -58,8 +60,12 @@ function ChartSection({
   setEnabled,
   evalId,
   dataKey,
-  yAxisMax,
+  yAxisMax: yAxisMaxProp,
 }: ChartSectionProps) {
+  const [yMin, setYMin] = useState('')
+  const [yMax, setYMax] = useState('')
+  const [chartType, setChartType] = useState<ChartType>('line')
+
   const trendData = useEnabledTrends(evalId, [...enabled])
 
   const chartSeries = useMemo(() => {
@@ -112,9 +118,45 @@ function ChartSection({
   return (
     <div className="flex flex-col border-b border-slate-700" style={{ minHeight: '50%' }}>
       {/* Section title bar */}
-      <div className="px-4 py-2 border-b border-slate-700 shrink-0">
-        <span className="text-sm font-semibold text-slate-200">{title}</span>
-        <span className="ml-2 text-xs text-slate-400">{subtitle}</span>
+      <div className="px-4 py-2 border-b border-slate-700 shrink-0 flex items-center gap-4">
+        <div>
+          <span className="text-sm font-semibold text-slate-200">{title}</span>
+          <span className="ml-2 text-xs text-slate-400">{subtitle}</span>
+        </div>
+        <div className="ml-auto flex items-center gap-3">
+          {/* Y-axis range */}
+          <div className="flex items-center gap-2 text-xs text-slate-500">
+            <label className="flex items-center gap-1">
+              Y <input
+                type="number" value={yMin} onChange={e => setYMin(e.target.value)}
+                placeholder="min"
+                className="w-14 px-1 py-0.5 bg-slate-800 border border-slate-700 rounded text-slate-300 text-xs"
+              />
+            </label>
+            <label className="flex items-center gap-1">
+              – <input
+                type="number" value={yMax} onChange={e => setYMax(e.target.value)}
+                placeholder="max"
+                className="w-14 px-1 py-0.5 bg-slate-800 border border-slate-700 rounded text-slate-300 text-xs"
+              />
+            </label>
+          </div>
+          {/* Line / Bar toggle */}
+          <div className="flex border border-slate-700 rounded overflow-hidden text-xs">
+            <button
+              onClick={() => setChartType('line')}
+              className={`px-2 py-0.5 transition-colors ${chartType === 'line' ? 'bg-gray-800 text-slate-200' : 'text-slate-400 hover:bg-gray-800/50'}`}
+            >
+              Line
+            </button>
+            <button
+              onClick={() => setChartType('bar')}
+              className={`px-2 py-0.5 transition-colors ${chartType === 'bar' ? 'bg-gray-800 text-slate-200' : 'text-slate-400 hover:bg-gray-800/50'}`}
+            >
+              Bar
+            </button>
+          </div>
+        </div>
       </div>
 
       {/* Label panel + chart */}
@@ -132,7 +174,9 @@ function ChartSection({
         <div className="flex-1 min-w-0 p-3">
           <MultiSeriesChart
             series={chartSeries}
-            yAxisMax={yAxisMax}
+            yAxisMin={yMin !== '' ? parseFloat(yMin) : undefined}
+            yAxisMax={yMax !== '' ? parseFloat(yMax) : yAxisMaxProp}
+            chartType={chartType}
             height={280}
           />
         </div>
