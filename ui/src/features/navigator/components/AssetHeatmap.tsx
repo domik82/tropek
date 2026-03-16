@@ -15,6 +15,14 @@ interface Props {
 
 const PAD = 2
 
+function brighten(hex: string, factor: number): string {
+  if (!hex.startsWith('#')) return hex
+  const r = Math.min(255, Math.round(parseInt(hex.slice(1, 3), 16) * factor))
+  const g = Math.min(255, Math.round(parseInt(hex.slice(3, 5), 16) * factor))
+  const b = Math.min(255, Math.round(parseInt(hex.slice(5, 7), 16) * factor))
+  return `rgb(${r},${g},${b})`
+}
+
 export function AssetHeatmap({ data, selectedEvalId, onEvalSelect }: Props) {
   const { theme } = useTheme()
   const colours = RESULT_COLOUR[theme]
@@ -25,12 +33,14 @@ export function AssetHeatmap({ data, selectedEvalId, onEvalSelect }: Props) {
   const chartCells = useMemo(
     () => cells.map(cell => {
       const isSelected = !!selectedEvalId && cell.evalId === selectedEvalId
+      const colour = cell.result === 'none'
+        ? ct.bg
+        : colours[cell.result as keyof typeof colours] ?? ct.bg
       return {
         ...cell,
+        hoverColor: brighten(colour, 1.4),
         itemStyle: {
-          color: cell.result === 'none'
-            ? ct.bg
-            : colours[cell.result as keyof typeof colours] ?? ct.bg,
+          color: colour,
           borderColor: isSelected ? '#ffffff' : 'transparent',
           borderWidth: isSelected ? 2 : 0,
         },
@@ -61,38 +71,56 @@ export function AssetHeatmap({ data, selectedEvalId, onEvalSelect }: Props) {
     xAxis: {
       type: 'category' as const,
       data: slots.map(fmtSlot),
-      axisLabel: { rotate: 45, fontSize: 11, color: ct.axisLabel },
+      axisLabel: { rotate: 45, fontSize: 14, color: ct.axisLabel },
       axisLine: { lineStyle: { color: ct.grid } },
       splitLine: { show: false },
     },
     yAxis: {
       type: 'category' as const,
       data: rows,
-      axisLabel: { fontSize: 10, color: ct.axisLabel, width: 180, overflow: 'truncate' as const },
+      axisLabel: { fontSize: 14, color: ct.axisLabel, width: 210, overflow: 'truncate' as const },
       axisLine: { lineStyle: { color: ct.grid } },
       splitLine: { lineStyle: { color: ct.bg } },
     },
     series: [{
       type: 'custom',
       renderItem: (
-        _p: unknown,
+        params: { dataIndex: number },
         api: {
           value: (d: number) => number
           coord: (pos: [number, number]) => [number, number]
           size: (sz: [number, number]) => [number, number]
-          style: (extra?: object) => object
         },
       ) => {
         const xi = api.value(0)
         const yi = api.value(1)
         const [cx, cy] = api.coord([xi, yi])
         const [w, h] = api.size([1, 1])
+        const rx = cx - w / 2 + PAD
+        const ry = cy - h / 2 + PAD
+        const rw = w - PAD * 2
+        const rh = h - PAD * 2
+
+        const cellData = chartCells[params.dataIndex]
+        const is = cellData?.itemStyle
         return {
           type: 'rect',
-          shape: { x: cx - w / 2 + PAD, y: cy - h / 2 + PAD, width: w - PAD * 2, height: h - PAD * 2, r: 2 },
-          style: api.style(),
+          shape: { x: rx, y: ry, width: rw, height: rh, r: 3 },
+          style: {
+            fill: is?.color,
+            stroke: is?.borderColor,
+            lineWidth: is?.borderWidth ?? 0,
+          },
+          emphasis: {
+            style: {
+              fill: cellData?.hoverColor,
+              stroke: '#ffffff',
+              lineWidth: 2,
+            },
+          },
         }
       },
+      emphasis: { focus: 'self' },
       data: chartCells,
       encode: { x: 0, y: 1 },
     }],
@@ -117,7 +145,7 @@ export function AssetHeatmap({ data, selectedEvalId, onEvalSelect }: Props) {
     </div>
     <ReactECharts
       option={option}
-      style={{ height: Math.max(200, rows.length * 22 + 100) }}
+      style={{ height: Math.max(200, rows.length * 28 + 100) }}
       opts={{ renderer: 'svg' }}
       onEvents={{
         click: (p: { data: HeatmapCell }) => {

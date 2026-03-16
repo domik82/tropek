@@ -59,7 +59,8 @@
       "mcp__plugin_playwright_playwright__browser_snapshot",
       "Bash(npx:*)",
       "mcp__plugin_playwright_playwright__browser_run_code",
-      "mcp__plugin_playwright_playwright__browser_wait_for"
+      "mcp__plugin_playwright_playwright__browser_wait_for",
+      "Bash(/home/domik/.claude/plugins/cache/claude-plugins-official/superpowers/5.0.2/skills/brainstorming/scripts/start-server.sh --project-dir /mnt/d/DEV/keptn_rewrite/tropek)"
     ],
     "deny": [
       "Bash(sudo *)",
