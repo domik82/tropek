@@ -6,27 +6,8 @@ import { EvaluationHeatmap } from '@/features/evaluations/components/EvaluationH
 import { EvaluationTable } from '@/features/evaluations/components/EvaluationTable'
 import { EvaluationHeader } from '@/features/evaluations/components/EvaluationHeader'
 import { GroupScoreChart } from './GroupScoreChart'
-
-type ViewMode = 'heatmap' | 'chart'
-
-function ViewToggle({ mode, setMode }: { mode: ViewMode; setMode: (m: ViewMode) => void }) {
-  return (
-    <div className="flex border border-slate-700 rounded overflow-hidden text-xs">
-      <button
-        onClick={() => setMode('heatmap')}
-        className={`px-3 py-1.5 transition-colors ${mode === 'heatmap' ? 'bg-gray-800 text-slate-200' : 'text-slate-400 hover:bg-gray-800/50'}`}
-      >
-        Heatmap
-      </button>
-      <button
-        onClick={() => setMode('chart')}
-        className={`px-3 py-1.5 transition-colors ${mode === 'chart' ? 'bg-gray-800 text-slate-200' : 'text-slate-400 hover:bg-gray-800/50'}`}
-      >
-        Chart
-      </button>
-    </div>
-  )
-}
+import { ViewToggle } from '@/components/charts/ViewToggle'
+import type { ViewMode } from '@/components/charts/ViewToggle'
 
 interface Props {
   groupName: string
