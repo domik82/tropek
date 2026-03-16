@@ -89,6 +89,13 @@ class AssetGroupCreate(BaseModel):
     subgroups: list[AssetGroupSubgroupCreate] = []
 
 
+class AssetGroupUpdate(BaseModel):
+    """Request body for updating an asset group."""
+
+    display_name: str | None = None
+    description: str | None = None
+
+
 class AssetGroupMemberRead(BaseModel):
     """Read schema for a group member entry."""
 
@@ -171,7 +178,7 @@ class AssetSLOLinkRead(BaseModel):
 class AssetGroupSLOLinkCreate(BaseModel):
     """Request body for creating an asset group SLO link."""
 
-    link_name: str
+    link_name: str | None = None
     slo_name: str
     sli_name: str
     data_source_name: str

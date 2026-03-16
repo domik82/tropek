@@ -17,6 +17,7 @@ from app.db.models import (
     AssetGroupSLOLink,
     AssetSLOLink,
     AssetType,
+    SLODefinition,
 )
 from app.modules.assets.schemas import (
     AssetGroupMemberCreate,
@@ -278,6 +279,72 @@ class AssetGroupRepository:
             return None
         return await self._build_read(group)
 
+    async def update(self, name: str, **kwargs: Any) -> AssetGroupRead | None:
+        """Update mutable fields on an existing asset group.
+
+        Args:
+            name: Unique group name to update.
+            **kwargs: Fields to update (display_name, description).
+
+        Returns:
+            Updated AssetGroupRead, or None if not found.
+        """
+        filtered = {k: v for k, v in kwargs.items() if v is not None}
+        if filtered:
+            await self._session.execute(
+                update(AssetGroup).where(AssetGroup.name == name).values(**filtered)
+            )
+        result = await self._session.execute(select(AssetGroup).where(AssetGroup.name == name))
+        group = result.scalar_one_or_none()
+        if group is None:
+            return None
+        return await self._build_read(group)
+
+    async def _collect_subgroup_ids(self, group_id: uuid.UUID) -> list[uuid.UUID]:
+        """Recursively collect all descendant group IDs."""
+        result = await self._session.execute(
+            select(AssetGroupLink.child_group_id).where(AssetGroupLink.parent_group_id == group_id)
+        )
+        child_ids = list(result.scalars().all())
+        all_ids: list[uuid.UUID] = []
+        for cid in child_ids:
+            all_ids.append(cid)
+            all_ids.extend(await self._collect_subgroup_ids(cid))
+        return all_ids
+
+    async def delete_group(self, name: str, *, deactivate_slos: bool = False) -> bool:
+        """Delete an asset group and all its descendants.
+
+        Args:
+            name: Unique group name to delete.
+            deactivate_slos: When True, soft-delete SLOs linked to the group tree.
+
+        Returns:
+            True if the group was found and deleted, False if not found.
+        """
+        result = await self._session.execute(select(AssetGroup).where(AssetGroup.name == name))
+        group = result.scalar_one_or_none()
+        if group is None:
+            return False
+        all_group_ids = [group.id, *await self._collect_subgroup_ids(group.id)]
+        if deactivate_slos:
+            slo_names_result = await self._session.execute(
+                select(AssetGroupSLOLink.slo_name)
+                .where(AssetGroupSLOLink.group_id.in_(all_group_ids))
+                .distinct()
+            )
+            slo_names = list(slo_names_result.scalars().all())
+            if slo_names:
+                await self._session.execute(
+                    update(SLODefinition)
+                    .where(SLODefinition.name.in_(slo_names))
+                    .values(active=False)
+                )
+        for gid in reversed(all_group_ids):
+            await self._session.execute(delete(AssetGroup).where(AssetGroup.id == gid))
+        await self._session.flush()
+        return True
+
     async def list_all(self) -> list[AssetGroupRead]:
         """Return all asset groups ordered by name, each with members and subgroups."""
         result = await self._session.execute(select(AssetGroup).order_by(AssetGroup.name))
@@ -459,16 +526,16 @@ class AssetGroupSLOLinkRepository:
         self,
         *,
         group_id: uuid.UUID,
-        link_name: str,
         slo_name: str,
         sli_name: str,
         data_source_name: str,
     ) -> AssetGroupSLOLink:
         """Create an SLO link for an asset group.
 
+        The link_name is auto-generated as ``{slo_name}--{sli_name}``.
+
         Args:
             group_id: UUID of the asset group.
-            link_name: Unique name for this link within the group.
             slo_name: Name of the referenced SLO.
             sli_name: Name of the referenced SLI.
             data_source_name: Name of the referenced data source.
@@ -478,7 +545,7 @@ class AssetGroupSLOLinkRepository:
         """
         link = AssetGroupSLOLink(
             id=uuid.uuid4(),
-            link_name=link_name,
+            link_name=f"{slo_name}--{sli_name}",
             group_id=group_id,
             slo_name=slo_name,
             sli_name=sli_name,
