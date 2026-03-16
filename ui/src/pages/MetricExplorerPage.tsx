@@ -126,6 +126,21 @@ function ChartSection({
           <span className="ml-2 text-xs text-slate-400">{subtitle}</span>
         </div>
         <div className="ml-auto flex items-center gap-3">
+          {/* All / None */}
+          <div className="flex items-center gap-1 text-xs">
+            <button
+              onClick={() => setEnabled(new Set(indicators.map(i => i.metric)))}
+              className="text-slate-500 hover:text-slate-300"
+            >
+              All
+            </button>
+            <button
+              onClick={() => setEnabled(new Set())}
+              className="text-slate-500 hover:text-slate-300"
+            >
+              None
+            </button>
+          </div>
           {/* Y-axis range */}
           <div className="flex items-center gap-2 text-xs text-slate-500">
             <label className="flex items-center gap-1">
