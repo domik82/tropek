@@ -120,27 +120,29 @@ function ChartSection({
   return (
     <div className="flex flex-col border-b border-slate-700" style={{ minHeight: '50%' }}>
       {/* Section title bar */}
-      <div className="px-4 py-2 border-b border-slate-700 shrink-0 flex items-center gap-4">
-        <div>
+      <div className="px-4 py-2 border-b border-slate-700 shrink-0 flex items-center">
+        <div className="shrink-0">
           <span className="text-sm font-semibold text-slate-200">{title}</span>
           <span className="ml-2 text-xs text-slate-400">{subtitle}</span>
         </div>
-        <div className="ml-auto flex items-center gap-3">
-          {/* All / None */}
+        {/* All / None — centered between title and right controls */}
+        <div className="flex-1 flex justify-center">
           <div className="flex items-center gap-1 text-xs">
             <button
               onClick={() => setEnabled(new Set(indicators.map(i => i.metric)))}
-              className="text-slate-500 hover:text-slate-300"
+              className="px-2 py-0.5 rounded border border-slate-700 text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 transition-colors"
             >
               All
             </button>
             <button
               onClick={() => setEnabled(new Set())}
-              className="text-slate-500 hover:text-slate-300"
+              className="px-2 py-0.5 rounded border border-slate-700 text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 transition-colors"
             >
               None
             </button>
           </div>
+        </div>
+        <div className="shrink-0 flex items-center gap-3">
           {/* Y-axis range */}
           <div className="flex items-center gap-2 text-xs text-slate-500">
             <label className="flex items-center gap-1">
