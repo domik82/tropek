@@ -65,7 +65,9 @@ curl http://localhost:8080/health
 
 ## Development setup
 
-Requires: [uv](https://docs.astral.sh/uv/), Python 3.13, Docker
+Requires: [uv](https://docs.astral.sh/uv/), Python 3.13, Docker, Node.js 18+
+
+### Backend (API + worker)
 
 ```bash
 # Install all workspace dependencies
@@ -82,6 +84,41 @@ uv run ruff check api/ adapters/
 
 # Type check
 uv run mypy api/app adapters/prometheus/app
+```
+
+### UI
+
+```bash
+cd ui
+npm install
+```
+
+#### With mocks (no backend needed)
+
+```bash
+npm run dev
+```
+
+Starts on `http://localhost:5173` with MSW intercepting all API calls. Mock data is deterministic (seeded PRNG) — 30 days of history, 40 asset/lab scenarios, 30 metrics. No backend services required.
+
+#### Against the real API
+
+```bash
+# Option 1: dev server with HMR (disable mocks, proxy to running backend)
+VITE_USE_MOCKS=false npm run dev
+
+# Option 2: production build
+VITE_API_BASE=http://localhost:8080 npm run build
+npm run preview
+```
+
+Requires the API service running on `:8080` (see Quick Start above).
+
+#### UI tests
+
+```bash
+npm run test     # Vitest unit tests
+npm run lint     # ESLint
 ```
 
 ---
@@ -230,6 +267,14 @@ tropek/
 │       ├── data/slo/           SLO YAML test fixtures (human-readable)
 │       ├── data/results/       CSV / JMeter test fixtures
 │       └── engine/             Unit tests for pure evaluation logic
+├── ui/                         React SPA (Vite + TypeScript)
+│   ├── src/
+│   │   ├── features/           Feature modules (evaluations, assets, navigator, SLOs, SLIs)
+│   │   ├── components/         Shared UI (shadcn/ui) and chart components (ECharts)
+│   │   ├── pages/              Route handlers (Navigator, SLO Registry, Evaluation Detail)
+│   │   ├── mocks/              MSW handlers + deterministic data generator
+│   │   └── lib/                Theme, query keys, formatting utilities
+│   └── package.json
 ├── adapters/
 │   └── prometheus/             Standalone Prometheus query adapter
 ├── config.yaml                 Non-secret runtime configuration
