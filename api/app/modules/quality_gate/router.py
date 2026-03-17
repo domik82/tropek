@@ -6,6 +6,7 @@ import uuid
 from datetime import datetime
 from typing import Any
 
+from arq.connections import ArqRedis
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -44,7 +45,7 @@ from app.modules.quality_gate.schemas import (
 from app.modules.quality_gate.trigger import resolve_single_trigger
 from app.modules.sli_registry.repository import SLIRepository
 from app.modules.slo_registry.repository import SLORepository
-from app.queue import enqueue_evaluation
+from app.queue import get_arq_pool
 
 router = APIRouter()
 
@@ -110,6 +111,7 @@ def _build_detail(ev: Any) -> EvaluationDetail:
 async def trigger_evaluation(
     body: TriggerRequest,
     session: AsyncSession = Depends(get_session),  # noqa: B008
+    arq_pool: ArqRedis = Depends(get_arq_pool),  # noqa: B008
 ) -> TriggerResponse:
     """Trigger a single asset evaluation."""
     asset_repo = AssetRepository(session)
@@ -148,7 +150,7 @@ async def trigger_evaluation(
         adapter_used=ctx.adapter_type,
     )
     await session.commit()
-    await enqueue_evaluation(ev.id)
+    await arq_pool.enqueue_job("run_evaluation_job", str(ev.id))
     return TriggerResponse(id=ev.id, status="pending")
 
 
@@ -156,6 +158,7 @@ async def trigger_evaluation(
 async def trigger_batch(
     body: BatchTriggerRequest,
     session: AsyncSession = Depends(get_session),  # noqa: B008
+    arq_pool: ArqRedis = Depends(get_arq_pool),  # noqa: B008
 ) -> BatchTriggerResponse:
     """Trigger evaluations for all assets in a group."""
     group_repo = AssetGroupRepository(session)
@@ -234,7 +237,7 @@ async def trigger_batch(
     await session.commit()
 
     for eid in evaluation_ids:
-        await enqueue_evaluation(eid)
+        await arq_pool.enqueue_job("run_evaluation_job", str(eid))
 
     return BatchTriggerResponse(
         batch_id=batch.id,

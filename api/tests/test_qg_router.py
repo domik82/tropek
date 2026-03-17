@@ -2,11 +2,12 @@
 from __future__ import annotations
 
 import uuid
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from app.db.session import get_session
 from app.main import app
+from app.queue import get_arq_pool
 from fastapi.testclient import TestClient
 
 
@@ -44,8 +45,11 @@ async def _mock_session():
 
 @pytest.fixture
 def client():
+    mock_pool = AsyncMock()
     app.dependency_overrides[get_session] = _mock_session
-    yield TestClient(app)
+    app.dependency_overrides[get_arq_pool] = lambda: mock_pool
+    with patch("app.main.create_pool", return_value=mock_pool), TestClient(app) as c:
+        yield c
     app.dependency_overrides.clear()
 
 

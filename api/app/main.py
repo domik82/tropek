@@ -1,5 +1,10 @@
 """TROPEK API — FastAPI application entry point."""
 
+from __future__ import annotations
+
+from collections.abc import AsyncGenerator
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 
 from app.modules.assets.router import router as assets_router
@@ -7,8 +12,18 @@ from app.modules.datasource.router import router as datasource_router
 from app.modules.quality_gate.router import router as quality_gate_router
 from app.modules.sli_registry.router import router as sli_router
 from app.modules.slo_registry.router import router as slo_router
+from app.queue import _redis_settings, create_pool
 
-app = FastAPI(title="TROPEK API", version="0.2.0")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
+    """Open the arq pool at startup; close it on shutdown."""
+    app.state.arq_pool = await create_pool(_redis_settings())
+    yield
+    await app.state.arq_pool.close()
+
+
+app = FastAPI(title="TROPEK API", version="0.2.0", lifespan=lifespan)
 
 # No prefix= — every router defines full absolute paths
 app.include_router(assets_router)

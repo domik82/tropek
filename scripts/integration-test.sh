@@ -57,7 +57,7 @@ uv run --directory api uvicorn app.main:app --host 127.0.0.1 --port $E2E_API_POR
 PIDS+=($!)
 
 echo "=== Step 5b: Start arq worker (background) ==="
-uv run --directory api arq app.queue.WorkerSettings &
+PYTHONPATH=. uv run --directory api arq app.queue.WorkerSettings &
 PIDS+=($!)
 
 # Wait for services to be ready
