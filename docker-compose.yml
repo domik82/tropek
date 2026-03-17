@@ -118,8 +118,44 @@ services:
     profiles:
       - test
 
+  # --- E2E integration test infrastructure (dedicated ports, no dev conflicts) ---
+  timescaledb-e2e:
+    image: timescale/timescaledb:latest-pg16
+    environment:
+      POSTGRES_USER: tropek_e2e
+      POSTGRES_PASSWORD: tropek_e2e
+      POSTGRES_DB: tropek_e2e
+    ports:
+      - "5434:5432"
+    volumes:
+      - timescaledb_e2e_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U tropek_e2e -d tropek_e2e"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    profiles:
+      - e2e
+
+  redis-e2e:
+    image: redis:7-alpine
+    command: redis-server --appendonly yes --requirepass e2e_redis
+    ports:
+      - "6380:6379"
+    volumes:
+      - redis_e2e_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "e2e_redis", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    profiles:
+      - e2e
+
 volumes:
   timescaledb_data:
   redis_data:
   results_data:
   timescaledb_test_data:
+  timescaledb_e2e_data:
+  redis_e2e_data:
