@@ -97,6 +97,22 @@ export function EvaluationDetailPage() {
                 </span>
               </div>
             )}
+            {ev.original_result && (
+              <div className="mt-2 flex flex-col gap-1">
+                <span className="text-xs text-amber-300 bg-amber-900/20 border border-amber-700/30 px-2 py-1 rounded inline-flex flex-wrap items-center gap-x-1.5">
+                  <span className="font-medium">Status overridden</span>
+                  <span className="text-amber-500">
+                    {ev.original_result} → {ev.result}
+                  </span>
+                  {ev.override_author && (
+                    <span>by <span className="text-amber-200">{ev.override_author}</span></span>
+                  )}
+                  {ev.override_reason && (
+                    <span className="text-amber-400/80">— {ev.override_reason}</span>
+                  )}
+                </span>
+              </div>
+            )}
           </>
         }
         actions={

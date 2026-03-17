@@ -34,6 +34,9 @@ export interface EvaluationSummary {
   ingestion_mode: string
   adapter_used: string | null
   invalidated: boolean
+  original_result: string | null
+  override_reason: string | null
+  override_author: string | null
   asset_snapshot: {
     name: string
     tags: Record<string, string>

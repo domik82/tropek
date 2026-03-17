@@ -76,8 +76,8 @@ export function useOverrideStatus(evalId: string) {
   return useMutation({
     mutationFn: (payload: { new_result: string; reason: string; author: string }) =>
       overrideStatus(evalId, payload),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: evaluationKeys.detail(evalId) })
+    onSuccess: (data) => {
+      qc.setQueryData(evaluationKeys.detail(evalId), data)
       qc.invalidateQueries({ queryKey: evaluationKeys.all })
     },
   })
