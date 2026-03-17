@@ -78,9 +78,17 @@ curl -sf http://localhost:$API_PORT/health > /dev/null 2>&1 || { echo "ERROR: AP
 echo "=== Applying bootstrap manifests ==="
 uv run --directory clients/python python ../../scripts/bootstrap.py "http://localhost:$API_PORT"
 
+echo "=== Installing UI dependencies ==="
+npm --prefix ui install
+
+echo "=== Starting UI (background) ==="
+npm --prefix ui run dev &
+PIDS+=($!)
+
 echo ""
 echo "============================================"
 echo "  Dev environment ready"
+echo "  UI:    http://localhost:5173"
 echo "  API:   http://localhost:$API_PORT"
 echo "  Docs:  http://localhost:$API_PORT/docs"
 echo ""
