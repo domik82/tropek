@@ -82,6 +82,15 @@ services:
       QG_ADAPTER_PROMETHEUS_USERNAME: ${QG_ADAPTER_PROMETHEUS_USERNAME:-}
       QG_ADAPTER_PROMETHEUS_PASSWORD: ${QG_ADAPTER_PROMETHEUS_PASSWORD:-}
 
+  adapter-mock:
+    build:
+      context: ./adapters/mock
+      dockerfile: Dockerfile
+    ports:
+      - "8082:8082"
+    volumes:
+      - ./adapters/mock/data:/app/data:ro
+
   ui:
     build:
       context: ./ui
