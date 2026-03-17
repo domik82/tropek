@@ -56,6 +56,10 @@ echo "=== Step 5: Start API on :$E2E_API_PORT (background) ==="
 uv run --directory api uvicorn app.main:app --host 127.0.0.1 --port $E2E_API_PORT &
 PIDS+=($!)
 
+echo "=== Step 5b: Start arq worker (background) ==="
+uv run --directory api arq app.queue.WorkerSettings &
+PIDS+=($!)
+
 # Wait for services to be ready
 echo "    waiting for services..."
 for i in $(seq 1 15); do
