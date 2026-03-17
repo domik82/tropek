@@ -2,16 +2,25 @@
 
 from __future__ import annotations
 
+import asyncio
 import uuid
 from typing import Any, ClassVar, cast
 
 from arq import create_pool
 from arq.connections import ArqRedis, RedisSettings
 from fastapi import Request
+from sqlalchemy.exc import DBAPIError
 
 from app.config import get_settings
 from app.db.session import get_session_factory
 from app.modules.quality_gate.worker import run_evaluation
+
+_MAX_DEADLOCK_RETRIES = 3
+
+
+def _is_deadlock(exc: DBAPIError) -> bool:
+    """Return True if the exception is a PostgreSQL deadlock (SQLSTATE 40P01)."""
+    return "deadlock" in str(exc).lower()
 
 
 def _redis_settings() -> RedisSettings:
@@ -40,15 +49,30 @@ async def create_arq_pool() -> ArqRedis:
 
 
 async def run_evaluation_job(ctx: dict[str, Any], eval_id_str: str) -> None:
-    """Arq job function — wraps run_evaluation with a DB session."""
+    """Arq job function — wraps run_evaluation with a DB session.
+
+    Retries up to _MAX_DEADLOCK_RETRIES times on PostgreSQL deadlock errors.
+    Deadlocks are safe to retry because the entire transaction is rolled back
+    before the error surfaces, leaving the evaluation in its original PENDING state.
+    """
     session_factory = get_session_factory()
-    async with session_factory() as session:
-        try:
-            await run_evaluation(session, uuid.UUID(eval_id_str))
-            await session.commit()
-        except Exception:
-            await session.rollback()
-            raise
+    eval_id = uuid.UUID(eval_id_str)
+
+    for attempt in range(_MAX_DEADLOCK_RETRIES):
+        async with session_factory() as session:
+            try:
+                await run_evaluation(session, eval_id)
+                await session.commit()
+                return
+            except DBAPIError as exc:
+                await session.rollback()
+                if _is_deadlock(exc) and attempt < _MAX_DEADLOCK_RETRIES - 1:
+                    await asyncio.sleep(0.1 * 2**attempt)
+                    continue
+                raise
+            except Exception:
+                await session.rollback()
+                raise
 
 
 class WorkerSettings:

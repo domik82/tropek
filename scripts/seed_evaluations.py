@@ -4,10 +4,6 @@ Triggers 40 evaluations (4 assets x 10 time windows) spread across
 48 hours of mock data. Two windows fall in the degraded period
 (2026-03-15T18:00Z - 2026-03-16T00:00Z) to produce failures.
 
-Evaluations are triggered sequentially (one at a time) to avoid
-TimescaleDB deadlocks caused by concurrent chunk-creation when arq
-runs multiple jobs in parallel.
-
 Usage: uv run --directory clients/python python ../../scripts/seed_evaluations.py <api_url>
 """
 
@@ -44,48 +40,51 @@ WINDOWS = [
 TERMINAL_STATUSES = {"completed", "failed", "partial"}
 
 
-def _wait(client: TropekClient, eval_id: str, timeout: int = 60) -> object:
-    """Poll a single evaluation until it reaches a terminal status."""
-    for _ in range(timeout):
-        ev = client.evaluations.get(eval_id)
-        if ev.status in TERMINAL_STATUSES:
-            return ev
-        time.sleep(1)
-    raise TimeoutError(f"evaluation {eval_id} did not complete within {timeout}s")
-
-
 def main() -> None:
-    """Trigger evaluations one at a time and report results."""
+    """Trigger all evaluations, then poll until every one completes."""
     if len(sys.argv) != 2:
         print(f"usage: {sys.argv[0]} <api_url>", file=sys.stderr)
         sys.exit(1)
 
     client = TropekClient(sys.argv[1])
     total = len(ASSETS) * len(WINDOWS)
-    results = []
+    print(f"Triggering {total} evaluations...")
 
+    eval_ids: list[str] = []
     for asset_idx, (asset_name, slo_name) in enumerate(ASSETS):
         for window_idx, (start, end) in enumerate(WINDOWS):
-            n = asset_idx * len(WINDOWS) + window_idx + 1
-            print(f"  [{n}/{total}] {asset_name}  {start[:13]}...", end=" ", flush=True)
-
-            triggered = client.evaluations.trigger(
+            result = client.evaluations.trigger(
                 asset_name,
                 f"seed-{asset_idx}-{window_idx}",
                 slo_name,
                 start,
                 end,
             )
-            ev = _wait(client, triggered["id"])
-            results.append(ev)
-            print(ev.result or ev.status)
+            eval_ids.append(result["id"])
 
+    print(f"Triggered {len(eval_ids)}, waiting for completion...")
+    pending = set(eval_ids)
+    for _ in range(180):
+        still_pending: set[str] = set()
+        for eid in pending:
+            ev = client.evaluations.get(str(eid))
+            if ev.status not in TERMINAL_STATUSES:
+                still_pending.add(eid)
+        pending = still_pending
+        done = len(eval_ids) - len(pending)
+        print(f"  {done}/{len(eval_ids)} complete...", end="\r", flush=True)
+        if not pending:
+            break
+        time.sleep(2)
+
+    print()
+    results = [client.evaluations.get(str(eid)) for eid in eval_ids]
     passed = sum(1 for e in results if e.result == "pass")
     failed = sum(1 for e in results if e.result == "fail")
     warning = sum(1 for e in results if e.result == "warning")
     completed = sum(1 for e in results if e.status == "completed")
     print(
-        f"\nseeded: {completed}/{total} completed — {passed} pass, {warning} warning, {failed} fail"
+        f"seeded: {completed}/{total} completed — {passed} pass, {warning} warning, {failed} fail"
     )
 
 
