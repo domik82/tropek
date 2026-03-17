@@ -82,7 +82,7 @@ echo "=== Installing UI dependencies ==="
 npm --prefix ui install --legacy-peer-deps
 
 echo "=== Starting UI (background) ==="
-npm --prefix ui run dev &
+VITE_USE_MOCKS=false npm --prefix ui run dev &
 PIDS+=($!)
 
 echo ""

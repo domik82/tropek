@@ -18,5 +18,11 @@ export default defineConfig({
       usePolling: true,
       interval: 300,
     },
+    proxy: {
+      '/api': {
+        target: process.env.VITE_API_URL ?? 'http://localhost:9080',
+        rewrite: (path) => path.replace(/^\/api/, ''),
+      },
+    },
   },
 })
