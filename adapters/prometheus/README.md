@@ -78,35 +78,8 @@ Response 200:
 
 ## Architecture
 
-```mermaid
-flowchart LR
-    API[TROPEK API / Worker] -->|POST /query| AD[Prometheus Adapter :8081]
-    AD -->|PromQL via HTTP| P[Prometheus :9090]
-    P -->|time-series data| AD
-    AD -->|aggregated scalars| API
-```
-
-The adapter sits between TROPEK's evaluation worker and Prometheus. It:
-
-1. Receives a map of metric names → PromQL queries plus a time range
-2. Executes each query against the Prometheus HTTP API (`/api/v1/query_range`)
-3. Aggregates the time-series result into a single scalar per metric
-4. Returns values and any per-metric errors
-
-This separation keeps Prometheus-specific logic out of the core API and allows swapping data sources by writing new adapters with the same `/query` interface.
-
-## Project structure
-
-```
-adapters/prometheus/
-├── app/
-│   ├── __init__.py
-│   └── main.py          # FastAPI app + /health endpoint
-├── tests/
-│   └── __init__.py
-├── pyproject.toml        # Dependencies (fastapi, httpx, tenacity, structlog)
-└── README.md
-```
+See [docs/architecture.md](docs/architecture.md) for the adapter's architecture,
+planned query interface, error handling, and the adapter contract.
 
 ## Tests
 
