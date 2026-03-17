@@ -7,7 +7,7 @@ metadata:
     env: dev
 spec:
   adapter_type: prometheus
-  adapter_url: http://adapter-mock:8082
+  adapter_url: http://127.0.0.1:9082
 ---
 api_version: tropek/v1
 kind: DataSource
@@ -18,4 +18,4 @@ metadata:
     env: dev
 spec:
   adapter_type: mock
-  adapter_url: http://adapter-mock:8082
+  adapter_url: http://127.0.0.1:9082
