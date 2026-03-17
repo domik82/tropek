@@ -78,6 +78,9 @@ curl -sf http://localhost:$API_PORT/health > /dev/null 2>&1 || { echo "ERROR: AP
 echo "=== Applying bootstrap manifests ==="
 uv run --directory clients/python python ../../scripts/bootstrap.py "http://localhost:$API_PORT"
 
+echo "=== Seeding historical evaluations ==="
+uv run --directory clients/python python ../../scripts/seed_evaluations.py "http://localhost:$API_PORT"
+
 echo "=== Installing UI dependencies ==="
 npm --prefix ui install --legacy-peer-deps
 
