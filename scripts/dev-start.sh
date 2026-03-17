@@ -12,6 +12,8 @@ set -euo pipefail
 #
 # Prerequisites: docker compose available, uv installed
 
+cd "$(dirname "$0")/.."
+
 DB_PORT=5434
 REDIS_PORT=6380
 API_PORT=9080

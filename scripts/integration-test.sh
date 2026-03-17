@@ -8,6 +8,8 @@ set -euo pipefail
 #
 # Prerequisites: docker compose available, uv installed
 
+cd "$(dirname "$0")/.."
+
 # --- E2E-dedicated ports (never conflict with dev) ---
 E2E_DB_PORT=5434
 E2E_REDIS_PORT=6380
