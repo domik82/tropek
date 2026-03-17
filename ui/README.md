@@ -130,6 +130,11 @@ Theme and font size persist in localStorage (`tropek-theme`, `tropek-font-size`)
 
 ## Architecture
 
+For detailed architecture documentation, see:
+- [docs/architecture.md](docs/architecture.md) -- Tech stack, directory structure, theming, state management
+- [docs/features.md](docs/features.md) -- Feature module breakdown (evaluations, assets, navigator, SLOs, SLIs)
+- [docs/mocking.md](docs/mocking.md) -- MSW mock system and deterministic data generator
+
 ### Data flow
 
 ```mermaid
