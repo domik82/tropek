@@ -364,6 +364,7 @@ def _create(client: Any, doc: ManifestDocument) -> None:
             client.sli_definitions.create(
                 name,
                 indicators=doc.spec["indicators"],
+                adapter_type=doc.spec.get("adapter_type", "prometheus"),
                 display_name=doc.metadata.get("display_name"),
                 notes=doc.metadata.get("notes"),
                 author=doc.metadata.get("author"),
@@ -428,6 +429,7 @@ def _update(client: Any, doc: ManifestDocument) -> None:
             client.sli_definitions.create(
                 name,
                 indicators=doc.spec["indicators"],
+                adapter_type=doc.spec.get("adapter_type", "prometheus"),
                 display_name=doc.metadata.get("display_name"),
                 notes=doc.metadata.get("notes"),
                 author=doc.metadata.get("author"),
