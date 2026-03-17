@@ -190,5 +190,65 @@ assert result.original_result is None
 print('PASS: override + restore')
 "
 
+echo "=== Step 12: Override failed eval result to pass ==="
+uv run --directory clients/python python -c "
+from tropek_client import TropekClient
+client = TropekClient('$API_URL')
+
+# Get an eval that has a real result (completed)
+evals = client.evaluations.list(asset_name='checkout-api')
+completed = [e for e in evals.items if e.status == 'completed']
+assert completed, 'expected at least one completed eval'
+eval_id = str(completed[0].id)
+original_result = completed[0].result
+
+# Override to pass
+result = client.evaluations.override_status(eval_id, 'pass', 'manual override to pass', 'test-runner')
+assert result.result == 'pass', f'expected pass, got {result.result}'
+assert result.original_result == original_result, f'expected original_result={original_result}, got {result.original_result}'
+print(f'overridden: {original_result} -> pass')
+
+# Restore
+result = client.evaluations.restore_override(eval_id)
+assert result.result == original_result, f'expected {original_result} after restore, got {result.result}'
+assert result.original_result is None
+print('PASS: override result to pass + restore')
+"
+
+echo "=== Step 13: Add and verify annotations on an evaluation ==="
+uv run --directory clients/python python -c "
+from tropek_client import TropekClient
+client = TropekClient('$API_URL')
+
+evals = client.evaluations.list(asset_name='checkout-api')
+assert evals.items, 'expected evaluations'
+eval_id = str(evals.items[0].id)
+
+# Create annotation
+ann = client.annotations.create(eval_id, 'deployment looked fine, ignoring regression', author='test-runner', category='deployment')
+assert ann.content == 'deployment looked fine, ignoring regression'
+assert ann.author == 'test-runner'
+ann_id = str(ann.id)
+print(f'created annotation: {ann_id}')
+
+# List — should contain the annotation
+anns = client.annotations.list(eval_id)
+found = [a for a in anns if str(a.id) == ann_id]
+assert found, f'annotation {ann_id} not found in list'
+print(f'listed {len(anns)} annotation(s)')
+
+# Update content
+updated = client.annotations.update(eval_id, ann_id, content='updated note')
+assert updated.content == 'updated note'
+print('updated annotation content')
+
+# Delete
+client.annotations.delete(eval_id, ann_id)
+anns_after = client.annotations.list(eval_id)
+remaining = [a for a in anns_after if str(a.id) == ann_id]
+assert not remaining, 'annotation still present after delete'
+print('PASS: create, list, update, delete annotation')
+"
+
 echo ""
 echo "=== All integration tests passed ==="
