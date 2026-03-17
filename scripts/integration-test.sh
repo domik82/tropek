@@ -72,5 +72,8 @@ done
 curl -sf http://localhost:$E2E_API_PORT/health > /dev/null 2>&1 || { echo "ERROR: API did not start"; exit 1; }
 echo "    services ready"
 
-echo "=== Steps 6-13: Run integration tests ==="
+echo "=== Step 6: Apply bootstrap manifests ==="
+uv run --directory clients/python python ../../scripts/bootstrap.py "http://localhost:$E2E_API_PORT"
+
+echo "=== Steps 7-13: Run integration tests ==="
 uv run --directory clients/python python ../../scripts/e2e_tests.py "http://localhost:$E2E_API_PORT"
