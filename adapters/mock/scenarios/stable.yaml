@@ -1,0 +1,25 @@
+name: stable
+namespaces:
+  - prometheus-local
+  - mock-dc-b
+metrics:
+  response_time_p99:
+    baseline: 450
+    phases:
+      - duration_hours: 48
+        pattern: stable
+        jitter_pct: 5
+  error_rate:
+    baseline: 0.001
+    phases:
+      - duration_hours: 48
+        pattern: stable
+        jitter_pct: 10
+  availability:
+    baseline: 99.95
+    phases:
+      - duration_hours: 48
+        pattern: stable
+        jitter_pct: 0.05
+interval_minutes: 5
+start: "2026-03-15T00:00:00Z"
