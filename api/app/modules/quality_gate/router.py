@@ -328,7 +328,7 @@ async def get_metric_heatmap(
                     slot=ev.period_start,
                     metric=metric_name,
                     display_name=ir.get("display_name", metric_name),
-                    result=ir.get("status", "error"),
+                    result="invalidated" if ev.invalidated else ir.get("status", "error"),
                     score=ir.get("score", 0.0),
                     eval_id=ev.id,
                 )
