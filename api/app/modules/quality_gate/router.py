@@ -9,15 +9,24 @@ from typing import Any
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.db.models import AssetGroupSLOLink, AssetSLOLink, EvaluationBatch
 from app.db.session import get_session
-from app.modules.assets.repository import AssetGroupRepository, AssetRepository
+from app.modules.assets.repository import (
+    AssetGroupRepository,
+    AssetGroupSLOLinkRepository,
+    AssetRepository,
+    AssetSLOLinkRepository,
+)
 from app.modules.common.errors import raise_not_found
 from app.modules.common.schemas import PagedResponse
+from app.modules.datasource.repository import DataSourceRepository
 from app.modules.quality_gate.repository import EvaluationRepository
 from app.modules.quality_gate.schemas import (
     AnnotationCreate,
     AnnotationRead,
     AnnotationUpdate,
+    BatchTriggerRequest,
+    BatchTriggerResponse,
     EvaluationDetail,
     EvaluationSummary,
     FailingIndicator,
@@ -29,7 +38,12 @@ from app.modules.quality_gate.schemas import (
     OverrideStatusRequest,
     PinBaselineRequest,
     TrendPoint,
+    TriggerRequest,
+    TriggerResponse,
 )
+from app.modules.quality_gate.trigger import resolve_single_trigger
+from app.modules.sli_registry.repository import SLIRepository
+from app.modules.slo_registry.repository import SLORepository
 
 router = APIRouter()
 
@@ -89,6 +103,140 @@ def _build_detail(ev: Any) -> EvaluationDetail:
 
 
 # ---- Evaluations ----
+
+
+@router.post("/evaluations", response_model=TriggerResponse, status_code=202)
+async def trigger_evaluation(
+    body: TriggerRequest,
+    session: AsyncSession = Depends(get_session),  # noqa: B008
+) -> TriggerResponse:
+    """Trigger a single asset evaluation."""
+    asset_repo = AssetRepository(session)
+    slo_link_repo = AssetSLOLinkRepository(session)
+    sli_repo = SLIRepository(session)
+    slo_repo = SLORepository(session)
+    ds_repo = DataSourceRepository(session)
+
+    try:
+        ctx = await resolve_single_trigger(
+            asset_name=body.asset_name,
+            slo_name=body.slo_name,
+            asset_repo=asset_repo,
+            slo_link_repo=slo_link_repo,
+            sli_repo=sli_repo,
+            slo_repo=slo_repo,
+            ds_repo=ds_repo,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+    eval_repo = EvaluationRepository(session)
+    ev = await eval_repo.create_pending(
+        name=body.test_name,
+        period_start=body.period_start,
+        period_end=body.period_end,
+        ingestion_mode="pull",
+        asset_snapshot={"name": ctx.asset_name, "tags": ctx.asset_labels},
+        metadata=body.metadata,
+        asset_id=ctx.asset_id,
+        slo_name=ctx.slo_name,
+        slo_version=ctx.slo_version,
+        sli_name=ctx.sli_name,
+        sli_version=ctx.sli_version,
+        data_source_name=ctx.data_source_name,
+        adapter_used=ctx.adapter_type,
+    )
+    # TODO: enqueue arq job here — await arq_pool.enqueue_job("run_evaluation", ev.id)
+    return TriggerResponse(id=ev.id, status="pending")
+
+
+@router.post("/evaluations/batch", response_model=BatchTriggerResponse, status_code=202)
+async def trigger_batch(
+    body: BatchTriggerRequest,
+    session: AsyncSession = Depends(get_session),  # noqa: B008
+) -> BatchTriggerResponse:
+    """Trigger evaluations for all assets in a group."""
+    group_repo = AssetGroupRepository(session)
+    group = await group_repo.get_by_name(body.group_name)
+    if group is None:
+        raise HTTPException(status_code=404, detail=f"asset group '{body.group_name}' not found")
+
+    asset_repo = AssetRepository(session)
+    slo_link_repo = AssetSLOLinkRepository(session)
+    sli_repo = SLIRepository(session)
+    slo_repo = SLORepository(session)
+    ds_repo = DataSourceRepository(session)
+    eval_repo = EvaluationRepository(session)
+
+    # Collect all SLO links for group members + group-level links
+    group_link_repo = AssetGroupSLOLinkRepository(session)
+    group_links = await group_link_repo.list_by_group(group.id)
+
+    evaluation_ids: list[uuid.UUID] = []
+    for member in group.members:
+        # Get asset-level SLO links
+        asset = await asset_repo.get_by_name(member.asset_name)
+        if asset is None:
+            continue
+        asset_links = await slo_link_repo.list_by_asset(asset.id)
+        # Combine asset links + group links (deduplicate by slo_name)
+        all_links: dict[str, AssetSLOLink | AssetGroupSLOLink] = {
+            lnk.slo_name: lnk for lnk in asset_links
+        }
+        for gl in group_links:
+            if gl.slo_name not in all_links:
+                all_links[gl.slo_name] = gl
+
+        for slo_name in all_links:
+            try:
+                ctx = await resolve_single_trigger(
+                    asset_name=asset.name,
+                    slo_name=slo_name,
+                    asset_repo=asset_repo,
+                    slo_link_repo=slo_link_repo,
+                    sli_repo=sli_repo,
+                    slo_repo=slo_repo,
+                    ds_repo=ds_repo,
+                )
+            except ValueError:
+                continue
+
+            ev = await eval_repo.create_pending(
+                name=body.test_name,
+                period_start=body.period_start,
+                period_end=body.period_end,
+                ingestion_mode="pull",
+                asset_snapshot={"name": ctx.asset_name, "tags": ctx.asset_labels},
+                metadata=body.metadata,
+                asset_id=ctx.asset_id,
+                slo_name=ctx.slo_name,
+                slo_version=ctx.slo_version,
+                sli_name=ctx.sli_name,
+                sli_version=ctx.sli_version,
+                data_source_name=ctx.data_source_name,
+                adapter_used=ctx.adapter_type,
+            )
+            evaluation_ids.append(ev.id)
+            # TODO: enqueue arq job
+
+    # Create batch record
+    batch = EvaluationBatch(
+        evaluation_ids=[str(eid) for eid in evaluation_ids],
+        trigger_params={
+            "group_name": body.group_name,
+            "test_name": body.test_name,
+            "period_start": body.period_start.isoformat(),
+            "period_end": body.period_end.isoformat(),
+        },
+    )
+    session.add(batch)
+    await session.flush()
+
+    return BatchTriggerResponse(
+        batch_id=batch.id,
+        evaluation_ids=evaluation_ids,
+        status="pending",
+    )
 
 
 @router.get("/evaluations", response_model=PagedResponse[EvaluationSummary])
