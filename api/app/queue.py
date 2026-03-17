@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import random
 import uuid
 from typing import Any, ClassVar, cast
 
@@ -15,7 +16,7 @@ from app.config import get_settings
 from app.db.session import get_session_factory
 from app.modules.quality_gate.worker import run_evaluation
 
-_MAX_DEADLOCK_RETRIES = 3
+_MAX_DEADLOCK_RETRIES = 8
 
 
 def _is_deadlock(exc: DBAPIError) -> bool:
@@ -67,7 +68,8 @@ async def run_evaluation_job(ctx: dict[str, Any], eval_id_str: str) -> None:
             except DBAPIError as exc:
                 await session.rollback()
                 if _is_deadlock(exc) and attempt < _MAX_DEADLOCK_RETRIES - 1:
-                    await asyncio.sleep(0.1 * 2**attempt)
+                    base = 0.1 * 2**attempt
+                    await asyncio.sleep(base + random.uniform(0, base))  # noqa: S311
                     continue
                 raise
             except Exception:
