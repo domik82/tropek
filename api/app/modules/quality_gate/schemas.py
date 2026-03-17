@@ -175,3 +175,39 @@ class MetricHeatmapResponse(BaseModel):
     slots: list[datetime]
     metrics: list[HeatmapMetric]
     cells: list[HeatmapCell]
+
+
+class TriggerRequest(BaseModel):
+    """Request body for triggering a single evaluation."""
+
+    asset_name: str
+    test_name: str
+    slo_name: str
+    period_start: datetime
+    period_end: datetime
+    metadata: dict[str, str] = {}
+
+
+class TriggerResponse(BaseModel):
+    """Response from evaluation trigger."""
+
+    id: uuid.UUID
+    status: str
+
+
+class BatchTriggerRequest(BaseModel):
+    """Request body for triggering a group evaluation batch."""
+
+    group_name: str
+    test_name: str
+    period_start: datetime
+    period_end: datetime
+    metadata: dict[str, str] = {}
+
+
+class BatchTriggerResponse(BaseModel):
+    """Response from batch trigger."""
+
+    batch_id: uuid.UUID
+    evaluation_ids: list[uuid.UUID]
+    status: str
