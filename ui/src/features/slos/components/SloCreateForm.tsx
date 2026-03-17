@@ -15,6 +15,11 @@ const objSchema = z.object({
   key_sli: z.boolean(),
 })
 
+const labelSchema = z.object({
+  key: z.string().min(1),
+  value: z.string(),
+})
+
 const formSchema = z.object({
   name: z.string().min(1, 'Required').regex(/^[a-z0-9-]+$/, 'Lowercase, numbers and hyphens only'),
   display_name: z.string(),
@@ -27,6 +32,7 @@ const formSchema = z.object({
   total_score_pass_pct: z.coerce.number().min(0).max(100),
   total_score_warning_pct: z.coerce.number().min(0).max(100),
   objectives: z.array(objSchema),
+  labels: z.array(labelSchema),
 })
 
 type FormValues = z.infer<typeof formSchema>
@@ -40,6 +46,7 @@ const DEFAULTS: FormValues = {
   total_score_pass_pct: 90,
   total_score_warning_pct: 75,
   objectives: [],
+  labels: [],
 }
 
 // ── Shared styles ──────────────────────────────────────────────────────────────
@@ -67,6 +74,7 @@ export function SloCreateForm({ onCancel, onSaved }: Props) {
   })
 
   const objectives = useFieldArray({ control, name: 'objectives' })
+  const labels = useFieldArray({ control, name: 'labels' })
 
   function onSubmit(values: FormValues) {
     create.mutate(
@@ -92,6 +100,9 @@ export function SloCreateForm({ onCancel, onSaved }: Props) {
           include_result_with_score: values.include_result_with_score,
           aggregate_function: values.aggregate_function,
         },
+        meta: Object.fromEntries(
+          values.labels.filter(l => l.key).map(l => [l.key, l.value])
+        ),
       },
       { onSuccess: () => onSaved() },
     )
@@ -175,9 +186,54 @@ export function SloCreateForm({ onCancel, onSaved }: Props) {
         </div>
       </div>
 
+      {/* Labels */}
+      <div className="space-y-3">
+        <div className="flex items-center gap-3">
+          <SectionLabel>Labels</SectionLabel>
+          <button
+            type="button"
+            onClick={() => labels.append({ key: '', value: '' })}
+            className="px-3 py-1.5 text-xs font-medium rounded border bg-indigo-600 border-indigo-600 text-white hover:bg-indigo-500 transition-colors"
+          >
+            + Add label
+          </button>
+        </div>
+        {labels.fields.length === 0 && (
+          <p className="text-xs text-slate-600 italic">No labels yet.</p>
+        )}
+        {labels.fields.length > 0 && (
+          <div className="rounded-lg border border-slate-700 overflow-x-auto">
+            <table className="w-full text-xs">
+              <thead className="bg-slate-800/60 border-b border-slate-700 text-slate-400 uppercase">
+                <tr>
+                  <th className="text-left px-2 py-2">Key</th>
+                  <th className="text-left px-2 py-2">Value</th>
+                  <th className="w-8"></th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-800">
+                {labels.fields.map((f, i) => (
+                  <tr key={f.id} className="hover:bg-slate-800/30">
+                    <td className="px-2 py-1.5">
+                      <input {...register(`labels.${i}.key`)} className={inp + ' font-mono'} placeholder="env" />
+                    </td>
+                    <td className="px-2 py-1.5">
+                      <input {...register(`labels.${i}.value`)} className={inp} placeholder="production" />
+                    </td>
+                    <td className="px-2 py-1.5 text-center">
+                      <button type="button" onClick={() => labels.remove(i)} className="text-red-400 hover:text-red-300">✕</button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
       {/* Objectives */}
       <div className="space-y-3">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
           <SectionLabel>Objectives</SectionLabel>
           <button
             type="button"
@@ -185,7 +241,7 @@ export function SloCreateForm({ onCancel, onSaved }: Props) {
               sli: '', display_name: '', pass_criteria: '', warning_criteria: '',
               weight: 1, key_sli: false,
             })}
-            className="text-xs text-slate-400 hover:text-slate-200 transition-colors"
+            className="px-3 py-1.5 text-xs font-medium rounded border bg-indigo-600 border-indigo-600 text-white hover:bg-indigo-500 transition-colors"
           >
             + Add objective
           </button>
