@@ -93,6 +93,13 @@ class EvaluationSummary(BaseModel):
     ingestion_mode: str
     adapter_used: str | None
     invalidated: bool
+    baseline_pinned_at: datetime | None = None
+    baseline_unpinned_at: datetime | None = None
+    baseline_pin_reason: str | None = None
+    baseline_pin_author: str | None = None
+    original_result: str | None = None
+    override_reason: str | None = None
+    override_author: str | None = None
     asset_snapshot: dict[str, Any]
     evaluation_metadata: dict[str, Any]
     annotation_count: int = 0
@@ -126,3 +133,45 @@ class TrendPoint(BaseModel):
     eval_id: uuid.UUID
     result: str
     baseline: float | None
+
+
+class PinBaselineRequest(BaseModel):
+    """Request body for pinning an evaluation as baseline."""
+
+    reason: str
+    author: str
+
+
+class OverrideStatusRequest(BaseModel):
+    """Request body for overriding evaluation result."""
+
+    new_result: str
+    reason: str
+    author: str
+
+
+class HeatmapMetric(BaseModel):
+    """A metric definition in the heatmap grid."""
+
+    name: str
+    display_name: str
+
+
+class HeatmapCell(BaseModel):
+    """A single cell in the metric heatmap grid."""
+
+    slot: datetime
+    metric: str
+    display_name: str
+    result: str
+    score: float
+    eval_id: uuid.UUID
+
+
+class MetricHeatmapResponse(BaseModel):
+    """Response for the metric heatmap endpoint."""
+
+    asset_name: str
+    slots: list[datetime]
+    metrics: list[HeatmapMetric]
+    cells: list[HeatmapCell]
