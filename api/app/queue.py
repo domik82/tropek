@@ -1,18 +1,19 @@
-"""arq job queue integration — pool management and worker settings."""
+"""arq job queue — worker settings and pool dependency."""
 
 from __future__ import annotations
 
 import uuid
-from typing import Any, ClassVar
+from typing import Any, ClassVar, cast
 
 from arq import create_pool
 from arq.connections import ArqRedis, RedisSettings
+from fastapi import Request
 
 from app.config import get_settings
 from app.db.session import get_session_factory
 from app.modules.quality_gate.worker import run_evaluation
 
-_pool: ArqRedis | None = None
+__all__ = ["WorkerSettings", "create_pool", "get_arq_pool", "run_evaluation_job"]
 
 
 def _redis_settings() -> RedisSettings:
@@ -27,18 +28,9 @@ def _redis_settings() -> RedisSettings:
     )
 
 
-async def get_arq_pool() -> ArqRedis:
-    """Return the shared arq connection pool, creating it on first call."""
-    global _pool
-    if _pool is None:
-        _pool = await create_pool(_redis_settings())
-    return _pool
-
-
-async def enqueue_evaluation(eval_id: uuid.UUID) -> None:
-    """Enqueue a single evaluation job."""
-    pool = await get_arq_pool()
-    await pool.enqueue_job("run_evaluation_job", str(eval_id))
+def get_arq_pool(request: Request) -> ArqRedis:
+    """FastAPI dependency — returns the arq pool stored on app.state at startup."""
+    return cast(ArqRedis, request.app.state.arq_pool)
 
 
 async def run_evaluation_job(ctx: dict[str, Any], eval_id_str: str) -> None:
