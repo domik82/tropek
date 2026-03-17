@@ -454,6 +454,86 @@ class _Evaluations:
         _raise_for_status(resp)
         return EvaluationSummary.model_validate(resp.json())
 
+    def trigger(
+        self,
+        asset_name: str,
+        test_name: str,
+        slo_name: str,
+        period_start: str,
+        period_end: str,
+        *,
+        metadata: dict[str, str] | None = None,
+    ) -> dict[str, Any]:
+        """Trigger a single asset evaluation."""
+        resp = self._http.post(
+            "/evaluations",
+            json={
+                "asset_name": asset_name,
+                "test_name": test_name,
+                "slo_name": slo_name,
+                "period_start": period_start,
+                "period_end": period_end,
+                "metadata": metadata or {},
+            },
+        )
+        _raise_for_status(resp)
+        return resp.json()  # type: ignore[no-any-return]
+
+    def trigger_batch(
+        self,
+        group_name: str,
+        test_name: str,
+        period_start: str,
+        period_end: str,
+        *,
+        metadata: dict[str, str] | None = None,
+    ) -> dict[str, Any]:
+        """Trigger evaluations for all assets in a group."""
+        resp = self._http.post(
+            "/evaluations/batch",
+            json={
+                "group_name": group_name,
+                "test_name": test_name,
+                "period_start": period_start,
+                "period_end": period_end,
+                "metadata": metadata or {},
+            },
+        )
+        _raise_for_status(resp)
+        return resp.json()  # type: ignore[no-any-return]
+
+    def pin_baseline(self, eval_id: str, reason: str, author: str) -> EvaluationDetail:
+        """Pin an evaluation as baseline."""
+        resp = self._http.patch(
+            f"/evaluations/{eval_id}/pin-baseline",
+            json={"reason": reason, "author": author},
+        )
+        _raise_for_status(resp)
+        return EvaluationDetail.model_validate(resp.json())
+
+    def unpin_baseline(self, eval_id: str) -> EvaluationDetail:
+        """Remove baseline pin from an evaluation."""
+        resp = self._http.patch(f"/evaluations/{eval_id}/unpin-baseline")
+        _raise_for_status(resp)
+        return EvaluationDetail.model_validate(resp.json())
+
+    def override_status(
+        self, eval_id: str, new_result: str, reason: str, author: str
+    ) -> EvaluationDetail:
+        """Override evaluation result."""
+        resp = self._http.patch(
+            f"/evaluations/{eval_id}/override-status",
+            json={"new_result": new_result, "reason": reason, "author": author},
+        )
+        _raise_for_status(resp)
+        return EvaluationDetail.model_validate(resp.json())
+
+    def restore_override(self, eval_id: str) -> EvaluationDetail:
+        """Restore original evaluation result."""
+        resp = self._http.patch(f"/evaluations/{eval_id}/restore-override")
+        _raise_for_status(resp)
+        return EvaluationDetail.model_validate(resp.json())
+
 
 class _Annotations:
     def __init__(self, http: httpx.Client) -> None:
