@@ -77,7 +77,7 @@ from tropek_client.manifest import load_manifests, apply
 client = TropekClient('$API_URL')
 docs = load_manifests('../../bootstrap_mock/manifests/')
 result = apply(client, docs)
-print(f'applied: {result.created} created, {result.updated} updated, {result.unchanged} unchanged')
+print(f'applied: {result.created} created, {result.updated} updated, {result.skipped} skipped')
 "
 
 echo "=== Step 7: Trigger single evaluation ==="

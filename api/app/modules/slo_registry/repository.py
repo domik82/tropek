@@ -90,6 +90,8 @@ class SLORepository:
             self._session.add(obj)
 
         await self._session.flush()
+        # Eagerly load objectives so callers can access them outside async context
+        await self._session.refresh(slo, ["objectives"])
         return slo
 
     async def get_latest(self, name: str) -> SLODefinition | None:
