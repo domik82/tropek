@@ -79,7 +79,7 @@ echo "=== Applying bootstrap manifests ==="
 uv run --directory clients/python python ../../scripts/bootstrap.py "http://localhost:$API_PORT"
 
 echo "=== Installing UI dependencies ==="
-npm --prefix ui install
+npm --prefix ui install --legacy-peer-deps
 
 echo "=== Starting UI (background) ==="
 npm --prefix ui run dev &
