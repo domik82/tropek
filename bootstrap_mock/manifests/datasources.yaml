@@ -7,4 +7,15 @@ metadata:
     env: dev
 spec:
   adapter_type: prometheus
-  adapter_url: http://localhost:8081
+  adapter_url: http://adapter-mock:8082
+---
+api_version: tropek/v1
+kind: DataSource
+metadata:
+  name: mock-dc-b
+  display_name: "Mock DC-B"
+  labels:
+    env: dev
+spec:
+  adapter_type: mock
+  adapter_url: http://adapter-mock:8082
