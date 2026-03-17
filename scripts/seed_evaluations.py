@@ -52,10 +52,10 @@ def main() -> None:
 
     eval_ids: list[str] = []
     for asset_idx, (asset_name, slo_name) in enumerate(ASSETS):
-        for window_idx, (start, end) in enumerate(WINDOWS):
+        for _window_idx, (start, end) in enumerate(WINDOWS):
             result = client.evaluations.trigger(
                 asset_name,
-                f"seed-{asset_idx}-{window_idx}",
+                f"seed-{asset_idx}",
                 slo_name,
                 start,
                 end,
