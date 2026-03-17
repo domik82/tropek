@@ -44,7 +44,7 @@ export QG_REDIS_HOST=localhost
 export QG_REDIS_PORT=$E2E_REDIS_PORT
 export QG_SECRET_KEY=e2e-test-key
 export QG_CONFIG_PATH=config.yaml
-export MOCK_DATA_DIR=adapters/mock/data
+export MOCK_DATA_DIR=data  # relative to adapters/mock/ (the adapter's --directory CWD)
 
 uv run --directory api alembic upgrade head
 

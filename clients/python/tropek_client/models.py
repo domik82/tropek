@@ -176,7 +176,7 @@ class IndicatorResult(BaseModel):
 
     metric: str
     display_name: str
-    value: float
+    value: float | None
     compared_value: float | None
     change_absolute: float | None
     change_relative_pct: float | None
@@ -203,7 +203,7 @@ class FailingIndicator(BaseModel):
 
     metric: str
     display_name: str
-    value: float
+    value: float | None
     threshold: str
 
 
