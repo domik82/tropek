@@ -21,8 +21,13 @@ from app.modules.quality_gate.schemas import (
     EvaluationDetail,
     EvaluationSummary,
     FailingIndicator,
+    HeatmapCell,
+    HeatmapMetric,
     IndicatorResult,
     InvalidateRequest,
+    MetricHeatmapResponse,
+    OverrideStatusRequest,
+    PinBaselineRequest,
     TrendPoint,
 )
 
@@ -50,6 +55,35 @@ def _build_summary(
             "annotation_count": annotation_count,
             "latest_annotation": latest_ann,
             "top_failures": top_failures,
+        }
+    )
+
+
+def _build_detail(ev: Any) -> EvaluationDetail:
+    """Construct EvaluationDetail from an ORM Evaluation with annotations loaded."""
+    annotations = [AnnotationRead.model_validate(a) for a in (ev.annotations or [])]
+    indicator_results = [IndicatorResult(**ir) for ir in (ev.indicator_results or [])]
+    compared_ids = (ev.job_stats or {}).get("compared_evaluation_ids", [])
+    top_failures = [
+        FailingIndicator(
+            metric=ind.metric,
+            display_name=ind.display_name,
+            value=ind.value,
+            threshold=(ind.pass_targets or [{}])[0].get("criteria", ""),
+        )
+        for ind in indicator_results
+        if ind.status == "fail"
+    ]
+    sorted_annotations = sorted(annotations, key=lambda a: a.created_at)
+    return EvaluationDetail.model_validate(
+        {
+            **ev.__dict__,
+            "annotation_count": len(annotations),
+            "latest_annotation": sorted_annotations[-1] if sorted_annotations else None,
+            "top_failures": top_failures,
+            "compared_evaluation_ids": [uuid.UUID(eid) for eid in compared_ids],
+            "annotations": sorted_annotations,
+            "indicator_results": indicator_results,
         }
     )
 
@@ -109,6 +143,47 @@ async def list_evaluations(
         for ev in evals
     ]
     return PagedResponse(items=items, total=total)
+
+
+@router.get("/evaluations/metric-heatmap", response_model=MetricHeatmapResponse)
+async def get_metric_heatmap(
+    asset_name: str,
+    limit: int = 20,
+    session: AsyncSession = Depends(get_session),  # noqa: B008
+) -> MetricHeatmapResponse:
+    """Return a metric x evaluation heatmap grid for an asset."""
+    asset_repo = AssetRepository(session)
+    asset = await asset_repo.get_by_name(asset_name)
+    if asset is None:
+        raise HTTPException(status_code=404, detail=f"asset '{asset_name}' not found")
+    eval_repo = EvaluationRepository(session)
+    evals = await eval_repo.get_metric_heatmap(asset_id=asset.id, limit=limit)
+    # Build slots (timestamps) and collect all unique metrics
+    slots: list[datetime] = []
+    metric_set: dict[str, str] = {}  # name -> display_name
+    cells: list[HeatmapCell] = []
+    for ev in reversed(evals):  # oldest first for display
+        slots.append(ev.period_start)
+        for ir in ev.indicator_results or []:
+            metric_name = ir.get("metric", "")
+            if metric_name not in metric_set:
+                metric_set[metric_name] = ir.get("display_name", metric_name)
+            cells.append(
+                HeatmapCell(
+                    slot=ev.period_start,
+                    metric=metric_name,
+                    display_name=ir.get("display_name", metric_name),
+                    result=ir.get("status", "error"),
+                    score=ir.get("score", 0.0),
+                    eval_id=ev.id,
+                )
+            )
+    return MetricHeatmapResponse(
+        asset_name=asset_name,
+        slots=slots,
+        metrics=[HeatmapMetric(name=k, display_name=v) for k, v in metric_set.items()],
+        cells=cells,
+    )
 
 
 @router.get("/evaluations/{eval_id}", response_model=EvaluationDetail)
@@ -172,6 +247,76 @@ async def restore_evaluation(
     if ev is None:
         raise_not_found("evaluation", str(eval_id))
     return _build_summary(ev, annotation_count=0, latest_ann=None)
+
+
+@router.patch("/evaluations/{eval_id}/pin-baseline", response_model=EvaluationDetail)
+async def pin_baseline(
+    eval_id: uuid.UUID,
+    body: PinBaselineRequest,
+    session: AsyncSession = Depends(get_session),  # noqa: B008
+) -> EvaluationDetail:
+    """Pin an evaluation as the new baseline for future comparisons."""
+    repo = EvaluationRepository(session)
+    ev = await repo.get_by_id(eval_id)
+    if ev is None:
+        raise HTTPException(status_code=404, detail="evaluation not found")
+    if ev.status != "completed":
+        raise HTTPException(status_code=409, detail="only completed evaluations can be pinned")
+    if ev.invalidated:
+        raise HTTPException(status_code=409, detail="cannot pin an invalidated evaluation")
+    updated = await repo.pin_baseline(eval_id, reason=body.reason, author=body.author)
+    return _build_detail(updated)
+
+
+@router.patch("/evaluations/{eval_id}/unpin-baseline", response_model=EvaluationDetail)
+async def unpin_baseline(
+    eval_id: uuid.UUID,
+    session: AsyncSession = Depends(get_session),  # noqa: B008
+) -> EvaluationDetail:
+    """Remove baseline pin from an evaluation."""
+    repo = EvaluationRepository(session)
+    ev = await repo.get_by_id(eval_id)
+    if ev is None:
+        raise HTTPException(status_code=404, detail="evaluation not found")
+    updated = await repo.unpin_baseline(eval_id)
+    return _build_detail(updated)
+
+
+@router.patch("/evaluations/{eval_id}/override-status", response_model=EvaluationDetail)
+async def override_status(
+    eval_id: uuid.UUID,
+    body: OverrideStatusRequest,
+    session: AsyncSession = Depends(get_session),  # noqa: B008
+) -> EvaluationDetail:
+    """Override the evaluation result."""
+    repo = EvaluationRepository(session)
+    ev = await repo.get_by_id(eval_id)
+    if ev is None:
+        raise HTTPException(status_code=404, detail="evaluation not found")
+    if ev.status != "completed":
+        raise HTTPException(status_code=409, detail="only completed evaluations can be overridden")
+    if body.new_result not in ("pass", "warning", "fail"):
+        raise HTTPException(status_code=422, detail="new_result must be pass, warning, or fail")
+    updated = await repo.override_status(
+        eval_id, new_result=body.new_result, reason=body.reason, author=body.author
+    )
+    return _build_detail(updated)
+
+
+@router.patch("/evaluations/{eval_id}/restore-override", response_model=EvaluationDetail)
+async def restore_override(
+    eval_id: uuid.UUID,
+    session: AsyncSession = Depends(get_session),  # noqa: B008
+) -> EvaluationDetail:
+    """Restore the original evaluation result."""
+    repo = EvaluationRepository(session)
+    ev = await repo.get_by_id(eval_id)
+    if ev is None:
+        raise HTTPException(status_code=404, detail="evaluation not found")
+    if ev.original_result is None:
+        raise HTTPException(status_code=409, detail="evaluation has no override to restore")
+    updated = await repo.restore_override(eval_id)
+    return _build_detail(updated)
 
 
 # ---- Annotations ----
