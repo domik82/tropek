@@ -44,6 +44,7 @@ from app.modules.quality_gate.schemas import (
 from app.modules.quality_gate.trigger import resolve_single_trigger
 from app.modules.sli_registry.repository import SLIRepository
 from app.modules.slo_registry.repository import SLORepository
+from app.queue import enqueue_evaluation
 
 router = APIRouter()
 
@@ -146,7 +147,8 @@ async def trigger_evaluation(
         data_source_name=ctx.data_source_name,
         adapter_used=ctx.adapter_type,
     )
-    # TODO: enqueue arq job here — await arq_pool.enqueue_job("run_evaluation", ev.id)
+    await session.commit()
+    await enqueue_evaluation(ev.id)
     return TriggerResponse(id=ev.id, status="pending")
 
 
@@ -217,7 +219,6 @@ async def trigger_batch(
                 adapter_used=ctx.adapter_type,
             )
             evaluation_ids.append(ev.id)
-            # TODO: enqueue arq job
 
     # Create batch record
     batch = EvaluationBatch(
@@ -230,7 +231,10 @@ async def trigger_batch(
         },
     )
     session.add(batch)
-    await session.flush()
+    await session.commit()
+
+    for eid in evaluation_ids:
+        await enqueue_evaluation(eid)
 
     return BatchTriggerResponse(
         batch_id=batch.id,
