@@ -48,9 +48,11 @@ def client():
     mock_pool = AsyncMock()
     app.dependency_overrides[get_session] = _mock_session
     app.dependency_overrides[get_arq_pool] = lambda: mock_pool
-    with patch("app.main.create_pool", return_value=mock_pool), TestClient(app) as c:
-        yield c
-    app.dependency_overrides.clear()
+    try:
+        with patch("app.main.create_arq_pool", return_value=mock_pool), TestClient(app) as c:
+            yield c
+    finally:
+        app.dependency_overrides.clear()
 
 
 def test_trend_rejects_both_eval_id_and_asset_name(client):

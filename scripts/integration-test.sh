@@ -57,6 +57,7 @@ uv run --directory api uvicorn app.main:app --host 127.0.0.1 --port $E2E_API_POR
 PIDS+=($!)
 
 echo "=== Step 5b: Start arq worker (background) ==="
+# PYTHONPATH=. resolves to api/ (the uv --directory target), making app.queue importable
 PYTHONPATH=. uv run --directory api arq app.queue.WorkerSettings &
 PIDS+=($!)
 

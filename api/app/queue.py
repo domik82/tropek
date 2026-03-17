@@ -13,8 +13,6 @@ from app.config import get_settings
 from app.db.session import get_session_factory
 from app.modules.quality_gate.worker import run_evaluation
 
-__all__ = ["WorkerSettings", "create_pool", "get_arq_pool", "run_evaluation_job"]
-
 
 def _redis_settings() -> RedisSettings:
     """Build arq RedisSettings from application config."""
@@ -30,7 +28,15 @@ def _redis_settings() -> RedisSettings:
 
 def get_arq_pool(request: Request) -> ArqRedis:
     """FastAPI dependency — returns the arq pool stored on app.state at startup."""
-    return cast(ArqRedis, request.app.state.arq_pool)
+    pool = getattr(request.app.state, "arq_pool", None)
+    if pool is None:
+        raise RuntimeError("arq pool not initialised — lifespan did not run")
+    return cast(ArqRedis, pool)
+
+
+async def create_arq_pool() -> ArqRedis:
+    """Create and return an arq connection pool using application config."""
+    return await create_pool(_redis_settings())
 
 
 async def run_evaluation_job(ctx: dict[str, Any], eval_id_str: str) -> None:
