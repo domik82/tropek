@@ -352,6 +352,11 @@ def _create(client: Any, doc: ManifestDocument) -> None:
             )
         case "AssetGroup":
             client.asset_groups.create(name)
+            for member in doc.spec.get("members", []):
+                asset = client.assets.get(member["asset_name"])
+                client.asset_groups.add_member(
+                    name, str(asset.id), weight=member.get("weight", 1.0)
+                )
         case "DataSource":
             client.datasources.create(
                 name,
