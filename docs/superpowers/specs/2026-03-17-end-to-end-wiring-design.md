@@ -9,7 +9,6 @@
 The DB layer, SLO/SLI/asset CRUD, and UI are largely built but not wired together. Key gaps:
 
 - UI expects endpoints that don't exist (trigger evaluation, pin baseline, override status, heatmap)
-- SLO read schema returns `slo_yaml` string but UI expects structured `objectives[]`
 - Prometheus adapter has no `/query` implementation
 - No way to run end-to-end evaluations without a real monitoring stack
 - Bootstrap mock has incomplete seed data (empty groups, no eval trigger path)
@@ -28,7 +27,7 @@ The DB layer, SLO/SLI/asset CRUD, and UI are largely built but not wired togethe
 | Mock data store | CSV files generated from scenario YAML definitions | Easy to maintain, deterministic, version-controllable |
 | Prometheus adapter | Thin passthrough — no aggregation, PromQL must return single series | Adapter is dumb pipe; query authors responsible for correct PromQL |
 | Adapter contract change | Add `X-Datasource-Name` header to all adapter calls | Backward-compatible; real adapters ignore it, mock uses it for routing |
-| SLO schema | Return both `objectives[]` (structured) and `slo_yaml` (export) | UI needs structured data; `slo_yaml` enables git-backed config workflow |
+| SLO schema | Already correct — `SLODefinitionRead` has `objectives[]` + `comparison` | No schema change needed; YAML export is a separate client-side concern |
 | Single vs batch trigger | Two endpoints: `POST /evaluations` + `POST /evaluations/batch` | CI pipelines trigger per-asset; UI triggers per-group |
 
 ---
@@ -49,64 +48,85 @@ override_reason         TEXT         nullable
 override_author         TEXT         nullable
 ```
 
-New partial index:
+New columns on `evaluation_batches` (for rollup results):
+
+```
+result              TEXT         nullable  (pass/warning/fail)
+score               FLOAT        nullable
+rollup_details      JSONB        nullable  (per-eval breakdown)
+```
+
+New partial unique index (DB-enforced single active pin per asset+SLO):
 
 ```sql
-CREATE INDEX idx_evaluations_active_pin
-ON evaluations (asset_id, slo_name, baseline_pinned_at)
+CREATE UNIQUE INDEX uq_evaluations_active_pin
+ON evaluations (asset_id, slo_name)
 WHERE baseline_pinned_at IS NOT NULL AND baseline_unpinned_at IS NULL;
 ```
 
+Check constraint on `original_result`:
+
+```sql
+ALTER TABLE evaluations ADD CONSTRAINT ck_evaluations_original_result
+CHECK (original_result IN ('pass', 'warning', 'fail', 'error') OR original_result IS NULL);
+```
+
 Active pin: `baseline_pinned_at IS NOT NULL AND baseline_unpinned_at IS NULL`.
-Only one active pin per `(asset_id, slo_name)` — enforced in application logic.
+Only one active pin per `(asset_id, slo_name)` — enforced at DB level by unique partial index.
 
-### SLO Read Schema
+### SLO Read Schema — Already Correct
 
-`SLODefinitionRead` adds:
+`SLODefinitionRead` already has structured `objectives: list[SLOObjectiveRead]` and
+`comparison: dict[str, Any]`. No schema change needed. YAML export for git-backed config
+is handled by the Python client's manifest system (serializes structured data to YAML).
 
-```python
-objectives: list[SLOObjectiveRead]  # from SLOObjective rows
-comparison: dict                     # from comparison JSONB column
-slo_yaml: str                        # kept for export/backup
-```
+### Existing Endpoints — Already Implemented
 
-`SLOObjectiveRead`:
+The following endpoints already exist and need no changes:
 
-```python
-sli: str
-display_name: str
-pass_criteria: list[str]
-warning_criteria: list[str]
-weight: int
-key_sli: bool
-sort_order: int
-```
+- `POST /slo-definitions/validate` — accepts `SLOValidateRequest` with structured `objectives[]`
+- `PATCH /asset-groups/{name}` — accepts `AssetGroupUpdate` with `display_name`, `description`
+- `DELETE /asset-groups/{name}?deactivate_slos=bool` — cascading delete with SLO deactivation
 
-### New Endpoints
-
-**`POST /slo-definitions/validate`**
-- Body: `{slo_yaml: str}`
-- Parses through `build_slo()`, catches validation errors
-- Returns `{valid: bool, errors: list[{field, message}], objectives?: list[SLOObjectiveRead]}`
-- No DB write
-
-**`PATCH /asset-groups/{name}`**
-- Body: `{display_name?: str, description?: str}`
-- Returns updated `AssetGroupRead`
-
-**`DELETE /asset-groups/{name}?deactivate_slos=bool`**
-- `deactivate_slos=true`: soft-deletes linked SLO definitions via `SLORepository.deactivate()`
-- Removes group members, subgroup links, SLO links, then the group
-- Returns 204
-
-### Repository Additions
-
-- `AssetGroupRepository.update(name, **kwargs)` — update mutable fields
-- `AssetGroupRepository.delete(name, deactivate_slos: bool)` — cascading delete
+**Note:** The SLO validate endpoint accepts structured input (not `slo_yaml`). If YAML-based
+validation is needed in future, it would be a separate endpoint or request variant.
 
 ---
 
 ## Phase 2: Evaluation Lifecycle Endpoints
+
+### Schema Changes
+
+Add to `EvaluationSummary` (and thus `EvaluationDetail` which extends it):
+
+```python
+baseline_pinned_at: datetime | None = None
+baseline_unpinned_at: datetime | None = None
+baseline_pin_reason: str | None = None
+baseline_pin_author: str | None = None
+original_result: str | None = None
+override_reason: str | None = None
+override_author: str | None = None
+```
+
+New request schemas:
+
+```python
+class PinBaselineRequest(BaseModel):
+    reason: str
+    author: str
+
+class OverrideStatusRequest(BaseModel):
+    new_result: str  # pass, warning, fail
+    reason: str
+    author: str
+
+class MetricHeatmapResponse(BaseModel):
+    asset_name: str
+    slots: list[datetime]
+    metrics: list[dict[str, str]]
+    cells: list[dict[str, Any]]
+```
 
 ### Pin Baseline
 
@@ -127,23 +147,35 @@ sort_order: int
 
 ### Baseline Resolution Change
 
-In `EvaluationRepository.get_baselines()`:
+**Changes to `EvaluationRepository.get_baselines()`:**
 
+The existing method signature is:
 ```python
-# Before building the baseline query, check for active pin
-pin_query = select(Evaluation).where(
-    Evaluation.asset_id == asset_id,
-    Evaluation.slo_name == slo_name,
-    Evaluation.baseline_pinned_at.is_not(None),
-    Evaluation.baseline_unpinned_at.is_(None),
-)
-pin = (await self._session.execute(pin_query)).scalar_one_or_none()
-
-if pin is not None:
-    q = q.where(Evaluation.period_start >= pin.period_start)
+async def get_baselines(self, *, name, scope_tags, asset_snapshot, include_result_with_score, limit, sli_name=None)
 ```
 
-~5 lines added to existing method.
+It queries by test `name` + JSONB tag matching. Two changes needed:
+
+1. **Add `asset_id` and `slo_name` parameters** to the method signature (both optional,
+   for backward compatibility with push/file evaluations that have no asset).
+
+2. **Pin-aware filtering** — before the existing query logic, look up the active pin:
+
+```python
+if asset_id and slo_name:
+    pin_query = select(Evaluation).where(
+        Evaluation.asset_id == asset_id,
+        Evaluation.slo_name == slo_name,
+        Evaluation.baseline_pinned_at.is_not(None),
+        Evaluation.baseline_unpinned_at.is_(None),
+    )
+    pin = (await self._session.execute(pin_query)).scalar_one_or_none()
+    if pin is not None:
+        q = q.where(Evaluation.period_start >= pin.period_start)
+```
+
+The caller (worker job) passes `asset_id` and `slo_name` from the evaluation record.
+Existing callers that don't pass these params get unchanged behavior (full history).
 
 ### Override Status
 
@@ -163,6 +195,7 @@ if pin is not None:
 ### Metric Heatmap
 
 **`GET /evaluations/metric-heatmap?asset_name=X&limit=20`**
+- Resolves `asset_name` → `asset_id` via `AssetRepository.get_by_name()` (404 if not found)
 - Fetches last N evaluations for the asset by `asset_id`
 - Extracts `indicator_results` JSONB per eval
 - Response:
@@ -368,7 +401,7 @@ When last eval in batch completes (or watchdog marks stuck eval as partial):
 - Collect all batch eval results
 - Weighted score: `sum(eval.score * member.weight) / sum(weights)` for completed evals
 - Overall result: worst-case of member results against SLO thresholds
-- Update `EvaluationBatch.status = completed`, store rollup result
+- Update `EvaluationBatch.status = completed`, `result`, `score`, and `rollup_details` JSONB
 
 ### Timeout / Recovery
 
@@ -453,15 +486,12 @@ client.evaluations.restore_override(eval_id)
 | File | Phase | Change |
 |------|-------|--------|
 | `api/app/db/models.py` | 1 | Add 7 columns to Evaluation |
-| `api/app/modules/slo_registry/schemas.py` | 1 | Add objectives[] + comparison to read schema |
-| `api/app/modules/slo_registry/router.py` | 1 | Add validate endpoint |
-| `api/app/modules/assets/repository.py` | 1 | Add group update/delete |
-| `api/app/modules/assets/router.py` | 1 | Add PATCH/DELETE group endpoints |
-| `api/app/modules/quality_gate/schemas.py` | 2 | Add pin/override request schemas, heatmap response |
+| `api/app/db/models.py` | 1 | Add 3 columns to EvaluationBatch (result, score, rollup_details) |
+| `api/app/modules/quality_gate/schemas.py` | 2 | Add pin/override fields to EvaluationSummary/Detail, request schemas, heatmap response |
 | `api/app/modules/quality_gate/router.py` | 2 | Add pin/unpin, override/restore, heatmap endpoints |
 | `api/app/modules/quality_gate/repository.py` | 2 | Add pin/override methods, update get_baselines() |
 | `docker-compose.yml` | 3 | Add adapter-mock service |
 | `api/app/modules/quality_gate/router.py` | 4 | Add POST /evaluations, POST /evaluations/batch |
 | `adapters/prometheus/app/main.py` | 5 | Implement POST /query |
-| `clients/python/tropek_client/resources/evaluations.py` | 5 | Add trigger, pin, override methods |
+| `clients/python/tropek_client/client.py` | 5 | Add trigger, pin, override methods to _Evaluations class |
 | `bootstrap_mock/manifests/*.yaml` | 5 | Add group members, second datasource |
