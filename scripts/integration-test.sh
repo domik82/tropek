@@ -3,17 +3,54 @@ set -euo pipefail
 
 # End-to-end integration test using mock adapter + bootstrap manifests
 # Prerequisites: docker compose available, uv installed
+#
+# Runs DB + Redis in Docker, everything else locally via uv run.
+# Background processes (API, worker, mock adapter) are cleaned up on exit.
+
+PIDS=()
+
+cleanup() {
+  echo "=== Cleaning up background processes ==="
+  for pid in "${PIDS[@]}"; do
+    kill "$pid" 2>/dev/null || true
+  done
+  wait "${PIDS[@]}" 2>/dev/null || true
+  echo "=== Stopping Docker infrastructure ==="
+  docker compose down -v 2>/dev/null || true
+}
+trap cleanup EXIT
 
 echo "=== Step 1: Generate mock scenario data ==="
 uv run --directory adapters/mock python generate.py
 
-echo "=== Step 2: Start infrastructure ==="
-docker compose up timescaledb redis adapter-mock api worker -d --build --wait
+echo "=== Step 2: Start DB + Redis ==="
+docker compose up timescaledb redis -d --wait
 
 echo "=== Step 3: Apply migrations ==="
+# Load credentials from .env (same file docker compose uses)
+set -a
+source .env
+set +a
+export QG_DB_HOST=localhost
+export QG_DB_PORT=5432
+export QG_DB_NAME=tropek
+export QG_CONFIG_PATH=config.yaml
+export MOCK_DATA_DIR=adapters/mock/data
+
 uv run --directory api alembic upgrade head
 
-echo "=== Step 4: Apply bootstrap manifests ==="
+echo "=== Step 4: Start mock adapter (background) ==="
+uv run --directory adapters/mock uvicorn app.main:app --host 0.0.0.0 --port 8082 &
+PIDS+=($!)
+
+echo "=== Step 5: Start API (background) ==="
+uv run --directory api uvicorn app.main:app --host 0.0.0.0 --port 8080 &
+PIDS+=($!)
+
+# Give services a moment to start
+sleep 3
+
+echo "=== Step 6: Apply bootstrap manifests ==="
 uv run --directory clients/python python -c "
 from tropek_client import TropekClient
 from tropek_client.manifest import load_manifests, apply
@@ -24,7 +61,7 @@ result = apply(client, docs)
 print(f'applied: {result.created} created, {result.updated} updated, {result.unchanged} unchanged')
 "
 
-echo "=== Step 5: Trigger single evaluation ==="
+echo "=== Step 7: Trigger single evaluation ==="
 uv run --directory clients/python python -c "
 from tropek_client import TropekClient
 import time
@@ -49,7 +86,7 @@ assert ev.status == 'completed', f'expected completed, got {ev.status}'
 print('PASS: single evaluation')
 "
 
-echo "=== Step 6: Test pin baseline ==="
+echo "=== Step 8: Test pin baseline ==="
 uv run --directory clients/python python -c "
 from tropek_client import TropekClient
 client = TropekClient('http://localhost:8080')
@@ -61,7 +98,7 @@ assert result.baseline_pinned_at is not None
 print('PASS: pin baseline')
 "
 
-echo "=== Step 7: Trigger batch evaluation ==="
+echo "=== Step 9: Trigger batch evaluation ==="
 uv run --directory clients/python python -c "
 from tropek_client import TropekClient
 import time
@@ -91,13 +128,12 @@ for _ in range(60):
 print('PASS: batch evaluation')
 "
 
-echo "=== Step 8: Trigger regression eval after pin (baseline pinning validation) ==="
+echo "=== Step 10: Trigger regression eval after pin ==="
 uv run --directory clients/python python -c "
 from tropek_client import TropekClient
 import time
 
 client = TropekClient('http://localhost:8080')
-# Trigger eval in regression time window (where metrics degrade)
 result = client.evaluations.trigger(
     'checkout-api', 'regression-test', 'http-availability-slo',
     '2026-03-16T12:00:00Z', '2026-03-16T12:30:00Z',
@@ -112,11 +148,10 @@ for _ in range(30):
     time.sleep(1)
 
 print(f'status={ev.status} result={ev.result} score={ev.score}')
-# With baseline pinned at the stable window, this degraded window should fail or warn
 print('PASS: regression eval completed (check result manually if needed)')
 "
 
-echo "=== Step 9: Test override status ==="
+echo "=== Step 11: Test override status ==="
 uv run --directory clients/python python -c "
 from tropek_client import TropekClient
 client = TropekClient('http://localhost:8080')
@@ -130,8 +165,5 @@ result = client.evaluations.restore_override(eval_id)
 assert result.original_result is None
 print('PASS: override + restore')
 "
-
-echo "=== Step 10: Tear down ==="
-docker compose down -v
 
 echo "=== All integration tests passed ==="
