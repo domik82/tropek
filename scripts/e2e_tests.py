@@ -1,18 +1,16 @@
 """End-to-end integration tests run against a live TROPEK API.
 
 Usage: uv run --directory clients/python python ../../scripts/e2e_tests.py <api_url>
+
+Bootstrap manifests must be applied before running (see scripts/bootstrap.py).
 """
 
 from __future__ import annotations
 
 import sys
 import time
-from pathlib import Path
 
 from tropek_client import TropekClient
-from tropek_client.manifest import apply, load_manifests
-
-MANIFESTS_DIR = Path(__file__).resolve().parent.parent / "bootstrap_mock" / "manifests"
 
 TERMINAL_STATUSES = {"completed", "failed", "partial"}
 
@@ -30,16 +28,6 @@ def poll_eval(client: TropekClient, eval_id: str, timeout: int = 30) -> object:
             return ev
         time.sleep(1)
     raise TimeoutError(f"evaluation {eval_id} did not complete within {timeout}s")
-
-
-def test_bootstrap(client: TropekClient) -> None:
-    """Apply bootstrap manifests and verify no failures."""
-    step("Step 6: Apply bootstrap manifests")
-    docs = load_manifests(str(MANIFESTS_DIR))
-    result = apply(client, docs)
-    print(f"applied: {result.created} created, {result.updated} updated, {result.skipped} skipped")
-    if result.failed:
-        raise RuntimeError(f"apply failed: {result.errors}")
 
 
 def test_single_evaluation(client: TropekClient) -> None:
@@ -189,7 +177,6 @@ def main() -> None:
 
     client = TropekClient(sys.argv[1])
 
-    test_bootstrap(client)
     test_single_evaluation(client)
     test_pin_baseline(client)
     test_batch_evaluation(client)
