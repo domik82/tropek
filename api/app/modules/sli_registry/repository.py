@@ -26,6 +26,7 @@ class SLIRepository:
         notes: str | None = None,
         author: str | None = None,
         meta: dict[str, Any] | None = None,
+        comparable_from_version: int | None = None,
     ) -> SLIDefinition:
         """Insert a new version of a named SLI.
 
@@ -39,6 +40,9 @@ class SLIRepository:
             notes: Optional description of changes in this version.
             author: Optional identifier of who created this version.
             meta: Optional arbitrary key-value metadata.
+            comparable_from_version: Earliest version whose baselines are valid for
+                comparison against this version. Defaults to the previous version
+                (N-1) for subsequent versions, or 1 for the first version.
 
         Returns:
             The newly created SLIDefinition with its assigned version.
@@ -53,6 +57,13 @@ class SLIRepository:
         max_version = result.scalar_one_or_none()
         next_version = (max_version or 0) + 1
 
+        if comparable_from_version is not None:
+            resolved_cfv = comparable_from_version
+        elif max_version is not None:
+            resolved_cfv = max_version  # previous version (N-1)
+        else:
+            resolved_cfv = 1  # first version
+
         sli = SLIDefinition(
             id=uuid.uuid4(),
             name=name,
@@ -64,6 +75,7 @@ class SLIRepository:
             author=author,
             meta=meta or {},
             active=True,
+            comparable_from_version=resolved_cfv,
         )
         self._session.add(sli)
         await self._session.flush()
