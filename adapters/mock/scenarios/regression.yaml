@@ -1,0 +1,32 @@
+name: regression
+namespaces:
+  - splunk-prod
+metrics:
+  response_time_p99:
+    baseline: 450
+    phases:
+      - duration_hours: 24
+        pattern: stable
+        jitter_pct: 5
+      - duration_hours: 12
+        pattern: ramp
+        target: 800
+        jitter_pct: 3
+      - duration_hours: 24
+        pattern: stable
+        jitter_pct: 5
+  error_rate:
+    baseline: 0.001
+    phases:
+      - duration_hours: 24
+        pattern: stable
+        jitter_pct: 10
+      - duration_hours: 12
+        pattern: ramp
+        target: 0.05
+        jitter_pct: 5
+      - duration_hours: 24
+        pattern: stable
+        jitter_pct: 10
+interval_minutes: 5
+start: "2026-03-15T00:00:00Z"

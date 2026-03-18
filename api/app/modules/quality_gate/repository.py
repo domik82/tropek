@@ -279,6 +279,19 @@ class EvaluationRepository:
         if restrict_to_ids is not None:
             q = q.where(Evaluation.id.in_(restrict_to_ids))
 
+        # Pin-aware: restrict baseline window to evaluations after the active pin
+        if asset_id and slo_name:
+            pin_q = select(Evaluation.period_start).where(
+                Evaluation.asset_id == asset_id,
+                Evaluation.slo_name == slo_name,
+                Evaluation.baseline_pinned_at.is_not(None),
+                Evaluation.baseline_unpinned_at.is_(None),
+            )
+            pin_row = await self._session.execute(pin_q)
+            pin_start = pin_row.scalar_one_or_none()
+            if pin_start is not None:
+                q = q.where(Evaluation.period_start >= pin_start)
+
         q = q.order_by(Evaluation.period_start.desc()).limit(limit)
         rows = await self._session.execute(q)
         return list(rows.scalars().all())
@@ -370,6 +383,117 @@ class EvaluationRepository:
             .values(invalidated=False, invalidation_note=None)
         )
         return await self.get_by_id(eval_id)
+
+    async def pin_baseline(
+        self,
+        eval_id: uuid.UUID,
+        *,
+        reason: str,
+        author: str,
+    ) -> Evaluation | None:
+        """Pin an evaluation as the baseline floor for its asset+SLO combination.
+
+        Atomically unpins any existing active pin for the same (asset_id, slo_name).
+        """
+        ev = await self.get_by_id(eval_id)
+        if ev is None:
+            return None
+        # Unpin any existing active pin for this asset+SLO
+        if ev.asset_id and ev.slo_name:
+            await self._session.execute(
+                update(Evaluation)
+                .where(
+                    Evaluation.asset_id == ev.asset_id,
+                    Evaluation.slo_name == ev.slo_name,
+                    Evaluation.baseline_pinned_at.is_not(None),
+                    Evaluation.baseline_unpinned_at.is_(None),
+                )
+                .values(baseline_unpinned_at=func.now())
+            )
+        # Pin the target evaluation
+        await self._session.execute(
+            update(Evaluation)
+            .where(Evaluation.id == eval_id)
+            .values(
+                baseline_pinned_at=func.now(),
+                baseline_pin_reason=reason,
+                baseline_pin_author=author,
+            )
+        )
+        await self._session.flush()
+        return await self.get_by_id(eval_id)
+
+    async def unpin_baseline(self, eval_id: uuid.UUID) -> Evaluation | None:
+        """Remove the baseline pin from an evaluation."""
+        await self._session.execute(
+            update(Evaluation)
+            .where(Evaluation.id == eval_id)
+            .values(baseline_unpinned_at=func.now())
+        )
+        await self._session.flush()
+        return await self.get_by_id(eval_id)
+
+    async def override_status(
+        self,
+        eval_id: uuid.UUID,
+        *,
+        new_result: str,
+        reason: str,
+        author: str,
+    ) -> Evaluation | None:
+        """Override the evaluation result, preserving the original."""
+        ev = await self.get_by_id(eval_id)
+        if ev is None:
+            return None
+        await self._session.execute(
+            update(Evaluation)
+            .where(Evaluation.id == eval_id)
+            .values(
+                original_result=ev.result,
+                result=new_result,
+                override_reason=reason,
+                override_author=author,
+            )
+        )
+        await self._session.flush()
+        return await self.get_by_id(eval_id)
+
+    async def restore_override(self, eval_id: uuid.UUID) -> Evaluation | None:
+        """Restore the original result, clearing the override."""
+        ev = await self.get_by_id(eval_id)
+        if ev is None or ev.original_result is None:
+            return ev
+        await self._session.execute(
+            update(Evaluation)
+            .where(Evaluation.id == eval_id)
+            .values(
+                result=ev.original_result,
+                original_result=None,
+                override_reason=None,
+                override_author=None,
+            )
+        )
+        await self._session.flush()
+        return await self.get_by_id(eval_id)
+
+    async def get_metric_heatmap(
+        self,
+        *,
+        asset_id: uuid.UUID,
+        limit: int = 20,
+    ) -> list[Evaluation]:
+        """Fetch the last N completed evaluations for an asset, ordered by period_start DESC."""
+        q = (
+            select(Evaluation)
+            .where(
+                Evaluation.asset_id == asset_id,
+                Evaluation.status == EvaluationStatus.COMPLETED,
+            )
+            .order_by(Evaluation.period_start.desc())
+            .limit(limit)
+        )
+        result = await self._session.execute(q)
+        return list(result.scalars().all())
 
     async def get_annotation_by_id(self, annotation_id: uuid.UUID) -> EvaluationAnnotation | None:
         """Fetch a single annotation by its ID."""
