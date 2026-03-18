@@ -18,7 +18,7 @@ import { evaluationKeys } from '@/lib/queryKeys'
 
 const schema = z.object({
   group_name: z.string().min(1, 'Required'),
-  test_name: z.string().min(1, 'Required'),
+  evaluation_name: z.string().min(1, 'Required'),
   slo_name: z.string().min(1, 'Required'),
   period_start: z.string().min(1, 'Required'),
   period_end: z.string().min(1, 'Required'),
@@ -71,9 +71,9 @@ export function TriggerEvaluationModal({ open, onClose }: Props) {
             {errors.group_name && <p className="text-red-400 text-xs mt-1">{errors.group_name.message}</p>}
           </div>
           <div>
-            <label className="text-xs text-gray-400">Test Name</label>
-            <Input {...register('test_name')} placeholder="e.g. perf-test-linux" className="mt-1" />
-            {errors.test_name && <p className="text-red-400 text-xs mt-1">{errors.test_name.message}</p>}
+            <label className="text-xs text-gray-400">Evaluation Name</label>
+            <Input {...register('evaluation_name')} placeholder="e.g. perf-test-linux" className="mt-1" />
+            {errors.evaluation_name && <p className="text-red-400 text-xs mt-1">{errors.evaluation_name.message}</p>}
           </div>
           <div>
             <label className="text-xs text-gray-400">SLO</label>

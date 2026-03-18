@@ -44,11 +44,11 @@ function cell(
               onClick={() => onEvalClick(ev)}
               className="text-slate-200 hover:text-indigo-300 hover:underline decoration-dotted underline-offset-2 font-medium cursor-pointer transition-colors"
             >
-              {ev.name}
+              {ev.evaluation_name}
             </button>
           ) : (
             <Link to={`/evaluations/${ev.id}`} className="text-slate-200 hover:text-indigo-300 hover:underline decoration-dotted underline-offset-2 font-medium transition-colors">
-              {ev.name}
+              {ev.evaluation_name}
             </Link>
           )}
         </td>
