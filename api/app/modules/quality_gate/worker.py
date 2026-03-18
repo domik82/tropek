@@ -113,14 +113,11 @@ async def _resolve_baselines(
         return baselines, compared_eval_ids
 
     baseline_evals = await repo.get_baselines(
-        name=ev.name,
-        scope_tags=slo.comparison.scope_tags,
-        asset_snapshot=ev.asset_snapshot or {},
-        include_result_with_score=slo.comparison.include_result_with_score.value,
-        limit=slo.comparison.number_of_comparison_results,
-        sli_name=ev.sli_name,
         asset_id=ev.asset_id,
         slo_name=ev.slo_name,
+        period_start_before=ev.period_start,
+        include_result_with_score=slo.comparison.include_result_with_score.value,
+        limit=slo.comparison.number_of_comparison_results,
     )
     compared_eval_ids = [str(bev.id) for bev in baseline_evals]
     for metric_name in indicator_names:
@@ -195,7 +192,7 @@ async def run_evaluation(
     variables = build_variables(
         metadata={k: str(v) for k, v in eval_metadata.items()},
         asset_name=asset_snapshot.get("name"),
-        test_name=ev.name,
+        evaluation_name=ev.evaluation_name,
         start=ev.period_start.isoformat(),
         end=ev.period_end.isoformat(),
     )
@@ -265,7 +262,7 @@ async def run_evaluation(
             "aggregation": ir.get("aggregation", "raw"),
             "value": ir["value"],
             "asset_name": asset_snapshot.get("name"),
-            "test_name": ev.name,
+            "evaluation_name": ev.evaluation_name,
             "os_tag": asset_labels.get("os"),
         }
         for ir in eval_result.indicator_results

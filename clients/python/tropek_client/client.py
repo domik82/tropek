@@ -457,7 +457,7 @@ class _Evaluations:
     def trigger(
         self,
         asset_name: str,
-        test_name: str,
+        evaluation_name: str,
         slo_name: str,
         period_start: str,
         period_end: str,
@@ -469,7 +469,7 @@ class _Evaluations:
             "/evaluations",
             json={
                 "asset_name": asset_name,
-                "test_name": test_name,
+                "evaluation_name": evaluation_name,
                 "slo_name": slo_name,
                 "period_start": period_start,
                 "period_end": period_end,
@@ -482,7 +482,7 @@ class _Evaluations:
     def trigger_batch(
         self,
         group_name: str,
-        test_name: str,
+        evaluation_name: str,
         period_start: str,
         period_end: str,
         *,
@@ -493,7 +493,7 @@ class _Evaluations:
             "/evaluations/batch",
             json={
                 "group_name": group_name,
-                "test_name": test_name,
+                "evaluation_name": evaluation_name,
                 "period_start": period_start,
                 "period_end": period_end,
                 "metadata": metadata or {},
