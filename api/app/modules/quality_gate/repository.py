@@ -304,6 +304,96 @@ class EvaluationRepository:
         rows = await self._session.execute(q)
         return list(rows.scalars().all())
 
+    async def load_evaluations_for_reeval(
+        self,
+        *,
+        asset_id: uuid.UUID,
+        slo_name: str,
+        from_date: datetime,
+    ) -> list[Evaluation]:
+        """Load completed, non-invalidated evaluations for re-evaluation.
+
+        Returns evaluations in chronological order (period_start ASC)
+        for cascading baseline resolution.
+
+        Args:
+            asset_id: Asset UUID to scope results to.
+            slo_name: SLO name to scope results to.
+            from_date: Only include evaluations at or after this timestamp.
+
+        Returns:
+            Matching completed evaluations ordered by period_start ascending.
+        """
+        q = (
+            select(Evaluation)
+            .where(
+                Evaluation.asset_id == asset_id,
+                Evaluation.slo_name == slo_name,
+                Evaluation.period_start >= from_date,
+                Evaluation.status == EvaluationStatus.COMPLETED,
+                Evaluation.invalidated == False,  # noqa: E712
+            )
+            .order_by(Evaluation.period_start)
+        )
+        rows = await self._session.execute(q)
+        return list(rows.scalars().all())
+
+    async def update_reeval_result(
+        self,
+        eval_id: uuid.UUID,
+        *,
+        new_result: str,
+        new_score: float,
+        new_indicator_results: list[Any],
+        old_result: str,
+        old_score: float,
+        slo_version: int | None = None,
+    ) -> None:
+        """Overwrite evaluation result from re-evaluation, preserving original on first call.
+
+        Args:
+            eval_id: Evaluation to update.
+            new_result: Re-evaluated result value ("pass", "warning", "fail", "error").
+            new_score: Re-evaluated weighted score 0.0-100.0.
+            new_indicator_results: Full per-SLI breakdown from re-evaluation.
+            old_result: Previous result value (stored in job_stats on first call only).
+            old_score: Previous score (stored in job_stats on first call only).
+            slo_version: SLO version used for re-evaluation, if any.
+        """
+        ev = await self.get_by_id(eval_id)
+        if ev is None:
+            return
+
+        stats = dict(ev.job_stats)
+        if "original_result" not in stats:
+            stats["original_result"] = old_result
+            stats["original_score"] = old_score
+        stats["re_evaluated_at"] = datetime.now(tz=UTC).isoformat()
+        stats["re_eval_slo_version"] = slo_version
+
+        values: dict[str, Any] = {
+            "result": new_result,
+            "score": new_score,
+            "indicator_results": new_indicator_results,
+            "job_stats": stats,
+        }
+        if slo_version is not None:
+            values["slo_version"] = slo_version
+
+        await self._session.execute(
+            update(Evaluation).where(Evaluation.id == eval_id).values(**values)
+        )
+
+        annotation_content = (
+            f"re-evaluated: {old_result} -> {new_result}, score {old_score} -> {new_score}"
+        )
+        await self.add_annotation(
+            eval_id,
+            content=annotation_content,
+            author="system",
+            category="re-evaluation",
+        )
+
     async def find_stuck(self, threshold_seconds: int) -> list[Evaluation]:
         """Find evaluations stuck in running status for longer than the threshold.
 
