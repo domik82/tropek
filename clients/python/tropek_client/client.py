@@ -534,6 +534,33 @@ class _Evaluations:
         _raise_for_status(resp)
         return EvaluationDetail.model_validate(resp.json())
 
+    def re_evaluate(
+        self,
+        asset_name: str,
+        slo_name: str,
+        *,
+        from_date: str | None = None,
+        from_baseline: bool = False,
+        from_evaluation_id: str | None = None,
+        slo_version: int | None = None,
+        dry_run: bool = False,
+    ) -> dict[str, Any]:
+        """Re-evaluate completed evaluations from stored SLI values."""
+        body: dict[str, Any] = {"asset_name": asset_name, "slo_name": slo_name}
+        if from_date is not None:
+            body["from_date"] = from_date
+        if from_baseline:
+            body["from_baseline"] = True
+        if from_evaluation_id is not None:
+            body["from_evaluation_id"] = from_evaluation_id
+        if slo_version is not None:
+            body["slo_version"] = slo_version
+        if dry_run:
+            body["dry_run"] = True
+        resp = self._http.post("/evaluations/re-evaluate", json=body)
+        _raise_for_status(resp)
+        return resp.json()  # type: ignore[no-any-return]
+
 
 class _Annotations:
     def __init__(self, http: httpx.Client) -> None:
