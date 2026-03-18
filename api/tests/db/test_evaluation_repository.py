@@ -473,3 +473,41 @@ async def test_get_baselines_restrict_to_ids(db_session: AsyncSession) -> None:
     )
     assert len(baselines) == 2
     assert {b.id for b in baselines} == set(eval_ids[:2])
+
+
+@pytest.mark.integration
+async def test_create_pending_merges_asset_labels_into_metadata(
+    db_session: AsyncSession,
+) -> None:
+    """Asset labels become defaults in evaluation_metadata; caller values take precedence."""
+    type_name = f"vm-{uuid.uuid4().hex[:8]}"
+    db_session.add(AssetType(id=uuid.uuid4(), name=type_name))
+    await db_session.flush()
+    asset_id = uuid.uuid4()
+    db_session.add(
+        Asset(
+            id=asset_id,
+            name=f"tag-test-{asset_id.hex[:8]}",
+            type_name=type_name,
+            labels={"os": "ubuntu-22", "region": "us-east-1", "branch": "main"},
+        )
+    )
+    await db_session.flush()
+
+    repo = EvaluationRepository(db_session)
+    ev = await repo.create_pending(
+        evaluation_name="tag-merge-test",
+        period_start=_START,
+        period_end=_END,
+        ingestion_mode="push",
+        asset_snapshot=_make_snapshot(),
+        metadata={"branch": "feature-x", "env": "staging"},
+        asset_id=asset_id,
+    )
+    # Caller's "branch" wins over asset label's "branch"
+    assert ev.evaluation_metadata["branch"] == "feature-x"
+    # Asset label "os" is merged as default
+    assert ev.evaluation_metadata["os"] == "ubuntu-22"
+    assert ev.evaluation_metadata["region"] == "us-east-1"
+    # Caller's "env" is preserved
+    assert ev.evaluation_metadata["env"] == "staging"
