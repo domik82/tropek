@@ -14,6 +14,7 @@ export interface SloDefinition {
   id: string
   name: string
   version: number
+  comparable_from_version: number
   display_name: string | null
   author: string | null
   notes: string | null
@@ -70,6 +71,7 @@ export interface SliDefinition {
   adapter_type: string
   display_name?: string
   version: number
+  comparable_from_version: number
   indicators: Record<string, string>
   active: boolean
   created_at: string
