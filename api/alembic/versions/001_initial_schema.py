@@ -2,7 +2,7 @@
 
 Revision ID: 001
 Revises:
-Create Date: 2026-03-17 00:55:35.576630
+Create Date: 2026-03-18 22:26:40.861480
 
 """
 
@@ -317,7 +317,7 @@ def upgrade() -> None:
     op.create_table(
         "evaluations",
         sa.Column("id", sa.UUID(), nullable=False),
-        sa.Column("name", sa.Text(), nullable=False),
+        sa.Column("evaluation_name", sa.Text(), nullable=False),
         sa.Column("asset_id", sa.UUID(), nullable=True),
         sa.Column(
             "asset_snapshot",
@@ -382,7 +382,16 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_index("idx_evaluations_asset", "evaluations", ["asset_id"], unique=False)
-    op.create_index("idx_evaluations_name", "evaluations", ["name"], unique=False)
+    op.create_index(
+        "idx_evaluations_baseline_lookup",
+        "evaluations",
+        ["asset_id", "slo_name", sa.literal_column("period_start DESC")],
+        unique=False,
+        postgresql_where=sa.text("status = 'completed' AND invalidated = false"),
+    )
+    op.create_index(
+        "idx_evaluations_evaluation_name", "evaluations", ["evaluation_name"], unique=False
+    )
     op.create_index("idx_evaluations_result", "evaluations", ["result"], unique=False)
     op.create_index("idx_evaluations_slo", "evaluations", ["slo_name", "slo_version"], unique=False)
     op.create_index("idx_evaluations_start", "evaluations", ["period_start"], unique=False)
@@ -428,7 +437,7 @@ def upgrade() -> None:
         sa.Column("aggregation", sa.Text(), nullable=False),
         sa.Column("value", sa.Float(), nullable=False),
         sa.Column("asset_name", sa.Text(), nullable=True),
-        sa.Column("test_name", sa.Text(), nullable=True),
+        sa.Column("evaluation_name", sa.Text(), nullable=True),
         sa.Column("os_tag", sa.Text(), nullable=True),
         sa.ForeignKeyConstraint(
             ["eval_id"],
@@ -439,7 +448,7 @@ def upgrade() -> None:
     op.create_index(
         "idx_sli_values_lookup",
         "sli_values",
-        ["test_name", "metric_name", "eval_start"],
+        ["evaluation_name", "metric_name", "eval_start"],
         unique=False,
     )
     # ### end Alembic commands ###
@@ -461,7 +470,12 @@ def downgrade() -> None:
     op.drop_index("idx_evaluations_start", table_name="evaluations")
     op.drop_index("idx_evaluations_slo", table_name="evaluations")
     op.drop_index("idx_evaluations_result", table_name="evaluations")
-    op.drop_index("idx_evaluations_name", table_name="evaluations")
+    op.drop_index("idx_evaluations_evaluation_name", table_name="evaluations")
+    op.drop_index(
+        "idx_evaluations_baseline_lookup",
+        table_name="evaluations",
+        postgresql_where=sa.text("status = 'completed' AND invalidated = false"),
+    )
     op.drop_index("idx_evaluations_asset", table_name="evaluations")
     op.drop_table("evaluations")
     op.drop_index("idx_asset_slo_links_asset", table_name="asset_slo_links")
