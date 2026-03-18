@@ -31,6 +31,7 @@ const formSchema = z.object({
   aggregate_function: z.string(),
   total_score_pass_pct: z.coerce.number().min(0).max(100),
   total_score_warning_pct: z.coerce.number().min(0).max(100),
+  comparable_from_version: z.coerce.number().min(1).optional(),
   objectives: z.array(objSchema),
   labels: z.array(labelSchema),
 })
@@ -103,6 +104,7 @@ export function SloCreateForm({ onCancel, onSaved }: Props) {
         meta: Object.fromEntries(
           values.labels.filter(l => l.key).map(l => [l.key, l.value])
         ),
+        comparable_from_version: values.comparable_from_version || undefined,
       },
       { onSuccess: () => onSaved() },
     )
@@ -183,6 +185,11 @@ export function SloCreateForm({ onCancel, onSaved }: Props) {
             <label className="block text-xs text-slate-500 mb-1">Total Warning %</label>
             <input {...register('total_score_warning_pct')} type="number" min={0} max={100} className={inp} />
           </div>
+        </div>
+        <div>
+          <label className="block text-xs text-slate-500 mb-1">Comparable From Version</label>
+          <input {...register('comparable_from_version')} type="number" min={1} className={inp} placeholder="defaults to previous" />
+          <p className="text-[10px] text-slate-600 mt-0.5">Baselines from versions before this are excluded</p>
         </div>
       </div>
 

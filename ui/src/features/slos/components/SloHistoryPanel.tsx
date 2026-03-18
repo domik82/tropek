@@ -25,6 +25,11 @@ export function SloHistoryPanel({ name }: Props) {
               ? <span className="text-xs bg-pass/20 text-pass border border-pass/30 px-1.5 py-0.5 rounded-full">active</span>
               : <span className="text-xs bg-slate-700/40 text-slate-500 border border-slate-600/40 px-1.5 py-0.5 rounded-full">inactive</span>
             }
+            {v.comparable_from_version > 1 && (
+              <span className="text-xs bg-indigo-900/30 text-indigo-300 border border-indigo-700/30 px-1.5 py-0.5 rounded-full">
+                comparable from v{v.comparable_from_version}
+              </span>
+            )}
             {v.author && <span className="text-xs text-slate-500">{v.author}</span>}
             {v.notes && <span className="text-xs text-slate-600 italic truncate max-w-xs">{v.notes}</span>}
             <span className="ml-auto text-xs text-slate-600">{v.created_at.slice(0, 16).replace('T', ' ')}</span>
