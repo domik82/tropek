@@ -66,12 +66,12 @@ export function EvaluationDetailPage() {
           ← Navigator{backGroup && <span className="text-slate-600"> ({backGroup})</span>}{backAsset && <span className="text-slate-600"> ({backAsset})</span>}
         </Link>
         <span>/</span>
-        <span className="text-slate-200">{ev.name}</span>
+        <span className="text-slate-200">{ev.evaluation_name}</span>
       </div>
 
       {/* Header card */}
       <EvaluationHeader
-        title={ev.name}
+        title={ev.evaluation_name}
         result={displayResult}
         score={ev.score}
         metadata={

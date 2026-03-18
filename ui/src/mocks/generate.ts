@@ -313,7 +313,7 @@ export function generateAllEvaluations(): EvaluationSummary[] {
 
         all.push({
           id: evalId,
-          name: scenario.test,
+          evaluation_name: scenario.test,
           status: 'completed',
           result: evalResult,
           score: Math.min(100, Math.max(0, runScore)),
@@ -489,7 +489,7 @@ export function generateTrendData(
   if (!metric) return []
 
   const sorted = evaluations
-    .filter(e => e.name === testName && e.asset_snapshot.name === assetName)
+    .filter(e => e.evaluation_name === testName && e.asset_snapshot.name === assetName)
     .sort((a, b) => a.period_start.localeCompare(b.period_start))
 
   const valueHistory: number[] = []
@@ -568,7 +568,7 @@ export function getEvaluationDetail(id: string): EvaluationDetail {
 export function getTrend(evalId: string, metric: string): TrendPoint[] {
   const ev = allEvals().find(e => e.id === evalId)
   if (!ev) return []
-  return generateTrendData(ev.name, metric, ev.asset_snapshot.name, allEvals())
+  return generateTrendData(ev.evaluation_name, metric, ev.asset_snapshot.name, allEvals())
 }
 
 // Assets — sourced from static fixtures in mocks/data/
