@@ -181,7 +181,7 @@ class TriggerRequest(BaseModel):
     """Request body for triggering a single evaluation."""
 
     asset_name: str
-    test_name: str
+    evaluation_name: str
     slo_name: str
     period_start: datetime
     period_end: datetime
@@ -199,7 +199,7 @@ class BatchTriggerRequest(BaseModel):
     """Request body for triggering a group evaluation batch."""
 
     group_name: str
-    test_name: str
+    evaluation_name: str
     period_start: datetime
     period_end: datetime
     metadata: dict[str, str] = {}
