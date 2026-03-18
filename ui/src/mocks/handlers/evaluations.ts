@@ -46,6 +46,52 @@ export const evaluationHandlers = [
     )
   }),
 
+  http.post('/api/evaluations/re-evaluate', async ({ request }) => {
+    const body = await request.json() as {
+      asset_name: string
+      slo_name: string
+      from_date?: string
+      from_baseline?: boolean
+      dry_run?: boolean
+    }
+    return HttpResponse.json({
+      affected_evaluations: 3,
+      slo_version_used: 2,
+      results: [
+        {
+          id: crypto.randomUUID(),
+          evaluation_name: 'nightly-run',
+          period_start: body.from_date ?? '2026-03-10T00:00:00Z',
+          period_end: '2026-03-10T00:30:00Z',
+          old_result: 'fail',
+          new_result: 'pass',
+          old_score: 45.0,
+          new_score: 92.0,
+        },
+        {
+          id: crypto.randomUUID(),
+          evaluation_name: 'nightly-run',
+          period_start: '2026-03-11T00:00:00Z',
+          period_end: '2026-03-11T00:30:00Z',
+          old_result: 'fail',
+          new_result: 'pass',
+          old_score: 52.0,
+          new_score: 88.0,
+        },
+        {
+          id: crypto.randomUUID(),
+          evaluation_name: 'nightly-run',
+          period_start: '2026-03-12T00:00:00Z',
+          period_end: '2026-03-12T00:30:00Z',
+          old_result: 'warning',
+          new_result: 'pass',
+          old_score: 71.0,
+          new_score: 95.0,
+        },
+      ],
+    })
+  }),
+
   http.post('/api/evaluations/:id/annotations', async ({ params, request }) => {
     const body = await request.json() as Record<string, unknown>
     return HttpResponse.json(
