@@ -2,7 +2,7 @@
 
 Revision ID: 001
 Revises:
-Create Date: 2026-03-18 22:26:40.861480
+Create Date: 2026-03-18 22:35:07.624979
 
 """
 
@@ -121,6 +121,9 @@ def upgrade() -> None:
         sa.Column("display_name", sa.Text(), nullable=True),
         sa.Column("version", sa.Integer(), nullable=False),
         sa.Column(
+            "comparable_from_version", sa.Integer(), server_default=sa.text("1"), nullable=False
+        ),
+        sa.Column(
             "indicators",
             postgresql.JSONB(astext_type=sa.Text()),
             server_default=sa.text("'{}'"),
@@ -157,6 +160,9 @@ def upgrade() -> None:
         sa.Column("name", sa.Text(), nullable=False),
         sa.Column("display_name", sa.Text(), nullable=True),
         sa.Column("version", sa.Integer(), nullable=False),
+        sa.Column(
+            "comparable_from_version", sa.Integer(), server_default=sa.text("1"), nullable=False
+        ),
         sa.Column(
             "total_score_pass_pct", sa.Float(), server_default=sa.text("90.0"), nullable=False
         ),
