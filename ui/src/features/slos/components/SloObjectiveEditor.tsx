@@ -18,6 +18,7 @@ const objectiveSchema = z.object({
 const formSchema = z.object({
   total_score_pass_pct: z.coerce.number().min(0).max(100),
   total_score_warning_pct: z.coerce.number().min(0).max(100),
+  comparable_from_version: z.coerce.number().min(1).optional(),
   objectives: z.array(objectiveSchema),
 })
 type FormValues = z.infer<typeof formSchema>
@@ -117,6 +118,7 @@ export function SloObjectiveEditor({ slo, onCancel, onSaved }: Props) {
       total_score_pass_pct: values.total_score_pass_pct,
       total_score_warning_pct: values.total_score_warning_pct,
       comparison: slo.comparison ?? {},
+      comparable_from_version: values.comparable_from_version || undefined,
     }
   }
 
@@ -152,6 +154,15 @@ export function SloObjectiveEditor({ slo, onCancel, onSaved }: Props) {
         <div>
           <label className="block text-xs text-slate-500 mb-1">Total Warning %</label>
           <input {...register('total_score_warning_pct')} type="number" min={0} max={100} className={inp} />
+        </div>
+      </div>
+
+      {/* Version compatibility */}
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="block text-[10px] text-slate-500 mb-0.5">Comparable From Version</label>
+          <input {...register('comparable_from_version')} type="number" min={1} className={inp} placeholder={`${slo.version}`} />
+          <p className="text-[10px] text-slate-600 mt-0.5">Baselines from older versions are excluded</p>
         </div>
       </div>
 
