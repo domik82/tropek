@@ -508,12 +508,13 @@ class EvaluationRepository:
                 )
                 .values(baseline_unpinned_at=func.now())
             )
-        # Pin the target evaluation
+        # Pin the target evaluation (reset unpinned_at in case it was previously unpinned)
         await self._session.execute(
             update(Evaluation)
             .where(Evaluation.id == eval_id)
             .values(
                 baseline_pinned_at=func.now(),
+                baseline_unpinned_at=None,
                 baseline_pin_reason=reason,
                 baseline_pin_author=author,
             )
