@@ -101,14 +101,14 @@ async def _resolve_from_date(
             raise ValueError(f"evaluation '{request.from_evaluation_id}' not found")
         return anchor_eval.period_start
 
-    # from_baseline: scan for an evaluation with baseline_pinned_at in job_stats
+    # from_baseline: find the most recent evaluation with an active baseline pin
     recent_evals = await eval_repo.load_evaluations_for_reeval(
         asset_id=asset_id,
         slo_name=request.slo_name,
         from_date=_DATETIME_MIN,
     )
-    for ev in recent_evals:
-        if ev.job_stats and ev.job_stats.get("baseline_pinned_at"):
+    for ev in reversed(recent_evals):
+        if ev.baseline_pinned_at is not None and ev.baseline_unpinned_at is None:
             return ev.period_start
 
     raise ValueError("no evaluation with pinned baseline found")

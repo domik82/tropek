@@ -126,6 +126,9 @@ export async function reEvaluate(
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   })
-  if (!res.ok) throw new Error(`reEvaluate: ${res.status}`)
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}))
+    throw new Error(body.detail ?? `reEvaluate: ${res.status}`)
+  }
   return res.json()
 }

@@ -36,6 +36,11 @@ export function ReEvaluateModal({ assetName, sloName, defaultFromDate, onClose }
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
       <div className="bg-gray-800 border border-slate-700 rounded-xl p-6 w-full max-w-lg space-y-4">
         <h2 className="text-lg font-semibold text-slate-100">Run Re-evaluation</h2>
+        {reEvaluate.isError && (
+          <p className="text-sm text-red-400 bg-red-900/20 border border-red-700/30 rounded px-3 py-2">
+            {reEvaluate.error instanceof Error ? reEvaluate.error.message : 'Request failed'}
+          </p>
+        )}
         <p className="text-sm text-slate-400">
           Re-score evaluations for <span className="text-slate-200">{assetName}</span>{' '}
           with SLO <span className="text-slate-200">{sloName}</span>
