@@ -8,7 +8,10 @@ from typing import Any
 
 import pytest
 from app.db.models import Asset, AssetType
+from app.modules.quality_gate.re_evaluation_schemas import ReEvaluateRequest
+from app.modules.quality_gate.re_evaluator import re_evaluate
 from app.modules.quality_gate.repository import EvaluationRepository
+from app.modules.slo_registry.repository import SLORepository
 from sqlalchemy.ext.asyncio import AsyncSession
 
 _START = datetime(2026, 3, 10, 10, 0, 0, tzinfo=UTC)
@@ -33,6 +36,7 @@ async def _create_completed_eval(
     score: float = 90.0,
     indicator_results: list[Any] | None = None,
     sli_version: int | None = None,
+    slo_name: str = "http-slo",
 ) -> uuid.UUID:
     ev = await repo.create_pending(
         evaluation_name="daily",
@@ -42,7 +46,7 @@ async def _create_completed_eval(
         asset_snapshot={"name": "test"},
         metadata={},
         asset_id=asset_id,
-        slo_name="http-slo",
+        slo_name=slo_name,
         sli_version=sli_version,
     )
     await repo.mark_completed(
@@ -50,7 +54,7 @@ async def _create_completed_eval(
         result=result,
         score=score,
         indicator_results=indicator_results or [],
-        slo_name="http-slo",
+        slo_name=slo_name,
     )
     return ev.id
 
@@ -140,3 +144,140 @@ async def test_update_reeval_result_preserves_original(db_session: AsyncSession)
     assert ev2.result == "warning"
     assert ev2.job_stats["original_result"] == "fail"
     assert ev2.job_stats["original_score"] == 45.0
+
+
+@pytest.mark.integration
+async def test_re_evaluate_updates_results_and_adds_annotation(
+    db_session: AsyncSession,
+) -> None:
+    """Full re-evaluation flow: create evals, re-eval with new SLO, verify results."""
+    repo = EvaluationRepository(db_session)
+    slo_repo = SLORepository(db_session)
+    asset_id = await _create_asset(db_session)
+
+    # Create SLO v1: pass if cpu < 90
+    await slo_repo.create(
+        name="re-eval-slo",
+        objectives=[{"sli": "cpu", "pass_criteria": ["<90"], "weight": 1}],
+    )
+
+    # Create eval that fails under v1 (cpu=95)
+    eid = await _create_completed_eval(
+        repo,
+        asset_id,
+        datetime(2026, 3, 10, tzinfo=UTC),
+        result="fail",
+        score=0.0,
+        slo_name="re-eval-slo",
+        indicator_results=[
+            {
+                "metric": "cpu",
+                "display_name": "cpu",
+                "value": 95.0,
+                "compared_value": None,
+                "status": "fail",
+                "score": 0,
+                "weight": 1,
+                "key_sli": False,
+                "pass_targets": [{"criteria": "<90", "target_value": 90, "violated": True}],
+                "warning_targets": None,
+                "change_absolute": None,
+                "change_relative_pct": None,
+            }
+        ],
+    )
+
+    # Create SLO v2: pass if cpu < 100 (relaxed threshold)
+    await slo_repo.create(
+        name="re-eval-slo",
+        objectives=[{"sli": "cpu", "pass_criteria": ["<100"], "weight": 1}],
+    )
+
+    # Get asset name for the request
+    asset_row = await db_session.get(Asset, asset_id)
+    assert asset_row is not None
+
+    # Re-evaluate with latest SLO
+    response = await re_evaluate(
+        ReEvaluateRequest(
+            asset_name=asset_row.name,
+            slo_name="re-eval-slo",
+            from_date=datetime(2026, 3, 9, tzinfo=UTC),
+        ),
+        db_session,
+    )
+
+    assert response.affected_evaluations == 1
+    assert response.slo_version_used == 2
+    assert response.results[0].old_result == "fail"
+    assert response.results[0].new_result == "pass"
+
+    # Verify the DB was updated
+    ev = await repo.get_by_id(eid)
+    assert ev is not None
+    assert ev.result == "pass"
+    assert ev.job_stats["original_result"] == "fail"
+
+    # Verify annotation was added
+    assert len(ev.annotations) == 1
+    assert "re-evaluated" in ev.annotations[0].content
+
+
+@pytest.mark.integration
+async def test_re_evaluate_dry_run_does_not_write(db_session: AsyncSession) -> None:
+    """Dry run returns diffs without modifying the database."""
+    repo = EvaluationRepository(db_session)
+    slo_repo = SLORepository(db_session)
+    asset_id = await _create_asset(db_session)
+
+    await slo_repo.create(
+        name="dry-run-slo",
+        objectives=[{"sli": "cpu", "pass_criteria": ["<100"], "weight": 1}],
+    )
+
+    eid = await _create_completed_eval(
+        repo,
+        asset_id,
+        datetime(2026, 3, 10, tzinfo=UTC),
+        result="fail",
+        score=0.0,
+        slo_name="dry-run-slo",
+        indicator_results=[
+            {
+                "metric": "cpu",
+                "display_name": "cpu",
+                "value": 50.0,
+                "compared_value": None,
+                "status": "fail",
+                "score": 0,
+                "weight": 1,
+                "key_sli": False,
+                "pass_targets": [{"criteria": "<90", "target_value": 90, "violated": True}],
+                "warning_targets": None,
+                "change_absolute": None,
+                "change_relative_pct": None,
+            }
+        ],
+    )
+
+    asset_row = await db_session.get(Asset, asset_id)
+    assert asset_row is not None
+
+    response = await re_evaluate(
+        ReEvaluateRequest(
+            asset_name=asset_row.name,
+            slo_name="dry-run-slo",
+            from_date=datetime(2026, 3, 9, tzinfo=UTC),
+            dry_run=True,
+        ),
+        db_session,
+    )
+
+    assert response.affected_evaluations == 1
+    assert response.results[0].new_result == "pass"
+
+    # DB should NOT be updated
+    ev = await repo.get_by_id(eid)
+    assert ev is not None
+    assert ev.result == "fail"
+    assert len(ev.annotations) == 0
