@@ -10,6 +10,7 @@ import { EvaluationTabs, tabLabel } from '@/features/evaluations/components/Eval
 import { EvaluationHeader } from '@/features/evaluations/components/EvaluationHeader'
 import { AnnotationForm } from '@/features/evaluations/components/AnnotationForm'
 import { EvaluationActionsButton, EvaluationActionForm } from '@/features/evaluations/components/EvaluationActions'
+import { ReEvaluateModal } from '@/features/evaluations/components/ReEvaluateModal'
 import type { ActionKind } from '@/features/evaluations/components/EvaluationActions'
 import { ViewToggle } from '@/components/charts/ViewToggle'
 import type { ViewMode } from '@/components/charts/ViewToggle'
@@ -150,7 +151,14 @@ export function AssetPanel({ assetName, initialEvalId }: Props) {
       />
 
       {/* Action form */}
-      {activeAction && effectiveEvalId && ev && !ev.invalidated && (
+      {activeAction === 're-evaluate' && ev && (
+        <ReEvaluateModal
+          assetName={assetName}
+          sloName={ev.slo_name ?? ''}
+          onClose={() => setActiveAction(null)}
+        />
+      )}
+      {activeAction && activeAction !== 're-evaluate' && effectiveEvalId && ev && !ev.invalidated && (
         <EvaluationActionForm
           evalId={effectiveEvalId}
           currentResult={ev.result}
