@@ -4,6 +4,7 @@
     "name": "linux-compilation-sli",
     "display_name": "Linux Compilation Indicators",
     "version": 2,
+    "comparable_from_version": 1,
     "indicators": {
       "compilation_duration_s": "avg_over_time(compilation_duration_seconds{instance=\"$vm_ip\"}[5m])",
       "compilation_errors": "compilation_errors_total{instance=\"$vm_ip\"}",
@@ -20,6 +21,7 @@
     "name": "api-performance-sli",
     "display_name": "API Performance Indicators",
     "version": 1,
+    "comparable_from_version": 1,
     "indicators": {
       "response_time_p95": "histogram_quantile(0.95, rate(http_duration_seconds_bucket{service=\"$service_name\"}[5m]))",
       "error_rate": "rate(http_requests_total{status=~\"5..\", service=\"$service_name\"}[5m]) / rate(http_requests_total{service=\"$service_name\"}[5m])",
