@@ -30,7 +30,7 @@ from sqlalchemy.ext.asyncio import (
 # override=False: shell env vars take precedence if already set.
 # Must come after imports but before fixtures — pydantic-settings reads env vars
 # lazily when settings objects are instantiated inside test fixtures, not here.
-load_dotenv(Path(__file__).parents[4] / ".env.test", override=False)
+load_dotenv(Path(__file__).parents[3] / ".env.test", override=False)
 
 
 @pytest.fixture(scope="session")
