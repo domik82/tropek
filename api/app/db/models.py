@@ -296,6 +296,13 @@ class Evaluation(Base):
     adapter_used: Mapped[str | None] = mapped_column(Text, nullable=True)
     invalidated: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=false(), default=False)
     invalidation_note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    baseline_pinned_at:   Mapped[datetime | None]  = mapped_column(DateTime(timezone=True), nullable=True)
+    baseline_unpinned_at: Mapped[datetime | None]  = mapped_column(DateTime(timezone=True), nullable=True)
+    baseline_pin_reason:  Mapped[str | None]        = mapped_column(Text, nullable=True)
+    baseline_pin_author:  Mapped[str | None]        = mapped_column(Text, nullable=True)
+    original_result:      Mapped[str | None]        = mapped_column(Text, nullable=True)
+    override_reason:      Mapped[str | None]        = mapped_column(Text, nullable=True)
+    override_author:      Mapped[str | None]        = mapped_column(Text, nullable=True)
     # Job lifecycle
     status: Mapped[str] = mapped_column(Text, nullable=False, server_default=text("'pending'"), default="pending")
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
@@ -426,6 +433,9 @@ class EvaluationBatch(Base):
     status:         Mapped[str]              = mapped_column(Text, nullable=False, server_default=text("'pending'"), default="pending")
     trigger_params: Mapped[dict[str, Any]]   = mapped_column(JSONB, nullable=False, server_default=text("'{}'"), default=dict)
     evaluation_ids: Mapped[list[Any]]        = mapped_column(JSONB, nullable=False, server_default=text("'[]'"), default=list)
+    result:         Mapped[str | None]            = mapped_column(Text, nullable=True)
+    score:          Mapped[float | None]          = mapped_column(Float, nullable=True)
+    rollup_details: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
     created_at:     Mapped[datetime]         = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
     # fmt: on

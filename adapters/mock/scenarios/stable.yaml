@@ -1,0 +1,53 @@
+name: stable
+namespaces:
+  - prometheus-local
+  - mock-dc-b
+metrics:
+  # HTTP service metrics — degrade between hours 18-24 (2026-03-15T18:00Z to 2026-03-16T00:00Z)
+  response_time_p99:
+    baseline: 450
+    phases:
+      - duration_hours: 18
+        pattern: stable
+        jitter_pct: 5
+      - duration_hours: 6
+        pattern: spike
+        target: 950
+        jitter_pct: 3
+      - duration_hours: 24
+        pattern: stable
+        jitter_pct: 5
+  error_rate:
+    baseline: 0.001
+    phases:
+      - duration_hours: 18
+        pattern: stable
+        jitter_pct: 10
+      - duration_hours: 6
+        pattern: spike
+        target: 0.09
+        jitter_pct: 5
+      - duration_hours: 24
+        pattern: stable
+        jitter_pct: 10
+  availability:
+    baseline: 99.95
+    phases:
+      - duration_hours: 48
+        pattern: stable
+        jitter_pct: 0.05
+  # DB metrics — always healthy
+  query_latency_p99:
+    baseline: 42
+    phases:
+      - duration_hours: 48
+        pattern: stable
+        jitter_pct: 8
+  connection_saturation:
+    baseline: 0.28
+    phases:
+      - duration_hours: 48
+        pattern: stable
+        jitter_pct: 6
+interval_minutes: 5
+start: "2026-03-15T00:00:00Z"

@@ -9,14 +9,24 @@ kind: AssetGroup
 metadata:
   name: core-services
   display_name: Core Services
-spec: {}
+spec:
+  members:
+    - asset_name: checkout-api
+      weight: 1.0
+    - asset_name: product-catalog
+      weight: 1.0
+    - asset_name: user-service
+      weight: 1.0
 ---
 api_version: tropek/v1
 kind: AssetGroup
 metadata:
   name: data-tier
   display_name: Data Tier
-spec: {}
+spec:
+  members:
+    - asset_name: orders-db
+      weight: 1.0
 ---
 api_version: tropek/v1
 kind: AssetGroup

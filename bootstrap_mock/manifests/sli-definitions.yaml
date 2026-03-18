@@ -10,6 +10,7 @@ metadata:
   author: bootstrap
   notes: Standard latency, error-rate and availability indicators for HTTP services.
 spec:
+  adapter_type: prometheus
   indicators:
     response_time_p99: 'histogram_quantile(0.99, rate(http_request_duration_seconds_bucket[5m]))'
     error_rate: 'rate(http_requests_total{status=~"5.."}[5m]) / rate(http_requests_total[5m])'
@@ -23,6 +24,7 @@ metadata:
   author: bootstrap
   notes: Query latency and connection saturation indicators for PostgreSQL.
 spec:
+  adapter_type: prometheus
   indicators:
     query_latency_p99: 'histogram_quantile(0.99, rate(pg_query_duration_seconds_bucket[5m]))'
     connection_saturation: 'pg_stat_activity_count / pg_settings_max_connections'

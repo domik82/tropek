@@ -176,7 +176,7 @@ class IndicatorResult(BaseModel):
 
     metric: str
     display_name: str
-    value: float
+    value: float | None
     compared_value: float | None
     change_absolute: float | None
     change_relative_pct: float | None
@@ -203,7 +203,7 @@ class FailingIndicator(BaseModel):
 
     metric: str
     display_name: str
-    value: float
+    value: float | None
     threshold: str
 
 
@@ -237,6 +237,13 @@ class EvaluationSummary(BaseModel):
     ingestion_mode: str
     adapter_used: str | None
     invalidated: bool
+    baseline_pinned_at: datetime | None = None
+    baseline_unpinned_at: datetime | None = None
+    baseline_pin_reason: str | None = None
+    baseline_pin_author: str | None = None
+    original_result: str | None = None
+    override_reason: str | None = None
+    override_author: str | None = None
     asset_snapshot: dict[str, Any]
     evaluation_metadata: dict[str, Any]
     annotation_count: int

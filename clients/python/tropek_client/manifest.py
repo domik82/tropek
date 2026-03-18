@@ -352,6 +352,11 @@ def _create(client: Any, doc: ManifestDocument) -> None:
             )
         case "AssetGroup":
             client.asset_groups.create(name)
+            for member in doc.spec.get("members", []):
+                asset = client.assets.get(member["asset_name"])
+                client.asset_groups.add_member(
+                    name, str(asset.id), weight=member.get("weight", 1.0)
+                )
         case "DataSource":
             client.datasources.create(
                 name,
@@ -364,6 +369,7 @@ def _create(client: Any, doc: ManifestDocument) -> None:
             client.sli_definitions.create(
                 name,
                 indicators=doc.spec["indicators"],
+                adapter_type=doc.spec.get("adapter_type", "prometheus"),
                 display_name=doc.metadata.get("display_name"),
                 notes=doc.metadata.get("notes"),
                 author=doc.metadata.get("author"),
@@ -428,6 +434,7 @@ def _update(client: Any, doc: ManifestDocument) -> None:
             client.sli_definitions.create(
                 name,
                 indicators=doc.spec["indicators"],
+                adapter_type=doc.spec.get("adapter_type", "prometheus"),
                 display_name=doc.metadata.get("display_name"),
                 notes=doc.metadata.get("notes"),
                 author=doc.metadata.get("author"),
