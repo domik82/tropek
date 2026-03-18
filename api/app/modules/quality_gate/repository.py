@@ -228,30 +228,37 @@ class EvaluationRepository:
     async def get_baselines(
         self,
         *,
-        name: str,
-        scope_tags: list[str],
-        asset_snapshot: dict[str, Any],
+        asset_id: uuid.UUID,
+        slo_name: str,
+        period_start_before: datetime,
         include_result_with_score: str,
         limit: int,
-        sli_name: str | None = None,
+        tag_filters: dict[str, str] | None = None,
+        sli_version_range: tuple[int, int] | None = None,
+        restrict_to_ids: list[uuid.UUID] | None = None,
     ) -> list[Evaluation]:
-        """Fetch previous completed evaluations for relative criteria comparison.
+        """Fetch previous completed evaluations for baseline comparison.
 
-        Scoped by test name, result filter, and JSONB tag matching.
+        Scoped by asset + SLO, with optional tag filtering, version range,
+        and ID restriction (for cascading re-evaluation).
 
         Args:
-            name: Test name to match.
-            scope_tags: Asset snapshot tag keys to match (e.g. ["os", "arch"]).
-            asset_snapshot: Current evaluation's asset snapshot — provides tag values to match.
+            asset_id: Asset UUID to scope baselines to.
+            slo_name: SLO name to scope baselines to.
+            period_start_before: Only include evaluations before this timestamp.
             include_result_with_score: "pass", "pass_or_warn", or "all".
             limit: Maximum number of baseline evaluations to return.
-            sli_name: Optional SLI name to match (for filtering baselines by metric).
+            tag_filters: Optional tag key-value pairs to match in evaluation_metadata.
+            sli_version_range: Optional (min, max) inclusive version range for sli_version.
+            restrict_to_ids: Optional list of evaluation IDs to restrict results to.
 
         Returns:
             Matching completed evaluations ordered by period_start descending.
         """
         q = select(Evaluation).where(
-            Evaluation.evaluation_name == name,
+            Evaluation.asset_id == asset_id,
+            Evaluation.slo_name == slo_name,
+            Evaluation.period_start < period_start_before,
             Evaluation.status == EvaluationStatus.COMPLETED,
             Evaluation.invalidated == False,  # noqa: E712
         )
@@ -259,17 +266,18 @@ class EvaluationRepository:
             q = q.where(Evaluation.result == "pass")
         elif include_result_with_score == "pass_or_warn":
             q = q.where(Evaluation.result.in_(["pass", "warning"]))
-        # "all" — no result filter
 
-        if sli_name:
-            q = q.where(Evaluation.sli_name == sli_name)
+        if tag_filters:
+            for key, value in tag_filters.items():
+                q = q.where(Evaluation.evaluation_metadata[(key,)].as_string() == value)
 
-        # Scope by asset snapshot tags
-        current_tags = asset_snapshot.get("tags", {})
-        for tag in scope_tags:
-            tag_value = current_tags.get(tag)
-            if tag_value is not None:
-                q = q.where(Evaluation.asset_snapshot[("tags", tag)].as_string() == tag_value)
+        if sli_version_range:
+            q = q.where(Evaluation.sli_version.is_not(None))
+            q = q.where(Evaluation.sli_version >= sli_version_range[0])
+            q = q.where(Evaluation.sli_version <= sli_version_range[1])
+
+        if restrict_to_ids is not None:
+            q = q.where(Evaluation.id.in_(restrict_to_ids))
 
         q = q.order_by(Evaluation.period_start.desc()).limit(limit)
         rows = await self._session.execute(q)

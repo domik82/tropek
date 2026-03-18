@@ -6,14 +6,28 @@ Run: uv run pytest api/tests/db/test_evaluation_repository.py -m integration -v
 
 from __future__ import annotations
 
+import uuid
 from datetime import UTC, datetime
 
 import pytest
+from app.db.models import Asset, AssetType
 from app.modules.quality_gate.repository import EvaluationRepository
 from sqlalchemy.ext.asyncio import AsyncSession
 
 _START = datetime(2026, 3, 12, 10, 0, 0, tzinfo=UTC)
 _END = datetime(2026, 3, 12, 10, 30, 0, tzinfo=UTC)
+
+
+async def _create_asset(session: AsyncSession, name: str | None = None) -> uuid.UUID:
+    """Insert an AssetType and Asset, returning the asset ID."""
+    type_name = f"vm-{uuid.uuid4().hex[:8]}"
+    session.add(AssetType(id=uuid.uuid4(), name=type_name))
+    await session.flush()
+    asset_id = uuid.uuid4()
+    asset_name = name or f"asset-{asset_id.hex[:8]}"
+    session.add(Asset(id=asset_id, name=asset_name, type_name=type_name))
+    await session.flush()
+    return asset_id
 
 
 def _make_snapshot(os: str = "windows-11", arch: str = "x64") -> dict[str, str | dict[str, str]]:
@@ -24,7 +38,7 @@ def _make_snapshot(os: str = "windows-11", arch: str = "x64") -> dict[str, str |
 async def test_create_pending_returns_evaluation(db_session: AsyncSession) -> None:
     repo = EvaluationRepository(db_session)
     ev = await repo.create_pending(
-        name="compile-test",
+        evaluation_name="compile-test",
         period_start=_START,
         period_end=_END,
         ingestion_mode="push",
@@ -40,7 +54,7 @@ async def test_create_pending_returns_evaluation(db_session: AsyncSession) -> No
 async def test_get_returns_evaluation(db_session: AsyncSession) -> None:
     repo = EvaluationRepository(db_session)
     ev = await repo.create_pending(
-        name="get-test",
+        evaluation_name="get-test",
         period_start=_START,
         period_end=_END,
         ingestion_mode="push",
@@ -56,7 +70,7 @@ async def test_get_returns_evaluation(db_session: AsyncSession) -> None:
 async def test_mark_completed_updates_fields(db_session: AsyncSession) -> None:
     repo = EvaluationRepository(db_session)
     ev = await repo.create_pending(
-        name="complete-test",
+        evaluation_name="complete-test",
         period_start=_START,
         period_end=_END,
         ingestion_mode="push",
@@ -80,7 +94,7 @@ async def test_mark_completed_updates_fields(db_session: AsyncSession) -> None:
 async def test_mark_running_sets_status(db_session: AsyncSession) -> None:
     repo = EvaluationRepository(db_session)
     ev = await repo.create_pending(
-        name="running-test",
+        evaluation_name="running-test",
         period_start=_START,
         period_end=_END,
         ingestion_mode="pull",
@@ -96,55 +110,79 @@ async def test_mark_running_sets_status(db_session: AsyncSession) -> None:
 @pytest.mark.integration
 async def test_list_evaluations_filters_by_name(db_session: AsyncSession) -> None:
     repo = EvaluationRepository(db_session)
-    for name in ("alpha", "alpha", "beta"):
+    for n in ("alpha", "alpha", "beta"):
         await repo.create_pending(
-            name=name,
+            evaluation_name=n,
             period_start=_START,
             period_end=_END,
             ingestion_mode="push",
             asset_snapshot=_make_snapshot(),
             metadata={},
         )
-    results = await repo.list_evaluations(name="alpha")
+    results = await repo.list_evaluations(evaluation_name="alpha")
     assert len(results) == 2
-    assert all(e.name == "alpha" for e in results)
+    assert all(e.evaluation_name == "alpha" for e in results)
 
 
 @pytest.mark.integration
-async def test_get_baselines_filters_by_os_tag(db_session: AsyncSession) -> None:
+async def test_get_baselines_excludes_invalidated(db_session: AsyncSession) -> None:
+    """Invalidated evaluations are excluded from baselines."""
     repo = EvaluationRepository(db_session)
-    for os in ("windows-11", "windows-11", "ubuntu-22"):
-        ev = await repo.create_pending(
-            name="scope-test",
-            period_start=_START,
-            period_end=_END,
-            ingestion_mode="push",
-            asset_snapshot=_make_snapshot(os=os),
-            metadata={},
-        )
-        await repo.mark_completed(
-            ev.id,
-            result="pass",
-            score=90.0,
-            indicator_results=[],
-        )
+    asset_id = await _create_asset(db_session)
+
+    ev1 = await repo.create_pending(
+        evaluation_name="run-1",
+        period_start=_START,
+        period_end=_END,
+        ingestion_mode="push",
+        asset_snapshot=_make_snapshot(),
+        metadata={},
+        asset_id=asset_id,
+        slo_name="http-slo",
+    )
+    await repo.mark_completed(
+        ev1.id,
+        result="pass",
+        score=90.0,
+        indicator_results=[],
+        slo_name="http-slo",
+    )
+
+    ev2 = await repo.create_pending(
+        evaluation_name="run-2",
+        period_start=_START,
+        period_end=_END,
+        ingestion_mode="push",
+        asset_snapshot=_make_snapshot(),
+        metadata={},
+        asset_id=asset_id,
+        slo_name="http-slo",
+    )
+    await repo.mark_completed(
+        ev2.id,
+        result="pass",
+        score=90.0,
+        indicator_results=[],
+        slo_name="http-slo",
+    )
+    await repo.invalidate(ev2.id, note="bad data")
+
     baselines = await repo.get_baselines(
-        name="scope-test",
-        scope_tags=["os"],
-        asset_snapshot=_make_snapshot(os="windows-11"),
-        include_result_with_score="pass",
+        asset_id=asset_id,
+        slo_name="http-slo",
+        period_start_before=datetime(2027, 1, 1, tzinfo=UTC),
+        include_result_with_score="all",
         limit=10,
     )
-    assert len(baselines) == 2
-    for b in baselines:
-        assert b.asset_snapshot["tags"]["os"] == "windows-11"
+    assert len(baselines) == 1
+    assert baselines[0].id == ev1.id
 
 
 @pytest.mark.integration
 async def test_add_and_list_annotations(db_session: AsyncSession) -> None:
     repo = EvaluationRepository(db_session)
     ev = await repo.create_pending(
-        name="ann-test",
+        evaluation_name="ann-test",
         period_start=_START,
         period_end=_END,
         ingestion_mode="push",
@@ -162,7 +200,7 @@ async def test_add_and_list_annotations(db_session: AsyncSession) -> None:
 async def test_write_and_read_sli_values(db_session: AsyncSession) -> None:
     repo = EvaluationRepository(db_session)
     ev = await repo.create_pending(
-        name="sli-test",
+        evaluation_name="sli-test",
         period_start=_START,
         period_end=_END,
         ingestion_mode="push",
@@ -177,7 +215,7 @@ async def test_write_and_read_sli_values(db_session: AsyncSession) -> None:
             "aggregation": "avg",
             "value": 72.3,
             "asset_name": "vm-test-01",
-            "test_name": "sli-test",
+            "evaluation_name": "sli-test",
             "os_tag": "windows-11",
         }
     ]
@@ -189,34 +227,249 @@ async def test_write_and_read_sli_values(db_session: AsyncSession) -> None:
 
 
 @pytest.mark.integration
-async def test_get_baselines_filters_by_sli_name(db_session: AsyncSession) -> None:
+async def test_get_baselines_excludes_null_sli_version_with_range(
+    db_session: AsyncSession,
+) -> None:
+    """Evaluations with null sli_version are excluded when a range is specified."""
     repo = EvaluationRepository(db_session)
-    # Create evaluations with different sli_name values
-    for sli_name in ("cpu_usage", "cpu_usage", "memory_usage"):
+    asset_id = await _create_asset(db_session)
+
+    ev1 = await repo.create_pending(
+        evaluation_name="daily",
+        period_start=_START,
+        period_end=_END,
+        ingestion_mode="push",
+        asset_snapshot=_make_snapshot(),
+        metadata={},
+        asset_id=asset_id,
+        slo_name="http-slo",
+        sli_version=2,
+    )
+    await repo.mark_completed(
+        ev1.id,
+        result="pass",
+        score=90.0,
+        indicator_results=[],
+        slo_name="http-slo",
+    )
+
+    ev2 = await repo.create_pending(
+        evaluation_name="daily",
+        period_start=_START,
+        period_end=_END,
+        ingestion_mode="push",
+        asset_snapshot=_make_snapshot(),
+        metadata={},
+        asset_id=asset_id,
+        slo_name="http-slo",
+    )
+    await repo.mark_completed(
+        ev2.id,
+        result="pass",
+        score=90.0,
+        indicator_results=[],
+        slo_name="http-slo",
+    )
+
+    baselines = await repo.get_baselines(
+        asset_id=asset_id,
+        slo_name="http-slo",
+        period_start_before=datetime(2027, 1, 1, tzinfo=UTC),
+        include_result_with_score="all",
+        limit=10,
+        sli_version_range=(1, 3),
+    )
+    assert len(baselines) == 1
+    assert baselines[0].sli_version == 2
+
+
+@pytest.mark.integration
+async def test_get_baselines_by_asset_and_slo(db_session: AsyncSession) -> None:
+    """Baselines scoped by asset_id + slo_name, not by evaluation_name."""
+    repo = EvaluationRepository(db_session)
+    asset_id = await _create_asset(db_session)
+    other_asset_id = await _create_asset(db_session)
+
+    for aid in (asset_id, asset_id, other_asset_id):
         ev = await repo.create_pending(
-            name="metric-filter-test",
+            evaluation_name="run-1",
             period_start=_START,
             period_end=_END,
             ingestion_mode="push",
             asset_snapshot=_make_snapshot(),
             metadata={},
-            sli_name=sli_name,
+            asset_id=aid,
+            slo_name="http-slo",
         )
         await repo.mark_completed(
             ev.id,
             result="pass",
             score=90.0,
             indicator_results=[],
+            slo_name="http-slo",
         )
-    # Query baselines with sli_name filter
+
     baselines = await repo.get_baselines(
-        name="metric-filter-test",
-        scope_tags=["os"],
-        asset_snapshot=_make_snapshot(),
-        include_result_with_score="pass",
+        asset_id=asset_id,
+        slo_name="http-slo",
+        period_start_before=datetime(2027, 1, 1, tzinfo=UTC),
+        include_result_with_score="all",
         limit=10,
-        sli_name="cpu_usage",
     )
     assert len(baselines) == 2
+    assert all(b.asset_id == asset_id for b in baselines)
+
+
+@pytest.mark.integration
+async def test_get_baselines_excludes_future_period_start(db_session: AsyncSession) -> None:
+    """Baselines must have period_start strictly before the current evaluation."""
+    repo = EvaluationRepository(db_session)
+    asset_id = await _create_asset(db_session)
+    starts = [
+        datetime(2026, 3, 10, tzinfo=UTC),
+        datetime(2026, 3, 12, tzinfo=UTC),
+        datetime(2026, 3, 14, tzinfo=UTC),
+    ]
+    for s in starts:
+        ev = await repo.create_pending(
+            evaluation_name="daily",
+            period_start=s,
+            period_end=s,
+            ingestion_mode="push",
+            asset_snapshot=_make_snapshot(),
+            metadata={},
+            asset_id=asset_id,
+            slo_name="http-slo",
+        )
+        await repo.mark_completed(
+            ev.id,
+            result="pass",
+            score=90.0,
+            indicator_results=[],
+            slo_name="http-slo",
+        )
+
+    baselines = await repo.get_baselines(
+        asset_id=asset_id,
+        slo_name="http-slo",
+        period_start_before=datetime(2026, 3, 12, tzinfo=UTC),
+        include_result_with_score="all",
+        limit=10,
+    )
+    assert len(baselines) == 1
+    assert baselines[0].period_start == datetime(2026, 3, 10, tzinfo=UTC)
+
+
+@pytest.mark.integration
+async def test_get_baselines_with_tag_filters(db_session: AsyncSession) -> None:
+    """Tag filters narrow baselines by evaluation_metadata JSONB values."""
+    repo = EvaluationRepository(db_session)
+    asset_id = await _create_asset(db_session)
+
+    for branch in ("main", "main", "feature-x"):
+        ev = await repo.create_pending(
+            evaluation_name="ci-run",
+            period_start=_START,
+            period_end=_END,
+            ingestion_mode="push",
+            asset_snapshot=_make_snapshot(),
+            metadata={"branch": branch},
+            asset_id=asset_id,
+            slo_name="http-slo",
+        )
+        await repo.mark_completed(
+            ev.id,
+            result="pass",
+            score=90.0,
+            indicator_results=[],
+            slo_name="http-slo",
+        )
+
+    baselines = await repo.get_baselines(
+        asset_id=asset_id,
+        slo_name="http-slo",
+        period_start_before=datetime(2027, 1, 1, tzinfo=UTC),
+        include_result_with_score="all",
+        limit=10,
+        tag_filters={"branch": "main"},
+    )
+    assert len(baselines) == 2
+
+
+@pytest.mark.integration
+async def test_get_baselines_with_sli_version_range(db_session: AsyncSession) -> None:
+    """Version range filter excludes evaluations outside the compatible range."""
+    repo = EvaluationRepository(db_session)
+    asset_id = await _create_asset(db_session)
+
+    for v in (1, 2, 3, 4):
+        ev = await repo.create_pending(
+            evaluation_name="daily",
+            period_start=_START,
+            period_end=_END,
+            ingestion_mode="push",
+            asset_snapshot=_make_snapshot(),
+            metadata={},
+            asset_id=asset_id,
+            slo_name="http-slo",
+            sli_version=v,
+        )
+        await repo.mark_completed(
+            ev.id,
+            result="pass",
+            score=90.0,
+            indicator_results=[],
+            slo_name="http-slo",
+        )
+
+    baselines = await repo.get_baselines(
+        asset_id=asset_id,
+        slo_name="http-slo",
+        period_start_before=datetime(2027, 1, 1, tzinfo=UTC),
+        include_result_with_score="all",
+        limit=10,
+        sli_version_range=(2, 4),
+    )
+    assert len(baselines) == 3
     for b in baselines:
-        assert b.sli_name == "cpu_usage"
+        assert b.sli_version is not None
+        assert b.sli_version >= 2
+
+
+@pytest.mark.integration
+async def test_get_baselines_restrict_to_ids(db_session: AsyncSession) -> None:
+    """restrict_to_ids limits baselines to a specific set of evaluation IDs."""
+    repo = EvaluationRepository(db_session)
+    asset_id = await _create_asset(db_session)
+
+    eval_ids = []
+    for _ in range(3):
+        ev = await repo.create_pending(
+            evaluation_name="daily",
+            period_start=_START,
+            period_end=_END,
+            ingestion_mode="push",
+            asset_snapshot=_make_snapshot(),
+            metadata={},
+            asset_id=asset_id,
+            slo_name="http-slo",
+        )
+        await repo.mark_completed(
+            ev.id,
+            result="pass",
+            score=90.0,
+            indicator_results=[],
+            slo_name="http-slo",
+        )
+        eval_ids.append(ev.id)
+
+    baselines = await repo.get_baselines(
+        asset_id=asset_id,
+        slo_name="http-slo",
+        period_start_before=datetime(2027, 1, 1, tzinfo=UTC),
+        include_result_with_score="all",
+        limit=10,
+        restrict_to_ids=eval_ids[:2],
+    )
+    assert len(baselines) == 2
+    assert {b.id for b in baselines} == set(eval_ids[:2])
