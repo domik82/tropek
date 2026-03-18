@@ -2,7 +2,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useInvalidateEvaluation, useOverrideStatus, usePinBaseline } from '../hooks'
 
-export type ActionKind = 'invalidate' | 'override' | 'baseline'
+export type ActionKind = 'invalidate' | 'override' | 'baseline' | 're-evaluate'
 
 interface ActionDef {
   kind: ActionKind
@@ -69,11 +69,25 @@ const BASELINE: ActionDef = {
   focusBorder: 'focus:border-blue-500',
 }
 
+const RE_EVALUATE: ActionDef = {
+  kind: 're-evaluate',
+  label: 'Run Evaluations',
+  description: 'Re-score all evaluations from stored data with current SLO thresholds.',
+  borderColor: 'border-purple-700/40',
+  bgColor: 'bg-purple-950/40',
+  confirmBg: 'bg-purple-600',
+  confirmHoverBg: 'hover:bg-purple-500',
+  dotColor: 'bg-purple-400',
+  textColor: 'text-purple-300',
+  focusBorder: 'focus:border-purple-500',
+}
+
 function getActions(currentResult: string): ActionDef[] {
   return [
     INVALIDATE,
     currentResult === 'pass' ? OVERRIDE_TO_FAIL : OVERRIDE_TO_PASS,
     BASELINE,
+    RE_EVALUATE,
   ]
 }
 

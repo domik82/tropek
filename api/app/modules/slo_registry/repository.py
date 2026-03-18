@@ -30,6 +30,7 @@ class SLORepository:
         notes: str | None = None,
         author: str | None = None,
         meta: dict[str, Any] | None = None,
+        comparable_from_version: int | None = None,
     ) -> SLODefinition:
         """Insert a new version of a named SLO.
 
@@ -45,6 +46,8 @@ class SLORepository:
             notes: Optional description of changes in this version.
             author: Optional identifier of who created this version.
             meta: Optional arbitrary key-value metadata.
+            comparable_from_version: Earliest version whose baselines are valid to compare against.
+                Defaults to the previous version when one exists, otherwise 1.
 
         Returns:
             The newly created SLODefinition with its assigned version.
@@ -59,10 +62,18 @@ class SLORepository:
         max_version = result.scalar_one_or_none()
         next_version = (max_version or 0) + 1
 
+        if comparable_from_version is not None:
+            resolved_cfv = comparable_from_version
+        elif max_version is not None:
+            resolved_cfv = max_version
+        else:
+            resolved_cfv = 1
+
         slo = SLODefinition(
             id=uuid.uuid4(),
             name=name,
             version=next_version,
+            comparable_from_version=resolved_cfv,
             total_score_pass_pct=total_score_pass_pct,
             total_score_warning_pct=total_score_warning_pct,
             comparison=comparison or {},

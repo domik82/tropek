@@ -457,7 +457,7 @@ class _Evaluations:
     def trigger(
         self,
         asset_name: str,
-        test_name: str,
+        evaluation_name: str,
         slo_name: str,
         period_start: str,
         period_end: str,
@@ -469,7 +469,7 @@ class _Evaluations:
             "/evaluations",
             json={
                 "asset_name": asset_name,
-                "test_name": test_name,
+                "evaluation_name": evaluation_name,
                 "slo_name": slo_name,
                 "period_start": period_start,
                 "period_end": period_end,
@@ -482,7 +482,7 @@ class _Evaluations:
     def trigger_batch(
         self,
         group_name: str,
-        test_name: str,
+        evaluation_name: str,
         period_start: str,
         period_end: str,
         *,
@@ -493,7 +493,7 @@ class _Evaluations:
             "/evaluations/batch",
             json={
                 "group_name": group_name,
-                "test_name": test_name,
+                "evaluation_name": evaluation_name,
                 "period_start": period_start,
                 "period_end": period_end,
                 "metadata": metadata or {},
@@ -533,6 +533,33 @@ class _Evaluations:
         resp = self._http.patch(f"/evaluations/{eval_id}/restore-override")
         _raise_for_status(resp)
         return EvaluationDetail.model_validate(resp.json())
+
+    def re_evaluate(
+        self,
+        asset_name: str,
+        slo_name: str,
+        *,
+        from_date: str | None = None,
+        from_baseline: bool = False,
+        from_evaluation_id: str | None = None,
+        slo_version: int | None = None,
+        dry_run: bool = False,
+    ) -> dict[str, Any]:
+        """Re-evaluate completed evaluations from stored SLI values."""
+        body: dict[str, Any] = {"asset_name": asset_name, "slo_name": slo_name}
+        if from_date is not None:
+            body["from_date"] = from_date
+        if from_baseline:
+            body["from_baseline"] = True
+        if from_evaluation_id is not None:
+            body["from_evaluation_id"] = from_evaluation_id
+        if slo_version is not None:
+            body["slo_version"] = slo_version
+        if dry_run:
+            body["dry_run"] = True
+        resp = self._http.post("/evaluations/re-evaluate", json=body)
+        _raise_for_status(resp)
+        return resp.json()  # type: ignore[no-any-return]
 
 
 class _Annotations:

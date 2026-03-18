@@ -8,6 +8,7 @@ import { EvaluationHeader } from '@/features/evaluations/components/EvaluationHe
 import { EvaluationTabs, tabLabel } from '@/features/evaluations/components/EvaluationTabs'
 import { AnnotationForm } from '@/features/evaluations/components/AnnotationForm'
 import { EvaluationActionsButton, EvaluationActionForm } from '@/features/evaluations/components/EvaluationActions'
+import { ReEvaluateModal } from '@/features/evaluations/components/ReEvaluateModal'
 import type { ActionKind } from '@/features/evaluations/components/EvaluationActions'
 
 function scrollTo(id: string) {
@@ -126,7 +127,15 @@ export function EvaluationDetailPage() {
       />
 
       {/* Action form */}
-      {activeAction && !ev.invalidated && (
+      {activeAction === 're-evaluate' && (
+        <ReEvaluateModal
+          assetName={ev.asset_snapshot.name}
+          sloName={ev.slo_name ?? ''}
+          defaultFromDate={ev.period_start.slice(0, 16)}
+          onClose={() => setActiveAction(null)}
+        />
+      )}
+      {activeAction && activeAction !== 're-evaluate' && !ev.invalidated && (
         <EvaluationActionForm
           evalId={id!}
           currentResult={ev.result}

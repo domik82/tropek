@@ -21,6 +21,8 @@ from app.modules.assets.repository import (
 from app.modules.common.errors import raise_not_found
 from app.modules.common.schemas import PagedResponse
 from app.modules.datasource.repository import DataSourceRepository
+from app.modules.quality_gate.re_evaluation_schemas import ReEvaluateRequest, ReEvaluateResponse
+from app.modules.quality_gate.re_evaluator import re_evaluate
 from app.modules.quality_gate.repository import EvaluationRepository
 from app.modules.quality_gate.schemas import (
     AnnotationCreate,
@@ -135,7 +137,7 @@ async def trigger_evaluation(
 
     eval_repo = EvaluationRepository(session)
     ev = await eval_repo.create_pending(
-        name=body.test_name,
+        evaluation_name=body.evaluation_name,
         period_start=body.period_start,
         period_end=body.period_end,
         ingestion_mode="pull",
@@ -207,7 +209,7 @@ async def trigger_batch(
                 continue
 
             ev = await eval_repo.create_pending(
-                name=body.test_name,
+                evaluation_name=body.evaluation_name,
                 period_start=body.period_start,
                 period_end=body.period_end,
                 ingestion_mode="pull",
@@ -228,7 +230,7 @@ async def trigger_batch(
         evaluation_ids=[str(eid) for eid in evaluation_ids],
         trigger_params={
             "group_name": body.group_name,
-            "test_name": body.test_name,
+            "evaluation_name": body.evaluation_name,
             "period_start": body.period_start.isoformat(),
             "period_end": body.period_end.isoformat(),
         },
@@ -345,6 +347,18 @@ async def get_metric_heatmap(
         metrics=[HeatmapMetric(name=k, display_name=v) for k, v in metric_set.items()],
         cells=cells,
     )
+
+
+@router.post("/evaluations/re-evaluate", response_model=ReEvaluateResponse)
+async def re_evaluate_evaluations(
+    body: ReEvaluateRequest,
+    session: AsyncSession = Depends(get_session),  # noqa: B008
+) -> ReEvaluateResponse:
+    """Re-evaluate completed evaluations from stored SLI values."""
+    try:
+        return await re_evaluate(body, session)
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e)) from e
 
 
 @router.get("/evaluations/{eval_id}", response_model=EvaluationDetail)

@@ -138,6 +138,68 @@ def test_override_to_pass(client: TropekClient) -> None:
     print("PASS: override result to pass + restore")
 
 
+def test_reeval_from_pinned_baseline(client: TropekClient) -> None:
+    """Pin the 2nd evaluation, then re-evaluate from that pinned baseline."""
+    step("Step 14: Pin baseline + re-evaluate from pinned")
+    evals = client.evaluations.list(asset_name="checkout-api")
+    completed = [e for e in evals.items if e.status == "completed"]
+    assert len(completed) >= 2, f"need >= 2 completed evals, got {len(completed)}"
+
+    # Pin the 2nd evaluation (not the most recent)
+    pin_target = str(completed[1].id)
+    pin_result = client.evaluations.pin_baseline(
+        pin_target, "e2e test: set baseline for re-eval", "test-runner"
+    )
+    assert pin_result.baseline_pinned_at is not None
+    print(f"pinned eval {pin_target}")
+
+    # Re-evaluate from the pinned baseline
+    result = client.evaluations.re_evaluate(
+        "checkout-api", "http-availability-slo", from_baseline=True
+    )
+    print(
+        f"re-evaluated {result['affected_evaluations']} evals (SLO v{result['slo_version_used']})"
+    )
+    assert result["affected_evaluations"] >= 1, "expected at least 1 re-evaluated eval"
+    for r in result["results"]:
+        print(f"  {r['period_start'][:16]}: {r['old_result']} -> {r['new_result']}")
+    print("PASS: re-evaluate from pinned baseline")
+
+
+def test_reeval_from_date(client: TropekClient) -> None:
+    """Re-evaluate evaluations from a specific date."""
+    step("Step 15: Re-evaluate from date")
+    result = client.evaluations.re_evaluate(
+        "checkout-api",
+        "http-availability-slo",
+        from_date="2026-03-15T16:00:00Z",
+    )
+    print(
+        f"re-evaluated {result['affected_evaluations']} evals (SLO v{result['slo_version_used']})"
+    )
+    assert result["affected_evaluations"] >= 1, "expected at least 1 re-evaluated eval"
+    for r in result["results"]:
+        print(f"  {r['period_start'][:16]}: {r['old_result']} -> {r['new_result']}")
+    print("PASS: re-evaluate from date")
+
+
+def test_reeval_dry_run(client: TropekClient) -> None:
+    """Dry-run re-evaluation returns diffs without writing."""
+    step("Step 16: Re-evaluate dry run")
+    result = client.evaluations.re_evaluate(
+        "checkout-api",
+        "http-availability-slo",
+        from_date="2026-03-15T00:00:00Z",
+        dry_run=True,
+    )
+    print(
+        f"dry run: {result['affected_evaluations']} evals would be affected "
+        f"(SLO v{result['slo_version_used']})"
+    )
+    assert result["affected_evaluations"] >= 0
+    print("PASS: re-evaluate dry run")
+
+
 def test_annotations(client: TropekClient) -> None:
     """Create, list, update, and delete an annotation on an evaluation."""
     step("Step 13: Annotation lifecycle")
@@ -183,6 +245,9 @@ def main() -> None:
     test_regression_eval(client)
     test_override_status(client)
     test_override_to_pass(client)
+    test_reeval_from_pinned_baseline(client)
+    test_reeval_from_date(client)
+    test_reeval_dry_run(client)
     test_annotations(client)
 
     print("\n=== All integration tests passed ===")

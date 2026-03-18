@@ -19,6 +19,7 @@ class SLIDefinitionCreate(BaseModel):
     notes: str | None = None
     author: str | None = None
     meta: dict[str, Any] = {}
+    comparable_from_version: int | None = None
 
 
 class SLIDefinitionRead(BaseModel):
@@ -29,6 +30,7 @@ class SLIDefinitionRead(BaseModel):
     adapter_type: str
     display_name: str | None
     version: int
+    comparable_from_version: int
     indicators: dict[str, str]
     notes: str | None
     author: str | None
