@@ -221,12 +221,11 @@ async def test_slo(  # noqa: C901
     elif baseline_cfg.mode == "asset_history":
         eval_repo = EvaluationRepository(session)
         past_evals = await eval_repo.get_baselines(
-            name=asset.name,
-            scope_tags=slo.comparison.scope_tags,
-            asset_snapshot={"tags": asset_labels},
+            asset_id=asset.id,
+            slo_name=body.sli_name,
+            period_start_before=body.period_start,
             include_result_with_score=slo.comparison.include_result_with_score.value,
             limit=baseline_cfg.limit,
-            sli_name=body.sli_name,
         )
         if past_evals:
             compared_values = {}
