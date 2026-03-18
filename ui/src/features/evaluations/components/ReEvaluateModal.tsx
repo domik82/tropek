@@ -6,11 +6,12 @@ import type { ReEvaluateResponse } from '../types'
 interface Props {
   assetName: string
   sloName: string
+  defaultFromDate?: string
   onClose: () => void
 }
 
-export function ReEvaluateModal({ assetName, sloName, onClose }: Props) {
-  const [fromDate, setFromDate] = useState('')
+export function ReEvaluateModal({ assetName, sloName, defaultFromDate, onClose }: Props) {
+  const [fromDate, setFromDate] = useState(defaultFromDate ?? '')
   const [fromBaseline, setFromBaseline] = useState(false)
   const [result, setResult] = useState<ReEvaluateResponse | null>(null)
 

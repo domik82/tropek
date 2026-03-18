@@ -131,6 +131,7 @@ export function EvaluationDetailPage() {
         <ReEvaluateModal
           assetName={ev.asset_snapshot.name}
           sloName={ev.slo_name ?? ''}
+          defaultFromDate={ev.period_start.slice(0, 16)}
           onClose={() => setActiveAction(null)}
         />
       )}

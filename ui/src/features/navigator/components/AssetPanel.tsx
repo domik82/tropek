@@ -56,6 +56,11 @@ export function AssetPanel({ assetName, initialEvalId }: Props) {
     return (sorted.find(e => !e.invalidated) ?? sorted[0]).id
   }, [evals])
 
+  const earliestPeriodStart = useMemo(() => {
+    if (!evals.length) return undefined
+    return [...evals].sort((a, b) => a.period_start.localeCompare(b.period_start))[0].period_start
+  }, [evals])
+
   const effectiveEvalId = selectedEvalId ?? defaultEvalId
 
   const { data: ev } = useEvaluationDetail(effectiveEvalId)
@@ -155,6 +160,7 @@ export function AssetPanel({ assetName, initialEvalId }: Props) {
         <ReEvaluateModal
           assetName={assetName}
           sloName={ev.slo_name ?? ''}
+          defaultFromDate={earliestPeriodStart?.slice(0, 16)}
           onClose={() => setActiveAction(null)}
         />
       )}
