@@ -23,7 +23,7 @@ class EvaluationRepository:
     async def create_pending(
         self,
         *,
-        name: str,
+        evaluation_name: str,
         period_start: datetime,
         period_end: datetime,
         ingestion_mode: str,
@@ -40,7 +40,7 @@ class EvaluationRepository:
         """Create a new evaluation record in pending status.
 
         Args:
-            name: Test identifier (e.g. "compilation-test").
+            evaluation_name: Evaluation identifier (e.g. "compilation-test").
             period_start: Evaluation window start.
             period_end: Evaluation window end.
             ingestion_mode: One of "pull", "push", "file".
@@ -59,7 +59,7 @@ class EvaluationRepository:
         """
         ev = Evaluation(
             id=uuid.uuid4(),
-            name=name,
+            evaluation_name=evaluation_name,
             period_start=period_start,
             period_end=period_end,
             ingestion_mode=ingestion_mode,
@@ -188,7 +188,7 @@ class EvaluationRepository:
     async def list_evaluations(
         self,
         *,
-        name: str | None = None,
+        evaluation_name: str | None = None,
         asset_name: str | None = None,
         result: str | None = None,
         from_: datetime | None = None,
@@ -199,7 +199,7 @@ class EvaluationRepository:
         """List evaluations with optional filters.
 
         Args:
-            name: Filter by test name.
+            evaluation_name: Filter by evaluation name.
             asset_name: Filter by asset_snapshot name (JSONB lookup).
             result: Filter by result value ("pass", "warning", "fail", "error").
             from_: Only include evaluations starting at or after this timestamp.
@@ -211,8 +211,8 @@ class EvaluationRepository:
             List of Evaluation rows, newest first.
         """
         q = select(Evaluation)
-        if name:
-            q = q.where(Evaluation.name == name)
+        if evaluation_name:
+            q = q.where(Evaluation.evaluation_name == evaluation_name)
         if asset_name:
             q = q.where(Evaluation.asset_snapshot["name"].as_string() == asset_name)
         if result:
@@ -251,7 +251,7 @@ class EvaluationRepository:
             Matching completed evaluations ordered by period_start descending.
         """
         q = select(Evaluation).where(
-            Evaluation.name == name,
+            Evaluation.evaluation_name == name,
             Evaluation.status == EvaluationStatus.COMPLETED,
             Evaluation.invalidated == False,  # noqa: E712
         )
@@ -457,7 +457,7 @@ class EvaluationRepository:
 
         Args:
             rows: List of dicts matching SLIValue columns (eval_id, eval_start,
-                  metric_name, aggregation, value, asset_name, test_name, os_tag).
+                  metric_name, aggregation, value, asset_name, evaluation_name, os_tag).
         """
         if not rows:
             return
@@ -486,7 +486,7 @@ class EvaluationRepository:
     async def get_trend(
         self,
         *,
-        test_name: str,
+        evaluation_name: str,
         metric_name: str,
         asset_name: str | None = None,
         from_: datetime | None = None,
@@ -496,7 +496,7 @@ class EvaluationRepository:
         """Return time-series data points for the trend endpoint.
 
         Args:
-            test_name: Test identifier to query.
+            evaluation_name: Evaluation identifier to query.
             metric_name: SLI metric name (e.g. "response_time_p99").
             asset_name: Optional filter by asset name.
             from_: Optional start of time range.
@@ -515,7 +515,7 @@ class EvaluationRepository:
             )
             .join(Evaluation, SLIValue.eval_id == Evaluation.id)
             .where(
-                SLIValue.test_name == test_name,
+                SLIValue.evaluation_name == evaluation_name,
                 SLIValue.metric_name == metric_name,
                 Evaluation.invalidated == False,  # noqa: E712
             )
