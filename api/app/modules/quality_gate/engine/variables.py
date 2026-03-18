@@ -68,20 +68,20 @@ def substitute_slo_variables(slo_yaml: str, variables: dict[str, str]) -> str:
 def build_variables(
     metadata: dict[str, str],
     asset_name: str | None = None,
-    test_name: str | None = None,
+    evaluation_name: str | None = None,
     start: str | None = None,
     end: str | None = None,
 ) -> dict[str, str]:
     """Merge all variable sources into a single substitution dict.
 
     Metadata fields take the lowest priority; reserved variables derived from
-    the request ($asset_name, $test_name, $start, $end) are added if not already
+    the request ($asset_name, $evaluation_name, $start, $end) are added if not already
     present in metadata.
 
     Args:
         metadata: Caller-provided key-value pairs from the evaluation request.
         asset_name: Primary asset name — sets $asset_name if not in metadata.
-        test_name: Test identifier — sets $test_name if not in metadata.
+        evaluation_name: Evaluation identifier — sets $evaluation_name and $test_name alias.
         start: ISO timestamp — sets $start if not in metadata.
         end: ISO timestamp — sets $end if not in metadata.
 
@@ -91,8 +91,9 @@ def build_variables(
     variables: dict[str, str] = dict(metadata)
     if asset_name:
         variables.setdefault("asset_name", asset_name)
-    if test_name:
-        variables.setdefault("test_name", test_name)
+    if evaluation_name:
+        variables.setdefault("evaluation_name", evaluation_name)
+        variables.setdefault("test_name", evaluation_name)  # backward compat alias
     if start:
         variables.setdefault("start", start)
     if end:

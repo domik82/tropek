@@ -55,11 +55,12 @@ def test_build_variables_merges_metadata() -> None:
     variables = build_variables(
         {"os": "windows-11", "vm_ip": "10.0.0.1"},
         asset_name="vm-win11-01",
-        test_name="compilation-test",
+        evaluation_name="compilation-test",
     )
     assert variables["os"] == "windows-11"
     assert variables["asset_name"] == "vm-win11-01"
-    assert variables["test_name"] == "compilation-test"
+    assert variables["evaluation_name"] == "compilation-test"
+    assert variables["test_name"] == "compilation-test"  # alias
 
 
 def test_build_variables_arbitrary_metadata_passthrough() -> None:
@@ -78,3 +79,20 @@ def test_build_variables_start_end() -> None:
     )
     assert variables["start"] == "2026-03-12T10:00:00Z"
     assert variables["end"] == "2026-03-12T10:30:00Z"
+
+
+def test_build_variables_evaluation_name() -> None:
+    variables = build_variables(
+        {},
+        evaluation_name="nightly-run",
+    )
+    assert variables["evaluation_name"] == "nightly-run"
+    assert variables["test_name"] == "nightly-run"
+
+
+def test_build_variables_evaluation_name_substitution() -> None:
+    variables = build_variables({}, evaluation_name="run-42")
+    result = substitute_variables("check_$evaluation_name", variables)
+    assert result == "check_run-42"
+    result_old = substitute_variables("check_$test_name", variables)
+    assert result_old == "check_run-42"
