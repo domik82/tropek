@@ -9,6 +9,8 @@ import type {
   EvaluationFilters,
   TriggerEvaluationPayload,
   Annotation,
+  ReEvaluatePayload,
+  ReEvaluateResponse,
 } from './types'
 import type { MetricHeatmapResponse } from '@/features/navigator/types'
 
@@ -113,5 +115,17 @@ export async function pinBaseline(
 export async function fetchMetricHeatmap(assetName: string): Promise<MetricHeatmapResponse> {
   const res = await fetch(`${BASE}/evaluations/metric-heatmap?asset_name=${encodeURIComponent(assetName)}`)
   if (!res.ok) throw new Error(`fetchMetricHeatmap: ${res.status}`)
+  return res.json()
+}
+
+export async function reEvaluate(
+  payload: ReEvaluatePayload
+): Promise<ReEvaluateResponse> {
+  const res = await fetch(`${BASE}/evaluations/re-evaluate`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  })
+  if (!res.ok) throw new Error(`reEvaluate: ${res.status}`)
   return res.json()
 }

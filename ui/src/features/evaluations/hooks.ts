@@ -12,8 +12,9 @@ import {
   invalidateEvaluation,
   overrideStatus,
   pinBaseline,
+  reEvaluate,
 } from './api'
-import type { EvaluationFilters, ColumnDef } from './types'
+import type { EvaluationFilters, ColumnDef, ReEvaluatePayload } from './types'
 import { FIXED_COLS, DEFAULT_VISIBLE_KEYS } from './constants'
 
 // ── List ──────────────────────────────────────────────────────────────────────
@@ -90,6 +91,16 @@ export function usePinBaseline(evalId: string) {
       pinBaseline(evalId, payload),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: evaluationKeys.detail(evalId) })
+      qc.invalidateQueries({ queryKey: evaluationKeys.all })
+    },
+  })
+}
+
+export function useReEvaluate() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (payload: ReEvaluatePayload) => reEvaluate(payload),
+    onSuccess: () => {
       qc.invalidateQueries({ queryKey: evaluationKeys.all })
     },
   })

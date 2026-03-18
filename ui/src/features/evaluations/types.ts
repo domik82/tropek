@@ -114,3 +114,30 @@ export interface ColumnDef {
   label: string
   required: boolean
 }
+
+export interface ReEvaluatePayload {
+  asset_name: string
+  slo_name: string
+  from_date?: string
+  from_baseline?: boolean
+  from_evaluation_id?: string
+  slo_version?: number
+  dry_run?: boolean
+}
+
+export interface ReEvalResultItem {
+  id: string
+  evaluation_name: string
+  period_start: string
+  period_end: string
+  old_result: string
+  new_result: string
+  old_score: number
+  new_score: number
+}
+
+export interface ReEvaluateResponse {
+  affected_evaluations: number
+  slo_version_used: number
+  results: ReEvalResultItem[]
+}
