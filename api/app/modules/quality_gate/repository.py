@@ -10,7 +10,7 @@ from sqlalchemy import String, delete, func, insert, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.db.models import Evaluation, EvaluationAnnotation, SLIValue
+from app.db.models import Asset, Evaluation, EvaluationAnnotation, SLIValue
 from app.modules.quality_gate.engine.constants import EvaluationStatus
 
 
@@ -57,6 +57,14 @@ class EvaluationRepository:
         Returns:
             Newly created Evaluation in pending status.
         """
+        # Merge asset labels as defaults into metadata (caller values take precedence)
+        merged_metadata = dict(metadata)
+        if asset_id is not None:
+            asset_row = await self._session.get(Asset, asset_id)
+            if asset_row is not None and asset_row.labels:
+                for key, value in asset_row.labels.items():
+                    merged_metadata.setdefault(str(key), str(value))
+
         ev = Evaluation(
             id=uuid.uuid4(),
             evaluation_name=evaluation_name,
@@ -64,7 +72,7 @@ class EvaluationRepository:
             period_end=period_end,
             ingestion_mode=ingestion_mode,
             asset_snapshot=asset_snapshot,
-            evaluation_metadata=metadata,
+            evaluation_metadata=merged_metadata,
             asset_id=asset_id,
             slo_name=slo_name,
             slo_version=slo_version,
