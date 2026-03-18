@@ -241,12 +241,19 @@ class Evaluation(Base):
 
     __tablename__ = "evaluations"
     __table_args__ = (
-        Index("idx_evaluations_name", "name"),
+        Index("idx_evaluations_evaluation_name", "evaluation_name"),
         Index("idx_evaluations_asset", "asset_id"),
         Index("idx_evaluations_result", "result"),
         Index("idx_evaluations_start", "period_start"),
         Index("idx_evaluations_status", "status"),
         Index("idx_evaluations_slo", "slo_name", "slo_version"),
+        Index(
+            "idx_evaluations_baseline_lookup",
+            "asset_id",
+            "slo_name",
+            text("period_start DESC"),
+            postgresql_where=text("status = 'completed' AND invalidated = false"),
+        ),
         # Partial index for watchdog: find stuck running jobs efficiently
         Index(
             "idx_evaluations_stuck",
@@ -271,7 +278,7 @@ class Evaluation(Base):
     # fmt: off
 
     id: Mapped[uuid.UUID] = mapped_column(UUID, primary_key=True, default=uuid.uuid4)
-    name: Mapped[str] = mapped_column(Text, nullable=False)
+    evaluation_name: Mapped[str] = mapped_column(Text, nullable=False)
     asset_id: Mapped[uuid.UUID | None] = mapped_column(UUID, ForeignKey("assets.id"), nullable=True)
     asset_snapshot: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, server_default=text("'{}'"), default=dict)
     period_start: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
@@ -333,7 +340,9 @@ class SLIValue(Base):
     """
 
     __tablename__ = "sli_values"
-    __table_args__ = (Index("idx_sli_values_lookup", "test_name", "metric_name", "eval_start"),)
+    __table_args__ = (
+        Index("idx_sli_values_lookup", "evaluation_name", "metric_name", "eval_start"),
+    )
 
     # fmt: off
     # TODO : probably to flat stucture - joins should probably be used in Grafana - not convinced this is good
@@ -344,7 +353,7 @@ class SLIValue(Base):
     aggregation: Mapped[str] = mapped_column(Text, nullable=False, primary_key=True)
     value: Mapped[float] = mapped_column(Float, nullable=False)
     asset_name: Mapped[str | None] = mapped_column(Text, nullable=True)
-    test_name: Mapped[str | None] = mapped_column(Text, nullable=True)
+    evaluation_name: Mapped[str | None] = mapped_column(Text, nullable=True)
     os_tag: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     # fmt: on
