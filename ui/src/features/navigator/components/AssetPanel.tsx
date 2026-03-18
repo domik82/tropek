@@ -10,6 +10,7 @@ import { EvaluationTabs, tabLabel } from '@/features/evaluations/components/Eval
 import { EvaluationHeader } from '@/features/evaluations/components/EvaluationHeader'
 import { AnnotationForm } from '@/features/evaluations/components/AnnotationForm'
 import { EvaluationActionsButton, EvaluationActionForm } from '@/features/evaluations/components/EvaluationActions'
+import { ReEvaluateModal } from '@/features/evaluations/components/ReEvaluateModal'
 import type { ActionKind } from '@/features/evaluations/components/EvaluationActions'
 import { ViewToggle } from '@/components/charts/ViewToggle'
 import type { ViewMode } from '@/components/charts/ViewToggle'
@@ -53,6 +54,11 @@ export function AssetPanel({ assetName, initialEvalId }: Props) {
     if (!evals.length) return undefined
     const sorted = [...evals].sort((a, b) => b.period_start.localeCompare(a.period_start))
     return (sorted.find(e => !e.invalidated) ?? sorted[0]).id
+  }, [evals])
+
+  const earliestPeriodStart = useMemo(() => {
+    if (!evals.length) return undefined
+    return [...evals].sort((a, b) => a.period_start.localeCompare(b.period_start))[0].period_start
   }, [evals])
 
   const effectiveEvalId = selectedEvalId ?? defaultEvalId
@@ -150,7 +156,15 @@ export function AssetPanel({ assetName, initialEvalId }: Props) {
       />
 
       {/* Action form */}
-      {activeAction && effectiveEvalId && ev && !ev.invalidated && (
+      {activeAction === 're-evaluate' && ev && (
+        <ReEvaluateModal
+          assetName={assetName}
+          sloName={ev.slo_name ?? ''}
+          defaultFromDate={earliestPeriodStart?.slice(0, 16)}
+          onClose={() => setActiveAction(null)}
+        />
+      )}
+      {activeAction && activeAction !== 're-evaluate' && effectiveEvalId && ev && !ev.invalidated && (
         <EvaluationActionForm
           evalId={effectiveEvalId}
           currentResult={ev.result}

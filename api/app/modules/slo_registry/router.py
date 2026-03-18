@@ -65,6 +65,7 @@ async def create_slo_definition(
         notes=body.notes,
         author=body.author,
         meta=body.meta,
+        comparable_from_version=body.comparable_from_version,
     )
     return SLODefinitionRead.model_validate(slo)
 

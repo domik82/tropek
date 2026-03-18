@@ -42,6 +42,7 @@ class SLODefinitionCreate(BaseModel):
     notes: str | None = None
     author: str | None = None
     meta: dict[str, Any] = Field(default_factory=dict)
+    comparable_from_version: int | None = None
 
 
 class SLODefinitionRead(BaseModel):
@@ -51,6 +52,7 @@ class SLODefinitionRead(BaseModel):
     name: str
     display_name: str | None
     version: int
+    comparable_from_version: int
     active: bool
     objectives: list[SLOObjectiveRead]
     total_score_pass_pct: float
