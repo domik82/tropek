@@ -281,3 +281,65 @@ async def test_re_evaluate_dry_run_does_not_write(db_session: AsyncSession) -> N
     assert ev is not None
     assert ev.result == "fail"
     assert len(ev.annotations) == 0
+
+
+@pytest.mark.integration
+async def test_re_evaluate_cascading_baselines(db_session: AsyncSession) -> None:
+    """Each re-evaluated eval becomes available as a baseline for the next."""
+    repo = EvaluationRepository(db_session)
+    slo_repo = SLORepository(db_session)
+    asset_id = await _create_asset(db_session)
+
+    # SLO with relative criteria: value must be <= +10% of baseline
+    await slo_repo.create(
+        name="cascade-slo",
+        objectives=[{"sli": "rt", "pass_criteria": ["<=+10%"], "weight": 1}],
+        comparison={"include_result_with_score": "all", "number_of_comparison_results": 1},
+    )
+
+    # Create 3 evals with response times: 100, 105, 110
+    # Without cascading, all would have no baseline. With cascading, each uses the previous.
+    for day, val in [(10, 100.0), (11, 105.0), (12, 110.0)]:
+        indicator_results = [
+            {
+                "metric": "rt",
+                "display_name": "response_time",
+                "value": val,
+                "compared_value": None,
+                "status": "fail",
+                "score": 0,
+                "weight": 1,
+                "key_sli": False,
+                "pass_targets": [{"criteria": "<=+10%", "target_value": None, "violated": True}],
+                "warning_targets": None,
+                "change_absolute": None,
+                "change_relative_pct": None,
+            }
+        ]
+        await _create_completed_eval(
+            repo,
+            asset_id,
+            datetime(2026, 3, day, tzinfo=UTC),
+            result="fail",
+            score=0.0,
+            indicator_results=indicator_results,
+            slo_name="cascade-slo",
+        )
+
+    asset_row = await db_session.get(Asset, asset_id)
+    assert asset_row is not None
+
+    response = await re_evaluate(
+        ReEvaluateRequest(
+            asset_name=asset_row.name,
+            slo_name="cascade-slo",
+            from_date=datetime(2026, 3, 9, tzinfo=UTC),
+        ),
+        db_session,
+    )
+
+    assert response.affected_evaluations == 3
+    # First eval: no baseline -> relative criteria pass (no history to compare against)
+    # Second eval: baseline=100, value=105 -> +5% -> pass
+    # Third eval: baseline=105, value=110 -> +4.8% -> pass
+    assert all(r.new_result == "pass" for r in response.results)
