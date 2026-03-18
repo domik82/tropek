@@ -334,7 +334,7 @@ class SLIValue(Base):
 
     Partitioned by eval_start for efficient time-range queries in Grafana.
     Composite PK required: TimescaleDB needs the partition key in the PK.
-    Denormalised columns (asset_name, test_name, os_tag) avoid joins in Grafana SQL.
+    Denormalised columns (asset_name, evaluation_name, os_tag) avoid joins in Grafana SQL.
     No ORM relationship to Evaluation is intentional — prevents accidental lazy-loading
     of potentially thousands of hypertable rows.
     """
