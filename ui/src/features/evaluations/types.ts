@@ -20,7 +20,7 @@ export interface Annotation {
 
 export interface EvaluationSummary {
   id: string
-  name: string
+  evaluation_name: string
   status: string
   result: 'pass' | 'warning' | 'fail' | 'error'
   score: number
@@ -100,7 +100,7 @@ export interface EvaluationFilters {
 
 export interface TriggerEvaluationPayload {
   group_name: string
-  test_name: string
+  evaluation_name: string
   slo_name: string
   period_start: string
   period_end: string
