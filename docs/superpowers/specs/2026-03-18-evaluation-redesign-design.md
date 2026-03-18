@@ -45,12 +45,13 @@ does not support:
 |---|---|---|
 | `Evaluation.name` | DB column `name` | Rename column to `evaluation_name` |
 | `create_pending(name=...)` | parameter | `evaluation_name=` |
-| `TriggerRequest.test_name` | schema field | `evaluation_name` |
-| `BatchTriggerRequest.test_name` | schema field | `evaluation_name` |
+| `TriggerRequest.test_name` | schema field (end-to-end-wiring worktree) | `evaluation_name` |
+| `BatchTriggerRequest.test_name` | schema field (end-to-end-wiring worktree) | `evaluation_name` |
 | `SLIValue.test_name` | hypertable column | `evaluation_name` |
 | `build_variables(..., test_name=)` | param + `$test_name` token | `evaluation_name=` / `$evaluation_name` |
 | `worker.py` line 198 | `test_name=ev.name` | `evaluation_name=ev.evaluation_name` |
 | Seed script | `f"seed-{asset_idx}"` | `f"seed-{asset_idx}"` (value unchanged, param name changes) |
+| `get_trend()` in repository | `test_name` filter on SLIValue | `evaluation_name` |
 | Index `idx_evaluations_name` | on `name` | on `evaluation_name` |
 
 ### Migration
@@ -116,7 +117,10 @@ if tag_filters:
         )
 
 # SLI/SLO version compatibility
+# Evaluations with null sli_version are excluded when a range is specified —
+# they have no version metadata and cannot be verified as compatible.
 if sli_version_range:
+    q = q.where(Evaluation.sli_version.is_not(None))
     q = q.where(Evaluation.sli_version >= sli_version_range[0])
     q = q.where(Evaluation.sli_version <= sli_version_range[1])
 
@@ -198,6 +202,15 @@ class AssetSLOLink(Base):
 ]
 ```
 
+### Rule validation
+
+A Pydantic model validates the `comparison_rules` structure at write time (via the
+`PUT /asset-slo-links/{id}/comparison-rules` endpoint). Invalid rules are rejected with 422.
+The model enforces:
+- `match` must be a `dict[str, str]`
+- `compare_to` must be a `dict[str, str | bool]`
+- At most one catch-all rule (`match: {}`) and it must be last
+
 ### Rule semantics
 
 - **`match`**: tag conditions on the current evaluation. All conditions must match (AND logic).
@@ -240,7 +253,30 @@ POST /evaluations
 ```
 
 When provided, this rule is used instead of the stored rules on `AssetSLOLink`. The override
-is stored in `job_stats.applied_rule` for observability.
+is stored in `evaluation_metadata._applied_comparison_rule` (underscore prefix marks it as
+system-managed, not caller-provided) for observability. Structure:
+
+```json
+{
+  "_applied_comparison_rule": {
+    "source": "request_override",
+    "compare_to": {"branch": "release-1.0"}
+  }
+}
+```
+
+When rules come from `AssetSLOLink`, the structure is:
+
+```json
+{
+  "_applied_comparison_rule": {
+    "source": "asset_slo_link",
+    "rule_index": 1,
+    "match": {"branch": "!main"},
+    "compare_to": {"branch": "main"}
+  }
+}
+```
 
 ### Default behavior (no rules configured)
 
@@ -324,8 +360,10 @@ baselines = await repo.get_baselines(
 ### Edge cases
 
 - **Bug in SLI query (v4 broken, v5 fixed):** Create v5 with `comparable_from_version = 1`.
-  Baselines include v1-v3 and v5+ evaluations. v4 evaluations are excluded (correct: their
-  data was collected with a broken query).
+  The range filter `sli_version >= 1 AND sli_version <= 5` includes v4 evaluations. To
+  exclude v4 data, invalidate the v4 evaluations (set `invalidated = true`). The baseline
+  query already filters out invalidated evaluations. This is the correct approach — if the
+  query was broken, the data is bad and should be marked as such regardless of baseline logic.
 - **Complete query rewrite:** Create v5 with `comparable_from_version = 5`. Baselines start
   from scratch — only v5+ evaluations count.
 - **Cosmetic change:** Create v5 with `comparable_from_version = 1` (or accept default of `4`).
@@ -393,10 +431,13 @@ POST /evaluations/re-evaluate
 ```json
 {
   "affected_evaluations": 8,
+  "slo_version_used": 3,
   "results": [
     {
       "id": "uuid",
+      "evaluation_name": "nightly-run",
       "period_start": "2026-03-10T00:00:00Z",
+      "period_end": "2026-03-10T00:30:00Z",
       "old_result": "fail",
       "new_result": "pass",
       "old_score": 45.0,
@@ -436,17 +477,49 @@ becomes available as a baseline for subsequent ones. This ensures that the re-ev
 produces the same results as if the evaluations had originally run in order with the correct
 SLO.
 
-Implementation: the re-evaluation loop maintains a running list of completed eval IDs. The
-`get_baselines()` query is restricted to these IDs (plus any evaluations before the re-eval
-window that are still valid baselines).
+Implementation: the re-evaluation loop maintains a running list of re-evaluated eval IDs. An
+additional `restrict_to_ids: list[uuid.UUID] | None` parameter is added to `get_baselines()`.
+When provided, the query adds `WHERE id = ANY(restrict_to_ids)` to limit baselines to the
+specified set. The re-evaluation loop passes the union of:
+- All evaluation IDs before the re-eval window (valid pre-existing baselines)
+- All evaluation IDs already processed in the current re-eval run
+
+### Updated `get_baselines()` signature (with restrict parameter)
+
+```python
+async def get_baselines(
+    self, *,
+    asset_id: uuid.UUID,
+    slo_name: str,
+    period_start_before: datetime,
+    include_result_with_score: str,
+    limit: int,
+    tag_filters: dict[str, str] | None = None,
+    sli_version_range: tuple[int, int] | None = None,
+    restrict_to_ids: list[uuid.UUID] | None = None,
+) -> list[Evaluation]
+```
+
+When `restrict_to_ids` is provided:
+```python
+if restrict_to_ids is not None:
+    q = q.where(Evaluation.id.in_(restrict_to_ids))
+```
+
+Normal evaluation flow passes `restrict_to_ids=None` (no restriction). Re-evaluation passes
+the curated list.
 
 ### Data integrity
 
-- `original_result` and `original_score` are set on the first re-evaluation and never
-  overwritten. Multiple re-evaluations preserve the original original.
+- `original_result` is set on the first re-evaluation and never overwritten. Multiple
+  re-evaluations preserve the original. The `original_result` column already exists in the
+  worktree branch.
+- `original_score` is stored in `job_stats.original_score` (JSONB) rather than a dedicated
+  column, since it is only needed for annotation/audit purposes, not for queries.
 - Each re-evaluation adds an annotation with the change details. The annotation trail
   provides a complete audit history.
-- The `job_stats` field is updated with `{"re_evaluated_at": timestamp, "re_eval_slo_version": N}`.
+- The `job_stats` field is updated with `{"re_evaluated_at": timestamp, "re_eval_slo_version": N,
+  "original_score": 45.0}`.
 
 ### Relationship to mark-as-baseline
 
@@ -526,6 +599,14 @@ evaluation."
 |---|---|---|
 | `evaluations` | `name` | `evaluation_name` |
 | `sli_values` | `test_name` | `evaluation_name` |
+
+### New indexes
+
+| Index | Columns | Condition |
+|---|---|---|
+| `idx_evaluations_baseline_lookup` | `(asset_id, slo_name, period_start DESC)` | `WHERE status = 'completed' AND invalidated = false` |
+
+This composite partial index covers the hot path for `get_baselines()`.
 
 ### Updated indexes
 
