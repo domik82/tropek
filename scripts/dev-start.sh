@@ -81,6 +81,9 @@ uv run --directory clients/python python ../../scripts/bootstrap.py "http://loca
 echo "=== Seeding historical evaluations ==="
 uv run --directory clients/python python ../../scripts/seed_evaluations.py "http://localhost:$API_PORT"
 
+echo "=== Running e2e tests ==="
+uv run --directory clients/python python ../../scripts/e2e_tests.py "http://localhost:$API_PORT"
+
 echo "=== Installing UI dependencies ==="
 npm --prefix ui install --legacy-peer-deps
 
