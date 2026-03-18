@@ -79,7 +79,7 @@ class EvaluationSummary(BaseModel):
     """Compact evaluation row for list views."""
 
     id: uuid.UUID
-    name: str
+    evaluation_name: str
     status: str
     result: str | None
     score: float | None
