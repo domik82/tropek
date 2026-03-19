@@ -112,6 +112,7 @@ class SLOTestRequest(BaseModel):
     asset_name: str
     period_start: datetime
     period_end: datetime
+    evaluation_name: str = ""
     baseline: BaselineConfig | None = None
     metadata: dict[str, str] = Field(default_factory=dict)
 

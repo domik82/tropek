@@ -67,9 +67,11 @@ def _build_summary(
         for ind in indicator_results
         if ind.get("status") == "fail"
     ]
+    job_stats = getattr(ev, "job_stats", None) or {}
     return EvaluationSummary.model_validate(
         {
             **ev.__dict__,
+            "original_score": job_stats.get("original_score"),
             "annotation_count": annotation_count,
             "latest_annotation": latest_ann,
             "top_failures": top_failures,
@@ -81,7 +83,8 @@ def _build_detail(ev: Any) -> EvaluationDetail:
     """Construct EvaluationDetail from an ORM Evaluation with annotations loaded."""
     annotations = [AnnotationRead.model_validate(a) for a in (ev.annotations or [])]
     indicator_results = [IndicatorResult(**ir) for ir in (ev.indicator_results or [])]
-    compared_ids = (ev.job_stats or {}).get("compared_evaluation_ids", [])
+    job_stats_detail = ev.job_stats or {}
+    compared_ids = job_stats_detail.get("compared_evaluation_ids", [])
     top_failures = [
         FailingIndicator(
             metric=ind.metric,
@@ -96,6 +99,7 @@ def _build_detail(ev: Any) -> EvaluationDetail:
     return EvaluationDetail.model_validate(
         {
             **ev.__dict__,
+            "original_score": job_stats_detail.get("original_score"),
             "annotation_count": len(annotations),
             "latest_annotation": sorted_annotations[-1] if sorted_annotations else None,
             "top_failures": top_failures,

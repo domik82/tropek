@@ -163,6 +163,7 @@ async def test_slo(  # noqa: C901
     variables = build_variables(
         metadata={**asset_labels, **body.metadata},
         asset_name=asset.name,
+        evaluation_name=body.evaluation_name,
         start=body.period_start.isoformat(),
         end=body.period_end.isoformat(),
     )

@@ -119,6 +119,11 @@ export function EvaluationDetailPage() {
                   <span className="text-purple-400">
                     {ev.original_result} → {ev.result}
                   </span>
+                  {ev.original_score != null && (
+                    <span className="text-purple-500">
+                      ({ev.original_score.toFixed(1)} → {ev.score.toFixed(1)})
+                    </span>
+                  )}
                 </span>
               </div>
             )}
