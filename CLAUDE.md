@@ -153,6 +153,61 @@ SQLAlchemy async ORM (asyncpg driver) with Alembic migrations. Repositories in `
 All imports must be at the top of the file. Never place imports inside functions,
 methods, or test bodies. This applies to production code and test files equally.
 
+## UI (React SPA)
+
+### Stack & commands
+
+React 18, TypeScript, Vite, Tailwind CSS v4, React Query, lucide-react icons.
+
+```bash
+cd ui && npm install --legacy-peer-deps   # Install (peer dep conflicts require --legacy)
+npx vite --host                           # Dev server on :5173
+npx tsc --noEmit                          # Type check
+```
+
+### Theme system
+
+Three themes via `data-theme` attribute on `<html>`: `forest` (green primary), `current` (neutral/Dynatrace), `corporate` (blue, stub).
+Colors are CSS custom properties defined in `ui/src/index.css`. Always use semantic tokens:
+
+| Token | Use for |
+|---|---|
+| `--primary` | Interactive elements: buttons, selected states, links |
+| `--popover` / `--border` | Card/menu backgrounds and borders |
+| `--muted-foreground` | Secondary text, placeholders |
+| `--status-pass/warning/fail` | Evaluation outcomes only — never for action identity |
+
+### Color conventions
+
+- **Status colors** (`text-pass`, `text-warning`, `text-fail`, `text-invalidated`) = evaluation outcomes.
+  Used in: heatmaps, result badges, score text, SLI breakdown table.
+- **Action accent colors** (gray `#8B949E`, red `#F85149`, blue `#58A6FF`, purple `#A371F7`) = action identity.
+  Used in: action forms, context menus. Intentionally hardcoded — must NOT overlap with status palette.
+- **Interactive elements** use `--primary` (theme-aware). Never hardcode button colors.
+
+### Design patterns
+
+- **Color identity via accents, not backgrounds.** Cards/forms use neutral `bg-popover`.
+  Color comes from a 3px top accent strip + title text + confirm button. No tinted backgrounds.
+- **Compact, right-aligned forms.** Inline action forms use `max-w-md` + `flex justify-end`.
+  Single-line inputs, not textareas. Only show fields the API actually uses.
+- **Two-line menu items.** Dropdown items show label + description with colored left accent bar.
+- **Sans-serif for UI chrome.** Body is monospace (good for data). Sidebars, menus, dialogs
+  need inline `fontFamily: "system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif"`.
+
+### Key UI directories
+
+```
+ui/src/
+├── components/AssetTree/      # Unified sidebar tree (mode="navigator" | "slo")
+├── features/evaluations/      # Eval detail, actions, SLI table, trend charts
+├── features/navigator/        # Navigator page, asset panel, heatmaps
+├── features/slos/             # SLO registry, group CRUD, SLO link dialogs
+├── features/assets/           # Asset group hooks and types
+├── lib/                       # Theme context, result colors, utilities
+└── pages/                     # Route-level page components
+```
+
 ## Configuration
 
 - Non-secret config: `config.yaml` (server, DB pool, cache TTLs, queue settings, adapter URLs, logging)
