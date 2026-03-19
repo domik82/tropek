@@ -391,6 +391,7 @@ class AssetSLOLink(Base):
     sli_name:         Mapped[str]        = mapped_column(Text, nullable=False)
     data_source_name: Mapped[str]        = mapped_column(Text, nullable=False)
     created_at:       Mapped[datetime]   = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    comparison_rules: Mapped[list[dict[str, Any]]] = mapped_column(JSONB, nullable=False, server_default=text("'[]'::jsonb"), default=list)
 
     # fmt: on
 
