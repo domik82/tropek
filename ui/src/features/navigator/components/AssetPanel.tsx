@@ -1,5 +1,5 @@
 // ui/src/features/navigator/components/AssetPanel.tsx
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAssetEvaluations, useMetricHeatmap } from '../hooks'
 import { useEvaluationDetail } from '@/features/evaluations/hooks'
@@ -8,8 +8,8 @@ import { MetricTrendBlock } from '@/features/evaluations/components/MetricTrendB
 import { SLIBreakdownTable } from '@/features/evaluations/components/SLIBreakdownTable'
 import { EvaluationTabs, tabLabel } from '@/features/evaluations/components/EvaluationTabs'
 import { EvaluationHeader } from '@/features/evaluations/components/EvaluationHeader'
-import { AnnotationForm } from '@/features/evaluations/components/AnnotationForm'
-import { EvaluationActionsButton, EvaluationActionForm, type ActionKind } from '@/features/evaluations/components/EvaluationActions'
+import { AnnotationSection, type AnnotationSectionHandle } from '@/features/evaluations/components/AnnotationForm'
+import { EvaluationActionsButton, EvaluationActionForm, NoteIconButton, type ActionKind } from '@/features/evaluations/components/EvaluationActions'
 import { ViewToggle } from '@/components/charts/ViewToggle'
 import type { ViewMode } from '@/components/charts/ViewToggle'
 import { AssetScoreChart } from './AssetScoreChart'
@@ -29,6 +29,13 @@ export function AssetPanel({ assetName, initialEvalId }: Props) {
   const [activeTab, setActiveTab] = useState('all')
   const [activeAction, setActiveAction] = useState<ActionKind | null>(null)
   const [metricGroupFilter, setMetricGroupFilter] = useState<string>('all')
+  const notesRef = useRef<AnnotationSectionHandle>(null)
+
+  function handleAddNote() {
+    notesRef.current?.openForm()
+    document.getElementById('notes-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
+
   const navigate = useNavigate()
 
   const explorerButton = (
@@ -143,12 +150,16 @@ export function AssetPanel({ assetName, initialEvalId }: Props) {
             </div>
           </>
         ) : undefined}
+        noteButton={effectiveEvalId && ev && !ev.invalidated ? (
+          <NoteIconButton onClick={handleAddNote} annotationCount={(ev.annotations ?? []).length} />
+        ) : undefined}
         actions={effectiveEvalId && ev ? (
           <EvaluationActionsButton
             currentResult={ev.result}
             invalidated={ev.invalidated}
             activeAction={activeAction}
             onSelectAction={setActiveAction}
+            onAddNote={handleAddNote}
           />
         ) : undefined}
       />
@@ -170,7 +181,9 @@ export function AssetPanel({ assetName, initialEvalId }: Props) {
 
       {/* Notes — shown when a single evaluation is selected */}
       {!isLoading && effectiveEvalId && ev && (
-        <AnnotationForm evalId={effectiveEvalId} annotations={ev.annotations ?? []} />
+        <div id="notes-section">
+          <AnnotationSection ref={notesRef} evalId={effectiveEvalId} annotations={ev.annotations ?? []} />
+        </div>
       )}
 
       {/* ── Heatmap mode ── */}
