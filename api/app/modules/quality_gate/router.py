@@ -352,6 +352,7 @@ async def trigger_batch(
 async def list_evaluations(
     asset_name: str | None = None,
     slo_name: str | None = None,
+    evaluation_name: list[str] | None = Query(default=None),  # noqa: B008
     result: str | None = None,
     date: str | None = None,
     group_name: str | None = None,
@@ -387,6 +388,7 @@ async def list_evaluations(
     evals, total, count_map = await eval_repo.list_with_counts(
         asset_id=resolved_asset_id,
         slo_name=slo_name,
+        evaluation_name=evaluation_name,
         result=result,
         date_prefix=date,
         asset_ids=asset_ids,
@@ -405,6 +407,7 @@ async def list_evaluations(
 @router.get("/evaluations/metric-heatmap", response_model=MetricHeatmapResponse)
 async def get_metric_heatmap(
     asset_name: str,
+    evaluation_name: list[str] | None = Query(default=None),  # noqa: B008
     limit: int = 20,
     session: AsyncSession = Depends(get_session),  # noqa: B008
 ) -> MetricHeatmapResponse:
@@ -414,7 +417,9 @@ async def get_metric_heatmap(
     if asset is None:
         raise HTTPException(status_code=404, detail=f"asset '{asset_name}' not found")
     eval_repo = EvaluationRepository(session)
-    evals = await eval_repo.get_metric_heatmap(asset_id=asset.id, limit=limit)
+    evals = await eval_repo.get_metric_heatmap(
+        asset_id=asset.id, limit=limit, evaluation_name=evaluation_name
+    )
     # Build slots (timestamps) and collect all unique metrics
     slots: list[datetime] = []
     metric_set: dict[str, str] = {}  # name -> display_name
