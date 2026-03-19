@@ -263,6 +263,23 @@ class Evaluation(Base):
             "started_at",
             postgresql_where=text("status = 'running'"),
         ),
+        # Duplicate prevention: at most one non-failed evaluation per identity tuple.
+        # Failed evaluations are excluded so retries can create a new row.
+        # Decision tree:
+        #   - No existing non-failed eval → create OK
+        #   - Existing failed eval only → create OK (excluded from constraint)
+        #   - Existing pending/running → 409 "already in progress"
+        #   - Existing completed/partial/invalidated → 409 "use re-evaluate"
+        Index(
+            "uq_evaluations_identity",
+            "asset_id",
+            "slo_name",
+            "evaluation_name",
+            "period_start",
+            "period_end",
+            unique=True,
+            postgresql_where=text("status != 'failed'"),
+        ),
         CheckConstraint(
             "status IN ('pending','running','completed','failed','partial')",
             name="ck_evaluations_status",
