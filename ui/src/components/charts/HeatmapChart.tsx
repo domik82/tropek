@@ -196,15 +196,14 @@ export function HeatmapChart({
             if (annotations && cellData?.hasNote) {
               const s = Math.min(6, rw / 3, rh / 3)
               children.push({
-                type: 'polygon',
+                type: 'rect',
                 shape: {
-                  points: [
-                    [rx + rw - s, ry],
-                    [rx + rw, ry],
-                    [rx + rw, ry + s],
-                  ],
+                  x: rx + rw - s,
+                  y: ry,
+                  width: s,
+                  height: s,
                 },
-                style: { fill: '#ffffff' },
+                style: { fill: '#F59E0B' },  // amber-500
               })
             }
 
