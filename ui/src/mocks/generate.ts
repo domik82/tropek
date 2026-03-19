@@ -689,3 +689,35 @@ import sliData from './data/sli-definitions.json'
 export function getSliDefinitions() {
   return sliData
 }
+
+// Group SLO links — derived from SCENARIOS
+export function getGroupSloLinks(groupName: string) {
+  const seen = new Set<string>()
+  const links: Array<{
+    id: string
+    link_name: string
+    group_id: string
+    slo_name: string
+    sli_name: string
+    data_source_name: string
+    created_at: string
+  }> = []
+
+  for (const s of SCENARIOS) {
+    if (s.group !== groupName) continue
+    const key = `${s.group}:${s.slo}`
+    if (seen.has(key)) continue
+    seen.add(key)
+    links.push({
+      id: `link-${s.group}-${s.slo}`,
+      link_name: `${s.group}-${s.slo}`,
+      group_id: `group-${s.group}`,
+      slo_name: s.slo,
+      sli_name: `${s.slo}-sli`,
+      data_source_name: 'prometheus',
+      created_at: '2026-02-01T00:00:00Z',
+    })
+  }
+
+  return links
+}
