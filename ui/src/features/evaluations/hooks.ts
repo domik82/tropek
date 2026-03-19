@@ -62,14 +62,18 @@ export function useAddAnnotation(evalId: string) {
   })
 }
 
+/** Invalidate all evaluation-related caches (list, heatmap). */
+function invalidateEvalCaches(qc: ReturnType<typeof useQueryClient>, evalId?: string) {
+  if (evalId) qc.invalidateQueries({ queryKey: evaluationKeys.detail(evalId) })
+  qc.invalidateQueries({ queryKey: evaluationKeys.all })
+  qc.invalidateQueries({ queryKey: ['metric-heatmap'] })
+}
+
 export function useInvalidateEvaluation(evalId: string) {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (payload: { note: string; author: string }) => invalidateEvaluation(evalId, payload),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: evaluationKeys.detail(evalId) })
-      qc.invalidateQueries({ queryKey: evaluationKeys.all })
-    },
+    onSuccess: () => invalidateEvalCaches(qc, evalId),
   })
 }
 
@@ -78,10 +82,7 @@ export function useOverrideStatus(evalId: string) {
   return useMutation({
     mutationFn: (payload: { new_result: string; reason: string; author: string }) =>
       overrideStatus(evalId, payload),
-    onSuccess: (data) => {
-      qc.setQueryData(evaluationKeys.detail(evalId), data)
-      qc.invalidateQueries({ queryKey: evaluationKeys.all })
-    },
+    onSuccess: () => invalidateEvalCaches(qc, evalId),
   })
 }
 
@@ -90,10 +91,7 @@ export function usePinBaseline(evalId: string) {
   return useMutation({
     mutationFn: (payload: { reason: string; author: string }) =>
       pinBaseline(evalId, payload),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: evaluationKeys.detail(evalId) })
-      qc.invalidateQueries({ queryKey: evaluationKeys.all })
-    },
+    onSuccess: () => invalidateEvalCaches(qc, evalId),
   })
 }
 
@@ -101,9 +99,7 @@ export function useReEvaluate() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (payload: ReEvaluatePayload) => reEvaluate(payload),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: evaluationKeys.all })
-    },
+    onSuccess: () => invalidateEvalCaches(qc),
   })
 }
 
