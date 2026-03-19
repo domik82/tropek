@@ -280,6 +280,7 @@ class AssetSLOLink(BaseModel):
     slo_name: str
     sli_name: str
     data_source_name: str
+    comparison_rules: list[dict[str, Any]] = []
 
 
 class AssetGroupSLOLink(BaseModel):

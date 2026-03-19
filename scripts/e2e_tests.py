@@ -11,6 +11,7 @@ import sys
 import time
 
 from tropek_client import TropekClient
+from tropek_client.exceptions import TropekValidationError
 
 TERMINAL_STATUSES = {"completed", "failed", "partial"}
 
@@ -200,6 +201,60 @@ def test_reeval_dry_run(client: TropekClient) -> None:
     print("PASS: re-evaluate dry run")
 
 
+def test_comparison_rules(client: TropekClient) -> None:
+    """CRUD lifecycle for comparison rules on an SLO link."""
+    step("Step 17: Comparison rules CRUD")
+
+    # GET — default empty
+    rules = client.asset_slo_links.get_comparison_rules("checkout-api", "checkout-api-http")
+    assert rules == [], f"expected empty rules, got {rules}"
+    print("default rules: []")
+
+    # PUT — set rules
+    new_rules = [
+        {"match": {"branch": "main"}, "compare_to": {"branch": "main"}},
+        {"match": {"branch": "!main"}, "compare_to": {"branch": "main"}},
+        {"match": {}, "compare_to": {}},
+    ]
+    updated = client.asset_slo_links.update_comparison_rules(
+        "checkout-api", "checkout-api-http", new_rules
+    )
+    assert len(updated) == 3, f"expected 3 rules, got {len(updated)}"
+    assert updated[0]["match"] == {"branch": "main"}
+    assert updated[2]["match"] == {}
+    print(f"set {len(updated)} rules")
+
+    # GET — verify persisted
+    fetched = client.asset_slo_links.get_comparison_rules("checkout-api", "checkout-api-http")
+    assert len(fetched) == 3
+    print("fetched persisted rules")
+
+    # PUT — clear rules
+    cleared = client.asset_slo_links.update_comparison_rules(
+        "checkout-api", "checkout-api-http", []
+    )
+    assert cleared == []
+    print("cleared rules")
+
+    # Verify 422 on invalid rules (catch-all not last)
+    got_validation_error = False
+    try:
+        client.asset_slo_links.update_comparison_rules(
+            "checkout-api",
+            "checkout-api-http",
+            [
+                {"match": {}, "compare_to": {}},
+                {"match": {"branch": "main"}, "compare_to": {"branch": "main"}},
+            ],
+        )
+    except TropekValidationError:
+        got_validation_error = True
+    assert got_validation_error, "expected 422 for catch-all not last"
+    print("422 rejected invalid rules")
+
+    print("PASS: comparison rules CRUD")
+
+
 def test_annotations(client: TropekClient) -> None:
     """Create, list, update, and delete an annotation on an evaluation."""
     step("Step 13: Annotation lifecycle")
@@ -248,6 +303,7 @@ def main() -> None:
     test_reeval_from_pinned_baseline(client)
     test_reeval_from_date(client)
     test_reeval_dry_run(client)
+    test_comparison_rules(client)
     test_annotations(client)
 
     print("\n=== All integration tests passed ===")

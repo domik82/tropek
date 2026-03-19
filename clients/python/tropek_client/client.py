@@ -248,6 +248,28 @@ class _SLOLinks[T: Any]:
         resp = self._http.delete(f"/{self._prefix}/{parent_name}/slo-links/{link_name}")
         _raise_for_status(resp)
 
+    def get_comparison_rules(self, parent_name: str, link_name: str) -> list[dict[str, Any]]:
+        """Get comparison rules for an SLO link."""
+        resp = self._http.get(
+            f"/{self._prefix}/{parent_name}/slo-links/{link_name}/comparison-rules"
+        )
+        _raise_for_status(resp)
+        return resp.json()  # type: ignore[no-any-return]
+
+    def update_comparison_rules(
+        self,
+        parent_name: str,
+        link_name: str,
+        rules: list[dict[str, Any]],
+    ) -> list[dict[str, Any]]:
+        """Replace comparison rules for an SLO link."""
+        resp = self._http.put(
+            f"/{self._prefix}/{parent_name}/slo-links/{link_name}/comparison-rules",
+            json={"rules": rules},
+        )
+        _raise_for_status(resp)
+        return resp.json()  # type: ignore[no-any-return]
+
 
 class _DataSources:
     def __init__(self, http: httpx.Client) -> None:
