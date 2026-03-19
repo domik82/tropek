@@ -242,7 +242,7 @@ async def test_hide_annotation(db_session: AsyncSession) -> None:
     assert hidden.hidden_reason == "typo"
 
     # Verify hidden annotation is excluded from counts
-    _, _, count_map = await repo.list_with_counts()
+    _, _, count_map, _ = await repo.list_with_counts()
     assert count_map.get(ev.id, 0) == 0
 
 
