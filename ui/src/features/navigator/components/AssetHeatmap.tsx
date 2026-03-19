@@ -3,6 +3,7 @@ import { useTheme } from '@/lib/theme-context'
 import { RESULT_COLOUR } from '@/lib/theme'
 import { fmtDateTime } from '@/lib/format'
 import { HeatmapChart } from '@/components/charts/HeatmapChart'
+import { NoteIndicatorRow } from '@/components/charts/NoteIndicatorRow'
 import { buildAssetHeatmapData } from '../utils'
 import type { MetricHeatmapResponse, HeatmapCell } from '../types'
 
@@ -10,9 +11,10 @@ interface Props {
   data: MetricHeatmapResponse
   selectedEvalId?: string
   onEvalSelect?: (evalId: string) => void
+  notedSlots?: Set<string>
 }
 
-export function AssetHeatmap({ data, selectedEvalId, onEvalSelect }: Props) {
+export function AssetHeatmap({ data, selectedEvalId, onEvalSelect, notedSlots }: Props) {
   const { theme } = useTheme()
   const colours = RESULT_COLOUR[theme]
 
@@ -47,14 +49,22 @@ export function AssetHeatmap({ data, selectedEvalId, onEvalSelect }: Props) {
   }
 
   return (
-    <HeatmapChart
-      rows={rows}
-      columns={slots}
-      cells={cells}
-      selectedColumn={selectedColumn}
-      onCellClick={onCellClick}
-      formatTooltip={formatTooltip}
-      instructionText="Click a cell to select that evaluation."
-    />
+    <>
+      {notedSlots && notedSlots.size > 0 && (
+        <NoteIndicatorRow
+          columns={slots}
+          notedColumns={notedSlots}
+        />
+      )}
+      <HeatmapChart
+        rows={rows}
+        columns={slots}
+        cells={cells}
+        selectedColumn={selectedColumn}
+        onCellClick={onCellClick}
+        formatTooltip={formatTooltip}
+        instructionText="Click a cell to select that evaluation."
+      />
+    </>
   )
 }
