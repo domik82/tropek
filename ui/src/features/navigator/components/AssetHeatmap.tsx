@@ -49,22 +49,19 @@ export function AssetHeatmap({ data, selectedEvalId, onEvalSelect, notedSlots }:
   }
 
   return (
-    <>
-      {notedSlots && notedSlots.size > 0 && (
-        <NoteIndicatorRow
-          columns={slots}
-          notedColumns={notedSlots}
-        />
-      )}
-      <HeatmapChart
-        rows={rows}
-        columns={slots}
-        cells={cells}
-        selectedColumn={selectedColumn}
-        onCellClick={onCellClick}
-        formatTooltip={formatTooltip}
-        instructionText="Click a cell to select that evaluation."
-      />
-    </>
+    <HeatmapChart
+      rows={rows}
+      columns={slots}
+      cells={cells}
+      selectedColumn={selectedColumn}
+      onCellClick={onCellClick}
+      formatTooltip={formatTooltip}
+      instructionText="Click a cell to select that evaluation."
+      aboveChart={
+        notedSlots && notedSlots.size > 0 ? (
+          <NoteIndicatorRow columns={slots} notedColumns={notedSlots} />
+        ) : undefined
+      }
+    />
   )
 }

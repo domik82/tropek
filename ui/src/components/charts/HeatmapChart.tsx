@@ -8,7 +8,7 @@
 // and the legend bar above the chart.
 
 import ReactECharts from 'echarts-for-react'
-import { useMemo } from 'react'
+import { useMemo, type ReactNode } from 'react'
 import { useTheme } from '@/lib/theme-context'
 import { RESULT_COLOUR, CHART_THEME } from '@/lib/theme'
 import type { ResultColours } from '@/lib/theme'
@@ -53,7 +53,7 @@ export interface HeatmapChartProps {
   /** Called when the user clicks a cell. */
   onCellClick: (cell: HeatmapCell) => void
   /**
-   * When true, cells with `hasNote === true` render a small white triangle
+   * When true, cells with `hasNote === true` render a small amber square
    * in their top-right corner (annotation indicator).
    */
   annotations?: boolean
@@ -74,6 +74,8 @@ export interface HeatmapChartProps {
    * Omit or pass empty string to suppress.
    */
   instructionText?: string
+  /** Content rendered between the legend bar and the chart canvas. */
+  aboveChart?: ReactNode
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -89,6 +91,7 @@ export function HeatmapChart({
   formatTooltip,
   formatColumnLabel = fmtSlot,
   instructionText,
+  aboveChart,
 }: HeatmapChartProps) {
   const { theme } = useTheme()
   const colours = RESULT_COLOUR[theme]
@@ -241,6 +244,7 @@ export function HeatmapChart({
           ))}
         </div>
       </div>
+      {aboveChart}
       <ReactECharts
         option={option}
         style={{ height: chartHeight }}
