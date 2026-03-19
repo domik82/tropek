@@ -5,9 +5,22 @@ from __future__ import annotations
 import uuid
 
 import pytest
+import pytest_asyncio
+from app.db.models import AssetType
 from app.modules.assets.comparison_rules import validate_comparison_rules
 from app.modules.assets.repository import AssetRepository, AssetSLOLinkRepository
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+
+
+@pytest_asyncio.fixture(autouse=True)
+async def seed_asset_types(db_session: AsyncSession) -> None:
+    """Seed asset types required by FK constraints."""
+    for name in ("vm",):
+        result = await db_session.execute(select(AssetType).where(AssetType.name == name))
+        if result.scalar_one_or_none() is None:
+            db_session.add(AssetType(name=name, is_default=False))
+    await db_session.flush()
 
 
 async def _create_asset_with_link(
