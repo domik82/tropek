@@ -34,6 +34,7 @@ export function useEvaluationDetail(id: string | undefined) {
     queryKey: evaluationKeys.detail(id ?? ''),
     queryFn: () => fetchEvaluationDetail(id!),
     enabled: !!id,
+    placeholderData: keepPreviousData,
   })
 }
 

@@ -234,7 +234,7 @@ export function AssetPanel({ assetName, initialEvalId }: Props) {
               </p>
               <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
                 {tabIndicators.map(ind => (
-                  <MetricTrendBlock key={ind.metric} evalId={effectiveEvalId} indicator={ind} />
+                  <MetricTrendBlock key={ind.metric} evalId={effectiveEvalId} indicator={ind} onEvalSelect={setSelectedEvalId} />
                 ))}
               </div>
             </div>
@@ -255,7 +255,7 @@ export function AssetPanel({ assetName, initialEvalId }: Props) {
 
           {/* Score over time */}
           <div className="rounded-lg border border-slate-700 bg-gray-900 p-4">
-            <AssetScoreChart evaluations={evals} selectedEvalId={effectiveEvalId} />
+            <AssetScoreChart evaluations={evals} selectedEvalId={effectiveEvalId} onEvalSelect={setSelectedEvalId} />
           </div>
 
           {effectiveEvalId && (
@@ -284,7 +284,7 @@ export function AssetPanel({ assetName, initialEvalId }: Props) {
 
               <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
                 {chartIndicators.map(ind => (
-                  <MetricTrendBlock key={ind.metric} evalId={effectiveEvalId} indicator={ind} />
+                  <MetricTrendBlock key={ind.metric} evalId={effectiveEvalId} indicator={ind} onEvalSelect={setSelectedEvalId} />
                 ))}
               </div>
             </div>

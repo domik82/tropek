@@ -1,15 +1,17 @@
 // src/features/evaluations/components/MetricTrendBlock.tsx
 import ReactECharts from 'echarts-for-react'
-import { useState } from 'react'
+import { useCallback, useState } from 'react'
 import { useTrend } from '../hooks'
 import { useTheme } from '@/lib/theme-context'
 import { RESULT_COLOUR, CHART_THEME } from '@/lib/theme'
+import { useChartAreaClick } from '@/lib/useChartAreaClick'
 import { computeRelativeThresholdSeries } from '@/utils/metrics'
 import type { IndicatorResult } from '../types'
 
 interface Props {
   evalId: string
   indicator: IndicatorResult
+  onEvalSelect?: (evalId: string) => void
 }
 
 function isRelativeCriteria(c?: string | null): boolean {
@@ -26,8 +28,22 @@ const STATUS_TEXT: Record<string, string> = {
   fail:    'text-fail',
 }
 
-export function MetricTrendBlock({ evalId, indicator }: Props) {
+export function MetricTrendBlock({ evalId, indicator, onEvalSelect }: Props) {
   const { data: trend, isLoading } = useTrend(evalId, indicator.metric)
+
+  const handleClickIndex = useCallback(
+    (idx: number) => {
+      const pt = (trend ?? [])[idx]
+      if (pt && onEvalSelect) onEvalSelect(pt.eval_id)
+    },
+    [trend, onEvalSelect],
+  )
+
+  const { chartRef, onContainerClick } = useChartAreaClick(
+    onEvalSelect ? handleClickIndex : undefined,
+    (trend ?? []).length,
+  )
+
   const [yMin, setYMin] = useState('')
   const [yMax, setYMax] = useState('')
   const [showPass, setShowPass] = useState(true)
@@ -103,6 +119,7 @@ export function MetricTrendBlock({ evalId, indicator }: Props) {
       {
         type: 'line',
         data: chartData,
+        cursor: onEvalSelect ? 'pointer' : 'default',
         symbol: 'circle',
         symbolSize: (_val: unknown, params: { dataIndex: number }) =>
           (trend ?? [])[params.dataIndex]?.eval_id === evalId ? 10 : 6,
@@ -198,7 +215,15 @@ export function MetricTrendBlock({ evalId, indicator }: Props) {
               </label>
             </div>
           </div>
-          <ReactECharts option={option} style={{ height: 200 }} opts={{ renderer: 'svg' }} notMerge />
+          <div onClick={onContainerClick} style={{ cursor: onEvalSelect ? 'crosshair' : undefined }}>
+            <ReactECharts
+              ref={chartRef}
+              option={option}
+              style={{ height: 200 }}
+              opts={{ renderer: 'svg' }}
+              notMerge
+            />
+          </div>
         </div>
       )}
     </div>
