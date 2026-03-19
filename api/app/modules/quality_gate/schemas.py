@@ -26,6 +26,9 @@ class AnnotationRead(BaseModel):
     author: str | None
     category: str | None
     meta: dict[str, Any]
+    hidden_at: datetime | None
+    hidden_by: str | None
+    hidden_reason: str | None
     created_at: datetime
     updated_at: datetime | None
 
@@ -50,11 +53,17 @@ class AnnotationUpdate(BaseModel):
     meta: dict[str, Any] | None = None
 
 
+class AnnotationHide(BaseModel):
+    """Request body for soft-deleting (hiding) an annotation."""
+
+    reason: str
+    author: str | None = None
+
+
 class InvalidateRequest(BaseModel):
     """Request body for invalidating an evaluation."""
 
     invalidation_note: str
-    author: str
 
 
 class IndicatorResult(BaseModel):
@@ -116,7 +125,6 @@ class EvaluationDetail(EvaluationSummary):
     """Full evaluation detail including all annotations and indicator results."""
 
     invalidation_note: str | None
-    invalidation_author: str | None
     compared_evaluation_ids: list[uuid.UUID] = []
     annotations: list[AnnotationRead]
     indicator_results: list[IndicatorResult]

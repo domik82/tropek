@@ -9,6 +9,7 @@ import {
   fetchEvaluationDetail,
   fetchTrend,
   addAnnotation,
+  hideAnnotation,
   invalidateEvaluation,
   overrideStatus,
   pinBaseline,
@@ -58,23 +59,34 @@ export function useAddAnnotation(evalId: string) {
       addAnnotation(evalId, payload),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: evaluationKeys.detail(evalId) })
+    },
+  })
+}
+
+export function useHideAnnotation(evalId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (payload: { annotationId: string; reason: string; author?: string }) =>
+      hideAnnotation(evalId, payload.annotationId, {
+        reason: payload.reason,
+        author: payload.author,
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: evaluationKeys.detail(evalId) })
       qc.invalidateQueries({ queryKey: evaluationKeys.all })
     },
   })
 }
 
-/** Invalidate all evaluation-related caches (list, heatmap). */
-function invalidateEvalCaches(qc: ReturnType<typeof useQueryClient>, evalId?: string) {
-  if (evalId) qc.invalidateQueries({ queryKey: evaluationKeys.detail(evalId) })
-  qc.invalidateQueries({ queryKey: evaluationKeys.all })
-  qc.invalidateQueries({ queryKey: ['metric-heatmap'] })
-}
-
 export function useInvalidateEvaluation(evalId: string) {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (payload: { note: string; author: string }) => invalidateEvaluation(evalId, payload),
-    onSuccess: () => invalidateEvalCaches(qc, evalId),
+    mutationFn: (payload: { note: string; author: string }) =>
+      invalidateEvaluation(evalId, payload.note),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: evaluationKeys.detail(evalId) })
+      qc.invalidateQueries({ queryKey: evaluationKeys.all })
+    },
   })
 }
 
@@ -83,7 +95,10 @@ export function useOverrideStatus(evalId: string) {
   return useMutation({
     mutationFn: (payload: { new_result: string; reason: string; author: string }) =>
       overrideStatus(evalId, payload),
-    onSuccess: () => invalidateEvalCaches(qc, evalId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: evaluationKeys.detail(evalId) })
+      qc.invalidateQueries({ queryKey: evaluationKeys.all })
+    },
   })
 }
 
@@ -92,7 +107,10 @@ export function usePinBaseline(evalId: string) {
   return useMutation({
     mutationFn: (payload: { reason: string; author: string }) =>
       pinBaseline(evalId, payload),
-    onSuccess: () => invalidateEvalCaches(qc, evalId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: evaluationKeys.detail(evalId) })
+      qc.invalidateQueries({ queryKey: evaluationKeys.all })
+    },
   })
 }
 
@@ -100,7 +118,9 @@ export function useReEvaluate() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (payload: ReEvaluatePayload) => reEvaluate(payload),
-    onSuccess: () => invalidateEvalCaches(qc),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: evaluationKeys.all })
+    },
   })
 }
 

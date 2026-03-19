@@ -26,6 +26,7 @@ from app.modules.quality_gate.re_evaluator import re_evaluate
 from app.modules.quality_gate.repository import EvaluationRepository
 from app.modules.quality_gate.schemas import (
     AnnotationCreate,
+    AnnotationHide,
     AnnotationRead,
     AnnotationUpdate,
     BatchTriggerRequest,
@@ -81,7 +82,9 @@ def _build_summary(
 
 def _build_detail(ev: Any) -> EvaluationDetail:
     """Construct EvaluationDetail from an ORM Evaluation with annotations loaded."""
-    annotations = [AnnotationRead.model_validate(a) for a in (ev.annotations or [])]
+    annotations = [
+        AnnotationRead.model_validate(a) for a in (ev.annotations or []) if a.hidden_at is None
+    ]
     indicator_results = [IndicatorResult(**ir) for ir in (ev.indicator_results or [])]
     job_stats_detail = ev.job_stats or {}
     compared_ids = job_stats_detail.get("compared_evaluation_ids", [])
@@ -375,7 +378,7 @@ async def get_evaluation(
     ev = await repo.get_by_id(eval_id)
     if ev is None:
         raise_not_found("evaluation", str(eval_id))
-    annotations = [AnnotationRead.model_validate(a) for a in ev.annotations]
+    annotations = [AnnotationRead.model_validate(a) for a in ev.annotations if a.hidden_at is None]
     indicator_results = [IndicatorResult(**ind) for ind in (ev.indicator_results or [])]
     top_failures = [
         FailingIndicator(
@@ -409,7 +412,7 @@ async def invalidate_evaluation(
 ) -> EvaluationSummary:
     """Mark an evaluation as invalidated."""
     repo = EvaluationRepository(session)
-    ev = await repo.invalidate(eval_id, note=body.invalidation_note, author=body.author)
+    ev = await repo.invalidate(eval_id, note=body.invalidation_note)
     if ev is None:
         raise_not_found("evaluation", str(eval_id))
     return _build_summary(ev, annotation_count=0, latest_ann=None)
@@ -511,7 +514,7 @@ async def list_annotations(
     ev = await repo.get_by_id(eval_id)
     if ev is None:
         raise_not_found("evaluation", str(eval_id))
-    return [AnnotationRead.model_validate(a) for a in ev.annotations]
+    return [AnnotationRead.model_validate(a) for a in ev.annotations if a.hidden_at is None]
 
 
 @router.post("/evaluations/{eval_id}/annotations", response_model=AnnotationRead, status_code=201)
@@ -550,15 +553,22 @@ async def update_annotation(
     return AnnotationRead.model_validate(ann)
 
 
-@router.delete("/evaluations/{eval_id}/annotations/{ann_id}", status_code=204)
-async def delete_annotation(
+@router.post(
+    "/evaluations/{eval_id}/annotations/{ann_id}/hide",
+    response_model=AnnotationRead,
+)
+async def hide_annotation(
     eval_id: uuid.UUID,
     ann_id: uuid.UUID,
+    body: AnnotationHide,
     session: AsyncSession = Depends(get_session),  # noqa: B008
-) -> None:
-    """Delete an annotation."""
+) -> AnnotationRead:
+    """Soft-delete (hide) an annotation."""
     repo = EvaluationRepository(session)
-    await repo.delete_annotation(ann_id)
+    ann = await repo.hide_annotation(ann_id, reason=body.reason, author=body.author)
+    if ann is None:
+        raise_not_found("annotation", str(ann_id))
+    return AnnotationRead.model_validate(ann)
 
 
 # ---- Trend ----

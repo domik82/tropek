@@ -73,7 +73,7 @@ export const AnnotationSection = forwardRef<AnnotationSectionHandle, Props>(
 
         {/* Note entries */}
         {annotations.map(a => (
-          <NoteEntry key={a.id} annotation={a} compact={viewMode === 'compact'} />
+          <NoteEntry key={a.id} evalId={evalId} annotation={a} compact={viewMode === 'compact'} />
         ))}
 
         {annotations.length === 0 && !showForm && (

@@ -295,18 +295,18 @@ export function generateAllEvaluations(): EvaluationSummary[] {
           // win-monthly-01 (seed 1001)
           if (scenario.seed === 1001 && day === 12)
             // invalidated record
-            return { id: `ann-${evalId}-1`, meta: {}, updated_at: created, content: 'Invalidated — agent crashed mid-run during scheduled maintenance window. Results not representative.', author: 'ops-team', category: 'invalidated', created_at: created }
+            return { id: `ann-${evalId}-1`, meta: {}, updated_at: created, content: 'Invalidated — agent crashed mid-run during scheduled maintenance window. Results not representative.', author: 'ops-team', category: 'invalidated', created_at: created, hidden_at: null, hidden_by: null, hidden_reason: null }
           if (scenario.seed === 1001 && day === 18)
             // first failure: two notes — investigation + JIRA creation
-            return { id: `ann-${evalId}-1`, meta: {}, updated_at: created, content: 'ABC investigation\nCreated JIRA', author: 'j.kowalski', category: 'investigation', created_at: created }
+            return { id: `ann-${evalId}-1`, meta: {}, updated_at: created, content: 'ABC investigation\nCreated JIRA', author: 'j.kowalski', category: 'investigation', created_at: created, hidden_at: null, hidden_by: null, hidden_reason: null }
           if (scenario.seed === 1001 && day >= 19 && day <= 22 && (evalResult === 'fail' || evalResult === 'warning'))
-            return { id: `ann-${evalId}-1`, meta: { ticket: 'PERF-481' }, updated_at: created, content: 'Tracking in JIRA', author: null, category: null, created_at: created }
+            return { id: `ann-${evalId}-1`, meta: { ticket: 'PERF-481' }, updated_at: created, content: 'Tracking in JIRA', author: null, category: null, created_at: created, hidden_at: null, hidden_by: null, hidden_reason: null }
 
           // mac-monthly-01 (seed 1003)
           if (scenario.seed === 1003 && day >= 24 && day <= 26 && (evalResult === 'fail' || evalResult === 'warning'))
-            return { id: `ann-${evalId}-1`, meta: {}, updated_at: created, content: 'Disk failure on primary storage volume — I/O errors causing compilation timeouts.', author: 'infra', category: 'hardware', created_at: created }
+            return { id: `ann-${evalId}-1`, meta: {}, updated_at: created, content: 'Disk failure on primary storage volume — I/O errors causing compilation timeouts.', author: 'infra', category: 'hardware', created_at: created, hidden_at: null, hidden_by: null, hidden_reason: null }
           if (scenario.seed === 1003 && day === 27 && evalResult === 'pass')
-            return { id: `ann-${evalId}-1`, meta: {}, updated_at: created, content: 'Disk replaced — new NVMe installed and benchmarked. Monitoring next 2 runs.', author: 'infra', category: 'resolved', created_at: created }
+            return { id: `ann-${evalId}-1`, meta: {}, updated_at: created, content: 'Disk replaced — new NVMe installed and benchmarked. Monitoring next 2 runs.', author: 'infra', category: 'resolved', created_at: created, hidden_at: null, hidden_by: null, hidden_reason: null }
 
           return null
         })()
@@ -327,6 +327,10 @@ export function generateAllEvaluations(): EvaluationSummary[] {
           ingestion_mode: 'pull',
           adapter_used: 'prometheus',
           invalidated: day === 12 && scenario.seed === 1001,
+          original_result: null,
+          original_score: null,
+          override_reason: null,
+          override_author: null,
           asset_snapshot: { name: scenario.asset, tags: { os: scenario.os, arch: scenario.arch, lab: scenario.group } },
           evaluation_metadata: { branch: 'main', build: `ci-${7800 + day}`, triggered_by: triggeredBy },
           latest_annotation: mockAnnotation ?? undefined,
@@ -449,26 +453,26 @@ export function generateEvaluationDetail(
 
       // win-monthly-01 invalidated
       if (scenario.seed === 1001 && day === 12)
-        return [{ id: `ann-${scenario.seed}-${day}-1`, content: 'Invalidated — agent crashed mid-run during scheduled maintenance window. Results not representative.', author: 'ops-team', category: 'invalidated', meta: {}, created_at: t, updated_at: t }]
+        return [{ id: `ann-${scenario.seed}-${day}-1`, content: 'Invalidated — agent crashed mid-run during scheduled maintenance window. Results not representative.', author: 'ops-team', category: 'invalidated', meta: {}, created_at: t, updated_at: t, hidden_at: null, hidden_by: null, hidden_reason: null }]
 
       // win-monthly-01 first failure — two annotations
       if (scenario.seed === 1001 && day === 18)
         return [
-          { id: `ann-${scenario.seed}-${day}-1`, content: 'ABC investigation — compilation times show ~35% regression across all stages. Correlates with toolchain upgrade on day 17.', author: 'j.kowalski', category: 'investigation', meta: {}, created_at: t, updated_at: t },
-          { id: `ann-${scenario.seed}-${day}-2`, content: 'Created JIRA: https://jira.example.com/browse/PERF-481', author: 'j.kowalski', category: 'investigation', meta: { ticket: 'PERF-481' }, created_at: t, updated_at: t },
+          { id: `ann-${scenario.seed}-${day}-1`, content: 'ABC investigation — compilation times show ~35% regression across all stages. Correlates with toolchain upgrade on day 17.', author: 'j.kowalski', category: 'investigation', meta: {}, created_at: t, updated_at: t, hidden_at: null, hidden_by: null, hidden_reason: null },
+          { id: `ann-${scenario.seed}-${day}-2`, content: 'Created JIRA: https://jira.example.com/browse/PERF-481', author: 'j.kowalski', category: 'investigation', meta: { ticket: 'PERF-481' }, created_at: t, updated_at: t, hidden_at: null, hidden_by: null, hidden_reason: null },
         ]
 
       // win-monthly-01 following failures — JIRA reference in meta
       if (scenario.seed === 1001 && day >= 19 && day <= 22)
-        return [{ id: `ann-${scenario.seed}-${day}-1`, content: '', author: null, category: null, meta: { ticket: 'PERF-481' }, created_at: t, updated_at: t }]
+        return [{ id: `ann-${scenario.seed}-${day}-1`, content: '', author: null, category: null, meta: { ticket: 'PERF-481' }, created_at: t, updated_at: t, hidden_at: null, hidden_by: null, hidden_reason: null }]
 
       // mac-monthly-01 disk failure days
       if (scenario.seed === 1003 && day >= 24 && day <= 26)
-        return [{ id: `ann-${scenario.seed}-${day}-1`, content: 'Disk failure on primary storage volume — I/O errors causing compilation timeouts.', author: 'infra', category: 'hardware', meta: {}, created_at: t, updated_at: t }]
+        return [{ id: `ann-${scenario.seed}-${day}-1`, content: 'Disk failure on primary storage volume — I/O errors causing compilation timeouts.', author: 'infra', category: 'hardware', meta: {}, created_at: t, updated_at: t, hidden_at: null, hidden_by: null, hidden_reason: null }]
 
       // mac-monthly-01 first green after disk replacement
       if (scenario.seed === 1003 && day === 27)
-        return [{ id: `ann-${scenario.seed}-${day}-1`, content: 'Disk replaced — new NVMe installed and benchmarked. Monitoring next 2 runs.', author: 'infra', category: 'resolved', meta: {}, created_at: t, updated_at: t }]
+        return [{ id: `ann-${scenario.seed}-${day}-1`, content: 'Disk replaced — new NVMe installed and benchmarked. Monitoring next 2 runs.', author: 'infra', category: 'resolved', meta: {}, created_at: t, updated_at: t, hidden_at: null, hidden_by: null, hidden_reason: null }]
 
       return []
     })(),
