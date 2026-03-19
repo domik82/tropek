@@ -7,9 +7,7 @@ import { MetricTrendBlock } from '@/features/evaluations/components/MetricTrendB
 import { EvaluationHeader } from '@/features/evaluations/components/EvaluationHeader'
 import { EvaluationTabs, tabLabel } from '@/features/evaluations/components/EvaluationTabs'
 import { AnnotationForm } from '@/features/evaluations/components/AnnotationForm'
-import { EvaluationActionsButton, EvaluationActionForm } from '@/features/evaluations/components/EvaluationActions'
-import { ReEvaluateModal } from '@/features/evaluations/components/ReEvaluateModal'
-import type { ActionKind } from '@/features/evaluations/components/EvaluationActions'
+import { EvaluationActionsButton, EvaluationActionForm, type ActionKind } from '@/features/evaluations/components/EvaluationActions'
 
 function scrollTo(id: string) {
   document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
@@ -139,21 +137,17 @@ export function EvaluationDetailPage() {
         }
       />
 
-      {/* Action form */}
-      {activeAction === 're-evaluate' && (
-        <ReEvaluateModal
-          assetName={ev.asset_snapshot.name}
-          sloName={ev.slo_name ?? ''}
-          defaultFromDate={ev.period_start.slice(0, 16)}
-          onClose={() => setActiveAction(null)}
-        />
-      )}
-      {activeAction && activeAction !== 're-evaluate' && !ev.invalidated && (
+      {/* Action form — button guard already prevents selection when invalidated,
+          but we also guard here for safety */}
+      {activeAction && !ev.invalidated && (
         <EvaluationActionForm
           evalId={id!}
           currentResult={ev.result}
           activeAction={activeAction}
           onClose={() => setActiveAction(null)}
+          assetName={ev.asset_snapshot.name}
+          sloName={ev.slo_name ?? ''}
+          defaultFromDate={ev.period_start.slice(0, 16)}
         />
       )}
 
