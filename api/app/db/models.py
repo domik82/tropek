@@ -281,13 +281,13 @@ class Evaluation(Base):
 
     id: Mapped[uuid.UUID] = mapped_column(UUID, primary_key=True, default=uuid.uuid4)
     evaluation_name: Mapped[str] = mapped_column(Text, nullable=False)
-    asset_id: Mapped[uuid.UUID | None] = mapped_column(UUID, ForeignKey("assets.id"), nullable=True)
+    asset_id: Mapped[uuid.UUID] = mapped_column(UUID, ForeignKey("assets.id", ondelete="RESTRICT"), nullable=False)
     asset_snapshot: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, server_default=text("'{}'"), default=dict)
     period_start: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     period_end:   Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     result: Mapped[str | None] = mapped_column(Text, nullable=True)  # null while pending
     score: Mapped[float | None] = mapped_column(Float, nullable=True)
-    slo_name: Mapped[str | None] = mapped_column(Text, nullable=True)
+    slo_name: Mapped[str] = mapped_column(Text, nullable=False)
     slo_version: Mapped[int | None] = mapped_column(Integer, nullable=True)
     sli_name: Mapped[str | None] = mapped_column(Text, nullable=True)
     sli_version: Mapped[int | None] = mapped_column(Integer, nullable=True)
