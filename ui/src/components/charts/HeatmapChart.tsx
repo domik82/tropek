@@ -197,7 +197,7 @@ export function HeatmapChart({
             ]
 
             if (annotations && cellData?.hasNote) {
-              const s = Math.min(6, rw / 3, rh / 3)
+              const s = Math.min(8, rw / 3, rh / 3)
               children.push({
                 type: 'rect',
                 shape: {
