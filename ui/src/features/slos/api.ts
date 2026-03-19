@@ -115,6 +115,7 @@ export async function addSubgroup(parentName: string, childGroupId: string): Pro
 
 export async function fetchGroupSloLinks(name: string): Promise<AssetGroupSLOLink[]> {
   const res = await fetch(`${BASE}/asset-groups/${encodeURIComponent(name)}/slo-links`)
+  if (res.status === 404) return []
   if (!res.ok) throw new Error(`fetchGroupSloLinks: ${res.status}`)
   return res.json()
 }
