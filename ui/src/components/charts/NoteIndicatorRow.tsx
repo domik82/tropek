@@ -14,7 +14,7 @@ export function NoteIndicatorRow({ columns, notedColumns, onIndicatorClick }: Pr
   if (notedColumns.size === 0) return null
 
   return (
-    <div className="flex items-center" style={{ paddingLeft: 210, paddingRight: 20 }}>
+    <div className="flex items-center -mb-2" style={{ paddingLeft: 210, paddingRight: 20 }}>
       {columns.map(col => (
         <div key={col} className="flex-1 flex justify-center">
           {notedColumns.has(col) ? (
