@@ -23,7 +23,7 @@ from app.modules.common.schemas import PagedResponse
 from app.modules.datasource.repository import DataSourceRepository
 from app.modules.quality_gate.re_evaluation_schemas import ReEvaluateRequest, ReEvaluateResponse
 from app.modules.quality_gate.re_evaluator import re_evaluate
-from app.modules.quality_gate.repository import EvaluationRepository
+from app.modules.quality_gate.repository import DuplicateEvaluationError, EvaluationRepository
 from app.modules.quality_gate.schemas import (
     AnnotationCreate,
     AnnotationHide,
@@ -143,22 +143,51 @@ async def trigger_evaluation(
         raise HTTPException(status_code=404, detail=str(exc)) from exc
 
     eval_repo = EvaluationRepository(session)
-    ev = await eval_repo.create_pending(
+
+    # Duplicate prevention: check for existing non-failed evaluation with same identity.
+    # The DB partial unique index (uq_evaluations_identity) is the safety net for races;
+    # this app-level check provides clean, status-aware error messages.
+    existing = await eval_repo.find_duplicate(
+        asset_id=ctx.asset_id,
+        slo_name=ctx.slo_name,
         evaluation_name=body.evaluation_name,
         period_start=body.period_start,
         period_end=body.period_end,
-        ingestion_mode="pull",
-        asset_snapshot={"name": ctx.asset_name, "tags": ctx.asset_labels},
-        metadata=body.metadata,
-        asset_id=ctx.asset_id,
-        slo_name=ctx.slo_name,
-        slo_version=ctx.slo_version,
-        sli_name=ctx.sli_name,
-        sli_version=ctx.sli_version,
-        data_source_name=ctx.data_source_name,
-        adapter_used=ctx.adapter_type,
     )
-    await session.commit()
+    if existing is not None:
+        if existing.status in ("pending", "running"):
+            raise HTTPException(
+                status_code=409,
+                detail="evaluation is already in progress for this period",
+            )
+        raise HTTPException(
+            status_code=409,
+            detail="evaluation already exists for this asset/SLO/period — use re-evaluate to re-score",
+        )
+
+    try:
+        ev = await eval_repo.create_pending(
+            evaluation_name=body.evaluation_name,
+            period_start=body.period_start,
+            period_end=body.period_end,
+            ingestion_mode="pull",
+            asset_snapshot={"name": ctx.asset_name, "tags": ctx.asset_labels},
+            metadata=body.metadata,
+            asset_id=ctx.asset_id,
+            slo_name=ctx.slo_name,
+            slo_version=ctx.slo_version,
+            sli_name=ctx.sli_name,
+            sli_version=ctx.sli_version,
+            data_source_name=ctx.data_source_name,
+            adapter_used=ctx.adapter_type,
+        )
+        await session.commit()
+    except DuplicateEvaluationError as exc:
+        raise HTTPException(
+            status_code=409,
+            detail="evaluation is already in progress for this period",
+        ) from exc
+
     await arq_pool.enqueue_job("run_evaluation_job", str(ev.id))
     return TriggerResponse(id=ev.id, status="pending")
 
