@@ -85,6 +85,40 @@ class EvaluationRepository:
         await self._session.flush()
         return ev
 
+    async def find_duplicate(
+        self,
+        *,
+        asset_id: uuid.UUID,
+        slo_name: str,
+        evaluation_name: str,
+        period_start: datetime,
+        period_end: datetime,
+    ) -> Evaluation | None:
+        """Find an existing non-failed evaluation matching the identity tuple.
+
+        Returns the existing evaluation if found, None otherwise.
+        Used by the router to produce status-aware 409 error messages before
+        attempting the insert. The partial unique index on the DB is the
+        safety net for concurrent races — this check provides clean UX.
+
+        Decision tree (see also uq_evaluations_identity index on the model):
+          - No match → None (caller proceeds with create)
+          - Match with status pending/running → caller returns 409 "in progress"
+          - Match with status completed/partial → caller returns 409 "use re-evaluate"
+          - Match with invalidated=True → caller returns 409 "invalidated, use re-evaluate"
+          - Failed evaluations are excluded (not matched here, not in the index)
+        """
+        q = select(Evaluation).where(
+            Evaluation.asset_id == asset_id,
+            Evaluation.slo_name == slo_name,
+            Evaluation.evaluation_name == evaluation_name,
+            Evaluation.period_start == period_start,
+            Evaluation.period_end == period_end,
+            Evaluation.status != EvaluationStatus.FAILED,
+        )
+        result = await self._session.execute(q)
+        return result.scalar_one_or_none()
+
     async def mark_running(self, eval_id: uuid.UUID, worker_id: str | None = None) -> None:
         """Transition evaluation to running status, recording worker and start time.
 
@@ -129,18 +163,19 @@ class EvaluationRepository:
         merged_stats: dict[str, Any] = dict(job_stats or {})
         if compared_evaluation_ids is not None:
             merged_stats["compared_evaluation_ids"] = compared_evaluation_ids
+        values: dict[str, Any] = {
+            "status": EvaluationStatus.COMPLETED,
+            "result": result,
+            "score": score,
+            "indicator_results": indicator_results,
+            "job_stats": merged_stats,
+        }
+        if slo_name is not None:
+            values["slo_name"] = slo_name
+        if slo_version is not None:
+            values["slo_version"] = slo_version
         await self._session.execute(
-            update(Evaluation)
-            .where(Evaluation.id == eval_id)
-            .values(
-                status=EvaluationStatus.COMPLETED,
-                result=result,
-                score=score,
-                slo_name=slo_name,
-                slo_version=slo_version,
-                indicator_results=indicator_results,
-                job_stats=merged_stats,
-            )
+            update(Evaluation).where(Evaluation.id == eval_id).values(**values)
         )
 
     async def mark_failed(
