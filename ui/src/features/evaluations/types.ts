@@ -35,6 +35,7 @@ export interface EvaluationSummary {
   adapter_used: string | null
   invalidated: boolean
   original_result: string | null
+  original_score: number | null
   override_reason: string | null
   override_author: string | null
   asset_snapshot: {

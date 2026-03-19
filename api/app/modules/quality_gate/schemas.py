@@ -98,6 +98,7 @@ class EvaluationSummary(BaseModel):
     baseline_pin_reason: str | None = None
     baseline_pin_author: str | None = None
     original_result: str | None = None
+    original_score: float | None = None
     override_reason: str | None = None
     override_author: str | None = None
     asset_snapshot: dict[str, Any]
