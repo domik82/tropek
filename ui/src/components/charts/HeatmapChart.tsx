@@ -227,23 +227,12 @@ export function HeatmapChart({
 
   return (
     <div className="w-full">
-      {/* Instruction text + colour legend bar above the chart */}
-      <div className="flex items-center justify-between mb-1 px-1">
-        <span className="text-xs text-gray-400">
-          {instructionText ?? ''}
-        </span>
-        <div className="flex items-center gap-3 text-xs text-gray-400">
-          {(['pass', 'warning', 'fail', 'error', 'invalidated'] as const).map(r => (
-            <span key={r} className="flex items-center gap-1">
-              <span
-                className="inline-block w-3 h-3 rounded-sm"
-                style={{ backgroundColor: colours[r] }}
-              />
-              {r}
-            </span>
-          ))}
+      {/* Instruction text above the chart */}
+      {instructionText && (
+        <div className="mb-1 px-1">
+          <span className="text-xs text-gray-400">{instructionText}</span>
         </div>
-      </div>
+      )}
       {aboveChart}
       <ReactECharts
         option={option}
@@ -255,6 +244,18 @@ export function HeatmapChart({
           },
         }}
       />
+      {/* Colour legend below the chart */}
+      <div className="flex items-center justify-end gap-3 text-xs text-gray-400 mt-1 px-1">
+        {(['pass', 'warning', 'fail', 'error', 'invalidated'] as const).map(r => (
+          <span key={r} className="flex items-center gap-1">
+            <span
+              className="inline-block w-3 h-3 rounded-sm"
+              style={{ backgroundColor: colours[r] }}
+            />
+            {r}
+          </span>
+        ))}
+      </div>
     </div>
   )
 }
