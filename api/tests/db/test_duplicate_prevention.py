@@ -11,7 +11,7 @@ from datetime import UTC, datetime
 
 import pytest
 from app.db.models import Asset, AssetType
-from app.modules.quality_gate.repository import EvaluationRepository
+from app.modules.quality_gate.repository import DuplicateEvaluationError, EvaluationRepository
 from sqlalchemy.ext.asyncio import AsyncSession
 
 _START = datetime(2026, 3, 15, 10, 0, 0, tzinfo=UTC)
@@ -148,3 +148,31 @@ async def test_find_duplicate_different_name_no_conflict(db_session: AsyncSessio
         period_end=_END,
     )
     assert dup is None
+
+
+@pytest.mark.integration
+async def test_create_pending_raises_on_constraint_violation(db_session: AsyncSession) -> None:
+    """Simulate a race condition where two creates pass the app-level check."""
+    asset_id = await _create_asset(db_session)
+    repo = EvaluationRepository(db_session)
+    await repo.create_pending(
+        evaluation_name="nightly",
+        period_start=_START,
+        period_end=_END,
+        ingestion_mode="pull",
+        asset_snapshot={"name": "test"},
+        metadata={},
+        asset_id=asset_id,
+        slo_name="latency-slo",
+    )
+    with pytest.raises(DuplicateEvaluationError):
+        await repo.create_pending(
+            evaluation_name="nightly",
+            period_start=_START,
+            period_end=_END,
+            ingestion_mode="pull",
+            asset_snapshot={"name": "test"},
+            metadata={},
+            asset_id=asset_id,
+            slo_name="latency-slo",
+        )

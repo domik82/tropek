@@ -6,12 +6,22 @@ import uuid
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
+from asyncpg import UniqueViolationError
 from sqlalchemy import String, delete, func, insert, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.db.models import Asset, Evaluation, EvaluationAnnotation, SLIValue
 from app.modules.quality_gate.engine.constants import EvaluationStatus
+
+
+class DuplicateEvaluationError(Exception):
+    """Raised when a duplicate evaluation insert violates the identity constraint.
+
+    This catches the race condition where two concurrent requests both pass the
+    app-level find_duplicate check but one loses at the DB constraint level.
+    The router converts this to a 409 Conflict response.
+    """
 
 
 class EvaluationRepository:
@@ -82,7 +92,16 @@ class EvaluationRepository:
             status=EvaluationStatus.PENDING,
         )
         self._session.add(ev)
-        await self._session.flush()
+        try:
+            await self._session.flush()
+        except Exception as exc:
+            # asyncpg wraps the PG error; walk the cause chain to find UniqueViolationError
+            cause: BaseException | None = exc
+            while cause is not None:
+                if isinstance(cause, UniqueViolationError):
+                    raise DuplicateEvaluationError from exc
+                cause = cause.__cause__
+            raise
         return ev
 
     async def find_duplicate(
