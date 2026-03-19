@@ -7,15 +7,22 @@ for the same (asset, SLO, time period), causing heatmap cell collisions, ambiguo
 override/baseline behavior, and confusing UI state where selecting one evaluation
 appears to affect another.
 
+Additionally, evaluations of different granularity (hourly, daily, weekly) or purpose
+(main vs branch) share the same heatmap view with no way to filter them, making the
+heatmap noisy and hard to read.
+
 ## Evaluation Identity
 
 The unique identity of an evaluation is the tuple:
 
 ```
-(asset_id, slo_name, period_start, period_end)
+(asset_id, slo_name, evaluation_name, period_start, period_end)
 ```
 
-`evaluation_name` is a descriptive label only — it does not participate in identity.
+`evaluation_name` is part of identity — it distinguishes evaluation series of
+different granularity or purpose (e.g., "nightly-hourly", "nightly-daily",
+"release-check"). Different names at the same (asset, SLO, period) are separate
+evaluations. Same name at the same period is a duplicate.
 
 At most **one non-failed evaluation** may exist per identity tuple.
 
@@ -30,48 +37,66 @@ meaning in practice. Change both columns to `NOT NULL`.
 
 ```sql
 CREATE UNIQUE INDEX uq_evaluations_identity
-    ON evaluations (asset_id, slo_name, period_start, period_end)
+    ON evaluations (asset_id, slo_name, evaluation_name, period_start, period_end)
     WHERE status != 'failed';
 ```
 
 This allows retrying a failed evaluation (creates a new row) while preventing
 duplicates for all other statuses.
 
-Regenerate migration via `db-regen-migrations.sh`.
+### Foreign key on `asset_id`
+
+Set `ondelete='RESTRICT'` on the `asset_id` FK. Assets are never hard-deleted — see
+the Soft Delete section below. RESTRICT prevents accidental data loss if someone
+bypasses the application layer and runs DELETE directly in SQL.
+
+### Regenerate migration
+
+Use `db-regen-migrations.sh` to regenerate from the updated model.
 
 ## API Behavior
 
 ### `POST /evaluations` (single trigger)
 
 Before creating the evaluation, query for an existing non-failed evaluation with the
-same (asset_id, slo_name, period_start, period_end).
+same identity tuple.
 
-- **Found** — return **409 Conflict** with body:
+- **Found (pending/running)** — return **409 Conflict**:
   ```json
-  {
-    "detail": "evaluation already exists for this asset/SLO/period — use re-evaluate to re-score"
-  }
+  {"detail": "evaluation is already in progress for this period"}
+  ```
+- **Found (completed/invalidated)** — return **409 Conflict**:
+  ```json
+  {"detail": "evaluation already exists for this asset/SLO/period — use re-evaluate to re-score"}
   ```
 - **Not found** — proceed as today (create pending, enqueue job, return 202).
 
-The DB constraint is the safety net; the app-level check exists for clean error
-messages.
+The DB constraint is the safety net; the app-level check exists for clean, actionable
+error messages.
 
 ### `POST /evaluations/batch` (batch trigger)
 
-Check each item against existing evaluations. Create non-duplicates, skip duplicates.
-Return **202 Accepted** with a response that reports both:
+All-or-nothing. Before creating any evaluations, check all items against existing
+records. If **any** item would be a duplicate, the entire batch fails with
+**409 Conflict** listing every conflicting item:
 
 ```json
 {
-  "evaluations": [
-    {"id": "...", "status": "pending"}
-  ],
-  "skipped": [
-    {"asset_name": "checkout-api", "reason": "duplicate period"}
+  "detail": "batch contains duplicate evaluations",
+  "conflicts": [
+    {
+      "asset_name": "checkout-api",
+      "slo_name": "latency-slo",
+      "evaluation_name": "nightly-hourly",
+      "period_start": "2026-03-10T06:00:00Z",
+      "period_end": "2026-03-10T07:00:00Z",
+      "existing_status": "completed"
+    }
   ]
 }
 ```
+
+Single transaction — no partial creation.
 
 ### `POST /evaluations/re-evaluate`
 
@@ -86,7 +111,7 @@ repository check and router error handling) so future developers understand the
 design intent.
 
 ```
-Can I trigger a new evaluation for this (asset, SLO, period)?
+Can I trigger a new evaluation for this (asset, SLO, name, period)?
 │
 ├─ No existing non-failed evaluation → YES, create new evaluation
 │
@@ -96,19 +121,57 @@ Can I trigger a new evaluation for this (asset, SLO, period)?
 ├─ Existing evaluation with status = 'pending' or 'running'
 │   → NO — "evaluation is already in progress for this period"
 │
-├─ Existing evaluation with status = 'completed' or 'partial'
+├─ Existing evaluation with status = 'completed'
 │   → NO — "evaluation already exists, use re-evaluate to re-score"
 │
 └─ Existing evaluation that is invalidated (completed + invalidated=true)
     → NO — "evaluation exists (invalidated), use re-evaluate to re-score"
 ```
 
+## Heatmap Evaluation Name Filter
+
+The heatmap currently shows all evaluations for an asset regardless of
+`evaluation_name`. With multiple series (hourly, daily, weekly, branch runs), this
+becomes noisy. Add a filter control near the heatmap.
+
+### Filter behavior
+
+- **Control type**: checkbox combo / multi-select dropdown next to the heatmap.
+  Lists all distinct `evaluation_name` values that exist for the current asset.
+- **Default**: all names selected (show everything).
+- **Per-asset default**: an asset can optionally store a default evaluation name
+  filter in its DB configuration. When set, the heatmap opens with only those names
+  selected instead of all. This is a user-configurable preference, not a hard
+  restriction.
+- **Persistence**: the per-asset default is stored in the asset DB record (e.g., a
+  JSON field like `heatmap_config.default_eval_names: string[]`). Runtime filter
+  selections are client-side state only (not persisted beyond the session).
+
+### Out of scope
+
+- Filtering by evaluation tags (e.g., "show only evals tagged `release`") is a
+  separate feature with its own design challenges. Not addressed here.
+
+## Soft Delete (Future Work — Noted for Context)
+
+Asset deletion should be soft, not hard. When a user "deletes" an asset:
+
+1. The asset is marked as **disabled** (e.g., `disabled_at` timestamp).
+2. All evaluations for the asset are also marked disabled (or filtered by the
+   asset's disabled state).
+3. SLO/SLI links not used by other assets are also disabled.
+4. Disabled assets and their evaluations are hidden from the UI.
+5. Restoring a disabled asset requires manual DB intervention (intentionally — this
+   is a safety net, not a routine operation).
+
+This is a separate spec and implementation. The `RESTRICT` FK on `asset_id` prevents
+accidental hard deletes in the meantime.
+
 ## What Does Not Change
 
 - **Re-evaluate** — updates in place, same UUID, stores original score
 - **Override** — modifies existing evaluation result
 - **Invalidate** — marks existing evaluation as invalid
-- **Heatmap queries** — no code change needed; duplicates can no longer occur
 - **Baseline logic** — no change needed
 
 ## Edge Cases
