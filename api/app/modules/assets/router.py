@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 import uuid
+from typing import Any
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_session
+from app.modules.assets.comparison_rules import validate_comparison_rules
 from app.modules.assets.repository import (
     AssetGroupRepository,
     AssetGroupSLOLinkRepository,
@@ -31,6 +33,7 @@ from app.modules.assets.schemas import (
     AssetTypeCreate,
     AssetTypeRead,
     AssetUpdate,
+    ComparisonRulesUpdate,
 )
 from app.modules.common.errors import raise_not_found
 from app.modules.common.schemas import PagedResponse
@@ -194,6 +197,62 @@ async def delete_asset_slo_link(
         raise_not_found("asset", name)
     link_repo = AssetSLOLinkRepository(session)
     await link_repo.delete(asset.id, link_name)
+
+
+@router.get(
+    "/assets/{name}/slo-links/{link_name}/comparison-rules",
+    response_model=list[dict[str, Any]],
+)
+async def get_comparison_rules(
+    name: str,
+    link_name: str,
+    session: AsyncSession = Depends(get_session),  # noqa: B008
+) -> list[dict[str, Any]]:
+    """Return comparison rules for an asset SLO link."""
+    asset_repo = AssetRepository(session)
+    asset = await asset_repo.get_by_name(name)
+    if asset is None:
+        raise_not_found("asset", name)
+    link_repo = AssetSLOLinkRepository(session)
+    link = await link_repo.get_by_link_name(asset.id, link_name)
+    if link is None:
+        raise_not_found("slo link", link_name)
+    return link.comparison_rules
+
+
+@router.put(
+    "/assets/{name}/slo-links/{link_name}/comparison-rules",
+    response_model=list[dict[str, Any]],
+)
+async def update_comparison_rules_endpoint(
+    name: str,
+    link_name: str,
+    body: ComparisonRulesUpdate,
+    session: AsyncSession = Depends(get_session),  # noqa: B008
+) -> list[dict[str, Any]]:
+    """Replace comparison rules for an asset SLO link.
+
+    Validates rule structure:
+    - At most one catch-all rule (match: {})
+    - Catch-all must be last
+    - match must be dict[str, str]
+    - compare_to must be dict[str, str | bool]
+    """
+    asset_repo = AssetRepository(session)
+    asset = await asset_repo.get_by_name(name)
+    if asset is None:
+        raise_not_found("asset", name)
+    link_repo = AssetSLOLinkRepository(session)
+    link = await link_repo.get_by_link_name(asset.id, link_name)
+    if link is None:
+        raise_not_found("slo link", link_name)
+    try:
+        validated = validate_comparison_rules(body.rules)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    rules_dicts = [r.model_dump() for r in validated]
+    await link_repo.update_comparison_rules(link.id, rules_dicts)
+    return rules_dicts
 
 
 # ---- Asset Groups ----
