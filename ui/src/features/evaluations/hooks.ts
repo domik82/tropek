@@ -58,6 +58,7 @@ export function useAddAnnotation(evalId: string) {
       addAnnotation(evalId, payload),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: evaluationKeys.detail(evalId) })
+      qc.invalidateQueries({ queryKey: evaluationKeys.all })
     },
   })
 }
