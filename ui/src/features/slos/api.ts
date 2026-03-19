@@ -45,6 +45,7 @@ export async function createSloDefinition(payload: {
   display_name?: string
   notes?: string
   author?: string
+  meta?: Record<string, string>
   comparable_from_version?: number
 }): Promise<SloDefinition> {
   const res = await fetch(`${BASE}/slo-definitions`, {

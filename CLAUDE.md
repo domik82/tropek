@@ -162,8 +162,18 @@ React 18, TypeScript, Vite, Tailwind CSS v4, React Query, lucide-react icons.
 ```bash
 cd ui && npm install --legacy-peer-deps   # Install (peer dep conflicts require --legacy)
 npx vite --host                           # Dev server on :5173
-npx tsc --noEmit                          # Type check
+npx tsc --noEmit -p tsconfig.app.json     # Type check (must use app config)
+npx vitest run                            # Run component tests (Vitest + React Testing Library)
+npx vitest run --watch                    # Watch mode
 ```
+
+### UI testing
+
+Component tests use **Vitest + React Testing Library + jsdom**. Config lives in `vite.config.ts` (`test` block), setup in `src/test-setup.ts`.
+
+- Place test files next to the component: `ComponentName.test.tsx`
+- Wrap components that use React Query in `QueryClientProvider` (see `NoteEntry.test.tsx` for pattern)
+- Use `@testing-library/jest-dom/vitest` matchers (loaded via setup file)
 
 ### Theme system
 

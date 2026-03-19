@@ -42,7 +42,7 @@ function buildData(evals: EvaluationSummary[]): { slots: string[]; rows: string[
     const hasNote = (e.annotation_count ?? 0) > 0
     const note = e.latest_annotation?.content ?? ''
     if (!existing) {
-      cellMap.set(key, { result: effectiveResult, score: e.score, count: 1, hasNote, noteContent: note, evalName: e.name })
+      cellMap.set(key, { result: effectiveResult, score: e.score, count: 1, hasNote, noteContent: note, evalName: e.evaluation_name })
     } else {
       const rank = (r: string) => RESULT_RANK[r] ?? 0
       const newIsWorse = rank(effectiveResult) > rank(existing.result)
@@ -52,7 +52,7 @@ function buildData(evals: EvaluationSummary[]): { slots: string[]; rows: string[
         count: existing.count + 1,
         hasNote: existing.hasNote || hasNote,
         noteContent: existing.noteContent || note,
-        evalName: newIsWorse ? e.name : existing.evalName,
+        evalName: newIsWorse ? e.evaluation_name : existing.evalName,
       })
     }
   }

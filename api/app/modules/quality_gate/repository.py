@@ -458,24 +458,21 @@ class EvaluationRepository:
             eval_ids = [ev.id for ev in evals]
             cnt_rows = await self._session.execute(
                 select(EvaluationAnnotation.evaluation_id, func.count().label("cnt"))
-                .where(EvaluationAnnotation.evaluation_id.in_(eval_ids))
+                .where(
+                    EvaluationAnnotation.evaluation_id.in_(eval_ids),
+                    EvaluationAnnotation.hidden_at.is_(None),
+                )
                 .group_by(EvaluationAnnotation.evaluation_id)
             )
             count_map = {row.evaluation_id: row.cnt for row in cnt_rows}
         return evals, total, count_map
 
-    async def invalidate(
-        self,
-        eval_id: uuid.UUID,
-        *,
-        note: str,
-        author: str,
-    ) -> Evaluation | None:
+    async def invalidate(self, eval_id: uuid.UUID, *, note: str) -> Evaluation | None:
         """Mark an evaluation as invalidated."""
         await self._session.execute(
             update(Evaluation)
             .where(Evaluation.id == eval_id)
-            .values(invalidated=True, invalidation_note=note, invalidation_author=author)
+            .values(invalidated=True, invalidation_note=note)
         )
         return await self.get_by_id(eval_id)
 
@@ -484,7 +481,7 @@ class EvaluationRepository:
         await self._session.execute(
             update(Evaluation)
             .where(Evaluation.id == eval_id)
-            .values(invalidated=False, invalidation_note=None, invalidation_author=None)
+            .values(invalidated=False, invalidation_note=None)
         )
         return await self.get_by_id(eval_id)
 
@@ -812,12 +809,30 @@ class EvaluationRepository:
         await self._session.flush()
         return ann
 
-    async def delete_annotation(self, annotation_id: uuid.UUID) -> None:
-        """Delete an annotation by ID.
+    async def hide_annotation(
+        self,
+        annotation_id: uuid.UUID,
+        *,
+        reason: str,
+        author: str | None = None,
+    ) -> EvaluationAnnotation | None:
+        """Soft-delete an annotation by setting hidden_at.
 
         Args:
-            annotation_id: Annotation to delete.
+            annotation_id: Annotation to hide.
+            reason: Why the annotation is being hidden.
+            author: Who hid the annotation.
+
+        Returns:
+            Updated annotation or None if not found.
         """
         await self._session.execute(
-            delete(EvaluationAnnotation).where(EvaluationAnnotation.id == annotation_id)
+            update(EvaluationAnnotation)
+            .where(EvaluationAnnotation.id == annotation_id)
+            .values(
+                hidden_at=func.now(),
+                hidden_by=author,
+                hidden_reason=reason,
+            )
         )
+        return await self.get_annotation_by_id(annotation_id)

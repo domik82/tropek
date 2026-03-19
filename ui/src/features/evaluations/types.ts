@@ -14,6 +14,9 @@ export interface Annotation {
   author: string | null
   category: string | null
   meta: Record<string, unknown>
+  hidden_at: string | null
+  hidden_by: string | null
+  hidden_reason: string | null
   created_at: string
   updated_at: string
 }
@@ -76,7 +79,6 @@ export interface IndicatorResult {
 
 export interface EvaluationDetail extends EvaluationSummary {
   invalidation_note: string | null
-  invalidation_author: string | null
   evaluation_metadata: Record<string, string>
   compared_evaluation_ids: string[]
   annotations: Annotation[]

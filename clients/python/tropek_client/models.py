@@ -215,6 +215,9 @@ class Annotation(BaseModel):
     author: str | None
     category: str | None
     meta: dict[str, Any]
+    hidden_at: datetime | None = None
+    hidden_by: str | None = None
+    hidden_reason: str | None = None
     created_at: datetime
     updated_at: datetime | None
 

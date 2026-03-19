@@ -73,14 +73,28 @@ export async function addAnnotation(
   return res.json()
 }
 
+export async function hideAnnotation(
+  evalId: string,
+  annotationId: string,
+  payload: { reason: string; author?: string }
+): Promise<Annotation> {
+  const res = await fetch(`${BASE}/evaluations/${evalId}/annotations/${annotationId}/hide`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  })
+  if (!res.ok) throw new Error(`hideAnnotation: ${res.status}`)
+  return res.json()
+}
+
 export async function invalidateEvaluation(
   evalId: string,
-  payload: { note: string; author: string }
+  note: string
 ): Promise<EvaluationSummary> {
   const res = await fetch(`${BASE}/evaluations/${evalId}/invalidate`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ invalidation_note: payload.note, author: payload.author }),
+    body: JSON.stringify({ invalidation_note: note }),
   })
   if (!res.ok) throw new Error(`invalidateEvaluation: ${res.status}`)
   return res.json()

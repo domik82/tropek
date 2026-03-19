@@ -2,7 +2,7 @@
 
 Revision ID: 001
 Revises:
-Create Date: 2026-03-19 20:01:47.865128
+Create Date: 2026-03-19 23:07:59.615323
 
 """
 
@@ -365,7 +365,6 @@ def upgrade() -> None:
         sa.Column("adapter_used", sa.Text(), nullable=True),
         sa.Column("invalidated", sa.Boolean(), server_default=sa.text("false"), nullable=False),
         sa.Column("invalidation_note", sa.Text(), nullable=True),
-        sa.Column("invalidation_author", sa.Text(), nullable=True),
         sa.Column("baseline_pinned_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("baseline_unpinned_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("baseline_pin_reason", sa.Text(), nullable=True),
@@ -439,6 +438,9 @@ def upgrade() -> None:
             server_default=sa.text("'{}'"),
             nullable=False,
         ),
+        sa.Column("hidden_at", sa.DateTime(timezone=True), nullable=True),
+        sa.Column("hidden_by", sa.Text(), nullable=True),
+        sa.Column("hidden_reason", sa.Text(), nullable=True),
         sa.Column(
             "created_at",
             sa.DateTime(timezone=True),
