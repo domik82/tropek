@@ -29,8 +29,8 @@ class EvaluationRepository:
         ingestion_mode: str,
         asset_snapshot: dict[str, Any],
         metadata: dict[str, Any],
-        asset_id: uuid.UUID | None = None,
-        slo_name: str | None = None,
+        asset_id: uuid.UUID,
+        slo_name: str,
         slo_version: int | None = None,
         adapter_used: str | None = None,
         sli_name: str | None = None,
@@ -46,8 +46,8 @@ class EvaluationRepository:
             ingestion_mode: One of "pull", "push", "file".
             asset_snapshot: Denormalised asset state at trigger time.
             metadata: Caller-provided key-value pairs.
-            asset_id: Optional UUID of the associated asset.
-            slo_name: Named SLO used, if any.
+            asset_id: UUID of the associated asset.
+            slo_name: Named SLO used for this evaluation.
             slo_version: Version of the named SLO, if any.
             adapter_used: Adapter name, if pull mode (e.g. "prometheus").
             sli_name: Named SLI definition used, if any.
@@ -59,11 +59,10 @@ class EvaluationRepository:
         """
         # Merge asset labels as defaults into metadata (caller values take precedence)
         merged_metadata = dict(metadata)
-        if asset_id is not None:
-            asset_row = await self._session.get(Asset, asset_id)
-            if asset_row is not None and asset_row.labels:
-                for key, value in asset_row.labels.items():
-                    merged_metadata.setdefault(str(key), str(value))
+        asset_row = await self._session.get(Asset, asset_id)
+        if asset_row is not None and asset_row.labels:
+            for key, value in asset_row.labels.items():
+                merged_metadata.setdefault(str(key), str(value))
 
         ev = Evaluation(
             id=uuid.uuid4(),
