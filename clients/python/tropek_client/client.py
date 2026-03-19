@@ -607,10 +607,14 @@ class _Annotations:
         _raise_for_status(resp)
         return Annotation.model_validate(resp.json())
 
-    def delete(self, eval_id: str, ann_id: str) -> None:
-        """Delete an annotation."""
-        resp = self._http.delete(f"/evaluations/{eval_id}/annotations/{ann_id}")
+    def hide(self, eval_id: str, ann_id: str, reason: str, author: str | None = None) -> Annotation:
+        """Soft-delete (hide) an annotation."""
+        body: dict[str, Any] = {"reason": reason}
+        if author:
+            body["author"] = author
+        resp = self._http.post(f"/evaluations/{eval_id}/annotations/{ann_id}/hide", json=body)
         _raise_for_status(resp)
+        return Annotation.model_validate(resp.json())
 
 
 class _Trend:

@@ -105,6 +105,22 @@ export const evaluationHandlers = [
     )
   }),
 
+  http.post('/api/evaluations/:id/annotations/:annId/hide', async ({ params, request }) => {
+    const body = await request.json() as Record<string, unknown>
+    return HttpResponse.json({
+      id: params.annId,
+      content: '',
+      author: null,
+      category: null,
+      meta: {},
+      hidden_at: new Date().toISOString(),
+      hidden_by: (body.author as string) ?? null,
+      hidden_reason: (body.reason as string) ?? null,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    })
+  }),
+
   http.patch('/api/evaluations/:id/invalidate', async ({ params, request }) => {
     const body = await request.json() as { invalidation_note?: string }
     const { getEvaluationDetail } = await gen()

@@ -7,7 +7,7 @@ import type { MetricHeatmapResponse } from './types'
 function mkEval(asset: string, slot: string, result: 'pass' | 'warning' | 'fail', score: number): EvaluationSummary {
   return {
     id: `${asset}-${slot}`,
-    name: 'test',
+    evaluation_name: 'test',
     status: 'completed',
     result,
     score,
@@ -16,6 +16,8 @@ function mkEval(asset: string, slot: string, result: 'pass' | 'warning' | 'fail'
     slo_name: null, slo_version: null, sli_name: null, sli_version: null,
     data_source_name: null, ingestion_mode: 'pull', adapter_used: null,
     invalidated: false,
+    original_result: null, original_score: null,
+    override_reason: null, override_author: null,
     asset_snapshot: { name: asset, tags: {} },
     evaluation_metadata: {},
     created_at: slot,

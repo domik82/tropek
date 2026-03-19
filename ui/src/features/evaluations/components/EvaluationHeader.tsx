@@ -18,6 +18,8 @@ interface Props {
   scoreColored?: boolean
   /** Metadata lines rendered below the title (asset info, SLO, etc.) */
   metadata?: ReactNode
+  /** Note icon button rendered left of actions */
+  noteButton?: ReactNode
   /** Right-column actions (invalidate button, etc.) */
   actions?: ReactNode
 }
@@ -30,6 +32,7 @@ export function EvaluationHeader({
   score,
   scoreColored = true,
   metadata,
+  noteButton,
   actions,
 }: Props) {
   const { theme } = useTheme()
@@ -71,7 +74,8 @@ export function EvaluationHeader({
       </div>
 
       {/* Right — actions */}
-      <div className="flex flex-col items-end gap-2">
+      <div className="flex items-center gap-2 justify-end">
+        {noteButton}
         {actions}
       </div>
     </div>

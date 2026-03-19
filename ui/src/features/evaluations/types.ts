@@ -14,6 +14,9 @@ export interface Annotation {
   author: string | null
   category: string | null
   meta: Record<string, unknown>
+  hidden_at: string | null
+  hidden_by: string | null
+  hidden_reason: string | null
   created_at: string
   updated_at: string
 }

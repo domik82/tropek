@@ -9,6 +9,7 @@ import {
   fetchEvaluationDetail,
   fetchTrend,
   addAnnotation,
+  hideAnnotation,
   invalidateEvaluation,
   overrideStatus,
   pinBaseline,
@@ -62,10 +63,26 @@ export function useAddAnnotation(evalId: string) {
   })
 }
 
+export function useHideAnnotation(evalId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (payload: { annotationId: string; reason: string; author?: string }) =>
+      hideAnnotation(evalId, payload.annotationId, {
+        reason: payload.reason,
+        author: payload.author,
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: evaluationKeys.detail(evalId) })
+      qc.invalidateQueries({ queryKey: evaluationKeys.all })
+    },
+  })
+}
+
 export function useInvalidateEvaluation(evalId: string) {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (note: string) => invalidateEvaluation(evalId, note),
+    mutationFn: (payload: { note: string; author: string }) =>
+      invalidateEvaluation(evalId, payload.note),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: evaluationKeys.detail(evalId) })
       qc.invalidateQueries({ queryKey: evaluationKeys.all })
@@ -78,8 +95,8 @@ export function useOverrideStatus(evalId: string) {
   return useMutation({
     mutationFn: (payload: { new_result: string; reason: string; author: string }) =>
       overrideStatus(evalId, payload),
-    onSuccess: (data) => {
-      qc.setQueryData(evaluationKeys.detail(evalId), data)
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: evaluationKeys.detail(evalId) })
       qc.invalidateQueries({ queryKey: evaluationKeys.all })
     },
   })

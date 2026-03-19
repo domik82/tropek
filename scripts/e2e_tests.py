@@ -281,9 +281,11 @@ def test_annotations(client: TropekClient) -> None:
     assert updated.content == "updated note"
     print("updated annotation content")
 
-    client.annotations.delete(eval_id, ann_id)
+    hidden = client.annotations.hide(eval_id, ann_id, "mistake", author="test-runner")
+    assert hidden.hidden_at is not None
+    assert hidden.hidden_reason == "mistake"
     assert not any(str(a.id) == ann_id for a in client.annotations.list(eval_id))
-    print("PASS: create, list, update, delete annotation")
+    print("PASS: create, list, update, hide annotation")
 
 
 def main() -> None:
