@@ -132,16 +132,19 @@ export function AssetPanel({ assetName, initialEvalId }: Props) {
     const slots = new Map<string, { count: number; content: string; author: string | null }>()
     for (const c of heatmapData.cells) {
       if (c.eval_id && notedEvals.has(c.eval_id) && !slots.has(c.slot)) {
-        const ev = notedEvals.get(c.eval_id)!
+        const summary = notedEvals.get(c.eval_id)!
+        // Use full annotations from detail if this is the selected eval
+        const detailAnnotations = ev && c.eval_id === effectiveEvalId ? ev.annotations : undefined
+        const latest = detailAnnotations?.[detailAnnotations.length - 1] ?? summary.latest_annotation
         slots.set(c.slot, {
-          count: ev.annotation_count ?? 0,
-          content: ev.latest_annotation?.content ?? '',
-          author: ev.latest_annotation?.author ?? null,
+          count: detailAnnotations?.length ?? summary.annotation_count ?? 0,
+          content: latest?.content ?? '',
+          author: latest?.author ?? null,
         })
       }
     }
     return slots
-  }, [evals, heatmapData])
+  }, [evals, heatmapData, ev, effectiveEvalId])
 
   const displayResult = ev ? (ev.invalidated ? 'invalidated' : ev.result) : undefined
   const score = ev ? Math.round(ev.score) : undefined
