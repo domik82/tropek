@@ -197,6 +197,29 @@ async def test_add_and_list_annotations(db_session: AsyncSession) -> None:
 
 
 @pytest.mark.integration
+async def test_hide_annotation(db_session: AsyncSession) -> None:
+    repo = EvaluationRepository(db_session)
+    ev = await repo.create_pending(
+        evaluation_name="hide-ann-test",
+        period_start=_START,
+        period_end=_END,
+        ingestion_mode="push",
+        asset_snapshot=_make_snapshot(),
+        metadata={},
+    )
+    ann = await repo.add_annotation(ev.id, content="wrong note", author="ops")
+    hidden = await repo.hide_annotation(ann.id, reason="typo", author="admin")
+    assert hidden is not None
+    assert hidden.hidden_at is not None
+    assert hidden.hidden_by == "admin"
+    assert hidden.hidden_reason == "typo"
+
+    # Verify hidden annotation is excluded from counts
+    _, _, count_map = await repo.list_with_counts()
+    assert count_map.get(ev.id, 0) == 0
+
+
+@pytest.mark.integration
 async def test_write_and_read_sli_values(db_session: AsyncSession) -> None:
     repo = EvaluationRepository(db_session)
     ev = await repo.create_pending(

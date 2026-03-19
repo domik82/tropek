@@ -8,7 +8,7 @@
 // and the legend bar above the chart.
 
 import ReactECharts from 'echarts-for-react'
-import { useMemo } from 'react'
+import { useMemo, type ReactNode } from 'react'
 import { useTheme } from '@/lib/theme-context'
 import { RESULT_COLOUR, CHART_THEME } from '@/lib/theme'
 import type { ResultColours } from '@/lib/theme'
@@ -53,7 +53,7 @@ export interface HeatmapChartProps {
   /** Called when the user clicks a cell. */
   onCellClick: (cell: HeatmapCell) => void
   /**
-   * When true, cells with `hasNote === true` render a small white triangle
+   * When true, cells with `hasNote === true` render a small amber square
    * in their top-right corner (annotation indicator).
    */
   annotations?: boolean
@@ -74,6 +74,8 @@ export interface HeatmapChartProps {
    * Omit or pass empty string to suppress.
    */
   instructionText?: string
+  /** Content rendered between the legend bar and the chart canvas. */
+  aboveChart?: ReactNode
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -89,6 +91,7 @@ export function HeatmapChart({
   formatTooltip,
   formatColumnLabel = fmtSlot,
   instructionText,
+  aboveChart,
 }: HeatmapChartProps) {
   const { theme } = useTheme()
   const colours = RESULT_COLOUR[theme]
@@ -194,17 +197,16 @@ export function HeatmapChart({
             ]
 
             if (annotations && cellData?.hasNote) {
-              const s = Math.min(6, rw / 3, rh / 3)
+              const s = Math.min(10, rw / 3, rh / 3)
               children.push({
-                type: 'polygon',
+                type: 'rect',
                 shape: {
-                  points: [
-                    [rx + rw - s, ry],
-                    [rx + rw, ry],
-                    [rx + rw, ry + s],
-                  ],
+                  x: rx + rw - s,
+                  y: ry,
+                  width: s,
+                  height: s,
                 },
-                style: { fill: '#ffffff' },
+                style: { fill: '#F59E0B' },  // amber-500
               })
             }
 
@@ -225,23 +227,13 @@ export function HeatmapChart({
 
   return (
     <div className="w-full">
-      {/* Instruction text + colour legend bar above the chart */}
-      <div className="flex items-center justify-between mb-1 px-1">
-        <span className="text-xs text-gray-400">
-          {instructionText ?? ''}
-        </span>
-        <div className="flex items-center gap-3 text-xs text-gray-400">
-          {(['pass', 'warning', 'fail', 'error', 'invalidated'] as const).map(r => (
-            <span key={r} className="flex items-center gap-1">
-              <span
-                className="inline-block w-3 h-3 rounded-sm"
-                style={{ backgroundColor: colours[r] }}
-              />
-              {r}
-            </span>
-          ))}
+      {/* Instruction text above the chart */}
+      {instructionText && (
+        <div className="mb-1 px-1">
+          <span className="text-xs text-gray-400">{instructionText}</span>
         </div>
-      </div>
+      )}
+      {aboveChart}
       <ReactECharts
         option={option}
         style={{ height: chartHeight }}
@@ -252,6 +244,18 @@ export function HeatmapChart({
           },
         }}
       />
+      {/* Colour legend below the chart */}
+      <div className="flex items-center justify-end gap-3 text-xs text-gray-400 mt-1 px-1">
+        {(['pass', 'warning', 'fail', 'error', 'invalidated'] as const).map(r => (
+          <span key={r} className="flex items-center gap-1">
+            <span
+              className="inline-block w-3 h-3 rounded-sm"
+              style={{ backgroundColor: colours[r] }}
+            />
+            {r}
+          </span>
+        ))}
+      </div>
     </div>
   )
 }

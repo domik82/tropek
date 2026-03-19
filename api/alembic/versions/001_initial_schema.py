@@ -2,7 +2,7 @@
 
 Revision ID: 001
 Revises:
-Create Date: 2026-03-19 11:30:14.630738
+Create Date: 2026-03-19 23:07:59.615323
 
 """
 
@@ -438,6 +438,9 @@ def upgrade() -> None:
             server_default=sa.text("'{}'"),
             nullable=False,
         ),
+        sa.Column("hidden_at", sa.DateTime(timezone=True), nullable=True),
+        sa.Column("hidden_by", sa.Text(), nullable=True),
+        sa.Column("hidden_reason", sa.Text(), nullable=True),
         sa.Column(
             "created_at",
             sa.DateTime(timezone=True),

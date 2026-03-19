@@ -10,7 +10,7 @@ interface ActionCallbacks {
   onSelectAsset?: (name: string) => void
 }
 
-export function useAssetTreeActions(mode: TreeMode, callbacks: ActionCallbacks) {
+export function useAssetTreeActions(_mode: TreeMode, callbacks: ActionCallbacks) {
   const updateGroup = useUpdateGroup()
 
   const handleRename = (name: string, newDisplayName: string) => {

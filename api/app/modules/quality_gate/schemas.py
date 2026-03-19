@@ -26,6 +26,9 @@ class AnnotationRead(BaseModel):
     author: str | None
     category: str | None
     meta: dict[str, Any]
+    hidden_at: datetime | None
+    hidden_by: str | None
+    hidden_reason: str | None
     created_at: datetime
     updated_at: datetime | None
 
@@ -48,6 +51,13 @@ class AnnotationUpdate(BaseModel):
     author: str | None = None
     category: str | None = None
     meta: dict[str, Any] | None = None
+
+
+class AnnotationHide(BaseModel):
+    """Request body for soft-deleting (hiding) an annotation."""
+
+    reason: str
+    author: str | None = None
 
 
 class InvalidateRequest(BaseModel):
