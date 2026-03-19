@@ -2,7 +2,7 @@
 
 Revision ID: 001
 Revises:
-Create Date: 2026-03-18 22:35:07.624979
+Create Date: 2026-03-19 11:30:14.630738
 
 """
 
@@ -104,6 +104,9 @@ def upgrade() -> None:
             server_default=sa.text("'[]'"),
             nullable=False,
         ),
+        sa.Column("result", sa.Text(), nullable=True),
+        sa.Column("score", sa.Float(), nullable=True),
+        sa.Column("rollup_details", postgresql.JSONB(astext_type=sa.Text()), nullable=True),
         sa.Column(
             "created_at",
             sa.DateTime(timezone=True),
@@ -315,6 +318,12 @@ def upgrade() -> None:
             server_default=sa.text("now()"),
             nullable=False,
         ),
+        sa.Column(
+            "comparison_rules",
+            postgresql.JSONB(astext_type=sa.Text()),
+            server_default=sa.text("'[]'::jsonb"),
+            nullable=False,
+        ),
         sa.ForeignKeyConstraint(["asset_id"], ["assets.id"], ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint("asset_id", "link_name", name="uq_asset_slo_link_name"),
@@ -356,6 +365,13 @@ def upgrade() -> None:
         sa.Column("adapter_used", sa.Text(), nullable=True),
         sa.Column("invalidated", sa.Boolean(), server_default=sa.text("false"), nullable=False),
         sa.Column("invalidation_note", sa.Text(), nullable=True),
+        sa.Column("baseline_pinned_at", sa.DateTime(timezone=True), nullable=True),
+        sa.Column("baseline_unpinned_at", sa.DateTime(timezone=True), nullable=True),
+        sa.Column("baseline_pin_reason", sa.Text(), nullable=True),
+        sa.Column("baseline_pin_author", sa.Text(), nullable=True),
+        sa.Column("original_result", sa.Text(), nullable=True),
+        sa.Column("override_reason", sa.Text(), nullable=True),
+        sa.Column("override_author", sa.Text(), nullable=True),
         sa.Column("status", sa.Text(), server_default=sa.text("'pending'"), nullable=False),
         sa.Column("started_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column(
