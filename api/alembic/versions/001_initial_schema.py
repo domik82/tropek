@@ -2,7 +2,7 @@
 
 Revision ID: 001
 Revises:
-Create Date: 2026-03-19 23:07:59.615323
+Create Date: 2026-03-20 00:09:16.730433
 
 """
 
@@ -249,6 +249,7 @@ def upgrade() -> None:
             server_default=sa.text("'{}'"),
             nullable=False,
         ),
+        sa.Column("heatmap_config", postgresql.JSONB(astext_type=sa.Text()), nullable=True),
         sa.Column(
             "created_at",
             sa.DateTime(timezone=True),
@@ -333,7 +334,7 @@ def upgrade() -> None:
         "evaluations",
         sa.Column("id", sa.UUID(), nullable=False),
         sa.Column("evaluation_name", sa.Text(), nullable=False),
-        sa.Column("asset_id", sa.UUID(), nullable=True),
+        sa.Column("asset_id", sa.UUID(), nullable=False),
         sa.Column(
             "asset_snapshot",
             postgresql.JSONB(astext_type=sa.Text()),
@@ -344,7 +345,7 @@ def upgrade() -> None:
         sa.Column("period_end", sa.DateTime(timezone=True), nullable=False),
         sa.Column("result", sa.Text(), nullable=True),
         sa.Column("score", sa.Float(), nullable=True),
-        sa.Column("slo_name", sa.Text(), nullable=True),
+        sa.Column("slo_name", sa.Text(), nullable=False),
         sa.Column("slo_version", sa.Integer(), nullable=True),
         sa.Column("sli_name", sa.Text(), nullable=True),
         sa.Column("sli_version", sa.Integer(), nullable=True),
@@ -397,10 +398,7 @@ def upgrade() -> None:
             "status IN ('pending','running','completed','failed','partial')",
             name="ck_evaluations_status",
         ),
-        sa.ForeignKeyConstraint(
-            ["asset_id"],
-            ["assets.id"],
-        ),
+        sa.ForeignKeyConstraint(["asset_id"], ["assets.id"], ondelete="RESTRICT"),
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_index("idx_evaluations_asset", "evaluations", ["asset_id"], unique=False)
@@ -424,6 +422,13 @@ def upgrade() -> None:
         ["status", "started_at"],
         unique=False,
         postgresql_where=sa.text("status = 'running'"),
+    )
+    op.create_index(
+        "uq_evaluations_identity",
+        "evaluations",
+        ["asset_id", "slo_name", "evaluation_name", "period_start", "period_end"],
+        unique=True,
+        postgresql_where=sa.text("status != 'failed'"),
     )
     op.create_table(
         "evaluation_annotations",
@@ -486,6 +491,11 @@ def downgrade() -> None:
     op.drop_table("sli_values")
     op.drop_index("idx_annotations_evaluation", table_name="evaluation_annotations")
     op.drop_table("evaluation_annotations")
+    op.drop_index(
+        "uq_evaluations_identity",
+        table_name="evaluations",
+        postgresql_where=sa.text("status != 'failed'"),
+    )
     op.drop_index(
         "idx_evaluations_stuck",
         table_name="evaluations",
