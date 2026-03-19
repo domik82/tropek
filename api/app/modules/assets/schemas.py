@@ -171,8 +171,15 @@ class AssetSLOLinkRead(BaseModel):
     sli_name: str
     data_source_name: str
     created_at: datetime
+    comparison_rules: list[dict[str, Any]] = []
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class ComparisonRulesUpdate(BaseModel):
+    """Request body for PUT /assets/{name}/slo-links/{link_name}/comparison-rules."""
+
+    rules: list[dict[str, Any]]
 
 
 class AssetGroupSLOLinkCreate(BaseModel):
