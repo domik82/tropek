@@ -474,6 +474,7 @@ class EvaluationRepository:
         slo_name: str | None = None,
         result: str | None = None,
         date_prefix: str | None = None,
+        evaluation_name: list[str] | None = None,
         asset_ids: list[uuid.UUID] | None = None,
         from_ts: datetime | None = None,
         to_ts: datetime | None = None,
@@ -490,6 +491,8 @@ class EvaluationRepository:
             q = q.where(Evaluation.asset_id == asset_id)
         if slo_name:
             q = q.where(Evaluation.slo_name == slo_name)
+        if evaluation_name:
+            q = q.where(Evaluation.evaluation_name.in_(evaluation_name))
         if result:
             q = q.where(Evaluation.result == result)
         if date_prefix:
@@ -636,6 +639,7 @@ class EvaluationRepository:
         *,
         asset_id: uuid.UUID,
         limit: int = 20,
+        evaluation_name: list[str] | None = None,
     ) -> list[Evaluation]:
         """Fetch the last N completed evaluations for an asset, ordered by period_start DESC."""
         q = (
@@ -647,6 +651,8 @@ class EvaluationRepository:
             .order_by(Evaluation.period_start.desc())
             .limit(limit)
         )
+        if evaluation_name:
+            q = q.where(Evaluation.evaluation_name.in_(evaluation_name))
         result = await self._session.execute(q)
         return list(result.scalars().all())
 
