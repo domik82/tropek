@@ -1,7 +1,7 @@
 // src/pages/SloRegistryPage.tsx
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { useSlos, useSloDetail, useDeleteSlo, useGroupSloLinks } from '@/features/slos/hooks'
+import { useSlos, useSloDetail, useDeleteSlo, useGroupSloLinks, useGroupTree } from '@/features/slos/hooks'
 import { SloObjectiveTable } from '@/features/slos/components/SloObjectiveTable'
 import { SloObjectiveEditor } from '@/features/slos/components/SloObjectiveEditor'
 import { SloHistoryPanel } from '@/features/slos/components/SloHistoryPanel'
@@ -99,7 +99,15 @@ export function SloRegistryPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const selectedGroup = searchParams.get('group')
   const [showAll, setShowAll] = useState(false)
+  const { data: tree } = useGroupTree()
   const { data: groupLinks } = useGroupSloLinks(selectedGroup ?? '')
+
+  // Clear stale group param if it doesn't exist in the tree
+  useEffect(() => {
+    if (!selectedGroup || selectedGroup === '__ungrouped__' || !tree) return
+    const exists = tree.all_groups.some(g => g.name === selectedGroup)
+    if (!exists) setSearchParams({})
+  }, [selectedGroup, tree, setSearchParams])
 
   // Group CRUD dialog state
   const [createGroupOpen, setCreateGroupOpen] = useState(false)
