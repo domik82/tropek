@@ -121,6 +121,21 @@ export function AssetPanel({ assetName, initialEvalId }: Props) {
     : allIndicators.filter(i => i.tab_group === metricGroupFilter)
 
   const isLoading = evalsLoading || heatmapLoading
+
+  const notedSlots = useMemo(() => {
+    if (!heatmapData) return new Set<string>()
+    const notedIds = new Set(
+      evals.filter(e => (e.annotation_count ?? 0) > 0).map(e => e.id),
+    )
+    const slots = new Set<string>()
+    for (const c of heatmapData.cells) {
+      if (c.eval_id && notedIds.has(c.eval_id)) {
+        slots.add(c.slot)
+      }
+    }
+    return slots
+  }, [evals, heatmapData])
+
   const displayResult = ev ? (ev.invalidated ? 'invalidated' : ev.result) : undefined
   const score = ev ? Math.round(ev.score) : undefined
 
@@ -203,6 +218,7 @@ export function AssetPanel({ assetName, initialEvalId }: Props) {
                 data={heatmapData}
                 selectedEvalId={effectiveEvalId}
                 onEvalSelect={setSelectedEvalId}
+                notedSlots={notedSlots}
               />
             </div>
           )}
