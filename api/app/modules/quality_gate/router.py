@@ -385,7 +385,7 @@ async def list_evaluations(
         if group:
             asset_ids = [m.asset_id for m in group.members]
 
-    evals, total, count_map = await eval_repo.list_with_counts(
+    evals, total, count_map, latest_map = await eval_repo.list_with_counts(
         asset_id=resolved_asset_id,
         slo_name=slo_name,
         evaluation_name=evaluation_name,
@@ -398,7 +398,11 @@ async def list_evaluations(
         offset=offset,
     )
     items = [
-        _build_summary(ev, annotation_count=count_map.get(ev.id, 0), latest_ann=None)
+        _build_summary(
+            ev,
+            annotation_count=count_map.get(ev.id, 0),
+            latest_ann=latest_map.get(ev.id),
+        )
         for ev in evals
     ]
     return PagedResponse(items=items, total=total)

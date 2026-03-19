@@ -1,6 +1,6 @@
 // ui/src/features/navigator/components/GroupPanel.tsx
 import { useState } from 'react'
-import { useEvaluations, useColumnVisibility } from '@/features/evaluations/hooks'
+import { useEvaluations, useDynamicColumns, useColumnVisibility } from '@/features/evaluations/hooks'
 import { EvaluationHeatmap } from '@/features/evaluations/components/EvaluationHeatmap'
 import { EvaluationTable } from '@/features/evaluations/components/EvaluationTable'
 import { EvaluationHeader } from '@/features/evaluations/components/EvaluationHeader'
@@ -23,7 +23,8 @@ export function GroupPanel({ groupName, onSelectAsset }: Props) {
 
   const { data: evals = [], isLoading } = useEvaluations({ group_name: groupName })
 
-  const colVis = useColumnVisibility([])
+  const dynamicCols = useDynamicColumns(evals)
+  const colVis = useColumnVisibility(dynamicCols)
   const tableEvals = selectedDate
     ? evals.filter(e => e.period_start === selectedDate)
     : evals
@@ -61,7 +62,7 @@ export function GroupPanel({ groupName, onSelectAsset }: Props) {
               }}
             />
           </div>
-          <EvaluationTable evaluations={tableEvals} dynamicCols={[]} {...colVis} onAssetSelect={onSelectAsset} onEvalClick={ev => onSelectAsset(ev.asset_snapshot.name, ev.id)} />
+          <EvaluationTable evaluations={tableEvals} dynamicCols={dynamicCols} {...colVis} onAssetSelect={onSelectAsset} onEvalClick={ev => onSelectAsset(ev.asset_snapshot.name, ev.id)} />
         </>
       )}
 

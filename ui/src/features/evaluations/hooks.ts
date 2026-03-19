@@ -2,7 +2,7 @@
 // Custom hooks = service layer. Components never call fetch directly — they call these hooks.
 
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query'
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { evaluationKeys } from '@/lib/queryKeys'
 import {
   fetchEvaluations,
@@ -15,7 +15,7 @@ import {
   pinBaseline,
   reEvaluate,
 } from './api'
-import type { EvaluationFilters, ColumnDef, ReEvaluatePayload } from './types'
+import type { EvaluationFilters, EvaluationSummary, ColumnDef, ReEvaluatePayload } from './types'
 import { FIXED_COLS, DEFAULT_VISIBLE_KEYS } from './constants'
 
 // ── List ──────────────────────────────────────────────────────────────────────
@@ -126,6 +126,41 @@ export function useReEvaluate() {
 
 // ── Column visibility ─────────────────────────────────────────────────────────
 
+const FIXED_KEYS = new Set(FIXED_COLS.map(c => c.key))
+
+function prettyLabel(key: string): string {
+  return key
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, c => c.toUpperCase())
+}
+
+/**
+ * Discover dynamic columns from evaluation data.
+ * Scans asset_snapshot.tags and evaluation_metadata across all evals,
+ * deduplicates, and returns ColumnDef[] for keys not already in FIXED_COLS.
+ */
+export function useDynamicColumns(evals: EvaluationSummary[]): ColumnDef[] {
+  return useMemo(() => {
+    const seen = new Set<string>()
+    const cols: ColumnDef[] = []
+    for (const ev of evals) {
+      for (const key of Object.keys(ev.asset_snapshot.tags ?? {})) {
+        if (!FIXED_KEYS.has(key) && !seen.has(key)) {
+          seen.add(key)
+          cols.push({ key, label: prettyLabel(key), required: false })
+        }
+      }
+      for (const key of Object.keys(ev.evaluation_metadata ?? {})) {
+        if (!FIXED_KEYS.has(key) && !seen.has(key)) {
+          seen.add(key)
+          cols.push({ key, label: prettyLabel(key), required: false })
+        }
+      }
+    }
+    return cols
+  }, [evals])
+}
+
 /**
  * Pure helper — exported so it can be unit-tested without React.
  * Guards required columns and toggles membership in the visible set.
@@ -145,10 +180,21 @@ export function toggleColumnKey(
 export function useColumnVisibility(dynamicCols: ColumnDef[]) {
   const allCols = [...FIXED_COLS, ...dynamicCols]
   const [visibleKeys, setVisibleKeys] = useState<Set<string>>(
-    new Set(DEFAULT_VISIBLE_KEYS)
+    () => new Set([...DEFAULT_VISIBLE_KEYS, ...dynamicCols.map(c => c.key)])
   )
   const [open, setOpen] = useState(false)
   const pickerRef = useRef<HTMLTableCellElement>(null)
+
+  // Auto-add newly discovered dynamic columns to visible set
+  useEffect(() => {
+    setVisibleKeys(prev => {
+      const newKeys = dynamicCols.filter(c => !prev.has(c.key))
+      if (newKeys.length === 0) return prev
+      const next = new Set(prev)
+      for (const c of newKeys) next.add(c.key)
+      return next
+    })
+  }, [dynamicCols])
 
   useEffect(() => {
     function handleClick(e: MouseEvent) {

@@ -8,24 +8,21 @@ export { RESULT_COLOUR } from '@/lib/theme'
 // Dynamic tag/metadata columns are added at runtime from eval data.
 export type { ColumnDef } from './types'
 
-// Column order matches the original Keptn bridge table layout.
-// All columns are togglable; required=true prevents hiding via the picker.
+// Structural columns that are always present regardless of data.
+// Tag and metadata columns (arch, os, branch, build, etc.) are discovered
+// dynamically from evaluation data — see useDynamicColumns() in hooks.ts.
 export const FIXED_COLS = [
-  { key: 'test',         label: 'Evaluation',   required: true  },
-  { key: 'asset',        label: 'Asset',         required: true  },
-  { key: 'arch',         label: 'Arch',          required: false },
-  { key: 'os',           label: 'Os',            required: false },
-  { key: 'branch',       label: 'Branch',        required: false },
-  { key: 'build',        label: 'Build',         required: false },
-  { key: 'triggered_by', label: 'Triggered by',  required: false },
-  { key: 'start',        label: 'Time (UTC)',     required: false },
-  { key: 'score',        label: 'Score',         required: true  },
-  { key: 'result',       label: 'Result',        required: true  },
-  { key: 'slo',          label: 'SLO',           required: false },
-  { key: 'annotations',  label: 'Notes',         required: false },
+  { key: 'test',        label: 'Evaluation', required: true  },
+  { key: 'asset',       label: 'Asset',      required: true  },
+  { key: 'start',       label: 'Time (UTC)', required: false },
+  { key: 'score',       label: 'Score',      required: true  },
+  { key: 'result',      label: 'Result',     required: true  },
+  { key: 'slo',         label: 'SLO',        required: false },
+  { key: 'annotations', label: 'Notes',      required: false },
 ]
 
-// Keys visible by default (all fixed cols except none; user can hide via picker)
+// Keys visible by default — structural columns plus any dynamic columns
+// discovered at runtime (see useColumnVisibility).
 export const DEFAULT_VISIBLE_KEYS = new Set(FIXED_COLS.map(c => c.key))
 
 // Tab group ordering hint for EvaluationDetailPage.

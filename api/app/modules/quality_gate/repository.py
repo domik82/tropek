@@ -480,11 +480,17 @@ class EvaluationRepository:
         to_ts: datetime | None = None,
         limit: int = 50,
         offset: int = 0,
-    ) -> tuple[list[Evaluation], int, dict[uuid.UUID, int]]:
-        """Return (page, total_count, annotation_count_map) with optional filters.
+    ) -> tuple[
+        list[Evaluation],
+        int,
+        dict[uuid.UUID, int],
+        dict[uuid.UUID, EvaluationAnnotation],
+    ]:
+        """Return (page, total, count_map, latest_annotation_map) with optional filters.
 
         asset_id and asset_ids are DB FK lookups (not JSONB snapshot).
-        annotation_count_map: {eval_id -> count} for the returned page only.
+        count_map: {eval_id -> visible annotation count} for the returned page.
+        latest_annotation_map: {eval_id -> most recent visible annotation} for the page.
         """
         q = select(Evaluation)
         if asset_id:
@@ -510,6 +516,7 @@ class EvaluationRepository:
         rows = await self._session.execute(q)
         evals = list(rows.scalars().all())
         count_map: dict[uuid.UUID, int] = {}
+        latest_map: dict[uuid.UUID, EvaluationAnnotation] = {}
         if evals:
             eval_ids = [ev.id for ev in evals]
             cnt_rows = await self._session.execute(
@@ -521,7 +528,22 @@ class EvaluationRepository:
                 .group_by(EvaluationAnnotation.evaluation_id)
             )
             count_map = {row.evaluation_id: row.cnt for row in cnt_rows}
-        return evals, total, count_map
+            # Fetch latest visible annotation per evaluation using DISTINCT ON.
+            latest_q = (
+                select(EvaluationAnnotation)
+                .where(
+                    EvaluationAnnotation.evaluation_id.in_(eval_ids),
+                    EvaluationAnnotation.hidden_at.is_(None),
+                )
+                .order_by(
+                    EvaluationAnnotation.evaluation_id,
+                    EvaluationAnnotation.created_at.desc(),
+                )
+                .distinct(EvaluationAnnotation.evaluation_id)
+            )
+            latest_rows = await self._session.execute(latest_q)
+            latest_map = {a.evaluation_id: a for a in latest_rows.scalars().all()}
+        return evals, total, count_map, latest_map
 
     async def invalidate(self, eval_id: uuid.UUID, *, note: str) -> Evaluation | None:
         """Mark an evaluation as invalidated."""

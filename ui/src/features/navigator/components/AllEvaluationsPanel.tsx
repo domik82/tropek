@@ -1,10 +1,9 @@
 // ui/src/features/navigator/components/AllEvaluationsPanel.tsx
 import { useState, useMemo } from 'react'
-import { useEvaluations, useColumnVisibility } from '@/features/evaluations/hooks'
+import { useEvaluations, useDynamicColumns, useColumnVisibility } from '@/features/evaluations/hooks'
 import { EvaluationHeatmap } from '@/features/evaluations/components/EvaluationHeatmap'
 import { EvaluationTable } from '@/features/evaluations/components/EvaluationTable'
 import { EvaluationHeader } from '@/features/evaluations/components/EvaluationHeader'
-import type { ColumnDef } from '@/features/evaluations/types'
 
 interface Props {
   onSelectAsset: (name: string) => void
@@ -15,12 +14,7 @@ export function AllEvaluationsPanel({ onSelectAsset }: Props) {
 
   const { data: evals = [], isLoading } = useEvaluations({})
 
-  const dynamicCols: ColumnDef[] = Array.from(
-    new Set(evals.flatMap(e => Object.keys(e.asset_snapshot.tags ?? {})))
-  )
-    .filter(k => !['os', 'arch', 'lab'].includes(k))
-    .map(key => ({ key, label: key, required: false }))
-
+  const dynamicCols = useDynamicColumns(evals)
   const colVis = useColumnVisibility(dynamicCols)
   const tableEvals = selectedDate
     ? evals.filter(e => e.period_start === selectedDate)
