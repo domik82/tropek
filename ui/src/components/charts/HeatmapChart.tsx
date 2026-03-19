@@ -121,15 +121,6 @@ export function HeatmapChart({
     [cells, colours, ct, selectedColumn],
   )
 
-  // Coordinate-keyed lookup so renderItem never depends on array index order.
-  // ECharts merge-mode setOption can reindex data internally, making
-  // params.dataIndex unreliable for external array lookups.
-  const cellMap = useMemo(() => {
-    const m = new Map<string, RenderCell>()
-    for (const c of renderCells) m.set(`${c.value[0]},${c.value[1]}`, c)
-    return m
-  }, [renderCells])
-
   const option = useMemo(
     () => ({
       backgroundColor: 'transparent',
@@ -180,7 +171,7 @@ export function HeatmapChart({
             const rw = w - pad * 2
             const rh = h - pad * 2
 
-            const cellData = cellMap.get(`${xi},${yi}`)
+            const cellData = renderCells[params.dataIndex]
             const is = cellData?.itemStyle
 
             const children: object[] = [
@@ -226,7 +217,7 @@ export function HeatmapChart({
       ],
       grid: { top: 10, bottom: 80, left: 210, right: 20 },
     }),
-    [columns, rows, renderCells, cellMap, ct, pad, annotations, formatTooltip, formatColumnLabel],
+    [columns, rows, renderCells, ct, pad, annotations, formatTooltip, formatColumnLabel],
   )
 
   const chartHeight =
@@ -253,7 +244,6 @@ export function HeatmapChart({
       </div>
       <ReactECharts
         option={option}
-        notMerge
         style={{ height: chartHeight }}
         opts={{ renderer: 'svg' }}
         onEvents={{
