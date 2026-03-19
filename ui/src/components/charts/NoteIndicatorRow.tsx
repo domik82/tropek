@@ -1,6 +1,6 @@
 // ui/src/components/charts/NoteIndicatorRow.tsx
-import { useState } from 'react'
-import { MessageSquareWarning } from 'lucide-react'
+import { useState, useRef, useCallback } from 'react'
+import { MessageSquareWarning, Loader2 } from 'lucide-react'
 import { useEvaluationDetail } from '@/features/evaluations/hooks'
 
 export interface SlotNote {
@@ -18,23 +18,34 @@ interface Props {
 }
 
 function NoteIcon({ slot, info, onIndicatorClick }: { slot: string; info: SlotNote; onIndicatorClick?: (slot: string) => void }) {
-  const [hovered, setHovered] = useState(false)
-  const { data: ev } = useEvaluationDetail(hovered ? info.evalId : undefined)
+  const [open, setOpen] = useState(false)
+  const hideTimer = useRef<ReturnType<typeof setTimeout>>(null)
+  const { data: ev, isFetching } = useEvaluationDetail(open ? info.evalId : undefined)
 
   const latest = ev?.annotations?.[ev.annotations.length - 1]
 
+  const show = useCallback(() => {
+    if (hideTimer.current) clearTimeout(hideTimer.current)
+    setOpen(true)
+  }, [])
+
+  const hide = useCallback(() => {
+    hideTimer.current = setTimeout(() => setOpen(false), 150)
+  }, [])
+
   return (
-    <>
+    <div onMouseEnter={show} onMouseLeave={hide}>
       <button
         onClick={() => onIndicatorClick?.(slot)}
-        onMouseEnter={() => setHovered(true)}
-        onMouseLeave={() => setHovered(false)}
-        className="text-amber-400 hover:text-amber-300 transition-colors p-1.5 -m-1.5"
+        className="text-amber-400 hover:text-amber-300 transition-colors p-1.5 -m-1.5 relative"
       >
         <MessageSquareWarning className="w-3.5 h-3.5" />
+        {open && isFetching && (
+          <Loader2 className="w-2.5 h-2.5 absolute -top-1 -right-1 text-amber-300 animate-spin" />
+        )}
       </button>
-      {hovered && (
-        <div className="absolute bottom-full mb-1.5 z-30 w-56 bg-popover border border-amber-700/40 rounded-lg shadow-xl p-2.5 pointer-events-none"
+      {open && (
+        <div className="absolute bottom-full mb-1.5 z-30 w-56 bg-popover border border-amber-700/40 rounded-lg shadow-xl p-2.5"
           style={{ left: '50%', transform: 'translateX(-50%)' }}
         >
           <div className="flex items-center gap-1.5 mb-1">
@@ -51,11 +62,14 @@ function NoteIcon({ slot, info, onIndicatorClick }: { slot: string; info: SlotNo
               )}
             </>
           ) : (
-            <p className="text-[10px] text-muted-foreground italic">Loading…</p>
+            <div className="flex items-center gap-1.5">
+              <Loader2 className="w-3 h-3 text-amber-400 animate-spin" />
+              <span className="text-[10px] text-muted-foreground">Loading notes…</span>
+            </div>
           )}
         </div>
       )}
-    </>
+    </div>
   )
 }
 
