@@ -183,8 +183,8 @@ export function EvaluationActionForm({
     const onSuccess = () => onClose()
 
     if (activeAction === 'invalidate') {
-      if (!reason.trim()) return
-      invalidate.mutate(reason, { onSuccess })
+      if (!reason.trim() || !author.trim()) return
+      invalidate.mutate({ note: reason, author }, { onSuccess })
     } else if (activeAction === 'override') {
       if (!reason.trim() || !author.trim()) return
       const newResult = currentResult === 'pass' ? 'fail' : 'pass'
@@ -206,7 +206,7 @@ export function EvaluationActionForm({
   }, [activeAction, reason, author, currentResult, fromBaseline, fromDate, assetName, sloName,
       invalidate, override, baseline, reEvaluate, onClose])
 
-  const needsAuthor = activeAction === 'override' || activeAction === 'baseline'
+  const needsAuthor = activeAction === 'invalidate' || activeAction === 'override' || activeAction === 'baseline'
   const canConfirm = isReEval
     ? (fromBaseline || !!fromDate)
     : (!!reason.trim() && (!needsAuthor || !!author.trim()))

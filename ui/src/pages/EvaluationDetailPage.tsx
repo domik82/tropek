@@ -91,8 +91,12 @@ export function EvaluationDetailPage() {
             </div>
             {ev.invalidated && ev.invalidation_note && (
               <div className="mt-2">
-                <span className="text-xs text-red-300 bg-red-900/30 border border-red-700/40 px-2 py-0.5 rounded">
-                  {ev.invalidation_note}
+                <span className="text-xs text-red-300 bg-red-900/30 border border-red-700/40 px-2 py-1 rounded inline-flex flex-wrap items-center gap-x-1.5">
+                  <span className="font-medium">Invalidated</span>
+                  {ev.invalidation_author && (
+                    <span>by <span className="text-red-200">{ev.invalidation_author}</span></span>
+                  )}
+                  <span className="text-red-400/80">— {ev.invalidation_note}</span>
                 </span>
               </div>
             )}

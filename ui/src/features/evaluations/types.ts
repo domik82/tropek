@@ -76,6 +76,7 @@ export interface IndicatorResult {
 
 export interface EvaluationDetail extends EvaluationSummary {
   invalidation_note: string | null
+  invalidation_author: string | null
   evaluation_metadata: Record<string, string>
   compared_evaluation_ids: string[]
   annotations: Annotation[]
