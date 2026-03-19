@@ -515,6 +515,48 @@ class AssetSLOLinkRepository:
             )
         )
 
+    async def get_by_link_name(
+        self,
+        asset_id: uuid.UUID,
+        link_name: str,
+    ) -> AssetSLOLink | None:
+        """Return the SLO link for a specific asset + link name, or None."""
+        result = await self._session.execute(
+            select(AssetSLOLink).where(
+                AssetSLOLink.asset_id == asset_id,
+                AssetSLOLink.link_name == link_name,
+            )
+        )
+        return result.scalars().first()
+
+    async def get_by_asset_and_slo(
+        self,
+        asset_id: uuid.UUID,
+        slo_name: str,
+    ) -> AssetSLOLink | None:
+        """Return the SLO link for a specific asset + SLO name, or None.
+
+        Used by the evaluation flow (P2b) to resolve comparison rules
+        when the worker has asset_id + slo_name from the evaluation row.
+        """
+        result = await self._session.execute(
+            select(AssetSLOLink).where(
+                AssetSLOLink.asset_id == asset_id,
+                AssetSLOLink.slo_name == slo_name,
+            )
+        )
+        return result.scalars().first()
+
+    async def update_comparison_rules(
+        self,
+        link_id: uuid.UUID,
+        rules: list[dict[str, Any]],
+    ) -> None:
+        """Replace comparison_rules on an SLO link."""
+        await self._session.execute(
+            update(AssetSLOLink).where(AssetSLOLink.id == link_id).values(comparison_rules=rules)
+        )
+
 
 class AssetGroupSLOLinkRepository:
     """CRUD for asset_group_slo_links — mirrors AssetSLOLinkRepository."""
