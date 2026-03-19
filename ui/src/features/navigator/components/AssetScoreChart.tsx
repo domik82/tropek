@@ -1,17 +1,19 @@
 // ui/src/features/navigator/components/AssetScoreChart.tsx
 import ReactECharts from 'echarts-for-react'
-import { useMemo } from 'react'
+import { useCallback, useMemo } from 'react'
 import { useTheme } from '@/lib/theme-context'
 import { RESULT_COLOUR, CHART_THEME } from '@/lib/theme'
 import { fmtSlot, fmtDateTime } from '@/lib/format'
+import { useChartAreaClick } from '@/lib/useChartAreaClick'
 import type { EvaluationSummary } from '@/features/evaluations/types'
 
 interface Props {
   evaluations: EvaluationSummary[]
   selectedEvalId?: string
+  onEvalSelect?: (evalId: string) => void
 }
 
-export function AssetScoreChart({ evaluations, selectedEvalId }: Props) {
+export function AssetScoreChart({ evaluations, selectedEvalId, onEvalSelect }: Props) {
   const { theme } = useTheme()
   const colours = RESULT_COLOUR[theme]
   const ct = CHART_THEME[theme]
@@ -21,10 +23,19 @@ export function AssetScoreChart({ evaluations, selectedEvalId }: Props) {
     [evaluations],
   )
 
-  // One data point per evaluation, aligned 1:1 with xAxis categories.
-  // Invalidated points get a diamond symbol but are not connected to neighbors:
-  // we set their value to null and render them via a separate scatter-like approach —
-  // actually, to keep it simple, we just show them connected with a distinct symbol.
+  const handleClickIndex = useCallback(
+    (idx: number) => {
+      const e = sorted[idx]
+      if (e && onEvalSelect) onEvalSelect(e.id)
+    },
+    [sorted, onEvalSelect],
+  )
+
+  const { chartRef, onContainerClick } = useChartAreaClick(
+    onEvalSelect ? handleClickIndex : undefined,
+    sorted.length,
+  )
+
   const data = useMemo(
     () => sorted.map(e => {
       const effectiveResult = e.invalidated ? 'invalidated' : e.result
@@ -52,14 +63,16 @@ export function AssetScoreChart({ evaluations, selectedEvalId }: Props) {
     animation: false,
     backgroundColor: 'transparent',
     tooltip: {
-      trigger: 'item' as const,
+      trigger: 'axis' as const,
       backgroundColor: ct.bg,
       borderColor: ct.border,
       textStyle: { color: ct.axisLabel },
-      formatter: (params: { dataIndex: number; data: { value: number } }) => {
-        const e = sorted[params.dataIndex]
+      formatter: (params: Array<{ dataIndex: number; data: { value: number } }>) => {
+        const p = params[0]
+        if (!p) return ''
+        const e = sorted[p.dataIndex]
         if (!e) return ''
-        const score = params.data.value
+        const score = p.data.value
         const effectiveResult = e.invalidated ? 'invalidated' : e.result
         const rc = colours[effectiveResult] ?? colours.error
         return [
@@ -89,6 +102,7 @@ export function AssetScoreChart({ evaluations, selectedEvalId }: Props) {
       {
         type: 'line' as const,
         data,
+        cursor: 'pointer',
         lineStyle: { color: ct.line, width: 2 },
       },
     ],
@@ -96,11 +110,14 @@ export function AssetScoreChart({ evaluations, selectedEvalId }: Props) {
   }
 
   return (
-    <ReactECharts
-      option={option}
-      style={{ height: 260 }}
-      opts={{ renderer: 'svg' }}
-      notMerge
-    />
+    <div onClick={onContainerClick} style={{ cursor: onEvalSelect ? 'crosshair' : undefined }}>
+      <ReactECharts
+        ref={chartRef}
+        option={option}
+        style={{ height: 260 }}
+        opts={{ renderer: 'svg' }}
+        notMerge
+      />
+    </div>
   )
 }
