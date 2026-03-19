@@ -16,7 +16,7 @@ interface Props {
 export const AnnotationSection = forwardRef<AnnotationSectionHandle, Props>(
   function AnnotationSection({ evalId, annotations }, ref) {
     const [showForm, setShowForm] = useState(false)
-    const [viewMode, setViewMode] = useState<'compact' | 'expanded'>('expanded')
+    const [viewMode, setViewMode] = useState<'compact' | 'expanded'>('compact')
 
     useImperativeHandle(ref, () => ({
       openForm: () => setShowForm(true),
