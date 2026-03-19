@@ -1,13 +1,13 @@
 // src/pages/EvaluationDetailPage.tsx
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useRef } from 'react'
 import { useParams, useSearchParams, Link } from 'react-router-dom'
 import { useEvaluationDetail } from '@/features/evaluations/hooks'
 import { SLIBreakdownTable } from '@/features/evaluations/components/SLIBreakdownTable'
 import { MetricTrendBlock } from '@/features/evaluations/components/MetricTrendBlock'
 import { EvaluationHeader } from '@/features/evaluations/components/EvaluationHeader'
 import { EvaluationTabs, tabLabel } from '@/features/evaluations/components/EvaluationTabs'
-import { AnnotationForm } from '@/features/evaluations/components/AnnotationForm'
-import { EvaluationActionsButton, EvaluationActionForm, type ActionKind } from '@/features/evaluations/components/EvaluationActions'
+import { AnnotationSection, type AnnotationSectionHandle } from '@/features/evaluations/components/AnnotationForm'
+import { EvaluationActionsButton, EvaluationActionForm, NoteIconButton, type ActionKind } from '@/features/evaluations/components/EvaluationActions'
 
 function scrollTo(id: string) {
   document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
@@ -28,6 +28,13 @@ export function EvaluationDetailPage() {
 
   const [activeTab, setActiveTab] = useState('all')
   const [activeAction, setActiveAction] = useState<ActionKind | null>(null)
+
+  const notesRef = useRef<AnnotationSectionHandle>(null)
+
+  function handleAddNote() {
+    notesRef.current?.openForm()
+    document.getElementById('notes-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
 
   const availableGroups = useMemo(() =>
     [...new Set(ev?.indicator_results.map(i => i.tab_group).filter(Boolean) as string[])],
@@ -72,6 +79,11 @@ export function EvaluationDetailPage() {
         title={ev.evaluation_name}
         result={displayResult}
         score={ev.score}
+        noteButton={
+          !ev.invalidated ? (
+            <NoteIconButton onClick={handleAddNote} annotationCount={ev.annotations.length} />
+          ) : undefined
+        }
         metadata={
           <>
             <div className="flex flex-wrap gap-x-6 gap-y-1 text-sm text-slate-400">
@@ -137,6 +149,7 @@ export function EvaluationDetailPage() {
             invalidated={ev.invalidated}
             activeAction={activeAction}
             onSelectAction={setActiveAction}
+            onAddNote={handleAddNote}
           />
         }
       />
@@ -155,8 +168,10 @@ export function EvaluationDetailPage() {
         />
       )}
 
-      {/* Notes — at top, before the table */}
-      <AnnotationForm evalId={id!} annotations={ev.annotations} />
+      {/* Notes — always visible */}
+      <div id="notes-section">
+        <AnnotationSection ref={notesRef} evalId={id!} annotations={ev.annotations} />
+      </div>
 
       {/* SLI breakdown — tab bar + table */}
       <div id="sli-table" className="space-y-0 scroll-mt-4">
