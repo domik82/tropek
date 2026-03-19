@@ -48,8 +48,10 @@ async def test_asset_type_create_and_get(db_session: AsyncSession) -> None:
 @pytest.mark.integration
 async def test_asset_type_set_default_swaps(db_session: AsyncSession) -> None:
     repo = AssetTypeRepository(db_session)
-    await repo.create("type-a", is_default=True)
+    # Seed data already has "vm" as default — create non-default types and swap via set_default
+    await repo.create("type-a", is_default=False)
     await repo.create("type-b", is_default=False)
+    await repo.set_default("type-a")
     await repo.set_default("type-b")
     a = await repo.get_by_name("type-a")
     b = await repo.get_by_name("type-b")

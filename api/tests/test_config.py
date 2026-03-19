@@ -8,9 +8,23 @@ import pytest
 
 
 @pytest.fixture(autouse=True)
-def _clear_lru_cache():
-    """Clear the settings cache before each test."""
+def _isolate_env():
+    """Save QG_* env vars, clear them before each test, restore after.
+
+    pytest-dotenv loads .env.test which sets QG_DB_HOST, QG_DB_PORT, etc.
+    These pydantic-settings env vars override YAML defaults, breaking tests
+    that expect YAML values to take effect. This fixture ensures a clean env.
+    """
+    saved = {k: v for k, v in os.environ.items() if k.startswith("QG_")}
+    for k in saved:
+        del os.environ[k]
     yield
+    # Restore originals and clean up any test-set vars
+    for k in list(os.environ):
+        if k.startswith("QG_"):
+            del os.environ[k]
+    os.environ.update(saved)
+
     import app.config as config_module
 
     config_module.get_settings.cache_clear()
