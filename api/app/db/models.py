@@ -66,6 +66,7 @@ class Asset(Base):
     display_name: Mapped[str | None]     = mapped_column(Text, nullable=True)
     type_name:    Mapped[str]            = mapped_column(Text, ForeignKey("asset_types.name"), nullable=False, default="vm")
     labels:       Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, server_default=text("'{}'"), default=dict)
+    heatmap_config: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
     created_at:   Mapped[datetime]       = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at:   Mapped[datetime]       = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
     # fmt: on
