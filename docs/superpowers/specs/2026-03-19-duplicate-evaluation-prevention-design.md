@@ -42,7 +42,7 @@ CREATE UNIQUE INDEX uq_evaluations_identity
 ```
 
 This allows retrying a failed evaluation (creates a new row) while preventing
-duplicates for all other statuses.
+duplicates for all other statuses (pending, running, completed, partial).
 
 ### Foreign key on `asset_id`
 
@@ -65,14 +65,17 @@ same identity tuple.
   ```json
   {"detail": "evaluation is already in progress for this period"}
   ```
-- **Found (completed/invalidated)** — return **409 Conflict**:
+- **Found (completed/partial/invalidated)** — return **409 Conflict**:
   ```json
   {"detail": "evaluation already exists for this asset/SLO/period — use re-evaluate to re-score"}
   ```
 - **Not found** — proceed as today (create pending, enqueue job, return 202).
 
 The DB constraint is the safety net; the app-level check exists for clean, actionable
-error messages.
+error messages. On concurrent races where two requests pass the app-level check, the
+DB constraint catches the second insert. The repository should catch
+`asyncpg.UniqueViolationError` (PG error code `23505`) specifically — not generic
+`IntegrityError` — and convert it to a 409 response.
 
 ### `POST /evaluations/batch` (batch trigger)
 
@@ -96,13 +99,46 @@ records. If **any** item would be a duplicate, the entire batch fails with
 }
 ```
 
-Single transaction — no partial creation.
+`asset_name` in the conflict response is resolved from `asset_id` for readability —
+the actual duplicate check operates on `asset_id` (the identity tuple column).
+
+Single transaction — no partial creation. Note: the current batch implementation
+creates evaluations incrementally and skips failures silently. This requires
+structural refactoring to achieve all-or-nothing semantics.
 
 ### `POST /evaluations/re-evaluate`
 
-No change. Re-evaluate updates the existing evaluation row in place (same UUID),
-stores original result/score in `job_stats`, and adds an annotation. It does not
-create a new row and therefore does not conflict with the unique constraint.
+Re-evaluate updates the existing evaluation row in place (same UUID), stores original
+result/score in `job_stats`, and adds an annotation. It does not create a new row and
+therefore does not conflict with the unique constraint.
+
+Re-evaluate works on **all non-failed statuses**, including:
+- **completed** — re-scores against current SLO version using stored SLI data
+- **partial** — re-scores; useful when missing evaluations in the baseline window
+  have since been filled in (e.g., days 2-4 were missing, now exist, so day 5 needs
+  re-evaluation against the corrected baseline)
+- **invalidated** — re-scores invalidated evaluation, producing a new valid result
+
+Re-evaluate does **not** re-fetch SLI data from the adapter — it always uses the
+stored SLI values. Prometheus or other data sources may have already compacted the
+original data.
+
+### `GET /evaluations` (list endpoint)
+
+Add optional query parameters for filtering:
+
+- `evaluation_name` — filter by evaluation name (exact match, repeatable for
+  multi-value)
+- `metadata` — filter by metadata key-value pairs
+
+These parameters are additive filters on the existing list endpoint. When omitted,
+all evaluations are returned (current behavior preserved).
+
+### `GET /evaluations/metric-heatmap`
+
+Add optional `evaluation_name` query parameter (repeatable for multi-value). When
+provided, only evaluations matching the given name(s) are included. When omitted, all
+names are returned (backward compatible).
 
 ## Retry and Re-score Decision Tree
 
@@ -121,11 +157,15 @@ Can I trigger a new evaluation for this (asset, SLO, name, period)?
 ├─ Existing evaluation with status = 'pending' or 'running'
 │   → NO — "evaluation is already in progress for this period"
 │
-├─ Existing evaluation with status = 'completed'
+├─ Existing evaluation with status = 'completed' or 'partial'
 │   → NO — "evaluation already exists, use re-evaluate to re-score"
+│   (partial means some SLIs succeeded; re-evaluate re-scores with current
+│    baseline which may now include previously missing evaluations)
 │
 └─ Existing evaluation that is invalidated (completed + invalidated=true)
     → NO — "evaluation exists (invalidated), use re-evaluate to re-score"
+    (an invalidated evaluation still occupies the identity slot;
+     invalidation does not free it up for a new trigger)
 ```
 
 ## Heatmap Evaluation Name Filter
@@ -134,18 +174,27 @@ The heatmap currently shows all evaluations for an asset regardless of
 `evaluation_name`. With multiple series (hourly, daily, weekly, branch runs), this
 becomes noisy. Add a filter control near the heatmap.
 
-### Filter behavior
+### UI control
 
 - **Control type**: checkbox combo / multi-select dropdown next to the heatmap.
-  Lists all distinct `evaluation_name` values that exist for the current asset.
-- **Default**: all names selected (show everything).
-- **Per-asset default**: an asset can optionally store a default evaluation name
-  filter in its DB configuration. When set, the heatmap opens with only those names
-  selected instead of all. This is a user-configurable preference, not a hard
-  restriction.
-- **Persistence**: the per-asset default is stored in the asset DB record (e.g., a
-  JSON field like `heatmap_config.default_eval_names: string[]`). Runtime filter
-  selections are client-side state only (not persisted beyond the session).
+- **Options**: all distinct `evaluation_name` values for the current asset,
+  discovered from the evaluation data already fetched (or via a dedicated query
+  if needed for performance).
+- **Default**: all names selected (show everything), unless the asset has a
+  configured default (see below).
+
+### Per-asset default filter
+
+An asset can optionally store a default evaluation name filter. When set, the
+heatmap opens with only those names pre-selected instead of all.
+
+- **Storage**: new JSONB column `heatmap_config` on the `assets` table, containing
+  `{"default_eval_names": ["nightly-hourly", "nightly-daily"]}`. NULL means "show
+  all" (default behavior).
+- **API**: exposed via the existing asset CRUD endpoints. The UI reads it on load
+  and writes it when the user saves a default filter preference.
+- **Runtime selections**: client-side state only, not persisted beyond the session.
+  Only the "save as default" action writes to the DB.
 
 ### Out of scope
 
@@ -169,7 +218,6 @@ accidental hard deletes in the meantime.
 
 ## What Does Not Change
 
-- **Re-evaluate** — updates in place, same UUID, stores original score
 - **Override** — modifies existing evaluation result
 - **Invalidate** — marks existing evaluation as invalid
 - **Baseline logic** — no change needed
@@ -185,5 +233,6 @@ artifacts that can be deleted, or backfilled from `asset_snapshot`).
 ### Concurrent requests
 
 Two simultaneous triggers for the same identity could both pass the app-level check.
-The DB unique constraint catches the second one. The repository should handle
-`IntegrityError` from asyncpg and convert it to a 409 response rather than a 500.
+The DB unique constraint catches the second one. The repository should catch
+`asyncpg.UniqueViolationError` (PG error code `23505`) specifically and convert it
+to a 409.
