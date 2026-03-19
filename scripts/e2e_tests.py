@@ -38,8 +38,8 @@ def test_single_evaluation(client: TropekClient) -> None:
         "checkout-api",
         "integration-test",
         "http-availability-slo",
-        "2026-03-15T08:00:00Z",
-        "2026-03-15T08:30:00Z",
+        "2026-03-17T08:00:00Z",
+        "2026-03-17T08:30:00Z",
     )
     eval_id = result["id"]
     print(f"triggered: {eval_id}")
@@ -66,8 +66,8 @@ def test_batch_evaluation(client: TropekClient) -> None:
     result = client.evaluations.trigger_batch(
         "core-services",
         "batch-test",
-        "2026-03-15T08:00:00Z",
-        "2026-03-15T08:30:00Z",
+        "2026-03-17T12:00:00Z",
+        "2026-03-17T12:30:00Z",
     )
     batch_id = result["batch_id"]
     eval_ids = result["evaluation_ids"]
