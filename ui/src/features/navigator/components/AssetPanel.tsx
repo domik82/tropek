@@ -9,9 +9,7 @@ import { SLIBreakdownTable } from '@/features/evaluations/components/SLIBreakdow
 import { EvaluationTabs, tabLabel } from '@/features/evaluations/components/EvaluationTabs'
 import { EvaluationHeader } from '@/features/evaluations/components/EvaluationHeader'
 import { AnnotationForm } from '@/features/evaluations/components/AnnotationForm'
-import { EvaluationActionsButton, EvaluationActionForm } from '@/features/evaluations/components/EvaluationActions'
-import { ReEvaluateModal } from '@/features/evaluations/components/ReEvaluateModal'
-import type { ActionKind } from '@/features/evaluations/components/EvaluationActions'
+import { EvaluationActionsButton, EvaluationActionForm, type ActionKind } from '@/features/evaluations/components/EvaluationActions'
 import { ViewToggle } from '@/components/charts/ViewToggle'
 import type { ViewMode } from '@/components/charts/ViewToggle'
 import { AssetScoreChart } from './AssetScoreChart'
@@ -156,20 +154,15 @@ export function AssetPanel({ assetName, initialEvalId }: Props) {
       />
 
       {/* Action form */}
-      {activeAction === 're-evaluate' && ev && (
-        <ReEvaluateModal
-          assetName={assetName}
-          sloName={ev.slo_name ?? ''}
-          defaultFromDate={earliestPeriodStart?.slice(0, 16)}
-          onClose={() => setActiveAction(null)}
-        />
-      )}
-      {activeAction && activeAction !== 're-evaluate' && effectiveEvalId && ev && !ev.invalidated && (
+      {activeAction && effectiveEvalId && ev && !ev.invalidated && (
         <EvaluationActionForm
           evalId={effectiveEvalId}
           currentResult={ev.result}
           activeAction={activeAction}
           onClose={() => setActiveAction(null)}
+          assetName={assetName}
+          sloName={ev.slo_name ?? ''}
+          defaultFromDate={earliestPeriodStart?.slice(0, 16)}
         />
       )}
 
