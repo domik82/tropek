@@ -3,7 +3,7 @@ import { useTheme } from '@/lib/theme-context'
 import { RESULT_COLOUR } from '@/lib/theme'
 import { fmtDateTime } from '@/lib/format'
 import { HeatmapChart } from '@/components/charts/HeatmapChart'
-import { NoteIndicatorRow, type NoteInfo } from '@/components/charts/NoteIndicatorRow'
+import { NoteIndicatorRow, type SlotNote } from '@/components/charts/NoteIndicatorRow'
 import { buildAssetHeatmapData } from '../utils'
 import type { MetricHeatmapResponse, HeatmapCell } from '../types'
 
@@ -11,7 +11,7 @@ interface Props {
   data: MetricHeatmapResponse
   selectedEvalId?: string
   onEvalSelect?: (evalId: string) => void
-  notedSlots?: Map<string, NoteInfo>
+  notedSlots?: Map<string, SlotNote>
 }
 
 export function AssetHeatmap({ data, selectedEvalId, onEvalSelect, notedSlots }: Props) {
