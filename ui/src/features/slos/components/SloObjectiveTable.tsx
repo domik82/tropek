@@ -54,6 +54,9 @@ export function SloObjectiveTable({ slo }: Props) {
       <div className="mt-3 flex flex-wrap gap-6 text-sm text-slate-400">
         <span>Total pass: <strong className="text-[#7dc540]">{slo.total_score_pass_pct}%</strong></span>
         <span>Total warning: <strong className="text-[#e6be00]">{slo.total_score_warning_pct}%</strong></span>
+        {slo.comparable_from_version != null && (
+          <span>Comparable from: <strong className="text-indigo-300">v{slo.comparable_from_version}</strong></span>
+        )}
       </div>
     </div>
   )

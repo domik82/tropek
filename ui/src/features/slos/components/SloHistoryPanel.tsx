@@ -25,7 +25,7 @@ export function SloHistoryPanel({ name }: Props) {
               ? <span className="text-xs bg-pass/20 text-pass border border-pass/30 px-1.5 py-0.5 rounded-full">active</span>
               : <span className="text-xs bg-slate-700/40 text-slate-500 border border-slate-600/40 px-1.5 py-0.5 rounded-full">inactive</span>
             }
-            {v.comparable_from_version > 1 && (
+            {v.comparable_from_version != null && (
               <span className="text-xs bg-indigo-900/30 text-indigo-300 border border-indigo-700/30 px-1.5 py-0.5 rounded-full">
                 comparable from v{v.comparable_from_version}
               </span>
