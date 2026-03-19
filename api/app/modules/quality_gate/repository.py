@@ -464,12 +464,18 @@ class EvaluationRepository:
             count_map = {row.evaluation_id: row.cnt for row in cnt_rows}
         return evals, total, count_map
 
-    async def invalidate(self, eval_id: uuid.UUID, *, note: str) -> Evaluation | None:
+    async def invalidate(
+        self,
+        eval_id: uuid.UUID,
+        *,
+        note: str,
+        author: str,
+    ) -> Evaluation | None:
         """Mark an evaluation as invalidated."""
         await self._session.execute(
             update(Evaluation)
             .where(Evaluation.id == eval_id)
-            .values(invalidated=True, invalidation_note=note)
+            .values(invalidated=True, invalidation_note=note, invalidation_author=author)
         )
         return await self.get_by_id(eval_id)
 
@@ -478,7 +484,7 @@ class EvaluationRepository:
         await self._session.execute(
             update(Evaluation)
             .where(Evaluation.id == eval_id)
-            .values(invalidated=False, invalidation_note=None)
+            .values(invalidated=False, invalidation_note=None, invalidation_author=None)
         )
         return await self.get_by_id(eval_id)
 

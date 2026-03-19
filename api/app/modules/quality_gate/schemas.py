@@ -54,6 +54,7 @@ class InvalidateRequest(BaseModel):
     """Request body for invalidating an evaluation."""
 
     invalidation_note: str
+    author: str
 
 
 class IndicatorResult(BaseModel):
@@ -115,6 +116,7 @@ class EvaluationDetail(EvaluationSummary):
     """Full evaluation detail including all annotations and indicator results."""
 
     invalidation_note: str | None
+    invalidation_author: str | None
     compared_evaluation_ids: list[uuid.UUID] = []
     annotations: list[AnnotationRead]
     indicator_results: list[IndicatorResult]

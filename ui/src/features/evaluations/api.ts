@@ -75,12 +75,12 @@ export async function addAnnotation(
 
 export async function invalidateEvaluation(
   evalId: string,
-  note: string
+  payload: { note: string; author: string }
 ): Promise<EvaluationSummary> {
   const res = await fetch(`${BASE}/evaluations/${evalId}/invalidate`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ invalidation_note: note }),
+    body: JSON.stringify({ invalidation_note: payload.note, author: payload.author }),
   })
   if (!res.ok) throw new Error(`invalidateEvaluation: ${res.status}`)
   return res.json()

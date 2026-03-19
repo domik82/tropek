@@ -409,7 +409,7 @@ async def invalidate_evaluation(
 ) -> EvaluationSummary:
     """Mark an evaluation as invalidated."""
     repo = EvaluationRepository(session)
-    ev = await repo.invalidate(eval_id, note=body.invalidation_note)
+    ev = await repo.invalidate(eval_id, note=body.invalidation_note, author=body.author)
     if ev is None:
         raise_not_found("evaluation", str(eval_id))
     return _build_summary(ev, annotation_count=0, latest_ann=None)

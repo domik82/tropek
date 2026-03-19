@@ -65,7 +65,7 @@ export function useAddAnnotation(evalId: string) {
 export function useInvalidateEvaluation(evalId: string) {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (note: string) => invalidateEvaluation(evalId, note),
+    mutationFn: (payload: { note: string; author: string }) => invalidateEvaluation(evalId, payload),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: evaluationKeys.detail(evalId) })
       qc.invalidateQueries({ queryKey: evaluationKeys.all })
