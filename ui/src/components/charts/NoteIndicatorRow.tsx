@@ -34,12 +34,12 @@ export function NoteIndicatorRow({ columns, notedColumns, onIndicatorClick }: Pr
                   onClick={() => onIndicatorClick?.(col)}
                   onMouseEnter={() => setHoveredCol(col)}
                   onMouseLeave={() => setHoveredCol(null)}
-                  className="text-amber-400 hover:text-amber-300 transition-colors"
+                  className="text-amber-400 hover:text-amber-300 transition-colors p-1.5 -m-1.5"
                 >
                   <MessageSquareWarning className="w-3.5 h-3.5" />
                 </button>
                 {hoveredCol === col && (
-                  <div className="absolute bottom-full mb-1.5 z-30 w-56 bg-popover border border-border rounded-lg shadow-xl p-2.5 pointer-events-none"
+                  <div className="absolute bottom-full mb-1.5 z-30 w-56 bg-popover border border-amber-700/40 rounded-lg shadow-xl p-2.5 pointer-events-none"
                     style={{ left: '50%', transform: 'translateX(-50%)' }}
                   >
                     <div className="flex items-center gap-1.5 mb-1">
@@ -48,7 +48,9 @@ export function NoteIndicatorRow({ columns, notedColumns, onIndicatorClick }: Pr
                         {info.count} note{info.count !== 1 ? 's' : ''}
                       </span>
                     </div>
-                    <p className="text-xs text-foreground/80 line-clamp-3">{info.content}</p>
+                    {info.content && (
+                      <p className="text-xs text-foreground line-clamp-3">{info.content}</p>
+                    )}
                     {info.author && (
                       <p className="text-[10px] text-muted-foreground mt-1">— {info.author}</p>
                     )}
