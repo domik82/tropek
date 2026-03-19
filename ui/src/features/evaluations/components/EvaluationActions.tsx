@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { MoreVertical } from 'lucide-react'
+import { MoreVertical, MessageSquareWarning } from 'lucide-react'
 import { useInvalidateEvaluation, useOverrideStatus, usePinBaseline, useReEvaluate } from '../hooks'
 import type { ReEvaluateResponse } from '../types'
 
@@ -81,9 +81,10 @@ interface ButtonProps {
   invalidated: boolean
   activeAction: ActionKind | null
   onSelectAction: (kind: ActionKind) => void
+  onAddNote?: () => void
 }
 
-export function EvaluationActionsButton({ currentResult, invalidated, activeAction, onSelectAction }: ButtonProps) {
+export function EvaluationActionsButton({ currentResult, invalidated, activeAction, onSelectAction, onAddNote }: ButtonProps) {
   const [menuOpen, setMenuOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
 
@@ -120,6 +121,25 @@ export function EvaluationActionsButton({ currentResult, invalidated, activeActi
 
       {menuOpen && (
         <div className="absolute right-0 top-full mt-1 z-20 min-w-[280px] bg-popover border border-border rounded-xl shadow-xl overflow-hidden py-2">
+          {/* Add Note — first item */}
+          {onAddNote && (
+            <>
+              <button
+                onClick={() => { onAddNote(); setMenuOpen(false) }}
+                className="flex items-start gap-3 w-full text-left px-3 py-2.5 transition-colors hover:bg-amber-500/10 group"
+              >
+                <div
+                  className="w-[3px] rounded-full shrink-0 mt-0.5"
+                  style={{ backgroundColor: '#F59E0B', height: 36 }}
+                />
+                <div className="min-w-0">
+                  <div className="text-[13px] font-medium text-amber-400">Add Note</div>
+                  <div className="text-[11px] text-muted-foreground mt-0.5">Annotate this evaluation</div>
+                </div>
+              </button>
+              <div className="mx-3 my-1 border-t border-border" />
+            </>
+          )}
           {actions.map(action => (
             <button
               key={action.kind}
@@ -347,5 +367,22 @@ export function EvaluationActionForm({
         </div>
       </div>
     </div>
+  )
+}
+
+export function NoteIconButton({ onClick, annotationCount }: { onClick: () => void; annotationCount: number }) {
+  return (
+    <button
+      onClick={onClick}
+      className="relative p-2 rounded-lg border border-amber-700/40 text-amber-400 hover:bg-amber-500/10 hover:border-amber-500/50 transition-colors"
+      title="Add note"
+    >
+      <MessageSquareWarning className="w-4 h-4" />
+      {annotationCount > 0 && (
+        <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-amber-500 text-[9px] font-bold text-black flex items-center justify-center">
+          {annotationCount > 9 ? '9+' : annotationCount}
+        </span>
+      )}
+    </button>
   )
 }
