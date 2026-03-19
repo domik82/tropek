@@ -6,7 +6,7 @@ import { SloObjectiveTable } from '@/features/slos/components/SloObjectiveTable'
 import { SloObjectiveEditor } from '@/features/slos/components/SloObjectiveEditor'
 import { SloHistoryPanel } from '@/features/slos/components/SloHistoryPanel'
 import { SloCreateForm } from '@/features/slos/components/SloCreateForm'
-import { GroupSidebar } from '@/features/slos/components/GroupSidebar'
+import { AssetTree } from '@/components/AssetTree'
 import { GroupCreateDialog } from '@/features/slos/components/GroupCreateDialog'
 import { GroupEditDialog } from '@/features/slos/components/GroupEditDialog'
 import { GroupDeleteDialog } from '@/features/slos/components/GroupDeleteDialog'
@@ -35,7 +35,7 @@ function SloDetail({ name }: { name: string }) {
   const { data: slo, isLoading, isError } = useSloDetail(name)
   const [mode, setMode] = useState<Mode>('view')
 
-  if (isLoading) return <p className="text-slate-500 text-sm py-3">Loading…</p>
+  if (isLoading) return <p className="text-slate-500 text-sm py-3">Loading\u2026</p>
   if (isError || !slo) return <p className="text-red-400 text-sm py-3">Failed to load.</p>
 
   return (
@@ -75,7 +75,7 @@ function DeleteConfirm({ name, onDone }: { name: string; onDone: () => void }) {
         disabled={del.isPending}
         className="px-2.5 py-1 text-xs font-medium rounded bg-red-700 text-white hover:bg-red-600 disabled:opacity-40 transition-colors shrink-0"
       >
-        {del.isPending ? 'Deactivating…' : 'Confirm'}
+        {del.isPending ? 'Deactivating\u2026' : 'Confirm'}
       </button>
       <button
         onClick={onDone}
@@ -145,13 +145,15 @@ export function SloRegistryPage() {
 
   return (
     <div className="flex h-full">
-      <GroupSidebar
+      <AssetTree
+        mode="slo"
         selectedGroup={selectedGroup}
         onSelectGroup={handleSelectGroup}
         onCreateGroup={() => setCreateGroupOpen(true)}
-        onEditGroup={(name) => setEditGroupName(name)}
-        onDeleteGroup={(name) => setDeleteGroupName(name)}
-        onAddSloLink={(groupName) => setLinkFromGroup(groupName)}
+        onEditGroup={name => setEditGroupName(name)}
+        onDeleteGroup={name => setDeleteGroupName(name)}
+        onAddSloLink={groupName => setLinkFromGroup(groupName)}
+        width={220}
       />
 
       <div className="flex-1 p-6 space-y-4 overflow-y-auto">
