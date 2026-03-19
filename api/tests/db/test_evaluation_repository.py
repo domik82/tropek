@@ -36,6 +36,7 @@ def _make_snapshot(os: str = "windows-11", arch: str = "x64") -> dict[str, str |
 
 @pytest.mark.integration
 async def test_create_pending_returns_evaluation(db_session: AsyncSession) -> None:
+    asset_id = await _create_asset(db_session)
     repo = EvaluationRepository(db_session)
     ev = await repo.create_pending(
         evaluation_name="compile-test",
@@ -44,6 +45,8 @@ async def test_create_pending_returns_evaluation(db_session: AsyncSession) -> No
         ingestion_mode="push",
         asset_snapshot=_make_snapshot(),
         metadata={},
+        asset_id=asset_id,
+        slo_name="test-slo",
     )
     assert ev.status == "pending"
     assert ev.result is None
@@ -52,6 +55,7 @@ async def test_create_pending_returns_evaluation(db_session: AsyncSession) -> No
 
 @pytest.mark.integration
 async def test_get_returns_evaluation(db_session: AsyncSession) -> None:
+    asset_id = await _create_asset(db_session)
     repo = EvaluationRepository(db_session)
     ev = await repo.create_pending(
         evaluation_name="get-test",
@@ -60,6 +64,8 @@ async def test_get_returns_evaluation(db_session: AsyncSession) -> None:
         ingestion_mode="push",
         asset_snapshot=_make_snapshot(),
         metadata={},
+        asset_id=asset_id,
+        slo_name="test-slo",
     )
     fetched = await repo.get_by_id(ev.id)
     assert fetched is not None
@@ -68,6 +74,7 @@ async def test_get_returns_evaluation(db_session: AsyncSession) -> None:
 
 @pytest.mark.integration
 async def test_mark_completed_updates_fields(db_session: AsyncSession) -> None:
+    asset_id = await _create_asset(db_session)
     repo = EvaluationRepository(db_session)
     ev = await repo.create_pending(
         evaluation_name="complete-test",
@@ -76,6 +83,8 @@ async def test_mark_completed_updates_fields(db_session: AsyncSession) -> None:
         ingestion_mode="push",
         asset_snapshot=_make_snapshot(),
         metadata={},
+        asset_id=asset_id,
+        slo_name="test-slo",
     )
     await repo.mark_completed(
         ev.id,
@@ -92,6 +101,7 @@ async def test_mark_completed_updates_fields(db_session: AsyncSession) -> None:
 
 @pytest.mark.integration
 async def test_mark_running_sets_status(db_session: AsyncSession) -> None:
+    asset_id = await _create_asset(db_session)
     repo = EvaluationRepository(db_session)
     ev = await repo.create_pending(
         evaluation_name="running-test",
@@ -100,6 +110,8 @@ async def test_mark_running_sets_status(db_session: AsyncSession) -> None:
         ingestion_mode="pull",
         asset_snapshot=_make_snapshot(),
         metadata={},
+        asset_id=asset_id,
+        slo_name="test-slo",
     )
     await repo.mark_running(ev.id)
     fetched = await repo.get_by_id(ev.id)
@@ -109,15 +121,24 @@ async def test_mark_running_sets_status(db_session: AsyncSession) -> None:
 
 @pytest.mark.integration
 async def test_list_evaluations_filters_by_name(db_session: AsyncSession) -> None:
+    asset_id = await _create_asset(db_session)
     repo = EvaluationRepository(db_session)
-    for n in ("alpha", "alpha", "beta"):
+    # Each eval needs a unique identity tuple, so vary period_start
+    starts = [
+        datetime(2026, 3, 12, 10, 0, 0, tzinfo=UTC),
+        datetime(2026, 3, 12, 11, 0, 0, tzinfo=UTC),
+        datetime(2026, 3, 12, 12, 0, 0, tzinfo=UTC),
+    ]
+    for n, s in zip(("alpha", "alpha", "beta"), starts, strict=True):
         await repo.create_pending(
             evaluation_name=n,
-            period_start=_START,
+            period_start=s,
             period_end=_END,
             ingestion_mode="push",
             asset_snapshot=_make_snapshot(),
             metadata={},
+            asset_id=asset_id,
+            slo_name="test-slo",
         )
     results = await repo.list_evaluations(evaluation_name="alpha")
     assert len(results) == 2
@@ -180,6 +201,7 @@ async def test_get_baselines_excludes_invalidated(db_session: AsyncSession) -> N
 
 @pytest.mark.integration
 async def test_add_and_list_annotations(db_session: AsyncSession) -> None:
+    asset_id = await _create_asset(db_session)
     repo = EvaluationRepository(db_session)
     ev = await repo.create_pending(
         evaluation_name="ann-test",
@@ -188,6 +210,8 @@ async def test_add_and_list_annotations(db_session: AsyncSession) -> None:
         ingestion_mode="push",
         asset_snapshot=_make_snapshot(),
         metadata={},
+        asset_id=asset_id,
+        slo_name="test-slo",
     )
     await repo.add_annotation(ev.id, content="Defender update applied", author="ops")
     fetched = await repo.get_by_id(ev.id)
@@ -198,6 +222,7 @@ async def test_add_and_list_annotations(db_session: AsyncSession) -> None:
 
 @pytest.mark.integration
 async def test_hide_annotation(db_session: AsyncSession) -> None:
+    asset_id = await _create_asset(db_session)
     repo = EvaluationRepository(db_session)
     ev = await repo.create_pending(
         evaluation_name="hide-ann-test",
@@ -206,6 +231,8 @@ async def test_hide_annotation(db_session: AsyncSession) -> None:
         ingestion_mode="push",
         asset_snapshot=_make_snapshot(),
         metadata={},
+        asset_id=asset_id,
+        slo_name="test-slo",
     )
     ann = await repo.add_annotation(ev.id, content="wrong note", author="ops")
     hidden = await repo.hide_annotation(ann.id, reason="typo", author="admin")
@@ -221,6 +248,7 @@ async def test_hide_annotation(db_session: AsyncSession) -> None:
 
 @pytest.mark.integration
 async def test_write_and_read_sli_values(db_session: AsyncSession) -> None:
+    asset_id = await _create_asset(db_session)
     repo = EvaluationRepository(db_session)
     ev = await repo.create_pending(
         evaluation_name="sli-test",
@@ -229,6 +257,8 @@ async def test_write_and_read_sli_values(db_session: AsyncSession) -> None:
         ingestion_mode="push",
         asset_snapshot=_make_snapshot(),
         metadata={},
+        asset_id=asset_id,
+        slo_name="test-slo",
     )
     rows = [
         {
@@ -258,7 +288,7 @@ async def test_get_baselines_excludes_null_sli_version_with_range(
     asset_id = await _create_asset(db_session)
 
     ev1 = await repo.create_pending(
-        evaluation_name="daily",
+        evaluation_name="daily-v2",
         period_start=_START,
         period_end=_END,
         ingestion_mode="push",
@@ -277,7 +307,7 @@ async def test_get_baselines_excludes_null_sli_version_with_range(
     )
 
     ev2 = await repo.create_pending(
-        evaluation_name="daily",
+        evaluation_name="daily-null",
         period_start=_START,
         period_end=_END,
         ingestion_mode="push",
@@ -313,9 +343,9 @@ async def test_get_baselines_by_asset_and_slo(db_session: AsyncSession) -> None:
     asset_id = await _create_asset(db_session)
     other_asset_id = await _create_asset(db_session)
 
-    for aid in (asset_id, asset_id, other_asset_id):
+    for i, aid in enumerate((asset_id, asset_id, other_asset_id)):
         ev = await repo.create_pending(
-            evaluation_name="run-1",
+            evaluation_name=f"run-{i}",
             period_start=_START,
             period_end=_END,
             ingestion_mode="push",
@@ -389,9 +419,9 @@ async def test_get_baselines_with_tag_filters(db_session: AsyncSession) -> None:
     repo = EvaluationRepository(db_session)
     asset_id = await _create_asset(db_session)
 
-    for branch in ("main", "main", "feature-x"):
+    for i, branch in enumerate(("main", "main", "feature-x")):
         ev = await repo.create_pending(
-            evaluation_name="ci-run",
+            evaluation_name=f"ci-run-{i}",
             period_start=_START,
             period_end=_END,
             ingestion_mode="push",
@@ -427,7 +457,7 @@ async def test_get_baselines_with_sli_version_range(db_session: AsyncSession) ->
 
     for v in (1, 2, 3, 4):
         ev = await repo.create_pending(
-            evaluation_name="daily",
+            evaluation_name=f"daily-v{v}",
             period_start=_START,
             period_end=_END,
             ingestion_mode="push",
@@ -466,9 +496,9 @@ async def test_get_baselines_restrict_to_ids(db_session: AsyncSession) -> None:
     asset_id = await _create_asset(db_session)
 
     eval_ids = []
-    for _ in range(3):
+    for i in range(3):
         ev = await repo.create_pending(
-            evaluation_name="daily",
+            evaluation_name=f"daily-{i}",
             period_start=_START,
             period_end=_END,
             ingestion_mode="push",
@@ -526,6 +556,7 @@ async def test_create_pending_merges_asset_labels_into_metadata(
         asset_snapshot=_make_snapshot(),
         metadata={"branch": "feature-x", "env": "staging"},
         asset_id=asset_id,
+        slo_name="test-slo",
     )
     # Caller's "branch" wins over asset label's "branch"
     assert ev.evaluation_metadata["branch"] == "feature-x"
