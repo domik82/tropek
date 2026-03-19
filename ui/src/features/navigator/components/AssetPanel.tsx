@@ -123,14 +123,21 @@ export function AssetPanel({ assetName, initialEvalId }: Props) {
   const isLoading = evalsLoading || heatmapLoading
 
   const notedSlots = useMemo(() => {
-    if (!heatmapData) return new Set<string>()
-    const notedIds = new Set(
-      evals.filter(e => (e.annotation_count ?? 0) > 0).map(e => e.id),
+    if (!heatmapData) return new Map<string, { count: number; content: string; author: string | null }>()
+    const notedEvals = new Map(
+      evals
+        .filter(e => (e.annotation_count ?? 0) > 0)
+        .map(e => [e.id, e] as const),
     )
-    const slots = new Set<string>()
+    const slots = new Map<string, { count: number; content: string; author: string | null }>()
     for (const c of heatmapData.cells) {
-      if (c.eval_id && notedIds.has(c.eval_id)) {
-        slots.add(c.slot)
+      if (c.eval_id && notedEvals.has(c.eval_id) && !slots.has(c.slot)) {
+        const ev = notedEvals.get(c.eval_id)!
+        slots.set(c.slot, {
+          count: ev.annotation_count ?? 0,
+          content: ev.latest_annotation?.content ?? '',
+          author: ev.latest_annotation?.author ?? null,
+        })
       }
     }
     return slots
