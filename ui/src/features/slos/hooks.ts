@@ -65,7 +65,7 @@ export function useGroupSloLinks(name: string) {
   return useQuery({
     queryKey: groupKeys.links(name),
     queryFn: () => fetchGroupSloLinks(name),
-    enabled: !!name,
+    enabled: !!name && name !== '__ungrouped__',
   })
 }
 
