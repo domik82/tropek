@@ -46,6 +46,7 @@ class AssetUpdate(BaseModel):
     display_name: str | None = None
     type_name: str | None = None
     labels: dict[str, str] | None = None
+    heatmap_config: dict[str, Any] | None = None
 
 
 class AssetRead(BaseModel):
@@ -56,6 +57,7 @@ class AssetRead(BaseModel):
     display_name: str | None
     type_name: str
     labels: dict[str, Any]
+    heatmap_config: dict[str, Any] | None = None
     created_at: datetime
     updated_at: datetime
 

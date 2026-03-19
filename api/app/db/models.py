@@ -66,6 +66,7 @@ class Asset(Base):
     display_name: Mapped[str | None]     = mapped_column(Text, nullable=True)
     type_name:    Mapped[str]            = mapped_column(Text, ForeignKey("asset_types.name"), nullable=False, default="vm")
     labels:       Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, server_default=text("'{}'"), default=dict)
+    heatmap_config: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
     created_at:   Mapped[datetime]       = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at:   Mapped[datetime]       = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
     # fmt: on
@@ -263,6 +264,23 @@ class Evaluation(Base):
             "started_at",
             postgresql_where=text("status = 'running'"),
         ),
+        # Duplicate prevention: at most one non-failed evaluation per identity tuple.
+        # Failed evaluations are excluded so retries can create a new row.
+        # Decision tree:
+        #   - No existing non-failed eval → create OK
+        #   - Existing failed eval only → create OK (excluded from constraint)
+        #   - Existing pending/running → 409 "already in progress"
+        #   - Existing completed/partial/invalidated → 409 "use re-evaluate"
+        Index(
+            "uq_evaluations_identity",
+            "asset_id",
+            "slo_name",
+            "evaluation_name",
+            "period_start",
+            "period_end",
+            unique=True,
+            postgresql_where=text("status != 'failed'"),
+        ),
         CheckConstraint(
             "status IN ('pending','running','completed','failed','partial')",
             name="ck_evaluations_status",
@@ -281,13 +299,13 @@ class Evaluation(Base):
 
     id: Mapped[uuid.UUID] = mapped_column(UUID, primary_key=True, default=uuid.uuid4)
     evaluation_name: Mapped[str] = mapped_column(Text, nullable=False)
-    asset_id: Mapped[uuid.UUID | None] = mapped_column(UUID, ForeignKey("assets.id"), nullable=True)
+    asset_id: Mapped[uuid.UUID] = mapped_column(UUID, ForeignKey("assets.id", ondelete="RESTRICT"), nullable=False)
     asset_snapshot: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, server_default=text("'{}'"), default=dict)
     period_start: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     period_end:   Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     result: Mapped[str | None] = mapped_column(Text, nullable=True)  # null while pending
     score: Mapped[float | None] = mapped_column(Float, nullable=True)
-    slo_name: Mapped[str | None] = mapped_column(Text, nullable=True)
+    slo_name: Mapped[str] = mapped_column(Text, nullable=False)
     slo_version: Mapped[int | None] = mapped_column(Integer, nullable=True)
     sli_name: Mapped[str | None] = mapped_column(Text, nullable=True)
     sli_version: Mapped[int | None] = mapped_column(Integer, nullable=True)

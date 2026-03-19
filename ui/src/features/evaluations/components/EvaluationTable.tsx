@@ -24,8 +24,7 @@ interface Props {
 }
 
 const STATIC_KEYS = new Set([
-  'test', 'asset', 'arch', 'os', 'branch', 'build', 'triggered_by',
-  'start', 'score', 'result', 'slo', 'annotations',
+  'test', 'asset', 'start', 'score', 'result', 'slo', 'annotations',
 ])
 
 function cell(
@@ -68,16 +67,6 @@ function cell(
           )}
         </td>
       )
-    case 'arch':
-      return <td key="arch" className="px-4 py-3 text-sm text-slate-400">{ev.asset_snapshot.tags?.['arch'] ?? '—'}</td>
-    case 'os':
-      return <td key="os" className="px-4 py-3 text-sm text-slate-400">{ev.asset_snapshot.tags?.['os'] ?? '—'}</td>
-    case 'branch':
-      return <td key="branch" className="px-4 py-3 text-sm text-slate-400">{ev.evaluation_metadata?.['branch'] ?? '—'}</td>
-    case 'build':
-      return <td key="build" className="px-4 py-3 text-sm text-slate-400">{ev.evaluation_metadata?.['build'] ?? '—'}</td>
-    case 'triggered_by':
-      return <td key="triggered_by" className="px-4 py-3 text-sm text-slate-400">{ev.evaluation_metadata?.['triggered_by'] ?? '—'}</td>
     case 'start':
       return <td key="start" className="px-4 py-3 text-sm text-slate-400 tabular-nums whitespace-nowrap">{fmtDateTime(ev.period_start)}</td>
     case 'score':
@@ -99,7 +88,7 @@ function cell(
     case 'annotations':
       return (
         <td key="annotations" className="px-4 py-3">
-          <AnnotationCell annotation={ev.latest_annotation} count={ev.annotation_count} />
+          <AnnotationCell evalId={ev.id} annotation={ev.latest_annotation} count={ev.annotation_count} />
         </td>
       )
     default:

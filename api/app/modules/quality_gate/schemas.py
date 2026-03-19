@@ -216,6 +216,17 @@ class BatchTriggerRequest(BaseModel):
     metadata: dict[str, str] = {}
 
 
+class BatchConflict(BaseModel):
+    """A single conflicting item in a batch trigger."""
+
+    asset_name: str
+    slo_name: str
+    evaluation_name: str
+    period_start: datetime
+    period_end: datetime
+    existing_status: str
+
+
 class BatchTriggerResponse(BaseModel):
     """Response from batch trigger."""
 

@@ -6,12 +6,22 @@ import uuid
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
+from asyncpg import UniqueViolationError
 from sqlalchemy import String, delete, func, insert, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.db.models import Asset, Evaluation, EvaluationAnnotation, SLIValue
 from app.modules.quality_gate.engine.constants import EvaluationStatus
+
+
+class DuplicateEvaluationError(Exception):
+    """Raised when a duplicate evaluation insert violates the identity constraint.
+
+    This catches the race condition where two concurrent requests both pass the
+    app-level find_duplicate check but one loses at the DB constraint level.
+    The router converts this to a 409 Conflict response.
+    """
 
 
 class EvaluationRepository:
@@ -29,8 +39,8 @@ class EvaluationRepository:
         ingestion_mode: str,
         asset_snapshot: dict[str, Any],
         metadata: dict[str, Any],
-        asset_id: uuid.UUID | None = None,
-        slo_name: str | None = None,
+        asset_id: uuid.UUID,
+        slo_name: str,
         slo_version: int | None = None,
         adapter_used: str | None = None,
         sli_name: str | None = None,
@@ -46,8 +56,8 @@ class EvaluationRepository:
             ingestion_mode: One of "pull", "push", "file".
             asset_snapshot: Denormalised asset state at trigger time.
             metadata: Caller-provided key-value pairs.
-            asset_id: Optional UUID of the associated asset.
-            slo_name: Named SLO used, if any.
+            asset_id: UUID of the associated asset.
+            slo_name: Named SLO used for this evaluation.
             slo_version: Version of the named SLO, if any.
             adapter_used: Adapter name, if pull mode (e.g. "prometheus").
             sli_name: Named SLI definition used, if any.
@@ -59,11 +69,10 @@ class EvaluationRepository:
         """
         # Merge asset labels as defaults into metadata (caller values take precedence)
         merged_metadata = dict(metadata)
-        if asset_id is not None:
-            asset_row = await self._session.get(Asset, asset_id)
-            if asset_row is not None and asset_row.labels:
-                for key, value in asset_row.labels.items():
-                    merged_metadata.setdefault(str(key), str(value))
+        asset_row = await self._session.get(Asset, asset_id)
+        if asset_row is not None and asset_row.labels:
+            for key, value in asset_row.labels.items():
+                merged_metadata.setdefault(str(key), str(value))
 
         ev = Evaluation(
             id=uuid.uuid4(),
@@ -83,8 +92,51 @@ class EvaluationRepository:
             status=EvaluationStatus.PENDING,
         )
         self._session.add(ev)
-        await self._session.flush()
+        try:
+            await self._session.flush()
+        except Exception as exc:
+            # asyncpg wraps the PG error; walk the cause chain to find UniqueViolationError
+            cause: BaseException | None = exc
+            while cause is not None:
+                if isinstance(cause, UniqueViolationError):
+                    raise DuplicateEvaluationError from exc
+                cause = cause.__cause__
+            raise
         return ev
+
+    async def find_duplicate(
+        self,
+        *,
+        asset_id: uuid.UUID,
+        slo_name: str,
+        evaluation_name: str,
+        period_start: datetime,
+        period_end: datetime,
+    ) -> Evaluation | None:
+        """Find an existing non-failed evaluation matching the identity tuple.
+
+        Returns the existing evaluation if found, None otherwise.
+        Used by the router to produce status-aware 409 error messages before
+        attempting the insert. The partial unique index on the DB is the
+        safety net for concurrent races — this check provides clean UX.
+
+        Decision tree (see also uq_evaluations_identity index on the model):
+          - No match → None (caller proceeds with create)
+          - Match with status pending/running → caller returns 409 "in progress"
+          - Match with status completed/partial → caller returns 409 "use re-evaluate"
+          - Match with invalidated=True → caller returns 409 "invalidated, use re-evaluate"
+          - Failed evaluations are excluded (not matched here, not in the index)
+        """
+        q = select(Evaluation).where(
+            Evaluation.asset_id == asset_id,
+            Evaluation.slo_name == slo_name,
+            Evaluation.evaluation_name == evaluation_name,
+            Evaluation.period_start == period_start,
+            Evaluation.period_end == period_end,
+            Evaluation.status != EvaluationStatus.FAILED,
+        )
+        result = await self._session.execute(q)
+        return result.scalar_one_or_none()
 
     async def mark_running(self, eval_id: uuid.UUID, worker_id: str | None = None) -> None:
         """Transition evaluation to running status, recording worker and start time.
@@ -130,18 +182,19 @@ class EvaluationRepository:
         merged_stats: dict[str, Any] = dict(job_stats or {})
         if compared_evaluation_ids is not None:
             merged_stats["compared_evaluation_ids"] = compared_evaluation_ids
+        values: dict[str, Any] = {
+            "status": EvaluationStatus.COMPLETED,
+            "result": result,
+            "score": score,
+            "indicator_results": indicator_results,
+            "job_stats": merged_stats,
+        }
+        if slo_name is not None:
+            values["slo_name"] = slo_name
+        if slo_version is not None:
+            values["slo_version"] = slo_version
         await self._session.execute(
-            update(Evaluation)
-            .where(Evaluation.id == eval_id)
-            .values(
-                status=EvaluationStatus.COMPLETED,
-                result=result,
-                score=score,
-                slo_name=slo_name,
-                slo_version=slo_version,
-                indicator_results=indicator_results,
-                job_stats=merged_stats,
-            )
+            update(Evaluation).where(Evaluation.id == eval_id).values(**values)
         )
 
     async def mark_failed(
@@ -421,22 +474,31 @@ class EvaluationRepository:
         slo_name: str | None = None,
         result: str | None = None,
         date_prefix: str | None = None,
+        evaluation_name: list[str] | None = None,
         asset_ids: list[uuid.UUID] | None = None,
         from_ts: datetime | None = None,
         to_ts: datetime | None = None,
         limit: int = 50,
         offset: int = 0,
-    ) -> tuple[list[Evaluation], int, dict[uuid.UUID, int]]:
-        """Return (page, total_count, annotation_count_map) with optional filters.
+    ) -> tuple[
+        list[Evaluation],
+        int,
+        dict[uuid.UUID, int],
+        dict[uuid.UUID, EvaluationAnnotation],
+    ]:
+        """Return (page, total, count_map, latest_annotation_map) with optional filters.
 
         asset_id and asset_ids are DB FK lookups (not JSONB snapshot).
-        annotation_count_map: {eval_id -> count} for the returned page only.
+        count_map: {eval_id -> visible annotation count} for the returned page.
+        latest_annotation_map: {eval_id -> most recent visible annotation} for the page.
         """
         q = select(Evaluation)
         if asset_id:
             q = q.where(Evaluation.asset_id == asset_id)
         if slo_name:
             q = q.where(Evaluation.slo_name == slo_name)
+        if evaluation_name:
+            q = q.where(Evaluation.evaluation_name.in_(evaluation_name))
         if result:
             q = q.where(Evaluation.result == result)
         if date_prefix:
@@ -454,6 +516,7 @@ class EvaluationRepository:
         rows = await self._session.execute(q)
         evals = list(rows.scalars().all())
         count_map: dict[uuid.UUID, int] = {}
+        latest_map: dict[uuid.UUID, EvaluationAnnotation] = {}
         if evals:
             eval_ids = [ev.id for ev in evals]
             cnt_rows = await self._session.execute(
@@ -465,7 +528,22 @@ class EvaluationRepository:
                 .group_by(EvaluationAnnotation.evaluation_id)
             )
             count_map = {row.evaluation_id: row.cnt for row in cnt_rows}
-        return evals, total, count_map
+            # Fetch latest visible annotation per evaluation using DISTINCT ON.
+            latest_q = (
+                select(EvaluationAnnotation)
+                .where(
+                    EvaluationAnnotation.evaluation_id.in_(eval_ids),
+                    EvaluationAnnotation.hidden_at.is_(None),
+                )
+                .order_by(
+                    EvaluationAnnotation.evaluation_id,
+                    EvaluationAnnotation.created_at.desc(),
+                )
+                .distinct(EvaluationAnnotation.evaluation_id)
+            )
+            latest_rows = await self._session.execute(latest_q)
+            latest_map = {a.evaluation_id: a for a in latest_rows.scalars().all()}
+        return evals, total, count_map, latest_map
 
     async def invalidate(self, eval_id: uuid.UUID, *, note: str) -> Evaluation | None:
         """Mark an evaluation as invalidated."""
@@ -583,6 +661,7 @@ class EvaluationRepository:
         *,
         asset_id: uuid.UUID,
         limit: int = 20,
+        evaluation_name: list[str] | None = None,
     ) -> list[Evaluation]:
         """Fetch the last N completed evaluations for an asset, ordered by period_start DESC."""
         q = (
@@ -594,6 +673,8 @@ class EvaluationRepository:
             .order_by(Evaluation.period_start.desc())
             .limit(limit)
         )
+        if evaluation_name:
+            q = q.where(Evaluation.evaluation_name.in_(evaluation_name))
         result = await self._session.execute(q)
         return list(result.scalars().all())
 
