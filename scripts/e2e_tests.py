@@ -11,7 +11,7 @@ import sys
 import time
 
 from tropek_client import TropekClient
-from tropek_client.exceptions import TropekValidationError
+from tropek_client.exceptions import TropekAPIError, TropekValidationError
 
 TERMINAL_STATUSES = {"completed", "failed", "partial"}
 
@@ -288,6 +288,70 @@ def test_annotations(client: TropekClient) -> None:
     print("PASS: create, list, update, hide annotation")
 
 
+def test_asset_type_rename(client: TropekClient) -> None:
+    """Rename an asset type and verify the name changed."""
+    step("Step 18: Rename asset type")
+    client.asset_types.create("rename-test-type")
+    renamed = client.asset_types.rename("rename-test-type", "renamed-type")
+    assert renamed.name == "renamed-type", f"expected 'renamed-type', got {renamed.name}"
+    print(f"renamed: rename-test-type -> {renamed.name}")
+
+    types = client.asset_types.list()
+    names = [t.name for t in types]
+    assert "rename-test-type" not in names, "old name still exists"
+    assert "renamed-type" in names, "new name not found"
+
+    client.asset_types.delete("renamed-type")
+    print("PASS: asset type rename")
+
+
+def test_asset_delete(client: TropekClient) -> None:
+    """Create and delete an asset."""
+    step("Step 19: Delete asset")
+    client.assets.create("delete-test-asset", "service", display_name="Delete Me")
+    asset = client.assets.get("delete-test-asset")
+    assert asset.name == "delete-test-asset"
+
+    client.assets.delete("delete-test-asset")
+
+    assets = client.assets.list()
+    names = [a.name for a in assets.items]
+    assert "delete-test-asset" not in names, "asset still exists after delete"
+    print("PASS: asset delete")
+
+
+def test_label_autocomplete(client: TropekClient) -> None:
+    """Test label-keys and label-values endpoints."""
+    step("Step 20: Label autocomplete")
+    keys = client.assets.label_keys()
+    key_names = [k["key"] for k in keys]
+    print(f"label keys: {key_names}")
+    assert "team" in key_names, f"expected 'team' in keys, got {key_names}"
+    assert "env" in key_names, f"expected 'env' in keys, got {key_names}"
+
+    team_values = client.assets.label_values("team")
+    value_names = [v["value"] for v in team_values]
+    print(f"team values: {value_names}")
+    assert "payments" in value_names, f"expected 'payments' in {value_names}"
+
+    for v in team_values:
+        assert v["count"] > 0, f"expected count > 0 for {v['value']}"
+    print("PASS: label autocomplete")
+
+
+def test_asset_type_delete_with_assets(client: TropekClient) -> None:
+    """Verify that deleting a type with assets raises 409 Conflict."""
+    step("Step 21: Delete type with assets (expect 409)")
+    got_error = False
+    try:
+        client.asset_types.delete("service")
+    except TropekAPIError as e:
+        got_error = True
+        print(f"correctly rejected: {e}")
+    assert got_error, "expected error when deleting type with assets"
+    print("PASS: asset type delete blocked by assets")
+
+
 def main() -> None:
     """Entry point — parse API URL from argv and run all tests."""
     if len(sys.argv) != 2:
@@ -307,6 +371,10 @@ def main() -> None:
     test_reeval_dry_run(client)
     test_comparison_rules(client)
     test_annotations(client)
+    test_asset_type_rename(client)
+    test_asset_delete(client)
+    test_label_autocomplete(client)
+    test_asset_type_delete_with_assets(client)
 
     print("\n=== All integration tests passed ===")
 

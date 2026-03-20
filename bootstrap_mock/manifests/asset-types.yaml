@@ -18,3 +18,17 @@ metadata:
   name: vm
 spec:
   is_default: false
+---
+api_version: tropek/v1
+kind: AssetType
+metadata:
+  name: container
+spec:
+  is_default: false
+---
+api_version: tropek/v1
+kind: AssetType
+metadata:
+  name: endpoint
+spec:
+  is_default: false

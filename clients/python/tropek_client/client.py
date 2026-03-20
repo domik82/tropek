@@ -74,6 +74,12 @@ class _AssetTypes:
         _raise_for_status(resp)
         return AssetType.model_validate(resp.json())
 
+    def rename(self, name: str, new_name: str) -> AssetType:
+        """Rename an asset type."""
+        resp = self._http.patch(f"/asset-types/{name}", json={"name": new_name})
+        _raise_for_status(resp)
+        return AssetType.model_validate(resp.json())
+
     def delete(self, name: str) -> None:
         """Delete an asset type."""
         resp = self._http.delete(f"/asset-types/{name}")
@@ -136,6 +142,23 @@ class _Assets:
         resp = self._http.patch(f"/assets/{name}", json=kwargs)
         _raise_for_status(resp)
         return Asset.model_validate(resp.json())
+
+    def delete(self, name: str) -> None:
+        """Delete an asset."""
+        resp = self._http.delete(f"/assets/{name}")
+        _raise_for_status(resp)
+
+    def label_keys(self) -> list[dict[str, Any]]:
+        """Get all distinct label keys across assets with counts."""
+        resp = self._http.get("/assets/label-keys")
+        _raise_for_status(resp)
+        return resp.json()  # type: ignore[no-any-return]
+
+    def label_values(self, key: str) -> list[dict[str, Any]]:
+        """Get values and counts for a label key."""
+        resp = self._http.get("/assets/label-values", params={"key": key})
+        _raise_for_status(resp)
+        return resp.json()  # type: ignore[no-any-return]
 
 
 class _AssetGroups:

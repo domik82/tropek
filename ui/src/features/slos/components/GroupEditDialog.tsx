@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose,
 } from '@/components/ui/dialog'
+import { GroupTreeSelector } from '@/features/assets/components/GroupTreeSelector'
 import {
   useUpdateGroup, useGroupSloLinks, useDeleteGroupSloLink, useGroupTree,
   useAddSubgroup,
@@ -26,7 +27,7 @@ export function GroupEditDialog({ open, onOpenChange, groupName }: Props) {
   const [parentGroup, setParentGroup] = useState('')
 
   const currentParent = tree?.all_groups.find(g =>
-    g.subgroups.some(sg => sg.group_id === group?.id)
+    g.subgroups.some(sg => sg.child_group_id === group?.id)
   )
 
   useEffect(() => {
@@ -38,8 +39,6 @@ export function GroupEditDialog({ open, onOpenChange, groupName }: Props) {
   }, [group, currentParent])
 
   if (!groupName || !group) return null
-
-  const availableParents = tree?.all_groups.filter(g => g.name !== groupName) ?? []
 
   const handleSave = async () => {
     await updateGroup.mutateAsync({
@@ -81,25 +80,23 @@ export function GroupEditDialog({ open, onOpenChange, groupName }: Props) {
           </div>
           <div>
             <label className="text-xs uppercase text-muted-foreground block mb-1">Description</label>
-            <textarea
+            <input
               value={description}
               onChange={e => setDescription(e.target.value)}
-              rows={2}
-              className="w-full bg-input border border-border rounded px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary/50 resize-none"
+              placeholder="Optional description…"
+              className="w-full bg-input border border-border rounded px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50"
             />
           </div>
           <div>
             <label className="text-xs uppercase text-muted-foreground block mb-1">Parent Group</label>
-            <select
-              value={parentGroup}
-              onChange={e => setParentGroup(e.target.value)}
-              className="w-full bg-input border border-border rounded px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary/50"
-            >
-              <option value="">None (top-level)</option>
-              {availableParents.map(g => (
-                <option key={g.id} value={g.name}>{g.display_name ?? g.name}</option>
-              ))}
-            </select>
+            {tree && (
+              <GroupTreeSelector
+                tree={tree}
+                value={parentGroup || null}
+                onChange={name => setParentGroup(name ?? '')}
+                excludeName={groupName}
+              />
+            )}
           </div>
           {links && links.length > 0 && (
             <div>

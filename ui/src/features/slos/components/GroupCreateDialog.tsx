@@ -2,6 +2,7 @@ import { useState } from 'react'
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose,
 } from '@/components/ui/dialog'
+import { GroupTreeSelector } from '@/features/assets/components/GroupTreeSelector'
 import { useCreateGroup, useGroupTree, useAddSubgroup } from '../hooks'
 
 interface Props {
@@ -71,26 +72,22 @@ export function GroupCreateDialog({ open, onOpenChange }: Props) {
           </div>
           <div>
             <label className="text-xs uppercase text-muted-foreground block mb-1">Description</label>
-            <textarea
+            <input
               value={description}
               onChange={e => setDescription(e.target.value)}
               placeholder="Optional description…"
-              rows={2}
-              className="w-full bg-input border border-border rounded px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50 resize-none"
+              className="w-full bg-input border border-border rounded px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50"
             />
           </div>
           <div>
             <label className="text-xs uppercase text-muted-foreground block mb-1">Parent Group</label>
-            <select
-              value={parentGroup}
-              onChange={e => setParentGroup(e.target.value)}
-              className="w-full bg-input border border-border rounded px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary/50"
-            >
-              <option value="">None (top-level)</option>
-              {tree?.all_groups.map(g => (
-                <option key={g.id} value={g.name}>{g.display_name ?? g.name}</option>
-              ))}
-            </select>
+            {tree && (
+              <GroupTreeSelector
+                tree={tree}
+                value={parentGroup || null}
+                onChange={name => setParentGroup(name ?? '')}
+              />
+            )}
           </div>
         </div>
         <DialogFooter>

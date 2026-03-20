@@ -1,11 +1,12 @@
 import { useState, useMemo, useCallback } from 'react'
-import { Search, X, Plus, MoreHorizontal, FolderTree } from 'lucide-react'
+import { Search, X, Plus, MoreHorizontal, FolderTree, Settings } from 'lucide-react'
 import { useAssetGroups } from '@/features/assets/hooks'
 import { countLeafMembers } from '@/features/navigator/components/treeUtils'
 import { GroupCreateDialog } from '@/features/slos/components/GroupCreateDialog'
 import { GroupEditDialog } from '@/features/slos/components/GroupEditDialog'
 import { GroupDeleteDialog } from '@/features/slos/components/GroupDeleteDialog'
 import { SloLinkDialog } from '@/features/slos/components/SloLinkDialog'
+import { AssetTypesDialog } from '@/features/assets/components/AssetTypesDialog'
 import { AssetTreeNode } from './AssetTreeNode'
 import { AssetTreeContextMenu } from './AssetTreeContextMenu'
 import { AssetTreeFooter } from './AssetTreeFooter'
@@ -23,6 +24,7 @@ export interface AssetTreeProps {
   onEditGroup?: (name: string) => void
   onDeleteGroup?: (name: string) => void
   onAddSloLink?: (groupName: string) => void
+  onAddAsset?: () => void
 }
 
 export function AssetTree({
@@ -32,6 +34,7 @@ export function AssetTree({
   onEditGroup: externalEditGroup,
   onDeleteGroup: externalDeleteGroup,
   onAddSloLink: externalAddSloLink,
+  onAddAsset: externalAddAsset,
 }: AssetTreeProps) {
   const { data: tree, isLoading } = useAssetGroups()
 
@@ -55,6 +58,7 @@ export function AssetTree({
   const [editingGroupName, setEditingGroupName] = useState<string | null>(null)
   const [deletingGroupName, setDeletingGroupName] = useState<string | null>(null)
   const [linkingGroupName, setLinkingGroupName] = useState<string | null>(null)
+  const [typesDialogOpen, setTypesDialogOpen] = useState(false)
 
   // SLO link counts for slo mode (batch endpoint not yet available)
   const sloLinkCounts = useSloLinkCounts()
@@ -180,6 +184,18 @@ export function AssetTree({
                 >
                   Collapse all
                 </button>
+                {(mode === 'navigator' || mode === 'assets') && (
+                  <>
+                    <div className="my-1 mx-2 border-t border-border" />
+                    <button
+                      className="w-full px-3 py-1.5 text-sm text-left hover:bg-accent transition-colors flex items-center gap-2 text-[#58A6FF]"
+                      onClick={() => { setTypesDialogOpen(true); setBulkMenuOpen(false) }}
+                    >
+                      <Settings className="w-4 h-4" />
+                      Manage Asset Types
+                    </button>
+                  </>
+                )}
               </div>
             )}
           </div>
@@ -293,7 +309,7 @@ export function AssetTree({
       <AssetTreeFooter
         mode={mode}
         onCreateGroup={() => handleCreateGroup()}
-        onAddAsset={() => {/* Phase 2 */}}
+        onAddAsset={externalAddAsset}
       />
 
       {/* Context menu */}
@@ -331,6 +347,8 @@ export function AssetTree({
           }}
         />
       )}
+      <AssetTypesDialog open={typesDialogOpen} onOpenChange={setTypesDialogOpen} />
+
       {!externalAddSloLink && mode === 'slo' && (
         <SloLinkDialog
           open={linkingGroupName !== null}

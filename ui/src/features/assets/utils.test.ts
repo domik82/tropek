@@ -7,7 +7,7 @@ const makeGroup = (id: string, memberNames: string[], subgroupIds: string[] = []
   id,
   name: id,
   members: memberNames.map(n => ({ asset_id: n, asset_name: n, weight: 1 })),
-  subgroups: subgroupIds.map(gid => ({ group_id: gid, weight: 1 })),
+  subgroups: subgroupIds.map(gid => ({ child_group_id: gid, group_name: gid, weight: 1 })),
 })
 
 describe('collectGroupAssetNames', () => {

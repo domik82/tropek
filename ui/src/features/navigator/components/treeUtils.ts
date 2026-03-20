@@ -10,7 +10,7 @@ import type { AssetGroup, AssetGroupTree } from '@/features/assets/types'
 export function countLeafMembers(group: AssetGroup, tree: AssetGroupTree): number {
   let count = group.members.length
   for (const sg of group.subgroups) {
-    const resolved = tree.all_groups.find(g => g.id === sg.group_id)
+    const resolved = tree.all_groups.find(g => g.id === sg.child_group_id)
     if (resolved) count += countLeafMembers(resolved, tree)
   }
   return count

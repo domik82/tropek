@@ -14,7 +14,7 @@ const GROUP_MENU_ITEMS: MenuItemDef[] = [
   { label: 'Rename', icon: 'Pencil', iconColor: 'text-amber-400', action: 'rename', shortcut: 'F2' },
   { label: 'Edit details\u2026', icon: 'Settings', iconColor: 'text-muted-foreground', action: 'editDetails' },
   { label: 'Add subgroup', icon: 'FolderPlus', iconColor: 'text-orange-400', action: 'addSubgroup', separator: true },
-  { label: 'Add asset to group (coming soon)', icon: 'Plus', iconColor: 'text-muted-foreground', action: 'addAssetToGroup', disabled: true, modes: ['navigator'] },
+  { label: 'Add asset to group', icon: 'Plus', iconColor: 'text-[#2DD4A0]', action: 'addAssetToGroup', modes: ['navigator', 'assets'] },
   { label: 'Link SLO\u2026', icon: 'Link', iconColor: 'text-purple-400', action: 'linkSlo', modes: ['slo'] },
   { label: 'Move to\u2026 (coming soon)', icon: 'ArrowUpRight', iconColor: 'text-muted-foreground', action: 'moveGroup', separator: true, disabled: true },
   { label: 'Duplicate group (coming soon)', icon: 'Copy', iconColor: 'text-muted-foreground', action: 'duplicateGroup', disabled: true },
@@ -24,9 +24,9 @@ const GROUP_MENU_ITEMS: MenuItemDef[] = [
 const ASSET_MENU_ITEMS: MenuItemDef[] = [
   { label: 'View evaluations', icon: 'BarChart3', iconColor: 'text-blue-400', action: 'viewEvaluations' },
   { label: 'Move to group\u2026 (coming soon)', icon: 'ArrowUpRight', iconColor: 'text-muted-foreground', action: 'moveGroup', separator: true, disabled: true },
-  { label: 'Remove from group (coming soon)', icon: 'X', iconColor: 'text-muted-foreground', action: 'removeFromGroup', disabled: true },
-  { label: 'Edit asset\u2026 (coming soon)', icon: 'Pencil', iconColor: 'text-amber-400', action: 'editAsset', separator: true, disabled: true },
-  { label: 'Delete asset (coming soon)', icon: 'Trash2', iconColor: 'text-red-400', action: 'deleteAsset', destructive: true, disabled: true },
+  { label: 'Remove from group', icon: 'X', iconColor: 'text-muted-foreground', action: 'removeFromGroup' },
+  { label: 'Edit asset\u2026', icon: 'Pencil', iconColor: 'text-amber-400', action: 'editAsset', separator: true },
+  { label: 'Delete asset', icon: 'Trash2', iconColor: 'text-red-400', action: 'deleteAsset', destructive: true },
 ]
 
 interface Props {

@@ -20,6 +20,15 @@ export const assetKeys = {
   groups: () => [...assetKeys.all, 'groups'] as const,
 }
 
+export const assetTypeKeys = {
+  all: ['asset-types'] as const,
+}
+
+export const labelKeys = {
+  keys: () => ['label-keys'] as const,
+  values: (key: string) => ['label-values', key] as const,
+}
+
 export const sloKeys = {
   all: ['slos'] as const,
   detail: (name: string) => [...sloKeys.all, name] as const,

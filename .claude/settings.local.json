@@ -60,7 +60,21 @@
       "Bash(npx:*)",
       "mcp__plugin_playwright_playwright__browser_run_code",
       "mcp__plugin_playwright_playwright__browser_wait_for",
-      "Bash(/home/domik/.claude/plugins/cache/claude-plugins-official/superpowers/5.0.2/skills/brainstorming/scripts/start-server.sh --project-dir /mnt/d/DEV/keptn_rewrite/tropek)"
+      "Bash(/home/domik/.claude/plugins/cache/claude-plugins-official/superpowers/5.0.2/skills/brainstorming/scripts/start-server.sh --project-dir /mnt/d/DEV/keptn_rewrite/tropek)",
+      "Bash(/mnt/d/DEV/keptn_rewrite/tropek/stop_test_infra.sh)",
+      "Bash(/mnt/d/DEV/keptn_rewrite/tropek/scripts/db-regen-migrations.sh)",
+      "Bash(npm install:*)",
+      "mcp__penpot__execute_code",
+      "mcp__penpot__penpot_api_info",
+      "mcp__penpot__export_shape",
+      "Bash(/mnt/d/DEV/keptn_rewrite/tropek/.worktrees/p2a-comparison-rules/start_test_infra.sh)",
+      "Bash(superdesign --version)",
+      "Bash(/mnt/d/DEV/keptn_rewrite/tropek/.worktrees/p2a-comparison-rules/stop_test_infra.sh)",
+      "Bash(/mnt/d/DEV/keptn_rewrite/tropek/.claude/worktrees/unified-asset-tree/scripts/db-regen-migrations.sh)",
+      "Bash(docker stop:*)",
+      "Bash(docker rm:*)",
+      "Bash(/mnt/d/DEV/keptn_rewrite/tropek/start_test_infra.sh 2>&1)",
+      "Bash(docker exec:*)"
     ],
     "deny": [
       "Bash(sudo *)",

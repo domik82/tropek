@@ -5,7 +5,9 @@ metadata:
   display_name: Checkout API
   labels:
     team: payments
-    env: dev
+    env: production
+    region: eu-west-1
+    tier: critical
 spec:
   type_name: service
 ---
@@ -16,7 +18,9 @@ metadata:
   display_name: Product Catalog Service
   labels:
     team: catalog
-    env: dev
+    env: production
+    region: eu-west-1
+    tier: standard
 spec:
   type_name: service
 ---
@@ -27,7 +31,9 @@ metadata:
   display_name: User & Auth Service
   labels:
     team: platform
-    env: dev
+    env: production
+    region: eu-west-1
+    tier: critical
 spec:
   type_name: service
 ---
@@ -38,6 +44,107 @@ metadata:
   display_name: Orders PostgreSQL
   labels:
     team: payments
-    env: dev
+    env: production
+    region: eu-west-1
+    tier: critical
+    runtime: postgres-16
 spec:
   type_name: database
+---
+api_version: tropek/v1
+kind: Asset
+metadata:
+  name: catalog-db
+  display_name: Catalog MongoDB
+  labels:
+    team: catalog
+    env: production
+    region: eu-west-1
+    tier: standard
+    runtime: mongo-7
+spec:
+  type_name: database
+---
+api_version: tropek/v1
+kind: Asset
+metadata:
+  name: session-cache
+  display_name: Session Redis
+  labels:
+    team: platform
+    env: production
+    region: eu-west-1
+    tier: standard
+    runtime: redis-7
+spec:
+  type_name: database
+---
+api_version: tropek/v1
+kind: Asset
+metadata:
+  name: payment-gateway
+  display_name: Payment Gateway
+  labels:
+    team: payments
+    env: production
+    region: us-east-1
+    tier: critical
+spec:
+  type_name: endpoint
+---
+api_version: tropek/v1
+kind: Asset
+metadata:
+  name: metrics-collector
+  display_name: Metrics Collector
+  labels:
+    team: observability
+    env: production
+    region: eu-west-1
+    tier: standard
+    os: linux
+spec:
+  type_name: container
+---
+api_version: tropek/v1
+kind: Asset
+metadata:
+  name: log-aggregator
+  display_name: Log Aggregator
+  labels:
+    team: observability
+    env: staging
+    region: eu-west-1
+    tier: standard
+    os: linux
+spec:
+  type_name: container
+---
+api_version: tropek/v1
+kind: Asset
+metadata:
+  name: bastion-host
+  display_name: Bastion Host EU
+  labels:
+    team: infra
+    env: production
+    region: eu-west-1
+    tier: standard
+    os: ubuntu-22
+    dc: fra-1
+spec:
+  type_name: vm
+---
+api_version: tropek/v1
+kind: Asset
+metadata:
+  name: build-runner
+  display_name: CI Build Runner
+  labels:
+    team: infra
+    env: staging
+    region: us-east-1
+    tier: standard
+    os: ubuntu-22
+spec:
+  type_name: vm

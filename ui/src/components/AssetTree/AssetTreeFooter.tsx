@@ -17,12 +17,10 @@ export function AssetTreeFooter({ mode, onCreateGroup, onAddAsset }: Props) {
         <Plus className="w-3.5 h-3.5" />
         New Group
       </button>
-      {mode === 'navigator' && onAddAsset && (
+      {(mode === 'navigator' || mode === 'assets') && onAddAsset && (
         <button
           onClick={onAddAsset}
-          disabled
-          className="flex-1 text-xs border border-border rounded py-1.5 text-muted-foreground opacity-40 cursor-not-allowed flex items-center justify-center gap-1"
-          title="Coming soon"
+          className="flex-1 text-xs border border-[#58A6FF] rounded py-1.5 text-[#58A6FF] hover:bg-[#0D2847]/50 transition-colors flex items-center justify-center gap-1"
         >
           <PackagePlus className="w-3.5 h-3.5" />
           Add Asset
