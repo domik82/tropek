@@ -114,7 +114,7 @@ async def _resolve_baselines(
     if slo.comparison.number_of_comparison_results <= 0:
         return baselines, compared_eval_ids
 
-    baseline_evals = await baseline_repo.get_baselines(
+    baseline_evals = await baseline_repo.get_evaluation_baselines(
         asset_id=ev.asset_id,
         slo_name=ev.slo_name,
         period_start_before=ev.period_start,

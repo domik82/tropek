@@ -21,7 +21,7 @@ class BaselineRepository:
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
 
-    async def get_baselines(
+    async def get_evaluation_baselines(
         self,
         *,
         asset_id: uuid.UUID,
@@ -29,14 +29,11 @@ class BaselineRepository:
         period_start_before: datetime,
         include_result_with_score: str,
         limit: int,
-        tag_filters: dict[str, str] | None = None,
-        sli_version_range: tuple[int, int] | None = None,
-        restrict_to_ids: list[uuid.UUID] | None = None,
     ) -> list[Evaluation]:
-        """Fetch previous completed evaluations for baseline comparison.
+        """Fetch previous completed evaluations for baseline comparison during scoring.
 
-        Scoped by asset + SLO, with optional tag filtering, version range,
-        and ID restriction (for cascading re-evaluation).
+        Used by the worker when evaluating a new run against previous results.
+        Pin-aware: restricts the baseline window to evaluations after the active pin.
 
         Args:
             asset_id: Asset UUID to scope baselines to.
@@ -44,13 +41,78 @@ class BaselineRepository:
             period_start_before: Only include evaluations before this timestamp.
             include_result_with_score: "pass", "pass_or_warn", or "all".
             limit: Maximum number of baseline evaluations to return.
-            tag_filters: Optional tag key-value pairs to match in evaluation_metadata.
+
+        Returns:
+            Matching completed evaluations ordered by period_start descending.
+        """
+        q = self._base_baseline_query(
+            asset_id=asset_id,
+            slo_name=slo_name,
+            period_start_before=period_start_before,
+            include_result_with_score=include_result_with_score,
+        )
+        q = await self._apply_pin_filter(q, asset_id=asset_id, slo_name=slo_name)
+        q = q.order_by(Evaluation.period_start.desc()).limit(limit)
+        rows = await self._session.execute(q)
+        return list(rows.scalars().all())
+
+    async def get_reeval_baselines(
+        self,
+        *,
+        asset_id: uuid.UUID,
+        slo_name: str,
+        period_start_before: datetime,
+        include_result_with_score: str,
+        limit: int,
+        sli_version_range: tuple[int, int] | None = None,
+        restrict_to_ids: list[uuid.UUID] | None = None,
+    ) -> list[Evaluation]:
+        """Fetch previous completed evaluations for re-evaluation baseline comparison.
+
+        Used by the re-evaluator with SLI version filtering and ID restriction
+        for cascading re-evaluation.
+
+        Args:
+            asset_id: Asset UUID to scope baselines to.
+            slo_name: SLO name to scope baselines to.
+            period_start_before: Only include evaluations before this timestamp.
+            include_result_with_score: "pass", "pass_or_warn", or "all".
+            limit: Maximum number of baseline evaluations to return.
             sli_version_range: Optional (min, max) inclusive version range for sli_version.
             restrict_to_ids: Optional list of evaluation IDs to restrict results to.
 
         Returns:
             Matching completed evaluations ordered by period_start descending.
         """
+        q = self._base_baseline_query(
+            asset_id=asset_id,
+            slo_name=slo_name,
+            period_start_before=period_start_before,
+            include_result_with_score=include_result_with_score,
+        )
+
+        if sli_version_range:
+            q = q.where(Evaluation.sli_version.is_not(None))
+            q = q.where(Evaluation.sli_version >= sli_version_range[0])
+            q = q.where(Evaluation.sli_version <= sli_version_range[1])
+
+        if restrict_to_ids is not None:
+            q = q.where(Evaluation.id.in_(restrict_to_ids))
+
+        q = await self._apply_pin_filter(q, asset_id=asset_id, slo_name=slo_name)
+        q = q.order_by(Evaluation.period_start.desc()).limit(limit)
+        rows = await self._session.execute(q)
+        return list(rows.scalars().all())
+
+    @staticmethod
+    def _base_baseline_query(
+        *,
+        asset_id: uuid.UUID,
+        slo_name: str,
+        period_start_before: datetime,
+        include_result_with_score: str,
+    ) -> Any:
+        """Build the shared base query for baseline lookups."""
         q = select(Evaluation).where(
             Evaluation.asset_id == asset_id,
             Evaluation.slo_name == slo_name,
@@ -62,35 +124,27 @@ class BaselineRepository:
             q = q.where(Evaluation.result == "pass")
         elif include_result_with_score == "pass_or_warn":
             q = q.where(Evaluation.result.in_(["pass", "warning"]))
+        return q
 
-        if tag_filters:
-            for key, value in tag_filters.items():
-                q = q.where(Evaluation.evaluation_metadata[(key,)].as_string() == value)
-
-        if sli_version_range:
-            q = q.where(Evaluation.sli_version.is_not(None))
-            q = q.where(Evaluation.sli_version >= sli_version_range[0])
-            q = q.where(Evaluation.sli_version <= sli_version_range[1])
-
-        if restrict_to_ids is not None:
-            q = q.where(Evaluation.id.in_(restrict_to_ids))
-
-        # Pin-aware: restrict baseline window to evaluations after the active pin
-        if asset_id and slo_name:
-            pin_q = select(Evaluation.period_start).where(
-                Evaluation.asset_id == asset_id,
-                Evaluation.slo_name == slo_name,
-                Evaluation.baseline_pinned_at.is_not(None),
-                Evaluation.baseline_unpinned_at.is_(None),
-            )
-            pin_row = await self._session.execute(pin_q)
-            pin_start = pin_row.scalar_one_or_none()
-            if pin_start is not None:
-                q = q.where(Evaluation.period_start >= pin_start)
-
-        q = q.order_by(Evaluation.period_start.desc()).limit(limit)
-        rows = await self._session.execute(q)
-        return list(rows.scalars().all())
+    async def _apply_pin_filter(
+        self,
+        q: Any,
+        *,
+        asset_id: uuid.UUID,
+        slo_name: str,
+    ) -> Any:
+        """Restrict baseline window to evaluations after the active pin, if any."""
+        pin_q = select(Evaluation.period_start).where(
+            Evaluation.asset_id == asset_id,
+            Evaluation.slo_name == slo_name,
+            Evaluation.baseline_pinned_at.is_not(None),
+            Evaluation.baseline_unpinned_at.is_(None),
+        )
+        pin_row = await self._session.execute(pin_q)
+        pin_start = pin_row.scalar_one_or_none()
+        if pin_start is not None:
+            q = q.where(Evaluation.period_start >= pin_start)
+        return q
 
     async def load_evaluations_for_reeval(
         self,
