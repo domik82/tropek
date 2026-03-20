@@ -13,15 +13,7 @@ from sqlalchemy.orm import selectinload
 
 from app.db.models import Asset, Evaluation, EvaluationAnnotation
 from app.modules.quality_gate.engine.constants import EvaluationStatus
-
-
-class DuplicateEvaluationError(Exception):
-    """Raised when a duplicate evaluation insert violates the identity constraint.
-
-    This catches the race condition where two concurrent requests both pass the
-    app-level find_duplicate check but one loses at the DB constraint level.
-    The router converts this to a 409 Conflict response.
-    """
+from app.modules.quality_gate.exceptions import DuplicateEvaluationError
 
 
 class EvaluationRepository:
