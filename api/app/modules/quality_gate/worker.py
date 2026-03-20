@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import Evaluation, SLIDefinition, SLODefinition
 from app.modules.datasource.repository import DataSourceRepository
+from app.modules.quality_gate.baseline_repository import BaselineRepository
 from app.modules.quality_gate.engine.criteria import aggregate_values
 from app.modules.quality_gate.engine.evaluator import evaluate
 from app.modules.quality_gate.engine.slo_models import SLO
@@ -91,7 +92,7 @@ async def _query_adapter(
 
 
 async def _resolve_baselines(
-    repo: EvaluationRepository,
+    baseline_repo: BaselineRepository,
     slo: SLO,
     ev: Any,
     indicator_names: list[str],
@@ -99,7 +100,7 @@ async def _resolve_baselines(
     """Fetch baseline evaluations and aggregate per-metric values.
 
     Args:
-        repo: Evaluation repository for baseline queries.
+        baseline_repo: Baseline repository for baseline queries.
         slo: Validated SLO model providing comparison config.
         ev: Current Evaluation ORM row (used for scoping).
         indicator_names: Metric names to collect baselines for.
@@ -113,7 +114,7 @@ async def _resolve_baselines(
     if slo.comparison.number_of_comparison_results <= 0:
         return baselines, compared_eval_ids
 
-    baseline_evals = await repo.get_baselines(
+    baseline_evals = await baseline_repo.get_baselines(
         asset_id=ev.asset_id,
         slo_name=ev.slo_name,
         period_start_before=ev.period_start,
@@ -237,8 +238,9 @@ async def run_evaluation(
         return
 
     # Resolve baselines (pin-aware) and evaluate
+    baseline_repo = BaselineRepository(session)
     baselines, compared_eval_ids = await _resolve_baselines(
-        repo=repo, slo=slo, ev=ev, indicator_names=list(sli_def.indicators)
+        baseline_repo=baseline_repo, slo=slo, ev=ev, indicator_names=list(sli_def.indicators)
     )
     eval_result = evaluate(slo, metrics_fetched, baselines, compared_eval_ids)
 
