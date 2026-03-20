@@ -149,7 +149,7 @@ async def _rescore_single(
     eval_sli_range = await _resolve_sli_version_range(ev.sli_name, ev.sli_version, sli_repo)
     sli_range = eval_sli_range or default_sli_version_range
 
-    baseline_evals = await baseline_repo.get_baselines(
+    baseline_evals = await baseline_repo.get_reeval_baselines(
         asset_id=asset_id,
         slo_name=slo_name,
         period_start_before=ev.period_start,
@@ -246,7 +246,7 @@ async def re_evaluate(
     )
 
     # Seed eligible IDs from pre-window baselines
-    pre_baselines = await baseline_repo.get_baselines(
+    pre_baselines = await baseline_repo.get_reeval_baselines(
         asset_id=asset.id,
         slo_name=request.slo_name,
         period_start_before=from_date,
