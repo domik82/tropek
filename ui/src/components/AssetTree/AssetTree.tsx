@@ -239,8 +239,9 @@ export function AssetTree({
         {!isLoading && tree && (
           <>
             {/* "All" item */}
-            <div
-              className={`flex items-center gap-2 px-2 py-1.5 rounded-sm cursor-pointer transition-colors ${
+            <button
+              type="button"
+              className={`flex items-center gap-2 px-2 py-1.5 rounded-sm cursor-pointer transition-colors w-full text-left ${
                 selectedGroup === null
                   ? 'bg-primary/15 border-l-2 border-primary font-medium'
                   : 'hover:bg-muted/50'
@@ -263,7 +264,7 @@ export function AssetTree({
                   {totalCount}
                 </span>
               )}
-            </div>
+            </button>
 
             <div className="my-1 mx-3 border-t border-border/50" />
 
@@ -295,8 +296,9 @@ export function AssetTree({
             <div className="my-1 mx-3 border-t border-border/50" />
 
             {/* Ungrouped */}
-            <div
-              className={`flex items-center gap-2 px-2 py-1.5 rounded-sm cursor-pointer transition-colors ${
+            <button
+              type="button"
+              className={`flex items-center gap-2 px-2 py-1.5 rounded-sm cursor-pointer transition-colors w-full text-left ${
                 selectedGroup === '__ungrouped__'
                   ? 'bg-primary/15 border-l-2 border-primary font-medium'
                   : 'hover:bg-muted/50 text-muted-foreground italic'
@@ -306,7 +308,7 @@ export function AssetTree({
             >
               <span className="w-2 h-2 rounded-full bg-muted-foreground/40 shrink-0" />
               <span className="text-[14px]">Ungrouped</span>
-            </div>
+            </button>
           </>
         )}
       </div>

@@ -136,9 +136,18 @@ export function AssetTreeNode({
             : 'hover:bg-muted/50'
         }`}
         style={{ paddingLeft: isSelected ? paddingLeft - 2 : paddingLeft, paddingRight: 8 }}
+        role="button"
+        tabIndex={0}
         onClick={() => {
           onToggleExpand(group.name)
           onSelectGroup(group.name)
+        }}
+        onKeyDown={e => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault()
+            onToggleExpand(group.name)
+            onSelectGroup(group.name)
+          }
         }}
         onContextMenu={e => {
           e.preventDefault()
@@ -234,7 +243,15 @@ export function AssetTreeNode({
                     : 'hover:bg-muted/50'
                 }`}
                 style={{ paddingLeft: isAssetSelected ? assetPadding - 2 : assetPadding, paddingRight: 8 }}
+                role="button"
+                tabIndex={0}
                 onClick={() => onSelectAsset?.(m.asset_name)}
+                onKeyDown={e => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault()
+                    onSelectAsset?.(m.asset_name)
+                  }
+                }}
                 onContextMenu={e => {
                   e.preventDefault()
                   openAssetMenu(e.clientX, e.clientY, m.asset_name, m.asset_id)
