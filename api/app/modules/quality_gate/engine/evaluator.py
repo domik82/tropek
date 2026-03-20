@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
-from typing import Any
-
 from app.modules.quality_gate.engine.criteria import evaluate_criteria, parse_criteria_string
 from app.modules.quality_gate.engine.result_models import (
+    CriteriaTarget,
     EvaluationResult,
+    IndicatorResult,
     ObjectiveResult,
     TotalScore,
 )
@@ -18,21 +18,22 @@ def _build_targets(
     objective: SLOObjective,
     value: float | None,
     baseline: float | None,
+    *,
     is_pass: bool,
-) -> list[dict[str, Any]]:
+) -> list[CriteriaTarget]:
     """Build the pass or warning target list for a single objective."""
     criteria_list = objective.pass_criteria if is_pass else objective.warning_criteria
-    targets = []
+    targets: list[CriteriaTarget] = []
     for raw in criteria_list:
         c = parse_criteria_string(raw)
         target_value = c.compute_target_value(baseline)
         violated = not evaluate_criteria(c, value, baseline) if value is not None else True
         targets.append(
-            {
-                "criteria": raw,
-                "target_value": target_value,
-                "violated": violated,
-            }
+            CriteriaTarget(
+                criteria=raw,
+                target_value=target_value,
+                violated=violated,
+            )
         )
     return targets
 
@@ -49,15 +50,15 @@ def evaluate(
 
     Args:
         slo: Validated SLO model containing objectives, comparison, and score thresholds.
-        metrics: Metric name → scalar value. None means not retrieved.
-        baselines: Metric name → aggregated baseline for relative criteria.
+        metrics: Metric name -> scalar value. None means not retrieved.
+        baselines: Metric name -> aggregated baseline for relative criteria.
         compared_evaluation_ids: IDs of evaluations used for baseline computation.
 
     Returns:
         EvaluationResult with overall result, score, and per-indicator breakdown.
     """
     objective_results: list[ObjectiveResult] = []
-    indicator_results: list[dict[str, Any]] = []
+    indicator_results: list[IndicatorResult] = []
 
     for obj in slo.objectives:
         value = metrics.get(obj.sli)
@@ -68,26 +69,26 @@ def evaluate(
         pass_targets = _build_targets(obj, value, baseline, is_pass=True)
         warning_targets = _build_targets(obj, value, baseline, is_pass=False)
 
-        ir: dict[str, Any] = {
-            "metric": obj.sli,
-            "display_name": obj.display_name,
-            "value": value,
-            "compared_value": baseline,
-            "status": obj_result.status.value,
-            "score": obj_result.score,
-            "weight": obj.weight,
-            "key_sli": obj.key_sli,
-            "pass_targets": pass_targets,
-            "warning_targets": warning_targets if obj.warning_criteria else None,
-            "change_absolute": (value - baseline)
-            if value is not None and baseline is not None
-            else None,
-            "change_relative_pct": (
+        ir = IndicatorResult(
+            metric=obj.sli,
+            display_name=obj.display_name,
+            value=value,
+            compared_value=baseline,
+            status=obj_result.status.value,
+            score=obj_result.score,
+            weight=obj.weight,
+            key_sli=obj.key_sli,
+            pass_targets=pass_targets,
+            warning_targets=warning_targets if obj.warning_criteria else None,
+            change_absolute=(
+                (value - baseline) if value is not None and baseline is not None else None
+            ),
+            change_relative_pct=(
                 ((value / baseline) - 1) * 100
                 if value is not None and baseline is not None and baseline != 0
                 else None
             ),
-        }
+        )
         indicator_results.append(ir)
 
     total: TotalScore = calculate_total_score(objective_results, slo.total_score)

@@ -92,7 +92,7 @@ async def _query_adapter(
 async def _resolve_baselines(
     repo: EvaluationRepository,
     slo: SLO,
-    ev: Any,
+    ev: Evaluation,
     indicator_names: list[str],
 ) -> tuple[dict[str, float | None], list[str]]:
     """Fetch baseline evaluations and aggregate per-metric values.
@@ -241,12 +241,17 @@ async def run_evaluation(
     )
     eval_result = evaluate(slo, metrics_fetched, baselines, compared_eval_ids)
 
+    # Serialize typed indicator results for JSONB storage
+    indicator_dicts: list[dict[str, Any]] = [
+        ir.model_dump() for ir in eval_result.indicator_results
+    ]
+
     # Write results
     await repo.mark_completed(
         eval_id,
         result=eval_result.result,
         score=eval_result.score,
-        indicator_results=eval_result.indicator_results,
+        indicator_results=indicator_dicts,
         slo_name=ev.slo_name,
         slo_version=ev.slo_version,
         job_stats={"fetch_errors": fetch_errors},
@@ -258,15 +263,15 @@ async def run_evaluation(
         {
             "eval_id": eval_id,
             "eval_start": ev.period_start,
-            "metric_name": ir["metric"],
-            "aggregation": ir.get("aggregation", "raw"),
-            "value": ir["value"],
+            "metric_name": ir.metric,
+            "aggregation": "raw",
+            "value": ir.value,
             "asset_name": asset_snapshot.get("name"),
             "evaluation_name": ev.evaluation_name,
             "os_tag": asset_labels.get("os"),
         }
         for ir in eval_result.indicator_results
-        if ir.get("value") is not None
+        if ir.value is not None
     ]
     if sli_rows:
         await repo.write_sli_values(sli_rows)
