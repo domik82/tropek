@@ -1,5 +1,5 @@
 // ui/src/features/evaluations/components/EvaluationNotesSection.tsx
-import { useRef } from 'react'
+import { useRef, forwardRef, useImperativeHandle } from 'react'
 import { AnnotationSection, type AnnotationSectionHandle } from './AnnotationForm'
 import type { Annotation } from '../types'
 
@@ -12,27 +12,36 @@ export interface EvaluationNotesSectionHandle {
   openFormAndScroll: () => void
 }
 
-export function EvaluationNotesSection({ evaluationId, annotations }: Props) {
-  const notesRef = useRef<AnnotationSectionHandle>(null)
+export const EvaluationNotesSection = forwardRef<EvaluationNotesSectionHandle, Props>(
+  function EvaluationNotesSection({ evaluationId, annotations }, ref) {
+    const notesRef = useRef<AnnotationSectionHandle>(null)
+    const sectionRef = useRef<HTMLDivElement>(null)
 
-  return (
-    <div id="notes-section">
-      <AnnotationSection ref={notesRef} evalId={evaluationId} annotations={annotations} />
-    </div>
-  )
-}
+    useImperativeHandle(ref, () => ({
+      openFormAndScroll: () => {
+        notesRef.current?.openForm()
+        sectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      },
+    }))
+
+    return (
+      <div ref={sectionRef}>
+        <AnnotationSection ref={notesRef} evalId={evaluationId} annotations={annotations} />
+      </div>
+    )
+  },
+)
 
 /**
- * Convenience hook-like pattern: returns a ref to attach to EvaluationNotesSection
- * and a handler that opens the form + scrolls to the notes section.
+ * Returns a ref to attach to EvaluationNotesSection and a handler
+ * that opens the form + scrolls into view.
  */
 export function useNotesActions() {
-  const notesRef = useRef<AnnotationSectionHandle>(null)
+  const notesSectionRef = useRef<EvaluationNotesSectionHandle>(null)
 
   function handleAddNote() {
-    notesRef.current?.openForm()
-    document.getElementById('notes-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    notesSectionRef.current?.openFormAndScroll()
   }
 
-  return { notesRef, handleAddNote }
+  return { notesSectionRef, handleAddNote }
 }

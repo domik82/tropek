@@ -20,7 +20,7 @@ export function EvaluationDetailPage() {
 
   const { data: ev, isLoading } = useEvaluationDetail(id!)
   const [activeAction, setActiveAction] = useState<ActionKind | null>(null)
-  const { handleAddNote } = useNotesActions()
+  const { notesSectionRef, handleAddNote } = useNotesActions()
 
   if (isLoading) return <div className="p-6 text-slate-400">Loading…</div>
   if (!ev) return <div className="p-6 text-red-400">Evaluation not found.</div>
@@ -63,7 +63,7 @@ export function EvaluationDetailPage() {
         />
       )}
 
-      <EvaluationNotesSection evaluationId={id!} annotations={ev.annotations} />
+      <EvaluationNotesSection ref={notesSectionRef} evaluationId={id!} annotations={ev.annotations} />
 
       <EvaluationIndicatorSection evaluation={ev} />
     </div>

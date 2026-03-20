@@ -1,4 +1,5 @@
 // ui/src/features/navigator/components/AssetPanelHeatmapView.tsx
+import { useRef, useCallback } from 'react'
 import { AssetHeatmap } from './AssetHeatmap'
 import { MetricTrendBlock } from '@/features/evaluations/components/MetricTrendBlock'
 import { SLIBreakdownTable } from '@/features/evaluations/components/SLIBreakdownTable'
@@ -7,10 +8,6 @@ import { ViewToggle } from '@/components/charts/ViewToggle'
 import type { ViewMode } from '@/components/charts/ViewToggle'
 import type { MetricHeatmapResponse } from '../types'
 import type { EvaluationDetail, IndicatorResult } from '@/features/evaluations/types'
-
-function scrollTo(id: string) {
-  document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-}
 
 interface Props {
   assetName: string
@@ -35,6 +32,12 @@ export function AssetPanelHeatmapView({
   onEvalSelect, mode, setMode, explorerButton,
   availableGroups, counts, activeTab, setActiveTab, tabIndicators,
 }: Props) {
+  const sliTableRef = useRef<HTMLDivElement>(null)
+
+  const handleScrollToTable = useCallback(() => {
+    sliTableRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }, [])
+
   return (
     <>
       {/* Metric Heatmap with view toggle */}
@@ -58,7 +61,7 @@ export function AssetPanelHeatmapView({
 
       {/* SLI Breakdown */}
       {ev && (
-        <div id="sli-table" className="space-y-0 scroll-mt-4">
+        <div ref={sliTableRef} className="space-y-0 scroll-mt-4">
           <div className="flex items-center justify-between mb-2">
             <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wide">SLI Breakdown</h2>
           </div>
@@ -73,7 +76,9 @@ export function AssetPanelHeatmapView({
             indicators={tabIndicators}
             onIndicatorClick={(metric, tabGroup) => {
               if (activeTab !== 'all') setActiveTab(tabGroup)
-              setTimeout(() => scrollTo(`trend-${metric}`), 50)
+              // Trend blocks are dynamic list items — use id-based scroll
+              const el = document.getElementById(`trend-${metric}`)
+              if (el) setTimeout(() => el.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50)
             }}
           />
         </div>
@@ -89,7 +94,13 @@ export function AssetPanelHeatmapView({
           </p>
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
             {tabIndicators.map(ind => (
-              <MetricTrendBlock key={ind.metric} evalId={effectiveEvalId} indicator={ind} onEvalSelect={onEvalSelect} />
+              <MetricTrendBlock
+                key={ind.metric}
+                evalId={effectiveEvalId}
+                indicator={ind}
+                onEvalSelect={onEvalSelect}
+                onScrollToTable={handleScrollToTable}
+              />
             ))}
           </div>
         </div>
