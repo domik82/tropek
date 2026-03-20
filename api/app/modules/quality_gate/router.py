@@ -22,9 +22,10 @@ from app.modules.common.errors import raise_not_found
 from app.modules.common.schemas import PagedResponse
 from app.modules.datasource.repository import DataSourceRepository
 from app.modules.quality_gate.annotation_repository import AnnotationRepository
+from app.modules.quality_gate.exceptions import DuplicateEvaluationError
 from app.modules.quality_gate.re_evaluation_schemas import ReEvaluateRequest, ReEvaluateResponse
 from app.modules.quality_gate.re_evaluator import re_evaluate
-from app.modules.quality_gate.repository import DuplicateEvaluationError, EvaluationRepository
+from app.modules.quality_gate.repository import EvaluationRepository
 from app.modules.quality_gate.schemas import (
     AnnotationCreate,
     AnnotationHide,
