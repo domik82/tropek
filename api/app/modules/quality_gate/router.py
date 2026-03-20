@@ -10,7 +10,7 @@ from arq.connections import ArqRedis
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.models import AssetGroupSLOLink, AssetSLOLink, EvaluationBatch
+from app.db.models import AssetGroupSLOLink, AssetSLOLink, Evaluation, EvaluationBatch
 from app.db.session import get_session
 from app.modules.assets.repository import (
     AssetGroupRepository,
@@ -18,6 +18,7 @@ from app.modules.assets.repository import (
     AssetRepository,
     AssetSLOLinkRepository,
 )
+from app.modules.assets.schemas import AssetGroupMemberRead
 from app.modules.common.errors import raise_not_found
 from app.modules.common.schemas import PagedResponse
 from app.modules.datasource.repository import DataSourceRepository
@@ -46,7 +47,7 @@ from app.modules.quality_gate.schemas import (
     TriggerRequest,
     TriggerResponse,
 )
-from app.modules.quality_gate.trigger import resolve_single_trigger
+from app.modules.quality_gate.trigger import TriggerContext, resolve_single_trigger
 from app.modules.sli_registry.repository import SLIRepository
 from app.modules.slo_registry.repository import SLORepository
 from app.queue import get_arq_pool
@@ -96,7 +97,7 @@ def _build_summary(
     )
 
 
-def _build_detail(ev: Any) -> EvaluationDetail:
+def _build_detail(ev: Evaluation) -> EvaluationDetail:
     """Construct EvaluationDetail from an ORM Evaluation with annotations loaded."""
     annotations = [
         AnnotationRead.model_validate(a) for a in (ev.annotations or []) if a.hidden_at is None
@@ -209,18 +210,18 @@ async def trigger_evaluation(
 
 
 async def _scan_batch_members(
-    members: list[Any],
+    members: list[AssetGroupMemberRead],
     body: BatchTriggerRequest,
-    group_links: list[Any],
+    group_links: list[AssetGroupSLOLink],
     asset_repo: AssetRepository,
     slo_link_repo: AssetSLOLinkRepository,
     sli_repo: SLIRepository,
     slo_repo: SLORepository,
     ds_repo: DataSourceRepository,
     eval_repo: EvaluationRepository,
-) -> tuple[list[tuple[Any, str]], list[BatchConflict]]:
+) -> tuple[list[tuple[TriggerContext, str]], list[BatchConflict]]:
     """Resolve all triggers in a batch and scan for duplicates."""
-    resolved: list[tuple[Any, str]] = []
+    resolved: list[tuple[TriggerContext, str]] = []
     conflicts: list[BatchConflict] = []
 
     for member in members:
@@ -564,6 +565,7 @@ async def pin_baseline(
     if ev.invalidated:
         raise HTTPException(status_code=409, detail="cannot pin an invalidated evaluation")
     updated = await repo.pin_baseline(eval_id, reason=body.reason, author=body.author)
+    assert updated is not None  # guarded by get_by_id above
     return _build_detail(updated)
 
 
@@ -578,6 +580,7 @@ async def unpin_baseline(
     if ev is None:
         raise HTTPException(status_code=404, detail="evaluation not found")
     updated = await repo.unpin_baseline(eval_id)
+    assert updated is not None  # guarded by get_by_id above
     return _build_detail(updated)
 
 
@@ -599,6 +602,7 @@ async def override_status(
     updated = await repo.override_status(
         eval_id, new_result=body.new_result, reason=body.reason, author=body.author
     )
+    assert updated is not None  # guarded by get_by_id above
     return _build_detail(updated)
 
 
@@ -615,6 +619,7 @@ async def restore_override(
     if ev.original_result is None:
         raise HTTPException(status_code=409, detail="evaluation has no override to restore")
     updated = await repo.restore_override(eval_id)
+    assert updated is not None  # guarded by get_by_id above
     return _build_detail(updated)
 
 
