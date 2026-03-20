@@ -2,16 +2,10 @@ import { useState, useMemo, useCallback } from 'react'
 import { Search, X, Plus, MoreHorizontal, FolderTree, Settings } from 'lucide-react'
 import { useAssetGroups } from '@/features/assets/hooks'
 import { countLeafMembers } from '@/features/navigator/components/treeUtils'
-import { GroupCreateDialog } from '@/features/slos/components/GroupCreateDialog'
-import { GroupEditDialog } from '@/features/slos/components/GroupEditDialog'
-import { GroupDeleteDialog } from '@/features/slos/components/GroupDeleteDialog'
-import { SloLinkDialog } from '@/features/slos/components/SloLinkDialog'
-import { AssetTypesDialog } from '@/features/assets/components/AssetTypesDialog'
-import { AddAssetToGroupDialog } from '@/features/assets/components/AddAssetToGroupDialog'
-import { AssetEditDialog } from '@/features/assets/components/AssetEditDialog'
 import { AssetTreeNode } from './AssetTreeNode'
 import { AssetTreeContextMenu } from './AssetTreeContextMenu'
 import { AssetTreeFooter } from './AssetTreeFooter'
+import { AssetTreeDialogs, useDialogState } from './AssetTreeDialogs'
 import { useAssetTreeActions } from './useAssetTreeActions'
 import type { TreeMode, ContextMenuState } from './types'
 
@@ -40,73 +34,58 @@ export function AssetTree({
 }: AssetTreeProps) {
   const { data: tree, isLoading } = useAssetGroups()
 
-  // Filter
   const [filter, setFilter] = useState('')
-
-  // Expand/collapse
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set())
-
-  // Context menu
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null)
-
-  // Inline rename
   const [renamingGroup, setRenamingGroup] = useState<string | null>(null)
-
-  // Bulk actions menu
   const [bulkMenuOpen, setBulkMenuOpen] = useState(false)
 
-  // Dialog state (only used if external callbacks not provided)
-  const [createDialogOpen, setCreateDialogOpen] = useState(false)
-  const [editingGroupName, setEditingGroupName] = useState<string | null>(null)
-  const [deletingGroupName, setDeletingGroupName] = useState<string | null>(null)
-  const [linkingGroupName, setLinkingGroupName] = useState<string | null>(null)
-  const [typesDialogOpen, setTypesDialogOpen] = useState(false)
-  const [addAssetGroupName, setAddAssetGroupName] = useState<string | null>(null)
-  const [editingAssetName, setEditingAssetName] = useState<string | null>(null)
+  // Dialog state
+  const { dialogState, updateDialog } = useDialogState()
 
-  // SLO link counts for slo mode (batch endpoint not yet available)
+  // SLO link counts
   const sloLinkCounts = useSloLinkCounts()
 
   const handleCreateGroup = useCallback((parentName?: string) => {
     if (externalCreateGroup) {
       externalCreateGroup()
     } else {
-      void parentName // GroupCreateDialog has its own parent selector
-      setCreateDialogOpen(true)
+      void parentName
+      updateDialog('createDialogOpen', true)
     }
-  }, [externalCreateGroup])
+  }, [externalCreateGroup, updateDialog])
 
   const handleEditGroup = useCallback((name: string) => {
     if (externalEditGroup) {
       externalEditGroup(name)
     } else {
-      setEditingGroupName(name)
+      updateDialog('editingGroupName', name)
     }
-  }, [externalEditGroup])
+  }, [externalEditGroup, updateDialog])
 
   const handleDeleteGroup = useCallback((name: string) => {
     if (externalDeleteGroup) {
       externalDeleteGroup(name)
     } else {
-      setDeletingGroupName(name)
+      updateDialog('deletingGroupName', name)
     }
-  }, [externalDeleteGroup])
+  }, [externalDeleteGroup, updateDialog])
 
   const handleAddSloLink = useCallback((groupName: string) => {
     if (externalAddSloLink) {
       externalAddSloLink(groupName)
     } else {
-      setLinkingGroupName(groupName)
+      updateDialog('linkingGroupName', groupName)
     }
-  }, [externalAddSloLink])
+  }, [externalAddSloLink, updateDialog])
 
   const { dispatch, handleRename } = useAssetTreeActions(mode, {
     onCreateGroup: handleCreateGroup,
     onEditGroup: handleEditGroup,
     onDeleteGroup: handleDeleteGroup,
     onAddSloLink: handleAddSloLink,
-    onAddAssetToGroup: setAddAssetGroupName,
-    onEditAsset: setEditingAssetName,
+    onAddAssetToGroup: (name) => updateDialog('addAssetGroupName', name),
+    onEditAsset: (name) => updateDialog('editingAssetName', name),
     onStartRename: setRenamingGroup,
     onSelectAsset,
   })
@@ -129,7 +108,6 @@ export function AssetTree({
     setRenamingGroup(null)
   }, [handleRename])
 
-  // Total count for "All" item
   const totalCount = useMemo(() => {
     if (!tree) return 0
     if (mode === 'navigator') {
@@ -140,7 +118,6 @@ export function AssetTree({
     return total
   }, [tree, mode, sloLinkCounts])
 
-  // Bulk actions
   const expandAll = useCallback(() => {
     if (!tree) return
     setExpandedGroups(new Set(tree.all_groups.map(g => g.name)))
@@ -195,7 +172,7 @@ export function AssetTree({
                     <div className="my-1 mx-2 border-t border-border" />
                     <button
                       className="w-full px-3 py-1.5 text-sm text-left hover:bg-accent transition-colors flex items-center gap-2 text-[#58A6FF]"
-                      onClick={() => { setTypesDialogOpen(true); setBulkMenuOpen(false) }}
+                      onClick={() => { updateDialog('typesDialogOpen', true); setBulkMenuOpen(false) }}
                     >
                       <Settings className="w-4 h-4" />
                       Manage Asset Types
@@ -328,50 +305,24 @@ export function AssetTree({
         />
       )}
 
-      {/* Dialogs (self-managed when no external callbacks) */}
-      {!externalCreateGroup && (
-        <GroupCreateDialog
-          open={createDialogOpen}
-          onOpenChange={setCreateDialogOpen}
-        />
-      )}
-      {!externalEditGroup && (
-        <GroupEditDialog
-          open={editingGroupName !== null}
-          onOpenChange={open => { if (!open) setEditingGroupName(null) }}
-          groupName={editingGroupName}
-        />
-      )}
-      {!externalDeleteGroup && (
-        <GroupDeleteDialog
-          open={deletingGroupName !== null}
-          onOpenChange={open => { if (!open) setDeletingGroupName(null) }}
-          groupName={deletingGroupName}
-          onDeleted={() => {
-            if (deletingGroupName === selectedGroup) onSelectGroup(null)
-            setDeletingGroupName(null)
-          }}
-        />
-      )}
-      <AssetTypesDialog open={typesDialogOpen} onOpenChange={setTypesDialogOpen} />
-      <AddAssetToGroupDialog
-        open={addAssetGroupName !== null}
-        onOpenChange={open => { if (!open) setAddAssetGroupName(null) }}
-        groupName={addAssetGroupName}
+      {/* Dialogs */}
+      <AssetTreeDialogs
+        dialogState={dialogState}
+        mode={mode}
+        selectedGroup={selectedGroup}
+        onSelectGroup={onSelectGroup}
+        onCloseCreate={() => updateDialog('createDialogOpen', false)}
+        onCloseEdit={() => updateDialog('editingGroupName', null)}
+        onCloseDelete={() => updateDialog('deletingGroupName', null)}
+        onCloseLink={() => updateDialog('linkingGroupName', null)}
+        onCloseTypes={() => updateDialog('typesDialogOpen', false)}
+        onCloseAddAsset={() => updateDialog('addAssetGroupName', null)}
+        onCloseEditAsset={() => updateDialog('editingAssetName', null)}
+        hasExternalCreateGroup={!!externalCreateGroup}
+        hasExternalEditGroup={!!externalEditGroup}
+        hasExternalDeleteGroup={!!externalDeleteGroup}
+        hasExternalAddSloLink={!!externalAddSloLink}
       />
-      <AssetEditDialog
-        open={editingAssetName !== null}
-        onOpenChange={open => { if (!open) setEditingAssetName(null) }}
-        assetName={editingAssetName}
-      />
-
-      {!externalAddSloLink && mode === 'slo' && (
-        <SloLinkDialog
-          open={linkingGroupName !== null}
-          onOpenChange={open => { if (!open) setLinkingGroupName(null) }}
-          lockedGroupName={linkingGroupName ?? undefined}
-        />
-      )}
     </div>
   )
 }
@@ -381,8 +332,5 @@ export function AssetTree({
  * In navigator mode, returns an empty map (no fetches).
  */
 function useSloLinkCounts(): Map<string, number> {
-  // For slo mode, we fetch links per selected group on demand in the parent.
-  // For now, return empty map — the count will show 0 until we have a batch endpoint.
-  // The SLO Registry page already fetches links for the selected group.
   return useMemo(() => new Map<string, number>(), [])
 }
