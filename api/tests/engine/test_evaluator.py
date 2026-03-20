@@ -32,8 +32,8 @@ def test_relative_criteria_with_baseline_pass(slo_fixture) -> None:
         metrics,
         baselines={"response_time_p99": 500.0},
     )
-    rt = next(r for r in result.indicator_results if r["metric"] == "response_time_p99")
-    assert rt["status"] == "pass"
+    rt = next(r for r in result.indicator_results if r.metric == "response_time_p99")
+    assert rt.status == "pass"
 
 
 def test_relative_criteria_exceeded_falls_to_warning(slo_fixture) -> None:
@@ -44,8 +44,8 @@ def test_relative_criteria_exceeded_falls_to_warning(slo_fixture) -> None:
         metrics,
         baselines={"response_time_p99": 550.0},
     )
-    rt = next(r for r in result.indicator_results if r["metric"] == "response_time_p99")
-    assert rt["status"] == "warning"
+    rt = next(r for r in result.indicator_results if r.metric == "response_time_p99")
+    assert rt.status == "warning"
 
 
 def test_indicator_results_count(slo_fixture) -> None:
@@ -57,7 +57,7 @@ def test_indicator_results_count(slo_fixture) -> None:
 def test_indicator_results_contain_all_metrics(slo_fixture) -> None:
     metrics = {"response_time_p99": 550.0, "error_rate": 0.0, "compilation_s": 45.0}
     result = evaluate(slo_fixture("full_evaluation.yaml"), metrics, baselines={})
-    names = {r["metric"] for r in result.indicator_results}
+    names = {r.metric for r in result.indicator_results}
     assert names == {"response_time_p99", "error_rate", "compilation_s"}
 
 
@@ -68,9 +68,9 @@ def test_change_relative_pct_computed(slo_fixture) -> None:
         metrics,
         baselines={"response_time_p99": 500.0},
     )
-    rt = next(r for r in result.indicator_results if r["metric"] == "response_time_p99")
-    assert rt["change_relative_pct"] == pytest.approx(10.0)
-    assert rt["change_absolute"] == pytest.approx(50.0)
+    rt = next(r for r in result.indicator_results if r.metric == "response_time_p99")
+    assert rt.change_relative_pct == pytest.approx(10.0)
+    assert rt.change_absolute == pytest.approx(50.0)
 
 
 def test_compared_evaluation_ids_stored(slo_fixture) -> None:
@@ -91,7 +91,7 @@ def test_pass_targets_included(slo_fixture) -> None:
         metrics,
         baselines={"response_time_p99": 500.0},
     )
-    rt = next(r for r in result.indicator_results if r["metric"] == "response_time_p99")
-    criteria_strs = [t["criteria"] for t in rt["pass_targets"]]
+    rt = next(r for r in result.indicator_results if r.metric == "response_time_p99")
+    criteria_strs = [t.criteria for t in rt.pass_targets]
     assert "<600" in criteria_strs
     assert "<=+10%" in criteria_strs
