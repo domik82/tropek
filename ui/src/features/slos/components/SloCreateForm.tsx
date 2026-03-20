@@ -128,7 +128,7 @@ export function SloCreateForm({ onCancel, onSaved }: Props) {
           </div>
           <div>
             <label className="block text-xs text-slate-500 mb-1">Author</label>
-            <input {...register('author')} className={inp} placeholder="jane.doe" />
+            <input {...register('author')} className={inp} placeholder="jane.doe" autoComplete="name" />
           </div>
           <div>
             <label className="block text-xs text-slate-500 mb-1">Notes</label>
