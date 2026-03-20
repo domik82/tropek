@@ -23,6 +23,7 @@ from app.modules.common.schemas import PagedResponse
 from app.modules.datasource.repository import DataSourceRepository
 from app.modules.quality_gate.annotation_repository import AnnotationRepository
 from app.modules.quality_gate.exceptions import DuplicateEvaluationError
+from app.modules.quality_gate.presenter import build_detail, build_summary
 from app.modules.quality_gate.re_evaluation_schemas import ReEvaluateRequest, ReEvaluateResponse
 from app.modules.quality_gate.re_evaluator import re_evaluate
 from app.modules.quality_gate.repository import EvaluationRepository
@@ -36,10 +37,8 @@ from app.modules.quality_gate.schemas import (
     BatchTriggerResponse,
     EvaluationDetail,
     EvaluationSummary,
-    FailingIndicator,
     HeatmapCell,
     HeatmapMetric,
-    IndicatorResult,
     InvalidateRequest,
     MetricHeatmapResponse,
     OverrideStatusRequest,
@@ -55,66 +54,6 @@ from app.modules.slo_registry.repository import SLORepository
 from app.queue import get_arq_pool
 
 router = APIRouter()
-
-
-def _build_summary(
-    ev: object, annotation_count: int, latest_ann: object | None
-) -> EvaluationSummary:
-    """Construct EvaluationSummary with computed fields from a bare Evaluation ORM object."""
-    indicator_results: list[dict[str, Any]] = getattr(ev, "indicator_results", []) or []
-    top_failures = [
-        FailingIndicator(
-            metric=ind["metric"],
-            display_name=ind.get("display_name", ind["metric"]),
-            value=ind["value"],
-            threshold=(ind.get("pass_targets") or [{}])[0].get("criteria", ""),
-        )
-        for ind in indicator_results
-        if ind.get("status") == "fail"
-    ]
-    job_stats = getattr(ev, "job_stats", None) or {}
-    return EvaluationSummary.model_validate(
-        {
-            **ev.__dict__,
-            "original_score": job_stats.get("original_score"),
-            "annotation_count": annotation_count,
-            "latest_annotation": latest_ann,
-            "top_failures": top_failures,
-        }
-    )
-
-
-def _build_detail(ev: Any) -> EvaluationDetail:
-    """Construct EvaluationDetail from an ORM Evaluation with annotations loaded."""
-    annotations = [
-        AnnotationRead.model_validate(a) for a in (ev.annotations or []) if a.hidden_at is None
-    ]
-    indicator_results = [IndicatorResult(**ir) for ir in (ev.indicator_results or [])]
-    job_stats_detail = ev.job_stats or {}
-    compared_ids = job_stats_detail.get("compared_evaluation_ids", [])
-    top_failures = [
-        FailingIndicator(
-            metric=ind.metric,
-            display_name=ind.display_name,
-            value=ind.value,
-            threshold=(ind.pass_targets or [{}])[0].get("criteria", ""),
-        )
-        for ind in indicator_results
-        if ind.status == "fail"
-    ]
-    sorted_annotations = sorted(annotations, key=lambda a: a.created_at)
-    return EvaluationDetail.model_validate(
-        {
-            **ev.__dict__,
-            "original_score": job_stats_detail.get("original_score"),
-            "annotation_count": len(annotations),
-            "latest_annotation": sorted_annotations[-1] if sorted_annotations else None,
-            "top_failures": top_failures,
-            "compared_evaluation_ids": [uuid.UUID(eid) for eid in compared_ids],
-            "annotations": sorted_annotations,
-            "indicator_results": indicator_results,
-        }
-    )
 
 
 # ---- Evaluations ----
@@ -401,7 +340,7 @@ async def list_evaluations(
         offset=offset,
     )
     items = [
-        _build_summary(
+        build_summary(
             ev,
             annotation_count=count_map.get(ev.id, 0),
             latest_ann=latest_map.get(ev.id),
@@ -483,30 +422,7 @@ async def get_evaluation(
     ev = await repo.get_by_id(eval_id)
     if ev is None:
         raise_not_found("evaluation", str(eval_id))
-    annotations = [AnnotationRead.model_validate(a) for a in ev.annotations if a.hidden_at is None]
-    indicator_results = [IndicatorResult(**ind) for ind in (ev.indicator_results or [])]
-    top_failures = [
-        FailingIndicator(
-            metric=ind.metric,
-            display_name=ind.display_name,
-            value=ind.value,
-            threshold=(ind.pass_targets or [{}])[0].get("criteria", ""),
-        )
-        for ind in indicator_results
-        if ind.status == "fail"
-    ]
-    sorted_annotations = sorted(annotations, key=lambda a: a.created_at)
-    return EvaluationDetail.model_validate(
-        {
-            **ev.__dict__,
-            "annotation_count": len(annotations),
-            "latest_annotation": sorted_annotations[-1] if sorted_annotations else None,
-            "top_failures": top_failures,
-            "annotations": annotations,
-            "indicator_results": indicator_results,
-            "compared_evaluation_ids": [],
-        }
-    )
+    return build_detail(ev)
 
 
 @router.patch("/evaluations/{eval_id}/invalidate", response_model=EvaluationSummary)
@@ -520,7 +436,7 @@ async def invalidate_evaluation(
     ev = await repo.invalidate(eval_id, note=body.invalidation_note)
     if ev is None:
         raise_not_found("evaluation", str(eval_id))
-    return _build_summary(ev, annotation_count=0, latest_ann=None)
+    return build_summary(ev, annotation_count=0, latest_ann=None)
 
 
 @router.patch("/evaluations/{eval_id}/restore", response_model=EvaluationSummary)
@@ -533,7 +449,7 @@ async def restore_evaluation(
     ev = await repo.restore(eval_id)
     if ev is None:
         raise_not_found("evaluation", str(eval_id))
-    return _build_summary(ev, annotation_count=0, latest_ann=None)
+    return build_summary(ev, annotation_count=0, latest_ann=None)
 
 
 @router.patch("/evaluations/{eval_id}/pin-baseline", response_model=EvaluationDetail)
@@ -552,7 +468,7 @@ async def pin_baseline(
     if ev.invalidated:
         raise HTTPException(status_code=409, detail="cannot pin an invalidated evaluation")
     updated = await repo.pin_baseline(eval_id, reason=body.reason, author=body.author)
-    return _build_detail(updated)
+    return build_detail(updated)
 
 
 @router.patch("/evaluations/{eval_id}/unpin-baseline", response_model=EvaluationDetail)
@@ -566,7 +482,7 @@ async def unpin_baseline(
     if ev is None:
         raise HTTPException(status_code=404, detail="evaluation not found")
     updated = await repo.unpin_baseline(eval_id)
-    return _build_detail(updated)
+    return build_detail(updated)
 
 
 @router.patch("/evaluations/{eval_id}/override-status", response_model=EvaluationDetail)
@@ -587,7 +503,7 @@ async def override_status(
     updated = await repo.override_status(
         eval_id, new_result=body.new_result, reason=body.reason, author=body.author
     )
-    return _build_detail(updated)
+    return build_detail(updated)
 
 
 @router.patch("/evaluations/{eval_id}/restore-override", response_model=EvaluationDetail)
@@ -603,7 +519,7 @@ async def restore_override(
     if ev.original_result is None:
         raise HTTPException(status_code=409, detail="evaluation has no override to restore")
     updated = await repo.restore_override(eval_id)
-    return _build_detail(updated)
+    return build_detail(updated)
 
 
 # ---- Annotations ----
