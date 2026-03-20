@@ -53,6 +53,7 @@ export function MetricTrendBlock({ evalId, indicator, onEvalSelect, onScrollToTa
           onClick={onScrollToTable ?? defaultScrollToTable}
           className="text-sm font-medium text-slate-200 hover:text-indigo-300 transition-colors"
           title="Back to SLI table"
+          aria-label="Back to SLI table"
         >
           ↑ top
         </button>

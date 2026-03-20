@@ -51,6 +51,7 @@ export function AddNoteForm({ evalId, onClose }: Props) {
               value={author}
               onChange={e => setAuthor(e.target.value)}
               placeholder="Author"
+              autoComplete="name"
             />
             <Input
               value={category}
