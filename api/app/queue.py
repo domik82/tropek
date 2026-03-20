@@ -7,6 +7,7 @@ import random
 import uuid
 from typing import Any, ClassVar, cast
 
+import structlog
 from arq import create_pool
 from arq.connections import ArqRedis, RedisSettings
 from fastapi import Request
@@ -15,6 +16,8 @@ from sqlalchemy.exc import DBAPIError
 from app.config import get_settings
 from app.db.session import get_session_factory
 from app.modules.quality_gate.worker import run_evaluation
+
+logger = structlog.get_logger()
 
 _MAX_DEADLOCK_RETRIES = 8
 
@@ -68,9 +71,22 @@ async def run_evaluation_job(ctx: dict[str, Any], eval_id_str: str) -> None:
             except DBAPIError as exc:
                 await session.rollback()
                 if _is_deadlock(exc) and attempt < _MAX_DEADLOCK_RETRIES - 1:
-                    base = 0.1 * 2**attempt
-                    await asyncio.sleep(base + random.uniform(0, base))  # noqa: S311
+                    backoff = 0.1 * 2**attempt
+                    jittered = backoff + random.uniform(0, backoff)  # noqa: S311
+                    logger.warning(
+                        "deadlock detected, retrying",
+                        evaluation_id=eval_id_str,
+                        attempt=attempt + 1,
+                        max_attempts=_MAX_DEADLOCK_RETRIES,
+                        backoff_seconds=round(jittered, 3),
+                    )
+                    await asyncio.sleep(jittered)
                     continue
+                logger.exception(
+                    "all deadlock retries exhausted",
+                    evaluation_id=eval_id_str,
+                    attempts=_MAX_DEADLOCK_RETRIES,
+                )
                 raise
             except Exception:
                 await session.rollback()

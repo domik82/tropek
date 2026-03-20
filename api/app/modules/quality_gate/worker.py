@@ -6,6 +6,7 @@ import uuid
 from typing import Any
 
 import httpx
+import structlog
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
@@ -22,6 +23,8 @@ from app.modules.quality_gate.repository import EvaluationRepository
 from app.modules.quality_gate.sli_repository import SLIValueRepository
 from app.modules.sli_registry.repository import SLIRepository
 from app.modules.slo_registry.repository import SLORepository
+
+logger = structlog.get_logger()
 
 
 class DefinitionLoadError(Exception):
@@ -103,6 +106,45 @@ async def _resolve_baselines(
     return baselines, compared_eval_ids
 
 
+async def _query_adapter_safe(
+    log: structlog.stdlib.BoundLogger,
+    repo: EvaluationRepository,
+    eval_id: uuid.UUID,
+    ds: Any,
+    resolved_queries: dict[str, str],
+    start: str,
+    end: str,
+) -> tuple[dict[str, float | None], dict[str, str]] | None:
+    """Query adapter, mark failed on error. Returns None if query failed."""
+    try:
+        adapter_client = HttpAdapterClient(
+            timeout=get_settings().reliability.adapter_timeout_seconds,
+        )
+        return await adapter_client.query(
+            adapter_url=ds.adapter_url,
+            datasource_name=ds.name,
+            queries=resolved_queries,
+            start=start,
+            end=end,
+        )
+    except httpx.ConnectError:
+        log.exception("adapter unreachable", adapter_url=ds.adapter_url)
+        await repo.mark_failed(
+            eval_id, job_stats={"error": f"could not reach adapter at {ds.adapter_url}"}
+        )
+        return None
+    except httpx.TimeoutException:
+        log.exception("adapter timeout", adapter_url=ds.adapter_url)
+        await repo.mark_failed(eval_id, job_stats={"error": "adapter query timed out"})
+        return None
+    except httpx.HTTPStatusError as exc:
+        log.exception("adapter error", status=exc.response.status_code)
+        await repo.mark_failed(
+            eval_id, job_stats={"error": f"adapter returned {exc.response.status_code}"}
+        )
+        return None
+
+
 async def run_evaluation(
     session: AsyncSession,
     eval_id: uuid.UUID,
@@ -124,17 +166,30 @@ async def run_evaluation(
         eval_id: UUID of the Evaluation row to execute.
         worker_id: Optional identifier of the worker process for observability.
     """
+    log = logger.bind(evaluation_id=str(eval_id), worker_id=worker_id)
+    log.info("evaluation started")
+
     repo = EvaluationRepository(session)
     await repo.mark_running(eval_id, worker_id)
 
     ev = await repo.get_by_id(eval_id)
     if ev is None:
+        log.error("evaluation not found, cannot proceed")
+        return
+
+    # Deduplication guard — skip if already processed
+    if ev.status not in ("pending", "running"):
+        log.warning(
+            "evaluation already processed, skipping",
+            status=ev.status,
+        )
         return
 
     # Load SLO + SLI definitions
     try:
         slo_def, sli_def = await _load_definitions(session, ev)
     except DefinitionLoadError as exc:
+        log.warning("definitions not found", reason=str(exc))
         await repo.mark_failed(eval_id, job_stats={"error": str(exc)})
         return
 
@@ -174,39 +229,30 @@ async def run_evaluation(
 
     # Query adapter
     if ev.data_source_name is None:
+        log.error("evaluation has no data_source_name")
         await repo.mark_failed(eval_id, job_stats={"error": "evaluation has no data_source_name"})
         return
     ds = await DataSourceRepository(session).get_by_name(ev.data_source_name)
     if ds is None:
+        log.error("datasource not found", datasource_name=ev.data_source_name)
         await repo.mark_failed(
             eval_id, job_stats={"error": f"datasource '{ev.data_source_name}' not found"}
         )
         return
 
-    try:
-        adapter_client = HttpAdapterClient(
-            timeout=get_settings().reliability.adapter_timeout_seconds,
-        )
-        metrics_fetched, fetch_errors = await adapter_client.query(
-            adapter_url=ds.adapter_url,
-            datasource_name=ds.name,
-            queries=resolved_queries,
-            start=ev.period_start.isoformat(),
-            end=ev.period_end.isoformat(),
-        )
-    except httpx.ConnectError:
-        await repo.mark_failed(
-            eval_id, job_stats={"error": f"could not reach adapter at {ds.adapter_url}"}
-        )
+    log.info("querying adapter", adapter_url=ds.adapter_url, metric_count=len(resolved_queries))
+    adapter_result = await _query_adapter_safe(
+        log=log,
+        repo=repo,
+        eval_id=eval_id,
+        ds=ds,
+        resolved_queries=resolved_queries,
+        start=ev.period_start.isoformat(),
+        end=ev.period_end.isoformat(),
+    )
+    if adapter_result is None:
         return
-    except httpx.TimeoutException:
-        await repo.mark_failed(eval_id, job_stats={"error": "adapter query timed out"})
-        return
-    except httpx.HTTPStatusError as exc:
-        await repo.mark_failed(
-            eval_id, job_stats={"error": f"adapter returned {exc.response.status_code}"}
-        )
-        return
+    metrics_fetched, fetch_errors = adapter_result
 
     # Resolve baselines (pin-aware) and evaluate
     baseline_repo = BaselineRepository(session)
@@ -250,3 +296,5 @@ async def run_evaluation(
     if sli_rows:
         sli_repo = SLIValueRepository(session)
         await sli_repo.write_sli_values(sli_rows)
+
+    log.info("evaluation completed", result=eval_result.result, score=eval_result.score)
