@@ -226,7 +226,7 @@ export function HeatmapChart({
     height === 'auto' ? Math.max(200, rows.length * 28 + 100) : height
 
   return (
-    <div className="w-full">
+    <div className="w-full" role="img" aria-label="Heatmap chart showing evaluation results by metric and time">
       {/* Instruction text above the chart */}
       {instructionText && (
         <div className="mb-1 px-1">
@@ -245,12 +245,13 @@ export function HeatmapChart({
         }}
       />
       {/* Colour legend below the chart */}
-      <div className="flex items-center justify-end gap-3 text-xs text-gray-400 mt-1 px-1">
+      <div className="flex items-center justify-end gap-3 text-xs text-gray-400 mt-1 px-1" role="legend" aria-label="Status colour legend">
         {(['pass', 'warning', 'fail', 'error', 'invalidated'] as const).map(r => (
-          <span key={r} className="flex items-center gap-1">
+          <span key={r} className="flex items-center gap-1" aria-label={`${r} status`}>
             <span
               className="inline-block w-3 h-3 rounded-sm"
               style={{ backgroundColor: colours[r] }}
+              aria-hidden="true"
             />
             {r}
           </span>
