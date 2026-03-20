@@ -1,9 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { MoreVertical, MessageSquareWarning } from 'lucide-react'
 import { useInvalidateEvaluation, useOverrideStatus, usePinBaseline, useReEvaluate } from '../hooks'
-import type { ReEvaluateResponse } from '../types'
-
-export type ActionKind = 'invalidate' | 'override' | 'baseline' | 're-evaluate'
+import type { ActionKind, ReEvaluateResponse } from '../types'
 
 interface ActionDef {
   kind: ActionKind
