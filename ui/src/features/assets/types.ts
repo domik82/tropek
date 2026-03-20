@@ -24,7 +24,7 @@ export interface AssetGroupMember {
 }
 
 export interface AssetGroupSubgroup {
-  child_group_id: string
+  group_id: string
   group_name: string
   weight: number
 }

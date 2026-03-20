@@ -27,7 +27,7 @@ export function GroupEditDialog({ open, onOpenChange, groupName }: Props) {
   const [parentGroup, setParentGroup] = useState('')
 
   const currentParent = tree?.all_groups.find(g =>
-    g.subgroups.some(sg => sg.child_group_id === group?.id)
+    g.subgroups.some(sg => sg.group_id === group?.id)
   )
 
   useEffect(() => {

@@ -15,7 +15,7 @@ function mkGroup(
       asset_name: `${id}-asset-${i}`,
       weight: 1,
     })),
-    subgroups: subgroupIds.map(gid => ({ child_group_id: gid, group_name: gid, weight: 1 })),
+    subgroups: subgroupIds.map(gid => ({ group_id: gid, group_name: gid, weight: 1 })),
   }
 }
 

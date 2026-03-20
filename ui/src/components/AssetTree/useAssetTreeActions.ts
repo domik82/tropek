@@ -1,23 +1,29 @@
 import { useUpdateGroup } from '@/features/slos/hooks'
-import type { TreeMode } from './types'
+import { useRemoveGroupMember, useDeleteAsset } from '@/features/assets/hooks'
+import type { TreeMode, ContextMenuState } from './types'
 
 interface ActionCallbacks {
   onCreateGroup: (parentName?: string) => void
   onEditGroup: (name: string) => void
   onDeleteGroup: (name: string) => void
   onAddSloLink?: (groupName: string) => void
+  onAddAssetToGroup?: (groupName: string) => void
+  onEditAsset?: (assetName: string) => void
   onStartRename: (name: string) => void
   onSelectAsset?: (name: string) => void
 }
 
 export function useAssetTreeActions(_mode: TreeMode, callbacks: ActionCallbacks) {
   const updateGroup = useUpdateGroup()
+  const removeMember = useRemoveGroupMember()
+  const deleteAsset = useDeleteAsset()
 
   const handleRename = (name: string, newDisplayName: string) => {
     updateGroup.mutate({ name, display_name: newDisplayName })
   }
 
-  const dispatch = (action: string, targetName: string) => {
+  const dispatch = (action: string, target: ContextMenuState['target']) => {
+    const { name: targetName, groupName, assetId } = target
     switch (action) {
       case 'rename':
         callbacks.onStartRename(targetName)
@@ -37,13 +43,23 @@ export function useAssetTreeActions(_mode: TreeMode, callbacks: ActionCallbacks)
       case 'viewEvaluations':
         callbacks.onSelectAsset?.(targetName)
         break
-      case 'removeFromGroup':
       case 'addAssetToGroup':
+        callbacks.onAddAssetToGroup?.(targetName)
+        break
+      case 'editAsset':
+        callbacks.onEditAsset?.(targetName)
+        break
+      case 'removeFromGroup':
+        if (groupName && assetId) {
+          removeMember.mutate({ groupName, assetId })
+        }
+        break
+      case 'deleteAsset':
+        deleteAsset.mutate(targetName)
+        break
       case 'moveGroup':
       case 'duplicateGroup':
-      case 'editAsset':
-      case 'deleteAsset':
-        // Phase 2 — no-op
+        // Coming soon — no-op
         break
     }
   }

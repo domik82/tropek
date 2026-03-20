@@ -634,8 +634,8 @@ export function getAssetGroupTree() {
 
     pl1.members = []
     pl1.subgroups = [
-      { child_group_id: 'group-pl1-linux', group_name: 'performance-lab-1-linux', weight: 1 },
-      { child_group_id: 'group-pl1-windows', group_name: 'performance-lab-1-windows', weight: 1 },
+      { group_id: 'group-pl1-linux', group_name: 'performance-lab-1-linux', weight: 1 },
+      { group_id: 'group-pl1-windows', group_name: 'performance-lab-1-windows', weight: 1 },
     ]
 
     allGroups.push(linuxGroup, winGroup)

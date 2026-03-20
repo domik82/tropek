@@ -32,7 +32,7 @@ const ASSET_MENU_ITEMS: MenuItemDef[] = [
 interface Props {
   state: ContextMenuState
   mode: TreeMode
-  onAction: (action: string, targetName: string) => void
+  onAction: (action: string, target: ContextMenuState['target']) => void
   onClose: () => void
 }
 
@@ -90,7 +90,7 @@ export function AssetTreeContextMenu({ state, mode, onAction, onClose }: Props) 
               disabled={item.disabled}
               onClick={() => {
                 if (!item.disabled) {
-                  onAction(item.action, state.target.name)
+                  onAction(item.action, state.target)
                   onClose()
                 }
               }}

@@ -1,6 +1,6 @@
 // src/features/slos/hooks.ts
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { sloKeys, groupKeys, datasourceKeys, sliKeys } from '@/lib/queryKeys'
+import { sloKeys, groupKeys, assetKeys, datasourceKeys, sliKeys } from '@/lib/queryKeys'
 import { fetchSlos, fetchSloDetail, validateSlo, createSloDefinition, deleteSlo, fetchSloVersions } from './api'
 import {
   fetchGroupTree, createGroup, updateGroup, deleteGroup,
@@ -73,7 +73,10 @@ export function useCreateGroup() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: createGroup,
-    onSuccess: () => { qc.invalidateQueries({ queryKey: groupKeys.all }) },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: groupKeys.all })
+      void qc.invalidateQueries({ queryKey: assetKeys.groups() })
+    },
   })
 }
 
@@ -82,7 +85,10 @@ export function useUpdateGroup() {
   return useMutation({
     mutationFn: ({ name, ...body }: { name: string; display_name?: string; description?: string }) =>
       updateGroup(name, body),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: groupKeys.all }) },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: groupKeys.all })
+      void qc.invalidateQueries({ queryKey: assetKeys.groups() })
+    },
   })
 }
 
@@ -92,8 +98,9 @@ export function useDeleteGroup() {
     mutationFn: ({ name, deactivateSlos }: { name: string; deactivateSlos: boolean }) =>
       deleteGroup(name, deactivateSlos),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: groupKeys.all })
-      qc.invalidateQueries({ queryKey: sloKeys.all })
+      void qc.invalidateQueries({ queryKey: groupKeys.all })
+      void qc.invalidateQueries({ queryKey: assetKeys.groups() })
+      void qc.invalidateQueries({ queryKey: sloKeys.all })
     },
   })
 }
@@ -103,7 +110,10 @@ export function useAddSubgroup() {
   return useMutation({
     mutationFn: ({ parentName, childGroupId }: { parentName: string; childGroupId: string }) =>
       addSubgroup(parentName, childGroupId),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: groupKeys.all }) },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: groupKeys.all })
+      void qc.invalidateQueries({ queryKey: assetKeys.groups() })
+    },
   })
 }
 
@@ -113,8 +123,9 @@ export function useCreateGroupSloLink() {
     mutationFn: ({ groupName, ...body }: { groupName: string; slo_name: string; sli_name: string; data_source_name: string }) =>
       createGroupSloLink(groupName, body),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: groupKeys.all })
-      qc.invalidateQueries({ queryKey: sloKeys.all })
+      void qc.invalidateQueries({ queryKey: groupKeys.all })
+      void qc.invalidateQueries({ queryKey: assetKeys.groups() })
+      void qc.invalidateQueries({ queryKey: sloKeys.all })
     },
   })
 }
@@ -125,7 +136,8 @@ export function useDeleteGroupSloLink() {
     mutationFn: ({ groupName, linkName }: { groupName: string; linkName: string }) =>
       deleteGroupSloLink(groupName, linkName),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: groupKeys.all })
+      void qc.invalidateQueries({ queryKey: groupKeys.all })
+      void qc.invalidateQueries({ queryKey: assetKeys.groups() })
     },
   })
 }

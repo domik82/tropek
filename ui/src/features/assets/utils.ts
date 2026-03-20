@@ -14,7 +14,7 @@ export function collectGroupAssetNames(
 ): string[] {
   const directMembers = group.members.map(m => m.asset_name)
   const subgroupMembers = group.subgroups.flatMap(sg => {
-    const subGroup = tree.all_groups.find(g => g.id === sg.child_group_id)
+    const subGroup = tree.all_groups.find(g => g.id === sg.group_id)
     return subGroup ? collectGroupAssetNames(subGroup, tree) : []
   })
   return [...new Set([...directMembers, ...subgroupMembers])]
