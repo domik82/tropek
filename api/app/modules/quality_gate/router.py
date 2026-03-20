@@ -4,25 +4,17 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
-from typing import Any
 
 from arq.connections import ArqRedis
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.models import AssetGroupSLOLink, AssetSLOLink, EvaluationBatch
 from app.db.session import get_session
-from app.modules.assets.repository import (
-    AssetGroupRepository,
-    AssetGroupSLOLinkRepository,
-    AssetRepository,
-    AssetSLOLinkRepository,
-)
+from app.modules.assets.repository import AssetGroupRepository, AssetRepository
 from app.modules.common.errors import raise_not_found
 from app.modules.common.schemas import PagedResponse
-from app.modules.datasource.repository import DataSourceRepository
 from app.modules.quality_gate.annotation_repository import AnnotationRepository
-from app.modules.quality_gate.exceptions import DuplicateEvaluationError
+from app.modules.quality_gate.dependencies import QualityGateRepos, get_qg_repos
 from app.modules.quality_gate.presenter import build_detail, build_summary
 from app.modules.quality_gate.re_evaluation_schemas import ReEvaluateRequest, ReEvaluateResponse
 from app.modules.quality_gate.re_evaluator import re_evaluate
@@ -32,7 +24,6 @@ from app.modules.quality_gate.schemas import (
     AnnotationHide,
     AnnotationRead,
     AnnotationUpdate,
-    BatchConflict,
     BatchTriggerRequest,
     BatchTriggerResponse,
     EvaluationDetail,
@@ -48,9 +39,7 @@ from app.modules.quality_gate.schemas import (
     TriggerResponse,
 )
 from app.modules.quality_gate.trend_repository import TrendRepository
-from app.modules.quality_gate.trigger import resolve_single_trigger
-from app.modules.sli_registry.repository import SLIRepository
-from app.modules.slo_registry.repository import SLORepository
+from app.modules.quality_gate.trigger_service import TriggerService
 from app.queue import get_arq_pool
 
 router = APIRouter()
@@ -62,232 +51,23 @@ router = APIRouter()
 @router.post("/evaluations", response_model=TriggerResponse, status_code=202)
 async def trigger_evaluation(
     body: TriggerRequest,
-    session: AsyncSession = Depends(get_session),  # noqa: B008
+    repos: QualityGateRepos = Depends(get_qg_repos),  # noqa: B008
     arq_pool: ArqRedis = Depends(get_arq_pool),  # noqa: B008
 ) -> TriggerResponse:
     """Trigger a single asset evaluation."""
-    asset_repo = AssetRepository(session)
-    slo_link_repo = AssetSLOLinkRepository(session)
-    sli_repo = SLIRepository(session)
-    slo_repo = SLORepository(session)
-    ds_repo = DataSourceRepository(session)
-
-    try:
-        ctx = await resolve_single_trigger(
-            asset_name=body.asset_name,
-            slo_name=body.slo_name,
-            asset_repo=asset_repo,
-            slo_link_repo=slo_link_repo,
-            sli_repo=sli_repo,
-            slo_repo=slo_repo,
-            ds_repo=ds_repo,
-        )
-    except ValueError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
-
-    eval_repo = EvaluationRepository(session)
-
-    # Duplicate prevention: check for existing non-failed evaluation with same identity.
-    # The DB partial unique index (uq_evaluations_identity) is the safety net for races;
-    # this app-level check provides clean, status-aware error messages.
-    existing = await eval_repo.find_duplicate(
-        asset_id=ctx.asset_id,
-        slo_name=ctx.slo_name,
-        evaluation_name=body.evaluation_name,
-        period_start=body.period_start,
-        period_end=body.period_end,
-    )
-    if existing is not None:
-        if existing.status in ("pending", "running"):
-            raise HTTPException(
-                status_code=409,
-                detail="evaluation is already in progress for this period",
-            )
-        raise HTTPException(
-            status_code=409,
-            detail="evaluation already exists for this asset/SLO/period — use re-evaluate to re-score",
-        )
-
-    try:
-        ev = await eval_repo.create_pending(
-            evaluation_name=body.evaluation_name,
-            period_start=body.period_start,
-            period_end=body.period_end,
-            ingestion_mode="pull",
-            asset_snapshot={"name": ctx.asset_name, "tags": ctx.asset_labels},
-            metadata=body.metadata,
-            asset_id=ctx.asset_id,
-            slo_name=ctx.slo_name,
-            slo_version=ctx.slo_version,
-            sli_name=ctx.sli_name,
-            sli_version=ctx.sli_version,
-            data_source_name=ctx.data_source_name,
-            adapter_used=ctx.adapter_type,
-        )
-        await session.commit()
-    except DuplicateEvaluationError as exc:
-        raise HTTPException(
-            status_code=409,
-            detail="evaluation is already in progress for this period",
-        ) from exc
-
-    await arq_pool.enqueue_job("run_evaluation_job", str(ev.id))
-    return TriggerResponse(id=ev.id, status="pending")
-
-
-async def _scan_batch_members(
-    members: list[Any],
-    body: BatchTriggerRequest,
-    group_links: list[Any],
-    asset_repo: AssetRepository,
-    slo_link_repo: AssetSLOLinkRepository,
-    sli_repo: SLIRepository,
-    slo_repo: SLORepository,
-    ds_repo: DataSourceRepository,
-    eval_repo: EvaluationRepository,
-) -> tuple[list[tuple[Any, str]], list[BatchConflict]]:
-    """Resolve all triggers in a batch and scan for duplicates."""
-    resolved: list[tuple[Any, str]] = []
-    conflicts: list[BatchConflict] = []
-
-    for member in members:
-        asset = await asset_repo.get_by_name(member.asset_name)
-        if asset is None:
-            continue
-        asset_links = await slo_link_repo.list_by_asset(asset.id)
-        all_links: dict[str, AssetSLOLink | AssetGroupSLOLink] = {
-            lnk.slo_name: lnk for lnk in asset_links
-        }
-        for gl in group_links:
-            if gl.slo_name not in all_links:
-                all_links[gl.slo_name] = gl
-
-        for slo_name in all_links:
-            try:
-                ctx = await resolve_single_trigger(
-                    asset_name=asset.name,
-                    slo_name=slo_name,
-                    asset_repo=asset_repo,
-                    slo_link_repo=slo_link_repo,
-                    sli_repo=sli_repo,
-                    slo_repo=slo_repo,
-                    ds_repo=ds_repo,
-                )
-            except ValueError:
-                continue
-
-            existing = await eval_repo.find_duplicate(
-                asset_id=ctx.asset_id,
-                slo_name=ctx.slo_name,
-                evaluation_name=body.evaluation_name,
-                period_start=body.period_start,
-                period_end=body.period_end,
-            )
-            if existing is not None:
-                conflicts.append(
-                    BatchConflict(
-                        asset_name=asset.name,
-                        slo_name=ctx.slo_name,
-                        evaluation_name=body.evaluation_name,
-                        period_start=body.period_start,
-                        period_end=body.period_end,
-                        existing_status=existing.status,
-                    )
-                )
-            else:
-                resolved.append((ctx, asset.name))
-
-    return resolved, conflicts
+    service = TriggerService(repos, arq_pool)
+    return await service.trigger_single(body)
 
 
 @router.post("/evaluations/batch", response_model=BatchTriggerResponse, status_code=202)
 async def trigger_batch(
     body: BatchTriggerRequest,
-    session: AsyncSession = Depends(get_session),  # noqa: B008
+    repos: QualityGateRepos = Depends(get_qg_repos),  # noqa: B008
     arq_pool: ArqRedis = Depends(get_arq_pool),  # noqa: B008
 ) -> BatchTriggerResponse:
-    """Trigger evaluations for all assets in a group.
-
-    All-or-nothing: scans all items for duplicates before creating any.
-    If any item would be a duplicate, the entire batch fails with 409
-    listing every conflicting item.
-    """
-    group_repo = AssetGroupRepository(session)
-    group = await group_repo.get_by_name(body.group_name)
-    if group is None:
-        raise HTTPException(status_code=404, detail=f"asset group '{body.group_name}' not found")
-
-    asset_repo = AssetRepository(session)
-    slo_link_repo = AssetSLOLinkRepository(session)
-    sli_repo = SLIRepository(session)
-    slo_repo = SLORepository(session)
-    ds_repo = DataSourceRepository(session)
-    eval_repo = EvaluationRepository(session)
-    group_link_repo = AssetGroupSLOLinkRepository(session)
-    group_links = await group_link_repo.list_by_group(group.id)
-
-    # Phase 1: resolve all triggers and check for duplicates
-    resolved, conflicts = await _scan_batch_members(
-        members=group.members,
-        body=body,
-        group_links=group_links,
-        asset_repo=asset_repo,
-        slo_link_repo=slo_link_repo,
-        sli_repo=sli_repo,
-        slo_repo=slo_repo,
-        ds_repo=ds_repo,
-        eval_repo=eval_repo,
-    )
-
-    if conflicts:
-        raise HTTPException(
-            status_code=409,
-            detail={
-                "message": "batch contains duplicate evaluations",
-                "conflicts": [c.model_dump(mode="json") for c in conflicts],
-            },
-        )
-
-    # Phase 2: create all evaluations (single transaction)
-    evaluation_ids: list[uuid.UUID] = []
-    for ctx, _asset_name in resolved:
-        ev = await eval_repo.create_pending(
-            evaluation_name=body.evaluation_name,
-            period_start=body.period_start,
-            period_end=body.period_end,
-            ingestion_mode="pull",
-            asset_snapshot={"name": ctx.asset_name, "tags": ctx.asset_labels},
-            metadata=body.metadata,
-            asset_id=ctx.asset_id,
-            slo_name=ctx.slo_name,
-            slo_version=ctx.slo_version,
-            sli_name=ctx.sli_name,
-            sli_version=ctx.sli_version,
-            data_source_name=ctx.data_source_name,
-            adapter_used=ctx.adapter_type,
-        )
-        evaluation_ids.append(ev.id)
-
-    batch = EvaluationBatch(
-        evaluation_ids=[str(eid) for eid in evaluation_ids],
-        trigger_params={
-            "group_name": body.group_name,
-            "evaluation_name": body.evaluation_name,
-            "period_start": body.period_start.isoformat(),
-            "period_end": body.period_end.isoformat(),
-        },
-    )
-    session.add(batch)
-    await session.commit()
-
-    for eid in evaluation_ids:
-        await arq_pool.enqueue_job("run_evaluation_job", str(eid))
-
-    return BatchTriggerResponse(
-        batch_id=batch.id,
-        evaluation_ids=evaluation_ids,
-        status="pending",
-    )
+    """Trigger evaluations for all assets in a group."""
+    service = TriggerService(repos, arq_pool)
+    return await service.trigger_batch(body)
 
 
 @router.get("/evaluations", response_model=PagedResponse[EvaluationSummary])

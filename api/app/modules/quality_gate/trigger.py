@@ -6,6 +6,12 @@ import uuid
 from dataclasses import dataclass
 from typing import Any
 
+from app.modules.quality_gate.exceptions import (
+    AssetNotFoundError,
+    DataSourceNotFoundError,
+    SLONotConfiguredError,
+)
+
 
 @dataclass
 class TriggerContext:
@@ -36,34 +42,34 @@ async def resolve_single_trigger(
 ) -> TriggerContext:
     """Resolve all references for a single asset evaluation.
 
-    Raises ValueError with descriptive message if any reference is missing.
+    Raises domain exceptions if any reference is missing.
     """
     asset = await asset_repo.get_by_name(asset_name)
     if asset is None:
         msg = f"asset '{asset_name}' not found"
-        raise ValueError(msg)
+        raise AssetNotFoundError(msg)
 
     # Find the SLO link for this asset + slo_name
     links = await slo_link_repo.list_by_asset(asset.id)
     link = next((lnk for lnk in links if lnk.slo_name == slo_name), None)
     if link is None:
         msg = f"no slo link for asset '{asset_name}' with slo '{slo_name}'"
-        raise ValueError(msg)
+        raise SLONotConfiguredError(msg)
 
     sli_def = await sli_repo.get_latest(link.sli_name)
     if sli_def is None:
         msg = f"sli definition '{link.sli_name}' not found"
-        raise ValueError(msg)
+        raise SLONotConfiguredError(msg)
 
     slo_def = await slo_repo.get_latest(link.slo_name)
     if slo_def is None:
         msg = f"slo definition '{link.slo_name}' not found"
-        raise ValueError(msg)
+        raise SLONotConfiguredError(msg)
 
     ds = await ds_repo.get_by_name(link.data_source_name)
     if ds is None:
         msg = f"datasource '{link.data_source_name}' not found"
-        raise ValueError(msg)
+        raise DataSourceNotFoundError(msg)
 
     return TriggerContext(
         asset_id=asset.id,
