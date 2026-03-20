@@ -7,7 +7,8 @@ import { MetricTrendBlock } from '@/features/evaluations/components/MetricTrendB
 import { EvaluationHeader } from '@/features/evaluations/components/EvaluationHeader'
 import { EvaluationTabs, tabLabel } from '@/features/evaluations/components/EvaluationTabs'
 import { AnnotationSection, type AnnotationSectionHandle } from '@/features/evaluations/components/AnnotationForm'
-import { EvaluationActionsButton, EvaluationActionForm, NoteIconButton, type ActionKind } from '@/features/evaluations/components/EvaluationActions'
+import { EvaluationActionsButton, EvaluationActionForm, NoteIconButton } from '@/features/evaluations/components/EvaluationActions'
+import type { ActionKind } from '@/features/evaluations/types'
 
 function scrollTo(id: string) {
   document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
