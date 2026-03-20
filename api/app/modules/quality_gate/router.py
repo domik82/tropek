@@ -21,6 +21,7 @@ from app.modules.assets.repository import (
 from app.modules.common.errors import raise_not_found
 from app.modules.common.schemas import PagedResponse
 from app.modules.datasource.repository import DataSourceRepository
+from app.modules.quality_gate.annotation_repository import AnnotationRepository
 from app.modules.quality_gate.re_evaluation_schemas import ReEvaluateRequest, ReEvaluateResponse
 from app.modules.quality_gate.re_evaluator import re_evaluate
 from app.modules.quality_gate.repository import DuplicateEvaluationError, EvaluationRepository
@@ -46,6 +47,7 @@ from app.modules.quality_gate.schemas import (
     TriggerRequest,
     TriggerResponse,
 )
+from app.modules.quality_gate.trend_repository import TrendRepository
 from app.modules.quality_gate.trigger import resolve_single_trigger
 from app.modules.sli_registry.repository import SLIRepository
 from app.modules.slo_registry.repository import SLORepository
@@ -420,8 +422,8 @@ async def get_metric_heatmap(
     asset = await asset_repo.get_by_name(asset_name)
     if asset is None:
         raise HTTPException(status_code=404, detail=f"asset '{asset_name}' not found")
-    eval_repo = EvaluationRepository(session)
-    evals = await eval_repo.get_metric_heatmap(
+    trend_repo = TrendRepository(session)
+    evals = await trend_repo.get_metric_heatmap(
         asset_id=asset.id, limit=limit, evaluation_name=evaluation_name
     )
     # Build slots (timestamps) and collect all unique metrics
@@ -626,11 +628,12 @@ async def create_annotation(
     session: AsyncSession = Depends(get_session),  # noqa: B008
 ) -> AnnotationRead:
     """Add an annotation to an evaluation."""
-    repo = EvaluationRepository(session)
-    ev = await repo.get_by_id(eval_id)
+    eval_repo = EvaluationRepository(session)
+    ev = await eval_repo.get_by_id(eval_id)
     if ev is None:
         raise_not_found("evaluation", str(eval_id))
-    ann = await repo.add_annotation(
+    ann_repo = AnnotationRepository(session)
+    ann = await ann_repo.add_annotation(
         eval_id,
         content=body.content,
         author=body.author,
@@ -648,8 +651,8 @@ async def update_annotation(
     session: AsyncSession = Depends(get_session),  # noqa: B008
 ) -> AnnotationRead:
     """Update an annotation."""
-    repo = EvaluationRepository(session)
-    ann = await repo.update_annotation(ann_id, **body.model_dump(exclude_unset=True))
+    ann_repo = AnnotationRepository(session)
+    ann = await ann_repo.update_annotation(ann_id, **body.model_dump(exclude_unset=True))
     if ann is None:
         raise_not_found("annotation", str(ann_id))
     return AnnotationRead.model_validate(ann)
@@ -666,8 +669,8 @@ async def hide_annotation(
     session: AsyncSession = Depends(get_session),  # noqa: B008
 ) -> AnnotationRead:
     """Soft-delete (hide) an annotation."""
-    repo = EvaluationRepository(session)
-    ann = await repo.hide_annotation(ann_id, reason=body.reason, author=body.author)
+    ann_repo = AnnotationRepository(session)
+    ann = await ann_repo.hide_annotation(ann_id, reason=body.reason, author=body.author)
     if ann is None:
         raise_not_found("annotation", str(ann_id))
     return AnnotationRead.model_validate(ann)
@@ -709,6 +712,7 @@ async def get_trend(
         )
 
     eval_repo = EvaluationRepository(session)
+    trend_repo = TrendRepository(session)
 
     if eval_id is not None:
         ev = await eval_repo.get_by_id(eval_id)
@@ -730,7 +734,7 @@ async def get_trend(
         resolved_asset_id = asset.id
         resolved_slo_name = slo_name
 
-    points = await eval_repo.get_trend_by_domain(
+    points = await trend_repo.get_trend_by_domain(
         asset_id=resolved_asset_id,
         slo_name=resolved_slo_name,
         metric_name=metric,
