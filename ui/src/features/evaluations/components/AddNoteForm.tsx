@@ -1,6 +1,7 @@
 // ui/src/features/evaluations/components/AddNoteForm.tsx
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { useAddAnnotation } from '../hooks'
 
 interface Props {
@@ -39,25 +40,22 @@ export function AddNoteForm({ evalId, onClose }: Props) {
             </button>
           </div>
 
-          <input
+          <Input
             value={content}
             onChange={e => setContent(e.target.value)}
-            placeholder="Note content…"
-            className="w-full px-3 py-2 bg-background border border-border rounded-md text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-amber-500"
+            placeholder="Note content..."
           />
 
           <div className="grid grid-cols-2 gap-2">
-            <input
+            <Input
               value={author}
               onChange={e => setAuthor(e.target.value)}
               placeholder="Author"
-              className="px-3 py-2 bg-background border border-border rounded-md text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-amber-500"
             />
-            <input
+            <Input
               value={category}
               onChange={e => setCategory(e.target.value)}
               placeholder="Category"
-              className="px-3 py-2 bg-background border border-border rounded-md text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-amber-500"
             />
           </div>
 

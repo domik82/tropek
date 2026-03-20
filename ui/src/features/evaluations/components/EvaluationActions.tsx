@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { MoreVertical, MessageSquareWarning } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { useInvalidateEvaluation, useOverrideStatus, usePinBaseline, useReEvaluate } from '../hooks'
 import type { ActionKind, ReEvaluateResponse } from '../types'
 
@@ -307,11 +308,10 @@ export function EvaluationActionForm({
               {!fromBaseline && (
                 <div>
                   <label className="block text-xs text-muted-foreground mb-1">Start date</label>
-                  <input
+                  <Input
                     type="datetime-local"
                     value={fromDate}
                     onChange={(e) => setFromDate(e.target.value)}
-                    className="w-full px-3 py-2 bg-background border border-border rounded-md text-sm text-foreground focus:outline-none focus:border-purple-500"
                   />
                 </div>
               )}
@@ -321,18 +321,16 @@ export function EvaluationActionForm({
           {/* Reason + author form (invalidate shows reason only; override/baseline show both) */}
           {!isReEval && (
             <>
-              <input
+              <Input
                 value={reason}
                 onChange={e => setReason(e.target.value)}
-                placeholder="Reason…"
-                className="w-full px-3 py-2 bg-background border border-border rounded-md text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none"
+                placeholder="Reason..."
               />
               {needsAuthor && (
-                <input
+                <Input
                   value={author}
                   onChange={e => setAuthor(e.target.value)}
                   placeholder="Author"
-                  className="w-full px-3 py-2 bg-background border border-border rounded-md text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none"
                 />
               )}
             </>

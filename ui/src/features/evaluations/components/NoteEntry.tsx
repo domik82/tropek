@@ -1,6 +1,7 @@
 // ui/src/features/evaluations/components/NoteEntry.tsx
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { useHideAnnotation } from '../hooks'
 import type { Annotation } from '../types'
 
@@ -107,17 +108,15 @@ export function NoteEntry({ evalId, annotation: a, compact }: Props) {
               style={{ fontFamily: "system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" }}>
               Delete this note?
             </p>
-            <input
+            <Input
               value={hideReason}
               onChange={e => setHideReason(e.target.value)}
-              placeholder="Reason for deletion…"
-              className="w-full px-3 py-1.5 bg-background border border-red-700/40 rounded-md text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-red-500"
+              placeholder={"Reason for deletion\u2026"}
             />
-            <input
+            <Input
               value={hideAuthor}
               onChange={e => setHideAuthor(e.target.value)}
               placeholder="Your name"
-              className="w-full px-3 py-1.5 bg-background border border-red-700/40 rounded-md text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-red-500"
             />
             <div className="flex justify-end gap-2">
               <Button variant="outline" size="xs" onClick={() => setHiding(false)}>
