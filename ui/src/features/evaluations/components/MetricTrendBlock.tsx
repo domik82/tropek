@@ -4,6 +4,7 @@ import { useCallback, useState } from 'react'
 import { useTrend } from '../hooks'
 import { useTheme } from '@/lib/theme-context'
 import { RESULT_COLOUR, CHART_THEME } from '@/lib/theme'
+import { STATUS_TEXT } from '@/lib/status'
 import { useChartAreaClick } from '@/lib/useChartAreaClick'
 import { computeRelativeThresholdSeries } from '@/utils/metrics'
 import type { IndicatorResult } from '../types'
@@ -20,12 +21,6 @@ function isRelativeCriteria(c?: string | null): boolean {
 
 function scrollToTable() {
   document.getElementById('sli-table')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-}
-
-const STATUS_TEXT: Record<string, string> = {
-  pass:    'text-pass',
-  warning: 'text-warning',
-  fail:    'text-fail',
 }
 
 export function MetricTrendBlock({ evalId, indicator, onEvalSelect }: Props) {

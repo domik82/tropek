@@ -39,14 +39,14 @@ describe('NoteEntry', () => {
     renderWithQuery(<NoteEntry evalId="e1" annotation={annotation} />)
     fireEvent.click(screen.getByTitle('Delete note'))
     expect(screen.getByText('Delete this note?')).toBeInTheDocument()
-    expect(screen.getByPlaceholderText('Reason for deletion…')).toBeInTheDocument()
+    expect(screen.getByPlaceholderText('Reason\u2026')).toBeInTheDocument()
   })
 
   it('shows delete form when ✕ is clicked in compact mode', () => {
     renderWithQuery(<NoteEntry evalId="e1" annotation={annotation} compact />)
     fireEvent.click(screen.getByTitle('Delete note'))
     expect(screen.getByText('Delete this note?')).toBeInTheDocument()
-    expect(screen.getByPlaceholderText('Reason for deletion…')).toBeInTheDocument()
+    expect(screen.getByPlaceholderText('Reason\u2026')).toBeInTheDocument()
   })
 
   it('hides delete form when Cancel is clicked', () => {
@@ -63,11 +63,14 @@ describe('NoteEntry', () => {
     expect(screen.getByText('Delete note')).toBeDisabled()
   })
 
-  it('enables Delete button when reason is provided', () => {
+  it('enables Delete button when reason and author are provided', () => {
     renderWithQuery(<NoteEntry evalId="e1" annotation={annotation} />)
     fireEvent.click(screen.getByTitle('Delete note'))
-    fireEvent.change(screen.getByPlaceholderText('Reason for deletion…'), {
+    fireEvent.change(screen.getByPlaceholderText('Reason\u2026'), {
       target: { value: 'wrong note' },
+    })
+    fireEvent.change(screen.getByPlaceholderText('Your name'), {
+      target: { value: 'tester' },
     })
     expect(screen.getByText('Delete note')).toBeEnabled()
   })
