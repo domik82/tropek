@@ -7,7 +7,7 @@ from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from asyncpg import UniqueViolationError
-from sqlalchemy import String, delete, func, insert, select, update
+from sqlalchemy import String, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -732,39 +732,6 @@ class EvaluationRepository:
                 }
             )
         return points
-
-    # --- SLI Values ---
-
-    async def write_sli_values(self, rows: list[dict[str, Any]]) -> None:
-        """Batch insert SLI value rows.
-
-        Args:
-            rows: List of dicts matching SLIValue columns (eval_id, eval_start,
-                  metric_name, aggregation, value, asset_name, evaluation_name, os_tag).
-        """
-        if not rows:
-            return
-        await self._session.execute(insert(SLIValue).values(rows))
-
-    async def delete_sli_values(self, eval_id: uuid.UUID) -> None:
-        """Delete all SLI values for an evaluation (hard rerun).
-
-        Args:
-            eval_id: Evaluation whose SLI values should be deleted.
-        """
-        await self._session.execute(delete(SLIValue).where(SLIValue.eval_id == eval_id))
-
-    async def get_sli_values_for_eval(self, eval_id: uuid.UUID) -> list[SLIValue]:
-        """Fetch all SLI values for a given evaluation.
-
-        Args:
-            eval_id: Evaluation UUID.
-
-        Returns:
-            All SLIValue rows for this evaluation.
-        """
-        result = await self._session.execute(select(SLIValue).where(SLIValue.eval_id == eval_id))
-        return list(result.scalars().all())
 
     async def get_trend(
         self,
