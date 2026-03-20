@@ -208,7 +208,7 @@ class AssetGroupRepository:
         )
         subgroups = [
             AssetGroupSubgroupRead(
-                child_group_id=row.AssetGroupLink.child_group_id,
+                group_id=row.AssetGroupLink.child_group_id,
                 group_name=row.group_name,
                 weight=row.AssetGroupLink.weight,
             )
