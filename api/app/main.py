@@ -7,6 +7,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
+from app.config import get_settings
 from app.modules.assets.router import router as assets_router
 from app.modules.datasource.router import router as datasource_router
 from app.modules.quality_gate.router import router as quality_gate_router
@@ -17,7 +18,8 @@ from app.queue import create_arq_pool
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
-    """Open the arq pool at startup; close it on shutdown."""
+    """Validate config and open the arq pool at startup; close it on shutdown."""
+    get_settings().validate_required()
     app.state.arq_pool = await create_arq_pool()
     yield
     await app.state.arq_pool.close()
