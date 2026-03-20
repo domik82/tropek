@@ -3,6 +3,7 @@ import { useState, useMemo, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAssetEvaluations, useMetricHeatmap } from '../hooks'
 import { useEvaluationDetail } from '@/features/evaluations/hooks'
+import { useTabState } from '@/features/evaluations/hooks/useTabState'
 import { AssetHeatmap } from './AssetHeatmap'
 import { MetricTrendBlock } from '@/features/evaluations/components/MetricTrendBlock'
 import { SLIBreakdownTable } from '@/features/evaluations/components/SLIBreakdownTable'
@@ -26,7 +27,6 @@ function scrollTo(id: string) {
 export function AssetPanel({ assetName, initialEvalId }: Props) {
   const [mode, setMode] = useState<ViewMode>('heatmap')
   const [selectedEvalId, setSelectedEvalId] = useState<string | undefined>(initialEvalId)
-  const [activeTab, setActiveTab] = useState('all')
   const [activeAction, setActiveAction] = useState<ActionKind | null>(null)
   const [metricGroupFilter, setMetricGroupFilter] = useState<string>('all')
   const notesRef = useRef<AnnotationSectionHandle>(null)
@@ -70,26 +70,8 @@ export function AssetPanel({ assetName, initialEvalId }: Props) {
 
   const { data: ev } = useEvaluationDetail(effectiveEvalId)
 
-  const availableGroups = useMemo(() =>
-    [...new Set(ev?.indicator_results.map(i => i.tab_group).filter(Boolean) as string[])],
-    [ev],
-  )
-
-  const counts = useMemo(() =>
-    Object.fromEntries(
-      availableGroups.map(g => [g, ev?.indicator_results.filter(i => i.tab_group === g).length ?? 0]),
-    ),
-    [ev, availableGroups],
-  )
-
-  const resolvedTab = ['all', ...availableGroups].includes(activeTab) ? activeTab : 'all'
-
-  const tabIndicators = useMemo(
-    () => resolvedTab === 'all'
-      ? (ev?.indicator_results ?? [])
-      : (ev?.indicator_results.filter(ind => ind.tab_group === resolvedTab) ?? []),
-    [ev, resolvedTab],
-  )
+  const { availableGroups, counts, activeTab, setActiveTab, tabIndicators } =
+    useTabState(ev?.indicator_results)
 
   const allIndicators = useMemo(() => {
     if (!heatmapData) return []
@@ -239,13 +221,13 @@ export function AssetPanel({ assetName, initialEvalId }: Props) {
                 availableGroups={availableGroups}
                 allCount={ev.indicator_results.length}
                 counts={counts}
-                activeTab={resolvedTab}
+                activeTab={activeTab}
                 onTabChange={setActiveTab}
               />
               <SLIBreakdownTable
                 indicators={tabIndicators}
                 onIndicatorClick={(metric, tabGroup) => {
-                  if (resolvedTab !== 'all') setActiveTab(tabGroup)
+                  if (activeTab !== 'all') setActiveTab(tabGroup)
                   setTimeout(() => scrollTo(`trend-${metric}`), 50)
                 }}
               />
@@ -257,7 +239,7 @@ export function AssetPanel({ assetName, initialEvalId }: Props) {
             <div className="space-y-4">
               <p className="text-xs text-slate-500">
                 30-day trend for{' '}
-                <strong className="text-slate-300">{resolvedTab === 'all' ? 'All' : tabLabel(resolvedTab)}</strong>{' '}
+                <strong className="text-slate-300">{activeTab === 'all' ? 'All' : tabLabel(activeTab)}</strong>{' '}
                 metrics on <strong className="text-slate-300">{assetName}</strong>.
               </p>
               <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
