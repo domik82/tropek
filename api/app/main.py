@@ -7,8 +7,23 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
+from app.config import get_settings
 from app.modules.assets.router import router as assets_router
 from app.modules.datasource.router import router as datasource_router
+from app.modules.quality_gate.exception_handlers import (
+    asset_not_found_handler,
+    datasource_not_found_handler,
+    duplicate_evaluation_handler,
+    evaluation_not_found_handler,
+    slo_not_configured_handler,
+)
+from app.modules.quality_gate.exceptions import (
+    AssetNotFoundError,
+    DataSourceNotFoundError,
+    DuplicateEvaluationError,
+    EvaluationNotFoundError,
+    SLONotConfiguredError,
+)
 from app.modules.quality_gate.router import router as quality_gate_router
 from app.modules.sli_registry.router import router as sli_router
 from app.modules.slo_registry.router import router as slo_router
@@ -17,13 +32,21 @@ from app.queue import create_arq_pool
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
-    """Open the arq pool at startup; close it on shutdown."""
+    """Validate config and open the arq pool at startup; close it on shutdown."""
+    get_settings().validate_required()
     app.state.arq_pool = await create_arq_pool()
     yield
     await app.state.arq_pool.close()
 
 
 app = FastAPI(title="TROPEK API", version="0.2.0", lifespan=lifespan)
+
+# Domain exception handlers — convert domain errors to HTTP responses
+app.add_exception_handler(AssetNotFoundError, asset_not_found_handler)  # type: ignore[arg-type]
+app.add_exception_handler(EvaluationNotFoundError, evaluation_not_found_handler)  # type: ignore[arg-type]
+app.add_exception_handler(SLONotConfiguredError, slo_not_configured_handler)  # type: ignore[arg-type]
+app.add_exception_handler(DataSourceNotFoundError, datasource_not_found_handler)  # type: ignore[arg-type]
+app.add_exception_handler(DuplicateEvaluationError, duplicate_evaluation_handler)  # type: ignore[arg-type]
 
 # No prefix= — every router defines full absolute paths
 app.include_router(assets_router)

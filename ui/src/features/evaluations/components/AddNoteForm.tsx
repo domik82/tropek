@@ -1,5 +1,7 @@
 // ui/src/features/evaluations/components/AddNoteForm.tsx
 import { useState } from 'react'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { useAddAnnotation } from '../hooks'
 
 interface Props {
@@ -38,36 +40,35 @@ export function AddNoteForm({ evalId, onClose }: Props) {
             </button>
           </div>
 
-          <input
+          <Input
             value={content}
             onChange={e => setContent(e.target.value)}
-            placeholder="Note content…"
-            className="w-full px-3 py-2 bg-background border border-border rounded-md text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-amber-500"
+            placeholder="Note content..."
           />
 
           <div className="grid grid-cols-2 gap-2">
-            <input
+            <Input
               value={author}
               onChange={e => setAuthor(e.target.value)}
               placeholder="Author"
-              className="px-3 py-2 bg-background border border-border rounded-md text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-amber-500"
+              autoComplete="name"
             />
-            <input
+            <Input
               value={category}
               onChange={e => setCategory(e.target.value)}
               placeholder="Category"
-              className="px-3 py-2 bg-background border border-border rounded-md text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-amber-500"
             />
           </div>
 
           <div className="flex justify-end">
-            <button
+            <Button
+              size="xs"
               onClick={handleSave}
               disabled={!content.trim() || addAnnotation.isPending}
-              className="px-3 py-1.5 text-xs font-medium rounded-md bg-amber-500 text-black hover:bg-amber-400 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              className="bg-amber-500 text-black hover:bg-amber-400"
             >
-              {addAnnotation.isPending ? 'Saving…' : 'Save note'}
-            </button>
+              {addAnnotation.isPending ? 'Saving...' : 'Save note'}
+            </Button>
           </div>
         </div>
       </div>

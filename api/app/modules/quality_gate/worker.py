@@ -8,22 +8,30 @@ from typing import Any
 import httpx
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import get_settings
 from app.db.models import Evaluation, SLIDefinition, SLODefinition
 from app.modules.datasource.repository import DataSourceRepository
+from app.modules.quality_gate.adapter_client import HttpAdapterClient
+from app.modules.quality_gate.baseline_repository import BaselineRepository
 from app.modules.quality_gate.engine.criteria import aggregate_values
 from app.modules.quality_gate.engine.evaluator import evaluate
 from app.modules.quality_gate.engine.slo_models import SLO
 from app.modules.quality_gate.engine.slo_parser import build_slo
 from app.modules.quality_gate.engine.variables import build_variables, substitute_variables
 from app.modules.quality_gate.repository import EvaluationRepository
+from app.modules.quality_gate.sli_repository import SLIValueRepository
 from app.modules.sli_registry.repository import SLIRepository
 from app.modules.slo_registry.repository import SLORepository
+
+
+class DefinitionLoadError(Exception):
+    """SLO or SLI definition could not be loaded."""
 
 
 async def _load_definitions(
     session: AsyncSession,
     ev: Evaluation,
-) -> tuple[SLODefinition, SLIDefinition] | str:
+) -> tuple[SLODefinition, SLIDefinition]:
     """Load SLO and SLI definitions for the evaluation.
 
     Args:
@@ -31,74 +39,36 @@ async def _load_definitions(
         ev: Evaluation row providing slo_name/version and sli_name/version.
 
     Returns:
-        (slo_def, sli_def) tuple on success, or an error message string on failure.
+        (slo_def, sli_def) tuple on success.
+
+    Raises:
+        DefinitionLoadError: If any required definition is missing.
     """
     if ev.slo_name is None or ev.slo_version is None:
-        return "evaluation has no slo_name or slo_version"
+        raise DefinitionLoadError("evaluation has no slo_name or slo_version")
     slo_def = await SLORepository(session).get_version(ev.slo_name, ev.slo_version)
     if slo_def is None:
-        return f"slo '{ev.slo_name}' v{ev.slo_version} not found"
+        raise DefinitionLoadError(f"slo '{ev.slo_name}' v{ev.slo_version} not found")
 
     if ev.sli_name is None or ev.sli_version is None:
-        return "evaluation has no sli_name or sli_version"
+        raise DefinitionLoadError("evaluation has no sli_name or sli_version")
     sli_def = await SLIRepository(session).get_version(ev.sli_name, ev.sli_version)
     if sli_def is None:
-        return f"sli '{ev.sli_name}' v{ev.sli_version} not found"
+        raise DefinitionLoadError(f"sli '{ev.sli_name}' v{ev.sli_version} not found")
 
     return slo_def, sli_def
 
 
-async def _query_adapter(
-    adapter_url: str,
-    adapter_name: str,
-    resolved_queries: dict[str, str],
-    start: str,
-    end: str,
-) -> tuple[dict[str, float | None], dict[str, str]]:
-    """Send metric queries to the adapter and return (values, errors).
-
-    Args:
-        adapter_url: Base URL of the adapter service.
-        adapter_name: Datasource name forwarded in the X-Datasource-Name header.
-        resolved_queries: Metric name to query string mapping (variables substituted).
-        start: ISO timestamp for the evaluation period start.
-        end: ISO timestamp for the evaluation period end.
-
-    Returns:
-        Tuple of (metrics_fetched, fetch_errors).
-
-    Raises:
-        httpx.ConnectError: If the adapter is unreachable.
-        httpx.TimeoutException: If the adapter does not respond in time.
-        httpx.HTTPStatusError: If the adapter returns a non-2xx response.
-    """
-    async with httpx.AsyncClient(timeout=30.0) as http_client:
-        resp = await http_client.post(
-            f"{adapter_url}/query",
-            headers={"X-Datasource-Name": adapter_name},
-            json={"queries": resolved_queries, "start": start, "end": end},
-        )
-        resp.raise_for_status()
-        data = resp.json()
-
-    metrics_fetched: dict[str, float | None] = {
-        name: float(val) if val is not None else None
-        for name, val in data.get("values", {}).items()
-    }
-    fetch_errors: dict[str, str] = {name: str(err) for name, err in data.get("errors", {}).items()}
-    return metrics_fetched, fetch_errors
-
-
 async def _resolve_baselines(
-    repo: EvaluationRepository,
+    baseline_repo: BaselineRepository,
     slo: SLO,
-    ev: Any,
+    ev: Evaluation,
     indicator_names: list[str],
 ) -> tuple[dict[str, float | None], list[str]]:
     """Fetch baseline evaluations and aggregate per-metric values.
 
     Args:
-        repo: Evaluation repository for baseline queries.
+        baseline_repo: Baseline repository for baseline queries.
         slo: Validated SLO model providing comparison config.
         ev: Current Evaluation ORM row (used for scoping).
         indicator_names: Metric names to collect baselines for.
@@ -112,7 +82,7 @@ async def _resolve_baselines(
     if slo.comparison.number_of_comparison_results <= 0:
         return baselines, compared_eval_ids
 
-    baseline_evals = await repo.get_baselines(
+    baseline_evals = await baseline_repo.get_evaluation_baselines(
         asset_id=ev.asset_id,
         slo_name=ev.slo_name,
         period_start_before=ev.period_start,
@@ -162,11 +132,11 @@ async def run_evaluation(
         return
 
     # Load SLO + SLI definitions
-    defs = await _load_definitions(session, ev)
-    if isinstance(defs, str):
-        await repo.mark_failed(eval_id, job_stats={"error": defs})
+    try:
+        slo_def, sli_def = await _load_definitions(session, ev)
+    except DefinitionLoadError as exc:
+        await repo.mark_failed(eval_id, job_stats={"error": str(exc)})
         return
-    slo_def, sli_def = defs
 
     slo = build_slo(
         objectives=[
@@ -214,10 +184,13 @@ async def run_evaluation(
         return
 
     try:
-        metrics_fetched, fetch_errors = await _query_adapter(
+        adapter_client = HttpAdapterClient(
+            timeout=get_settings().reliability.adapter_timeout_seconds,
+        )
+        metrics_fetched, fetch_errors = await adapter_client.query(
             adapter_url=ds.adapter_url,
-            adapter_name=ds.name,
-            resolved_queries=resolved_queries,
+            datasource_name=ds.name,
+            queries=resolved_queries,
             start=ev.period_start.isoformat(),
             end=ev.period_end.isoformat(),
         )
@@ -236,17 +209,23 @@ async def run_evaluation(
         return
 
     # Resolve baselines (pin-aware) and evaluate
+    baseline_repo = BaselineRepository(session)
     baselines, compared_eval_ids = await _resolve_baselines(
-        repo=repo, slo=slo, ev=ev, indicator_names=list(sli_def.indicators)
+        baseline_repo=baseline_repo, slo=slo, ev=ev, indicator_names=list(sli_def.indicators)
     )
     eval_result = evaluate(slo, metrics_fetched, baselines, compared_eval_ids)
+
+    # Serialize typed indicator results for JSONB storage
+    indicator_dicts: list[dict[str, Any]] = [
+        ir.model_dump() for ir in eval_result.indicator_results
+    ]
 
     # Write results
     await repo.mark_completed(
         eval_id,
         result=eval_result.result,
         score=eval_result.score,
-        indicator_results=eval_result.indicator_results,
+        indicator_results=indicator_dicts,
         slo_name=ev.slo_name,
         slo_version=ev.slo_version,
         job_stats={"fetch_errors": fetch_errors},
@@ -258,15 +237,16 @@ async def run_evaluation(
         {
             "eval_id": eval_id,
             "eval_start": ev.period_start,
-            "metric_name": ir["metric"],
-            "aggregation": ir.get("aggregation", "raw"),
-            "value": ir["value"],
+            "metric_name": ir.metric,
+            "aggregation": "raw",
+            "value": ir.value,
             "asset_name": asset_snapshot.get("name"),
             "evaluation_name": ev.evaluation_name,
             "os_tag": asset_labels.get("os"),
         }
         for ir in eval_result.indicator_results
-        if ir.get("value") is not None
+        if ir.value is not None
     ]
     if sli_rows:
-        await repo.write_sli_values(sli_rows)
+        sli_repo = SLIValueRepository(session)
+        await sli_repo.write_sli_values(sli_rows)

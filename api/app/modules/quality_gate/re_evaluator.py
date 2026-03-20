@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import Evaluation, SLODefinition
 from app.modules.assets.repository import AssetRepository
+from app.modules.quality_gate.baseline_repository import BaselineRepository
 from app.modules.quality_gate.engine.criteria import aggregate_values
 from app.modules.quality_gate.engine.evaluator import evaluate
 from app.modules.quality_gate.engine.slo_models import SLO
@@ -90,6 +91,7 @@ async def _resolve_from_date(
     request: ReEvaluateRequest,
     asset_id: uuid.UUID,
     eval_repo: EvaluationRepository,
+    baseline_repo: BaselineRepository,
 ) -> datetime:
     """Determine the starting timestamp for the re-evaluation window."""
     if request.from_date is not None:
@@ -102,7 +104,7 @@ async def _resolve_from_date(
         return anchor_eval.period_start
 
     # from_baseline: find the most recent evaluation with an active baseline pin
-    recent_evals = await eval_repo.load_evaluations_for_reeval(
+    recent_evals = await baseline_repo.load_evaluations_for_reeval(
         asset_id=asset_id,
         slo_name=request.slo_name,
         from_date=_DATETIME_MIN,
@@ -137,7 +139,7 @@ async def _rescore_single(
     asset_id: uuid.UUID,
     slo_name: str,
     default_sli_version_range: tuple[int, int] | None,
-    eval_repo: EvaluationRepository,
+    baseline_repo: BaselineRepository,
     sli_repo: SLIRepository,
     dry_run: bool,
 ) -> ReEvalResultItem:
@@ -147,7 +149,7 @@ async def _rescore_single(
     eval_sli_range = await _resolve_sli_version_range(ev.sli_name, ev.sli_version, sli_repo)
     sli_range = eval_sli_range or default_sli_version_range
 
-    baseline_evals = await eval_repo.get_baselines(
+    baseline_evals = await baseline_repo.get_reeval_baselines(
         asset_id=asset_id,
         slo_name=slo_name,
         period_start_before=ev.period_start,
@@ -164,11 +166,12 @@ async def _rescore_single(
     old_score = ev.score if ev.score is not None else 0.0
 
     if not dry_run:
-        await eval_repo.update_reeval_result(
+        indicator_dicts = [ir.model_dump() for ir in eval_result.indicator_results]
+        await baseline_repo.update_reeval_result(
             ev.id,
             new_result=eval_result.result,
             new_score=eval_result.score,
-            new_indicator_results=eval_result.indicator_results,
+            new_indicator_results=indicator_dicts,
             old_result=old_result,
             old_score=old_score,
             slo_version=slo_version,
@@ -206,6 +209,7 @@ async def re_evaluate(
     slo_repo = SLORepository(session)
     sli_repo = SLIRepository(session)
     eval_repo = EvaluationRepository(session)
+    baseline_repo = BaselineRepository(session)
 
     # Resolve asset
     asset = await asset_repo.get_by_name(request.asset_name)
@@ -223,10 +227,10 @@ async def re_evaluate(
     slo_model = _build_slo_model(slo_def)
 
     # Determine window start
-    from_date = await _resolve_from_date(request, asset.id, eval_repo)
+    from_date = await _resolve_from_date(request, asset.id, eval_repo, baseline_repo)
 
     # Load evaluations to re-process (chronological order)
-    evals_to_process = await eval_repo.load_evaluations_for_reeval(
+    evals_to_process = await baseline_repo.load_evaluations_for_reeval(
         asset_id=asset.id,
         slo_name=request.slo_name,
         from_date=from_date,
@@ -243,7 +247,7 @@ async def re_evaluate(
     )
 
     # Seed eligible IDs from pre-window baselines
-    pre_baselines = await eval_repo.get_baselines(
+    pre_baselines = await baseline_repo.get_reeval_baselines(
         asset_id=asset.id,
         slo_name=request.slo_name,
         period_start_before=from_date,
@@ -264,7 +268,7 @@ async def re_evaluate(
             asset_id=asset.id,
             slo_name=request.slo_name,
             default_sli_version_range=default_sli_range,
-            eval_repo=eval_repo,
+            baseline_repo=baseline_repo,
             sli_repo=sli_repo,
             dry_run=request.dry_run,
         )
