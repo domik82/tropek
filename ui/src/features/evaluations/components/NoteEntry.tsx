@@ -1,5 +1,6 @@
 // ui/src/features/evaluations/components/NoteEntry.tsx
 import { useState } from 'react'
+import { DeletionConfirmForm } from '@/components/DeletionConfirmForm'
 import { useHideAnnotation } from '../hooks'
 import type { Annotation } from '../types'
 
@@ -31,13 +32,11 @@ interface Props {
 export function NoteEntry({ evalId, annotation: a, compact }: Props) {
   const hideAnnotation = useHideAnnotation(evalId)
   const [hiding, setHiding] = useState(false)
-  const [hideReason, setHideReason] = useState('')
-  const [hideAuthor, setHideAuthor] = useState('')
 
-  function handleHide() {
+  function handleHide(reason: string, author: string) {
     hideAnnotation.mutate(
-      { annotationId: a.id, reason: hideReason, author: hideAuthor || undefined },
-      { onSuccess: () => { setHiding(false); setHideReason(''); setHideAuthor('') } },
+      { annotationId: a.id, reason, author: author || undefined },
+      { onSuccess: () => setHiding(false) },
     )
   }
 
@@ -99,41 +98,17 @@ export function NoteEntry({ evalId, annotation: a, compact }: Props) {
 
       {/* Hide/delete form */}
       {hiding && (
-        <div className="mt-2 ml-5 border border-red-700/40 rounded-md bg-red-950/20 overflow-hidden">
-          <div className="h-[3px] bg-red-500" />
-          <div className="p-3 space-y-2">
-            <p className="text-xs font-medium text-red-400"
-              style={{ fontFamily: "system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" }}>
-              Delete this note?
-            </p>
-            <input
-              value={hideReason}
-              onChange={e => setHideReason(e.target.value)}
-              placeholder="Reason for deletion…"
-              className="w-full px-3 py-1.5 bg-background border border-red-700/40 rounded-md text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-red-500"
-            />
-            <input
-              value={hideAuthor}
-              onChange={e => setHideAuthor(e.target.value)}
-              placeholder="Your name"
-              className="w-full px-3 py-1.5 bg-background border border-red-700/40 rounded-md text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-red-500"
-            />
-            <div className="flex justify-end gap-2">
-              <button
-                onClick={() => setHiding(false)}
-                className="px-3 py-1.5 text-xs font-medium rounded-md border border-border text-muted-foreground hover:border-muted-foreground/60 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleHide}
-                disabled={!hideReason.trim() || hideAnnotation.isPending}
-                className="px-3 py-1.5 text-xs font-medium rounded-md bg-red-600 text-white hover:bg-red-500 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-              >
-                {hideAnnotation.isPending ? 'Deleting…' : 'Delete note'}
-              </button>
-            </div>
-          </div>
+        <div className="mt-2 ml-5">
+          <DeletionConfirmForm
+            title="Delete this note?"
+            onConfirm={handleHide}
+            onCancel={() => setHiding(false)}
+            confirmLabel="Delete note"
+            pendingLabel="Deleting\u2026"
+            isPending={hideAnnotation.isPending}
+            requireReason
+            requireAuthor
+          />
         </div>
       )}
     </div>

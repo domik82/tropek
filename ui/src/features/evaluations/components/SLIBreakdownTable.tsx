@@ -1,13 +1,8 @@
 // src/features/evaluations/components/SLIBreakdownTable.tsx
 import { useState } from 'react'
 import { fmt } from '@/lib/format'
+import { STATUS_TEXT } from '@/lib/status'
 import type { IndicatorResult } from '../types'
-
-const STATUS_TEXT: Record<string, string> = {
-  pass:    'text-pass',
-  warning: 'text-warning',
-  fail:    'text-fail',
-}
 
 function fmtPct(v: number | null | undefined): string {
   if (v == null) return '—'
