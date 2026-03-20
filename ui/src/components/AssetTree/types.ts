@@ -5,7 +5,7 @@ export type NodeType = 'group' | 'asset'
 export interface ContextMenuState {
   x: number
   y: number
-  target: { type: NodeType; name: string; groupName?: string }
+  target: { type: NodeType; name: string; groupName?: string; assetId?: string }
 }
 
 export interface MenuItemDef {

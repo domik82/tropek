@@ -76,8 +76,8 @@
       "description": "Load testing lab with Linux and Windows subgroups",
       "members": [],
       "subgroups": [
-        { "child_group_id": "pl1-linux",   "group_name": "pl1-linux",   "weight": 1.0 },
-        { "child_group_id": "pl1-windows", "group_name": "pl1-windows", "weight": 1.0 }
+        { "group_id": "pl1-linux",   "group_name": "pl1-linux",   "weight": 1.0 },
+        { "group_id": "pl1-windows", "group_name": "pl1-windows", "weight": 1.0 }
       ]
     },
     {
@@ -87,8 +87,8 @@
       "description": "Second load testing lab with Linux and Windows subgroups",
       "members": [],
       "subgroups": [
-        { "child_group_id": "pl2-linux",   "group_name": "pl2-linux",   "weight": 1.0 },
-        { "child_group_id": "pl2-windows", "group_name": "pl2-windows", "weight": 1.0 }
+        { "group_id": "pl2-linux",   "group_name": "pl2-linux",   "weight": 1.0 },
+        { "group_id": "pl2-windows", "group_name": "pl2-windows", "weight": 1.0 }
       ]
     },
     {

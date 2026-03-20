@@ -7,6 +7,8 @@ import { GroupEditDialog } from '@/features/slos/components/GroupEditDialog'
 import { GroupDeleteDialog } from '@/features/slos/components/GroupDeleteDialog'
 import { SloLinkDialog } from '@/features/slos/components/SloLinkDialog'
 import { AssetTypesDialog } from '@/features/assets/components/AssetTypesDialog'
+import { AddAssetToGroupDialog } from '@/features/assets/components/AddAssetToGroupDialog'
+import { AssetEditDialog } from '@/features/assets/components/AssetEditDialog'
 import { AssetTreeNode } from './AssetTreeNode'
 import { AssetTreeContextMenu } from './AssetTreeContextMenu'
 import { AssetTreeFooter } from './AssetTreeFooter'
@@ -59,6 +61,8 @@ export function AssetTree({
   const [deletingGroupName, setDeletingGroupName] = useState<string | null>(null)
   const [linkingGroupName, setLinkingGroupName] = useState<string | null>(null)
   const [typesDialogOpen, setTypesDialogOpen] = useState(false)
+  const [addAssetGroupName, setAddAssetGroupName] = useState<string | null>(null)
+  const [editingAssetName, setEditingAssetName] = useState<string | null>(null)
 
   // SLO link counts for slo mode (batch endpoint not yet available)
   const sloLinkCounts = useSloLinkCounts()
@@ -101,6 +105,8 @@ export function AssetTree({
     onEditGroup: handleEditGroup,
     onDeleteGroup: handleDeleteGroup,
     onAddSloLink: handleAddSloLink,
+    onAddAssetToGroup: setAddAssetGroupName,
+    onEditAsset: setEditingAssetName,
     onStartRename: setRenamingGroup,
     onSelectAsset,
   })
@@ -348,6 +354,16 @@ export function AssetTree({
         />
       )}
       <AssetTypesDialog open={typesDialogOpen} onOpenChange={setTypesDialogOpen} />
+      <AddAssetToGroupDialog
+        open={addAssetGroupName !== null}
+        onOpenChange={open => { if (!open) setAddAssetGroupName(null) }}
+        groupName={addAssetGroupName}
+      />
+      <AssetEditDialog
+        open={editingAssetName !== null}
+        onOpenChange={open => { if (!open) setEditingAssetName(null) }}
+        assetName={editingAssetName}
+      />
 
       {!externalAddSloLink && mode === 'slo' && (
         <SloLinkDialog

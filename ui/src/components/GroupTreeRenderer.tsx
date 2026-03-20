@@ -22,7 +22,7 @@ export function GroupTreeRenderer({
   const isOpen = forceExpanded !== undefined ? forceExpanded : open
 
   const subGroups = group.subgroups
-    .map(sg => tree.all_groups.find(g => g.id === sg.child_group_id))
+    .map(sg => tree.all_groups.find(g => g.id === sg.group_id))
     .filter(Boolean) as AssetGroup[]
 
   const matchesFilter = !filterQuery

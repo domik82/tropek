@@ -31,12 +31,12 @@ function matchesFilter(group: AssetGroup, tree: AssetGroupTree, filter: string, 
   const label = (group.display_name ?? group.name).toLowerCase()
   if (label.includes(q)) return true
 
-  if (mode === 'navigator') {
+  if (mode === 'navigator' || mode === 'assets') {
     if (group.members.some(m => m.asset_name.toLowerCase().includes(q))) return true
   }
 
   const subgroups = group.subgroups
-    .map(sg => tree.all_groups.find(g => g.id === sg.child_group_id))
+    .map(sg => tree.all_groups.find(g => g.id === sg.group_id))
     .filter(Boolean) as AssetGroup[]
 
   return subgroups.some(sg => matchesFilter(sg, tree, filter, mode))
@@ -51,7 +51,7 @@ export function AssetTreeNode({
   if (!matchesFilter(group, tree, filter, mode)) return null
 
   const subgroups = group.subgroups
-    .map(sg => tree.all_groups.find(g => g.id === sg.child_group_id))
+    .map(sg => tree.all_groups.find(g => g.id === sg.group_id))
     .filter(Boolean) as AssetGroup[]
 
   const isExpanded = expandedGroups.has(group.name) || (!!filter && matchesFilter(group, tree, filter, mode))
@@ -59,7 +59,7 @@ export function AssetTreeNode({
   const isRenaming = renamingGroup === group.name
   const paddingLeft = depth * 16 + 8
 
-  const filteredMembers = mode === 'navigator'
+  const filteredMembers = (mode === 'navigator' || mode === 'assets')
     ? (filter
         ? group.members.filter(m => m.asset_name.toLowerCase().includes(filter.toLowerCase()))
         : group.members)
@@ -73,8 +73,8 @@ export function AssetTreeNode({
     onOpenContextMenu({ x, y, target: { type: 'group' as NodeType, name: group.name } })
   }
 
-  const openAssetMenu = (x: number, y: number, assetName: string) => {
-    onOpenContextMenu({ x, y, target: { type: 'asset' as NodeType, name: assetName, groupName: group.name } })
+  const openAssetMenu = (x: number, y: number, assetName: string, assetId?: string) => {
+    onOpenContextMenu({ x, y, target: { type: 'asset' as NodeType, name: assetName, groupName: group.name, assetId } })
   }
 
   return (
@@ -222,7 +222,7 @@ export function AssetTreeNode({
             />
           ))}
 
-          {mode === 'navigator' && filteredMembers.map(m => {
+          {(mode === 'navigator' || mode === 'assets') && filteredMembers.map(m => {
             const isAssetSelected = selectedAsset === m.asset_name
             const assetPadding = (depth + 1) * 16 + 8
             return (
@@ -237,7 +237,7 @@ export function AssetTreeNode({
                 onClick={() => onSelectAsset?.(m.asset_name)}
                 onContextMenu={e => {
                   e.preventDefault()
-                  openAssetMenu(e.clientX, e.clientY, m.asset_name)
+                  openAssetMenu(e.clientX, e.clientY, m.asset_name, m.asset_id)
                 }}
               >
                 <span className="font-mono text-[13px] text-muted-foreground truncate py-1 flex-1">
@@ -248,7 +248,7 @@ export function AssetTreeNode({
                   onClick={e => {
                     e.stopPropagation()
                     const rect = e.currentTarget.getBoundingClientRect()
-                    openAssetMenu(rect.left, rect.bottom + 2, m.asset_name)
+                    openAssetMenu(rect.left, rect.bottom + 2, m.asset_name, m.asset_id)
                   }}
                 >
                   <MoreHorizontal className="w-4 h-4 text-muted-foreground" />

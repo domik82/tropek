@@ -74,25 +74,27 @@
 }
 
 /* ── Forest dark theme ────────────────────────────────────────── */
+/* Palette derived from Penpot design: navy-blue tinted darks, not neutral blacks.
+   Key source colors: sidebar #111827, cards #141822, border #374151. */
 [data-theme="forest"] {
   --background:          oklch(0.145 0 0);
   --foreground:          oklch(0.985 0 0);
-  --card:                oklch(0.205 0 0);
+  --card:                #141822;
   --card-foreground:     oklch(0.985 0 0);
-  --popover:             oklch(0.205 0 0);
+  --popover:             #141822;
   --popover-foreground:  oklch(0.985 0 0);
   --primary:             oklch(68.628% 0.185 148.958);
   --primary-foreground:  oklch(0% 0 0);
-  --secondary:           oklch(30.698% 0.039 171.364);
+  --secondary:           #1e293b;
   --secondary-foreground:oklch(86.139% 0.007 171.364);
-  --muted:               oklch(30.698% 0.039 171.364);
-  --muted-foreground:    oklch(86.139% 0.007 171.364);
-  --accent:              oklch(30.698% 0.039 171.364);
+  --muted:               #1e293b;
+  --muted-foreground:    oklch(70% 0.01 250);
+  --accent:              #1e293b;
   --accent-foreground:   oklch(86.139% 0.007 171.364);
   --destructive:         oklch(71.76% 0.221 22.18);
   --destructive-foreground: oklch(0% 0 0);
-  --border:              oklch(30.698% 0.039 171.364 / 40%);
-  --input:               oklch(30.698% 0.039 171.364 / 40%);
+  --border:              #374151;
+  --input:               #1e293b;
   --ring:                oklch(68.628% 0.185 148.958 / 50%);
   --chart-1:             oklch(68.628% 0.185 148.958);
   --chart-2:             oklch(69.776% 0.135 168.327);
@@ -179,4 +181,11 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: ui-monospace, 'Cascadia Code', 'Source Code Pro', Menlo, Consolas, 'DejaVu Sans Mono', monospace;
+}
+
+/* Native <select> dropdown options use OS rendering and ignore dark-mode CSS.
+   Force dark text so options are readable on the browser's default light background. */
+option {
+  color: #1a1a1a;
+  background: #f5f5f5;
 }
