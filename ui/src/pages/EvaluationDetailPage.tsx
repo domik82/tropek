@@ -1,7 +1,8 @@
 // src/pages/EvaluationDetailPage.tsx
-import { useState, useMemo, useRef } from 'react'
+import { useState, useRef } from 'react'
 import { useParams, useSearchParams, Link } from 'react-router-dom'
 import { useEvaluationDetail } from '@/features/evaluations/hooks'
+import { useTabState } from '@/features/evaluations/hooks/useTabState'
 import { SLIBreakdownTable } from '@/features/evaluations/components/SLIBreakdownTable'
 import { MetricTrendBlock } from '@/features/evaluations/components/MetricTrendBlock'
 import { EvaluationHeader } from '@/features/evaluations/components/EvaluationHeader'
@@ -26,36 +27,17 @@ export function EvaluationDetailPage() {
 
   const { data: ev, isLoading } = useEvaluationDetail(id!)
 
-  const [activeTab, setActiveTab] = useState('all')
   const [activeAction, setActiveAction] = useState<ActionKind | null>(null)
 
   const notesRef = useRef<AnnotationSectionHandle>(null)
+
+  const { availableGroups, counts, activeTab, setActiveTab, tabIndicators } =
+    useTabState(ev?.indicator_results)
 
   function handleAddNote() {
     notesRef.current?.openForm()
     document.getElementById('notes-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
-
-  const availableGroups = useMemo(() =>
-    [...new Set(ev?.indicator_results.map(i => i.tab_group).filter(Boolean) as string[])],
-    [ev]
-  )
-
-  const counts = useMemo(() =>
-    Object.fromEntries(
-      availableGroups.map(g => [g, ev?.indicator_results.filter(i => i.tab_group === g).length ?? 0])
-    ),
-    [ev, availableGroups]
-  )
-
-  const resolvedTab = ['all', ...availableGroups].includes(activeTab) ? activeTab : 'all'
-
-  const tabIndicators = useMemo(
-    () => resolvedTab === 'all'
-      ? (ev?.indicator_results ?? [])
-      : (ev?.indicator_results.filter(ind => ind.tab_group === resolvedTab) ?? []),
-    [ev, resolvedTab]
-  )
 
   if (isLoading) return <div className="p-6 text-slate-400">Loading…</div>
   if (!ev) return <div className="p-6 text-red-400">Evaluation not found.</div>
@@ -180,14 +162,14 @@ export function EvaluationDetailPage() {
           availableGroups={availableGroups}
           allCount={ev.indicator_results.length}
           counts={counts}
-          activeTab={resolvedTab}
+          activeTab={activeTab}
           onTabChange={setActiveTab}
         />
 
         <SLIBreakdownTable
           indicators={tabIndicators}
           onIndicatorClick={(metric, tabGroup) => {
-            if (resolvedTab !== 'all') setActiveTab(tabGroup)
+            if (activeTab !== 'all') setActiveTab(tabGroup)
             setTimeout(() => scrollTo(`trend-${metric}`), 50)
           }}
         />
@@ -197,7 +179,7 @@ export function EvaluationDetailPage() {
       <div className="space-y-4">
         <p className="text-xs text-slate-500">
           30-day trend for{' '}
-          <strong className="text-slate-300">{resolvedTab === 'all' ? 'All' : tabLabel(resolvedTab)}</strong>{' '}
+          <strong className="text-slate-300">{activeTab === 'all' ? 'All' : tabLabel(activeTab)}</strong>{' '}
           metrics on <strong className="text-slate-300">{ev.asset_snapshot.name}</strong>.
           Dot colour reflects each metric's own pass/warn/fail result.
         </p>
