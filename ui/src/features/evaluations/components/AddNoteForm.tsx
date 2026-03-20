@@ -50,6 +50,7 @@ export function AddNoteForm({ evalId, onClose }: Props) {
               value={author}
               onChange={e => setAuthor(e.target.value)}
               placeholder="Author"
+              autoComplete="name"
               className="px-3 py-2 bg-background border border-border rounded-md text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-amber-500"
             />
             <input
