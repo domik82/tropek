@@ -1,4 +1,4 @@
-export type TreeMode = 'navigator' | 'slo'
+export type TreeMode = 'navigator' | 'slo' | 'assets'
 
 export type NodeType = 'group' | 'asset'
 

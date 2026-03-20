@@ -36,7 +36,7 @@ function matchesFilter(group: AssetGroup, tree: AssetGroupTree, filter: string, 
   }
 
   const subgroups = group.subgroups
-    .map(sg => tree.all_groups.find(g => g.id === sg.group_id))
+    .map(sg => tree.all_groups.find(g => g.id === sg.child_group_id))
     .filter(Boolean) as AssetGroup[]
 
   return subgroups.some(sg => matchesFilter(sg, tree, filter, mode))
@@ -51,7 +51,7 @@ export function AssetTreeNode({
   if (!matchesFilter(group, tree, filter, mode)) return null
 
   const subgroups = group.subgroups
-    .map(sg => tree.all_groups.find(g => g.id === sg.group_id))
+    .map(sg => tree.all_groups.find(g => g.id === sg.child_group_id))
     .filter(Boolean) as AssetGroup[]
 
   const isExpanded = expandedGroups.has(group.name) || (!!filter && matchesFilter(group, tree, filter, mode))

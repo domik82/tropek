@@ -1,43 +1,41 @@
 // src/pages/AssetsPage.tsx
 import { useState } from 'react'
-import { useAssetGroups } from '@/features/assets/hooks'
-import { AssetGroupCard } from '@/features/assets/components/AssetGroupCard'
-import { AssetFilter } from '@/features/assets/components/AssetFilter'
-import { ColourLegend } from '@/features/assets/components/ColourLegend'
-import { DEFAULT_OS_COLOUR_MAP } from '@/lib/theme'
+import { useSearchParams } from 'react-router-dom'
+import { AssetTree } from '@/components/AssetTree'
+import { GroupDetailPanel } from '@/features/assets/components/GroupDetailPanel'
+import { AllAssetsPanel } from '@/features/assets/components/AllAssetsPanel'
+import { AssetCreateDialog } from '@/features/assets/components/AssetCreateDialog'
 
 export function AssetsPage() {
-  const { data: tree, isLoading, isError } = useAssetGroups()
-  const [query, setQuery] = useState('')
-  const [colourMap, setColourMap] = useState<Record<string, string>>(DEFAULT_OS_COLOUR_MAP)
-  const [forceExpanded, setForceExpanded] = useState<boolean | undefined>(undefined)
-
-  if (isLoading) return <p className="p-6 text-slate-400">Loading...</p>
-  if (isError || !tree) return <p className="p-6 text-slate-300">Failed to load data.</p>
+  const [params, setParams] = useSearchParams()
+  const selectedGroup = params.get('group') ?? null
+  const selectedAsset = params.get('asset') ?? null
+  const [createAssetOpen, setCreateAssetOpen] = useState(false)
 
   return (
-    <div className="p-6 space-y-4">
-      <h1 className="text-xl font-semibold text-slate-100">Asset Registry</h1>
-      <ColourLegend
-        colourMap={colourMap}
-        onColourChange={(os, colour) => setColourMap(prev => ({ ...prev, [os]: colour }))}
+    <div className="flex h-[calc(100vh-49px)] overflow-hidden">
+      <AssetTree
+        mode="assets"
+        selectedGroup={selectedGroup}
+        selectedAsset={selectedAsset}
+        onSelectGroup={name => name ? setParams({ group: name }) : setParams({})}
+        onSelectAsset={name => setParams({ asset: name })}
+        width={260}
+        onAddAsset={() => setCreateAssetOpen(true)}
       />
-      <AssetFilter
-        query={query}
-        onQueryChange={setQuery}
-        onExpandAll={() => setForceExpanded(true)}
-        onCollapseAll={() => setForceExpanded(false)}
-      />
-      {tree.top_level.map(group => (
-        <AssetGroupCard
-          key={group.id}
-          group={group}
-          tree={tree}
-          filterQuery={query}
-          colourMap={colourMap}
-          forceExpanded={forceExpanded}
-        />
-      ))}
+      <div className="flex-1 overflow-y-auto">
+        {selectedGroup && selectedGroup !== '__ungrouped__' && (
+          <GroupDetailPanel
+            groupName={selectedGroup}
+            onSelectGroup={name => setParams({ group: name })}
+            onSelectAsset={name => setParams({ asset: name })}
+          />
+        )}
+        {(!selectedGroup || selectedGroup === '__ungrouped__') && (
+          <AllAssetsPanel />
+        )}
+      </div>
+      <AssetCreateDialog open={createAssetOpen} onOpenChange={setCreateAssetOpen} />
     </div>
   )
 }
