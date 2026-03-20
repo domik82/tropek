@@ -1,9 +1,10 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { MoreVertical, MessageSquareWarning } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { useInvalidateEvaluation, useOverrideStatus, usePinBaseline, useReEvaluate } from '../hooks'
-import type { ActionKind, ReEvaluateResponse } from '../types'
+import { InvalidateForm } from './actions/InvalidateForm'
+import { OverrideForm } from './actions/OverrideForm'
+import { BaselineForm } from './actions/BaselineForm'
+import { ReEvaluateForm } from './actions/ReEvaluateForm'
+import type { ActionKind } from '../types'
 
 interface ActionDef {
   kind: ActionKind
@@ -183,182 +184,25 @@ export function EvaluationActionForm({
   evalId, currentResult, activeAction, onClose,
   assetName, sloName, defaultFromDate,
 }: FormProps) {
-  const [reason, setReason] = useState('')
-  const [author, setAuthor] = useState('')
-  const [fromDate, setFromDate] = useState(defaultFromDate ?? '')
-  const [fromBaseline, setFromBaseline] = useState(false)
-  const [reEvalResult, setReEvalResult] = useState<ReEvaluateResponse | null>(null)
-
-  const invalidate = useInvalidateEvaluation(evalId)
-  const override = useOverrideStatus(evalId)
-  const baseline = usePinBaseline(evalId)
-  const reEvaluate = useReEvaluate()
-
-  const isPending = invalidate.isPending || override.isPending || baseline.isPending || reEvaluate.isPending
-  const isReEval = activeAction === 're-evaluate'
-  const actions = getActions(currentResult)
-  const actionDef = actions.find(a => a.kind === activeAction)!
-
-  const handleConfirm = useCallback(() => {
-    const onSuccess = () => onClose()
-
-    if (activeAction === 'invalidate') {
-      if (!reason.trim() || !author.trim()) return
-      invalidate.mutate({ note: reason, author }, { onSuccess })
-    } else if (activeAction === 'override') {
-      if (!reason.trim() || !author.trim()) return
-      const newResult = currentResult === 'pass' ? 'fail' : 'pass'
-      override.mutate({ new_result: newResult, reason, author }, { onSuccess })
-    } else if (activeAction === 'baseline') {
-      if (!reason.trim() || !author.trim()) return
-      baseline.mutate({ reason, author }, { onSuccess })
-    } else if (activeAction === 're-evaluate') {
-      if (!fromBaseline && !fromDate) return
-      reEvaluate.mutate(
-        {
-          asset_name: assetName ?? '',
-          slo_name: sloName ?? '',
-          ...(fromBaseline ? { from_baseline: true } : { from_date: new Date(fromDate).toISOString() }),
-        },
-        { onSuccess: (data) => setReEvalResult(data) }
+  switch (activeAction) {
+    case 'invalidate':
+      return <InvalidateForm evaluationId={evalId} onComplete={onClose} />
+    case 'override':
+      return <OverrideForm evaluationId={evalId} currentResult={currentResult} onComplete={onClose} />
+    case 'baseline':
+      return <BaselineForm evaluationId={evalId} onComplete={onClose} />
+    case 're-evaluate':
+      return (
+        <ReEvaluateForm
+          evaluationId={evalId}
+          assetName={assetName ?? ''}
+          sloName={sloName ?? ''}
+          defaultFromDate={defaultFromDate}
+          onComplete={onClose}
+        />
       )
-    }
-  }, [activeAction, reason, author, currentResult, fromBaseline, fromDate, assetName, sloName,
-      invalidate, override, baseline, reEvaluate, onClose])
+  }
 
-  const needsAuthor = activeAction === 'invalidate' || activeAction === 'override' || activeAction === 'baseline'
-  const canConfirm = isReEval
-    ? (fromBaseline || !!fromDate)
-    : (!!reason.trim() && (!needsAuthor || !!author.trim()))
-
-  return (
-    <div className="flex justify-end">
-      <div className={`w-full max-w-md border ${actionDef.accentBorder} rounded-xl bg-popover overflow-hidden`}>
-        {/* Accent strip */}
-        <div className="h-[3px]" style={{ backgroundColor: actionDef.accentColor, opacity: 0.7 }} />
-
-        <div className="p-4 space-y-3">
-          {/* Title + description */}
-          <div>
-            <p className={`text-sm font-medium ${actionDef.accentText}`}>
-              {actionDef.label}
-            </p>
-            <p className="text-xs text-muted-foreground mt-0.5">{actionDef.description}</p>
-          </div>
-
-          {/* Re-evaluate results view */}
-          {isReEval && reEvalResult && (
-            <div className="space-y-2">
-              <p className="text-sm text-foreground">
-                {reEvalResult.affected_evaluations} evaluation{reEvalResult.affected_evaluations !== 1 ? 's' : ''}{' '}
-                re-evaluated (SLO v{reEvalResult.slo_version_used})
-              </p>
-              <div className="max-h-48 overflow-y-auto space-y-1">
-                {reEvalResult.results.map((r) => (
-                  <div key={r.id} className="flex items-center justify-between text-xs px-3 py-1.5 bg-muted/50 rounded">
-                    <span className="text-muted-foreground">
-                      {new Date(r.period_start).toLocaleDateString()}
-                    </span>
-                    <span>
-                      <span className="text-muted-foreground">{r.old_result}</span>
-                      <span className="text-muted-foreground/60 mx-1">→</span>
-                      <span className={
-                        r.new_result === 'pass' ? 'text-pass'
-                          : r.new_result === 'warning' ? 'text-warning'
-                            : 'text-fail'
-                      }>
-                        {r.new_result}
-                      </span>
-                    </span>
-                    <span className="text-muted-foreground">
-                      {r.old_score.toFixed(1)} → {r.new_score.toFixed(1)}
-                    </span>
-                  </div>
-                ))}
-              </div>
-              <div className="flex justify-end">
-                <Button variant="outline" size="xs" onClick={onClose}>
-                  Close
-                </Button>
-              </div>
-            </div>
-          )}
-
-          {/* Re-evaluate input form (checkbox + date) */}
-          {isReEval && !reEvalResult && (
-            <div className="space-y-3">
-              {reEvaluate.isError && (
-                <p className="text-xs text-fail bg-fail/10 border border-fail/20 rounded px-3 py-2">
-                  {reEvaluate.error instanceof Error ? reEvaluate.error.message : 'Request failed'}
-                </p>
-              )}
-              <p className="text-xs text-muted-foreground">
-                Re-score <span className="text-foreground">{assetName}</span>{' '}
-                with SLO <span className="text-foreground">{sloName}</span>
-              </p>
-              <label className="flex items-center gap-2 text-sm text-foreground cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={fromBaseline}
-                  onChange={(e) => setFromBaseline(e.target.checked)}
-                  className="rounded border-border accent-purple-500"
-                />
-                Run from last baseline
-              </label>
-              {!fromBaseline && (
-                <div>
-                  <label className="block text-xs text-muted-foreground mb-1">Start date</label>
-                  <Input
-                    type="datetime-local"
-                    value={fromDate}
-                    onChange={(e) => setFromDate(e.target.value)}
-                  />
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Reason + author form (invalidate shows reason only; override/baseline show both) */}
-          {!isReEval && (
-            <>
-              <Input
-                value={reason}
-                onChange={e => setReason(e.target.value)}
-                placeholder="Reason..."
-              />
-              {needsAuthor && (
-                <Input
-                  value={author}
-                  onChange={e => setAuthor(e.target.value)}
-                  placeholder="Author"
-                />
-              )}
-            </>
-          )}
-
-          {/* Buttons (hidden when showing re-eval results) */}
-          {!(isReEval && reEvalResult) && (
-            <div className="flex gap-2 justify-end">
-              <Button variant="outline" size="xs" onClick={onClose}>
-                Cancel
-              </Button>
-              <button
-                onClick={handleConfirm}
-                disabled={!canConfirm || isPending}
-                className={`px-3 py-1.5 text-xs font-medium rounded-md text-white ${actionDef.confirmClasses} disabled:opacity-40 disabled:cursor-not-allowed transition-colors`}
-              >
-                {isPending
-                  ? 'Saving…'
-                  : isReEval
-                    ? '▶ Run'
-                    : 'Confirm'}
-              </button>
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  )
 }
 
 export function NoteIconButton({ onClick, annotationCount }: { onClick: () => void; annotationCount: number }) {
