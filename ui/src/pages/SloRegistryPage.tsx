@@ -1,6 +1,7 @@
 // src/pages/SloRegistryPage.tsx
 import { useState, useMemo, useEffect } from 'react'
 import { useSearchParams } from 'react-router-dom'
+import { Button } from '@/components/ui/button'
 import { useSlos, useSloDetail, useDeleteSlo, useGroupSloLinks, useGroupTree } from '@/features/slos/hooks'
 import { SloObjectiveTable } from '@/features/slos/components/SloObjectiveTable'
 import { SloObjectiveEditor } from '@/features/slos/components/SloObjectiveEditor'
@@ -44,13 +45,9 @@ function SloDetail({ name }: { name: string }) {
         <TabBtn active={mode === 'view'} onClick={() => setMode('view')}>View</TabBtn>
         <TabBtn active={mode === 'edit-rows'} onClick={() => setMode('edit-rows')}>Edit Rows</TabBtn>
         <TabBtn active={mode === 'history'} onClick={() => setMode('history')}>History</TabBtn>
-        <button
-          disabled
-          title="Coming soon"
-          className="px-3 py-1.5 text-xs font-medium rounded border border-slate-800 text-slate-600 cursor-not-allowed"
-        >
+        <Button variant="outline" size="xs" disabled title="Coming soon">
           Test SLO
-        </button>
+        </Button>
       </div>
 
       {mode === 'view' && <SloObjectiveTable slo={slo} />}
@@ -70,19 +67,17 @@ function DeleteConfirm({ name, onDone }: { name: string; onDone: () => void }) {
   return (
     <div className="flex items-center gap-2 bg-red-900/20 border border-red-700/40 rounded-lg px-3 py-2">
       <span className="text-xs text-red-300">Deactivate <strong>{name}</strong>? All versions will be marked inactive.</span>
-      <button
+      <Button
+        size="xs"
         onClick={() => del.mutate(name, { onSuccess: onDone })}
         disabled={del.isPending}
-        className="px-2.5 py-1 text-xs font-medium rounded bg-red-700 text-white hover:bg-red-600 disabled:opacity-40 transition-colors shrink-0"
+        className="bg-red-700 text-white hover:bg-red-600 shrink-0"
       >
         {del.isPending ? 'Deactivating\u2026' : 'Confirm'}
-      </button>
-      <button
-        onClick={onDone}
-        className="px-2.5 py-1 text-xs rounded border border-slate-600 text-slate-400 hover:text-slate-200 transition-colors shrink-0"
-      >
+      </Button>
+      <Button variant="outline" size="xs" onClick={onDone} className="shrink-0">
         Cancel
-      </button>
+      </Button>
     </div>
   )
 }

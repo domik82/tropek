@@ -1,5 +1,6 @@
 // ui/src/features/evaluations/components/NoteEntry.tsx
 import { useState } from 'react'
+import { Button } from '@/components/ui/button'
 import { useHideAnnotation } from '../hooks'
 import type { Annotation } from '../types'
 
@@ -119,19 +120,17 @@ export function NoteEntry({ evalId, annotation: a, compact }: Props) {
               className="w-full px-3 py-1.5 bg-background border border-red-700/40 rounded-md text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-red-500"
             />
             <div className="flex justify-end gap-2">
-              <button
-                onClick={() => setHiding(false)}
-                className="px-3 py-1.5 text-xs font-medium rounded-md border border-border text-muted-foreground hover:border-muted-foreground/60 transition-colors"
-              >
+              <Button variant="outline" size="xs" onClick={() => setHiding(false)}>
                 Cancel
-              </button>
-              <button
+              </Button>
+              <Button
+                size="xs"
                 onClick={handleHide}
                 disabled={!hideReason.trim() || hideAnnotation.isPending}
-                className="px-3 py-1.5 text-xs font-medium rounded-md bg-red-600 text-white hover:bg-red-500 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                className="bg-red-600 text-white hover:bg-red-500"
               >
-                {hideAnnotation.isPending ? 'Deleting…' : 'Delete note'}
-              </button>
+                {hideAnnotation.isPending ? 'Deleting...' : 'Delete note'}
+              </Button>
             </div>
           </div>
         </div>

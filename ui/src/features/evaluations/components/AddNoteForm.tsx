@@ -1,5 +1,6 @@
 // ui/src/features/evaluations/components/AddNoteForm.tsx
 import { useState } from 'react'
+import { Button } from '@/components/ui/button'
 import { useAddAnnotation } from '../hooks'
 
 interface Props {
@@ -61,13 +62,14 @@ export function AddNoteForm({ evalId, onClose }: Props) {
           </div>
 
           <div className="flex justify-end">
-            <button
+            <Button
+              size="xs"
               onClick={handleSave}
               disabled={!content.trim() || addAnnotation.isPending}
-              className="px-3 py-1.5 text-xs font-medium rounded-md bg-amber-500 text-black hover:bg-amber-400 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              className="bg-amber-500 text-black hover:bg-amber-400"
             >
-              {addAnnotation.isPending ? 'Saving…' : 'Save note'}
-            </button>
+              {addAnnotation.isPending ? 'Saving...' : 'Save note'}
+            </Button>
           </div>
         </div>
       </div>
