@@ -10,6 +10,7 @@ Loading priority (highest to lowest):
 
 from __future__ import annotations
 
+import logging
 import os
 from functools import lru_cache
 from pathlib import Path
@@ -19,13 +20,22 @@ import yaml
 from pydantic import SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+logger = logging.getLogger(__name__)
+
 
 def _load_yaml() -> dict[str, Any]:
     path = Path(os.environ.get("QG_CONFIG_PATH", "config.yaml"))
-    if path.exists():
+    if not path.exists():
+        return {}
+    try:
         with path.open() as f:
-            return yaml.safe_load(f) or {}
-    return {}
+            data = yaml.safe_load(f)
+            if not isinstance(data, dict):
+                logger.warning("config.yaml exists but parsed as non-dict, using defaults")
+                return {}
+            return data
+    except yaml.YAMLError as exc:
+        raise RuntimeError(f"config.yaml is malformed: {exc}") from exc
 
 
 _yaml: dict[str, Any] = _load_yaml()
@@ -162,6 +172,18 @@ class Settings(BaseSettings):
     secret_key: SecretStr = SecretStr("")
 
     model_config = SettingsConfigDict(env_prefix="QG_")
+
+    def validate_required(self) -> None:
+        """Raise on missing required secrets. Call at startup."""
+        missing = []
+        if not self.database.password.get_secret_value():
+            missing.append("QG_DB_PASSWORD")
+        if not self.cache.password.get_secret_value():
+            missing.append("QG_REDIS_PASSWORD")
+        if not self.secret_key.get_secret_value():
+            missing.append("QG_SECRET_KEY")
+        if missing:
+            raise RuntimeError(f"required secrets not set: {', '.join(missing)}")
 
     @property
     def database(self) -> DatabaseSettings:
