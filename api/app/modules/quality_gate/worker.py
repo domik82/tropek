@@ -24,10 +24,14 @@ from app.modules.sli_registry.repository import SLIRepository
 from app.modules.slo_registry.repository import SLORepository
 
 
+class DefinitionLoadError(Exception):
+    """SLO or SLI definition could not be loaded."""
+
+
 async def _load_definitions(
     session: AsyncSession,
     ev: Evaluation,
-) -> tuple[SLODefinition, SLIDefinition] | str:
+) -> tuple[SLODefinition, SLIDefinition]:
     """Load SLO and SLI definitions for the evaluation.
 
     Args:
@@ -35,19 +39,22 @@ async def _load_definitions(
         ev: Evaluation row providing slo_name/version and sli_name/version.
 
     Returns:
-        (slo_def, sli_def) tuple on success, or an error message string on failure.
+        (slo_def, sli_def) tuple on success.
+
+    Raises:
+        DefinitionLoadError: If any required definition is missing.
     """
     if ev.slo_name is None or ev.slo_version is None:
-        return "evaluation has no slo_name or slo_version"
+        raise DefinitionLoadError("evaluation has no slo_name or slo_version")
     slo_def = await SLORepository(session).get_version(ev.slo_name, ev.slo_version)
     if slo_def is None:
-        return f"slo '{ev.slo_name}' v{ev.slo_version} not found"
+        raise DefinitionLoadError(f"slo '{ev.slo_name}' v{ev.slo_version} not found")
 
     if ev.sli_name is None or ev.sli_version is None:
-        return "evaluation has no sli_name or sli_version"
+        raise DefinitionLoadError("evaluation has no sli_name or sli_version")
     sli_def = await SLIRepository(session).get_version(ev.sli_name, ev.sli_version)
     if sli_def is None:
-        return f"sli '{ev.sli_name}' v{ev.sli_version} not found"
+        raise DefinitionLoadError(f"sli '{ev.sli_name}' v{ev.sli_version} not found")
 
     return slo_def, sli_def
 
@@ -55,7 +62,7 @@ async def _load_definitions(
 async def _resolve_baselines(
     baseline_repo: BaselineRepository,
     slo: SLO,
-    ev: Any,
+    ev: Evaluation,
     indicator_names: list[str],
 ) -> tuple[dict[str, float | None], list[str]]:
     """Fetch baseline evaluations and aggregate per-metric values.
@@ -125,11 +132,11 @@ async def run_evaluation(
         return
 
     # Load SLO + SLI definitions
-    defs = await _load_definitions(session, ev)
-    if isinstance(defs, str):
-        await repo.mark_failed(eval_id, job_stats={"error": defs})
+    try:
+        slo_def, sli_def = await _load_definitions(session, ev)
+    except DefinitionLoadError as exc:
+        await repo.mark_failed(eval_id, job_stats={"error": str(exc)})
         return
-    slo_def, sli_def = defs
 
     slo = build_slo(
         objectives=[
@@ -208,12 +215,17 @@ async def run_evaluation(
     )
     eval_result = evaluate(slo, metrics_fetched, baselines, compared_eval_ids)
 
+    # Serialize typed indicator results for JSONB storage
+    indicator_dicts: list[dict[str, Any]] = [
+        ir.model_dump() for ir in eval_result.indicator_results
+    ]
+
     # Write results
     await repo.mark_completed(
         eval_id,
         result=eval_result.result,
         score=eval_result.score,
-        indicator_results=eval_result.indicator_results,
+        indicator_results=indicator_dicts,
         slo_name=ev.slo_name,
         slo_version=ev.slo_version,
         job_stats={"fetch_errors": fetch_errors},
@@ -225,15 +237,15 @@ async def run_evaluation(
         {
             "eval_id": eval_id,
             "eval_start": ev.period_start,
-            "metric_name": ir["metric"],
-            "aggregation": ir.get("aggregation", "raw"),
-            "value": ir["value"],
+            "metric_name": ir.metric,
+            "aggregation": "raw",
+            "value": ir.value,
             "asset_name": asset_snapshot.get("name"),
             "evaluation_name": ev.evaluation_name,
             "os_tag": asset_labels.get("os"),
         }
         for ir in eval_result.indicator_results
-        if ir.get("value") is not None
+        if ir.value is not None
     ]
     if sli_rows:
         sli_repo = SLIValueRepository(session)
