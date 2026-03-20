@@ -3,37 +3,30 @@ import { useState, useMemo, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAssetEvaluations, useMetricHeatmap } from '../hooks'
 import { useEvaluationDetail } from '@/features/evaluations/hooks'
-import { AssetHeatmap } from './AssetHeatmap'
-import { MetricTrendBlock } from '@/features/evaluations/components/MetricTrendBlock'
-import { SLIBreakdownTable } from '@/features/evaluations/components/SLIBreakdownTable'
-import { EvaluationTabs, tabLabel } from '@/features/evaluations/components/EvaluationTabs'
+import { useTabState } from '@/features/evaluations/hooks/useTabState'
 import { EvaluationHeader } from '@/features/evaluations/components/EvaluationHeader'
 import { AnnotationSection, type AnnotationSectionHandle } from '@/features/evaluations/components/AnnotationForm'
-import { EvaluationActionsButton, EvaluationActionForm, NoteIconButton, type ActionKind } from '@/features/evaluations/components/EvaluationActions'
-import { ViewToggle } from '@/components/charts/ViewToggle'
+import { EvaluationActionsButton, EvaluationActionForm, NoteIconButton } from '@/features/evaluations/components/EvaluationActions'
+import type { ActionKind } from '@/features/evaluations/types'
 import type { ViewMode } from '@/components/charts/ViewToggle'
-import { AssetScoreChart } from './AssetScoreChart'
+import { AssetPanelHeatmapView } from './AssetPanelHeatmapView'
+import { AssetPanelChartView } from './AssetPanelChartView'
 
 interface Props {
   assetName: string
   initialEvalId?: string
 }
 
-function scrollTo(id: string) {
-  document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-}
-
 export function AssetPanel({ assetName, initialEvalId }: Props) {
   const [mode, setMode] = useState<ViewMode>('heatmap')
   const [selectedEvalId, setSelectedEvalId] = useState<string | undefined>(initialEvalId)
-  const [activeTab, setActiveTab] = useState('all')
   const [activeAction, setActiveAction] = useState<ActionKind | null>(null)
-  const [metricGroupFilter, setMetricGroupFilter] = useState<string>('all')
   const notesRef = useRef<AnnotationSectionHandle>(null)
+  const notesSectionRef = useRef<HTMLDivElement>(null)
 
   function handleAddNote() {
     notesRef.current?.openForm()
-    document.getElementById('notes-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    notesSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
 
   const navigate = useNavigate()
@@ -67,58 +60,10 @@ export function AssetPanel({ assetName, initialEvalId }: Props) {
   }, [evals])
 
   const effectiveEvalId = selectedEvalId ?? defaultEvalId
-
   const { data: ev } = useEvaluationDetail(effectiveEvalId)
 
-  const availableGroups = useMemo(() =>
-    [...new Set(ev?.indicator_results.map(i => i.tab_group).filter(Boolean) as string[])],
-    [ev],
-  )
-
-  const counts = useMemo(() =>
-    Object.fromEntries(
-      availableGroups.map(g => [g, ev?.indicator_results.filter(i => i.tab_group === g).length ?? 0]),
-    ),
-    [ev, availableGroups],
-  )
-
-  const resolvedTab = ['all', ...availableGroups].includes(activeTab) ? activeTab : 'all'
-
-  const tabIndicators = useMemo(
-    () => resolvedTab === 'all'
-      ? (ev?.indicator_results ?? [])
-      : (ev?.indicator_results.filter(ind => ind.tab_group === resolvedTab) ?? []),
-    [ev, resolvedTab],
-  )
-
-  const allIndicators = useMemo(() => {
-    if (!heatmapData) return []
-    return heatmapData.metrics.map(m => ({
-      metric: m.name,
-      display_name: m.display_name,
-      tab_group: m.tab_group,
-      value: 0,
-      compared_value: null,
-      change_absolute: null,
-      change_relative_pct: null,
-      aggregation: 'avg' as const,
-      status: 'pass' as const,
-      score: 0,
-      weight: 1,
-      key_sli: false,
-      pass_targets: null,
-      warning_targets: null,
-    }))
-  }, [heatmapData])
-
-  const metricGroups = useMemo(
-    () => Array.from(new Set(allIndicators.map(i => i.tab_group).filter(Boolean) as string[])),
-    [allIndicators],
-  )
-
-  const chartIndicators = metricGroupFilter === 'all'
-    ? allIndicators
-    : allIndicators.filter(i => i.tab_group === metricGroupFilter)
+  const { availableGroups, counts, activeTab, setActiveTab, tabIndicators } =
+    useTabState(ev?.indicator_results)
 
   const isLoading = evalsLoading || heatmapLoading
 
@@ -200,124 +145,44 @@ export function AssetPanel({ assetName, initialEvalId }: Props) {
 
       {isLoading && <p className="text-sm text-slate-400">Loading…</p>}
 
-      {/* Notes — shown when a single evaluation is selected */}
+      {/* Notes */}
       {!isLoading && effectiveEvalId && ev && (
-        <div id="notes-section">
+        <div ref={notesSectionRef}>
           <AnnotationSection ref={notesRef} evalId={effectiveEvalId} annotations={ev.annotations ?? []} />
         </div>
       )}
 
-      {/* ── Heatmap mode ── */}
+      {/* Heatmap mode */}
       {!isLoading && mode === 'heatmap' && (
-        <>
-          {/* Metric Heatmap with view toggle */}
-          {heatmapData && (
-            <div className="rounded-lg border border-slate-700 bg-gray-900 p-4">
-              <div className="flex items-center justify-between mb-2">
-                <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Metric Heatmap</h2>
-                <div className="flex items-center gap-3">
-                  <ViewToggle mode={mode} setMode={setMode} />
-                  {explorerButton}
-                </div>
-              </div>
-              <AssetHeatmap
-                data={heatmapData}
-                selectedEvalId={effectiveEvalId}
-                onEvalSelect={setSelectedEvalId}
-                notedSlots={notedSlots}
-              />
-            </div>
-          )}
-
-          {/* SLI Breakdown */}
-          {ev && (
-            <div id="sli-table" className="space-y-0 scroll-mt-4">
-              <div className="flex items-center justify-between mb-2">
-                <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wide">SLI Breakdown</h2>
-              </div>
-              <EvaluationTabs
-                availableGroups={availableGroups}
-                allCount={ev.indicator_results.length}
-                counts={counts}
-                activeTab={resolvedTab}
-                onTabChange={setActiveTab}
-              />
-              <SLIBreakdownTable
-                indicators={tabIndicators}
-                onIndicatorClick={(metric, tabGroup) => {
-                  if (resolvedTab !== 'all') setActiveTab(tabGroup)
-                  setTimeout(() => scrollTo(`trend-${metric}`), 50)
-                }}
-              />
-            </div>
-          )}
-
-          {/* Metric Trend Charts */}
-          {effectiveEvalId && tabIndicators.length > 0 && (
-            <div className="space-y-4">
-              <p className="text-xs text-slate-500">
-                30-day trend for{' '}
-                <strong className="text-slate-300">{resolvedTab === 'all' ? 'All' : tabLabel(resolvedTab)}</strong>{' '}
-                metrics on <strong className="text-slate-300">{assetName}</strong>.
-              </p>
-              <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-                {tabIndicators.map(ind => (
-                  <MetricTrendBlock key={ind.metric} evalId={effectiveEvalId} indicator={ind} onEvalSelect={setSelectedEvalId} />
-                ))}
-              </div>
-            </div>
-          )}
-        </>
+        <AssetPanelHeatmapView
+          assetName={assetName}
+          heatmapData={heatmapData}
+          ev={ev}
+          effectiveEvalId={effectiveEvalId}
+          notedSlots={notedSlots}
+          onEvalSelect={setSelectedEvalId}
+          mode={mode}
+          setMode={setMode}
+          explorerButton={explorerButton}
+          availableGroups={availableGroups}
+          counts={counts}
+          activeTab={activeTab}
+          setActiveTab={setActiveTab}
+          tabIndicators={tabIndicators}
+        />
       )}
 
-      {/* ── Charts mode ── */}
+      {/* Charts mode */}
       {!isLoading && mode === 'chart' && (
-        <>
-          {/* Toggle + explorer */}
-          <div className="flex justify-end">
-            <div className="flex items-center gap-3">
-              <ViewToggle mode={mode} setMode={setMode} />
-              {explorerButton}
-            </div>
-          </div>
-
-          {/* Score over time */}
-          <div className="rounded-lg border border-slate-700 bg-gray-900 p-4">
-            <AssetScoreChart evaluations={evals} selectedEvalId={effectiveEvalId} onEvalSelect={setSelectedEvalId} />
-          </div>
-
-          {effectiveEvalId && (
-            <div className="space-y-4">
-              <div className="flex flex-wrap gap-2">
-                <button
-                  onClick={() => setMetricGroupFilter('all')}
-                  className={`px-3 py-1.5 rounded text-sm transition-colors ${
-                    metricGroupFilter === 'all' ? 'bg-gray-800 text-slate-200' : 'text-slate-400 hover:text-slate-200'
-                  }`}
-                >
-                  All ({allIndicators.length})
-                </button>
-                {metricGroups.map(g => (
-                  <button
-                    key={g}
-                    onClick={() => setMetricGroupFilter(g)}
-                    className={`px-3 py-1.5 rounded text-sm transition-colors ${
-                      metricGroupFilter === g ? 'bg-gray-800 text-slate-200' : 'text-slate-400 hover:text-slate-200'
-                    }`}
-                  >
-                    {g} ({allIndicators.filter(i => i.tab_group === g).length})
-                  </button>
-                ))}
-              </div>
-
-              <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-                {chartIndicators.map(ind => (
-                  <MetricTrendBlock key={ind.metric} evalId={effectiveEvalId} indicator={ind} onEvalSelect={setSelectedEvalId} />
-                ))}
-              </div>
-            </div>
-          )}
-        </>
+        <AssetPanelChartView
+          effectiveEvalId={effectiveEvalId}
+          evals={evals}
+          heatmapData={heatmapData}
+          onEvalSelect={setSelectedEvalId}
+          mode={mode}
+          setMode={setMode}
+          explorerButton={explorerButton}
+        />
       )}
     </div>
   )

@@ -1,17 +1,12 @@
 // src/pages/EvaluationDetailPage.tsx
-import { useState, useMemo, useRef } from 'react'
+import { useState } from 'react'
 import { useParams, useSearchParams, Link } from 'react-router-dom'
 import { useEvaluationDetail } from '@/features/evaluations/hooks'
-import { SLIBreakdownTable } from '@/features/evaluations/components/SLIBreakdownTable'
-import { MetricTrendBlock } from '@/features/evaluations/components/MetricTrendBlock'
-import { EvaluationHeader } from '@/features/evaluations/components/EvaluationHeader'
-import { EvaluationTabs, tabLabel } from '@/features/evaluations/components/EvaluationTabs'
-import { AnnotationSection, type AnnotationSectionHandle } from '@/features/evaluations/components/AnnotationForm'
-import { EvaluationActionsButton, EvaluationActionForm, NoteIconButton, type ActionKind } from '@/features/evaluations/components/EvaluationActions'
-
-function scrollTo(id: string) {
-  document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-}
+import { EvaluationSummaryCard } from '@/features/evaluations/components/EvaluationSummaryCard'
+import { EvaluationIndicatorSection } from '@/features/evaluations/components/EvaluationIndicatorSection'
+import { EvaluationNotesSection, useNotesActions } from '@/features/evaluations/components/EvaluationNotesSection'
+import { EvaluationActionsButton, EvaluationActionForm } from '@/features/evaluations/components/EvaluationActions'
+import type { ActionKind } from '@/features/evaluations/types'
 
 export function EvaluationDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -25,46 +20,14 @@ export function EvaluationDetailPage() {
       : '/navigator'
 
   const { data: ev, isLoading } = useEvaluationDetail(id!)
-
-  const [activeTab, setActiveTab] = useState('all')
   const [activeAction, setActiveAction] = useState<ActionKind | null>(null)
-
-  const notesRef = useRef<AnnotationSectionHandle>(null)
-
-  function handleAddNote() {
-    notesRef.current?.openForm()
-    document.getElementById('notes-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-  }
-
-  const availableGroups = useMemo(() =>
-    [...new Set(ev?.indicator_results.map(i => i.tab_group).filter(Boolean) as string[])],
-    [ev]
-  )
-
-  const counts = useMemo(() =>
-    Object.fromEntries(
-      availableGroups.map(g => [g, ev?.indicator_results.filter(i => i.tab_group === g).length ?? 0])
-    ),
-    [ev, availableGroups]
-  )
-
-  const resolvedTab = ['all', ...availableGroups].includes(activeTab) ? activeTab : 'all'
-
-  const tabIndicators = useMemo(
-    () => resolvedTab === 'all'
-      ? (ev?.indicator_results ?? [])
-      : (ev?.indicator_results.filter(ind => ind.tab_group === resolvedTab) ?? []),
-    [ev, resolvedTab]
-  )
+  const { notesSectionRef, handleAddNote } = useNotesActions()
 
   if (isLoading) return <div className="p-6 text-slate-400">Loading…</div>
   if (!ev) return <div className="p-6 text-red-400">Evaluation not found.</div>
 
-  const displayResult = ev.invalidated ? 'invalidated' : ev.result
-
   return (
     <div className="p-6 space-y-6">
-
       {/* Breadcrumb */}
       <div className="text-sm text-slate-400 flex items-center gap-2">
         <Link to={backHref} className="hover:text-indigo-400 flex items-center gap-1">
@@ -74,72 +37,9 @@ export function EvaluationDetailPage() {
         <span className="text-slate-200">{ev.evaluation_name}</span>
       </div>
 
-      {/* Header card */}
-      <EvaluationHeader
-        title={ev.evaluation_name}
-        result={displayResult}
-        score={ev.score}
-        noteButton={
-          !ev.invalidated ? (
-            <NoteIconButton onClick={handleAddNote} annotationCount={ev.annotations.length} />
-          ) : undefined
-        }
-        metadata={
-          <>
-            <div className="flex flex-wrap gap-x-6 gap-y-1 text-sm text-slate-400">
-              <span>Asset: <span className="text-slate-200">{ev.asset_snapshot.name}</span></span>
-              {Object.entries(ev.asset_snapshot.tags ?? {}).map(([k, v]) => (
-                <span key={k} className="text-slate-500 text-xs">{k}: {v as string}</span>
-              ))}
-              <span className="text-xs">
-                {ev.period_start.slice(0, 16).replace('T', ' ')} → {ev.period_end.slice(11, 16)}
-              </span>
-            </div>
-            <div className="mt-1 text-xs text-slate-500">
-              SLO: {ev.slo_name ?? '—'}{ev.slo_version != null && ` v${ev.slo_version}`}
-              {' · '}mode: {ev.ingestion_mode}
-              {ev.adapter_used && ` · adapter: ${ev.adapter_used}`}
-              {ev.asset_snapshot.build_ref && ` · build: ${ev.asset_snapshot.build_ref}`}
-            </div>
-            {ev.invalidated && ev.invalidation_note && (
-              <div className="mt-2">
-                <span className="text-xs text-red-300 bg-red-900/30 border border-red-700/40 px-2 py-1 rounded inline-flex flex-wrap items-center gap-x-1.5">
-                  <span className="font-medium">Invalidated</span>
-                  <span className="text-red-400/80">— {ev.invalidation_note}</span>
-                </span>
-              </div>
-            )}
-            {ev.original_result && ev.override_author && (
-              <div className="mt-2 flex flex-col gap-1">
-                <span className="text-xs text-amber-300 bg-amber-900/20 border border-amber-700/30 px-2 py-1 rounded inline-flex flex-wrap items-center gap-x-1.5">
-                  <span className="font-medium">Status overridden</span>
-                  <span className="text-amber-500">
-                    {ev.original_result} → {ev.result}
-                  </span>
-                  <span>by <span className="text-amber-200">{ev.override_author}</span></span>
-                  {ev.override_reason && (
-                    <span className="text-amber-400/80">— {ev.override_reason}</span>
-                  )}
-                </span>
-              </div>
-            )}
-            {ev.original_result && !ev.override_author && (
-              <div className="mt-2 flex flex-col gap-1">
-                <span className="text-xs text-purple-300 bg-purple-900/20 border border-purple-700/30 px-2 py-1 rounded inline-flex flex-wrap items-center gap-x-1.5">
-                  <span className="font-medium">Re-evaluated</span>
-                  <span className="text-purple-400">
-                    {ev.original_result} → {ev.result}
-                  </span>
-                  {ev.original_score != null && (
-                    <span className="text-purple-500">
-                      ({ev.original_score.toFixed(1)} → {ev.score.toFixed(1)})
-                    </span>
-                  )}
-                </span>
-              </div>
-            )}
-          </>
-        }
+      <EvaluationSummaryCard
+        evaluation={ev}
+        onAddNote={handleAddNote}
         actions={
           <EvaluationActionsButton
             currentResult={ev.result}
@@ -151,8 +51,7 @@ export function EvaluationDetailPage() {
         }
       />
 
-      {/* Action form — button guard already prevents selection when invalidated,
-          but we also guard here for safety */}
+      {/* Action form */}
       {activeAction && !ev.invalidated && (
         <EvaluationActionForm
           evalId={id!}
@@ -165,49 +64,9 @@ export function EvaluationDetailPage() {
         />
       )}
 
-      {/* Notes — always visible */}
-      <div id="notes-section">
-        <AnnotationSection ref={notesRef} evalId={id!} annotations={ev.annotations} />
-      </div>
+      <EvaluationNotesSection ref={notesSectionRef} evaluationId={id!} annotations={ev.annotations} />
 
-      {/* SLI breakdown — tab bar + table */}
-      <div id="sli-table" className="space-y-0 scroll-mt-4">
-        <div className="flex items-center justify-between mb-2">
-          <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wide">SLI Breakdown</h2>
-        </div>
-
-        <EvaluationTabs
-          availableGroups={availableGroups}
-          allCount={ev.indicator_results.length}
-          counts={counts}
-          activeTab={resolvedTab}
-          onTabChange={setActiveTab}
-        />
-
-        <SLIBreakdownTable
-          indicators={tabIndicators}
-          onIndicatorClick={(metric, tabGroup) => {
-            if (resolvedTab !== 'all') setActiveTab(tabGroup)
-            setTimeout(() => scrollTo(`trend-${metric}`), 50)
-          }}
-        />
-      </div>
-
-      {/* Trend charts */}
-      <div className="space-y-4">
-        <p className="text-xs text-slate-500">
-          30-day trend for{' '}
-          <strong className="text-slate-300">{resolvedTab === 'all' ? 'All' : tabLabel(resolvedTab)}</strong>{' '}
-          metrics on <strong className="text-slate-300">{ev.asset_snapshot.name}</strong>.
-          Dot colour reflects each metric's own pass/warn/fail result.
-        </p>
-        <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-          {tabIndicators.map(ind => (
-            <MetricTrendBlock key={ind.metric} evalId={id!} indicator={ind} />
-          ))}
-        </div>
-      </div>
-
+      <EvaluationIndicatorSection evaluation={ev} />
     </div>
   )
 }

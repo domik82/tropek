@@ -6,6 +6,7 @@ import uuid
 from unittest.mock import AsyncMock
 
 import pytest
+from app.modules.quality_gate.exceptions import AssetNotFoundError
 from app.modules.quality_gate.trigger import resolve_single_trigger
 
 
@@ -93,7 +94,7 @@ async def test_resolve_single_trigger(mock_repos: dict) -> None:
 
 async def test_resolve_single_trigger_asset_not_found(mock_repos: dict) -> None:
     mock_repos["asset_repo"].get_by_name.return_value = None
-    with pytest.raises(ValueError, match="asset"):
+    with pytest.raises(AssetNotFoundError, match="asset"):
         await resolve_single_trigger(
             asset_name="nonexistent",
             slo_name="perf-slo",

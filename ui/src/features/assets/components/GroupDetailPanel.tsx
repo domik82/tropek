@@ -16,10 +16,9 @@ import type { AssetGroup } from '../types'
 interface Props {
   groupName: string
   onSelectGroup: (name: string) => void
-  onSelectAsset?: (name: string) => void
 }
 
-export function GroupDetailPanel({ groupName, onSelectGroup, onSelectAsset }: Props) {
+export function GroupDetailPanel({ groupName, onSelectGroup }: Props) {
   const { data: group } = useAssetGroup(groupName)
   const { data: tree } = useAssetGroups()
   const { data: assets = [] } = useAssets()
