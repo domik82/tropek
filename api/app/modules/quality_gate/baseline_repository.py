@@ -66,6 +66,7 @@ class BaselineRepository:
         limit: int,
         sli_version_range: tuple[int, int] | None = None,
         restrict_to_ids: list[uuid.UUID] | None = None,
+        tag_filters: dict[str, str] | None = None,
     ) -> list[Evaluation]:
         """Fetch previous completed evaluations for re-evaluation baseline comparison.
 
@@ -80,6 +81,7 @@ class BaselineRepository:
             limit: Maximum number of baseline evaluations to return.
             sli_version_range: Optional (min, max) inclusive version range for sli_version.
             restrict_to_ids: Optional list of evaluation IDs to restrict results to.
+            tag_filters: Optional JSONB key-value filters on evaluation_metadata.
 
         Returns:
             Matching completed evaluations ordered by period_start descending.
@@ -98,6 +100,10 @@ class BaselineRepository:
 
         if restrict_to_ids is not None:
             q = q.where(Evaluation.id.in_(restrict_to_ids))
+
+        if tag_filters:
+            for key, value in tag_filters.items():
+                q = q.where(Evaluation.evaluation_metadata[key].astext == value)
 
         q = await self._apply_pin_filter(q, asset_id=asset_id, slo_name=slo_name)
         q = q.order_by(Evaluation.period_start.desc()).limit(limit)
