@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { MoreVertical, MessageSquareWarning } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 import { useInvalidateEvaluation, useOverrideStatus, usePinBaseline, useReEvaluate } from '../hooks'
 import type { ActionKind, ReEvaluateResponse } from '../types'
 
@@ -275,12 +276,9 @@ export function EvaluationActionForm({
                 ))}
               </div>
               <div className="flex justify-end">
-                <button
-                  onClick={onClose}
-                  className="px-3 py-1.5 text-xs rounded-md border border-border text-muted-foreground hover:text-foreground transition-colors"
-                >
+                <Button variant="outline" size="xs" onClick={onClose}>
                   Close
-                </button>
+                </Button>
               </div>
             </div>
           )}
@@ -343,12 +341,9 @@ export function EvaluationActionForm({
           {/* Buttons (hidden when showing re-eval results) */}
           {!(isReEval && reEvalResult) && (
             <div className="flex gap-2 justify-end">
-              <button
-                onClick={onClose}
-                className="px-3 py-1.5 text-xs rounded-md border border-border text-muted-foreground hover:text-foreground transition-colors"
-              >
+              <Button variant="outline" size="xs" onClick={onClose}>
                 Cancel
-              </button>
+              </Button>
               <button
                 onClick={handleConfirm}
                 disabled={!canConfirm || isPending}
