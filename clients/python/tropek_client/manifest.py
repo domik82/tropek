@@ -337,6 +337,17 @@ def _diff_reason(doc: ManifestDocument, existing: Any) -> str:
             return "fields differ"
 
 
+def _create_asset_group(client: Any, name: str, spec: dict[str, Any]) -> None:
+    """Create an asset group with members and subgroups."""
+    client.asset_groups.create(name)
+    for member in spec.get("members", []):
+        asset = client.assets.get(member["asset_name"])
+        client.asset_groups.add_member(name, str(asset.id), weight=member.get("weight", 1.0))
+    for subgroup in spec.get("subgroups", []):
+        child = client.asset_groups.get(subgroup["group_name"])
+        client.asset_groups.add_subgroup(name, str(child.id), weight=subgroup.get("weight", 1.0))
+
+
 def _create(client: Any, doc: ManifestDocument) -> None:
     """Create a new entity via the client."""
     name = doc.metadata["name"]
@@ -351,12 +362,7 @@ def _create(client: Any, doc: ManifestDocument) -> None:
                 labels=doc.metadata.get("labels"),
             )
         case "AssetGroup":
-            client.asset_groups.create(name)
-            for member in doc.spec.get("members", []):
-                asset = client.assets.get(member["asset_name"])
-                client.asset_groups.add_member(
-                    name, str(asset.id), weight=member.get("weight", 1.0)
-                )
+            _create_asset_group(client, name, doc.spec)
         case "DataSource":
             client.datasources.create(
                 name,
