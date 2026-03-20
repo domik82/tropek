@@ -78,7 +78,7 @@ export function AssetTreeNode({
   }
 
   return (
-    <div className="relative">
+    <div className="relative" role="treeitem" aria-expanded={isExpanded} aria-selected={isSelected}>
       {/* Tree connector lines */}
       {depth > 0 && (
         <>
@@ -193,6 +193,7 @@ export function AssetTreeNode({
         {!isRenaming && (
           <button
             className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-muted/80 shrink-0"
+            aria-label={`Actions for ${group.display_name ?? group.name}`}
             onClick={e => {
               e.stopPropagation()
               const rect = e.currentTarget.getBoundingClientRect()
@@ -206,7 +207,7 @@ export function AssetTreeNode({
 
       {/* Children (subgroups + asset leaves) */}
       {isExpanded && (
-        <div>
+        <div role="group">
           {subgroups.map((sg, i) => (
             <AssetTreeNode
               key={sg.id}
@@ -262,6 +263,7 @@ export function AssetTreeNode({
                 </span>
                 <button
                   className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-muted/80 shrink-0"
+                  aria-label={`Actions for ${m.asset_name}`}
                   onClick={e => {
                     e.stopPropagation()
                     const rect = e.currentTarget.getBoundingClientRect()
