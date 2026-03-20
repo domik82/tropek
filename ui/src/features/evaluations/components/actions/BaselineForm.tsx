@@ -47,6 +47,7 @@ export function BaselineForm({ evaluationId, onComplete }: Props) {
         value={author}
         onChange={e => setAuthor(e.target.value)}
         placeholder="Author"
+        autoComplete="name"
         className="w-full px-3 py-2 bg-background border border-border rounded-md text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none"
       />
     </ActionFormShell>

@@ -9,7 +9,7 @@ const BADGE_CLS: Record<string, string> = {
 export function ResultBadge({ result }: { result: string }) {
   const cls = BADGE_CLS[result] ?? BADGE_CLS.pass
   return (
-    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold uppercase tracking-wide ${cls}`}>
+    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold uppercase tracking-wide ${cls}`} role="status">
       {result}
     </span>
   )
