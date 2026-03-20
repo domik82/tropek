@@ -130,7 +130,7 @@ class AssetGroupMemberRead(BaseModel):
 class AssetGroupSubgroupRead(BaseModel):
     """Read schema for a subgroup entry."""
 
-    child_group_id: uuid.UUID
+    group_id: uuid.UUID
     group_name: str
     weight: float
 
