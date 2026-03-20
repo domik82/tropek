@@ -8,6 +8,7 @@ from typing import Any
 
 import pytest
 from app.db.models import Asset, AssetType
+from app.modules.quality_gate.baseline_repository import BaselineRepository
 from app.modules.quality_gate.re_evaluation_schemas import ReEvaluateRequest
 from app.modules.quality_gate.re_evaluator import re_evaluate
 from app.modules.quality_gate.repository import EvaluationRepository
@@ -63,12 +64,13 @@ async def _create_completed_eval(
 async def test_load_evaluations_for_reeval_from_date(db_session: AsyncSession) -> None:
     """load_evaluations_for_reeval returns evals in chronological order from a start date."""
     repo = EvaluationRepository(db_session)
+    baseline_repo = BaselineRepository(db_session)
     asset_id = await _create_asset(db_session)
 
     for day in range(10, 15):
         await _create_completed_eval(repo, asset_id, datetime(2026, 3, day, tzinfo=UTC))
 
-    evals = await repo.load_evaluations_for_reeval(
+    evals = await baseline_repo.load_evaluations_for_reeval(
         asset_id=asset_id,
         slo_name="http-slo",
         from_date=datetime(2026, 3, 12, tzinfo=UTC),
@@ -82,13 +84,14 @@ async def test_load_evaluations_for_reeval_excludes_invalidated(
     db_session: AsyncSession,
 ) -> None:
     repo = EvaluationRepository(db_session)
+    baseline_repo = BaselineRepository(db_session)
     asset_id = await _create_asset(db_session)
 
     eid1 = await _create_completed_eval(repo, asset_id, datetime(2026, 3, 10, tzinfo=UTC))
     await _create_completed_eval(repo, asset_id, datetime(2026, 3, 11, tzinfo=UTC))
     await repo.invalidate(eid1, note="bad")
 
-    evals = await repo.load_evaluations_for_reeval(
+    evals = await baseline_repo.load_evaluations_for_reeval(
         asset_id=asset_id,
         slo_name="http-slo",
         from_date=datetime(2026, 3, 9, tzinfo=UTC),
@@ -100,6 +103,7 @@ async def test_load_evaluations_for_reeval_excludes_invalidated(
 async def test_update_reeval_result_preserves_original(db_session: AsyncSession) -> None:
     """First re-eval sets original_result in job_stats; second re-eval does not overwrite."""
     repo = EvaluationRepository(db_session)
+    baseline_repo = BaselineRepository(db_session)
     asset_id = await _create_asset(db_session)
 
     eid = await _create_completed_eval(
@@ -112,7 +116,7 @@ async def test_update_reeval_result_preserves_original(db_session: AsyncSession)
     )
 
     # First re-eval
-    await repo.update_reeval_result(
+    await baseline_repo.update_reeval_result(
         eval_id=eid,
         new_result="pass",
         new_score=92.0,
@@ -130,7 +134,7 @@ async def test_update_reeval_result_preserves_original(db_session: AsyncSession)
     assert ev.job_stats["re_evaluated_at"] is not None
 
     # Second re-eval should NOT overwrite original
-    await repo.update_reeval_result(
+    await baseline_repo.update_reeval_result(
         eval_id=eid,
         new_result="warning",
         new_score=78.0,
