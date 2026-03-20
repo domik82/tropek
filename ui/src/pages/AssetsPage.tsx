@@ -28,7 +28,6 @@ export function AssetsPage() {
           <GroupDetailPanel
             groupName={selectedGroup}
             onSelectGroup={name => setParams({ group: name })}
-            onSelectAsset={name => setParams({ asset: name })}
           />
         )}
         {(!selectedGroup || selectedGroup === '__ungrouped__') && (
