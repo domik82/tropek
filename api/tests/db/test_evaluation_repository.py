@@ -11,7 +11,10 @@ from datetime import UTC, datetime
 
 import pytest
 from app.db.models import Asset, AssetType
+from app.modules.quality_gate.annotation_repository import AnnotationRepository
+from app.modules.quality_gate.baseline_repository import BaselineRepository
 from app.modules.quality_gate.repository import EvaluationRepository
+from app.modules.quality_gate.sli_repository import SLIValueRepository
 from sqlalchemy.ext.asyncio import AsyncSession
 
 _START = datetime(2026, 3, 12, 10, 0, 0, tzinfo=UTC)
@@ -149,6 +152,7 @@ async def test_list_evaluations_filters_by_name(db_session: AsyncSession) -> Non
 async def test_get_baselines_excludes_invalidated(db_session: AsyncSession) -> None:
     """Invalidated evaluations are excluded from baselines."""
     repo = EvaluationRepository(db_session)
+    baseline_repo = BaselineRepository(db_session)
     asset_id = await _create_asset(db_session)
 
     ev1 = await repo.create_pending(
@@ -188,7 +192,7 @@ async def test_get_baselines_excludes_invalidated(db_session: AsyncSession) -> N
     )
     await repo.invalidate(ev2.id, note="bad data")
 
-    baselines = await repo.get_baselines(
+    baselines = await baseline_repo.get_evaluation_baselines(
         asset_id=asset_id,
         slo_name="http-slo",
         period_start_before=datetime(2027, 1, 1, tzinfo=UTC),
@@ -203,6 +207,7 @@ async def test_get_baselines_excludes_invalidated(db_session: AsyncSession) -> N
 async def test_add_and_list_annotations(db_session: AsyncSession) -> None:
     asset_id = await _create_asset(db_session)
     repo = EvaluationRepository(db_session)
+    ann_repo = AnnotationRepository(db_session)
     ev = await repo.create_pending(
         evaluation_name="ann-test",
         period_start=_START,
@@ -213,7 +218,7 @@ async def test_add_and_list_annotations(db_session: AsyncSession) -> None:
         asset_id=asset_id,
         slo_name="test-slo",
     )
-    await repo.add_annotation(ev.id, content="Defender update applied", author="ops")
+    await ann_repo.add_annotation(ev.id, content="Defender update applied", author="ops")
     fetched = await repo.get_by_id(ev.id)
     assert fetched is not None
     assert len(fetched.annotations) == 1
@@ -224,6 +229,7 @@ async def test_add_and_list_annotations(db_session: AsyncSession) -> None:
 async def test_hide_annotation(db_session: AsyncSession) -> None:
     asset_id = await _create_asset(db_session)
     repo = EvaluationRepository(db_session)
+    ann_repo = AnnotationRepository(db_session)
     ev = await repo.create_pending(
         evaluation_name="hide-ann-test",
         period_start=_START,
@@ -234,8 +240,8 @@ async def test_hide_annotation(db_session: AsyncSession) -> None:
         asset_id=asset_id,
         slo_name="test-slo",
     )
-    ann = await repo.add_annotation(ev.id, content="wrong note", author="ops")
-    hidden = await repo.hide_annotation(ann.id, reason="typo", author="admin")
+    ann = await ann_repo.add_annotation(ev.id, content="wrong note", author="ops")
+    hidden = await ann_repo.hide_annotation(ann.id, reason="typo", author="admin")
     assert hidden is not None
     assert hidden.hidden_at is not None
     assert hidden.hidden_by == "admin"
@@ -250,6 +256,7 @@ async def test_hide_annotation(db_session: AsyncSession) -> None:
 async def test_write_and_read_sli_values(db_session: AsyncSession) -> None:
     asset_id = await _create_asset(db_session)
     repo = EvaluationRepository(db_session)
+    sli_val_repo = SLIValueRepository(db_session)
     ev = await repo.create_pending(
         evaluation_name="sli-test",
         period_start=_START,
@@ -272,8 +279,8 @@ async def test_write_and_read_sli_values(db_session: AsyncSession) -> None:
             "os_tag": "windows-11",
         }
     ]
-    await repo.write_sli_values(rows)
-    stored = await repo.get_sli_values_for_eval(ev.id)
+    await sli_val_repo.write_sli_values(rows)
+    stored = await sli_val_repo.get_sli_values_for_eval(ev.id)
     assert len(stored) == 1
     assert stored[0].metric_name == "cpu_usage"
     assert stored[0].value == pytest.approx(72.3)
@@ -285,6 +292,7 @@ async def test_get_baselines_excludes_null_sli_version_with_range(
 ) -> None:
     """Evaluations with null sli_version are excluded when a range is specified."""
     repo = EvaluationRepository(db_session)
+    baseline_repo = BaselineRepository(db_session)
     asset_id = await _create_asset(db_session)
 
     ev1 = await repo.create_pending(
@@ -324,7 +332,7 @@ async def test_get_baselines_excludes_null_sli_version_with_range(
         slo_name="http-slo",
     )
 
-    baselines = await repo.get_baselines(
+    baselines = await baseline_repo.get_reeval_baselines(
         asset_id=asset_id,
         slo_name="http-slo",
         period_start_before=datetime(2027, 1, 1, tzinfo=UTC),
@@ -340,6 +348,7 @@ async def test_get_baselines_excludes_null_sli_version_with_range(
 async def test_get_baselines_by_asset_and_slo(db_session: AsyncSession) -> None:
     """Baselines scoped by asset_id + slo_name, not by evaluation_name."""
     repo = EvaluationRepository(db_session)
+    baseline_repo = BaselineRepository(db_session)
     asset_id = await _create_asset(db_session)
     other_asset_id = await _create_asset(db_session)
 
@@ -362,7 +371,7 @@ async def test_get_baselines_by_asset_and_slo(db_session: AsyncSession) -> None:
             slo_name="http-slo",
         )
 
-    baselines = await repo.get_baselines(
+    baselines = await baseline_repo.get_evaluation_baselines(
         asset_id=asset_id,
         slo_name="http-slo",
         period_start_before=datetime(2027, 1, 1, tzinfo=UTC),
@@ -377,6 +386,7 @@ async def test_get_baselines_by_asset_and_slo(db_session: AsyncSession) -> None:
 async def test_get_baselines_excludes_future_period_start(db_session: AsyncSession) -> None:
     """Baselines must have period_start strictly before the current evaluation."""
     repo = EvaluationRepository(db_session)
+    baseline_repo = BaselineRepository(db_session)
     asset_id = await _create_asset(db_session)
     starts = [
         datetime(2026, 3, 10, tzinfo=UTC),
@@ -402,7 +412,7 @@ async def test_get_baselines_excludes_future_period_start(db_session: AsyncSessi
             slo_name="http-slo",
         )
 
-    baselines = await repo.get_baselines(
+    baselines = await baseline_repo.get_evaluation_baselines(
         asset_id=asset_id,
         slo_name="http-slo",
         period_start_before=datetime(2026, 3, 12, tzinfo=UTC),
@@ -417,6 +427,7 @@ async def test_get_baselines_excludes_future_period_start(db_session: AsyncSessi
 async def test_get_baselines_with_tag_filters(db_session: AsyncSession) -> None:
     """Tag filters narrow baselines by evaluation_metadata JSONB values."""
     repo = EvaluationRepository(db_session)
+    baseline_repo = BaselineRepository(db_session)
     asset_id = await _create_asset(db_session)
 
     for i, branch in enumerate(("main", "main", "feature-x")):
@@ -438,7 +449,7 @@ async def test_get_baselines_with_tag_filters(db_session: AsyncSession) -> None:
             slo_name="http-slo",
         )
 
-    baselines = await repo.get_baselines(
+    baselines = await baseline_repo.get_reeval_baselines(
         asset_id=asset_id,
         slo_name="http-slo",
         period_start_before=datetime(2027, 1, 1, tzinfo=UTC),
@@ -453,6 +464,7 @@ async def test_get_baselines_with_tag_filters(db_session: AsyncSession) -> None:
 async def test_get_baselines_with_sli_version_range(db_session: AsyncSession) -> None:
     """Version range filter excludes evaluations outside the compatible range."""
     repo = EvaluationRepository(db_session)
+    baseline_repo = BaselineRepository(db_session)
     asset_id = await _create_asset(db_session)
 
     for v in (1, 2, 3, 4):
@@ -475,7 +487,7 @@ async def test_get_baselines_with_sli_version_range(db_session: AsyncSession) ->
             slo_name="http-slo",
         )
 
-    baselines = await repo.get_baselines(
+    baselines = await baseline_repo.get_reeval_baselines(
         asset_id=asset_id,
         slo_name="http-slo",
         period_start_before=datetime(2027, 1, 1, tzinfo=UTC),
@@ -493,6 +505,7 @@ async def test_get_baselines_with_sli_version_range(db_session: AsyncSession) ->
 async def test_get_baselines_restrict_to_ids(db_session: AsyncSession) -> None:
     """restrict_to_ids limits baselines to a specific set of evaluation IDs."""
     repo = EvaluationRepository(db_session)
+    baseline_repo = BaselineRepository(db_session)
     asset_id = await _create_asset(db_session)
 
     eval_ids = []
@@ -516,7 +529,7 @@ async def test_get_baselines_restrict_to_ids(db_session: AsyncSession) -> None:
         )
         eval_ids.append(ev.id)
 
-    baselines = await repo.get_baselines(
+    baselines = await baseline_repo.get_reeval_baselines(
         asset_id=asset_id,
         slo_name="http-slo",
         period_start_before=datetime(2027, 1, 1, tzinfo=UTC),
