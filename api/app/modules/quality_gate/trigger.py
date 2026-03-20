@@ -6,6 +6,14 @@ import uuid
 from dataclasses import dataclass
 from typing import Any
 
+from app.modules.quality_gate.protocols import (
+    AssetReader,
+    DataSourceReader,
+    SLIReader,
+    SLOLinkReader,
+    SLOReader,
+)
+
 
 @dataclass
 class TriggerContext:
@@ -28,11 +36,11 @@ async def resolve_single_trigger(
     *,
     asset_name: str,
     slo_name: str,
-    asset_repo: Any,
-    slo_link_repo: Any,
-    sli_repo: Any,
-    slo_repo: Any,
-    ds_repo: Any,
+    asset_repo: AssetReader,
+    slo_link_repo: SLOLinkReader,
+    sli_repo: SLIReader,
+    slo_repo: SLOReader,
+    ds_repo: DataSourceReader,
 ) -> TriggerContext:
     """Resolve all references for a single asset evaluation.
 
