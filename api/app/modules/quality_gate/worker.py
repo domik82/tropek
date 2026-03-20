@@ -8,8 +8,10 @@ from typing import Any
 import httpx
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import get_settings
 from app.db.models import Evaluation, SLIDefinition, SLODefinition
 from app.modules.datasource.repository import DataSourceRepository
+from app.modules.quality_gate.adapter_client import HttpAdapterClient
 from app.modules.quality_gate.engine.criteria import aggregate_values
 from app.modules.quality_gate.engine.evaluator import evaluate
 from app.modules.quality_gate.engine.slo_models import SLO
@@ -46,47 +48,6 @@ async def _load_definitions(
         return f"sli '{ev.sli_name}' v{ev.sli_version} not found"
 
     return slo_def, sli_def
-
-
-async def _query_adapter(
-    adapter_url: str,
-    adapter_name: str,
-    resolved_queries: dict[str, str],
-    start: str,
-    end: str,
-) -> tuple[dict[str, float | None], dict[str, str]]:
-    """Send metric queries to the adapter and return (values, errors).
-
-    Args:
-        adapter_url: Base URL of the adapter service.
-        adapter_name: Datasource name forwarded in the X-Datasource-Name header.
-        resolved_queries: Metric name to query string mapping (variables substituted).
-        start: ISO timestamp for the evaluation period start.
-        end: ISO timestamp for the evaluation period end.
-
-    Returns:
-        Tuple of (metrics_fetched, fetch_errors).
-
-    Raises:
-        httpx.ConnectError: If the adapter is unreachable.
-        httpx.TimeoutException: If the adapter does not respond in time.
-        httpx.HTTPStatusError: If the adapter returns a non-2xx response.
-    """
-    async with httpx.AsyncClient(timeout=30.0) as http_client:
-        resp = await http_client.post(
-            f"{adapter_url}/query",
-            headers={"X-Datasource-Name": adapter_name},
-            json={"queries": resolved_queries, "start": start, "end": end},
-        )
-        resp.raise_for_status()
-        data = resp.json()
-
-    metrics_fetched: dict[str, float | None] = {
-        name: float(val) if val is not None else None
-        for name, val in data.get("values", {}).items()
-    }
-    fetch_errors: dict[str, str] = {name: str(err) for name, err in data.get("errors", {}).items()}
-    return metrics_fetched, fetch_errors
 
 
 async def _resolve_baselines(
@@ -214,10 +175,13 @@ async def run_evaluation(
         return
 
     try:
-        metrics_fetched, fetch_errors = await _query_adapter(
+        adapter_client = HttpAdapterClient(
+            timeout=get_settings().reliability.adapter_timeout_seconds,
+        )
+        metrics_fetched, fetch_errors = await adapter_client.query(
             adapter_url=ds.adapter_url,
-            adapter_name=ds.name,
-            resolved_queries=resolved_queries,
+            datasource_name=ds.name,
+            queries=resolved_queries,
             start=ev.period_start.isoformat(),
             end=ev.period_end.isoformat(),
         )
