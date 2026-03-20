@@ -54,20 +54,35 @@ from app.queue import get_arq_pool
 router = APIRouter()
 
 
+def _parse_indicator_results(raw: list[dict[str, Any]] | None) -> list[IndicatorResult]:
+    """Parse stored JSONB indicator results into typed schema models."""
+    return [IndicatorResult(**ir) for ir in (raw or [])]
+
+
+def _extract_threshold(ind: IndicatorResult) -> str:
+    """Extract the first pass criteria string from an indicator result."""
+    if ind.pass_targets:
+        first = ind.pass_targets[0]
+        if isinstance(first, dict):
+            return str(first.get("criteria", ""))
+    return ""
+
+
 def _build_summary(
     ev: object, annotation_count: int, latest_ann: object | None
 ) -> EvaluationSummary:
     """Construct EvaluationSummary with computed fields from a bare Evaluation ORM object."""
-    indicator_results: list[dict[str, Any]] = getattr(ev, "indicator_results", []) or []
+    raw_results: list[dict[str, Any]] = getattr(ev, "indicator_results", []) or []
+    indicators = _parse_indicator_results(raw_results)
     top_failures = [
         FailingIndicator(
-            metric=ind["metric"],
-            display_name=ind.get("display_name", ind["metric"]),
-            value=ind["value"],
-            threshold=(ind.get("pass_targets") or [{}])[0].get("criteria", ""),
+            metric=ind.metric,
+            display_name=ind.display_name,
+            value=ind.value,
+            threshold=_extract_threshold(ind),
         )
-        for ind in indicator_results
-        if ind.get("status") == "fail"
+        for ind in indicators
+        if ind.status == "fail"
     ]
     job_stats = getattr(ev, "job_stats", None) or {}
     return EvaluationSummary.model_validate(
@@ -86,7 +101,7 @@ def _build_detail(ev: Any) -> EvaluationDetail:
     annotations = [
         AnnotationRead.model_validate(a) for a in (ev.annotations or []) if a.hidden_at is None
     ]
-    indicator_results = [IndicatorResult(**ir) for ir in (ev.indicator_results or [])]
+    indicator_results = _parse_indicator_results(ev.indicator_results)
     job_stats_detail = ev.job_stats or {}
     compared_ids = job_stats_detail.get("compared_evaluation_ids", [])
     top_failures = [
@@ -94,7 +109,7 @@ def _build_detail(ev: Any) -> EvaluationDetail:
             metric=ind.metric,
             display_name=ind.display_name,
             value=ind.value,
-            threshold=(ind.pass_targets or [{}])[0].get("criteria", ""),
+            threshold=_extract_threshold(ind),
         )
         for ind in indicator_results
         if ind.status == "fail"
@@ -430,23 +445,23 @@ async def get_metric_heatmap(
     cells: list[HeatmapCell] = []
     for ev in reversed(evals):  # oldest first for display
         slots.append(ev.period_start)
-        for ir in ev.indicator_results or []:
-            metric_name = ir.get("metric", "")
-            if metric_name not in metric_set:
-                metric_set[metric_name] = ir.get("display_name", metric_name)
+        indicators = _parse_indicator_results(ev.indicator_results)
+        for ind in indicators:
+            if ind.metric not in metric_set:
+                metric_set[ind.metric] = ind.display_name
             cells.append(
                 HeatmapCell(
                     slot=ev.period_start,
-                    metric=metric_name,
-                    display_name=ir.get("display_name", metric_name),
+                    metric=ind.metric,
+                    display_name=ind.display_name,
                     result=(
                         "invalidated"
                         if ev.invalidated
-                        else (ev.result or ir.get("status", "error"))
+                        else (ev.result or ind.status)
                         if ev.original_result is not None
-                        else ir.get("status", "error")
+                        else ind.status
                     ),
-                    score=ir.get("score", 0.0),
+                    score=ind.score,
                     eval_id=ev.id,
                 )
             )
@@ -481,13 +496,13 @@ async def get_evaluation(
     if ev is None:
         raise_not_found("evaluation", str(eval_id))
     annotations = [AnnotationRead.model_validate(a) for a in ev.annotations if a.hidden_at is None]
-    indicator_results = [IndicatorResult(**ind) for ind in (ev.indicator_results or [])]
+    indicator_results = _parse_indicator_results(ev.indicator_results)
     top_failures = [
         FailingIndicator(
             metric=ind.metric,
             display_name=ind.display_name,
             value=ind.value,
-            threshold=(ind.pass_targets or [{}])[0].get("criteria", ""),
+            threshold=_extract_threshold(ind),
         )
         for ind in indicator_results
         if ind.status == "fail"
