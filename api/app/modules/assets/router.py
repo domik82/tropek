@@ -32,8 +32,11 @@ from app.modules.assets.schemas import (
     AssetSLOLinkRead,
     AssetTypeCreate,
     AssetTypeRead,
+    AssetTypeUpdate,
     AssetUpdate,
     ComparisonRulesUpdate,
+    LabelKeyCount,
+    LabelValueCount,
 )
 from app.modules.common.errors import raise_not_found
 from app.modules.common.schemas import PagedResponse
@@ -48,10 +51,20 @@ router = APIRouter()
 async def list_asset_types(
     session: AsyncSession = Depends(get_session),  # noqa: B008
 ) -> PagedResponse[AssetTypeRead]:
-    """List all asset types."""
+    """List all asset types with asset counts."""
     repo = AssetTypeRepository(session)
     items = await repo.list_all()
-    return PagedResponse(items=[AssetTypeRead.model_validate(i) for i in items], total=len(items))
+    counts = await repo.get_asset_counts()
+    reads = [
+        AssetTypeRead(
+            id=i.id,
+            name=i.name,
+            is_default=i.is_default,
+            asset_count=counts.get(i.name, 0),
+        )
+        for i in items
+    ]
+    return PagedResponse(items=reads, total=len(reads))
 
 
 @router.post("/asset-types", response_model=AssetTypeRead, status_code=201)
@@ -90,6 +103,22 @@ async def delete_asset_type(
         raise_not_found("asset type", name)
 
 
+@router.patch("/asset-types/{name}", response_model=AssetTypeRead)
+async def rename_asset_type(
+    name: str,
+    body: AssetTypeUpdate,
+    session: AsyncSession = Depends(get_session),  # noqa: B008
+) -> AssetTypeRead:
+    """Rename an asset type."""
+    if body.name is None:
+        raise HTTPException(status_code=422, detail="name is required")
+    repo = AssetTypeRepository(session)
+    at = await repo.rename(name, body.name)
+    if at is None:
+        raise_not_found("asset type", name)
+    return AssetTypeRead.model_validate(at)
+
+
 # ---- Assets ----
 
 
@@ -119,6 +148,27 @@ async def create_asset(
     return AssetRead.model_validate(asset)
 
 
+@router.get("/assets/label-keys", response_model=list[LabelKeyCount])
+async def list_label_keys(
+    session: AsyncSession = Depends(get_session),  # noqa: B008
+) -> list[LabelKeyCount]:
+    """List all distinct label keys with usage counts."""
+    repo = AssetRepository(session)
+    keys = await repo.get_label_keys()
+    return [LabelKeyCount(key=k, count=v) for k, v in keys.items()]
+
+
+@router.get("/assets/label-values", response_model=list[LabelValueCount])
+async def list_label_values(
+    key: str,
+    session: AsyncSession = Depends(get_session),  # noqa: B008
+) -> list[LabelValueCount]:
+    """List all distinct values for a label key with usage counts."""
+    repo = AssetRepository(session)
+    values = await repo.get_label_values(key)
+    return [LabelValueCount(value=k, count=v) for k, v in values.items()]
+
+
 @router.get("/assets/{name}", response_model=AssetRead)
 async def get_asset(
     name: str,
@@ -142,6 +192,18 @@ async def update_asset(
     repo = AssetRepository(session)
     asset = await repo.update(name, **body.model_dump(exclude_none=True))
     return AssetRead.model_validate(asset)
+
+
+@router.delete("/assets/{name}", status_code=204)
+async def delete_asset(
+    name: str,
+    session: AsyncSession = Depends(get_session),  # noqa: B008
+) -> None:
+    """Delete an asset and all its group memberships and SLO links."""
+    repo = AssetRepository(session)
+    found = await repo.delete(name)
+    if not found:
+        raise_not_found("asset", name)
 
 
 # ---- Asset SLO Links ----

@@ -18,12 +18,19 @@ class AssetTypeCreate(BaseModel):
     is_default: bool = False
 
 
+class AssetTypeUpdate(BaseModel):
+    """Request body for renaming an asset type."""
+
+    name: str | None = None
+
+
 class AssetTypeRead(BaseModel):
     """Response schema for an asset type."""
 
     id: uuid.UUID
     name: str
     is_default: bool
+    asset_count: int = 0
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -47,6 +54,20 @@ class AssetUpdate(BaseModel):
     type_name: str | None = None
     labels: dict[str, str] | None = None
     heatmap_config: dict[str, Any] | None = None
+
+
+class LabelKeyCount(BaseModel):
+    """A label key with its usage count across assets."""
+
+    key: str
+    count: int
+
+
+class LabelValueCount(BaseModel):
+    """A label value with its usage count for a specific key."""
+
+    value: str
+    count: int
 
 
 class AssetRead(BaseModel):
