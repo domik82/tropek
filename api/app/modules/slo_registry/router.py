@@ -12,12 +12,12 @@ from app.modules.assets.repository import AssetRepository
 from app.modules.common.errors import raise_not_found
 from app.modules.common.schemas import PagedResponse
 from app.modules.datasource.repository import DataSourceRepository
+from app.modules.quality_gate.baseline_repository import BaselineRepository
 from app.modules.quality_gate.engine.criteria import aggregate_values, parse_criteria_string
 from app.modules.quality_gate.engine.evaluator import evaluate
 from app.modules.quality_gate.engine.slo_models import SLOParseError
 from app.modules.quality_gate.engine.slo_parser import build_slo
 from app.modules.quality_gate.engine.variables import build_variables, substitute_variables
-from app.modules.quality_gate.repository import EvaluationRepository
 from app.modules.quality_gate.schemas import IndicatorResult
 from app.modules.sli_registry.repository import SLIRepository
 from app.modules.slo_registry.repository import SLORepository
@@ -223,8 +223,8 @@ async def test_slo(  # noqa: C901
         baselines = {k: v for k, v in baseline_cfg.values.items()}
         compared_values = dict(baseline_cfg.values)
     elif baseline_cfg.mode == "asset_history":
-        eval_repo = EvaluationRepository(session)
-        past_evals = await eval_repo.get_baselines(
+        baseline_repo = BaselineRepository(session)
+        past_evals = await baseline_repo.get_evaluation_baselines(
             asset_id=asset.id,
             slo_name=body.sli_name,
             period_start_before=body.period_start,

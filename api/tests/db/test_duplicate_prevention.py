@@ -11,7 +11,8 @@ from datetime import UTC, datetime
 
 import pytest
 from app.db.models import Asset, AssetType
-from app.modules.quality_gate.repository import DuplicateEvaluationError, EvaluationRepository
+from app.modules.quality_gate.exceptions import DuplicateEvaluationError
+from app.modules.quality_gate.repository import EvaluationRepository
 from sqlalchemy.ext.asyncio import AsyncSession
 
 _START = datetime(2026, 3, 15, 10, 0, 0, tzinfo=UTC)
