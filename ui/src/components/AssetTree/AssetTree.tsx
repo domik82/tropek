@@ -231,7 +231,7 @@ export function AssetTree({
       </div>
 
       {/* Tree */}
-      <div className="flex-1 overflow-y-auto px-1 py-1">
+      <div className="flex-1 overflow-y-auto px-1 py-1" role="tree" aria-label="Asset groups">
         {isLoading && (
           <p className="px-3 py-2 text-xs text-muted-foreground">Loading...</p>
         )}
