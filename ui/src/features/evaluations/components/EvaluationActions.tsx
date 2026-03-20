@@ -109,6 +109,9 @@ export function EvaluationActionsButton({ currentResult, invalidated, activeActi
     <div className="relative" ref={menuRef}>
       <button
         onClick={() => setMenuOpen(v => !v)}
+        aria-label="Evaluation actions"
+        aria-expanded={menuOpen}
+        aria-haspopup="true"
         className={`flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg border transition-colors ${
           activeAction
             ? 'bg-primary/15 border-primary/40 text-primary'
@@ -120,13 +123,15 @@ export function EvaluationActionsButton({ currentResult, invalidated, activeActi
       </button>
 
       {menuOpen && (
-        <div className="absolute right-0 top-full mt-1 z-20 min-w-[280px] bg-popover border border-border rounded-xl shadow-xl overflow-hidden py-2">
+        <div className="absolute right-0 top-full mt-1 z-20 min-w-[280px] bg-popover border border-border rounded-xl shadow-xl overflow-hidden py-2" role="menu">
           {/* Add Note — first item */}
           {onAddNote && (
             <>
               <button
                 onClick={() => { onAddNote(); setMenuOpen(false) }}
                 className="flex items-start gap-3 w-full text-left px-3 py-2.5 transition-colors hover:bg-amber-500/10 group"
+                role="menuitem"
+                aria-label="Add note to this evaluation"
               >
                 <div
                   className="w-[3px] rounded-full shrink-0 mt-0.5"
@@ -145,6 +150,8 @@ export function EvaluationActionsButton({ currentResult, invalidated, activeActi
               key={action.kind}
               onClick={() => { onSelectAction(action.kind); setMenuOpen(false) }}
               className="flex items-start gap-3 w-full text-left px-3 py-2.5 transition-colors hover:bg-accent group"
+              role="menuitem"
+              aria-label={action.description}
             >
               <div
                 className="w-[3px] rounded-full shrink-0 mt-0.5"
@@ -377,6 +384,7 @@ export function NoteIconButton({ onClick, annotationCount }: { onClick: () => vo
       onClick={onClick}
       className="relative p-2 rounded-lg border border-amber-700/40 text-amber-400 hover:bg-amber-500/10 hover:border-amber-500/50 transition-colors"
       title="Add note"
+      aria-label={`Add note (${annotationCount} existing)`}
     >
       <MessageSquareWarning className="w-4 h-4" />
       {annotationCount > 0 && (
