@@ -1,4 +1,5 @@
 // ui/src/features/evaluations/components/EvaluationIndicatorSection.tsx
+import { useRef, useCallback } from 'react'
 import { useTabState } from '../hooks/useTabState'
 import { SLIBreakdownTable } from './SLIBreakdownTable'
 import { MetricTrendBlock } from './MetricTrendBlock'
@@ -10,18 +11,29 @@ interface Props {
   onMetricClick?: (metric: string) => void
 }
 
-function scrollTo(id: string) {
-  document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-}
-
 export function EvaluationIndicatorSection({ evaluation: ev, onMetricClick }: Props) {
   const { availableGroups, counts, activeTab, setActiveTab, tabIndicators } =
     useTabState(ev.indicator_results)
 
+  const sliTableRef = useRef<HTMLDivElement>(null)
+
+  const scrollToTrend = useCallback((metric: string) => {
+    // Trend blocks are rendered as siblings — use id-based scroll
+    // since refs cannot span dynamic list items
+    const el = document.getElementById(`trend-${metric}`)
+    if (el) {
+      setTimeout(() => el.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50)
+    }
+  }, [])
+
+  const handleScrollToTable = useCallback(() => {
+    sliTableRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }, [])
+
   return (
     <>
       {/* SLI breakdown - tab bar + table */}
-      <div id="sli-table" className="space-y-0 scroll-mt-4">
+      <div ref={sliTableRef} id="sli-table" className="space-y-0 scroll-mt-4">
         <div className="flex items-center justify-between mb-2">
           <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wide">SLI Breakdown</h2>
         </div>
@@ -41,7 +53,7 @@ export function EvaluationIndicatorSection({ evaluation: ev, onMetricClick }: Pr
             if (onMetricClick) {
               onMetricClick(metric)
             } else {
-              setTimeout(() => scrollTo(`trend-${metric}`), 50)
+              scrollToTrend(metric)
             }
           }}
         />
@@ -57,7 +69,12 @@ export function EvaluationIndicatorSection({ evaluation: ev, onMetricClick }: Pr
         </p>
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
           {tabIndicators.map(ind => (
-            <MetricTrendBlock key={ind.metric} evalId={ev.id} indicator={ind} />
+            <MetricTrendBlock
+              key={ind.metric}
+              evalId={ev.id}
+              indicator={ind}
+              onScrollToTable={handleScrollToTable}
+            />
           ))}
         </div>
       </div>

@@ -21,10 +21,11 @@ export function AssetPanel({ assetName, initialEvalId }: Props) {
   const [selectedEvalId, setSelectedEvalId] = useState<string | undefined>(initialEvalId)
   const [activeAction, setActiveAction] = useState<ActionKind | null>(null)
   const notesRef = useRef<AnnotationSectionHandle>(null)
+  const notesSectionRef = useRef<HTMLDivElement>(null)
 
   function handleAddNote() {
     notesRef.current?.openForm()
-    document.getElementById('notes-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    notesSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
 
   const navigate = useNavigate()
@@ -145,7 +146,7 @@ export function AssetPanel({ assetName, initialEvalId }: Props) {
 
       {/* Notes */}
       {!isLoading && effectiveEvalId && ev && (
-        <div id="notes-section">
+        <div ref={notesSectionRef}>
           <AnnotationSection ref={notesRef} evalId={effectiveEvalId} annotations={ev.annotations ?? []} />
         </div>
       )}

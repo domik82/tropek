@@ -10,9 +10,10 @@ interface Props {
   evalId: string
   indicator: IndicatorResult
   onEvalSelect?: (evalId: string) => void
+  onScrollToTable?: () => void
 }
 
-function scrollToTable() {
+function defaultScrollToTable() {
   document.getElementById('sli-table')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
 }
 
@@ -22,7 +23,7 @@ const STATUS_TEXT: Record<string, string> = {
   fail:    'text-fail',
 }
 
-export function MetricTrendBlock({ evalId, indicator, onEvalSelect }: Props) {
+export function MetricTrendBlock({ evalId, indicator, onEvalSelect, onScrollToTable }: Props) {
   const { data: trend, isLoading } = useTrend(evalId, indicator.metric)
 
   const handleClickIndex = useCallback(
@@ -52,7 +53,7 @@ export function MetricTrendBlock({ evalId, indicator, onEvalSelect }: Props) {
           {indicator.status}
         </span>
         <button
-          onClick={scrollToTable}
+          onClick={onScrollToTable ?? defaultScrollToTable}
           className="text-sm font-medium text-slate-200 hover:text-indigo-300 transition-colors"
           title="Back to SLI table"
         >
