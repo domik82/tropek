@@ -12,7 +12,9 @@ from app.modules.assets.repository import (
     AssetSLOLinkRepository,
     AssetTypeRepository,
 )
+from app.modules.assets.schemas import AssetGroupMemberCreate
 from app.modules.slo_registry.repository import SLORepository
+from fastapi import HTTPException
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -71,8 +73,6 @@ async def test_asset_type_delete_unused(db_session: AsyncSession) -> None:
 
 @pytest.mark.integration
 async def test_asset_type_delete_in_use_raises(db_session: AsyncSession) -> None:
-    from fastapi import HTTPException
-
     type_repo = AssetTypeRepository(db_session)
     asset_repo = AssetRepository(db_session)
     await type_repo.create("in-use-type", is_default=False)
@@ -120,8 +120,6 @@ async def test_asset_list_filter_by_type(db_session: AsyncSession) -> None:
 
 @pytest.mark.integration
 async def test_asset_group_create_with_members(db_session: AsyncSession) -> None:
-    from app.modules.assets.schemas import AssetGroupMemberCreate
-
     asset_repo = AssetRepository(db_session)
     asset = await asset_repo.create("vm-group-member-01", type_name="vm")
     group_repo = AssetGroupRepository(db_session)
@@ -279,3 +277,103 @@ async def test_group_delete_deactivates_slos(db_session: AsyncSession) -> None:
     await group_repo.delete_group("deact-grp", deactivate_slos=True)
     slo = await slo_repo.get_latest("deact-slo")
     assert slo is None
+
+
+# ---------- Task 2: AssetType rename ----------
+
+
+@pytest.mark.integration
+async def test_asset_type_rename(db_session: AsyncSession) -> None:
+    repo = AssetTypeRepository(db_session)
+    await repo.create("old-name", is_default=False)
+    renamed = await repo.rename("old-name", "new-name")
+    assert renamed is not None
+    assert renamed.name == "new-name"
+    # Old name gone
+    assert await repo.get_by_name("old-name") is None
+
+
+@pytest.mark.integration
+async def test_asset_type_rename_not_found(db_session: AsyncSession) -> None:
+    repo = AssetTypeRepository(db_session)
+    result = await repo.rename("nonexistent", "whatever")
+    assert result is None
+
+
+@pytest.mark.integration
+async def test_asset_type_rename_duplicate(db_session: AsyncSession) -> None:
+    repo = AssetTypeRepository(db_session)
+    await repo.create("type-a", is_default=False)
+    await repo.create("type-b", is_default=False)
+    with pytest.raises(HTTPException) as exc_info:
+        await repo.rename("type-a", "type-b")
+    assert exc_info.value.status_code == 409
+
+
+# ---------- Task 3: Asset delete ----------
+
+
+@pytest.mark.integration
+async def test_asset_delete(db_session: AsyncSession) -> None:
+    repo = AssetRepository(db_session)
+    await repo.create("deletable-asset", type_name="vm")
+    result = await repo.delete("deletable-asset")
+    assert result is True
+    assert await repo.get_by_name("deletable-asset") is None
+
+
+@pytest.mark.integration
+async def test_asset_delete_not_found(db_session: AsyncSession) -> None:
+    repo = AssetRepository(db_session)
+    result = await repo.delete("nonexistent")
+    assert result is False
+
+
+@pytest.mark.integration
+async def test_asset_delete_removes_group_memberships(db_session: AsyncSession) -> None:
+    asset_repo = AssetRepository(db_session)
+    group_repo = AssetGroupRepository(db_session)
+    asset = await asset_repo.create("member-asset", type_name="vm")
+    await group_repo.create("test-group")
+    await group_repo.add_member("test-group", asset.id)
+    await asset_repo.delete("member-asset")
+    refreshed = await group_repo.get_by_name("test-group")
+    assert refreshed is not None
+    assert len(refreshed.members) == 0
+
+
+# ---------- Task 4: Asset count ----------
+
+
+@pytest.mark.integration
+async def test_asset_type_list_includes_count(db_session: AsyncSession) -> None:
+    type_repo = AssetTypeRepository(db_session)
+    asset_repo = AssetRepository(db_session)
+    await type_repo.create("counted-type", is_default=False)
+    await asset_repo.create("a1", type_name="counted-type")
+    await asset_repo.create("a2", type_name="counted-type")
+    counts = await type_repo.get_asset_counts()
+    assert counts["counted-type"] == 2
+
+
+# ---------- Task 5: Label autocomplete ----------
+
+
+@pytest.mark.integration
+async def test_label_keys_aggregation(db_session: AsyncSession) -> None:
+    repo = AssetRepository(db_session)
+    await repo.create("lk1", type_name="vm", labels={"os": "linux", "env": "prod"})
+    await repo.create("lk2", type_name="vm", labels={"os": "windows", "env": "staging"})
+    await repo.create("lk3", type_name="vm", labels={"os": "linux"})
+    keys = await repo.get_label_keys()
+    assert keys == {"os": 3, "env": 2}
+
+
+@pytest.mark.integration
+async def test_label_values_for_key(db_session: AsyncSession) -> None:
+    repo = AssetRepository(db_session)
+    await repo.create("lv1", type_name="vm", labels={"os": "linux"})
+    await repo.create("lv2", type_name="vm", labels={"os": "linux"})
+    await repo.create("lv3", type_name="vm", labels={"os": "windows"})
+    values = await repo.get_label_values("os")
+    assert values == {"linux": 2, "windows": 1}

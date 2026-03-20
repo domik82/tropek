@@ -6,7 +6,7 @@ import uuid
 from typing import Any
 
 from fastapi import HTTPException
-from sqlalchemy import delete, select, update
+from sqlalchemy import delete, func, select, text, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import (
@@ -89,6 +89,33 @@ class AssetTypeRepository:
             )
         await self._session.execute(delete(AssetType).where(AssetType.name == name))
         return True
+
+    async def rename(self, old_name: str, new_name: str) -> AssetType | None:
+        """Rename an asset type. Returns None if old_name not found, raises 409 if new_name taken."""
+        existing = await self.get_by_name(old_name)
+        if existing is None:
+            return None
+        conflict = await self.get_by_name(new_name)
+        if conflict is not None:
+            raise HTTPException(
+                status_code=409,
+                detail=f"asset type '{new_name}' already exists",
+            )
+        await self._session.execute(
+            update(AssetType).where(AssetType.name == old_name).values(name=new_name)
+        )
+        # Also update all assets referencing this type
+        await self._session.execute(
+            update(Asset).where(Asset.type_name == old_name).values(type_name=new_name)
+        )
+        return await self.get_by_name(new_name)
+
+    async def get_asset_counts(self) -> dict[str, int]:
+        """Return count of assets per type name."""
+        result = await self._session.execute(
+            select(Asset.type_name, func.count(Asset.id)).group_by(Asset.type_name)
+        )
+        return {row[0]: row[1] for row in result}
 
 
 class AssetRepository:
@@ -175,6 +202,48 @@ class AssetRepository:
         if asset is None:
             raise HTTPException(status_code=404, detail=f"asset '{name}' not found")
         return asset
+
+    async def delete(self, name: str) -> bool:
+        """Delete an asset by name, removing all group memberships and SLO links.
+
+        Returns False if asset not found.
+        """
+        asset = await self.get_by_name(name)
+        if asset is None:
+            return False
+        # Remove group memberships
+        await self._session.execute(
+            delete(AssetGroupMember).where(AssetGroupMember.asset_id == asset.id)
+        )
+        # Remove SLO links
+        await self._session.execute(delete(AssetSLOLink).where(AssetSLOLink.asset_id == asset.id))
+        # Delete the asset itself
+        await self._session.execute(delete(Asset).where(Asset.id == asset.id))
+        return True
+
+    async def get_label_keys(self) -> dict[str, int]:
+        """Return all distinct label keys with count of assets using each."""
+        result = await self._session.execute(
+            text(
+                "SELECT key, COUNT(*) as cnt "
+                "FROM assets, jsonb_object_keys(labels) AS key "
+                "GROUP BY key ORDER BY cnt DESC"
+            )
+        )
+        return {row[0]: row[1] for row in result}
+
+    async def get_label_values(self, key: str) -> dict[str, int]:
+        """Return all distinct values for a label key with usage counts."""
+        result = await self._session.execute(
+            text(
+                "SELECT labels->>:key AS val, COUNT(*) as cnt "
+                "FROM assets "
+                "WHERE labels ? :key "
+                "GROUP BY val ORDER BY cnt DESC"
+            ),
+            {"key": key},
+        )
+        return {row[0]: row[1] for row in result}
 
 
 class AssetGroupRepository:
