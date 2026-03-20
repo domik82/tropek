@@ -16,6 +16,7 @@ from app.modules.quality_gate.engine.slo_models import SLO
 from app.modules.quality_gate.engine.slo_parser import build_slo
 from app.modules.quality_gate.engine.variables import build_variables, substitute_variables
 from app.modules.quality_gate.repository import EvaluationRepository
+from app.modules.quality_gate.sli_repository import SLIValueRepository
 from app.modules.sli_registry.repository import SLIRepository
 from app.modules.slo_registry.repository import SLORepository
 
@@ -269,4 +270,5 @@ async def run_evaluation(
         if ir.get("value") is not None
     ]
     if sli_rows:
-        await repo.write_sli_values(sli_rows)
+        sli_repo = SLIValueRepository(session)
+        await sli_repo.write_sli_values(sli_rows)
