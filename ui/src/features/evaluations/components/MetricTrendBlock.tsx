@@ -2,8 +2,6 @@
 import ReactECharts from 'echarts-for-react'
 import { useCallback } from 'react'
 import { useTrend } from '../hooks'
-import { useTheme } from '@/lib/theme-context'
-import { RESULT_COLOUR, CHART_THEME } from '@/lib/theme'
 import { STATUS_TEXT } from '@/lib/status'
 import { useChartAreaClick } from '@/lib/useChartAreaClick'
 import { useMetricTrendState, isRelativeCriteria } from '../hooks/useMetricTrendState'

@@ -8,7 +8,6 @@ import { EvaluationHeader } from '@/features/evaluations/components/EvaluationHe
 import { AnnotationSection, type AnnotationSectionHandle } from '@/features/evaluations/components/AnnotationForm'
 import { EvaluationActionsButton, EvaluationActionForm, NoteIconButton } from '@/features/evaluations/components/EvaluationActions'
 import type { ActionKind } from '@/features/evaluations/types'
-import { ViewToggle } from '@/components/charts/ViewToggle'
 import type { ViewMode } from '@/components/charts/ViewToggle'
 import { AssetPanelHeatmapView } from './AssetPanelHeatmapView'
 import { AssetPanelChartView } from './AssetPanelChartView'
