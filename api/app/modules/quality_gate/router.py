@@ -47,6 +47,7 @@ from app.modules.quality_gate.schemas import (
     TriggerRequest,
     TriggerResponse,
 )
+from app.modules.quality_gate.trend_repository import TrendRepository
 from app.modules.quality_gate.trigger import resolve_single_trigger
 from app.modules.sli_registry.repository import SLIRepository
 from app.modules.slo_registry.repository import SLORepository
@@ -421,8 +422,8 @@ async def get_metric_heatmap(
     asset = await asset_repo.get_by_name(asset_name)
     if asset is None:
         raise HTTPException(status_code=404, detail=f"asset '{asset_name}' not found")
-    eval_repo = EvaluationRepository(session)
-    evals = await eval_repo.get_metric_heatmap(
+    trend_repo = TrendRepository(session)
+    evals = await trend_repo.get_metric_heatmap(
         asset_id=asset.id, limit=limit, evaluation_name=evaluation_name
     )
     # Build slots (timestamps) and collect all unique metrics
@@ -711,6 +712,7 @@ async def get_trend(
         )
 
     eval_repo = EvaluationRepository(session)
+    trend_repo = TrendRepository(session)
 
     if eval_id is not None:
         ev = await eval_repo.get_by_id(eval_id)
@@ -732,7 +734,7 @@ async def get_trend(
         resolved_asset_id = asset.id
         resolved_slo_name = slo_name
 
-    points = await eval_repo.get_trend_by_domain(
+    points = await trend_repo.get_trend_by_domain(
         asset_id=resolved_asset_id,
         slo_name=resolved_slo_name,
         metric_name=metric,
