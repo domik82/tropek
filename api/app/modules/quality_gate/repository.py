@@ -25,7 +25,7 @@ class DuplicateEvaluationError(Exception):
 
 
 class EvaluationRepository:
-    """Data access layer for evaluations, annotations, SLI values, and trend queries."""
+    """Data access layer for evaluation CRUD and status mutations."""
 
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
