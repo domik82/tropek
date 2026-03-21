@@ -16,9 +16,12 @@ uv sync                                               # Install all workspace de
 
 # Run unit tests (no infrastructure required)
 uv run pytest api/tests/ -m "not integration" -q
+./scripts/api-test.sh                                     # same, works from repo root
+./scripts/api-test.sh --tail 5                            # summary only (no pipe needed)
 
 # Run a single test
 uv run pytest api/tests/engine/test_evaluator.py::TestName -v
+./scripts/api-test.sh tests/engine/test_evaluator.py -v   # from repo root
 
 # Lint and format
 uv run ruff check api/ adapters/
