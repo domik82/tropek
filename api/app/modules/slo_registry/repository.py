@@ -9,6 +9,7 @@ from sqlalchemy import select, text, update
 from sqlalchemy.engine import CursorResult
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.cache.redis_cache import RedisCache
 from app.db.models import SLODefinition
 from app.db.models import SLOObjective as SLOObjectiveORM
 
@@ -16,8 +17,9 @@ from app.db.models import SLOObjective as SLOObjectiveORM
 class SLORepository:
     """Data access layer for versioned SLO definitions."""
 
-    def __init__(self, session: AsyncSession) -> None:
+    def __init__(self, session: AsyncSession, cache: RedisCache | None = None) -> None:
         self._session = session
+        self._cache = cache
 
     async def create(
         self,
@@ -106,6 +108,8 @@ class SLORepository:
         await self._session.flush()
         # Eagerly load objectives so callers can access them outside async context
         await self._session.refresh(slo, ["objectives"])
+        if self._cache:
+            await self._cache.invalidate(f"slo:{name}:latest")
         return slo
 
     async def get_latest(self, name: str) -> SLODefinition | None:
