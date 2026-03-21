@@ -85,10 +85,10 @@ echo "=== Running e2e tests ==="
 uv run --directory clients/python python ../../scripts/e2e_tests.py "http://localhost:$API_PORT"
 
 echo "=== Installing UI dependencies ==="
-npm --prefix ui install --legacy-peer-deps
+pnpm --dir ui install
 
 echo "=== Starting UI (background) ==="
-VITE_USE_MOCKS=false npm --prefix ui run dev &
+VITE_USE_MOCKS=false pnpm --dir ui run dev &
 PIDS+=($!)
 
 echo ""

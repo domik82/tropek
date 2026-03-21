@@ -76,7 +76,7 @@ curl http://localhost:8080/health
 
 ## Development setup
 
-Requires: [uv](https://docs.astral.sh/uv/), Python 3.13, Docker, Node.js 18+
+Requires: [uv](https://docs.astral.sh/uv/), Python 3.13, Docker, Node.js 18+, [pnpm](https://pnpm.io/)
 
 ### Backend (API + worker)
 
@@ -133,13 +133,13 @@ ENV_FILE=.env.test uv run --directory api alembic revision --autogenerate -m "de
 
 ```bash
 cd ui
-npm install
+pnpm install
 ```
 
 #### With mocks (no backend needed)
 
 ```bash
-npm run dev
+pnpm dev
 ```
 
 Starts on `http://localhost:5173` with MSW intercepting all API calls. Mock data is deterministic (seeded PRNG) -- 30 days of history, 40 asset/lab scenarios, 30 metrics. No backend services required.
@@ -148,11 +148,11 @@ Starts on `http://localhost:5173` with MSW intercepting all API calls. Mock data
 
 ```bash
 # Option 1: dev server with HMR (disable mocks, proxy to running backend)
-VITE_USE_MOCKS=false npm run dev
+VITE_USE_MOCKS=false pnpm dev
 
 # Option 2: production build
-VITE_API_BASE=http://localhost:8080 npm run build
-npm run preview
+VITE_API_BASE=http://localhost:8080 pnpm build
+pnpm preview
 ```
 
 Requires the API service running on `:8080` (see Quick Start above).
@@ -160,8 +160,8 @@ Requires the API service running on `:8080` (see Quick Start above).
 #### UI tests
 
 ```bash
-npm run test     # Vitest unit tests
-npm run lint     # ESLint
+pnpm test        # Vitest unit tests
+pnpm lint        # ESLint
 ```
 
 ---
@@ -328,12 +328,14 @@ tropek/
 |---|---|
 | Framework | React 19 + TypeScript 5.9 |
 | Build | Vite 8 |
-| Styling | Tailwind CSS 4 + shadcn/ui (Base Nova) |
+| Styling | Tailwind CSS 4 + shadcn/ui (Base UI) |
 | Charts | Apache ECharts 6 |
 | Data fetching | TanStack React Query 5 |
 | Routing | React Router 7 |
+| Forms | React Hook Form 7 + Zod 4 |
 | API mocking | MSW 2 |
-| Testing | Vitest |
+| Testing | Vitest 4 + React Testing Library |
+| Package manager | pnpm |
 
 ---
 
@@ -355,5 +357,46 @@ This project is open source. PRs welcome.
 uv run ruff check api/ adapters/
 uv run mypy api/app adapters/prometheus/app
 uv run pytest api/tests/ -m "not integration" -q
-cd ui && npm run lint && npm run test
+cd ui && pnpm lint && pnpm test
+```
+
+---
+
+## Stack
+
+```mermaid
+graph TB
+    subgraph Browser["Browser"]
+        subgraph UI["UI — React 19 · TypeScript 5.9"]
+            Components["Component Library\nshadcn/ui · Base UI · cmdk"]
+            Styling["Styling\nTailwind CSS v4 · Geist font"]
+            Routing["Routing\nReact Router v7"]
+            DataFetching["Data Fetching\nTanStack React Query v5"]
+            Forms["Forms & Validation\nReact Hook Form v7 · Zod v4"]
+            Charts["Charts\nApache ECharts 6"]
+        end
+        Build["Build — Vite 8\nTest — Vitest 4 · React Testing Library\nLint — ESLint 9\nPkg — pnpm"]
+    end
+
+    subgraph Backend["Backend — Python 3.13"]
+        API["API Server\nFastAPI · Uvicorn · Pydantic v2"]
+        Worker["Job Workers ×2\narq async Redis queue"]
+        ORM["ORM & Migrations\nSQLAlchemy 2 async · Alembic"]
+        Adapter["Prometheus Adapter\nhttpx · tenacity"]
+        BackendTools["Logging — structlog\nConfig — PyYAML · dotenv\nPkg — uv workspace\nLint — ruff · mypy strict\nTest — pytest-asyncio"]
+    end
+
+    subgraph Infra["Infrastructure — Docker Compose"]
+        DB[("PostgreSQL 16\n+ TimescaleDB")]
+        Redis[("Redis 7\nQueue + Cache")]
+    end
+
+    UI -->|"HTTP REST"| API
+    API --> ORM
+    API -->|"enqueue"| Redis
+    Worker -->|"dequeue"| Redis
+    Worker --> ORM
+    Worker -->|"PromQL"| Adapter
+    ORM --> DB
+    Adapter --> Prometheus["Prometheus"]
 ```

@@ -32,7 +32,7 @@ UI_DIR="$SCRIPT_DIR/../ui"
 cd "$UI_DIR"
 
 if [[ "$TAIL_LINES" -gt 0 ]]; then
-  npx vitest run "${ARGS[@]}" 2>&1 | tail -n "$TAIL_LINES"
+  pnpm exec vitest run "${ARGS[@]}" 2>&1 | tail -n "$TAIL_LINES"
 else
-  exec npx vitest run "${ARGS[@]}"
+  exec pnpm exec vitest run "${ARGS[@]}"
 fi
