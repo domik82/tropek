@@ -175,3 +175,88 @@ def test_build_detail_compared_evaluation_ids() -> None:
     detail = build_detail(ev)
     assert len(detail.compared_evaluation_ids) == 2
     assert detail.compared_evaluation_ids[0] == uuid.UUID(eid1)
+
+
+def test_build_detail_empty_indicator_results() -> None:
+    ev = _make_evaluation(indicator_results=[])
+    detail = build_detail(ev)
+    assert detail.indicator_results == []
+    assert detail.top_failures == []
+
+
+def test_build_summary_no_pass_targets_in_failure() -> None:
+    """Failing indicator without pass_targets -> threshold defaults to empty string."""
+    ev = _make_evaluation(
+        indicator_results=[
+            {
+                "metric": "cpu",
+                "display_name": "CPU",
+                "value": 99.0,
+                "compared_value": None,
+                "change_absolute": None,
+                "change_relative_pct": None,
+                "status": "fail",
+                "score": 0.0,
+                "weight": 1,
+                "key_sli": False,
+                "pass_targets": None,
+                "warning_targets": None,
+            },
+        ]
+    )
+    summary = build_summary(ev, annotation_count=0, latest_ann=None)
+    assert len(summary.top_failures) == 1
+    assert summary.top_failures[0].threshold == ""
+
+
+def test_build_detail_null_job_stats() -> None:
+    """When job_stats is None, original_score is None and compared_evaluation_ids is empty."""
+    ev = _make_evaluation()
+    ev.job_stats = None  # bypass helper normalization to test true None path
+    detail = build_detail(ev)
+    assert detail.original_score is None
+    assert detail.compared_evaluation_ids == []
+
+
+def test_build_detail_combined_invalidated_and_overridden() -> None:
+    """Both invalidated and override fields can coexist."""
+    ev = _make_evaluation(
+        invalidated=True,
+        original_result="fail",
+        result="pass",
+    )
+    # Set override fields directly — helper doesn't accept these as kwargs
+    ev.override_reason = "Overridden before invalidation"
+    ev.override_author = "alice"
+    detail = build_detail(ev)
+    assert detail.invalidated is True
+    assert detail.original_result == "fail"
+    assert detail.result == "pass"
+    assert detail.override_author == "alice"
+
+
+def test_build_detail_annotations_sorted_by_created_at() -> None:
+    """Annotations in detail response must be sorted by created_at ascending."""
+    ann_old = _make_annotation("First", "general")
+    ann_old.created_at = datetime(2026, 3, 15, 10, 0, 0, tzinfo=UTC)
+    ann_new = _make_annotation("Second", "general")
+    ann_new.created_at = datetime(2026, 3, 15, 12, 0, 0, tzinfo=UTC)
+    ann_mid = _make_annotation("Middle", "general")
+    ann_mid.created_at = datetime(2026, 3, 15, 11, 0, 0, tzinfo=UTC)
+
+    ev = _make_evaluation(annotations=[ann_new, ann_old, ann_mid])
+    detail = build_detail(ev)
+    assert [a.content for a in detail.annotations] == ["First", "Middle", "Second"]
+
+
+def test_build_detail_latest_annotation_is_most_recent() -> None:
+    """latest_annotation in detail should be the most recent visible annotation."""
+    ann_old = _make_annotation("Old", "general")
+    ann_old.created_at = datetime(2026, 3, 15, 10, 0, 0, tzinfo=UTC)
+    ann_new = _make_annotation("New", "general")
+    ann_new.created_at = datetime(2026, 3, 15, 12, 0, 0, tzinfo=UTC)
+
+    ev = _make_evaluation(annotations=[ann_old, ann_new])
+    detail = build_detail(ev)
+    assert detail.latest_annotation is not None
+    assert detail.latest_annotation.content == "New"
