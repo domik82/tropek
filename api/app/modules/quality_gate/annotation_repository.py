@@ -8,14 +8,16 @@ from typing import Any
 from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.cache.redis_cache import RedisCache
 from app.db.models import EvaluationAnnotation
 
 
 class AnnotationRepository:
     """Data access layer for evaluation annotations."""
 
-    def __init__(self, session: AsyncSession) -> None:
+    def __init__(self, session: AsyncSession, cache: RedisCache | None = None) -> None:
         self._session = session
+        self._cache = cache
 
     async def add_annotation(
         self,
@@ -48,6 +50,9 @@ class AnnotationRepository:
         )
         self._session.add(ann)
         await self._session.flush()
+        if self._cache:
+            await self._cache.invalidate(f"annot_count:{eval_id}")
+            await self._cache.invalidate(f"annot_latest:{eval_id}")
         return ann
 
     async def get_annotation_by_id(self, annotation_id: uuid.UUID) -> EvaluationAnnotation | None:
@@ -110,4 +115,8 @@ class AnnotationRepository:
                 hidden_reason=reason,
             )
         )
-        return await self.get_annotation_by_id(annotation_id)
+        ann = await self.get_annotation_by_id(annotation_id)
+        if self._cache and ann is not None:
+            await self._cache.invalidate(f"annot_count:{ann.evaluation_id}")
+            await self._cache.invalidate(f"annot_latest:{ann.evaluation_id}")
+        return ann

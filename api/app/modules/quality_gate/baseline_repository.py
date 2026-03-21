@@ -10,6 +10,7 @@ from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.cache.redis_cache import RedisCache
 from app.db.models import Evaluation, IndicatorResultRow, SLOObjective
 from app.modules.quality_gate.annotation_repository import AnnotationRepository
 from app.modules.quality_gate.engine.constants import EvaluationStatus
@@ -20,8 +21,9 @@ from app.modules.quality_gate.indicator_repository import IndicatorRepository
 class BaselineRepository:
     """Data access layer for baselines and re-evaluation results."""
 
-    def __init__(self, session: AsyncSession) -> None:
+    def __init__(self, session: AsyncSession, cache: RedisCache | None = None) -> None:
         self._session = session
+        self._cache = cache
 
     async def get_evaluation_baselines(
         self,
@@ -252,7 +254,9 @@ class BaselineRepository:
         annotation_content = (
             f"re-evaluated: {old_result} -> {new_result}, score {old_score} -> {new_score}"
         )
-        ann_repo = AnnotationRepository(self._session)
+        if self._cache:
+            await self._cache.invalidate(f"baseline:{ev.asset_id}:{ev.slo_name}")
+        ann_repo = AnnotationRepository(self._session, cache=self._cache)
         await ann_repo.add_annotation(
             eval_id,
             content=annotation_content,
