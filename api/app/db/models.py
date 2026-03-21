@@ -202,6 +202,7 @@ class SLOObjective(Base):
     sort_order:        Mapped[int]            = mapped_column(Integer, nullable=False)
     pass_criteria:     Mapped[list[str]]      = mapped_column(ARRAY(Text), nullable=False, server_default=text("'{}'"))
     warning_criteria:  Mapped[list[str]]      = mapped_column(ARRAY(Text), nullable=False, server_default=text("'{}'"))
+    tab_group:         Mapped[str | None]     = mapped_column(Text, nullable=True)
     # fmt: on
 
 
