@@ -24,7 +24,7 @@ def mock_repos() -> dict:
         {
             "id": uuid.uuid4(),
             "name": "vm-01",
-            "labels": {"os": "linux"},
+            "tags": {"os": "linux"},
         },
     )()
 

@@ -55,7 +55,7 @@ async def test_trend_returns_points_with_baseline(db_session: AsyncSession) -> N
         period_end=_BASE + timedelta(minutes=30),
         ingestion_mode="push",
         asset_snapshot={"name": "trend-asset", "tags": {}},
-        metadata={},
+        variables={},
         asset_id=asset_id,
         slo_name="test-slo",
     )
@@ -100,7 +100,7 @@ async def test_trend_excludes_invalidated(db_session: AsyncSession) -> None:
         period_end=_BASE + timedelta(minutes=30),
         ingestion_mode="push",
         asset_snapshot={"name": "trend-inv-asset", "tags": {}},
-        metadata={},
+        variables={},
         asset_id=asset_id,
         slo_name="test-slo",
     )

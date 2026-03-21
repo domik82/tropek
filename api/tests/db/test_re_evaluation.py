@@ -45,7 +45,7 @@ async def _create_completed_eval(
         period_end=period_start + timedelta(minutes=30),
         ingestion_mode="push",
         asset_snapshot={"name": "test"},
-        metadata={},
+        variables={},
         asset_id=asset_id,
         slo_name=slo_name,
         sli_version=sli_version,

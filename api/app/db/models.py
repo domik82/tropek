@@ -132,7 +132,7 @@ class DataSource(Base):
 
     The adapter manages its own connection credentials via env vars.
     TROPEK stores only where to send queries (adapter_url) and free-form
-    labels for discovery. Names are unique across the deployment.
+    tags for discovery. Names are unique across the deployment.
     """
 
     __tablename__ = "data_sources"

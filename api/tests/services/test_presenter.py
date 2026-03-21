@@ -38,7 +38,7 @@ def _make_evaluation(
         invalidation_note=None,
         ingestion_mode="pull",
         asset_snapshot={"name": "vm-01", "tags": {}},
-        evaluation_metadata={},
+        variables={},
         asset_id=uuid.uuid4(),
         slo_name="perf-slo",
         slo_version=1,

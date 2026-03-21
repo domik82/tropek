@@ -54,7 +54,7 @@ async def test_find_duplicate_returns_existing_completed(db_session: AsyncSessio
         period_end=_END,
         ingestion_mode="pull",
         asset_snapshot={"name": "test"},
-        metadata={},
+        variables={},
         asset_id=asset_id,
         slo_name="latency-slo",
     )
@@ -87,7 +87,7 @@ async def test_find_duplicate_ignores_failed(db_session: AsyncSession) -> None:
         period_end=_END,
         ingestion_mode="pull",
         asset_snapshot={"name": "test"},
-        metadata={},
+        variables={},
         asset_id=asset_id,
         slo_name="latency-slo",
     )
@@ -112,7 +112,7 @@ async def test_find_duplicate_returns_pending(db_session: AsyncSession) -> None:
         period_end=_END,
         ingestion_mode="pull",
         asset_snapshot={"name": "test"},
-        metadata={},
+        variables={},
         asset_id=asset_id,
         slo_name="latency-slo",
     )
@@ -137,7 +137,7 @@ async def test_find_duplicate_different_name_no_conflict(db_session: AsyncSessio
         period_end=_END,
         ingestion_mode="pull",
         asset_snapshot={"name": "test"},
-        metadata={},
+        variables={},
         asset_id=asset_id,
         slo_name="latency-slo",
     )
@@ -162,7 +162,7 @@ async def test_create_pending_raises_on_constraint_violation(db_session: AsyncSe
         period_end=_END,
         ingestion_mode="pull",
         asset_snapshot={"name": "test"},
-        metadata={},
+        variables={},
         asset_id=asset_id,
         slo_name="latency-slo",
     )
@@ -173,7 +173,7 @@ async def test_create_pending_raises_on_constraint_violation(db_session: AsyncSe
             period_end=_END,
             ingestion_mode="pull",
             asset_snapshot={"name": "test"},
-            metadata={},
+            variables={},
             asset_id=asset_id,
             slo_name="latency-slo",
         )
