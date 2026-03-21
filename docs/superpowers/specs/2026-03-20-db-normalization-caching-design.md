@@ -189,7 +189,8 @@ The `top_failures` field on `EvaluationSummary` becomes a join query instead of 
 - `api/app/modules/quality_gate/re_evaluator.py` — `_metrics_from_indicator_results()` and `_compute_baselines()` currently iterate JSONB; must query `indicator_results` table + join `slo_objectives` for metric name
 - `api/app/modules/quality_gate/trend_repository.py` — `get_trend_by_domain()` currently extracts `compared_value` from JSONB subquery; rewrite to join `indicator_results`
 - `api/app/modules/quality_gate/baseline_repository.py` — `update_reeval_result()` writes JSONB; rewrite to update `indicator_results` rows
-- `api/app/modules/quality_gate/schemas.py` — response construction from joins; `top_failures` computed from joined rows filtered by `status='fail'`, with threshold from `slo_objectives.pass_criteria[0]`
+- `api/app/modules/quality_gate/presenter.py` — **central transformation layer**: `build_summary()` extracts `top_failures` from JSONB dicts (line 21-31), `build_detail()` constructs `IndicatorResult` objects from JSONB (line 49). Both must be rewritten to accept joined ORM results instead of raw dicts. This is the main file that changes.
+- `api/app/modules/quality_gate/schemas.py` — response shapes stay identical (no UI breakage); `FailingIndicator.threshold` currently reads `pass_targets[0].criteria` from JSONB — after normalization, derive from `slo_objectives.pass_criteria[0]`
 - `api/app/modules/quality_gate/engine/evaluator.py` — return type may change to structured objects instead of dicts
 - `api/app/modules/quality_gate/router.py` — `_build_detail()` and `_build_summary()` currently read from JSONB; rewrite to construct from joined query results
 - Worker job (`worker.py`) — writes to new table instead of JSONB (lines 90, 216, 235)
@@ -197,8 +198,17 @@ The `top_failures` field on `EvaluationSummary` becomes a join query instead of 
 - New: cache invalidation hooks in repositories
 
 ### Frontend
-- No changes — API response shape is preserved
+- No changes — API response shape is preserved. The normalization is entirely backend-internal.
+
+### Seed data and integration tests
+- `scripts/dev-start.sh` seeds evaluations with indicator_results as JSONB arrays via the mock adapter → worker pipeline. After normalization, the worker writes to the `indicator_results` table instead — the seed pipeline must produce the same API output. Verify by running dev-start.sh and comparing API responses before/after.
+- UI mock data generators (if any) that produce `indicator_results` arrays don't need changes — they mock API responses, not DB rows.
+- All existing API integration tests that assert on response shapes must pass unchanged — the API contract does not change.
 
 ### Infrastructure
 - Redis usage increases (currently queue-only, now queue + cache)
 - Monitor Redis memory usage after rollout
+
+## API Contract Principle
+
+This refactor **preserves the existing API contract exactly**. The UI receives the same `EvaluationSummary` and `EvaluationDetail` response shapes — `indicator_results` remains a JSON array in the API response, just constructed from joined tables instead of a JSONB column. The "fewer requests is better" principle holds: the UI should continue fetching indicator data as part of the evaluation detail response, not via separate requests. The normalization is storage-internal; the API is the boundary.
