@@ -7,8 +7,11 @@ describe('evaluationKeys', () => {
     expect(evaluationKeys.all).toEqual(['evaluations'])
   })
   it('list includes filters', () => {
-    const filters = { lab: 'lab-a', date: '2026-03-14' }
+    const filters = { group_name: 'infra-production', date: '2026-03-14' }
     expect(evaluationKeys.list(filters)).toEqual(['evaluations', filters])
+  })
+  it('heatmap includes asset name', () => {
+    expect(evaluationKeys.heatmap('catalog-db')).toEqual(['metric-heatmap', 'catalog-db'])
   })
   it('detail includes id', () => {
     expect(evaluationKeys.detail('abc-123')).toEqual(['evaluations', 'abc-123'])

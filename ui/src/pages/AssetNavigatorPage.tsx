@@ -11,6 +11,12 @@ export function AssetNavigatorPage() {
   const selectedAsset = params.get('asset') ?? null
   const selectedEvalId = params.get('eval') ?? undefined
 
+  const handleSelectAsset = (name: string) => {
+    const next: Record<string, string> = { asset: name }
+    if (selectedGroup) next.group = selectedGroup
+    setParams(next)
+  }
+
   return (
     <div className="flex h-[calc(100vh-49px)] overflow-hidden">
       <AssetTree
@@ -18,16 +24,16 @@ export function AssetNavigatorPage() {
         selectedGroup={selectedGroup}
         selectedAsset={selectedAsset}
         onSelectGroup={name => name ? setParams({ group: name }) : setParams({})}
-        onSelectAsset={name => setParams({ asset: name })}
+        onSelectAsset={handleSelectAsset}
         width={260}
       />
       <div className="flex-1 overflow-y-auto">
-        {selectedAsset && <AssetPanel assetName={selectedAsset} initialEvalId={selectedEvalId} />}
+        {selectedAsset && <AssetPanel key={selectedAsset} assetName={selectedAsset} initialEvalId={selectedEvalId} />}
         {!selectedAsset && selectedGroup && (
-          <GroupPanel groupName={selectedGroup} onSelectAsset={(name: string) => setParams({ asset: name })} />
+          <GroupPanel groupName={selectedGroup} onSelectAsset={(name: string) => handleSelectAsset(name)} />
         )}
         {!selectedAsset && !selectedGroup && (
-          <AllEvaluationsPanel onSelectAsset={(name: string) => setParams({ asset: name })} />
+          <AllEvaluationsPanel onSelectAsset={(name: string) => handleSelectAsset(name)} />
         )}
       </div>
     </div>

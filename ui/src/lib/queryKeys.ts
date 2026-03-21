@@ -6,13 +6,20 @@
 // lib/ must not import from features/, so we use an inline structural type here.
 // The shapes are identical — TypeScript's structural typing ensures compatibility.
 
-type EvalFilters = { lab?: string; date?: string; slot?: string }
+type EvalFilters = {
+  group_name?: string
+  asset_name?: string
+  date?: string
+  from?: string
+  to?: string
+}
 
 export const evaluationKeys = {
   all: ['evaluations'] as const,
   list: (filters: EvalFilters) => [...evaluationKeys.all, filters] as const,
   detail: (id: string) => [...evaluationKeys.all, id] as const,
   trend: (id: string, metric: string) => [...evaluationKeys.detail(id), metric] as const,
+  heatmap: (assetName: string) => ['metric-heatmap', assetName] as const,
 }
 
 export const assetKeys = {

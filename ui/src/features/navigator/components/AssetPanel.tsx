@@ -1,5 +1,5 @@
 // ui/src/features/navigator/components/AssetPanel.tsx
-import { useState, useMemo, useRef } from 'react'
+import { useState, useMemo, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAssetEvaluations, useMetricHeatmap } from '../hooks'
 import { useEvaluationDetail } from '@/features/evaluations/hooks'
@@ -21,6 +21,12 @@ export function AssetPanel({ assetName, initialEvalId }: Props) {
   const [mode, setMode] = useState<ViewMode>('heatmap')
   const [selectedEvalId, setSelectedEvalId] = useState<string | undefined>(initialEvalId)
   const [activeAction, setActiveAction] = useState<ActionKind | null>(null)
+
+  // Reset local state when the asset changes (defense in depth alongside key= on parent)
+  useEffect(() => {
+    setSelectedEvalId(undefined)
+    setActiveAction(null)
+  }, [assetName])
   const notesRef = useRef<AnnotationSectionHandle>(null)
   const notesSectionRef = useRef<HTMLDivElement>(null)
 
