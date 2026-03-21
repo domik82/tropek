@@ -1,8 +1,7 @@
 """Resolve pass/warning targets from criteria strings at read time.
 
-Replaces the pre-computed pass_targets/warning_targets that were stored
-in the indicator_results JSONB. Uses the same criteria parsing logic
-from the engine.
+Computes pass_targets/warning_targets from SLO criteria at read time.
+Uses the same criteria parsing logic from the engine.
 """
 
 from __future__ import annotations

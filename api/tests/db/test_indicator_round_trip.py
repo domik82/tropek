@@ -1,7 +1,6 @@
-"""Round-trip tests: write indicator_results -> read via presenter -> assert field equality.
+"""Round-trip tests: write indicator rows -> read via presenter -> assert field equality.
 
-These lock down the exact transformation from DB storage to API response,
-creating a safety net for the DB normalization migration.
+These lock down the exact transformation from normalized DB storage to API response.
 """
 
 from __future__ import annotations
@@ -10,81 +9,20 @@ import uuid
 from datetime import UTC, datetime
 
 import pytest
-from app.db.models import Asset, AssetType
+from app.db.models import (
+    Asset,
+    AssetType,
+    SLIDefinition,
+    SLODefinition,
+    SLOObjective,
+)
+from app.modules.quality_gate.indicator_repository import IndicatorRepository
 from app.modules.quality_gate.presenter import build_detail, build_summary
 from app.modules.quality_gate.repository import EvaluationRepository
 from sqlalchemy.ext.asyncio import AsyncSession
 
 _START = datetime(2026, 3, 15, 10, 0, 0, tzinfo=UTC)
 _END = datetime(2026, 3, 15, 10, 30, 0, tzinfo=UTC)
-
-_INDICATOR_PASS = {
-    "metric": "response_time_p95",
-    "display_name": "Response Time P95",
-    "tab_group": "latency",
-    "value": 580.0,
-    "compared_value": 500.0,
-    "change_absolute": 80.0,
-    "change_relative_pct": 16.0,
-    "aggregation": "p95",
-    "status": "pass",
-    "score": 1.0,
-    "weight": 1,
-    "key_sli": True,
-    "pass_targets": [{"criteria": "<600", "target_value": 600, "violated": False}],
-    "warning_targets": None,
-}
-
-_INDICATOR_FAIL = {
-    "metric": "error_rate",
-    "display_name": "Error Rate",
-    "tab_group": None,
-    "value": 5.2,
-    "compared_value": 1.0,
-    "change_absolute": 4.2,
-    "change_relative_pct": 420.0,
-    "aggregation": "avg",
-    "status": "fail",
-    "score": 0.0,
-    "weight": 2,
-    "key_sli": False,
-    "pass_targets": [{"criteria": "<2", "target_value": 2, "violated": True}],
-    "warning_targets": [{"criteria": "<5", "target_value": 5, "violated": True}],
-}
-
-_INDICATOR_NULL_VALUE = {
-    "metric": "cpu_usage",
-    "display_name": "CPU Usage",
-    "tab_group": None,
-    "value": None,
-    "compared_value": None,
-    "change_absolute": None,
-    "change_relative_pct": None,
-    "aggregation": None,
-    "status": "fail",
-    "score": 0.0,
-    "weight": 1,
-    "key_sli": False,
-    "pass_targets": [{"criteria": "<80", "target_value": 80, "violated": True}],
-    "warning_targets": None,
-}
-
-_INDICATOR_INFO = {
-    "metric": "build_duration",
-    "display_name": "Build Duration",
-    "tab_group": None,
-    "value": 120.0,
-    "compared_value": None,
-    "change_absolute": None,
-    "change_relative_pct": None,
-    "aggregation": "avg",
-    "status": "info",
-    "score": 0.0,
-    "weight": 0,
-    "key_sli": False,
-    "pass_targets": None,
-    "warning_targets": None,
-}
 
 
 async def _create_asset(session: AsyncSession) -> uuid.UUID:
@@ -97,10 +35,92 @@ async def _create_asset(session: AsyncSession) -> uuid.UUID:
     return asset_id
 
 
+async def _seed_slo_objectives(session: AsyncSession) -> dict[str, SLOObjective]:
+    """Create SLO with four objectives, return {sli_name: SLOObjective}."""
+    sli = SLIDefinition(
+        id=uuid.uuid4(),
+        name="round-trip-sli",
+        version=1,
+        adapter_type="prometheus",
+        indicators={},
+        tags={},
+    )
+    session.add(sli)
+
+    slo_id = uuid.uuid4()
+    slo = SLODefinition(
+        id=slo_id,
+        name="test-slo",
+        version=1,
+        display_name="Test SLO",
+        comparison={},
+        total_score_pass_pct=90.0,
+        total_score_warning_pct=75.0,
+        tags={},
+        variables={},
+    )
+    session.add(slo)
+
+    objectives = [
+        SLOObjective(
+            id=uuid.uuid4(),
+            slo_definition_id=slo_id,
+            sli="response_time_p95",
+            display_name="Response Time P95",
+            weight=1,
+            key_sli=True,
+            sort_order=0,
+            pass_criteria=["<600"],
+            warning_criteria=[],
+            tab_group="latency",
+        ),
+        SLOObjective(
+            id=uuid.uuid4(),
+            slo_definition_id=slo_id,
+            sli="error_rate",
+            display_name="Error Rate",
+            weight=2,
+            key_sli=False,
+            sort_order=1,
+            pass_criteria=["<2"],
+            warning_criteria=["<5"],
+            tab_group=None,
+        ),
+        SLOObjective(
+            id=uuid.uuid4(),
+            slo_definition_id=slo_id,
+            sli="cpu_usage",
+            display_name="CPU Usage",
+            weight=1,
+            key_sli=False,
+            sort_order=2,
+            pass_criteria=["<80"],
+            warning_criteria=[],
+            tab_group=None,
+        ),
+        SLOObjective(
+            id=uuid.uuid4(),
+            slo_definition_id=slo_id,
+            sli="build_duration",
+            display_name="Build Duration",
+            weight=0,
+            key_sli=False,
+            sort_order=3,
+            pass_criteria=[],
+            warning_criteria=[],
+            tab_group=None,
+        ),
+    ]
+    session.add_all(objectives)
+    await session.flush()
+    return {obj.sli: obj for obj in objectives}
+
+
 @pytest.mark.integration
 async def test_detail_round_trip_all_fields(db_session: AsyncSession) -> None:
-    """Write indicators with all field types, read back via presenter, assert equality."""
+    """Write indicator rows with all field types, read back via presenter, assert equality."""
     asset_id = await _create_asset(db_session)
+    objs = await _seed_slo_objectives(db_session)
     repo = EvaluationRepository(db_session)
     ev = await repo.create_pending(
         evaluation_name="round-trip-test",
@@ -112,9 +132,54 @@ async def test_detail_round_trip_all_fields(db_session: AsyncSession) -> None:
         asset_id=asset_id,
         slo_name="test-slo",
     )
-    indicators = [_INDICATOR_PASS, _INDICATOR_FAIL, _INDICATOR_NULL_VALUE, _INDICATOR_INFO]
-    await repo.mark_completed(
-        ev.id, result="fail", score=25.0, indicator_results=indicators, slo_name="test-slo"
+    await repo.mark_completed(ev.id, result="fail", score=25.0, slo_name="test-slo")
+
+    # Seed normalized indicator rows
+    indicator_repo = IndicatorRepository(db_session)
+    await indicator_repo.bulk_insert(
+        ev.id,
+        [
+            {
+                "evaluation_id": ev.id,
+                "slo_objective_id": objs["response_time_p95"].id,
+                "value": 580.0,
+                "compared_value": 500.0,
+                "change_absolute": 80.0,
+                "change_relative_pct": 16.0,
+                "status": "pass",
+                "score": 1.0,
+            },
+            {
+                "evaluation_id": ev.id,
+                "slo_objective_id": objs["error_rate"].id,
+                "value": 5.2,
+                "compared_value": 1.0,
+                "change_absolute": 4.2,
+                "change_relative_pct": 420.0,
+                "status": "fail",
+                "score": 0.0,
+            },
+            {
+                "evaluation_id": ev.id,
+                "slo_objective_id": objs["cpu_usage"].id,
+                "value": None,
+                "compared_value": None,
+                "change_absolute": None,
+                "change_relative_pct": None,
+                "status": "fail",
+                "score": 0.0,
+            },
+            {
+                "evaluation_id": ev.id,
+                "slo_objective_id": objs["build_duration"].id,
+                "value": 120.0,
+                "compared_value": None,
+                "change_absolute": None,
+                "change_relative_pct": None,
+                "status": "info",
+                "score": 0.0,
+            },
+        ],
     )
 
     fetched = await repo.get_by_id(ev.id)
@@ -155,6 +220,7 @@ async def test_detail_round_trip_all_fields(db_session: AsyncSession) -> None:
 async def test_summary_top_failures(db_session: AsyncSession) -> None:
     """Summary extracts only failing indicators into top_failures."""
     asset_id = await _create_asset(db_session)
+    objs = await _seed_slo_objectives(db_session)
     repo = EvaluationRepository(db_session)
     ev = await repo.create_pending(
         evaluation_name="failures-test",
@@ -166,12 +232,33 @@ async def test_summary_top_failures(db_session: AsyncSession) -> None:
         asset_id=asset_id,
         slo_name="test-slo",
     )
-    await repo.mark_completed(
+    await repo.mark_completed(ev.id, result="fail", score=25.0, slo_name="test-slo")
+
+    indicator_repo = IndicatorRepository(db_session)
+    await indicator_repo.bulk_insert(
         ev.id,
-        result="fail",
-        score=25.0,
-        indicator_results=[_INDICATOR_PASS, _INDICATOR_FAIL],
-        slo_name="test-slo",
+        [
+            {
+                "evaluation_id": ev.id,
+                "slo_objective_id": objs["response_time_p95"].id,
+                "value": 580.0,
+                "compared_value": 500.0,
+                "change_absolute": 80.0,
+                "change_relative_pct": 16.0,
+                "status": "pass",
+                "score": 1.0,
+            },
+            {
+                "evaluation_id": ev.id,
+                "slo_objective_id": objs["error_rate"].id,
+                "value": 5.2,
+                "compared_value": 1.0,
+                "change_absolute": 4.2,
+                "change_relative_pct": 420.0,
+                "status": "fail",
+                "score": 0.0,
+            },
+        ],
     )
 
     fetched = await repo.get_by_id(ev.id)
@@ -197,9 +284,7 @@ async def test_empty_indicator_results(db_session: AsyncSession) -> None:
         asset_id=asset_id,
         slo_name="test-slo",
     )
-    await repo.mark_completed(
-        ev.id, result="pass", score=100.0, indicator_results=[], slo_name="test-slo"
-    )
+    await repo.mark_completed(ev.id, result="pass", score=100.0, slo_name="test-slo")
 
     fetched = await repo.get_by_id(ev.id)
     detail = build_detail(fetched)

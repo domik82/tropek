@@ -49,19 +49,11 @@ def _indicators_from_orm_rows(rows: list) -> list[IndicatorResult]:  # type: ign
     return results
 
 
-def _indicators_from_jsonb(dicts: list[dict[str, Any]]) -> list[IndicatorResult]:
-    """Build IndicatorResult schema objects from JSONB dicts (legacy path)."""
-    return [IndicatorResult(**ir) for ir in dicts]
-
-
 def _get_indicator_results(ev: object) -> list[IndicatorResult]:
-    """Get indicator results from either ORM rows (new) or JSONB dicts (legacy)."""
+    """Get indicator results from ORM rows."""
     orm_rows = getattr(ev, "indicator_rows", None)
     if orm_rows:
         return _indicators_from_orm_rows(orm_rows)
-    jsonb = getattr(ev, "indicator_results", []) or []
-    if jsonb:
-        return _indicators_from_jsonb(jsonb)
     return []
 
 

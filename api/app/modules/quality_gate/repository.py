@@ -153,7 +153,6 @@ class EvaluationRepository:
         *,
         result: str,
         score: float,
-        indicator_results: list[Any],
         slo_name: str | None = None,
         slo_version: int | None = None,
         job_stats: dict[str, Any] | None = None,
@@ -165,7 +164,6 @@ class EvaluationRepository:
             eval_id: Evaluation to update.
             result: One of "pass", "warning", "fail", "error".
             score: Weighted score 0.0-100.0.
-            indicator_results: Full per-SLI breakdown as serialisable list.
             slo_name: Named SLO used, if any.
             slo_version: Version of the named SLO, if any.
             job_stats: Optional dict of job execution stats to merge.
@@ -178,7 +176,6 @@ class EvaluationRepository:
             "status": EvaluationStatus.COMPLETED,
             "result": result,
             "score": score,
-            "indicator_results": indicator_results,
             "job_stats": merged_stats,
         }
         if slo_name is not None:

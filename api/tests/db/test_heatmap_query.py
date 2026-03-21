@@ -13,23 +13,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 _BASE = datetime(2026, 3, 15, 10, 0, 0, tzinfo=UTC)
 
-_INDICATORS = [
-    {
-        "metric": "cpu_usage",
-        "display_name": "CPU Usage",
-        "value": 72.0,
-        "compared_value": None,
-        "change_absolute": None,
-        "change_relative_pct": None,
-        "status": "pass",
-        "score": 1.0,
-        "weight": 1,
-        "key_sli": False,
-        "pass_targets": [{"criteria": "<80", "target_value": 80, "violated": False}],
-        "warning_targets": None,
-    },
-]
-
 
 async def _create_asset(session: AsyncSession, name: str) -> uuid.UUID:
     type_name = f"vm-{uuid.uuid4().hex[:8]}"
@@ -59,9 +42,7 @@ async def test_heatmap_returns_completed_evals(db_session: AsyncSession) -> None
             asset_id=asset_id,
             slo_name="test-slo",
         )
-        await eval_repo.mark_completed(
-            ev.id, result="pass", score=90.0, indicator_results=_INDICATORS, slo_name="test-slo"
-        )
+        await eval_repo.mark_completed(ev.id, result="pass", score=90.0, slo_name="test-slo")
 
     evals = await trend_repo.get_metric_heatmap(asset_id=asset_id, limit=10)
     assert len(evals) == 3
@@ -84,9 +65,7 @@ async def test_heatmap_includes_invalidated_completed(db_session: AsyncSession) 
         asset_id=asset_id,
         slo_name="test-slo",
     )
-    await eval_repo.mark_completed(
-        ev.id, result="pass", score=90.0, indicator_results=_INDICATORS, slo_name="test-slo"
-    )
+    await eval_repo.mark_completed(ev.id, result="pass", score=90.0, slo_name="test-slo")
     await eval_repo.invalidate(ev.id, note="bad data")
 
     evals = await trend_repo.get_metric_heatmap(asset_id=asset_id, limit=10)

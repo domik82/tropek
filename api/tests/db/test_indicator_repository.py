@@ -114,7 +114,6 @@ async def _create_eval(session: AsyncSession, asset_id: uuid.UUID) -> uuid.UUID:
             status="completed",
             result="pass",
             score=90.0,
-            indicator_results=[],  # JSONB column still exists during migration
         )
     )
     await session.flush()

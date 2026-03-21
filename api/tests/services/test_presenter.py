@@ -18,7 +18,7 @@ def _make_evaluation(
     score: float = 95.0,
     invalidated: bool = False,
     original_result: str | None = None,
-    indicator_results: list[dict] | None = None,
+    indicator_rows: list | None = None,
     job_stats: dict | None = None,
     annotations: list | None = None,
 ) -> SimpleNamespace:
@@ -53,7 +53,7 @@ def _make_evaluation(
         started_at=_NOW,
         created_at=_NOW,
         updated_at=_NOW,
-        indicator_results=indicator_results or [],
+        indicator_rows=indicator_rows or [],
         job_stats=job_stats or {},
         annotations=annotations or [],
     )
@@ -88,25 +88,25 @@ def test_build_summary_standard_evaluation() -> None:
 
 
 def test_build_summary_with_failures() -> None:
-    indicators = [
-        {
-            "metric": "response_time",
-            "display_name": "Response Time",
-            "value": 800.0,
-            "status": "fail",
-            "score": 0.0,
-            "pass_targets": [{"criteria": "<600"}],
-        },
-        {
-            "metric": "cpu_usage",
-            "display_name": "CPU Usage",
-            "value": 45.0,
-            "status": "pass",
-            "score": 1.0,
-            "pass_targets": [{"criteria": "<80"}],
-        },
+    rows = [
+        _make_indicator_row(
+            sli="response_time",
+            display_name="Response Time",
+            value=800.0,
+            status="fail",
+            score=0.0,
+            pass_criteria=["<600"],
+        ),
+        _make_indicator_row(
+            sli="cpu_usage",
+            display_name="CPU Usage",
+            value=45.0,
+            status="pass",
+            score=1.0,
+            pass_criteria=["<80"],
+        ),
     ]
-    ev = _make_evaluation(result="fail", score=50.0, indicator_results=indicators)
+    ev = _make_evaluation(result="fail", score=50.0, indicator_rows=rows)
     summary = build_summary(ev, annotation_count=0, latest_ann=None)
     assert len(summary.top_failures) == 1
     assert summary.top_failures[0].metric == "response_time"
@@ -178,32 +178,31 @@ def test_build_detail_compared_evaluation_ids() -> None:
 
 
 def test_build_detail_empty_indicator_results() -> None:
-    ev = _make_evaluation(indicator_results=[])
+    ev = _make_evaluation(indicator_rows=[])
     detail = build_detail(ev)
     assert detail.indicator_results == []
     assert detail.top_failures == []
 
 
 def test_build_summary_no_pass_targets_in_failure() -> None:
-    """Failing indicator without pass_targets -> threshold defaults to empty string."""
-    ev = _make_evaluation(
-        indicator_results=[
-            {
-                "metric": "cpu",
-                "display_name": "CPU",
-                "value": 99.0,
-                "compared_value": None,
-                "change_absolute": None,
-                "change_relative_pct": None,
-                "status": "fail",
-                "score": 0.0,
-                "weight": 1,
-                "key_sli": False,
-                "pass_targets": None,
-                "warning_targets": None,
-            },
-        ]
-    )
+    """Failing indicator without pass_criteria -> threshold defaults to empty string."""
+    rows = [
+        _make_indicator_row(
+            sli="cpu",
+            display_name="CPU",
+            value=99.0,
+            compared_value=None,
+            change_absolute=None,
+            change_relative_pct=None,
+            status="fail",
+            score=0.0,
+            weight=1,
+            key_sli=False,
+            pass_criteria=[],
+            warning_criteria=[],
+        ),
+    ]
+    ev = _make_evaluation(indicator_rows=rows)
     summary = build_summary(ev, annotation_count=0, latest_ann=None)
     assert len(summary.top_failures) == 1
     assert summary.top_failures[0].threshold == ""
@@ -285,8 +284,8 @@ def _make_indicator_row(
         tab_group=tab_group,
         weight=weight,
         key_sli=key_sli,
-        pass_criteria=pass_criteria or ["<600"],
-        warning_criteria=warning_criteria or [],
+        pass_criteria=["<600"] if pass_criteria is None else pass_criteria,
+        warning_criteria=[] if warning_criteria is None else warning_criteria,
     )
     return SimpleNamespace(
         value=value,
@@ -311,8 +310,7 @@ def test_build_detail_from_orm_rows() -> None:
         weight=2,
         pass_criteria=["<2"],
     )
-    ev = _make_evaluation(indicator_results=[])
-    ev.indicator_rows = [row_pass, row_fail]
+    ev = _make_evaluation(indicator_rows=[row_pass, row_fail])
     detail = build_detail(ev)
     assert len(detail.indicator_results) == 2
     assert detail.indicator_results[0].metric == "response_time"
@@ -331,8 +329,7 @@ def test_build_summary_from_orm_rows() -> None:
         score=0.0,
         pass_criteria=["<2"],
     )
-    ev = _make_evaluation(indicator_results=[])
-    ev.indicator_rows = [row_fail]
+    ev = _make_evaluation(indicator_rows=[row_fail])
     summary = build_summary(ev, annotation_count=0, latest_ann=None)
     assert len(summary.top_failures) == 1
     assert summary.top_failures[0].threshold == "<2"
