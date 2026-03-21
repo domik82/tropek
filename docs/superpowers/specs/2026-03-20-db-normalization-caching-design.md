@@ -200,10 +200,30 @@ The `top_failures` field on `EvaluationSummary` becomes a join query instead of 
 ### Frontend
 - No changes — API response shape is preserved. The normalization is entirely backend-internal.
 
-### Seed data and integration tests
-- `scripts/dev-start.sh` seeds evaluations with indicator_results as JSONB arrays via the mock adapter → worker pipeline. After normalization, the worker writes to the `indicator_results` table instead — the seed pipeline must produce the same API output. Verify by running dev-start.sh and comparing API responses before/after.
-- UI mock data generators (if any) that produce `indicator_results` arrays don't need changes — they mock API responses, not DB rows.
-- All existing API integration tests that assert on response shapes must pass unchanged — the API contract does not change.
+### Testing strategy
+
+**New: Repository-level round-trip tests (TDD — write before migrating)**
+
+These tests validate that data written through the new `indicator_results` table produces identical API responses to the old JSONB approach. They must be written BEFORE the migration code and pass AFTER.
+
+1. **Write → read round-trip:** create an evaluation with known indicator data via the repository, read it back through the presenter, assert the API response matches the input field-by-field. This catches join errors, null handling mismatches, type coercion bugs, and pass_targets recomputation drift.
+
+2. **Re-evaluation round-trip:** write an evaluation, re-evaluate it (DELETE + INSERT cycle), verify the new indicator_results are returned and any old change point FKs are SET NULL (not lost).
+
+3. **Heatmap query equivalence:** run `get_metric_heatmap()` against a known dataset, assert the cell data (metric name, status, display_name) matches expected output. This validates the join chain used by the heatmap endpoint.
+
+4. **Trend query equivalence:** run `get_trend_by_domain()` against known data, assert trend points include correct `compared_value` (previously extracted from JSONB, now joined from `indicator_results`).
+
+5. **Top failures derivation:** verify `build_summary()` produces the same `top_failures` list — particularly `threshold` field, which now comes from `slo_objectives.pass_criteria[0]` instead of `pass_targets[0].criteria` in JSONB.
+
+6. **Edge cases:** null `compared_value` (no baseline), info-only objectives (no criteria), missing metrics (value=null), evaluations with 0 indicator results.
+
+**Existing tests**
+
+- `scripts/dev-start.sh` seeds evaluations via the Python client calling the API (POST `/evaluations`), which flows through the full stack: API → arq queue → worker → adapter → engine → DB write. The e2e tests (`scripts/e2e_tests.py`) then verify API responses. After normalization, the worker writes to the new table — the e2e tests validate the full round-trip is preserved.
+- All existing unit tests (`api/tests/engine/`) test the pure evaluation engine — unaffected by storage changes.
+- All existing API integration tests that assert on response shapes must pass unchanged.
+- UI component tests mock API responses, not DB rows — unaffected.
 
 ### Infrastructure
 - Redis usage increases (currently queue-only, now queue + cache)
