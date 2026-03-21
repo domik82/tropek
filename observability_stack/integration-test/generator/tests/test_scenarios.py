@@ -280,3 +280,67 @@ class TestDegradationEventMode:
 
         expected_start = start + timedelta(seconds=12 * 3600 * 0.65)
         assert abs((scenario.deploy_start - expected_start).total_seconds()) < 1
+
+
+class TestMemoryLeakScenario:
+    def test_latency_increases_exponentially(self):
+        from slo_generator.scenarios.memory_leak import MemoryLeakScenario
+
+        start = datetime(2026, 3, 1, 0, 0, 0, tzinfo=UTC)
+        end = start + timedelta(hours=48)
+        scenario = MemoryLeakScenario(start, end, growth_rate=0.01)
+
+        chunks = list(scenario.generate(resolution_seconds=60))
+        df = pd.concat(chunks)
+        api = df[(df["service"] == "api") & (df["host"] == "host1")]
+
+        early = api[api["timestamp"] < start + timedelta(hours=6)]
+        late = api[
+            (api["timestamp"] >= start + timedelta(hours=40))
+            & (api["timestamp"] < start + timedelta(hours=47))  # before crash
+        ]
+
+        # Late latency should be significantly higher than early
+        assert late["p99_latency"].mean() > early["p99_latency"].mean() * 2
+
+    def test_memory_grows_over_time(self):
+        from slo_generator.scenarios.memory_leak import MemoryLeakScenario
+
+        start = datetime(2026, 3, 1, 0, 0, 0, tzinfo=UTC)
+        end = start + timedelta(hours=48)
+        scenario = MemoryLeakScenario(start, end, growth_rate=0.01)
+
+        chunks = list(scenario.generate(resolution_seconds=60))
+        df = pd.concat(chunks)
+        api = df[(df["service"] == "api") & (df["host"] == "host1")]
+
+        early = api[api["timestamp"] < start + timedelta(hours=6)]
+        late = api[api["timestamp"] >= start + timedelta(hours=40)]
+
+        assert late["memory_bytes"].mean() > early["memory_bytes"].mean()
+
+    def test_crash_at_end_spikes_errors(self):
+        from slo_generator.scenarios.memory_leak import MemoryLeakScenario
+
+        start = datetime(2026, 3, 1, 0, 0, 0, tzinfo=UTC)
+        end = start + timedelta(hours=24)
+        scenario = MemoryLeakScenario(start, end, crash_at_end=True)
+
+        chunks = list(scenario.generate(resolution_seconds=60))
+        df = pd.concat(chunks)
+        api = df[(df["service"] == "api") & (df["host"] == "host1")]
+
+        # Last hour should have very high error rates
+        final_hour = api[api["timestamp"] >= end - timedelta(hours=1)]
+        assert final_hour["error_rate"].mean() > 0.5
+
+    def test_profile_schema_valid(self):
+        from slo_generator.scenarios.memory_leak import MemoryLeakScenario
+
+        start = datetime(2026, 3, 1, 0, 0, 0, tzinfo=UTC)
+        end = start + timedelta(hours=2)
+        scenario = MemoryLeakScenario(start, end)
+
+        chunks = list(scenario.generate(resolution_seconds=30))
+        df = pd.concat(chunks)
+        validate_profile_schema(df)
