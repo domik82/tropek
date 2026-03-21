@@ -2,7 +2,7 @@
 
 Revision ID: 001
 Revises:
-Create Date: 2026-03-21 17:32:56.554540
+Create Date: 2026-03-21 20:52:02.567697
 
 """
 
@@ -297,6 +297,7 @@ def upgrade() -> None:
         sa.Column(
             "warning_criteria", sa.ARRAY(sa.Text()), server_default=sa.text("'{}'"), nullable=False
         ),
+        sa.Column("tab_group", sa.Text(), nullable=True),
         sa.ForeignKeyConstraint(["slo_definition_id"], ["slo_definitions.id"], ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("id"),
     )
