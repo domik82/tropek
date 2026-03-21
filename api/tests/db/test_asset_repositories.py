@@ -88,10 +88,16 @@ async def test_asset_type_delete_in_use_raises(db_session: AsyncSession) -> None
 @pytest.mark.integration
 async def test_asset_create_and_get(db_session: AsyncSession) -> None:
     repo = AssetRepository(db_session)
-    await repo.create("vm-test-01", type_name="vm", labels={"dc": "a"})
+    await repo.create(
+        "vm-test-01",
+        type_name="vm",
+        tags={"dc": "a"},
+        variables={"host": "vm-test-01.example.com"},
+    )
     fetched = await repo.get_by_name("vm-test-01")
     assert fetched is not None
-    assert fetched.labels == {"dc": "a"}
+    assert fetched.tags == {"dc": "a"}
+    assert fetched.variables == {"host": "vm-test-01.example.com"}
     assert fetched.type_name == "vm"
 
 
@@ -99,9 +105,9 @@ async def test_asset_create_and_get(db_session: AsyncSession) -> None:
 async def test_asset_update(db_session: AsyncSession) -> None:
     repo = AssetRepository(db_session)
     await repo.create("vm-update-01", type_name="vm")
-    updated = await repo.update("vm-update-01", display_name="My VM", labels={"env": "prod"})
+    updated = await repo.update("vm-update-01", display_name="My VM", tags={"env": "prod"})
     assert updated.display_name == "My VM"
-    assert updated.labels == {"env": "prod"}
+    assert updated.tags == {"env": "prod"}
 
 
 @pytest.mark.integration
@@ -356,24 +362,24 @@ async def test_asset_type_list_includes_count(db_session: AsyncSession) -> None:
     assert counts["counted-type"] == 2
 
 
-# ---------- Task 5: Label autocomplete ----------
+# ---------- Task 5: Tag autocomplete ----------
 
 
 @pytest.mark.integration
-async def test_label_keys_aggregation(db_session: AsyncSession) -> None:
+async def test_tag_keys_aggregation(db_session: AsyncSession) -> None:
     repo = AssetRepository(db_session)
-    await repo.create("lk1", type_name="vm", labels={"os": "linux", "env": "prod"})
-    await repo.create("lk2", type_name="vm", labels={"os": "windows", "env": "staging"})
-    await repo.create("lk3", type_name="vm", labels={"os": "linux"})
-    keys = await repo.get_label_keys()
+    await repo.create("lk1", type_name="vm", tags={"os": "linux", "env": "prod"})
+    await repo.create("lk2", type_name="vm", tags={"os": "windows", "env": "staging"})
+    await repo.create("lk3", type_name="vm", tags={"os": "linux"})
+    keys = await repo.get_tag_keys()
     assert keys == {"os": 3, "env": 2}
 
 
 @pytest.mark.integration
-async def test_label_values_for_key(db_session: AsyncSession) -> None:
+async def test_tag_values_for_key(db_session: AsyncSession) -> None:
     repo = AssetRepository(db_session)
-    await repo.create("lv1", type_name="vm", labels={"os": "linux"})
-    await repo.create("lv2", type_name="vm", labels={"os": "linux"})
-    await repo.create("lv3", type_name="vm", labels={"os": "windows"})
-    values = await repo.get_label_values("os")
+    await repo.create("lv1", type_name="vm", tags={"os": "linux"})
+    await repo.create("lv2", type_name="vm", tags={"os": "linux"})
+    await repo.create("lv3", type_name="vm", tags={"os": "windows"})
+    values = await repo.get_tag_values("os")
     assert values == {"linux": 2, "windows": 1}
