@@ -94,17 +94,17 @@ class _Assets:
         self,
         *,
         type_name: str | None = None,
-        label_key: str | None = None,
-        label_val: str | None = None,
+        tag_key: str | None = None,
+        tag_val: str | None = None,
     ) -> PagedResponse[Asset]:
         """List assets with optional filters."""
         params: dict[str, str] = {}
         if type_name:
             params["type_name"] = type_name
-        if label_key:
-            params["label_key"] = label_key
-        if label_val:
-            params["label_val"] = label_val
+        if tag_key:
+            params["tag_key"] = tag_key
+        if tag_val:
+            params["tag_val"] = tag_val
         resp = self._http.get("/assets", params=params)
         _raise_for_status(resp)
         data = resp.json()
@@ -119,14 +119,17 @@ class _Assets:
         type_name: str = "vm",
         *,
         display_name: str | None = None,
-        labels: dict[str, str] | None = None,
+        tags: dict[str, str] | None = None,
+        variables: dict[str, str] | None = None,
     ) -> Asset:
         """Create an asset."""
         body: dict[str, Any] = {"name": name, "type_name": type_name}
         if display_name is not None:
             body["display_name"] = display_name
-        if labels is not None:
-            body["labels"] = labels
+        if tags is not None:
+            body["tags"] = tags
+        if variables is not None:
+            body["variables"] = variables
         resp = self._http.post("/assets", json=body)
         _raise_for_status(resp)
         return Asset.model_validate(resp.json())
@@ -148,15 +151,15 @@ class _Assets:
         resp = self._http.delete(f"/assets/{name}")
         _raise_for_status(resp)
 
-    def label_keys(self) -> list[dict[str, Any]]:
-        """Get all distinct label keys across assets with counts."""
-        resp = self._http.get("/assets/label-keys")
+    def tag_keys(self) -> list[dict[str, Any]]:
+        """Get all distinct tag keys across assets with counts."""
+        resp = self._http.get("/assets/tag-keys")
         _raise_for_status(resp)
         return resp.json()  # type: ignore[no-any-return]
 
-    def label_values(self, key: str) -> list[dict[str, Any]]:
-        """Get values and counts for a label key."""
-        resp = self._http.get("/assets/label-values", params={"key": key})
+    def tag_values(self, key: str) -> list[dict[str, Any]]:
+        """Get values and counts for a tag key."""
+        resp = self._http.get("/assets/tag-values", params={"key": key})
         _raise_for_status(resp)
         return resp.json()  # type: ignore[no-any-return]
 
@@ -330,6 +333,23 @@ class _DataSources:
         _raise_for_status(resp)
         return DataSource.model_validate(resp.json())
 
+    def delete(self, name: str) -> None:
+        """Delete a data source."""
+        resp = self._http.delete(f"/datasources/{name}")
+        _raise_for_status(resp)
+
+    def tag_keys(self) -> list[dict[str, Any]]:
+        """Get all distinct tag keys across data sources with counts."""
+        resp = self._http.get("/datasources/tag-keys")
+        _raise_for_status(resp)
+        return resp.json()  # type: ignore[no-any-return]
+
+    def tag_values(self, key: str) -> list[dict[str, Any]]:
+        """Get values and counts for a tag key."""
+        resp = self._http.get("/datasources/tag-values", params={"key": key})
+        _raise_for_status(resp)
+        return resp.json()  # type: ignore[no-any-return]
+
 
 class _SLIDefinitions:
     def __init__(self, http: httpx.Client) -> None:
@@ -368,6 +388,18 @@ class _SLIDefinitions:
         """Delete an SLI definition."""
         resp = self._http.delete(f"/sli-definitions/{name}")
         _raise_for_status(resp)
+
+    def tag_keys(self) -> list[dict[str, Any]]:
+        """Get all distinct tag keys across SLI definitions with counts."""
+        resp = self._http.get("/sli-definitions/tag-keys")
+        _raise_for_status(resp)
+        return resp.json()  # type: ignore[no-any-return]
+
+    def tag_values(self, key: str) -> list[dict[str, Any]]:
+        """Get values and counts for a tag key."""
+        resp = self._http.get("/sli-definitions/tag-values", params={"key": key})
+        _raise_for_status(resp)
+        return resp.json()  # type: ignore[no-any-return]
 
 
 class _SLODefinitions:
@@ -423,6 +455,18 @@ class _SLODefinitions:
         """Delete an SLO definition."""
         resp = self._http.delete(f"/slo-definitions/{name}")
         _raise_for_status(resp)
+
+    def tag_keys(self) -> list[dict[str, Any]]:
+        """Get all distinct tag keys across SLO definitions with counts."""
+        resp = self._http.get("/slo-definitions/tag-keys")
+        _raise_for_status(resp)
+        return resp.json()  # type: ignore[no-any-return]
+
+    def tag_values(self, key: str) -> list[dict[str, Any]]:
+        """Get values and counts for a tag key."""
+        resp = self._http.get("/slo-definitions/tag-values", params={"key": key})
+        _raise_for_status(resp)
+        return resp.json()  # type: ignore[no-any-return]
 
     def validate(self, slo_yaml: str) -> SLOValidationResult:
         """Validate an SLO YAML without saving."""
@@ -507,7 +551,7 @@ class _Evaluations:
         period_start: str,
         period_end: str,
         *,
-        metadata: dict[str, str] | None = None,
+        variables: dict[str, str] | None = None,
     ) -> dict[str, Any]:
         """Trigger a single asset evaluation."""
         resp = self._http.post(
@@ -518,7 +562,7 @@ class _Evaluations:
                 "slo_name": slo_name,
                 "period_start": period_start,
                 "period_end": period_end,
-                "metadata": metadata or {},
+                "variables": variables or {},
             },
         )
         _raise_for_status(resp)
@@ -531,7 +575,7 @@ class _Evaluations:
         period_start: str,
         period_end: str,
         *,
-        metadata: dict[str, str] | None = None,
+        variables: dict[str, str] | None = None,
     ) -> dict[str, Any]:
         """Trigger evaluations for all assets in a group."""
         resp = self._http.post(
@@ -541,7 +585,7 @@ class _Evaluations:
                 "evaluation_name": evaluation_name,
                 "period_start": period_start,
                 "period_end": period_end,
-                "metadata": metadata or {},
+                "variables": variables or {},
             },
         )
         _raise_for_status(resp)
