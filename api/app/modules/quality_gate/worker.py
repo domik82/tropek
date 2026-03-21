@@ -9,6 +9,7 @@ import httpx
 import structlog
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.cache.redis_cache import RedisCache
 from app.config import get_settings
 from app.db.models import Evaluation, SLIDefinition, SLODefinition
 from app.modules.datasource.repository import DataSourceRepository
@@ -35,12 +36,14 @@ class DefinitionLoadError(Exception):
 async def _load_definitions(
     session: AsyncSession,
     ev: Evaluation,
+    cache: RedisCache | None = None,
 ) -> tuple[SLODefinition, SLIDefinition]:
     """Load SLO and SLI definitions for the evaluation.
 
     Args:
         session: Active async DB session.
         ev: Evaluation row providing slo_name/version and sli_name/version.
+        cache: Optional Redis cache for definition lookups.
 
     Returns:
         (slo_def, sli_def) tuple on success.
@@ -50,13 +53,13 @@ async def _load_definitions(
     """
     if ev.slo_name is None or ev.slo_version is None:
         raise DefinitionLoadError("evaluation has no slo_name or slo_version")
-    slo_def = await SLORepository(session).get_version(ev.slo_name, ev.slo_version)
+    slo_def = await SLORepository(session, cache=cache).get_version(ev.slo_name, ev.slo_version)
     if slo_def is None:
         raise DefinitionLoadError(f"slo '{ev.slo_name}' v{ev.slo_version} not found")
 
     if ev.sli_name is None or ev.sli_version is None:
         raise DefinitionLoadError("evaluation has no sli_name or sli_version")
-    sli_def = await SLIRepository(session).get_version(ev.sli_name, ev.sli_version)
+    sli_def = await SLIRepository(session, cache=cache).get_version(ev.sli_name, ev.sli_version)
     if sli_def is None:
         raise DefinitionLoadError(f"sli '{ev.sli_name}' v{ev.sli_version} not found")
 
@@ -212,6 +215,7 @@ async def run_evaluation(
     eval_id: uuid.UUID,
     *,
     worker_id: str | None = None,
+    cache: RedisCache | None = None,
 ) -> None:
     """Execute a single evaluation job.
 
@@ -227,6 +231,7 @@ async def run_evaluation(
         session: Async SQLAlchemy session (injected by arq worker context).
         eval_id: UUID of the Evaluation row to execute.
         worker_id: Optional identifier of the worker process for observability.
+        cache: Optional Redis cache for repository lookups.
     """
     log = logger.bind(evaluation_id=str(eval_id), worker_id=worker_id)
     log.info("evaluation started")
@@ -249,7 +254,7 @@ async def run_evaluation(
 
     # Load SLO + SLI definitions
     try:
-        slo_def, sli_def = await _load_definitions(session, ev)
+        slo_def, sli_def = await _load_definitions(session, ev, cache=cache)
     except DefinitionLoadError as exc:
         log.warning("definitions not found", reason=str(exc))
         await repo.mark_failed(eval_id, job_stats={"error": str(exc)})
@@ -307,7 +312,7 @@ async def run_evaluation(
     metrics_fetched, fetch_errors = adapter_result
 
     # Resolve baselines (pin-aware) and evaluate
-    baseline_repo = BaselineRepository(session)
+    baseline_repo = BaselineRepository(session, cache=cache)
     baselines, compared_eval_ids = await _resolve_baselines(
         baseline_repo=baseline_repo, slo=slo, ev=ev, indicator_names=list(sli_def.indicators)
     )
