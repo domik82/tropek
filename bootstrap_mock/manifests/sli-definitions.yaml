@@ -1,6 +1,11 @@
 # SLI definitions — reusable, versioned sets of indicator queries.
 # Each name here (response_time_p99, error_rate, …) must match the
 # indicator keys in the paired SLO definition's YAML.
+#
+# Template variables ($var) are resolved at evaluation time from:
+#   1. Asset labels (e.g. $job, $namespace, $instance)
+#   2. Evaluation metadata (caller-provided in POST /evaluations)
+#   3. Reserved: $asset_name, $evaluation_name, $start, $end
 
 api_version: tropek/v1
 kind: SLI
@@ -12,9 +17,9 @@ metadata:
 spec:
   adapter_type: prometheus
   indicators:
-    response_time_p99: 'histogram_quantile(0.99, rate(http_request_duration_seconds_bucket[5m]))'
-    error_rate: 'rate(http_requests_total{status=~"5.."}[5m]) / rate(http_requests_total[5m])'
-    availability: 'avg_over_time(up[5m])'
+    response_time_p99: 'histogram_quantile(0.99, rate(http_request_duration_seconds_bucket{job="$job",namespace="$namespace"}[5m]))'
+    error_rate: 'rate(http_requests_total{job="$job",namespace="$namespace",status=~"5.."}[5m]) / rate(http_requests_total{job="$job",namespace="$namespace"}[5m])'
+    availability: 'avg_over_time(up{job="$job",namespace="$namespace"}[5m])'
 ---
 api_version: tropek/v1
 kind: SLI
@@ -26,5 +31,5 @@ metadata:
 spec:
   adapter_type: prometheus
   indicators:
-    query_latency_p99: 'histogram_quantile(0.99, rate(pg_query_duration_seconds_bucket[5m]))'
-    connection_saturation: 'pg_stat_activity_count / pg_settings_max_connections'
+    query_latency_p99: 'histogram_quantile(0.99, rate(pg_query_duration_seconds_bucket{instance="$instance"}[5m]))'
+    connection_saturation: 'pg_stat_activity_count{instance="$instance"} / pg_settings_max_connections{instance="$instance"}'

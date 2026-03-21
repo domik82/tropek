@@ -8,6 +8,8 @@ metadata:
     env: production
     region: eu-west-1
     tier: critical
+    job: checkout-api
+    namespace: ecommerce
 spec:
   type_name: service
 ---
@@ -21,6 +23,8 @@ metadata:
     env: production
     region: eu-west-1
     tier: standard
+    job: product-catalog
+    namespace: ecommerce
 spec:
   type_name: service
 ---
@@ -34,6 +38,8 @@ metadata:
     env: production
     region: eu-west-1
     tier: critical
+    job: user-service
+    namespace: ecommerce
 spec:
   type_name: service
 ---
@@ -48,6 +54,7 @@ metadata:
     region: eu-west-1
     tier: critical
     runtime: postgres-16
+    instance: orders-db:5432
 spec:
   type_name: database
 ---
@@ -62,6 +69,7 @@ metadata:
     region: eu-west-1
     tier: standard
     runtime: mongo-7
+    instance: catalog-db:27017
 spec:
   type_name: database
 ---
