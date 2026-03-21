@@ -3,8 +3,12 @@ import { render, screen } from '@testing-library/react'
 import { TestWrapper } from '@/test-wrapper'
 import { AssetsPage } from './AssetsPage'
 
+let capturedTreeProps: any = {}
 vi.mock('@/components/AssetTree', () => ({
-  AssetTree: (props: any) => <div data-testid="asset-tree" data-mode={props.mode} />,
+  AssetTree: (props: any) => {
+    capturedTreeProps = props
+    return <div data-testid="asset-tree" data-mode={props.mode} />
+  },
 }))
 vi.mock('@/features/assets/components/GroupDetailPanel', () => ({
   GroupDetailPanel: (props: any) => <div data-testid="group-detail">{props.groupName}</div>,
@@ -26,6 +30,7 @@ vi.mock('react-router-dom', async () => {
 beforeEach(() => {
   mockParams = new URLSearchParams()
   mockSetParams.mockClear()
+  capturedTreeProps = {}
 })
 
 describe('AssetsPage', () => {
@@ -60,5 +65,35 @@ describe('AssetsPage', () => {
     )
     expect(screen.getByTestId('all-assets')).toBeInTheDocument()
     expect(screen.queryByTestId('group-detail')).not.toBeInTheDocument()
+  })
+
+  // --- Bug fix: clicking leaf asset must select parent group, not show AllAssetsPanel ---
+
+  it('shows group detail panel (not all-assets) when asset is selected with a group', () => {
+    // When a leaf asset is clicked, both group and asset should be in the URL
+    mockParams = new URLSearchParams({ group: 'data-tier', asset: 'orders-db' })
+    render(
+      <TestWrapper>
+        <AssetsPage />
+      </TestWrapper>,
+    )
+    expect(screen.getByTestId('group-detail')).toBeInTheDocument()
+    expect(screen.getByText('data-tier')).toBeInTheDocument()
+    expect(screen.queryByTestId('all-assets')).not.toBeInTheDocument()
+  })
+
+  it('onSelectAsset sets both group and asset params (not asset alone)', () => {
+    // The onSelectAsset callback receives (assetName, groupName) from the tree.
+    // It should call setParams with BOTH group and asset.
+    render(
+      <TestWrapper>
+        <AssetsPage />
+      </TestWrapper>,
+    )
+
+    // Simulate clicking a leaf asset — the tree passes (name, groupName)
+    capturedTreeProps.onSelectAsset('orders-db', 'data-tier')
+
+    expect(mockSetParams).toHaveBeenCalledWith({ group: 'data-tier', asset: 'orders-db' })
   })
 })

@@ -19,7 +19,7 @@ export function AssetsPage() {
         selectedGroup={selectedGroup}
         selectedAsset={selectedAsset}
         onSelectGroup={name => name ? setParams({ group: name }) : setParams({})}
-        onSelectAsset={name => setParams({ asset: name })}
+        onSelectAsset={(name, groupName) => setParams({ group: groupName, asset: name })}
         width={260}
         onAddAsset={() => setCreateAssetOpen(true)}
       />
@@ -28,6 +28,7 @@ export function AssetsPage() {
           <GroupDetailPanel
             groupName={selectedGroup}
             onSelectGroup={name => setParams({ group: name })}
+            selectedAsset={selectedAsset}
           />
         )}
         {(!selectedGroup || selectedGroup === '__ungrouped__') && (
