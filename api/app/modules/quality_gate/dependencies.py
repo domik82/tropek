@@ -4,9 +4,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from fastapi import Depends
+from fastapi import Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.cache.redis_cache import RedisCache
 from app.db.session import get_session
 from app.modules.assets.repository import (
     AssetGroupRepository,
@@ -44,21 +45,23 @@ class QualityGateRepos:
 
 
 async def get_qg_repos(
+    request: Request,
     session: AsyncSession = Depends(get_session),  # noqa: B008
 ) -> QualityGateRepos:
     """Build the full repository bundle from a DB session."""
+    cache: RedisCache | None = getattr(request.app.state, "cache", None)
     return QualityGateRepos(
         eval_repo=EvaluationRepository(session),
-        annotation_repo=AnnotationRepository(session),
+        annotation_repo=AnnotationRepository(session, cache=cache),
         sli_repo=SLIValueRepository(session),
         trend_repo=TrendRepository(session),
-        baseline_repo=BaselineRepository(session),
-        asset_repo=AssetRepository(session),
+        baseline_repo=BaselineRepository(session, cache=cache),
+        asset_repo=AssetRepository(session, cache=cache),
         asset_group_repo=AssetGroupRepository(session),
         slo_link_repo=AssetSLOLinkRepository(session),
         group_link_repo=AssetGroupSLOLinkRepository(session),
-        sli_def_repo=SLIRepository(session),
-        slo_repo=SLORepository(session),
+        sli_def_repo=SLIRepository(session, cache=cache),
+        slo_repo=SLORepository(session, cache=cache),
         ds_repo=DataSourceRepository(session),
         session=session,
     )

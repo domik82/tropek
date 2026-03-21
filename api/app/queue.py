@@ -7,12 +7,14 @@ import random
 import uuid
 from typing import Any, ClassVar, cast
 
+import redis.asyncio as aioredis
 import structlog
 from arq import create_pool
 from arq.connections import ArqRedis, RedisSettings
 from fastapi import Request
 from sqlalchemy.exc import DBAPIError
 
+from app.cache.redis_cache import RedisCache
 from app.config import get_settings
 from app.db.session import get_session_factory
 from app.modules.quality_gate.worker import run_evaluation
@@ -52,6 +54,20 @@ async def create_arq_pool() -> ArqRedis:
     return await create_pool(_redis_settings())
 
 
+async def _worker_startup(ctx: dict[str, Any]) -> None:
+    """Initialize Redis cache for worker processes."""
+    settings = get_settings()
+    redis_client = aioredis.from_url(settings.cache.url)
+    ctx["cache"] = RedisCache(redis_client)
+
+
+async def _worker_shutdown(ctx: dict[str, Any]) -> None:
+    """Close Redis cache connection."""
+    cache: RedisCache | None = ctx.get("cache")
+    if cache and cache._redis:
+        await cache._redis.close()
+
+
 async def run_evaluation_job(ctx: dict[str, Any], eval_id_str: str) -> None:
     """Arq job function — wraps run_evaluation with a DB session.
 
@@ -61,11 +77,12 @@ async def run_evaluation_job(ctx: dict[str, Any], eval_id_str: str) -> None:
     """
     session_factory = get_session_factory()
     eval_id = uuid.UUID(eval_id_str)
+    cache: RedisCache | None = ctx.get("cache")
 
     for attempt in range(_MAX_DEADLOCK_RETRIES):
         async with session_factory() as session:
             try:
-                await run_evaluation(session, eval_id)
+                await run_evaluation(session, eval_id, cache=cache)
                 await session.commit()
                 return
             except DBAPIError as exc:
@@ -97,4 +114,6 @@ class WorkerSettings:
     """arq worker configuration — discovered by `arq app.queue.WorkerSettings`."""
 
     functions: ClassVar[list[Any]] = [run_evaluation_job]
+    on_startup = _worker_startup
+    on_shutdown = _worker_shutdown
     redis_settings = _redis_settings()
