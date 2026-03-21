@@ -71,7 +71,7 @@ describe('AnnotationSection', () => {
     expect(addButton).toBeInTheDocument()
     fireEvent.click(addButton)
     expect(screen.getByText('Add Note')).toBeInTheDocument()
-    expect(screen.getByPlaceholderText('Note content…')).toBeInTheDocument()
+    expect(screen.getByPlaceholderText('Note content...')).toBeInTheDocument()
   })
 
   it('changes + Note button to Cancel when form is open', () => {
@@ -86,10 +86,10 @@ describe('AnnotationSection', () => {
   it('hides add form when Cancel is clicked', () => {
     renderWithQuery(<AnnotationSection evalId="e1" annotations={[]} />)
     fireEvent.click(screen.getByText('+ Note'))
-    expect(screen.getByPlaceholderText('Note content…')).toBeInTheDocument()
+    expect(screen.getByPlaceholderText('Note content...')).toBeInTheDocument()
     // Click the toggle button which now says "Cancel"
     fireEvent.click(screen.getAllByText('Cancel')[0])
-    expect(screen.queryByPlaceholderText('Note content…')).not.toBeInTheDocument()
+    expect(screen.queryByPlaceholderText('Note content...')).not.toBeInTheDocument()
   })
 
   it('shows view mode toggle when annotations exist', () => {

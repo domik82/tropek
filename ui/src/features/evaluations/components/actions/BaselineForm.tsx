@@ -40,7 +40,7 @@ export function BaselineForm({ evaluationId, onComplete }: Props) {
       <input
         value={reason}
         onChange={e => setReason(e.target.value)}
-        placeholder="Reason\u2026"
+        placeholder="Reason…"
         className="w-full px-3 py-2 bg-background border border-border rounded-md text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none"
       />
       <input
