@@ -1,0 +1,28 @@
+timeline:
+  start: "2026-01-20T00:00:00Z"
+  duration: 1440h
+  resolution: 30s
+  baseline: healthy
+
+  events:
+    - type: step_change
+      at: 480h
+      duration: 240h
+      params:
+        latency_multiplier: 1.3
+        throughput_multiplier: 0.85
+
+    - type: memory_leak
+      at: 960h
+      duration: 336h
+      params:
+        growth_rate: 0.005
+        crash_at_end: true
+
+    - type: traffic_spike
+      at: 1380h
+      duration: 3h
+      params:
+        spike_multiplier: 6.0
+        error_mode: overload
+      resolution: 5s
