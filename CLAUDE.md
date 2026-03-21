@@ -243,6 +243,30 @@ Prefer dedicated tools over shell compounds:
 auto-approved command. Example: if you need `npx tool | head -n 10` repeatedly, create
 `scripts/run-tool-preview.sh` — then `./scripts/run-tool-preview.sh` is a single approved call.
 
+### Agent test commands
+
+`just` recipes are for humans (full output). Agents should use the wrapper scripts
+with `--tail` to get summary-only output as a single auto-approvable command:
+
+```bash
+# API unit tests — summary only
+./scripts/api-test.sh --tail 5
+
+# API integration tests — summary only
+./scripts/api-test.sh --tail 5 -m integration -v
+
+# UI component tests — summary only
+./scripts/ui-test.sh --tail 10
+
+# Specific API test file
+./scripts/api-test.sh --tail 20 tests/db/test_baseline_query.py -v
+
+# Specific UI test file
+./scripts/ui-test.sh --tail 10 src/features/.../Foo.test.tsx
+```
+
+Never use `cmd 2>&1 | tail -N` directly — that's a compound command requiring approval.
+
 ## Git commands
 
 When working with git in worktrees, always issue git add and git commit as
