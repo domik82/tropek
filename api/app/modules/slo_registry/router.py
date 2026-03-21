@@ -3,12 +3,13 @@
 from __future__ import annotations
 
 import httpx
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
 from app.db.session import get_session
 from app.modules.assets.repository import AssetRepository
+from app.modules.assets.schemas import TagKeyCount, TagValueCount
 from app.modules.common.errors import raise_not_found
 from app.modules.common.schemas import PagedResponse
 from app.modules.datasource.repository import DataSourceRepository
@@ -39,11 +40,13 @@ router = APIRouter()
 
 @router.get("/slo-definitions", response_model=PagedResponse[SLODefinitionRead])
 async def list_slo_definitions(
+    tag_key: str | None = None,
+    tag_val: str | None = None,
     session: AsyncSession = Depends(get_session),  # noqa: B008
 ) -> PagedResponse[SLODefinitionRead]:
     """List all active SLO definitions."""
     repo = SLORepository(session)
-    items = await repo.list_all()
+    items = await repo.list_all(tag_key=tag_key, tag_val=tag_val)
     return PagedResponse(
         items=[SLODefinitionRead.model_validate(i) for i in items], total=len(items)
     )
@@ -65,7 +68,8 @@ async def create_slo_definition(
         display_name=body.display_name,
         notes=body.notes,
         author=body.author,
-        meta=body.meta,
+        tags=body.tags,
+        variables=body.variables,
         comparable_from_version=body.comparable_from_version,
     )
     return SLODefinitionRead.model_validate(slo)
@@ -158,16 +162,23 @@ async def test_slo(  # noqa: C901
         raise_not_found("asset", body.asset_name)
 
     # 5. Build variables and substitute in SLI queries
-    asset_labels: dict[str, str] = {
-        str(k): str(v) for k, v in (getattr(asset, "labels", {}) or {}).items()
-    }
+    # Reserved variables (lowest priority)
     variables = build_variables(
-        metadata={**asset_labels, **body.metadata},
+        metadata={},
         asset_name=asset.name,
         evaluation_name=body.evaluation_name,
         start=body.period_start.isoformat(),
         end=body.period_end.isoformat(),
     )
+    # Asset variables (identity bindings)
+    for k, v in (getattr(asset, "variables", {}) or {}).items():
+        variables.setdefault(k, str(v))
+    # Asset tags as fallback variables (backward compat)
+    for k, v in (getattr(asset, "tags", {}) or {}).items():
+        variables.setdefault(k, str(v))
+    # Request variables (highest priority)
+    for k, v in body.variables.items():
+        variables[k] = str(v)
 
     resolved_queries: dict[str, str] = {}
     for indicator_name, query_template in sli_def.indicators.items():
@@ -266,6 +277,27 @@ async def test_slo(  # noqa: C901
         fetch_errors=fetch_errors,
         compared_values=compared_values,
     )
+
+
+@router.get("/slo-definitions/tag-keys", response_model=list[TagKeyCount])
+async def get_slo_tag_keys(
+    session: AsyncSession = Depends(get_session),  # noqa: B008
+) -> list[TagKeyCount]:
+    """Return distinct tag keys with usage counts."""
+    repo = SLORepository(session)
+    keys = await repo.get_tag_keys()
+    return [TagKeyCount(key=k, count=v) for k, v in keys.items()]
+
+
+@router.get("/slo-definitions/tag-values", response_model=list[TagValueCount])
+async def get_slo_tag_values(
+    key: str = Query(...),
+    session: AsyncSession = Depends(get_session),  # noqa: B008
+) -> list[TagValueCount]:
+    """Return distinct tag values for a key with usage counts."""
+    repo = SLORepository(session)
+    values = await repo.get_tag_values(key)
+    return [TagValueCount(value=v, count=c) for v, c in values.items()]
 
 
 @router.get("/slo-definitions/{name}", response_model=SLODefinitionRead)
