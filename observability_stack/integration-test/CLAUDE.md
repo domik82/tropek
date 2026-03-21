@@ -29,11 +29,44 @@ just gen-om          # generate OpenMetrics files locally
 just gen healthy     # generate a single scenario
 ```
 
+## Timeline Mode
+
+Generate composed timelines with events placed at specific timestamps:
+
+```bash
+just gen-timeline timelines/quick-test.yaml        # CSV output for inspection
+just gen-timeline timelines/evaluation-30d.yaml     # 30-day quality gate test
+just gen-timeline timelines/change-detection-60d.yaml  # change point detection
+```
+
+Timeline YAML files define a healthy baseline with events spliced in:
+
+```yaml
+timeline:
+  start: "2026-03-14T00:00:00Z"
+  duration: 168h
+  resolution: 30s
+  events:
+    - type: outage
+      at: 160h
+      duration: 30m
+      resolution: 5s
+```
+
+Available event types: `outage`, `degradation`, `memory_leak`, `traffic_spike`,
+`step_change`, `polska`.
+
 ## File Map
 
 ```
 docker-compose.yml
 justfile
+
+timelines/
+  quick-test.yaml             1-week test with outage at end
+  evaluation-30d.yaml         30-day quality gate test scenario
+  change-detection-60d.yaml   60-day change point detection scenario
+  easter-egg.yaml             polska event
 
 generator/
   pyproject.toml              uv project, pandas/numpy/click deps
