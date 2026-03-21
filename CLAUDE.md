@@ -167,6 +167,16 @@ npx vitest run                            # Run component tests (Vitest + React 
 npx vitest run --watch                    # Watch mode
 ```
 
+**From repo root** (preferred — avoids `cd ui`):
+
+```bash
+./scripts/ui-test.sh                                    # Run all UI tests
+./scripts/ui-test.sh src/features/.../Foo.test.tsx      # Run specific file(s)
+```
+
+Vitest requires `vite.config.ts` for jsdom environment. Running `npx vitest` from the repo root
+(outside `ui/`) will fail with `document is not defined`. Always use the script or `cd ui` first.
+
 ### UI testing
 
 Component tests use **Vitest + React Testing Library + jsdom**. Config lives in `vite.config.ts` (`test` block), setup in `src/test-setup.ts`.
