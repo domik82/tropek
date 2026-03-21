@@ -6,6 +6,7 @@ from datetime import UTC, datetime, timedelta
 
 import pandas as pd
 from slo_generator.scenarios.degradation import DegradationScenario
+from slo_generator.scenarios.healthy import HealthyScenario
 from slo_generator.scenarios.outage import OutageScenario
 
 from tests.conftest import validate_profile_schema
@@ -165,3 +166,51 @@ class TestDegradationScenario:
 
         # P99 should be roughly 5x higher after deployment
         assert post["p99_latency"].mean() > pre["p99_latency"].mean() * 3
+
+
+class TestBaseScenarioGenerateWindow:
+    def test_generate_window_returns_dataframe_with_correct_schema(self):
+        start = datetime(2026, 3, 20, 0, 0, 0, tzinfo=UTC)
+        end = start + timedelta(hours=24)
+        scenario = HealthyScenario(start, end)
+
+        # Request a 10-minute sub-window at 30s resolution
+        window_start = start + timedelta(hours=5)
+        window_end = window_start + timedelta(minutes=10)
+        df = scenario.generate_window(window_start, window_end, resolution_seconds=30)
+
+        validate_profile_schema(df)
+        # 10 minutes at 30s = 20 timestamps x 6 service-host combos = 120 rows
+        assert len(df) == 20 * 6
+
+    def test_generate_window_timestamps_within_bounds(self):
+        start = datetime(2026, 3, 20, 0, 0, 0, tzinfo=UTC)
+        end = start + timedelta(hours=24)
+        scenario = HealthyScenario(start, end)
+
+        window_start = start + timedelta(hours=3)
+        window_end = window_start + timedelta(minutes=5)
+        df = scenario.generate_window(window_start, window_end, resolution_seconds=1)
+
+        assert df["timestamp"].min() >= pd.Timestamp(window_start)
+        assert df["timestamp"].max() < pd.Timestamp(window_end)
+
+    def test_generate_window_empty_when_zero_duration(self):
+        start = datetime(2026, 3, 20, 0, 0, 0, tzinfo=UTC)
+        end = start + timedelta(hours=1)
+        scenario = HealthyScenario(start, end)
+
+        df = scenario.generate_window(start, start, resolution_seconds=1)
+        assert len(df) == 0
+
+    def test_event_mode_defaults_to_false(self):
+        start = datetime(2026, 3, 20, 0, 0, 0, tzinfo=UTC)
+        end = start + timedelta(hours=1)
+        scenario = HealthyScenario(start, end)
+        assert scenario.event_mode is False
+
+    def test_event_mode_can_be_set(self):
+        start = datetime(2026, 3, 20, 0, 0, 0, tzinfo=UTC)
+        end = start + timedelta(hours=1)
+        scenario = HealthyScenario(start, end, event_mode=True)
+        assert scenario.event_mode is True

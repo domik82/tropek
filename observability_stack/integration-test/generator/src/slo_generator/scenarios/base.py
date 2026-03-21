@@ -17,9 +17,10 @@ class BaseScenario(ABC):
 
     name: str = "base"
 
-    def __init__(self, start: datetime, end: datetime):
+    def __init__(self, start: datetime, end: datetime, *, event_mode: bool = False):
         self.start = start
         self.end = end
+        self.event_mode = event_mode
         self._rng = np.random.default_rng(seed=42)
 
     def generate(
@@ -47,6 +48,31 @@ class BaseScenario(ABC):
             df = self._build_chunk(timestamps)
             yield df
             chunk_start = chunk_end
+
+    def generate_window(
+        self,
+        window_start: datetime,
+        window_end: datetime,
+        resolution_seconds: int = 1,
+    ) -> pd.DataFrame:
+        """Generate a single profile DataFrame for an arbitrary sub-window.
+
+        Unlike generate() which yields hour-sized chunks over the full range,
+        this returns one DataFrame covering exactly [window_start, window_end)
+        at the given resolution. Used by the composer for event splicing.
+        """
+        if window_start >= window_end:
+            return pd.DataFrame(columns=PROFILE_COLUMNS)
+        timestamps = pd.date_range(
+            window_start,
+            window_end,
+            freq=f"{resolution_seconds}s",
+            inclusive="left",
+            tz="UTC",
+        ).as_unit("ns")
+        if len(timestamps) == 0:
+            return pd.DataFrame(columns=PROFILE_COLUMNS)
+        return self._build_chunk(timestamps)
 
     def _build_chunk(self, timestamps: pd.DatetimeIndex) -> pd.DataFrame:
         """Build a profile DataFrame for one chunk by combining all service-host combos."""
