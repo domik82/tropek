@@ -43,7 +43,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     cache_redis = aioredis.from_url(settings.cache.url)
     app.state.cache = RedisCache(cache_redis)
     yield
-    await cache_redis.close()
+    await cache_redis.aclose()  # type: ignore[attr-defined]
     await app.state.arq_pool.close()
 
 

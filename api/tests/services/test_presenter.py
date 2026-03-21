@@ -68,7 +68,7 @@ def _make_annotation(
     ann.content = content
     ann.author = "tester"
     ann.category = category
-    ann.meta = {}
+    ann.tags = {}
     ann.hidden_at = None
     ann.hidden_by = None
     ann.hidden_reason = None
