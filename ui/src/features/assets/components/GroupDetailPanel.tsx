@@ -34,7 +34,7 @@ export function GroupDetailPanel({ groupName, onSelectGroup, selectedAsset }: Pr
   const [linkSloOpen, setLinkSloOpen] = useState(false)
   const [addAssetOpen, setAddAssetOpen] = useState(false)
   const [editingAssetName, setEditingAssetName] = useState<string | null>(null)
-  const [labelEditAsset, setLabelEditAsset] = useState<{ name: string; labels: Record<string, string> } | null>(null)
+  const [labelEditAsset, setLabelEditAsset] = useState<{ name: string; tags: Record<string, string> } | null>(null)
 
   if (!group) {
     return <div className="p-6 text-muted-foreground">Loading…</div>
@@ -180,10 +180,10 @@ export function GroupDetailPanel({ groupName, onSelectGroup, selectedAsset }: Pr
                     </td>
                     <td className="px-3 py-2">
                       <LabelChips
-                        labels={asset?.labels ?? {}}
+                        labels={asset?.tags ?? {}}
                         maxVisible={3}
                         size="small"
-                        onEdit={() => setLabelEditAsset({ name: asset_name, labels: asset?.labels ?? {} })}
+                        onEdit={() => setLabelEditAsset({ name: asset_name, tags: asset?.tags ?? {} })}
                       />
                     </td>
                     <td className="px-3 py-2 text-center font-mono text-muted-foreground">
@@ -303,10 +303,10 @@ export function GroupDetailPanel({ groupName, onSelectGroup, selectedAsset }: Pr
         onOpenChange={open => { if (!open) setLabelEditAsset(null) }}
         title="Edit Labels"
         subtitle={labelEditAsset?.name ?? ''}
-        labels={labelEditAsset?.labels ?? {}}
-        onSave={labels => {
+        labels={labelEditAsset?.tags ?? {}}
+        onSave={tags => {
           if (labelEditAsset) {
-            updateAsset.mutate({ name: labelEditAsset.name, labels })
+            updateAsset.mutate({ name: labelEditAsset.name, tags })
           }
           setLabelEditAsset(null)
         }}

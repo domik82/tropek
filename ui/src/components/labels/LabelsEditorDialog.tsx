@@ -3,7 +3,7 @@ import { useState } from 'react'
 import { X } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { LabelComboBox } from './LabelComboBox'
-import { useLabelKeys, useLabelValues } from '@/features/assets/hooks'
+import { useTagKeys, useTagValues } from '@/features/assets/hooks'
 
 interface Props {
   open: boolean
@@ -19,8 +19,8 @@ export function LabelsEditorDialog({ open, onOpenChange, title, subtitle, labels
   const [newKey, setNewKey] = useState('')
   const [newValue, setNewValue] = useState('')
 
-  const { data: keysSuggestions = [], isLoading: keysLoading } = useLabelKeys()
-  const { data: valueSuggestions = [], isLoading: valuesLoading } = useLabelValues(newKey || null)
+  const { data: keysSuggestions = [], isLoading: keysLoading } = useTagKeys()
+  const { data: valueSuggestions = [], isLoading: valuesLoading } = useTagValues(newKey || null)
 
   const handleAdd = () => {
     if (newKey && newValue) {

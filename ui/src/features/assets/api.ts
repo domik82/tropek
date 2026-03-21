@@ -1,7 +1,7 @@
 // src/features/assets/api.ts
 import type {
   Asset, AssetGroup, AssetGroupTree, AssetType,
-  LabelKeyCount, LabelValueCount,
+  TagKeyCount, TagValueCount,
 } from './types'
 
 const BASE = '/api'
@@ -69,7 +69,7 @@ export async function createAsset(body: {
   name: string
   type_name: string
   display_name?: string
-  labels?: Record<string, string>
+  tags?: Record<string, string>
 }): Promise<Asset> {
   const res = await fetch(`${BASE}/assets`, {
     method: 'POST',
@@ -82,7 +82,7 @@ export async function createAsset(body: {
 
 export async function updateAsset(
   name: string,
-  body: { display_name?: string; type_name?: string; labels?: Record<string, string> },
+  body: { display_name?: string; type_name?: string; tags?: Record<string, string> },
 ): Promise<Asset> {
   const res = await fetch(`${BASE}/assets/${encodeURIComponent(name)}`, {
     method: 'PATCH',
@@ -100,17 +100,17 @@ export async function deleteAsset(name: string): Promise<void> {
   if (!res.ok) throw new Error(`deleteAsset: ${res.status}`)
 }
 
-// ---- Labels ----
+// ---- Tags ----
 
-export async function fetchLabelKeys(): Promise<LabelKeyCount[]> {
-  const res = await fetch(`${BASE}/assets/label-keys`)
-  if (!res.ok) throw new Error(`fetchLabelKeys: ${res.status}`)
+export async function fetchTagKeys(): Promise<TagKeyCount[]> {
+  const res = await fetch(`${BASE}/assets/tag-keys`)
+  if (!res.ok) throw new Error(`fetchTagKeys: ${res.status}`)
   return res.json()
 }
 
-export async function fetchLabelValues(key: string): Promise<LabelValueCount[]> {
-  const res = await fetch(`${BASE}/assets/label-values?key=${encodeURIComponent(key)}`)
-  if (!res.ok) throw new Error(`fetchLabelValues: ${res.status}`)
+export async function fetchTagValues(key: string): Promise<TagValueCount[]> {
+  const res = await fetch(`${BASE}/assets/tag-values?key=${encodeURIComponent(key)}`)
+  if (!res.ok) throw new Error(`fetchTagValues: ${res.status}`)
   return res.json()
 }
 

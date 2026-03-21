@@ -35,7 +35,7 @@ export function AssetCreateDialog({ open, onOpenChange }: Props) {
     const asset = await createAsset.mutateAsync({
       name,
       type_name: effectiveType,
-      labels: Object.keys(labels).length > 0 ? labels : undefined,
+      tags: Object.keys(labels).length > 0 ? labels : undefined,
     })
     if (groupName && asset) {
       await addGroupMember.mutateAsync({
