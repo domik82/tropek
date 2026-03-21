@@ -11,34 +11,29 @@ Stack: Python 3.13, FastAPI, PostgreSQL + TimescaleDB, Redis (arq job queue), uv
 ## Common Commands
 
 ```bash
-# Dependencies
-uv sync                                               # Install all workspace dependencies
+just              # list all available recipes
+just install      # install all dependencies (uv sync + npm)
+just test         # API unit tests
+just test-int     # API integration tests (requires just test-env first)
+just test-ui      # UI component tests
+just test-all     # all tests
+just test-one engine/test_evaluator.py  # run a specific test file
+just lint         # ruff linter
+just typecheck    # mypy
+just check        # lint + format check + typecheck
+just dev          # start full dev environment (Ctrl+C to stop)
+just migrate      # apply DB migrations (dev)
+just up           # docker compose up --build
+```
 
-# Run unit tests (no infrastructure required)
-uv run pytest api/tests/ -m "not integration" -q
-./scripts/api-test.sh                                     # same, works from repo root
-./scripts/api-test.sh --tail 5                            # summary only (no pipe needed)
+Raw commands (equivalent, for when `just` is unavailable):
 
-# Run a single test
-uv run pytest api/tests/engine/test_evaluator.py::TestName -v
-./scripts/api-test.sh tests/engine/test_evaluator.py -v   # from repo root
-
-# Lint and format
-uv run ruff check api/ adapters/
-uv run ruff format api/ adapters/
-uv run mypy api/app adapters/prometheus/app
-
-# Start infrastructure only (dev)
-docker compose up timescaledb redis -d
-
-# Apply DB migrations (dev)
-uv run --directory api alembic upgrade head
-
-# Apply DB migrations (test DB — single command, no chaining needed)
-ENV_FILE=.env.test uv run --directory api alembic upgrade head
-
-# Start all services
-docker compose up --build
+```bash
+uv sync                                               # install workspace deps
+uv run --directory api pytest tests/ -m "not integration" -q  # unit tests
+uv run --directory api pytest tests/ -m integration -v        # integration tests
+uv run ruff check api/ adapters/                              # lint
+uv run mypy api/app adapters/prometheus/app                   # typecheck
 ```
 
 ## Integration Tests — REQUIRED STEPS
@@ -46,25 +41,19 @@ docker compose up --build
 Integration tests require a **dedicated test database** on port 5433 — completely separate from the
 dev database (port 5432). **Never run integration tests against the dev database.**
 
-### First-time setup
-
-```bash
-cp .env.test.example .env.test   # fill in values (defaults match the test container)
-```
+`.env.test` is committed with local defaults — no setup needed.
 
 ### Running integration tests
 
-Each step is a separate command — do NOT chain them or prefix env vars inline:
-
 ```bash
 # Step 1: Start test infrastructure (idempotent — safe to re-run)
-./start_test_infra.sh
+just test-env
 
 # Step 2: Run integration tests (.env.test is loaded automatically by pytest-dotenv)
-uv run pytest api/tests/ -m integration -v
+just test-int
 
 # Step 3: Tear down when done (removes container + volume)
-./stop_test_infra.sh
+just test-env-down
 ```
 
 `api/tests/db/conftest.py` loads `.env.test` via `python-dotenv` when the DB fixtures are imported —
@@ -73,13 +62,9 @@ scoped to integration tests only, so unit tests are not affected. **Never** pass
 
 ### Re-running migrations only (container already running)
 
-If the container is already up and you only need to re-apply migrations:
-
 ```bash
-ENV_FILE=.env.test uv run --directory api alembic upgrade head
+just migrate-test
 ```
-
-This is a single command — `alembic/env.py` uses `python-dotenv` to load `ENV_FILE` internally.
 Never use `set -a && source .env.test && set +a` or any bash chaining for this purpose.
 
 ## Architecture
@@ -163,6 +148,13 @@ methods, or test bodies. This applies to production code and test files equally.
 React 18, TypeScript, Vite, Tailwind CSS v4, React Query, lucide-react icons.
 
 ```bash
+just test-ui                                            # Run all UI tests
+just test-ui src/features/.../Foo.test.tsx              # Run specific file(s)
+```
+
+Raw commands (from `ui/` directory):
+
+```bash
 cd ui && npm install --legacy-peer-deps   # Install (peer dep conflicts require --legacy)
 npx vite --host                           # Dev server on :5173
 npx tsc --noEmit -p tsconfig.app.json     # Type check (must use app config)
@@ -170,15 +162,8 @@ npx vitest run                            # Run component tests (Vitest + React 
 npx vitest run --watch                    # Watch mode
 ```
 
-**From repo root** (preferred — avoids `cd ui`):
-
-```bash
-./scripts/ui-test.sh                                    # Run all UI tests
-./scripts/ui-test.sh src/features/.../Foo.test.tsx      # Run specific file(s)
-```
-
 Vitest requires `vite.config.ts` for jsdom environment. Running `npx vitest` from the repo root
-(outside `ui/`) will fail with `document is not defined`. Always use the script or `cd ui` first.
+(outside `ui/`) will fail with `document is not defined`. Always use `just test-ui` or `cd ui` first.
 
 ### UI testing
 
