@@ -214,3 +214,37 @@ class TestBaseScenarioGenerateWindow:
         end = start + timedelta(hours=1)
         scenario = HealthyScenario(start, end, event_mode=True)
         assert scenario.event_mode is True
+
+
+class TestOutageEventMode:
+    def test_event_mode_outage_fills_entire_window(self):
+        """In event_mode, outage starts at the beginning, not at 60%."""
+        start = datetime(2026, 3, 20, 0, 0, 0, tzinfo=UTC)
+        end = start + timedelta(minutes=45)  # 30min outage + 10min recovery + 5min margin
+        scenario = OutageScenario(start, end, event_mode=True, recovery_minutes=10)
+
+        chunks = list(scenario.generate(resolution_seconds=30))
+        df = pd.concat(chunks)
+        api = df[(df["service"] == "api") & (df["host"] == "host1")]
+
+        # Error rate should be high near the start (no pre-outage healthy phase)
+        early = api[api["timestamp"] < start + timedelta(minutes=10)]
+        assert early["error_rate"].mean() > 0.3
+
+    def test_event_mode_recovery_ends_at_window_end(self):
+        start = datetime(2026, 3, 20, 0, 0, 0, tzinfo=UTC)
+        end = start + timedelta(minutes=40)
+        scenario = OutageScenario(start, end, event_mode=True, recovery_minutes=10)
+
+        # Recovery end should be at end of window
+        assert scenario.recovery_end == end
+
+    def test_standalone_mode_unchanged(self):
+        """Default (event_mode=False) should still work as before."""
+        start = datetime(2026, 3, 20, 0, 0, 0, tzinfo=UTC)
+        end = start + timedelta(hours=12)
+        scenario = OutageScenario(start, end)
+
+        # Outage should start at 60% mark
+        expected_start = start + timedelta(seconds=12 * 3600 * 0.60)
+        assert abs((scenario.outage_start - expected_start).total_seconds()) < 1
