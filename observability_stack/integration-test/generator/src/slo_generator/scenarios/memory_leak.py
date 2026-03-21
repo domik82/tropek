@@ -50,9 +50,9 @@ class MemoryLeakScenario(BaseScenario):
         # growth_rate=0.003 → mild 1.35x peak; growth_rate=0.01 → aggressive 2.7x peak
         growth = np.exp(self.growth_rate * 100.0 * progress)
 
-        # Latency grows exponentially
-        p50 = base["p50_latency"] * growth
-        p99 = base["p99_latency"] * growth
+        # Latency grows exponentially (service/host factors affect baseline)
+        p50 = base["p50_latency"] * sf * growth
+        p99 = base["p99_latency"] * sf * growth
 
         # Memory grows linearly toward 95% of a notional 2GB limit
         max_memory = 2 * 1024 * 1024 * 1024 * 0.95

@@ -190,10 +190,6 @@ class TimelineComposer:
 
         return chunk.sort_values("timestamp").reset_index(drop=True)
 
-    def write_metadata(self, output_dir: Path) -> None:
-        """Write metadata JSON for dashboard time range configuration."""
-        raise NotImplementedError("metadata output in CLI task")
-
 
 def _validate_config(config: TimelineConfig) -> None:
     """Validate timeline configuration rules."""
