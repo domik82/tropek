@@ -20,13 +20,18 @@ class DegradationScenario(BaseScenario):
         self,
         start: datetime,
         end: datetime,
+        *,
+        event_mode: bool = False,
         ramp_minutes: int = 5,
         latency_multiplier: float = 5.0,
         error_rate_multiplier: float = 5.0,
     ):
-        super().__init__(start, end)
-        total = (end - start).total_seconds()
-        self.deploy_start = start + timedelta(seconds=total * 0.65)
+        super().__init__(start, end, event_mode=event_mode)
+        if event_mode:
+            self.deploy_start = start
+        else:
+            total = (end - start).total_seconds()
+            self.deploy_start = start + timedelta(seconds=total * 0.65)
         self.ramp_end = self.deploy_start + timedelta(minutes=ramp_minutes)
         self.lat_mult = latency_multiplier
         self.err_mult = error_rate_multiplier
