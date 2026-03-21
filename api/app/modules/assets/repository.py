@@ -130,7 +130,8 @@ class AssetRepository:
         *,
         type_name: str = "vm",
         display_name: str | None = None,
-        labels: dict[str, Any] | None = None,
+        tags: dict[str, Any] | None = None,
+        variables: dict[str, Any] | None = None,
     ) -> Asset:
         """Create a new asset.
 
@@ -138,7 +139,8 @@ class AssetRepository:
             name: Unique name for this asset.
             type_name: Asset type name (must exist in asset_types).
             display_name: Optional human-readable label.
-            labels: Optional free-form metadata labels.
+            tags: Optional free-form metadata tags.
+            variables: Optional template variable bindings.
 
         Returns:
             The newly created Asset record.
@@ -148,7 +150,8 @@ class AssetRepository:
             name=name,
             display_name=display_name,
             type_name=type_name,
-            labels=labels or {},
+            tags=tags or {},
+            variables=variables or {},
         )
         self._session.add(asset)
         await self._session.flush()
@@ -163,15 +166,15 @@ class AssetRepository:
         self,
         *,
         type_name: str | None = None,
-        label_key: str | None = None,
-        label_val: str | None = None,
+        tag_key: str | None = None,
+        tag_val: str | None = None,
     ) -> list[Asset]:
-        """Return all assets, optionally filtered by type or label.
+        """Return all assets, optionally filtered by type or tag.
 
         Args:
             type_name: When given, only return assets of this type.
-            label_key: Label key to filter by (requires label_val).
-            label_val: Label value to filter by (requires label_key).
+            tag_key: Tag key to filter by (requires tag_val).
+            tag_val: Tag value to filter by (requires tag_key).
 
         Returns:
             Matching Asset records ordered by name.
@@ -179,8 +182,8 @@ class AssetRepository:
         q = select(Asset)
         if type_name:
             q = q.where(Asset.type_name == type_name)
-        if label_key and label_val:
-            q = q.where(Asset.labels[label_key].as_string() == label_val)
+        if tag_key and tag_val:
+            q = q.where(Asset.tags[tag_key].as_string() == tag_val)
         q = q.order_by(Asset.name)
         result = await self._session.execute(q)
         return list(result.scalars().all())
@@ -190,7 +193,7 @@ class AssetRepository:
 
         Args:
             name: Unique asset name to update.
-            **kwargs: Fields to update (display_name, type_name, labels).
+            **kwargs: Fields to update (display_name, type_name, tags, variables).
 
         Returns:
             Updated Asset record.
@@ -221,24 +224,24 @@ class AssetRepository:
         await self._session.execute(delete(Asset).where(Asset.id == asset.id))
         return True
 
-    async def get_label_keys(self) -> dict[str, int]:
-        """Return all distinct label keys with count of assets using each."""
+    async def get_tag_keys(self) -> dict[str, int]:
+        """Return all distinct tag keys with count of assets using each."""
         result = await self._session.execute(
             text(
                 "SELECT key, COUNT(*) as cnt "
-                "FROM assets, jsonb_object_keys(labels) AS key "
+                "FROM assets, jsonb_object_keys(tags) AS key "
                 "GROUP BY key ORDER BY cnt DESC"
             )
         )
         return {row[0]: row[1] for row in result}
 
-    async def get_label_values(self, key: str) -> dict[str, int]:
-        """Return all distinct values for a label key with usage counts."""
+    async def get_tag_values(self, key: str) -> dict[str, int]:
+        """Return all distinct values for a tag key with usage counts."""
         result = await self._session.execute(
             text(
-                "SELECT labels->>:key AS val, COUNT(*) as cnt "
+                "SELECT tags->>:key AS val, COUNT(*) as cnt "
                 "FROM assets "
-                "WHERE labels ? :key "
+                "WHERE tags ? :key "
                 "GROUP BY val ORDER BY cnt DESC"
             ),
             {"key": key},

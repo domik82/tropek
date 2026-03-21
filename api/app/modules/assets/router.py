@@ -35,8 +35,8 @@ from app.modules.assets.schemas import (
     AssetTypeUpdate,
     AssetUpdate,
     ComparisonRulesUpdate,
-    LabelKeyCount,
-    LabelValueCount,
+    TagKeyCount,
+    TagValueCount,
 )
 from app.modules.common.errors import raise_not_found
 from app.modules.common.schemas import PagedResponse
@@ -125,13 +125,13 @@ async def rename_asset_type(
 @router.get("/assets", response_model=PagedResponse[AssetRead])
 async def list_assets(
     type_name: str | None = None,
-    label_key: str | None = None,
-    label_val: str | None = None,
+    tag_key: str | None = None,
+    tag_val: str | None = None,
     session: AsyncSession = Depends(get_session),  # noqa: B008
 ) -> PagedResponse[AssetRead]:
-    """List all assets with optional type or label filters."""
+    """List all assets with optional type or tag filters."""
     repo = AssetRepository(session)
-    items = await repo.list_all(type_name=type_name, label_key=label_key, label_val=label_val)
+    items = await repo.list_all(type_name=type_name, tag_key=tag_key, tag_val=tag_val)
     return PagedResponse(items=[AssetRead.model_validate(a) for a in items], total=len(items))
 
 
@@ -143,30 +143,34 @@ async def create_asset(
     """Create a new asset."""
     repo = AssetRepository(session)
     asset = await repo.create(
-        body.name, type_name=body.type_name, display_name=body.display_name, labels=body.labels
+        body.name,
+        type_name=body.type_name,
+        display_name=body.display_name,
+        tags=body.tags,
+        variables=body.variables,
     )
     return AssetRead.model_validate(asset)
 
 
-@router.get("/assets/label-keys", response_model=list[LabelKeyCount])
-async def list_label_keys(
+@router.get("/assets/tag-keys", response_model=list[TagKeyCount])
+async def list_tag_keys(
     session: AsyncSession = Depends(get_session),  # noqa: B008
-) -> list[LabelKeyCount]:
-    """List all distinct label keys with usage counts."""
+) -> list[TagKeyCount]:
+    """List all distinct tag keys with usage counts."""
     repo = AssetRepository(session)
-    keys = await repo.get_label_keys()
-    return [LabelKeyCount(key=k, count=v) for k, v in keys.items()]
+    keys = await repo.get_tag_keys()
+    return [TagKeyCount(key=k, count=v) for k, v in keys.items()]
 
 
-@router.get("/assets/label-values", response_model=list[LabelValueCount])
-async def list_label_values(
+@router.get("/assets/tag-values", response_model=list[TagValueCount])
+async def list_tag_values(
     key: str,
     session: AsyncSession = Depends(get_session),  # noqa: B008
-) -> list[LabelValueCount]:
-    """List all distinct values for a label key with usage counts."""
+) -> list[TagValueCount]:
+    """List all distinct values for a tag key with usage counts."""
     repo = AssetRepository(session)
-    values = await repo.get_label_values(key)
-    return [LabelValueCount(value=k, count=v) for k, v in values.items()]
+    values = await repo.get_tag_values(key)
+    return [TagValueCount(value=k, count=v) for k, v in values.items()]
 
 
 @router.get("/assets/{name}", response_model=AssetRead)
