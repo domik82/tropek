@@ -24,7 +24,7 @@ class AnnotationRepository:
         content: str,
         author: str | None = None,
         category: str | None = None,
-        meta: dict[str, Any] | None = None,
+        tags: dict[str, Any] | None = None,
     ) -> EvaluationAnnotation:
         """Append an annotation to an evaluation.
 
@@ -33,7 +33,7 @@ class AnnotationRepository:
             content: Note text (required).
             author: Optional identifier of who wrote the annotation.
             category: Optional free label (e.g. "environment", "deployment").
-            meta: Optional arbitrary metadata.
+            tags: Optional arbitrary tags.
 
         Returns:
             Newly created EvaluationAnnotation.
@@ -44,7 +44,7 @@ class AnnotationRepository:
             content=content,
             author=author,
             category=category,
-            meta=meta or {},
+            tags=tags or {},
         )
         self._session.add(ann)
         await self._session.flush()
@@ -64,7 +64,7 @@ class AnnotationRepository:
         content: str | None = None,
         author: str | None = None,
         category: str | None = None,
-        meta: dict[str, Any] | None = None,
+        tags: dict[str, Any] | None = None,
     ) -> EvaluationAnnotation | None:
         """Update mutable annotation fields."""
         values: dict[str, Any] = {}
@@ -74,8 +74,8 @@ class AnnotationRepository:
             values["author"] = author
         if category is not None:
             values["category"] = category
-        if meta is not None:
-            values["meta"] = meta
+        if tags is not None:
+            values["tags"] = tags
         if values:
             await self._session.execute(
                 update(EvaluationAnnotation)

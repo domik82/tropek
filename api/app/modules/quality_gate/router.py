@@ -316,7 +316,7 @@ async def create_annotation(
         content=body.content,
         author=body.author,
         category=body.category,
-        meta=body.tags,
+        tags=body.tags,
     )
     return AnnotationRead.model_validate(ann)
 
