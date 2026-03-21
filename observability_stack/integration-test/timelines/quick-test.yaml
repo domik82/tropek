@@ -1,0 +1,11 @@
+timeline:
+  start: "2026-03-14T00:00:00Z"
+  duration: 168h
+  resolution: 30s
+  baseline: healthy
+
+  events:
+    - type: outage
+      at: 160h
+      duration: 30m
+      resolution: 5s
