@@ -248,3 +248,35 @@ class TestOutageEventMode:
         # Outage should start at 60% mark
         expected_start = start + timedelta(seconds=12 * 3600 * 0.60)
         assert abs((scenario.outage_start - expected_start).total_seconds()) < 1
+
+
+class TestDegradationEventMode:
+    def test_event_mode_ramp_starts_at_window_start(self):
+        """In event_mode, degradation starts immediately, not at 65%."""
+        start = datetime(2026, 3, 20, 0, 0, 0, tzinfo=UTC)
+        end = start + timedelta(hours=2)
+        scenario = DegradationScenario(start, end, event_mode=True, ramp_minutes=5)
+
+        chunks = list(scenario.generate(resolution_seconds=30))
+        df = pd.concat(chunks)
+        api = df[(df["service"] == "api") & (df["host"] == "host1")]
+
+        # After the 5-minute ramp, latency should be at degraded level
+        post_ramp = api[api["timestamp"] >= start + timedelta(minutes=10)]
+        assert post_ramp["p99_latency"].mean() > 0.3  # 5x of 0.08 = 0.4
+
+    def test_event_mode_no_healthy_pre_phase(self):
+        start = datetime(2026, 3, 20, 0, 0, 0, tzinfo=UTC)
+        end = start + timedelta(hours=1)
+        scenario = DegradationScenario(start, end, event_mode=True, ramp_minutes=5)
+
+        # deploy_start should be at start of window
+        assert scenario.deploy_start == start
+
+    def test_standalone_mode_unchanged(self):
+        start = datetime(2026, 3, 20, 0, 0, 0, tzinfo=UTC)
+        end = start + timedelta(hours=12)
+        scenario = DegradationScenario(start, end)
+
+        expected_start = start + timedelta(seconds=12 * 3600 * 0.65)
+        assert abs((scenario.deploy_start - expected_start).total_seconds()) < 1
