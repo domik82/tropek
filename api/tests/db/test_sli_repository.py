@@ -111,3 +111,33 @@ async def test_list_all_filters_by_adapter_type(db_session: AsyncSession) -> Non
     result = await repo.list_all(adapter_type="prometheus")
     assert len(result) == 1
     assert result[0].name == "prom-sli"
+
+
+@pytest.mark.integration
+async def test_list_all_filters_by_tag(db_session: AsyncSession) -> None:
+    repo = SLIRepository(db_session)
+    await repo.create("sli-a", {"m1": "q1"}, "prometheus", tags={"team": "alpha"})
+    await repo.create("sli-b", {"m2": "q2"}, "prometheus", tags={"team": "beta"})
+    result = await repo.list_all(tag_key="team", tag_val="alpha")
+    assert len(result) == 1
+    assert result[0].name == "sli-a"
+
+
+@pytest.mark.integration
+async def test_get_tag_keys(db_session: AsyncSession) -> None:
+    repo = SLIRepository(db_session)
+    await repo.create("sli-a", {"m1": "q1"}, "prometheus", tags={"team": "a", "env": "prod"})
+    await repo.create("sli-b", {"m2": "q2"}, "prometheus", tags={"env": "staging"})
+    keys = await repo.get_tag_keys()
+    assert keys["env"] == 2
+    assert keys["team"] == 1
+
+
+@pytest.mark.integration
+async def test_get_tag_values(db_session: AsyncSession) -> None:
+    repo = SLIRepository(db_session)
+    await repo.create("sli-a", {"m1": "q1"}, "prometheus", tags={"env": "prod"})
+    await repo.create("sli-b", {"m2": "q2"}, "prometheus", tags={"env": "staging"})
+    values = await repo.get_tag_values("env")
+    assert values["prod"] == 1
+    assert values["staging"] == 1

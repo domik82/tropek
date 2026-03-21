@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_session
+from app.modules.assets.schemas import TagKeyCount, TagValueCount
 from app.modules.common.errors import raise_not_found
 from app.modules.common.schemas import PagedResponse
 from app.modules.sli_registry.repository import SLIRepository
@@ -17,11 +18,13 @@ router = APIRouter()
 @router.get("/sli-definitions", response_model=PagedResponse[SLIDefinitionRead])
 async def list_sli_definitions(
     adapter_type: str | None = None,
+    tag_key: str | None = None,
+    tag_val: str | None = None,
     session: AsyncSession = Depends(get_session),  # noqa: B008
 ) -> PagedResponse[SLIDefinitionRead]:
     """List all active SLI definitions."""
     repo = SLIRepository(session)
-    items = await repo.list_all(adapter_type=adapter_type)
+    items = await repo.list_all(adapter_type=adapter_type, tag_key=tag_key, tag_val=tag_val)
     return PagedResponse(
         items=[SLIDefinitionRead.model_validate(i) for i in items], total=len(items)
     )
@@ -41,10 +44,31 @@ async def create_sli_definition(
         display_name=body.display_name,
         notes=body.notes,
         author=body.author,
-        meta=body.meta,
+        tags=body.tags,
         comparable_from_version=body.comparable_from_version,
     )
     return SLIDefinitionRead.model_validate(sli)
+
+
+@router.get("/sli-definitions/tag-keys", response_model=list[TagKeyCount])
+async def get_sli_tag_keys(
+    session: AsyncSession = Depends(get_session),  # noqa: B008
+) -> list[TagKeyCount]:
+    """Return distinct tag keys with usage counts."""
+    repo = SLIRepository(session)
+    keys = await repo.get_tag_keys()
+    return [TagKeyCount(key=k, count=v) for k, v in keys.items()]
+
+
+@router.get("/sli-definitions/tag-values", response_model=list[TagValueCount])
+async def get_sli_tag_values(
+    key: str = Query(...),
+    session: AsyncSession = Depends(get_session),  # noqa: B008
+) -> list[TagValueCount]:
+    """Return distinct tag values for a key with usage counts."""
+    repo = SLIRepository(session)
+    values = await repo.get_tag_values(key)
+    return [TagValueCount(value=v, count=c) for v, c in values.items()]
 
 
 @router.get("/sli-definitions/{name}", response_model=SLIDefinitionRead)

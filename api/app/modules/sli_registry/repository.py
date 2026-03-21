@@ -5,7 +5,7 @@ from __future__ import annotations
 import uuid
 from typing import Any
 
-from sqlalchemy import select, update
+from sqlalchemy import select, text, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import SLIDefinition
@@ -25,7 +25,7 @@ class SLIRepository:
         display_name: str | None = None,
         notes: str | None = None,
         author: str | None = None,
-        meta: dict[str, Any] | None = None,
+        tags: dict[str, Any] | None = None,
         comparable_from_version: int | None = None,
     ) -> SLIDefinition:
         """Insert a new version of a named SLI.
@@ -39,7 +39,7 @@ class SLIRepository:
             display_name: Optional human-readable display name.
             notes: Optional description of changes in this version.
             author: Optional identifier of who created this version.
-            meta: Optional arbitrary key-value metadata.
+            tags: Optional arbitrary key-value tags.
             comparable_from_version: Earliest version whose baselines are valid for
                 comparison against this version. Defaults to the previous version
                 (N-1) for subsequent versions, or 1 for the first version.
@@ -73,7 +73,7 @@ class SLIRepository:
             indicators=indicators,
             notes=notes,
             author=author,
-            meta=meta or {},
+            tags=tags or {},
             active=True,
             comparable_from_version=resolved_cfv,
         )
@@ -132,13 +132,21 @@ class SLIRepository:
         )
         return list(result.scalars().all())
 
-    async def list_all(self, *, adapter_type: str | None = None) -> list[SLIDefinition]:
+    async def list_all(
+        self,
+        *,
+        adapter_type: str | None = None,
+        tag_key: str | None = None,
+        tag_val: str | None = None,
+    ) -> list[SLIDefinition]:
         """Return latest active version of every SLI name.
 
         Uses DISTINCT ON (name) ORDER BY name, version DESC — PostgreSQL-specific.
 
         Args:
             adapter_type: When given, only return SLIs targeting this adapter type.
+            tag_key: Tag key to filter by.
+            tag_val: Tag value to filter by (requires tag_key).
 
         Returns:
             One SLIDefinition per active SLI name, the highest version of each.
@@ -148,6 +156,10 @@ class SLIRepository:
         )
         if adapter_type is not None:
             base = base.where(SLIDefinition.adapter_type == adapter_type)
+        if tag_key and tag_val:
+            base = base.where(SLIDefinition.tags[tag_key].as_string() == tag_val)
+        elif tag_key:
+            base = base.where(SLIDefinition.tags.has_key(tag_key))
         subq = (
             base.distinct(SLIDefinition.name).order_by(
                 SLIDefinition.name, SLIDefinition.version.desc()
@@ -171,3 +183,27 @@ class SLIRepository:
         await self._session.execute(
             update(SLIDefinition).where(SLIDefinition.name == name).values(active=False)
         )
+
+    async def get_tag_keys(self) -> dict[str, int]:
+        """Return all distinct tag keys with count of SLI definitions using each."""
+        result = await self._session.execute(
+            text(
+                "SELECT key, COUNT(*) as cnt "
+                "FROM sli_definitions, jsonb_object_keys(tags) AS key "
+                "GROUP BY key ORDER BY cnt DESC"
+            )
+        )
+        return {row[0]: row[1] for row in result}
+
+    async def get_tag_values(self, key: str) -> dict[str, int]:
+        """Return all distinct values for a tag key with usage counts."""
+        result = await self._session.execute(
+            text(
+                "SELECT tags->>:key AS val, COUNT(*) as cnt "
+                "FROM sli_definitions "
+                "WHERE tags ? :key "
+                "GROUP BY val ORDER BY cnt DESC"
+            ),
+            {"key": key},
+        )
+        return {row[0]: row[1] for row in result}
