@@ -68,6 +68,8 @@ services:
       INFLUXDB_BUCKET: slo_metrics
       TIMESCALEDB_DSN: postgresql://metrics:metrics@timescaledb-metrics:5432/slo_metrics
     command:
+      - "--timeline"
+      - "/timelines/quick-test.yaml"
       - "--backends"
       - "prometheus"
       - "--backends"
@@ -79,6 +81,7 @@ services:
       - "/prometheus"
     volumes:
       - prometheus-data:/prometheus
+      - ./timelines:/timelines:ro
 
 volumes:
   prometheus-data:
