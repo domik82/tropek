@@ -2,6 +2,7 @@
 
 **Date:** 2026-03-20
 **Status:** Draft
+**Depends on:** Test Coverage Backfill (2026-03-21) — must land first to establish regression safety net
 **Prerequisite for:** Otava Change Point Detection integration
 
 ## Problem
