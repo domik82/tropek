@@ -21,7 +21,7 @@ test-one path *args='-v':
 
 # Run UI component tests
 test-ui *args:
-    cd ui && npx vitest run {{args}}
+    cd ui && pnpm exec vitest run {{args}}
 
 # Run all tests (unit + integration + UI)
 test-all: test test-int test-ui
@@ -66,7 +66,7 @@ dev:
 # Install all dependencies
 install:
     uv sync
-    cd ui && npm install --legacy-peer-deps
+    cd ui && pnpm install
 
 # Apply database migrations (dev)
 migrate:

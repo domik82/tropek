@@ -12,7 +12,7 @@ Stack: Python 3.13, FastAPI, PostgreSQL + TimescaleDB, Redis (arq job queue), uv
 
 ```bash
 just              # list all available recipes
-just install      # install all dependencies (uv sync + npm)
+just install      # install all dependencies (uv sync + pnpm)
 just test         # API unit tests
 just test-int     # API integration tests (requires just test-env first)
 just test-ui      # UI component tests
@@ -145,7 +145,7 @@ methods, or test bodies. This applies to production code and test files equally.
 
 ### Stack & commands
 
-React 18, TypeScript, Vite, Tailwind CSS v4, React Query, lucide-react icons.
+React 19, TypeScript 5.9, Vite 8, Tailwind CSS v4, React Query, shadcn/ui, lucide-react icons.
 
 ```bash
 just test-ui                                            # Run all UI tests
@@ -155,19 +155,19 @@ just test-ui src/features/.../Foo.test.tsx              # Run specific file(s)
 Raw commands (from `ui/` directory):
 
 ```bash
-cd ui && npm install --legacy-peer-deps   # Install (peer dep conflicts require --legacy)
-npx vite --host                           # Dev server on :5173
-npx tsc --noEmit -p tsconfig.app.json     # Type check (must use app config)
-npx vitest run                            # Run component tests (Vitest + React Testing Library)
-npx vitest run --watch                    # Watch mode
+cd ui && pnpm install                     # Install dependencies
+pnpm exec vite --host                     # Dev server on :5173
+pnpm exec tsc --noEmit -p tsconfig.app.json  # Type check (must use app config)
+pnpm exec vitest run                      # Run component tests (Vitest + React Testing Library)
+pnpm exec vitest run --watch              # Watch mode
 ```
 
-Vitest requires `vite.config.ts` for jsdom environment. Running `npx vitest` from the repo root
+Vitest requires `vite.config.ts` for happy-dom environment. Running `pnpm exec vitest` from the repo root
 (outside `ui/`) will fail with `document is not defined`. Always use `just test-ui` or `cd ui` first.
 
 ### UI testing
 
-Component tests use **Vitest + React Testing Library + jsdom**. Config lives in `vite.config.ts` (`test` block), setup in `src/test-setup.ts`.
+Component tests use **Vitest + React Testing Library + happy-dom**. Config lives in `vite.config.ts` (`test` block), setup in `src/test-setup.ts`.
 
 - Place test files next to the component: `ComponentName.test.tsx`
 - Wrap components that use React Query in `QueryClientProvider` (see `NoteEntry.test.tsx` for pattern)
