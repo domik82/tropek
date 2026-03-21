@@ -32,7 +32,7 @@ logs-generator:
 
 # Regenerate all 3 Grafana dashboard JSONs from YAML config
 dashboard:
-    uv run --directory grafana python generate_dashboard.py
+    uv run --directory generator python ../grafana/generate_dashboard.py
 
 # ─── Data generation (local, no Docker) ──────────────────────────────
 
