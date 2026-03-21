@@ -2,7 +2,7 @@
 
 Revision ID: 001
 Revises:
-Create Date: 2026-03-20 00:09:16.730433
+Create Date: 2026-03-21 17:32:56.554540
 
 """
 
@@ -67,11 +67,12 @@ def upgrade() -> None:
         sa.Column("adapter_type", sa.Text(), nullable=False),
         sa.Column("adapter_url", sa.Text(), nullable=False),
         sa.Column(
-            "labels",
+            "tags",
             postgresql.JSONB(astext_type=sa.Text()),
             server_default=sa.text("'{}'"),
             nullable=False,
         ),
+        sa.Column("token", sa.Text(), nullable=True),
         sa.Column(
             "created_at",
             sa.DateTime(timezone=True),
@@ -135,7 +136,7 @@ def upgrade() -> None:
         sa.Column("notes", sa.Text(), nullable=True),
         sa.Column("author", sa.Text(), nullable=True),
         sa.Column(
-            "meta",
+            "tags",
             postgresql.JSONB(astext_type=sa.Text()),
             server_default=sa.text("'{}'"),
             nullable=False,
@@ -181,7 +182,13 @@ def upgrade() -> None:
         sa.Column("notes", sa.Text(), nullable=True),
         sa.Column("author", sa.Text(), nullable=True),
         sa.Column(
-            "meta",
+            "tags",
+            postgresql.JSONB(astext_type=sa.Text()),
+            server_default=sa.text("'{}'"),
+            nullable=False,
+        ),
+        sa.Column(
+            "variables",
             postgresql.JSONB(astext_type=sa.Text()),
             server_default=sa.text("'{}'"),
             nullable=False,
@@ -244,7 +251,13 @@ def upgrade() -> None:
         sa.Column("display_name", sa.Text(), nullable=True),
         sa.Column("type_name", sa.Text(), nullable=False),
         sa.Column(
-            "labels",
+            "tags",
+            postgresql.JSONB(astext_type=sa.Text()),
+            server_default=sa.text("'{}'"),
+            nullable=False,
+        ),
+        sa.Column(
+            "variables",
             postgresql.JSONB(astext_type=sa.Text()),
             server_default=sa.text("'{}'"),
             nullable=False,
@@ -357,7 +370,7 @@ def upgrade() -> None:
             nullable=False,
         ),
         sa.Column(
-            "evaluation_metadata",
+            "variables",
             postgresql.JSONB(astext_type=sa.Text()),
             server_default=sa.text("'{}'"),
             nullable=False,
@@ -438,7 +451,7 @@ def upgrade() -> None:
         sa.Column("author", sa.Text(), nullable=True),
         sa.Column("category", sa.Text(), nullable=True),
         sa.Column(
-            "meta",
+            "tags",
             postgresql.JSONB(astext_type=sa.Text()),
             server_default=sa.text("'{}'"),
             nullable=False,

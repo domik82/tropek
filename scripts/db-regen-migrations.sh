@@ -44,7 +44,7 @@ fi
 
 # ── Step 1: Tear down test infrastructure ────────────────────────────────────
 echo "==> Step 1: Tearing down test infrastructure..."
-"${REPO_ROOT}/stop_test_infra.sh"
+"${SCRIPT_DIR}/stop-test-infra.sh"
 
 # ── Step 2: Backup 002 and clear versions/ ───────────────────────────────────
 echo ""
@@ -60,7 +60,7 @@ echo "    Backed up 002 to ${MANUAL_002_BAK##*/}"
 # ── Step 3: Start test DB (empty, no migrations) ────────────────────────────
 echo ""
 echo "==> Step 3: Starting test DB (empty)..."
-"${REPO_ROOT}/start_test_infra.sh"
+"${SCRIPT_DIR}/start-test-infra.sh"
 
 # ── Step 4: Autogenerate fresh migration from models ────────────────────────
 echo ""
@@ -102,8 +102,8 @@ mv "${MANUAL_002_BAK}" "${MANUAL_002}"
 # ── Step 7: Verify — tear down and rebuild from scratch ──────────────────────
 echo ""
 echo "==> Step 7: Verifying — clean restart with both migrations..."
-"${REPO_ROOT}/stop_test_infra.sh"
-"${REPO_ROOT}/start_test_infra.sh"
+"${SCRIPT_DIR}/stop-test-infra.sh"
+"${SCRIPT_DIR}/start-test-infra.sh"
 
 echo ""
 echo "==> Migration regeneration complete."
