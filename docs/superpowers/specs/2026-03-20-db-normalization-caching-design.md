@@ -96,7 +96,7 @@ These change on explicit user actions. Invalidate on write.
 |---|---|---|
 | Asset (by ID) | `asset:{id}` | Asset update/delete |
 | Asset (by name) | `asset:name:{name}` | Asset update/delete |
-| Asset labels | `asset:{id}:labels` | Label add/remove on asset |
+| Asset tags | `asset:{id}:tags` | Tag add/remove on asset |
 | Latest SLO version | `slo:{name}:latest` | New SLO version created |
 | Latest SLI version | `sli:{name}:latest` | New SLI version created |
 
