@@ -4,13 +4,16 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { AnnotationSection } from './AnnotationForm'
 import type { Annotation } from '../types'
 
+const addAnnotationMutate = vi.fn()
+const hideAnnotationMutate = vi.fn()
+
 vi.mock('../hooks', () => ({
   useAddAnnotation: () => ({
-    mutate: vi.fn(),
+    mutate: addAnnotationMutate,
     isPending: false,
   }),
   useHideAnnotation: () => ({
-    mutate: vi.fn(),
+    mutate: hideAnnotationMutate,
     isPending: false,
   }),
 }))
@@ -107,5 +110,20 @@ describe('AnnotationSection', () => {
   it('shows count of zero in heading when empty', () => {
     renderWithQuery(<AnnotationSection evalId="e1" annotations={[]} />)
     expect(screen.getByText('(0)')).toBeInTheDocument()
+  })
+
+  it('calls addAnnotation mutation on form submit', () => {
+    addAnnotationMutate.mockClear()
+    renderWithQuery(<AnnotationSection evalId="e1" annotations={[]} />)
+
+    // Open form
+    fireEvent.click(screen.getByText('+ Note'))
+    // Fill content
+    fireEvent.change(screen.getByPlaceholderText('Note content...'), {
+      target: { value: 'Test annotation' },
+    })
+    // Submit
+    fireEvent.click(screen.getByText('Save note'))
+    expect(addAnnotationMutate).toHaveBeenCalled()
   })
 })
