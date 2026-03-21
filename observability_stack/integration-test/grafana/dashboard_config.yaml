@@ -1,7 +1,7 @@
 title: "SLO Test Dashboard"
 uid: "slo-test"
 refresh: "30s"
-time_from: "now-1h"
+time_from: "now-7d"
 time_to: "now"
 
 variables:
