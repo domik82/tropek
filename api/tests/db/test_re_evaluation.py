@@ -4,15 +4,16 @@ from __future__ import annotations
 
 import uuid
 from datetime import UTC, datetime, timedelta
-from typing import Any
 
 import pytest
-from app.db.models import Asset, AssetType
+from app.db.models import Asset, AssetType, SLOObjective
 from app.modules.quality_gate.baseline_repository import BaselineRepository
+from app.modules.quality_gate.indicator_repository import IndicatorRepository
 from app.modules.quality_gate.re_evaluation_schemas import ReEvaluateRequest
 from app.modules.quality_gate.re_evaluator import re_evaluate
 from app.modules.quality_gate.repository import EvaluationRepository
 from app.modules.slo_registry.repository import SLORepository
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 _START = datetime(2026, 3, 10, 10, 0, 0, tzinfo=UTC)
@@ -35,7 +36,6 @@ async def _create_completed_eval(
     period_start: datetime,
     result: str = "pass",
     score: float = 90.0,
-    indicator_results: list[Any] | None = None,
     sli_version: int | None = None,
     slo_name: str = "http-slo",
 ) -> uuid.UUID:
@@ -54,10 +54,45 @@ async def _create_completed_eval(
         ev.id,
         result=result,
         score=score,
-        indicator_results=indicator_results or [],
         slo_name=slo_name,
     )
     return ev.id
+
+
+async def _seed_indicator_rows(
+    session: AsyncSession,
+    eval_id: uuid.UUID,
+    slo_name: str,
+    metrics: dict[str, float | None],
+    status: str = "fail",
+) -> None:
+    """Create IndicatorResultRow records for each metric, looking up SLO objectives by sli name."""
+    obj_q = select(SLOObjective).where(
+        SLOObjective.sli.in_(list(metrics.keys())),
+    )
+    obj_rows = await session.execute(obj_q)
+    obj_by_sli = {obj.sli: obj for obj in obj_rows.scalars().all()}
+
+    indicator_repo = IndicatorRepository(session)
+    ir_rows = []
+    for metric_name, value in metrics.items():
+        obj = obj_by_sli.get(metric_name)
+        if obj is None:
+            continue
+        ir_rows.append(
+            {
+                "evaluation_id": eval_id,
+                "slo_objective_id": obj.id,
+                "value": value,
+                "compared_value": None,
+                "change_absolute": None,
+                "change_relative_pct": None,
+                "status": status,
+                "score": 0.0,
+            }
+        )
+    if ir_rows:
+        await indicator_repo.bulk_insert(eval_id, ir_rows)
 
 
 @pytest.mark.integration
@@ -112,7 +147,6 @@ async def test_update_reeval_result_preserves_original(db_session: AsyncSession)
         datetime(2026, 3, 10, tzinfo=UTC),
         result="fail",
         score=45.0,
-        indicator_results=[{"metric": "cpu", "status": "fail"}],
     )
 
     # First re-eval
@@ -120,7 +154,6 @@ async def test_update_reeval_result_preserves_original(db_session: AsyncSession)
         eval_id=eid,
         new_result="pass",
         new_score=92.0,
-        new_indicator_results=[{"metric": "cpu", "status": "pass"}],
         old_result="fail",
         old_score=45.0,
         slo_version=2,
@@ -138,7 +171,6 @@ async def test_update_reeval_result_preserves_original(db_session: AsyncSession)
         eval_id=eid,
         new_result="warning",
         new_score=78.0,
-        new_indicator_results=[{"metric": "cpu", "status": "warning"}],
         old_result="pass",
         old_score=92.0,
         slo_version=3,
@@ -173,23 +205,10 @@ async def test_re_evaluate_updates_results_and_adds_annotation(
         result="fail",
         score=0.0,
         slo_name="re-eval-slo",
-        indicator_results=[
-            {
-                "metric": "cpu",
-                "display_name": "cpu",
-                "value": 95.0,
-                "compared_value": None,
-                "status": "fail",
-                "score": 0,
-                "weight": 1,
-                "key_sli": False,
-                "pass_targets": [{"criteria": "<90", "target_value": 90, "violated": True}],
-                "warning_targets": None,
-                "change_absolute": None,
-                "change_relative_pct": None,
-            }
-        ],
     )
+
+    # Seed normalized indicator rows (cpu=95)
+    await _seed_indicator_rows(db_session, eid, "re-eval-slo", {"cpu": 95.0}, status="fail")
 
     # Create SLO v2: pass if cpu < 100 (relaxed threshold)
     await slo_repo.create(
@@ -246,23 +265,10 @@ async def test_re_evaluate_dry_run_does_not_write(db_session: AsyncSession) -> N
         result="fail",
         score=0.0,
         slo_name="dry-run-slo",
-        indicator_results=[
-            {
-                "metric": "cpu",
-                "display_name": "cpu",
-                "value": 50.0,
-                "compared_value": None,
-                "status": "fail",
-                "score": 0,
-                "weight": 1,
-                "key_sli": False,
-                "pass_targets": [{"criteria": "<90", "target_value": 90, "violated": True}],
-                "warning_targets": None,
-                "change_absolute": None,
-                "change_relative_pct": None,
-            }
-        ],
     )
+
+    # Seed normalized indicator rows (cpu=50)
+    await _seed_indicator_rows(db_session, eid, "dry-run-slo", {"cpu": 50.0}, status="fail")
 
     asset_row = await db_session.get(Asset, asset_id)
     assert asset_row is not None
@@ -304,31 +310,15 @@ async def test_re_evaluate_cascading_baselines(db_session: AsyncSession) -> None
     # Create 3 evals with response times: 100, 105, 110
     # Without cascading, all would have no baseline. With cascading, each uses the previous.
     for day, val in [(10, 100.0), (11, 105.0), (12, 110.0)]:
-        indicator_results = [
-            {
-                "metric": "rt",
-                "display_name": "response_time",
-                "value": val,
-                "compared_value": None,
-                "status": "fail",
-                "score": 0,
-                "weight": 1,
-                "key_sli": False,
-                "pass_targets": [{"criteria": "<=+10%", "target_value": None, "violated": True}],
-                "warning_targets": None,
-                "change_absolute": None,
-                "change_relative_pct": None,
-            }
-        ]
-        await _create_completed_eval(
+        eid = await _create_completed_eval(
             repo,
             asset_id,
             datetime(2026, 3, day, tzinfo=UTC),
             result="fail",
             score=0.0,
-            indicator_results=indicator_results,
             slo_name="cascade-slo",
         )
+        await _seed_indicator_rows(db_session, eid, "cascade-slo", {"rt": val}, status="fail")
 
     asset_row = await db_session.get(Asset, asset_id)
     assert asset_row is not None

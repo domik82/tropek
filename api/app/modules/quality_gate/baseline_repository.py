@@ -203,7 +203,6 @@ class BaselineRepository:
         *,
         new_result: str,
         new_score: float,
-        new_indicator_results: list[Any],
         new_engine_results: list[IndicatorResult] | None = None,
         slo_objectives: list[SLOObjective] | None = None,
         old_result: str,
@@ -216,7 +215,6 @@ class BaselineRepository:
             eval_id: Evaluation to update.
             new_result: Re-evaluated result value ("pass", "warning", "fail", "error").
             new_score: Re-evaluated weighted score 0.0-100.0.
-            new_indicator_results: Full per-SLI breakdown from re-evaluation (JSONB dual-write).
             new_engine_results: Engine IndicatorResult objects for normalized row writing.
             slo_objectives: SLOObjective ORM instances for objective ID lookup.
             old_result: Previous result value (stored in job_stats on first call only).
@@ -242,7 +240,6 @@ class BaselineRepository:
         values: dict[str, Any] = {
             "result": new_result,
             "score": new_score,
-            "indicator_results": new_indicator_results,
             "job_stats": stats,
         }
         if slo_version is not None:
@@ -263,7 +260,7 @@ class BaselineRepository:
             category="re-evaluation",
         )
 
-        # Write to normalized table (dual-write)
+        # Write to normalized table
         if new_engine_results and slo_objectives:
             indicator_repo = IndicatorRepository(self._session)
             await indicator_repo.delete_for_evaluation(eval_id)

@@ -6,24 +6,12 @@ import pytest
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from .conftest import _create_asset, _create_completed_eval
-
-_INDICATORS = [
-    {
-        "metric": "cpu_usage",
-        "display_name": "CPU Usage",
-        "value": 72.0,
-        "compared_value": None,
-        "change_absolute": None,
-        "change_relative_pct": None,
-        "status": "pass",
-        "score": 1.0,
-        "weight": 1,
-        "key_sli": False,
-        "pass_targets": [{"criteria": "<80", "target_value": 80, "violated": False}],
-        "warning_targets": None,
-    },
-]
+from .conftest import (
+    _create_asset,
+    _create_completed_eval,
+    _ensure_slo_objective,
+    _seed_indicator_row,
+)
 
 
 @pytest.mark.integration
@@ -32,13 +20,14 @@ async def test_heatmap_invalidated_eval_shows_invalidated_result(
 ) -> None:
     """Router transforms invalidated completed eval cells to result='invalidated'."""
     asset_id = await _create_asset(db_session, name="hm-router-inv")
+    obj = await _ensure_slo_objective(db_session)
     eval_id = await _create_completed_eval(
         db_session,
         asset_id,
         result="pass",
         score=90.0,
-        indicator_results=_INDICATORS,
     )
+    await _seed_indicator_row(db_session, eval_id, obj, status="pass")
 
     # Invalidate via endpoint
     await async_client.patch(
@@ -63,23 +52,16 @@ async def test_heatmap_overridden_eval_shows_overridden_result(
 ) -> None:
     """Overridden evaluation cells show the overridden result in heatmap."""
     asset_id = await _create_asset(db_session, name="hm-router-ovr")
-    await _create_completed_eval(
+    obj = await _ensure_slo_objective(db_session, slo_name="hm-ovr-slo")
+    eval_id = await _create_completed_eval(
         db_session,
         asset_id,
         result="fail",
         score=30.0,
-        indicator_results=_INDICATORS,
         evaluation_name="hm-ovr-test",
+        slo_name="hm-ovr-slo",
     )
-
-    # The eval was created with result="fail" but indicator status="pass"
-    # After override to "pass", the router should use ev.result (overridden)
-    # because ev.original_result is not None
-    evals_resp = await async_client.get(
-        "/evaluations",
-        params={"asset_name": "hm-router-ovr"},
-    )
-    eval_id = evals_resp.json()["items"][0]["id"]
+    await _seed_indicator_row(db_session, eval_id, obj, status="fail", score=0.0)
 
     # Override via endpoint: fail -> pass
     await async_client.patch(

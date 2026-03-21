@@ -344,7 +344,6 @@ class Evaluation(Base):
     sli_name: Mapped[str | None] = mapped_column(Text, nullable=True)
     sli_version: Mapped[int | None] = mapped_column(Integer, nullable=True)
     data_source_name: Mapped[str | None] = mapped_column(Text, nullable=True)
-    indicator_results: Mapped[list[Any]] = mapped_column(JSONB, nullable=False, server_default=text("'[]'"), default=list)
     variables: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, server_default=text("'{}'"), default=dict)
     ingestion_mode: Mapped[str] = mapped_column(Text, nullable=False)
     adapter_used: Mapped[str | None] = mapped_column(Text, nullable=True)

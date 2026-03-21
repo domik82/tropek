@@ -12,7 +12,7 @@ from collections.abc import AsyncGenerator
 from datetime import UTC, datetime
 
 import pytest_asyncio
-from app.db.models import Asset, AssetType
+from app.db.models import Asset, AssetType, IndicatorResultRow, SLODefinition, SLOObjective
 from app.db.session import get_session
 from app.main import app
 from app.modules.quality_gate.repository import EvaluationRepository
@@ -47,7 +47,6 @@ async def _create_completed_eval(
     *,
     result: str = "pass",
     score: float = 90.0,
-    indicator_results: list | None = None,
     slo_name: str = "test-slo",
     evaluation_name: str = "compile-test",
     period_start: datetime = _START,
@@ -68,10 +67,69 @@ async def _create_completed_eval(
         ev.id,
         result=result,
         score=score,
-        indicator_results=indicator_results or [],
         slo_name=slo_name,
     )
     return ev.id
+
+
+async def _ensure_slo_objective(
+    session: AsyncSession,
+    slo_name: str = "test-slo",
+    sli: str = "response_time",
+) -> SLOObjective:
+    """Create a minimal SLO definition with one objective if it doesn't exist, return the objective."""
+    slo_id = uuid.uuid4()
+    slo = SLODefinition(
+        id=slo_id,
+        name=slo_name,
+        version=1,
+        display_name=slo_name,
+        comparison={},
+        total_score_pass_pct=90.0,
+        total_score_warning_pct=75.0,
+        tags={},
+        variables={},
+    )
+    session.add(slo)
+    obj = SLOObjective(
+        id=uuid.uuid4(),
+        slo_definition_id=slo_id,
+        sli=sli,
+        display_name=sli,
+        weight=1,
+        key_sli=False,
+        sort_order=0,
+        pass_criteria=["<600"],
+        warning_criteria=[],
+    )
+    session.add(obj)
+    await session.flush()
+    return obj
+
+
+async def _seed_indicator_row(
+    session: AsyncSession,
+    evaluation_id: uuid.UUID,
+    objective: SLOObjective,
+    *,
+    value: float = 250.0,
+    status: str = "pass",
+    score: float = 1.0,
+) -> None:
+    """Seed a single IndicatorResultRow for an evaluation."""
+    session.add(
+        IndicatorResultRow(
+            evaluation_id=evaluation_id,
+            slo_objective_id=objective.id,
+            value=value,
+            compared_value=None,
+            change_absolute=None,
+            change_relative_pct=None,
+            status=status,
+            score=score,
+        )
+    )
+    await session.flush()
 
 
 @pytest_asyncio.fixture()

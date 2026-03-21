@@ -96,10 +96,10 @@ async def _resolve_baselines(
     compared_eval_ids = [str(bev.id) for bev in baseline_evals]
     for metric_name in indicator_names:
         vals: list[float] = [
-            ir["value"]
+            float(row.value)
             for bev in baseline_evals
-            for ir in (bev.indicator_results or [])
-            if ir.get("metric") == metric_name and ir.get("value") is not None
+            for row in (bev.indicator_rows or [])
+            if row.objective.sli == metric_name and row.value is not None
         ]
         if vals:
             baselines[metric_name] = aggregate_values(vals, slo.comparison.aggregate_function)
@@ -182,7 +182,7 @@ async def _write_indicator_rows(
     slo_def: Any,
     indicator_results: list[Any],
 ) -> None:
-    """Dual-write indicator results to the normalized indicator_results table."""
+    """Write indicator results to the normalized indicator_results table."""
     indicator_repo = IndicatorRepository(session)
     obj_lookup = {obj.sli: obj.id for obj in slo_def.objectives}
     rows = []
@@ -313,24 +313,18 @@ async def run_evaluation(
     )
     eval_result = evaluate(slo, metrics_fetched, baselines, compared_eval_ids)
 
-    # Serialize typed indicator results for JSONB storage
-    indicator_dicts: list[dict[str, Any]] = [
-        ir.model_dump() for ir in eval_result.indicator_results
-    ]
-
     # Write results
     await repo.mark_completed(
         eval_id,
         result=eval_result.result,
         score=eval_result.score,
-        indicator_results=indicator_dicts,
         slo_name=ev.slo_name,
         slo_version=ev.slo_version,
         job_stats={"fetch_errors": fetch_errors},
         compared_evaluation_ids=compared_eval_ids,
     )
 
-    # Write to normalized indicator_results table (dual-write during migration)
+    # Write to normalized indicator_results table
     await _write_indicator_rows(log, session, eval_id, slo_def, eval_result.indicator_results)
 
     # Write SLI values to TimescaleDB hypertable

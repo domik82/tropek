@@ -6,28 +6,15 @@ import uuid
 from datetime import UTC, datetime, timedelta
 
 import pytest
-from app.db.models import Asset, AssetType
+from app.db.models import Asset, AssetType, SLOObjective
+from app.modules.quality_gate.indicator_repository import IndicatorRepository
 from app.modules.quality_gate.repository import EvaluationRepository
 from app.modules.slo_registry.repository import SLORepository
 from httpx import AsyncClient
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 _START = datetime(2026, 3, 10, 10, 0, 0, tzinfo=UTC)
-
-_CPU_INDICATOR_FAIL = {
-    "metric": "cpu",
-    "display_name": "cpu",
-    "value": 95.0,
-    "compared_value": None,
-    "status": "fail",
-    "score": 0,
-    "weight": 1,
-    "key_sli": False,
-    "pass_targets": [{"criteria": "<90", "target_value": 90, "violated": True}],
-    "warning_targets": None,
-    "change_absolute": None,
-    "change_relative_pct": None,
-}
 
 
 async def _setup_re_eval(
@@ -64,8 +51,28 @@ async def _setup_re_eval(
         ev.id,
         result="fail",
         score=0.0,
-        indicator_results=[_CPU_INDICATOR_FAIL],
         slo_name="re-eval-ep-slo",
+    )
+
+    # Seed normalized indicator rows (cpu=95 -> fail under v1 threshold <90)
+    obj_q = select(SLOObjective).where(SLOObjective.sli == "cpu")
+    obj_row = await session.execute(obj_q)
+    obj = obj_row.scalar_one()
+    indicator_repo = IndicatorRepository(session)
+    await indicator_repo.bulk_insert(
+        ev.id,
+        [
+            {
+                "evaluation_id": ev.id,
+                "slo_objective_id": obj.id,
+                "value": 95.0,
+                "compared_value": None,
+                "change_absolute": None,
+                "change_relative_pct": None,
+                "status": "fail",
+                "score": 0.0,
+            },
+        ],
     )
 
     # SLO v2: relaxed threshold — pass if cpu < 100

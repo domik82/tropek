@@ -165,12 +165,10 @@ async def _rescore_single(
     old_score = ev.score if ev.score is not None else 0.0
 
     if not dry_run:
-        indicator_dicts = [ir.model_dump() for ir in eval_result.indicator_results]
         await baseline_repo.update_reeval_result(
             ev.id,
             new_result=eval_result.result,
             new_score=eval_result.score,
-            new_indicator_results=indicator_dicts,
             new_engine_results=eval_result.indicator_results,
             slo_objectives=slo_def.objectives,
             old_result=old_result,

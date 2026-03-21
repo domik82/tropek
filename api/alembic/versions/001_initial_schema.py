@@ -365,12 +365,6 @@ def upgrade() -> None:
         sa.Column("sli_version", sa.Integer(), nullable=True),
         sa.Column("data_source_name", sa.Text(), nullable=True),
         sa.Column(
-            "indicator_results",
-            postgresql.JSONB(astext_type=sa.Text()),
-            server_default=sa.text("'[]'"),
-            nullable=False,
-        ),
-        sa.Column(
             "variables",
             postgresql.JSONB(astext_type=sa.Text()),
             server_default=sa.text("'{}'"),
