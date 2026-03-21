@@ -20,14 +20,21 @@ class OutageScenario(BaseScenario):
         self,
         start: datetime,
         end: datetime,
+        *,
+        event_mode: bool = False,
         outage_duration_minutes: int = 30,
         recovery_minutes: int = 10,
     ):
-        super().__init__(start, end)
-        total = (end - start).total_seconds()
-        self.outage_start = start + timedelta(seconds=total * 0.60)
-        self.outage_end = self.outage_start + timedelta(minutes=outage_duration_minutes)
-        self.recovery_end = self.outage_end + timedelta(minutes=recovery_minutes)
+        super().__init__(start, end, event_mode=event_mode)
+        if event_mode:
+            self.outage_start = start
+            self.outage_end = end - timedelta(minutes=recovery_minutes)
+            self.recovery_end = end
+        else:
+            total = (end - start).total_seconds()
+            self.outage_start = start + timedelta(seconds=total * 0.60)
+            self.outage_end = self.outage_start + timedelta(minutes=outage_duration_minutes)
+            self.recovery_end = self.outage_end + timedelta(minutes=recovery_minutes)
 
     def _build_profiles(
         self,
