@@ -4,6 +4,8 @@
 from __future__ import annotations
 
 import json
+import sys
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import yaml
@@ -33,10 +35,35 @@ TEMPLATES_DIR = BASE_DIR / "templates"
 OUTPUT_DIR = BASE_DIR / "dashboards"
 
 
-def load_config(path: Path) -> dict:
-    """Load and parse the dashboard YAML config file."""
+def get_time_range(metadata_path: Path | None) -> tuple[str, str]:
+    """Compute dashboard time range from metadata JSON, or fall back to relative defaults.
+
+    If metadata_path exists and contains an ``end`` timestamp, computes start as
+    end minus 7 days and returns both as ISO 8601 strings with a "Z" suffix.
+    Falls back to ("now-7d", "now") if no metadata is available.
+    """
+    if metadata_path is not None and metadata_path.exists():
+        with open(metadata_path) as f:
+            metadata = json.load(f)
+        end_str = metadata.get("end")
+        if end_str:
+            end_dt = datetime.fromisoformat(end_str.rstrip("Z")).replace(tzinfo=UTC)
+            start_dt = end_dt - timedelta(days=7)
+            return (
+                start_dt.strftime("%Y-%m-%dT%H:%M:%SZ"),
+                end_dt.strftime("%Y-%m-%dT%H:%M:%SZ"),
+            )
+    return ("now-7d", "now")
+
+
+def load_config(path: Path, metadata_path: Path | None = None) -> dict:
+    """Load and parse the dashboard YAML config file, optionally overriding time range."""
     with open(path) as f:
-        return yaml.safe_load(f)
+        config = yaml.safe_load(f)
+    time_from, time_to = get_time_range(metadata_path)
+    config["time_from"] = time_from
+    config["time_to"] = time_to
+    return config
 
 
 def render_dashboard(
@@ -74,9 +101,9 @@ def validate_json(content: str, output_path: Path) -> bool:
         return False
 
 
-def generate_all_dashboards() -> None:
+def generate_all_dashboards(metadata_path: Path | None = None) -> None:
     """Render one dashboard JSON file per datasource and write to the output directory."""
-    config = load_config(CONFIG_PATH)
+    config = load_config(CONFIG_PATH, metadata_path=metadata_path)
     OUTPUT_DIR.mkdir(exist_ok=True)
 
     env = Environment(
@@ -111,9 +138,17 @@ def generate_all_dashboards() -> None:
 
 
 if __name__ == "__main__":
+    metadata_path: Path | None = None
+    if "--metadata" in sys.argv:
+        idx = sys.argv.index("--metadata")
+        if idx + 1 < len(sys.argv):
+            metadata_path = Path(sys.argv[idx + 1])
+
     print(f"Generating dashboards from {CONFIG_PATH.relative_to(BASE_DIR)}")
     print(f"Output directory: {OUTPUT_DIR.relative_to(BASE_DIR)}/")
+    if metadata_path is not None:
+        print(f"Metadata: {metadata_path}")
     print()
-    generate_all_dashboards()
+    generate_all_dashboards(metadata_path=metadata_path)
     print()
     print("Done.")
