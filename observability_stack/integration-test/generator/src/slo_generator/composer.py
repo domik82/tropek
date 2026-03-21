@@ -12,6 +12,8 @@ from typing import Any
 import pandas as pd
 import yaml
 
+from slo_generator.scenarios import get_scenario
+
 
 def parse_duration(s: str) -> timedelta:
     """Parse a duration string like '30s', '5m', '2h', '30d' into a timedelta."""
@@ -121,7 +123,72 @@ class TimelineComposer:
         chunk_hours: int = 1,
     ) -> Iterator[pd.DataFrame]:
         """Yield composed profile DataFrame chunks."""
-        raise NotImplementedError("composition logic in next task")
+        baseline = get_scenario(self.config.baseline, start=self.config.start, end=self.config.end)
+
+        event_scenarios = []
+        for event in sorted(self.config.events, key=lambda e: e.at):
+            event_start = self.config.start + event.at
+            event_end = event_start + event.duration
+            scenario = get_scenario(
+                event.type,
+                start=event_start,
+                end=event_end,
+                event_mode=True,
+                **event.params,
+            )
+            event_scenarios.append((event, scenario, event_start, event_end))
+
+        chunk_start = self.config.start
+        chunk_delta = timedelta(hours=chunk_hours)
+
+        while chunk_start < self.config.end:
+            chunk_end = min(chunk_start + chunk_delta, self.config.end)
+
+            overlapping = [
+                (ev, sc, es, ee)
+                for ev, sc, es, ee in event_scenarios
+                if es < chunk_end and ee > chunk_start
+            ]
+
+            chunk = baseline.generate_window(chunk_start, chunk_end, self.config.resolution_seconds)
+
+            if overlapping:
+                chunk = self._splice_events(chunk, chunk_start, chunk_end, overlapping)
+
+            if len(chunk) > 0:
+                yield chunk
+
+            chunk_start = chunk_end
+
+    def _splice_events(
+        self,
+        chunk: pd.DataFrame,
+        chunk_start: datetime,
+        chunk_end: datetime,
+        overlapping: list[tuple],
+    ) -> pd.DataFrame:
+        """Replace baseline rows with event data and apply restart gaps."""
+        for event, scenario, ev_start, ev_end in overlapping:
+            overlap_start = max(chunk_start, ev_start)
+            overlap_end = min(chunk_end, ev_end)
+            ev_resolution = event.resolution or self.config.resolution_seconds
+
+            event_data = scenario.generate_window(overlap_start, overlap_end, ev_resolution)
+
+            chunk = chunk[
+                (chunk["timestamp"] < pd.Timestamp(overlap_start))
+                | (chunk["timestamp"] >= pd.Timestamp(overlap_end))
+            ]
+            chunk = pd.concat([chunk, event_data], ignore_index=True)
+
+            if event.restart_gap.total_seconds() > 0:
+                gap_end = overlap_end + event.restart_gap
+                chunk = chunk[
+                    (chunk["timestamp"] < pd.Timestamp(overlap_end))
+                    | (chunk["timestamp"] >= pd.Timestamp(gap_end))
+                ]
+
+        return chunk.sort_values("timestamp").reset_index(drop=True)
 
     def write_metadata(self, output_dir: Path) -> None:
         """Write metadata JSON for dashboard time range configuration."""
