@@ -321,22 +321,22 @@ def test_asset_delete(client: TropekClient) -> None:
 
 
 def test_label_autocomplete(client: TropekClient) -> None:
-    """Test label-keys and label-values endpoints."""
-    step("Step 20: Label autocomplete")
-    keys = client.assets.label_keys()
+    """Test tag-keys and tag-values endpoints."""
+    step("Step 20: Tag autocomplete")
+    keys = client.assets.tag_keys()
     key_names = [k["key"] for k in keys]
-    print(f"label keys: {key_names}")
+    print(f"tag keys: {key_names}")
     assert "team" in key_names, f"expected 'team' in keys, got {key_names}"
     assert "env" in key_names, f"expected 'env' in keys, got {key_names}"
 
-    team_values = client.assets.label_values("team")
+    team_values = client.assets.tag_values("team")
     value_names = [v["value"] for v in team_values]
     print(f"team values: {value_names}")
     assert "payments" in value_names, f"expected 'payments' in {value_names}"
 
     for v in team_values:
         assert v["count"] > 0, f"expected count > 0 for {v['value']}"
-    print("PASS: label autocomplete")
+    print("PASS: tag autocomplete")
 
 
 def test_asset_type_delete_with_assets(client: TropekClient) -> None:
