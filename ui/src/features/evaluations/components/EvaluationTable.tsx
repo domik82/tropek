@@ -88,7 +88,7 @@ function cell(
     case 'annotations':
       return (
         <td key="annotations" className="px-4 py-3">
-          <AnnotationCell evalId={ev.id} annotation={ev.latest_annotation} count={ev.annotation_count} />
+          <AnnotationCell annotation={ev.latest_annotation} count={ev.annotation_count} />
         </td>
       )
     default:

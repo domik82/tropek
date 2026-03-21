@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { NoteEntry } from './NoteEntry'
@@ -14,7 +14,7 @@ const annotation: Annotation = {
   hidden_by: null,
   hidden_reason: null,
   created_at: '2026-03-19T10:00:00Z',
-  updated_at: null,
+  updated_at: '2026-03-19T10:00:00Z',
 }
 
 function renderWithQuery(ui: React.ReactElement) {
