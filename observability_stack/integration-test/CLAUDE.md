@@ -19,22 +19,21 @@ Three-layer pipeline: Scenario → Shaper → Adapter
 ## Common Commands
 
 ```bash
-make up              # full stack
-make down            # stop
-make reset           # wipe + restart
-make dashboard       # regenerate all 3 dashboard JSONs
-make test            # run generator unit tests
-
-# Local generation (no Docker):
-uv run --directory generator slo-generate --backends csv --output-dir output
-uv run --directory generator slo-generate --backends prometheus --output-dir output
+just up              # full stack
+just down            # stop
+just reset           # wipe + restart
+just dashboard       # regenerate all 3 dashboard JSONs
+just test            # run generator unit tests
+just gen-csv         # generate CSV files locally
+just gen-om          # generate OpenMetrics files locally
+just gen healthy     # generate a single scenario
 ```
 
 ## File Map
 
 ```
 docker-compose.yml
-Makefile
+justfile
 
 generator/
   pyproject.toml              uv project, pandas/numpy/click deps
@@ -102,5 +101,5 @@ All metrics have labels: `service` ∈ {frontend, api, backend}, `host` ∈ {hos
 - `--storage.tsdb.allow-overlapping-blocks` is required on Prometheus when
   loading backfilled TSDB blocks alongside live scrape data
 - Dashboard JSON must have `"uid"` set — Grafana uses it for stable linking
-- Never run `make reset` with the stack running — always `make down` first
+- Never run `just reset` with the stack running — always `just down` first
 - Generator uses `uv run slo-generate` — no `python main.py` or `requirements.txt`
