@@ -5,6 +5,8 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 
 import pandas as pd
+from slo_generator.scenarios.degradation import DegradationScenario
+from slo_generator.scenarios.outage import OutageScenario
 
 from tests.conftest import validate_profile_schema
 
@@ -88,3 +90,78 @@ class TestHealthyScenario:
         for chunk in chunks:
             duration = chunk["timestamp"].max() - chunk["timestamp"].min()
             assert duration <= pd.Timedelta(hours=1)
+
+
+class TestOutageScenario:
+    def test_throughput_drops_during_outage(self):
+        start = datetime(2026, 3, 20, 0, 0, 0, tzinfo=UTC)
+        end = start + timedelta(hours=12)
+        scenario = OutageScenario(start, end, outage_duration_minutes=30)
+
+        chunks = list(scenario.generate(resolution_seconds=30))
+        df = pd.concat(chunks)
+        api = df[(df["service"] == "api") & (df["host"] == "host1")]
+
+        # Pre-outage throughput should be healthy (~100 rps)
+        pre = api[api["timestamp"] < start + timedelta(hours=6)]
+        assert pre["throughput_rps"].mean() > 80
+
+        # During outage throughput should be collapsed
+        outage_start = start + timedelta(seconds=12 * 3600 * 0.60)
+        outage_end = outage_start + timedelta(minutes=30)
+        during = api[
+            (api["timestamp"] >= outage_start + timedelta(minutes=5))
+            & (api["timestamp"] < outage_end)
+        ]
+        if len(during) > 0:
+            assert during["throughput_rps"].mean() < 20
+
+    def test_error_rate_spikes_during_outage(self):
+        start = datetime(2026, 3, 20, 0, 0, 0, tzinfo=UTC)
+        end = start + timedelta(hours=12)
+        scenario = OutageScenario(start, end, outage_duration_minutes=30)
+
+        chunks = list(scenario.generate(resolution_seconds=30))
+        df = pd.concat(chunks)
+        api = df[(df["service"] == "api") & (df["host"] == "host1")]
+
+        outage_start = start + timedelta(seconds=12 * 3600 * 0.60)
+        outage_end = outage_start + timedelta(minutes=30)
+        during = api[
+            (api["timestamp"] >= outage_start + timedelta(minutes=5))
+            & (api["timestamp"] < outage_end)
+        ]
+        if len(during) > 0:
+            assert during["error_rate"].mean() > 0.5
+
+
+class TestDegradationScenario:
+    def test_throughput_unchanged_during_degradation(self):
+        start = datetime(2026, 3, 20, 0, 0, 0, tzinfo=UTC)
+        end = start + timedelta(hours=12)
+        scenario = DegradationScenario(start, end)
+
+        chunks = list(scenario.generate(resolution_seconds=30))
+        df = pd.concat(chunks)
+        api = df[(df["service"] == "api") & (df["host"] == "host1")]
+
+        pre = api[api["timestamp"] < start + timedelta(hours=6)]
+        post = api[api["timestamp"] > start + timedelta(hours=10)]
+
+        # Throughput should be roughly the same pre and post deploy
+        assert abs(pre["throughput_rps"].mean() - post["throughput_rps"].mean()) < 20
+
+    def test_latency_increases_during_degradation(self):
+        start = datetime(2026, 3, 20, 0, 0, 0, tzinfo=UTC)
+        end = start + timedelta(hours=12)
+        scenario = DegradationScenario(start, end)
+
+        chunks = list(scenario.generate(resolution_seconds=30))
+        df = pd.concat(chunks)
+        api = df[(df["service"] == "api") & (df["host"] == "host1")]
+
+        pre = api[api["timestamp"] < start + timedelta(hours=6)]
+        post = api[api["timestamp"] > start + timedelta(hours=10)]
+
+        # P99 should be roughly 5x higher after deployment
+        assert post["p99_latency"].mean() > pre["p99_latency"].mean() * 3
