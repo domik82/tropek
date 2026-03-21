@@ -8,8 +8,9 @@ from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
-from app.db.models import Evaluation, SLIValue
+from app.db.models import Evaluation, IndicatorResultRow, SLIValue, SLOObjective
 from app.modules.quality_gate.engine.constants import EvaluationStatus
 
 
@@ -29,6 +30,9 @@ class TrendRepository:
         """Fetch the last N completed evaluations for an asset, ordered by period_start DESC."""
         q = (
             select(Evaluation)
+            .options(
+                selectinload(Evaluation.indicator_rows).joinedload(IndicatorResultRow.objective),
+            )
             .where(
                 Evaluation.asset_id == asset_id,
                 Evaluation.status == EvaluationStatus.COMPLETED,
@@ -52,7 +56,7 @@ class TrendRepository:
         """Return time-series trend points for a specific asset+SLO+metric combination.
 
         Fetches the most recent `limit` evaluations DESC, then returns them ASC.
-        Baseline extracted from indicator_results JSONB array.
+        Baseline from IndicatorResultRow.compared_value via JOIN.
         Excludes invalidated evaluations and those with asset_id=NULL.
         """
         inner = (
@@ -61,13 +65,22 @@ class TrendRepository:
                 SLIValue.value,
                 SLIValue.eval_id,
                 Evaluation.result,
-                Evaluation.indicator_results,
+                IndicatorResultRow.compared_value,
             )
             .join(Evaluation, SLIValue.eval_id == Evaluation.id)
+            .join(
+                IndicatorResultRow,
+                IndicatorResultRow.evaluation_id == Evaluation.id,
+            )
+            .join(
+                SLOObjective,
+                IndicatorResultRow.slo_objective_id == SLOObjective.id,
+            )
             .where(
                 Evaluation.asset_id == asset_id,
                 Evaluation.slo_name == slo_name,
                 SLIValue.metric_name == metric_name,
+                SLOObjective.sli == metric_name,
                 Evaluation.invalidated == False,  # noqa: E712
                 Evaluation.result.is_not(None),
             )
@@ -76,23 +89,16 @@ class TrendRepository:
             .subquery()
         )
         rows = await self._session.execute(select(inner).order_by(inner.c.period_start))
-        points = []
-        for r in rows:
-            baseline: float | None = None
-            for ind in r.indicator_results or []:
-                if ind.get("metric") == metric_name:
-                    baseline = ind.get("compared_value")
-                    break
-            points.append(
-                {
-                    "timestamp": r.period_start.isoformat(),
-                    "value": r.value,
-                    "eval_id": str(r.eval_id),
-                    "result": r.result,
-                    "baseline": baseline,
-                }
-            )
-        return points
+        return [
+            {
+                "timestamp": r.period_start.isoformat(),
+                "value": r.value,
+                "eval_id": str(r.eval_id),
+                "result": r.result,
+                "baseline": r.compared_value,
+            }
+            for r in rows
+        ]
 
     async def get_trend(
         self,
