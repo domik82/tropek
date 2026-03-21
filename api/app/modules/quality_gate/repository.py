@@ -30,7 +30,7 @@ class EvaluationRepository:
         period_end: datetime,
         ingestion_mode: str,
         asset_snapshot: dict[str, Any],
-        metadata: dict[str, Any],
+        variables: dict[str, Any],
         asset_id: uuid.UUID,
         slo_name: str,
         slo_version: int | None = None,
@@ -47,7 +47,7 @@ class EvaluationRepository:
             period_end: Evaluation window end.
             ingestion_mode: One of "pull", "push", "file".
             asset_snapshot: Denormalised asset state at trigger time.
-            metadata: Caller-provided key-value pairs.
+            variables: Caller-provided key-value pairs for template substitution.
             asset_id: UUID of the associated asset.
             slo_name: Named SLO used for this evaluation.
             slo_version: Version of the named SLO, if any.
@@ -59,12 +59,12 @@ class EvaluationRepository:
         Returns:
             Newly created Evaluation in pending status.
         """
-        # Merge asset labels as defaults into metadata (caller values take precedence)
-        merged_metadata = dict(metadata)
+        # Merge asset tags as defaults into variables (caller values take precedence)
+        merged_variables = dict(variables)
         asset_row = await self._session.get(Asset, asset_id)
         if asset_row is not None and asset_row.tags:
             for key, value in asset_row.tags.items():
-                merged_metadata.setdefault(str(key), str(value))
+                merged_variables.setdefault(str(key), str(value))
 
         ev = Evaluation(
             id=uuid.uuid4(),
@@ -73,7 +73,7 @@ class EvaluationRepository:
             period_end=period_end,
             ingestion_mode=ingestion_mode,
             asset_snapshot=asset_snapshot,
-            evaluation_metadata=merged_metadata,
+            variables=merged_variables,
             asset_id=asset_id,
             slo_name=slo_name,
             slo_version=slo_version,
