@@ -9,6 +9,7 @@ from slo_generator.scenarios.degradation import DegradationScenario
 from slo_generator.scenarios.healthy import HealthyScenario
 from slo_generator.scenarios.memory_leak import MemoryLeakScenario
 from slo_generator.scenarios.outage import OutageScenario
+from slo_generator.scenarios.polska import PolskaScenario
 from slo_generator.scenarios.step_change import StepChangeScenario
 from slo_generator.scenarios.traffic_spike import TrafficSpikeScenario
 
@@ -438,3 +439,39 @@ class TestStepChangeScenario:
         chunks = list(scenario.generate(resolution_seconds=30))
         df = pd.concat(chunks)
         validate_profile_schema(df)
+
+
+class TestPolskaScenario:
+    def test_profile_schema_valid(self):
+        start = datetime(2026, 3, 20, 0, 0, 0, tzinfo=UTC)
+        end = start + timedelta(hours=4)
+        scenario = PolskaScenario(start, end)
+
+        chunks = list(scenario.generate(resolution_seconds=30))
+        df = pd.concat(chunks)
+        validate_profile_schema(df)
+
+    def test_throughput_varies_with_contour(self):
+        start = datetime(2026, 3, 20, 0, 0, 0, tzinfo=UTC)
+        end = start + timedelta(hours=4)
+        scenario = PolskaScenario(start, end)
+
+        chunks = list(scenario.generate(resolution_seconds=30))
+        df = pd.concat(chunks)
+        api = df[(df["service"] == "api") & (df["host"] == "host1")]
+
+        # Throughput should vary (not a flat line) following the contour
+        assert api["throughput_rps"].std() > 5.0
+
+    def test_latency_anticorrelated_with_throughput(self):
+        start = datetime(2026, 3, 20, 0, 0, 0, tzinfo=UTC)
+        end = start + timedelta(hours=4)
+        scenario = PolskaScenario(start, end)
+
+        chunks = list(scenario.generate(resolution_seconds=60))
+        df = pd.concat(chunks)
+        api = df[(df["service"] == "api") & (df["host"] == "host1")]
+
+        # Throughput and latency should be roughly anti-correlated
+        corr = api["throughput_rps"].corr(api["p99_latency"])
+        assert corr < 0  # negative correlation
