@@ -143,23 +143,25 @@ async def get_metric_heatmap(
     cells: list[HeatmapCell] = []
     for ev in reversed(evals):  # oldest first for display
         slots.append(ev.period_start)
-        for ir in ev.indicator_results or []:
-            metric_name = ir.get("metric", "")
+        for row in ev.indicator_rows or []:
+            obj = row.objective
+            metric_name = obj.sli
+            display = obj.display_name or metric_name
             if metric_name not in metric_set:
-                metric_set[metric_name] = ir.get("display_name", metric_name)
+                metric_set[metric_name] = display
             cells.append(
                 HeatmapCell(
                     slot=ev.period_start,
                     metric=metric_name,
-                    display_name=ir.get("display_name", metric_name),
+                    display_name=display,
                     result=(
                         "invalidated"
                         if ev.invalidated
-                        else (ev.result or ir.get("status", "error"))
+                        else (ev.result or row.status)
                         if ev.original_result is not None
-                        else ir.get("status", "error")
+                        else row.status
                     ),
-                    score=ir.get("score", 0.0),
+                    score=row.score,
                     eval_id=ev.id,
                 )
             )
