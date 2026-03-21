@@ -1,0 +1,25 @@
+[project]
+name = "slo-generator"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = [
+    "pandas>=2.2",
+    "numpy>=1.26",
+    "click>=8.1",
+    "rich>=13.7",
+]
+
+[project.optional-dependencies]
+influxdb = ["influxdb-client>=1.41"]
+timescaledb = ["psycopg[binary]>=3.1"]
+all = ["slo-generator[influxdb,timescaledb]"]
+
+[project.scripts]
+slo-generate = "slo_generator.cli:main"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
