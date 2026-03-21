@@ -62,8 +62,8 @@ class EvaluationRepository:
         # Merge asset labels as defaults into metadata (caller values take precedence)
         merged_metadata = dict(metadata)
         asset_row = await self._session.get(Asset, asset_id)
-        if asset_row is not None and asset_row.labels:
-            for key, value in asset_row.labels.items():
+        if asset_row is not None and asset_row.tags:
+            for key, value in asset_row.tags.items():
                 merged_metadata.setdefault(str(key), str(value))
 
         ev = Evaluation(
