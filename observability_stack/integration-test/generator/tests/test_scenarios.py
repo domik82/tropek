@@ -7,7 +7,10 @@ from datetime import UTC, datetime, timedelta
 import pandas as pd
 from slo_generator.scenarios.degradation import DegradationScenario
 from slo_generator.scenarios.healthy import HealthyScenario
+from slo_generator.scenarios.memory_leak import MemoryLeakScenario
 from slo_generator.scenarios.outage import OutageScenario
+from slo_generator.scenarios.step_change import StepChangeScenario
+from slo_generator.scenarios.traffic_spike import TrafficSpikeScenario
 
 from tests.conftest import validate_profile_schema
 
@@ -284,8 +287,6 @@ class TestDegradationEventMode:
 
 class TestMemoryLeakScenario:
     def test_latency_increases_exponentially(self):
-        from slo_generator.scenarios.memory_leak import MemoryLeakScenario
-
         start = datetime(2026, 3, 1, 0, 0, 0, tzinfo=UTC)
         end = start + timedelta(hours=48)
         scenario = MemoryLeakScenario(start, end, growth_rate=0.01)
@@ -304,8 +305,6 @@ class TestMemoryLeakScenario:
         assert late["p99_latency"].mean() > early["p99_latency"].mean() * 2
 
     def test_memory_grows_over_time(self):
-        from slo_generator.scenarios.memory_leak import MemoryLeakScenario
-
         start = datetime(2026, 3, 1, 0, 0, 0, tzinfo=UTC)
         end = start + timedelta(hours=48)
         scenario = MemoryLeakScenario(start, end, growth_rate=0.01)
@@ -320,8 +319,6 @@ class TestMemoryLeakScenario:
         assert late["memory_bytes"].mean() > early["memory_bytes"].mean()
 
     def test_crash_at_end_spikes_errors(self):
-        from slo_generator.scenarios.memory_leak import MemoryLeakScenario
-
         start = datetime(2026, 3, 1, 0, 0, 0, tzinfo=UTC)
         end = start + timedelta(hours=24)
         scenario = MemoryLeakScenario(start, end, crash_at_end=True)
@@ -335,8 +332,6 @@ class TestMemoryLeakScenario:
         assert final_hour["error_rate"].mean() > 0.5
 
     def test_profile_schema_valid(self):
-        from slo_generator.scenarios.memory_leak import MemoryLeakScenario
-
         start = datetime(2026, 3, 1, 0, 0, 0, tzinfo=UTC)
         end = start + timedelta(hours=2)
         scenario = MemoryLeakScenario(start, end)
@@ -348,8 +343,6 @@ class TestMemoryLeakScenario:
 
 class TestTrafficSpikeScenario:
     def test_throughput_spikes_in_rate_limit_mode(self):
-        from slo_generator.scenarios.traffic_spike import TrafficSpikeScenario
-
         start = datetime(2026, 3, 20, 0, 0, 0, tzinfo=UTC)
         end = start + timedelta(hours=2)
         scenario = TrafficSpikeScenario(
@@ -367,8 +360,6 @@ class TestTrafficSpikeScenario:
         assert api["throughput_rps"].max() > 300  # 5x of ~100
 
     def test_overload_mode_increases_latency(self):
-        from slo_generator.scenarios.traffic_spike import TrafficSpikeScenario
-
         start = datetime(2026, 3, 20, 0, 0, 0, tzinfo=UTC)
         end = start + timedelta(hours=2)
         scenario = TrafficSpikeScenario(
@@ -386,8 +377,6 @@ class TestTrafficSpikeScenario:
         assert api["p99_latency"].max() > 1.0
 
     def test_rate_limit_mode_keeps_latency_low(self):
-        from slo_generator.scenarios.traffic_spike import TrafficSpikeScenario
-
         start = datetime(2026, 3, 20, 0, 0, 0, tzinfo=UTC)
         end = start + timedelta(hours=2)
         scenario = TrafficSpikeScenario(
@@ -405,11 +394,46 @@ class TestTrafficSpikeScenario:
         assert api["p99_latency"].max() < 1.0
 
     def test_profile_schema_valid(self):
-        from slo_generator.scenarios.traffic_spike import TrafficSpikeScenario
-
         start = datetime(2026, 3, 20, 0, 0, 0, tzinfo=UTC)
         end = start + timedelta(hours=1)
         scenario = TrafficSpikeScenario(start, end)
+
+        chunks = list(scenario.generate(resolution_seconds=30))
+        df = pd.concat(chunks)
+        validate_profile_schema(df)
+
+
+class TestStepChangeScenario:
+    def test_latency_shifts_to_new_level(self):
+        start = datetime(2026, 3, 20, 0, 0, 0, tzinfo=UTC)
+        end = start + timedelta(hours=4)
+        scenario = StepChangeScenario(start, end, latency_multiplier=2.0, ramp_minutes=5)
+
+        chunks = list(scenario.generate(resolution_seconds=30))
+        df = pd.concat(chunks)
+        api = df[(df["service"] == "api") & (df["host"] == "host1")]
+
+        # After ramp, latency should be near 2x
+        post_ramp = api[api["timestamp"] >= start + timedelta(minutes=10)]
+        assert post_ramp["p99_latency"].mean() > 0.12  # ~2x of 0.08
+
+    def test_throughput_shifts_to_new_level(self):
+        start = datetime(2026, 3, 20, 0, 0, 0, tzinfo=UTC)
+        end = start + timedelta(hours=4)
+        scenario = StepChangeScenario(start, end, throughput_multiplier=0.7, ramp_minutes=2)
+
+        chunks = list(scenario.generate(resolution_seconds=30))
+        df = pd.concat(chunks)
+        api = df[(df["service"] == "api") & (df["host"] == "host1")]
+
+        post_ramp = api[api["timestamp"] >= start + timedelta(minutes=5)]
+        # Throughput should be ~70% of baseline (~100)
+        assert post_ramp["throughput_rps"].mean() < 80
+
+    def test_profile_schema_valid(self):
+        start = datetime(2026, 3, 20, 0, 0, 0, tzinfo=UTC)
+        end = start + timedelta(hours=1)
+        scenario = StepChangeScenario(start, end)
 
         chunks = list(scenario.generate(resolution_seconds=30))
         df = pd.concat(chunks)
