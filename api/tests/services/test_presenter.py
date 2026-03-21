@@ -260,3 +260,79 @@ def test_build_detail_latest_annotation_is_most_recent() -> None:
     detail = build_detail(ev)
     assert detail.latest_annotation is not None
     assert detail.latest_annotation.content == "New"
+
+
+def _make_indicator_row(
+    *,
+    sli: str = "response_time",
+    display_name: str = "Response Time",
+    tab_group: str | None = None,
+    value: float | None = 580.0,
+    compared_value: float | None = 500.0,
+    change_absolute: float | None = 80.0,
+    change_relative_pct: float | None = 16.0,
+    status: str = "pass",
+    score: float = 1.0,
+    weight: int = 1,
+    key_sli: bool = False,
+    pass_criteria: list[str] | None = None,
+    warning_criteria: list[str] | None = None,
+) -> SimpleNamespace:
+    """Build a fake ORM IndicatorResultRow with joined objective."""
+    objective = SimpleNamespace(
+        sli=sli,
+        display_name=display_name,
+        tab_group=tab_group,
+        weight=weight,
+        key_sli=key_sli,
+        pass_criteria=pass_criteria or ["<600"],
+        warning_criteria=warning_criteria or [],
+    )
+    return SimpleNamespace(
+        value=value,
+        compared_value=compared_value,
+        change_absolute=change_absolute,
+        change_relative_pct=change_relative_pct,
+        status=status,
+        score=score,
+        objective=objective,
+    )
+
+
+def test_build_detail_from_orm_rows() -> None:
+    """build_detail works with ORM indicator rows (new path)."""
+    row_pass = _make_indicator_row(status="pass", value=580.0)
+    row_fail = _make_indicator_row(
+        sli="error_rate",
+        display_name="Error Rate",
+        status="fail",
+        value=5.2,
+        score=0.0,
+        weight=2,
+        pass_criteria=["<2"],
+    )
+    ev = _make_evaluation(indicator_results=[])
+    ev.indicator_rows = [row_pass, row_fail]
+    detail = build_detail(ev)
+    assert len(detail.indicator_results) == 2
+    assert detail.indicator_results[0].metric == "response_time"
+    assert detail.indicator_results[1].status == "fail"
+    assert len(detail.top_failures) == 1
+    assert detail.top_failures[0].metric == "error_rate"
+
+
+def test_build_summary_from_orm_rows() -> None:
+    """build_summary works with ORM indicator rows (new path)."""
+    row_fail = _make_indicator_row(
+        sli="error_rate",
+        display_name="Error Rate",
+        status="fail",
+        value=5.2,
+        score=0.0,
+        pass_criteria=["<2"],
+    )
+    ev = _make_evaluation(indicator_results=[])
+    ev.indicator_rows = [row_fail]
+    summary = build_summary(ev, annotation_count=0, latest_ann=None)
+    assert len(summary.top_failures) == 1
+    assert summary.top_failures[0].threshold == "<2"
