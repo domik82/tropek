@@ -40,7 +40,7 @@ async def _create_eval(
         period_end=start + timedelta(minutes=30),
         ingestion_mode="push",
         asset_snapshot={"name": "baseline-asset", "tags": {}},
-        metadata={},
+        variables={},
         asset_id=asset_id,
         slo_name="test-slo",
     )

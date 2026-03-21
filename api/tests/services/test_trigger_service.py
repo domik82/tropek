@@ -31,7 +31,7 @@ def _make_request(
         evaluation_name=evaluation_name,
         period_start=_START,
         period_end=_END,
-        metadata={},
+        variables={},
     )
 
 
@@ -39,7 +39,7 @@ def _make_asset(name: str = "vm-01") -> MagicMock:
     asset = MagicMock()
     asset.id = uuid.uuid4()
     asset.name = name
-    asset.labels = {"env": "prod"}
+    asset.tags = {"env": "prod"}
     return asset
 
 

@@ -56,7 +56,7 @@ async def _setup_re_eval(
         period_end=_START + timedelta(minutes=30),
         ingestion_mode="push",
         asset_snapshot={"name": asset_name},
-        metadata={},
+        variables={},
         asset_id=asset_id,
         slo_name="re-eval-ep-slo",
     )

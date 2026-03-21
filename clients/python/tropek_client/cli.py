@@ -82,7 +82,7 @@ def _collect_documents(client: TropekClient) -> list[dict[str, Any]]:
         {
             "api_version": "tropek/v1",
             "kind": "DataSource",
-            "metadata": {"name": ds.name, "display_name": ds.display_name, "labels": ds.labels},
+            "metadata": {"name": ds.name, "display_name": ds.display_name, "tags": ds.tags},
             "spec": {"adapter_type": ds.adapter_type, "adapter_url": ds.adapter_url},
         }
         for ds in client.datasources.list().items
@@ -91,7 +91,7 @@ def _collect_documents(client: TropekClient) -> list[dict[str, Any]]:
         {
             "api_version": "tropek/v1",
             "kind": "Asset",
-            "metadata": {"name": a.name, "display_name": a.display_name, "labels": a.labels},
+            "metadata": {"name": a.name, "display_name": a.display_name, "tags": a.tags},
             "spec": {"type_name": a.type_name},
         }
         for a in client.assets.list().items

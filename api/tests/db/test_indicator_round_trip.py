@@ -108,7 +108,7 @@ async def test_detail_round_trip_all_fields(db_session: AsyncSession) -> None:
         period_end=_END,
         ingestion_mode="push",
         asset_snapshot={"name": "vm-test-01", "tags": {}},
-        metadata={},
+        variables={},
         asset_id=asset_id,
         slo_name="test-slo",
     )
@@ -162,7 +162,7 @@ async def test_summary_top_failures(db_session: AsyncSession) -> None:
         period_end=_END,
         ingestion_mode="push",
         asset_snapshot={"name": "vm-test-01", "tags": {}},
-        metadata={},
+        variables={},
         asset_id=asset_id,
         slo_name="test-slo",
     )
@@ -193,7 +193,7 @@ async def test_empty_indicator_results(db_session: AsyncSession) -> None:
         period_end=_END,
         ingestion_mode="push",
         asset_snapshot={"name": "vm-test-01", "tags": {}},
-        metadata={},
+        variables={},
         asset_id=asset_id,
         slo_name="test-slo",
     )

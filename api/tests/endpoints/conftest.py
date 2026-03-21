@@ -60,7 +60,7 @@ async def _create_completed_eval(
         period_end=period_end,
         ingestion_mode="push",
         asset_snapshot=_make_snapshot(),
-        metadata={},
+        variables={},
         asset_id=asset_id,
         slo_name=slo_name,
     )

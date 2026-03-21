@@ -47,7 +47,7 @@ async def test_create_pending_returns_evaluation(db_session: AsyncSession) -> No
         period_end=_END,
         ingestion_mode="push",
         asset_snapshot=_make_snapshot(),
-        metadata={},
+        variables={},
         asset_id=asset_id,
         slo_name="test-slo",
     )
@@ -66,7 +66,7 @@ async def test_get_returns_evaluation(db_session: AsyncSession) -> None:
         period_end=_END,
         ingestion_mode="push",
         asset_snapshot=_make_snapshot(),
-        metadata={},
+        variables={},
         asset_id=asset_id,
         slo_name="test-slo",
     )
@@ -85,7 +85,7 @@ async def test_mark_completed_updates_fields(db_session: AsyncSession) -> None:
         period_end=_END,
         ingestion_mode="push",
         asset_snapshot=_make_snapshot(),
-        metadata={},
+        variables={},
         asset_id=asset_id,
         slo_name="test-slo",
     )
@@ -112,7 +112,7 @@ async def test_mark_running_sets_status(db_session: AsyncSession) -> None:
         period_end=_END,
         ingestion_mode="pull",
         asset_snapshot=_make_snapshot(),
-        metadata={},
+        variables={},
         asset_id=asset_id,
         slo_name="test-slo",
     )
@@ -139,7 +139,7 @@ async def test_list_evaluations_filters_by_name(db_session: AsyncSession) -> Non
             period_end=_END,
             ingestion_mode="push",
             asset_snapshot=_make_snapshot(),
-            metadata={},
+            variables={},
             asset_id=asset_id,
             slo_name="test-slo",
         )
@@ -161,7 +161,7 @@ async def test_get_baselines_excludes_invalidated(db_session: AsyncSession) -> N
         period_end=_END,
         ingestion_mode="push",
         asset_snapshot=_make_snapshot(),
-        metadata={},
+        variables={},
         asset_id=asset_id,
         slo_name="http-slo",
     )
@@ -179,7 +179,7 @@ async def test_get_baselines_excludes_invalidated(db_session: AsyncSession) -> N
         period_end=_END,
         ingestion_mode="push",
         asset_snapshot=_make_snapshot(),
-        metadata={},
+        variables={},
         asset_id=asset_id,
         slo_name="http-slo",
     )
@@ -214,7 +214,7 @@ async def test_add_and_list_annotations(db_session: AsyncSession) -> None:
         period_end=_END,
         ingestion_mode="push",
         asset_snapshot=_make_snapshot(),
-        metadata={},
+        variables={},
         asset_id=asset_id,
         slo_name="test-slo",
     )
@@ -236,7 +236,7 @@ async def test_hide_annotation(db_session: AsyncSession) -> None:
         period_end=_END,
         ingestion_mode="push",
         asset_snapshot=_make_snapshot(),
-        metadata={},
+        variables={},
         asset_id=asset_id,
         slo_name="test-slo",
     )
@@ -263,7 +263,7 @@ async def test_write_and_read_sli_values(db_session: AsyncSession) -> None:
         period_end=_END,
         ingestion_mode="push",
         asset_snapshot=_make_snapshot(),
-        metadata={},
+        variables={},
         asset_id=asset_id,
         slo_name="test-slo",
     )
@@ -301,7 +301,7 @@ async def test_get_baselines_excludes_null_sli_version_with_range(
         period_end=_END,
         ingestion_mode="push",
         asset_snapshot=_make_snapshot(),
-        metadata={},
+        variables={},
         asset_id=asset_id,
         slo_name="http-slo",
         sli_version=2,
@@ -320,7 +320,7 @@ async def test_get_baselines_excludes_null_sli_version_with_range(
         period_end=_END,
         ingestion_mode="push",
         asset_snapshot=_make_snapshot(),
-        metadata={},
+        variables={},
         asset_id=asset_id,
         slo_name="http-slo",
     )
@@ -359,7 +359,7 @@ async def test_get_baselines_by_asset_and_slo(db_session: AsyncSession) -> None:
             period_end=_END,
             ingestion_mode="push",
             asset_snapshot=_make_snapshot(),
-            metadata={},
+            variables={},
             asset_id=aid,
             slo_name="http-slo",
         )
@@ -400,7 +400,7 @@ async def test_get_baselines_excludes_future_period_start(db_session: AsyncSessi
             period_end=s,
             ingestion_mode="push",
             asset_snapshot=_make_snapshot(),
-            metadata={},
+            variables={},
             asset_id=asset_id,
             slo_name="http-slo",
         )
@@ -425,7 +425,7 @@ async def test_get_baselines_excludes_future_period_start(db_session: AsyncSessi
 
 @pytest.mark.integration
 async def test_get_baselines_with_tag_filters(db_session: AsyncSession) -> None:
-    """Tag filters narrow baselines by evaluation_metadata JSONB values."""
+    """Tag filters narrow baselines by variables JSONB values."""
     repo = EvaluationRepository(db_session)
     baseline_repo = BaselineRepository(db_session)
     asset_id = await _create_asset(db_session)
@@ -437,7 +437,7 @@ async def test_get_baselines_with_tag_filters(db_session: AsyncSession) -> None:
             period_end=_END,
             ingestion_mode="push",
             asset_snapshot=_make_snapshot(),
-            metadata={"branch": branch},
+            variables={"branch": branch},
             asset_id=asset_id,
             slo_name="http-slo",
         )
@@ -474,7 +474,7 @@ async def test_get_baselines_with_sli_version_range(db_session: AsyncSession) ->
             period_end=_END,
             ingestion_mode="push",
             asset_snapshot=_make_snapshot(),
-            metadata={},
+            variables={},
             asset_id=asset_id,
             slo_name="http-slo",
             sli_version=v,
@@ -516,7 +516,7 @@ async def test_get_baselines_restrict_to_ids(db_session: AsyncSession) -> None:
             period_end=_END,
             ingestion_mode="push",
             asset_snapshot=_make_snapshot(),
-            metadata={},
+            variables={},
             asset_id=asset_id,
             slo_name="http-slo",
         )
@@ -542,10 +542,10 @@ async def test_get_baselines_restrict_to_ids(db_session: AsyncSession) -> None:
 
 
 @pytest.mark.integration
-async def test_create_pending_merges_asset_labels_into_metadata(
+async def test_create_pending_merges_asset_tags_into_variables(
     db_session: AsyncSession,
 ) -> None:
-    """Asset labels become defaults in evaluation_metadata; caller values take precedence."""
+    """Asset tags become defaults in variables; caller values take precedence."""
     type_name = f"vm-{uuid.uuid4().hex[:8]}"
     db_session.add(AssetType(id=uuid.uuid4(), name=type_name))
     await db_session.flush()
@@ -555,7 +555,7 @@ async def test_create_pending_merges_asset_labels_into_metadata(
             id=asset_id,
             name=f"tag-test-{asset_id.hex[:8]}",
             type_name=type_name,
-            labels={"os": "ubuntu-22", "region": "us-east-1", "branch": "main"},
+            tags={"os": "ubuntu-22", "region": "us-east-1", "branch": "main"},
         )
     )
     await db_session.flush()
@@ -567,17 +567,17 @@ async def test_create_pending_merges_asset_labels_into_metadata(
         period_end=_END,
         ingestion_mode="push",
         asset_snapshot=_make_snapshot(),
-        metadata={"branch": "feature-x", "env": "staging"},
+        variables={"branch": "feature-x", "env": "staging"},
         asset_id=asset_id,
         slo_name="test-slo",
     )
-    # Caller's "branch" wins over asset label's "branch"
-    assert ev.evaluation_metadata["branch"] == "feature-x"
-    # Asset label "os" is merged as default
-    assert ev.evaluation_metadata["os"] == "ubuntu-22"
-    assert ev.evaluation_metadata["region"] == "us-east-1"
+    # Caller's "branch" wins over asset tag's "branch"
+    assert ev.variables["branch"] == "feature-x"
+    # Asset tag "os" is merged as default
+    assert ev.variables["os"] == "ubuntu-22"
+    assert ev.variables["region"] == "us-east-1"
     # Caller's "env" is preserved
-    assert ev.evaluation_metadata["env"] == "staging"
+    assert ev.variables["env"] == "staging"
 
 
 @pytest.mark.integration
@@ -591,7 +591,7 @@ async def test_override_double_apply_preserves_original(db_session: AsyncSession
         period_end=_END,
         ingestion_mode="push",
         asset_snapshot=_make_snapshot(),
-        metadata={},
+        variables={},
         asset_id=asset_id,
         slo_name="test-slo",
     )

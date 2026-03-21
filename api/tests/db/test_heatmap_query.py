@@ -55,7 +55,7 @@ async def test_heatmap_returns_completed_evals(db_session: AsyncSession) -> None
             period_end=start + timedelta(minutes=30),
             ingestion_mode="push",
             asset_snapshot={"name": "heatmap-asset", "tags": {}},
-            metadata={},
+            variables={},
             asset_id=asset_id,
             slo_name="test-slo",
         )
@@ -80,7 +80,7 @@ async def test_heatmap_includes_invalidated_completed(db_session: AsyncSession) 
         period_end=_BASE + timedelta(minutes=30),
         ingestion_mode="push",
         asset_snapshot={"name": "hm-inv-asset", "tags": {}},
-        metadata={},
+        variables={},
         asset_id=asset_id,
         slo_name="test-slo",
     )
