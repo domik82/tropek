@@ -11,7 +11,7 @@ from sqlalchemy import String, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.db.models import Asset, Evaluation, EvaluationAnnotation
+from app.db.models import Asset, Evaluation, EvaluationAnnotation, IndicatorResultRow
 from app.modules.quality_gate.engine.constants import EvaluationStatus
 from app.modules.quality_gate.exceptions import DuplicateEvaluationError
 
@@ -233,7 +233,10 @@ class EvaluationRepository:
         """
         result = await self._session.execute(
             select(Evaluation)
-            .options(selectinload(Evaluation.annotations))
+            .options(
+                selectinload(Evaluation.annotations),
+                selectinload(Evaluation.indicator_rows).joinedload(IndicatorResultRow.objective),
+            )
             .where(Evaluation.id == eval_id)
         )
         return result.scalar_one_or_none()
