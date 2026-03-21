@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import pandas as pd
+from slo_generator.shapers.influxdb import InfluxDBShaper
 from slo_generator.shapers.prometheus import PrometheusShaper
 from slo_generator.shapers.raw import RawShaper
+from slo_generator.shapers.timescaledb import TimescaleDBShaper
 
 
 class TestRawShaper:
@@ -72,3 +74,54 @@ class TestPrometheusShaper:
         final = list(shaper.finalize())
         # May or may not have data, but should not crash
         assert isinstance(final, list)
+
+
+class TestInfluxDBShaper:
+    def test_output_has_influxdb_columns(self, sample_profile_chunk: pd.DataFrame):
+        shaper = InfluxDBShaper()
+        shaped = list(shaper.shape(sample_profile_chunk))
+        df = pd.concat(shaped)
+
+        required = {"timestamp", "measurement", "service", "host", "value"}
+        assert required.issubset(set(df.columns))
+
+    def test_keeps_1s_resolution(self, sample_profile_chunk: pd.DataFrame):
+        shaper = InfluxDBShaper()
+        shaped = list(shaper.shape(sample_profile_chunk))
+        df = pd.concat(shaped)
+
+        # Should preserve all 60 timestamps for each metric
+        for _, grp in df.groupby(["measurement", "service", "host"]):
+            ts = grp["timestamp"].unique()
+            assert len(ts) == 60
+
+    def test_counters_have_rate_field(self, sample_profile_chunk: pd.DataFrame):
+        shaper = InfluxDBShaper()
+        shaped = list(shaper.shape(sample_profile_chunk))
+        df = pd.concat(shaped)
+
+        requests = df[df["measurement"] == "http_requests_total"]
+        assert "rate" in requests.columns
+        # Rate should be positive (throughput > 0)
+        assert (requests["rate"].dropna() >= 0).all()
+
+
+class TestTimescaleDBShaper:
+    def test_output_has_timescaledb_columns(self, sample_profile_chunk: pd.DataFrame):
+        shaper = TimescaleDBShaper()
+        shaped = list(shaper.shape(sample_profile_chunk))
+        df = pd.concat(shaped)
+
+        required = {"timestamp", "metric", "service", "host", "value"}
+        assert set(df.columns) == required
+
+    def test_histograms_as_summary_rows(self, sample_profile_chunk: pd.DataFrame):
+        shaper = TimescaleDBShaper()
+        shaped = list(shaper.shape(sample_profile_chunk))
+        df = pd.concat(shaped)
+
+        hist_metrics = df[df["metric"].str.startswith("http_request_duration")]
+        metric_names = set(hist_metrics["metric"].unique())
+        # Should have p50, p99, avg summary rows — not individual buckets
+        assert "http_request_duration_seconds_p50" in metric_names
+        assert "http_request_duration_seconds_p99" in metric_names
