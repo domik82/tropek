@@ -57,6 +57,13 @@ gen scenario:
         --scenarios {{scenario}} --hours 168 --resolution 30 \
         --output-dir ./output
 
+# Generate timeline data locally as CSV (for inspection)
+gen-timeline timeline:
+    uv run --directory generator slo-generate \
+        --timeline {{timeline}} \
+        --backends csv \
+        --output-dir ./output
+
 # ─── Tests ────────────────────────────────────────────────────────────
 
 # Run generator unit tests
