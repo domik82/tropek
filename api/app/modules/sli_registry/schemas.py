@@ -18,7 +18,7 @@ class SLIDefinitionCreate(BaseModel):
     indicators: dict[str, str]
     notes: str | None = None
     author: str | None = None
-    meta: dict[str, Any] = {}
+    tags: dict[str, Any] = {}
     comparable_from_version: int | None = None
 
 
@@ -34,7 +34,7 @@ class SLIDefinitionRead(BaseModel):
     indicators: dict[str, str]
     notes: str | None
     author: str | None
-    meta: dict[str, Any]
+    tags: dict[str, Any]
     active: bool
     created_at: datetime
 
