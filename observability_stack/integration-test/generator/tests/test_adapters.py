@@ -101,6 +101,17 @@ class TestPrometheusAdapter:
             assert count_indices[0] > sum_indices[0]
 
 
+class TestTimescaleDBAdapter:
+    def test_generates_create_table_ddl(self):
+        from slo_generator.adapters.timescaledb import TimescaleDBAdapter
+
+        ddl = TimescaleDBAdapter.create_table_ddl()
+        assert "CREATE TABLE" in ddl
+        assert "timestamp" in ddl
+        assert "metric" in ddl
+        assert "hypertable" in ddl.lower() or "create_hypertable" in ddl.lower()
+
+
 class TestInfluxDBAdapter:
     def test_generates_line_protocol(self):
         df = pd.DataFrame(
