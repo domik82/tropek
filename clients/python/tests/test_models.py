@@ -18,12 +18,12 @@ def test_asset_from_dict():
             "name": "vm-01",
             "display_name": "VM 01",
             "type_name": "vm",
-            "labels": {"os": "linux"},
+            "tags": {"os": "linux"},
             "created_at": "2026-03-01T00:00:00Z",
         }
     )
     assert a.name == "vm-01"
-    assert a.labels["os"] == "linux"
+    assert a.tags["os"] == "linux"
 
 
 def test_slo_definition_from_dict():
@@ -40,7 +40,7 @@ def test_slo_definition_from_dict():
             "comparison": {},
             "notes": None,
             "author": None,
-            "meta": {},
+            "tags": {},
             "created_at": "2026-03-01T00:00:00Z",
         }
     )

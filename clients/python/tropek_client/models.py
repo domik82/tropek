@@ -33,7 +33,8 @@ class Asset(BaseModel):
     name: str
     display_name: str | None
     type_name: str
-    labels: dict[str, str]
+    tags: dict[str, str]
+    variables: dict[str, str] = {}
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
@@ -83,7 +84,8 @@ class DataSource(BaseModel):
     display_name: str | None
     adapter_type: str
     adapter_url: str
-    labels: dict[str, Any]
+    tags: dict[str, Any]
+    has_token: bool = False
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -98,7 +100,7 @@ class SLIDefinition(BaseModel):
     indicators: dict[str, str]
     notes: str | None
     author: str | None
-    meta: dict[str, Any]
+    tags: dict[str, Any]
     active: bool
     created_at: datetime
 
@@ -131,7 +133,8 @@ class SLODefinition(BaseModel):
     comparison: dict[str, Any]
     notes: str | None
     author: str | None
-    meta: dict[str, Any]
+    tags: dict[str, Any]
+    variables: dict[str, Any] = {}
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
@@ -214,7 +217,7 @@ class Annotation(BaseModel):
     content: str
     author: str | None
     category: str | None
-    meta: dict[str, Any]
+    tags: dict[str, Any]
     hidden_at: datetime | None = None
     hidden_by: str | None = None
     hidden_reason: str | None = None
@@ -248,7 +251,7 @@ class EvaluationSummary(BaseModel):
     override_reason: str | None = None
     override_author: str | None = None
     asset_snapshot: dict[str, Any]
-    evaluation_metadata: dict[str, Any]
+    variables: dict[str, Any]
     annotation_count: int
     latest_annotation: Annotation | None
     top_failures: list[FailingIndicator]

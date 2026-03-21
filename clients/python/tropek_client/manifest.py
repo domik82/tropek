@@ -289,9 +289,11 @@ def _has_diff(doc: ManifestDocument, existing: Any) -> bool:
         case "AssetType":
             return doc.spec.get("is_default") != getattr(existing, "is_default", None)
         case "Asset":
-            return doc.metadata.get("display_name") != getattr(
-                existing, "display_name", None
-            ) or doc.metadata.get("labels", {}) != getattr(existing, "labels", {})
+            return (
+                doc.metadata.get("display_name") != getattr(existing, "display_name", None)
+                or doc.metadata.get("tags", {}) != getattr(existing, "tags", {})
+                or doc.metadata.get("variables", {}) != getattr(existing, "variables", {})
+            )
         case "AssetGroup":
             # Member/subgroup sync not yet implemented; skip updates
             return False
@@ -299,7 +301,7 @@ def _has_diff(doc: ManifestDocument, existing: Any) -> bool:
             return (
                 doc.metadata.get("display_name") != getattr(existing, "display_name", None)
                 or doc.spec.get("adapter_url") != getattr(existing, "adapter_url", None)
-                or doc.metadata.get("labels", {}) != getattr(existing, "labels", {})
+                or doc.metadata.get("tags", {}) != getattr(existing, "tags", {})
             )
         case "SLI":
             return doc.spec.get("indicators") != getattr(existing, "indicators", {})
@@ -359,7 +361,8 @@ def _create(client: Any, doc: ManifestDocument) -> None:
                 name,
                 type_name=doc.spec.get("type_name", "vm"),
                 display_name=doc.metadata.get("display_name"),
-                labels=doc.metadata.get("labels"),
+                tags=doc.metadata.get("tags"),
+                variables=doc.metadata.get("variables"),
             )
         case "AssetGroup":
             _create_asset_group(client, name, doc.spec)
@@ -369,7 +372,7 @@ def _create(client: Any, doc: ManifestDocument) -> None:
                 adapter_type=doc.spec["adapter_type"],
                 adapter_url=doc.spec["adapter_url"],
                 display_name=doc.metadata.get("display_name"),
-                labels=doc.metadata.get("labels"),
+                tags=doc.metadata.get("tags"),
             )
         case "SLI":
             client.sli_definitions.create(
@@ -422,7 +425,8 @@ def _update(client: Any, doc: ManifestDocument) -> None:
             client.assets.update(
                 name,
                 display_name=doc.metadata.get("display_name"),
-                labels=doc.metadata.get("labels"),
+                tags=doc.metadata.get("tags"),
+                variables=doc.metadata.get("variables"),
             )
         case "AssetGroup":
             # TODO: sync members/subgroups — requires add/remove member API calls
@@ -433,7 +437,7 @@ def _update(client: Any, doc: ManifestDocument) -> None:
                 name,
                 display_name=doc.metadata.get("display_name"),
                 adapter_url=doc.spec.get("adapter_url"),
-                labels=doc.metadata.get("labels"),
+                tags=doc.metadata.get("tags"),
             )
         case "SLI":
             # Creates new version
