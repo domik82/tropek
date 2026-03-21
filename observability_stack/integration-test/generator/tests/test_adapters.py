@@ -6,6 +6,7 @@ from pathlib import Path
 
 import pandas as pd
 from slo_generator.adapters.csv import CSVAdapter
+from slo_generator.adapters.influxdb import InfluxDBAdapter
 from slo_generator.adapters.prometheus import PrometheusAdapter
 
 
@@ -98,3 +99,25 @@ class TestPrometheusAdapter:
             # sum and count should come right after last bucket
             assert sum_indices[0] > bucket_indices[-1]
             assert count_indices[0] > sum_indices[0]
+
+
+class TestInfluxDBAdapter:
+    def test_generates_line_protocol(self):
+        df = pd.DataFrame(
+            {
+                "timestamp": pd.to_datetime(["2026-03-20T12:00:00Z"], utc=True),
+                "measurement": ["http_requests_total"],
+                "service": ["frontend"],
+                "host": ["host1"],
+                "value": [100.0],
+                "rate": [3.33],
+                "le": [pd.NA],
+                "status_code": ["200"],
+            }
+        )
+
+        lines = InfluxDBAdapter._to_line_protocol(df)
+        assert len(lines) == 1
+        assert lines[0].startswith("http_requests_total,")
+        assert "service=frontend" in lines[0]
+        assert "value=100.0" in lines[0]
