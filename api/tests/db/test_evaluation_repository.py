@@ -578,3 +578,36 @@ async def test_create_pending_merges_asset_labels_into_metadata(
     assert ev.evaluation_metadata["region"] == "us-east-1"
     # Caller's "env" is preserved
     assert ev.evaluation_metadata["env"] == "staging"
+
+
+@pytest.mark.integration
+async def test_override_double_apply_preserves_original(db_session: AsyncSession) -> None:
+    """Second override must NOT overwrite original_result from the first eval."""
+    asset_id = await _create_asset(db_session)
+    repo = EvaluationRepository(db_session)
+    ev = await repo.create_pending(
+        evaluation_name="override-test",
+        period_start=_START,
+        period_end=_END,
+        ingestion_mode="push",
+        asset_snapshot=_make_snapshot(),
+        metadata={},
+        asset_id=asset_id,
+        slo_name="test-slo",
+    )
+    await repo.mark_completed(
+        ev.id, result="fail", score=30.0, indicator_results=[], slo_name="test-slo"
+    )
+
+    # First override: fail → pass
+    await repo.override_status(ev.id, new_result="pass", reason="false alarm", author="alice")
+    ev1 = await repo.get_by_id(ev.id)
+    assert ev1.original_result == "fail"
+    assert ev1.result == "pass"
+
+    # Second override: pass → warning — original must still be "fail"
+    await repo.override_status(ev.id, new_result="warning", reason="adjusted", author="bob")
+    ev2 = await repo.get_by_id(ev.id)
+    assert ev2.original_result == "fail"  # NOT "pass"
+    assert ev2.result == "warning"
+    assert ev2.override_author == "bob"

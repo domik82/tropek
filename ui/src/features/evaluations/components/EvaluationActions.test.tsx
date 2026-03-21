@@ -3,11 +3,16 @@ import { render, screen, fireEvent } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { EvaluationActionsButton, EvaluationActionForm } from './EvaluationActions'
 
+const invalidateMutate = vi.fn()
+const overrideMutate = vi.fn()
+const pinMutate = vi.fn()
+const reEvaluateMutate = vi.fn()
+
 vi.mock('../hooks', () => ({
-  useInvalidateEvaluation: () => ({ mutate: vi.fn(), isPending: false }),
-  useOverrideStatus: () => ({ mutate: vi.fn(), isPending: false }),
-  usePinBaseline: () => ({ mutate: vi.fn(), isPending: false }),
-  useReEvaluate: () => ({ mutate: vi.fn(), isPending: false }),
+  useInvalidateEvaluation: () => ({ mutate: invalidateMutate, isPending: false }),
+  useOverrideStatus: () => ({ mutate: overrideMutate, isPending: false }),
+  usePinBaseline: () => ({ mutate: pinMutate, isPending: false }),
+  useReEvaluate: () => ({ mutate: reEvaluateMutate, isPending: false }),
 }))
 
 function renderWithQuery(ui: React.ReactElement) {
@@ -200,5 +205,37 @@ describe('EvaluationActionForm', () => {
     fireEvent.change(screen.getByPlaceholderText('Reason…'), { target: { value: 'bad data' } })
     fireEvent.change(screen.getByPlaceholderText('Author'), { target: { value: 'tester' } })
     expect(screen.getByText('Confirm')).toBeEnabled()
+  })
+
+  it('calls invalidate mutation on form submit', () => {
+    invalidateMutate.mockClear()
+    renderWithQuery(
+      <EvaluationActionForm
+        evalId="e1"
+        currentResult="pass"
+        activeAction="invalidate"
+        onClose={vi.fn()}
+      />,
+    )
+    fireEvent.change(screen.getByPlaceholderText('Reason…'), { target: { value: 'Bad data' } })
+    fireEvent.change(screen.getByPlaceholderText('Author'), { target: { value: 'alice' } })
+    fireEvent.click(screen.getByText('Confirm'))
+    expect(invalidateMutate).toHaveBeenCalled()
+  })
+
+  it('calls override mutation on form submit', () => {
+    overrideMutate.mockClear()
+    renderWithQuery(
+      <EvaluationActionForm
+        evalId="e1"
+        currentResult="pass"
+        activeAction="override"
+        onClose={vi.fn()}
+      />,
+    )
+    fireEvent.change(screen.getByPlaceholderText('Reason…'), { target: { value: 'Override reason' } })
+    fireEvent.change(screen.getByPlaceholderText('Author'), { target: { value: 'alice' } })
+    fireEvent.click(screen.getByText('Confirm'))
+    expect(overrideMutate).toHaveBeenCalled()
   })
 })
