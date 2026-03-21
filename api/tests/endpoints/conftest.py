@@ -19,8 +19,8 @@ from app.modules.quality_gate.repository import EvaluationRepository
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
-# Re-use the db_session / db_engine / db_url fixtures from the db test package.
-pytest_plugins = ["tests.db.conftest"]
+# Re-export db fixtures so pytest discovers them in this directory.
+from tests.db.conftest import db_engine, db_session, db_url  # noqa: F401
 
 _START = datetime(2026, 3, 15, 10, 0, 0, tzinfo=UTC)
 _END = datetime(2026, 3, 15, 10, 30, 0, tzinfo=UTC)
@@ -75,7 +75,7 @@ async def _create_completed_eval(
 
 
 @pytest_asyncio.fixture()
-async def async_client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient]:
+async def async_client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient]:  # noqa: F811
     """Yield an httpx AsyncClient bound to the FastAPI app with test DB session."""
 
     async def _override_session() -> AsyncGenerator[AsyncSession]:
