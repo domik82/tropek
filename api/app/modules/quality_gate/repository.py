@@ -456,15 +456,16 @@ class EvaluationRepository:
         ev = await self.get_by_id(eval_id)
         if ev is None:
             return None
+        values: dict[str, Any] = {
+            "result": new_result,
+            "override_reason": reason,
+            "override_author": author,
+        }
+        # Only set original on first override — preserve the true original
+        if ev.original_result is None:
+            values["original_result"] = ev.result
         await self._session.execute(
-            update(Evaluation)
-            .where(Evaluation.id == eval_id)
-            .values(
-                original_result=ev.result,
-                result=new_result,
-                override_reason=reason,
-                override_author=author,
-            )
+            update(Evaluation).where(Evaluation.id == eval_id).values(**values)
         )
         await self._session.flush()
         return await self.get_by_id(eval_id)
