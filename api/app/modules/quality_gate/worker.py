@@ -106,6 +106,35 @@ async def _resolve_baselines(
     return baselines, compared_eval_ids
 
 
+def _build_eval_variables(
+    ev: Evaluation,
+    asset_snapshot: dict[str, Any],
+    slo_def: SLODefinition,
+) -> dict[str, str]:
+    """Build merged variables for query substitution.
+
+    Merge priority: reserved < asset.variables < asset.tags < slo.variables < eval.variables.
+    """
+    variables = build_variables(
+        metadata={},
+        asset_name=asset_snapshot.get("name"),
+        evaluation_name=ev.evaluation_name,
+        start=ev.period_start.isoformat(),
+        end=ev.period_end.isoformat(),
+    )
+    # Low priority: identity bindings from asset (setdefault = won't overwrite reserved)
+    for k, v in (asset_snapshot.get("variables") or {}).items():
+        variables.setdefault(k, str(v))
+    for k, v in (asset_snapshot.get("tags") or {}).items():
+        variables.setdefault(k, str(v))
+    # High priority: SLO and per-run overrides (direct assignment = overwrites everything)
+    for k, v in (slo_def.variables or {}).items():
+        variables[k] = str(v)
+    for k, v in (ev.variables or {}).items():
+        variables[k] = str(v)
+    return variables
+
+
 async def _query_adapter_safe(
     log: structlog.stdlib.BoundLogger,
     repo: EvaluationRepository,
@@ -212,17 +241,7 @@ async def run_evaluation(
 
     # Build variables and substitute into queries
     asset_snapshot: dict[str, Any] = ev.asset_snapshot or {}
-    asset_labels: dict[str, Any] = asset_snapshot.get("tags", {})
-    eval_metadata: dict[str, Any] = ev.evaluation_metadata or {}
-    variables = build_variables(
-        metadata={k: str(v) for k, v in eval_metadata.items()},
-        asset_name=asset_snapshot.get("name"),
-        evaluation_name=ev.evaluation_name,
-        start=ev.period_start.isoformat(),
-        end=ev.period_end.isoformat(),
-    )
-    for k, v in asset_labels.items():
-        variables.setdefault(k, str(v))
+    variables = _build_eval_variables(ev, asset_snapshot, slo_def)
     resolved_queries: dict[str, str] = {
         name: substitute_variables(tmpl, variables) for name, tmpl in sli_def.indicators.items()
     }
@@ -288,7 +307,8 @@ async def run_evaluation(
             "value": ir.value,
             "asset_name": asset_snapshot.get("name"),
             "evaluation_name": ev.evaluation_name,
-            "os_tag": asset_labels.get("os"),
+            "os_tag": asset_snapshot.get("tags", {}).get("os")
+            or asset_snapshot.get("variables", {}).get("os"),
         }
         for ir in eval_result.indicator_results
         if ir.value is not None
