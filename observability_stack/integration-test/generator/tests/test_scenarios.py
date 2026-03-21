@@ -344,3 +344,73 @@ class TestMemoryLeakScenario:
         chunks = list(scenario.generate(resolution_seconds=30))
         df = pd.concat(chunks)
         validate_profile_schema(df)
+
+
+class TestTrafficSpikeScenario:
+    def test_throughput_spikes_in_rate_limit_mode(self):
+        from slo_generator.scenarios.traffic_spike import TrafficSpikeScenario
+
+        start = datetime(2026, 3, 20, 0, 0, 0, tzinfo=UTC)
+        end = start + timedelta(hours=2)
+        scenario = TrafficSpikeScenario(
+            start,
+            end,
+            spike_multiplier=5.0,
+            error_mode="rate_limit",
+        )
+
+        chunks = list(scenario.generate(resolution_seconds=30))
+        df = pd.concat(chunks)
+        api = df[(df["service"] == "api") & (df["host"] == "host1")]
+
+        # Peak throughput should be much higher than baseline
+        assert api["throughput_rps"].max() > 300  # 5x of ~100
+
+    def test_overload_mode_increases_latency(self):
+        from slo_generator.scenarios.traffic_spike import TrafficSpikeScenario
+
+        start = datetime(2026, 3, 20, 0, 0, 0, tzinfo=UTC)
+        end = start + timedelta(hours=2)
+        scenario = TrafficSpikeScenario(
+            start,
+            end,
+            spike_multiplier=5.0,
+            error_mode="overload",
+        )
+
+        chunks = list(scenario.generate(resolution_seconds=30))
+        df = pd.concat(chunks)
+        api = df[(df["service"] == "api") & (df["host"] == "host1")]
+
+        # In overload mode, latency should spike
+        assert api["p99_latency"].max() > 1.0
+
+    def test_rate_limit_mode_keeps_latency_low(self):
+        from slo_generator.scenarios.traffic_spike import TrafficSpikeScenario
+
+        start = datetime(2026, 3, 20, 0, 0, 0, tzinfo=UTC)
+        end = start + timedelta(hours=2)
+        scenario = TrafficSpikeScenario(
+            start,
+            end,
+            spike_multiplier=5.0,
+            error_mode="rate_limit",
+        )
+
+        chunks = list(scenario.generate(resolution_seconds=30))
+        df = pd.concat(chunks)
+        api = df[(df["service"] == "api") & (df["host"] == "host1")]
+
+        # In rate_limit mode, latency stays reasonable
+        assert api["p99_latency"].max() < 1.0
+
+    def test_profile_schema_valid(self):
+        from slo_generator.scenarios.traffic_spike import TrafficSpikeScenario
+
+        start = datetime(2026, 3, 20, 0, 0, 0, tzinfo=UTC)
+        end = start + timedelta(hours=1)
+        scenario = TrafficSpikeScenario(start, end)
+
+        chunks = list(scenario.generate(resolution_seconds=30))
+        df = pd.concat(chunks)
+        validate_profile_schema(df)
