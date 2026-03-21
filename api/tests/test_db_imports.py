@@ -21,6 +21,7 @@ def test_orm_models_importable() -> None:
         Evaluation,
         EvaluationAnnotation,
         EvaluationBatch,
+        IndicatorResultRow,
         SLIDefinition,
         SLIValue,
         SLODefinition,
@@ -43,5 +44,6 @@ def test_orm_models_importable() -> None:
         "evaluations",
         "evaluation_annotations",
         "evaluation_batches",
+        "indicator_results",
         "sli_values",
     }
