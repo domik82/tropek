@@ -18,7 +18,7 @@ interface AssetTreeNodeProps {
   isLastChild: boolean
   onToggleExpand: (name: string) => void
   onSelectGroup: (name: string) => void
-  onSelectAsset?: (name: string) => void
+  onSelectAsset?: (name: string, groupName: string) => void
   onOpenContextMenu: (state: ContextMenuState) => void
   onStartRename: (name: string) => void
   onFinishRename: (name: string, newDisplayName: string) => void
@@ -233,7 +233,7 @@ export function AssetTreeNode({
           ))}
 
           {(mode === 'navigator' || mode === 'assets') && filteredMembers.map(m => {
-            const isAssetSelected = selectedAsset === m.asset_name
+            const isAssetSelected = selectedAsset === m.asset_name && selectedGroup === group.name
             const assetPadding = (depth + 1) * 16 + 8
             return (
               <div
@@ -246,11 +246,11 @@ export function AssetTreeNode({
                 style={{ paddingLeft: isAssetSelected ? assetPadding - 2 : assetPadding, paddingRight: 8 }}
                 role="button"
                 tabIndex={0}
-                onClick={() => onSelectAsset?.(m.asset_name)}
+                onClick={() => onSelectAsset?.(m.asset_name, group.name)}
                 onKeyDown={e => {
                   if (e.key === 'Enter' || e.key === ' ') {
                     e.preventDefault()
-                    onSelectAsset?.(m.asset_name)
+                    onSelectAsset?.(m.asset_name, group.name)
                   }
                 }}
                 onContextMenu={e => {

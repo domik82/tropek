@@ -11,9 +11,10 @@ export function AssetNavigatorPage() {
   const selectedAsset = params.get('asset') ?? null
   const selectedEvalId = params.get('eval') ?? undefined
 
-  const handleSelectAsset = (name: string) => {
+  const handleSelectAsset = (name: string, groupName?: string) => {
     const next: Record<string, string> = { asset: name }
-    if (selectedGroup) next.group = selectedGroup
+    const group = groupName ?? selectedGroup
+    if (group) next.group = group
     setParams(next)
   }
 

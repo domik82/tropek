@@ -10,7 +10,7 @@ interface ActionCallbacks {
   onAddAssetToGroup?: (groupName: string) => void
   onEditAsset?: (assetName: string) => void
   onStartRename: (name: string) => void
-  onSelectAsset?: (name: string) => void
+  onSelectAsset?: (name: string, groupName: string) => void
 }
 
 export function useAssetTreeActions(_mode: TreeMode, callbacks: ActionCallbacks) {
@@ -41,7 +41,7 @@ export function useAssetTreeActions(_mode: TreeMode, callbacks: ActionCallbacks)
         callbacks.onDeleteGroup(targetName)
         break
       case 'viewEvaluations':
-        callbacks.onSelectAsset?.(targetName)
+        if (groupName) callbacks.onSelectAsset?.(targetName, groupName)
         break
       case 'addAssetToGroup':
         callbacks.onAddAssetToGroup?.(targetName)

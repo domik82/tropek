@@ -16,9 +16,10 @@ import type { AssetGroup } from '../types'
 interface Props {
   groupName: string
   onSelectGroup: (name: string) => void
+  selectedAsset?: string | null
 }
 
-export function GroupDetailPanel({ groupName, onSelectGroup }: Props) {
+export function GroupDetailPanel({ groupName, onSelectGroup, selectedAsset }: Props) {
   const { data: group } = useAssetGroup(groupName)
   const { data: tree } = useAssetGroups()
   const { data: assets = [] } = useAssets()
@@ -164,8 +165,10 @@ export function GroupDetailPanel({ groupName, onSelectGroup }: Props) {
                 </tr>
               </thead>
               <tbody>
-                {memberAssets.map(({ asset_id, asset_name, weight, asset }, idx) => (
-                  <tr key={asset_id} className={`border-b border-slate-800/60 last:border-0 hover:bg-gray-700/50 transition-colors ${idx % 2 === 0 ? 'bg-gray-900' : 'bg-gray-800/50'}`}>
+                {memberAssets.map(({ asset_id, asset_name, weight, asset }, idx) => {
+                  const isHighlighted = selectedAsset === asset_name
+                  return (
+                  <tr key={asset_id} className={`border-b border-slate-800/60 last:border-0 hover:bg-gray-700/50 transition-colors ${isHighlighted ? 'bg-gray-700/60' : idx % 2 === 0 ? 'bg-gray-900' : 'bg-gray-800/50'}`}>
                     <td className="px-3 py-2">
                       <span className="font-mono text-foreground">{asset?.display_name ?? asset_name}</span>
                       {asset?.display_name && (
@@ -205,7 +208,8 @@ export function GroupDetailPanel({ groupName, onSelectGroup }: Props) {
                       </div>
                     </td>
                   </tr>
-                ))}
+                  )
+                })}
               </tbody>
             </table>
           </div>

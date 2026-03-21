@@ -14,7 +14,7 @@ export interface AssetTreeProps {
   selectedGroup: string | null
   selectedAsset?: string | null
   onSelectGroup: (name: string | null) => void
-  onSelectAsset?: (name: string) => void
+  onSelectAsset?: (name: string, groupName: string) => void
   width?: number
   onCreateGroup?: () => void
   onEditGroup?: (name: string) => void

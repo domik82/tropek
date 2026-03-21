@@ -217,6 +217,29 @@ describe('GroupDetailPanel', () => {
     expect(mockMutate).toHaveBeenCalledWith({ groupName: 'payments', linkName: 'link-1' })
   })
 
+  it('highlights the selected asset row when selectedAsset matches a member', () => {
+    render(
+      <GroupDetailPanel groupName="payments" onSelectGroup={() => {}} selectedAsset="cart-service" />,
+      { wrapper: TestWrapper }
+    )
+    // The row containing 'Cart Service' should have highlight styling
+    const row = screen.getByText('Cart Service').closest('tr')!
+    expect(row.className).toContain('bg-gray-700/60')
+
+    // The other row should NOT be highlighted
+    const otherRow = screen.getByText('checkout-api').closest('tr')!
+    expect(otherRow.className).not.toContain('bg-gray-700/60')
+  })
+
+  it('does not highlight any row when selectedAsset is null', () => {
+    render(
+      <GroupDetailPanel groupName="payments" onSelectGroup={() => {}} />,
+      { wrapper: TestWrapper }
+    )
+    const row = screen.getByText('Cart Service').closest('tr')!
+    expect(row.className).not.toContain('bg-gray-700/60')
+  })
+
   it("shows 'Loading…' when group data not yet available", () => {
     vi.mocked(useAssetGroup).mockReturnValueOnce({ data: undefined } as any)
 

@@ -77,7 +77,6 @@ describe('useAssetTreeActions', () => {
     ['linkSlo', 'onAddSloLink', 'group', 'payments'],
     ['addAssetToGroup', 'onAddAssetToGroup', 'group', 'payments'],
     ['editAsset', 'onEditAsset', 'asset', 'cart-service'],
-    ['viewEvaluations', 'onSelectAsset', 'asset', 'cart-service'],
   ] as const)(
     "dispatch '%s' calls %s with target name",
     (action, callbackKey, nodeType, name) => {
@@ -89,6 +88,15 @@ describe('useAssetTreeActions', () => {
       expect(defaultCallbacks[callbackKey]).toHaveBeenCalledWith(name)
     },
   )
+
+  it("dispatch 'viewEvaluations' calls onSelectAsset with target name and group name", () => {
+    const { result } = renderHook(
+      () => useAssetTreeActions('navigator', defaultCallbacks),
+      { wrapper: TestWrapper },
+    )
+    result.current.dispatch('viewEvaluations', { type: 'asset', name: 'cart-service', groupName: 'payments' })
+    expect(defaultCallbacks.onSelectAsset).toHaveBeenCalledWith('cart-service', 'payments')
+  })
 
   it('handleRename calls updateGroup.mutate with { name, display_name }', () => {
     const mockMutate = vi.fn()

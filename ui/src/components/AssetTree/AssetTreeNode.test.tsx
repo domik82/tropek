@@ -111,4 +111,79 @@ describe('AssetTreeNode', () => {
     expect(onToggleExpand).toHaveBeenCalledWith('infra')
     expect(onSelectGroup).toHaveBeenCalledWith('infra')
   })
+
+  // --- Bug fix: leaf asset click should pass parent group name ---
+
+  it('clicking a leaf asset calls onSelectAsset with asset name AND parent group name', async () => {
+    const user = userEvent.setup()
+    const onSelectAsset = vi.fn()
+    render(
+      <AssetTreeNode
+        group={ROOT_GROUP}
+        {...defaultProps}
+        expandedGroups={new Set(['infra'])}
+        onSelectAsset={onSelectAsset}
+      />
+    )
+    await user.click(screen.getByText('db-primary'))
+    expect(onSelectAsset).toHaveBeenCalledWith('db-primary', 'infra')
+  })
+
+  // --- Bug fix: asset highlight must be scoped to correct group ---
+
+  it('highlights asset only when both selectedAsset and selectedGroup match', () => {
+    // Same asset name in two groups — only the one whose parent group matches
+    // selectedGroup should be highlighted
+    const GROUP_A: AssetGroup = {
+      id: 'ga',
+      name: 'data-tier',
+      members: [{ asset_id: 'a1', asset_name: 'orders-db', weight: 1.0 }],
+      subgroups: [],
+    }
+    const GROUP_B: AssetGroup = {
+      id: 'gb',
+      name: 'infra-prod',
+      members: [{ asset_id: 'a2', asset_name: 'orders-db', weight: 1.0 }],
+      subgroups: [],
+    }
+    const tree: AssetGroupTree = {
+      top_level: [GROUP_A, GROUP_B],
+      all_groups: [GROUP_A, GROUP_B],
+    }
+
+    const { container } = render(
+      <>
+        <AssetTreeNode
+          group={GROUP_A}
+          {...defaultProps}
+          tree={tree}
+          expandedGroups={new Set(['data-tier', 'infra-prod'])}
+          selectedGroup="data-tier"
+          selectedAsset="orders-db"
+        />
+        <AssetTreeNode
+          group={GROUP_B}
+          {...defaultProps}
+          tree={tree}
+          expandedGroups={new Set(['data-tier', 'infra-prod'])}
+          selectedGroup="data-tier"
+          selectedAsset="orders-db"
+        />
+      </>
+    )
+
+    // Both render "orders-db" text, but only the one under data-tier should have
+    // the selected styling (bg-primary/15 border-l-2)
+    const assetLeaves = container.querySelectorAll('[role="button"]')
+    // Filter to just the leaf asset rows (not the group header rows)
+    const leafRows = Array.from(assetLeaves).filter(el =>
+      el.textContent?.includes('orders-db') && !el.textContent?.includes('data-tier') && !el.textContent?.includes('infra-prod')
+    )
+    expect(leafRows).toHaveLength(2)
+
+    // First one (under data-tier) should be highlighted
+    expect(leafRows[0].className).toContain('bg-primary/15')
+    // Second one (under infra-prod) should NOT be highlighted
+    expect(leafRows[1].className).not.toContain('bg-primary/15')
+  })
 })
