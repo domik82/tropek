@@ -19,6 +19,7 @@ from app.modules.quality_gate.engine.evaluator import evaluate
 from app.modules.quality_gate.engine.slo_models import SLO
 from app.modules.quality_gate.engine.slo_parser import build_slo
 from app.modules.quality_gate.engine.variables import build_variables, substitute_variables
+from app.modules.quality_gate.indicator_repository import IndicatorRepository
 from app.modules.quality_gate.repository import EvaluationRepository
 from app.modules.quality_gate.sli_repository import SLIValueRepository
 from app.modules.sli_registry.repository import SLIRepository
@@ -174,6 +175,38 @@ async def _query_adapter_safe(
         return None
 
 
+async def _write_indicator_rows(
+    log: structlog.stdlib.BoundLogger,
+    session: AsyncSession,
+    eval_id: uuid.UUID,
+    slo_def: Any,
+    indicator_results: list[Any],
+) -> None:
+    """Dual-write indicator results to the normalized indicator_results table."""
+    indicator_repo = IndicatorRepository(session)
+    obj_lookup = {obj.sli: obj.id for obj in slo_def.objectives}
+    rows = []
+    for ir in indicator_results:
+        obj_id = obj_lookup.get(ir.metric)
+        if obj_id is None:
+            log.warning("no objective match for metric", metric=ir.metric)
+            continue
+        rows.append(
+            {
+                "evaluation_id": eval_id,
+                "slo_objective_id": obj_id,
+                "value": ir.value,
+                "compared_value": ir.compared_value,
+                "change_absolute": ir.change_absolute,
+                "change_relative_pct": ir.change_relative_pct,
+                "status": ir.status,
+                "score": ir.score,
+            }
+        )
+    if rows:
+        await indicator_repo.bulk_insert(eval_id, rows)
+
+
 async def run_evaluation(
     session: AsyncSession,
     eval_id: uuid.UUID,
@@ -296,6 +329,9 @@ async def run_evaluation(
         job_stats={"fetch_errors": fetch_errors},
         compared_evaluation_ids=compared_eval_ids,
     )
+
+    # Write to normalized indicator_results table (dual-write during migration)
+    await _write_indicator_rows(log, session, eval_id, slo_def, eval_result.indicator_results)
 
     # Write SLI values to TimescaleDB hypertable
     sli_rows: list[dict[str, Any]] = [
