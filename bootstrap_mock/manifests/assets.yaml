@@ -3,11 +3,12 @@ kind: Asset
 metadata:
   name: checkout-api
   display_name: Checkout API
-  labels:
+  tags:
     team: payments
     env: production
     region: eu-west-1
     tier: critical
+  variables:
     job: checkout-api
     namespace: ecommerce
 spec:
@@ -18,11 +19,12 @@ kind: Asset
 metadata:
   name: product-catalog
   display_name: Product Catalog Service
-  labels:
+  tags:
     team: catalog
     env: production
     region: eu-west-1
     tier: standard
+  variables:
     job: product-catalog
     namespace: ecommerce
 spec:
@@ -33,11 +35,12 @@ kind: Asset
 metadata:
   name: user-service
   display_name: User & Auth Service
-  labels:
+  tags:
     team: platform
     env: production
     region: eu-west-1
     tier: critical
+  variables:
     job: user-service
     namespace: ecommerce
 spec:
@@ -48,11 +51,12 @@ kind: Asset
 metadata:
   name: orders-db
   display_name: Orders PostgreSQL
-  labels:
+  tags:
     team: payments
     env: production
     region: eu-west-1
     tier: critical
+  variables:
     runtime: postgres-16
     instance: orders-db:5432
 spec:
@@ -63,11 +67,12 @@ kind: Asset
 metadata:
   name: catalog-db
   display_name: Catalog MongoDB
-  labels:
+  tags:
     team: catalog
     env: production
     region: eu-west-1
     tier: standard
+  variables:
     runtime: mongo-7
     instance: catalog-db:27017
 spec:
@@ -78,11 +83,12 @@ kind: Asset
 metadata:
   name: session-cache
   display_name: Session Redis
-  labels:
+  tags:
     team: platform
     env: production
     region: eu-west-1
     tier: standard
+  variables:
     runtime: redis-7
 spec:
   type_name: database
@@ -92,7 +98,7 @@ kind: Asset
 metadata:
   name: payment-gateway
   display_name: Payment Gateway
-  labels:
+  tags:
     team: payments
     env: production
     region: us-east-1
@@ -105,11 +111,12 @@ kind: Asset
 metadata:
   name: metrics-collector
   display_name: Metrics Collector
-  labels:
+  tags:
     team: observability
     env: production
     region: eu-west-1
     tier: standard
+  variables:
     os: linux
 spec:
   type_name: container
@@ -119,11 +126,12 @@ kind: Asset
 metadata:
   name: log-aggregator
   display_name: Log Aggregator
-  labels:
+  tags:
     team: observability
     env: staging
     region: eu-west-1
     tier: standard
+  variables:
     os: linux
 spec:
   type_name: container
@@ -133,11 +141,12 @@ kind: Asset
 metadata:
   name: bastion-host
   display_name: Bastion Host EU
-  labels:
+  tags:
     team: infra
     env: production
     region: eu-west-1
     tier: standard
+  variables:
     os: ubuntu-22
     dc: fra-1
 spec:
@@ -148,11 +157,12 @@ kind: Asset
 metadata:
   name: build-runner
   display_name: CI Build Runner
-  labels:
+  tags:
     team: infra
     env: staging
     region: us-east-1
     tier: standard
+  variables:
     os: ubuntu-22
 spec:
   type_name: vm

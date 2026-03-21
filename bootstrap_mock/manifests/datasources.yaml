@@ -3,7 +3,7 @@ kind: DataSource
 metadata:
   name: prometheus-local
   display_name: Local Prometheus (dev)
-  labels:
+  tags:
     env: dev
 spec:
   adapter_type: prometheus
@@ -14,7 +14,7 @@ kind: DataSource
 metadata:
   name: mock-dc-b
   display_name: "Mock DC-B"
-  labels:
+  tags:
     env: dev
 spec:
   adapter_type: mock
