@@ -9,6 +9,9 @@ dependencies = [
     "rich>=13.7",
 ]
 
+[dependency-groups]
+dev = ["pytest>=8.0"]
+
 [project.optional-dependencies]
 influxdb = ["influxdb-client>=1.41"]
 timescaledb = ["psycopg[binary]>=3.1"]
