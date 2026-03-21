@@ -1,5 +1,5 @@
 // ui/src/components/labels/LabelsEditorDialog.tsx
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { X } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { LabelComboBox } from './LabelComboBox'
@@ -18,6 +18,15 @@ export function LabelsEditorDialog({ open, onOpenChange, title, subtitle, labels
   const [labels, setLabels] = useState<Record<string, string>>(initialLabels)
   const [newKey, setNewKey] = useState('')
   const [newValue, setNewValue] = useState('')
+
+  // Sync internal state when dialog opens (useState ignores prop changes after mount)
+  useEffect(() => {
+    if (open) {
+      setLabels(initialLabels)
+      setNewKey('')
+      setNewValue('')
+    }
+  }, [open, initialLabels])
 
   const { data: keysSuggestions = [], isLoading: keysLoading } = useTagKeys()
   const { data: valueSuggestions = [], isLoading: valuesLoading } = useTagValues(newKey || null)

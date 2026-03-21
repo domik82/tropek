@@ -70,4 +70,53 @@ describe('LabelsEditorDialog', () => {
     renderDialog({ labels: {} })
     expect(screen.getByText(/no labels/i)).toBeInTheDocument()
   })
+
+  it('syncs labels when reopened with different props', async () => {
+    const onOpenChange = vi.fn()
+    const { rerender } = render(
+      <TestWrapper>
+        <LabelsEditorDialog
+          open={true}
+          onOpenChange={onOpenChange}
+          title="Edit Labels"
+          labels={{ env: 'prod' }}
+          onSave={vi.fn()}
+        />
+      </TestWrapper>
+    )
+
+    expect(screen.getByText('env')).toBeInTheDocument()
+    expect(screen.getByText('prod')).toBeInTheDocument()
+
+    // Close dialog, then reopen with different labels
+    rerender(
+      <TestWrapper>
+        <LabelsEditorDialog
+          open={false}
+          onOpenChange={onOpenChange}
+          title="Edit Labels"
+          labels={{ env: 'prod' }}
+          onSave={vi.fn()}
+        />
+      </TestWrapper>
+    )
+
+    rerender(
+      <TestWrapper>
+        <LabelsEditorDialog
+          open={true}
+          onOpenChange={onOpenChange}
+          title="Edit Labels"
+          labels={{ team: 'platform', region: 'eu-west-1' }}
+          onSave={vi.fn()}
+        />
+      </TestWrapper>
+    )
+
+    // Should show new labels, not stale ones
+    expect(screen.getByText('team')).toBeInTheDocument()
+    expect(screen.getByText('platform')).toBeInTheDocument()
+    expect(screen.getByText('region')).toBeInTheDocument()
+    expect(screen.queryByText('env')).not.toBeInTheDocument()
+  })
 })
