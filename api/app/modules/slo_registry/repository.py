@@ -5,7 +5,7 @@ from __future__ import annotations
 import uuid
 from typing import Any, cast
 
-from sqlalchemy import select, update
+from sqlalchemy import select, text, update
 from sqlalchemy.engine import CursorResult
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -29,7 +29,8 @@ class SLORepository:
         display_name: str | None = None,
         notes: str | None = None,
         author: str | None = None,
-        meta: dict[str, Any] | None = None,
+        tags: dict[str, Any] | None = None,
+        variables: dict[str, Any] | None = None,
         comparable_from_version: int | None = None,
     ) -> SLODefinition:
         """Insert a new version of a named SLO.
@@ -45,7 +46,8 @@ class SLORepository:
             display_name: Optional human-readable display name for the SLO.
             notes: Optional description of changes in this version.
             author: Optional identifier of who created this version.
-            meta: Optional arbitrary key-value metadata.
+            tags: Optional free-form metadata tags.
+            variables: Optional template variable defaults.
             comparable_from_version: Earliest version whose baselines are valid to compare against.
                 Defaults to the previous version when one exists, otherwise 1.
 
@@ -80,7 +82,8 @@ class SLORepository:
             display_name=display_name,
             notes=notes,
             author=author,
-            meta=meta or {},
+            tags=tags or {},
+            variables=variables or {},
             active=True,
         )
         self._session.add(slo)
@@ -156,28 +159,39 @@ class SLORepository:
         )
         return list(result.scalars().all())
 
-    async def list_all(self) -> list[SLODefinition]:
+    async def list_all(
+        self,
+        *,
+        tag_key: str | None = None,
+        tag_val: str | None = None,
+    ) -> list[SLODefinition]:
         """Return the latest active version of every named SLO.
 
         Uses DISTINCT ON (name) ORDER BY name, version DESC — PostgreSQL-specific.
+
+        Args:
+            tag_key: Tag key to filter by (requires tag_val).
+            tag_val: Tag value to filter by (requires tag_key).
 
         Returns:
             One SLODefinition per active SLO name, the highest version of each.
         """
         # DISTINCT ON (name) with ORDER BY name, version DESC — PostgreSQL-specific
+        base_filter = SLODefinition.active == True  # noqa: E712
         subq = (
             select(SLODefinition.name, SLODefinition.version)
-            .where(SLODefinition.active == True)  # noqa: E712
+            .where(base_filter)
             .distinct(SLODefinition.name)
             .order_by(SLODefinition.name, SLODefinition.version.desc())
         ).subquery()
 
-        result = await self._session.execute(
-            select(SLODefinition).join(
-                subq,
-                (SLODefinition.name == subq.c.name) & (SLODefinition.version == subq.c.version),
-            )
+        q = select(SLODefinition).join(
+            subq,
+            (SLODefinition.name == subq.c.name) & (SLODefinition.version == subq.c.version),
         )
+        if tag_key and tag_val:
+            q = q.where(SLODefinition.tags[tag_key].as_string() == tag_val)
+        result = await self._session.execute(q)
         return list(result.scalars().all())
 
     async def deactivate(self, name: str) -> int:
@@ -198,3 +212,27 @@ class SLORepository:
             ),
         )
         return cursor.rowcount
+
+    async def get_tag_keys(self) -> dict[str, int]:
+        """Return all distinct tag keys with count of SLO definitions using each."""
+        result = await self._session.execute(
+            text(
+                "SELECT key, COUNT(*) as cnt "
+                "FROM slo_definitions, jsonb_object_keys(tags) AS key "
+                "GROUP BY key ORDER BY cnt DESC"
+            )
+        )
+        return {row[0]: row[1] for row in result}
+
+    async def get_tag_values(self, key: str) -> dict[str, int]:
+        """Return all distinct values for a tag key with usage counts."""
+        result = await self._session.execute(
+            text(
+                "SELECT tags->>:key AS val, COUNT(*) as cnt "
+                "FROM slo_definitions "
+                "WHERE tags ? :key "
+                "GROUP BY val ORDER BY cnt DESC"
+            ),
+            {"key": key},
+        )
+        return {row[0]: row[1] for row in result}

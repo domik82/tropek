@@ -104,3 +104,44 @@ async def test_create_without_display_name_defaults_to_none(db_session: AsyncSes
     fetched = await repo.get_latest("no-display-slo")
     assert fetched is not None
     assert fetched.display_name is None
+
+
+@pytest.mark.integration
+async def test_create_with_variables(db_session: AsyncSession) -> None:
+    repo = SLORepository(db_session)
+    slo = await repo.create(
+        "slo-vars",
+        objectives=[{"sli": "m1", "pass_criteria": ["<600"]}],
+        tags={"team": "alpha"},
+        variables={"aggregation_window": "5m"},
+    )
+    assert slo.tags == {"team": "alpha"}
+    assert slo.variables == {"aggregation_window": "5m"}
+
+
+@pytest.mark.integration
+async def test_list_all_filters_by_tag(db_session: AsyncSession) -> None:
+    repo = SLORepository(db_session)
+    await repo.create("slo-a", [{"sli": "m1", "pass_criteria": ["<600"]}], tags={"env": "prod"})
+    await repo.create("slo-b", [{"sli": "m2", "pass_criteria": ["<100"]}], tags={"env": "staging"})
+    result = await repo.list_all(tag_key="env", tag_val="prod")
+    assert len(result) == 1
+    assert result[0].name == "slo-a"
+
+
+@pytest.mark.integration
+async def test_get_tag_keys(db_session: AsyncSession) -> None:
+    repo = SLORepository(db_session)
+    await repo.create(
+        "slo-a",
+        [{"sli": "m1", "pass_criteria": ["<600"]}],
+        tags={"team": "a", "env": "prod"},
+    )
+    await repo.create(
+        "slo-b",
+        [{"sli": "m2", "pass_criteria": ["<100"]}],
+        tags={"env": "staging"},
+    )
+    keys = await repo.get_tag_keys()
+    assert keys["env"] == 2
+    assert keys["team"] == 1

@@ -81,7 +81,7 @@ class BaselineRepository:
             limit: Maximum number of baseline evaluations to return.
             sli_version_range: Optional (min, max) inclusive version range for sli_version.
             restrict_to_ids: Optional list of evaluation IDs to restrict results to.
-            tag_filters: Optional JSONB key-value filters on evaluation_metadata.
+            tag_filters: Optional JSONB key-value filters on variables.
 
         Returns:
             Matching completed evaluations ordered by period_start descending.
@@ -103,7 +103,7 @@ class BaselineRepository:
 
         if tag_filters:
             for key, value in tag_filters.items():
-                q = q.where(Evaluation.evaluation_metadata[key].astext == value)
+                q = q.where(Evaluation.variables[key].astext == value)
 
         q = await self._apply_pin_filter(q, asset_id=asset_id, slo_name=slo_name)
         q = q.order_by(Evaluation.period_start.desc()).limit(limit)
