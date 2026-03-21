@@ -41,7 +41,8 @@ class SLODefinitionCreate(BaseModel):
     comparison: dict[str, Any] = Field(default_factory=dict)
     notes: str | None = None
     author: str | None = None
-    meta: dict[str, Any] = Field(default_factory=dict)
+    tags: dict[str, Any] = Field(default_factory=dict)
+    variables: dict[str, Any] = Field(default_factory=dict)
     comparable_from_version: int | None = None
 
 
@@ -60,7 +61,8 @@ class SLODefinitionRead(BaseModel):
     comparison: dict[str, Any]
     notes: str | None
     author: str | None
-    meta: dict[str, Any]
+    tags: dict[str, Any]
+    variables: dict[str, Any]
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
@@ -114,7 +116,7 @@ class SLOTestRequest(BaseModel):
     period_end: datetime
     evaluation_name: str = ""
     baseline: BaselineConfig | None = None
-    metadata: dict[str, str] = Field(default_factory=dict)
+    variables: dict[str, str] = Field(default_factory=dict)
 
 
 class SLOTestResult(BaseModel):

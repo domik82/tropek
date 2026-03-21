@@ -25,7 +25,7 @@ class AnnotationRead(BaseModel):
     content: str
     author: str | None
     category: str | None
-    meta: dict[str, Any]
+    tags: dict[str, Any]
     hidden_at: datetime | None
     hidden_by: str | None
     hidden_reason: str | None
@@ -41,7 +41,7 @@ class AnnotationCreate(BaseModel):
     content: str
     author: str | None = None
     category: str | None = None
-    meta: dict[str, Any] = {}
+    tags: dict[str, Any] = {}
 
 
 class AnnotationUpdate(BaseModel):
@@ -50,7 +50,7 @@ class AnnotationUpdate(BaseModel):
     content: str | None = None
     author: str | None = None
     category: str | None = None
-    meta: dict[str, Any] | None = None
+    tags: dict[str, Any] | None = None
 
 
 class AnnotationHide(BaseModel):
@@ -112,7 +112,7 @@ class EvaluationSummary(BaseModel):
     override_reason: str | None = None
     override_author: str | None = None
     asset_snapshot: dict[str, Any]
-    evaluation_metadata: dict[str, Any]
+    variables: dict[str, Any]
     annotation_count: int = 0
     latest_annotation: AnnotationRead | None = None
     top_failures: list[FailingIndicator] = []
@@ -196,7 +196,7 @@ class TriggerRequest(BaseModel):
     slo_name: str
     period_start: datetime
     period_end: datetime
-    metadata: dict[str, str] = {}
+    variables: dict[str, str] = {}
 
 
 class TriggerResponse(BaseModel):
@@ -213,7 +213,7 @@ class BatchTriggerRequest(BaseModel):
     evaluation_name: str
     period_start: datetime
     period_end: datetime
-    metadata: dict[str, str] = {}
+    variables: dict[str, str] = {}
 
 
 class BatchConflict(BaseModel):

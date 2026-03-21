@@ -44,7 +44,8 @@ class AssetCreate(BaseModel):
     name: str
     display_name: str | None = None
     type_name: str
-    labels: dict[str, str] = {}
+    tags: dict[str, str] = {}
+    variables: dict[str, str] = {}
 
 
 class AssetUpdate(BaseModel):
@@ -52,19 +53,20 @@ class AssetUpdate(BaseModel):
 
     display_name: str | None = None
     type_name: str | None = None
-    labels: dict[str, str] | None = None
+    tags: dict[str, str] | None = None
+    variables: dict[str, str] | None = None
     heatmap_config: dict[str, Any] | None = None
 
 
-class LabelKeyCount(BaseModel):
-    """A label key with its usage count across assets."""
+class TagKeyCount(BaseModel):
+    """A tag key with its usage count across assets."""
 
     key: str
     count: int
 
 
-class LabelValueCount(BaseModel):
-    """A label value with its usage count for a specific key."""
+class TagValueCount(BaseModel):
+    """A tag value with its usage count for a specific key."""
 
     value: str
     count: int
@@ -77,7 +79,8 @@ class AssetRead(BaseModel):
     name: str
     display_name: str | None
     type_name: str
-    labels: dict[str, Any]
+    tags: dict[str, Any]
+    variables: dict[str, Any]
     heatmap_config: dict[str, Any] | None = None
     created_at: datetime
     updated_at: datetime

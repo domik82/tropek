@@ -16,7 +16,8 @@ class DataSourceCreate(BaseModel):
     display_name: str | None = None
     adapter_type: str
     adapter_url: str
-    labels: dict[str, str] = {}
+    tags: dict[str, str] = {}
+    token: str | None = None
 
 
 class DataSourceUpdate(BaseModel):
@@ -24,7 +25,8 @@ class DataSourceUpdate(BaseModel):
 
     display_name: str | None = None
     adapter_url: str | None = None
-    labels: dict[str, str] | None = None
+    tags: dict[str, str] | None = None
+    token: str | None = None
 
 
 class DataSourceRead(BaseModel):
@@ -35,7 +37,8 @@ class DataSourceRead(BaseModel):
     display_name: str | None
     adapter_type: str
     adapter_url: str
-    labels: dict[str, Any]
+    tags: dict[str, Any]
+    has_token: bool = False
     created_at: datetime
     updated_at: datetime
 
