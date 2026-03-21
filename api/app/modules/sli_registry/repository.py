@@ -8,14 +8,16 @@ from typing import Any
 from sqlalchemy import select, text, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.cache.redis_cache import RedisCache
 from app.db.models import SLIDefinition
 
 
 class SLIRepository:
     """Data access layer for versioned SLI definitions."""
 
-    def __init__(self, session: AsyncSession) -> None:
+    def __init__(self, session: AsyncSession, cache: RedisCache | None = None) -> None:
         self._session = session
+        self._cache = cache
 
     async def create(
         self,
@@ -79,6 +81,8 @@ class SLIRepository:
         )
         self._session.add(sli)
         await self._session.flush()
+        if self._cache:
+            await self._cache.invalidate(f"sli:{name}:latest")
         return sli
 
     async def get_latest(self, name: str) -> SLIDefinition | None:
