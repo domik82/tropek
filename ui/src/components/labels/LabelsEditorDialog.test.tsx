@@ -5,8 +5,8 @@ import { TestWrapper } from '@/test-wrapper'
 import { LabelsEditorDialog } from './LabelsEditorDialog'
 
 vi.mock('@/features/assets/hooks', () => ({
-  useLabelKeys: () => ({ data: [{ key: 'env', count: 3 }, { key: 'team', count: 2 }, { key: 'region', count: 1 }], isLoading: false }),
-  useLabelValues: () => ({ data: [{ value: 'prod', count: 3 }, { value: 'staging', count: 2 }, { value: 'dev', count: 1 }], isLoading: false }),
+  useTagKeys: () => ({ data: [{ key: 'env', count: 3 }, { key: 'team', count: 2 }, { key: 'region', count: 1 }], isLoading: false }),
+  useTagValues: () => ({ data: [{ value: 'prod', count: 3 }, { value: 'staging', count: 2 }, { value: 'dev', count: 1 }], isLoading: false }),
 }))
 
 function renderDialog(props: Partial<Parameters<typeof LabelsEditorDialog>[0]> = {}) {

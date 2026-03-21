@@ -5,9 +5,9 @@ import { TestWrapper } from '@/test-wrapper'
 import { AddAssetToGroupDialog } from './AddAssetToGroupDialog'
 
 const ALL_ASSETS = [
-  { id: 'a1', name: 'cart-service', display_name: 'Cart', type_name: 'service', labels: {}, created_at: '', updated_at: '' },
-  { id: 'a2', name: 'checkout-api', display_name: null, type_name: 'api', labels: {}, created_at: '', updated_at: '' },
-  { id: 'a3', name: 'order-worker', display_name: null, type_name: 'worker', labels: {}, created_at: '', updated_at: '' },
+  { id: 'a1', name: 'cart-service', display_name: 'Cart', type_name: 'service', tags: {}, created_at: '', updated_at: '' },
+  { id: 'a2', name: 'checkout-api', display_name: null, type_name: 'api', tags: {}, created_at: '', updated_at: '' },
+  { id: 'a3', name: 'order-worker', display_name: null, type_name: 'worker', tags: {}, created_at: '', updated_at: '' },
 ]
 
 const MOCK_GROUP = {

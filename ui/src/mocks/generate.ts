@@ -584,10 +584,10 @@ export function getAssets() {
 }
 
 export function getAssetGroupTree() {
-  const assets = (assetsFixture as { items: Array<{ id: string; name: string; labels: Record<string, string> }> }).items
+  const assets = (assetsFixture as { items: Array<{ id: string; name: string; tags: Record<string, string> }> }).items
   const labMap = new Map<string, typeof assets>()
   for (const a of assets) {
-    const lab = a.labels['lab'] ?? 'unknown'
+    const lab = a.tags['lab'] ?? 'unknown'
     if (!labMap.has(lab)) labMap.set(lab, [])
     labMap.get(lab)!.push(a)
   }

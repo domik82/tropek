@@ -55,7 +55,7 @@ export function AllAssetsPanel() {
                     {asset.type_name}
                   </td>
                   <td className="px-3 py-2">
-                    <LabelChips labels={asset.labels} maxVisible={3} size="small" />
+                    <LabelChips labels={asset.tags} maxVisible={3} size="small" />
                   </td>
                   <td className="px-3 py-2">
                     <div className="flex items-center justify-center">

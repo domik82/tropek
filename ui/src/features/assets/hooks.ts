@@ -5,7 +5,7 @@ import {
   fetchAssets, fetchAsset, createAsset, updateAsset, deleteAsset,
   fetchAssetGroupTree, fetchAssetGroup, addGroupMember, removeGroupMember,
   fetchAssetTypes, createAssetType, renameAssetType, setDefaultAssetType, deleteAssetType,
-  fetchLabelKeys, fetchLabelValues,
+  fetchTagKeys, fetchTagValues,
 } from './api'
 
 // ---- Assets ----
@@ -36,7 +36,7 @@ export function useCreateAsset() {
 export function useUpdateAsset() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: ({ name, ...body }: { name: string; display_name?: string; type_name?: string; labels?: Record<string, string> }) =>
+    mutationFn: ({ name, ...body }: { name: string; display_name?: string; type_name?: string; tags?: Record<string, string> }) =>
       updateAsset(name, body),
     onSuccess: () => { void qc.invalidateQueries({ queryKey: assetKeys.all }) },
   })
@@ -133,16 +133,16 @@ export function useDeleteAssetType() {
   })
 }
 
-// ---- Labels ----
+// ---- Tags ----
 
-export function useLabelKeys() {
-  return useQuery({ queryKey: labelKeys.keys(), queryFn: fetchLabelKeys })
+export function useTagKeys() {
+  return useQuery({ queryKey: labelKeys.keys(), queryFn: fetchTagKeys })
 }
 
-export function useLabelValues(key: string | null) {
+export function useTagValues(key: string | null) {
   return useQuery({
     queryKey: labelKeys.values(key ?? ''),
-    queryFn: () => fetchLabelValues(key!),
+    queryFn: () => fetchTagValues(key!),
     enabled: key !== null,
   })
 }

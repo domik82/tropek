@@ -12,7 +12,7 @@ export interface Asset {
   name: string
   display_name?: string
   type_name: string
-  labels: Record<string, string>
+  tags: Record<string, string>
   created_at: string
   updated_at: string
 }
@@ -43,12 +43,12 @@ export interface AssetGroupTree {
   all_groups: AssetGroup[]
 }
 
-export interface LabelKeyCount {
+export interface TagKeyCount {
   key: string
   count: number
 }
 
-export interface LabelValueCount {
+export interface TagValueCount {
   value: string
   count: number
 }

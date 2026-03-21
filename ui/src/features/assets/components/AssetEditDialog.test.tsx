@@ -9,7 +9,7 @@ const MOCK_ASSET = {
   name: 'cart-service',
   display_name: 'Cart',
   type_name: 'service',
-  labels: { env: 'prod' },
+  tags: { env: 'prod' },
   created_at: '',
   updated_at: '',
 }

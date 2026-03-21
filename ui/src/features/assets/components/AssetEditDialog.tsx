@@ -26,7 +26,7 @@ export function AssetEditDialog({ open, onOpenChange, assetName }: Props) {
     if (asset) {
       setDisplayName(asset.display_name ?? '')
       setTypeName(asset.type_name)
-      setLabels(asset.labels ?? {})
+      setLabels(asset.tags ?? {})
     }
   }, [asset])
 
@@ -36,7 +36,7 @@ export function AssetEditDialog({ open, onOpenChange, assetName }: Props) {
       name: assetName,
       display_name: displayName || undefined,
       type_name: typeName,
-      labels,
+      tags: labels,
     }, {
       onSuccess: () => onOpenChange(false),
     })
