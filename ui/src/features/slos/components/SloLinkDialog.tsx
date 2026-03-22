@@ -2,8 +2,10 @@ import { useState, useEffect } from 'react'
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose,
 } from '@/components/ui/dialog'
+import { useDatasources } from '@/features/datasources/hooks'
+import { useSliDefinitions } from '@/features/slis/hooks'
 import {
-  useDatasources, useSliDefinitions, useGroupTree, useSlos,
+  useGroupTree, useSlos,
   useCreateGroupSloLink, useGroupSloLinks,
 } from '../hooks'
 

@@ -44,7 +44,7 @@ export const sliHandlers = [
         id: crypto.randomUUID(),
         version: 1,
         active: true,
-        meta: {},
+        tags: {},
         created_at: new Date().toISOString(),
         ...body,
       },

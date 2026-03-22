@@ -3,6 +3,7 @@
     "id": "a1b2c3d4-0001-4000-8000-000000000001",
     "name": "linux-compilation-sli",
     "display_name": "Linux Compilation Indicators",
+    "adapter_type": "prometheus",
     "version": 2,
     "comparable_from_version": 1,
     "indicators": {
@@ -12,7 +13,7 @@
     },
     "notes": "Added cpu_usage_avg indicator",
     "author": "j.kowalski",
-    "meta": {},
+    "tags": {},
     "active": true,
     "created_at": "2026-03-10T14:00:00Z"
   },
@@ -20,6 +21,7 @@
     "id": "a1b2c3d4-0002-4000-8000-000000000002",
     "name": "api-performance-sli",
     "display_name": "API Performance Indicators",
+    "adapter_type": "prometheus",
     "version": 1,
     "comparable_from_version": 1,
     "indicators": {
@@ -29,7 +31,7 @@
     },
     "notes": "Initial version",
     "author": "a.smith",
-    "meta": {},
+    "tags": {},
     "active": true,
     "created_at": "2026-03-08T10:30:00Z"
   }

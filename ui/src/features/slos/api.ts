@@ -1,15 +1,16 @@
 // src/features/slos/api.ts
 import type { SloDefinition, SloObjective, SloValidationResult } from './types'
-import type {
-  AssetGroupSLOLink, AssetGroupSLOLinkCreate, AssetGroupUpdate,
-  DataSource, SliDefinition,
-} from './types'
+import type { AssetGroupSLOLink, AssetGroupSLOLinkCreate, AssetGroupUpdate } from './types'
 import type { AssetGroup, AssetGroupTree } from '@/features/assets/types'
 
 const BASE = '/api'
 
-export async function fetchSlos(): Promise<SloDefinition[]> {
-  const res = await fetch(`${BASE}/slo-definitions`)
+export async function fetchSlos(tagKey?: string, tagVal?: string): Promise<SloDefinition[]> {
+  const params = new URLSearchParams()
+  if (tagKey) params.set('tag_key', tagKey)
+  if (tagVal) params.set('tag_val', tagVal)
+  const qs = params.toString()
+  const res = await fetch(`${BASE}/slo-definitions${qs ? `?${qs}` : ''}`)
   if (!res.ok) throw new Error(`fetchSlos: ${res.status}`)
   const data: { items: SloDefinition[]; total: number } = await res.json()
   return data.items
@@ -45,7 +46,8 @@ export async function createSloDefinition(payload: {
   display_name?: string
   notes?: string
   author?: string
-  meta?: Record<string, string>
+  tags?: Record<string, string>
+  variables?: Record<string, string>
   comparable_from_version?: number
 }): Promise<SloDefinition> {
   const res = await fetch(`${BASE}/slo-definitions`, {
@@ -141,19 +143,14 @@ export async function deleteGroupSloLink(groupName: string, linkName: string): P
   if (!res.ok) throw new Error(`deleteGroupSloLink: ${res.status}`)
 }
 
-export async function fetchDatasources(): Promise<DataSource[]> {
-  const res = await fetch(`${BASE}/datasources`)
-  if (!res.ok) throw new Error(`fetchDatasources: ${res.status}`)
-  const data: { items: DataSource[]; total: number } = await res.json()
-  return data.items
+export async function fetchSloTagKeys(): Promise<{ key: string; count: number }[]> {
+  const res = await fetch(`${BASE}/slo-definitions/tag-keys`)
+  if (!res.ok) throw new Error(`fetchSloTagKeys: ${res.status}`)
+  return res.json()
 }
 
-export async function fetchSliDefinitions(adapterType?: string): Promise<SliDefinition[]> {
-  const url = adapterType
-    ? `${BASE}/sli-definitions?adapter_type=${encodeURIComponent(adapterType)}`
-    : `${BASE}/sli-definitions`
-  const res = await fetch(url)
-  if (!res.ok) throw new Error(`fetchSliDefinitions: ${res.status}`)
-  const data: { items: SliDefinition[]; total: number } = await res.json()
-  return data.items
+export async function fetchSloTagValues(key: string): Promise<{ value: string; count: number }[]> {
+  const res = await fetch(`${BASE}/slo-definitions/tag-values?key=${encodeURIComponent(key)}`)
+  if (!res.ok) throw new Error(`fetchSloTagValues: ${res.status}`)
+  return res.json()
 }
