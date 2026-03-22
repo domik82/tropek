@@ -50,4 +50,12 @@ describe('SearchableComboBox', () => {
     expect(screen.getAllByText('prometheus')).toHaveLength(2)
     expect(screen.getByText('mock')).toBeInTheDocument()
   })
+
+  it('closes dropdown on Escape', () => {
+    render(<SearchableComboBox value="" items={items} onSelect={vi.fn()} placeholder="Pick..." />)
+    fireEvent.click(screen.getByText('Pick...'))
+    expect(screen.getByText('HTTP Service SLI')).toBeInTheDocument()
+    fireEvent.keyDown(screen.getByRole('listbox'), { key: 'Escape' })
+    expect(screen.queryByText('HTTP Service SLI')).not.toBeInTheDocument()
+  })
 })

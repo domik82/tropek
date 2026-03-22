@@ -1,7 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { ChevronDown, Search } from 'lucide-react'
-
-const SANS_SERIF = "system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif"
+import { SANS_SERIF } from '@/lib/fonts'
 
 interface ComboBoxItem {
   value: string
@@ -72,6 +71,7 @@ export function SearchableComboBox({
       <button
         type="button"
         onClick={handleToggle}
+        aria-expanded={open}
         className="flex w-full items-center justify-between gap-2 rounded border
           border-[var(--border)] bg-[var(--popover)] px-3 py-2 text-sm
           hover:border-[var(--primary)] focus:outline-none focus:ring-1
@@ -101,7 +101,16 @@ export function SearchableComboBox({
             />
           </div>
 
-          <div className="max-h-60 overflow-y-auto py-1">
+          <div
+            className="max-h-60 overflow-y-auto py-1"
+            role="listbox"
+            onKeyDown={(e) => {
+              if (e.key === 'Escape') {
+                setOpen(false)
+                setSearch('')
+              }
+            }}
+          >
             {filteredItems.length === 0 ? (
               <div className="px-3 py-2 text-sm text-[var(--muted-foreground)]">No results</div>
             ) : (
@@ -109,6 +118,7 @@ export function SearchableComboBox({
                 <button
                   key={item.value}
                   type="button"
+                  role="option"
                   onClick={() => handleSelect(item.value)}
                   className="flex w-full items-center justify-between px-3 py-2 text-sm
                     text-[var(--foreground)] hover:bg-[var(--accent)]"

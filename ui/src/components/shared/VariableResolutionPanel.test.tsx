@@ -26,4 +26,11 @@ describe('VariableResolutionPanel', () => {
     expect(screen.queryByText('asset.variables:')).not.toBeInTheDocument()
     expect(screen.getByText('slo.variables:')).toBeInTheDocument()
   })
+
+  it('returns null when all sections are empty', () => {
+    const { container } = render(
+      <VariableResolutionPanel assetVariables={{}} sloVariables={{}} reserved={{}} />
+    )
+    expect(container.firstChild).toBeNull()
+  })
 })
