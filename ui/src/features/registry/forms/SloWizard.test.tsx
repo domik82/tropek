@@ -126,7 +126,7 @@ describe('SloWizard', () => {
     render(<SloWizard editSlo={mockSlo} />, { wrapper: Wrapper })
 
     expect(screen.getByLabelText('Name')).toHaveValue('perf-slo')
-    expect(screen.getByLabelText('Name')).toBeDisabled()
+    expect(screen.getByLabelText('Name')).toHaveAttribute('readonly')
     expect(screen.getByLabelText('Display Name')).toHaveValue('Performance SLO')
     expect(screen.getByLabelText('Author')).toHaveValue('alice')
     expect(screen.getByLabelText('Notes')).toHaveValue('Performance evaluation')
