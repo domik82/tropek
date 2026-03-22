@@ -114,9 +114,9 @@ export function SloWizard({ editSlo, onClose }: SloWizardProps) {
     setPickSli(data)
     const names = Object.keys(data.indicators)
     if (names.length > 0) {
-      setIndicatorRows(
+      setIndicatorRows((prev) =>
         names.map((name) => {
-          const existing = indicatorRows.find((r) => r.sli === name)
+          const existing = prev.find((r) => r.sli === name)
           if (existing) return existing
           return {
             sli: name,
@@ -218,7 +218,11 @@ export function SloWizard({ editSlo, onClose }: SloWizardProps) {
         {/* Step 2 — when name filled */}
         {showStep2 && (
           <section>
-            <WizardStepPickSli data={pickSli} onChange={handlePickSliChange} />
+            <WizardStepPickSli
+              data={pickSli}
+              onChange={handlePickSliChange}
+              editIndicatorNames={editSlo ? editSlo.objectives.map((o) => o.sli) : undefined}
+            />
           </section>
         )}
 

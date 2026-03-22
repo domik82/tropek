@@ -33,7 +33,7 @@ export function WizardStepIdentity({ data, onChange, nameReadOnly }: WizardStepI
           value={data.name}
           onChange={(e) => update('name', e.target.value)}
           placeholder="my-slo-definition"
-          disabled={nameReadOnly}
+          readOnly={nameReadOnly}
         />
       </div>
 
