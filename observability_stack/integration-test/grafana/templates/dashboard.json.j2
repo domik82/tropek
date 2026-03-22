@@ -1,0 +1,97 @@
+{
+  "title": "{{ title }} ({{ datasource_name }})",
+  "uid": "{{ uid }}-{{ datasource_name }}",
+  "refresh": "{{ refresh }}",
+  "time": {
+    "from": "{{ time_from }}",
+    "to": "{{ time_to }}"
+  },
+  "schemaVersion": 38,
+  "version": 1,
+  "tags": ["slo", "{{ datasource_name }}"],
+  "templating": {
+    "list": [
+      {% for var in variables %}
+      {% if var.type == "custom" %}
+      {
+        "name": "{{ var.name }}",
+        "type": "custom",
+        "label": "{{ var.label }}",
+        "query": "{{ var.options }}",
+        "current": {
+          "text": "{{ var.default }}",
+          "value": "{{ var.default }}"
+        },
+        "options": [
+          {% for opt in var.options.split(',') %}
+          {"text": "{{ opt }}", "value": "{{ opt }}", "selected": {{ 'true' if opt == var.default else 'false' }}}{% if not loop.last %},{% endif %}
+          {% endfor %}
+        ]
+      }
+      {% else %}
+      {
+        "name": "{{ var.name }}",
+        "type": "{{ var.type }}",
+        "label": "{{ var.label }}",
+        "datasource": {
+          "type": "{{ datasource_type }}",
+          "uid": "{{ datasource_uid }}"
+        },
+        "query": {{ (var.queries[query_key] if var.queries is defined else var.query) | tojson }}
+      }
+      {% endif %}{% if not loop.last %},{% endif %}
+      {% endfor %}
+    ]
+  },
+  "panels": [
+    {% for panel in panels %}
+    {% set query = panel.queries[query_key] %}
+    {
+      "id": {{ panel.id }},
+      "title": {{ panel.title | tojson }},
+      "type": "{{ panel.type }}",
+      "gridPos": {
+        "x": {{ panel.gridPos.x }},
+        "y": {{ panel.gridPos.y }},
+        "w": {{ panel.gridPos.w }},
+        "h": {{ panel.gridPos.h }}
+      },
+      "datasource": {
+        "type": "{{ datasource_type }}",
+        "uid": "{{ datasource_uid }}"
+      },
+      {% if query is not none %}
+      "targets": [
+        {
+          "datasource": {
+            "type": "{{ datasource_type }}",
+            "uid": "{{ datasource_uid }}"
+          },
+          {% if datasource_type == "prometheus" %}
+          "expr": {{ query | tojson }},
+          "legendFormat": "__auto",
+          "refId": "A"
+          {% elif datasource_type == "influxdb" %}
+          "query": {{ query | tojson }},
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "refId": "A"
+          {% elif datasource_type == "grafana-postgresql-datasource" %}
+          "rawSql": {{ query | tojson }},
+          "rawQuery": true,
+          "format": "{{ 'table' if panel.type == 'stat' else 'time_series' }}",
+          "refId": "A"
+          {% else %}
+          "rawQuery": {{ query | tojson }},
+          "refId": "A"
+          {% endif %}
+        }
+      ]
+      {% else %}
+      "targets": [],
+      "description": "Query not available for this datasource"
+      {% endif %}
+    }{% if not loop.last %},{% endif %}
+    {% endfor %}
+  ]
+}

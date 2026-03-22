@@ -1,0 +1,10 @@
+timeline:
+  start: "2026-03-20T00:00:00Z"
+  duration: 48h
+  resolution: 30s
+  baseline: healthy
+
+  events:
+    - type: polska
+      at: 6h
+      duration: 36h
