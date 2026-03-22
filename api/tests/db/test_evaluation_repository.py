@@ -93,7 +93,6 @@ async def test_mark_completed_updates_fields(db_session: AsyncSession) -> None:
         ev.id,
         result="pass",
         score=95.0,
-        indicator_results=[{"metric": "cpu", "status": "pass"}],
     )
     fetched = await repo.get_by_id(ev.id)
     assert fetched is not None
@@ -169,7 +168,6 @@ async def test_get_baselines_excludes_invalidated(db_session: AsyncSession) -> N
         ev1.id,
         result="pass",
         score=90.0,
-        indicator_results=[],
         slo_name="http-slo",
     )
 
@@ -187,7 +185,6 @@ async def test_get_baselines_excludes_invalidated(db_session: AsyncSession) -> N
         ev2.id,
         result="pass",
         score=90.0,
-        indicator_results=[],
         slo_name="http-slo",
     )
     await repo.invalidate(ev2.id, note="bad data")
@@ -310,7 +307,6 @@ async def test_get_baselines_excludes_null_sli_version_with_range(
         ev1.id,
         result="pass",
         score=90.0,
-        indicator_results=[],
         slo_name="http-slo",
     )
 
@@ -328,7 +324,6 @@ async def test_get_baselines_excludes_null_sli_version_with_range(
         ev2.id,
         result="pass",
         score=90.0,
-        indicator_results=[],
         slo_name="http-slo",
     )
 
@@ -367,7 +362,6 @@ async def test_get_baselines_by_asset_and_slo(db_session: AsyncSession) -> None:
             ev.id,
             result="pass",
             score=90.0,
-            indicator_results=[],
             slo_name="http-slo",
         )
 
@@ -408,7 +402,6 @@ async def test_get_baselines_excludes_future_period_start(db_session: AsyncSessi
             ev.id,
             result="pass",
             score=90.0,
-            indicator_results=[],
             slo_name="http-slo",
         )
 
@@ -445,7 +438,6 @@ async def test_get_baselines_with_tag_filters(db_session: AsyncSession) -> None:
             ev.id,
             result="pass",
             score=90.0,
-            indicator_results=[],
             slo_name="http-slo",
         )
 
@@ -483,7 +475,6 @@ async def test_get_baselines_with_sli_version_range(db_session: AsyncSession) ->
             ev.id,
             result="pass",
             score=90.0,
-            indicator_results=[],
             slo_name="http-slo",
         )
 
@@ -524,7 +515,6 @@ async def test_get_baselines_restrict_to_ids(db_session: AsyncSession) -> None:
             ev.id,
             result="pass",
             score=90.0,
-            indicator_results=[],
             slo_name="http-slo",
         )
         eval_ids.append(ev.id)
@@ -595,9 +585,7 @@ async def test_override_double_apply_preserves_original(db_session: AsyncSession
         asset_id=asset_id,
         slo_name="test-slo",
     )
-    await repo.mark_completed(
-        ev.id, result="fail", score=30.0, indicator_results=[], slo_name="test-slo"
-    )
+    await repo.mark_completed(ev.id, result="fail", score=30.0, slo_name="test-slo")
 
     # First override: fail → pass
     await repo.override_status(ev.id, new_result="pass", reason="false alarm", author="alice")

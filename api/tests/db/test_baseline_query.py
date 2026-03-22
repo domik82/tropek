@@ -44,9 +44,7 @@ async def _create_eval(
         asset_id=asset_id,
         slo_name="test-slo",
     )
-    await repo.mark_completed(
-        ev.id, result=result, score=score, indicator_results=[], slo_name="test-slo"
-    )
+    await repo.mark_completed(ev.id, result=result, score=score, slo_name="test-slo")
     return ev.id
 
 

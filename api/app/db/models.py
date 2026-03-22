@@ -202,7 +202,38 @@ class SLOObjective(Base):
     sort_order:        Mapped[int]            = mapped_column(Integer, nullable=False)
     pass_criteria:     Mapped[list[str]]      = mapped_column(ARRAY(Text), nullable=False, server_default=text("'{}'"))
     warning_criteria:  Mapped[list[str]]      = mapped_column(ARRAY(Text), nullable=False, server_default=text("'{}'"))
+    tab_group:         Mapped[str | None]     = mapped_column(Text, nullable=True)
     # fmt: on
+
+
+class IndicatorResultRow(Base):
+    """Normalized indicator result — one row per SLI per evaluation."""
+
+    __tablename__ = "indicator_results"
+    __table_args__ = (
+        Index("idx_indicator_results_evaluation", "evaluation_id"),
+        Index("idx_indicator_results_objective_status", "slo_objective_id", "status"),
+        UniqueConstraint(
+            "evaluation_id",
+            "slo_objective_id",
+            name="uq_indicator_results_eval_objective",
+        ),
+    )
+
+    # fmt: off
+    id:               Mapped[uuid.UUID]      = mapped_column(UUID, primary_key=True, default=uuid.uuid4)
+    evaluation_id:    Mapped[uuid.UUID]      = mapped_column(UUID, ForeignKey("evaluations.id", ondelete="CASCADE"), nullable=False)
+    slo_objective_id: Mapped[uuid.UUID]      = mapped_column(UUID, ForeignKey("slo_objectives.id", ondelete="CASCADE"), nullable=False)
+    value:            Mapped[float | None]   = mapped_column(Float, nullable=True)
+    compared_value:   Mapped[float | None]   = mapped_column(Float, nullable=True)
+    change_absolute:  Mapped[float | None]   = mapped_column(Float, nullable=True)
+    change_relative_pct: Mapped[float | None] = mapped_column(Float, nullable=True)
+    status:           Mapped[str]            = mapped_column(Text, nullable=False)
+    score:            Mapped[float]          = mapped_column(Float, nullable=False, server_default=text("0"))
+    # fmt: on
+
+    # Relationships for eager loading
+    objective: Mapped[SLOObjective] = relationship("SLOObjective", lazy="joined")
 
 
 class SLODefinition(Base):
@@ -313,7 +344,6 @@ class Evaluation(Base):
     sli_name: Mapped[str | None] = mapped_column(Text, nullable=True)
     sli_version: Mapped[int | None] = mapped_column(Integer, nullable=True)
     data_source_name: Mapped[str | None] = mapped_column(Text, nullable=True)
-    indicator_results: Mapped[list[Any]] = mapped_column(JSONB, nullable=False, server_default=text("'[]'"), default=list)
     variables: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, server_default=text("'{}'"), default=dict)
     ingestion_mode: Mapped[str] = mapped_column(Text, nullable=False)
     adapter_used: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -332,6 +362,9 @@ class Evaluation(Base):
     job_stats: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, server_default=text("'{}'"), default=dict)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     annotations: Mapped[list[EvaluationAnnotation]] = relationship("EvaluationAnnotation", back_populates="evaluation", cascade="all, delete-orphan")
+    indicator_rows: Mapped[list[IndicatorResultRow]] = relationship(
+        "IndicatorResultRow", cascade="all, delete-orphan", lazy="selectin",
+    )
 
     # fmt: on
 

@@ -9,6 +9,7 @@ import httpx
 import structlog
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.cache.redis_cache import RedisCache
 from app.config import get_settings
 from app.db.models import Evaluation, SLIDefinition, SLODefinition
 from app.modules.datasource.repository import DataSourceRepository
@@ -19,6 +20,7 @@ from app.modules.quality_gate.engine.evaluator import evaluate
 from app.modules.quality_gate.engine.slo_models import SLO
 from app.modules.quality_gate.engine.slo_parser import build_slo
 from app.modules.quality_gate.engine.variables import build_variables, substitute_variables
+from app.modules.quality_gate.indicator_repository import IndicatorRepository
 from app.modules.quality_gate.repository import EvaluationRepository
 from app.modules.quality_gate.sli_repository import SLIValueRepository
 from app.modules.sli_registry.repository import SLIRepository
@@ -34,12 +36,14 @@ class DefinitionLoadError(Exception):
 async def _load_definitions(
     session: AsyncSession,
     ev: Evaluation,
+    cache: RedisCache | None = None,
 ) -> tuple[SLODefinition, SLIDefinition]:
     """Load SLO and SLI definitions for the evaluation.
 
     Args:
         session: Active async DB session.
         ev: Evaluation row providing slo_name/version and sli_name/version.
+        cache: Optional Redis cache for definition lookups.
 
     Returns:
         (slo_def, sli_def) tuple on success.
@@ -49,13 +53,13 @@ async def _load_definitions(
     """
     if ev.slo_name is None or ev.slo_version is None:
         raise DefinitionLoadError("evaluation has no slo_name or slo_version")
-    slo_def = await SLORepository(session).get_version(ev.slo_name, ev.slo_version)
+    slo_def = await SLORepository(session, cache=cache).get_version(ev.slo_name, ev.slo_version)
     if slo_def is None:
         raise DefinitionLoadError(f"slo '{ev.slo_name}' v{ev.slo_version} not found")
 
     if ev.sli_name is None or ev.sli_version is None:
         raise DefinitionLoadError("evaluation has no sli_name or sli_version")
-    sli_def = await SLIRepository(session).get_version(ev.sli_name, ev.sli_version)
+    sli_def = await SLIRepository(session, cache=cache).get_version(ev.sli_name, ev.sli_version)
     if sli_def is None:
         raise DefinitionLoadError(f"sli '{ev.sli_name}' v{ev.sli_version} not found")
 
@@ -95,10 +99,10 @@ async def _resolve_baselines(
     compared_eval_ids = [str(bev.id) for bev in baseline_evals]
     for metric_name in indicator_names:
         vals: list[float] = [
-            ir["value"]
+            float(row.value)
             for bev in baseline_evals
-            for ir in (bev.indicator_results or [])
-            if ir.get("metric") == metric_name and ir.get("value") is not None
+            for row in (bev.indicator_rows or [])
+            if row.objective.sli == metric_name and row.value is not None
         ]
         if vals:
             baselines[metric_name] = aggregate_values(vals, slo.comparison.aggregate_function)
@@ -174,11 +178,44 @@ async def _query_adapter_safe(
         return None
 
 
+async def _write_indicator_rows(
+    log: structlog.stdlib.BoundLogger,
+    session: AsyncSession,
+    eval_id: uuid.UUID,
+    slo_def: Any,
+    indicator_results: list[Any],
+) -> None:
+    """Write indicator results to the normalized indicator_results table."""
+    indicator_repo = IndicatorRepository(session)
+    obj_lookup = {obj.sli: obj.id for obj in slo_def.objectives}
+    rows = []
+    for ir in indicator_results:
+        obj_id = obj_lookup.get(ir.metric)
+        if obj_id is None:
+            log.warning("no objective match for metric", metric=ir.metric)
+            continue
+        rows.append(
+            {
+                "evaluation_id": eval_id,
+                "slo_objective_id": obj_id,
+                "value": ir.value,
+                "compared_value": ir.compared_value,
+                "change_absolute": ir.change_absolute,
+                "change_relative_pct": ir.change_relative_pct,
+                "status": ir.status,
+                "score": ir.score,
+            }
+        )
+    if rows:
+        await indicator_repo.bulk_insert(eval_id, rows)
+
+
 async def run_evaluation(
     session: AsyncSession,
     eval_id: uuid.UUID,
     *,
     worker_id: str | None = None,
+    cache: RedisCache | None = None,
 ) -> None:
     """Execute a single evaluation job.
 
@@ -194,6 +231,7 @@ async def run_evaluation(
         session: Async SQLAlchemy session (injected by arq worker context).
         eval_id: UUID of the Evaluation row to execute.
         worker_id: Optional identifier of the worker process for observability.
+        cache: Optional Redis cache for repository lookups.
     """
     log = logger.bind(evaluation_id=str(eval_id), worker_id=worker_id)
     log.info("evaluation started")
@@ -216,7 +254,7 @@ async def run_evaluation(
 
     # Load SLO + SLI definitions
     try:
-        slo_def, sli_def = await _load_definitions(session, ev)
+        slo_def, sli_def = await _load_definitions(session, ev, cache=cache)
     except DefinitionLoadError as exc:
         log.warning("definitions not found", reason=str(exc))
         await repo.mark_failed(eval_id, job_stats={"error": str(exc)})
@@ -274,28 +312,25 @@ async def run_evaluation(
     metrics_fetched, fetch_errors = adapter_result
 
     # Resolve baselines (pin-aware) and evaluate
-    baseline_repo = BaselineRepository(session)
+    baseline_repo = BaselineRepository(session, cache=cache)
     baselines, compared_eval_ids = await _resolve_baselines(
         baseline_repo=baseline_repo, slo=slo, ev=ev, indicator_names=list(sli_def.indicators)
     )
     eval_result = evaluate(slo, metrics_fetched, baselines, compared_eval_ids)
-
-    # Serialize typed indicator results for JSONB storage
-    indicator_dicts: list[dict[str, Any]] = [
-        ir.model_dump() for ir in eval_result.indicator_results
-    ]
 
     # Write results
     await repo.mark_completed(
         eval_id,
         result=eval_result.result,
         score=eval_result.score,
-        indicator_results=indicator_dicts,
         slo_name=ev.slo_name,
         slo_version=ev.slo_version,
         job_stats={"fetch_errors": fetch_errors},
         compared_evaluation_ids=compared_eval_ids,
     )
+
+    # Write to normalized indicator_results table
+    await _write_indicator_rows(log, session, eval_id, slo_def, eval_result.indicator_results)
 
     # Write SLI values to TimescaleDB hypertable
     sli_rows: list[dict[str, Any]] = [

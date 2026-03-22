@@ -9,6 +9,7 @@ from fastapi import HTTPException
 from sqlalchemy import delete, func, select, text, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.cache.redis_cache import RedisCache
 from app.db.models import (
     Asset,
     AssetGroup,
@@ -121,8 +122,9 @@ class AssetTypeRepository:
 class AssetRepository:
     """CRUD for assets table."""
 
-    def __init__(self, session: AsyncSession) -> None:
+    def __init__(self, session: AsyncSession, cache: RedisCache | None = None) -> None:
         self._session = session
+        self._cache = cache
 
     async def create(
         self,
@@ -204,6 +206,9 @@ class AssetRepository:
         asset = await self.get_by_name(name)
         if asset is None:
             raise HTTPException(status_code=404, detail=f"asset '{name}' not found")
+        if self._cache:
+            await self._cache.invalidate(f"asset:{asset.id}")
+            await self._cache.invalidate(f"asset:name:{name}")
         return asset
 
     async def delete(self, name: str) -> bool:
@@ -222,6 +227,9 @@ class AssetRepository:
         await self._session.execute(delete(AssetSLOLink).where(AssetSLOLink.asset_id == asset.id))
         # Delete the asset itself
         await self._session.execute(delete(Asset).where(Asset.id == asset.id))
+        if self._cache:
+            await self._cache.invalidate(f"asset:{asset.id}")
+            await self._cache.invalidate(f"asset:name:{name}")
         return True
 
     async def get_tag_keys(self) -> dict[str, int]:

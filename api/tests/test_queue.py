@@ -63,7 +63,7 @@ async def test_deadlock_retry_succeeds_on_second_attempt(mock_session_factory: t
     factory, session = mock_session_factory
     call_count = 0
 
-    async def fake_run_evaluation(sess, eval_id):
+    async def fake_run_evaluation(sess, eval_id, **_kwargs):
         nonlocal call_count
         call_count += 1
         if call_count == 1:
