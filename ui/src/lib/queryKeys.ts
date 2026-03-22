@@ -39,12 +39,16 @@ export const labelKeys = {
 export const sloKeys = {
   all: ['slos'] as const,
   detail: (name: string) => [...sloKeys.all, name] as const,
+  tagKeys: () => [...sloKeys.all, 'tag-keys'] as const,
+  tagValues: (key: string) => [...sloKeys.all, 'tag-values', key] as const,
 }
 
 export const sliKeys = {
   all: ['sli-definitions'] as const,
   detail: (name: string) => [...sliKeys.all, name] as const,
   versions: (name: string) => [...sliKeys.detail(name), 'versions'] as const,
+  tagKeys: () => [...sliKeys.all, 'tag-keys'] as const,
+  tagValues: (key: string) => [...sliKeys.all, 'tag-values', key] as const,
 }
 
 export const groupKeys = {
@@ -56,4 +60,7 @@ export const groupKeys = {
 
 export const datasourceKeys = {
   all: ['datasources'] as const,
+  detail: (name: string) => [...datasourceKeys.all, name] as const,
+  tagKeys: () => [...datasourceKeys.all, 'tag-keys'] as const,
+  tagValues: (key: string) => [...datasourceKeys.all, 'tag-values', key] as const,
 }
