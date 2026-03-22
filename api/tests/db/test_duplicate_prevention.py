@@ -63,7 +63,6 @@ async def test_find_duplicate_returns_existing_completed(db_session: AsyncSessio
         eval_id=ev.id,
         result="pass",
         score=95.0,
-        indicator_results=[],
     )
     dup = await repo.find_duplicate(
         asset_id=asset_id,

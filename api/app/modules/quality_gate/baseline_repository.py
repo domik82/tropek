@@ -10,16 +10,20 @@ from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.db.models import Evaluation
+from app.cache.redis_cache import RedisCache
+from app.db.models import Evaluation, IndicatorResultRow, SLOObjective
 from app.modules.quality_gate.annotation_repository import AnnotationRepository
 from app.modules.quality_gate.engine.constants import EvaluationStatus
+from app.modules.quality_gate.engine.result_models import IndicatorResult
+from app.modules.quality_gate.indicator_repository import IndicatorRepository
 
 
 class BaselineRepository:
     """Data access layer for baselines and re-evaluation results."""
 
-    def __init__(self, session: AsyncSession) -> None:
+    def __init__(self, session: AsyncSession, cache: RedisCache | None = None) -> None:
         self._session = session
+        self._cache = cache
 
     async def get_evaluation_baselines(
         self,
@@ -50,6 +54,9 @@ class BaselineRepository:
             slo_name=slo_name,
             period_start_before=period_start_before,
             include_result_with_score=include_result_with_score,
+        )
+        q = q.options(
+            selectinload(Evaluation.indicator_rows).joinedload(IndicatorResultRow.objective),
         )
         q = await self._apply_pin_filter(q, asset_id=asset_id, slo_name=slo_name)
         q = q.order_by(Evaluation.period_start.desc()).limit(limit)
@@ -91,6 +98,9 @@ class BaselineRepository:
             slo_name=slo_name,
             period_start_before=period_start_before,
             include_result_with_score=include_result_with_score,
+        )
+        q = q.options(
+            selectinload(Evaluation.indicator_rows).joinedload(IndicatorResultRow.objective),
         )
 
         if sli_version_range:
@@ -181,6 +191,9 @@ class BaselineRepository:
                 Evaluation.status == EvaluationStatus.COMPLETED,
                 Evaluation.invalidated == False,  # noqa: E712
             )
+            .options(
+                selectinload(Evaluation.indicator_rows).joinedload(IndicatorResultRow.objective),
+            )
             .order_by(Evaluation.period_start)
         )
         rows = await self._session.execute(q)
@@ -192,7 +205,8 @@ class BaselineRepository:
         *,
         new_result: str,
         new_score: float,
-        new_indicator_results: list[Any],
+        new_engine_results: list[IndicatorResult] | None = None,
+        slo_objectives: list[SLOObjective] | None = None,
         old_result: str,
         old_score: float,
         slo_version: int | None = None,
@@ -203,7 +217,8 @@ class BaselineRepository:
             eval_id: Evaluation to update.
             new_result: Re-evaluated result value ("pass", "warning", "fail", "error").
             new_score: Re-evaluated weighted score 0.0-100.0.
-            new_indicator_results: Full per-SLI breakdown from re-evaluation.
+            new_engine_results: Engine IndicatorResult objects for normalized row writing.
+            slo_objectives: SLOObjective ORM instances for objective ID lookup.
             old_result: Previous result value (stored in job_stats on first call only).
             old_score: Previous score (stored in job_stats on first call only).
             slo_version: SLO version used for re-evaluation, if any.
@@ -227,7 +242,6 @@ class BaselineRepository:
         values: dict[str, Any] = {
             "result": new_result,
             "score": new_score,
-            "indicator_results": new_indicator_results,
             "job_stats": stats,
         }
         if slo_version is not None:
@@ -240,10 +254,37 @@ class BaselineRepository:
         annotation_content = (
             f"re-evaluated: {old_result} -> {new_result}, score {old_score} -> {new_score}"
         )
-        ann_repo = AnnotationRepository(self._session)
+        if self._cache:
+            await self._cache.invalidate(f"baseline:{ev.asset_id}:{ev.slo_name}")
+        ann_repo = AnnotationRepository(self._session, cache=self._cache)
         await ann_repo.add_annotation(
             eval_id,
             content=annotation_content,
             author="system",
             category="re-evaluation",
         )
+
+        # Write to normalized table
+        if new_engine_results and slo_objectives:
+            indicator_repo = IndicatorRepository(self._session)
+            await indicator_repo.delete_for_evaluation(eval_id)
+            obj_lookup = {obj.sli: obj.id for obj in slo_objectives}
+            rows: list[dict[str, Any]] = []
+            for ir in new_engine_results:
+                obj_id = obj_lookup.get(ir.metric)
+                if obj_id is None:
+                    continue
+                rows.append(
+                    {
+                        "evaluation_id": eval_id,
+                        "slo_objective_id": obj_id,
+                        "value": ir.value,
+                        "compared_value": ir.compared_value,
+                        "change_absolute": ir.change_absolute,
+                        "change_relative_pct": ir.change_relative_pct,
+                        "status": ir.status,
+                        "score": ir.score,
+                    }
+                )
+            if rows:
+                await indicator_repo.bulk_insert(eval_id, rows)

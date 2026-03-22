@@ -4,11 +4,10 @@ from __future__ import annotations
 
 import uuid
 from datetime import UTC, datetime
-from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.models import Evaluation, SLODefinition
+from app.db.models import Evaluation, IndicatorResultRow, SLODefinition
 from app.modules.assets.repository import AssetRepository
 from app.modules.quality_gate.baseline_repository import BaselineRepository
 from app.modules.quality_gate.engine.criteria import aggregate_values
@@ -28,11 +27,11 @@ from app.modules.slo_registry.repository import SLORepository
 _DATETIME_MIN = datetime.min.replace(tzinfo=UTC)
 
 
-def _metrics_from_indicator_results(
-    indicator_results: list[dict[str, Any]],
+def _metrics_from_indicator_rows(
+    indicator_rows: list[IndicatorResultRow],
 ) -> dict[str, float | None]:
-    """Extract metric name -> value mapping from stored indicator_results JSONB."""
-    return {ir["metric"]: ir.get("value") for ir in indicator_results}
+    """Extract metric name -> value mapping from normalized indicator rows."""
+    return {row.objective.sli: row.value for row in indicator_rows}
 
 
 def _build_slo_model(slo_def: SLODefinition) -> SLO:
@@ -73,11 +72,10 @@ def _compute_baselines(
     # Collect per-metric values from all baseline evaluations
     metric_values: dict[str, list[float]] = {}
     for ev in baseline_evals:
-        for ir in ev.indicator_results or []:
-            metric = ir.get("metric")
-            value = ir.get("value")
-            if metric is not None and value is not None:
-                metric_values.setdefault(metric, []).append(float(value))
+        for row in ev.indicator_rows or []:
+            metric = row.objective.sli
+            if metric is not None and row.value is not None:
+                metric_values.setdefault(metric, []).append(float(row.value))
 
     # Aggregate each metric using the SLO's aggregate function
     baselines: dict[str, float | None] = {}
@@ -134,6 +132,7 @@ async def _rescore_single(
     ev: Evaluation,
     *,
     slo_model: SLO,
+    slo_def: SLODefinition,
     slo_version: int,
     eligible_ids: list[uuid.UUID],
     asset_id: uuid.UUID,
@@ -144,7 +143,7 @@ async def _rescore_single(
     dry_run: bool,
 ) -> ReEvalResultItem:
     """Re-score a single evaluation and optionally persist the update."""
-    metrics = _metrics_from_indicator_results(ev.indicator_results)
+    metrics = _metrics_from_indicator_rows(ev.indicator_rows)
 
     eval_sli_range = await _resolve_sli_version_range(ev.sli_name, ev.sli_version, sli_repo)
     sli_range = eval_sli_range or default_sli_version_range
@@ -166,12 +165,12 @@ async def _rescore_single(
     old_score = ev.score if ev.score is not None else 0.0
 
     if not dry_run:
-        indicator_dicts = [ir.model_dump() for ir in eval_result.indicator_results]
         await baseline_repo.update_reeval_result(
             ev.id,
             new_result=eval_result.result,
             new_score=eval_result.score,
-            new_indicator_results=indicator_dicts,
+            new_engine_results=eval_result.indicator_results,
+            slo_objectives=slo_def.objectives,
             old_result=old_result,
             old_score=old_score,
             slo_version=slo_version,
@@ -263,6 +262,7 @@ async def re_evaluate(
         item = await _rescore_single(
             ev,
             slo_model=slo_model,
+            slo_def=slo_def,
             slo_version=slo_def.version,
             eligible_ids=eligible_ids,
             asset_id=asset.id,

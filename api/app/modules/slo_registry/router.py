@@ -248,9 +248,9 @@ async def test_slo(  # noqa: C901
                 vals: list[float] = []
                 for ev in past_evals:
                     vals.extend(
-                        float(ind["value"])
-                        for ind in ev.indicator_results or []
-                        if ind.get("metric") == indicator_name and ind.get("value") is not None
+                        float(row.value)
+                        for row in (ev.indicator_rows or [])
+                        if row.objective.sli == indicator_name and row.value is not None
                     )
                 if vals:
                     agg = aggregate_values(vals, slo.comparison.aggregate_function)

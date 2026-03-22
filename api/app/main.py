@@ -5,8 +5,10 @@ from __future__ import annotations
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
+import redis.asyncio as aioredis
 from fastapi import FastAPI
 
+from app.cache.redis_cache import RedisCache
 from app.config import get_settings
 from app.logging_config import configure_logging
 from app.modules.assets.router import router as assets_router
@@ -34,10 +36,14 @@ from app.queue import create_arq_pool
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     """Validate config, configure logging, and open the arq pool at startup; close it on shutdown."""
-    get_settings().validate_required()
+    settings = get_settings()
+    settings.validate_required()
     configure_logging()
     app.state.arq_pool = await create_arq_pool()
+    cache_redis = aioredis.from_url(settings.cache.url)
+    app.state.cache = RedisCache(cache_redis)
     yield
+    await cache_redis.aclose()  # type: ignore[attr-defined]
     await app.state.arq_pool.close()
 
 
