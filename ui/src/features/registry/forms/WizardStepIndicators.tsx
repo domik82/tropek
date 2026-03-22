@@ -1,5 +1,6 @@
 import { Plus, Minus } from 'lucide-react'
 import { StructuredCriteriaInput } from '@/components/shared/StructuredCriteriaInput'
+import { DEFAULT_CRITERIA } from './criteriaUtils'
 import type { CriteriaParts } from './criteriaUtils'
 
 export interface IndicatorRow {
@@ -14,13 +15,6 @@ export interface IndicatorRow {
 interface WizardStepIndicatorsProps {
   rows: IndicatorRow[]
   onChange: (rows: IndicatorRow[]) => void
-}
-
-const DEFAULT_CRITERIA: CriteriaParts = {
-  operator: '<',
-  sign: null,
-  value: 0,
-  percent: false,
 }
 
 export function WizardStepIndicators({ rows, onChange }: WizardStepIndicatorsProps) {
@@ -90,7 +84,6 @@ export function WizardStepIndicators({ rows, onChange }: WizardStepIndicatorsPro
               <IndicatorRowView
                 key={row.sli}
                 row={row}
-                rowIndex={rowIdx}
                 onToggle={() => toggleCheck(rowIdx)}
                 onWeightChange={(w) => updateRow(rowIdx, { weight: w })}
                 onKeyChange={(k) => updateRow(rowIdx, { key_sli: k })}
@@ -109,7 +102,6 @@ export function WizardStepIndicators({ rows, onChange }: WizardStepIndicatorsPro
 
 interface IndicatorRowViewProps {
   row: IndicatorRow
-  rowIndex: number
   onToggle: () => void
   onWeightChange: (weight: number) => void
   onKeyChange: (key: boolean) => void

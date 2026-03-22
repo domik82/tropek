@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button'
 import { ENTITY_COLORS } from '@/lib/entity-colors'
 import { SANS_SERIF } from '@/lib/fonts'
 import { useCreateSlo } from '@/features/slos/hooks'
-import { serializeCriteria, parseCriteria } from './criteriaUtils'
+import { serializeCriteria, parseCriteria, DEFAULT_CRITERIA } from './criteriaUtils'
 import { tagsToRows, rowsToTags } from './tagUtils'
 import { WizardStepIdentity } from './WizardStepIdentity'
 import { WizardStepPickSli } from './WizardStepPickSli'
@@ -13,15 +13,7 @@ import type { IdentityData } from './WizardStepIdentity'
 import type { PickSliData } from './WizardStepPickSli'
 import type { IndicatorRow } from './WizardStepIndicators'
 import type { ComparisonData } from './WizardStepComparison'
-import type { CriteriaParts } from './criteriaUtils'
 import type { SloDefinition } from '@/features/slos/types'
-
-const DEFAULT_CRITERIA: CriteriaParts = {
-  operator: '<',
-  sign: null,
-  value: 0,
-  percent: false,
-}
 
 interface SloWizardProps {
   editSlo?: SloDefinition
@@ -98,6 +90,7 @@ export function SloWizard({ editSlo, onClose }: SloWizardProps) {
         },
   )
 
+  // Edit mode also calls POST — backend auto-increments version
   const createMutation = useCreateSlo()
 
   // Progressive disclosure: compute which steps are visible
