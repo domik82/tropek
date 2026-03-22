@@ -7,13 +7,15 @@ from collections.abc import Iterator
 
 import pandas as pd
 
+from slo_generator.raw import RawChunk
+
 
 class BaseShaper(ABC):
-    """Transforms profile DataFrames into backend-specific metric DataFrames."""
+    """Transforms RawChunk data into backend-specific metric DataFrames."""
 
     @abstractmethod
-    def shape(self, profile_chunk: pd.DataFrame) -> Iterator[pd.DataFrame]:
-        """Transform a profile chunk into shaped metric DataFrames."""
+    def shape(self, raw_chunk: RawChunk) -> Iterator[pd.DataFrame]:
+        """Transform a raw chunk into shaped metric DataFrames."""
         ...
 
     def finalize(self) -> Iterator[pd.DataFrame]:

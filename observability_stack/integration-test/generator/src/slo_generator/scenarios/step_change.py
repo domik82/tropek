@@ -4,10 +4,9 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta
 
-import numpy as np
-import pandas as pd
-
 from slo_generator.constants import HEALTHY_DEFAULTS, HOST_FACTORS, SERVICE_FACTORS
+from slo_generator.generator_config import GeneratorConfig
+from slo_generator.raw import RawChunk, RawSample, apply_jitter, generate_errors, generate_latencies
 from slo_generator.scenarios.base import BaseScenario
 
 
@@ -21,56 +20,77 @@ class StepChangeScenario(BaseScenario):
         start: datetime,
         end: datetime,
         *,
+        config: GeneratorConfig | None = None,
         event_mode: bool = True,
         latency_multiplier: float = 1.5,
         throughput_multiplier: float = 1.0,
         error_rate_multiplier: float = 1.0,
         ramp_minutes: int = 2,
     ):
-        super().__init__(start, end, event_mode=event_mode)
+        super().__init__(start, end, config=config, event_mode=event_mode)
         self.lat_mult = latency_multiplier
         self.tput_mult = throughput_multiplier
         self.err_mult = error_rate_multiplier
         self.ramp_end = start + timedelta(minutes=ramp_minutes)
 
-    def _build_profiles(
+    def _build_raw_samples(
         self,
-        timestamps: pd.DatetimeIndex,
+        timestamps: list[datetime],
         service: str,
         host: str,
-    ) -> pd.DataFrame:
-        n = len(timestamps)
+    ) -> RawChunk:
         sf = SERVICE_FACTORS.get(service, 1.0)
         hf = HOST_FACTORS.get(host, 1.0)
         base = HEALTHY_DEFAULTS
+        base_throughput = base["throughput_rps"] * sf * hf
+        base_latency = base["base_latency_ms"]
+        jitter = self.config.jitter_pct
+        sigma = self.config.latency_sigma
+        base_error_rate = self.config.base_error_rate
 
-        ts_epoch = timestamps.astype(np.int64) / 1e9
         start_epoch = self.start.timestamp()
         ramp_end_epoch = self.ramp_end.timestamp()
-        ramp_duration = (self.ramp_end - self.start).total_seconds()
+        ramp_duration = max((self.ramp_end - self.start).total_seconds(), 1.0)
 
-        ramp_frac = np.clip((ts_epoch - start_epoch) / max(ramp_duration, 1.0), 0.0, 1.0)
+        samples: RawChunk = []
+        for ts in timestamps:
+            epoch = ts.timestamp()
 
-        is_ramping = ts_epoch < ramp_end_epoch
+            if epoch < ramp_end_epoch:
+                ramp_frac = (epoch - start_epoch) / ramp_duration
+                throughput = base_throughput + ramp_frac * (
+                    base_throughput * self.tput_mult - base_throughput
+                )
+                latency_ms = base_latency + ramp_frac * (
+                    base_latency * self.lat_mult - base_latency
+                )
+                error_rate = base_error_rate + ramp_frac * (
+                    base_error_rate * self.err_mult - base_error_rate
+                )
+                cpu = base["cpu_percent"] + ramp_frac * (
+                    base["cpu_percent"] * self.lat_mult * 0.8 - base["cpu_percent"]
+                )
+            else:
+                throughput = base_throughput * self.tput_mult
+                latency_ms = base_latency * self.lat_mult
+                error_rate = base_error_rate * self.err_mult
+                cpu = base["cpu_percent"] * self.lat_mult * 0.8
 
-        def interpolate(base_val: float, multiplier: float) -> np.ndarray:
-            target = base_val * multiplier
-            return np.where(is_ramping, base_val + ramp_frac * (target - base_val), target)
+            throughput = apply_jitter(max(10.0, throughput), jitter, self._rng)
+            request_count = round(throughput)
+            error_count = generate_errors(request_count, min(error_rate, 1.0), self._rng)
+            latencies = generate_latencies(request_count, latency_ms, sigma, self._rng)
 
-        throughput = np.maximum(10.0, interpolate(base["throughput_rps"] * sf * hf, self.tput_mult))
-        error_rate = np.clip(interpolate(base["error_rate"], self.err_mult), 0.0, 1.0)
-        p50 = interpolate(base["p50_latency"], self.lat_mult)
-        p99 = interpolate(base["p99_latency"], self.lat_mult)
-        cpu = np.clip(interpolate(base["cpu_percent"], self.lat_mult * 0.8), 0.0, 100.0)
-
-        return pd.DataFrame(
-            {
-                "timestamp": timestamps,
-                "throughput_rps": throughput,
-                "error_rate": error_rate,
-                "p50_latency": p50,
-                "p99_latency": p99,
-                "cpu_percent": cpu,
-                "memory_bytes": np.full(n, base["memory_bytes"] * hf),
-            }
-        )
+            samples.append(
+                RawSample(
+                    timestamp=ts,
+                    service=service,
+                    host=host,
+                    request_count=request_count,
+                    error_count=error_count,
+                    latencies_ms=latencies,
+                    cpu_percent=min(100.0, max(0.0, apply_jitter(cpu, jitter, self._rng))),
+                    memory_bytes=apply_jitter(base["memory_bytes"] * hf, jitter, self._rng),
+                )
+            )
+        return samples

@@ -23,7 +23,7 @@ DATASOURCES: dict[str, dict[str, str]] = {
         "query_key": "influxql",
     },
     "timescaledb": {
-        "type": "postgres",
+        "type": "grafana-postgresql-datasource",
         "uid": "timescaledb",
         "query_key": "sql",
     },

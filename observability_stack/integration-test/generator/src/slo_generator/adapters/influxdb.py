@@ -66,13 +66,13 @@ class InfluxDBAdapter(BaseAdapter):
 
         Line protocol format::
 
-            measurement,tag1=v1,tag2=v2 field1=value1,field2=value2 timestamp_ns
+            measurement,tag1=v1,tag2=v2 field1=value1 timestamp_ns
 
         Tags (included only when not NA):
-            service, host, status_code, le
+            service, host, status_code
 
         Fields:
-            value (always), rate (when not NA)
+            value (always)
 
         Timestamp: nanosecond epoch integer.
         """
@@ -84,9 +84,6 @@ class InfluxDBAdapter(BaseAdapter):
             tags: dict[str, str] = {}
             tags["host"] = str(row["host"])
             tags["service"] = str(row["service"])
-            le = row.get("le", pd.NA)
-            if not _is_na(le):
-                tags["le"] = str(le)
             status_code = row.get("status_code", pd.NA)
             if not _is_na(status_code):
                 tags["status_code"] = str(status_code)
@@ -94,13 +91,7 @@ class InfluxDBAdapter(BaseAdapter):
             tag_str = ",".join(f"{k}={v}" for k, v in sorted(tags.items()))
 
             # --- fields ---
-            fields: dict[str, str] = {}
-            fields["value"] = f"{float(row['value'])}"
-            rate = row.get("rate", pd.NA)
-            if not _is_na(rate):
-                fields["rate"] = f"{float(rate)}"
-
-            field_str = ",".join(f"{k}={v}" for k, v in fields.items())
+            field_str = f"value={float(row['value'])}"
 
             # --- timestamp (nanoseconds) ---
             ts_ns = int(pd.Timestamp(row["timestamp"]).value)
