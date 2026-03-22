@@ -1,5 +1,6 @@
 import type { CriteriaParts, Operator, Sign } from '@/features/registry/forms/criteriaUtils'
 import { serializeCriteria } from '@/features/registry/forms/criteriaUtils'
+import { SANS_SERIF } from '@/lib/fonts'
 
 const OPERATORS: Operator[] = ['<', '<=', '>', '>=', '=']
 const SIGNS: Array<{ label: string; value: Sign | null }> = [
@@ -7,8 +8,6 @@ const SIGNS: Array<{ label: string; value: Sign | null }> = [
   { label: '+', value: '+' },
   { label: '-', value: '-' },
 ]
-
-const sansSerif = "system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif"
 
 interface StructuredCriteriaInputProps {
   value: CriteriaParts
@@ -22,7 +21,7 @@ export function StructuredCriteriaInput({
   showPreview,
 }: StructuredCriteriaInputProps) {
   return (
-    <div className="flex items-center gap-1.5" style={{ fontFamily: sansSerif }}>
+    <div className="flex items-center gap-1.5" style={{ fontFamily: SANS_SERIF }}>
       <select
         className="rounded border border-border bg-popover px-1.5 py-1 text-sm"
         value={value.operator}

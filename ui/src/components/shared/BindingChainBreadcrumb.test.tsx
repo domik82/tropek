@@ -27,4 +27,26 @@ describe('BindingChainBreadcrumb', () => {
     fireEvent.click(screen.getByText('sli'))
     expect(onClickSli).toHaveBeenCalled()
   })
+
+  it('shows version badge when sloVersion provided', () => {
+    render(
+      <BindingChainBreadcrumb
+        sloName="slo" sloVersion="3.1" sliName="sli" dsName="ds"
+        onClickSlo={vi.fn()} onClickSli={vi.fn()} onClickDs={vi.fn()}
+      />
+    )
+    expect(screen.getByText('v3.1')).toBeInTheDocument()
+  })
+
+  it('calls onClickDs when DS badge clicked', () => {
+    const onClickDs = vi.fn()
+    render(
+      <BindingChainBreadcrumb
+        sloName="slo" sliName="sli" dsName="ds"
+        onClickSlo={vi.fn()} onClickSli={vi.fn()} onClickDs={onClickDs}
+      />
+    )
+    fireEvent.click(screen.getByText('ds'))
+    expect(onClickDs).toHaveBeenCalled()
+  })
 })

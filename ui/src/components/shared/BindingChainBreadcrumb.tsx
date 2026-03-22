@@ -1,12 +1,6 @@
 import { ArrowRight } from 'lucide-react'
-
-const SANS_SERIF = "system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif"
-
-const ENTITY_COLORS = {
-  slo: '#7dc540',
-  sli: '#A371F7',
-  ds: '#58A6FF',
-} as const
+import { ENTITY_COLORS } from '@/lib/entity-colors'
+import { SANS_SERIF } from '@/lib/fonts'
 
 interface BindingChainBreadcrumbProps {
   sloName: string

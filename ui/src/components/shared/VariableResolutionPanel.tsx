@@ -1,5 +1,3 @@
-const ORANGE = '#FFA657'
-
 interface VariableResolutionPanelProps {
   assetVariables: Record<string, string>
   sloVariables: Record<string, string>
@@ -21,7 +19,7 @@ function VariableEntries({ vars }: { vars: Record<string, string> }) {
       {Object.entries(vars).map(([k, v], i) => (
         <span key={k}>
           {i > 0 && '  '}
-          <span style={{ color: ORANGE }}>${k}</span>
+          <span style={{ color: 'var(--primary)' }}>${k}</span>
           <span className="text-muted-foreground">=</span>
           <span>{v}</span>
         </span>
@@ -49,7 +47,7 @@ export function VariableResolutionPanel({
 
   return (
     <div
-      className="rounded-md border border-border bg-[#161b22] p-3 text-sm"
+      className="rounded-md border border-border bg-muted p-3 text-sm"
       style={{ fontFamily: 'monospace' }}
     >
       {visibleSections.map((section) => (
