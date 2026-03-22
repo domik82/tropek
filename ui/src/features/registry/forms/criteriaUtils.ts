@@ -43,6 +43,13 @@ export function parseCriteria(raw: string): CriteriaParts | null {
   return { operator, sign, value, percent }
 }
 
+export const DEFAULT_CRITERIA: CriteriaParts = {
+  operator: '<',
+  sign: null,
+  value: 0,
+  percent: false,
+}
+
 export function serializeCriteria(parts: CriteriaParts): string {
   const sign = parts.sign ?? ''
   const pct = parts.percent ? '%' : ''

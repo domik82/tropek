@@ -165,19 +165,19 @@ export function WizardStepComparison({ data, onChange }: WizardStepComparisonPro
             <div className="flex h-4 w-full rounded overflow-hidden text-[9px] font-bold text-white">
               <div
                 className="flex items-center justify-center"
-                style={{ width: `${warnPct}%`, backgroundColor: '#e5484d' }}
+                style={{ width: `${warnPct}%`, backgroundColor: 'var(--status-fail)' }}
               >
                 {warnPct > 10 && 'Fail'}
               </div>
               <div
                 className="flex items-center justify-center"
-                style={{ width: `${passPct - warnPct}%`, backgroundColor: '#f5a623' }}
+                style={{ width: `${passPct - warnPct}%`, backgroundColor: 'var(--status-warning)' }}
               >
                 {(passPct - warnPct) > 10 && 'Warn'}
               </div>
               <div
                 className="flex items-center justify-center"
-                style={{ width: `${100 - passPct}%`, backgroundColor: '#30a14e' }}
+                style={{ width: `${100 - passPct}%`, backgroundColor: 'var(--status-pass)' }}
               >
                 {(100 - passPct) > 10 && 'Pass'}
               </div>

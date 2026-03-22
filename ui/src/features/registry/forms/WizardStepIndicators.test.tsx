@@ -1,25 +1,10 @@
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import { WizardStepIndicators } from './WizardStepIndicators'
-import type { CriteriaParts } from './criteriaUtils'
+import { DEFAULT_CRITERIA } from './criteriaUtils'
+import type { IndicatorRow } from './WizardStepIndicators'
 
 const indicators = ['error_rate', 'latency_p95', 'throughput']
-
-const defaultCriteria: CriteriaParts = {
-  operator: '<',
-  sign: null,
-  value: 0,
-  percent: false,
-}
-
-interface IndicatorRow {
-  sli: string
-  checked: boolean
-  weight: number
-  key_sli: boolean
-  passCriteria: CriteriaParts[]
-  warnCriteria: CriteriaParts[]
-}
 
 function makeRows(overrides?: Partial<Record<string, Partial<IndicatorRow>>>): IndicatorRow[] {
   return indicators.map((name) => ({
@@ -27,8 +12,8 @@ function makeRows(overrides?: Partial<Record<string, Partial<IndicatorRow>>>): I
     checked: false,
     weight: 1,
     key_sli: false,
-    passCriteria: [{ ...defaultCriteria }],
-    warnCriteria: [{ ...defaultCriteria }],
+    passCriteria: [{ ...DEFAULT_CRITERIA }],
+    warnCriteria: [{ ...DEFAULT_CRITERIA }],
     ...overrides?.[name],
   }))
 }
