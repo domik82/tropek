@@ -18,7 +18,8 @@ export interface SloDefinition {
   display_name: string | null
   author: string | null
   notes: string | null
-  meta: Record<string, unknown>
+  tags: Record<string, string>
+  variables: Record<string, string>
   created_at: string
   active: boolean
   objectives: SloObjective[]
@@ -52,27 +53,4 @@ export interface AssetGroupSLOLinkCreate {
 export interface AssetGroupUpdate {
   display_name?: string
   description?: string
-}
-
-export interface DataSource {
-  id: string
-  name: string
-  display_name?: string
-  adapter_type: string
-  adapter_url: string
-  labels: Record<string, unknown>
-  created_at: string
-  updated_at: string
-}
-
-export interface SliDefinition {
-  id: string
-  name: string
-  adapter_type: string
-  display_name?: string
-  version: number
-  comparable_from_version: number
-  indicators: Record<string, string>
-  active: boolean
-  created_at: string
 }

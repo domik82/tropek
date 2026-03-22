@@ -1,10 +1,9 @@
 // src/features/slos/api.ts
 import type { SloDefinition, SloObjective, SloValidationResult } from './types'
-import type {
-  AssetGroupSLOLink, AssetGroupSLOLinkCreate, AssetGroupUpdate,
-  DataSource, SliDefinition,
-} from './types'
+import type { AssetGroupSLOLink, AssetGroupSLOLinkCreate, AssetGroupUpdate } from './types'
 import type { AssetGroup, AssetGroupTree } from '@/features/assets/types'
+import type { DataSource } from '@/features/datasources/types'
+import type { SliDefinition } from '@/features/slis/types'
 
 const BASE = '/api'
 
@@ -45,7 +44,7 @@ export async function createSloDefinition(payload: {
   display_name?: string
   notes?: string
   author?: string
-  meta?: Record<string, string>
+  tags?: Record<string, string>
   comparable_from_version?: number
 }): Promise<SloDefinition> {
   const res = await fetch(`${BASE}/slo-definitions`, {
