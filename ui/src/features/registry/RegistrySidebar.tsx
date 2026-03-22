@@ -1,5 +1,6 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useRef, useEffect } from 'react'
 import { Plus } from 'lucide-react'
+import { ENTITY_COLORS } from '@/lib/entity-colors'
 import { TagFilterBar } from '@/components/shared/TagFilterBar'
 import { RegistryTree } from './RegistryTree'
 import { buildSloTree, buildDatasourceTree, buildAssetTree, filterTree } from './useRegistryTree'
@@ -59,7 +60,8 @@ export function RegistrySidebar({ mode, onModeChange, selected, onSelect, onCrea
   const isLoadingValues =
     mode === 'slo' ? sloValsLoading : mode === 'datasource' ? dsValsLoading : assetValsLoading
 
-  // Build tree nodes (pass empty links — useAllGroupLinks not yet created)
+  // TODO(chunk-d): Wire useAllGroupLinks to populate SLO link hierarchy.
+  // Currently passes empty links — tree shows entities but not their connections.
   const treeNodes = useMemo(() => {
     if (mode === 'slo') return buildSloTree(slos ?? [], slis ?? [], datasources ?? [], [])
     if (mode === 'datasource') return buildDatasourceTree(datasources ?? [], slis ?? [], slos ?? [], [])
@@ -107,30 +109,41 @@ export function RegistrySidebar({ mode, onModeChange, selected, onSelect, onCrea
 
       {/* Create button */}
       <div className="p-2 border-t border-border">
-        <CreateDropdown mode={mode} onCreateAction={onCreateAction} />
+        <CreateDropdown onCreateAction={onCreateAction} />
       </div>
     </div>
   )
 }
 
 function CreateDropdown({
-  mode: _mode,
   onCreateAction,
 }: {
-  mode: RegistryMode
   onCreateAction: Props['onCreateAction']
 }) {
   const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+
+  // Close on click outside
+  useEffect(() => {
+    if (!open) return
+    function handleClick(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [open])
 
   const items = [
-    { type: 'slo' as const, label: 'New SLO', color: '#7dc540' },
-    { type: 'sli' as const, label: 'New SLI Definition', color: '#A371F7' },
-    { type: 'datasource' as const, label: 'New Datasource', color: '#58A6FF' },
-    { type: 'group' as const, label: 'New Asset Group', color: '#8B949E' },
+    { type: 'slo' as const, label: 'New SLO', color: ENTITY_COLORS.slo },
+    { type: 'sli' as const, label: 'New SLI Definition', color: ENTITY_COLORS.sli },
+    { type: 'datasource' as const, label: 'New Datasource', color: ENTITY_COLORS.ds },
+    { type: 'group' as const, label: 'New Asset Group', color: ENTITY_COLORS.group },
   ]
 
   return (
-    <div className="relative">
+    <div className="relative" ref={ref}>
       <button
         onClick={() => setOpen(!open)}
         className="w-full flex items-center justify-center gap-1.5 py-2 text-xs font-medium rounded border border-primary/40 text-primary hover:bg-primary/10 transition-colors"

@@ -14,7 +14,7 @@ interface SloDetailViewProps {
   onNewVersion: (slo: SloDefinition) => void
 }
 
-export function SloDetailView({ name, onNavigate: _onNavigate, onNewVersion }: SloDetailViewProps) {
+export function SloDetailView({ name, onNavigate, onNewVersion }: SloDetailViewProps) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
 
   const { data: slo, isLoading } = useSloDetail(name)
@@ -127,7 +127,15 @@ export function SloDetailView({ name, onNavigate: _onNavigate, onNewVersion }: S
                 <tbody>
                   {slo.objectives.map((obj, i) => (
                     <tr key={i} className="border-b border-border/40">
-                      <td className="py-1.5 pr-3 font-mono align-top text-foreground">{obj.sli}</td>
+                      <td className="py-1.5 pr-3 font-mono align-top">
+                        <button
+                          type="button"
+                          className="text-foreground hover:text-primary underline-offset-2 hover:underline"
+                          onClick={() => onNavigate({ type: 'sli', name: obj.sli })}
+                        >
+                          {obj.sli}
+                        </button>
+                      </td>
                       <td className="py-1.5 pr-3 align-top text-foreground">{obj.weight}</td>
                       <td className="py-1.5 pr-3 align-top text-foreground">
                         {obj.key_sli ? (

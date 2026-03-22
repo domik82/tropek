@@ -1,15 +1,7 @@
 import { useState } from 'react'
 import { ChevronRight, ChevronDown } from 'lucide-react'
+import { NODE_TYPE_COLORS } from '@/lib/entity-colors'
 import type { TreeNode, SelectedNode } from './types'
-
-const TYPE_COLORS: Record<string, string> = {
-  slo: '#7dc540',
-  sli: '#A371F7',
-  datasource: '#58A6FF',
-  group: '#8b949e',
-  asset: '#c9d1d9',
-  binding: '#7dc540',
-}
 
 interface Props {
   nodes: TreeNode[]
@@ -70,7 +62,7 @@ function TreeNodeRow({
   const hasChildren = node.children && node.children.length > 0
   const isExpanded = expanded.has(node.id)
   const isSelected = selected?.type === node.type && selected?.name === node.name
-  const color = TYPE_COLORS[node.type] ?? '#c9d1d9'
+  const color = NODE_TYPE_COLORS[node.type] ?? '#c9d1d9'
 
   return (
     <>
@@ -86,6 +78,8 @@ function TreeNodeRow({
         {hasChildren ? (
           <button
             data-testid={`toggle-${node.id}`}
+            aria-expanded={isExpanded}
+            aria-label={`Toggle ${node.name}`}
             onClick={e => {
               e.stopPropagation()
               onToggle(node.id)

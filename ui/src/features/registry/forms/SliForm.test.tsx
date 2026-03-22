@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { SliForm } from './SliForm'
 import type { SliDefinition } from '@/features/slis/types'
@@ -46,7 +46,7 @@ describe('SliForm', () => {
   it('renders all form fields in create mode', () => {
     render(
       <SliForm open={true} onOpenChange={vi.fn()} />,
-      { wrapper: Wrapper }
+      { wrapper: Wrapper },
     )
     expect(screen.getByLabelText('Name')).toBeInTheDocument()
     expect(screen.getByLabelText('Display Name')).toBeInTheDocument()
@@ -58,20 +58,16 @@ describe('SliForm', () => {
   it('can add and remove indicator rows', () => {
     render(
       <SliForm open={true} onOpenChange={vi.fn()} />,
-      { wrapper: Wrapper }
+      { wrapper: Wrapper },
     )
-    // Initially no indicator rows
     expect(screen.queryByPlaceholderText('metric_name')).not.toBeInTheDocument()
 
-    // Add one
     fireEvent.click(screen.getByRole('button', { name: /add indicator/i }))
     expect(screen.getByPlaceholderText('metric_name')).toBeInTheDocument()
 
-    // Add another
     fireEvent.click(screen.getByRole('button', { name: /add indicator/i }))
     expect(screen.getAllByPlaceholderText('metric_name')).toHaveLength(2)
 
-    // Remove one
     const removeButtons = screen.getAllByRole('button', { name: /remove indicator/i })
     fireEvent.click(removeButtons[0])
     expect(screen.getAllByPlaceholderText('metric_name')).toHaveLength(1)
@@ -80,12 +76,10 @@ describe('SliForm', () => {
   it('edit mode pre-fills values from editFrom prop', () => {
     render(
       <SliForm open={true} onOpenChange={vi.fn()} editFrom={mockSli} />,
-      { wrapper: Wrapper }
+      { wrapper: Wrapper },
     )
-    // Name should be pre-filled and disabled
     expect(screen.getByLabelText('Name')).toHaveValue('http-error-rate')
     expect(screen.getByLabelText('Name')).toBeDisabled()
-
     expect(screen.getByLabelText('Display Name')).toHaveValue('HTTP Error Rate')
     expect(screen.getByLabelText('Adapter Type')).toHaveValue('prometheus')
     expect(screen.getByLabelText('Author')).toHaveValue('alice')
@@ -95,11 +89,10 @@ describe('SliForm', () => {
   it('edit mode pre-fills indicator rows', () => {
     render(
       <SliForm open={true} onOpenChange={vi.fn()} editFrom={mockSli} />,
-      { wrapper: Wrapper }
+      { wrapper: Wrapper },
     )
     const nameInputs = screen.getAllByPlaceholderText('metric_name')
     expect(nameInputs).toHaveLength(2)
-    // Both indicator names should appear as values
     const values = nameInputs.map(el => (el as HTMLInputElement).value)
     expect(values).toContain('error_rate')
     expect(values).toContain('latency')
@@ -108,20 +101,19 @@ describe('SliForm', () => {
   it('pre-fills adapter_type when defaultAdapterType prop is provided', () => {
     render(
       <SliForm open={true} onOpenChange={vi.fn()} defaultAdapterType="datadog" />,
-      { wrapper: Wrapper }
+      { wrapper: Wrapper },
     )
     expect(screen.getByLabelText('Adapter Type')).toHaveValue('datadog')
   })
 
-  it('calls useCreateSli on submit', () => {
+  it('calls useCreateSli on submit', async () => {
     render(
       <SliForm open={true} onOpenChange={vi.fn()} />,
-      { wrapper: Wrapper }
+      { wrapper: Wrapper },
     )
     fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'my-sli' } })
     fireEvent.change(screen.getByLabelText('Adapter Type'), { target: { value: 'prometheus' } })
 
-    // Add an indicator
     fireEvent.click(screen.getByRole('button', { name: /add indicator/i }))
     const nameInput = screen.getByPlaceholderText('metric_name')
     const queryInput = screen.getByPlaceholderText('rate(metric[5m])')
@@ -130,20 +122,36 @@ describe('SliForm', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /create/i }))
 
-    expect(mockCreate).toHaveBeenCalledWith(
-      expect.objectContaining({
-        name: 'my-sli',
-        adapter_type: 'prometheus',
-        indicators: { error_rate: 'sum(rate(errors[5m]))' },
-      }),
-      expect.anything()
+    await waitFor(() => {
+      expect(mockCreate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: 'my-sli',
+          adapter_type: 'prometheus',
+          indicators: { error_rate: 'sum(rate(errors[5m]))' },
+        }),
+        expect.anything(),
+      )
+    })
+  })
+
+  it('shows validation errors for required fields', async () => {
+    render(
+      <SliForm open={true} onOpenChange={vi.fn()} />,
+      { wrapper: Wrapper },
     )
+
+    fireEvent.click(screen.getByRole('button', { name: /create/i }))
+
+    await waitFor(() => {
+      expect(screen.getByText('Name is required')).toBeInTheDocument()
+    })
+    expect(mockCreate).not.toHaveBeenCalled()
   })
 
   it('does not render when open is false', () => {
     render(
       <SliForm open={false} onOpenChange={vi.fn()} />,
-      { wrapper: Wrapper }
+      { wrapper: Wrapper },
     )
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
