@@ -101,7 +101,7 @@ export function SloCreateForm({ onCancel, onSaved }: Props) {
           include_result_with_score: values.include_result_with_score,
           aggregate_function: values.aggregate_function,
         },
-        meta: Object.fromEntries(
+        tags: Object.fromEntries(
           values.labels.filter(l => l.key).map(l => [l.key, l.value])
         ),
         comparable_from_version: values.comparable_from_version || undefined,
