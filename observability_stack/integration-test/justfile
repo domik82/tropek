@@ -1,0 +1,82 @@
+# SLO Integration Test Environment task runner
+# Run `just` to see all available recipes.
+
+# Default: list available recipes
+default:
+    @just --list
+
+# ─── Stack management ────────────────────────────────────────────────
+
+# Build images, generate data, start all services
+up: dashboard
+    ./scripts/stack-up.sh
+
+# Stop all services
+down:
+    ./scripts/stack-down.sh
+
+# Wipe all data volumes and restart from scratch
+reset:
+    ./scripts/stack-down.sh
+    ./scripts/stack-up.sh
+
+# Tail logs for all services
+logs:
+    docker compose logs -f
+
+# Tail generator logs only
+logs-generator:
+    docker compose logs -f generator
+
+# ─── Dashboard generation ────────────────────────────────────────────
+
+# Regenerate all 3 Grafana dashboard JSONs from YAML config
+dashboard:
+    uv run --directory generator python ../grafana/generate_dashboard.py
+
+# ─── Data generation (local, no Docker) ──────────────────────────────
+
+# Generate all scenarios as CSV files
+gen-csv:
+    uv run --directory generator slo-generate \
+        --backends csv \
+        --hours 168 --resolution 30 \
+        --output-dir ./output
+
+# Generate OpenMetrics files for promtool backfill
+gen-om:
+    uv run --directory generator slo-generate \
+        --backends prometheus \
+        --hours 168 --resolution 30 \
+        --output-dir ./output
+
+# Generate a specific scenario as CSV (e.g. just gen healthy)
+gen scenario:
+    uv run --directory generator slo-generate \
+        --backends csv \
+        --scenarios {{scenario}} --hours 168 --resolution 30 \
+        --output-dir ./output
+
+# Generate timeline data locally as CSV (for inspection)
+gen-timeline timeline:
+    uv run --directory generator slo-generate \
+        --timeline {{timeline}} \
+        --backends csv \
+        --output-dir ./output
+
+# ─── Tests ────────────────────────────────────────────────────────────
+
+# Run generator unit tests
+test *args='-v':
+    uv run --directory generator pytest tests/ {{args}}
+
+# ─── Service URLs ────────────────────────────────────────────────────
+
+# Print service URLs (after `just up`)
+urls:
+    @echo ""
+    @echo "  Grafana:      http://localhost:3100  (admin / admin)"
+    @echo "  Prometheus:   http://localhost:9090"
+    @echo "  InfluxDB:     http://localhost:8086  (admin / adminpassword)"
+    @echo "  TimescaleDB:  localhost:5534"
+    @echo ""

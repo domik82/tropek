@@ -1,0 +1,475 @@
+{
+  "title": "SLO Test Dashboard (timescaledb)",
+  "uid": "slo-test-timescaledb",
+  "refresh": "30s",
+  "time": {
+    "from": "now-7d",
+    "to": "now"
+  },
+  "schemaVersion": 38,
+  "version": 1,
+  "tags": ["slo", "timescaledb"],
+  "templating": {
+    "list": [
+      {
+        "name": "service",
+        "type": "query",
+        "label": "Service",
+        "datasource": {
+          "type": "grafana-postgresql-datasource",
+          "uid": "timescaledb"
+        },
+        "query": "SELECT DISTINCT service FROM metrics ORDER BY service"
+      }    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Global Throughput",
+      "type": "timeseries",
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "timescaledb"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "timescaledb"
+          },
+          "rawSql": "SELECT time_bucket(\u00275 minutes\u0027, t.timestamp) AS time,\n       avg(t.total) AS throughput\nFROM (\n  SELECT timestamp, sum(value) AS total\n  FROM metrics\n  WHERE metric = \u0027http_requests_total\u0027\n    AND timestamp BETWEEN $__timeFrom() AND $__timeTo()\n  GROUP BY timestamp\n) t GROUP BY 1 ORDER BY 1",
+          "rawQuery": true,
+          "format": "time_series",
+          "refId": "A"
+        }
+      ]
+    },    {
+      "id": 2,
+      "title": "Global Error Rate",
+      "type": "timeseries",
+      "gridPos": {
+        "x": 12,
+        "y": 0,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "timescaledb"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "timescaledb"
+          },
+          "rawSql": "SELECT time_bucket(\u00275 minutes\u0027, t.timestamp) AS time,\n       avg(t.err) / NULLIF(avg(t.req), 0) AS error_rate\nFROM (\n  SELECT timestamp,\n         sum(CASE WHEN metric = \u0027http_errors_total\u0027 THEN value END) AS err,\n         sum(CASE WHEN metric = \u0027http_requests_total\u0027 THEN value END) AS req\n  FROM metrics\n  WHERE metric IN (\u0027http_errors_total\u0027, \u0027http_requests_total\u0027)\n    AND timestamp BETWEEN $__timeFrom() AND $__timeTo()\n  GROUP BY timestamp\n) t GROUP BY 1 ORDER BY 1",
+          "rawQuery": true,
+          "format": "time_series",
+          "refId": "A"
+        }
+      ]
+    },    {
+      "id": 3,
+      "title": "Average CPU",
+      "type": "stat",
+      "gridPos": {
+        "x": 0,
+        "y": 8,
+        "w": 6,
+        "h": 4
+      },
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "timescaledb"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "timescaledb"
+          },
+          "rawSql": "SELECT avg(value) AS avg_cpu FROM metrics WHERE metric = \u0027cpu_usage_percent\u0027\n  AND timestamp BETWEEN $__timeFrom() AND $__timeTo()",
+          "rawQuery": true,
+          "format": "table",
+          "refId": "A"
+        }
+      ]
+    },    {
+      "id": 4,
+      "title": "Average Memory",
+      "type": "stat",
+      "gridPos": {
+        "x": 6,
+        "y": 8,
+        "w": 6,
+        "h": 4
+      },
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "timescaledb"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "timescaledb"
+          },
+          "rawSql": "SELECT avg(value) AS avg_memory FROM metrics WHERE metric = \u0027memory_usage_bytes\u0027\n  AND timestamp BETWEEN $__timeFrom() AND $__timeTo()",
+          "rawQuery": true,
+          "format": "table",
+          "refId": "A"
+        }
+      ]
+    },    {
+      "id": 5,
+      "title": "Throughput by Service",
+      "type": "timeseries",
+      "gridPos": {
+        "x": 0,
+        "y": 12,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "timescaledb"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "timescaledb"
+          },
+          "rawSql": "SELECT time_bucket(\u00275 minutes\u0027, t.timestamp) AS time,\n       avg(t.total) AS throughput\nFROM (\n  SELECT timestamp, sum(value) AS total\n  FROM metrics\n  WHERE metric = \u0027http_requests_total\u0027\n    AND service = \u0027$service\u0027\n    AND timestamp BETWEEN $__timeFrom() AND $__timeTo()\n  GROUP BY timestamp\n) t GROUP BY 1 ORDER BY 1",
+          "rawQuery": true,
+          "format": "time_series",
+          "refId": "A"
+        }
+      ]
+    },    {
+      "id": 6,
+      "title": "P99 Latency by Service",
+      "type": "timeseries",
+      "gridPos": {
+        "x": 12,
+        "y": 12,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "timescaledb"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "timescaledb"
+          },
+          "rawSql": "SELECT time_bucket(\u00275 minutes\u0027, timestamp) AS time,\n       avg(value) AS p99_latency\nFROM metrics WHERE metric = \u0027http_request_duration_seconds_p99\u0027\n  AND service = \u0027$service\u0027\n  AND timestamp BETWEEN $__timeFrom() AND $__timeTo()\nGROUP BY 1 ORDER BY 1",
+          "rawQuery": true,
+          "format": "time_series",
+          "refId": "A"
+        }
+      ]
+    },    {
+      "id": 7,
+      "title": "Error Rate by Service",
+      "type": "timeseries",
+      "gridPos": {
+        "x": 0,
+        "y": 20,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "timescaledb"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "timescaledb"
+          },
+          "rawSql": "SELECT time_bucket(\u00275 minutes\u0027, t.timestamp) AS time,\n       t.service,\n       avg(t.err) / NULLIF(avg(t.req), 0) AS error_rate\nFROM (\n  SELECT timestamp, service,\n         sum(CASE WHEN metric = \u0027http_errors_total\u0027 THEN value END) AS err,\n         sum(CASE WHEN metric = \u0027http_requests_total\u0027 THEN value END) AS req\n  FROM metrics\n  WHERE metric IN (\u0027http_errors_total\u0027, \u0027http_requests_total\u0027)\n    AND timestamp BETWEEN $__timeFrom() AND $__timeTo()\n  GROUP BY timestamp, service\n) t GROUP BY 1, 2 ORDER BY 1, 2",
+          "rawQuery": true,
+          "format": "time_series",
+          "refId": "A"
+        }
+      ]
+    },    {
+      "id": 8,
+      "title": "CPU by Host",
+      "type": "timeseries",
+      "gridPos": {
+        "x": 12,
+        "y": 20,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "timescaledb"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "timescaledb"
+          },
+          "rawSql": "SELECT time_bucket(\u00275 minutes\u0027, timestamp) AS time,\n       host,\n       avg(value) AS cpu\nFROM metrics WHERE metric = \u0027cpu_usage_percent\u0027\n  AND timestamp BETWEEN $__timeFrom() AND $__timeTo()\nGROUP BY 1, 2 ORDER BY 1, 2",
+          "rawQuery": true,
+          "format": "time_series",
+          "refId": "A"
+        }
+      ]
+    },    {
+      "id": 9,
+      "title": "P50 Latency by Service and Host",
+      "type": "timeseries",
+      "gridPos": {
+        "x": 0,
+        "y": 28,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "timescaledb"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "timescaledb"
+          },
+          "rawSql": "SELECT time_bucket(\u00275 minutes\u0027, timestamp) AS time,\n       service,\n       host,\n       avg(value) AS p50_latency\nFROM metrics WHERE metric = \u0027http_request_duration_seconds_p50\u0027\n  AND timestamp BETWEEN $__timeFrom() AND $__timeTo()\nGROUP BY 1, 2, 3 ORDER BY 1, 2, 3",
+          "rawQuery": true,
+          "format": "time_series",
+          "refId": "A"
+        }
+      ]
+    },    {
+      "id": 10,
+      "title": "Throughput Grouped by Service",
+      "type": "barchart",
+      "gridPos": {
+        "x": 12,
+        "y": 28,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "timescaledb"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "timescaledb"
+          },
+          "rawSql": "SELECT time_bucket(\u00275 minutes\u0027, t.timestamp) AS time,\n       t.service,\n       avg(t.total) AS throughput\nFROM (\n  SELECT timestamp, service, sum(value) AS total\n  FROM metrics\n  WHERE metric = \u0027http_requests_total\u0027\n    AND timestamp BETWEEN $__timeFrom() AND $__timeTo()\n  GROUP BY timestamp, service\n) t GROUP BY 1, 2 ORDER BY 1, 2",
+          "rawQuery": true,
+          "format": "time_series",
+          "refId": "A"
+        }
+      ]
+    },    {
+      "id": 11,
+      "title": "Errors Grouped by Host",
+      "type": "barchart",
+      "gridPos": {
+        "x": 0,
+        "y": 36,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "timescaledb"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "timescaledb"
+          },
+          "rawSql": "SELECT time_bucket(\u00275 minutes\u0027, t.timestamp) AS time,\n       t.host,\n       avg(t.total) AS errors\nFROM (\n  SELECT timestamp, host, sum(value) AS total\n  FROM metrics\n  WHERE metric = \u0027http_errors_total\u0027\n    AND timestamp BETWEEN $__timeFrom() AND $__timeTo()\n  GROUP BY timestamp, host\n) t GROUP BY 1, 2 ORDER BY 1, 2",
+          "rawQuery": true,
+          "format": "time_series",
+          "refId": "A"
+        }
+      ]
+    },    {
+      "id": 12,
+      "title": "P99 Grouped by Service",
+      "type": "barchart",
+      "gridPos": {
+        "x": 12,
+        "y": 36,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "timescaledb"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "timescaledb"
+          },
+          "rawSql": "SELECT time_bucket(\u00275 minutes\u0027, timestamp) AS time,\n       service,\n       avg(value) AS p99_latency\nFROM metrics WHERE metric = \u0027http_request_duration_seconds_p99\u0027\n  AND timestamp BETWEEN $__timeFrom() AND $__timeTo()\nGROUP BY 1, 2 ORDER BY 1, 2",
+          "rawQuery": true,
+          "format": "time_series",
+          "refId": "A"
+        }
+      ]
+    },    {
+      "id": 13,
+      "title": "Peak CPU",
+      "type": "stat",
+      "gridPos": {
+        "x": 0,
+        "y": 44,
+        "w": 6,
+        "h": 4
+      },
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "timescaledb"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "timescaledb"
+          },
+          "rawSql": "SELECT max(value) AS peak_cpu FROM metrics WHERE metric = \u0027cpu_usage_percent\u0027\n  AND timestamp BETWEEN $__timeFrom() AND $__timeTo()",
+          "rawQuery": true,
+          "format": "table",
+          "refId": "A"
+        }
+      ]
+    },    {
+      "id": 14,
+      "title": "Average Latency",
+      "type": "stat",
+      "gridPos": {
+        "x": 6,
+        "y": 44,
+        "w": 6,
+        "h": 4
+      },
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "timescaledb"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "timescaledb"
+          },
+          "rawSql": "SELECT avg(value) AS avg_latency FROM metrics WHERE metric = \u0027http_request_duration_seconds_p50\u0027\n  AND timestamp BETWEEN $__timeFrom() AND $__timeTo()",
+          "rawQuery": true,
+          "format": "table",
+          "refId": "A"
+        }
+      ]
+    },    {
+      "id": 15,
+      "title": "Throughput ($__interval)",
+      "type": "timeseries",
+      "gridPos": {
+        "x": 12,
+        "y": 44,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "timescaledb"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "timescaledb"
+          },
+          "rawSql": "SELECT time_bucket(\u0027$__interval\u0027, t.timestamp) AS time,\n       avg(t.total) AS throughput\nFROM (\n  SELECT timestamp, sum(value) AS total\n  FROM metrics\n  WHERE metric = \u0027http_requests_total\u0027\n    AND timestamp BETWEEN $__timeFrom() AND $__timeTo()\n  GROUP BY timestamp\n) t GROUP BY 1 ORDER BY 1",
+          "rawQuery": true,
+          "format": "time_series",
+          "refId": "A"
+        }
+      ]
+    },    {
+      "id": 16,
+      "title": "Multi-Target",
+      "type": "timeseries",
+      "gridPos": {
+        "x": 0,
+        "y": 52,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "timescaledb"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "timescaledb"
+          },
+          "rawSql": "SELECT time_bucket(\u00275 minutes\u0027, t.timestamp) AS time,\n       t.service,\n       t.metric,\n       avg(t.total) AS value\nFROM (\n  SELECT timestamp, service, metric, sum(value) AS total\n  FROM metrics\n  WHERE metric IN (\u0027http_requests_total\u0027, \u0027http_errors_total\u0027)\n    AND timestamp BETWEEN $__timeFrom() AND $__timeTo()\n  GROUP BY timestamp, service, metric\n) t GROUP BY 1, 2, 3 ORDER BY 1, 2, 3",
+          "rawQuery": true,
+          "format": "time_series",
+          "refId": "A"
+        }
+      ]
+    },    {
+      "id": 17,
+      "title": "Subquery (COMPLEX)",
+      "type": "timeseries",
+      "gridPos": {
+        "x": 12,
+        "y": 52,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "timescaledb"
+      },
+      "targets": [],
+      "description": "Query not available for this datasource"
+    },    {
+      "id": 18,
+      "title": "Multi-level Grouping (COMPLEX)",
+      "type": "timeseries",
+      "gridPos": {
+        "x": 0,
+        "y": 60,
+        "w": 24,
+        "h": 8
+      },
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "timescaledb"
+      },
+      "targets": [],
+      "description": "Query not available for this datasource"
+    }  ]
+}

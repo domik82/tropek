@@ -1,0 +1,19 @@
+timeline:
+  start: "2026-02-19T00:00:00Z"
+  duration: 720h
+  resolution: 30s
+  baseline: healthy
+
+  events:
+    - type: degradation
+      at: 504h
+      duration: 4h
+      params:
+        latency_multiplier: 3.0
+        error_rate_multiplier: 2.0
+
+    - type: outage
+      at: 690h
+      duration: 45m
+      resolution: 1s
+      restart_gap: 30s
