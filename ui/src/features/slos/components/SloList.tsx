@@ -94,7 +94,7 @@ export function SloList({ slos, selectedGroup, showAll, onShowAll, onLinkSlo }: 
   return (
     <div className="space-y-2">
       {slos.map(slo => {
-        const tags = (slo.meta?.tags as string[] | undefined) ?? []
+        const tagEntries = Object.entries(slo.tags ?? {})
         const isExpanded = expandedSlo === slo.name
         const isConfirmingDelete = confirmDelete === slo.name
 
@@ -128,11 +128,11 @@ export function SloList({ slos, selectedGroup, showAll, onShowAll, onLinkSlo }: 
                 }
               </div>
 
-              {tags.length > 0 && (
+              {tagEntries.length > 0 && (
                 <div className="flex items-center gap-1 flex-wrap">
-                  {tags.map(tag => (
-                    <span key={tag} className="text-xs bg-slate-700/60 text-slate-300 px-1.5 py-0.5 rounded">
-                      {tag}
+                  {tagEntries.map(([k, v]) => (
+                    <span key={k} className="text-xs bg-slate-700/60 text-slate-300 px-1.5 py-0.5 rounded">
+                      {k}: {v}
                     </span>
                   ))}
                 </div>
