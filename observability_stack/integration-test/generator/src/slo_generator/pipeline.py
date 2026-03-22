@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Any
 
@@ -9,6 +10,8 @@ from rich.console import Console
 
 from slo_generator.adapters import get_adapter
 from slo_generator.adapters.base import BaseAdapter
+from slo_generator.generator_config import GeneratorConfig
+from slo_generator.raw import RawChunk
 from slo_generator.shapers import get_shaper
 from slo_generator.shapers.base import BaseShaper
 
@@ -21,7 +24,7 @@ def _build_kwargs(
     backend: str,
     output_dir: Path,
     scenario_name: str,
-    prometheus_scrape_interval: int,
+    config: GeneratorConfig,
     influxdb_url: str | None,
     influxdb_token: str | None,
     influxdb_org: str | None,
@@ -33,7 +36,7 @@ def _build_kwargs(
     adapter_kwargs: dict[str, Any] = {}
 
     if backend == "prometheus":
-        shaper_kwargs["scrape_interval"] = prometheus_scrape_interval
+        shaper_kwargs["config"] = config
         adapter_kwargs["output_path"] = output_dir / f"{scenario_name}_metrics.om"
     elif backend == "influxdb":
         adapter_kwargs.update(
@@ -54,7 +57,7 @@ def _build_pairs(
     backends: list[str],
     output_dir: Path,
     scenario_name: str,
-    prometheus_scrape_interval: int,
+    config: GeneratorConfig,
     influxdb_url: str | None,
     influxdb_token: str | None,
     influxdb_org: str | None,
@@ -70,7 +73,7 @@ def _build_pairs(
                 backend,
                 output_dir,
                 scenario_name,
-                prometheus_scrape_interval,
+                config,
                 influxdb_url,
                 influxdb_token,
                 influxdb_org,
@@ -86,21 +89,37 @@ def _build_pairs(
     return pairs
 
 
+def _process_chunk(
+    backend: str,
+    shaper: BaseShaper,
+    adapter: BaseAdapter,
+    chunk: RawChunk,
+    results: dict[str, bool],
+) -> None:
+    """Shape and write one chunk for a single backend."""
+    try:
+        for shaped in shaper.shape(chunk):
+            adapter.write_chunk(shaped)
+    except Exception as exc:
+        console.print(f"[red]{backend} write failed: {exc}[/red]")
+        results[backend] = False
+
+
 def _stream_and_finalize(
     scenario: Any,
     pairs: list[_Pair],
     resolution_seconds: int,
     results: dict[str, bool],
 ) -> None:
-    """Stream all chunks through shapers/adapters, then finalize each adapter."""
-    for chunk in scenario.generate(resolution_seconds=resolution_seconds):
-        for backend, shaper, adapter in pairs:
-            try:
-                for shaped in shaper.shape(chunk):
-                    adapter.write_chunk(shaped)
-            except Exception as exc:
-                console.print(f"[red]{backend} write failed: {exc}[/red]")
-                results[backend] = False
+    """Stream all chunks through shapers/adapters in parallel, then finalize."""
+    with ThreadPoolExecutor(max_workers=max(len(pairs), 1)) as pool:
+        for chunk in scenario.generate(resolution_seconds=resolution_seconds):
+            futures = [
+                pool.submit(_process_chunk, backend, shaper, adapter, chunk, results)
+                for backend, shaper, adapter in pairs
+            ]
+            for f in futures:
+                f.result()
 
     for backend, shaper, adapter in pairs:
         try:
@@ -121,7 +140,7 @@ def run_pipeline(
     output_dir: Path,
     scenario_name: str,
     resolution_seconds: int = 1,
-    prometheus_scrape_interval: int = 30,
+    config: GeneratorConfig | None = None,
     influxdb_url: str | None = None,
     influxdb_token: str | None = None,
     influxdb_org: str | None = None,
@@ -134,6 +153,7 @@ def run_pipeline(
 
     Returns a dict of backend -> success (True/False).
     """
+    config = config or GeneratorConfig.default()
     output_dir.mkdir(parents=True, exist_ok=True)
     results: dict[str, bool] = {}
 
@@ -141,7 +161,7 @@ def run_pipeline(
         backends,
         output_dir,
         scenario_name,
-        prometheus_scrape_interval,
+        config,
         influxdb_url,
         influxdb_token,
         influxdb_org,

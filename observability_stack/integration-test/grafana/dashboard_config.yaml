@@ -8,7 +8,16 @@ variables:
   - name: service
     type: query
     label: "Service"
-    query: "label_values(http_requests_total, service)"
+    queries:
+      prometheus: "label_values(http_requests_total, service)"
+      influxql: "SHOW TAG VALUES FROM \"http_requests_total\" WITH KEY = \"service\""
+      sql: "SELECT DISTINCT service FROM metrics ORDER BY service"
+
+  - name: interval
+    type: custom
+    label: "Interval"
+    default: "5m"
+    options: "1s,10s,30s,1m,5m,15m,1h,4h,12h,24h"
 
 panels:
   - id: 1
@@ -16,18 +25,22 @@ panels:
     type: timeseries
     gridPos: {x: 0, y: 0, w: 12, h: 8}
     queries:
-      prometheus: "sum(rate(http_requests_total[5m]))"
+      prometheus: "sum(rate(http_requests_total[$interval]))"
       influxql: >-
-        SELECT sum("value") AS "throughput"
-        FROM "http_requests_total"
+        SELECT mean("total") AS "throughput"
+        FROM (SELECT sum("value") AS "total" FROM "http_requests_total" WHERE $timeFilter GROUP BY time(1s))
         WHERE $timeFilter
-        GROUP BY time(5m) fill(0)
+        GROUP BY time($interval) fill(0)
       sql: >-
-        SELECT time_bucket('5 minutes', timestamp) AS time,
-               sum(value) AS throughput
-        FROM metrics
-        WHERE metric = 'http_requests_total'
-          AND timestamp BETWEEN $__timeFrom() AND $__timeTo()
+        SELECT time_bucket('$interval', t.timestamp) AS time,
+               avg(t.total) AS throughput
+        FROM (
+          SELECT timestamp, sum(value) AS total
+          FROM metrics
+          WHERE metric = 'http_requests_total'
+            AND timestamp BETWEEN $__timeFrom() AND $__timeTo()
+          GROUP BY timestamp
+        ) t
         GROUP BY 1
         ORDER BY 1
 
@@ -36,21 +49,25 @@ panels:
     type: timeseries
     gridPos: {x: 12, y: 0, w: 12, h: 8}
     queries:
-      prometheus: "sum(rate(http_errors_total[5m])) / sum(rate(http_requests_total[5m]))"
+      prometheus: "sum(rate(http_errors_total[$interval])) / sum(rate(http_requests_total[$interval]))"
       influxql: >-
-        SELECT sum("errors") / sum("requests") AS "error_rate"
-        FROM (
-          SELECT sum("value") AS "errors" FROM "http_errors_total" WHERE $timeFilter GROUP BY time(5m)),
-          (SELECT sum("value") AS "requests" FROM "http_requests_total" WHERE $timeFilter GROUP BY time(5m))
-        GROUP BY time(5m) fill(0)
+        SELECT mean("err") / mean("req") AS "error_rate"
+        FROM (SELECT sum("value") AS "err" FROM "http_errors_total" WHERE $timeFilter GROUP BY time(1s)),
+             (SELECT sum("value") AS "req" FROM "http_requests_total" WHERE $timeFilter GROUP BY time(1s))
+        WHERE $timeFilter
+        GROUP BY time($interval) fill(0)
       sql: >-
-        SELECT time_bucket('5 minutes', timestamp) AS time,
-               sum(CASE WHEN metric = 'http_errors_total' THEN value ELSE 0 END)
-                 / NULLIF(sum(CASE WHEN metric = 'http_requests_total' THEN value ELSE 0 END), 0)
-                 AS error_rate
-        FROM metrics
-        WHERE metric IN ('http_errors_total', 'http_requests_total')
-          AND timestamp BETWEEN $__timeFrom() AND $__timeTo()
+        SELECT time_bucket('$interval', t.timestamp) AS time,
+               avg(t.err) / NULLIF(avg(t.req), 0) AS error_rate
+        FROM (
+          SELECT timestamp,
+                 sum(CASE WHEN metric = 'http_errors_total' THEN value END) AS err,
+                 sum(CASE WHEN metric = 'http_requests_total' THEN value END) AS req
+          FROM metrics
+          WHERE metric IN ('http_errors_total', 'http_requests_total')
+            AND timestamp BETWEEN $__timeFrom() AND $__timeTo()
+          GROUP BY timestamp
+        ) t
         GROUP BY 1
         ORDER BY 1
 
@@ -91,19 +108,23 @@ panels:
     type: timeseries
     gridPos: {x: 0, y: 12, w: 12, h: 8}
     queries:
-      prometheus: 'sum(rate(http_requests_total{service="$service"}[5m]))'
+      prometheus: 'sum(rate(http_requests_total{service="$service"}[$interval]))'
       influxql: >-
-        SELECT sum("value") AS "throughput"
-        FROM "http_requests_total"
-        WHERE "service" = '$service' AND $timeFilter
-        GROUP BY time(5m) fill(0)
+        SELECT mean("total") AS "throughput"
+        FROM (SELECT sum("value") AS "total" FROM "http_requests_total" WHERE "service" = '$service' AND $timeFilter GROUP BY time(1s))
+        WHERE $timeFilter
+        GROUP BY time($interval) fill(0)
       sql: >-
-        SELECT time_bucket('5 minutes', timestamp) AS time,
-               sum(value) AS throughput
-        FROM metrics
-        WHERE metric = 'http_requests_total'
-          AND labels->>'service' = '$service'
-          AND timestamp BETWEEN $__timeFrom() AND $__timeTo()
+        SELECT time_bucket('$interval', t.timestamp) AS time,
+               avg(t.total) AS throughput
+        FROM (
+          SELECT timestamp, sum(value) AS total
+          FROM metrics
+          WHERE metric = 'http_requests_total'
+            AND service = '$service'
+            AND timestamp BETWEEN $__timeFrom() AND $__timeTo()
+          GROUP BY timestamp
+        ) t
         GROUP BY 1
         ORDER BY 1
 
@@ -113,18 +134,17 @@ panels:
     gridPos: {x: 12, y: 12, w: 12, h: 8}
     queries:
       prometheus: >-
-        histogram_quantile(0.99, sum by (le) (rate(http_request_duration_seconds_bucket{service="$service"}[5m])))
+        histogram_quantile(0.99, sum by (le) (rate(http_request_duration_seconds_bucket{service="$service"}[$interval])))
       influxql: >-
-        SELECT percentile("value", 99) AS "p99_latency"
-        FROM "http_request_duration_seconds"
+        SELECT percentile("value", 99) / 1000.0 AS "p99_latency"
+        FROM "http_request_latency"
         WHERE "service" = '$service' AND $timeFilter
-        GROUP BY time(5m) fill(null)
+        GROUP BY time($interval) fill(null)
       sql: >-
-        SELECT time_bucket('5 minutes', timestamp) AS time,
-               percentile_cont(0.99) WITHIN GROUP (ORDER BY value) AS p99_latency
-        FROM metrics
-        WHERE metric = 'http_request_duration_seconds'
-          AND labels->>'service' = '$service'
+        SELECT time_bucket('$interval', timestamp) AS time,
+               percentile_cont(0.99) WITHIN GROUP (ORDER BY latency_ms) / 1000.0 AS p99_latency
+        FROM request_latencies
+        WHERE service = '$service'
           AND timestamp BETWEEN $__timeFrom() AND $__timeTo()
         GROUP BY 1
         ORDER BY 1
@@ -135,21 +155,25 @@ panels:
     gridPos: {x: 0, y: 20, w: 12, h: 8}
     queries:
       prometheus: >-
-        sum by (service) (rate(http_errors_total[5m])) / sum by (service) (rate(http_requests_total[5m]))
+        sum by (service) (rate(http_errors_total[$interval])) / sum by (service) (rate(http_requests_total[$interval]))
       influxql: >-
-        SELECT sum("value") AS "errors"
-        FROM "http_errors_total"
+        SELECT mean("total") AS "errors"
+        FROM (SELECT sum("value") AS "total" FROM "http_errors_total" WHERE $timeFilter GROUP BY time(1s), "service")
         WHERE $timeFilter
-        GROUP BY time(5m), "service" fill(0)
+        GROUP BY time($interval), "service" fill(0)
       sql: >-
-        SELECT time_bucket('5 minutes', timestamp) AS time,
-               labels->>'service' AS service,
-               sum(CASE WHEN metric = 'http_errors_total' THEN value ELSE 0 END)
-                 / NULLIF(sum(CASE WHEN metric = 'http_requests_total' THEN value ELSE 0 END), 0)
-                 AS error_rate
-        FROM metrics
-        WHERE metric IN ('http_errors_total', 'http_requests_total')
-          AND timestamp BETWEEN $__timeFrom() AND $__timeTo()
+        SELECT time_bucket('$interval', t.timestamp) AS time,
+               t.service,
+               avg(t.err) / NULLIF(avg(t.req), 0) AS error_rate
+        FROM (
+          SELECT timestamp, service,
+                 sum(CASE WHEN metric = 'http_errors_total' THEN value END) AS err,
+                 sum(CASE WHEN metric = 'http_requests_total' THEN value END) AS req
+          FROM metrics
+          WHERE metric IN ('http_errors_total', 'http_requests_total')
+            AND timestamp BETWEEN $__timeFrom() AND $__timeTo()
+          GROUP BY timestamp, service
+        ) t
         GROUP BY 1, 2
         ORDER BY 1, 2
 
@@ -163,10 +187,10 @@ panels:
         SELECT mean("value") AS "cpu"
         FROM "cpu_usage_percent"
         WHERE $timeFilter
-        GROUP BY time(5m), "host" fill(null)
+        GROUP BY time($interval), "host" fill(null)
       sql: >-
-        SELECT time_bucket('5 minutes', timestamp) AS time,
-               labels->>'host' AS host,
+        SELECT time_bucket('$interval', timestamp) AS time,
+               host,
                avg(value) AS cpu
         FROM metrics
         WHERE metric = 'cpu_usage_percent'
@@ -180,20 +204,19 @@ panels:
     gridPos: {x: 0, y: 28, w: 12, h: 8}
     queries:
       prometheus: >-
-        histogram_quantile(0.50, sum by (le, service, host) (rate(http_request_duration_seconds_bucket[5m])))
+        histogram_quantile(0.50, sum by (le, service, host) (rate(http_request_duration_seconds_bucket[$interval])))
       influxql: >-
-        SELECT percentile("value", 50) AS "p50_latency"
-        FROM "http_request_duration_seconds"
+        SELECT percentile("value", 50) / 1000.0 AS "p50_latency"
+        FROM "http_request_latency"
         WHERE $timeFilter
-        GROUP BY time(5m), "service", "host" fill(null)
+        GROUP BY time($interval), "service", "host" fill(null)
       sql: >-
-        SELECT time_bucket('5 minutes', timestamp) AS time,
-               labels->>'service' AS service,
-               labels->>'host' AS host,
-               percentile_cont(0.50) WITHIN GROUP (ORDER BY value) AS p50_latency
-        FROM metrics
-        WHERE metric = 'http_request_duration_seconds'
-          AND timestamp BETWEEN $__timeFrom() AND $__timeTo()
+        SELECT time_bucket('$interval', timestamp) AS time,
+               service,
+               host,
+               percentile_cont(0.50) WITHIN GROUP (ORDER BY latency_ms) / 1000.0 AS p50_latency
+        FROM request_latencies
+        WHERE timestamp BETWEEN $__timeFrom() AND $__timeTo()
         GROUP BY 1, 2, 3
         ORDER BY 1, 2, 3
 
@@ -202,19 +225,23 @@ panels:
     type: barchart
     gridPos: {x: 12, y: 28, w: 12, h: 8}
     queries:
-      prometheus: "sum by (service) (rate(http_requests_total[5m]))"
+      prometheus: "sum by (service) (rate(http_requests_total[$interval]))"
       influxql: >-
-        SELECT sum("value") AS "throughput"
-        FROM "http_requests_total"
+        SELECT mean("total") AS "throughput"
+        FROM (SELECT sum("value") AS "total" FROM "http_requests_total" WHERE $timeFilter GROUP BY time(1s), "service")
         WHERE $timeFilter
-        GROUP BY time(5m), "service" fill(0)
+        GROUP BY time($interval), "service" fill(0)
       sql: >-
-        SELECT time_bucket('5 minutes', timestamp) AS time,
-               labels->>'service' AS service,
-               sum(value) AS throughput
-        FROM metrics
-        WHERE metric = 'http_requests_total'
-          AND timestamp BETWEEN $__timeFrom() AND $__timeTo()
+        SELECT time_bucket('$interval', t.timestamp) AS time,
+               t.service,
+               avg(t.total) AS throughput
+        FROM (
+          SELECT timestamp, service, sum(value) AS total
+          FROM metrics
+          WHERE metric = 'http_requests_total'
+            AND timestamp BETWEEN $__timeFrom() AND $__timeTo()
+          GROUP BY timestamp, service
+        ) t
         GROUP BY 1, 2
         ORDER BY 1, 2
 
@@ -223,19 +250,23 @@ panels:
     type: barchart
     gridPos: {x: 0, y: 36, w: 12, h: 8}
     queries:
-      prometheus: "sum by (host) (rate(http_errors_total[5m]))"
+      prometheus: "sum by (host) (rate(http_errors_total[$interval]))"
       influxql: >-
-        SELECT sum("value") AS "errors"
-        FROM "http_errors_total"
+        SELECT mean("total") AS "errors"
+        FROM (SELECT sum("value") AS "total" FROM "http_errors_total" WHERE $timeFilter GROUP BY time(1s), "host")
         WHERE $timeFilter
-        GROUP BY time(5m), "host" fill(0)
+        GROUP BY time($interval), "host" fill(0)
       sql: >-
-        SELECT time_bucket('5 minutes', timestamp) AS time,
-               labels->>'host' AS host,
-               sum(value) AS errors
-        FROM metrics
-        WHERE metric = 'http_errors_total'
-          AND timestamp BETWEEN $__timeFrom() AND $__timeTo()
+        SELECT time_bucket('$interval', t.timestamp) AS time,
+               t.host,
+               avg(t.total) AS errors
+        FROM (
+          SELECT timestamp, host, sum(value) AS total
+          FROM metrics
+          WHERE metric = 'http_errors_total'
+            AND timestamp BETWEEN $__timeFrom() AND $__timeTo()
+          GROUP BY timestamp, host
+        ) t
         GROUP BY 1, 2
         ORDER BY 1, 2
 
@@ -245,19 +276,18 @@ panels:
     gridPos: {x: 12, y: 36, w: 12, h: 8}
     queries:
       prometheus: >-
-        histogram_quantile(0.99, sum by (le, service) (rate(http_request_duration_seconds_bucket[5m])))
+        histogram_quantile(0.99, sum by (le, service) (rate(http_request_duration_seconds_bucket[$interval])))
       influxql: >-
-        SELECT percentile("value", 99) AS "p99_latency"
-        FROM "http_request_duration_seconds"
+        SELECT percentile("value", 99) / 1000.0 AS "p99_latency"
+        FROM "http_request_latency"
         WHERE $timeFilter
-        GROUP BY time(5m), "service" fill(null)
+        GROUP BY time($interval), "service" fill(null)
       sql: >-
-        SELECT time_bucket('5 minutes', timestamp) AS time,
-               labels->>'service' AS service,
-               percentile_cont(0.99) WITHIN GROUP (ORDER BY value) AS p99_latency
-        FROM metrics
-        WHERE metric = 'http_request_duration_seconds'
-          AND timestamp BETWEEN $__timeFrom() AND $__timeTo()
+        SELECT time_bucket('$interval', timestamp) AS time,
+               service,
+               percentile_cont(0.99) WITHIN GROUP (ORDER BY latency_ms) / 1000.0 AS p99_latency
+        FROM request_latencies
+        WHERE timestamp BETWEEN $__timeFrom() AND $__timeTo()
         GROUP BY 1, 2
         ORDER BY 1, 2
 
@@ -283,34 +313,37 @@ panels:
     gridPos: {x: 6, y: 44, w: 6, h: 4}
     queries:
       prometheus: >-
-        sum(rate(http_request_duration_seconds_sum[5m])) / sum(rate(http_request_duration_seconds_count[5m]))
+        sum(rate(http_request_duration_seconds_sum[$interval])) / sum(rate(http_request_duration_seconds_count[$interval]))
       influxql: >-
-        SELECT mean("value") AS "avg_latency"
-        FROM "http_request_duration_seconds"
+        SELECT mean("value") / 1000.0 AS "avg_latency"
+        FROM "http_request_latency"
         WHERE $timeFilter
       sql: >-
-        SELECT avg(value) AS avg_latency
-        FROM metrics
-        WHERE metric = 'http_request_duration_seconds_sum'
-          AND timestamp BETWEEN $__timeFrom() AND $__timeTo()
+        SELECT avg(latency_ms) / 1000.0 AS avg_latency
+        FROM request_latencies
+        WHERE timestamp BETWEEN $__timeFrom() AND $__timeTo()
 
   - id: 15
-    title: "Throughput ($__interval)"
+    title: "Throughput ($interval)"
     type: timeseries
     gridPos: {x: 12, y: 44, w: 12, h: 8}
     queries:
-      prometheus: "sum(rate(http_requests_total[$__interval]))"
+      prometheus: "sum(rate(http_requests_total[$interval]))"
       influxql: >-
-        SELECT sum("value") AS "throughput"
-        FROM "http_requests_total"
+        SELECT mean("total") AS "throughput"
+        FROM (SELECT sum("value") AS "total" FROM "http_requests_total" WHERE $timeFilter GROUP BY time(1s))
         WHERE $timeFilter
-        GROUP BY time($__interval) fill(0)
+        GROUP BY time($interval) fill(0)
       sql: >-
-        SELECT time_bucket('$__interval', timestamp) AS time,
-               sum(value) AS throughput
-        FROM metrics
-        WHERE metric = 'http_requests_total'
-          AND timestamp BETWEEN $__timeFrom() AND $__timeTo()
+        SELECT time_bucket('$interval', t.timestamp) AS time,
+               avg(t.total) AS throughput
+        FROM (
+          SELECT timestamp, sum(value) AS total
+          FROM metrics
+          WHERE metric = 'http_requests_total'
+            AND timestamp BETWEEN $__timeFrom() AND $__timeTo()
+          GROUP BY timestamp
+        ) t
         GROUP BY 1
         ORDER BY 1
 
@@ -320,20 +353,24 @@ panels:
     gridPos: {x: 0, y: 52, w: 12, h: 8}
     queries:
       prometheus: >-
-        sum by (service) (rate(http_requests_total[5m])) or sum by (service) (rate(http_errors_total[5m]))
+        sum by (service) (rate(http_requests_total[$interval])) or sum by (service) (rate(http_errors_total[$interval]))
       influxql: >-
-        SELECT sum("value") AS "requests"
-        FROM "http_requests_total"
+        SELECT mean("total") AS "requests"
+        FROM (SELECT sum("value") AS "total" FROM "http_requests_total" WHERE $timeFilter GROUP BY time(1s), "service")
         WHERE $timeFilter
-        GROUP BY time(5m), "service" fill(0)
+        GROUP BY time($interval), "service" fill(0)
       sql: >-
-        SELECT time_bucket('5 minutes', timestamp) AS time,
-               labels->>'service' AS service,
-               metric,
-               sum(value) AS value
-        FROM metrics
-        WHERE metric IN ('http_requests_total', 'http_errors_total')
-          AND timestamp BETWEEN $__timeFrom() AND $__timeTo()
+        SELECT time_bucket('$interval', t.timestamp) AS time,
+               t.service,
+               t.metric,
+               avg(t.total) AS value
+        FROM (
+          SELECT timestamp, service, metric, sum(value) AS total
+          FROM metrics
+          WHERE metric IN ('http_requests_total', 'http_errors_total')
+            AND timestamp BETWEEN $__timeFrom() AND $__timeTo()
+          GROUP BY timestamp, service, metric
+        ) t
         GROUP BY 1, 2, 3
         ORDER BY 1, 2, 3
 
@@ -356,7 +393,7 @@ panels:
     queries:
       prometheus: >-
         sum by (service, host) (
-          rate(http_requests_total[5m])
+          rate(http_requests_total[$interval])
           * on (host) group_left(region) kube_node_labels{label_region!=""}
         )
       influxql: null

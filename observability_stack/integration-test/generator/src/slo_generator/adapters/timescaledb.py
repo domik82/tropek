@@ -16,7 +16,7 @@ try:
 except ImportError:
     _PSYCOPG_AVAILABLE = False
 
-_CREATE_TABLE_DDL = """\
+_CREATE_METRICS_DDL = """\
 CREATE TABLE IF NOT EXISTS metrics (
     timestamp TIMESTAMPTZ NOT NULL,
     metric TEXT NOT NULL,
@@ -27,9 +27,26 @@ CREATE TABLE IF NOT EXISTS metrics (
 SELECT create_hypertable('metrics', 'timestamp', if_not_exists => TRUE);\
 """
 
+_CREATE_LATENCIES_DDL = """\
+CREATE TABLE IF NOT EXISTS request_latencies (
+    timestamp TIMESTAMPTZ NOT NULL,
+    service TEXT NOT NULL,
+    host TEXT NOT NULL,
+    latency_ms DOUBLE PRECISION NOT NULL
+);
+SELECT create_hypertable('request_latencies', 'timestamp', if_not_exists => TRUE);\
+"""
+
+_METRICS_COLUMNS = {"timestamp", "metric", "service", "host", "value"}
+_LATENCY_COLUMNS = {"timestamp", "service", "host", "latency_ms"}
+
 
 class TimescaleDBAdapter(BaseAdapter):
     """Writes shaped DataFrames to TimescaleDB using the psycopg COPY protocol.
+
+    Handles two table types based on DataFrame columns:
+    - metrics: counter/gauge rows (timestamp, metric, service, host, value)
+    - request_latencies: individual latency rows (timestamp, service, host, latency_ms)
 
     Connection DSN can be supplied via the constructor or the ``TIMESCALEDB_DSN``
     environment variable.
@@ -48,15 +65,15 @@ class TimescaleDBAdapter(BaseAdapter):
 
     @staticmethod
     def create_table_ddl() -> str:
-        """Return the CREATE TABLE + create_hypertable SQL for the metrics table."""
-        return _CREATE_TABLE_DDL
+        """Return the CREATE TABLE + create_hypertable SQL for both tables."""
+        return _CREATE_METRICS_DDL + "\n" + _CREATE_LATENCIES_DDL
 
     # ------------------------------------------------------------------
     # Connection management
     # ------------------------------------------------------------------
 
     def _connect(self) -> None:
-        """Lazily open a psycopg connection and ensure the table exists."""
+        """Lazily open a psycopg connection and ensure tables exist."""
         if not _PSYCOPG_AVAILABLE:
             msg = (
                 "psycopg is not installed; "
@@ -66,7 +83,8 @@ class TimescaleDBAdapter(BaseAdapter):
         if self._conn is None:
             self._conn = psycopg.connect(self._dsn)  # type: ignore[union-attr]
             with self._conn.cursor() as cur:  # type: ignore[union-attr]
-                cur.execute(_CREATE_TABLE_DDL)
+                cur.execute(_CREATE_METRICS_DDL)
+                cur.execute(_CREATE_LATENCIES_DDL)
             self._conn.commit()  # type: ignore[union-attr]
 
     # ------------------------------------------------------------------
@@ -74,8 +92,16 @@ class TimescaleDBAdapter(BaseAdapter):
     # ------------------------------------------------------------------
 
     def write_chunk(self, df: pd.DataFrame) -> None:
-        """Bulk-insert *df* into the metrics table using the COPY protocol."""
+        """Route *df* to the correct table based on its columns."""
         self._connect()
+        columns = set(df.columns)
+        if "latency_ms" in columns:
+            self._write_latencies(df)
+        else:
+            self._write_metrics(df)
+
+    def _write_metrics(self, df: pd.DataFrame) -> None:
+        """Bulk-insert metrics rows using the COPY protocol."""
         rows = df[["timestamp", "metric", "service", "host", "value"]]
         buf = StringIO()
         for _, row in rows.iterrows():
@@ -86,6 +112,23 @@ class TimescaleDBAdapter(BaseAdapter):
             self._conn.cursor() as cur,  # type: ignore[union-attr]
             cur.copy(  # type: ignore[union-attr]
                 "COPY metrics (timestamp, metric, service, host, value) FROM STDIN"
+            ) as copy,
+        ):
+            copy.write(buf.read())
+        self._conn.commit()  # type: ignore[union-attr]
+
+    def _write_latencies(self, df: pd.DataFrame) -> None:
+        """Bulk-insert latency rows using the COPY protocol."""
+        rows = df[["timestamp", "service", "host", "latency_ms"]]
+        buf = StringIO()
+        for _, row in rows.iterrows():
+            ts = pd.Timestamp(row["timestamp"]).isoformat()
+            buf.write(f"{ts}\t{row['service']}\t{row['host']}\t{row['latency_ms']}\n")
+        buf.seek(0)
+        with (
+            self._conn.cursor() as cur,  # type: ignore[union-attr]
+            cur.copy(  # type: ignore[union-attr]
+                "COPY request_latencies (timestamp, service, host, latency_ms) FROM STDIN"
             ) as copy,
         ):
             copy.write(buf.read())

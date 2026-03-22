@@ -12,6 +12,23 @@
   "templating": {
     "list": [
       {% for var in variables %}
+      {% if var.type == "custom" %}
+      {
+        "name": "{{ var.name }}",
+        "type": "custom",
+        "label": "{{ var.label }}",
+        "query": "{{ var.options }}",
+        "current": {
+          "text": "{{ var.default }}",
+          "value": "{{ var.default }}"
+        },
+        "options": [
+          {% for opt in var.options.split(',') %}
+          {"text": "{{ opt }}", "value": "{{ opt }}", "selected": {{ 'true' if opt == var.default else 'false' }}}{% if not loop.last %},{% endif %}
+          {% endfor %}
+        ]
+      }
+      {% else %}
       {
         "name": "{{ var.name }}",
         "type": "{{ var.type }}",
@@ -20,8 +37,9 @@
           "type": "{{ datasource_type }}",
           "uid": "{{ datasource_uid }}"
         },
-        "query": "{{ var.query }}"
-      }{% if not loop.last %},{% endif %}
+        "query": {{ (var.queries[query_key] if var.queries is defined else var.query) | tojson }}
+      }
+      {% endif %}{% if not loop.last %},{% endif %}
       {% endfor %}
     ]
   },
@@ -58,9 +76,10 @@
           "rawQuery": true,
           "resultFormat": "time_series",
           "refId": "A"
-          {% elif datasource_type == "postgres" %}
+          {% elif datasource_type == "grafana-postgresql-datasource" %}
           "rawSql": {{ query | tojson }},
-          "format": "time_series",
+          "rawQuery": true,
+          "format": "{{ 'table' if panel.type == 'stat' else 'time_series' }}",
           "refId": "A"
           {% else %}
           "rawQuery": {{ query | tojson }},

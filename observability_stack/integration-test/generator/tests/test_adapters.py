@@ -8,26 +8,34 @@ import pandas as pd
 from slo_generator.adapters.csv import CSVAdapter
 from slo_generator.adapters.influxdb import InfluxDBAdapter
 from slo_generator.adapters.prometheus import PrometheusAdapter
+from slo_generator.raw import RawChunk
+from slo_generator.shapers.raw import RawShaper
 
 
 class TestCSVAdapter:
-    def test_writes_dataframe_to_csv_file(self, tmp_path: Path, sample_profile_chunk: pd.DataFrame):
+    def test_writes_dataframe_to_csv_file(self, tmp_path: Path, sample_raw_chunk: RawChunk):
+        shaper = RawShaper()
+        shaped = list(shaper.shape(sample_raw_chunk))
+        assert len(shaped) == 1
+
         output = tmp_path / "output.csv"
         with CSVAdapter(output) as adapter:
-            adapter.write_chunk(sample_profile_chunk)
+            adapter.write_chunk(shaped[0])
 
         result = pd.read_csv(output)
-        assert len(result) == len(sample_profile_chunk)
-        assert set(result.columns) == set(sample_profile_chunk.columns)
+        assert len(result) == 60
 
-    def test_appends_multiple_chunks(self, tmp_path: Path, sample_profile_chunk: pd.DataFrame):
+    def test_appends_multiple_chunks(self, tmp_path: Path, sample_raw_chunk: RawChunk):
+        shaper = RawShaper()
+        shaped = list(shaper.shape(sample_raw_chunk))
+
         output = tmp_path / "output.csv"
         with CSVAdapter(output) as adapter:
-            adapter.write_chunk(sample_profile_chunk)
-            adapter.write_chunk(sample_profile_chunk)
+            adapter.write_chunk(shaped[0])
+            adapter.write_chunk(shaped[0])
 
         result = pd.read_csv(output)
-        assert len(result) == len(sample_profile_chunk) * 2
+        assert len(result) == 120
 
 
 class TestPrometheusAdapter:
@@ -86,7 +94,6 @@ class TestPrometheusAdapter:
             adapter.write_chunk(df)
 
         lines = output.read_text().splitlines()
-        # bucket, sum, count should appear together (not scattered)
         bucket_indices = [i for i, line in enumerate(lines) if "bucket" in line]
         sum_indices = [
             i for i, line in enumerate(lines) if "_sum" in line and not line.startswith("#")
@@ -96,7 +103,6 @@ class TestPrometheusAdapter:
         ]
 
         if bucket_indices and sum_indices and count_indices:
-            # sum and count should come right after last bucket
             assert sum_indices[0] > bucket_indices[-1]
             assert count_indices[0] > sum_indices[0]
 
@@ -109,7 +115,14 @@ class TestTimescaleDBAdapter:
         assert "CREATE TABLE" in ddl
         assert "timestamp" in ddl
         assert "metric" in ddl
-        assert "hypertable" in ddl.lower() or "create_hypertable" in ddl.lower()
+        assert "create_hypertable" in ddl.lower()
+
+    def test_ddl_includes_request_latencies_table(self):
+        from slo_generator.adapters.timescaledb import TimescaleDBAdapter
+
+        ddl = TimescaleDBAdapter.create_table_ddl()
+        assert "request_latencies" in ddl
+        assert "latency_ms" in ddl
 
 
 class TestInfluxDBAdapter:
@@ -121,8 +134,6 @@ class TestInfluxDBAdapter:
                 "service": ["frontend"],
                 "host": ["host1"],
                 "value": [100.0],
-                "rate": [3.33],
-                "le": [pd.NA],
                 "status_code": ["200"],
             }
         )

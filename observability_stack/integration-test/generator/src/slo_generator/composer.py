@@ -9,9 +9,10 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
-import pandas as pd
 import yaml
 
+from slo_generator.generator_config import GeneratorConfig
+from slo_generator.raw import RawChunk
 from slo_generator.scenarios import get_scenario
 
 
@@ -68,11 +69,16 @@ class TimelineConfig:
 class TimelineComposer:
     """Composes a continuous timeline from a healthy baseline + event splices."""
 
-    def __init__(self, config: TimelineConfig):
+    def __init__(self, config: TimelineConfig, generator_config: GeneratorConfig | None = None):
         self.config = config
+        self.generator_config = generator_config or GeneratorConfig.default()
 
     @classmethod
-    def from_yaml(cls, path: Path) -> TimelineComposer:
+    def from_yaml(
+        cls,
+        path: Path,
+        generator_config: GeneratorConfig | None = None,
+    ) -> TimelineComposer:
         """Load and validate a timeline from a YAML file."""
         with open(path) as f:
             raw = yaml.safe_load(f)
@@ -115,15 +121,20 @@ class TimelineComposer:
         )
 
         _validate_config(config)
-        return cls(config)
+        return cls(config, generator_config=generator_config)
 
     def generate(
         self,
         resolution_seconds: int = 30,
         chunk_hours: int = 1,
-    ) -> Iterator[pd.DataFrame]:
-        """Yield composed profile DataFrame chunks."""
-        baseline = get_scenario(self.config.baseline, start=self.config.start, end=self.config.end)
+    ) -> Iterator[RawChunk]:
+        """Yield composed RawChunk lists."""
+        baseline = get_scenario(
+            self.config.baseline,
+            start=self.config.start,
+            end=self.config.end,
+            config=self.generator_config,
+        )
 
         event_scenarios = []
         for event in sorted(self.config.events, key=lambda e: e.at):
@@ -133,6 +144,7 @@ class TimelineComposer:
                 event.type,
                 start=event_start,
                 end=event_end,
+                config=self.generator_config,
                 event_mode=True,
                 **event.params,
             )
@@ -155,19 +167,19 @@ class TimelineComposer:
             if overlapping:
                 chunk = self._splice_events(chunk, chunk_start, chunk_end, overlapping)
 
-            if len(chunk) > 0:
+            if chunk:
                 yield chunk
 
             chunk_start = chunk_end
 
     def _splice_events(
         self,
-        chunk: pd.DataFrame,
+        chunk: RawChunk,
         chunk_start: datetime,
         chunk_end: datetime,
         overlapping: list[tuple],
-    ) -> pd.DataFrame:
-        """Replace baseline rows with event data and apply restart gaps."""
+    ) -> RawChunk:
+        """Replace baseline samples with event data and apply restart gaps."""
         for event, scenario, ev_start, ev_end in overlapping:
             overlap_start = max(chunk_start, ev_start)
             overlap_end = min(chunk_end, ev_end)
@@ -175,20 +187,16 @@ class TimelineComposer:
 
             event_data = scenario.generate_window(overlap_start, overlap_end, ev_resolution)
 
-            chunk = chunk[
-                (chunk["timestamp"] < pd.Timestamp(overlap_start))
-                | (chunk["timestamp"] >= pd.Timestamp(overlap_end))
-            ]
-            chunk = pd.concat([chunk, event_data], ignore_index=True)
+            # Remove baseline samples in the event window
+            chunk = [s for s in chunk if s.timestamp < overlap_start or s.timestamp >= overlap_end]
+            chunk.extend(event_data)
 
+            # Apply restart gap (remove samples during gap)
             if event.restart_gap.total_seconds() > 0:
                 gap_end = overlap_end + event.restart_gap
-                chunk = chunk[
-                    (chunk["timestamp"] < pd.Timestamp(overlap_end))
-                    | (chunk["timestamp"] >= pd.Timestamp(gap_end))
-                ]
+                chunk = [s for s in chunk if s.timestamp < overlap_end or s.timestamp >= gap_end]
 
-        return chunk.sort_values("timestamp").reset_index(drop=True)
+        return sorted(chunk, key=lambda s: s.timestamp)
 
 
 def _validate_config(config: TimelineConfig) -> None:
@@ -204,7 +212,6 @@ def _validate_config(config: TimelineConfig) -> None:
                 f"exceeds timeline duration {total_duration}"
             )
 
-    # Check resolution direction (event resolution must be finer than global)
     for event in sorted_events:
         if event.resolution is not None and event.resolution > config.resolution_seconds:
             raise ValueError(
@@ -212,7 +219,6 @@ def _validate_config(config: TimelineConfig) -> None:
                 f"than global resolution ({config.resolution_seconds}s)"
             )
 
-    # Check for overlaps
     for i in range(len(sorted_events) - 1):
         current = sorted_events[i]
         next_event = sorted_events[i + 1]

@@ -2,25 +2,18 @@
 
 from __future__ import annotations
 
+from slo_generator.generator_config import MICROMETER_BUCKETS_MS
+
 SERVICES: list[str] = ["frontend", "api", "backend"]
 HOSTS: list[str] = ["host1", "host2"]
 
-# Standard Prometheus histogram buckets for request durations (seconds)
-DURATION_BUCKETS: list[float] = [
-    0.005,
-    0.01,
-    0.025,
-    0.05,
-    0.1,
-    0.25,
-    0.5,
-    1.0,
-    2.5,
-    5.0,
-    10.0,
-]
+# Micrometer histogram buckets in seconds (for Prometheus OpenMetrics output)
+MICROMETER_BUCKETS_SECONDS: list[float] = [b / 1000.0 for b in MICROMETER_BUCKETS_MS]
 
-# Profile DataFrame columns — every scenario must produce exactly these
+# Legacy: kept until all consumers are migrated to GeneratorConfig
+DURATION_BUCKETS: list[float] = MICROMETER_BUCKETS_SECONDS
+
+# Legacy: kept until scenarios are refactored to produce RawSample
 PROFILE_COLUMNS: list[str] = [
     "timestamp",
     "service",
@@ -36,11 +29,13 @@ PROFILE_COLUMNS: list[str] = [
 # Healthy baseline values (used as defaults across scenarios)
 HEALTHY_DEFAULTS: dict[str, float] = {
     "throughput_rps": 100.0,
+    "base_latency_ms": 20.0,
+    "cpu_percent": 40.0,
+    "memory_bytes": 512 * 1024 * 1024,
+    # Legacy keys — kept until scenarios are refactored
     "error_rate": 0.001,
     "p50_latency": 0.020,
     "p99_latency": 0.080,
-    "cpu_percent": 40.0,
-    "memory_bytes": 512 * 1024 * 1024,
 }
 
 # Per-service throughput scaling factors

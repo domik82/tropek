@@ -5,10 +5,9 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
-import pandas as pd
 import pytest
 
-from tests.conftest import validate_profile_schema
+from tests.conftest import raw_chunk_to_df, validate_raw_chunk
 
 
 class TestDurationParsing:
@@ -183,10 +182,12 @@ timeline:
         composer = TimelineComposer.from_yaml(yaml_path)
         chunks = list(composer.generate())
 
-        assert len(chunks) == 2  # 2 hours = 2 chunks
-        df = pd.concat(chunks)
-        validate_profile_schema(df)
-        assert (df["error_rate"] < 0.01).all()  # healthy
+        assert len(chunks) == 2
+        for chunk in chunks:
+            validate_raw_chunk(chunk)
+
+        df = raw_chunk_to_df(chunks)
+        assert (df["error_rate"] < 0.15).all()  # healthy with binomial noise
 
     def test_event_replaces_baseline_window(self, tmp_path: Path):
         from slo_generator.composer import TimelineComposer
@@ -206,12 +207,10 @@ timeline:
 
         composer = TimelineComposer.from_yaml(yaml_path)
         chunks = list(composer.generate())
-        df = pd.concat(chunks)
+        df = raw_chunk_to_df(chunks)
 
-        validate_profile_schema(df)
-
-        api = df[(df["service"] == "api") & (df["host"] == "host1")]
         start = datetime(2026, 3, 20, tzinfo=UTC)
+        api = df[(df["service"] == "api") & (df["host"] == "host1")]
 
         # During outage window, error rate should be elevated
         outage_window = api[
@@ -222,7 +221,7 @@ timeline:
 
         # Before outage, should be healthy
         before = api[api["timestamp"] < start + timedelta(hours=1)]
-        assert before["error_rate"].mean() < 0.01
+        assert before["error_rate"].mean() < 0.05
 
     def test_restart_gap_creates_missing_data(self, tmp_path: Path):
         from slo_generator.composer import TimelineComposer
@@ -243,7 +242,7 @@ timeline:
 
         composer = TimelineComposer.from_yaml(yaml_path)
         chunks = list(composer.generate())
-        df = pd.concat(chunks)
+        df = raw_chunk_to_df(chunks)
 
         api = df[(df["service"] == "api") & (df["host"] == "host1")]
         start = datetime(2026, 3, 20, tzinfo=UTC)
@@ -274,19 +273,17 @@ timeline:
 
         composer = TimelineComposer.from_yaml(yaml_path)
         chunks = list(composer.generate())
-        df = pd.concat(chunks)
+        df = raw_chunk_to_df(chunks)
 
         api = df[(df["service"] == "api") & (df["host"] == "host1")]
         start = datetime(2026, 3, 20, tzinfo=UTC)
 
-        # Event window should have finer resolution (5s = more data points)
         event_data = api[
             (api["timestamp"] >= start + timedelta(minutes=30))
             & (api["timestamp"] < start + timedelta(hours=1))
         ]
         baseline_data = api[api["timestamp"] < start + timedelta(minutes=30)]
 
-        # More data points per minute in event window
         event_per_min = len(event_data) / 30
         baseline_per_min = len(baseline_data) / 30
-        assert event_per_min > baseline_per_min * 3  # 5s vs 30s = 6x
+        assert event_per_min > baseline_per_min * 3

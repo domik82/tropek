@@ -4,12 +4,31 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from collections.abc import Iterator
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 
 import numpy as np
-import pandas as pd
 
-from slo_generator.constants import HOSTS, PROFILE_COLUMNS, SERVICES
+from slo_generator.constants import HOSTS, SERVICES
+from slo_generator.generator_config import GeneratorConfig
+from slo_generator.raw import RawChunk
+
+
+def _generate_timestamps(
+    start: datetime,
+    end: datetime,
+    resolution_seconds: int,
+) -> list[datetime]:
+    """Generate a list of timestamps from start (inclusive) to end (exclusive)."""
+    if start >= end:
+        return []
+    timestamps: list[datetime] = []
+    current = start if start.tzinfo else start.replace(tzinfo=UTC)
+    end_utc = end if end.tzinfo else end.replace(tzinfo=UTC)
+    delta = timedelta(seconds=resolution_seconds)
+    while current < end_utc:
+        timestamps.append(current)
+        current += delta
+    return timestamps
 
 
 class BaseScenario(ABC):
@@ -17,36 +36,38 @@ class BaseScenario(ABC):
 
     name: str = "base"
 
-    def __init__(self, start: datetime, end: datetime, *, event_mode: bool = False):
+    def __init__(
+        self,
+        start: datetime,
+        end: datetime,
+        *,
+        config: GeneratorConfig | None = None,
+        event_mode: bool = False,
+    ):
         self.start = start
         self.end = end
         self.event_mode = event_mode
-        self._rng = np.random.default_rng(seed=42)
+        self.config = config or GeneratorConfig.default()
+        self._rng = np.random.default_rng(seed=self.config.seed)
 
     def generate(
         self,
         resolution_seconds: int = 1,
         chunk_hours: int = 1,
-    ) -> Iterator[pd.DataFrame]:
-        """Yield profile DataFrames in hour-sized chunks."""
+    ) -> Iterator[RawChunk]:
+        """Yield RawChunk lists in hour-sized chunks."""
         chunk_delta = timedelta(hours=chunk_hours)
         chunk_start = self.start
 
         while chunk_start < self.end:
             chunk_end = min(chunk_start + chunk_delta, self.end)
-            timestamps = pd.date_range(
-                chunk_start,
-                chunk_end,
-                freq=f"{resolution_seconds}s",
-                inclusive="left",
-                tz="UTC",
-            ).as_unit("ns")
-            if len(timestamps) == 0:
+            timestamps = _generate_timestamps(chunk_start, chunk_end, resolution_seconds)
+            if not timestamps:
                 chunk_start = chunk_end
                 continue
 
-            df = self._build_chunk(timestamps)
-            yield df
+            chunk = self._build_chunk(timestamps)
+            yield chunk
             chunk_start = chunk_end
 
     def generate_window(
@@ -54,52 +75,35 @@ class BaseScenario(ABC):
         window_start: datetime,
         window_end: datetime,
         resolution_seconds: int = 1,
-    ) -> pd.DataFrame:
-        """Generate a single profile DataFrame for an arbitrary sub-window.
+    ) -> RawChunk:
+        """Generate a single RawChunk for an arbitrary sub-window.
 
         Unlike generate() which yields hour-sized chunks over the full range,
-        this returns one DataFrame covering exactly [window_start, window_end)
+        this returns one RawChunk covering exactly [window_start, window_end)
         at the given resolution. Used by the composer for event splicing.
         """
-        if window_start >= window_end:
-            return pd.DataFrame(columns=PROFILE_COLUMNS)
-        timestamps = pd.date_range(
-            window_start,
-            window_end,
-            freq=f"{resolution_seconds}s",
-            inclusive="left",
-            tz="UTC",
-        ).as_unit("ns")
-        if len(timestamps) == 0:
-            return pd.DataFrame(columns=PROFILE_COLUMNS)
+        timestamps = _generate_timestamps(window_start, window_end, resolution_seconds)
+        if not timestamps:
+            return []
         return self._build_chunk(timestamps)
 
-    def _build_chunk(self, timestamps: pd.DatetimeIndex) -> pd.DataFrame:
-        """Build a profile DataFrame for one chunk by combining all service-host combos."""
-        frames: list[pd.DataFrame] = []
+    def _build_chunk(self, timestamps: list[datetime]) -> RawChunk:
+        """Build a RawChunk for one chunk by combining all service-host combos."""
+        samples: RawChunk = []
         for service in SERVICES:
             for host in HOSTS:
-                profiles = self._build_profiles(timestamps, service, host)
-                profiles["service"] = pd.Categorical(
-                    [service] * len(timestamps), categories=SERVICES
-                )
-                profiles["host"] = pd.Categorical([host] * len(timestamps), categories=HOSTS)
-                frames.append(profiles)
-
-        df = pd.concat(frames, ignore_index=True)
-        return df[PROFILE_COLUMNS]
+                samples.extend(self._build_raw_samples(timestamps, service, host))
+        return samples
 
     @abstractmethod
-    def _build_profiles(
+    def _build_raw_samples(
         self,
-        timestamps: pd.DatetimeIndex,
+        timestamps: list[datetime],
         service: str,
         host: str,
-    ) -> pd.DataFrame:
-        """Build profile values for one (service, host) across all timestamps in chunk.
+    ) -> RawChunk:
+        """Build raw samples for one (service, host) across all timestamps in chunk.
 
-        Must return a DataFrame with columns: timestamp, throughput_rps, error_rate,
-        p50_latency, p99_latency, cpu_percent, memory_bytes.
-        (service and host are added by the base class.)
+        Must return a list of RawSample objects, one per timestamp.
         """
         ...

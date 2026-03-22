@@ -34,7 +34,7 @@ services:
       POSTGRES_PASSWORD: metrics
       POSTGRES_DB: slo_metrics
     ports:
-      - "5434:5432"
+      - "5534:5432"
     volumes:
       - timescaledb-metrics-data:/var/lib/postgresql/data
     restart: unless-stopped
@@ -46,6 +46,11 @@ services:
     environment:
       GF_SECURITY_ADMIN_PASSWORD: admin
       GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_AUTH_DISABLE_LOGIN_FORM: "false"
+      GF_SECURITY_DISABLE_INITIAL_ADMIN_CREATION: "false"
+      GF_USERS_AUTO_ASSIGN_ORG: "true"
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Admin
     volumes:
       - grafana-data:/var/lib/grafana
       - ./grafana/provisioning:/etc/grafana/provisioning:ro
@@ -83,6 +88,7 @@ services:
     volumes:
       - prometheus-data:/prometheus
       - ./timelines:/timelines:ro
+      - ./output:/app/output
 
 volumes:
   prometheus-data:

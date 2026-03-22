@@ -10,6 +10,7 @@ import click
 from rich.console import Console
 
 from slo_generator.composer import TimelineComposer
+from slo_generator.generator_config import GeneratorConfig
 from slo_generator.pipeline import run_pipeline
 from slo_generator.scenarios import get_scenario
 
@@ -17,6 +18,18 @@ console = Console()
 
 SCENARIO_NAMES = ["healthy", "outage", "degradation"]
 BACKEND_NAMES = ["prometheus", "influxdb", "timescaledb", "csv"]
+
+
+def _load_config(
+    config_path: Path | None,
+    scrape_interval: int | None,
+) -> GeneratorConfig:
+    """Build GeneratorConfig from YAML file or CLI flags."""
+    if config_path is not None:
+        return GeneratorConfig.from_yaml(config_path)
+    if scrape_interval is not None:
+        return GeneratorConfig(scrape_interval_s=scrape_interval)
+    return GeneratorConfig.default()
 
 
 def _write_metadata(output_dir: Path, config) -> None:
@@ -44,7 +57,7 @@ def _run_timeline_mode(
     timeline: Path,
     backends: tuple[str, ...],
     output_dir: Path,
-    scrape_interval: int,
+    gen_config: GeneratorConfig,
     influxdb_url: str | None,
     influxdb_token: str | None,
     influxdb_org: str | None,
@@ -54,7 +67,7 @@ def _run_timeline_mode(
     prometheus_data_dir: Path | None,
 ) -> None:
     """Run generation driven by a timeline YAML file."""
-    composer = TimelineComposer.from_yaml(timeline)
+    composer = TimelineComposer.from_yaml(timeline, generator_config=gen_config)
     config = composer.config
 
     console.print(f"[bold]Timeline mode: {timeline.name}[/bold]")
@@ -68,7 +81,7 @@ def _run_timeline_mode(
         output_dir=output_dir,
         scenario_name="timeline",
         resolution_seconds=config.resolution_seconds,
-        prometheus_scrape_interval=scrape_interval,
+        config=gen_config,
         influxdb_url=influxdb_url,
         influxdb_token=influxdb_token,
         influxdb_org=influxdb_org,
@@ -92,7 +105,7 @@ def _run_scenario_mode(
     hours: int,
     resolution: int,
     output_dir: Path,
-    scrape_interval: int,
+    gen_config: GeneratorConfig,
     influxdb_url: str | None,
     influxdb_token: str | None,
     influxdb_org: str | None,
@@ -111,7 +124,7 @@ def _run_scenario_mode(
 
     for scenario_name in scenarios:
         console.print(f"\n[bold cyan]Scenario: {scenario_name}[/bold cyan]")
-        scenario = get_scenario(scenario_name, start=start, end=end)
+        scenario = get_scenario(scenario_name, start=start, end=end, config=gen_config)
 
         results = run_pipeline(
             scenario=scenario,
@@ -119,7 +132,7 @@ def _run_scenario_mode(
             output_dir=output_dir / scenario_name,
             scenario_name=scenario_name,
             resolution_seconds=resolution,
-            prometheus_scrape_interval=scrape_interval,
+            config=gen_config,
             influxdb_url=influxdb_url,
             influxdb_token=influxdb_token,
             influxdb_org=influxdb_org,
@@ -144,7 +157,18 @@ def _run_scenario_mode(
 @click.option(
     "--output-dir", type=click.Path(path_type=Path), default=Path("output"), help="Output directory"
 )
-@click.option("--scrape-interval", type=int, default=30, help="Prometheus scrape interval")
+@click.option(
+    "--generator-config",
+    type=click.Path(exists=True, path_type=Path),
+    default=None,
+    help="Generator config YAML file (histogram buckets, scrape interval, jitter, etc.)",
+)
+@click.option(
+    "--scrape-interval",
+    type=int,
+    default=None,
+    help="Prometheus scrape interval in seconds (shortcut for --generator-config)",
+)
 @click.option("--influxdb-url", envvar="INFLUXDB_URL", default=None)
 @click.option("--influxdb-token", envvar="INFLUXDB_TOKEN", default=None)
 @click.option("--influxdb-org", envvar="INFLUXDB_ORG", default=None)
@@ -164,7 +188,8 @@ def main(
     hours: int,
     resolution: int,
     output_dir: Path,
-    scrape_interval: int,
+    generator_config: Path | None,
+    scrape_interval: int | None,
     influxdb_url: str | None,
     influxdb_token: str | None,
     influxdb_org: str | None,
@@ -175,12 +200,14 @@ def main(
     timeline: Path | None,
 ) -> None:
     """Generate SLO test data for quality gate evaluation."""
+    gen_config = _load_config(generator_config, scrape_interval)
+
     if timeline is not None:
         _run_timeline_mode(
             timeline=timeline,
             backends=backends,
             output_dir=output_dir,
-            scrape_interval=scrape_interval,
+            gen_config=gen_config,
             influxdb_url=influxdb_url,
             influxdb_token=influxdb_token,
             influxdb_org=influxdb_org,
@@ -196,7 +223,7 @@ def main(
             hours=hours,
             resolution=resolution,
             output_dir=output_dir,
-            scrape_interval=scrape_interval,
+            gen_config=gen_config,
             influxdb_url=influxdb_url,
             influxdb_token=influxdb_token,
             influxdb_org=influxdb_org,

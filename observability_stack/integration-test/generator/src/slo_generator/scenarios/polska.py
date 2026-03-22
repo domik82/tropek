@@ -5,9 +5,10 @@ from __future__ import annotations
 from datetime import datetime
 
 import numpy as np
-import pandas as pd
 
 from slo_generator.constants import HEALTHY_DEFAULTS, HOST_FACTORS, SERVICE_FACTORS
+from slo_generator.generator_config import GeneratorConfig
+from slo_generator.raw import RawChunk, RawSample, apply_jitter, generate_errors, generate_latencies
 from slo_generator.scenarios.base import BaseScenario
 from slo_generator.scenarios.polska_contour import POLSKA_LOWER, POLSKA_UPPER, POLSKA_X
 
@@ -22,70 +23,72 @@ class PolskaScenario(BaseScenario):
         start: datetime,
         end: datetime,
         *,
+        config: GeneratorConfig | None = None,
         event_mode: bool = True,
         noise_amplitude: float = 0.05,
         throughput_range: tuple[float, float] = (50.0, 200.0),
-        latency_range: tuple[float, float] = (0.01, 0.5),
+        latency_range_ms: tuple[float, float] = (10.0, 500.0),
     ):
-        super().__init__(start, end, event_mode=event_mode)
+        super().__init__(start, end, config=config, event_mode=event_mode)
         self.noise_amplitude = noise_amplitude
         self.throughput_range = throughput_range
-        self.latency_range = latency_range
+        self.latency_range_ms = latency_range_ms
 
-    def _build_profiles(
+    def _build_raw_samples(
         self,
-        timestamps: pd.DatetimeIndex,
+        timestamps: list[datetime],
         service: str,
         host: str,
-    ) -> pd.DataFrame:
-        n = len(timestamps)
+    ) -> RawChunk:
         sf = SERVICE_FACTORS.get(service, 1.0)
         hf = HOST_FACTORS.get(host, 1.0)
         base = HEALTHY_DEFAULTS
+        jitter = self.config.jitter_pct
+        sigma = self.config.latency_sigma
 
         total_seconds = (self.end - self.start).total_seconds()
-        ts_epoch = timestamps.astype(np.int64) / 1e9
         start_epoch = self.start.timestamp()
-        progress = np.clip((ts_epoch - start_epoch) / total_seconds, 0.0, 1.0)
 
-        # Interpolate contour values at each timestamp's progress
-        upper = np.interp(progress, POLSKA_X, POLSKA_UPPER)
-        lower = np.interp(progress, POLSKA_X, POLSKA_LOWER)
+        samples: RawChunk = []
+        for ts in timestamps:
+            epoch = ts.timestamp()
+            progress = min(max((epoch - start_epoch) / total_seconds, 0.0), 1.0)
 
-        # Add noise
-        noise_t = self._rng.normal(0, self.noise_amplitude, n)
-        noise_l = self._rng.normal(0, self.noise_amplitude, n)
+            # Interpolate contour values
+            upper = float(np.interp(progress, POLSKA_X, POLSKA_UPPER))
+            lower = float(np.interp(progress, POLSKA_X, POLSKA_LOWER))
 
-        # Map upper contour -> throughput
-        tmin, tmax = self.throughput_range
-        throughput = np.clip(
-            tmin + (upper + noise_t) * (tmax - tmin) * sf * hf,
-            10.0,
-            tmax * 2,
-        )
+            # Add noise
+            noise_t = self._rng.normal(0, self.noise_amplitude)
+            noise_l = self._rng.normal(0, self.noise_amplitude)
 
-        # Map lower contour -> latency (inverted: lower contour = higher latency)
-        lmin, lmax = self.latency_range
-        p99 = np.clip(
-            lmin + (1.0 - lower + noise_l) * (lmax - lmin),
-            lmin,
-            lmax * 2,
-        )
-        p50 = p99 * 0.3
+            # Map upper contour -> throughput
+            tmin, tmax = self.throughput_range
+            throughput = max(
+                10.0, min(tmax * 2, tmin + (upper + noise_t) * (tmax - tmin) * sf * hf)
+            )
 
-        # Derived metrics
-        error_rate = np.full(n, base["error_rate"])
-        cpu = np.clip(30 + upper * 40, 0.0, 100.0)
-        memory = np.full(n, base["memory_bytes"] * hf)
+            # Map lower contour -> latency (inverted: lower contour = higher latency)
+            lmin, lmax = self.latency_range_ms
+            latency_ms = max(lmin, min(lmax * 2, lmin + (1.0 - lower + noise_l) * (lmax - lmin)))
 
-        return pd.DataFrame(
-            {
-                "timestamp": timestamps,
-                "throughput_rps": throughput,
-                "error_rate": error_rate,
-                "p50_latency": p50,
-                "p99_latency": p99,
-                "cpu_percent": cpu,
-                "memory_bytes": memory,
-            }
-        )
+            throughput = apply_jitter(throughput, jitter, self._rng)
+            request_count = round(throughput)
+            error_count = generate_errors(request_count, self.config.base_error_rate, self._rng)
+            latencies = generate_latencies(request_count, latency_ms, sigma, self._rng)
+
+            cpu = min(100.0, max(0.0, 30 + upper * 40))
+
+            samples.append(
+                RawSample(
+                    timestamp=ts,
+                    service=service,
+                    host=host,
+                    request_count=request_count,
+                    error_count=error_count,
+                    latencies_ms=latencies,
+                    cpu_percent=cpu,
+                    memory_bytes=apply_jitter(base["memory_bytes"] * hf, jitter, self._rng),
+                )
+            )
+        return samples

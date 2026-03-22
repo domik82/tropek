@@ -1,4 +1,4 @@
-"""Prometheus shaper — downsamples profile data and expands into Prometheus metric rows."""
+"""Prometheus shaper — consumes RawChunk, uses MicrometerApp accumulation."""
 
 from __future__ import annotations
 
@@ -8,236 +8,179 @@ from typing import Any
 
 import pandas as pd
 
-from slo_generator.constants import DURATION_BUCKETS
+from slo_generator.generator_config import GeneratorConfig
+from slo_generator.micrometer import MicrometerApp
+from slo_generator.raw import RawChunk
 from slo_generator.shapers.base import BaseShaper
 
-# Port for instance label format: service-host:port
 _INSTANCE_PORT = 8080
 
 
-def _lognormal_bucket_fractions(p50: float, p99: float) -> list[float]:
-    """Compute cumulative histogram fractions for DURATION_BUCKETS using a log-normal approximation.
-
-    Given p50 and p99, estimate the mu and sigma of the underlying log-normal distribution,
-    then compute the CDF at each bucket boundary.  Returns a list of length len(DURATION_BUCKETS),
-    each entry in [0, 1], strictly non-decreasing, with the last bucket representing +Inf (=1.0).
-    """
-    # Avoid log(0) if latency is 0 or negative
-    p50 = max(p50, 1e-6)
-    p99 = max(p99, p50)
-
-    # Log-normal: mu = log(median), sigma derived from p99 = mu + z99 * sigma
-    # z99 ≈ 2.326
-    mu = math.log(p50)
-    z99 = 2.3263478740408408
-    sigma = (math.log(p99) - mu) / z99
-    sigma = max(sigma, 1e-6)
-
-    fractions: list[float] = []
-    for le in DURATION_BUCKETS:
-        # Standard normal CDF approximation via erf
-        z = (math.log(le) - mu) / (sigma * math.sqrt(2))
-        cdf = 0.5 * (1.0 + math.erf(z))
-        fractions.append(min(max(cdf, 0.0), 1.0))
-    return fractions
-
-
 class PrometheusShaper(BaseShaper):
-    """Shapes profile DataFrames into Prometheus-style metric rows.
+    """Shapes RawChunk into Prometheus-style metric rows using MicrometerApp.
 
-    Downsamples to ``scrape_interval`` seconds, then expands each row into:
-    - ``http_requests_total`` (cumulative counter, label: status_code=200)
-    - ``http_errors_total`` (cumulative counter)
-    - ``http_request_duration_seconds_bucket`` (one row per le bucket, cumulative)
-    - ``http_request_duration_seconds_sum`` (cumulative)
-    - ``http_request_duration_seconds_count`` (cumulative)
-    - ``cpu_usage_percent`` (gauge)
-    - ``memory_usage_bytes`` (gauge)
+    Maintains one MicrometerApp per (service, host). For each second of raw data,
+    accumulates into the app. At scrape interval boundaries, emits a snapshot.
 
-    Maintains cumulative counter accumulators keyed by (service, host) across calls to ``shape()``.
+    Output DataFrame columns:
+        timestamp, metric, value, service, host, instance, job, le, status_code
     """
 
-    def __init__(self, scrape_interval: int = 30) -> None:
-        self.scrape_interval = scrape_interval
-        # Accumulators: key=(service, host), value=dict of metric->float
-        self._accumulators: dict[tuple[str, str], dict[str, float]] = {}
+    def __init__(self, config: GeneratorConfig | None = None) -> None:
+        self.config = config or GeneratorConfig.default()
+        self._apps: dict[tuple[str, str], MicrometerApp] = {}
+        self._last_scrape_epoch: dict[tuple[str, str], float] = {}
 
-    def shape(self, profile_chunk: pd.DataFrame) -> Iterator[pd.DataFrame]:
-        """Downsample and expand profile_chunk into Prometheus metric rows."""
-        chunk = profile_chunk.copy()
-        chunk["timestamp"] = pd.to_datetime(chunk["timestamp"], utc=True)
-        chunk = chunk.set_index("timestamp")
+    def _get_app(self, service: str, host: str) -> MicrometerApp:
+        key = (service, host)
+        if key not in self._apps:
+            self._apps[key] = MicrometerApp(buckets_ms=list(self.config.histogram_buckets_ms))
+            self._last_scrape_epoch[key] = 0.0
+        return self._apps[key]
 
-        # Group by service+host, then resample per group
-        grouped = chunk.groupby(["service", "host"], observed=True)
+    def shape(self, raw_chunk: RawChunk) -> Iterator[pd.DataFrame]:
+        """Feed raw samples into MicrometerApps, emit at scrape boundaries."""
+        # Group samples by (service, host) and sort by timestamp
+        by_key: dict[tuple[str, str], list] = {}
+        for sample in raw_chunk:
+            key = (sample.service, sample.host)
+            by_key.setdefault(key, []).append(sample)
 
         all_rows: list[dict[str, Any]] = []
 
-        for (service, host), group_df in grouped:
-            service = str(service)
-            host = str(host)
-
-            resampled = group_df.resample(f"{self.scrape_interval}s").agg(
-                {
-                    "throughput_rps": "mean",
-                    "error_rate": "mean",
-                    "p50_latency": "mean",
-                    "p99_latency": "mean",
-                    "cpu_percent": "last",
-                    "memory_bytes": "last",
-                }
-            )
-            resampled = resampled.dropna(how="all")
-
+        for (service, host), samples in by_key.items():
+            samples.sort(key=lambda s: s.timestamp)
+            app = self._get_app(service, host)
             key = (service, host)
-            if key not in self._accumulators:
-                self._accumulators[key] = {
-                    "http_requests_total": 0.0,
-                    "http_errors_total": 0.0,
-                    "http_request_duration_seconds_sum": 0.0,
-                    "http_request_duration_seconds_count": 0.0,
-                    **{f"bucket_{i}": 0.0 for i in range(len(DURATION_BUCKETS))},
-                }
-
-            acc = self._accumulators[key]
             instance = f"{service}-{host}:{_INSTANCE_PORT}"
 
-            for ts, row in resampled.iterrows():
-                throughput = float(row["throughput_rps"]) * self.scrape_interval
-                error_rate = float(row["error_rate"])
-                p50 = float(row["p50_latency"])
-                p99 = float(row["p99_latency"])
+            for sample in samples:
+                app.record_second(sample)
 
-                errors = throughput * error_rate
+                epoch = sample.timestamp.timestamp()
+                last = self._last_scrape_epoch[key]
+                interval = self.config.scrape_interval_s
 
-                # Update cumulative counters
-                acc["http_requests_total"] += throughput
-                acc["http_errors_total"] += errors
-                acc["http_request_duration_seconds_count"] += throughput
-                acc["http_request_duration_seconds_sum"] += throughput * p50
+                # Emit at scrape interval boundaries
+                if last == 0.0 or epoch - last >= interval:
+                    self._last_scrape_epoch[key] = epoch
+                    snap = app.scrape(epoch)
+                    timestamp = sample.timestamp
 
-                # Histogram bucket fractions
-                fracs = _lognormal_bucket_fractions(p50, p99)
-                for i, frac in enumerate(fracs):
-                    acc[f"bucket_{i}"] += throughput * frac
-
-                timestamp = ts.to_pydatetime()
-
-                # Emit gauge metrics
-                all_rows.append(
-                    {
-                        "timestamp": timestamp,
-                        "metric": "cpu_usage_percent",
-                        "value": float(row["cpu_percent"]),
-                        "service": service,
-                        "host": host,
-                        "instance": instance,
-                        "job": "app",
-                        "le": pd.NA,
-                        "status_code": pd.NA,
-                    }
-                )
-                all_rows.append(
-                    {
-                        "timestamp": timestamp,
-                        "metric": "memory_usage_bytes",
-                        "value": float(row["memory_bytes"]),
-                        "service": service,
-                        "host": host,
-                        "instance": instance,
-                        "job": "app",
-                        "le": pd.NA,
-                        "status_code": pd.NA,
-                    }
-                )
-
-                # Emit cumulative counter metrics
-                all_rows.append(
-                    {
-                        "timestamp": timestamp,
-                        "metric": "http_requests_total",
-                        "value": acc["http_requests_total"],
-                        "service": service,
-                        "host": host,
-                        "instance": instance,
-                        "job": "app",
-                        "le": pd.NA,
-                        "status_code": "200",
-                    }
-                )
-                all_rows.append(
-                    {
-                        "timestamp": timestamp,
-                        "metric": "http_errors_total",
-                        "value": acc["http_errors_total"],
-                        "service": service,
-                        "host": host,
-                        "instance": instance,
-                        "job": "app",
-                        "le": pd.NA,
-                        "status_code": pd.NA,
-                    }
-                )
-                all_rows.append(
-                    {
-                        "timestamp": timestamp,
-                        "metric": "http_request_duration_seconds_sum",
-                        "value": acc["http_request_duration_seconds_sum"],
-                        "service": service,
-                        "host": host,
-                        "instance": instance,
-                        "job": "app",
-                        "le": pd.NA,
-                        "status_code": pd.NA,
-                    }
-                )
-                all_rows.append(
-                    {
-                        "timestamp": timestamp,
-                        "metric": "http_request_duration_seconds_count",
-                        "value": acc["http_request_duration_seconds_count"],
-                        "service": service,
-                        "host": host,
-                        "instance": instance,
-                        "job": "app",
-                        "le": pd.NA,
-                        "status_code": pd.NA,
-                    }
-                )
-
-                # Emit histogram bucket metrics
-                for i, le_val in enumerate(DURATION_BUCKETS):
+                    # Gauges
                     all_rows.append(
-                        {
-                            "timestamp": timestamp,
-                            "metric": "http_request_duration_seconds_bucket",
-                            "value": acc[f"bucket_{i}"],
-                            "service": service,
-                            "host": host,
-                            "instance": instance,
-                            "job": "app",
-                            "le": str(le_val),
-                            "status_code": pd.NA,
-                        }
+                        _row(
+                            timestamp,
+                            "cpu_usage_percent",
+                            snap.cpu_percent,
+                            service,
+                            host,
+                            instance,
+                        )
                     )
-                # +Inf bucket = total count
-                all_rows.append(
-                    {
-                        "timestamp": timestamp,
-                        "metric": "http_request_duration_seconds_bucket",
-                        "value": acc["http_request_duration_seconds_count"],
-                        "service": service,
-                        "host": host,
-                        "instance": instance,
-                        "job": "app",
-                        "le": "+Inf",
-                        "status_code": pd.NA,
-                    }
-                )
+                    all_rows.append(
+                        _row(
+                            timestamp,
+                            "memory_usage_bytes",
+                            snap.memory_bytes,
+                            service,
+                            host,
+                            instance,
+                        )
+                    )
+
+                    # Cumulative counters
+                    all_rows.append(
+                        _row(
+                            timestamp,
+                            "http_requests_total",
+                            snap.request_counter,
+                            service,
+                            host,
+                            instance,
+                            status_code="200",
+                        )
+                    )
+                    all_rows.append(
+                        _row(
+                            timestamp,
+                            "http_errors_total",
+                            snap.error_counter,
+                            service,
+                            host,
+                            instance,
+                        )
+                    )
+
+                    # Histogram sum and count
+                    sum_seconds = snap.sum_ms / 1000.0
+                    all_rows.append(
+                        _row(
+                            timestamp,
+                            "http_request_duration_seconds_sum",
+                            sum_seconds,
+                            service,
+                            host,
+                            instance,
+                        )
+                    )
+                    all_rows.append(
+                        _row(
+                            timestamp,
+                            "http_request_duration_seconds_count",
+                            snap.count,
+                            service,
+                            host,
+                            instance,
+                        )
+                    )
+
+                    # Histogram buckets
+                    for i, le_ms in enumerate(snap.buckets_ms):
+                        if math.isinf(le_ms):
+                            le_str = "+Inf"
+                        else:
+                            le_seconds = le_ms / 1000.0
+                            le_str = f"{le_seconds:g}"
+                        all_rows.append(
+                            _row(
+                                timestamp,
+                                "http_request_duration_seconds_bucket",
+                                snap.bucket_counts[i],
+                                service,
+                                host,
+                                instance,
+                                le=le_str,
+                            )
+                        )
 
         if all_rows:
             yield pd.DataFrame(all_rows)
 
     def finalize(self) -> Iterator[pd.DataFrame]:
-        """Flush remaining state — currently stateless flush, no pending buffered rows."""
+        """No buffered state to flush."""
         return iter([])
+
+
+def _row(
+    timestamp: Any,
+    metric: str,
+    value: float,
+    service: str,
+    host: str,
+    instance: str,
+    *,
+    le: Any = pd.NA,
+    status_code: Any = pd.NA,
+) -> dict[str, Any]:
+    return {
+        "timestamp": timestamp,
+        "metric": metric,
+        "value": value,
+        "service": service,
+        "host": host,
+        "instance": instance,
+        "job": "app",
+        "le": le,
+        "status_code": status_code,
+    }

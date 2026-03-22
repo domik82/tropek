@@ -2,6 +2,7 @@ apiVersion: 1
 
 datasources:
   - name: Prometheus
+    uid: prometheus
     type: prometheus
     access: proxy
     url: http://prometheus:9090
@@ -10,25 +11,29 @@ datasources:
       timeInterval: 30s
 
   - name: InfluxDB
+    uid: influxdb
     type: influxdb
     access: proxy
     url: http://influxdb:8086
+    database: slo_metrics
     jsonData:
-      version: Flux
+      version: InfluxQL
       organization: tropek
-      defaultBucket: slo_metrics
+      httpMode: POST
+      httpHeaderName1: Authorization
     secureJsonData:
-      token: tropek-dev-token
+      httpHeaderValue1: Token tropek-dev-token
 
   - name: TimescaleDB
-    type: postgres
+    uid: timescaledb
+    type: grafana-postgresql-datasource
     access: proxy
     url: timescaledb-metrics:5432
-    database: slo_metrics
     user: metrics
     secureJsonData:
       password: metrics
     jsonData:
+      database: slo_metrics
       sslmode: disable
       postgresVersion: 1600
       timescaledb: true

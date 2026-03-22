@@ -9,16 +9,16 @@ default:
 
 # Build images, generate data, start all services
 up: dashboard
-    docker compose up --build -d
+    ./scripts/stack-up.sh
 
 # Stop all services
 down:
-    docker compose down
+    ./scripts/stack-down.sh
 
 # Wipe all data volumes and restart from scratch
 reset:
-    docker compose down -v
-    just up
+    ./scripts/stack-down.sh
+    ./scripts/stack-up.sh
 
 # Tail logs for all services
 logs:
@@ -78,5 +78,5 @@ urls:
     @echo "  Grafana:      http://localhost:3100  (admin / admin)"
     @echo "  Prometheus:   http://localhost:9090"
     @echo "  InfluxDB:     http://localhost:8086  (admin / adminpassword)"
-    @echo "  TimescaleDB:  localhost:5434"
+    @echo "  TimescaleDB:  localhost:5534"
     @echo ""

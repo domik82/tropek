@@ -60,6 +60,8 @@ def _format_labels(row: pd.Series) -> str:
     labels: dict[str, str] = {
         "instance": str(row["instance"]),
         "job": str(row["job"]),
+        "service": str(row["service"]),
+        "host": str(row["host"]),
     }
 
     if metric.endswith("_bucket"):
