@@ -1,11 +1,11 @@
 // src/features/slos/hooks.ts
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { sloKeys, groupKeys, assetKeys, datasourceKeys, sliKeys } from '@/lib/queryKeys'
+import { sloKeys, groupKeys, assetKeys } from '@/lib/queryKeys'
 import { fetchSlos, fetchSloDetail, validateSlo, createSloDefinition, deleteSlo, fetchSloVersions } from './api'
 import {
   fetchGroupTree, createGroup, updateGroup, deleteGroup,
   fetchGroupSloLinks, createGroupSloLink, deleteGroupSloLink,
-  addSubgroup, fetchDatasources, fetchSliDefinitions,
+  addSubgroup, fetchSloTagKeys, fetchSloTagValues,
 } from './api'
 
 export function useSlos() {
@@ -142,14 +142,14 @@ export function useDeleteGroupSloLink() {
   })
 }
 
-export function useDatasources() {
-  return useQuery({ queryKey: datasourceKeys.all, queryFn: fetchDatasources })
+export function useSloTagKeys() {
+  return useQuery({ queryKey: sloKeys.tagKeys(), queryFn: fetchSloTagKeys })
 }
 
-export function useSliDefinitions(adapterType?: string) {
+export function useSloTagValues(key: string) {
   return useQuery({
-    queryKey: [...sliKeys.all, { adapterType }],
-    queryFn: () => fetchSliDefinitions(adapterType),
-    enabled: adapterType !== undefined,
+    queryKey: sloKeys.tagValues(key),
+    queryFn: () => fetchSloTagValues(key),
+    enabled: !!key,
   })
 }

@@ -7,13 +7,15 @@ import {
   createSliDefinition,
   deleteSliDefinition,
   fetchSliVersions,
+  fetchSliTagKeys,
+  fetchSliTagValues,
 } from './api'
 import type { SliDefinitionCreate } from './types'
 
-export function useSliDefinitions() {
+export function useSliDefinitions(adapterType?: string) {
   return useQuery({
-    queryKey: sliKeys.all,
-    queryFn: fetchSliDefinitions,
+    queryKey: [...sliKeys.all, { adapterType }],
+    queryFn: () => fetchSliDefinitions(adapterType),
   })
 }
 
@@ -50,5 +52,17 @@ export function useDeleteSli() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: sliKeys.all })
     },
+  })
+}
+
+export function useSliTagKeys() {
+  return useQuery({ queryKey: sliKeys.tagKeys(), queryFn: fetchSliTagKeys })
+}
+
+export function useSliTagValues(key: string) {
+  return useQuery({
+    queryKey: sliKeys.tagValues(key),
+    queryFn: () => fetchSliTagValues(key),
+    enabled: !!key,
   })
 }

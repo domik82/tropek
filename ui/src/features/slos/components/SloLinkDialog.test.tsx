@@ -4,17 +4,23 @@ import { SloLinkDialog } from './SloLinkDialog'
 
 const mockCreateLink = vi.fn().mockResolvedValue({})
 
-vi.mock('../hooks', () => ({
+vi.mock('@/features/datasources/hooks', () => ({
   useDatasources: () => ({
     data: [
       { id: 'ds-1', name: 'prom-prod', display_name: 'Prometheus Prod', adapter_type: 'prometheus' },
     ],
   }),
+}))
+
+vi.mock('@/features/slis/hooks', () => ({
   useSliDefinitions: () => ({
     data: [
       { id: 'sli-1', name: 'response-time', display_name: 'Response Time', active: true },
     ],
   }),
+}))
+
+vi.mock('../hooks', () => ({
   useGroupTree: () => ({
     data: {
       all_groups: [{ id: 'g-1', name: 'production', display_name: 'Production' }],
