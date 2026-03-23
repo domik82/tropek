@@ -13,6 +13,7 @@ export interface Asset {
   display_name?: string
   type_name: string
   tags: Record<string, string>
+  variables: Record<string, string>
   created_at: string
   updated_at: string
 }
