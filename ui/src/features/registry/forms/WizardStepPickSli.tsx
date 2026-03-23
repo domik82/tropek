@@ -80,13 +80,24 @@ export function WizardStepPickSli({ data, onChange, editIndicatorNames }: Wizard
       </div>
 
       <div>
-        <label className="block text-xs text-muted-foreground mb-1">SLI Definition</label>
-        <SearchableComboBox
-          value={data.sliName}
-          items={sliItems}
-          onSelect={handleSliSelect}
-          placeholder="Select SLI definition..."
-        />
+        <label className="block text-xs text-muted-foreground mb-1">
+          SLI Definition
+          {selectedDs && (
+            <span className="ml-1 text-[10px] opacity-60 normal-case">— filtered to {selectedDs.adapter_type}</span>
+          )}
+        </label>
+        {data.datasource ? (
+          <SearchableComboBox
+            value={data.sliName}
+            items={sliItems}
+            onSelect={handleSliSelect}
+            placeholder="Select SLI definition..."
+          />
+        ) : (
+          <div className="rounded border border-border bg-popover px-3 py-2 text-sm text-muted-foreground opacity-60">
+            Select a datasource first
+          </div>
+        )}
       </div>
     </div>
   )
