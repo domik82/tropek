@@ -46,9 +46,10 @@ export function WizardStepComparison({ data, onChange }: WizardStepComparisonPro
 
   return (
     <div className="space-y-4">
-      <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-        Step 4 — Comparison & Scoring
-      </h3>
+      <div className="flex items-center gap-2 mb-3">
+        <span className="inline-flex items-center justify-center size-5 rounded-full bg-primary/15 text-primary text-[10px] font-bold">4</span>
+        <h3 className="text-sm font-semibold text-foreground">Comparison & Scoring</h3>
+      </div>
 
       <div className="grid grid-cols-2 gap-6">
         {/* Left column — Comparison Settings */}

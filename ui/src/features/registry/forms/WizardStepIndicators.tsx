@@ -58,9 +58,10 @@ export function WizardStepIndicators({ rows, onChange }: WizardStepIndicatorsPro
   return (
     <div className="space-y-3">
       <div>
-        <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-          Step 3 — Indicators & Criteria
-        </h3>
+        <div className="flex items-center gap-2 mb-3">
+          <span className="inline-flex items-center justify-center size-5 rounded-full bg-primary/15 text-primary text-[10px] font-bold">3</span>
+          <h3 className="text-sm font-semibold text-foreground">Indicators & Criteria</h3>
+        </div>
         <p className="text-xs text-muted-foreground mt-1">
           Multiple criteria = AND logic. Use + to add.
         </p>

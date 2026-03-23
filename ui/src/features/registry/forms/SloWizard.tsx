@@ -1,6 +1,4 @@
 import { useState } from 'react'
-import { Button } from '@/components/ui/button'
-import { ENTITY_COLORS } from '@/lib/entity-colors'
 import { SANS_SERIF } from '@/lib/fonts'
 import { useCreateSlo } from '@/features/slos/hooks'
 import { serializeCriteria, parseCriteria, DEFAULT_CRITERIA } from './criteriaUtils'
@@ -185,70 +183,59 @@ export function SloWizard({ editSlo, onClose }: SloWizardProps) {
       : 'Create SLO'
 
   return (
-    <div className="flex flex-col h-full bg-background" style={{ fontFamily: SANS_SERIF }}>
-      {/* Accent strip */}
-      <div className="h-[3px] shrink-0" style={{ backgroundColor: ENTITY_COLORS.slo }} />
-
+    <div className="p-6 space-y-6" style={{ fontFamily: SANS_SERIF }}>
       {/* Header */}
-      <div className="px-6 py-4 border-b border-border shrink-0">
-        <h1 className="text-lg font-semibold text-foreground">{title}</h1>
-        {subtitle && (
-          <p className="text-xs text-muted-foreground mt-0.5">{subtitle}</p>
-        )}
+      <div>
+        <h1 className="text-xl font-semibold text-foreground">{title}</h1>
+        {subtitle && <p className="text-sm text-muted-foreground mt-0.5">{subtitle}</p>}
       </div>
 
-      {/* Wizard body — scrollable */}
-      <div className="flex-1 overflow-y-auto px-6 py-6 space-y-8 max-w-5xl">
-        {/* Step 1 — always visible */}
-        <section>
-          <WizardStepIdentity
-            data={identity}
-            onChange={setIdentity}
-            nameReadOnly={isEdit}
+      {/* Steps in card wrappers */}
+      <section className="border border-slate-700 rounded-lg p-5">
+        <WizardStepIdentity data={identity} onChange={setIdentity} nameReadOnly={isEdit} />
+      </section>
+
+      {showStep2 && (
+        <section className="border border-slate-700 rounded-lg p-5">
+          <WizardStepPickSli
+            data={pickSli}
+            onChange={handlePickSliChange}
+            editIndicatorNames={editSlo ? editSlo.objectives.map((o) => o.sli) : undefined}
           />
         </section>
+      )}
 
-        {/* Step 2 — when name filled */}
-        {showStep2 && (
-          <section>
-            <WizardStepPickSli
-              data={pickSli}
-              onChange={handlePickSliChange}
-              editIndicatorNames={editSlo ? editSlo.objectives.map((o) => o.sli) : undefined}
-            />
-          </section>
-        )}
+      {showStep3 && (
+        <section className="border border-slate-700 rounded-lg p-5">
+          <WizardStepIndicators rows={indicatorRows} onChange={setIndicatorRows} />
+        </section>
+      )}
 
-        {/* Step 3 — when SLI selected */}
-        {showStep3 && (
-          <section>
-            <WizardStepIndicators rows={indicatorRows} onChange={setIndicatorRows} />
-          </section>
-        )}
+      {showStep4 && (
+        <section className="border border-slate-700 rounded-lg p-5">
+          <WizardStepComparison data={comparison} onChange={setComparison} />
+        </section>
+      )}
 
-        {/* Step 4 — when any indicator has pass criteria with value */}
-        {showStep4 && (
-          <section>
-            <WizardStepComparison data={comparison} onChange={setComparison} />
-          </section>
-        )}
-      </div>
-
-      {/* Footer — sticky within wizard container */}
-      <div className="shrink-0 flex justify-end gap-2 px-6 py-3 border-t border-border bg-background">
+      {/* Submit buttons — inline at bottom of scroll, not fixed */}
+      <div className="flex justify-end gap-2 pt-2 border-t border-slate-700">
         {onClose && (
-          <Button size="xs" variant="outline" type="button" onClick={onClose}>
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-3 py-1.5 text-xs rounded border border-border text-muted-foreground hover:text-foreground transition-colors"
+          >
             Cancel
-          </Button>
+          </button>
         )}
-        <Button
-          size="xs"
+        <button
           type="button"
           disabled={!isValid || createMutation.isPending}
           onClick={handleSubmit}
+          className="px-3 py-1.5 text-xs font-medium rounded bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
         >
           {submitLabel}
-        </Button>
+        </button>
       </div>
     </div>
   )

@@ -79,20 +79,20 @@ describe('SloWizard', () => {
     render(<SloWizard />, { wrapper: Wrapper })
 
     expect(screen.getByText('New SLO Definition')).toBeInTheDocument()
-    expect(screen.getByText(/Step 1/)).toBeInTheDocument()
-    expect(screen.queryByText(/Step 2/)).not.toBeInTheDocument()
-    expect(screen.queryByText(/Step 3/)).not.toBeInTheDocument()
-    expect(screen.queryByText(/Step 4/)).not.toBeInTheDocument()
+    expect(screen.getByText('Identity')).toBeInTheDocument()
+    expect(screen.queryByText('Pick SLI')).not.toBeInTheDocument()
+    expect(screen.queryByText('Indicators & Criteria')).not.toBeInTheDocument()
+    expect(screen.queryByText('Comparison & Scoring')).not.toBeInTheDocument()
   })
 
   it('filling name reveals Step 2', () => {
     render(<SloWizard />, { wrapper: Wrapper })
 
-    expect(screen.queryByText(/Step 2/)).not.toBeInTheDocument()
+    expect(screen.queryByText('Pick SLI')).not.toBeInTheDocument()
 
     fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'my-slo' } })
 
-    expect(screen.getByText(/Step 2/)).toBeInTheDocument()
+    expect(screen.getByText('Pick SLI')).toBeInTheDocument()
   })
 
   it('shows create title and button in create mode', () => {
