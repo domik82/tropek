@@ -143,4 +143,15 @@ describe('SloDetailView', () => {
     )
     expect(screen.getByRole('button', { name: /deactivate/i })).toBeInTheDocument()
   })
+
+  it('renders linked groups', () => {
+    render(
+      <SloDetailView name="api-availability" onNavigate={vi.fn()}
+        onNewVersion={vi.fn()} linkedGroups={['core-services', 'data-tier']} />,
+      { wrapper: Wrapper }
+    )
+    expect(screen.getByText(/Linked Groups/)).toBeInTheDocument()
+    expect(screen.getByText('core-services')).toBeInTheDocument()
+    expect(screen.getByText('data-tier')).toBeInTheDocument()
+  })
 })

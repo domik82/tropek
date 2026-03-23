@@ -12,9 +12,10 @@ interface SloDetailViewProps {
   name: string
   onNavigate: (node: SelectedNode) => void
   onNewVersion: (slo: SloDefinition) => void
+  linkedGroups?: string[]
 }
 
-export function SloDetailView({ name, onNavigate, onNewVersion }: SloDetailViewProps) {
+export function SloDetailView({ name, onNavigate, onNewVersion, linkedGroups }: SloDetailViewProps) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
 
   const { data: slo, isLoading } = useSloDetail(name)
@@ -232,10 +233,28 @@ export function SloDetailView({ name, onNavigate, onNewVersion }: SloDetailViewP
           </div>
         )}
 
-        {/* Linked Assets — placeholder */}
+        {/* Linked Groups */}
         <div>
-          <p className="text-xs text-muted-foreground mb-2">Linked Assets</p>
-          <p className="text-xs text-muted-foreground">No linked assets</p>
+          <p className="text-xs text-muted-foreground mb-2">
+            Linked Groups ({(linkedGroups ?? []).length})
+          </p>
+          {(linkedGroups ?? []).length === 0 ? (
+            <p className="text-xs text-muted-foreground">No groups linked to this SLO</p>
+          ) : (
+            <ul className="space-y-1">
+              {(linkedGroups ?? []).map(gn => (
+                <li key={gn}>
+                  <button
+                    type="button"
+                    className="text-sm text-primary hover:underline cursor-pointer"
+                    onClick={() => onNavigate({ type: 'group', name: gn })}
+                  >
+                    {gn}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
 
         {/* Version history */}

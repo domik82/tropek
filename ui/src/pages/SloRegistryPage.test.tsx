@@ -42,6 +42,11 @@ vi.mock('@/features/registry/forms/SloLinkDialogRevised', () => ({
 
 vi.mock('@/features/slos/hooks', () => ({
   useCreateGroup: () => ({ mutateAsync: vi.fn() }),
+  useGroupTree: () => ({ data: { all_groups: [] } }),
+}))
+
+vi.mock('@/features/registry/useAllGroupLinks', () => ({
+  useAllGroupLinks: () => ({ allLinks: [], groupLinksMap: {} }),
 }))
 
 function Wrapper({ children }: { children: React.ReactNode }) {

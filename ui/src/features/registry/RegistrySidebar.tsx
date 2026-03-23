@@ -9,6 +9,7 @@ import { useSliDefinitions } from '@/features/slis/hooks'
 import { useDatasources, useDatasourceTagKeys, useDatasourceTagValues } from '@/features/datasources/hooks'
 import { useTagKeys, useTagValues } from '@/features/assets/hooks'
 import type { RegistryMode, SelectedNode, TagFilter } from './types'
+import type { MinLink } from './useRegistryTree'
 
 const MODES: { key: RegistryMode; label: string }[] = [
   { key: 'asset', label: 'Asset' },
@@ -22,9 +23,11 @@ interface Props {
   selected: SelectedNode | null
   onSelect: (node: SelectedNode) => void
   onCreateAction: (type: 'datasource' | 'sli' | 'slo' | 'group', context?: { adapterType?: string }) => void
+  allLinks: MinLink[]
+  groupLinksMap: Record<string, MinLink[]>
 }
 
-export function RegistrySidebar({ mode, onModeChange, selected, onSelect, onCreateAction }: Props) {
+export function RegistrySidebar({ mode, onModeChange, selected, onSelect, onCreateAction, allLinks, groupLinksMap }: Props) {
   const [search, setSearch] = useState('')
   const [tags, setTags] = useState<TagFilter[]>([])
   const [pendingTagKey, setPendingTagKey] = useState('')
@@ -60,13 +63,11 @@ export function RegistrySidebar({ mode, onModeChange, selected, onSelect, onCrea
   const isLoadingValues =
     mode === 'slo' ? sloValsLoading : mode === 'datasource' ? dsValsLoading : assetValsLoading
 
-  // TODO(chunk-d): Wire useAllGroupLinks to populate SLO link hierarchy.
-  // Currently passes empty links — tree shows entities but not their connections.
   const treeNodes = useMemo(() => {
-    if (mode === 'slo') return buildSloTree(slos ?? [], slis ?? [], datasources ?? [], [])
-    if (mode === 'datasource') return buildDatasourceTree(datasources ?? [], slis ?? [], slos ?? [], [])
-    return buildAssetTree(tree?.all_groups ?? [], {})
-  }, [mode, slos, slis, datasources, tree])
+    if (mode === 'slo') return buildSloTree(slos ?? [], slis ?? [], datasources ?? [], allLinks)
+    if (mode === 'datasource') return buildDatasourceTree(datasources ?? [], slis ?? [], slos ?? [], allLinks)
+    return buildAssetTree(tree?.all_groups ?? [], groupLinksMap)
+  }, [mode, slos, slis, datasources, tree, allLinks, groupLinksMap])
 
   const filteredNodes = useMemo(() => filterTree(treeNodes, search), [treeNodes, search])
 
