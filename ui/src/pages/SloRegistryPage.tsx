@@ -1,151 +1,179 @@
-// src/pages/SloRegistryPage.tsx
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useCallback } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { useSlos, useGroupSloLinks, useGroupTree } from '@/features/slos/hooks'
-import { SloCreateForm } from '@/features/slos/components/SloCreateForm'
-import { SloList } from '@/features/slos/components/SloList'
-import { SloGroupDialogs } from '@/features/slos/components/SloGroupDialogs'
-import { AssetTree } from '@/components/AssetTree'
+import { SANS_SERIF } from '@/lib/fonts'
+import { RegistrySidebar } from '@/features/registry/RegistrySidebar'
+import { RegistryDetailPanel } from '@/features/registry/RegistryDetailPanel'
+import { SloWizard } from '@/features/registry/forms/SloWizard'
+import { DatasourceForm } from '@/features/registry/forms/DatasourceForm'
+import { SliForm } from '@/features/registry/forms/SliForm'
+import { SloLinkDialogRevised } from '@/features/registry/forms/SloLinkDialogRevised'
+import { useCreateGroup } from '@/features/slos/hooks'
+import type { RegistryMode, SelectedNode } from '@/features/registry/types'
+import type { SloDefinition } from '@/features/slos/types'
 
 export function SloRegistryPage() {
-  const { data: slos, isLoading, isError } = useSlos()
-  const [showCreate, setShowCreate] = useState(false)
-
-  // Group sidebar & filtering state
   const [searchParams, setSearchParams] = useSearchParams()
+
+  // URL-persisted state
+  const mode = (searchParams.get('mode') as RegistryMode) || 'asset'
+  const selectedName = searchParams.get('selected')
+  const selectedType = searchParams.get('type')
   const selectedGroup = searchParams.get('group')
-  const [showAll, setShowAll] = useState(false)
-  const { data: tree } = useGroupTree()
-  const { data: groupLinks } = useGroupSloLinks(selectedGroup ?? '')
 
-  // Clear stale group param if it doesn't exist in the tree
-  useEffect(() => {
-    if (!selectedGroup || selectedGroup === '__ungrouped__' || !tree) return
-    const exists = tree.all_groups.some(g => g.name === selectedGroup)
-    if (!exists) setSearchParams({})
-  }, [selectedGroup, tree, setSearchParams])
+  const selected: SelectedNode | null =
+    selectedName && selectedType
+      ? { name: selectedName, type: selectedType as SelectedNode['type'], groupName: selectedGroup ?? undefined }
+      : null
 
-  // Group CRUD dialog state
-  const [createGroupOpen, setCreateGroupOpen] = useState(false)
-  const [editGroupName, setEditGroupName] = useState<string | null>(null)
-  const [deleteGroupName, setDeleteGroupName] = useState<string | null>(null)
+  // Form dialog state
+  const [dsFormOpen, setDsFormOpen] = useState(false)
+  const [dsEditFrom, setDsEditFrom] = useState<string | undefined>()
+  const [sliFormOpen, setSliFormOpen] = useState(false)
+  const [sliDefaultAdapter, setSliDefaultAdapter] = useState<string | undefined>()
+  const [linkDialogOpen, setLinkDialogOpen] = useState(false)
+  const [linkLockedGroup, setLinkLockedGroup] = useState<string | undefined>()
 
-  // SLO link dialog state (two entry points)
-  const [linkFromGroup, setLinkFromGroup] = useState<string | null>(null)
-  const [linkFromSlo, setLinkFromSlo] = useState<string | null>(null)
+  // SloWizard state (replaces detail panel, not a dialog)
+  const [wizardOpen, setWizardOpen] = useState(false)
+  const [wizardEditSlo, setWizardEditSlo] = useState<SloDefinition | undefined>()
 
-  // Filter SLOs based on selected group
-  const linkedSloNames = useMemo(() => {
-    if (!groupLinks) return null
-    return new Set(groupLinks.map(l => l.slo_name))
-  }, [groupLinks])
+  const createGroup = useCreateGroup()
 
-  const filteredSlos = useMemo(() => {
-    if (!slos) return []
-    if (!selectedGroup || showAll) return slos
-    if (!linkedSloNames) return slos
-    return slos.filter(s => linkedSloNames.has(s.name))
-  }, [slos, selectedGroup, showAll, linkedSloNames])
+  const updateParams = useCallback(
+    (updates: Record<string, string | null>) => {
+      setSearchParams(prev => {
+        const next = new URLSearchParams(prev)
+        for (const [k, v] of Object.entries(updates)) {
+          if (v === null) next.delete(k)
+          else next.set(k, v)
+        }
+        return next
+      })
+    },
+    [setSearchParams],
+  )
 
-  const handleSelectGroup = (name: string | null) => {
-    setShowAll(false)
-    if (name) {
-      setSearchParams({ group: name })
-    } else {
-      setSearchParams({})
-    }
-  }
+  const handleModeChange = useCallback(
+    (newMode: RegistryMode) => {
+      updateParams({ mode: newMode, selected: null, type: null, group: null })
+      setWizardOpen(false)
+    },
+    [updateParams],
+  )
 
-  if (isLoading) return <p className="p-6 text-slate-400">Loading...</p>
-  if (isError || !slos) return <p className="p-6 text-red-400">Failed to load.</p>
+  const handleSelect = useCallback(
+    (node: SelectedNode) => {
+      updateParams({
+        selected: node.name,
+        type: node.type,
+        group: node.groupName ?? null,
+      })
+      setWizardOpen(false)
+    },
+    [updateParams],
+  )
+
+  const handleNavigate = useCallback(
+    (node: SelectedNode) => {
+      // Switch mode based on target type
+      let targetMode: RegistryMode = mode
+      if (node.type === 'slo' || node.type === 'sli') targetMode = 'slo'
+      else if (node.type === 'datasource') targetMode = 'datasource'
+      else targetMode = 'asset'
+
+      updateParams({
+        mode: targetMode,
+        selected: node.name,
+        type: node.type,
+        group: node.groupName ?? null,
+      })
+      setWizardOpen(false)
+    },
+    [mode, updateParams],
+  )
+
+  const handleCreateAction = useCallback(
+    (type: 'datasource' | 'sli' | 'slo' | 'group', context?: { adapterType?: string }) => {
+      switch (type) {
+        case 'slo':
+          setWizardEditSlo(undefined)
+          setWizardOpen(true)
+          break
+        case 'sli':
+          setSliDefaultAdapter(context?.adapterType)
+          setSliFormOpen(true)
+          break
+        case 'datasource':
+          setDsEditFrom(undefined)
+          setDsFormOpen(true)
+          break
+        case 'group': {
+          const name = window.prompt('New group name:')
+          if (name?.trim()) {
+            createGroup.mutateAsync({ name: name.trim() })
+          }
+          break
+        }
+      }
+    },
+    [createGroup],
+  )
+
+  const handleEditDatasource = useCallback((name: string) => {
+    setDsEditFrom(name)
+    setDsFormOpen(true)
+  }, [])
+
+  const handleNewSloVersion = useCallback((slo: SloDefinition) => {
+    setWizardEditSlo(slo)
+    setWizardOpen(true)
+  }, [])
+
+  const handleLinkSlo = useCallback((groupName: string) => {
+    setLinkLockedGroup(groupName)
+    setLinkDialogOpen(true)
+  }, [])
+
+  const handleWizardClose = useCallback(() => {
+    setWizardOpen(false)
+    setWizardEditSlo(undefined)
+  }, [])
 
   return (
-    <div className="flex h-full">
-      <AssetTree
-        mode="slo"
-        selectedGroup={selectedGroup}
-        onSelectGroup={handleSelectGroup}
-        onCreateGroup={() => setCreateGroupOpen(true)}
-        onEditGroup={name => setEditGroupName(name)}
-        onDeleteGroup={name => setDeleteGroupName(name)}
-        onAddSloLink={groupName => setLinkFromGroup(groupName)}
-        width={220}
+    <div className="flex h-full" style={{ fontFamily: SANS_SERIF }}>
+      <RegistrySidebar
+        mode={mode}
+        onModeChange={handleModeChange}
+        selected={selected}
+        onSelect={handleSelect}
+        onCreateAction={handleCreateAction}
       />
 
-      <div className="flex-1 p-6 space-y-4 overflow-y-auto">
-        {/* Page header */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <h1 className="text-xl font-bold text-slate-100">SLO Registry</h1>
-            {selectedGroup && !showAll && (
-              <span className="text-xs bg-primary/15 text-primary border border-primary/30 px-2 py-0.5 rounded-full">
-                filtered: {selectedGroup}
-              </span>
-            )}
-          </div>
-          <div className="flex items-center gap-2">
-            {selectedGroup && (
-              <button
-                onClick={() => setShowAll(v => !v)}
-                className={`px-3 py-1.5 text-xs rounded border transition-colors ${
-                  showAll
-                    ? 'bg-primary/15 border-primary/40 text-primary'
-                    : 'border-slate-700 text-slate-400 hover:border-slate-500 hover:text-slate-200'
-                }`}
-              >
-                {showAll ? 'Show filtered' : 'Show all SLOs'}
-              </button>
-            )}
-            <button
-              onClick={() => setShowCreate(v => !v)}
-              className={`px-3 py-1.5 text-sm font-medium rounded border transition-colors ${
-                showCreate
-                  ? 'bg-indigo-600/20 border-indigo-500/50 text-indigo-300'
-                  : 'bg-indigo-600 border-indigo-600 text-white hover:bg-indigo-500'
-              }`}
-            >
-              {showCreate ? '\u2715 Cancel' : '+ Create SLO'}
-            </button>
-          </div>
-        </div>
-
-        {/* Inline create panel */}
-        {showCreate && (
-          <div className="bg-[#111827] border border-indigo-700/40 rounded-xl p-5">
-            <h2 className="text-sm font-semibold text-slate-200 mb-4">Create New SLO</h2>
-            <SloCreateForm
-              onCancel={() => setShowCreate(false)}
-              onSaved={() => setShowCreate(false)}
-            />
-          </div>
+      <div className="flex-1 overflow-y-auto">
+        {wizardOpen ? (
+          <SloWizard editSlo={wizardEditSlo} onClose={handleWizardClose} />
+        ) : (
+          <RegistryDetailPanel
+            selected={selected}
+            onNavigate={handleNavigate}
+            onEditDatasource={handleEditDatasource}
+            onNewSloVersion={handleNewSloVersion}
+            onLinkSlo={handleLinkSlo}
+          />
         )}
-
-        {/* SLO list */}
-        <SloList
-          slos={filteredSlos}
-          selectedGroup={selectedGroup}
-          showAll={showAll}
-          onShowAll={() => setShowAll(true)}
-          onLinkSlo={name => setLinkFromSlo(name)}
-        />
       </div>
 
-      {/* Dialogs */}
-      <SloGroupDialogs
-        createGroupOpen={createGroupOpen}
-        onCloseCreateGroup={() => setCreateGroupOpen(false)}
-        editGroupName={editGroupName}
-        onCloseEditGroup={() => setEditGroupName(null)}
-        deleteGroupName={deleteGroupName}
-        onCloseDeleteGroup={() => setDeleteGroupName(null)}
-        onGroupDeleted={() => {
-          if (deleteGroupName === selectedGroup) handleSelectGroup(null)
-          setDeleteGroupName(null)
-        }}
-        linkFromGroup={linkFromGroup}
-        onCloseLinkFromGroup={() => setLinkFromGroup(null)}
-        linkFromSlo={linkFromSlo}
-        onCloseLinkFromSlo={() => setLinkFromSlo(null)}
+      {/* Dialog forms */}
+      <DatasourceForm open={dsFormOpen} onOpenChange={setDsFormOpen} />
+      <SliForm
+        open={sliFormOpen}
+        onOpenChange={setSliFormOpen}
+        defaultAdapterType={sliDefaultAdapter}
+      />
+      <SloLinkDialogRevised
+        open={linkDialogOpen}
+        onOpenChange={setLinkDialogOpen}
+        lockedGroupName={linkLockedGroup}
       />
     </div>
   )
