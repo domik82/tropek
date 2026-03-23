@@ -95,35 +95,35 @@ describe('SloDetailView', () => {
     expect(screen.getByText('active')).toBeInTheDocument()
   })
 
-  it('renders objectives table with pass AND warn criteria joined', () => {
+  it('renders SloObjectiveTable with indicator names and criteria', () => {
     render(
       <SloDetailView name="api-availability" onNavigate={vi.fn()} onNewVersion={vi.fn()} />,
       { wrapper: Wrapper }
     )
-    // Column headers
-    expect(screen.getByText('SLI')).toBeInTheDocument()
+    // Column headers (SloObjectiveTable uses these)
+    expect(screen.getByText('Indicator')).toBeInTheDocument()
+    expect(screen.getByText('Pass')).toBeInTheDocument()
+    expect(screen.getByText('Warning')).toBeInTheDocument()
     expect(screen.getByText('Weight')).toBeInTheDocument()
-    expect(screen.getByText('Pass Criteria')).toBeInTheDocument()
-    expect(screen.getByText('Warning Criteria')).toBeInTheDocument()
-    // Objective rows
+    // Objective rows — SLI names
     expect(screen.getByText('error-rate')).toBeInTheDocument()
     expect(screen.getByText('latency-p99')).toBeInTheDocument()
-    // Key SLI star
-    expect(screen.getAllByText('★').length).toBeGreaterThan(0)
-    // Criteria joined with AND
-    expect(screen.getByText('<1% AND <100')).toBeInTheDocument()
+    // Key SLI diamond (SloObjectiveTable uses ◆ not ★)
+    expect(screen.getAllByText('◆').length).toBeGreaterThan(0)
+    // Criteria comma-separated (SloObjectiveTable uses .join(', '))
+    expect(screen.getByText('<1%, <100')).toBeInTheDocument()
     expect(screen.getByText('<5%')).toBeInTheDocument()
     expect(screen.getByText('<200ms')).toBeInTheDocument()
-    expect(screen.getByText('<500ms AND <1000ms')).toBeInTheDocument()
+    expect(screen.getByText('<500ms, <1000ms')).toBeInTheDocument()
   })
 
-  it('shows score thresholds', () => {
+  it('shows score thresholds in SloObjectiveTable footer', () => {
     render(
       <SloDetailView name="api-availability" onNavigate={vi.fn()} onNewVersion={vi.fn()} />,
       { wrapper: Wrapper }
     )
-    expect(screen.getByText(/Pass ≥ 90%/)).toBeInTheDocument()
-    expect(screen.getByText(/Warning ≥ 75%/)).toBeInTheDocument()
+    expect(screen.getByText('90%')).toBeInTheDocument()
+    expect(screen.getByText('75%')).toBeInTheDocument()
   })
 
   it('"New Version" button calls onNewVersion with SLO data', () => {
