@@ -27,7 +27,6 @@ export function SloRegistryPage() {
 
   // Form dialog state
   const [dsFormOpen, setDsFormOpen] = useState(false)
-  const [dsEditFrom, setDsEditFrom] = useState<string | undefined>()
   const [sliFormOpen, setSliFormOpen] = useState(false)
   const [sliDefaultAdapter, setSliDefaultAdapter] = useState<string | undefined>()
   const [linkDialogOpen, setLinkDialogOpen] = useState(false)
@@ -104,7 +103,6 @@ export function SloRegistryPage() {
           setSliFormOpen(true)
           break
         case 'datasource':
-          setDsEditFrom(undefined)
           setDsFormOpen(true)
           break
         case 'group': {
@@ -119,8 +117,8 @@ export function SloRegistryPage() {
     [createGroup],
   )
 
-  const handleEditDatasource = useCallback((name: string) => {
-    setDsEditFrom(name)
+  const handleEditDatasource = useCallback((_name: string) => {
+    // TODO: look up DataSource by name and pass as editFrom
     setDsFormOpen(true)
   }, [])
 

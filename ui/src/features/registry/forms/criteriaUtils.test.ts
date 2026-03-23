@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { parseCriteria, serializeCriteria, type CriteriaParts } from './criteriaUtils'
+import { parseCriteria, serializeCriteria } from './criteriaUtils'
 
 describe('parseCriteria', () => {
   it('parses fixed threshold: <600', () => {

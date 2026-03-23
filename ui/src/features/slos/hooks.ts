@@ -11,7 +11,7 @@ import {
 export function useSlos() {
   return useQuery({
     queryKey: sloKeys.all,
-    queryFn: fetchSlos,
+    queryFn: () => fetchSlos(),
   })
 }
 
