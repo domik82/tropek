@@ -38,6 +38,7 @@ export function AssetBindingView({
   const varCount = Object.keys(asset?.variables ?? {}).length
   const tagCount = Object.keys(asset?.tags ?? {}).length
   const statsLine = [
+    asset?.type_name ?? 'asset',
     varCount > 0 ? `${varCount} variables` : null,
     tagCount > 0 ? `${tagCount} tags` : null,
   ].filter(Boolean).join(' · ')
@@ -67,6 +68,17 @@ export function AssetBindingView({
             </button>
           </div>
         </div>
+
+        {/* Variables row — monospace like GroupDetailPanel metadata */}
+        {varCount > 0 && (
+          <div className="mt-3 flex flex-wrap gap-x-6 gap-y-1 text-sm text-slate-400">
+            {Object.entries(asset!.variables).map(([k, v]) => (
+              <span key={k} className="font-mono">
+                <span className="text-[#FFA657]">{`$${k}`}</span>{` = ${v}`}
+              </span>
+            ))}
+          </div>
+        )}
 
         {/* Tag chips */}
         {tagCount > 0 && (

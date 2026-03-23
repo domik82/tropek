@@ -80,7 +80,7 @@ describe('AssetBindingView', () => {
       { wrapper },
     )
     expect(screen.getByText('Checkout API')).toBeInTheDocument()
-    expect(screen.getByText(/service/)).toBeInTheDocument()
+    expect(screen.getByText(/service · /)).toBeInTheDocument()
   })
 
   it('renders asset tags as chips', () => {
@@ -99,8 +99,8 @@ describe('AssetBindingView', () => {
         onNavigate={vi.fn()} onLinkSlo={vi.fn()} />,
       { wrapper },
     )
-    expect(screen.getByText(/\$job/)).toBeInTheDocument()
-    expect(screen.getByText(/checkout-api/)).toBeInTheDocument()
+    expect(screen.getAllByText('$job').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('$namespace').length).toBeGreaterThan(0)
   })
 
   it('renders binding count in section header', () => {
