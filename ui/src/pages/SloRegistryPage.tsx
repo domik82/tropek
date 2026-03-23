@@ -1,8 +1,8 @@
 import { useState, useCallback, useMemo } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { SANS_SERIF } from '@/lib/fonts'
 import { ENTITY_COLORS } from '@/lib/entity-colors'
 import { RegistrySidebar } from '@/features/registry/RegistrySidebar'
@@ -209,53 +209,38 @@ export function SloRegistryPage() {
       />
 
       {/* Group creation dialog */}
-      {groupDialogOpen && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
-          role="dialog"
-          aria-modal="true"
-          style={{ fontFamily: SANS_SERIF }}
-        >
-          <div className="w-full max-w-sm bg-popover border border-border rounded-xl overflow-hidden shadow-xl">
-            <div className="h-[3px]" style={{ backgroundColor: ENTITY_COLORS.group }} />
-            <div className="flex items-center justify-between px-4 py-3 border-b border-border">
-              <h2 className="text-sm font-semibold text-foreground">New Asset Group</h2>
-              <button
-                type="button"
-                aria-label="Close"
-                className="text-muted-foreground hover:text-foreground"
-                onClick={() => setGroupDialogOpen(false)}
-              >
-                <X className="size-4" />
-              </button>
-            </div>
-            <div className="p-4">
-              <label htmlFor="group-name" className="block text-xs text-muted-foreground mb-1">
-                Name
-              </label>
-              <Input
-                id="group-name"
-                value={groupName}
-                onChange={(e) => setGroupName(e.target.value)}
-                placeholder="my-asset-group"
-                onKeyDown={(e) => { if (e.key === 'Enter') handleGroupCreate() }}
-              />
-            </div>
-            <div className="flex justify-end gap-2 px-4 py-3 border-t border-border bg-muted/20">
-              <Button size="xs" variant="outline" onClick={() => setGroupDialogOpen(false)}>
-                Cancel
-              </Button>
-              <Button
-                size="xs"
-                disabled={!groupName.trim() || createGroup.isPending}
-                onClick={handleGroupCreate}
-              >
-                {createGroup.isPending ? 'Creating…' : 'Create'}
-              </Button>
-            </div>
+      <Dialog open={groupDialogOpen} onOpenChange={setGroupDialogOpen}>
+        <DialogContent className="sm:max-w-sm" style={{ fontFamily: SANS_SERIF }}>
+          <div className="h-[3px] -mx-6 -mt-6 mb-0 rounded-t-lg overflow-hidden" style={{ backgroundColor: ENTITY_COLORS.group }} />
+          <DialogHeader>
+            <DialogTitle>New Asset Group</DialogTitle>
+          </DialogHeader>
+          <div>
+            <label htmlFor="group-name" className="block text-xs text-muted-foreground mb-1">
+              Name
+            </label>
+            <Input
+              id="group-name"
+              value={groupName}
+              onChange={(e) => setGroupName(e.target.value)}
+              placeholder="my-asset-group"
+              onKeyDown={(e) => { if (e.key === 'Enter') handleGroupCreate() }}
+            />
           </div>
-        </div>
-      )}
+          <DialogFooter>
+            <Button size="xs" variant="outline" onClick={() => setGroupDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              size="xs"
+              disabled={!groupName.trim() || createGroup.isPending}
+              onClick={handleGroupCreate}
+            >
+              {createGroup.isPending ? 'Creating…' : 'Create'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
