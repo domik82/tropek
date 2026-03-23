@@ -65,9 +65,10 @@ export function WizardStepPickSli({ data, onChange, editIndicatorNames }: Wizard
 
   return (
     <div className="space-y-3">
-      <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-        Step 2 — Pick SLI
-      </h3>
+      <div className="flex items-center gap-2 mb-3">
+        <span className="inline-flex items-center justify-center size-5 rounded-full bg-primary/15 text-primary text-[10px] font-bold">2</span>
+        <h3 className="text-sm font-semibold text-foreground">Pick SLI</h3>
+      </div>
 
       <div>
         <label className="block text-xs text-muted-foreground mb-1">Datasource</label>

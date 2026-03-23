@@ -20,9 +20,10 @@ export function WizardStepIdentity({ data, onChange, nameReadOnly }: WizardStepI
 
   return (
     <div className="space-y-3">
-      <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-        Step 1 — Identity
-      </h3>
+      <div className="flex items-center gap-2 mb-3">
+        <span className="inline-flex items-center justify-center size-5 rounded-full bg-primary/15 text-primary text-[10px] font-bold">1</span>
+        <h3 className="text-sm font-semibold text-foreground">Identity</h3>
+      </div>
 
       <div>
         <label htmlFor="slo-name" className="block text-xs text-muted-foreground mb-1">
@@ -65,11 +66,13 @@ export function WizardStepIdentity({ data, onChange, nameReadOnly }: WizardStepI
         <label htmlFor="slo-notes" className="block text-xs text-muted-foreground mb-1">
           Notes
         </label>
-        <Input
+        <textarea
           id="slo-notes"
+          className="flex w-full rounded-lg border border-input bg-transparent px-2.5 py-2 text-sm placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+          rows={3}
           value={data.notes}
           onChange={(e) => update('notes', e.target.value)}
-          placeholder="Optional notes"
+          placeholder="Optional notes about this SLO definition"
         />
       </div>
     </div>
