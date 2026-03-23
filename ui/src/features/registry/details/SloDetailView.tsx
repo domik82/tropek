@@ -29,12 +29,7 @@ export function SloDetailView({ name, onNavigate, onNewVersion }: SloDetailViewP
     )
   }
 
-  const comparison = slo.comparison as {
-    compare_with?: string
-    number_of_comparison_results?: number
-    include_result_with_score?: string
-    aggregate_function?: string
-  }
+  const comparison = slo.comparison
 
   function handleDeactivate(_reason: string, _author: string) {
     deleteMutation.mutate(slo!.name)

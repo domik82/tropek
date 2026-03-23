@@ -10,6 +10,14 @@ export interface SloObjective {
   sort_order: number
 }
 
+export interface SloComparisonConfig {
+  baseline_mode?: string
+  number_of_comparison_results?: number
+  aggregate_function?: string
+  include_result_with_score?: string
+  compare_with?: string
+}
+
 export interface SloDefinition {
   id: string
   name: string
@@ -25,7 +33,7 @@ export interface SloDefinition {
   objectives: SloObjective[]
   total_score_pass_pct: number
   total_score_warning_pct: number
-  comparison: Record<string, unknown>
+  comparison: SloComparisonConfig
 }
 
 export interface SloValidationResult {

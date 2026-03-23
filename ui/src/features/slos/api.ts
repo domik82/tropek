@@ -1,5 +1,5 @@
 // src/features/slos/api.ts
-import type { SloDefinition, SloObjective, SloValidationResult } from './types'
+import type { SloDefinition, SloObjective, SloValidationResult, SloComparisonConfig } from './types'
 import type { AssetGroupSLOLink, AssetGroupSLOLinkCreate, AssetGroupUpdate } from './types'
 import type { AssetGroup, AssetGroupTree } from '@/features/assets/types'
 
@@ -26,7 +26,7 @@ export async function validateSlo(payload: {
   objectives: SloObjective[]
   total_score_pass_pct: number
   total_score_warning_pct: number
-  comparison: Record<string, unknown>
+  comparison: SloComparisonConfig
 }): Promise<SloValidationResult> {
   const res = await fetch(`${BASE}/slo-definitions/validate`, {
     method: 'POST',
@@ -42,7 +42,7 @@ export async function createSloDefinition(payload: {
   objectives: SloObjective[]
   total_score_pass_pct: number
   total_score_warning_pct: number
-  comparison: Record<string, unknown>
+  comparison: SloComparisonConfig
   display_name?: string
   notes?: string
   author?: string

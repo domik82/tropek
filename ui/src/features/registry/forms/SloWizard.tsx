@@ -45,12 +45,12 @@ function buildIndicatorRowsFromEdit(slo: SloDefinition): IndicatorRow[] {
 }
 
 function buildComparisonFromEdit(slo: SloDefinition): ComparisonData {
-  const comp = slo.comparison as Record<string, unknown>
+  const comp = slo.comparison
   return {
-    baseline_mode: (comp.baseline_mode as string) === 'manual' ? 'manual' : 'previous',
-    compare_count: (comp.number_of_comparison_results as number) ?? 3,
-    aggregate_function: (comp.aggregate_function as string) ?? 'avg',
-    include_result_with_score: (comp.include_result_with_score as string) ?? 'pass_or_warn',
+    baseline_mode: comp.baseline_mode === 'manual' ? 'manual' : 'previous',
+    compare_count: comp.number_of_comparison_results ?? 3,
+    aggregate_function: comp.aggregate_function ?? 'avg',
+    include_result_with_score: comp.include_result_with_score ?? 'pass_or_warn',
     pass_pct: slo.total_score_pass_pct,
     warn_pct: slo.total_score_warning_pct,
     tags: tagsToRows(slo.tags),
@@ -185,20 +185,20 @@ export function SloWizard({ editSlo, onClose }: SloWizardProps) {
       : 'Create SLO'
 
   return (
-    <div className="min-h-screen bg-background" style={{ fontFamily: SANS_SERIF }}>
+    <div className="flex flex-col h-full bg-background" style={{ fontFamily: SANS_SERIF }}>
       {/* Accent strip */}
-      <div className="h-[3px]" style={{ backgroundColor: ENTITY_COLORS.slo }} />
+      <div className="h-[3px] shrink-0" style={{ backgroundColor: ENTITY_COLORS.slo }} />
 
       {/* Header */}
-      <div className="px-6 py-4 border-b border-border">
+      <div className="px-6 py-4 border-b border-border shrink-0">
         <h1 className="text-lg font-semibold text-foreground">{title}</h1>
         {subtitle && (
           <p className="text-xs text-muted-foreground mt-0.5">{subtitle}</p>
         )}
       </div>
 
-      {/* Wizard body */}
-      <div className="px-6 py-6 space-y-8 max-w-5xl">
+      {/* Wizard body — scrollable */}
+      <div className="flex-1 overflow-y-auto px-6 py-6 space-y-8 max-w-5xl">
         {/* Step 1 — always visible */}
         <section>
           <WizardStepIdentity
@@ -234,8 +234,8 @@ export function SloWizard({ editSlo, onClose }: SloWizardProps) {
         )}
       </div>
 
-      {/* Footer */}
-      <div className="fixed bottom-0 left-0 right-0 flex justify-end gap-2 px-6 py-3 border-t border-border bg-background">
+      {/* Footer — sticky within wizard container */}
+      <div className="shrink-0 flex justify-end gap-2 px-6 py-3 border-t border-border bg-background">
         {onClose && (
           <Button size="xs" variant="outline" type="button" onClick={onClose}>
             Cancel
