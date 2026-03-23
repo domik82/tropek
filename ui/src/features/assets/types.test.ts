@@ -14,10 +14,12 @@ describe('Asset type contract', () => {
       name: 'test',
       type_name: 'service',
       tags: { env: 'prod' },
+      variables: {},
       created_at: '2025-01-01',
       updated_at: '2025-01-01',
     }
     expect(asset.tags).toBeDefined()
-    expect((asset as Record<string, unknown>).labels).toBeUndefined()
+    expect(asset.variables).toBeDefined()
+    expect((asset as unknown as Record<string, unknown>).labels).toBeUndefined()
   })
 })
