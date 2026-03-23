@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useMemo } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -11,7 +11,8 @@ import { SloWizard } from '@/features/registry/forms/SloWizard'
 import { DatasourceForm } from '@/features/registry/forms/DatasourceForm'
 import { SliForm } from '@/features/registry/forms/SliForm'
 import { SloLinkDialogRevised } from '@/features/registry/forms/SloLinkDialogRevised'
-import { useCreateGroup } from '@/features/slos/hooks'
+import { useCreateGroup, useGroupTree } from '@/features/slos/hooks'
+import { useAllGroupLinks } from '@/features/registry/useAllGroupLinks'
 import { useDatasource } from '@/features/datasources/hooks'
 import type { RegistryMode, SelectedNode } from '@/features/registry/types'
 import type { SloDefinition } from '@/features/slos/types'
@@ -49,6 +50,13 @@ export function SloRegistryPage() {
   // Fetch datasource for edit mode
   const { data: dsEditFrom } = useDatasource(dsEditName ?? '')
   const createGroup = useCreateGroup()
+
+  const { data: tree } = useGroupTree()
+  const groupNames = useMemo(
+    () => (tree?.all_groups ?? []).map(g => g.name),
+    [tree],
+  )
+  const { allLinks, groupLinksMap } = useAllGroupLinks(groupNames)
 
   const updateParams = useCallback(
     (updates: Record<string, string | null>) => {
@@ -164,6 +172,8 @@ export function SloRegistryPage() {
         selected={selected}
         onSelect={handleSelect}
         onCreateAction={handleCreateAction}
+        allLinks={allLinks}
+        groupLinksMap={groupLinksMap}
       />
 
       <div className="flex-1 overflow-y-auto">
@@ -176,6 +186,7 @@ export function SloRegistryPage() {
             onEditDatasource={handleEditDatasource}
             onNewSloVersion={handleNewSloVersion}
             onLinkSlo={handleLinkSlo}
+            groupLinksMap={groupLinksMap}
           />
         )}
       </div>
