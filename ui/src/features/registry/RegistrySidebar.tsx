@@ -1,6 +1,7 @@
 import { useState, useMemo, useRef, useEffect } from 'react'
 import { Plus } from 'lucide-react'
 import { ENTITY_COLORS } from '@/lib/entity-colors'
+import { SANS_SERIF } from '@/lib/fonts'
 import { TagFilterBar } from '@/components/shared/TagFilterBar'
 import { RegistryTree } from './RegistryTree'
 import { buildSloTree, buildDatasourceTree, buildAssetTree, filterTree } from './useRegistryTree'
@@ -137,10 +138,10 @@ function CreateDropdown({
   }, [open])
 
   const items = [
-    { type: 'slo' as const, label: 'New SLO', color: ENTITY_COLORS.slo },
-    { type: 'sli' as const, label: 'New SLI Definition', color: ENTITY_COLORS.sli },
-    { type: 'datasource' as const, label: 'New Datasource', color: ENTITY_COLORS.ds },
-    { type: 'group' as const, label: 'New Asset Group', color: ENTITY_COLORS.group },
+    { type: 'slo' as const, label: 'New SLO', desc: 'Versioned quality gate definition', color: ENTITY_COLORS.slo },
+    { type: 'sli' as const, label: 'New SLI Definition', desc: 'Service level indicator template', color: ENTITY_COLORS.sli },
+    { type: 'datasource' as const, label: 'New Datasource', desc: 'Metric source connection', color: ENTITY_COLORS.ds },
+    { type: 'group' as const, label: 'New Asset Group', desc: 'Group assets and bind SLOs', color: ENTITY_COLORS.group },
   ]
 
   return (
@@ -153,20 +154,26 @@ function CreateDropdown({
       </button>
       {open && (
         <div
-          className="absolute bottom-full mb-1 left-0 w-full bg-popover border border-border rounded-lg shadow-lg py-1 z-50"
-          style={{ fontFamily: "system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" }}
+          className="absolute bottom-full mb-1 left-0 w-full min-w-[280px] bg-popover border border-border rounded-xl shadow-xl overflow-hidden py-2 z-50"
+          style={{ fontFamily: SANS_SERIF }}
         >
           {items.map(item => (
             <button
               key={item.type}
-              className="w-full px-3 py-1.5 text-xs text-left hover:bg-accent transition-colors flex items-center gap-2"
+              className="flex items-start gap-3 w-full text-left px-3 py-2.5 transition-colors hover:bg-accent group"
               onClick={() => {
                 onCreateAction(item.type)
                 setOpen(false)
               }}
             >
-              <span className="w-1 h-4 rounded-full" style={{ backgroundColor: item.color }} />
-              {item.label}
+              <div
+                className="w-[3px] rounded-full shrink-0 mt-0.5"
+                style={{ backgroundColor: item.color, height: 36 }}
+              />
+              <div className="min-w-0">
+                <div className="text-[13px] font-medium text-popover-foreground">{item.label}</div>
+                <div className="text-[11px] text-muted-foreground mt-0.5">{item.desc}</div>
+              </div>
             </button>
           ))}
         </div>
