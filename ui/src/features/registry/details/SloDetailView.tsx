@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { GitBranch, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { DeletionConfirmForm } from '@/components/DeletionConfirmForm'
+import { SloObjectiveTable } from '@/features/slos/components/SloObjectiveTable'
 import { useSloDetail, useSloVersions, useDeleteSlo } from '@/features/slos/hooks'
 import { ENTITY_COLORS } from '@/lib/entity-colors'
 import { SANS_SERIF } from '@/lib/fonts'
@@ -38,15 +39,16 @@ export function SloDetailView({ name, onNavigate, onNewVersion, linkedGroups }: 
   }
 
   return (
-    <div className="flex flex-col h-full overflow-auto" style={{ fontFamily: SANS_SERIF }}>
+    <div className="overflow-auto h-full" style={{ fontFamily: SANS_SERIF }}>
       {/* Accent strip */}
       <div className="h-[3px]" style={{ backgroundColor: ENTITY_COLORS.slo }} />
 
+      <div className="p-6 space-y-6">
       {/* Header */}
-      <div className="p-4 border-b border-border">
+      <div>
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
-            <h2 className="text-base font-semibold text-foreground truncate">
+            <h2 className="text-xl font-semibold text-foreground truncate">
               {slo.display_name ?? slo.name}
             </h2>
             <p className="text-xs font-mono text-muted-foreground mt-0.5">{slo.name}</p>
@@ -101,63 +103,9 @@ export function SloDetailView({ name, onNavigate, onNewVersion, linkedGroups }: 
         )}
       </div>
 
-      {/* Body */}
-      <div className="p-4 space-y-4">
-        {/* Objectives table */}
+        {/* Objectives table — reuse Navigator's shared component */}
         <div>
-          <p className="text-xs text-muted-foreground mb-2">Objectives</p>
-          {slo.objectives.length === 0 ? (
-            <p className="text-xs text-muted-foreground">No objectives defined.</p>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-xs border-collapse">
-                <thead>
-                  <tr className="border-b border-border">
-                    <th className="text-left py-1.5 pr-3 text-muted-foreground font-medium">SLI</th>
-                    <th className="text-left py-1.5 pr-3 text-muted-foreground font-medium">Weight</th>
-                    <th className="text-left py-1.5 pr-3 text-muted-foreground font-medium">Key</th>
-                    <th className="text-left py-1.5 pr-3 text-muted-foreground font-medium">Pass Criteria</th>
-                    <th className="text-left py-1.5 text-muted-foreground font-medium">Warning Criteria</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {slo.objectives.map((obj, i) => (
-                    <tr key={i} className="border-b border-border/40">
-                      <td className="py-1.5 pr-3 font-mono align-top">
-                        <button
-                          type="button"
-                          className="text-foreground hover:text-primary underline-offset-2 hover:underline"
-                          onClick={() => onNavigate({ type: 'sli', name: obj.sli })}
-                        >
-                          {obj.sli}
-                        </button>
-                      </td>
-                      <td className="py-1.5 pr-3 align-top text-foreground">{obj.weight}</td>
-                      <td className="py-1.5 pr-3 align-top text-foreground">
-                        {obj.key_sli ? (
-                          <span style={{ color: ENTITY_COLORS.slo }}>★</span>
-                        ) : null}
-                      </td>
-                      <td className="py-1.5 pr-3 align-top font-mono text-muted-foreground">
-                        {obj.pass_criteria.join(' AND ')}
-                      </td>
-                      <td className="py-1.5 align-top font-mono text-muted-foreground">
-                        {obj.warning_criteria.join(' AND ')}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-
-        {/* Score thresholds */}
-        <div>
-          <p className="text-xs text-muted-foreground mb-1">Score Thresholds</p>
-          <p className="text-sm text-foreground">
-            Pass ≥ {slo.total_score_pass_pct}% · Warning ≥ {slo.total_score_warning_pct}%
-          </p>
+          <SloObjectiveTable slo={slo} />
         </div>
 
         {/* Comparison summary */}
