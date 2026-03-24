@@ -64,14 +64,22 @@ async def resolve_single_trigger(
         msg = f"no slo link for asset '{asset_name}' with slo '{slo_name}'"
         raise SLONotConfiguredError(msg)
 
-    sli_def = await sli_repo.get_latest(link.sli_name)
-    if sli_def is None:
-        msg = f"sli definition '{link.sli_name}' not found"
-        raise SLONotConfiguredError(msg)
-
     slo_def = await slo_repo.get_latest(link.slo_name)
     if slo_def is None:
         msg = f"slo definition '{link.slo_name}' not found"
+        raise SLONotConfiguredError(msg)
+
+    # Resolve SLI from SLO definition (new model) or from link (legacy fallback)
+    sli_name = slo_def.sli_name or link.sli_name
+    sli_version = slo_def.sli_version
+
+    if sli_version is not None:
+        sli_def = await sli_repo.get_version(sli_name, sli_version)
+    else:
+        sli_def = await sli_repo.get_latest(sli_name)
+
+    if sli_def is None:
+        msg = f"sli definition '{sli_name}' not found"
         raise SLONotConfiguredError(msg)
 
     ds = await ds_repo.get_by_name(link.data_source_name)

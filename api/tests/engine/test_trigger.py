@@ -56,6 +56,8 @@ def mock_repos() -> dict:
         {
             "name": "perf-slo",
             "version": 1,
+            "sli_name": None,
+            "sli_version": None,
         },
     )()
 
