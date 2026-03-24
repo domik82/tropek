@@ -65,8 +65,8 @@ export function SloWizard({ editSlo, onClose }: SloWizardProps) {
 
   const [pickSli, setPickSli] = useState<PickSliData>(
     editSlo
-      ? { datasource: '', sliName: '', indicators: Object.fromEntries(editSlo.objectives.map((o) => [o.sli, ''])) }
-      : { datasource: '', sliName: '', indicators: {} },
+      ? { sliName: editSlo.sli_name ?? '', sliVersion: editSlo.sli_version ?? null, indicators: Object.fromEntries(editSlo.objectives.map((o) => [o.sli, ''])) }
+      : { sliName: '', sliVersion: null, indicators: {} },
   )
 
   const [indicatorRows, setIndicatorRows] = useState<IndicatorRow[]>(
@@ -154,6 +154,8 @@ export function SloWizard({ editSlo, onClose }: SloWizardProps) {
         display_name: identity.display_name || undefined,
         author: identity.author || undefined,
         notes: identity.notes || undefined,
+        sli_name: pickSli.sliName || undefined,
+        sli_version: pickSli.sliVersion ?? undefined,
         objectives,
         total_score_pass_pct: comparison.pass_pct,
         total_score_warning_pct: comparison.warn_pct,
