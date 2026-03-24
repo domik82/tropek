@@ -14,6 +14,7 @@ vi.mock('@/features/datasources/hooks', () => ({
 
 vi.mock('@/features/slis/hooks', () => ({
   useSliDefinitions: vi.fn().mockReturnValue({ data: [] }),
+  useSliDetail: vi.fn().mockReturnValue({ data: null }),
   useSliTagKeys: vi.fn().mockReturnValue({ data: [] }),
   useSliTagValues: vi.fn().mockReturnValue({ data: [] }),
 }))
