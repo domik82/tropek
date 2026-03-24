@@ -1,6 +1,6 @@
 """Seed historical evaluation data for visual inspection.
 
-Triggers 40 evaluations (4 assets x 10 time windows) spread across
+Triggers 140 evaluations (14 assets x 10 time windows) spread across
 48 hours of mock data. Two windows fall in the degraded period
 (2026-03-15T18:00Z - 2026-03-16T00:00Z) to produce failures.
 
@@ -16,10 +16,23 @@ from tropek_client import TropekClient
 
 # (asset_name, slo_name) pairs matching the bootstrap SLO links
 ASSETS = [
+    # E-Commerce (existing)
     ("checkout-api", "http-availability-slo"),
     ("product-catalog", "http-availability-slo"),
     ("user-service", "http-availability-slo"),
     ("orders-db", "db-performance-slo"),
+    # VM Infrastructure
+    ("vm-prod-web-01", "vm-health-slo"),
+    ("vm-prod-web-02", "vm-health-slo"),
+    ("vm-prod-web-03", "vm-health-slo"),
+    ("vm-prod-web-04", "vm-health-slo"),
+    ("vm-prod-web-05", "vm-health-slo"),
+    # Office Laptops
+    ("laptop-user-01", "process-health-slo"),
+    ("laptop-user-02", "process-health-slo"),
+    ("laptop-user-03", "process-health-slo"),
+    ("laptop-user-04", "process-health-slo"),
+    ("laptop-user-05", "process-health-slo"),
 ]
 
 # 30-minute windows spread across 48h of mock data.
