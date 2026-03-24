@@ -264,7 +264,7 @@ class SLODefinition(Base):
     kind:                    Mapped[str]                    = mapped_column(Text, nullable=False, server_default=text("'standard'"), default="standard")
     sli_name:                Mapped[str | None]             = mapped_column(Text, nullable=True)
     sli_version:             Mapped[int | None]             = mapped_column(Integer, nullable=True)
-    generated_by_group_id:   Mapped[uuid.UUID | None]       = mapped_column(UUID, nullable=True)
+    generated_by_group_id:   Mapped[uuid.UUID | None]       = mapped_column(UUID, ForeignKey("slo_groups.id"), nullable=True)
     active:                  Mapped[bool]                   = mapped_column(Boolean, nullable=False, server_default=true(), default=True)
     created_at:              Mapped[datetime]               = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     objectives:              Mapped[list[SLOObjective]]     = relationship(
@@ -502,6 +502,62 @@ class SLOBinding(Base):
     data_source_name: Mapped[str]                          = mapped_column(Text, nullable=False)
     comparison_rules: Mapped[list[dict[str, Any]] | None]  = mapped_column(JSONB, nullable=True)
     created_at:       Mapped[datetime]                     = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+    # fmt: on
+
+
+class SLOGroup(Base):
+    """SLO group — generates SLO instances from a template via variable expansion."""
+
+    __tablename__ = "slo_groups"
+    __table_args__ = (
+        Index("idx_slo_groups_name", "name"),
+        Index(
+            "uq_slo_groups_name_active", "name", unique=True, postgresql_where=text("active = true")
+        ),
+    )
+
+    # fmt: off
+
+    id:                   Mapped[uuid.UUID]      = mapped_column(UUID, primary_key=True, default=uuid.uuid4)
+    name:                 Mapped[str]            = mapped_column(Text, nullable=False)
+    display_name:         Mapped[str | None]     = mapped_column(Text, nullable=True)
+    template_slo_name:    Mapped[str]            = mapped_column(Text, nullable=False)
+    template_slo_version: Mapped[int]            = mapped_column(Integer, nullable=False)
+    gen_variables:        Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, server_default=text("'{}'::jsonb"), default=dict)
+    tags:                 Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, server_default=text("'{}'"), default=dict)
+    author:               Mapped[str | None]     = mapped_column(Text, nullable=True)
+    version:              Mapped[int]            = mapped_column(Integer, nullable=False, server_default=text("1"), default=1)
+    active:               Mapped[bool]           = mapped_column(Boolean, nullable=False, server_default=true(), default=True)
+    created_at:           Mapped[datetime]       = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    updated_at:           Mapped[datetime]       = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+    # fmt: on
+
+
+class TemplateBinding(Base):
+    """Polymorphic binding of a template group to an asset or asset group with a datasource."""
+
+    __tablename__ = "template_bindings"
+    __table_args__ = (
+        UniqueConstraint(
+            "target_type", "target_id", "template_group_name", name="uq_template_binding"
+        ),
+        Index("idx_template_bindings_target", "target_type", "target_id"),
+        CheckConstraint(
+            "target_type IN ('asset', 'asset_group')",
+            name="ck_template_bindings_target_type",
+        ),
+    )
+
+    # fmt: off
+
+    id:                   Mapped[uuid.UUID] = mapped_column(UUID, primary_key=True, default=uuid.uuid4)
+    target_type:          Mapped[str]       = mapped_column(Text, nullable=False)
+    target_id:            Mapped[uuid.UUID] = mapped_column(UUID, nullable=False)
+    template_group_name:  Mapped[str]       = mapped_column(Text, nullable=False)
+    data_source_name:     Mapped[str]       = mapped_column(Text, nullable=False)
+    created_at:           Mapped[datetime]  = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
     # fmt: on
 
