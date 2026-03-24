@@ -238,7 +238,7 @@ SLOGroup
   template_slo_version: int
   sli_name: str                     # shared SLI definition — used to create AssetSLOLink for each generated SLO
   asset_name: str                   # target asset for auto-linking
-  gen_variables: JSONB              # {"__gen_process_name": ["abc", "xyz", ...]} — single key only (validated)
+  expansion_entries: JSONB           # list of dicts, e.g. [{"__gen_process_name": "abc", "__gen_namespace": "auth-ns"}, ...]
   tags: JSONB
   author: str
   version: int                      # auto-incremented on regeneration
@@ -250,37 +250,39 @@ SLOGroup
 When a group is created or regenerated:
 
 1. Load the template SLO at `template_slo_name:template_slo_version`
-2. For each value in the expansion list (e.g., `["abc", "xyz", ...]`):
+2. For each entry in `expansion_entries` (e.g., `{"__gen_process_name": "abc", "__gen_namespace": "auth-ns", "__gen_memory_limit": "512"}`):
    a. Copy the template SLO into a new `SLODefinition` with `kind = "standard"`
-   b. Replace all `$__gen_*` tokens in `name` and `variables` with the expansion value
+   b. Replace all `$__gen_*` tokens in `name` and `variables` with the corresponding entry values
    c. Tag with `{"slo_group": "app_x_plugins", "generated": "true"}`
    d. Create `AssetSLOLink` to the group's target asset, using the group's `sli_name` as the SLI reference
-3. Generated SLO `variables` after expansion: `{"process_name": "abc", "AGGREGATION_WINDOW": "5m"}`
-4. `gen_variables` is validated to contain exactly one key. Multi-axis expansion (cartesian product) is not supported in this version — use separate groups for separate axes.
+3. Generated SLO `variables` after expansion: `{"process_name": "abc", "namespace": "auth-ns", "memory_limit": "512", "AGGREGATION_WINDOW": "5m"}`
+4. All entries must declare the same set of keys (matching the template's `$__gen_*` variables). Entries with missing or extra keys are rejected at validation time.
 
-**Example — expanding for "abc":**
+**Data entry:** Expansion entries can be entered inline (editable table for small counts) or bulk-imported via CSV paste. Columns are auto-detected from the template's `$__gen_*` variables.
+
+**Example — expanding for entry `{"__gen_process_name": "abc", "__gen_namespace": "auth-ns", "__gen_memory_limit": "512"}`:**
 
 ```
 Template:
   name: "app_x/$__gen_process_name"
-  variables: {"process_name": "$__gen_process_name", "AGGREGATION_WINDOW": "5m"}
+  variables: {"process_name": "$__gen_process_name", "namespace": "$__gen_namespace", "memory_limit": "$__gen_memory_limit", "AGGREGATION_WINDOW": "5m"}
 
 Generated:
   name: "app_x/abc"
   kind: "standard"
-  variables: {"process_name": "abc", "AGGREGATION_WINDOW": "5m"}
+  variables: {"process_name": "abc", "namespace": "auth-ns", "memory_limit": "512", "AGGREGATION_WINDOW": "5m"}
   tags: {"slo_group": "app_x_plugins", "generated": "true"}
 ```
 
-At evaluation time, the worker sees a standard SLO with `variables: {"process_name": "abc", "AGGREGATION_WINDOW": "5m"}`. It substitutes into the SLI template `rate(cpu_seconds{plugin='$process_name'}[$AGGREGATION_WINDOW])` → `rate(cpu_seconds{plugin='abc'}[5m])`. No group awareness needed.
+At evaluation time, the worker sees a standard SLO with the expanded variables. It substitutes into the SLI template `rate(cpu_seconds{plugin='$process_name', namespace='$namespace'}[$AGGREGATION_WINDOW])` → `rate(cpu_seconds{plugin='abc', namespace='auth-ns'}[5m])`. No group awareness needed.
 
 ### Regeneration
 
 Triggered when the group is edited (template change, values added/removed):
 
 - **Modified SLOs** (template changed): new version of each generated SLO. If criteria changed, set `comparable_from_version` to the new version to prevent cross-version baseline comparison.
-- **Added values**: new SLO + asset link created.
-- **Removed values**: generated SLO marked `active = false` (soft delete). Evaluation history preserved.
+- **Added entries**: new SLO + asset link created for each new expansion entry.
+- **Removed entries**: generated SLO marked `active = false` (soft delete). Evaluation history preserved.
 - Group `version` incremented on each regeneration.
 
 ### Extraction (Customizing One Plugin)
@@ -290,7 +292,7 @@ When a plugin needs custom criteria:
 1. Copy the generated SLO into a new standalone `SLODefinition` (new name, e.g., `app_x/abc_custom`)
 2. Set `kind = "standard"`, clear `generated` tag
 3. Add `forked_from_group: "app_x_plugins"` tag for traceability
-4. Remove the value from the group's `gen_variables` list and bump group version (atomic operation — extraction and group update are in the same transaction to prevent concurrent regeneration conflicts)
+4. Remove the entry from the group's `expansion_entries` list and bump group version (atomic operation — extraction and group update are in the same transaction to prevent concurrent regeneration conflicts)
 5. The extracted SLO is fully independent — group regeneration doesn't touch it
 
 The extracted SLO can reuse the same SLI definition (same query templates) but has its own criteria, variables, and evaluation history.
