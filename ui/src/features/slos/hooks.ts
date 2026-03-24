@@ -4,7 +4,6 @@ import { sloKeys, groupKeys, assetKeys, bindingKeys } from '@/lib/queryKeys'
 import { fetchSlos, fetchSloDetail, validateSlo, createSloDefinition, deleteSlo, fetchSloVersions } from './api'
 import {
   fetchGroupTree, createGroup, updateGroup, deleteGroup,
-  fetchGroupSloLinks, createGroupSloLink, deleteGroupSloLink,
   addSubgroup, fetchSloTagKeys, fetchSloTagValues,
   fetchAssetSloBindings, fetchGroupSloBindings,
   createAssetSloBinding, createGroupSloBinding, deleteGroupSloBinding,
@@ -63,13 +62,6 @@ export function useGroupTree() {
   return useQuery({ queryKey: groupKeys.tree(), queryFn: fetchGroupTree })
 }
 
-export function useGroupSloLinks(name: string) {
-  return useQuery({
-    queryKey: groupKeys.links(name),
-    queryFn: () => fetchGroupSloLinks(name),
-    enabled: !!name && name !== '__ungrouped__',
-  })
-}
 
 export function useCreateGroup() {
   const qc = useQueryClient()
@@ -119,30 +111,6 @@ export function useAddSubgroup() {
   })
 }
 
-export function useCreateGroupSloLink() {
-  const qc = useQueryClient()
-  return useMutation({
-    mutationFn: ({ groupName, ...body }: { groupName: string; slo_name: string; sli_name: string; data_source_name: string }) =>
-      createGroupSloLink(groupName, body),
-    onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: groupKeys.all })
-      void qc.invalidateQueries({ queryKey: assetKeys.groups() })
-      void qc.invalidateQueries({ queryKey: sloKeys.all })
-    },
-  })
-}
-
-export function useDeleteGroupSloLink() {
-  const qc = useQueryClient()
-  return useMutation({
-    mutationFn: ({ groupName, linkName }: { groupName: string; linkName: string }) =>
-      deleteGroupSloLink(groupName, linkName),
-    onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: groupKeys.all })
-      void qc.invalidateQueries({ queryKey: assetKeys.groups() })
-    },
-  })
-}
 
 export function useSloTagKeys() {
   return useQuery({ queryKey: sloKeys.tagKeys(), queryFn: fetchSloTagKeys })

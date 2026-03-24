@@ -2,7 +2,7 @@ import { useState } from 'react'
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose,
 } from '@/components/ui/dialog'
-import { useDeleteGroup, useGroupTree, useGroupSloLinks } from '../hooks'
+import { useDeleteGroup, useGroupTree, useGroupSloBindings } from '../hooks'
 
 interface Props {
   open: boolean
@@ -14,7 +14,7 @@ interface Props {
 export function GroupDeleteDialog({ open, onOpenChange, groupName, onDeleted }: Props) {
   const { data: tree } = useGroupTree()
   const group = tree?.all_groups.find(g => g.name === groupName)
-  const { data: links } = useGroupSloLinks(groupName ?? '')
+  const { data: bindings } = useGroupSloBindings(groupName ?? '')
   const deleteGroup = useDeleteGroup()
   const [choice, setChoice] = useState<'keep' | 'deactivate' | null>(null)
   const [confirmOpen, setConfirmOpen] = useState(false)
@@ -22,7 +22,7 @@ export function GroupDeleteDialog({ open, onOpenChange, groupName, onDeleted }: 
   if (!groupName || !group) return null
 
   const subgroupCount = group.subgroups.length
-  const linkCount = links?.length ?? 0
+  const linkCount = bindings?.length ?? 0
 
   const handleDelete = async () => {
     await deleteGroup.mutateAsync({

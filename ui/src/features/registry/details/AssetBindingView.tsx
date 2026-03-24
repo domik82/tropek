@@ -3,10 +3,10 @@ import { BindingChainBreadcrumb } from '@/components/shared/BindingChainBreadcru
 import { VariableResolutionPanel } from '@/components/shared/VariableResolutionPanel'
 import { SloObjectiveTable } from '@/features/slos/components/SloObjectiveTable'
 import { useAsset } from '@/features/assets/hooks'
-import { useGroupSloLinks, useDeleteGroupSloLink, useSloDetail } from '@/features/slos/hooks'
+import { useGroupSloBindings, useDeleteGroupSloBinding, useSloDetail } from '@/features/slos/hooks'
 import { ENTITY_COLORS } from '@/lib/entity-colors'
 import { SANS_SERIF } from '@/lib/fonts'
-import type { AssetGroupSLOLink } from '@/features/slos/types'
+import type { SloBinding } from '@/features/slos/types'
 import type { Asset } from '@/features/assets/types'
 import type { SelectedNode } from '@/features/registry/types'
 
@@ -28,7 +28,7 @@ export function AssetBindingView({
 }: AssetBindingViewProps) {
   // Only fetch asset details for actual asset nodes, not group nodes
   const { data: asset, isLoading: assetLoading } = useAsset(isGroup ? null : assetName)
-  const { data: links, isLoading: linksLoading } = useGroupSloLinks(groupName)
+  const { data: links, isLoading: linksLoading } = useGroupSloBindings(groupName)
 
   if ((!isGroup && assetLoading) || linksLoading) {
     return (
@@ -134,14 +134,15 @@ function BindingCard({
   groupName,
   onNavigate,
 }: {
-  link: AssetGroupSLOLink
+  link: SloBinding
   asset: Asset | null
   groupName: string
   onNavigate: (node: SelectedNode) => void
 }) {
   const { data: slo } = useSloDetail(link.slo_name)
-  const deleteMutation = useDeleteGroupSloLink()
+  const deleteMutation = useDeleteGroupSloBinding()
 
+  const sliName = slo?.sli_name ?? null
   const assetVars = asset?.variables ?? {}
   const sloVars = slo?.variables ?? {}
   const reserved: Record<string, string> = {}
@@ -153,10 +154,10 @@ function BindingCard({
         <BindingChainBreadcrumb
           sloName={link.slo_name}
           sloVersion={slo ? String(slo.version) : undefined}
-          sliName={link.sli_name}
+          sliName={sliName ?? undefined}
           dsName={link.data_source_name}
           onClickSlo={() => onNavigate({ type: 'slo', name: link.slo_name })}
-          onClickSli={() => onNavigate({ type: 'sli', name: link.sli_name })}
+          onClickSli={sliName ? () => onNavigate({ type: 'sli', name: sliName }) : undefined}
           onClickDs={() => onNavigate({ type: 'datasource', name: link.data_source_name })}
         />
         <div className="flex shrink-0 gap-2">
@@ -168,7 +169,7 @@ function BindingCard({
             Edit
           </button>
           <button
-            onClick={() => deleteMutation.mutate({ groupName, linkName: link.link_name })}
+            onClick={() => deleteMutation.mutate({ groupName, sloName: link.slo_name })}
             className="px-3 py-1.5 text-xs rounded bg-[#3D1418] border border-[#F85149] text-[#F85149] hover:bg-[#3D1418]/80 transition-colors flex items-center gap-1.5"
           >
             <Unlink className="w-3.5 h-3.5" />

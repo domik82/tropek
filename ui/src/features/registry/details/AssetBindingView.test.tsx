@@ -5,8 +5,8 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { AssetBindingView } from './AssetBindingView'
 
 vi.mock('@/features/slos/hooks', () => ({
-  useGroupSloLinks: vi.fn(),
-  useDeleteGroupSloLink: vi.fn(() => ({ mutate: vi.fn() })),
+  useGroupSloBindings: vi.fn(),
+  useDeleteGroupSloBinding: vi.fn(() => ({ mutate: vi.fn() })),
   useSloDetail: vi.fn(),
 }))
 
@@ -14,7 +14,7 @@ vi.mock('@/features/assets/hooks', () => ({
   useAsset: vi.fn(),
 }))
 
-import { useGroupSloLinks, useSloDetail } from '@/features/slos/hooks'
+import { useGroupSloBindings, useSloDetail } from '@/features/slos/hooks'
 import { useAsset } from '@/features/assets/hooks'
 
 const MOCK_ASSET = {
@@ -47,16 +47,18 @@ const MOCK_SLO = {
   total_score_pass_pct: 90,
   total_score_warning_pct: 75,
   comparison: {},
+  sli_name: 'http-service-sli',
+  sli_version: 1,
 }
 
-const MOCK_LINKS = [
+const MOCK_BINDINGS = [
   {
     id: '1',
-    link_name: 'checkout-api-http',
-    group_id: 'g1',
+    target_type: 'asset_group',
+    target_id: 'g1',
     slo_name: 'http-availability-slo',
-    sli_name: 'http-service-sli',
     data_source_name: 'prometheus-local',
+    comparison_rules: null,
     created_at: '2026-03-15T00:00:00Z',
   },
 ]
@@ -69,7 +71,7 @@ function wrapper({ children }: { children: React.ReactNode }) {
 describe('AssetBindingView', () => {
   beforeEach(() => {
     vi.mocked(useAsset).mockReturnValue({ data: MOCK_ASSET, isLoading: false } as any)
-    vi.mocked(useGroupSloLinks).mockReturnValue({ data: MOCK_LINKS, isLoading: false } as any)
+    vi.mocked(useGroupSloBindings).mockReturnValue({ data: MOCK_BINDINGS, isLoading: false } as any)
     vi.mocked(useSloDetail).mockReturnValue({ data: MOCK_SLO, isLoading: false } as any)
   })
 
@@ -136,7 +138,7 @@ describe('AssetBindingView', () => {
   })
 
   it('renders empty state with Link SLO button', () => {
-    vi.mocked(useGroupSloLinks).mockReturnValue({ data: [], isLoading: false } as any)
+    vi.mocked(useGroupSloBindings).mockReturnValue({ data: [], isLoading: false } as any)
     render(
       <AssetBindingView assetName="checkout-api" groupName="core-services"
         onNavigate={vi.fn()} onLinkSlo={vi.fn()} />,

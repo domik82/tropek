@@ -1,6 +1,6 @@
 // src/features/slos/api.ts
 import type { SloDefinition, SloObjective, SloValidationResult, SloComparisonConfig } from './types'
-import type { AssetGroupSLOLink, AssetGroupSLOLinkCreate, AssetGroupUpdate } from './types'
+import type { AssetGroupUpdate } from './types'
 import type { SloBinding, SloBindingCreate } from './types'
 import type { AssetGroup, AssetGroupTree } from '@/features/assets/types'
 
@@ -120,32 +120,6 @@ export async function addSubgroup(parentName: string, childGroupId: string): Pro
   return res.json()
 }
 
-export async function fetchGroupSloLinks(name: string): Promise<AssetGroupSLOLink[]> {
-  const res = await fetch(`${BASE}/asset-groups/${encodeURIComponent(name)}/slo-links`)
-  if (res.status === 404) return []
-  if (!res.ok) throw new Error(`fetchGroupSloLinks: ${res.status}`)
-  return res.json()
-}
-
-export async function createGroupSloLink(
-  groupName: string, body: AssetGroupSLOLinkCreate,
-): Promise<AssetGroupSLOLink> {
-  const res = await fetch(`${BASE}/asset-groups/${encodeURIComponent(groupName)}/slo-links`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  })
-  if (!res.ok) throw new Error(`createGroupSloLink: ${res.status}`)
-  return res.json()
-}
-
-export async function deleteGroupSloLink(groupName: string, linkName: string): Promise<void> {
-  const res = await fetch(
-    `${BASE}/asset-groups/${encodeURIComponent(groupName)}/slo-links/${encodeURIComponent(linkName)}`,
-    { method: 'DELETE' },
-  )
-  if (!res.ok) throw new Error(`deleteGroupSloLink: ${res.status}`)
-}
 
 export async function fetchSloTagKeys(): Promise<{ key: string; count: number }[]> {
   const res = await fetch(`${BASE}/slo-definitions/tag-keys`)

@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event'
 import { TestWrapper } from '@/test-wrapper'
 import { GroupDetailPanel } from './GroupDetailPanel'
 import { useAssetGroup, useRemoveGroupMember } from '@/features/assets/hooks'
-import { useDeleteGroupSloLink } from '@/features/slos/hooks'
+import { useDeleteGroupSloBinding } from '@/features/slos/hooks'
 
 vi.mock('@/features/assets/hooks', () => ({
   useAssetGroup: vi.fn(() => ({
@@ -85,19 +85,20 @@ vi.mock('@/features/assets/hooks', () => ({
 }))
 
 vi.mock('@/features/slos/hooks', () => ({
-  useGroupSloLinks: vi.fn(() => ({
+  useGroupSloBindings: vi.fn(() => ({
     data: [
       {
         id: 'l1',
-        link_name: 'link-1',
+        target_type: 'asset_group',
+        target_id: 'g1',
         slo_name: 'availability',
-        sli_name: 'error_rate',
         data_source_name: 'prometheus-prod',
-        group_name: 'payments',
+        comparison_rules: null,
+        created_at: '2026-03-15T00:00:00Z',
       },
     ],
   })),
-  useDeleteGroupSloLink: vi.fn(() => ({ mutate: vi.fn(), isPending: false })),
+  useDeleteGroupSloBinding: vi.fn(() => ({ mutate: vi.fn(), isPending: false })),
 }))
 
 vi.mock('@/features/slos/components/GroupEditDialog', () => ({
@@ -179,13 +180,12 @@ describe('GroupDetailPanel', () => {
     expect(screen.getByText('api')).toBeInTheDocument()
   })
 
-  it('renders linked SLOs with slo_name, sli_name, data_source_name columns', () => {
+  it('renders linked SLOs with slo_name and data_source_name columns', () => {
     render(
       <GroupDetailPanel groupName="payments" onSelectGroup={() => {}} />,
       { wrapper: TestWrapper }
     )
     expect(screen.getByText('availability')).toBeInTheDocument()
-    expect(screen.getByText('error_rate')).toBeInTheDocument()
     expect(screen.getByText('prometheus-prod')).toBeInTheDocument()
   })
 
@@ -205,7 +205,7 @@ describe('GroupDetailPanel', () => {
 
   it('calls unlinkSlo when X clicked on SLO row', async () => {
     const mockMutate = vi.fn()
-    vi.mocked(useDeleteGroupSloLink).mockReturnValue({ mutate: mockMutate } as any)
+    vi.mocked(useDeleteGroupSloBinding).mockReturnValue({ mutate: mockMutate } as any)
 
     const user = userEvent.setup()
     render(
@@ -214,7 +214,7 @@ describe('GroupDetailPanel', () => {
     )
     const unlinkButton = screen.getByTitle('Unlink')
     await user.click(unlinkButton)
-    expect(mockMutate).toHaveBeenCalledWith({ groupName: 'payments', linkName: 'link-1' })
+    expect(mockMutate).toHaveBeenCalledWith({ groupName: 'payments', sloName: 'availability' })
   })
 
   it('highlights the selected asset row when selectedAsset matches a member', () => {
