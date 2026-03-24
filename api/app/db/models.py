@@ -261,6 +261,10 @@ class SLODefinition(Base):
     author:                  Mapped[str | None]             = mapped_column(Text, nullable=True)
     tags:                    Mapped[dict[str, Any]]         = mapped_column(JSONB, nullable=False, server_default=text("'{}'"), default=dict)
     variables:               Mapped[dict[str, Any]]         = mapped_column(JSONB, nullable=False, server_default=text("'{}'"), default=dict)
+    kind:                    Mapped[str]                    = mapped_column(Text, nullable=False, server_default=text("'standard'"), default="standard")
+    sli_name:                Mapped[str | None]             = mapped_column(Text, nullable=True)
+    sli_version:             Mapped[int | None]             = mapped_column(Integer, nullable=True)
+    generated_by_group_id:   Mapped[uuid.UUID | None]       = mapped_column(UUID, nullable=True)
     active:                  Mapped[bool]                   = mapped_column(Boolean, nullable=False, server_default=true(), default=True)
     created_at:              Mapped[datetime]               = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     objectives:              Mapped[list[SLOObjective]]     = relationship(
@@ -472,6 +476,32 @@ class AssetGroupSLOLink(Base):
     sli_name:         Mapped[str]        = mapped_column(Text, nullable=False)
     data_source_name: Mapped[str]        = mapped_column(Text, nullable=False)
     created_at:       Mapped[datetime]   = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+    # fmt: on
+
+
+class SLOBinding(Base):
+    """Polymorphic binding of an SLO to an asset or asset group with a datasource."""
+
+    __tablename__ = "slo_bindings"
+    __table_args__ = (
+        UniqueConstraint("target_type", "target_id", "slo_name", name="uq_slo_binding"),
+        Index("idx_slo_bindings_target", "target_type", "target_id"),
+        CheckConstraint(
+            "target_type IN ('asset', 'asset_group')",
+            name="ck_slo_bindings_target_type",
+        ),
+    )
+
+    # fmt: off
+
+    id:               Mapped[uuid.UUID]                    = mapped_column(UUID, primary_key=True, default=uuid.uuid4)
+    target_type:      Mapped[str]                          = mapped_column(Text, nullable=False)
+    target_id:        Mapped[uuid.UUID]                    = mapped_column(UUID, nullable=False)
+    slo_name:         Mapped[str]                          = mapped_column(Text, nullable=False)
+    data_source_name: Mapped[str]                          = mapped_column(Text, nullable=False)
+    comparison_rules: Mapped[list[dict[str, Any]] | None]  = mapped_column(JSONB, nullable=True)
+    created_at:       Mapped[datetime]                     = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
     # fmt: on
 
