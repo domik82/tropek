@@ -2,7 +2,6 @@ import { SANS_SERIF } from '@/lib/fonts'
 import type { SloDefinition } from '@/features/slos/types'
 import type { SliDefinition } from '@/features/slis/types'
 import type { SelectedNode } from './types'
-import type { MinLink } from './useRegistryTree'
 import { DatasourceDetailView } from './details/DatasourceDetailView'
 import { SliDetailView } from './details/SliDetailView'
 import { SloDetailView } from './details/SloDetailView'
@@ -15,7 +14,6 @@ interface RegistryDetailPanelProps {
   onNewSloVersion?: (slo: SloDefinition) => void
   onNewSliVersion?: (sli: SliDefinition) => void
   onLinkSlo?: (groupName: string) => void
-  groupLinksMap?: Record<string, MinLink[]>
 }
 
 export function RegistryDetailPanel({
@@ -25,7 +23,6 @@ export function RegistryDetailPanel({
   onNewSloVersion,
   onNewSliVersion,
   onLinkSlo,
-  groupLinksMap,
 }: RegistryDetailPanelProps) {
   if (!selected) {
     return (
@@ -39,15 +36,11 @@ export function RegistryDetailPanel({
   }
 
   if (selected.type === 'slo') {
-    const linkedGroups = Object.entries(groupLinksMap ?? {})
-      .filter(([, links]) => links.some(l => l.slo_name === selected.name))
-      .map(([gn]) => gn)
     return (
       <SloDetailView
         name={selected.name}
         onNavigate={onNavigate}
         onNewVersion={onNewSloVersion ?? (() => {})}
-        linkedGroups={linkedGroups}
       />
     )
   }

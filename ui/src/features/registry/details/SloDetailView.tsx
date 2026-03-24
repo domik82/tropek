@@ -1,9 +1,12 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
+import { useQueries } from '@tanstack/react-query'
 import { GitBranch, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { DeletionConfirmForm } from '@/components/DeletionConfirmForm'
 import { SloObjectiveTable } from '@/features/slos/components/SloObjectiveTable'
-import { useSloDetail, useSloVersions, useDeleteSlo } from '@/features/slos/hooks'
+import { useSloDetail, useSloVersions, useDeleteSlo, useGroupTree } from '@/features/slos/hooks'
+import { fetchGroupSloLinks } from '@/features/slos/api'
+import { groupKeys } from '@/lib/queryKeys'
 import { ENTITY_COLORS } from '@/lib/entity-colors'
 import { SANS_SERIF } from '@/lib/fonts'
 import type { SloDefinition } from '@/features/slos/types'
@@ -13,15 +16,31 @@ interface SloDetailViewProps {
   name: string
   onNavigate: (node: SelectedNode) => void
   onNewVersion: (slo: SloDefinition) => void
-  linkedGroups?: string[]
 }
 
-export function SloDetailView({ name, onNavigate, onNewVersion, linkedGroups }: SloDetailViewProps) {
+export function SloDetailView({ name, onNavigate, onNewVersion }: SloDetailViewProps) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
 
   const { data: slo, isLoading } = useSloDetail(name)
   const { data: versions } = useSloVersions(name, true)
   const deleteMutation = useDeleteSlo()
+
+  // Fetch linked groups: query each group's links and filter to this SLO
+  const { data: tree } = useGroupTree()
+  const groupNames = useMemo(
+    () => (tree?.all_groups ?? []).map(g => g.name).filter(n => n !== '__ungrouped__'),
+    [tree],
+  )
+  const linkQueries = useQueries({
+    queries: groupNames.map(gn => ({
+      queryKey: groupKeys.links(gn),
+      queryFn: () => fetchGroupSloLinks(gn),
+    })),
+  })
+  const linkedGroups = useMemo(
+    () => groupNames.filter((_, i) => (linkQueries[i]?.data ?? []).some(l => l.slo_name === name)),
+    [groupNames, linkQueries, name],
+  )
 
   if (isLoading || !slo) {
     return (
