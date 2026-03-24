@@ -41,6 +41,7 @@ class TriggerService:
             sli_repo=self._repos.sli_def_repo,
             slo_repo=self._repos.slo_repo,
             ds_repo=self._repos.ds_repo,
+            binding_repo=self._repos.binding_repo,
         )
 
         # Duplicate prevention: app-level check for clean error messages.
@@ -182,6 +183,7 @@ class TriggerService:
                         sli_repo=self._repos.sli_def_repo,
                         slo_repo=self._repos.slo_repo,
                         ds_repo=self._repos.ds_repo,
+                        binding_repo=self._repos.binding_repo,
                     )
                 except EvaluationError:
                     continue

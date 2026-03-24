@@ -9,7 +9,7 @@ from __future__ import annotations
 import uuid
 from typing import Protocol
 
-from app.db.models import Asset, AssetSLOLink, DataSource, SLIDefinition, SLODefinition
+from app.db.models import Asset, AssetSLOLink, DataSource, SLIDefinition, SLOBinding, SLODefinition
 
 
 class AssetReader(Protocol):
@@ -49,6 +49,14 @@ class SLOReader(Protocol):
 
     async def get_version(self, name: str, version: int) -> SLODefinition | None:
         """Return a specific version, or None."""
+        ...
+
+
+class SLOBindingReader(Protocol):
+    """Read-only protocol for SLO binding lookup."""
+
+    async def find_for_asset(self, asset_id: uuid.UUID, slo_name: str) -> SLOBinding | None:
+        """Find a binding for an asset+SLO pair (direct or via group)."""
         ...
 
 
