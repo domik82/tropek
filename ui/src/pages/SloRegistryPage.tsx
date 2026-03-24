@@ -16,6 +16,7 @@ import { useAllGroupLinks } from '@/features/registry/useAllGroupLinks'
 import { useDatasource } from '@/features/datasources/hooks'
 import type { RegistryMode, SelectedNode } from '@/features/registry/types'
 import type { SloDefinition } from '@/features/slos/types'
+import type { SliDefinition } from '@/features/slis/types'
 
 export function SloRegistryPage() {
   const [searchParams, setSearchParams] = useSearchParams()
@@ -36,6 +37,7 @@ export function SloRegistryPage() {
   const [dsEditName, setDsEditName] = useState<string | undefined>()
   const [sliFormOpen, setSliFormOpen] = useState(false)
   const [sliDefaultAdapter, setSliDefaultAdapter] = useState<string | undefined>()
+  const [sliEditFrom, setSliEditFrom] = useState<SliDefinition | undefined>()
   const [linkDialogOpen, setLinkDialogOpen] = useState(false)
   const [linkLockedGroup, setLinkLockedGroup] = useState<string | undefined>()
 
@@ -145,6 +147,11 @@ export function SloRegistryPage() {
     setWizardOpen(true)
   }, [])
 
+  const handleNewSliVersion = useCallback((sli: SliDefinition) => {
+    setSliEditFrom(sli)
+    setSliFormOpen(true)
+  }, [])
+
   const handleLinkSlo = useCallback((groupName: string) => {
     setLinkLockedGroup(groupName)
     setLinkDialogOpen(true)
@@ -185,6 +192,7 @@ export function SloRegistryPage() {
             onNavigate={handleNavigate}
             onEditDatasource={handleEditDatasource}
             onNewSloVersion={handleNewSloVersion}
+            onNewSliVersion={handleNewSliVersion}
             onLinkSlo={handleLinkSlo}
             groupLinksMap={groupLinksMap}
           />
@@ -199,8 +207,9 @@ export function SloRegistryPage() {
       />
       <SliForm
         open={sliFormOpen}
-        onOpenChange={setSliFormOpen}
+        onOpenChange={(open) => { setSliFormOpen(open); if (!open) setSliEditFrom(undefined) }}
         defaultAdapterType={sliDefaultAdapter}
+        editFrom={sliEditFrom}
       />
       <SloLinkDialogRevised
         open={linkDialogOpen}

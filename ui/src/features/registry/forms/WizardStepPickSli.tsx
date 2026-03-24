@@ -22,7 +22,7 @@ export function WizardStepPickSli({ data, onChange, editIndicatorNames }: Wizard
   const { data: sliDefs } = useSliDefinitions(selectedDs?.adapter_type)
   const autoSelectedRef = useRef(false)
 
-  // Auto-select SLI definition whose indicator keys overlap with edit objectives
+  // Auto-select SLI definition (and matching datasource) whose indicator keys overlap with edit objectives
   useEffect(() => {
     if (autoSelectedRef.current || !editIndicatorNames?.length || !sliDefs?.length) return
     if (data.sliName) return // already selected
@@ -34,9 +34,16 @@ export function WizardStepPickSli({ data, onChange, editIndicatorNames }: Wizard
     })
     if (match) {
       autoSelectedRef.current = true
-      onChange({ ...data, sliName: match.name, indicators: match.indicators })
+      // Also find a datasource matching this SLI's adapter type
+      const matchingDs = datasources?.find((ds) => ds.adapter_type === match.adapter_type)
+      onChange({
+        ...data,
+        datasource: matchingDs?.name ?? data.datasource,
+        sliName: match.name,
+        indicators: match.indicators,
+      })
     }
-  }, [sliDefs, editIndicatorNames, data, onChange])
+  }, [sliDefs, datasources, editIndicatorNames, data, onChange])
 
   const dsItems = (datasources ?? []).map((ds) => ({
     value: ds.name,

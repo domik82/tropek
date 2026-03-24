@@ -73,12 +73,16 @@ export function RegistryDetailPanel({
   }
 
   // asset, group, binding — show binding context
+  // For group nodes, the group name IS selected.name; for asset/binding nodes it's in groupName
+  const isGroup = selected.type === 'group'
+  const groupName = isGroup ? selected.name : (selected.groupName ?? '')
   return (
     <AssetBindingView
       assetName={selected.name}
-      groupName={selected.groupName ?? ''}
+      groupName={groupName}
+      isGroup={isGroup}
       onNavigate={onNavigate}
-      onLinkSlo={() => onLinkSlo?.(selected.groupName ?? '')}
+      onLinkSlo={() => onLinkSlo?.(groupName)}
     />
   )
 }
