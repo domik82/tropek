@@ -16,6 +16,7 @@ from app.modules.assets.repository import (
     AssetRepository,
     AssetSLOLinkRepository,
     AssetTypeRepository,
+    SLOBindingRepository,
 )
 from app.modules.assets.schemas import (
     AddMemberRequest,
@@ -35,13 +36,44 @@ from app.modules.assets.schemas import (
     AssetTypeUpdate,
     AssetUpdate,
     ComparisonRulesUpdate,
+    SLOBindingCreate,
+    SLOBindingRead,
     TagKeyCount,
     TagValueCount,
 )
 from app.modules.common.errors import raise_not_found
 from app.modules.common.schemas import PagedResponse
+from app.modules.datasource.repository import DataSourceRepository
+from app.modules.sli_registry.repository import SLIRepository
+from app.modules.slo_registry.repository import SLORepository
 
 router = APIRouter()
+
+
+async def _validate_binding_adapter_type(
+    session: AsyncSession, slo_name: str, data_source_name: str
+) -> None:
+    """Validate datasource adapter_type matches SLO's SLI adapter_type."""
+    slo_repo = SLORepository(session)
+    slo_def = await slo_repo.get_latest(slo_name)
+    if slo_def is None:
+        raise HTTPException(status_code=422, detail=f"slo definition '{slo_name}' not found")
+    ds_repo = DataSourceRepository(session)
+    ds = await ds_repo.get_by_name(data_source_name)
+    if ds is None:
+        raise HTTPException(status_code=422, detail=f"datasource '{data_source_name}' not found")
+    if slo_def.sli_name:
+        sli_repo = SLIRepository(session)
+        sli_def = (
+            await sli_repo.get_version(slo_def.sli_name, slo_def.sli_version)
+            if slo_def.sli_version
+            else await sli_repo.get_latest(slo_def.sli_name)
+        )
+        if sli_def and sli_def.adapter_type != ds.adapter_type:
+            raise HTTPException(
+                status_code=422,
+                detail=f"datasource adapter_type '{ds.adapter_type}' does not match sli adapter_type '{sli_def.adapter_type}'",
+            )
 
 
 # ---- Asset Types ----
@@ -510,3 +542,110 @@ async def delete_group_slo_link(
         raise_not_found("asset group", name)
     link_repo = AssetGroupSLOLinkRepository(session)
     await link_repo.delete(group.id, link_name)
+
+
+# ---- SLO Bindings (new model) ----
+
+
+@router.get("/assets/{name}/slo-bindings", response_model=list[SLOBindingRead])
+async def list_asset_slo_bindings(
+    name: str,
+    session: AsyncSession = Depends(get_session),  # noqa: B008
+) -> list[SLOBindingRead]:
+    """List all SLO bindings for an asset."""
+    asset_repo = AssetRepository(session)
+    asset = await asset_repo.get_by_name(name)
+    if asset is None:
+        raise_not_found("asset", name)
+    binding_repo = SLOBindingRepository(session)
+    bindings = await binding_repo.list_by_target("asset", asset.id)
+    return [SLOBindingRead.model_validate(b) for b in bindings]
+
+
+@router.post("/assets/{name}/slo-bindings", response_model=SLOBindingRead, status_code=201)
+async def create_asset_slo_binding(
+    name: str,
+    body: SLOBindingCreate,
+    session: AsyncSession = Depends(get_session),  # noqa: B008
+) -> SLOBindingRead:
+    """Create an SLO binding for an asset."""
+    asset_repo = AssetRepository(session)
+    asset = await asset_repo.get_by_name(name)
+    if asset is None:
+        raise_not_found("asset", name)
+    await _validate_binding_adapter_type(session, body.slo_name, body.data_source_name)
+    binding_repo = SLOBindingRepository(session)
+    binding = await binding_repo.create(
+        target_type="asset",
+        target_id=asset.id,
+        slo_name=body.slo_name,
+        data_source_name=body.data_source_name,
+    )
+    return SLOBindingRead.model_validate(binding)
+
+
+@router.delete("/assets/{name}/slo-bindings/{slo_name}", status_code=204)
+async def delete_asset_slo_binding(
+    name: str,
+    slo_name: str,
+    session: AsyncSession = Depends(get_session),  # noqa: B008
+) -> None:
+    """Delete an SLO binding from an asset."""
+    asset_repo = AssetRepository(session)
+    asset = await asset_repo.get_by_name(name)
+    if asset is None:
+        raise_not_found("asset", name)
+    binding_repo = SLOBindingRepository(session)
+    await binding_repo.delete_by_target_and_slo("asset", asset.id, slo_name)
+
+
+@router.get("/asset-groups/{name}/slo-bindings", response_model=list[SLOBindingRead])
+async def list_group_slo_bindings(
+    name: str,
+    session: AsyncSession = Depends(get_session),  # noqa: B008
+) -> list[SLOBindingRead]:
+    """List all SLO bindings for an asset group."""
+    group_repo = AssetGroupRepository(session)
+    group = await group_repo.get_by_name(name)
+    if group is None:
+        raise_not_found("asset group", name)
+    binding_repo = SLOBindingRepository(session)
+    bindings = await binding_repo.list_by_target("asset_group", group.id)
+    return [SLOBindingRead.model_validate(b) for b in bindings]
+
+
+@router.post("/asset-groups/{name}/slo-bindings", response_model=SLOBindingRead, status_code=201)
+async def create_group_slo_binding(
+    name: str,
+    body: SLOBindingCreate,
+    session: AsyncSession = Depends(get_session),  # noqa: B008
+) -> SLOBindingRead:
+    """Create an SLO binding for an asset group."""
+    group_repo = AssetGroupRepository(session)
+    group = await group_repo.get_by_name(name)
+    if group is None:
+        raise_not_found("asset group", name)
+    await _validate_binding_adapter_type(session, body.slo_name, body.data_source_name)
+    binding_repo = SLOBindingRepository(session)
+    binding = await binding_repo.create(
+        target_type="asset_group",
+        target_id=group.id,
+        slo_name=body.slo_name,
+        data_source_name=body.data_source_name,
+    )
+    return SLOBindingRead.model_validate(binding)
+
+
+@router.delete("/asset-groups/{name}/slo-bindings/{slo_name}", status_code=204)
+async def delete_group_slo_binding(
+    name: str,
+    slo_name: str,
+    session: AsyncSession = Depends(get_session),  # noqa: B008
+) -> None:
+    """Delete an SLO binding from an asset group."""
+    group_repo = AssetGroupRepository(session)
+    group = await group_repo.get_by_name(name)
+    if group is None:
+        raise_not_found("asset group", name)
+    binding_repo = SLOBindingRepository(session)
+    await binding_repo.delete_by_target_and_slo("asset_group", group.id, slo_name)
