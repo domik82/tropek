@@ -771,6 +771,41 @@ class SLOBindingRepository:
             )
         )
 
+    async def find_for_asset(
+        self,
+        asset_id: uuid.UUID,
+        slo_name: str,
+    ) -> SLOBinding | None:
+        """Find a binding for an asset+SLO pair (direct or via group membership)."""
+        # Direct asset binding
+        result = await self._session.execute(
+            select(SLOBinding).where(
+                SLOBinding.target_type == "asset",
+                SLOBinding.target_id == asset_id,
+                SLOBinding.slo_name == slo_name,
+            )
+        )
+        direct = result.scalar_one_or_none()
+        if direct is not None:
+            return direct
+
+        # Group-level binding: find groups the asset belongs to, then check bindings
+        group_result = await self._session.execute(
+            select(AssetGroupMember.group_id).where(AssetGroupMember.asset_id == asset_id)
+        )
+        group_ids = [row[0] for row in group_result.all()]
+        if not group_ids:
+            return None
+
+        result = await self._session.execute(
+            select(SLOBinding).where(
+                SLOBinding.target_type == "asset_group",
+                SLOBinding.target_id.in_(group_ids),
+                SLOBinding.slo_name == slo_name,
+            )
+        )
+        return result.scalars().first()
+
     async def list_by_datasource(self, data_source_name: str) -> list[SLOBinding]:
         """Check if any bindings reference this datasource (for deletion guard)."""
         result = await self._session.execute(
