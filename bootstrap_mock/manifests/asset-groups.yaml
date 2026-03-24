@@ -78,6 +78,60 @@ spec:
 api_version: tropek/v1
 kind: AssetGroup
 metadata:
+  name: vm-prod-web
+  display_name: Production Web VMs
+spec:
+  members:
+    - asset_name: vm-prod-web-01
+      weight: 1.0
+    - asset_name: vm-prod-web-02
+      weight: 1.0
+    - asset_name: vm-prod-web-03
+      weight: 1.0
+    - asset_name: vm-prod-web-04
+      weight: 1.0
+    - asset_name: vm-prod-web-05
+      weight: 1.0
+---
+api_version: tropek/v1
+kind: AssetGroup
+metadata:
+  name: vm-stg-web
+  display_name: Staging Web VMs
+spec:
+  members:
+    - asset_name: vm-stg-web-01
+      weight: 1.0
+    - asset_name: vm-stg-web-02
+      weight: 1.0
+    - asset_name: vm-stg-web-03
+      weight: 1.0
+    - asset_name: vm-stg-web-04
+      weight: 1.0
+    - asset_name: vm-stg-web-05
+      weight: 1.0
+---
+api_version: tropek/v1
+kind: AssetGroup
+metadata:
+  name: office-laptops
+  display_name: Office Laptops
+spec:
+  members:
+    - asset_name: laptop-user-01
+      weight: 1.0
+    - asset_name: laptop-user-02
+      weight: 1.0
+    - asset_name: laptop-user-03
+      weight: 1.0
+    - asset_name: laptop-user-04
+      weight: 1.0
+    - asset_name: laptop-user-05
+      weight: 1.0
+---
+api_version: tropek/v1
+kind: AssetGroup
+metadata:
   name: infrastructure
   display_name: Infrastructure
 spec:
@@ -87,6 +141,10 @@ spec:
     - group_name: infra-staging
       weight: 1.0
     - group_name: infra-monitoring
+      weight: 1.0
+    - group_name: vm-prod-web
+      weight: 1.0
+    - group_name: vm-stg-web
       weight: 1.0
 ---
 api_version: tropek/v1

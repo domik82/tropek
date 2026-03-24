@@ -33,3 +33,43 @@ spec:
   indicators:
     query_latency_p99: 'histogram_quantile(0.99, rate(pg_query_duration_seconds_bucket{instance="$instance"}[5m]))'
     connection_saturation: 'pg_stat_activity_count{instance="$instance"} / pg_settings_max_connections{instance="$instance"}'
+---
+api_version: tropek/v1
+kind: SLI
+metadata:
+  name: vm-resources-sli
+  display_name: VM Resource Indicators
+  author: bootstrap
+  notes: CPU, memory, disk and network indicators for Linux/Windows VMs via node_exporter.
+  tags:
+    domain: infrastructure
+    category: compute-resources
+    os: linux
+spec:
+  adapter_type: prometheus
+  indicators:
+    cpu_usage_pct: '100 - (avg(rate(node_cpu_seconds_total{instance="$instance",mode="idle"}[5m])) * 100)'
+    memory_usage_pct: '(1 - node_memory_MemAvailable_bytes{instance="$instance"} / node_memory_MemTotal_bytes{instance="$instance"}) * 100'
+    disk_usage_pct: '(1 - node_filesystem_avail_bytes{instance="$instance",mountpoint="/"} / node_filesystem_size_bytes{instance="$instance",mountpoint="/"}) * 100'
+    disk_io_rate: 'rate(node_disk_io_time_seconds_total{instance="$instance"}[5m])'
+    network_in_rate: 'rate(node_network_receive_bytes_total{instance="$instance",device="eth0"}[5m])'
+    network_out_rate: 'rate(node_network_transmit_bytes_total{instance="$instance",device="eth0"}[5m])'
+---
+api_version: tropek/v1
+kind: SLI
+metadata:
+  name: process-resources-sli
+  display_name: Process Resource Indicators
+  author: bootstrap
+  notes: Per-process CPU, memory, handle and I/O indicators via windows_exporter.
+  tags:
+    domain: endpoint-monitoring
+    category: process-resources
+    os: windows
+spec:
+  adapter_type: prometheus
+  indicators:
+    process_cpu_pct: 'rate(windows_process_cpu_time_total{instance="$host",process="$process_name"}[5m]) * 100'
+    process_memory_mb: 'windows_process_working_set_bytes{instance="$host",process="$process_name"} / 1048576'
+    process_handles: 'windows_process_handle_count{instance="$host",process="$process_name"}'
+    process_io_bytes: 'rate(windows_process_io_bytes_total{instance="$host",process="$process_name"}[5m])'
