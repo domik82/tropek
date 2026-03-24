@@ -298,3 +298,15 @@ class AssetGroupSLOLink(BaseModel):
     slo_name: str
     sli_name: str
     data_source_name: str
+
+
+class SLOBinding(BaseModel):
+    """SLO binding (new model — links an SLO to an asset or group via a data source)."""
+
+    id: str
+    target_type: str
+    target_id: str
+    slo_name: str
+    data_source_name: str
+    comparison_rules: list[dict[str, Any]] | None = None
+    created_at: str

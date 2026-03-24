@@ -28,6 +28,9 @@ export interface SloDefinition {
   notes: string | null
   tags: Record<string, string>
   variables: Record<string, string>
+  kind: 'standard' | 'template'
+  sli_name: string | null
+  sli_version: number | null
   created_at: string
   active: boolean
   objectives: SloObjective[]
@@ -42,23 +45,23 @@ export interface SloValidationResult {
   objectives?: SloObjective[]
 }
 
-export interface AssetGroupSLOLink {
-  id: string
-  link_name: string
-  group_id: string
-  slo_name: string
-  sli_name: string
-  data_source_name: string
-  created_at: string
-}
-
-export interface AssetGroupSLOLinkCreate {
-  slo_name: string
-  sli_name: string
-  data_source_name: string
-}
 
 export interface AssetGroupUpdate {
   display_name?: string
   description?: string
+}
+
+export interface SloBinding {
+  id: string
+  target_type: 'asset' | 'asset_group'
+  target_id: string
+  slo_name: string
+  data_source_name: string
+  comparison_rules: Record<string, unknown>[] | null
+  created_at: string
+}
+
+export interface SloBindingCreate {
+  slo_name: string
+  data_source_name: string
 }

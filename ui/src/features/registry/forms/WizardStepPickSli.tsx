@@ -1,11 +1,10 @@
-import { useEffect, useRef } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { SearchableComboBox } from '@/components/shared/SearchableComboBox'
-import { useDatasources } from '@/features/datasources/hooks'
-import { useSliDefinitions } from '@/features/slis/hooks'
+import { useSliDefinitions, useSliTagKeys, useSliTagValues } from '@/features/slis/hooks'
 
 export interface PickSliData {
-  datasource: string
   sliName: string
+  sliVersion: number | null
   indicators: Record<string, string>
 }
 
@@ -16,13 +15,81 @@ interface WizardStepPickSliProps {
   editIndicatorNames?: string[]
 }
 
+function TagChips({
+  selectedTags,
+  onToggle,
+}: {
+  selectedTags: Record<string, string>
+  onToggle: (key: string, value: string) => void
+}) {
+  const { data: tagKeys } = useSliTagKeys()
+  const [expandedKey, setExpandedKey] = useState<string | null>(null)
+  const { data: tagValues } = useSliTagValues(expandedKey ?? '')
+
+  if (!tagKeys?.length) return null
+
+  return (
+    <div className="space-y-1.5">
+      <label className="block text-xs text-muted-foreground">Filter by tags</label>
+      <div className="flex flex-wrap gap-1.5">
+        {tagKeys.map(({ key }) => {
+          const activeValue = selectedTags[key]
+          const isExpanded = expandedKey === key
+
+          if (activeValue) {
+            return (
+              <button
+                key={key}
+                type="button"
+                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-primary/15 text-primary transition-colors hover:bg-primary/25"
+                onClick={() => onToggle(key, activeValue)}
+              >
+                {key}: {activeValue}
+                <span className="text-[9px] opacity-60">&times;</span>
+              </button>
+            )
+          }
+
+          return (
+            <div key={key} className="relative">
+              <button
+                type="button"
+                className="px-2 py-0.5 rounded-full text-[11px] font-medium bg-muted text-muted-foreground transition-colors hover:text-foreground"
+                onClick={() => setExpandedKey(isExpanded ? null : key)}
+              >
+                {key}
+              </button>
+              {isExpanded && tagValues && (
+                <div className="absolute top-full left-0 mt-1 z-10 bg-popover border border-border rounded shadow-md p-1 min-w-[100px]">
+                  {tagValues.map(({ value }) => (
+                    <button
+                      key={value}
+                      type="button"
+                      className="block w-full text-left px-2 py-1 text-[11px] text-muted-foreground hover:text-foreground hover:bg-muted/50 rounded"
+                      onClick={() => {
+                        onToggle(key, value)
+                        setExpandedKey(null)
+                      }}
+                    >
+                      {value}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
 export function WizardStepPickSli({ data, onChange, editIndicatorNames }: WizardStepPickSliProps) {
-  const { data: datasources } = useDatasources()
-  const selectedDs = datasources?.find((ds) => ds.name === data.datasource)
-  const { data: sliDefs } = useSliDefinitions(selectedDs?.adapter_type)
+  const [selectedTags, setSelectedTags] = useState<Record<string, string>>({})
+  const { data: sliDefs } = useSliDefinitions()
   const autoSelectedRef = useRef(false)
 
-  // Auto-select SLI definition (and matching datasource) whose indicator keys overlap with edit objectives
+  // Auto-select SLI definition whose indicator keys overlap with edit objectives
   useEffect(() => {
     if (autoSelectedRef.current || !editIndicatorNames?.length || !sliDefs?.length) return
     if (data.sliName) return // already selected
@@ -34,31 +101,37 @@ export function WizardStepPickSli({ data, onChange, editIndicatorNames }: Wizard
     })
     if (match) {
       autoSelectedRef.current = true
-      // Also find a datasource matching this SLI's adapter type
-      const matchingDs = datasources?.find((ds) => ds.adapter_type === match.adapter_type)
       onChange({
         ...data,
-        datasource: matchingDs?.name ?? data.datasource,
         sliName: match.name,
+        sliVersion: match.version,
         indicators: match.indicators,
       })
     }
-  }, [sliDefs, datasources, editIndicatorNames, data, onChange])
+  }, [sliDefs, editIndicatorNames, data, onChange])
 
-  const dsItems = (datasources ?? []).map((ds) => ({
-    value: ds.name,
-    label: ds.display_name ?? ds.name,
-    badge: ds.adapter_type,
-  }))
+  const filteredSlis = (sliDefs ?? []).filter((sli) => {
+    return Object.entries(selectedTags).every(
+      ([key, val]) => sli.tags?.[key] === val,
+    )
+  })
 
-  const sliItems = (sliDefs ?? []).map((sli) => ({
+  const sliItems = filteredSlis.map((sli) => ({
     value: sli.name,
     label: sli.display_name ?? sli.name,
     badge: sli.adapter_type,
   }))
 
-  function handleDatasourceSelect(dsName: string) {
-    onChange({ ...data, datasource: dsName, sliName: '', indicators: {} })
+  function handleTagToggle(key: string, value: string) {
+    setSelectedTags((prev) => {
+      const next = { ...prev }
+      if (next[key] === value) {
+        delete next[key]
+      } else {
+        next[key] = value
+      }
+      return next
+    })
   }
 
   function handleSliSelect(sliName: string) {
@@ -66,6 +139,7 @@ export function WizardStepPickSli({ data, onChange, editIndicatorNames }: Wizard
     onChange({
       ...data,
       sliName,
+      sliVersion: sli?.version ?? null,
       indicators: sli?.indicators ?? {},
     })
   }
@@ -77,35 +151,23 @@ export function WizardStepPickSli({ data, onChange, editIndicatorNames }: Wizard
         <h3 className="text-sm font-semibold text-foreground">Pick SLI</h3>
       </div>
 
-      <div>
-        <label className="block text-xs text-muted-foreground mb-1">Datasource</label>
-        <SearchableComboBox
-          value={data.datasource}
-          items={dsItems}
-          onSelect={handleDatasourceSelect}
-          placeholder="Select datasource..."
-        />
-      </div>
+      <TagChips selectedTags={selectedTags} onToggle={handleTagToggle} />
 
       <div>
         <label className="block text-xs text-muted-foreground mb-1">
           SLI Definition
-          {selectedDs && (
-            <span className="ml-1 text-[10px] opacity-60 normal-case">— filtered to {selectedDs.adapter_type}</span>
+          {Object.keys(selectedTags).length > 0 && (
+            <span className="ml-1 text-[10px] opacity-60 normal-case">
+              — {filteredSlis.length} match{filteredSlis.length !== 1 ? 'es' : ''}
+            </span>
           )}
         </label>
-        {data.datasource ? (
-          <SearchableComboBox
-            value={data.sliName}
-            items={sliItems}
-            onSelect={handleSliSelect}
-            placeholder="Select SLI definition..."
-          />
-        ) : (
-          <div className="rounded border border-border bg-popover px-3 py-2 text-sm text-muted-foreground opacity-60">
-            Select a datasource first
-          </div>
-        )}
+        <SearchableComboBox
+          value={data.sliName}
+          items={sliItems}
+          onSelect={handleSliSelect}
+          placeholder="Select SLI definition..."
+        />
       </div>
     </div>
   )

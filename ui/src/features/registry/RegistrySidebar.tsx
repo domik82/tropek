@@ -2,13 +2,14 @@ import { useState, useMemo, useRef, useEffect } from 'react'
 import { useQueries } from '@tanstack/react-query'
 import { Plus } from 'lucide-react'
 import { ENTITY_COLORS } from '@/lib/entity-colors'
+import { SANS_SERIF } from '@/lib/fonts'
 import { groupKeys } from '@/lib/queryKeys'
 import { TagFilterBar } from '@/components/shared/TagFilterBar'
 import { RegistryTree } from './RegistryTree'
 import { buildSloTree, buildDatasourceTree, buildAssetTree, filterTree } from './useRegistryTree'
-import type { MinLink } from './useRegistryTree'
+import type { MinBinding } from './useRegistryTree'
 import { useSlos, useGroupTree, useSloTagKeys, useSloTagValues } from '@/features/slos/hooks'
-import { fetchGroupSloLinks } from '@/features/slos/api'
+import { fetchGroupSloBindings } from '@/features/slos/api'
 import { useSliDefinitions } from '@/features/slis/hooks'
 import { useDatasources, useDatasourceTagKeys, useDatasourceTagValues } from '@/features/datasources/hooks'
 import { useTagKeys, useTagValues } from '@/features/assets/hooks'
@@ -64,47 +65,46 @@ export function RegistrySidebar({ mode, onModeChange, selected, onSelect, onCrea
   const isLoadingValues =
     mode === 'slo' ? sloValsLoading : mode === 'datasource' ? dsValsLoading : assetValsLoading
 
-  // Fetch SLO links for all groups to build hierarchical trees
+  // Fetch SLO bindings for all groups to build hierarchical trees
   const groupNames = useMemo(
     () => (tree?.all_groups ?? []).map(g => g.name).filter(n => n !== '__ungrouped__'),
     [tree],
   )
-  const linkQueries = useQueries({
+  const bindingQueries = useQueries({
     queries: groupNames.map(name => ({
-      queryKey: groupKeys.links(name),
-      queryFn: () => fetchGroupSloLinks(name),
+      queryKey: groupKeys.bindings(name),
+      queryFn: () => fetchGroupSloBindings(name),
     })),
   })
 
-  const { allLinks, groupLinksMap } = useMemo(() => {
-    const flat: MinLink[] = []
-    const byGroup: Record<string, MinLink[]> = {}
+  const { allBindings, groupBindingsMap } = useMemo(() => {
+    const flat: MinBinding[] = []
+    const byGroup: Record<string, MinBinding[]> = {}
     for (let i = 0; i < groupNames.length; i++) {
-      const data = linkQueries[i]?.data ?? []
-      const links: MinLink[] = data.map(l => ({
-        slo_name: l.slo_name,
-        sli_name: l.sli_name,
-        data_source_name: l.data_source_name,
+      const data = bindingQueries[i]?.data ?? []
+      const bindings: MinBinding[] = data.map(b => ({
+        slo_name: b.slo_name,
+        data_source_name: b.data_source_name,
       }))
-      byGroup[groupNames[i]] = links
-      flat.push(...links)
+      byGroup[groupNames[i]] = bindings
+      flat.push(...bindings)
     }
-    // Deduplicate flat links for SLO/DS trees
+    // Deduplicate flat bindings for SLO/DS trees
     const seen = new Set<string>()
-    const unique = flat.filter(l => {
-      const key = `${l.slo_name}|${l.sli_name}|${l.data_source_name}`
+    const unique = flat.filter(b => {
+      const key = `${b.slo_name}|${b.data_source_name}`
       if (seen.has(key)) return false
       seen.add(key)
       return true
     })
-    return { allLinks: unique, groupLinksMap: byGroup }
-  }, [groupNames, linkQueries])
+    return { allBindings: unique, groupBindingsMap: byGroup }
+  }, [groupNames, bindingQueries])
 
   const treeNodes = useMemo(() => {
-    if (mode === 'slo') return buildSloTree(slos ?? [], slis ?? [], datasources ?? [], allLinks)
-    if (mode === 'datasource') return buildDatasourceTree(datasources ?? [], slis ?? [], slos ?? [], allLinks)
-    return buildAssetTree(tree?.all_groups ?? [], groupLinksMap)
-  }, [mode, slos, slis, datasources, tree, allLinks, groupLinksMap])
+    if (mode === 'slo') return buildSloTree(slos ?? [], slis ?? [], datasources ?? [], allBindings)
+    if (mode === 'datasource') return buildDatasourceTree(datasources ?? [], slis ?? [], slos ?? [], allBindings)
+    return buildAssetTree(tree?.all_groups ?? [], groupBindingsMap, slos ?? [], slis ?? [])
+  }, [mode, slos, slis, datasources, tree, allBindings, groupBindingsMap])
 
   const filteredNodes = useMemo(() => filterTree(treeNodes, search), [treeNodes, search])
 
@@ -174,10 +174,10 @@ function CreateDropdown({
   }, [open])
 
   const items = [
-    { type: 'slo' as const, label: 'New SLO', color: ENTITY_COLORS.slo },
-    { type: 'sli' as const, label: 'New SLI Definition', color: ENTITY_COLORS.sli },
-    { type: 'datasource' as const, label: 'New Datasource', color: ENTITY_COLORS.ds },
-    { type: 'group' as const, label: 'New Asset Group', color: ENTITY_COLORS.group },
+    { type: 'slo' as const, label: 'New SLO', desc: 'Versioned quality gate definition', color: ENTITY_COLORS.slo },
+    { type: 'sli' as const, label: 'New SLI Definition', desc: 'Service level indicator template', color: ENTITY_COLORS.sli },
+    { type: 'datasource' as const, label: 'New Datasource', desc: 'Metric source connection', color: ENTITY_COLORS.ds },
+    { type: 'group' as const, label: 'New Asset Group', desc: 'Group assets and bind SLOs', color: ENTITY_COLORS.group },
   ]
 
   return (
@@ -190,20 +190,26 @@ function CreateDropdown({
       </button>
       {open && (
         <div
-          className="absolute bottom-full mb-1 left-0 w-full bg-popover border border-border rounded-lg shadow-lg py-1 z-50"
-          style={{ fontFamily: "system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" }}
+          className="absolute bottom-full mb-1 left-0 w-full min-w-[280px] bg-popover border border-border rounded-xl shadow-xl overflow-hidden py-2 z-50"
+          style={{ fontFamily: SANS_SERIF }}
         >
           {items.map(item => (
             <button
               key={item.type}
-              className="w-full px-3 py-1.5 text-xs text-left hover:bg-accent transition-colors flex items-center gap-2"
+              className="flex items-start gap-3 w-full text-left px-3 py-2.5 transition-colors hover:bg-accent group"
               onClick={() => {
                 onCreateAction(item.type)
                 setOpen(false)
               }}
             >
-              <span className="w-1 h-4 rounded-full" style={{ backgroundColor: item.color }} />
-              {item.label}
+              <div
+                className="w-[3px] rounded-full shrink-0 mt-0.5"
+                style={{ backgroundColor: item.color, height: 36 }}
+              />
+              <div className="min-w-0">
+                <div className="text-[13px] font-medium text-popover-foreground">{item.label}</div>
+                <div className="text-[11px] text-muted-foreground mt-0.5">{item.desc}</div>
+              </div>
             </button>
           ))}
         </div>

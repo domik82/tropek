@@ -27,6 +27,7 @@ def _make_repos() -> QualityGateRepos:
         asset_group_repo=AsyncMock(),
         slo_link_repo=AsyncMock(),
         group_link_repo=AsyncMock(),
+        binding_repo=AsyncMock(),
         sli_def_repo=AsyncMock(),
         slo_repo=AsyncMock(),
         ds_repo=AsyncMock(),

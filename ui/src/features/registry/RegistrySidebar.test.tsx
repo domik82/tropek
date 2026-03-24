@@ -15,8 +15,8 @@ describe('RegistrySidebar', () => {
     selected: null as SelectedNode | null,
     onSelect: vi.fn(),
     onCreateAction: vi.fn() as (type: 'datasource' | 'sli' | 'slo' | 'group', context?: { adapterType?: string }) => void,
-    allLinks: [] as { slo_name: string; sli_name: string; data_source_name: string }[],
-    groupLinksMap: {} as Record<string, { slo_name: string; sli_name: string; data_source_name: string }[]>,
+    allBindings: [] as { slo_name: string; data_source_name: string }[],
+    groupBindingsMap: {} as Record<string, { slo_name: string; data_source_name: string }[]>,
   }
 
   it('renders segmented control with Asset as default/first', () => {

@@ -14,6 +14,9 @@ vi.mock('@/features/datasources/hooks', () => ({
 
 vi.mock('@/features/slis/hooks', () => ({
   useSliDefinitions: vi.fn().mockReturnValue({ data: [] }),
+  useSliDetail: vi.fn().mockReturnValue({ data: null }),
+  useSliTagKeys: vi.fn().mockReturnValue({ data: [] }),
+  useSliTagValues: vi.fn().mockReturnValue({ data: [] }),
 }))
 
 import { useCreateSlo } from '@/features/slos/hooks'
@@ -60,6 +63,9 @@ const mockSlo: SloDefinition = {
     aggregate_function: 'avg',
     include_result_with_score: 'pass_or_warn',
   },
+  kind: 'standard',
+  sli_name: null,
+  sli_version: null,
 }
 
 function Wrapper({ children }: { children: React.ReactNode }) {

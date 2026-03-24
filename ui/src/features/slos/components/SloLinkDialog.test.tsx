@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { SloLinkDialog } from './SloLinkDialog'
 
-const mockCreateLink = vi.fn().mockResolvedValue({})
+const mockCreateBinding = vi.fn().mockResolvedValue({})
 
 vi.mock('@/features/datasources/hooks', () => ({
   useDatasources: () => ({
@@ -32,8 +32,8 @@ vi.mock('../hooks', () => ({
       { name: 'latency-slo', display_name: 'Latency SLO', active: true },
     ],
   }),
-  useGroupSloLinks: () => ({ data: [] }),
-  useCreateGroupSloLink: () => ({ mutateAsync: mockCreateLink, isPending: false }),
+  useGroupSloBindings: () => ({ data: [] }),
+  useCreateGroupSloBinding: () => ({ mutateAsync: mockCreateBinding, isPending: false }),
 }))
 
 describe('SloLinkDialog', () => {
@@ -115,10 +115,9 @@ describe('SloLinkDialog', () => {
     fireEvent.click(screen.getByText('Link'))
 
     await waitFor(() => {
-      expect(mockCreateLink).toHaveBeenCalledWith({
+      expect(mockCreateBinding).toHaveBeenCalledWith({
         groupName: 'production',
         slo_name: 'latency-slo',
-        sli_name: 'response-time',
         data_source_name: 'prom-prod',
       })
     })

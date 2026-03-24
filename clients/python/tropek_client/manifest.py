@@ -18,6 +18,7 @@ _KIND_ORDER = [
     "AssetGroup",
     "AssetSLOLink",
     "AssetGroupSLOLink",
+    "SLOBinding",
 ]
 
 
@@ -117,6 +118,40 @@ def _topological_sort(docs: list[ManifestDocument]) -> list[ManifestDocument]:
     return sorted(docs, key=sort_key)
 
 
+def _validate_doc_refs(
+    doc: ManifestDocument, names_by_kind: dict[str, set[str]], errors: list[str]
+) -> None:
+    """Validate cross-references in a single manifest document (appends warnings to errors)."""
+    doc_name = doc.metadata.get("name", "")
+    if doc.kind == "Asset":
+        type_name = doc.spec.get("type_name")
+        if type_name and type_name not in names_by_kind.get("AssetType", set()):
+            errors.append(
+                f"WARNING: Asset '{doc_name}' references AssetType "
+                f"'{type_name}' not found in manifest (may exist in API)"
+            )
+    elif doc.kind in ("AssetSLOLink", "AssetGroupSLOLink"):
+        for ref_field, ref_kind in [
+            ("slo_name", "SLO"),
+            ("sli_name", "SLI"),
+            ("data_source_name", "DataSource"),
+        ]:
+            ref_val = doc.spec.get(ref_field)
+            if ref_val and ref_val not in names_by_kind.get(ref_kind, set()):
+                errors.append(
+                    f"WARNING: {doc.kind} '{doc_name}' references {ref_kind} "
+                    f"'{ref_val}' not found in manifest (may exist in API)"
+                )
+    elif doc.kind == "SLOBinding":
+        for ref_field, ref_kind in [("slo_name", "SLO"), ("data_source_name", "DataSource")]:
+            ref_val = doc.spec.get(ref_field)
+            if ref_val and ref_val not in names_by_kind.get(ref_kind, set()):
+                errors.append(
+                    f"WARNING: SLOBinding '{doc_name}' references {ref_kind} "
+                    f"'{ref_val}' not found in manifest (may exist in API)"
+                )
+
+
 def validate_manifests(path: str) -> list[str]:
     """Validate manifest files without making API calls. Returns list of errors."""
     errors: list[str] = []
@@ -132,25 +167,7 @@ def validate_manifests(path: str) -> list[str]:
         names_by_kind.setdefault(doc.kind, set()).add(doc.metadata["name"])
 
     for doc in docs:
-        if doc.kind == "Asset":
-            type_name = doc.spec.get("type_name")
-            if type_name and type_name not in names_by_kind.get("AssetType", set()):
-                errors.append(
-                    f"WARNING: Asset '{doc.metadata['name']}' references AssetType "
-                    f"'{type_name}' not found in manifest (may exist in API)"
-                )
-        elif doc.kind in ("AssetSLOLink", "AssetGroupSLOLink"):
-            for ref_field, ref_kind in [
-                ("slo_name", "SLO"),
-                ("sli_name", "SLI"),
-                ("data_source_name", "DataSource"),
-            ]:
-                ref_val = doc.spec.get(ref_field)
-                if ref_val and ref_val not in names_by_kind.get(ref_kind, set()):
-                    errors.append(
-                        f"WARNING: {doc.kind} '{doc.metadata['name']}' references {ref_kind} "
-                        f"'{ref_val}' not found in manifest (may exist in API)"
-                    )
+        _validate_doc_refs(doc, names_by_kind, errors)
 
     return errors
 
@@ -230,11 +247,11 @@ def apply(client: Any, manifests: list[ManifestDocument]) -> ApplyResult:
 
 _KIND_DEPS: dict[str, set[str]] = {
     "AssetType": {"Asset"},
-    "DataSource": {"AssetSLOLink", "AssetGroupSLOLink"},
-    "Asset": {"AssetGroup", "AssetSLOLink"},
+    "DataSource": {"AssetSLOLink", "AssetGroupSLOLink", "SLOBinding"},
+    "Asset": {"AssetGroup", "AssetSLOLink", "SLOBinding"},
     "SLI": {"AssetSLOLink", "AssetGroupSLOLink"},
-    "SLO": {"AssetSLOLink", "AssetGroupSLOLink"},
-    "AssetGroup": {"AssetGroupSLOLink"},
+    "SLO": {"AssetSLOLink", "AssetGroupSLOLink", "SLOBinding"},
+    "AssetGroup": {"AssetGroupSLOLink", "SLOBinding"},
 }
 
 
@@ -249,6 +266,26 @@ def _dependents_of(kind: str) -> set[str]:
                 result.add(dep)
                 stack.append(dep)
     return result
+
+
+def _lookup_slo_link(client: Any, doc: ManifestDocument, link_name: str) -> Any | None:
+    """Look up an existing AssetSLOLink or AssetGroupSLOLink via the client."""
+    if doc.kind == "AssetSLOLink":
+        links = client.asset_slo_links.list(doc.spec.get("asset_name", ""))
+    else:
+        links = client.group_slo_links.list(doc.spec.get("group_name", ""))
+    return next((lnk for lnk in links if lnk.link_name == link_name), None)
+
+
+def _lookup_slo_binding(client: Any, doc: ManifestDocument) -> Any | None:
+    """Look up an existing SLOBinding via the client."""
+    target_type = doc.spec.get("target_type", "")
+    target_name = doc.spec.get("target_name", "")
+    if target_type == "asset":
+        bindings = client.slo_bindings.list_for_asset(target_name)
+    else:
+        bindings = client.slo_bindings.list_for_group(target_name)
+    return next((b for b in bindings if b.slo_name == doc.spec.get("slo_name")), None)
 
 
 def _lookup(client: Any, doc: ManifestDocument) -> Any | None:
@@ -269,14 +306,10 @@ def _lookup(client: Any, doc: ManifestDocument) -> Any | None:
                 return client.sli_definitions.get(name)
             case "SLO":
                 return client.slo_definitions.get(name)
-            case "AssetSLOLink":
-                asset_name = doc.spec.get("asset_name", "")
-                links = client.asset_slo_links.list(asset_name)
-                return next((lnk for lnk in links if lnk.link_name == name), None)
-            case "AssetGroupSLOLink":
-                group_name = doc.spec.get("group_name", "")
-                links = client.group_slo_links.list(group_name)
-                return next((lnk for lnk in links if lnk.link_name == name), None)
+            case "AssetSLOLink" | "AssetGroupSLOLink":
+                return _lookup_slo_link(client, doc, name)
+            case "SLOBinding":
+                return _lookup_slo_binding(client, doc)
             case _:
                 return None
     except Exception:
@@ -324,6 +357,8 @@ def _has_diff(doc: ManifestDocument, existing: Any) -> bool:
                 or doc.spec.get("sli_name") != getattr(existing, "sli_name", None)
                 or doc.spec.get("data_source_name") != getattr(existing, "data_source_name", None)
             )
+        case "SLOBinding":
+            return doc.spec.get("data_source_name") != getattr(existing, "data_source_name", None)
         case _:
             return False
 
@@ -337,6 +372,30 @@ def _diff_reason(doc: ManifestDocument, existing: Any) -> str:
             return "objectives or score differ (new version will be created)"
         case _:
             return "fields differ"
+
+
+def _create_slo_binding(client: Any, spec: dict[str, Any]) -> None:
+    """Create an SLO binding for an asset or group."""
+    target_type = spec["target_type"]
+    target_name = spec["target_name"]
+    if target_type == "asset":
+        client.slo_bindings.create_for_asset(
+            target_name, spec["slo_name"], spec["data_source_name"]
+        )
+    else:
+        client.slo_bindings.create_for_group(
+            target_name, spec["slo_name"], spec["data_source_name"]
+        )
+
+
+def _delete_slo_binding(client: Any, spec: dict[str, Any]) -> None:
+    """Delete an SLO binding for an asset or group."""
+    target_type = spec["target_type"]
+    target_name = spec["target_name"]
+    if target_type == "asset":
+        client.slo_bindings.delete_for_asset(target_name, spec["slo_name"])
+    else:
+        client.slo_bindings.delete_for_group(target_name, spec["slo_name"])
 
 
 def _create_asset_group(client: Any, name: str, spec: dict[str, Any]) -> None:
@@ -394,6 +453,10 @@ def _create(client: Any, doc: ManifestDocument) -> None:
                 display_name=doc.metadata.get("display_name"),
                 notes=doc.metadata.get("notes"),
                 author=doc.metadata.get("author"),
+                sli_name=doc.spec.get("sli_name"),
+                sli_version=doc.spec.get("sli_version"),
+                kind=doc.spec.get("kind", "standard"),
+                variables=doc.spec.get("variables", {}),
             )
         case "AssetSLOLink":
             asset_name = doc.spec["asset_name"]
@@ -413,6 +476,8 @@ def _create(client: Any, doc: ManifestDocument) -> None:
                 doc.spec["sli_name"],
                 doc.spec["data_source_name"],
             )
+        case "SLOBinding":
+            _create_slo_binding(client, doc.spec)
 
 
 def _update(client: Any, doc: ManifestDocument) -> None:
@@ -461,6 +526,10 @@ def _update(client: Any, doc: ManifestDocument) -> None:
                 display_name=doc.metadata.get("display_name"),
                 notes=doc.metadata.get("notes"),
                 author=doc.metadata.get("author"),
+                sli_name=doc.spec.get("sli_name"),
+                sli_version=doc.spec.get("sli_version"),
+                kind=doc.spec.get("kind", "standard"),
+                variables=doc.spec.get("variables", {}),
             )
         case "AssetSLOLink":
             # Delete + recreate
@@ -484,3 +553,7 @@ def _update(client: Any, doc: ManifestDocument) -> None:
                 doc.spec["sli_name"],
                 doc.spec["data_source_name"],
             )
+        case "SLOBinding":
+            # Delete + recreate
+            _delete_slo_binding(client, doc.spec)
+            _create_slo_binding(client, doc.spec)

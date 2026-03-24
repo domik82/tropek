@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 import { DeletionConfirmForm } from '@/components/DeletionConfirmForm'
 import { SloObjectiveTable } from '@/features/slos/components/SloObjectiveTable'
 import { useSloDetail, useSloVersions, useDeleteSlo, useGroupTree } from '@/features/slos/hooks'
-import { fetchGroupSloLinks } from '@/features/slos/api'
+import { fetchGroupSloBindings } from '@/features/slos/api'
 import { groupKeys } from '@/lib/queryKeys'
 import { ENTITY_COLORS } from '@/lib/entity-colors'
 import { SANS_SERIF } from '@/lib/fonts'
@@ -25,21 +25,21 @@ export function SloDetailView({ name, onNavigate, onNewVersion }: SloDetailViewP
   const { data: versions } = useSloVersions(name, true)
   const deleteMutation = useDeleteSlo()
 
-  // Fetch linked groups: query each group's links and filter to this SLO
+  // Fetch bound groups: query each group's bindings and filter to this SLO
   const { data: tree } = useGroupTree()
   const groupNames = useMemo(
     () => (tree?.all_groups ?? []).map(g => g.name).filter(n => n !== '__ungrouped__'),
     [tree],
   )
-  const linkQueries = useQueries({
+  const bindingQueries = useQueries({
     queries: groupNames.map(gn => ({
-      queryKey: groupKeys.links(gn),
-      queryFn: () => fetchGroupSloLinks(gn),
+      queryKey: groupKeys.bindings(gn),
+      queryFn: () => fetchGroupSloBindings(gn),
     })),
   })
   const linkedGroups = useMemo(
-    () => groupNames.filter((_, i) => (linkQueries[i]?.data ?? []).some(l => l.slo_name === name)),
-    [groupNames, linkQueries, name],
+    () => groupNames.filter((_, i) => (bindingQueries[i]?.data ?? []).some(b => b.slo_name === name)),
+    [groupNames, bindingQueries, name],
   )
 
   if (isLoading || !slo) {

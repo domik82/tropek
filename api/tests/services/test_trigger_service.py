@@ -93,6 +93,7 @@ def _make_repos() -> QualityGateRepos:
         asset_group_repo=AsyncMock(),
         slo_link_repo=AsyncMock(),
         group_link_repo=AsyncMock(),
+        binding_repo=AsyncMock(),
         sli_def_repo=AsyncMock(),
         slo_repo=AsyncMock(),
         ds_repo=AsyncMock(),
@@ -141,6 +142,7 @@ async def test_trigger_single_slo_not_configured() -> None:
     asset = _make_asset()
     repos.asset_repo.get_by_name.return_value = asset
     repos.slo_link_repo.list_by_asset.return_value = []  # no links
+    repos.binding_repo.find_for_asset.return_value = None  # no bindings either
     pool = AsyncMock()
 
     service = TriggerService(repos, pool)

@@ -1,0 +1,68 @@
+name: office-apps
+namespaces:
+  - prometheus-local
+metrics:
+  process_cpu_pct:
+    baseline: 5.0
+    phases:
+      - duration_hours: 8
+        pattern: stable
+        jitter_pct: 10
+      - duration_hours: 9
+        pattern: ramp
+        target: 22.0
+        jitter_pct: 5
+      - duration_hours: 7
+        pattern: stable
+        jitter_pct: 8
+      - duration_hours: 8
+        pattern: stable
+        jitter_pct: 10
+      - duration_hours: 9
+        pattern: ramp
+        target: 25.0
+        jitter_pct: 5
+      - duration_hours: 7
+        pattern: stable
+        jitter_pct: 8
+  process_memory_mb:
+    baseline: 120.0
+    phases:
+      - duration_hours: 8
+        pattern: stable
+        jitter_pct: 8
+      - duration_hours: 9
+        pattern: ramp
+        target: 450.0
+        jitter_pct: 5
+      - duration_hours: 7
+        pattern: stable
+        jitter_pct: 6
+      - duration_hours: 8
+        pattern: stable
+        jitter_pct: 8
+      - duration_hours: 6
+        pattern: ramp
+        target: 480.0
+        jitter_pct: 5
+      - duration_hours: 2
+        pattern: spike
+        target: 850.0
+        jitter_pct: 3
+      - duration_hours: 8
+        pattern: stable
+        jitter_pct: 8
+  process_handles:
+    baseline: 200.0
+    phases:
+      - duration_hours: 48
+        pattern: stable
+        jitter_pct: 8
+  process_io_bytes:
+    baseline: 5000.0
+    phases:
+      - duration_hours: 48
+        pattern: stable
+        jitter_pct: 10
+interval_minutes: 5
+start: "2026-03-15T00:00:00Z"

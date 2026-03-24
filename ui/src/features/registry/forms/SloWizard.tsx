@@ -1,6 +1,7 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { SANS_SERIF } from '@/lib/fonts'
 import { useCreateSlo } from '@/features/slos/hooks'
+import { useSliDetail } from '@/features/slis/hooks'
 import { serializeCriteria, parseCriteria, DEFAULT_CRITERIA } from './criteriaUtils'
 import { tagsToRows, rowsToTags } from './tagUtils'
 import { WizardStepIdentity } from './WizardStepIdentity'
@@ -65,8 +66,8 @@ export function SloWizard({ editSlo, onClose }: SloWizardProps) {
 
   const [pickSli, setPickSli] = useState<PickSliData>(
     editSlo
-      ? { datasource: '', sliName: '', indicators: Object.fromEntries(editSlo.objectives.map((o) => [o.sli, ''])) }
-      : { datasource: '', sliName: '', indicators: {} },
+      ? { sliName: editSlo.sli_name ?? '', sliVersion: editSlo.sli_version ?? null, indicators: Object.fromEntries(editSlo.objectives.map((o) => [o.sli, ''])) }
+      : { sliName: '', sliVersion: null, indicators: {} },
   )
 
   const [indicatorRows, setIndicatorRows] = useState<IndicatorRow[]>(
@@ -90,6 +91,38 @@ export function SloWizard({ editSlo, onClose }: SloWizardProps) {
 
   // Edit mode also calls POST — backend auto-increments version
   const createMutation = useCreateSlo()
+
+  // In edit mode, fetch the full SLI definition to show ALL indicators
+  // (not just the subset used by the current SLO objectives)
+  const { data: fullSli } = useSliDetail(editSlo?.sli_name ?? '')
+  const sliMergedRef = useRef(false)
+  useEffect(() => {
+    if (sliMergedRef.current || !fullSli || !isEdit) return
+    sliMergedRef.current = true
+    // Update pickSli with full indicators from the SLI definition
+    setPickSli((prev) => ({
+      ...prev,
+      sliVersion: fullSli.version,
+      indicators: fullSli.indicators,
+    }))
+    // Merge full SLI indicators into indicator rows — existing objectives
+    // keep their checked=true + criteria, new ones get checked=false
+    const allNames = Object.keys(fullSli.indicators)
+    setIndicatorRows((prev) =>
+      allNames.map((name) => {
+        const existing = prev.find((r) => r.sli === name)
+        if (existing) return existing
+        return {
+          sli: name,
+          checked: false,
+          weight: 1,
+          key_sli: false,
+          passCriteria: [{ ...DEFAULT_CRITERIA }],
+          warnCriteria: [{ ...DEFAULT_CRITERIA }],
+        }
+      }),
+    )
+  }, [fullSli, isEdit])
 
   // Progressive disclosure: compute which steps are visible
   const showStep2 = identity.name.trim().length > 0
@@ -154,6 +187,8 @@ export function SloWizard({ editSlo, onClose }: SloWizardProps) {
         display_name: identity.display_name || undefined,
         author: identity.author || undefined,
         notes: identity.notes || undefined,
+        sli_name: pickSli.sliName || undefined,
+        sli_version: pickSli.sliVersion ?? undefined,
         objectives,
         total_score_pass_pct: comparison.pass_pct,
         total_score_warning_pct: comparison.warn_pct,
@@ -215,6 +250,16 @@ export function SloWizard({ editSlo, onClose }: SloWizardProps) {
         <section className="border border-slate-700 rounded-lg p-5">
           <WizardStepComparison data={comparison} onChange={setComparison} />
         </section>
+      )}
+
+      {/* Mutation error banner */}
+      {createMutation.isError && (
+        <div className="rounded-md border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400">
+          <p className="font-medium">Save failed</p>
+          <p className="mt-0.5 text-xs opacity-80">
+            {createMutation.error instanceof Error ? createMutation.error.message : 'Unknown error'}
+          </p>
+        </div>
       )}
 
       {/* Submit buttons — inline at bottom of scroll, not fixed */}

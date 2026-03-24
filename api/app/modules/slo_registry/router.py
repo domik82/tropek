@@ -42,11 +42,12 @@ router = APIRouter()
 async def list_slo_definitions(
     tag_key: str | None = None,
     tag_val: str | None = None,
+    kind: str | None = None,
     session: AsyncSession = Depends(get_session),  # noqa: B008
 ) -> PagedResponse[SLODefinitionRead]:
     """List all active SLO definitions."""
     repo = SLORepository(session)
-    items = await repo.list_all(tag_key=tag_key, tag_val=tag_val)
+    items = await repo.list_all(tag_key=tag_key, tag_val=tag_val, kind=kind)
     return PagedResponse(
         items=[SLODefinitionRead.model_validate(i) for i in items], total=len(items)
     )
@@ -58,6 +59,24 @@ async def create_slo_definition(
     session: AsyncSession = Depends(get_session),  # noqa: B008
 ) -> SLODefinitionRead:
     """Create a new SLO definition (or a new version if name already exists)."""
+    if body.sli_name is not None:
+        sli_repo = SLIRepository(session)
+        if body.sli_version is not None:
+            sli_def = await sli_repo.get_version(body.sli_name, body.sli_version)
+        else:
+            sli_def = await sli_repo.get_latest(body.sli_name)
+        if sli_def is None:
+            raise HTTPException(
+                status_code=422,
+                detail=f"sli definition '{body.sli_name}' version {body.sli_version} not found",
+            )
+        indicator_keys = set(sli_def.indicators.keys())
+        for obj in body.objectives:
+            if obj.sli not in indicator_keys:
+                raise HTTPException(
+                    status_code=422,
+                    detail=f"objective sli '{obj.sli}' not found in SLI definition '{body.sli_name}' indicators",
+                )
     repo = SLORepository(session)
     slo = await repo.create(
         body.name,
@@ -71,6 +90,9 @@ async def create_slo_definition(
         tags=body.tags,
         variables=body.variables,
         comparable_from_version=body.comparable_from_version,
+        kind=body.kind,
+        sli_name=body.sli_name,
+        sli_version=body.sli_version,
     )
     return SLODefinitionRead.model_validate(slo)
 
