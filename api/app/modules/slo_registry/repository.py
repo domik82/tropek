@@ -34,6 +34,9 @@ class SLORepository:
         tags: dict[str, Any] | None = None,
         variables: dict[str, Any] | None = None,
         comparable_from_version: int | None = None,
+        kind: str = "standard",
+        sli_name: str | None = None,
+        sli_version: int | None = None,
     ) -> SLODefinition:
         """Insert a new version of a named SLO.
 
@@ -52,6 +55,9 @@ class SLORepository:
             variables: Optional template variable defaults.
             comparable_from_version: Earliest version whose baselines are valid to compare against.
                 Defaults to the previous version when one exists, otherwise 1.
+            kind: SLO kind discriminator (e.g. "standard" or "template"). Default "standard".
+            sli_name: Optional SLI definition name this SLO is bound to.
+            sli_version: Optional specific SLI version; None means latest at evaluation time.
 
         Returns:
             The newly created SLODefinition with its assigned version.
@@ -86,6 +92,9 @@ class SLORepository:
             author=author,
             tags=tags or {},
             variables=variables or {},
+            kind=kind,
+            sli_name=sli_name,
+            sli_version=sli_version,
             active=True,
         )
         self._session.add(slo)
@@ -168,6 +177,7 @@ class SLORepository:
         *,
         tag_key: str | None = None,
         tag_val: str | None = None,
+        kind: str | None = None,
     ) -> list[SLODefinition]:
         """Return the latest active version of every named SLO.
 
@@ -176,12 +186,15 @@ class SLORepository:
         Args:
             tag_key: Tag key to filter by (requires tag_val).
             tag_val: Tag value to filter by (requires tag_key).
+            kind: Optional SLO kind filter (e.g. "standard" or "template").
 
         Returns:
             One SLODefinition per active SLO name, the highest version of each.
         """
         # DISTINCT ON (name) with ORDER BY name, version DESC — PostgreSQL-specific
         base_filter = SLODefinition.active == True  # noqa: E712
+        if kind is not None:
+            base_filter = base_filter & (SLODefinition.kind == kind)
         subq = (
             select(SLODefinition.name, SLODefinition.version)
             .where(base_filter)
