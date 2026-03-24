@@ -456,7 +456,7 @@ def _create(client: Any, doc: ManifestDocument) -> None:
                 sli_name=doc.spec.get("sli_name"),
                 sli_version=doc.spec.get("sli_version"),
                 kind=doc.spec.get("kind", "standard"),
-                variables=doc.spec.get("variables"),
+                variables=doc.spec.get("variables", {}),
             )
         case "AssetSLOLink":
             asset_name = doc.spec["asset_name"]
@@ -529,7 +529,7 @@ def _update(client: Any, doc: ManifestDocument) -> None:
                 sli_name=doc.spec.get("sli_name"),
                 sli_version=doc.spec.get("sli_version"),
                 kind=doc.spec.get("kind", "standard"),
-                variables=doc.spec.get("variables"),
+                variables=doc.spec.get("variables", {}),
             )
         case "AssetSLOLink":
             # Delete + recreate
