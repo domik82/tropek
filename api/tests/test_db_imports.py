@@ -26,7 +26,9 @@ def test_orm_models_importable() -> None:
         SLIValue,
         SLOBinding,
         SLODefinition,
+        SLOGroup,
         SLOObjective,
+        TemplateBinding,
     )
 
     table_names = set(Base.metadata.tables.keys())
@@ -42,10 +44,12 @@ def test_orm_models_importable() -> None:
         "sli_definitions",
         "slo_bindings",
         "slo_definitions",
+        "slo_groups",
         "slo_objectives",
         "evaluations",
         "evaluation_annotations",
         "evaluation_batches",
         "indicator_results",
         "sli_values",
+        "template_bindings",
     }
