@@ -155,23 +155,53 @@ export function buildDatasourceTree(
 export function buildAssetTree(
   groups: MinGroup[],
   groupBindingsMap: Record<string, MinBinding[]>,
+  slos?: MinSlo[],
+  slis?: MinSli[],
 ): TreeNode[] {
+  const sloByName = new Map((slos ?? []).map(s => [s.name, s]))
+  const sliByName = new Map((slis ?? []).map(s => [s.name, s]))
+
   return groups.map(group => {
     const groupBindings = groupBindingsMap[group.name] ?? []
     const memberChildren: TreeNode[] = (group.members ?? []).map(member => {
-      // Build nested SLO → DS tree per binding
-      const sloChildren: TreeNode[] = groupBindings.map(binding => ({
-        id: `binding-slo:${member.asset_name}:${binding.slo_name}`,
-        name: binding.slo_name,
-        type: 'slo' as const,
-        groupName: group.name,
-        children: [{
+      // Build nested SLO → SLI → DS tree per binding
+      const sloChildren: TreeNode[] = groupBindings.map(binding => {
+        const slo = sloByName.get(binding.slo_name)
+        const dsNode: TreeNode = {
           id: `binding-ds:${member.asset_name}:${binding.data_source_name}`,
           name: binding.data_source_name,
           type: 'datasource' as const,
           groupName: group.name,
-        }],
-      }))
+        }
+
+        // Insert SLI node between SLO and DS when SLO references an SLI
+        let sloLeaf: TreeNode[]
+        if (slo?.sli_name) {
+          const sli = sliByName.get(slo.sli_name)
+          const indicatorCount = sli?.indicators ? Object.keys(sli.indicators).length : 0
+          sloLeaf = [{
+            id: `binding-sli:${member.asset_name}:${slo.sli_name}`,
+            name: slo.sli_name,
+            displayName: sli?.display_name ?? undefined,
+            type: 'sli' as const,
+            badge: `${indicatorCount} indicators`,
+            groupName: group.name,
+            children: [dsNode],
+          }]
+        } else {
+          sloLeaf = [dsNode]
+        }
+
+        return {
+          id: `binding-slo:${member.asset_name}:${binding.slo_name}`,
+          name: binding.slo_name,
+          displayName: slo?.display_name ?? undefined,
+          type: 'slo' as const,
+          badge: slo ? `v${slo.version}` : undefined,
+          groupName: group.name,
+          children: sloLeaf,
+        }
+      })
       return {
         id: `asset:${member.asset_name}`,
         name: member.asset_name,

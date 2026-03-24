@@ -63,11 +63,13 @@ describe('buildDatasourceTree', () => {
 })
 
 describe('buildAssetTree', () => {
-  it('builds Group → Asset → SLO → DS nested hierarchy from bindings', () => {
+  it('builds Group → Asset → SLO → SLI → DS hierarchy when SLO has sli_name', () => {
     const groups = [{ name: 'core', display_name: null, members: [{ asset_name: 'checkout-api' }] }]
     const groupBindingsMap = { core: [{ slo_name: 'http-slo', data_source_name: 'prom' }] }
+    const slos = [{ name: 'http-slo', display_name: 'HTTP SLO', version: 2, active: true, sli_name: 'http-sli', sli_version: 1 }]
+    const slis = [{ name: 'http-sli', display_name: null, adapter_type: 'prometheus', active: true, indicators: { rt: 'q1', err: 'q2' } }]
 
-    const tree = buildAssetTree(groups, groupBindingsMap)
+    const tree = buildAssetTree(groups, groupBindingsMap, slos, slis)
     expect(tree).toHaveLength(1)
     expect(tree[0]).toMatchObject({ type: 'group', name: 'core' })
     expect(tree[0].children).toHaveLength(1)
@@ -75,8 +77,23 @@ describe('buildAssetTree', () => {
     expect(tree[0].children![0].children).toHaveLength(1)
     // SLO node
     const sloNode = tree[0].children![0].children![0]
-    expect(sloNode).toMatchObject({ type: 'slo', name: 'http-slo' })
-    // DS node directly under SLO (no SLI intermediate)
+    expect(sloNode).toMatchObject({ type: 'slo', name: 'http-slo', badge: 'v2' })
+    // SLI node under SLO
+    expect(sloNode.children).toHaveLength(1)
+    expect(sloNode.children![0]).toMatchObject({ type: 'sli', name: 'http-sli', badge: '2 indicators' })
+    // DS node under SLI
+    expect(sloNode.children![0].children).toHaveLength(1)
+    expect(sloNode.children![0].children![0]).toMatchObject({ type: 'datasource', name: 'prom' })
+  })
+
+  it('shows DS directly under SLO when SLO has no sli_name', () => {
+    const groups = [{ name: 'core', display_name: null, members: [{ asset_name: 'checkout-api' }] }]
+    const groupBindingsMap = { core: [{ slo_name: 'bare-slo', data_source_name: 'prom' }] }
+    const slos = [{ name: 'bare-slo', version: 1, active: true }]
+
+    const tree = buildAssetTree(groups, groupBindingsMap, slos, [])
+    const sloNode = tree[0].children![0].children![0]
+    expect(sloNode).toMatchObject({ type: 'slo', name: 'bare-slo' })
     expect(sloNode.children).toHaveLength(1)
     expect(sloNode.children![0]).toMatchObject({ type: 'datasource', name: 'prom' })
   })
