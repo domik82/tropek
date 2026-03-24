@@ -6,9 +6,9 @@ import { groupKeys } from '@/lib/queryKeys'
 import { TagFilterBar } from '@/components/shared/TagFilterBar'
 import { RegistryTree } from './RegistryTree'
 import { buildSloTree, buildDatasourceTree, buildAssetTree, filterTree } from './useRegistryTree'
-import type { MinLink } from './useRegistryTree'
+import type { MinBinding } from './useRegistryTree'
 import { useSlos, useGroupTree, useSloTagKeys, useSloTagValues } from '@/features/slos/hooks'
-import { fetchGroupSloLinks } from '@/features/slos/api'
+import { fetchGroupSloBindings } from '@/features/slos/api'
 import { useSliDefinitions } from '@/features/slis/hooks'
 import { useDatasources, useDatasourceTagKeys, useDatasourceTagValues } from '@/features/datasources/hooks'
 import { useTagKeys, useTagValues } from '@/features/assets/hooks'
@@ -64,47 +64,46 @@ export function RegistrySidebar({ mode, onModeChange, selected, onSelect, onCrea
   const isLoadingValues =
     mode === 'slo' ? sloValsLoading : mode === 'datasource' ? dsValsLoading : assetValsLoading
 
-  // Fetch SLO links for all groups to build hierarchical trees
+  // Fetch SLO bindings for all groups to build hierarchical trees
   const groupNames = useMemo(
     () => (tree?.all_groups ?? []).map(g => g.name).filter(n => n !== '__ungrouped__'),
     [tree],
   )
-  const linkQueries = useQueries({
+  const bindingQueries = useQueries({
     queries: groupNames.map(name => ({
-      queryKey: groupKeys.links(name),
-      queryFn: () => fetchGroupSloLinks(name),
+      queryKey: groupKeys.bindings(name),
+      queryFn: () => fetchGroupSloBindings(name),
     })),
   })
 
-  const { allLinks, groupLinksMap } = useMemo(() => {
-    const flat: MinLink[] = []
-    const byGroup: Record<string, MinLink[]> = {}
+  const { allBindings, groupBindingsMap } = useMemo(() => {
+    const flat: MinBinding[] = []
+    const byGroup: Record<string, MinBinding[]> = {}
     for (let i = 0; i < groupNames.length; i++) {
-      const data = linkQueries[i]?.data ?? []
-      const links: MinLink[] = data.map(l => ({
-        slo_name: l.slo_name,
-        sli_name: l.sli_name,
-        data_source_name: l.data_source_name,
+      const data = bindingQueries[i]?.data ?? []
+      const bindings: MinBinding[] = data.map(b => ({
+        slo_name: b.slo_name,
+        data_source_name: b.data_source_name,
       }))
-      byGroup[groupNames[i]] = links
-      flat.push(...links)
+      byGroup[groupNames[i]] = bindings
+      flat.push(...bindings)
     }
-    // Deduplicate flat links for SLO/DS trees
+    // Deduplicate flat bindings for SLO/DS trees
     const seen = new Set<string>()
-    const unique = flat.filter(l => {
-      const key = `${l.slo_name}|${l.sli_name}|${l.data_source_name}`
+    const unique = flat.filter(b => {
+      const key = `${b.slo_name}|${b.data_source_name}`
       if (seen.has(key)) return false
       seen.add(key)
       return true
     })
-    return { allLinks: unique, groupLinksMap: byGroup }
-  }, [groupNames, linkQueries])
+    return { allBindings: unique, groupBindingsMap: byGroup }
+  }, [groupNames, bindingQueries])
 
   const treeNodes = useMemo(() => {
-    if (mode === 'slo') return buildSloTree(slos ?? [], slis ?? [], datasources ?? [], allLinks)
-    if (mode === 'datasource') return buildDatasourceTree(datasources ?? [], slis ?? [], slos ?? [], allLinks)
-    return buildAssetTree(tree?.all_groups ?? [], groupLinksMap)
-  }, [mode, slos, slis, datasources, tree, allLinks, groupLinksMap])
+    if (mode === 'slo') return buildSloTree(slos ?? [], slis ?? [], datasources ?? [], allBindings)
+    if (mode === 'datasource') return buildDatasourceTree(datasources ?? [], slis ?? [], slos ?? [], allBindings)
+    return buildAssetTree(tree?.all_groups ?? [], groupBindingsMap)
+  }, [mode, slos, slis, datasources, tree, allBindings, groupBindingsMap])
 
   const filteredNodes = useMemo(() => filterTree(treeNodes, search), [treeNodes, search])
 
