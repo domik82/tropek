@@ -93,7 +93,7 @@ function TreeNodeRow({
         )}
 
         <button
-          onClick={() => onSelect({ type: node.type, name: node.name })}
+          onClick={() => onSelect({ type: node.type, name: node.name, groupName: node.groupName })}
           className="flex-1 text-left text-xs truncate"
           style={{ color }}
         >

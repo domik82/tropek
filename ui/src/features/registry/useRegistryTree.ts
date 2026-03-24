@@ -136,22 +136,31 @@ export function buildAssetTree(
   return groups.map(group => {
     const groupLinks = groupLinksMap[group.name] ?? []
     const memberChildren: TreeNode[] = (group.members ?? []).map(member => {
-      const bindingChildren: TreeNode[] = groupLinks.map(link => ({
-        id: `binding:${member.asset_name}:${link.slo_name}`,
+      // Build nested SLO → SLI → DS tree per binding
+      const sloChildren: TreeNode[] = groupLinks.map(link => ({
+        id: `binding-slo:${member.asset_name}:${link.slo_name}`,
         name: link.slo_name,
-        type: 'binding' as const,
-        bindingChain: {
-          sloName: link.slo_name,
-          sliName: link.sli_name,
-          dsName: link.data_source_name,
-        },
-        badge: `→ ${link.sli_name} → ${link.data_source_name}`,
+        type: 'slo' as const,
+        groupName: group.name,
+        children: [{
+          id: `binding-sli:${member.asset_name}:${link.sli_name}`,
+          name: link.sli_name,
+          type: 'sli' as const,
+          groupName: group.name,
+          children: [{
+            id: `binding-ds:${member.asset_name}:${link.data_source_name}`,
+            name: link.data_source_name,
+            type: 'datasource' as const,
+            groupName: group.name,
+          }],
+        }],
       }))
       return {
         id: `asset:${member.asset_name}`,
         name: member.asset_name,
         type: 'asset' as const,
-        children: bindingChildren.length > 0 ? bindingChildren : undefined,
+        groupName: group.name,
+        children: sloChildren.length > 0 ? sloChildren : undefined,
       }
     })
     return {

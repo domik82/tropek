@@ -10,6 +10,7 @@ export interface TreeNode {
   badge?: string
   children?: TreeNode[]
   bindingChain?: { sloName: string; sliName: string; dsName: string }
+  groupName?: string
 }
 
 export interface SelectedNode {

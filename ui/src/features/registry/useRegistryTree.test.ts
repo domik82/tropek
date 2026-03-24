@@ -42,7 +42,7 @@ describe('buildDatasourceTree', () => {
 })
 
 describe('buildAssetTree', () => {
-  it('builds Group → Asset → Binding chain hierarchy', () => {
+  it('builds Group → Asset → SLO → SLI → DS nested hierarchy', () => {
     const groups = [{ name: 'core', display_name: null, members: [{ asset_name: 'checkout-api' }] }]
     const groupLinksMap = { core: [{ slo_name: 'http-slo', sli_name: 'http-sli', data_source_name: 'prom' }] }
 
@@ -52,10 +52,15 @@ describe('buildAssetTree', () => {
     expect(tree[0].children).toHaveLength(1)
     expect(tree[0].children![0]).toMatchObject({ type: 'asset', name: 'checkout-api' })
     expect(tree[0].children![0].children).toHaveLength(1)
-    expect(tree[0].children![0].children![0]).toMatchObject({
-      type: 'binding',
-      bindingChain: { sloName: 'http-slo', sliName: 'http-sli', dsName: 'prom' },
-    })
+    // SLO node
+    const sloNode = tree[0].children![0].children![0]
+    expect(sloNode).toMatchObject({ type: 'slo', name: 'http-slo' })
+    // SLI node
+    expect(sloNode.children).toHaveLength(1)
+    expect(sloNode.children![0]).toMatchObject({ type: 'sli', name: 'http-sli' })
+    // DS node
+    expect(sloNode.children![0].children).toHaveLength(1)
+    expect(sloNode.children![0].children![0]).toMatchObject({ type: 'datasource', name: 'prom' })
   })
 
   it('shows asset with no links as leaf', () => {

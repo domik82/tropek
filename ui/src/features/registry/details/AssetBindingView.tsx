@@ -13,6 +13,8 @@ import type { SelectedNode } from '@/features/registry/types'
 interface AssetBindingViewProps {
   assetName: string
   groupName: string
+  /** true when a group node (not an asset) is selected */
+  isGroup?: boolean
   onNavigate: (node: SelectedNode) => void
   onLinkSlo: () => void
 }
@@ -20,13 +22,15 @@ interface AssetBindingViewProps {
 export function AssetBindingView({
   assetName,
   groupName,
+  isGroup,
   onNavigate,
   onLinkSlo,
 }: AssetBindingViewProps) {
-  const { data: asset, isLoading: assetLoading } = useAsset(assetName)
+  // Only fetch asset details for actual asset nodes, not group nodes
+  const { data: asset, isLoading: assetLoading } = useAsset(isGroup ? null : assetName)
   const { data: links, isLoading: linksLoading } = useGroupSloLinks(groupName)
 
-  if (assetLoading || linksLoading) {
+  if ((!isGroup && assetLoading) || linksLoading) {
     return (
       <div className="p-6 text-sm text-muted-foreground" style={{ fontFamily: SANS_SERIF }}>
         Loading…
@@ -37,11 +41,13 @@ export function AssetBindingView({
   const bindings = links ?? []
   const varCount = Object.keys(asset?.variables ?? {}).length
   const tagCount = Object.keys(asset?.tags ?? {}).length
-  const statsLine = [
-    asset?.type_name ?? 'asset',
-    varCount > 0 ? `${varCount} variables` : null,
-    tagCount > 0 ? `${tagCount} tags` : null,
-  ].filter(Boolean).join(' · ')
+  const statsLine = isGroup
+    ? `group · ${bindings.length} bindings`
+    : [
+        asset?.type_name ?? 'asset',
+        varCount > 0 ? `${varCount} variables` : null,
+        tagCount > 0 ? `${tagCount} tags` : null,
+      ].filter(Boolean).join(' · ')
 
   return (
     <div className="overflow-auto h-full" style={{ fontFamily: SANS_SERIF }}>
