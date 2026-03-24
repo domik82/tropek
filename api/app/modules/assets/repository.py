@@ -6,7 +6,7 @@ import uuid
 from typing import Any
 
 from fastapi import HTTPException
-from sqlalchemy import delete, func, select, text, update
+from sqlalchemy import delete, func, or_, select, text, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.cache.redis_cache import RedisCache
@@ -18,6 +18,7 @@ from app.db.models import (
     AssetGroupSLOLink,
     AssetSLOLink,
     AssetType,
+    SLOBinding,
     SLODefinition,
 )
 from app.modules.assets.schemas import (
@@ -694,3 +695,85 @@ class AssetGroupSLOLinkRepository:
                 AssetGroupSLOLink.link_name == link_name,
             )
         )
+
+
+class SLOBindingRepository:
+    """CRUD for slo_bindings polymorphic table."""
+
+    def __init__(self, session: AsyncSession) -> None:
+        self._session = session
+
+    async def create(
+        self,
+        *,
+        target_type: str,
+        target_id: uuid.UUID,
+        slo_name: str,
+        data_source_name: str,
+        comparison_rules: list[dict[str, Any]] | None = None,
+    ) -> SLOBinding:
+        """Create a new SLO binding for a target (asset or asset group)."""
+        binding = SLOBinding(
+            id=uuid.uuid4(),
+            target_type=target_type,
+            target_id=target_id,
+            slo_name=slo_name,
+            data_source_name=data_source_name,
+            comparison_rules=comparison_rules,
+        )
+        self._session.add(binding)
+        await self._session.flush()
+        return binding
+
+    async def list_by_target(
+        self,
+        target_type: str,
+        target_id: uuid.UUID,
+    ) -> list[SLOBinding]:
+        """Return all SLO bindings for a specific target, ordered by slo_name."""
+        result = await self._session.execute(
+            select(SLOBinding)
+            .where(SLOBinding.target_type == target_type, SLOBinding.target_id == target_id)
+            .order_by(SLOBinding.slo_name)
+        )
+        return list(result.scalars().all())
+
+    async def list_for_asset_evaluation(
+        self,
+        asset_id: uuid.UUID,
+        group_ids: list[uuid.UUID],
+    ) -> list[SLOBinding]:
+        """Collect all bindings relevant to an asset: direct + via groups."""
+        conditions = [
+            (SLOBinding.target_type == "asset") & (SLOBinding.target_id == asset_id),
+        ]
+        if group_ids:
+            conditions.append(
+                (SLOBinding.target_type == "asset_group") & (SLOBinding.target_id.in_(group_ids))
+            )
+        result = await self._session.execute(
+            select(SLOBinding).where(or_(*conditions)).order_by(SLOBinding.slo_name)
+        )
+        return list(result.scalars().all())
+
+    async def delete_by_target_and_slo(
+        self,
+        target_type: str,
+        target_id: uuid.UUID,
+        slo_name: str,
+    ) -> None:
+        """Hard-delete a binding by target and SLO name."""
+        await self._session.execute(
+            delete(SLOBinding).where(
+                SLOBinding.target_type == target_type,
+                SLOBinding.target_id == target_id,
+                SLOBinding.slo_name == slo_name,
+            )
+        )
+
+    async def list_by_datasource(self, data_source_name: str) -> list[SLOBinding]:
+        """Check if any bindings reference this datasource (for deletion guard)."""
+        result = await self._session.execute(
+            select(SLOBinding).where(SLOBinding.data_source_name == data_source_name).limit(5)
+        )
+        return list(result.scalars().all())
