@@ -1,16 +1,18 @@
 import { useState, useMemo, useRef, useEffect } from 'react'
+import { useQueries } from '@tanstack/react-query'
 import { Plus } from 'lucide-react'
 import { ENTITY_COLORS } from '@/lib/entity-colors'
-import { SANS_SERIF } from '@/lib/fonts'
+import { groupKeys } from '@/lib/queryKeys'
 import { TagFilterBar } from '@/components/shared/TagFilterBar'
 import { RegistryTree } from './RegistryTree'
 import { buildSloTree, buildDatasourceTree, buildAssetTree, filterTree } from './useRegistryTree'
+import type { MinLink } from './useRegistryTree'
 import { useSlos, useGroupTree, useSloTagKeys, useSloTagValues } from '@/features/slos/hooks'
+import { fetchGroupSloLinks } from '@/features/slos/api'
 import { useSliDefinitions } from '@/features/slis/hooks'
 import { useDatasources, useDatasourceTagKeys, useDatasourceTagValues } from '@/features/datasources/hooks'
 import { useTagKeys, useTagValues } from '@/features/assets/hooks'
 import type { RegistryMode, SelectedNode, TagFilter } from './types'
-import type { MinLink } from './useRegistryTree'
 
 const MODES: { key: RegistryMode; label: string }[] = [
   { key: 'asset', label: 'Asset' },
@@ -24,11 +26,9 @@ interface Props {
   selected: SelectedNode | null
   onSelect: (node: SelectedNode) => void
   onCreateAction: (type: 'datasource' | 'sli' | 'slo' | 'group', context?: { adapterType?: string }) => void
-  allLinks: MinLink[]
-  groupLinksMap: Record<string, MinLink[]>
 }
 
-export function RegistrySidebar({ mode, onModeChange, selected, onSelect, onCreateAction, allLinks, groupLinksMap }: Props) {
+export function RegistrySidebar({ mode, onModeChange, selected, onSelect, onCreateAction }: Props) {
   const [search, setSearch] = useState('')
   const [tags, setTags] = useState<TagFilter[]>([])
   const [pendingTagKey, setPendingTagKey] = useState('')
@@ -63,6 +63,42 @@ export function RegistrySidebar({ mode, onModeChange, selected, onSelect, onCrea
     mode === 'slo' ? sloKeysLoading : mode === 'datasource' ? dsKeysLoading : assetKeysLoading
   const isLoadingValues =
     mode === 'slo' ? sloValsLoading : mode === 'datasource' ? dsValsLoading : assetValsLoading
+
+  // Fetch SLO links for all groups to build hierarchical trees
+  const groupNames = useMemo(
+    () => (tree?.all_groups ?? []).map(g => g.name).filter(n => n !== '__ungrouped__'),
+    [tree],
+  )
+  const linkQueries = useQueries({
+    queries: groupNames.map(name => ({
+      queryKey: groupKeys.links(name),
+      queryFn: () => fetchGroupSloLinks(name),
+    })),
+  })
+
+  const { allLinks, groupLinksMap } = useMemo(() => {
+    const flat: MinLink[] = []
+    const byGroup: Record<string, MinLink[]> = {}
+    for (let i = 0; i < groupNames.length; i++) {
+      const data = linkQueries[i]?.data ?? []
+      const links: MinLink[] = data.map(l => ({
+        slo_name: l.slo_name,
+        sli_name: l.sli_name,
+        data_source_name: l.data_source_name,
+      }))
+      byGroup[groupNames[i]] = links
+      flat.push(...links)
+    }
+    // Deduplicate flat links for SLO/DS trees
+    const seen = new Set<string>()
+    const unique = flat.filter(l => {
+      const key = `${l.slo_name}|${l.sli_name}|${l.data_source_name}`
+      if (seen.has(key)) return false
+      seen.add(key)
+      return true
+    })
+    return { allLinks: unique, groupLinksMap: byGroup }
+  }, [groupNames, linkQueries])
 
   const treeNodes = useMemo(() => {
     if (mode === 'slo') return buildSloTree(slos ?? [], slis ?? [], datasources ?? [], allLinks)
@@ -138,10 +174,10 @@ function CreateDropdown({
   }, [open])
 
   const items = [
-    { type: 'slo' as const, label: 'New SLO', desc: 'Versioned quality gate definition', color: ENTITY_COLORS.slo },
-    { type: 'sli' as const, label: 'New SLI Definition', desc: 'Service level indicator template', color: ENTITY_COLORS.sli },
-    { type: 'datasource' as const, label: 'New Datasource', desc: 'Metric source connection', color: ENTITY_COLORS.ds },
-    { type: 'group' as const, label: 'New Asset Group', desc: 'Group assets and bind SLOs', color: ENTITY_COLORS.group },
+    { type: 'slo' as const, label: 'New SLO', color: ENTITY_COLORS.slo },
+    { type: 'sli' as const, label: 'New SLI Definition', color: ENTITY_COLORS.sli },
+    { type: 'datasource' as const, label: 'New Datasource', color: ENTITY_COLORS.ds },
+    { type: 'group' as const, label: 'New Asset Group', color: ENTITY_COLORS.group },
   ]
 
   return (
@@ -154,26 +190,20 @@ function CreateDropdown({
       </button>
       {open && (
         <div
-          className="absolute bottom-full mb-1 left-0 w-full min-w-[280px] bg-popover border border-border rounded-xl shadow-xl overflow-hidden py-2 z-50"
-          style={{ fontFamily: SANS_SERIF }}
+          className="absolute bottom-full mb-1 left-0 w-full bg-popover border border-border rounded-lg shadow-lg py-1 z-50"
+          style={{ fontFamily: "system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" }}
         >
           {items.map(item => (
             <button
               key={item.type}
-              className="flex items-start gap-3 w-full text-left px-3 py-2.5 transition-colors hover:bg-accent group"
+              className="w-full px-3 py-1.5 text-xs text-left hover:bg-accent transition-colors flex items-center gap-2"
               onClick={() => {
                 onCreateAction(item.type)
                 setOpen(false)
               }}
             >
-              <div
-                className="w-[3px] rounded-full shrink-0 mt-0.5"
-                style={{ backgroundColor: item.color, height: 36 }}
-              />
-              <div className="min-w-0">
-                <div className="text-[13px] font-medium text-popover-foreground">{item.label}</div>
-                <div className="text-[11px] text-muted-foreground mt-0.5">{item.desc}</div>
-              </div>
+              <span className="w-1 h-4 rounded-full" style={{ backgroundColor: item.color }} />
+              {item.label}
             </button>
           ))}
         </div>

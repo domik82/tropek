@@ -51,6 +51,7 @@ function TreeNodeRow({
   onToggle,
   selected,
   onSelect,
+  parentGroupName,
 }: {
   node: TreeNode
   depth: number
@@ -58,11 +59,15 @@ function TreeNodeRow({
   onToggle: (id: string) => void
   selected: SelectedNode | null
   onSelect: (node: SelectedNode) => void
+  parentGroupName?: string
 }) {
   const hasChildren = node.children && node.children.length > 0
   const isExpanded = expanded.has(node.id)
   const isSelected = selected?.type === node.type && selected?.name === node.name
   const color = NODE_TYPE_COLORS[node.type] ?? '#c9d1d9'
+
+  // Track group context: if this node IS a group, children inherit its name
+  const groupContext = node.type === 'group' ? node.name : parentGroupName
 
   return (
     <>
@@ -93,7 +98,7 @@ function TreeNodeRow({
         )}
 
         <button
-          onClick={() => onSelect({ type: node.type, name: node.name, groupName: node.groupName })}
+          onClick={() => onSelect({ type: node.type, name: node.name, groupName: groupContext })}
           className="flex-1 text-left text-xs truncate"
           style={{ color }}
         >
@@ -116,6 +121,7 @@ function TreeNodeRow({
             onToggle={onToggle}
             selected={selected}
             onSelect={onSelect}
+            parentGroupName={groupContext}
           />
         ))}
     </>
