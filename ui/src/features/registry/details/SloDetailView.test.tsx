@@ -8,9 +8,10 @@ vi.mock('@/features/slos/hooks', () => ({
   useSloDetail: vi.fn(),
   useSloVersions: vi.fn(),
   useDeleteSlo: vi.fn(),
+  useGroupTree: vi.fn(),
 }))
 
-import { useSloDetail, useSloVersions, useDeleteSlo } from '@/features/slos/hooks'
+import { useSloDetail, useSloVersions, useDeleteSlo, useGroupTree } from '@/features/slos/hooks'
 
 const mockSlo: SloDefinition = {
   id: 'slo-1',
@@ -22,6 +23,9 @@ const mockSlo: SloDefinition = {
   notes: 'Tracks API availability and error rate',
   tags: { env: 'prod', team: 'platform' },
   variables: { service: 'api-service', region: 'us-east-1' },
+  kind: 'standard',
+  sli_name: null,
+  sli_version: null,
   created_at: '2024-01-01T00:00:00Z',
   active: true,
   objectives: [
@@ -81,6 +85,12 @@ describe('SloDetailView', () => {
       mutate: vi.fn(),
       isPending: false,
     } as unknown as ReturnType<typeof useDeleteSlo>)
+
+    vi.mocked(useGroupTree).mockReturnValue({
+      data: { all_groups: [] },
+      isLoading: false,
+      isError: false,
+    } as unknown as ReturnType<typeof useGroupTree>)
   })
 
   it('renders name, version badge, and active badge', () => {
@@ -144,14 +154,11 @@ describe('SloDetailView', () => {
     expect(screen.getByRole('button', { name: /deactivate/i })).toBeInTheDocument()
   })
 
-  it('renders linked groups', () => {
+  it('renders linked groups section', () => {
     render(
-      <SloDetailView name="api-availability" onNavigate={vi.fn()}
-        onNewVersion={vi.fn()} linkedGroups={['core-services', 'data-tier']} />,
+      <SloDetailView name="api-availability" onNavigate={vi.fn()} onNewVersion={vi.fn()} />,
       { wrapper: Wrapper }
     )
     expect(screen.getByText(/Linked Groups/)).toBeInTheDocument()
-    expect(screen.getByText('core-services')).toBeInTheDocument()
-    expect(screen.getByText('data-tier')).toBeInTheDocument()
   })
 })

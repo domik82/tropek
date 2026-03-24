@@ -24,6 +24,7 @@ def test_orm_models_importable() -> None:
         IndicatorResultRow,
         SLIDefinition,
         SLIValue,
+        SLOBinding,
         SLODefinition,
         SLOObjective,
     )
@@ -39,6 +40,7 @@ def test_orm_models_importable() -> None:
         "asset_group_slo_links",
         "data_sources",
         "sli_definitions",
+        "slo_bindings",
         "slo_definitions",
         "slo_objectives",
         "evaluations",

@@ -1,6 +1,7 @@
 // src/features/slos/api.ts
 import type { SloDefinition, SloObjective, SloValidationResult, SloComparisonConfig } from './types'
-import type { AssetGroupSLOLink, AssetGroupSLOLinkCreate, AssetGroupUpdate } from './types'
+import type { AssetGroupUpdate } from './types'
+import type { SloBinding, SloBindingCreate } from './types'
 import type { AssetGroup, AssetGroupTree } from '@/features/assets/types'
 
 const BASE = '/api'
@@ -49,6 +50,9 @@ export async function createSloDefinition(payload: {
   tags?: Record<string, string>
   variables?: Record<string, string>
   comparable_from_version?: number
+  kind?: string
+  sli_name?: string
+  sli_version?: number
 }): Promise<SloDefinition> {
   const res = await fetch(`${BASE}/slo-definitions`, {
     method: 'POST',
@@ -116,32 +120,6 @@ export async function addSubgroup(parentName: string, childGroupId: string): Pro
   return res.json()
 }
 
-export async function fetchGroupSloLinks(name: string): Promise<AssetGroupSLOLink[]> {
-  const res = await fetch(`${BASE}/asset-groups/${encodeURIComponent(name)}/slo-links`)
-  if (res.status === 404) return []
-  if (!res.ok) throw new Error(`fetchGroupSloLinks: ${res.status}`)
-  return res.json()
-}
-
-export async function createGroupSloLink(
-  groupName: string, body: AssetGroupSLOLinkCreate,
-): Promise<AssetGroupSLOLink> {
-  const res = await fetch(`${BASE}/asset-groups/${encodeURIComponent(groupName)}/slo-links`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  })
-  if (!res.ok) throw new Error(`createGroupSloLink: ${res.status}`)
-  return res.json()
-}
-
-export async function deleteGroupSloLink(groupName: string, linkName: string): Promise<void> {
-  const res = await fetch(
-    `${BASE}/asset-groups/${encodeURIComponent(groupName)}/slo-links/${encodeURIComponent(linkName)}`,
-    { method: 'DELETE' },
-  )
-  if (!res.ok) throw new Error(`deleteGroupSloLink: ${res.status}`)
-}
 
 export async function fetchSloTagKeys(): Promise<{ key: string; count: number }[]> {
   const res = await fetch(`${BASE}/slo-definitions/tag-keys`)
@@ -153,4 +131,46 @@ export async function fetchSloTagValues(key: string): Promise<{ value: string; c
   const res = await fetch(`${BASE}/slo-definitions/tag-values?key=${encodeURIComponent(key)}`)
   if (!res.ok) throw new Error(`fetchSloTagValues: ${res.status}`)
   return res.json()
+}
+
+// ---- SLO Bindings ----
+
+export async function fetchAssetSloBindings(assetName: string): Promise<SloBinding[]> {
+  const res = await fetch(`${BASE}/assets/${encodeURIComponent(assetName)}/slo-bindings`)
+  if (!res.ok) throw new Error(`fetchAssetSloBindings: ${res.status}`)
+  return res.json()
+}
+
+export async function createAssetSloBinding(assetName: string, body: SloBindingCreate): Promise<SloBinding> {
+  const res = await fetch(`${BASE}/assets/${encodeURIComponent(assetName)}/slo-bindings`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+  if (!res.ok) throw new Error(`createAssetSloBinding: ${res.status}`)
+  return res.json()
+}
+
+export async function fetchGroupSloBindings(groupName: string): Promise<SloBinding[]> {
+  const res = await fetch(`${BASE}/asset-groups/${encodeURIComponent(groupName)}/slo-bindings`)
+  if (!res.ok) throw new Error(`fetchGroupSloBindings: ${res.status}`)
+  return res.json()
+}
+
+export async function createGroupSloBinding(groupName: string, body: SloBindingCreate): Promise<SloBinding> {
+  const res = await fetch(`${BASE}/asset-groups/${encodeURIComponent(groupName)}/slo-bindings`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+  if (!res.ok) throw new Error(`createGroupSloBinding: ${res.status}`)
+  return res.json()
+}
+
+export async function deleteGroupSloBinding(groupName: string, sloName: string): Promise<void> {
+  const res = await fetch(
+    `${BASE}/asset-groups/${encodeURIComponent(groupName)}/slo-bindings/${encodeURIComponent(sloName)}`,
+    { method: 'DELETE' },
+  )
+  if (!res.ok) throw new Error(`deleteGroupSloBinding: ${res.status}`)
 }

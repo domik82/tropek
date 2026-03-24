@@ -6,7 +6,7 @@ import uuid
 from unittest.mock import AsyncMock
 
 import pytest
-from app.modules.quality_gate.exceptions import AssetNotFoundError
+from app.modules.quality_gate.exceptions import AssetNotFoundError, SLONotConfiguredError
 from app.modules.quality_gate.trigger import resolve_single_trigger
 
 
@@ -56,6 +56,8 @@ def mock_repos() -> dict:
         {
             "name": "perf-slo",
             "version": 1,
+            "sli_name": None,
+            "sli_version": None,
         },
     )()
 
@@ -98,5 +100,51 @@ async def test_resolve_single_trigger_asset_not_found(mock_repos: dict) -> None:
         await resolve_single_trigger(
             asset_name="nonexistent",
             slo_name="perf-slo",
+            **mock_repos,
+        )
+
+
+async def test_resolve_via_binding_fallback(mock_repos: dict) -> None:
+    """When no legacy link exists, resolve via SLO binding (direct or group)."""
+    # No legacy links
+    mock_repos["slo_link_repo"].list_by_asset.return_value = []
+
+    # SLO has sli_name set (new model)
+    mock_repos["slo_repo"].get_latest.return_value = type(
+        "SLO", (), {"name": "vm-slo", "version": 1, "sli_name": "vm-sli", "sli_version": 1}
+    )()
+
+    mock_repos["sli_repo"].get_version.return_value = type(
+        "SLI", (), {"name": "vm-sli", "version": 1, "indicators": {"cpu": "q1"}}
+    )()
+
+    binding_repo = AsyncMock()
+    binding_repo.find_for_asset.return_value = type(
+        "Binding", (), {"slo_name": "vm-slo", "data_source_name": "prom-1"}
+    )()
+
+    ctx = await resolve_single_trigger(
+        asset_name="vm-01",
+        slo_name="vm-slo",
+        binding_repo=binding_repo,
+        **mock_repos,
+    )
+    assert ctx.slo_name == "vm-slo"
+    assert ctx.sli_name == "vm-sli"
+    assert ctx.data_source_name == "prom-1"
+
+
+async def test_resolve_no_link_no_binding_raises(mock_repos: dict) -> None:
+    """When neither legacy link nor binding exists, raise SLONotConfiguredError."""
+    mock_repos["slo_link_repo"].list_by_asset.return_value = []
+
+    binding_repo = AsyncMock()
+    binding_repo.find_for_asset.return_value = None
+
+    with pytest.raises(SLONotConfiguredError, match="no slo link or binding"):
+        await resolve_single_trigger(
+            asset_name="vm-01",
+            slo_name="unknown-slo",
+            binding_repo=binding_repo,
             **mock_repos,
         )

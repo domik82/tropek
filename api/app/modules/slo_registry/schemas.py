@@ -44,6 +44,9 @@ class SLODefinitionCreate(BaseModel):
     tags: dict[str, Any] = Field(default_factory=dict)
     variables: dict[str, Any] = Field(default_factory=dict)
     comparable_from_version: int | None = None
+    kind: str = "standard"
+    sli_name: str | None = None
+    sli_version: int | None = None
 
 
 class SLODefinitionRead(BaseModel):
@@ -63,6 +66,9 @@ class SLODefinitionRead(BaseModel):
     author: str | None
     tags: dict[str, Any]
     variables: dict[str, Any]
+    kind: str
+    sli_name: str | None
+    sli_version: int | None
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)

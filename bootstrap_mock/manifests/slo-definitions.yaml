@@ -6,6 +6,9 @@ metadata:
   author: bootstrap
   notes: Covers P99 latency, error rate, and availability for HTTP services.
 spec:
+  sli_name: http-service-sli
+  sli_version: 1
+  kind: standard
   total_score:
     pass_pct: 90.0
     warning_pct: 75.0
@@ -35,6 +38,9 @@ metadata:
   author: bootstrap
   notes: Covers query latency and connection saturation for PostgreSQL instances.
 spec:
+  sli_name: db-sli
+  sli_version: 1
+  kind: standard
   total_score:
     pass_pct: 90.0
     warning_pct: 75.0
@@ -49,4 +55,209 @@ spec:
       display_name: "Connection Saturation"
       pass_criteria: ["<0.7"]
       warning_criteria: ["<0.85"]
+      weight: 1
+---
+api_version: tropek/v1
+kind: SLO
+metadata:
+  name: vm-health-slo
+  display_name: VM Health SLO
+  author: bootstrap
+  notes: Resource utilization thresholds for virtual machines.
+spec:
+  sli_name: vm-resources-sli
+  sli_version: 1
+  kind: standard
+  total_score:
+    pass_pct: 90.0
+    warning_pct: 75.0
+  objectives:
+    - sli: cpu_usage_pct
+      display_name: "CPU Usage %"
+      pass_criteria: ["<80"]
+      warning_criteria: ["<90"]
+      weight: 2
+      key_sli: true
+    - sli: memory_usage_pct
+      display_name: "Memory Usage %"
+      pass_criteria: ["<85"]
+      warning_criteria: ["<95"]
+      weight: 2
+    - sli: disk_usage_pct
+      display_name: "Disk Usage %"
+      pass_criteria: ["<80"]
+      warning_criteria: ["<90"]
+      weight: 1
+    - sli: disk_io_rate
+      display_name: "Disk I/O Saturation"
+      pass_criteria: ["<0.7"]
+      warning_criteria: ["<0.85"]
+      weight: 1
+---
+api_version: tropek/v1
+kind: SLO
+metadata:
+  name: process-health-slo
+  display_name: Process Health SLO
+  author: bootstrap
+  notes: Resource utilization thresholds for monitored application processes.
+spec:
+  sli_name: process-resources-sli
+  sli_version: 1
+  kind: standard
+  total_score:
+    pass_pct: 90.0
+    warning_pct: 75.0
+  objectives:
+    - sli: process_cpu_pct
+      display_name: "Process CPU %"
+      pass_criteria: ["<30"]
+      warning_criteria: ["<50"]
+      weight: 2
+      key_sli: true
+    - sli: process_memory_mb
+      display_name: "Process Memory (MB)"
+      pass_criteria: ["<500"]
+      warning_criteria: ["<800"]
+      weight: 2
+    - sli: process_handles
+      display_name: "Handle Count"
+      pass_criteria: ["<1000"]
+      warning_criteria: ["<2000"]
+      weight: 1
+---
+api_version: tropek/v1
+kind: SLO
+metadata:
+  name: office-word-health-slo
+  display_name: "Word — Process Health"
+  author: bootstrap
+  notes: Resource thresholds for Microsoft Word process.
+spec:
+  sli_name: process-resources-sli
+  sli_version: 1
+  kind: standard
+  variables:
+    process_name: "WINWORD"
+  total_score:
+    pass_pct: 90.0
+    warning_pct: 75.0
+  objectives:
+    - sli: process_cpu_pct
+      display_name: "CPU %"
+      pass_criteria: ["<30"]
+      warning_criteria: ["<50"]
+      weight: 2
+      key_sli: true
+    - sli: process_memory_mb
+      display_name: "Memory (MB)"
+      pass_criteria: ["<500"]
+      warning_criteria: ["<800"]
+      weight: 2
+    - sli: process_handles
+      display_name: "Handles"
+      pass_criteria: ["<1000"]
+      warning_criteria: ["<2000"]
+      weight: 1
+---
+api_version: tropek/v1
+kind: SLO
+metadata:
+  name: office-excel-health-slo
+  display_name: "Excel — Process Health"
+  author: bootstrap
+  notes: Resource thresholds for Microsoft Excel process.
+spec:
+  sli_name: process-resources-sli
+  sli_version: 1
+  kind: standard
+  variables:
+    process_name: "EXCEL"
+  total_score:
+    pass_pct: 90.0
+    warning_pct: 75.0
+  objectives:
+    - sli: process_cpu_pct
+      display_name: "CPU %"
+      pass_criteria: ["<30"]
+      warning_criteria: ["<50"]
+      weight: 2
+      key_sli: true
+    - sli: process_memory_mb
+      display_name: "Memory (MB)"
+      pass_criteria: ["<400"]
+      warning_criteria: ["<700"]
+      weight: 2
+    - sli: process_handles
+      display_name: "Handles"
+      pass_criteria: ["<800"]
+      warning_criteria: ["<1500"]
+      weight: 1
+---
+api_version: tropek/v1
+kind: SLO
+metadata:
+  name: office-powerpoint-health-slo
+  display_name: "PowerPoint — Process Health"
+  author: bootstrap
+  notes: Resource thresholds for Microsoft PowerPoint process.
+spec:
+  sli_name: process-resources-sli
+  sli_version: 1
+  kind: standard
+  variables:
+    process_name: "POWERPNT"
+  total_score:
+    pass_pct: 90.0
+    warning_pct: 75.0
+  objectives:
+    - sli: process_cpu_pct
+      display_name: "CPU %"
+      pass_criteria: ["<25"]
+      warning_criteria: ["<40"]
+      weight: 2
+      key_sli: true
+    - sli: process_memory_mb
+      display_name: "Memory (MB)"
+      pass_criteria: ["<400"]
+      warning_criteria: ["<600"]
+      weight: 2
+    - sli: process_handles
+      display_name: "Handles"
+      pass_criteria: ["<600"]
+      warning_criteria: ["<1000"]
+      weight: 1
+---
+api_version: tropek/v1
+kind: SLO
+metadata:
+  name: office-outlook-health-slo
+  display_name: "Outlook — Process Health"
+  author: bootstrap
+  notes: Resource thresholds for Microsoft Outlook process.
+spec:
+  sli_name: process-resources-sli
+  sli_version: 1
+  kind: standard
+  variables:
+    process_name: "OUTLOOK"
+  total_score:
+    pass_pct: 90.0
+    warning_pct: 75.0
+  objectives:
+    - sli: process_cpu_pct
+      display_name: "CPU %"
+      pass_criteria: ["<20"]
+      warning_criteria: ["<35"]
+      weight: 2
+      key_sli: true
+    - sli: process_memory_mb
+      display_name: "Memory (MB)"
+      pass_criteria: ["<600"]
+      warning_criteria: ["<900"]
+      weight: 2
+    - sli: process_handles
+      display_name: "Handles"
+      pass_criteria: ["<1200"]
+      warning_criteria: ["<2000"]
       weight: 1

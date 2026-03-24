@@ -56,6 +56,13 @@ export const groupKeys = {
   tree: () => [...groupKeys.all, 'tree'] as const,
   detail: (name: string) => [...groupKeys.all, name] as const,
   links: (name: string) => [...groupKeys.detail(name), 'links'] as const,
+  bindings: (name: string) => [...groupKeys.detail(name), 'bindings'] as const,
+}
+
+export const bindingKeys = {
+  all: ['slo-bindings'] as const,
+  asset: (assetName: string) => [...bindingKeys.all, 'asset', assetName] as const,
+  group: (groupName: string) => [...bindingKeys.all, 'group', groupName] as const,
 }
 
 export const datasourceKeys = {

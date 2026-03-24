@@ -25,6 +25,7 @@ from tropek_client.models import (
     EvaluationSummary,
     PagedResponse,
     SLIDefinition,
+    SLOBinding,
     SLODefinition,
     SLOTestResult,
     SLOValidationResult,
@@ -713,6 +714,53 @@ class _Trend:
         return [TrendPoint.model_validate(p) for p in resp.json()]
 
 
+class _SLOBindings:
+    """SLO binding CRUD (new binding model — asset or group linked to SLO via data source)."""
+
+    def __init__(self, http: httpx.Client) -> None:
+        self._http = http
+
+    def create_for_asset(self, asset_name: str, slo_name: str, data_source_name: str) -> SLOBinding:
+        """Create an SLO binding for an asset."""
+        resp = self._http.post(
+            f"/assets/{asset_name}/slo-bindings",
+            json={"slo_name": slo_name, "data_source_name": data_source_name},
+        )
+        _raise_for_status(resp)
+        return SLOBinding.model_validate(resp.json())
+
+    def create_for_group(self, group_name: str, slo_name: str, data_source_name: str) -> SLOBinding:
+        """Create an SLO binding for an asset group."""
+        resp = self._http.post(
+            f"/asset-groups/{group_name}/slo-bindings",
+            json={"slo_name": slo_name, "data_source_name": data_source_name},
+        )
+        _raise_for_status(resp)
+        return SLOBinding.model_validate(resp.json())
+
+    def list_for_asset(self, asset_name: str) -> list[SLOBinding]:
+        """List SLO bindings for an asset."""
+        resp = self._http.get(f"/assets/{asset_name}/slo-bindings")
+        _raise_for_status(resp)
+        return [SLOBinding.model_validate(b) for b in resp.json()]
+
+    def list_for_group(self, group_name: str) -> list[SLOBinding]:
+        """List SLO bindings for an asset group."""
+        resp = self._http.get(f"/asset-groups/{group_name}/slo-bindings")
+        _raise_for_status(resp)
+        return [SLOBinding.model_validate(b) for b in resp.json()]
+
+    def delete_for_asset(self, asset_name: str, slo_name: str) -> None:
+        """Delete an SLO binding for an asset."""
+        resp = self._http.delete(f"/assets/{asset_name}/slo-bindings/{slo_name}")
+        _raise_for_status(resp)
+
+    def delete_for_group(self, group_name: str, slo_name: str) -> None:
+        """Delete an SLO binding for an asset group."""
+        resp = self._http.delete(f"/asset-groups/{group_name}/slo-bindings/{slo_name}")
+        _raise_for_status(resp)
+
+
 class TropekClient:
     """Typed Python client for the TROPEK API."""
 
@@ -732,6 +780,7 @@ class TropekClient:
         self.datasources = _DataSources(self._http)
         self.sli_definitions = _SLIDefinitions(self._http)
         self.slo_definitions = _SLODefinitions(self._http)
+        self.slo_bindings = _SLOBindings(self._http)
         self.evaluations = _Evaluations(self._http)
         self.annotations = _Annotations(self._http)
         self.trend = _Trend(self._http)

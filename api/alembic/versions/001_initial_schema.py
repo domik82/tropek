@@ -2,7 +2,7 @@
 
 Revision ID: 001
 Revises:
-Create Date: 2026-03-21 21:09:56.838095
+Create Date: 2026-03-24 07:36:12.398043
 
 """
 
@@ -159,6 +159,29 @@ def upgrade() -> None:
     )
     op.create_index("idx_sli_definitions_name", "sli_definitions", ["name"], unique=False)
     op.create_table(
+        "slo_bindings",
+        sa.Column("id", sa.UUID(), nullable=False),
+        sa.Column("target_type", sa.Text(), nullable=False),
+        sa.Column("target_id", sa.UUID(), nullable=False),
+        sa.Column("slo_name", sa.Text(), nullable=False),
+        sa.Column("data_source_name", sa.Text(), nullable=False),
+        sa.Column("comparison_rules", postgresql.JSONB(astext_type=sa.Text()), nullable=True),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
+        sa.CheckConstraint(
+            "target_type IN ('asset', 'asset_group')", name="ck_slo_bindings_target_type"
+        ),
+        sa.PrimaryKeyConstraint("id"),
+        sa.UniqueConstraint("target_type", "target_id", "slo_name", name="uq_slo_binding"),
+    )
+    op.create_index(
+        "idx_slo_bindings_target", "slo_bindings", ["target_type", "target_id"], unique=False
+    )
+    op.create_table(
         "slo_definitions",
         sa.Column("id", sa.UUID(), nullable=False),
         sa.Column("name", sa.Text(), nullable=False),
@@ -193,6 +216,10 @@ def upgrade() -> None:
             server_default=sa.text("'{}'"),
             nullable=False,
         ),
+        sa.Column("kind", sa.Text(), server_default=sa.text("'standard'"), nullable=False),
+        sa.Column("sli_name", sa.Text(), nullable=True),
+        sa.Column("sli_version", sa.Integer(), nullable=True),
+        sa.Column("generated_by_group_id", sa.UUID(), nullable=True),
         sa.Column("active", sa.Boolean(), server_default=sa.text("true"), nullable=False),
         sa.Column(
             "created_at",
@@ -566,6 +593,8 @@ def downgrade() -> None:
     op.drop_index("idx_slo_definitions_name", table_name="slo_definitions")
     op.drop_index("idx_slo_definitions_latest", table_name="slo_definitions")
     op.drop_table("slo_definitions")
+    op.drop_index("idx_slo_bindings_target", table_name="slo_bindings")
+    op.drop_table("slo_bindings")
     op.drop_index("idx_sli_definitions_name", table_name="sli_definitions")
     op.drop_index("idx_sli_definitions_latest", table_name="sli_definitions")
     op.drop_table("sli_definitions")

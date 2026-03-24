@@ -14,6 +14,7 @@ from app.modules.assets.repository import (
     AssetGroupSLOLinkRepository,
     AssetRepository,
     AssetSLOLinkRepository,
+    SLOBindingRepository,
 )
 from app.modules.datasource.repository import DataSourceRepository
 from app.modules.quality_gate.annotation_repository import AnnotationRepository
@@ -38,6 +39,7 @@ class QualityGateRepos:
     asset_group_repo: AssetGroupRepository
     slo_link_repo: AssetSLOLinkRepository
     group_link_repo: AssetGroupSLOLinkRepository
+    binding_repo: SLOBindingRepository
     sli_def_repo: SLIRepository
     slo_repo: SLORepository
     ds_repo: DataSourceRepository
@@ -60,6 +62,7 @@ async def get_qg_repos(
         asset_group_repo=AssetGroupRepository(session),
         slo_link_repo=AssetSLOLinkRepository(session),
         group_link_repo=AssetGroupSLOLinkRepository(session),
+        binding_repo=SLOBindingRepository(session),
         sli_def_repo=SLIRepository(session, cache=cache),
         slo_repo=SLORepository(session, cache=cache),
         ds_repo=DataSourceRepository(session),

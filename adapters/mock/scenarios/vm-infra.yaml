@@ -1,0 +1,63 @@
+name: vm-infra
+namespaces:
+  - prometheus-local
+metrics:
+  cpu_usage_pct:
+    baseline: 35.0
+    phases:
+      - duration_hours: 20
+        pattern: stable
+        jitter_pct: 5
+      - duration_hours: 6
+        pattern: spike
+        target: 92.0
+        jitter_pct: 3
+      - duration_hours: 22
+        pattern: stable
+        jitter_pct: 5
+  memory_usage_pct:
+    baseline: 55.0
+    phases:
+      - duration_hours: 20
+        pattern: stable
+        jitter_pct: 3
+      - duration_hours: 6
+        pattern: spike
+        target: 97.0
+        jitter_pct: 2
+      - duration_hours: 22
+        pattern: stable
+        jitter_pct: 3
+  disk_usage_pct:
+    baseline: 42.0
+    phases:
+      - duration_hours: 48
+        pattern: stable
+        jitter_pct: 2
+  disk_io_rate:
+    baseline: 0.15
+    phases:
+      - duration_hours: 20
+        pattern: stable
+        jitter_pct: 10
+      - duration_hours: 6
+        pattern: spike
+        target: 0.82
+        jitter_pct: 5
+      - duration_hours: 22
+        pattern: stable
+        jitter_pct: 10
+  network_in_rate:
+    baseline: 125000.0
+    phases:
+      - duration_hours: 48
+        pattern: stable
+        jitter_pct: 8
+  network_out_rate:
+    baseline: 85000.0
+    phases:
+      - duration_hours: 48
+        pattern: stable
+        jitter_pct: 8
+interval_minutes: 5
+start: "2026-03-15T00:00:00Z"

@@ -1,0 +1,136 @@
+# SLO Bindings — new polymorphic model (replaces AssetSLOLink / AssetGroupSLOLink).
+# target_type: "asset" or "asset_group"
+# target_name: the asset or group name (resolved to ID by bootstrap)
+
+# ---- E-Commerce: existing services ----
+
+api_version: tropek/v1
+kind: SLOBinding
+metadata:
+  name: checkout-api-http-binding
+spec:
+  target_type: asset
+  target_name: checkout-api
+  slo_name: http-availability-slo
+  data_source_name: prometheus-local
+---
+api_version: tropek/v1
+kind: SLOBinding
+metadata:
+  name: product-catalog-http-binding
+spec:
+  target_type: asset
+  target_name: product-catalog
+  slo_name: http-availability-slo
+  data_source_name: prometheus-local
+---
+api_version: tropek/v1
+kind: SLOBinding
+metadata:
+  name: user-service-http-binding
+spec:
+  target_type: asset
+  target_name: user-service
+  slo_name: http-availability-slo
+  data_source_name: prometheus-local
+---
+api_version: tropek/v1
+kind: SLOBinding
+metadata:
+  name: orders-db-perf-binding
+spec:
+  target_type: asset
+  target_name: orders-db
+  slo_name: db-performance-slo
+  data_source_name: prometheus-local
+
+# ---- E-Commerce: group bindings ----
+
+---
+api_version: tropek/v1
+kind: SLOBinding
+metadata:
+  name: core-services-http-binding
+spec:
+  target_type: asset_group
+  target_name: core-services
+  slo_name: http-availability-slo
+  data_source_name: prometheus-local
+---
+api_version: tropek/v1
+kind: SLOBinding
+metadata:
+  name: data-tier-db-binding
+spec:
+  target_type: asset_group
+  target_name: data-tier
+  slo_name: db-performance-slo
+  data_source_name: prometheus-local
+
+# ---- Infrastructure VMs ----
+
+---
+api_version: tropek/v1
+kind: SLOBinding
+metadata:
+  name: vm-prod-web-health-binding
+spec:
+  target_type: asset_group
+  target_name: vm-prod-web
+  slo_name: vm-health-slo
+  data_source_name: prometheus-local
+---
+api_version: tropek/v1
+kind: SLOBinding
+metadata:
+  name: vm-stg-web-health-binding
+spec:
+  target_type: asset_group
+  target_name: vm-stg-web
+  slo_name: vm-health-slo
+  data_source_name: prometheus-local
+
+# ---- Office Laptops: one binding per app SLO ----
+# In Phase 3 these would be generated from a template.
+# For now, 4 explicit SLOs x 1 group = 4 bindings.
+
+---
+api_version: tropek/v1
+kind: SLOBinding
+metadata:
+  name: office-laptops-word-binding
+spec:
+  target_type: asset_group
+  target_name: office-laptops
+  slo_name: office-word-health-slo
+  data_source_name: prometheus-local
+---
+api_version: tropek/v1
+kind: SLOBinding
+metadata:
+  name: office-laptops-excel-binding
+spec:
+  target_type: asset_group
+  target_name: office-laptops
+  slo_name: office-excel-health-slo
+  data_source_name: prometheus-local
+---
+api_version: tropek/v1
+kind: SLOBinding
+metadata:
+  name: office-laptops-powerpoint-binding
+spec:
+  target_type: asset_group
+  target_name: office-laptops
+  slo_name: office-powerpoint-health-slo
+  data_source_name: prometheus-local
+---
+api_version: tropek/v1
+kind: SLOBinding
+metadata:
+  name: office-laptops-outlook-binding
+spec:
+  target_type: asset_group
+  target_name: office-laptops
+  slo_name: office-outlook-health-slo
+  data_source_name: prometheus-local

@@ -229,3 +229,27 @@ class AssetGroupSLOLinkRead(BaseModel):
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+
+# ---- SLO Bindings (new polymorphic model) ----
+
+
+class SLOBindingCreate(BaseModel):
+    """Request body for creating an SLO binding."""
+
+    slo_name: str
+    data_source_name: str
+
+
+class SLOBindingRead(BaseModel):
+    """Response schema for an SLO binding."""
+
+    id: uuid.UUID
+    target_type: str
+    target_id: uuid.UUID
+    slo_name: str
+    data_source_name: str
+    comparison_rules: list[dict[str, Any]] | None
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)

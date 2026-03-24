@@ -15,6 +15,7 @@ from app.modules.quality_gate.protocols import (
     AssetReader,
     DataSourceReader,
     SLIReader,
+    SLOBindingReader,
     SLOLinkReader,
     SLOReader,
 )
@@ -47,8 +48,13 @@ async def resolve_single_trigger(
     sli_repo: SLIReader,
     slo_repo: SLOReader,
     ds_repo: DataSourceReader,
+    binding_repo: SLOBindingReader | None = None,
 ) -> TriggerContext:
     """Resolve all references for a single asset evaluation.
+
+    Resolution order:
+      1. Legacy asset_slo_links table (backward compat)
+      2. New slo_bindings table (direct asset or via group membership)
 
     Raises domain exceptions if any reference is missing.
     """
@@ -57,26 +63,49 @@ async def resolve_single_trigger(
         msg = f"asset '{asset_name}' not found"
         raise AssetNotFoundError(msg)
 
-    # Find the SLO link for this asset + slo_name
+    # Try legacy SLO link first
     links = await slo_link_repo.list_by_asset(asset.id)
     link = next((lnk for lnk in links if lnk.slo_name == slo_name), None)
-    if link is None:
-        msg = f"no slo link for asset '{asset_name}' with slo '{slo_name}'"
+
+    # Fall back to new SLO binding (direct or via group membership)
+    binding = None
+    if link is None and binding_repo is not None:
+        binding = await binding_repo.find_for_asset(asset.id, slo_name)
+
+    if link is None and binding is None:
+        msg = f"no slo link or binding for asset '{asset_name}' with slo '{slo_name}'"
         raise SLONotConfiguredError(msg)
 
-    sli_def = await sli_repo.get_latest(link.sli_name)
-    if sli_def is None:
-        msg = f"sli definition '{link.sli_name}' not found"
-        raise SLONotConfiguredError(msg)
-
-    slo_def = await slo_repo.get_latest(link.slo_name)
+    slo_def = await slo_repo.get_latest(slo_name)
     if slo_def is None:
-        msg = f"slo definition '{link.slo_name}' not found"
+        msg = f"slo definition '{slo_name}' not found"
         raise SLONotConfiguredError(msg)
 
-    ds = await ds_repo.get_by_name(link.data_source_name)
+    # Resolve SLI: SLO definition first, then legacy link fallback
+    sli_name = slo_def.sli_name or (link.sli_name if link else None)
+    if sli_name is None:
+        msg = f"no sli_name on slo '{slo_name}' and no legacy link with sli reference"
+        raise SLONotConfiguredError(msg)
+
+    sli_version = slo_def.sli_version
+    if sli_version is not None:
+        sli_def = await sli_repo.get_version(sli_name, sli_version)
+    else:
+        sli_def = await sli_repo.get_latest(sli_name)
+
+    if sli_def is None:
+        msg = f"sli definition '{sli_name}' not found"
+        raise SLONotConfiguredError(msg)
+
+    # Resolve datasource: from binding or legacy link (one is always non-None here)
+    if binding is not None:
+        ds_name = binding.data_source_name
+    else:
+        assert link is not None  # guarded by SLONotConfiguredError above
+        ds_name = link.data_source_name
+    ds = await ds_repo.get_by_name(ds_name)
     if ds is None:
-        msg = f"datasource '{link.data_source_name}' not found"
+        msg = f"datasource '{ds_name}' not found"
         raise DataSourceNotFoundError(msg)
 
     return TriggerContext(

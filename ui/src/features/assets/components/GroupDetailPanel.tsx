@@ -4,7 +4,7 @@ import { Pencil, Link, Trash2, X, FolderPlus, Plus } from 'lucide-react'
 import { LabelChips } from '@/components/labels/LabelChips'
 import { LabelsEditorDialog } from '@/components/labels/LabelsEditorDialog'
 import { useAssetGroup, useAssets, useRemoveGroupMember, useAssetGroups, useUpdateAsset } from '../hooks'
-import { useGroupSloLinks, useDeleteGroupSloLink } from '@/features/slos/hooks'
+import { useGroupSloBindings, useDeleteGroupSloBinding } from '@/features/slos/hooks'
 import { GroupEditDialog } from '@/features/slos/components/GroupEditDialog'
 import { GroupDeleteDialog } from '@/features/slos/components/GroupDeleteDialog'
 import { GroupCreateDialog } from '@/features/slos/components/GroupCreateDialog'
@@ -23,9 +23,9 @@ export function GroupDetailPanel({ groupName, onSelectGroup, selectedAsset }: Pr
   const { data: group } = useAssetGroup(groupName)
   const { data: tree } = useAssetGroups()
   const { data: assets = [] } = useAssets()
-  const { data: links = [] } = useGroupSloLinks(groupName)
+  const { data: bindings = [] } = useGroupSloBindings(groupName)
   const removeMember = useRemoveGroupMember()
-  const unlinkSlo = useDeleteGroupSloLink()
+  const unlinkSlo = useDeleteGroupSloBinding()
   const updateAsset = useUpdateAsset()
 
   const [editDialogOpen, setEditDialogOpen] = useState(false)
@@ -56,7 +56,7 @@ export function GroupDetailPanel({ groupName, onSelectGroup, selectedAsset }: Pr
   const statsLine = [
     `${group.members.length} assets`,
     `${subgroups.length} subgroups`,
-    `${links.length} linked SLOs`,
+    `${bindings.length} linked SLOs`,
   ].join(' · ')
 
   return (
@@ -220,7 +220,7 @@ export function GroupDetailPanel({ groupName, onSelectGroup, selectedAsset }: Pr
       <div>
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-sm font-semibold text-foreground">
-            Linked SLOs ({links.length})
+            Linked SLOs ({bindings.length})
           </h3>
           <button
             onClick={() => setLinkSloOpen(true)}
@@ -230,29 +230,27 @@ export function GroupDetailPanel({ groupName, onSelectGroup, selectedAsset }: Pr
             Link SLO
           </button>
         </div>
-        {links.length === 0 && (
+        {bindings.length === 0 && (
           <p className="text-sm text-muted-foreground italic">No linked SLOs</p>
         )}
-        {links.length > 0 && (
+        {bindings.length > 0 && (
           <div className="border border-slate-700 rounded-lg overflow-hidden">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-slate-700 bg-[#111827]">
                   <th className="text-left px-3 py-2 text-xs uppercase text-muted-foreground font-medium">SLO Name</th>
-                  <th className="text-left px-3 py-2 text-xs uppercase text-muted-foreground font-medium">SLI Name</th>
                   <th className="text-left px-3 py-2 text-xs uppercase text-muted-foreground font-medium">Datasource</th>
                   <th className="text-center px-3 py-2 text-xs uppercase text-muted-foreground font-medium w-[60px]"></th>
                 </tr>
               </thead>
               <tbody>
-                {links.map((link, idx) => (
-                  <tr key={link.id} className={`border-b border-slate-800/60 last:border-0 hover:bg-gray-700/50 transition-colors ${idx % 2 === 0 ? 'bg-gray-900' : 'bg-gray-800/50'}`}>
-                    <td className="px-3 py-2 font-medium text-foreground">{link.slo_name}</td>
-                    <td className="px-3 py-2 text-muted-foreground">{link.sli_name}</td>
-                    <td className="px-3 py-2 text-muted-foreground/60">{link.data_source_name}</td>
+                {bindings.map((binding, idx) => (
+                  <tr key={binding.id} className={`border-b border-slate-800/60 last:border-0 hover:bg-gray-700/50 transition-colors ${idx % 2 === 0 ? 'bg-gray-900' : 'bg-gray-800/50'}`}>
+                    <td className="px-3 py-2 font-medium text-foreground">{binding.slo_name}</td>
+                    <td className="px-3 py-2 text-muted-foreground/60">{binding.data_source_name}</td>
                     <td className="px-3 py-2 text-center">
                       <button
-                        onClick={() => unlinkSlo.mutate({ groupName, linkName: link.link_name })}
+                        onClick={() => unlinkSlo.mutate({ groupName, sloName: binding.slo_name })}
                         className="p-1 text-muted-foreground hover:text-[#F85149] transition-colors"
                         title="Unlink"
                       >

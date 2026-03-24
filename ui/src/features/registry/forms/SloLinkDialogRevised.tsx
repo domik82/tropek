@@ -3,10 +3,9 @@ import { X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { SearchableComboBox } from '@/components/shared/SearchableComboBox'
 import { useDatasources } from '@/features/datasources/hooks'
-import { useSliDefinitions } from '@/features/slis/hooks'
 import {
   useGroupTree, useSlos,
-  useCreateGroupSloLink, useGroupSloLinks,
+  useCreateGroupSloBinding, useGroupSloBindings,
 } from '@/features/slos/hooks'
 import { ENTITY_COLORS } from '@/lib/entity-colors'
 import { SANS_SERIF } from '@/lib/fonts'
@@ -22,45 +21,45 @@ export function SloLinkDialogRevised({
   open, onOpenChange, lockedSloName, lockedGroupName,
 }: Props) {
   const [datasource, setDatasource] = useState('')
-  const [sliName, setSliName] = useState('')
   const [groupName, setGroupName] = useState(lockedGroupName ?? '')
   const [sloName, setSloName] = useState(lockedSloName ?? '')
 
   const { data: datasources } = useDatasources()
-  const selectedDs = datasources?.find(d => d.name === datasource)
-  const { data: slis } = useSliDefinitions(selectedDs?.adapter_type)
   const { data: tree } = useGroupTree()
   const { data: slos } = useSlos()
-  const { data: existingLinks } = useGroupSloLinks(groupName || lockedGroupName || '')
-  const createLink = useCreateGroupSloLink()
+  const { data: existingBindings } = useGroupSloBindings(groupName || lockedGroupName || '')
+  const createBinding = useCreateGroupSloBinding()
+
+  const selectedSlo = slos?.find((s) => s.name === sloName)
+
+  const dsItems = (datasources ?? []).map((ds) => ({
+    value: ds.name,
+    label: ds.display_name ?? ds.name,
+    badge: ds.adapter_type,
+  }))
 
   useEffect(() => {
     if (lockedGroupName) setGroupName(lockedGroupName)
     if (lockedSloName) setSloName(lockedSloName)
   }, [lockedGroupName, lockedSloName])
 
-  // Reset SLI when datasource changes
-  useEffect(() => { setSliName('') }, [datasource])
-
   // Reset all when dialog opens
   useEffect(() => {
     if (open) {
       setDatasource('')
-      setSliName('')
       if (!lockedGroupName) setGroupName('')
       if (!lockedSloName) setSloName('')
     }
   }, [open, lockedGroupName, lockedSloName])
 
-  const isDuplicate = existingLinks?.some(l => l.slo_name === sloName) ?? false
-  const isValid = datasource && sliName && groupName && sloName && !isDuplicate
+  const isDuplicate = existingBindings?.some((b) => b.slo_name === sloName) ?? false
+  const isValid = datasource && groupName && sloName && !isDuplicate
 
   const handleLink = async () => {
     const targetGroup = lockedGroupName ?? groupName
-    await createLink.mutateAsync({
+    await createBinding.mutateAsync({
       groupName: targetGroup,
       slo_name: sloName,
-      sli_name: sliName,
       data_source_name: datasource,
     })
     onOpenChange(false)
@@ -68,27 +67,15 @@ export function SloLinkDialogRevised({
 
   if (!open) return null
 
-  const dsItems = (datasources ?? []).map(ds => ({
-    value: ds.name,
-    label: ds.display_name ?? ds.name,
-    badge: ds.adapter_type,
-  }))
-
-  const sliItems = (slis ?? [])
-    .filter(s => s.active)
-    .map(s => ({
-      value: s.name,
-      label: s.display_name ?? s.name,
-    }))
-
   const sloItems = (slos ?? [])
-    .filter(s => s.active)
-    .map(s => ({
+    .filter((s) => s.active)
+    .map((s) => ({
       value: s.name,
       label: s.display_name ?? s.name,
+      badge: s.sli_name ?? undefined,
     }))
 
-  const groupItems = (tree?.all_groups ?? []).map(g => ({
+  const groupItems = (tree?.all_groups ?? []).map((g) => ({
     value: g.name,
     label: g.display_name ?? g.name,
   }))
@@ -109,7 +96,7 @@ export function SloLinkDialogRevised({
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-border">
           <h2 className="text-sm font-semibold text-foreground">
-            Link SLO to Asset Group
+            Bind SLO to Asset Group
           </h2>
           <button
             type="button"
@@ -123,42 +110,7 @@ export function SloLinkDialogRevised({
 
         {/* Body */}
         <div className="p-4 space-y-3">
-          {/* Step 1: Datasource */}
-          <div>
-            <label className="block text-xs text-muted-foreground mb-1">Datasource</label>
-            <SearchableComboBox
-              value={datasource}
-              items={dsItems}
-              onSelect={setDatasource}
-              placeholder="Select datasource..."
-            />
-          </div>
-
-          {/* Step 2: SLI (disabled until DS selected) */}
-          <div>
-            <label className="block text-xs text-muted-foreground mb-1">
-              SLI
-              {selectedDs && (
-                <span className="text-[10px] opacity-60 normal-case ml-1">
-                  — filtered to {selectedDs.adapter_type}
-                </span>
-              )}
-            </label>
-            {!datasource ? (
-              <div className="rounded border border-border bg-muted/30 px-3 py-2 text-sm text-muted-foreground">
-                Select a datasource first
-              </div>
-            ) : (
-              <SearchableComboBox
-                value={sliName}
-                items={sliItems}
-                onSelect={setSliName}
-                placeholder="Select SLI..."
-              />
-            )}
-          </div>
-
-          {/* Step 3: SLO (locked or selectable) */}
+          {/* Step 1: SLO (locked or selectable) */}
           <div>
             <label className="block text-xs text-muted-foreground mb-1">SLO</label>
             {lockedSloName ? (
@@ -173,9 +125,28 @@ export function SloLinkDialogRevised({
                 placeholder="Select SLO..."
               />
             )}
+            {selectedSlo?.sli_name && (
+              <p className="mt-1 text-[10px] text-muted-foreground">
+                SLI: <span className="text-foreground/70">{selectedSlo.sli_name}</span>
+                {selectedSlo.sli_version != null && (
+                  <span className="opacity-50"> v{selectedSlo.sli_version}</span>
+                )}
+              </p>
+            )}
           </div>
 
-          {/* Step 4: Group (locked or selectable) */}
+          {/* Step 2: Datasource */}
+          <div>
+            <label className="block text-xs text-muted-foreground mb-1">Datasource</label>
+            <SearchableComboBox
+              value={datasource}
+              items={dsItems}
+              onSelect={setDatasource}
+              placeholder="Select datasource..."
+            />
+          </div>
+
+          {/* Step 3: Group (locked or selectable) */}
           <div>
             <label className="block text-xs text-muted-foreground mb-1">Asset Group</label>
             {lockedGroupName ? (
@@ -193,7 +164,7 @@ export function SloLinkDialogRevised({
           </div>
 
           {isDuplicate && (
-            <p className="text-xs text-destructive">This SLO is already linked to this group</p>
+            <p className="text-xs text-destructive">This SLO is already bound to this group</p>
           )}
         </div>
 
@@ -205,10 +176,10 @@ export function SloLinkDialogRevised({
           <Button
             size="xs"
             type="button"
-            disabled={!isValid || createLink.isPending}
+            disabled={!isValid || createBinding.isPending}
             onClick={handleLink}
           >
-            {createLink.isPending ? 'Linking...' : 'Link'}
+            {createBinding.isPending ? 'Binding...' : 'Bind'}
           </Button>
         </div>
       </div>

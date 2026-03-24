@@ -5,6 +5,8 @@ export interface MinSlo {
   display_name?: string | null
   version: number
   active: boolean
+  sli_name?: string | null
+  sli_version?: number | null
 }
 
 export interface MinSli {
@@ -21,9 +23,8 @@ export interface MinDs {
   adapter_type: string
 }
 
-export interface MinLink {
+export interface MinBinding {
   slo_name: string
-  sli_name: string
   data_source_name: string
 }
 
@@ -37,36 +38,36 @@ export function buildSloTree(
   slos: MinSlo[],
   slis: MinSli[],
   datasources: MinDs[],
-  links: MinLink[],
+  bindings: MinBinding[],
 ): TreeNode[] {
   const sliByName = new Map(slis.map(s => [s.name, s]))
   const dsByName = new Map(datasources.map(d => [d.name, d]))
 
   return slos.filter(s => s.active).map(slo => {
-    const sloLinks = links.filter(l => l.slo_name === slo.name)
-    const sliNames = [...new Set(sloLinks.map(l => l.sli_name))]
+    const sloBindings = bindings.filter(b => b.slo_name === slo.name)
+    const dsNames = [...new Set(sloBindings.map(b => b.data_source_name))]
 
-    const sliChildren: TreeNode[] = sliNames.map(sliName => {
-      const sli = sliByName.get(sliName)
-      const dsNames = [
-        ...new Set(sloLinks.filter(l => l.sli_name === sliName).map(l => l.data_source_name)),
-      ]
-      const dsChildren: TreeNode[] = dsNames.map(dsName => ({
-        id: `ds:${dsName}`,
-        name: dsName,
-        displayName: dsByName.get(dsName)?.display_name ?? undefined,
-        type: 'datasource' as const,
-      }))
+    const dsChildren: TreeNode[] = dsNames.map(dsName => ({
+      id: `ds:${dsName}`,
+      name: dsName,
+      displayName: dsByName.get(dsName)?.display_name ?? undefined,
+      type: 'datasource' as const,
+    }))
+
+    // SLI comes from the SLO definition, not from bindings
+    const sliChildren: TreeNode[] = []
+    if (slo.sli_name) {
+      const sli = sliByName.get(slo.sli_name)
       const indicatorCount = sli?.indicators ? Object.keys(sli.indicators).length : 0
-      return {
-        id: `sli:${sliName}`,
-        name: sliName,
+      sliChildren.push({
+        id: `sli:${slo.sli_name}`,
+        name: slo.sli_name,
         displayName: sli?.display_name ?? undefined,
         type: 'sli' as const,
         badge: `${indicatorCount} indicators`,
         children: dsChildren,
-      }
-    })
+      })
+    }
 
     return {
       id: `slo:${slo.name}`,
@@ -74,7 +75,7 @@ export function buildSloTree(
       displayName: slo.display_name ?? undefined,
       type: 'slo' as const,
       badge: `v${slo.version}`,
-      children: sliChildren,
+      children: sliChildren.length > 0 ? sliChildren : dsChildren,
     }
   })
 }
@@ -83,20 +84,30 @@ export function buildDatasourceTree(
   datasources: MinDs[],
   slis: MinSli[],
   slos: MinSlo[],
-  links: MinLink[],
+  bindings: MinBinding[],
 ): TreeNode[] {
   const sloByName = new Map(slos.map(s => [s.name, s]))
 
   return datasources.map(ds => {
-    const dsSlis = slis.filter(s => s.adapter_type === ds.adapter_type && s.active)
-    const sliChildren: TreeNode[] = dsSlis.map(sli => {
-      const sloNames = [
-        ...new Set(
-          links
-            .filter(l => l.sli_name === sli.name && l.data_source_name === ds.name)
-            .map(l => l.slo_name),
-        ),
-      ]
+    // Find SLOs bound to this datasource
+    const boundSloNames = [...new Set(
+      bindings.filter(b => b.data_source_name === ds.name).map(b => b.slo_name),
+    )]
+    // Group bound SLOs by their sli_name (from the SLO definition)
+    const sliToSlos = new Map<string, string[]>()
+    for (const sloName of boundSloNames) {
+      const slo = sloByName.get(sloName)
+      const sliName = slo?.sli_name ?? '__none__'
+      const existing = sliToSlos.get(sliName) ?? []
+      existing.push(sloName)
+      sliToSlos.set(sliName, existing)
+    }
+
+    const sliByName = new Map(slis.map(s => [s.name, s]))
+    const sliChildren: TreeNode[] = []
+    for (const [sliName, sloNames] of sliToSlos) {
+      if (sliName === '__none__') continue
+      const sli = sliByName.get(sliName)
       const sloChildren: TreeNode[] = sloNames.map(sloName => {
         const slo = sloByName.get(sloName)
         return {
@@ -107,14 +118,26 @@ export function buildDatasourceTree(
           badge: slo ? `v${slo.version}` : undefined,
         }
       })
-      const indicatorCount = sli.indicators ? Object.keys(sli.indicators).length : 0
-      return {
-        id: `sli:${sli.name}`,
-        name: sli.name,
-        displayName: sli.display_name ?? undefined,
+      const indicatorCount = sli?.indicators ? Object.keys(sli.indicators).length : 0
+      sliChildren.push({
+        id: `sli:${sliName}`,
+        name: sliName,
+        displayName: sli?.display_name ?? undefined,
         type: 'sli' as const,
         badge: `${indicatorCount} indicators`,
         children: sloChildren,
+      })
+    }
+    // Also add SLOs without an SLI directly under the datasource
+    const orphanSlos = sliToSlos.get('__none__') ?? []
+    const orphanChildren: TreeNode[] = orphanSlos.map(sloName => {
+      const slo = sloByName.get(sloName)
+      return {
+        id: `slo:${sloName}`,
+        name: sloName,
+        displayName: slo?.display_name ?? undefined,
+        type: 'slo' as const,
+        badge: slo ? `v${slo.version}` : undefined,
       }
     })
 
@@ -124,37 +147,61 @@ export function buildDatasourceTree(
       displayName: ds.display_name ?? undefined,
       type: 'datasource' as const,
       badge: `[${ds.adapter_type}]`,
-      children: sliChildren,
+      children: [...sliChildren, ...orphanChildren],
     }
   })
 }
 
 export function buildAssetTree(
   groups: MinGroup[],
-  groupLinksMap: Record<string, MinLink[]>,
+  groupBindingsMap: Record<string, MinBinding[]>,
+  slos?: MinSlo[],
+  slis?: MinSli[],
 ): TreeNode[] {
+  const sloByName = new Map((slos ?? []).map(s => [s.name, s]))
+  const sliByName = new Map((slis ?? []).map(s => [s.name, s]))
+
   return groups.map(group => {
-    const groupLinks = groupLinksMap[group.name] ?? []
+    const groupBindings = groupBindingsMap[group.name] ?? []
     const memberChildren: TreeNode[] = (group.members ?? []).map(member => {
       // Build nested SLO → SLI → DS tree per binding
-      const sloChildren: TreeNode[] = groupLinks.map(link => ({
-        id: `binding-slo:${member.asset_name}:${link.slo_name}`,
-        name: link.slo_name,
-        type: 'slo' as const,
-        groupName: group.name,
-        children: [{
-          id: `binding-sli:${member.asset_name}:${link.sli_name}`,
-          name: link.sli_name,
-          type: 'sli' as const,
+      const sloChildren: TreeNode[] = groupBindings.map(binding => {
+        const slo = sloByName.get(binding.slo_name)
+        const dsNode: TreeNode = {
+          id: `binding-ds:${member.asset_name}:${binding.data_source_name}`,
+          name: binding.data_source_name,
+          type: 'datasource' as const,
           groupName: group.name,
-          children: [{
-            id: `binding-ds:${member.asset_name}:${link.data_source_name}`,
-            name: link.data_source_name,
-            type: 'datasource' as const,
+        }
+
+        // Insert SLI node between SLO and DS when SLO references an SLI
+        let sloLeaf: TreeNode[]
+        if (slo?.sli_name) {
+          const sli = sliByName.get(slo.sli_name)
+          const indicatorCount = sli?.indicators ? Object.keys(sli.indicators).length : 0
+          sloLeaf = [{
+            id: `binding-sli:${member.asset_name}:${slo.sli_name}`,
+            name: slo.sli_name,
+            displayName: sli?.display_name ?? undefined,
+            type: 'sli' as const,
+            badge: `${indicatorCount} indicators`,
             groupName: group.name,
-          }],
-        }],
-      }))
+            children: [dsNode],
+          }]
+        } else {
+          sloLeaf = [dsNode]
+        }
+
+        return {
+          id: `binding-slo:${member.asset_name}:${binding.slo_name}`,
+          name: binding.slo_name,
+          displayName: slo?.display_name ?? undefined,
+          type: 'slo' as const,
+          badge: slo ? `v${slo.version}` : undefined,
+          groupName: group.name,
+          children: sloLeaf,
+        }
+      })
       return {
         id: `asset:${member.asset_name}`,
         name: member.asset_name,

@@ -166,3 +166,238 @@ metadata:
     os: ubuntu-22
 spec:
   type_name: vm
+---
+api_version: tropek/v1
+kind: Asset
+metadata:
+  name: vm-prod-web-01
+  display_name: "Production Web VM 01"
+  tags:
+    team: infra
+    env: production
+    role: web
+    region: eu-west-1
+  variables:
+    instance: "vm-prod-web-01:9100"
+    os: ubuntu-22
+spec:
+  type_name: vm
+---
+api_version: tropek/v1
+kind: Asset
+metadata:
+  name: vm-prod-web-02
+  display_name: "Production Web VM 02"
+  tags:
+    team: infra
+    env: production
+    role: web
+    region: eu-west-1
+  variables:
+    instance: "vm-prod-web-02:9100"
+    os: ubuntu-22
+spec:
+  type_name: vm
+---
+api_version: tropek/v1
+kind: Asset
+metadata:
+  name: vm-prod-web-03
+  display_name: "Production Web VM 03"
+  tags:
+    team: infra
+    env: production
+    role: web
+    region: eu-west-1
+  variables:
+    instance: "vm-prod-web-03:9100"
+    os: ubuntu-22
+spec:
+  type_name: vm
+---
+api_version: tropek/v1
+kind: Asset
+metadata:
+  name: vm-prod-web-04
+  display_name: "Production Web VM 04"
+  tags:
+    team: infra
+    env: production
+    role: web
+    region: eu-west-1
+  variables:
+    instance: "vm-prod-web-04:9100"
+    os: ubuntu-22
+spec:
+  type_name: vm
+---
+api_version: tropek/v1
+kind: Asset
+metadata:
+  name: vm-prod-web-05
+  display_name: "Production Web VM 05"
+  tags:
+    team: infra
+    env: production
+    role: web
+    region: eu-west-1
+  variables:
+    instance: "vm-prod-web-05:9100"
+    os: ubuntu-22
+spec:
+  type_name: vm
+---
+api_version: tropek/v1
+kind: Asset
+metadata:
+  name: vm-stg-web-01
+  display_name: "Staging Web VM 01"
+  tags:
+    team: infra
+    env: staging
+    role: web
+    region: eu-west-1
+  variables:
+    instance: "vm-stg-web-01:9100"
+    os: ubuntu-22
+spec:
+  type_name: vm
+---
+api_version: tropek/v1
+kind: Asset
+metadata:
+  name: vm-stg-web-02
+  display_name: "Staging Web VM 02"
+  tags:
+    team: infra
+    env: staging
+    role: web
+    region: eu-west-1
+  variables:
+    instance: "vm-stg-web-02:9100"
+    os: ubuntu-22
+spec:
+  type_name: vm
+---
+api_version: tropek/v1
+kind: Asset
+metadata:
+  name: vm-stg-web-03
+  display_name: "Staging Web VM 03"
+  tags:
+    team: infra
+    env: staging
+    role: web
+    region: eu-west-1
+  variables:
+    instance: "vm-stg-web-03:9100"
+    os: ubuntu-22
+spec:
+  type_name: vm
+---
+api_version: tropek/v1
+kind: Asset
+metadata:
+  name: vm-stg-web-04
+  display_name: "Staging Web VM 04"
+  tags:
+    team: infra
+    env: staging
+    role: web
+    region: eu-west-1
+  variables:
+    instance: "vm-stg-web-04:9100"
+    os: ubuntu-22
+spec:
+  type_name: vm
+---
+api_version: tropek/v1
+kind: Asset
+metadata:
+  name: vm-stg-web-05
+  display_name: "Staging Web VM 05"
+  tags:
+    team: infra
+    env: staging
+    role: web
+    region: eu-west-1
+  variables:
+    instance: "vm-stg-web-05:9100"
+    os: ubuntu-22
+spec:
+  type_name: vm
+---
+api_version: tropek/v1
+kind: Asset
+metadata:
+  name: laptop-user-01
+  display_name: "User Laptop 01 (J.Smith)"
+  tags:
+    team: office
+    env: production
+    department: finance
+  variables:
+    host: "laptop-user-01:9182"
+    os: windows-11
+spec:
+  type_name: endpoint
+---
+api_version: tropek/v1
+kind: Asset
+metadata:
+  name: laptop-user-02
+  display_name: "User Laptop 02 (A.Johnson)"
+  tags:
+    team: office
+    env: production
+    department: marketing
+  variables:
+    host: "laptop-user-02:9182"
+    os: windows-11
+spec:
+  type_name: endpoint
+---
+api_version: tropek/v1
+kind: Asset
+metadata:
+  name: laptop-user-03
+  display_name: "User Laptop 03 (M.Chen)"
+  tags:
+    team: office
+    env: production
+    department: engineering
+  variables:
+    host: "laptop-user-03:9182"
+    os: windows-11
+spec:
+  type_name: endpoint
+---
+api_version: tropek/v1
+kind: Asset
+metadata:
+  name: laptop-user-04
+  display_name: "User Laptop 04 (S.Patel)"
+  tags:
+    team: office
+    env: production
+    department: sales
+  variables:
+    host: "laptop-user-04:9182"
+    os: windows-11
+spec:
+  type_name: endpoint
+---
+api_version: tropek/v1
+kind: Asset
+metadata:
+  name: laptop-user-05
+  display_name: "User Laptop 05 (R.Kim)"
+  tags:
+    team: office
+    env: production
+    department: support
+  variables:
+    host: "laptop-user-05:9182"
+    os: windows-11
+spec:
+  type_name: endpoint

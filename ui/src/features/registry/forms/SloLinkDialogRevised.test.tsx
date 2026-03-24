@@ -4,22 +4,13 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { SloLinkDialogRevised } from './SloLinkDialogRevised'
 
 const mockMutateAsync = vi.fn().mockResolvedValue({})
-let mockExistingLinks: { slo_name: string }[] = []
+let mockExistingBindings: { slo_name: string }[] = []
 
 vi.mock('@/features/datasources/hooks', () => ({
   useDatasources: () => ({
     data: [
       { id: 'ds-1', name: 'prom-prod', display_name: 'Prometheus Prod', adapter_type: 'prometheus' },
       { id: 'ds-2', name: 'dynatrace-prod', display_name: 'Dynatrace Prod', adapter_type: 'dynatrace' },
-    ],
-  }),
-}))
-
-vi.mock('@/features/slis/hooks', () => ({
-  useSliDefinitions: () => ({
-    data: [
-      { id: 'sli-1', name: 'response-time', display_name: 'Response Time', adapter_type: 'prometheus', active: true },
-      { id: 'sli-2', name: 'error-rate', display_name: 'Error Rate', adapter_type: 'prometheus', active: true },
     ],
   }),
 }))
@@ -36,12 +27,12 @@ vi.mock('@/features/slos/hooks', () => ({
   }),
   useSlos: () => ({
     data: [
-      { name: 'latency-slo', display_name: 'Latency SLO', active: true },
-      { name: 'error-slo', display_name: 'Error SLO', active: true },
+      { name: 'latency-slo', display_name: 'Latency SLO', active: true, sli_name: 'response-time', sli_version: 1 },
+      { name: 'error-slo', display_name: 'Error SLO', active: true, sli_name: null, sli_version: null },
     ],
   }),
-  useGroupSloLinks: () => ({ data: mockExistingLinks }),
-  useCreateGroupSloLink: () => ({ mutateAsync: mockMutateAsync, isPending: false }),
+  useGroupSloBindings: () => ({ data: mockExistingBindings }),
+  useCreateGroupSloBinding: () => ({ mutateAsync: mockMutateAsync, isPending: false }),
 }))
 
 function Wrapper({ children }: { children: React.ReactNode }) {
@@ -53,49 +44,22 @@ describe('SloLinkDialogRevised', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    mockExistingLinks = []
+    mockExistingBindings = []
   })
 
-  it('renders 4-step cascade (DS, SLI, SLO, Group)', () => {
+  it('renders 3-step cascade (SLO, Datasource, Group)', () => {
     render(
       <SloLinkDialogRevised open={true} onOpenChange={onOpenChange} />,
       { wrapper: Wrapper },
     )
 
-    expect(screen.getByText('Datasource')).toBeInTheDocument()
-    expect(screen.getByText('SLI')).toBeInTheDocument()
     expect(screen.getByText('SLO')).toBeInTheDocument()
+    expect(screen.getByText('Datasource')).toBeInTheDocument()
     expect(screen.getByText('Asset Group')).toBeInTheDocument()
   })
 
-  it('SLI section shows placeholder until DS selected', () => {
-    render(
-      <SloLinkDialogRevised open={true} onOpenChange={onOpenChange} />,
-      { wrapper: Wrapper },
-    )
-
-    expect(screen.getByText('Select a datasource first')).toBeInTheDocument()
-  })
-
-  it('SLI picker appears after selecting a datasource', async () => {
-    render(
-      <SloLinkDialogRevised open={true} onOpenChange={onOpenChange} />,
-      { wrapper: Wrapper },
-    )
-
-    // Click the DS combobox and select a datasource
-    fireEvent.click(screen.getByText('Select datasource...'))
-    const dsItems = await screen.findAllByRole('option')
-    const dsOption = dsItems.find(el => el.textContent?.includes('Prometheus Prod'))!
-    fireEvent.click(dsOption)
-
-    // Now the SLI placeholder should be gone, replaced by a combobox
-    expect(screen.queryByText('Select a datasource first')).not.toBeInTheDocument()
-    expect(screen.getByText('Select SLI...')).toBeInTheDocument()
-  })
-
-  it('shows duplicate link detection message', () => {
-    mockExistingLinks = [{ slo_name: 'latency-slo' }]
+  it('shows duplicate binding detection message', () => {
+    mockExistingBindings = [{ slo_name: 'latency-slo' }]
 
     render(
       <SloLinkDialogRevised
@@ -107,10 +71,10 @@ describe('SloLinkDialogRevised', () => {
       { wrapper: Wrapper },
     )
 
-    expect(screen.getByText('This SLO is already linked to this group')).toBeInTheDocument()
+    expect(screen.getByText('This SLO is already bound to this group')).toBeInTheDocument()
   })
 
-  it('calls createGroupSloLink on submit', async () => {
+  it('calls createGroupSloBinding on submit', async () => {
     render(
       <SloLinkDialogRevised
         open={true}
@@ -121,26 +85,19 @@ describe('SloLinkDialogRevised', () => {
       { wrapper: Wrapper },
     )
 
-    // Select datasource — click trigger, then find the option text within the dropdown
+    // Select datasource
     fireEvent.click(screen.getByText('Select datasource...'))
     const dsItems = await screen.findAllByRole('option')
     const dsOption = dsItems.find(el => el.textContent?.includes('Prometheus Prod'))!
     fireEvent.click(dsOption)
 
-    // Select SLI
-    fireEvent.click(screen.getByText('Select SLI...'))
-    const sliItems = await screen.findAllByRole('option')
-    const sliOption = sliItems.find(el => el.textContent?.includes('Response Time'))!
-    fireEvent.click(sliOption)
-
-    // Click Link button
-    fireEvent.click(screen.getByRole('button', { name: /^link$/i }))
+    // Click Bind button
+    fireEvent.click(screen.getByRole('button', { name: /^bind$/i }))
 
     await waitFor(() => {
       expect(mockMutateAsync).toHaveBeenCalledWith({
         groupName: 'production',
         slo_name: 'latency-slo',
-        sli_name: 'response-time',
         data_source_name: 'prom-prod',
       })
     })
@@ -168,16 +125,30 @@ describe('SloLinkDialogRevised', () => {
       { wrapper: Wrapper },
     )
 
-    expect(screen.queryByText('Link SLO to Asset Group')).not.toBeInTheDocument()
+    expect(screen.queryByText('Bind SLO to Asset Group')).not.toBeInTheDocument()
   })
 
-  it('disables Link button when form is incomplete', () => {
+  it('disables Bind button when form is incomplete', () => {
     render(
       <SloLinkDialogRevised open={true} onOpenChange={onOpenChange} />,
       { wrapper: Wrapper },
     )
 
-    const linkButton = screen.getByRole('button', { name: /^link$/i })
-    expect(linkButton).toBeDisabled()
+    const bindButton = screen.getByRole('button', { name: /^bind$/i })
+    expect(bindButton).toBeDisabled()
+  })
+
+  it('shows SLI context when SLO with sli_name is selected', async () => {
+    render(
+      <SloLinkDialogRevised
+        open={true}
+        onOpenChange={onOpenChange}
+        lockedSloName="latency-slo"
+        lockedGroupName="production"
+      />,
+      { wrapper: Wrapper },
+    )
+
+    expect(screen.getByText('response-time')).toBeInTheDocument()
   })
 })
