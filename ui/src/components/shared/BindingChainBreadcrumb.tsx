@@ -5,10 +5,10 @@ import { SANS_SERIF } from '@/lib/fonts'
 interface BindingChainBreadcrumbProps {
   sloName: string
   sloVersion?: string
-  sliName: string
+  sliName?: string
   dsName: string
   onClickSlo: () => void
-  onClickSli: () => void
+  onClickSli?: () => void
   onClickDs: () => void
 }
 
@@ -63,8 +63,12 @@ export function BindingChainBreadcrumb({
         color={ENTITY_COLORS.slo}
         onClick={onClickSlo}
       />
-      <ArrowRight className="h-4 w-4 text-muted-foreground" />
-      <Badge label={sliName} color={ENTITY_COLORS.sli} onClick={onClickSli} />
+      {sliName && onClickSli && (
+        <>
+          <ArrowRight className="h-4 w-4 text-muted-foreground" />
+          <Badge label={sliName} color={ENTITY_COLORS.sli} onClick={onClickSli} />
+        </>
+      )}
       <ArrowRight className="h-4 w-4 text-muted-foreground" />
       <Badge label={dsName} color={ENTITY_COLORS.ds} onClick={onClickDs} />
     </div>

@@ -6,7 +6,7 @@ import { useDatasources } from '@/features/datasources/hooks'
 import { useSliDefinitions } from '@/features/slis/hooks'
 import {
   useGroupTree, useSlos,
-  useCreateGroupSloLink, useGroupSloLinks,
+  useCreateGroupSloBinding, useGroupSloBindings,
 } from '../hooks'
 
 interface Props {
@@ -27,8 +27,8 @@ export function SloLinkDialog({ open, onOpenChange, lockedSloName, lockedGroupNa
   const { data: slis } = useSliDefinitions(selectedDs?.adapter_type)
   const { data: tree } = useGroupTree()
   const { data: slos } = useSlos()
-  const { data: existingLinks } = useGroupSloLinks(groupName || lockedGroupName || '')
-  const createLink = useCreateGroupSloLink()
+  const { data: existingBindings } = useGroupSloBindings(groupName || lockedGroupName || '')
+  const createBinding = useCreateGroupSloBinding()
 
   useEffect(() => {
     if (lockedGroupName) setGroupName(lockedGroupName)
@@ -48,15 +48,14 @@ export function SloLinkDialog({ open, onOpenChange, lockedSloName, lockedGroupNa
     }
   }, [open, lockedGroupName, lockedSloName])
 
-  const isDuplicate = existingLinks?.some(l => l.slo_name === sloName) ?? false
+  const isDuplicate = existingBindings?.some(b => b.slo_name === sloName) ?? false
   const isValid = datasource && sliName && groupName && sloName && !isDuplicate
 
   const handleLink = async () => {
     const targetGroup = lockedGroupName ?? groupName
-    await createLink.mutateAsync({
+    await createBinding.mutateAsync({
       groupName: targetGroup,
       slo_name: sloName,
-      sli_name: sliName,
       data_source_name: datasource,
     })
     onOpenChange(false)
@@ -165,10 +164,10 @@ export function SloLinkDialog({ open, onOpenChange, lockedSloName, lockedGroupNa
           </DialogClose>
           <button
             onClick={handleLink}
-            disabled={!isValid || createLink.isPending}
+            disabled={!isValid || createBinding.isPending}
             className="px-3 py-1.5 text-sm bg-primary/30 border border-primary/50 rounded text-primary hover:bg-primary/40 transition-colors disabled:opacity-40"
           >
-            {createLink.isPending ? 'Linking...' : 'Link'}
+            {createBinding.isPending ? 'Linking...' : 'Link'}
           </button>
         </DialogFooter>
       </DialogContent>
