@@ -78,7 +78,7 @@ Never use `set -a && source .env.test && set +a` or any bash chaining for this p
 | `adapter-prometheus` | 8081 | Prometheus query adapter |
 | `timescaledb` | 5432 | PostgreSQL + TimescaleDB (metrics, evaluations, SLOs) |
 | `redis` | 6379 | Job queue + response cache |
-| `ui` | 3000 | React SPA (Phase 1, in progress) |
+| `ui` | 5173 | React SPA (Vite dev server) |
 
 ### Evaluation Flow
 
@@ -106,7 +106,10 @@ tropek/
 ├── api/                          # FastAPI app, worker, DB models, repositories
 │   ├── app/
 │   │   ├── modules/
+│   │   │   ├── assets/           # Asset (project/service) group CRUD
+│   │   │   ├── datasource/       # Datasource (adapter) registry
 │   │   │   ├── quality_gate/     # Evaluation router + engine
+│   │   │   ├── sli_registry/     # SLI definition CRUD
 │   │   │   └── slo_registry/     # Versioned SLO CRUD
 │   │   └── ...
 │   ├── tests/
@@ -114,7 +117,9 @@ tropek/
 │   │   ├── db/                   # Integration tests (mark: integration)
 │   │   └── data/slo/             # YAML fixtures for engine tests
 │   └── pyproject.toml
-├── adapters/prometheus/          # Standalone Prometheus query adapter (separate package)
+├── adapters/
+│   ├── prometheus/               # Standalone Prometheus query adapter
+│   └── mock/                     # Mock adapter with data generator (for testing)
 ├── config.yaml                   # Non-secret runtime config template
 ├── .env.example                  # Secrets template (DB, Redis, API key)
 └── pyproject.toml                # UV workspace root + ruff/mypy/pytest config
@@ -207,11 +212,19 @@ Colors are CSS custom properties defined in `ui/src/index.css`. Always use seman
 
 ```
 ui/src/
-├── components/AssetTree/      # Unified sidebar tree (mode="navigator" | "slo")
-├── features/evaluations/      # Eval detail, actions, SLI table, trend charts
-├── features/navigator/        # Navigator page, asset panel, heatmaps
-├── features/slos/             # SLO registry, group CRUD, SLO link dialogs
-├── features/assets/           # Asset group hooks and types
+├── components/
+│   ├── AssetTree/             # Sidebar tree component
+│   ├── charts/                # Shared chart components
+│   ├── labels/                # Label/badge components
+│   └── shared/                # Shared UI primitives
+├── features/
+│   ├── assets/                # Asset group hooks and types
+│   ├── datasources/           # Datasource management
+│   ├── evaluations/           # Eval detail, actions, SLI table, trend charts
+│   ├── navigator/             # Navigator page, asset panel, heatmaps
+│   ├── registry/              # 3-mode SLO registry (tree, detail panel, sidebar)
+│   ├── slis/                  # SLI definition management
+│   └── slos/                  # SLO CRUD, SLO link dialogs
 ├── lib/                       # Theme context, result colors, utilities
 └── pages/                     # Route-level page components
 ```
