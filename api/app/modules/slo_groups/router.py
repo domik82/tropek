@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_session
@@ -537,12 +538,18 @@ async def create_asset_template_binding(
         session, body.template_group_name, body.data_source_name
     )
     tb_repo = TemplateBindingRepository(session)
-    binding = await tb_repo.create(
-        target_type="asset",
-        target_id=asset.id,
-        template_group_name=body.template_group_name,
-        data_source_name=body.data_source_name,
-    )
+    try:
+        binding = await tb_repo.create(
+            target_type="asset",
+            target_id=asset.id,
+            template_group_name=body.template_group_name,
+            data_source_name=body.data_source_name,
+        )
+    except IntegrityError as exc:
+        raise HTTPException(
+            status_code=409,
+            detail="template binding already exists for this target and group",
+        ) from exc
     return TemplateBindingRead.model_validate(binding)
 
 
@@ -603,12 +610,18 @@ async def create_group_template_binding(
         session, body.template_group_name, body.data_source_name
     )
     tb_repo = TemplateBindingRepository(session)
-    binding = await tb_repo.create(
-        target_type="asset_group",
-        target_id=ag.id,
-        template_group_name=body.template_group_name,
-        data_source_name=body.data_source_name,
-    )
+    try:
+        binding = await tb_repo.create(
+            target_type="asset_group",
+            target_id=ag.id,
+            template_group_name=body.template_group_name,
+            data_source_name=body.data_source_name,
+        )
+    except IntegrityError as exc:
+        raise HTTPException(
+            status_code=409,
+            detail="template binding already exists for this target and group",
+        ) from exc
     return TemplateBindingRead.model_validate(binding)
 
 
