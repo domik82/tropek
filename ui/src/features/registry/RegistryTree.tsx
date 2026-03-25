@@ -102,7 +102,12 @@ function TreeNodeRow({
           className="flex-1 text-left text-xs truncate"
           style={{ color }}
         >
-          {node.displayName ?? node.name}
+          <span className="truncate">{node.displayName ?? node.name}</span>
+          {node.subtitle && (
+            <span className="block text-[10px] text-muted-foreground truncate mt-0.5">
+              {node.subtitle}
+            </span>
+          )}
         </button>
 
         {node.badge && (
@@ -125,5 +130,16 @@ function TreeNodeRow({
           />
         ))}
     </>
+  )
+}
+
+export function SectionHeader({ label }: { label: string }) {
+  return (
+    <div className="px-3 pt-3 pb-1">
+      <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+        {label}
+      </span>
+      <div className="border-b border-border/50 mt-1" />
+    </div>
   )
 }
