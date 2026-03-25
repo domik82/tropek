@@ -495,13 +495,15 @@ class SLOBinding(Base):
 
     # fmt: off
 
-    id:               Mapped[uuid.UUID]                    = mapped_column(UUID, primary_key=True, default=uuid.uuid4)
-    target_type:      Mapped[str]                          = mapped_column(Text, nullable=False)
-    target_id:        Mapped[uuid.UUID]                    = mapped_column(UUID, nullable=False)
-    slo_name:         Mapped[str]                          = mapped_column(Text, nullable=False)
-    data_source_name: Mapped[str]                          = mapped_column(Text, nullable=False)
-    comparison_rules: Mapped[list[dict[str, Any]] | None]  = mapped_column(JSONB, nullable=True)
-    created_at:       Mapped[datetime]                     = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    id:                   Mapped[uuid.UUID]                    = mapped_column(UUID, primary_key=True, default=uuid.uuid4)
+    target_type:          Mapped[str]                          = mapped_column(Text, nullable=False)
+    target_id:            Mapped[uuid.UUID]                    = mapped_column(UUID, nullable=False)
+    slo_name:             Mapped[str]                          = mapped_column(Text, nullable=False)
+    data_source_name:     Mapped[str]                          = mapped_column(Text, nullable=False)
+    comparison_rules:     Mapped[list[dict[str, Any]] | None]  = mapped_column(JSONB, nullable=True)
+    source:               Mapped[str]                          = mapped_column(Text, nullable=False, server_default=text("'direct'"))
+    template_binding_id:  Mapped[uuid.UUID | None]             = mapped_column(UUID, ForeignKey("template_bindings.id", ondelete="CASCADE"), nullable=True)
+    created_at:           Mapped[datetime]                     = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
     # fmt: on
 

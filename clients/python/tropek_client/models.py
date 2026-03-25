@@ -309,6 +309,8 @@ class SLOBinding(BaseModel):
     slo_name: str
     data_source_name: str
     comparison_rules: list[dict[str, Any]] | None = None
+    source: str = "direct"
+    template_binding_id: str | None = None
     created_at: str
 
 

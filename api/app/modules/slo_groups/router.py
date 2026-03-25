@@ -157,6 +157,61 @@ async def _validate_template_binding_adapter_type(
         )
 
 
+async def _fan_out_slo_bindings(
+    session: AsyncSession,
+    template_binding: Any,
+) -> None:
+    """Create slo_bindings for each generated SLO in the template binding's group."""
+    group_repo = SLOGroupRepository(session)
+    group = await group_repo.get_by_name(template_binding.template_group_name)
+    if group is None:
+        return
+    slo_repo = SLORepository(session)
+    generated_slos = await slo_repo.list_by_group_id(group.id)
+    binding_repo = SLOBindingRepository(session)
+    for slo in generated_slos:
+        try:
+            await binding_repo.create(
+                target_type=template_binding.target_type,
+                target_id=template_binding.target_id,
+                slo_name=slo.name,
+                data_source_name=template_binding.data_source_name,
+                source="template",
+                template_binding_id=template_binding.id,
+            )
+        except IntegrityError:
+            await session.rollback()
+
+
+async def _sync_template_bindings_for_group(
+    session: AsyncSession,
+    group_name: str,
+    new_slo_names: set[str],
+    removed_slo_names: set[str],
+) -> None:
+    """Sync fanned-out slo_bindings when a group's generated SLOs change."""
+    tb_repo = TemplateBindingRepository(session)
+    template_bindings = await tb_repo.list_by_group_name(group_name)
+    binding_repo = SLOBindingRepository(session)
+    for tb in template_bindings:
+        # Add bindings for new SLOs
+        for slo_name in new_slo_names:
+            try:
+                await binding_repo.create(
+                    target_type=tb.target_type,
+                    target_id=tb.target_id,
+                    slo_name=slo_name,
+                    data_source_name=tb.data_source_name,
+                    source="template",
+                    template_binding_id=tb.id,
+                )
+            except IntegrityError:
+                await session.rollback()
+        # Remove bindings for deactivated SLOs
+        for slo_name in removed_slo_names:
+            await binding_repo.delete_by_target_and_slo(tb.target_type, tb.target_id, slo_name)
+
+
 # ---------------------------------------------------------------------------
 # SLO Group CRUD
 # ---------------------------------------------------------------------------
@@ -341,6 +396,12 @@ async def update_slo_group(
     # Apply plan: deactivate removed SLOs
     for slo_name in regen_plan.to_deactivate:
         await slo_repo.deactivate(slo_name)
+
+    # Sync fanned-out slo_bindings for added/removed SLOs
+    new_slo_names = {s.name for s in regen_plan.to_create}
+    removed_slo_names = set(regen_plan.to_deactivate)
+    if new_slo_names or removed_slo_names:
+        await _sync_template_bindings_for_group(session, name, new_slo_names, removed_slo_names)
 
     # Update group row
     updated_group = await group_repo.update(
@@ -550,6 +611,7 @@ async def create_asset_template_binding(
             status_code=409,
             detail="template binding already exists for this target and group",
         ) from exc
+    await _fan_out_slo_bindings(session, binding)
     return TemplateBindingRead.model_validate(binding)
 
 
@@ -559,7 +621,7 @@ async def delete_asset_template_binding(
     group_name: str,
     session: AsyncSession = Depends(get_session),  # noqa: B008
 ) -> None:
-    """Delete a template binding from an asset."""
+    """Delete a template binding from an asset (cascade deletes fanned-out slo_bindings)."""
     asset_repo = AssetRepository(session)
     asset = await asset_repo.get_by_name(name)
     if asset is None:
@@ -622,6 +684,7 @@ async def create_group_template_binding(
             status_code=409,
             detail="template binding already exists for this target and group",
         ) from exc
+    await _fan_out_slo_bindings(session, binding)
     return TemplateBindingRead.model_validate(binding)
 
 
@@ -634,7 +697,7 @@ async def delete_group_template_binding(
     group_name: str,
     session: AsyncSession = Depends(get_session),  # noqa: B008
 ) -> None:
-    """Delete a template binding from an asset group."""
+    """Delete a template binding from an asset group (cascade deletes fanned-out slo_bindings)."""
     ag_repo = AssetGroupRepository(session)
     ag = await ag_repo.get_by_name(name)
     if ag is None:
