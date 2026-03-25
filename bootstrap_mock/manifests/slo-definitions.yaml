@@ -261,3 +261,27 @@ spec:
       pass_criteria: ["<1200"]
       warning_criteria: ["<2000"]
       weight: 1
+---
+api_version: tropek/v1
+kind: SLO
+metadata:
+  name: "plugin/$__gen_process_name"
+spec:
+  kind: template
+  sli_name: plugin-metrics-sli
+  sli_version: 1
+  display_name: "Plugin Health — $__gen_process_name"
+  variables:
+    process_name: "$__gen_process_name"
+    AGGREGATION_WINDOW: "5m"
+  objectives:
+    - sli: cpu_usage
+      pass_criteria: ["<80"]
+      warning_criteria: ["<90"]
+      weight: 1
+      key_sli: true
+    - sli: memory_usage
+      pass_criteria: ["<1073741824"]
+      weight: 1
+  tags:
+    category: plugin-health
