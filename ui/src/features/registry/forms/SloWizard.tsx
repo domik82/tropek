@@ -16,6 +16,7 @@ import type { SloDefinition } from '@/features/slos/types'
 
 interface SloWizardProps {
   editSlo?: SloDefinition
+  defaultKind?: 'standard' | 'template'
   onClose?: () => void
 }
 
@@ -57,7 +58,7 @@ function buildComparisonFromEdit(slo: SloDefinition): ComparisonData {
   }
 }
 
-export function SloWizard({ editSlo, onClose }: SloWizardProps) {
+export function SloWizard({ editSlo, defaultKind, onClose }: SloWizardProps) {
   const isEdit = !!editSlo
 
   const [identity, setIdentity] = useState<IdentityData>(
@@ -200,14 +201,18 @@ export function SloWizard({ editSlo, onClose }: SloWizardProps) {
         },
         tags: Object.keys(tags).length > 0 ? tags : undefined,
         variables: Object.keys(variables).length > 0 ? variables : undefined,
+        kind,
       },
       { onSuccess: () => onClose?.() },
     )
   }
 
+  const kind = editSlo?.kind ?? defaultKind ?? 'standard'
   const title = isEdit
     ? `${editSlo!.name} \u00b7 New Version`
-    : 'New SLO Definition'
+    : kind === 'template'
+      ? 'New SLO Template'
+      : 'New SLO Definition'
   const subtitle = isEdit
     ? `Editing creates version ${editSlo!.version + 1} \u00b7 All fields pre-filled from v${editSlo!.version}`
     : undefined

@@ -24,7 +24,7 @@ function wrapper({ children }: { children: ReactNode }) {
 describe('SloGroupForm', () => {
   it('renders name field and template selector', () => {
     render(<SloGroupForm onClose={vi.fn()} />, { wrapper })
-    expect(screen.getByLabelText(/name/i)).toBeInTheDocument()
+    expect(screen.getByLabelText(/^name$/i)).toBeInTheDocument()
     expect(screen.getByText(/template slo/i)).toBeInTheDocument()
   })
 
