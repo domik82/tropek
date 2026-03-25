@@ -51,18 +51,18 @@ function wrapper({ children }: { children: ReactNode }) {
 
 describe('TemplateDetailView', () => {
   it('renders template name and template badge', () => {
-    render(<TemplateDetailView name="plugin-tpl" onNavigate={vi.fn()} />, { wrapper })
+    render(<TemplateDetailView name="plugin-tpl" onNavigate={vi.fn()} onNewVersion={vi.fn()} />, { wrapper })
     expect(screen.getByText('Plugin Health')).toBeInTheDocument()
     expect(screen.getByText('template')).toBeInTheDocument()
   })
 
   it('shows groups referencing this template', () => {
-    render(<TemplateDetailView name="plugin-tpl" onNavigate={vi.fn()} />, { wrapper })
+    render(<TemplateDetailView name="plugin-tpl" onNavigate={vi.fn()} onNewVersion={vi.fn()} />, { wrapper })
     expect(screen.getByText('app-x-plugins')).toBeInTheDocument()
   })
 
   it('highlights gen variables', () => {
-    render(<TemplateDetailView name="plugin-tpl" onNavigate={vi.fn()} />, { wrapper })
+    render(<TemplateDetailView name="plugin-tpl" onNavigate={vi.fn()} onNewVersion={vi.fn()} />, { wrapper })
     expect(screen.getByText(/\$__gen_process_name/)).toBeInTheDocument()
   })
 })

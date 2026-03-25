@@ -1,16 +1,20 @@
+import { GitBranch } from 'lucide-react'
 import { ENTITY_COLORS } from '@/lib/entity-colors'
 import { SANS_SERIF } from '@/lib/fonts'
 import { SloObjectiveTable } from '@/features/slos/components/SloObjectiveTable'
 import { useSloDetail } from '@/features/slos/hooks'
 import { useSloGroups } from '@/features/slo-groups/hooks'
+import { Button } from '@/components/ui/button'
+import type { SloDefinition } from '@/features/slos/types'
 import type { SelectedNode } from '@/features/registry/types'
 
 interface Props {
   name: string
   onNavigate: (node: SelectedNode) => void
+  onNewVersion: (slo: SloDefinition) => void
 }
 
-export function TemplateDetailView({ name, onNavigate }: Props) {
+export function TemplateDetailView({ name, onNavigate, onNewVersion }: Props) {
   const { data: slo, isLoading } = useSloDetail(name)
   const { data: groups } = useSloGroups()
 
@@ -53,6 +57,10 @@ export function TemplateDetailView({ name, onNavigate }: Props) {
               >
                 template
               </span>
+              <Button size="xs" variant="outline" onClick={() => onNewVersion(slo)}>
+                <GitBranch className="size-3" />
+                New Version
+              </Button>
             </div>
           </div>
         </div>
