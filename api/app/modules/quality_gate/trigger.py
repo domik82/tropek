@@ -16,8 +16,10 @@ from app.modules.quality_gate.protocols import (
     DataSourceReader,
     SLIReader,
     SLOBindingReader,
+    SLOGroupReader,
     SLOLinkReader,
     SLOReader,
+    TemplateBindingReader,
 )
 
 
@@ -37,6 +39,22 @@ class TriggerContext:
     adapter_url: str
     adapter_type: str
     indicators: dict[str, str]
+
+
+@dataclass
+class ResolvedBinding:
+    """One resolved (slo_name, data_source_name) pair for evaluation."""
+
+    slo_name: str
+    data_source_name: str
+    source: str  # "direct_asset", "direct_group", "template_asset", "template_group"
+
+
+_PRECEDENCE = {"direct_asset": 4, "direct_group": 3, "template_asset": 2, "template_group": 1}
+
+
+def _precedence(source: str) -> int:
+    return _PRECEDENCE.get(source, 0)
 
 
 async def resolve_single_trigger(
@@ -122,3 +140,47 @@ async def resolve_single_trigger(
         adapter_type=ds.adapter_type,
         indicators=sli_def.indicators,
     )
+
+
+async def resolve_all_bindings_for_asset(
+    *,
+    asset_id: uuid.UUID,
+    group_ids: list[uuid.UUID],
+    binding_repo: SLOBindingReader,
+    template_binding_repo: TemplateBindingReader,
+    slo_group_repo: SLOGroupReader,
+    slo_repo: SLOReader,
+) -> list[ResolvedBinding]:
+    """Resolve all SLO bindings for an asset, including template expansion.
+
+    Precedence: asset direct > group direct > asset template > group template.
+    Deduplicate by slo_name — highest precedence wins.
+    """
+    seen: dict[str, ResolvedBinding] = {}
+
+    # 1. Direct SLO bindings (highest precedence)
+    direct_bindings = await binding_repo.list_for_asset_evaluation(asset_id, group_ids)
+    for b in direct_bindings:
+        source = "direct_asset" if str(b.target_type) == "asset" else "direct_group"
+        rb = ResolvedBinding(
+            slo_name=b.slo_name, data_source_name=b.data_source_name, source=source
+        )
+        if b.slo_name not in seen or _precedence(source) > _precedence(seen[b.slo_name].source):
+            seen[b.slo_name] = rb
+
+    # 2. Template bindings → expand to generated SLOs
+    template_bindings = await template_binding_repo.list_for_asset_evaluation(asset_id, group_ids)
+    for tb in template_bindings:
+        source = "template_asset" if str(tb.target_type) == "asset" else "template_group"
+        group = await slo_group_repo.get_by_name(tb.template_group_name)
+        if group is None:
+            continue  # group deleted or deactivated
+        generated_slos = await slo_repo.list_by_group_id(group.id)
+        for slo in generated_slos:
+            rb = ResolvedBinding(
+                slo_name=slo.name, data_source_name=tb.data_source_name, source=source
+            )
+            if slo.name not in seen or _precedence(source) > _precedence(seen[slo.name].source):
+                seen[slo.name] = rb
+
+    return sorted(seen.values(), key=lambda r: r.slo_name)
