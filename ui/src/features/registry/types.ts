@@ -8,6 +8,7 @@ export interface TreeNode {
   displayName?: string
   type: NodeType
   badge?: string
+  subtitle?: string
   children?: TreeNode[]
   bindingChain?: { sloName: string; sliName: string; dsName: string }
   groupName?: string
