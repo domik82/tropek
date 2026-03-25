@@ -322,7 +322,18 @@ async def get_slo_tag_values(
     return [TagValueCount(value=v, count=c) for v, c in values.items()]
 
 
-@router.get("/slo-definitions/{name}", response_model=SLODefinitionRead)
+@router.get("/slo-definitions/{name:path}/versions", response_model=list[SLODefinitionRead])
+async def list_slo_versions(
+    name: str,
+    session: AsyncSession = Depends(get_session),  # noqa: B008
+) -> list[SLODefinitionRead]:
+    """List all versions of an SLO definition."""
+    repo = SLORepository(session)
+    versions = await repo.list_versions(name)
+    return [SLODefinitionRead.model_validate(v) for v in versions]
+
+
+@router.get("/slo-definitions/{name:path}", response_model=SLODefinitionRead)
 async def get_slo_definition(
     name: str,
     session: AsyncSession = Depends(get_session),  # noqa: B008
@@ -335,18 +346,7 @@ async def get_slo_definition(
     return SLODefinitionRead.model_validate(slo)
 
 
-@router.get("/slo-definitions/{name}/versions", response_model=list[SLODefinitionRead])
-async def list_slo_versions(
-    name: str,
-    session: AsyncSession = Depends(get_session),  # noqa: B008
-) -> list[SLODefinitionRead]:
-    """List all versions of an SLO definition."""
-    repo = SLORepository(session)
-    versions = await repo.list_versions(name)
-    return [SLODefinitionRead.model_validate(v) for v in versions]
-
-
-@router.delete("/slo-definitions/{name}", status_code=204)
+@router.delete("/slo-definitions/{name:path}", status_code=204)
 async def delete_slo_definition(
     name: str,
     session: AsyncSession = Depends(get_session),  # noqa: B008
