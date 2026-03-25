@@ -82,7 +82,7 @@ async def run_evaluation_job(ctx: dict[str, Any], eval_id_str: str) -> None:
     for attempt in range(_MAX_DEADLOCK_RETRIES):
         async with session_factory() as session:
             try:
-                await run_evaluation(session, eval_id, cache=cache)
+                await run_evaluation(session, eval_id, worker_id=ctx.get("job_id"), cache=cache)
                 await session.commit()
                 return
             except DBAPIError as exc:
