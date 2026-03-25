@@ -71,3 +71,8 @@ export const datasourceKeys = {
   tagKeys: () => [...datasourceKeys.all, 'tag-keys'] as const,
   tagValues: (key: string) => [...datasourceKeys.all, 'tag-values', key] as const,
 }
+
+export const sloGroupKeys = {
+  all: ['slo-groups'] as const,
+  detail: (name: string) => [...sloGroupKeys.all, name] as const,
+}
