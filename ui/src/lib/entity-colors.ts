@@ -3,6 +3,8 @@ export const ENTITY_COLORS = {
   sli: '#A371F7',
   ds: '#58A6FF',
   group: '#8B949E',
+  template: '#F0B429',
+  sloGroup: '#8B949E',
 } as const
 
 /** Colors keyed by NodeType for tree rendering */
@@ -13,4 +15,6 @@ export const NODE_TYPE_COLORS: Record<string, string> = {
   group: ENTITY_COLORS.group,
   asset: '#c9d1d9',
   binding: ENTITY_COLORS.slo,
+  template: ENTITY_COLORS.template,
+  'slo-group': ENTITY_COLORS.sloGroup,
 }
