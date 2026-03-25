@@ -49,6 +49,15 @@ class GeneratorResult:
 
 _GEN_PATTERN = re.compile(r"\$__gen_(\w+)")
 
+_OBJ_KEYS = ("sli", "display_name", "weight", "key_sli", "pass_criteria", "warning_criteria")
+
+
+def _obj_to_dict(obj: Any) -> dict[str, Any]:
+    """Convert an objective (dict or ORM object) to a plain dict."""
+    if isinstance(obj, dict):
+        return dict(obj)
+    return {k: getattr(obj, k) for k in _OBJ_KEYS if hasattr(obj, k)}
+
 
 def _substitute(text: str, substitutions: dict[str, str]) -> str:
     """Replace $__gen_<key> placeholders with values from substitutions."""
@@ -135,7 +144,7 @@ def generate_slo_specs(
                 sli_name=template.sli_name,
                 sli_version=template.sli_version,
                 variables=gen_vars,
-                objectives=[dict(obj) for obj in template.objectives],
+                objectives=[_obj_to_dict(obj) for obj in template.objectives],
                 total_score_pass_pct=template.total_score_pass_pct,
                 total_score_warning_pct=template.total_score_warning_pct,
                 comparison=dict(template.comparison),
