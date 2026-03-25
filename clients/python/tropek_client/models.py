@@ -310,3 +310,30 @@ class SLOBinding(BaseModel):
     data_source_name: str
     comparison_rules: list[dict[str, Any]] | None = None
     created_at: str
+
+
+class SLOGroup(BaseModel):
+    """SLO group response model."""
+
+    id: str
+    name: str
+    display_name: str | None
+    template_slo_name: str
+    template_slo_version: int
+    gen_variables: dict[str, list[str]]
+    tags: dict[str, Any]
+    author: str | None
+    version: int
+    active: bool
+    generated_slo_count: int
+
+
+class TemplateBinding(BaseModel):
+    """Template binding response model."""
+
+    id: str
+    target_type: str
+    target_id: str
+    template_group_name: str
+    data_source_name: str
+    created_at: str

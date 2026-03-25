@@ -27,8 +27,10 @@ from tropek_client.models import (
     SLIDefinition,
     SLOBinding,
     SLODefinition,
+    SLOGroup,
     SLOTestResult,
     SLOValidationResult,
+    TemplateBinding,
     TrendPoint,
 )
 
@@ -761,6 +763,152 @@ class _SLOBindings:
         _raise_for_status(resp)
 
 
+class _SLOGroups:
+    """SLO group CRUD."""
+
+    def __init__(self, http: httpx.Client) -> None:
+        self._http = http
+
+    def create(
+        self,
+        name: str,
+        template_slo_name: str,
+        template_slo_version: int,
+        gen_variables: dict[str, list[str]],
+        *,
+        display_name: str | None = None,
+        tags: dict[str, Any] | None = None,
+        author: str | None = None,
+    ) -> SLOGroup:
+        """Create an SLO group."""
+        body: dict[str, Any] = {
+            "name": name,
+            "template_slo_name": template_slo_name,
+            "template_slo_version": template_slo_version,
+            "gen_variables": gen_variables,
+        }
+        if display_name is not None:
+            body["display_name"] = display_name
+        if tags is not None:
+            body["tags"] = tags
+        if author is not None:
+            body["author"] = author
+        resp = self._http.post("/slo-groups", json=body)
+        _raise_for_status(resp)
+        return SLOGroup.model_validate(resp.json())
+
+    def get(self, name: str) -> SLOGroup:
+        """Get an SLO group by name."""
+        resp = self._http.get(f"/slo-groups/{name}")
+        _raise_for_status(resp)
+        return SLOGroup.model_validate(resp.json())
+
+    def list(self, *, tag_key: str | None = None, tag_val: str | None = None) -> list[SLOGroup]:
+        """List SLO groups."""
+        params: dict[str, str] = {}
+        if tag_key:
+            params["tag_key"] = tag_key
+        if tag_val:
+            params["tag_val"] = tag_val
+        resp = self._http.get("/slo-groups", params=params)
+        _raise_for_status(resp)
+        data = resp.json()
+        items = data.get("items", data) if isinstance(data, dict) else data
+        return [SLOGroup.model_validate(g) for g in items]
+
+    def update(
+        self,
+        name: str,
+        *,
+        template_slo_name: str | None = None,
+        template_slo_version: int | None = None,
+        gen_variables: dict[str, list[str]] | None = None,
+        display_name: str | None = None,
+        tags: dict[str, Any] | None = None,
+    ) -> SLOGroup:
+        """Update an SLO group (triggers regeneration)."""
+        body: dict[str, Any] = {}
+        if template_slo_name is not None:
+            body["template_slo_name"] = template_slo_name
+        if template_slo_version is not None:
+            body["template_slo_version"] = template_slo_version
+        if gen_variables is not None:
+            body["gen_variables"] = gen_variables
+        if display_name is not None:
+            body["display_name"] = display_name
+        if tags is not None:
+            body["tags"] = tags
+        resp = self._http.put(f"/slo-groups/{name}", json=body)
+        _raise_for_status(resp)
+        return SLOGroup.model_validate(resp.json())
+
+    def delete(self, name: str) -> None:
+        """Delete (deactivate) an SLO group."""
+        resp = self._http.delete(f"/slo-groups/{name}")
+        _raise_for_status(resp)
+
+    def extract(self, group_name: str, slo_name: str, new_name: str) -> None:
+        """Extract a generated SLO to standalone."""
+        resp = self._http.post(
+            f"/slo-groups/{group_name}/extract",
+            json={"slo_name": slo_name, "new_name": new_name},
+        )
+        _raise_for_status(resp)
+
+
+class _TemplateBindings:
+    """Template binding CRUD."""
+
+    def __init__(self, http: httpx.Client) -> None:
+        self._http = http
+
+    def create_for_asset(
+        self, asset_name: str, template_group_name: str, data_source_name: str
+    ) -> TemplateBinding:
+        """Create a template binding for an asset."""
+        resp = self._http.post(
+            f"/assets/{asset_name}/template-bindings",
+            json={"template_group_name": template_group_name, "data_source_name": data_source_name},
+        )
+        _raise_for_status(resp)
+        return TemplateBinding.model_validate(resp.json())
+
+    def create_for_group(
+        self, group_name: str, template_group_name: str, data_source_name: str
+    ) -> TemplateBinding:
+        """Create a template binding for an asset group."""
+        resp = self._http.post(
+            f"/asset-groups/{group_name}/template-bindings",
+            json={"template_group_name": template_group_name, "data_source_name": data_source_name},
+        )
+        _raise_for_status(resp)
+        return TemplateBinding.model_validate(resp.json())
+
+    def list_for_asset(self, asset_name: str) -> list[TemplateBinding]:
+        """List template bindings for an asset."""
+        resp = self._http.get(f"/assets/{asset_name}/template-bindings")
+        _raise_for_status(resp)
+        return [TemplateBinding.model_validate(b) for b in resp.json()]
+
+    def list_for_group(self, group_name: str) -> list[TemplateBinding]:
+        """List template bindings for an asset group."""
+        resp = self._http.get(f"/asset-groups/{group_name}/template-bindings")
+        _raise_for_status(resp)
+        return [TemplateBinding.model_validate(b) for b in resp.json()]
+
+    def delete_for_asset(self, asset_name: str, template_group_name: str) -> None:
+        """Delete a template binding for an asset."""
+        resp = self._http.delete(f"/assets/{asset_name}/template-bindings/{template_group_name}")
+        _raise_for_status(resp)
+
+    def delete_for_group(self, group_name: str, template_group_name: str) -> None:
+        """Delete a template binding for an asset group."""
+        resp = self._http.delete(
+            f"/asset-groups/{group_name}/template-bindings/{template_group_name}"
+        )
+        _raise_for_status(resp)
+
+
 class TropekClient:
     """Typed Python client for the TROPEK API."""
 
@@ -781,6 +929,8 @@ class TropekClient:
         self.sli_definitions = _SLIDefinitions(self._http)
         self.slo_definitions = _SLODefinitions(self._http)
         self.slo_bindings = _SLOBindings(self._http)
+        self.slo_groups = _SLOGroups(self._http)
+        self.template_bindings = _TemplateBindings(self._http)
         self.evaluations = _Evaluations(self._http)
         self.annotations = _Annotations(self._http)
         self.trend = _Trend(self._http)
