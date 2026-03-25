@@ -68,7 +68,7 @@ export function RegistryDetailPanel({
   }
 
   if (selected.type === 'template') {
-    return <TemplateDetailView name={selected.name} onNavigate={onNavigate} />
+    return <TemplateDetailView name={selected.name} onNavigate={onNavigate} onNewVersion={onNewSloVersion ?? (() => {})} />
   }
 
   if (selected.type === 'slo-group') {
