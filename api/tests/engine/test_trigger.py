@@ -154,51 +154,32 @@ async def test_resolve_no_link_no_binding_raises(mock_repos: dict) -> None:
 
 
 async def test_resolve_direct_and_template_bindings() -> None:
-    """Asset with both direct and template bindings resolves all SLO names."""
+    """Asset with both direct and template-sourced bindings resolves all SLO names."""
     asset_id = uuid.uuid4()
-    group_id = uuid.uuid4()
-    group_ids: list[uuid.UUID] = []
+
+    def _binding(slo_name: str, ds: str, target_type: str, source: str) -> object:
+        return type(
+            "B",
+            (),
+            {
+                "slo_name": slo_name,
+                "data_source_name": ds,
+                "target_type": target_type,
+                "source": source,
+            },
+        )()
 
     binding_repo = AsyncMock()
     binding_repo.list_for_asset_evaluation.return_value = [
-        type(
-            "Binding",
-            (),
-            {"slo_name": "direct-slo", "data_source_name": "prom-1", "target_type": "asset"},
-        )(),
-    ]
-
-    template_binding_repo = AsyncMock()
-    template_binding_repo.list_for_asset_evaluation.return_value = [
-        type(
-            "TemplateBinding",
-            (),
-            {
-                "template_group_name": "my-group",
-                "data_source_name": "prom-2",
-                "target_type": "asset",
-            },
-        )(),
-    ]
-
-    slo_group_repo = AsyncMock()
-    slo_group_repo.get_by_name.return_value = type(
-        "Group", (), {"id": group_id, "name": "my-group"}
-    )()
-
-    slo_repo = AsyncMock()
-    slo_repo.list_by_group_id.return_value = [
-        type("SLO", (), {"name": "gen-slo-a", "version": 1})(),
-        type("SLO", (), {"name": "gen-slo-b", "version": 1})(),
+        _binding("direct-slo", "prom-1", "asset", "direct"),
+        _binding("gen-slo-a", "prom-2", "asset", "template"),
+        _binding("gen-slo-b", "prom-2", "asset", "template"),
     ]
 
     result = await resolve_all_bindings_for_asset(
         asset_id=asset_id,
-        group_ids=group_ids,
+        group_ids=[],
         binding_repo=binding_repo,
-        template_binding_repo=template_binding_repo,
-        slo_group_repo=slo_group_repo,
-        slo_repo=slo_repo,
     )
 
     slo_names = [r.slo_name for r in result]
@@ -217,52 +198,31 @@ async def test_resolve_direct_and_template_bindings() -> None:
 
 
 async def test_resolve_direct_wins_over_template() -> None:
-    """When a direct binding and a template-generated SLO share the same name, direct wins."""
+    """When both direct and template bindings exist for the same SLO name, direct wins."""
     asset_id = uuid.uuid4()
-    group_id = uuid.uuid4()
-    group_ids: list[uuid.UUID] = []
 
-    # Direct binding for "shared-slo" pointing at prom-direct
-    binding_repo = AsyncMock()
-    binding_repo.list_for_asset_evaluation.return_value = [
-        type(
-            "Binding",
-            (),
-            {"slo_name": "shared-slo", "data_source_name": "prom-direct", "target_type": "asset"},
-        )(),
-    ]
-
-    # Template binding whose group generates "shared-slo" pointing at prom-template
-    template_binding_repo = AsyncMock()
-    template_binding_repo.list_for_asset_evaluation.return_value = [
-        type(
-            "TemplateBinding",
+    def _binding(slo_name: str, ds: str, target_type: str, source: str) -> object:
+        return type(
+            "B",
             (),
             {
-                "template_group_name": "overlap-group",
-                "data_source_name": "prom-template",
-                "target_type": "asset",
+                "slo_name": slo_name,
+                "data_source_name": ds,
+                "target_type": target_type,
+                "source": source,
             },
-        )(),
-    ]
+        )()
 
-    slo_group_repo = AsyncMock()
-    slo_group_repo.get_by_name.return_value = type(
-        "Group", (), {"id": group_id, "name": "overlap-group"}
-    )()
-
-    slo_repo = AsyncMock()
-    slo_repo.list_by_group_id.return_value = [
-        type("SLO", (), {"name": "shared-slo", "version": 1})(),
+    binding_repo = AsyncMock()
+    binding_repo.list_for_asset_evaluation.return_value = [
+        _binding("shared-slo", "prom-direct", "asset", "direct"),
+        _binding("shared-slo", "prom-template", "asset", "template"),
     ]
 
     result = await resolve_all_bindings_for_asset(
         asset_id=asset_id,
-        group_ids=group_ids,
+        group_ids=[],
         binding_repo=binding_repo,
-        template_binding_repo=template_binding_repo,
-        slo_group_repo=slo_group_repo,
-        slo_repo=slo_repo,
     )
 
     assert len(result) == 1

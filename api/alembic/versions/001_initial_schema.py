@@ -2,7 +2,7 @@
 
 Revision ID: 001
 Revises:
-Create Date: 2026-03-24 23:41:47.700518
+Create Date: 2026-03-25 08:02:06.473480
 
 """
 
@@ -159,29 +159,6 @@ def upgrade() -> None:
     )
     op.create_index("idx_sli_definitions_name", "sli_definitions", ["name"], unique=False)
     op.create_table(
-        "slo_bindings",
-        sa.Column("id", sa.UUID(), nullable=False),
-        sa.Column("target_type", sa.Text(), nullable=False),
-        sa.Column("target_id", sa.UUID(), nullable=False),
-        sa.Column("slo_name", sa.Text(), nullable=False),
-        sa.Column("data_source_name", sa.Text(), nullable=False),
-        sa.Column("comparison_rules", postgresql.JSONB(astext_type=sa.Text()), nullable=True),
-        sa.Column(
-            "created_at",
-            sa.DateTime(timezone=True),
-            server_default=sa.text("now()"),
-            nullable=False,
-        ),
-        sa.CheckConstraint(
-            "target_type IN ('asset', 'asset_group')", name="ck_slo_bindings_target_type"
-        ),
-        sa.PrimaryKeyConstraint("id"),
-        sa.UniqueConstraint("target_type", "target_id", "slo_name", name="uq_slo_binding"),
-    )
-    op.create_index(
-        "idx_slo_bindings_target", "slo_bindings", ["target_type", "target_id"], unique=False
-    )
-    op.create_table(
         "slo_groups",
         sa.Column("id", sa.UUID(), nullable=False),
         sa.Column("name", sa.Text(), nullable=False),
@@ -323,6 +300,34 @@ def upgrade() -> None:
         ),
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint("name"),
+    )
+    op.create_table(
+        "slo_bindings",
+        sa.Column("id", sa.UUID(), nullable=False),
+        sa.Column("target_type", sa.Text(), nullable=False),
+        sa.Column("target_id", sa.UUID(), nullable=False),
+        sa.Column("slo_name", sa.Text(), nullable=False),
+        sa.Column("data_source_name", sa.Text(), nullable=False),
+        sa.Column("comparison_rules", postgresql.JSONB(astext_type=sa.Text()), nullable=True),
+        sa.Column("source", sa.Text(), server_default=sa.text("'direct'"), nullable=False),
+        sa.Column("template_binding_id", sa.UUID(), nullable=True),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
+        sa.CheckConstraint(
+            "target_type IN ('asset', 'asset_group')", name="ck_slo_bindings_target_type"
+        ),
+        sa.ForeignKeyConstraint(
+            ["template_binding_id"], ["template_bindings.id"], ondelete="CASCADE"
+        ),
+        sa.PrimaryKeyConstraint("id"),
+        sa.UniqueConstraint("target_type", "target_id", "slo_name", name="uq_slo_binding"),
+    )
+    op.create_index(
+        "idx_slo_bindings_target", "slo_bindings", ["target_type", "target_id"], unique=False
     )
     op.create_table(
         "slo_definitions",
@@ -663,6 +668,8 @@ def downgrade() -> None:
     op.drop_index("idx_slo_definitions_name", table_name="slo_definitions")
     op.drop_index("idx_slo_definitions_latest", table_name="slo_definitions")
     op.drop_table("slo_definitions")
+    op.drop_index("idx_slo_bindings_target", table_name="slo_bindings")
+    op.drop_table("slo_bindings")
     op.drop_table("assets")
     op.drop_index("idx_asset_group_slo_links_group", table_name="asset_group_slo_links")
     op.drop_table("asset_group_slo_links")
@@ -677,8 +684,6 @@ def downgrade() -> None:
     )
     op.drop_index("idx_slo_groups_name", table_name="slo_groups")
     op.drop_table("slo_groups")
-    op.drop_index("idx_slo_bindings_target", table_name="slo_bindings")
-    op.drop_table("slo_bindings")
     op.drop_index("idx_sli_definitions_name", table_name="sli_definitions")
     op.drop_index("idx_sli_definitions_latest", table_name="sli_definitions")
     op.drop_table("sli_definitions")

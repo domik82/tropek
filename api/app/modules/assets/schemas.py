@@ -250,6 +250,8 @@ class SLOBindingRead(BaseModel):
     slo_name: str
     data_source_name: str
     comparison_rules: list[dict[str, Any]] | None
+    source: str = "direct"
+    template_binding_id: uuid.UUID | None = None
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)

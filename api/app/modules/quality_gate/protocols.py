@@ -16,8 +16,6 @@ from app.db.models import (
     SLIDefinition,
     SLOBinding,
     SLODefinition,
-    SLOGroup,
-    TemplateBinding,
 )
 
 
@@ -76,24 +74,6 @@ class SLOBindingReader(Protocol):
         self, asset_id: uuid.UUID, group_ids: list[uuid.UUID]
     ) -> list[SLOBinding]:
         """Return all SLO bindings for an asset (direct + via groups)."""
-        ...
-
-
-class TemplateBindingReader(Protocol):
-    """Read-only protocol for template binding lookup."""
-
-    async def list_for_asset_evaluation(
-        self, asset_id: uuid.UUID, group_ids: list[uuid.UUID]
-    ) -> list[TemplateBinding]:
-        """Return template bindings for an asset (direct + via groups)."""
-        ...
-
-
-class SLOGroupReader(Protocol):
-    """Read-only protocol for SLO group lookup."""
-
-    async def get_by_name(self, name: str) -> SLOGroup | None:
-        """Return active group by name, or None."""
         ...
 
 

@@ -711,6 +711,8 @@ class SLOBindingRepository:
         slo_name: str,
         data_source_name: str,
         comparison_rules: list[dict[str, Any]] | None = None,
+        source: str = "direct",
+        template_binding_id: uuid.UUID | None = None,
     ) -> SLOBinding:
         """Create a new SLO binding for a target (asset or asset group)."""
         binding = SLOBinding(
@@ -720,6 +722,8 @@ class SLOBindingRepository:
             slo_name=slo_name,
             data_source_name=data_source_name,
             comparison_rules=comparison_rules,
+            source=source,
+            template_binding_id=template_binding_id,
         )
         self._session.add(binding)
         await self._session.flush()
@@ -769,6 +773,15 @@ class SLOBindingRepository:
                 SLOBinding.target_id == target_id,
                 SLOBinding.slo_name == slo_name,
             )
+        )
+
+    async def delete_by_template_binding_id(
+        self,
+        template_binding_id: uuid.UUID,
+    ) -> None:
+        """Hard-delete all SLO bindings created by a specific template binding."""
+        await self._session.execute(
+            delete(SLOBinding).where(SLOBinding.template_binding_id == template_binding_id)
         )
 
     async def find_for_asset(
