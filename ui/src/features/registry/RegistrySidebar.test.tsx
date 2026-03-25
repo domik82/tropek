@@ -14,7 +14,7 @@ describe('RegistrySidebar', () => {
     onModeChange: vi.fn(),
     selected: null as SelectedNode | null,
     onSelect: vi.fn(),
-    onCreateAction: vi.fn() as (type: 'datasource' | 'sli' | 'slo' | 'group', context?: { adapterType?: string }) => void,
+    onCreateAction: vi.fn() as (type: 'datasource' | 'sli' | 'slo' | 'group' | 'slo-template' | 'slo-group', context?: { adapterType?: string }) => void,
     allBindings: [] as { slo_name: string; data_source_name: string }[],
     groupBindingsMap: {} as Record<string, { slo_name: string; data_source_name: string }[]>,
   }
