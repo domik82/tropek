@@ -5,6 +5,7 @@ No I/O. Fully unit-testable.
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Any, Protocol
 
@@ -49,7 +50,7 @@ def _indicators_changed(
 
 
 def plan_regeneration(
-    old_generated: list[OldSLOState],
+    old_generated: Sequence[OldSLOState],
     new_specs: list[GeneratedSLOSpec],
     old_sli_indicators: dict[str, Any],
     new_sli_indicators: dict[str, Any],

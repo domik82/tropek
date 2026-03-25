@@ -29,6 +29,7 @@ from app.modules.quality_gate.exceptions import (
 )
 from app.modules.quality_gate.router import router as quality_gate_router
 from app.modules.sli_registry.router import router as sli_router
+from app.modules.slo_groups.router import router as slo_groups_router
 from app.modules.slo_registry.router import router as slo_router
 from app.queue import create_arq_pool
 
@@ -61,6 +62,7 @@ app.include_router(assets_router)
 app.include_router(datasource_router)
 app.include_router(sli_router)
 app.include_router(slo_router)
+app.include_router(slo_groups_router)
 app.include_router(quality_gate_router)
 
 
