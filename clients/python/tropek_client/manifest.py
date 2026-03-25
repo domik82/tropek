@@ -19,6 +19,8 @@ _KIND_ORDER = [
     "AssetSLOLink",
     "AssetGroupSLOLink",
     "SLOBinding",
+    "SLOGroup",
+    "TemplateBinding",
 ]
 
 
@@ -118,7 +120,7 @@ def _topological_sort(docs: list[ManifestDocument]) -> list[ManifestDocument]:
     return sorted(docs, key=sort_key)
 
 
-def _validate_doc_refs(
+def _validate_doc_refs(  # noqa: C901
     doc: ManifestDocument, names_by_kind: dict[str, set[str]], errors: list[str]
 ) -> None:
     """Validate cross-references in a single manifest document (appends warnings to errors)."""
@@ -148,6 +150,24 @@ def _validate_doc_refs(
             if ref_val and ref_val not in names_by_kind.get(ref_kind, set()):
                 errors.append(
                     f"WARNING: SLOBinding '{doc_name}' references {ref_kind} "
+                    f"'{ref_val}' not found in manifest (may exist in API)"
+                )
+    elif doc.kind == "SLOGroup":
+        tpl_name = doc.spec.get("template_slo_name")
+        if tpl_name and tpl_name not in names_by_kind.get("SLO", set()):
+            errors.append(
+                f"WARNING: SLOGroup '{doc_name}' references SLO "
+                f"'{tpl_name}' not found in manifest (may exist in API)"
+            )
+    elif doc.kind == "TemplateBinding":
+        for ref_field, ref_kind in [
+            ("template_group_name", "SLOGroup"),
+            ("data_source_name", "DataSource"),
+        ]:
+            ref_val = doc.spec.get(ref_field)
+            if ref_val and ref_val not in names_by_kind.get(ref_kind, set()):
+                errors.append(
+                    f"WARNING: TemplateBinding '{doc_name}' references {ref_kind} "
                     f"'{ref_val}' not found in manifest (may exist in API)"
                 )
 
@@ -247,11 +267,12 @@ def apply(client: Any, manifests: list[ManifestDocument]) -> ApplyResult:
 
 _KIND_DEPS: dict[str, set[str]] = {
     "AssetType": {"Asset"},
-    "DataSource": {"AssetSLOLink", "AssetGroupSLOLink", "SLOBinding"},
-    "Asset": {"AssetGroup", "AssetSLOLink", "SLOBinding"},
+    "DataSource": {"AssetSLOLink", "AssetGroupSLOLink", "SLOBinding", "TemplateBinding"},
+    "Asset": {"AssetGroup", "AssetSLOLink", "SLOBinding", "TemplateBinding"},
     "SLI": {"AssetSLOLink", "AssetGroupSLOLink"},
-    "SLO": {"AssetSLOLink", "AssetGroupSLOLink", "SLOBinding"},
-    "AssetGroup": {"AssetGroupSLOLink", "SLOBinding"},
+    "SLO": {"AssetSLOLink", "AssetGroupSLOLink", "SLOBinding", "SLOGroup"},
+    "AssetGroup": {"AssetGroupSLOLink", "SLOBinding", "TemplateBinding"},
+    "SLOGroup": {"TemplateBinding"},
 }
 
 
@@ -277,6 +298,27 @@ def _lookup_slo_link(client: Any, doc: ManifestDocument, link_name: str) -> Any 
     return next((lnk for lnk in links if lnk.link_name == link_name), None)
 
 
+def _lookup_slo_group(client: Any, doc: ManifestDocument) -> Any | None:
+    """Look up an existing SLO group by name."""
+    name = doc.metadata["name"]
+    try:
+        return client.slo_groups.get(name)
+    except Exception:
+        return None
+
+
+def _lookup_template_binding(client: Any, doc: ManifestDocument) -> Any | None:
+    """Look up an existing template binding."""
+    target_type = doc.spec.get("target_type", "")
+    target_name = doc.spec.get("target_name", "")
+    group_name = doc.spec.get("template_group_name", "")
+    if target_type == "asset":
+        bindings = client.template_bindings.list_for_asset(target_name)
+    else:
+        bindings = client.template_bindings.list_for_group(target_name)
+    return next((b for b in bindings if b.template_group_name == group_name), None)
+
+
 def _lookup_slo_binding(client: Any, doc: ManifestDocument) -> Any | None:
     """Look up an existing SLOBinding via the client."""
     target_type = doc.spec.get("target_type", "")
@@ -288,7 +330,7 @@ def _lookup_slo_binding(client: Any, doc: ManifestDocument) -> Any | None:
     return next((b for b in bindings if b.slo_name == doc.spec.get("slo_name")), None)
 
 
-def _lookup(client: Any, doc: ManifestDocument) -> Any | None:
+def _lookup(client: Any, doc: ManifestDocument) -> Any | None:  # noqa: C901
     """Look up an existing entity by name via the client."""
     name = doc.metadata["name"]
     try:
@@ -310,13 +352,17 @@ def _lookup(client: Any, doc: ManifestDocument) -> Any | None:
                 return _lookup_slo_link(client, doc, name)
             case "SLOBinding":
                 return _lookup_slo_binding(client, doc)
+            case "SLOGroup":
+                return _lookup_slo_group(client, doc)
+            case "TemplateBinding":
+                return _lookup_template_binding(client, doc)
             case _:
                 return None
     except Exception:
         return None
 
 
-def _has_diff(doc: ManifestDocument, existing: Any) -> bool:
+def _has_diff(doc: ManifestDocument, existing: Any) -> bool:  # noqa: C901
     """Check if the manifest differs from the existing entity."""
     match doc.kind:
         case "AssetType":
@@ -359,6 +405,14 @@ def _has_diff(doc: ManifestDocument, existing: Any) -> bool:
             )
         case "SLOBinding":
             return doc.spec.get("data_source_name") != getattr(existing, "data_source_name", None)
+        case "SLOGroup":
+            return doc.spec.get("gen_variables") != getattr(
+                existing, "gen_variables", None
+            ) or doc.spec.get("template_slo_version") != getattr(
+                existing, "template_slo_version", None
+            )
+        case "TemplateBinding":
+            return doc.spec.get("data_source_name") != getattr(existing, "data_source_name", None)
         case _:
             return False
 
@@ -398,6 +452,43 @@ def _delete_slo_binding(client: Any, spec: dict[str, Any]) -> None:
         client.slo_bindings.delete_for_group(target_name, spec["slo_name"])
 
 
+def _create_slo_group(client: Any, name: str, spec: dict[str, Any]) -> None:
+    """Create an SLO group."""
+    client.slo_groups.create(
+        name,
+        template_slo_name=spec["template_slo_name"],
+        template_slo_version=spec["template_slo_version"],
+        gen_variables=spec["gen_variables"],
+        display_name=spec.get("display_name"),
+        tags=spec.get("tags"),
+        author=spec.get("author"),
+    )
+
+
+def _create_template_binding(client: Any, spec: dict[str, Any]) -> None:
+    """Create a template binding."""
+    target_type = spec["target_type"]
+    target_name = spec["target_name"]
+    if target_type == "asset":
+        client.template_bindings.create_for_asset(
+            target_name, spec["template_group_name"], spec["data_source_name"]
+        )
+    else:
+        client.template_bindings.create_for_group(
+            target_name, spec["template_group_name"], spec["data_source_name"]
+        )
+
+
+def _delete_template_binding(client: Any, spec: dict[str, Any]) -> None:
+    """Delete a template binding."""
+    target_type = spec["target_type"]
+    target_name = spec["target_name"]
+    if target_type == "asset":
+        client.template_bindings.delete_for_asset(target_name, spec["template_group_name"])
+    else:
+        client.template_bindings.delete_for_group(target_name, spec["template_group_name"])
+
+
 def _create_asset_group(client: Any, name: str, spec: dict[str, Any]) -> None:
     """Create an asset group with members and subgroups."""
     client.asset_groups.create(name)
@@ -409,7 +500,7 @@ def _create_asset_group(client: Any, name: str, spec: dict[str, Any]) -> None:
         client.asset_groups.add_subgroup(name, str(child.id), weight=subgroup.get("weight", 1.0))
 
 
-def _create(client: Any, doc: ManifestDocument) -> None:
+def _create(client: Any, doc: ManifestDocument) -> None:  # noqa: C901
     """Create a new entity via the client."""
     name = doc.metadata["name"]
     match doc.kind:
@@ -478,9 +569,13 @@ def _create(client: Any, doc: ManifestDocument) -> None:
             )
         case "SLOBinding":
             _create_slo_binding(client, doc.spec)
+        case "SLOGroup":
+            _create_slo_group(client, name, doc.spec)
+        case "TemplateBinding":
+            _create_template_binding(client, doc.spec)
 
 
-def _update(client: Any, doc: ManifestDocument) -> None:
+def _update(client: Any, doc: ManifestDocument) -> None:  # noqa: C901
     """Update an existing entity via the client."""
     name = doc.metadata["name"]
     match doc.kind:
@@ -557,3 +652,15 @@ def _update(client: Any, doc: ManifestDocument) -> None:
             # Delete + recreate
             _delete_slo_binding(client, doc.spec)
             _create_slo_binding(client, doc.spec)
+        case "SLOGroup":
+            client.slo_groups.update(
+                name,
+                template_slo_name=doc.spec.get("template_slo_name"),
+                template_slo_version=doc.spec.get("template_slo_version"),
+                gen_variables=doc.spec.get("gen_variables"),
+                display_name=doc.spec.get("display_name"),
+                tags=doc.spec.get("tags"),
+            )
+        case "TemplateBinding":
+            _delete_template_binding(client, doc.spec)
+            _create_template_binding(client, doc.spec)
