@@ -66,7 +66,7 @@ export function SloGroupForm({ onClose }: Props) {
 
         <div>
           <label htmlFor="group-display" className="block text-xs text-muted-foreground mb-1">
-            Display Label
+            Display Name
           </label>
           <input
             id="group-display"
