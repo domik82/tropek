@@ -90,6 +90,9 @@ export function SloWizard({ editSlo, defaultKind, onClose }: SloWizardProps) {
         },
   )
 
+  // Template warning state
+  const [showTemplateWarning, setShowTemplateWarning] = useState(false)
+
   // Edit mode also calls POST — backend auto-increments version
   const createMutation = useCreateSlo()
 
@@ -163,9 +166,7 @@ export function SloWizard({ editSlo, defaultKind, onClose }: SloWizardProps) {
     checkedRows.length > 0 &&
     checkedRows.every((r) => r.passCriteria.length > 0)
 
-  function handleSubmit() {
-    if (!isValid) return
-
+  function doSubmit() {
     const objectives = checkedRows.map((row, idx) => ({
       sli: row.sli,
       display_name: row.sli,
@@ -205,6 +206,21 @@ export function SloWizard({ editSlo, defaultKind, onClose }: SloWizardProps) {
       },
       { onSuccess: () => onClose?.() },
     )
+  }
+
+  function handleSubmit() {
+    if (!isValid) return
+
+    // Warn when saving as template without $__gen_ variables
+    if (kind === 'template') {
+      const hasGenVars = comparison.variables.some((v) => v.value.includes('$__gen_'))
+      if (!hasGenVars) {
+        setShowTemplateWarning(true)
+        return
+      }
+    }
+
+    doSubmit()
   }
 
   const kind = editSlo?.kind ?? defaultKind ?? 'standard'
@@ -255,6 +271,37 @@ export function SloWizard({ editSlo, defaultKind, onClose }: SloWizardProps) {
         <section className="border border-slate-700 rounded-lg p-5">
           <WizardStepComparison data={comparison} onChange={setComparison} />
         </section>
+      )}
+
+      {/* Template gen-var warning */}
+      {showTemplateWarning && (
+        <div className="p-4 border border-amber-600/30 bg-amber-950/20 rounded-lg space-y-3">
+          <p className="text-sm font-semibold text-amber-400">Template Validation Warning</p>
+          <p className="text-sm text-foreground">
+            This template has no <code className="text-amber-400">$__gen_</code> variables.
+          </p>
+          <p className="text-xs text-muted-foreground">
+            Templates are designed to be used with SLO Groups, which expand $__gen_ placeholders
+            into multiple SLOs. Without any $__gen_ variables, this template will generate identical
+            copies with no variation.
+          </p>
+          <div className="flex gap-2 justify-end">
+            <button
+              type="button"
+              onClick={() => setShowTemplateWarning(false)}
+              className="px-3 py-1.5 text-xs rounded border border-border text-muted-foreground hover:text-foreground transition-colors"
+            >
+              Go Back &amp; Fix
+            </button>
+            <button
+              type="button"
+              onClick={() => { setShowTemplateWarning(false); doSubmit() }}
+              className="px-3 py-1.5 text-xs font-medium rounded bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+            >
+              Save Anyway
+            </button>
+          </div>
+        </div>
       )}
 
       {/* Mutation error banner */}
