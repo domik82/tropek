@@ -73,3 +73,17 @@ spec:
     process_memory_mb: 'windows_process_working_set_bytes{instance="$host",process="$process_name"} / 1048576'
     process_handles: 'windows_process_handle_count{instance="$host",process="$process_name"}'
     process_io_bytes: 'rate(windows_process_io_bytes_total{instance="$host",process="$process_name"}[5m])'
+---
+api_version: tropek/v1
+kind: SLI
+metadata:
+  name: plugin-metrics-sli
+spec:
+  adapter_type: prometheus
+  display_name: Plugin Process Metrics
+  indicators:
+    cpu_usage: "rate(process_cpu_seconds_total{process_name='$process_name'}[$AGGREGATION_WINDOW])"
+    memory_usage: "process_resident_memory_bytes{process_name='$process_name'}"
+  tags:
+    category: resources
+    platform: linux
