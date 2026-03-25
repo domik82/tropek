@@ -27,7 +27,7 @@ interface Props {
   onModeChange: (mode: RegistryMode) => void
   selected: SelectedNode | null
   onSelect: (node: SelectedNode) => void
-  onCreateAction: (type: 'datasource' | 'sli' | 'slo' | 'group', context?: { adapterType?: string }) => void
+  onCreateAction: (type: 'datasource' | 'sli' | 'slo' | 'group' | 'slo-template' | 'slo-group', context?: { adapterType?: string }) => void
 }
 
 export function RegistrySidebar({ mode, onModeChange, selected, onSelect, onCreateAction }: Props) {
@@ -192,10 +192,12 @@ function CreateDropdown({
   }, [open])
 
   const items = [
-    { type: 'slo' as const, label: 'New SLO', desc: 'Versioned quality gate definition', color: ENTITY_COLORS.slo },
-    { type: 'sli' as const, label: 'New SLI Definition', desc: 'Service level indicator template', color: ENTITY_COLORS.sli },
-    { type: 'datasource' as const, label: 'New Datasource', desc: 'Metric source connection', color: ENTITY_COLORS.ds },
-    { type: 'group' as const, label: 'New Asset Group', desc: 'Group assets and bind SLOs', color: ENTITY_COLORS.group },
+    { type: 'slo' as const, label: 'SLO Definition', desc: 'Standard SLO with criteria', color: ENTITY_COLORS.slo },
+    { type: 'slo-template' as const, label: 'SLO Template', desc: 'Reusable template for groups', color: ENTITY_COLORS.template },
+    { type: 'slo-group' as const, label: 'SLO Group', desc: 'Generate SLOs from template', color: ENTITY_COLORS.sloGroup },
+    { type: 'sli' as const, label: 'SLI Definition', desc: 'Query templates for metrics', color: ENTITY_COLORS.sli },
+    { type: 'datasource' as const, label: 'Datasource', desc: 'Connection to data backend', color: ENTITY_COLORS.ds },
+    { type: 'group' as const, label: 'Asset Group', desc: 'Group assets and bind SLOs', color: ENTITY_COLORS.group },
   ]
 
   return (
