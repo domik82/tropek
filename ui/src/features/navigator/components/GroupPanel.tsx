@@ -1,5 +1,6 @@
 // ui/src/features/navigator/components/GroupPanel.tsx
 import { useState } from 'react'
+import { useAssetGroups } from '@/features/assets/hooks'
 import { useEvaluations, useDynamicColumns, useColumnVisibility } from '@/features/evaluations/hooks'
 import { EvaluationHeatmap } from '@/features/evaluations/components/EvaluationHeatmap'
 import { EvaluationTable } from '@/features/evaluations/components/EvaluationTable'
@@ -21,6 +22,10 @@ export function GroupPanel({ groupName, onSelectAsset }: Props) {
   const [mode, setMode] = useState<ViewMode>('heatmap')
   const [selectedDate, setSelectedDate] = useState<string | null>(null)
 
+  const { data: tree } = useAssetGroups()
+  const group = tree?.all_groups.find(g => g.name === groupName)
+  const groupLabel = group?.display_name ?? prettyGroupName(groupName)
+
   const { data: evals = [], isLoading } = useEvaluations({ group_name: groupName })
 
   const dynamicCols = useDynamicColumns(evals)
@@ -33,7 +38,7 @@ export function GroupPanel({ groupName, onSelectAsset }: Props) {
     <div className="p-6 space-y-4">
       {/* Header card — group name only */}
       <EvaluationHeader
-        title={prettyGroupName(groupName)}
+        title={groupLabel}
         subtitle={evals.length > 0 ? `${evals.length} evaluations` : undefined}
       />
 
