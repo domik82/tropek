@@ -45,6 +45,7 @@ export interface EvaluationSummary {
   override_author: string | null
   asset_snapshot: {
     name: string
+    display_name?: string | null
     tags: Record<string, string>
     primary_version?: string
     build_ref?: string

@@ -21,6 +21,7 @@ export interface Asset {
 export interface AssetGroupMember {
   asset_id: string
   asset_name: string
+  asset_display_name?: string | null
   weight: number
 }
 
