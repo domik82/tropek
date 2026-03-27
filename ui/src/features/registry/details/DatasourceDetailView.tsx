@@ -136,7 +136,7 @@ export function DatasourceDetailView({ name, onNavigate, onEdit }: DatasourceDet
                     className="text-sm text-primary hover:underline cursor-pointer"
                     onClick={() => onNavigate({ type: 'sli', name: sli.name })}
                   >
-                    {sli.name}
+                    {sli.display_name ?? sli.name}
                   </button>
                 </li>
               ))}
