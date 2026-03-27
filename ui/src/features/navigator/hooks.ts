@@ -4,8 +4,8 @@ import { fetchEvaluations, fetchMetricHeatmap } from '@/features/evaluations/api
 import { useTimeRange } from '@/lib/time-range-context'
 
 export function useAssetEvaluations(assetName: string | undefined) {
-  const { from } = useTimeRange()
-  const filters = { asset_name: assetName, from }
+  const { from, to } = useTimeRange()
+  const filters = { asset_name: assetName, from, ...(to ? { to } : {}) }
   return useQuery({
     queryKey: evaluationKeys.list(filters),
     queryFn: () => fetchEvaluations(filters),

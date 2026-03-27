@@ -1,6 +1,6 @@
 // ui/src/lib/time-range-context.test.tsx
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { computeFromDate, PRESETS } from './time-range-context'
+import { computeFromDate, toDateInputValue, PRESETS } from './time-range-context'
 
 describe('computeFromDate', () => {
   beforeEach(() => {
@@ -34,6 +34,16 @@ describe('computeFromDate', () => {
     const d = new Date(result)
     expect(d.getHours()).toBe(0)
     expect(d.getFullYear()).toBe(2025)
+  })
+})
+
+describe('toDateInputValue', () => {
+  it('formats a date as YYYY-MM-DD', () => {
+    expect(toDateInputValue(new Date(2026, 2, 23))).toBe('2026-03-23')
+  })
+
+  it('zero-pads single-digit months and days', () => {
+    expect(toDateInputValue(new Date(2026, 0, 5))).toBe('2026-01-05')
   })
 })
 

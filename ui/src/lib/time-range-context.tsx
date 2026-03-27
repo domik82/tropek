@@ -1,5 +1,5 @@
 // src/lib/time-range-context.tsx
-import { createContext, useContext, useState, useMemo, type ReactNode } from 'react'
+import { createContext, useContext, useState, useMemo, useCallback, type ReactNode } from 'react'
 
 export interface TimePreset {
   label: string
@@ -17,7 +17,7 @@ export const PRESETS: TimePreset[] = [
 ]
 
 const DEFAULT_DAYS = 30
-const STORAGE_KEY = 'tropek-time-range-days'
+const STORAGE_KEY = 'tropek-time-range'
 
 /** Compute an ISO date string for midnight N days ago. */
 export function computeFromDate(days: number): string {
@@ -27,37 +27,88 @@ export function computeFromDate(days: number): string {
   return d.toISOString()
 }
 
+/** Format a Date to YYYY-MM-DD for date inputs. */
+export function toDateInputValue(d: Date): string {
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
+}
+
+type RangeMode = 'preset' | 'absolute'
+
+interface StoredRange {
+  mode: RangeMode
+  days?: number
+  from?: string
+  to?: string
+}
+
 interface TimeRangeCtx {
-  /** Currently selected preset */
+  mode: RangeMode
+  /** Currently selected preset (only meaningful when mode === 'preset') */
   preset: TimePreset
-  /** ISO string for the "from" date (midnight, N days ago) */
+  /** Display label for the trigger button */
+  label: string
+  /** ISO string for the "from" date */
   from: string
-  /** Update the selected preset by day count */
+  /** ISO string for the "to" date (undefined = now) */
+  to: string | undefined
+  /** Select a preset by day count */
   setDays: (days: number) => void
+  /** Set an absolute date range */
+  setAbsoluteRange: (from: string, to: string | undefined) => void
 }
 
 const Ctx = createContext<TimeRangeCtx | null>(null)
 
-function loadDays(): number {
-  const stored = localStorage.getItem(STORAGE_KEY)
-  if (!stored) return DEFAULT_DAYS
-  const n = Number(stored)
-  return PRESETS.some(p => p.days === n) ? n : DEFAULT_DAYS
+function loadRange(): StoredRange {
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY)
+    if (stored) return JSON.parse(stored) as StoredRange
+  } catch { /* ignore */ }
+  return { mode: 'preset', days: DEFAULT_DAYS }
+}
+
+function saveRange(range: StoredRange) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(range))
 }
 
 export function TimeRangeProvider({ children }: { children: ReactNode }) {
-  const [days, _setDays] = useState(loadDays)
+  const [range, setRange] = useState<StoredRange>(loadRange)
 
-  function setDays(d: number) {
-    _setDays(d)
-    localStorage.setItem(STORAGE_KEY, String(d))
-  }
+  const setDays = useCallback((d: number) => {
+    const next: StoredRange = { mode: 'preset', days: d }
+    setRange(next)
+    saveRange(next)
+  }, [])
 
-  const preset = PRESETS.find(p => p.days === days) ?? PRESETS[2] // fallback: 30d
-  const from = useMemo(() => computeFromDate(days), [days])
+  const setAbsoluteRange = useCallback((from: string, to: string | undefined) => {
+    const next: StoredRange = { mode: 'absolute', from, to }
+    setRange(next)
+    saveRange(next)
+  }, [])
+
+  const preset = PRESETS.find(p => p.days === range.days) ?? PRESETS[2]
+
+  const from = useMemo(() => {
+    if (range.mode === 'absolute' && range.from) return range.from
+    return computeFromDate(range.days ?? DEFAULT_DAYS)
+  }, [range])
+
+  const to = range.mode === 'absolute' ? range.to : undefined
+
+  const label = useMemo(() => {
+    if (range.mode === 'absolute' && range.from) {
+      const f = range.from.slice(0, 10)
+      const t = range.to ? range.to.slice(0, 10) : 'now'
+      return `${f} to ${t}`
+    }
+    return preset.label
+  }, [range, preset])
 
   return (
-    <Ctx.Provider value={{ preset, from, setDays }}>
+    <Ctx.Provider value={{ mode: range.mode, preset, label, from, to, setDays, setAbsoluteRange }}>
       {children}
     </Ctx.Provider>
   )
