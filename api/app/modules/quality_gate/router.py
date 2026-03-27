@@ -169,6 +169,7 @@ async def get_metric_heatmap(
                     ),
                     score=row.score,
                     eval_id=ev.id,
+                    evaluation_name=ev.evaluation_name,
                 )
             )
     return MetricHeatmapResponse(

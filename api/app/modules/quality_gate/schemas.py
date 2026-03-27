@@ -177,6 +177,7 @@ class HeatmapCell(BaseModel):
     result: str
     score: float
     eval_id: uuid.UUID
+    evaluation_name: str
 
 
 class MetricHeatmapResponse(BaseModel):
