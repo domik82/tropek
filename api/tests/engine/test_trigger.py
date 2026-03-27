@@ -24,6 +24,7 @@ def mock_repos() -> dict:
         {
             "id": uuid.uuid4(),
             "name": "vm-01",
+            "display_name": "Production VM 01",
             "tags": {"os": "linux"},
         },
     )()
@@ -132,6 +133,15 @@ async def test_resolve_via_binding_fallback(mock_repos: dict) -> None:
     assert ctx.slo_name == "vm-slo"
     assert ctx.sli_name == "vm-sli"
     assert ctx.data_source_name == "prom-1"
+
+
+async def test_trigger_context_includes_display_name(mock_repos: dict) -> None:
+    ctx = await resolve_single_trigger(
+        asset_name="vm-01",
+        slo_name="perf-slo",
+        **mock_repos,
+    )
+    assert ctx.asset_display_name == "Production VM 01"
 
 
 async def test_resolve_no_link_no_binding_raises(mock_repos: dict) -> None:
