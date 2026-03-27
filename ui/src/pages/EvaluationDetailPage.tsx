@@ -1,7 +1,9 @@
 // src/pages/EvaluationDetailPage.tsx
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useParams, useSearchParams, Link } from 'react-router-dom'
 import { useEvaluationDetail } from '@/features/evaluations/hooks'
+import { useAssets } from '@/features/assets/hooks'
+import { useSlos } from '@/features/slos/hooks'
 import { EvaluationSummaryCard } from '@/features/evaluations/components/EvaluationSummaryCard'
 import { EvaluationIndicatorSection } from '@/features/evaluations/components/EvaluationIndicatorSection'
 import { EvaluationNotesSection, useNotesActions } from '@/features/evaluations/components/EvaluationNotesSection'
@@ -23,6 +25,18 @@ export function EvaluationDetailPage() {
   const [activeAction, setActiveAction] = useState<ActionKind | null>(null)
   const { notesSectionRef, handleAddNote } = useNotesActions()
 
+  // Live display name lookups
+  const { data: assets } = useAssets()
+  const { data: slos } = useSlos()
+  const assetDisplayName = useMemo(() => {
+    if (!ev || ev.asset_snapshot.display_name) return undefined
+    return assets?.find(a => a.name === ev.asset_snapshot.name)?.display_name ?? undefined
+  }, [assets, ev])
+  const sloDisplayName = useMemo(() => {
+    if (!ev?.slo_name) return undefined
+    return slos?.find(s => s.name === ev.slo_name)?.display_name ?? undefined
+  }, [slos, ev])
+
   if (isLoading) return <div className="p-6 text-slate-400">Loading…</div>
   if (!ev) return <div className="p-6 text-red-400">Evaluation not found.</div>
 
@@ -40,6 +54,8 @@ export function EvaluationDetailPage() {
       <EvaluationSummaryCard
         evaluation={ev}
         onAddNote={handleAddNote}
+        assetDisplayName={assetDisplayName}
+        sloDisplayName={sloDisplayName}
         actions={
           <EvaluationActionsButton
             currentResult={ev.result}
@@ -66,7 +82,7 @@ export function EvaluationDetailPage() {
 
       <EvaluationNotesSection ref={notesSectionRef} evaluationId={id!} annotations={ev.annotations} />
 
-      <EvaluationIndicatorSection evaluation={ev} />
+      <EvaluationIndicatorSection evaluation={ev} assetDisplayName={assetDisplayName} />
     </div>
   )
 }

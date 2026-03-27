@@ -9,9 +9,10 @@ import type { EvaluationSummary } from '@/features/evaluations/types'
 
 interface Props {
   evaluations: EvaluationSummary[]
+  assetDisplayNames?: Map<string, string>
 }
 
-export function GroupScoreChart({ evaluations }: Props) {
+export function GroupScoreChart({ evaluations, assetDisplayNames }: Props) {
   const { theme } = useTheme()
   const colours = RESULT_COLOUR[theme]
   const ct = CHART_THEME[theme]
@@ -24,12 +25,13 @@ export function GroupScoreChart({ evaluations }: Props) {
   const displayNameMap = useMemo(() => {
     const map = new Map<string, string>()
     for (const e of evaluations) {
-      if (e.asset_snapshot.display_name && !map.has(e.asset_snapshot.name)) {
-        map.set(e.asset_snapshot.name, e.asset_snapshot.display_name)
+      if (!map.has(e.asset_snapshot.name)) {
+        const dn = e.asset_snapshot.display_name ?? assetDisplayNames?.get(e.asset_snapshot.name)
+        if (dn) map.set(e.asset_snapshot.name, dn)
       }
     }
     return map
-  }, [evaluations])
+  }, [evaluations, assetDisplayNames])
 
   // One series per asset — stacked bars
   const series = assetNames.map(assetName => ({

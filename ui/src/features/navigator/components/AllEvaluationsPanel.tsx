@@ -1,5 +1,7 @@
 // ui/src/features/navigator/components/AllEvaluationsPanel.tsx
 import { useState, useMemo } from 'react'
+import { useAssets } from '@/features/assets/hooks'
+import { useSlos } from '@/features/slos/hooks'
 import { useEvaluations, useDynamicColumns, useColumnVisibility } from '@/features/evaluations/hooks'
 import { EvaluationHeatmap } from '@/features/evaluations/components/EvaluationHeatmap'
 import { EvaluationTable } from '@/features/evaluations/components/EvaluationTable'
@@ -13,6 +15,20 @@ export function AllEvaluationsPanel({ onSelectAsset }: Props) {
   const [selectedDate, setSelectedDate] = useState<string | null>(null)
 
   const { data: evals = [], isLoading } = useEvaluations({})
+
+  // Live display name lookups — fallback for evaluations whose snapshot lacks display_name
+  const { data: assets } = useAssets()
+  const { data: slos } = useSlos()
+  const assetDisplayNames = useMemo(() => {
+    const m = new Map<string, string>()
+    for (const a of assets ?? []) if (a.display_name) m.set(a.name, a.display_name)
+    return m
+  }, [assets])
+  const sloDisplayNames = useMemo(() => {
+    const m = new Map<string, string>()
+    for (const s of slos ?? []) if (s.display_name) m.set(s.name, s.display_name)
+    return m
+  }, [slos])
 
   const dynamicCols = useDynamicColumns(evals)
   const colVis = useColumnVisibility(dynamicCols)
@@ -54,6 +70,7 @@ export function AllEvaluationsPanel({ onSelectAsset }: Props) {
               selectedDate={selectedDate}
               onDateSelect={setSelectedDate}
               onAssetSelect={onSelectAsset}
+              assetDisplayNames={assetDisplayNames}
             />
           </div>
           <EvaluationTable
@@ -62,6 +79,8 @@ export function AllEvaluationsPanel({ onSelectAsset }: Props) {
             {...colVis}
             onAssetSelect={onSelectAsset}
             onEvalClick={ev => onSelectAsset(ev.asset_snapshot.name)}
+            assetDisplayNames={assetDisplayNames}
+            sloDisplayNames={sloDisplayNames}
           />
         </>
       )}

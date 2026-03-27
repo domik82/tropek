@@ -1,6 +1,7 @@
 // ui/src/features/navigator/components/GroupPanel.tsx
-import { useState } from 'react'
-import { useAssetGroups } from '@/features/assets/hooks'
+import { useState, useMemo } from 'react'
+import { useAssetGroups, useAssets } from '@/features/assets/hooks'
+import { useSlos } from '@/features/slos/hooks'
 import { useEvaluations, useDynamicColumns, useColumnVisibility } from '@/features/evaluations/hooks'
 import { EvaluationHeatmap } from '@/features/evaluations/components/EvaluationHeatmap'
 import { EvaluationTable } from '@/features/evaluations/components/EvaluationTable'
@@ -27,6 +28,20 @@ export function GroupPanel({ groupName, onSelectAsset }: Props) {
   const groupLabel = group?.display_name ?? prettyGroupName(groupName)
 
   const { data: evals = [], isLoading } = useEvaluations({ group_name: groupName })
+
+  // Live display name lookups — fallback for evaluations whose snapshot lacks display_name
+  const { data: assets } = useAssets()
+  const { data: slos } = useSlos()
+  const assetDisplayNames = useMemo(() => {
+    const m = new Map<string, string>()
+    for (const a of assets ?? []) if (a.display_name) m.set(a.name, a.display_name)
+    return m
+  }, [assets])
+  const sloDisplayNames = useMemo(() => {
+    const m = new Map<string, string>()
+    for (const s of slos ?? []) if (s.display_name) m.set(s.name, s.display_name)
+    return m
+  }, [slos])
 
   const dynamicCols = useDynamicColumns(evals)
   const colVis = useColumnVisibility(dynamicCols)
@@ -59,6 +74,7 @@ export function GroupPanel({ groupName, onSelectAsset }: Props) {
               evaluations={evals}
               selectedDate={selectedDate}
               onDateSelect={setSelectedDate}
+              assetDisplayNames={assetDisplayNames}
               onAssetSelect={(assetName) => {
                 const match = selectedDate
                   ? evals.find(e => e.asset_snapshot.name === assetName && e.period_start === selectedDate)
@@ -67,7 +83,7 @@ export function GroupPanel({ groupName, onSelectAsset }: Props) {
               }}
             />
           </div>
-          <EvaluationTable evaluations={tableEvals} dynamicCols={dynamicCols} {...colVis} onAssetSelect={onSelectAsset} onEvalClick={ev => onSelectAsset(ev.asset_snapshot.name, ev.id)} />
+          <EvaluationTable evaluations={tableEvals} dynamicCols={dynamicCols} {...colVis} onAssetSelect={onSelectAsset} onEvalClick={ev => onSelectAsset(ev.asset_snapshot.name, ev.id)} assetDisplayNames={assetDisplayNames} sloDisplayNames={sloDisplayNames} />
         </>
       )}
 
@@ -77,7 +93,7 @@ export function GroupPanel({ groupName, onSelectAsset }: Props) {
             <ViewToggle mode={mode} setMode={setMode} />
           </div>
           <div className="rounded-lg border border-slate-700 bg-gray-900 p-4">
-            <GroupScoreChart evaluations={evals} />
+            <GroupScoreChart evaluations={evals} assetDisplayNames={assetDisplayNames} />
           </div>
         </>
       )}

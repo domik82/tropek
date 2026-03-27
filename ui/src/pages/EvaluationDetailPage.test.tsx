@@ -39,6 +39,14 @@ vi.mock('@/features/evaluations/components/EvaluationActions', () => ({
   EvaluationActionForm: () => <div data-testid="action-form">form</div>,
 }))
 
+vi.mock('@/features/assets/hooks', () => ({
+  useAssets: () => ({ data: [] }),
+}))
+
+vi.mock('@/features/slos/hooks', () => ({
+  useSlos: () => ({ data: [] }),
+}))
+
 function makeEval(overrides: Partial<EvaluationDetail> = {}): EvaluationDetail {
   return {
     id: 'eval-1',
