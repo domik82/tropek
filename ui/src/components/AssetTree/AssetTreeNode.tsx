@@ -32,7 +32,10 @@ function matchesFilter(group: AssetGroup, tree: AssetGroupTree, filter: string, 
   if (label.includes(q)) return true
 
   if (mode === 'navigator' || mode === 'assets') {
-    if (group.members.some(m => m.asset_name.toLowerCase().includes(q))) return true
+    if (group.members.some(m =>
+      m.asset_name.toLowerCase().includes(q) ||
+      (m.asset_display_name?.toLowerCase().includes(q) ?? false)
+    )) return true
   }
 
   const subgroups = group.subgroups
@@ -61,7 +64,10 @@ export function AssetTreeNode({
 
   const filteredMembers = (mode === 'navigator' || mode === 'assets')
     ? (filter
-        ? group.members.filter(m => m.asset_name.toLowerCase().includes(filter.toLowerCase()))
+        ? group.members.filter(m =>
+            m.asset_name.toLowerCase().includes(filter.toLowerCase()) ||
+            (m.asset_display_name?.toLowerCase().includes(filter.toLowerCase()) ?? false)
+          )
         : group.members)
     : []
 
@@ -259,11 +265,11 @@ export function AssetTreeNode({
                 }}
               >
                 <span className="font-mono text-[13px] text-muted-foreground truncate py-1 flex-1">
-                  {m.asset_name}
+                  {m.asset_display_name ?? m.asset_name}
                 </span>
                 <button
                   className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-muted/80 shrink-0"
-                  aria-label={`Actions for ${m.asset_name}`}
+                  aria-label={`Actions for ${m.asset_display_name ?? m.asset_name}`}
                   onClick={e => {
                     e.stopPropagation()
                     const rect = e.currentTarget.getBoundingClientRect()

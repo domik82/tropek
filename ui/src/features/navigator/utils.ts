@@ -6,7 +6,16 @@ const RESULT_RANK: Record<string, number> = { pass: 0, warning: 1, fail: 2, erro
 
 export function buildGroupHeatmapData(evals: EvaluationSummary[]): GroupHeatmapData {
   const slots = Array.from(new Set(evals.map(e => e.period_start))).sort()
-  const rows  = Array.from(new Set(evals.map(e => e.asset_snapshot.name))).sort()
+  const assetNames = Array.from(new Set(evals.map(e => e.asset_snapshot.name))).sort()
+
+  // Build display name lookup
+  const displayNameMap = new Map<string, string>()
+  for (const e of evals) {
+    if (e.asset_snapshot.display_name && !displayNameMap.has(e.asset_snapshot.name)) {
+      displayNameMap.set(e.asset_snapshot.name, e.asset_snapshot.display_name)
+    }
+  }
+  const rows = assetNames.map(n => displayNameMap.get(n) ?? n)
 
   const cellMap = new Map<string, { result: string; score: number; count: number }>()
   for (const e of evals) {
@@ -27,8 +36,8 @@ export function buildGroupHeatmapData(evals: EvaluationSummary[]): GroupHeatmapD
 
   const cells: HeatmapCell[] = []
   for (let xi = 0; xi < slots.length; xi++) {
-    for (let yi = 0; yi < rows.length; yi++) {
-      const key = `${rows[yi]}::${slots[xi]}`
+    for (let yi = 0; yi < assetNames.length; yi++) {
+      const key = `${assetNames[yi]}::${slots[xi]}`
       const cell = cellMap.get(key)
       cells.push({
         value: [xi, yi],
