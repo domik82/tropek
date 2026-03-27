@@ -1,11 +1,13 @@
 // ui/src/features/navigator/components/AllEvaluationsPanel.tsx
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useAssets } from '@/features/assets/hooks'
 import { useSlos } from '@/features/slos/hooks'
 import { useEvaluations, useDynamicColumns, useColumnVisibility } from '@/features/evaluations/hooks'
 import { EvaluationHeatmap } from '@/features/evaluations/components/EvaluationHeatmap'
 import { EvaluationTable } from '@/features/evaluations/components/EvaluationTable'
 import { EvaluationHeader } from '@/features/evaluations/components/EvaluationHeader'
+import { EvaluationNameFilter } from './EvaluationNameFilter'
+import { useEvaluationNames } from '../hooks'
 import { TimeRangePicker } from '@/components/TimeRangePicker'
 
 interface Props {
@@ -14,8 +16,21 @@ interface Props {
 
 export function AllEvaluationsPanel({ onSelectAsset }: Props) {
   const [selectedDate, setSelectedDate] = useState<string | null>(null)
+  const [selectedNames, setSelectedNames] = useState<string[] | undefined>(undefined)
+  const [namesInitialized, setNamesInitialized] = useState(false)
 
-  const { data: evals = [], isLoading } = useEvaluations({})
+  const { data: evalNames = [] } = useEvaluationNames()
+
+  useEffect(() => {
+    if (evalNames.length > 0 && !namesInitialized) {
+      setSelectedNames([evalNames[0].name])
+      setNamesInitialized(true)
+    }
+  }, [evalNames, namesInitialized])
+
+  const { data: evals = [], isLoading } = useEvaluations({
+    evaluation_name: selectedNames,
+  })
 
   // Live display name lookups — fallback for evaluations whose snapshot lacks display_name
   const { data: assets } = useAssets()
@@ -55,6 +70,14 @@ export function AllEvaluationsPanel({ onSelectAsset }: Props) {
           : undefined}
         toolbar={<TimeRangePicker />}
       />
+
+      {evalNames.length > 1 && (
+        <EvaluationNameFilter
+          names={evalNames}
+          selected={selectedNames}
+          onChange={setSelectedNames}
+        />
+      )}
 
       {isLoading && <p className="text-sm text-slate-400">Loading…</p>}
       {!isLoading && evals.length === 0 && (
