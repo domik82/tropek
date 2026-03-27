@@ -10,6 +10,7 @@ import { MetricLabelPanel } from '@/components/charts/MetricLabelPanel'
 import { MultiSeriesChart } from '@/components/charts/MultiSeriesChart'
 import type { MultiSeriesChartProps } from '@/components/charts/MultiSeriesChart'
 import { buildColorMap } from '@/components/charts/colors'
+import { TimeRangePicker } from '@/components/TimeRangePicker'
 import type { TrendPoint } from '@/features/evaluations/types'
 
 // ── useEnabledTrends ──────────────────────────────────────────────────────────
@@ -276,6 +277,9 @@ export function MetricExplorerPage() {
         {(groupName || assetName) && (
           <span className="text-sm text-slate-400">— {assetName ?? groupName}</span>
         )}
+        <div className="ml-auto">
+          <TimeRangePicker />
+        </div>
       </div>
 
       {/* Two chart sections */}
