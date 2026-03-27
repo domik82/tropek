@@ -1,5 +1,5 @@
 // ui/src/features/navigator/components/GroupPanel.tsx
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useAssetGroups, useAssets } from '@/features/assets/hooks'
 import { useSlos } from '@/features/slos/hooks'
 import { useEvaluations, useDynamicColumns, useColumnVisibility } from '@/features/evaluations/hooks'
@@ -7,6 +7,8 @@ import { EvaluationHeatmap } from '@/features/evaluations/components/EvaluationH
 import { EvaluationTable } from '@/features/evaluations/components/EvaluationTable'
 import { EvaluationHeader } from '@/features/evaluations/components/EvaluationHeader'
 import { TimeRangePicker } from '@/components/TimeRangePicker'
+import { EvaluationNameFilter } from './EvaluationNameFilter'
+import { useEvaluationNames } from '../hooks'
 import { GroupScoreChart } from './GroupScoreChart'
 import { ViewToggle } from '@/components/charts/ViewToggle'
 import type { ViewMode } from '@/components/charts/ViewToggle'
@@ -23,12 +25,26 @@ function prettyGroupName(name: string) {
 export function GroupPanel({ groupName, onSelectAsset }: Props) {
   const [mode, setMode] = useState<ViewMode>('heatmap')
   const [selectedDate, setSelectedDate] = useState<string | null>(null)
+  const [selectedNames, setSelectedNames] = useState<string[] | undefined>(undefined)
+  const [namesInitialized, setNamesInitialized] = useState(false)
 
   const { data: tree } = useAssetGroups()
   const group = tree?.all_groups.find(g => g.name === groupName)
   const groupLabel = group?.display_name ?? prettyGroupName(groupName)
 
-  const { data: evals = [], isLoading } = useEvaluations({ group_name: groupName })
+  const { data: evalNames = [] } = useEvaluationNames(undefined, groupName)
+
+  useEffect(() => {
+    if (evalNames.length > 0 && !namesInitialized) {
+      setSelectedNames([evalNames[0].name])
+      setNamesInitialized(true)
+    }
+  }, [evalNames, namesInitialized])
+
+  const { data: evals = [], isLoading } = useEvaluations({
+    group_name: groupName,
+    evaluation_name: selectedNames,
+  })
 
   // Live display name lookups — fallback for evaluations whose snapshot lacks display_name
   const { data: assets } = useAssets()
@@ -58,6 +74,14 @@ export function GroupPanel({ groupName, onSelectAsset }: Props) {
         subtitle={evals.length > 0 ? `${evals.length} evaluations` : undefined}
         toolbar={<TimeRangePicker />}
       />
+
+      {evalNames.length > 1 && (
+        <EvaluationNameFilter
+          names={evalNames}
+          selected={selectedNames}
+          onChange={setSelectedNames}
+        />
+      )}
 
       {/* Content */}
       {isLoading && <p className="text-sm text-slate-400">Loading…</p>}
