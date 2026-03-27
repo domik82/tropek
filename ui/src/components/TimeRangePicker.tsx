@@ -3,26 +3,32 @@ import { useState } from 'react'
 import { Calendar as CalendarIcon, ChevronDown } from 'lucide-react'
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover'
 import { Calendar } from '@/components/ui/calendar'
-import { useTimeRange, PRESETS, toDateInputValue } from '@/lib/time-range-context'
+import { useTimeRange, PRESETS, toDateInputValue, computeFromDate } from '@/lib/time-range-context'
 
 const SANS = "system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif"
+
+function presetFromDate(days: number): Date {
+  const d = new Date()
+  d.setDate(d.getDate() - days)
+  d.setHours(0, 0, 0, 0)
+  return d
+}
 
 export function TimeRangePicker() {
   const { label, mode, preset, setDays, setAbsoluteRange } = useTimeRange()
   const [open, setOpen] = useState(false)
 
-  // Which date field is being edited: null = show presets, 'from'/'to' = show calendar
+  // Which date field is being edited: null = collapsed, 'from'/'to' = show calendar
   const [editing, setEditing] = useState<'from' | 'to' | null>(null)
 
-  const [fromDate, setFromDate] = useState<Date | undefined>(() => {
-    const d = new Date()
-    d.setDate(d.getDate() - 30)
-    return d
-  })
+  const [fromDate, setFromDate] = useState<Date | undefined>(() => presetFromDate(30))
   const [toDate, setToDate] = useState<Date | undefined>(undefined)
 
   function handlePreset(days: number) {
     setDays(days)
+    // Sync the absolute inputs to match the preset so they're not stale
+    setFromDate(presetFromDate(days))
+    setToDate(undefined)
     setEditing(null)
     setOpen(false)
   }
@@ -66,10 +72,10 @@ export function TimeRangePicker() {
         {label}
         <ChevronDown size={12} className="text-muted-foreground" />
       </PopoverTrigger>
-      <PopoverContent align="end" className="w-auto p-0" style={{ fontFamily: SANS }}>
+      <PopoverContent align="end" className="w-auto p-0 z-[100]" style={{ fontFamily: SANS }}>
         <div className="flex">
           {/* Left — absolute date range */}
-          <div className="p-4 border-r border-border" style={{ width: 230 }}>
+          <div className="p-4 border-r border-border" style={{ width: 260 }}>
             <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
               Absolute time range
             </h3>

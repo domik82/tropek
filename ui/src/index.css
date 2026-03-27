@@ -194,17 +194,21 @@ option {
 .tropek-calendar .rdp-root {
   --rdp-accent-color: var(--primary);
   --rdp-accent-background-color: color-mix(in oklch, var(--primary) 20%, transparent);
-  --rdp-day-height: 1.75rem;
-  --rdp-day-width: 1.75rem;
-  --rdp-day_button-height: 1.75rem;
-  --rdp-day_button-width: 1.75rem;
+  --rdp-day-height: 2rem;
+  --rdp-day-width: 2rem;
+  --rdp-day_button-height: 2rem;
+  --rdp-day_button-width: 2rem;
   font-size: 0.75rem;
+}
+.tropek-calendar .rdp-nav {
+  justify-content: flex-end;
+  gap: 0.25rem;
 }
 .tropek-calendar .rdp-month_caption {
   font-size: 0.8rem;
   font-weight: 600;
   color: var(--foreground);
-  justify-content: center;
+  justify-content: flex-start;
 }
 .tropek-calendar .rdp-weekday {
   color: var(--muted-foreground);
@@ -214,7 +218,7 @@ option {
 .tropek-calendar .rdp-day_button {
   color: var(--foreground);
   border-radius: 0.25rem;
-  font-size: 0.7rem;
+  font-size: 0.75rem;
 }
 .tropek-calendar .rdp-day_button:hover {
   background: var(--muted);
@@ -239,6 +243,11 @@ option {
 .tropek-calendar .rdp-button_next {
   color: var(--muted-foreground);
   border-radius: 0.25rem;
+  width: 1.75rem;
+  height: 1.75rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 .tropek-calendar .rdp-button_previous:hover,
 .tropek-calendar .rdp-button_next:hover {
