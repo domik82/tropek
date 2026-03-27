@@ -76,11 +76,15 @@ export function EvaluationHeader({
         )}
       </div>
 
-      {/* Right — actions */}
-      <div className="flex items-center gap-2 justify-end">
+      {/* Right — toolbar + actions */}
+      <div className="flex flex-col items-end gap-2">
         {toolbar}
-        {noteButton}
-        {actions}
+        {(noteButton || actions) && (
+          <div className="flex items-center gap-2">
+            {noteButton}
+            {actions}
+          </div>
+        )}
       </div>
     </div>
   )

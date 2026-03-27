@@ -69,12 +69,12 @@ export function TimeRangePicker() {
   return (
     <Popover open={open} onOpenChange={(next) => { setOpen(next); if (!next) setEditing(null) }}>
       <PopoverTrigger
-        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs rounded border border-border bg-popover text-foreground hover:bg-muted transition-colors"
+        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg border border-border bg-popover text-foreground hover:bg-muted transition-colors"
         style={{ fontFamily: SANS }}
       >
-        <CalendarIcon size={14} className="text-muted-foreground" />
+        <CalendarIcon size={15} className="text-muted-foreground" />
         {label}
-        <ChevronDown size={12} className="text-muted-foreground" />
+        <ChevronDown size={13} className="text-muted-foreground" />
       </PopoverTrigger>
       <PopoverContent align="end" className="w-auto p-0 z-[100]" style={{ fontFamily: SANS }}>
         <div className="flex">
