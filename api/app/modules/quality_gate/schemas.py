@@ -189,6 +189,14 @@ class MetricHeatmapResponse(BaseModel):
     cells: list[HeatmapCell]
 
 
+class EvaluationNameEntry(BaseModel):
+    """A distinct evaluation name with usage stats."""
+
+    name: str
+    count: int
+    last_run: datetime
+
+
 class TriggerRequest(BaseModel):
     """Request body for triggering a single evaluation."""
 
