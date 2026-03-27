@@ -15,15 +15,18 @@ import {
   pinBaseline,
   reEvaluate,
 } from './api'
+import { useTimeRange } from '@/lib/time-range-context'
 import type { EvaluationFilters, EvaluationSummary, ColumnDef, ReEvaluatePayload } from './types'
 import { FIXED_COLS, DEFAULT_VISIBLE_KEYS } from './constants'
 
 // ── List ──────────────────────────────────────────────────────────────────────
 
 export function useEvaluations(filters: EvaluationFilters = {}) {
+  const { from } = useTimeRange()
+  const merged = { ...filters, from }
   return useQuery({
-    queryKey: evaluationKeys.list(filters),
-    queryFn: () => fetchEvaluations(filters),
+    queryKey: evaluationKeys.list(merged),
+    queryFn: () => fetchEvaluations(merged),
     placeholderData: keepPreviousData,
   })
 }
