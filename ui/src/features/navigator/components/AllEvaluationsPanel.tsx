@@ -9,7 +9,7 @@ import { EvaluationHeader } from '@/features/evaluations/components/EvaluationHe
 import { TimeRangePicker } from '@/components/TimeRangePicker'
 
 interface Props {
-  onSelectAsset: (name: string) => void
+  onSelectAsset: (name: string, evalId?: string) => void
 }
 
 export function AllEvaluationsPanel({ onSelectAsset }: Props) {
@@ -80,7 +80,7 @@ export function AllEvaluationsPanel({ onSelectAsset }: Props) {
             dynamicCols={dynamicCols}
             {...colVis}
             onAssetSelect={onSelectAsset}
-            onEvalClick={ev => onSelectAsset(ev.asset_snapshot.name)}
+            onEvalClick={ev => onSelectAsset(ev.asset_snapshot.name, ev.id)}
             assetDisplayNames={assetDisplayNames}
             sloDisplayNames={sloDisplayNames}
           />
