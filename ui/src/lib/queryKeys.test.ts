@@ -11,7 +11,7 @@ describe('evaluationKeys', () => {
     expect(evaluationKeys.list(filters)).toEqual(['evaluations', filters])
   })
   it('heatmap includes asset name', () => {
-    expect(evaluationKeys.heatmap('catalog-db')).toEqual(['metric-heatmap', 'catalog-db'])
+    expect(evaluationKeys.heatmap('catalog-db')).toEqual(['metric-heatmap', 'catalog-db', undefined])
   })
   it('detail includes id', () => {
     expect(evaluationKeys.detail('abc-123')).toEqual(['evaluations', 'abc-123'])

@@ -127,6 +127,8 @@ async def list_evaluations(
 async def get_metric_heatmap(
     asset_name: str,
     evaluation_name: list[str] | None = Query(default=None),  # noqa: B008
+    from_ts: datetime | None = Query(default=None, alias="from"),  # noqa: B008
+    to_ts: datetime | None = Query(default=None, alias="to"),  # noqa: B008
     limit: int = 20,
     repos: QualityGateRepos = Depends(get_qg_repos),  # noqa: B008
 ) -> MetricHeatmapResponse:
@@ -135,7 +137,11 @@ async def get_metric_heatmap(
     if asset is None:
         raise HTTPException(status_code=404, detail=f"asset '{asset_name}' not found")
     evals = await repos.trend_repo.get_metric_heatmap(
-        asset_id=asset.id, limit=limit, evaluation_name=evaluation_name
+        asset_id=asset.id,
+        limit=limit,
+        evaluation_name=evaluation_name,
+        from_ts=from_ts,
+        to_ts=to_ts,
     )
     # Build slots (timestamps) and collect all unique metrics
     slots: list[datetime] = []
