@@ -26,10 +26,18 @@ const RESULT_RANK: Record<string, number> = { pass: 0, warning: 1, fail: 2, erro
 
 type CellAccum = { result: string; score: number; count: number; hasNote: boolean; noteContent: string; evalName: string }
 
-function buildData(evals: EvaluationSummary[]): { slots: string[]; rows: string[]; cells: HeatmapCell[]; evalNameMap: Map<string, string> } {
+function buildData(evals: EvaluationSummary[]): { slots: string[]; rows: string[]; cells: HeatmapCell[]; evalNameMap: Map<string, string>; assetNames: string[] } {
   // Step 1: build sorted axes — rows are asset name only
   const slots = Array.from(new Set(evals.map(e => e.period_start))).sort()
-  const rows = Array.from(new Set(evals.map(e => e.asset_snapshot.name))).sort()
+  // Internal keys: raw asset names. Display: display_name ?? name.
+  const displayNameMap = new Map<string, string>()
+  for (const e of evals) {
+    if (e.asset_snapshot.display_name && !displayNameMap.has(e.asset_snapshot.name)) {
+      displayNameMap.set(e.asset_snapshot.name, e.asset_snapshot.display_name)
+    }
+  }
+  const assetNames = Array.from(new Set(evals.map(e => e.asset_snapshot.name))).sort()
+  const rows = assetNames.map(n => displayNameMap.get(n) ?? n)
 
   // Step 2: group evaluations into cells, merging duplicates by asset+slot
   const cellMap = new Map<string, CellAccum>()
@@ -61,10 +69,10 @@ function buildData(evals: EvaluationSummary[]): { slots: string[]; rows: string[
   const cells: HeatmapCell[] = []
   const evalNameMap = new Map<string, string>()
   for (let xi = 0; xi < slots.length; xi++) {
-    for (let yi = 0; yi < rows.length; yi++) {
-      const key = `${rows[yi]}::${slots[xi]}`
+    for (let yi = 0; yi < assetNames.length; yi++) {
+      const key = `${assetNames[yi]}::${slots[xi]}`
       const cell = cellMap.get(key)
-      if (cell) evalNameMap.set(key, cell.evalName)
+      if (cell) evalNameMap.set(`${rows[yi]}::${slots[xi]}`, cell.evalName)
       cells.push({
         value: [xi, yi],
         result: cell?.result ?? 'none',
@@ -77,14 +85,14 @@ function buildData(evals: EvaluationSummary[]): { slots: string[]; rows: string[
     }
   }
 
-  return { slots, rows, cells, evalNameMap }
+  return { slots, rows, cells, evalNameMap, assetNames }
 }
 
 export function EvaluationHeatmap({ evaluations, selectedDate, onDateSelect, onAssetSelect }: Props) {
   const { theme } = useTheme()
   const colours = RESULT_COLOUR[theme]
 
-  const { slots, rows, cells, evalNameMap } = useMemo(() => buildData(evaluations), [evaluations])
+  const { slots, rows, cells, evalNameMap, assetNames } = useMemo(() => buildData(evaluations), [evaluations])
 
   const selectedColumn = selectedDate ? slots.indexOf(selectedDate) : undefined
 
@@ -114,7 +122,9 @@ export function EvaluationHeatmap({ evaluations, selectedDate, onDateSelect, onA
     if (cell.slot !== selectedDate) {
       onDateSelect(cell.slot)
     } else if (onAssetSelect) {
-      if (cell.rowLabel.trim()) onAssetSelect(cell.rowLabel)
+      const rowIdx = rows.indexOf(cell.rowLabel)
+      const assetName = rowIdx >= 0 ? assetNames[rowIdx] : cell.rowLabel
+      if (assetName.trim()) onAssetSelect(assetName)
     } else {
       onDateSelect(null)
     }
