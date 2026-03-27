@@ -7,6 +7,7 @@ import { AssetsPage } from './pages/AssetsPage'
 import { AssetNavigatorPage } from './pages/AssetNavigatorPage'
 import { MetricExplorerPage } from './pages/MetricExplorerPage'
 import { ThemeProvider, useTheme } from './lib/theme-context'
+import { TimeRangeProvider } from './lib/time-range-context'
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { staleTime: 30_000 } },
@@ -65,8 +66,9 @@ function NavControls() {
 export default function App() {
   return (
     <ThemeProvider>
-      <QueryClientProvider client={queryClient}>
-        <BrowserRouter>
+      <TimeRangeProvider>
+        <QueryClientProvider client={queryClient}>
+          <BrowserRouter>
           <div className="min-h-screen bg-background text-foreground">
             <nav className="border-b border-border px-6 py-3 flex items-center gap-6">
               <span className="font-bold text-sm tracking-widest" style={{ color: 'oklch(68.628% 0.185 148.958)' }}>TROPEK</span>
@@ -95,7 +97,8 @@ export default function App() {
             </main>
           </div>
         </BrowserRouter>
-      </QueryClientProvider>
+        </QueryClientProvider>
+      </TimeRangeProvider>
     </ThemeProvider>
   )
 }
