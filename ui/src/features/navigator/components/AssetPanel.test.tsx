@@ -14,6 +14,7 @@ const mockUseEvaluationDetail = vi.fn()
 vi.mock('../hooks', () => ({
   useAssetEvaluations: (...args: unknown[]) => mockUseAssetEvaluations(...args),
   useMetricHeatmap: (...args: unknown[]) => mockUseMetricHeatmap(...args),
+  useEvaluationNames: () => ({ data: [] }),
 }))
 
 vi.mock('@/features/evaluations/hooks', () => ({
@@ -141,7 +142,7 @@ describe('AssetPanel', () => {
     mockUseEvaluationDetail.mockReturnValue({ data: undefined })
     renderPanel('catalog-db')
 
-    expect(mockUseAssetEvaluations).toHaveBeenCalledWith('catalog-db')
+    expect(mockUseAssetEvaluations).toHaveBeenCalledWith('catalog-db', undefined)
   })
 
   it('selects latest non-invalidated eval as default', () => {
