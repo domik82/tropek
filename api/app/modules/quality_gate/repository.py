@@ -487,3 +487,30 @@ class EvaluationRepository:
         )
         await self._session.flush()
         return await self.get_by_id(eval_id)
+
+    async def list_evaluation_names(
+        self,
+        *,
+        asset_id: uuid.UUID | None = None,
+        asset_ids: list[uuid.UUID] | None = None,
+    ) -> list[tuple[str, int, datetime]]:
+        """Return distinct evaluation names with count and last run timestamp.
+
+        Returns tuples of (name, count, last_run) sorted by last_run DESC.
+        """
+        stmt = (
+            select(
+                Evaluation.evaluation_name,
+                func.count().label("cnt"),
+                func.max(Evaluation.period_start).label("last_run"),
+            )
+            .where(Evaluation.status == EvaluationStatus.COMPLETED)
+            .group_by(Evaluation.evaluation_name)
+            .order_by(func.max(Evaluation.period_start).desc())
+        )
+        if asset_id is not None:
+            stmt = stmt.where(Evaluation.asset_id == asset_id)
+        if asset_ids is not None:
+            stmt = stmt.where(Evaluation.asset_id.in_(asset_ids))
+        rows = (await self._session.execute(stmt)).all()
+        return [(r.evaluation_name, r.cnt, r.last_run) for r in rows]
