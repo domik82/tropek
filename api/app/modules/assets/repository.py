@@ -268,7 +268,11 @@ class AssetGroupRepository:
         """Load members + subgroups with denormalised names and build AssetGroupRead."""
         # Members: join with assets to get asset_name
         member_rows = await self._session.execute(
-            select(AssetGroupMember, Asset.name.label("asset_name"))
+            select(
+                AssetGroupMember,
+                Asset.name.label("asset_name"),
+                Asset.display_name.label("asset_display_name"),
+            )
             .join(Asset, AssetGroupMember.asset_id == Asset.id)
             .where(AssetGroupMember.group_id == group.id)
         )
@@ -276,6 +280,7 @@ class AssetGroupRepository:
             AssetGroupMemberRead(
                 asset_id=row.AssetGroupMember.asset_id,
                 asset_name=row.asset_name,
+                asset_display_name=row.asset_display_name,
                 weight=row.AssetGroupMember.weight,
             )
             for row in member_rows

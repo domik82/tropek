@@ -127,6 +127,7 @@ class AssetGroupMemberRead(BaseModel):
 
     asset_id: uuid.UUID
     asset_name: str
+    asset_display_name: str | None = None
     weight: float
 
 
