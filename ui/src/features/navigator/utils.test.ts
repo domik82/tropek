@@ -4,10 +4,10 @@ import { buildGroupHeatmapData, buildGroupScoreData, buildAssetHeatmapData } fro
 import type { EvaluationSummary } from '@/features/evaluations/types'
 import type { MetricHeatmapResponse } from './types'
 
-function mkEval(asset: string, slot: string, result: 'pass' | 'warning' | 'fail', score: number): EvaluationSummary {
+function mkEval(asset: string, slot: string, result: 'pass' | 'warning' | 'fail', score: number, evalName = 'test'): EvaluationSummary {
   return {
-    id: `${asset}-${slot}`,
-    evaluation_name: 'test',
+    id: `${asset}-${slot}-${evalName}`,
+    evaluation_name: evalName,
     status: 'completed',
     result,
     score,
@@ -89,8 +89,8 @@ describe('buildAssetHeatmapData', () => {
       slots: ['2026-01-01T06:00:00Z', '2026-01-02T06:00:00Z'],
       metrics: [{ name: 'error_rate', display_name: 'Error Rate' }],
       cells: [
-        { slot: '2026-01-01T06:00:00Z', metric: 'error_rate', display_name: 'Error Rate', result: 'pass', score: 100, eval_id: 'e1' },
-        { slot: '2026-01-02T06:00:00Z', metric: 'error_rate', display_name: 'Error Rate', result: 'fail', score: 0, eval_id: 'e2' },
+        { slot: '2026-01-01T06:00:00Z', metric: 'error_rate', display_name: 'Error Rate', result: 'pass', score: 100, eval_id: 'e1', evaluation_name: 'test' },
+        { slot: '2026-01-02T06:00:00Z', metric: 'error_rate', display_name: 'Error Rate', result: 'fail', score: 0, eval_id: 'e2', evaluation_name: 'test' },
       ],
     }
     const { slots, rows, cells } = buildAssetHeatmapData(resp)
@@ -99,5 +99,47 @@ describe('buildAssetHeatmapData', () => {
     expect(cells).toHaveLength(2)
     expect(cells[1].result).toBe('fail')
     expect(cells[1].evalId).toBe('e2')
+  })
+
+  it('creates separate cells for same metric+slot with different evaluation_name', () => {
+    const resp: MetricHeatmapResponse = {
+      asset_name: 'test-asset',
+      slots: ['2026-03-15T00:00:00Z', '2026-03-15T00:00:00Z'],
+      metrics: [{ name: 'latency_p95', display_name: 'Latency P95' }],
+      cells: [
+        { slot: '2026-03-15T00:00:00Z', metric: 'latency_p95', display_name: 'Latency P95', result: 'pass', score: 90, eval_id: 'eval-1', evaluation_name: 'load-test' },
+        { slot: '2026-03-15T00:00:00Z', metric: 'latency_p95', display_name: 'Latency P95', result: 'fail', score: 40, eval_id: 'eval-2', evaluation_name: 'ad-hoc-run' },
+      ],
+    }
+    const data = buildAssetHeatmapData(resp)
+    const latencyCells = data.cells.filter(c => c.rowLabel === 'Latency P95' && c.result !== 'none')
+    expect(latencyCells).toHaveLength(2)
+    expect(latencyCells.map(c => c.evalId).sort()).toEqual(['eval-1', 'eval-2'])
+  })
+
+  it('stores evaluation_name on each cell', () => {
+    const resp: MetricHeatmapResponse = {
+      asset_name: 'test-asset',
+      slots: ['2026-03-15T00:00:00Z'],
+      metrics: [{ name: 'latency_p95', display_name: 'Latency P95' }],
+      cells: [
+        { slot: '2026-03-15T00:00:00Z', metric: 'latency_p95', display_name: 'Latency P95', result: 'pass', score: 90, eval_id: 'eval-1', evaluation_name: 'load-test' },
+      ],
+    }
+    const data = buildAssetHeatmapData(resp)
+    const cell = data.cells.find(c => c.result !== 'none')!
+    expect(cell.evaluation_name).toBe('load-test')
+  })
+})
+
+describe('buildGroupHeatmapData — collision fix', () => {
+  it('creates separate cells for same asset+slot with different evaluation_name', () => {
+    const evals: EvaluationSummary[] = [
+      mkEval('checkout-api', '2026-03-15T00:00:00Z', 'pass', 90, 'load-test'),
+      mkEval('checkout-api', '2026-03-15T00:00:00Z', 'fail', 40, 'ad-hoc-run'),
+    ]
+    const data = buildGroupHeatmapData(evals)
+    const checkoutCells = data.cells.filter(c => c.rowLabel === 'checkout-api' && c.result !== 'none')
+    expect(checkoutCells).toHaveLength(2)
   })
 })
