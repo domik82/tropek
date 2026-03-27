@@ -141,8 +141,8 @@ describe('DatasourceDetailView', () => {
       <DatasourceDetailView name="prom-main" onNavigate={onNavigate} onEdit={vi.fn()} />,
       { wrapper: Wrapper }
     )
-    // Only prometheus SLI should appear (not datadog)
-    const sliLink = screen.getByText('http-sli')
+    // Only prometheus SLI should appear (not datadog) — shown by display_name
+    const sliLink = screen.getByText('HTTP SLI')
     fireEvent.click(sliLink)
     expect(onNavigate).toHaveBeenCalledWith({ type: 'sli', name: 'http-sli' })
   })
@@ -152,7 +152,7 @@ describe('DatasourceDetailView', () => {
       <DatasourceDetailView name="prom-main" onNavigate={vi.fn()} onEdit={vi.fn()} />,
       { wrapper: Wrapper }
     )
-    expect(screen.queryByText('db-sli')).not.toBeInTheDocument()
+    expect(screen.queryByText('DB SLI')).not.toBeInTheDocument()
   })
 
   it('renders Edit and Delete buttons', () => {
