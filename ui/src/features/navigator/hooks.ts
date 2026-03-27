@@ -14,9 +14,11 @@ export function useAssetEvaluations(assetName: string | undefined) {
 }
 
 export function useMetricHeatmap(assetName: string | undefined) {
+  const { from, to } = useTimeRange()
+  const timeFilters = { from, ...(to ? { to } : {}) }
   return useQuery({
-    queryKey: evaluationKeys.heatmap(assetName!),
-    queryFn: () => fetchMetricHeatmap(assetName!),
+    queryKey: evaluationKeys.heatmap(assetName!, timeFilters),
+    queryFn: () => fetchMetricHeatmap(assetName!, timeFilters),
     enabled: !!assetName,
   })
 }

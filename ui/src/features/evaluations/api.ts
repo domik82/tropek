@@ -126,8 +126,14 @@ export async function pinBaseline(
   return res.json()
 }
 
-export async function fetchMetricHeatmap(assetName: string): Promise<MetricHeatmapResponse> {
-  const res = await fetch(`${BASE}/evaluations/metric-heatmap?asset_name=${encodeURIComponent(assetName)}`)
+export async function fetchMetricHeatmap(
+  assetName: string,
+  filters?: { from?: string; to?: string },
+): Promise<MetricHeatmapResponse> {
+  const params = new URLSearchParams({ asset_name: assetName })
+  if (filters?.from) params.set('from', filters.from)
+  if (filters?.to) params.set('to', filters.to)
+  const res = await fetch(`${BASE}/evaluations/metric-heatmap?${params}`)
   if (!res.ok) throw new Error(`fetchMetricHeatmap: ${res.status}`)
   return res.json()
 }

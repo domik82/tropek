@@ -26,6 +26,8 @@ class TrendRepository:
         asset_id: uuid.UUID,
         limit: int = 20,
         evaluation_name: list[str] | None = None,
+        from_ts: datetime | None = None,
+        to_ts: datetime | None = None,
     ) -> list[Evaluation]:
         """Fetch the last N completed evaluations for an asset, ordered by period_start DESC."""
         q = (
@@ -42,6 +44,10 @@ class TrendRepository:
         )
         if evaluation_name:
             q = q.where(Evaluation.evaluation_name.in_(evaluation_name))
+        if from_ts:
+            q = q.where(Evaluation.period_start >= from_ts)
+        if to_ts:
+            q = q.where(Evaluation.period_start <= to_ts)
         result = await self._session.execute(q)
         return list(result.scalars().all())
 

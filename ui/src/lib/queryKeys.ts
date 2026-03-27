@@ -19,7 +19,8 @@ export const evaluationKeys = {
   list: (filters: EvalFilters) => [...evaluationKeys.all, filters] as const,
   detail: (id: string) => [...evaluationKeys.all, id] as const,
   trend: (id: string, metric: string) => [...evaluationKeys.detail(id), metric] as const,
-  heatmap: (assetName: string) => ['metric-heatmap', assetName] as const,
+  heatmap: (assetName: string, filters?: Record<string, string | undefined>) =>
+    ['metric-heatmap', assetName, filters] as const,
 }
 
 export const assetKeys = {
