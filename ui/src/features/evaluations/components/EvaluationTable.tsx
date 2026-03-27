@@ -52,21 +52,26 @@ function cell(
           )}
         </td>
       )
-    case 'asset':
+    case 'asset': {
+      const assetLabel = ev.asset_snapshot.display_name ?? ev.asset_snapshot.name
       return (
-        <td key="asset" className="px-4 py-3 font-mono text-sm">
+        <td key="asset" className="px-4 py-3 text-sm">
           {onAssetSelect ? (
             <button
               onClick={() => onAssetSelect(ev.asset_snapshot.name)}
               className="text-slate-200 hover:text-indigo-300 hover:underline decoration-dotted underline-offset-2 cursor-pointer transition-colors"
             >
-              {ev.asset_snapshot.name}
+              {assetLabel}
             </button>
           ) : (
-            <span className="text-slate-200">{ev.asset_snapshot.name}</span>
+            <span className="text-slate-200">{assetLabel}</span>
+          )}
+          {ev.asset_snapshot.display_name && (
+            <span className="block text-xs text-muted-foreground font-mono">{ev.asset_snapshot.name}</span>
           )}
         </td>
       )
+    }
     case 'start':
       return <td key="start" className="px-4 py-3 text-sm text-slate-400 tabular-nums whitespace-nowrap">{fmtDateTime(ev.period_start)}</td>
     case 'score':

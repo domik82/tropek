@@ -107,7 +107,7 @@ export function AssetPanel({ assetName, initialEvalId }: Props) {
         metadata={ev ? (
           <>
             <div className="flex flex-wrap gap-x-6 gap-y-1 text-sm text-slate-400">
-              <span>Asset: <span className="text-slate-200">{ev.asset_snapshot.name}</span></span>
+              <span>Asset: <span className="text-slate-200">{ev.asset_snapshot.display_name ?? ev.asset_snapshot.name}</span></span>
               {Object.entries(ev.asset_snapshot.tags ?? {}).map(([k, v]) => (
                 <span key={k} className="text-slate-500 text-xs">{k}: {v as string}</span>
               ))}
