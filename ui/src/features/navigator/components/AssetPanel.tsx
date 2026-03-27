@@ -108,8 +108,9 @@ export function AssetPanel({ assetName, initialEvalId }: Props) {
     return slots
   }, [evals, heatmapData])
 
-  const displayResult = ev ? (ev.invalidated ? 'invalidated' : ev.result) : undefined
-  const score = ev ? Math.round(ev.score) : undefined
+  const hasEvals = evals.length > 0
+  const displayResult = hasEvals && ev ? (ev.invalidated ? 'invalidated' : ev.result) : undefined
+  const score = hasEvals && ev ? Math.round(ev.score) : undefined
 
   return (
     <div className="p-6 space-y-4">
@@ -120,7 +121,7 @@ export function AssetPanel({ assetName, initialEvalId }: Props) {
         result={displayResult}
         score={score}
         toolbar={<TimeRangePicker />}
-        metadata={ev ? (
+        metadata={hasEvals && ev ? (
           <>
             <div className="flex flex-wrap gap-x-6 gap-y-1 text-sm text-slate-400">
               <span>Asset: <span className="text-slate-200">{ev.asset_snapshot.display_name ?? assetDisplayName ?? ev.asset_snapshot.name}</span></span>
@@ -138,10 +139,10 @@ export function AssetPanel({ assetName, initialEvalId }: Props) {
             </div>
           </>
         ) : undefined}
-        noteButton={effectiveEvalId && ev && !ev.invalidated ? (
+        noteButton={hasEvals && effectiveEvalId && ev && !ev.invalidated ? (
           <NoteIconButton onClick={handleAddNote} annotationCount={(ev.annotations ?? []).length} />
         ) : undefined}
-        actions={effectiveEvalId && ev ? (
+        actions={hasEvals && effectiveEvalId && ev ? (
           <EvaluationActionsButton
             currentResult={ev.result}
             invalidated={ev.invalidated}
@@ -153,7 +154,7 @@ export function AssetPanel({ assetName, initialEvalId }: Props) {
       />
 
       {/* Action form */}
-      {activeAction && effectiveEvalId && ev && !ev.invalidated && (
+      {evals.length > 0 && activeAction && effectiveEvalId && ev && !ev.invalidated && (
         <EvaluationActionForm
           evalId={effectiveEvalId}
           currentResult={ev.result}
@@ -166,16 +167,19 @@ export function AssetPanel({ assetName, initialEvalId }: Props) {
       )}
 
       {isLoading && <p className="text-sm text-slate-400">Loading…</p>}
+      {!isLoading && evals.length === 0 && (
+        <p className="text-sm text-slate-400">No evaluations found in this time range.</p>
+      )}
 
       {/* Notes */}
-      {!isLoading && effectiveEvalId && ev && (
+      {!isLoading && evals.length > 0 && effectiveEvalId && ev && (
         <div ref={notesSectionRef}>
           <AnnotationSection ref={notesRef} evalId={effectiveEvalId} annotations={ev.annotations ?? []} />
         </div>
       )}
 
       {/* Heatmap mode */}
-      {!isLoading && mode === 'heatmap' && (
+      {!isLoading && evals.length > 0 && mode === 'heatmap' && (
         <AssetPanelHeatmapView
           assetName={assetName}
           heatmapData={heatmapData}
@@ -195,7 +199,7 @@ export function AssetPanel({ assetName, initialEvalId }: Props) {
       )}
 
       {/* Charts mode */}
-      {!isLoading && mode === 'chart' && (
+      {!isLoading && evals.length > 0 && mode === 'chart' && (
         <AssetPanelChartView
           effectiveEvalId={effectiveEvalId}
           evals={evals}
