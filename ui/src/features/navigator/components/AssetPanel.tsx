@@ -13,6 +13,7 @@ import type { ActionKind } from '@/features/evaluations/types'
 import type { ViewMode } from '@/components/charts/ViewToggle'
 import { AssetPanelHeatmapView } from './AssetPanelHeatmapView'
 import { AssetPanelChartView } from './AssetPanelChartView'
+import { TimeRangePicker } from '@/components/TimeRangePicker'
 
 interface Props {
   assetName: string
@@ -118,6 +119,7 @@ export function AssetPanel({ assetName, initialEvalId }: Props) {
         titleMono
         result={displayResult}
         score={score}
+        toolbar={<TimeRangePicker />}
         metadata={ev ? (
           <>
             <div className="flex flex-wrap gap-x-6 gap-y-1 text-sm text-slate-400">

@@ -6,6 +6,7 @@ import { useEvaluations, useDynamicColumns, useColumnVisibility } from '@/featur
 import { EvaluationHeatmap } from '@/features/evaluations/components/EvaluationHeatmap'
 import { EvaluationTable } from '@/features/evaluations/components/EvaluationTable'
 import { EvaluationHeader } from '@/features/evaluations/components/EvaluationHeader'
+import { TimeRangePicker } from '@/components/TimeRangePicker'
 import { GroupScoreChart } from './GroupScoreChart'
 import { ViewToggle } from '@/components/charts/ViewToggle'
 import type { ViewMode } from '@/components/charts/ViewToggle'
@@ -55,6 +56,7 @@ export function GroupPanel({ groupName, onSelectAsset }: Props) {
       <EvaluationHeader
         title={groupLabel}
         subtitle={evals.length > 0 ? `${evals.length} evaluations` : undefined}
+        toolbar={<TimeRangePicker />}
       />
 
       {/* Content */}
