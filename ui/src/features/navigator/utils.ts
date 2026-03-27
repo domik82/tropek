@@ -4,15 +4,16 @@ import type { HeatmapCell, GroupHeatmapData, SlotScoreData, AssetHeatmapData, Me
 
 const RESULT_RANK: Record<string, number> = { pass: 0, warning: 1, fail: 2, error: 3, invalidated: 4 }
 
-export function buildGroupHeatmapData(evals: EvaluationSummary[]): GroupHeatmapData {
+export function buildGroupHeatmapData(evals: EvaluationSummary[], fallbackNames?: Map<string, string>): GroupHeatmapData {
   const slots = Array.from(new Set(evals.map(e => e.period_start))).sort()
   const assetNames = Array.from(new Set(evals.map(e => e.asset_snapshot.name))).sort()
 
-  // Build display name lookup
+  // Build display name lookup: snapshot display_name → fallback map → raw name
   const displayNameMap = new Map<string, string>()
   for (const e of evals) {
-    if (e.asset_snapshot.display_name && !displayNameMap.has(e.asset_snapshot.name)) {
-      displayNameMap.set(e.asset_snapshot.name, e.asset_snapshot.display_name)
+    if (!displayNameMap.has(e.asset_snapshot.name)) {
+      const dn = e.asset_snapshot.display_name ?? fallbackNames?.get(e.asset_snapshot.name)
+      if (dn) displayNameMap.set(e.asset_snapshot.name, dn)
     }
   }
   const rows = assetNames.map(n => displayNameMap.get(n) ?? n)

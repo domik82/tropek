@@ -21,6 +21,10 @@ interface Props {
   onAssetSelect?: (name: string) => void
   /** When provided, clicking the evaluation name calls this instead of navigating to the detail page. */
   onEvalClick?: (ev: EvaluationSummary) => void
+  /** Fallback lookup for asset display names (for evaluations created before snapshot included display_name). */
+  assetDisplayNames?: Map<string, string>
+  /** Fallback lookup for SLO display names. */
+  sloDisplayNames?: Map<string, string>
 }
 
 const STATIC_KEYS = new Set([
@@ -33,6 +37,8 @@ function cell(
   colours: ResultColours,
   onAssetSelect?: (name: string) => void,
   onEvalClick?: (ev: EvaluationSummary) => void,
+  assetDisplayNames?: Map<string, string>,
+  sloDisplayNames?: Map<string, string>,
 ) {
   switch (key) {
     case 'test':
@@ -53,7 +59,10 @@ function cell(
         </td>
       )
     case 'asset': {
-      const assetLabel = ev.asset_snapshot.display_name ?? ev.asset_snapshot.name
+      const assetLabel = ev.asset_snapshot.display_name
+        ?? assetDisplayNames?.get(ev.asset_snapshot.name)
+        ?? ev.asset_snapshot.name
+      const hasDisplayName = assetLabel !== ev.asset_snapshot.name
       return (
         <td key="asset" className="px-4 py-3 text-sm">
           {onAssetSelect ? (
@@ -66,7 +75,7 @@ function cell(
           ) : (
             <span className="text-slate-200">{assetLabel}</span>
           )}
-          {ev.asset_snapshot.display_name && (
+          {hasDisplayName && (
             <span className="block text-xs text-muted-foreground font-mono">{ev.asset_snapshot.name}</span>
           )}
         </td>
@@ -84,12 +93,14 @@ function cell(
           </Badge>
         </td>
       )
-    case 'slo':
+    case 'slo': {
+      const sloLabel = (ev.slo_name && sloDisplayNames?.get(ev.slo_name)) ?? ev.slo_name
       return (
         <td key="slo" className="px-4 py-3 text-sm text-slate-400">
-          {ev.slo_name ? `${ev.slo_name}${ev.slo_version != null ? ` v${ev.slo_version}` : ''}` : '—'}
+          {sloLabel ? `${sloLabel}${ev.slo_version != null ? ` v${ev.slo_version}` : ''}` : '—'}
         </td>
       )
+    }
     case 'annotations':
       return (
         <td key="annotations" className="px-4 py-3">
@@ -104,7 +115,7 @@ function cell(
 export function EvaluationTable({
   evaluations, dynamicCols: _dynamicCols,
   visibleKeys, allCols, open, setOpen, toggle, pickerRef,
-  onAssetSelect, onEvalClick,
+  onAssetSelect, onEvalClick, assetDisplayNames, sloDisplayNames,
 }: Props) {
   const { theme } = useTheme()
   const colours = RESULT_COLOUR[theme]
@@ -153,7 +164,7 @@ export function EvaluationTable({
               >
                 {visibleCols.map(col =>
                   STATIC_KEYS.has(col.key)
-                    ? cell(ev, col.key, colours, onAssetSelect, onEvalClick)
+                    ? cell(ev, col.key, colours, onAssetSelect, onEvalClick, assetDisplayNames, sloDisplayNames)
                     : (
                       <td key={col.key} className="px-4 py-3 text-sm text-slate-400">
                         {ev.asset_snapshot.tags?.[col.key] ?? ev.evaluation_metadata?.[col.key] ?? '—'}

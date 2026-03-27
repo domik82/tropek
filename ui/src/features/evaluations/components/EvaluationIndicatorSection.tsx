@@ -9,9 +9,11 @@ import type { EvaluationDetail } from '../types'
 interface Props {
   evaluation: EvaluationDetail
   onMetricClick?: (metric: string) => void
+  /** Fallback display name for the asset (when snapshot lacks display_name). */
+  assetDisplayName?: string
 }
 
-export function EvaluationIndicatorSection({ evaluation: ev, onMetricClick }: Props) {
+export function EvaluationIndicatorSection({ evaluation: ev, onMetricClick, assetDisplayName }: Props) {
   const { availableGroups, counts, activeTab, setActiveTab, tabIndicators } =
     useTabState(ev.indicator_results)
 
@@ -64,7 +66,7 @@ export function EvaluationIndicatorSection({ evaluation: ev, onMetricClick }: Pr
         <p className="text-xs text-slate-500">
           30-day trend for{' '}
           <strong className="text-slate-300">{activeTab === 'all' ? 'All' : tabLabel(activeTab)}</strong>{' '}
-          metrics on <strong className="text-slate-300">{ev.asset_snapshot.display_name ?? ev.asset_snapshot.name}</strong>.
+          metrics on <strong className="text-slate-300">{ev.asset_snapshot.display_name ?? assetDisplayName ?? ev.asset_snapshot.name}</strong>.
           Dot colour reflects each metric's own pass/warn/fail result.
         </p>
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">

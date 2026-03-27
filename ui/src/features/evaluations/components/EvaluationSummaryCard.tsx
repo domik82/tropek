@@ -7,9 +7,13 @@ interface Props {
   evaluation: EvaluationDetail
   onAddNote?: () => void
   actions?: React.ReactNode
+  /** Fallback display name for the asset (when snapshot lacks display_name). */
+  assetDisplayName?: string
+  /** Fallback display name for the SLO. */
+  sloDisplayName?: string
 }
 
-export function EvaluationSummaryCard({ evaluation: ev, onAddNote, actions }: Props) {
+export function EvaluationSummaryCard({ evaluation: ev, onAddNote, actions, assetDisplayName, sloDisplayName }: Props) {
   const displayResult = ev.invalidated ? 'invalidated' : ev.result
 
   return (
@@ -25,7 +29,7 @@ export function EvaluationSummaryCard({ evaluation: ev, onAddNote, actions }: Pr
       metadata={
         <>
           <div className="flex flex-wrap gap-x-6 gap-y-1 text-sm text-slate-400">
-            <span>Asset: <span className="text-slate-200">{ev.asset_snapshot.display_name ?? ev.asset_snapshot.name}</span></span>
+            <span>Asset: <span className="text-slate-200">{ev.asset_snapshot.display_name ?? assetDisplayName ?? ev.asset_snapshot.name}</span></span>
             {Object.entries(ev.asset_snapshot.tags ?? {}).map(([k, v]) => (
               <span key={k} className="text-slate-500 text-xs">{k}: {v as string}</span>
             ))}
@@ -34,7 +38,7 @@ export function EvaluationSummaryCard({ evaluation: ev, onAddNote, actions }: Pr
             </span>
           </div>
           <div className="mt-1 text-xs text-slate-500">
-            SLO: {ev.slo_name ?? '—'}{ev.slo_version != null && ` v${ev.slo_version}`}
+            SLO: {sloDisplayName ?? ev.slo_name ?? '—'}{ev.slo_version != null && ` v${ev.slo_version}`}
             {' · '}mode: {ev.ingestion_mode}
             {ev.adapter_used && ` · adapter: ${ev.adapter_used}`}
             {ev.asset_snapshot.build_ref && ` · build: ${ev.asset_snapshot.build_ref}`}

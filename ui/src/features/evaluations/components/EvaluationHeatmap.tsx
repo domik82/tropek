@@ -18,6 +18,8 @@ interface Props {
   selectedDate: string | null
   onDateSelect: (date: string | null) => void
   onAssetSelect?: (assetName: string) => void
+  /** Fallback lookup for asset display names (for evaluations created before snapshot included display_name). */
+  assetDisplayNames?: Map<string, string>
 }
 
 // Severity ranking — higher number = worse result.
@@ -26,14 +28,15 @@ const RESULT_RANK: Record<string, number> = { pass: 0, warning: 1, fail: 2, erro
 
 type CellAccum = { result: string; score: number; count: number; hasNote: boolean; noteContent: string; evalName: string }
 
-function buildData(evals: EvaluationSummary[]): { slots: string[]; rows: string[]; cells: HeatmapCell[]; evalNameMap: Map<string, string>; assetNames: string[] } {
+function buildData(evals: EvaluationSummary[], fallbackNames?: Map<string, string>): { slots: string[]; rows: string[]; cells: HeatmapCell[]; evalNameMap: Map<string, string>; assetNames: string[] } {
   // Step 1: build sorted axes — rows are asset name only
   const slots = Array.from(new Set(evals.map(e => e.period_start))).sort()
-  // Internal keys: raw asset names. Display: display_name ?? name.
+  // Internal keys: raw asset names. Display: snapshot display_name → fallback map → raw name.
   const displayNameMap = new Map<string, string>()
   for (const e of evals) {
-    if (e.asset_snapshot.display_name && !displayNameMap.has(e.asset_snapshot.name)) {
-      displayNameMap.set(e.asset_snapshot.name, e.asset_snapshot.display_name)
+    if (!displayNameMap.has(e.asset_snapshot.name)) {
+      const dn = e.asset_snapshot.display_name ?? fallbackNames?.get(e.asset_snapshot.name)
+      if (dn) displayNameMap.set(e.asset_snapshot.name, dn)
     }
   }
   const assetNames = Array.from(new Set(evals.map(e => e.asset_snapshot.name))).sort()
@@ -88,11 +91,11 @@ function buildData(evals: EvaluationSummary[]): { slots: string[]; rows: string[
   return { slots, rows, cells, evalNameMap, assetNames }
 }
 
-export function EvaluationHeatmap({ evaluations, selectedDate, onDateSelect, onAssetSelect }: Props) {
+export function EvaluationHeatmap({ evaluations, selectedDate, onDateSelect, onAssetSelect, assetDisplayNames }: Props) {
   const { theme } = useTheme()
   const colours = RESULT_COLOUR[theme]
 
-  const { slots, rows, cells, evalNameMap, assetNames } = useMemo(() => buildData(evaluations), [evaluations])
+  const { slots, rows, cells, evalNameMap, assetNames } = useMemo(() => buildData(evaluations, assetDisplayNames), [evaluations, assetDisplayNames])
 
   const selectedColumn = selectedDate ? slots.indexOf(selectedDate) : undefined
 

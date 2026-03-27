@@ -3,6 +3,8 @@ import { useState, useMemo, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAssetEvaluations, useMetricHeatmap } from '../hooks'
 import { useEvaluationDetail } from '@/features/evaluations/hooks'
+import { useAssets } from '@/features/assets/hooks'
+import { useSlos } from '@/features/slos/hooks'
 import { useTabState } from '@/features/evaluations/hooks/useTabState'
 import { EvaluationHeader } from '@/features/evaluations/components/EvaluationHeader'
 import { AnnotationSection, type AnnotationSectionHandle } from '@/features/evaluations/components/AnnotationForm'
@@ -53,6 +55,18 @@ export function AssetPanel({ assetName, initialEvalId }: Props) {
 
   const { data: evals = [], isLoading: evalsLoading } = useAssetEvaluations(assetName)
   const { data: heatmapData, isLoading: heatmapLoading } = useMetricHeatmap(assetName)
+
+  // Live display name lookups
+  const { data: assets } = useAssets()
+  const { data: slos } = useSlos()
+  const assetDisplayName = useMemo(() => {
+    return assets?.find(a => a.name === assetName)?.display_name
+  }, [assets, assetName])
+  const sloDisplayNames = useMemo(() => {
+    const m = new Map<string, string>()
+    for (const s of slos ?? []) if (s.display_name) m.set(s.name, s.display_name)
+    return m
+  }, [slos])
 
   const defaultEvalId = useMemo(() => {
     if (!evals.length) return undefined
@@ -107,7 +121,7 @@ export function AssetPanel({ assetName, initialEvalId }: Props) {
         metadata={ev ? (
           <>
             <div className="flex flex-wrap gap-x-6 gap-y-1 text-sm text-slate-400">
-              <span>Asset: <span className="text-slate-200">{ev.asset_snapshot.display_name ?? ev.asset_snapshot.name}</span></span>
+              <span>Asset: <span className="text-slate-200">{ev.asset_snapshot.display_name ?? assetDisplayName ?? ev.asset_snapshot.name}</span></span>
               {Object.entries(ev.asset_snapshot.tags ?? {}).map(([k, v]) => (
                 <span key={k} className="text-slate-500 text-xs">{k}: {v as string}</span>
               ))}
@@ -116,7 +130,7 @@ export function AssetPanel({ assetName, initialEvalId }: Props) {
               </span>
             </div>
             <div className="mt-1 text-xs text-slate-500">
-              SLO: {ev.slo_name ?? '—'}{ev.slo_version != null && ` v${ev.slo_version}`}
+              SLO: {(ev.slo_name && sloDisplayNames.get(ev.slo_name)) ?? ev.slo_name ?? '—'}{ev.slo_version != null && ` v${ev.slo_version}`}
               {ev.adapter_used && ` · adapter: ${ev.adapter_used}`}
               {ev.asset_snapshot.build_ref && ` · build: ${ev.asset_snapshot.build_ref}`}
             </div>
