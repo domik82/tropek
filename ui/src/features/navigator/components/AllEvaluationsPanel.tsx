@@ -6,6 +6,7 @@ import { useEvaluations, useDynamicColumns, useColumnVisibility } from '@/featur
 import { EvaluationHeatmap } from '@/features/evaluations/components/EvaluationHeatmap'
 import { EvaluationTable } from '@/features/evaluations/components/EvaluationTable'
 import { EvaluationHeader } from '@/features/evaluations/components/EvaluationHeader'
+import { TimeRangePicker } from '@/components/TimeRangePicker'
 
 interface Props {
   onSelectAsset: (name: string) => void
@@ -52,6 +53,7 @@ export function AllEvaluationsPanel({ onSelectAsset }: Props) {
         subtitle={evals.length > 0 && dateRange != null
           ? `${evals.length} runs · ${dateRange} days`
           : undefined}
+        toolbar={<TimeRangePicker />}
       />
 
       {isLoading && <p className="text-sm text-slate-400">Loading…</p>}
