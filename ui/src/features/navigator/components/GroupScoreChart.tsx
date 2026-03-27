@@ -21,9 +21,19 @@ export function GroupScoreChart({ evaluations }: Props) {
   const assetNames = Array.from(new Set(evaluations.map(e => e.asset_snapshot.name))).sort()
   const slots = slotData.map(d => d.slot)
 
+  const displayNameMap = useMemo(() => {
+    const map = new Map<string, string>()
+    for (const e of evaluations) {
+      if (e.asset_snapshot.display_name && !map.has(e.asset_snapshot.name)) {
+        map.set(e.asset_snapshot.name, e.asset_snapshot.display_name)
+      }
+    }
+    return map
+  }, [evaluations])
+
   // One series per asset — stacked bars
   const series = assetNames.map(assetName => ({
-    name: assetName,
+    name: displayNameMap.get(assetName) ?? assetName,
     type: 'bar' as const,
     stack: 'score',
     data: slotData.map(slotRow => {
