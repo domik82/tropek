@@ -22,8 +22,8 @@ import { FIXED_COLS, DEFAULT_VISIBLE_KEYS } from './constants'
 // ── List ──────────────────────────────────────────────────────────────────────
 
 export function useEvaluations(filters: EvaluationFilters = {}) {
-  const { from } = useTimeRange()
-  const merged = { ...filters, from }
+  const { from, to } = useTimeRange()
+  const merged = { ...filters, from, ...(to ? { to } : {}) }
   return useQuery({
     queryKey: evaluationKeys.list(merged),
     queryFn: () => fetchEvaluations(merged),

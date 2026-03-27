@@ -22,14 +22,18 @@ describe('TimeRangePicker', () => {
     expect(screen.getByText('Last 30 days')).toBeInTheDocument()
   })
 
-  it('opens dropdown and shows all presets on click', () => {
+  it('opens dropdown and shows presets and absolute inputs on click', () => {
     renderPicker()
     fireEvent.click(screen.getByRole('button'))
+    // Quick presets
     expect(screen.getByText('Last 7 days')).toBeInTheDocument()
     expect(screen.getByText('Last 14 days')).toBeInTheDocument()
     expect(screen.getByText('Last 90 days')).toBeInTheDocument()
     expect(screen.getByText('Last 6 months')).toBeInTheDocument()
     expect(screen.getByText('Last 1 year')).toBeInTheDocument()
+    // Absolute date range section
+    expect(screen.getByText('Absolute time range')).toBeInTheDocument()
+    expect(screen.getByText('Apply time range')).toBeInTheDocument()
   })
 
   it('selecting a preset updates the displayed label', () => {
