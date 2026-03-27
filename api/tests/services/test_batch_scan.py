@@ -67,6 +67,7 @@ def _make_trigger_context(asset_name: str, slo_name: str) -> TriggerContext:
     return TriggerContext(
         asset_id=uuid.uuid4(),
         asset_name=asset_name,
+        asset_display_name=None,
         asset_tags={},
         asset_variables={},
         slo_name=slo_name,

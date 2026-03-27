@@ -27,6 +27,7 @@ class TriggerContext:
 
     asset_id: uuid.UUID
     asset_name: str
+    asset_display_name: str | None
     asset_tags: dict[str, Any]
     asset_variables: dict[str, Any]
     slo_name: str
@@ -111,6 +112,7 @@ async def resolve_single_trigger(
     return TriggerContext(
         asset_id=asset.id,
         asset_name=asset.name,
+        asset_display_name=getattr(asset, "display_name", None),
         asset_tags=getattr(asset, "tags", {}),
         asset_variables=getattr(asset, "variables", {}),
         slo_name=slo_def.name,
