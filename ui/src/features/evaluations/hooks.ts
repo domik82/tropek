@@ -89,6 +89,7 @@ export function useInvalidateEvaluation(evalId: string) {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: evaluationKeys.detail(evalId) })
       qc.invalidateQueries({ queryKey: evaluationKeys.all })
+      qc.invalidateQueries({ queryKey: ['evaluation-names'] })
     },
   })
 }
@@ -123,6 +124,7 @@ export function useReEvaluate() {
     mutationFn: (payload: ReEvaluatePayload) => reEvaluate(payload),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: evaluationKeys.all })
+      qc.invalidateQueries({ queryKey: ['evaluation-names'] })
     },
   })
 }
