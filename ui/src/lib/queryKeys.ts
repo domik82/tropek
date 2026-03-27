@@ -9,6 +9,7 @@
 type EvalFilters = {
   group_name?: string
   asset_name?: string
+  evaluation_name?: string[]
   date?: string
   from?: string
   to?: string
@@ -19,8 +20,12 @@ export const evaluationKeys = {
   list: (filters: EvalFilters) => [...evaluationKeys.all, filters] as const,
   detail: (id: string) => [...evaluationKeys.all, id] as const,
   trend: (id: string, metric: string) => [...evaluationKeys.detail(id), metric] as const,
-  heatmap: (assetName: string, filters?: Record<string, string | undefined>) =>
-    ['metric-heatmap', assetName, filters] as const,
+  heatmap: (assetName: string, filters?: Record<string, string | undefined>, evalNames?: string[]) =>
+    evalNames?.length
+      ? ['metric-heatmap', assetName, filters, evalNames] as const
+      : ['metric-heatmap', assetName, filters] as const,
+  names: (scope: { asset_name?: string; group_name?: string }) =>
+    ['evaluation-names', scope] as const,
 }
 
 export const assetKeys = {
