@@ -33,8 +33,10 @@ export function TimeRangePicker() {
     setOpen(false)
   }
 
+  const rangeInvalid = !!(fromDate && toDate && fromDate > toDate)
+
   function handleApply() {
-    if (!fromDate) return
+    if (!fromDate || rangeInvalid) return
     const fromIso = new Date(
       fromDate.getFullYear(), fromDate.getMonth(), fromDate.getDate()
     ).toISOString()
@@ -49,17 +51,19 @@ export function TimeRangePicker() {
   }
 
   function handleFromSelect(day: Date | undefined) {
-    if (day) {
-      setFromDate(day)
-      setEditing(null)
-    }
+    if (!day) return
+    setFromDate(day)
+    // If from is now after to, clamp to = from
+    if (toDate && day > toDate) setToDate(day)
+    setEditing(null)
   }
 
   function handleToSelect(day: Date | undefined) {
-    if (day) {
-      setToDate(day)
-      setEditing(null)
-    }
+    if (!day) return
+    setToDate(day)
+    // If to is now before from, clamp from = to
+    if (fromDate && day < fromDate) setFromDate(day)
+    setEditing(null)
   }
 
   return (
@@ -99,6 +103,7 @@ export function TimeRangePicker() {
                   selected={fromDate}
                   onSelect={handleFromSelect}
                   defaultMonth={fromDate}
+                  disabled={toDate ? { after: toDate } : undefined}
                 />
               </div>
             )}
@@ -122,13 +127,15 @@ export function TimeRangePicker() {
                   selected={toDate}
                   onSelect={handleToSelect}
                   defaultMonth={toDate ?? new Date()}
+                  disabled={fromDate ? { before: fromDate } : undefined}
                 />
               </div>
             )}
 
             <button
               onClick={handleApply}
-              className="w-full mt-3 px-3 py-1.5 text-xs rounded bg-primary text-primary-foreground hover:bg-primary/90 transition-colors font-medium"
+              disabled={!fromDate || rangeInvalid}
+              className="w-full mt-3 px-3 py-1.5 text-xs rounded bg-primary text-primary-foreground hover:bg-primary/90 transition-colors font-medium disabled:opacity-40 disabled:cursor-not-allowed"
             >
               Apply time range
             </button>
