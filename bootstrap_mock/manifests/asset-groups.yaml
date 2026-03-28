@@ -27,7 +27,6 @@ api_version: tropek/v1
 kind: AssetGroup
 metadata:
   name: infra-staging
-  display_name: Staging
 spec:
   members:
     - asset_name: log-aggregator
@@ -65,7 +64,6 @@ api_version: tropek/v1
 kind: AssetGroup
 metadata:
   name: data-tier
-  display_name: Data Tier
 spec:
   members:
     - asset_name: orders-db

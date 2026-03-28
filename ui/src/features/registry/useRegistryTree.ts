@@ -32,6 +32,7 @@ export interface MinGroup {
   name: string
   display_name?: string | null
   members?: { asset_name: string }[]
+  subgroups?: { group_id: string; group_name: string }[]
 }
 
 export function buildSloTree(
@@ -64,7 +65,7 @@ export function buildSloTree(
         name: slo.sli_name,
         displayName: sli?.display_name ?? undefined,
         type: 'sli' as const,
-        badge: `${indicatorCount} indicators`,
+        badge: indicatorCount > 0 ? `${indicatorCount}` : undefined,
         children: dsChildren,
       })
     }
@@ -124,7 +125,7 @@ export function buildDatasourceTree(
         name: sliName,
         displayName: sli?.display_name ?? undefined,
         type: 'sli' as const,
-        badge: `${indicatorCount} indicators`,
+        badge: indicatorCount > 0 ? `${indicatorCount}` : undefined,
         children: sloChildren,
       })
     }
@@ -153,18 +154,27 @@ export function buildDatasourceTree(
 }
 
 export function buildAssetTree(
-  groups: MinGroup[],
+  topLevelGroups: MinGroup[],
+  allGroups: MinGroup[],
   groupBindingsMap: Record<string, MinBinding[]>,
   slos?: MinSlo[],
   slis?: MinSli[],
 ): TreeNode[] {
   const sloByName = new Map((slos ?? []).map(s => [s.name, s]))
   const sliByName = new Map((slis ?? []).map(s => [s.name, s]))
+  const groupByName = new Map(allGroups.map(g => [g.name, g]))
 
-  return groups.map(group => {
+  function buildGroupNode(group: MinGroup): TreeNode {
     const groupBindings = groupBindingsMap[group.name] ?? []
+
+    // Subgroup children (recursive)
+    const subgroupChildren: TreeNode[] = (group.subgroups ?? [])
+      .map(sg => groupByName.get(sg.group_name))
+      .filter((g): g is MinGroup => g != null)
+      .map(buildGroupNode)
+
+    // Asset member children
     const memberChildren: TreeNode[] = (group.members ?? []).map(member => {
-      // Build nested SLO → SLI → DS tree per binding
       const sloChildren: TreeNode[] = groupBindings.map(binding => {
         const slo = sloByName.get(binding.slo_name)
         const dsNode: TreeNode = {
@@ -174,7 +184,6 @@ export function buildAssetTree(
           groupName: group.name,
         }
 
-        // Insert SLI node between SLO and DS when SLO references an SLI
         let sloLeaf: TreeNode[]
         if (slo?.sli_name) {
           const sli = sliByName.get(slo.sli_name)
@@ -184,7 +193,7 @@ export function buildAssetTree(
             name: slo.sli_name,
             displayName: sli?.display_name ?? undefined,
             type: 'sli' as const,
-            badge: `${indicatorCount} indicators`,
+            badge: indicatorCount > 0 ? `${indicatorCount}` : undefined,
             groupName: group.name,
             children: [dsNode],
           }]
@@ -210,15 +219,19 @@ export function buildAssetTree(
         children: sloChildren.length > 0 ? sloChildren : undefined,
       }
     })
+
+    const allChildren = [...subgroupChildren, ...memberChildren]
     return {
       id: `group:${group.name}`,
       name: group.name,
       displayName: group.display_name ?? undefined,
       type: 'group' as const,
-      badge: `${group.members?.length ?? 0} assets`,
-      children: memberChildren,
+      badge: (group.members?.length ?? 0) > 0 ? `${group.members!.length}` : undefined,
+      children: allChildren.length > 0 ? allChildren : undefined,
     }
-  })
+  }
+
+  return topLevelGroups.map(buildGroupNode)
 }
 
 export function filterTree(nodes: TreeNode[], search: string): TreeNode[] {

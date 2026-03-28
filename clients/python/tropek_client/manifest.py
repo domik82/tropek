@@ -398,9 +398,15 @@ def _delete_slo_binding(client: Any, spec: dict[str, Any]) -> None:
         client.slo_bindings.delete_for_group(target_name, spec["slo_name"])
 
 
-def _create_asset_group(client: Any, name: str, spec: dict[str, Any]) -> None:
+def _create_asset_group(
+    client: Any,
+    name: str,
+    spec: dict[str, Any],
+    *,
+    display_name: str | None = None,
+) -> None:
     """Create an asset group with members and subgroups."""
-    client.asset_groups.create(name)
+    client.asset_groups.create(name, display_name=display_name)
     for member in spec.get("members", []):
         asset = client.assets.get(member["asset_name"])
         client.asset_groups.add_member(name, str(asset.id), weight=member.get("weight", 1.0))
@@ -424,7 +430,9 @@ def _create(client: Any, doc: ManifestDocument) -> None:
                 variables=doc.metadata.get("variables"),
             )
         case "AssetGroup":
-            _create_asset_group(client, name, doc.spec)
+            _create_asset_group(
+                client, name, doc.spec, display_name=doc.metadata.get("display_name")
+            )
         case "DataSource":
             client.datasources.create(
                 name,

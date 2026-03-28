@@ -189,11 +189,14 @@ class _AssetGroups:
         self,
         name: str,
         *,
+        display_name: str | None = None,
         members: list[dict[str, Any]] | None = None,
         subgroups: list[dict[str, Any]] | None = None,
     ) -> AssetGroup:
         """Create an asset group."""
         body: dict[str, Any] = {"name": name}
+        if display_name is not None:
+            body["display_name"] = display_name
         if members is not None:
             body["members"] = members
         if subgroups is not None:

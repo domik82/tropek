@@ -69,7 +69,7 @@ describe('buildAssetTree', () => {
     const slos = [{ name: 'http-slo', display_name: 'HTTP SLO', version: 2, active: true, sli_name: 'http-sli', sli_version: 1 }]
     const slis = [{ name: 'http-sli', display_name: null, adapter_type: 'prometheus', active: true, indicators: { rt: 'q1', err: 'q2' } }]
 
-    const tree = buildAssetTree(groups, groupBindingsMap, slos, slis)
+    const tree = buildAssetTree(groups, groups, groupBindingsMap, slos, slis)
     expect(tree).toHaveLength(1)
     expect(tree[0]).toMatchObject({ type: 'group', name: 'core' })
     expect(tree[0].children).toHaveLength(1)
@@ -80,7 +80,7 @@ describe('buildAssetTree', () => {
     expect(sloNode).toMatchObject({ type: 'slo', name: 'http-slo', badge: 'v2' })
     // SLI node under SLO
     expect(sloNode.children).toHaveLength(1)
-    expect(sloNode.children![0]).toMatchObject({ type: 'sli', name: 'http-sli', badge: '2 indicators' })
+    expect(sloNode.children![0]).toMatchObject({ type: 'sli', name: 'http-sli', badge: '2' })
     // DS node under SLI
     expect(sloNode.children![0].children).toHaveLength(1)
     expect(sloNode.children![0].children![0]).toMatchObject({ type: 'datasource', name: 'prom' })
@@ -91,7 +91,7 @@ describe('buildAssetTree', () => {
     const groupBindingsMap = { core: [{ slo_name: 'bare-slo', data_source_name: 'prom' }] }
     const slos = [{ name: 'bare-slo', version: 1, active: true }]
 
-    const tree = buildAssetTree(groups, groupBindingsMap, slos, [])
+    const tree = buildAssetTree(groups, groups, groupBindingsMap, slos, [])
     const sloNode = tree[0].children![0].children![0]
     expect(sloNode).toMatchObject({ type: 'slo', name: 'bare-slo' })
     expect(sloNode.children).toHaveLength(1)
@@ -100,7 +100,7 @@ describe('buildAssetTree', () => {
 
   it('shows asset with no bindings as leaf', () => {
     const groups = [{ name: 'core', members: [{ asset_name: 'lonely-svc' }] }]
-    const tree = buildAssetTree(groups, {})
+    const tree = buildAssetTree(groups, groups, {})
     expect(tree[0].children![0].children).toBeUndefined()
   })
 })
