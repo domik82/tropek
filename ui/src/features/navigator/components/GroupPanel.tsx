@@ -1,5 +1,5 @@
 // ui/src/features/navigator/components/GroupPanel.tsx
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo } from 'react'
 import { useAssetGroups, useAssets } from '@/features/assets/hooks'
 import { useSlos } from '@/features/slos/hooks'
 import { useEvaluations, useDynamicColumns, useColumnVisibility } from '@/features/evaluations/hooks'
@@ -26,20 +26,12 @@ export function GroupPanel({ groupName, onSelectAsset }: Props) {
   const [mode, setMode] = useState<ViewMode>('heatmap')
   const [selectedDate, setSelectedDate] = useState<string | null>(null)
   const [selectedNames, setSelectedNames] = useState<string[] | undefined>(undefined)
-  const [namesInitialized, setNamesInitialized] = useState(false)
 
   const { data: tree } = useAssetGroups()
   const group = tree?.all_groups.find(g => g.name === groupName)
   const groupLabel = group?.display_name ?? prettyGroupName(groupName)
 
   const { data: evalNames = [] } = useEvaluationNames(undefined, groupName)
-
-  useEffect(() => {
-    if (evalNames.length > 0 && !namesInitialized) {
-      setSelectedNames([evalNames[0].name])
-      setNamesInitialized(true)
-    }
-  }, [evalNames, namesInitialized])
 
   const { data: evals = [], isLoading } = useEvaluations({
     group_name: groupName,

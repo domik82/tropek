@@ -26,14 +26,12 @@ export function AssetPanel({ assetName, initialEvalId }: Props) {
   const [selectedEvalId, setSelectedEvalId] = useState<string | undefined>(initialEvalId)
   const [activeAction, setActiveAction] = useState<ActionKind | null>(null)
   const [selectedNames, setSelectedNames] = useState<string[] | undefined>(undefined)
-  const [namesInitialized, setNamesInitialized] = useState(false)
 
   // Reset local state when the asset changes (defense in depth alongside key= on parent)
   useEffect(() => {
     setSelectedEvalId(undefined)
     setActiveAction(null)
     setSelectedNames(undefined)
-    setNamesInitialized(false)
   }, [assetName])
   const notesRef = useRef<AnnotationSectionHandle>(null)
   const notesSectionRef = useRef<HTMLDivElement>(null)
@@ -60,13 +58,6 @@ export function AssetPanel({ assetName, initialEvalId }: Props) {
   )
 
   const { data: evalNames = [] } = useEvaluationNames(assetName)
-
-  useEffect(() => {
-    if (evalNames.length > 0 && !namesInitialized) {
-      setSelectedNames([evalNames[0].name])
-      setNamesInitialized(true)
-    }
-  }, [evalNames, namesInitialized])
 
   const { data: evals = [], isLoading: evalsLoading } = useAssetEvaluations(assetName, selectedNames)
   const { data: heatmapData, isLoading: heatmapLoading } = useMetricHeatmap(assetName, selectedNames)

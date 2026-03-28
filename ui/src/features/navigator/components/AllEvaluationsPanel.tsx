@@ -1,5 +1,5 @@
 // ui/src/features/navigator/components/AllEvaluationsPanel.tsx
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo } from 'react'
 import { useAssets } from '@/features/assets/hooks'
 import { useSlos } from '@/features/slos/hooks'
 import { useEvaluations, useDynamicColumns, useColumnVisibility } from '@/features/evaluations/hooks'
@@ -17,16 +17,8 @@ interface Props {
 export function AllEvaluationsPanel({ onSelectAsset }: Props) {
   const [selectedDate, setSelectedDate] = useState<string | null>(null)
   const [selectedNames, setSelectedNames] = useState<string[] | undefined>(undefined)
-  const [namesInitialized, setNamesInitialized] = useState(false)
 
   const { data: evalNames = [] } = useEvaluationNames()
-
-  useEffect(() => {
-    if (evalNames.length > 0 && !namesInitialized) {
-      setSelectedNames([evalNames[0].name])
-      setNamesInitialized(true)
-    }
-  }, [evalNames, namesInitialized])
 
   const { data: evals = [], isLoading } = useEvaluations({
     evaluation_name: selectedNames,

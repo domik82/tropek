@@ -14,14 +14,18 @@ export function EvaluationNameFilter({ names, selected, onChange }: Props) {
 
   function handleToggle(name: string) {
     if (isAll) {
-      onChange([name])
+      // Clicking a chip when All is active → deselect that one (select everything else)
+      onChange(names.map(n => n.name).filter(n => n !== name))
       return
     }
     if (selected!.includes(name)) {
-      if (selected!.length <= 1) return
-      onChange(selected!.filter(n => n !== name))
+      const remaining = selected!.filter(n => n !== name)
+      // Deselecting the last one → back to All
+      onChange(remaining.length === 0 ? undefined : remaining)
     } else {
-      onChange([...selected!, name])
+      const next = [...selected!, name]
+      // Selecting all individually → collapse to All
+      onChange(next.length === names.length ? undefined : next)
     }
   }
 
@@ -48,7 +52,8 @@ export function EvaluationNameFilter({ names, selected, onChange }: Props) {
         All
       </button>
       {names.map(entry => {
-        const active = !isAll && selected!.includes(entry.name)
+        // Active = included in results: either All is on, or explicitly selected
+        const active = isAll || selected!.includes(entry.name)
         return (
           <button
             key={entry.name}
