@@ -97,7 +97,9 @@ export function TreeNode({
       {badge && (
         badge.type === 'count' ? (
           <span
-            className="shrink-0 text-[10px] font-semibold min-w-[18px] h-[18px] inline-flex items-center justify-center rounded-full px-1.5"
+            className={`shrink-0 text-[10px] font-semibold min-w-[18px] h-[18px] inline-flex items-center justify-center rounded-full px-1.5${
+              trailingAction ? ' group-hover:hidden' : ''
+            }`}
             style={{
               backgroundColor: isSelected && selectionColor ? `${selectionColor}33` : '#30363d',
               color: isSelected && selectionColor ? selectionColor : '#c9d1d9',
@@ -106,7 +108,9 @@ export function TreeNode({
             {badge.value}
           </span>
         ) : (
-          <span className="shrink-0 text-[10px] text-muted-foreground border border-border rounded px-1.5 py-px">
+          <span className={`shrink-0 text-[10px] text-muted-foreground border border-border rounded px-1.5 py-px${
+            trailingAction ? ' group-hover:hidden' : ''
+          }`}>
             {badge.value}
           </span>
         )
