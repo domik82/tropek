@@ -1,7 +1,7 @@
 import { useState, useMemo, useRef, useEffect } from 'react'
 import { useQueries } from '@tanstack/react-query'
 import { Plus } from 'lucide-react'
-import { TreeFilter } from '@/components/tree'
+import { TreeFilter, TreeNode, getEntityIcon } from '@/components/tree'
 import { ENTITY_COLORS } from '@/lib/entity-colors'
 import { SANS_SERIF } from '@/lib/fonts'
 import { groupKeys } from '@/lib/queryKeys'
@@ -152,6 +152,23 @@ export function RegistrySidebar({ mode, onModeChange, selected, onSelect, onCrea
           isLoadingValues={isLoadingValues}
           hideSearch
         />
+      </div>
+
+      {/* "All" row */}
+      <div style={{ fontFamily: "system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" }}>
+        <TreeNode
+          icon={getEntityIcon('all')}
+          iconColor={!selected ? 'var(--primary)' : '#8b949e'}
+          label={mode === 'slo' ? 'All SLOs' : mode === 'datasource' ? 'All Datasources' : 'All Assets'}
+          depth={0}
+          isExpandable={false}
+          isExpanded={false}
+          isSelected={!selected}
+          selectionColor="var(--primary)"
+          isGroup
+          onClick={() => onSelect(null as unknown as SelectedNode)}
+        />
+        <div className="mx-3 my-1 border-t border-border/50" />
       </div>
 
       {/* Tree */}
