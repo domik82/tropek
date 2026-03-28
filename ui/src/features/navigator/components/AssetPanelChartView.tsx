@@ -26,7 +26,7 @@ export function AssetPanelChartView({
 
   const allIndicators: IndicatorResult[] = useMemo(() => {
     if (!heatmapData) return []
-    return heatmapData.metrics.map(m => ({
+    return heatmapData.metrics.filter(m => m.name !== '__score__').map(m => ({
       metric: m.name,
       display_name: m.display_name,
       tab_group: m.tab_group,

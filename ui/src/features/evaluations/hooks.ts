@@ -11,6 +11,7 @@ import {
   addAnnotation,
   hideAnnotation,
   invalidateEvaluation,
+  restoreEvaluation,
   overrideStatus,
   pinBaseline,
   reEvaluate,
@@ -96,6 +97,20 @@ export function useInvalidateEvaluation(evalId: string) {
       qc.invalidateQueries({ queryKey: evaluationKeys.detail(evalId) })
       qc.invalidateQueries({ queryKey: evaluationKeys.all })
       qc.invalidateQueries({ queryKey: ['evaluation-names'] })
+      qc.invalidateQueries({ queryKey: ['metric-heatmap'] })
+    },
+  })
+}
+
+export function useRestoreEvaluation(evalId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: () => restoreEvaluation(evalId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: evaluationKeys.detail(evalId) })
+      qc.invalidateQueries({ queryKey: evaluationKeys.all })
+      qc.invalidateQueries({ queryKey: ['evaluation-names'] })
+      qc.invalidateQueries({ queryKey: ['metric-heatmap'] })
     },
   })
 }
@@ -108,6 +123,7 @@ export function useOverrideStatus(evalId: string) {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: evaluationKeys.detail(evalId) })
       qc.invalidateQueries({ queryKey: evaluationKeys.all })
+      qc.invalidateQueries({ queryKey: ['metric-heatmap'] })
     },
   })
 }
@@ -131,6 +147,7 @@ export function useReEvaluate() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: evaluationKeys.all })
       qc.invalidateQueries({ queryKey: ['evaluation-names'] })
+      qc.invalidateQueries({ queryKey: ['metric-heatmap'] })
     },
   })
 }

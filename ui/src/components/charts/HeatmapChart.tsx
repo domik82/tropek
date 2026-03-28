@@ -142,6 +142,10 @@ export function HeatmapChart({
         axisLine: { lineStyle: { color: ct.grid } },
         splitLine: { show: false },
       },
+      // ECharts category axis renders bottom-to-top, so the last row in
+      // the data array appears at the top of the chart. The backend relies
+      // on this: it places the "Score" row last so it renders at the top.
+      // See also: api/app/modules/quality_gate/router.py (get_metric_heatmap)
       yAxis: {
         type: 'category' as const,
         data: rows,

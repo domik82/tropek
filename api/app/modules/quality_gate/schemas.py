@@ -141,6 +141,7 @@ class TrendPoint(BaseModel):
 
     timestamp: datetime
     value: float
+    score: float
     eval_id: uuid.UUID
     result: str
     baseline: float | None

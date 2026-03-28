@@ -148,8 +148,21 @@ async def get_metric_heatmap(
     slots: list[datetime] = []
     metric_set: dict[str, str] = {}  # name -> display_name
     cells: list[HeatmapCell] = []
+    score_metric = "__score__"
     for ev in reversed(evals):  # oldest first for display
         slots.append(ev.period_start)
+        # Overall evaluation score row
+        cells.append(
+            HeatmapCell(
+                slot=ev.period_start,
+                metric=score_metric,
+                display_name="Score",
+                result="invalidated" if ev.invalidated else (ev.result or "none"),
+                score=ev.score or 0.0,
+                eval_id=ev.id,
+                evaluation_name=ev.evaluation_name,
+            )
+        )
         for row in ev.indicator_rows or []:
             obj = row.objective
             metric_name = obj.sli
@@ -176,7 +189,13 @@ async def get_metric_heatmap(
     return MetricHeatmapResponse(
         asset_name=asset_name,
         slots=slots,
-        metrics=[HeatmapMetric(name=k, display_name=v) for k, v in metric_set.items()],
+        # Score must be LAST: ECharts category axis renders bottom-to-top,
+        # so the last metric appears at the top of the heatmap.
+        # See also: ui/src/components/charts/HeatmapChart.tsx (yAxis)
+        metrics=[
+            *[HeatmapMetric(name=k, display_name=v) for k, v in metric_set.items()],
+            HeatmapMetric(name=score_metric, display_name="Score"),
+        ],
         cells=cells,
     )
 

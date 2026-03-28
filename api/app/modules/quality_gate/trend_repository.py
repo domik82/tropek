@@ -6,7 +6,7 @@ import uuid
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -65,6 +65,17 @@ class TrendRepository:
         Baseline from IndicatorResultRow.compared_value via JOIN.
         Excludes invalidated evaluations and those with asset_id=NULL.
         """
+        # Scalar subquery: total weight of all objectives for the same evaluation.
+        # Used to convert raw weighted score → percentage that stacks to 100%.
+        total_weight_sq = (
+            select(func.coalesce(func.sum(SLOObjective.weight), 1))
+            .join(IndicatorResultRow, IndicatorResultRow.slo_objective_id == SLOObjective.id)
+            .where(IndicatorResultRow.evaluation_id == Evaluation.id)
+            .correlate(Evaluation)
+            .scalar_subquery()
+            .label("total_weight")
+        )
+
         inner = (
             select(
                 Evaluation.period_start,
@@ -72,6 +83,8 @@ class TrendRepository:
                 SLIValue.eval_id,
                 Evaluation.result,
                 IndicatorResultRow.compared_value,
+                IndicatorResultRow.score,
+                total_weight_sq,
             )
             .join(Evaluation, SLIValue.eval_id == Evaluation.id)
             .join(
@@ -99,6 +112,8 @@ class TrendRepository:
             {
                 "timestamp": r.period_start.isoformat(),
                 "value": r.value,
+                # Percentage contribution: stacks to 100% when all indicators pass
+                "score": round(r.score / r.total_weight * 100, 2) if r.total_weight else 0,
                 "eval_id": str(r.eval_id),
                 "result": r.result,
                 "baseline": r.compared_value,
