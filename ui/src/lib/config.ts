@@ -12,13 +12,13 @@ let config: UIConfig = DEFAULTS
 
 export async function loadConfig(): Promise<void> {
   try {
-    const res = await fetch('/config.json')
+    const res = await fetch('/api/config/ui')
     if (res.ok) {
       const json = await res.json()
       config = { ...DEFAULTS, ...json }
     }
   } catch {
-    // Use defaults if config.json is missing or malformed
+    // Use defaults if API is unreachable
   }
 }
 
