@@ -46,7 +46,7 @@ export function RegistryTree({ nodes, selected, onSelect }: Props) {
 }
 
 function getIconForNode(node: TreeNodeData) {
-  if (node.type === 'asset') return getAssetTypeIcon('vm')
+  if (node.type === 'asset') return getAssetTypeIcon(node.assetTypeName ?? 'vm')
   return getEntityIcon(node.type)
 }
 

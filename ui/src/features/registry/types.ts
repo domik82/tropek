@@ -11,6 +11,7 @@ export interface TreeNode {
   children?: TreeNode[]
   bindingChain?: { sloName: string; sliName: string; dsName: string }
   groupName?: string
+  assetTypeName?: string
 }
 
 export interface SelectedNode {
