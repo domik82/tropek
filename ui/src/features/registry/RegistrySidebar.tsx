@@ -154,22 +154,24 @@ export function RegistrySidebar({ mode, onModeChange, selected, onSelect, onCrea
         />
       </div>
 
-      {/* "All" row */}
-      <div style={{ fontFamily: "system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" }}>
-        <TreeNode
-          icon={getEntityIcon('all')}
-          iconColor={!selected ? 'var(--primary)' : '#8b949e'}
-          label={mode === 'slo' ? 'All SLOs' : mode === 'datasource' ? 'All Datasources' : 'All Assets'}
-          depth={0}
-          isExpandable={false}
-          isExpanded={false}
-          isSelected={!selected}
-          selectionColor="var(--primary)"
-          isGroup
-          onClick={() => onSelect(null)}
-        />
-        <div className="mx-3 my-1 border-t border-border/50" />
-      </div>
+      {/* "All" row — only shown in asset mode where the tree has group hierarchy */}
+      {mode === 'asset' && (
+        <div style={{ fontFamily: "system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" }}>
+          <TreeNode
+            icon={getEntityIcon('all')}
+            iconColor={!selected ? 'var(--primary)' : '#8b949e'}
+            label="All Assets"
+            depth={0}
+            isExpandable={false}
+            isExpanded={false}
+            isSelected={!selected}
+            selectionColor="var(--primary)"
+            isGroup
+            onClick={() => onSelect(null)}
+          />
+          <div className="mx-3 my-1 border-t border-border/50" />
+        </div>
+      )}
 
       {/* Tree */}
       <RegistryTree nodes={filteredNodes} selected={selected} onSelect={onSelect} />
