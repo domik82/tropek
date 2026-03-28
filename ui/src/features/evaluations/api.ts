@@ -26,18 +26,29 @@ function toParams(filters: EvaluationFilters): string {
   if (filters.date) p.set('date', filters.date)
   if (filters.from) p.set('from', filters.from)
   if (filters.to) p.set('to', filters.to)
-  p.set('limit', '200')
   return p.toString()
 }
+
+const PAGE_SIZE = 200
 
 export async function fetchEvaluations(
   filters: EvaluationFilters = {}
 ): Promise<EvaluationSummary[]> {
-  const qs = toParams(filters)
-  const res = await fetch(`${BASE}/evaluations?${qs}`)
-  if (!res.ok) throw new Error(`fetchEvaluations: ${res.status}`)
-  const data: { items: EvaluationSummary[]; total: number } = await res.json()
-  return data.items
+  const base = toParams(filters)
+  const all: EvaluationSummary[] = []
+  let offset = 0
+
+  for (;;) {
+    const qs = `${base}&limit=${PAGE_SIZE}&offset=${offset}`
+    const res = await fetch(`${BASE}/evaluations?${qs}`)
+    if (!res.ok) throw new Error(`fetchEvaluations: ${res.status}`)
+    const data: { items: EvaluationSummary[]; total: number } = await res.json()
+    all.push(...data.items)
+    if (all.length >= data.total || data.items.length < PAGE_SIZE) break
+    offset += PAGE_SIZE
+  }
+
+  return all
 }
 
 export async function fetchEvaluationDetail(id: string): Promise<EvaluationDetail> {
