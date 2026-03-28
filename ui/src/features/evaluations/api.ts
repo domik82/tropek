@@ -130,6 +130,16 @@ export async function invalidateEvaluation(
   return res.json()
 }
 
+export async function restoreEvaluation(
+  evalId: string
+): Promise<EvaluationSummary> {
+  const res = await fetch(`${BASE}/evaluations/${evalId}/restore`, {
+    method: 'PATCH',
+  })
+  if (!res.ok) throw new Error(`restoreEvaluation: ${res.status}`)
+  return res.json()
+}
+
 export async function overrideStatus(
   evalId: string,
   payload: { new_result: string; reason: string; author: string }

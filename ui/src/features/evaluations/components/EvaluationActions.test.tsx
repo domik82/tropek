@@ -4,12 +4,14 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { EvaluationActionsButton, EvaluationActionForm } from './EvaluationActions'
 
 const invalidateMutate = vi.fn()
+const restoreMutate = vi.fn()
 const overrideMutate = vi.fn()
 const pinMutate = vi.fn()
 const reEvaluateMutate = vi.fn()
 
 vi.mock('../hooks', () => ({
   useInvalidateEvaluation: () => ({ mutate: invalidateMutate, isPending: false }),
+  useRestoreEvaluation: () => ({ mutate: restoreMutate, isPending: false }),
   useOverrideStatus: () => ({ mutate: overrideMutate, isPending: false }),
   usePinBaseline: () => ({ mutate: pinMutate, isPending: false }),
   useReEvaluate: () => ({ mutate: reEvaluateMutate, isPending: false }),
@@ -77,17 +79,23 @@ describe('EvaluationActionsButton', () => {
     expect(onSelectAction).toHaveBeenCalledWith('invalidate')
   })
 
-  it('shows "invalidated" text instead of button when evaluation is invalidated', () => {
+  it('shows Restore action when evaluation is invalidated', () => {
+    const onSelectAction = vi.fn()
     renderWithQuery(
       <EvaluationActionsButton
         currentResult="pass"
         invalidated={true}
         activeAction={null}
-        onSelectAction={vi.fn()}
+        onSelectAction={onSelectAction}
       />,
     )
-    expect(screen.getByText('invalidated')).toBeInTheDocument()
-    expect(screen.queryByText('Actions')).not.toBeInTheDocument()
+    expect(screen.getByText('Actions')).toBeInTheDocument()
+    fireEvent.click(screen.getByText('Actions'))
+    expect(screen.getByText('Restore')).toBeInTheDocument()
+    expect(screen.queryByText('Invalidate')).not.toBeInTheDocument()
+    expect(screen.queryByText('Pin Baseline')).not.toBeInTheDocument()
+    fireEvent.click(screen.getByText('Restore'))
+    expect(onSelectAction).toHaveBeenCalledWith('restore')
   })
 
   it('shows Add Note item when onAddNote is provided', () => {

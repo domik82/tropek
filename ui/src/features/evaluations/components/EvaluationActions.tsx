@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { MoreVertical, MessageSquareWarning } from 'lucide-react'
 import { InvalidateForm } from './actions/InvalidateForm'
+import { RestoreForm } from './actions/RestoreForm'
 import { OverrideForm } from './actions/OverrideForm'
 import { BaselineForm } from './actions/BaselineForm'
 import { ReEvaluateForm } from './actions/ReEvaluateForm'
@@ -66,6 +67,16 @@ const RE_EVALUATE: ActionDef = {
   confirmClasses: 'bg-purple-600 hover:bg-purple-500',
 }
 
+const RESTORE: ActionDef = {
+  kind: 'restore',
+  label: 'Restore',
+  description: 'Un-invalidate this evaluation — bring it back into scoring and baselines.',
+  accentColor: '#22C55E',
+  accentBorder: 'border-green-500/25',
+  accentText: 'text-green-400',
+  confirmClasses: 'bg-green-600 hover:bg-green-500',
+}
+
 function getActions(currentResult: string): ActionDef[] {
   return [
     INVALIDATE,
@@ -100,11 +111,9 @@ export function EvaluationActionsButton({ currentResult, invalidated, activeActi
     return () => document.removeEventListener('mousedown', handleClick)
   }, [menuOpen])
 
-  if (invalidated) {
-    return <span className="text-xs text-muted-foreground italic">invalidated</span>
-  }
-
-  const actions = getActions(currentResult)
+  const actions = invalidated
+    ? [RESTORE]
+    : getActions(currentResult)
 
   return (
     <div className="relative" ref={menuRef}>
@@ -194,6 +203,8 @@ export function EvaluationActionForm({
   switch (activeAction) {
     case 'invalidate':
       return <InvalidateForm evaluationId={evalId} onComplete={onClose} />
+    case 'restore':
+      return <RestoreForm evaluationId={evalId} onComplete={onClose} />
     case 'override':
       return <OverrideForm evaluationId={evalId} currentResult={currentResult} onComplete={onClose} />
     case 'baseline':

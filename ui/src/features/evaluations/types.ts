@@ -1,7 +1,7 @@
 // src/features/evaluations/types.ts
 // All evaluation-domain types. Replaces the type section of api/client.ts.
 
-export type ActionKind = 'invalidate' | 'override' | 'baseline' | 're-evaluate'
+export type ActionKind = 'invalidate' | 'override' | 'baseline' | 're-evaluate' | 'restore'
 
 export interface FailingIndicator {
   metric: string
