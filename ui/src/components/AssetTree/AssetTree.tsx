@@ -234,7 +234,6 @@ export function AssetTree({
                 expandedGroups={expandedGroups}
                 renamingGroup={renamingGroup}
                 sloLinkCounts={sloLinkCounts}
-                isLastChild={i === tree.top_level.length - 1}
                 onToggleExpand={handleToggleExpand}
                 onSelectGroup={onSelectGroup}
                 onSelectAsset={onSelectAsset}

@@ -43,7 +43,6 @@ const defaultProps = {
   expandedGroups: new Set<string>(),
   renamingGroup: null,
   sloLinkCounts: undefined,
-  isLastChild: false,
   onToggleExpand: vi.fn(),
   onSelectGroup: vi.fn(),
   onSelectAsset: vi.fn(),
