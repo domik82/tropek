@@ -112,7 +112,7 @@ export function AssetTreeNode({
           onDoubleClick={() => onStartRename(group.name)}
           trailingAction={
             <button
-              className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-muted/80 shrink-0"
+              className="p-1 rounded hover:bg-muted/80 shrink-0"
               aria-label={`Actions for ${group.display_name ?? group.name}`}
               onClick={e => {
                 e.stopPropagation()
@@ -172,7 +172,7 @@ export function AssetTreeNode({
                 }}
                 trailingAction={
                   <button
-                    className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-muted/80 shrink-0"
+                    className="p-1 rounded hover:bg-muted/80 shrink-0"
                     aria-label={`Actions for ${m.asset_display_name ?? m.asset_name}`}
                     onClick={e => {
                       e.stopPropagation()

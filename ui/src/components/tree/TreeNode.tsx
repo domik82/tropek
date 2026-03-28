@@ -94,29 +94,48 @@ export function TreeNode({
         {label}
       </span>
 
-      {badge && (
-        badge.type === 'count' ? (
-          <span
-            className={`shrink-0 text-[10px] font-semibold min-w-[18px] h-[18px] inline-flex items-center justify-center rounded-full px-1.5${
-              trailingAction ? ' group-hover:hidden' : ''
-            }`}
-            style={{
-              backgroundColor: isSelected && selectionColor ? `${selectionColor}33` : '#30363d',
-              color: isSelected && selectionColor ? selectionColor : '#c9d1d9',
-            }}
-          >
-            {badge.value}
-          </span>
-        ) : (
-          <span className={`shrink-0 text-[10px] text-muted-foreground border border-border rounded px-1.5 py-px${
-            trailingAction ? ' group-hover:hidden' : ''
-          }`}>
-            {badge.value}
-          </span>
-        )
+      {trailingAction ? (
+        <span className="shrink-0 inline-flex items-center justify-center">
+          {badge && (
+            badge.type === 'count' ? (
+              <span
+                className="group-hover:hidden text-[10px] font-semibold min-w-[18px] h-[18px] inline-flex items-center justify-center rounded-full px-1.5"
+                style={{
+                  backgroundColor: isSelected && selectionColor ? `${selectionColor}33` : '#30363d',
+                  color: isSelected && selectionColor ? selectionColor : '#c9d1d9',
+                }}
+              >
+                {badge.value}
+              </span>
+            ) : (
+              <span className="group-hover:hidden text-[10px] text-muted-foreground border border-border rounded px-1.5 py-px">
+                {badge.value}
+              </span>
+            )
+          )}
+          <span className="hidden group-hover:inline-flex">{trailingAction}</span>
+        </span>
+      ) : (
+        <>
+          {badge && (
+            badge.type === 'count' ? (
+              <span
+                className="shrink-0 text-[10px] font-semibold min-w-[18px] h-[18px] inline-flex items-center justify-center rounded-full px-1.5"
+                style={{
+                  backgroundColor: isSelected && selectionColor ? `${selectionColor}33` : '#30363d',
+                  color: isSelected && selectionColor ? selectionColor : '#c9d1d9',
+                }}
+              >
+                {badge.value}
+              </span>
+            ) : (
+              <span className="shrink-0 text-[10px] text-muted-foreground border border-border rounded px-1.5 py-px">
+                {badge.value}
+              </span>
+            )
+          )}
+        </>
       )}
-
-      {trailingAction}
     </div>
   )
 }
