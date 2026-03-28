@@ -173,7 +173,7 @@ describe('AssetTreeNode', () => {
     )
 
     // Both render "orders-db" text, but only the one under data-tier should have
-    // the selected styling (bg-primary/15 border-l-2)
+    // the selected styling (data-selected="true" with inline border style)
     const assetLeaves = container.querySelectorAll('[role="button"]')
     // Filter to just the leaf asset rows (not the group header rows)
     const leafRows = Array.from(assetLeaves).filter(el =>
@@ -182,8 +182,8 @@ describe('AssetTreeNode', () => {
     expect(leafRows).toHaveLength(2)
 
     // First one (under data-tier) should be highlighted
-    expect(leafRows[0].className).toContain('bg-primary/15')
+    expect(leafRows[0].getAttribute('data-selected')).toBe('true')
     // Second one (under infra-prod) should NOT be highlighted
-    expect(leafRows[1].className).not.toContain('bg-primary/15')
+    expect(leafRows[1].getAttribute('data-selected')).toBe('false')
   })
 })
