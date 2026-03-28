@@ -218,9 +218,8 @@ class AssetRepository:
         Returns:
             Updated Asset record.
         """
-        filtered = {k: v for k, v in kwargs.items() if v is not None}
-        if filtered:
-            await self._session.execute(update(Asset).where(Asset.name == name).values(**filtered))
+        if kwargs:
+            await self._session.execute(update(Asset).where(Asset.name == name).values(**kwargs))
         asset = await self.get_by_name(name)
         if asset is None:
             raise HTTPException(status_code=404, detail=f"asset '{name}' not found")
