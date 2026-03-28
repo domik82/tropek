@@ -74,6 +74,13 @@ export function AssetPanelHeatmapView({
           />
           <SLIBreakdownTable
             indicators={tabIndicators}
+            scoreSummary={ev ? {
+              score: ev.score,
+              result: ev.invalidated ? 'invalidated' : ev.result,
+              totalWeight: ev.indicator_results.reduce((s, i) => s + i.weight, 0),
+              passPct: ev.total_score_pass_pct,
+              warningPct: ev.total_score_warning_pct,
+            } : undefined}
             onIndicatorClick={(metric, tabGroup) => {
               if (activeTab !== 'all') setActiveTab(tabGroup)
               // Trend blocks are dynamic list items — use id-based scroll

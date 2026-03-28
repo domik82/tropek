@@ -10,12 +10,21 @@ function fmtPct(v: number | null | undefined): string {
   return `${sign}${v.toFixed(2)}%`
 }
 
+interface ScoreSummary {
+  score: number
+  result: string
+  totalWeight: number
+  passPct: number | null
+  warningPct: number | null
+}
+
 interface Props {
   indicators: IndicatorResult[]
+  scoreSummary?: ScoreSummary
   onIndicatorClick?: (metric: string, tabGroup: string) => void
 }
 
-export function SLIBreakdownTable({ indicators, onIndicatorClick }: Props) {
+export function SLIBreakdownTable({ indicators, scoreSummary, onIndicatorClick }: Props) {
   const [selectedMetric, setSelectedMetric] = useState<string | null>(null)
 
   function handleRowClick(metric: string, tabGroup: string) {
@@ -41,6 +50,26 @@ export function SLIBreakdownTable({ indicators, onIndicatorClick }: Props) {
           </tr>
         </thead>
         <tbody>
+          {scoreSummary && (
+            <tr className="bg-gray-800 border-b-2 border-slate-600 font-semibold">
+              <td className="px-2 py-3" />
+              <td className="px-4 py-3 text-slate-100">Score</td>
+              <td className="px-4 py-3 text-right font-mono">{fmt(scoreSummary.score)}%</td>
+              <td className="px-4 py-3" />
+              <td className="px-4 py-3" />
+              <td className="px-4 py-3 text-right text-slate-400">{scoreSummary.totalWeight}</td>
+              <td className="px-4 py-3 text-right font-mono">{fmt(scoreSummary.score)}</td>
+              <td className={`px-4 py-3 uppercase text-xs ${STATUS_TEXT[scoreSummary.result] ?? ''}`}>
+                {scoreSummary.result}
+              </td>
+              <td className="px-4 py-3 text-xs font-mono text-slate-400">
+                {scoreSummary.passPct != null && `≥${scoreSummary.passPct}%`}
+              </td>
+              <td className="px-4 py-3 text-xs font-mono text-slate-500">
+                {scoreSummary.warningPct != null && `≥${scoreSummary.warningPct}%`}
+              </td>
+            </tr>
+          )}
           {indicators.map((ind, idx) => {
             const isSelected = ind.metric === selectedMetric
             const zebraBase = idx % 2 === 0 ? 'bg-gray-900' : 'bg-gray-800/50'

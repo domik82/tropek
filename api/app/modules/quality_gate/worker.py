@@ -325,7 +325,11 @@ async def run_evaluation(
         score=eval_result.score,
         slo_name=ev.slo_name,
         slo_version=ev.slo_version,
-        job_stats={"fetch_errors": fetch_errors},
+        job_stats={
+            "fetch_errors": fetch_errors,
+            "total_score_pass_pct": slo_def.total_score_pass_pct,
+            "total_score_warning_pct": slo_def.total_score_warning_pct,
+        },
         compared_evaluation_ids=compared_eval_ids,
     )
 
