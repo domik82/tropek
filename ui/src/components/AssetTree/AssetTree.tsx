@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback } from 'react'
-import { Plus, MoreHorizontal, FolderTree, Settings } from 'lucide-react'
-import { TreeFilter } from '@/components/tree'
+import { Plus, MoreHorizontal, Settings } from 'lucide-react'
+import { TreeFilter, TreeNode, getEntityIcon } from '@/components/tree'
 import { useAssetGroups } from '@/features/assets/hooks'
 import { countLeafMembers } from '@/features/navigator/components/treeUtils'
 import { AssetTreeNode } from './AssetTreeNode'
@@ -204,32 +204,19 @@ export function AssetTree({
         {!isLoading && tree && (
           <>
             {/* "All" item */}
-            <button
-              type="button"
-              className={`flex items-center gap-2 px-2 py-1.5 rounded-sm cursor-pointer transition-colors w-full text-left ${
-                selectedGroup === null
-                  ? 'bg-primary/15 border-l-2 border-primary font-medium'
-                  : 'hover:bg-muted/50'
-              }`}
-              style={{ paddingLeft: selectedGroup === null ? 6 : 8 }}
+            <TreeNode
+              icon={getEntityIcon('all')}
+              iconColor={selectedGroup === null ? 'var(--primary)' : '#8b949e'}
+              label="All"
+              depth={0}
+              isExpandable={false}
+              isExpanded={false}
+              isSelected={selectedGroup === null}
+              selectionColor="var(--primary)"
+              isGroup
+              badge={totalCount > 0 ? { type: 'count' as const, value: totalCount } : undefined}
               onClick={() => onSelectGroup(null)}
-            >
-              <FolderTree className={`w-4 h-4 shrink-0 ${
-                selectedGroup === null ? 'text-primary' : 'text-muted-foreground'
-              }`} />
-              <span className={`text-[14px] font-medium flex-1 ${
-                selectedGroup === null ? 'text-primary' : ''
-              }`}>All</span>
-              {totalCount > 0 && (
-                <span className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${
-                  selectedGroup === null
-                    ? 'bg-primary/20 text-primary'
-                    : 'bg-muted text-muted-foreground'
-                }`}>
-                  {totalCount}
-                </span>
-              )}
-            </button>
+            />
 
             <div className="my-1 mx-3 border-t border-border/50" />
 
@@ -261,19 +248,17 @@ export function AssetTree({
             <div className="my-1 mx-3 border-t border-border/50" />
 
             {/* Ungrouped */}
-            <button
-              type="button"
-              className={`flex items-center gap-2 px-2 py-1.5 rounded-sm cursor-pointer transition-colors w-full text-left ${
-                selectedGroup === '__ungrouped__'
-                  ? 'bg-primary/15 border-l-2 border-primary font-medium'
-                  : 'hover:bg-muted/50 text-muted-foreground italic'
-              }`}
-              style={{ paddingLeft: selectedGroup === '__ungrouped__' ? 6 : 8 }}
+            <TreeNode
+              icon={getEntityIcon('group')}
+              iconColor="#8b949e80"
+              label="Ungrouped"
+              depth={0}
+              isExpandable={false}
+              isExpanded={false}
+              isSelected={selectedGroup === '__ungrouped__'}
+              selectionColor="var(--primary)"
               onClick={() => onSelectGroup('__ungrouped__')}
-            >
-              <span className="w-2 h-2 rounded-full bg-muted-foreground/40 shrink-0" />
-              <span className="text-[14px]">Ungrouped</span>
-            </button>
+            />
           </>
         )}
       </div>
