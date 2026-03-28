@@ -104,7 +104,7 @@ export function RegistrySidebar({ mode, onModeChange, selected, onSelect, onCrea
   const treeNodes = useMemo(() => {
     if (mode === 'slo') return buildSloTree(slos ?? [], slis ?? [], datasources ?? [], allBindings)
     if (mode === 'datasource') return buildDatasourceTree(datasources ?? [], slis ?? [], slos ?? [], allBindings)
-    return buildAssetTree(tree?.all_groups ?? [], groupBindingsMap, slos ?? [], slis ?? [])
+    return buildAssetTree(tree?.top_level ?? [], tree?.all_groups ?? [], groupBindingsMap, slos ?? [], slis ?? [])
   }, [mode, slos, slis, datasources, tree, allBindings, groupBindingsMap])
 
   const filteredNodes = useMemo(() => filterTree(treeNodes, search), [treeNodes, search])
