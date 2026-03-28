@@ -34,7 +34,7 @@ describe('EvaluationNameFilter', () => {
     expect(screen.getByText(/3/)).toBeInTheDocument()
   })
 
-  it('toggles a name when clicked', async () => {
+  it('selects a name when clicked', async () => {
     const onChange = vi.fn()
     render(
       <EvaluationNameFilter
@@ -44,7 +44,8 @@ describe('EvaluationNameFilter', () => {
       />
     )
     await userEvent.click(screen.getByText(/ad-hoc-run/))
-    expect(onChange).toHaveBeenCalledWith(['load-test', 'ad-hoc-run'])
+    // Selecting all individual chips collapses to All (undefined)
+    expect(onChange).toHaveBeenCalledWith(undefined)
   })
 
   it('deselects a name when clicked again (if others remain)', async () => {
@@ -60,7 +61,7 @@ describe('EvaluationNameFilter', () => {
     expect(onChange).toHaveBeenCalledWith(['ad-hoc-run'])
   })
 
-  it('does not deselect the last name', async () => {
+  it('deselecting the last name returns to All', async () => {
     const onChange = vi.fn()
     render(
       <EvaluationNameFilter
@@ -70,7 +71,21 @@ describe('EvaluationNameFilter', () => {
       />
     )
     await userEvent.click(screen.getByText(/load-test/))
-    expect(onChange).not.toHaveBeenCalled()
+    expect(onChange).toHaveBeenCalledWith(undefined)
+  })
+
+  it('clicking a chip when All is active deselects that name', async () => {
+    const onChange = vi.fn()
+    render(
+      <EvaluationNameFilter
+        names={NAMES}
+        selected={undefined}
+        onChange={onChange}
+      />
+    )
+    await userEvent.click(screen.getByText(/ad-hoc-run/))
+    // Deselects ad-hoc-run, keeps load-test
+    expect(onChange).toHaveBeenCalledWith(['load-test'])
   })
 
   it('All selects undefined (no filter)', async () => {
