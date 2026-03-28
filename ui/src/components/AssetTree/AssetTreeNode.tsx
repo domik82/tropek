@@ -129,7 +129,7 @@ export function AssetTreeNode({
       {/* Children (subgroups + asset leaves) */}
       {isExpanded && (
         <div role="group">
-          {subgroups.map((sg, i) => (
+          {subgroups.map((sg) => (
             <AssetTreeNode
               key={sg.id}
               group={sg}

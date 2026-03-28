@@ -52,9 +52,6 @@ export function DatasourceForm({ open, onOpenChange, editFrom }: DatasourceFormP
     },
   })
 
-  const form = isEdit ? editForm : createForm
-  const { register, handleSubmit, formState: { errors }, reset } = form
-
   // Reset form when editFrom changes
   useEffect(() => {
     if (editFrom) {
@@ -75,43 +72,38 @@ export function DatasourceForm({ open, onOpenChange, editFrom }: DatasourceFormP
 
   if (!open) return null
 
-  function onSubmit(values: CreateValues | EditValues) {
+  function onSubmitCreate(values: CreateValues) {
     const tags = rowsToTags(tagRows)
     const tagsPayload = Object.keys(tags).length > 0 ? tags : undefined
-
-    if (isEdit) {
-      const v = values as EditValues
-      const payload: Parameters<typeof updateMutation.mutate>[0] = {
-        name: editFrom!.name,
-        adapter_url: v.adapter_url || undefined,
-        display_name: v.display_name || undefined,
+    createMutation.mutate(
+      {
+        name: values.name,
+        display_name: values.display_name || undefined,
+        adapter_type: values.adapter_type,
+        adapter_url: values.adapter_url,
+        token: values.token || undefined,
         tags: tagsPayload,
-      }
-      if (v.token?.trim()) {
-        payload.token = v.token
-      }
-      updateMutation.mutate(payload, {
-        onSuccess: () => { reset(); onOpenChange(false) },
-      })
-    } else {
-      const v = values as CreateValues
-      createMutation.mutate(
-        {
-          name: v.name,
-          display_name: v.display_name || undefined,
-          adapter_type: v.adapter_type,
-          adapter_url: v.adapter_url,
-          token: v.token || undefined,
-          tags: tagsPayload,
-        },
-        { onSuccess: () => { reset(); onOpenChange(false) } },
-      )
-    }
+      },
+      { onSuccess: () => { createForm.reset(); onOpenChange(false) } },
+    )
   }
 
-  const fieldErrors = isEdit
-    ? (errors as typeof editForm.formState.errors)
-    : (errors as typeof createForm.formState.errors)
+  function onSubmitEdit(values: EditValues) {
+    const tags = rowsToTags(tagRows)
+    const tagsPayload = Object.keys(tags).length > 0 ? tags : undefined
+    const payload: Parameters<typeof updateMutation.mutate>[0] = {
+      name: editFrom!.name,
+      adapter_url: values.adapter_url || undefined,
+      display_name: values.display_name || undefined,
+      tags: tagsPayload,
+    }
+    if (values.token?.trim()) {
+      payload.token = values.token
+    }
+    updateMutation.mutate(payload, {
+      onSuccess: () => { editForm.reset(); onOpenChange(false) },
+    })
+  }
 
   return (
     <div
@@ -142,7 +134,7 @@ export function DatasourceForm({ open, onOpenChange, editFrom }: DatasourceFormP
         </div>
 
         {/* Form body */}
-        <form onSubmit={handleSubmit(onSubmit)}>
+        <form onSubmit={isEdit ? editForm.handleSubmit(onSubmitEdit) : createForm.handleSubmit(onSubmitCreate)}>
           <div className="p-4 space-y-3">
             {/* Name (create only) */}
             {!isEdit && (
@@ -150,9 +142,9 @@ export function DatasourceForm({ open, onOpenChange, editFrom }: DatasourceFormP
                 <label htmlFor="ds-name" className="block text-xs text-muted-foreground mb-1">
                   Name
                 </label>
-                <Input id="ds-name" {...(createForm.register('name'))} placeholder="my-datasource" />
-                {'name' in fieldErrors && fieldErrors.name && (
-                  <p className="text-xs text-red-400 mt-0.5">{fieldErrors.name.message}</p>
+                <Input id="ds-name" {...createForm.register('name')} placeholder="my-datasource" />
+                {createForm.formState.errors.name && (
+                  <p className="text-xs text-red-400 mt-0.5">{createForm.formState.errors.name.message}</p>
                 )}
               </div>
             )}
@@ -170,7 +162,7 @@ export function DatasourceForm({ open, onOpenChange, editFrom }: DatasourceFormP
               <label htmlFor="ds-display-name" className="block text-xs text-muted-foreground mb-1">
                 Display Name
               </label>
-              <Input id="ds-display-name" {...register('display_name')} placeholder="My Datasource" />
+              <Input id="ds-display-name" {...(isEdit ? editForm.register('display_name') : createForm.register('display_name'))} placeholder="My Datasource" />
             </div>
 
             {/* Adapter Type (create only) */}
@@ -180,8 +172,8 @@ export function DatasourceForm({ open, onOpenChange, editFrom }: DatasourceFormP
                   Adapter Type
                 </label>
                 <Input id="ds-adapter-type" {...createForm.register('adapter_type')} placeholder="prometheus" />
-                {'adapter_type' in fieldErrors && fieldErrors.adapter_type && (
-                  <p className="text-xs text-red-400 mt-0.5">{fieldErrors.adapter_type.message}</p>
+                {createForm.formState.errors.adapter_type && (
+                  <p className="text-xs text-red-400 mt-0.5">{createForm.formState.errors.adapter_type.message}</p>
                 )}
               </div>
             )}
@@ -199,9 +191,9 @@ export function DatasourceForm({ open, onOpenChange, editFrom }: DatasourceFormP
               <label htmlFor="ds-adapter-url" className="block text-xs text-muted-foreground mb-1">
                 Adapter URL
               </label>
-              <Input id="ds-adapter-url" {...register('adapter_url')} placeholder="http://adapter:8081" />
-              {fieldErrors.adapter_url && (
-                <p className="text-xs text-red-400 mt-0.5">{fieldErrors.adapter_url.message}</p>
+              <Input id="ds-adapter-url" {...(isEdit ? editForm.register('adapter_url') : createForm.register('adapter_url'))} placeholder="http://adapter:8081" />
+              {(isEdit ? editForm.formState.errors.adapter_url : createForm.formState.errors.adapter_url) && (
+                <p className="text-xs text-red-400 mt-0.5">{(isEdit ? editForm.formState.errors.adapter_url : createForm.formState.errors.adapter_url)?.message}</p>
               )}
             </div>
 
@@ -213,7 +205,7 @@ export function DatasourceForm({ open, onOpenChange, editFrom }: DatasourceFormP
               <Input
                 id="ds-token"
                 type="password"
-                {...register('token')}
+                {...(isEdit ? editForm.register('token') : createForm.register('token'))}
                 placeholder={isEdit ? '••••••••' : 'Bearer token (optional)'}
               />
             </div>

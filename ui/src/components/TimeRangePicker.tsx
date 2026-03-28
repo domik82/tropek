@@ -3,7 +3,7 @@ import { useState } from 'react'
 import { Calendar as CalendarIcon, ChevronDown } from 'lucide-react'
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover'
 import { Calendar } from '@/components/ui/calendar'
-import { useTimeRange, PRESETS, toDateInputValue, computeFromDate } from '@/lib/time-range-context'
+import { useTimeRange, PRESETS, toDateInputValue } from '@/lib/time-range-context'
 
 const SANS = "system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif"
 

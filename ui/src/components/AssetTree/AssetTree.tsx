@@ -221,7 +221,7 @@ export function AssetTree({
             <div className="my-1 mx-3 border-t border-border/50" />
 
             {/* Top-level groups */}
-            {tree.top_level.map((group, i) => (
+            {tree.top_level.map((group) => (
               <AssetTreeNode
                 key={group.id}
                 group={group}
