@@ -24,6 +24,7 @@ interface TagFilterBarProps {
   onTagKeySelected: (key: string) => void
   isLoadingKeys: boolean
   isLoadingValues: boolean
+  hideSearch?: boolean
 }
 
 type AddFlowStep = 'idle' | 'pick-key' | 'pick-value'
@@ -38,6 +39,7 @@ export function TagFilterBar({
   onTagKeySelected,
   isLoadingKeys,
   isLoadingValues,
+  hideSearch = false,
 }: TagFilterBarProps) {
   const [addStep, setAddStep] = useState<AddFlowStep>('idle')
   const [selectedKey, setSelectedKey] = useState<string>('')
@@ -79,17 +81,19 @@ export function TagFilterBar({
   return (
     <div style={{ fontFamily: SANS_SERIF }} className="flex flex-col gap-2" onKeyDown={handleKeyDown}>
       {/* Search input */}
-      <div className="relative">
-        <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <input
-          type="text"
-          placeholder="Filter..."
-          value={search}
-          onChange={(e) => onSearchChange(e.target.value)}
-          className="w-full pl-8 pr-3 py-1.5 text-sm bg-popover border border-border rounded-md
-                     placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-        />
-      </div>
+      {!hideSearch && (
+        <div className="relative">
+          <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <input
+            type="text"
+            placeholder="Filter..."
+            value={search}
+            onChange={(e) => onSearchChange(e.target.value)}
+            className="w-full pl-8 pr-3 py-1.5 text-sm bg-popover border border-border rounded-md
+                       placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+          />
+        </div>
+      )}
 
       {/* Active tag pills */}
       {tags.length > 0 && (
