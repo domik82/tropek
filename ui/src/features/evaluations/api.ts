@@ -26,6 +26,7 @@ function toParams(filters: EvaluationFilters): string {
   if (filters.date) p.set('date', filters.date)
   if (filters.from) p.set('from', filters.from)
   if (filters.to) p.set('to', filters.to)
+  p.set('limit', '200')
   return p.toString()
 }
 
@@ -33,7 +34,7 @@ export async function fetchEvaluations(
   filters: EvaluationFilters = {}
 ): Promise<EvaluationSummary[]> {
   const qs = toParams(filters)
-  const res = await fetch(`${BASE}/evaluations${qs ? `?${qs}` : ''}`)
+  const res = await fetch(`${BASE}/evaluations?${qs}`)
   if (!res.ok) throw new Error(`fetchEvaluations: ${res.status}`)
   const data: { items: EvaluationSummary[]; total: number } = await res.json()
   return data.items
