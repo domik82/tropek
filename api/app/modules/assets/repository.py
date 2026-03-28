@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import random
 import uuid
 from typing import Any
 
@@ -29,6 +30,19 @@ from app.modules.assets.schemas import (
     AssetGroupSubgroupRead,
     AssetGroupTreeResponse,
 )
+
+GROUP_COLOR_PALETTE = [
+    "#6897BB",
+    "#E8915A",
+    "#A371F7",
+    "#7DC540",
+    "#F85149",
+    "#58A6FF",
+    "#D4A032",
+    "#2DD4A0",
+    "#DB61A2",
+    "#8B949E",
+]
 
 
 class AssetTypeRepository:
@@ -272,6 +286,7 @@ class AssetGroupRepository:
                 AssetGroupMember,
                 Asset.name.label("asset_name"),
                 Asset.display_name.label("asset_display_name"),
+                Asset.type_name.label("asset_type_name"),
             )
             .join(Asset, AssetGroupMember.asset_id == Asset.id)
             .where(AssetGroupMember.group_id == group.id)
@@ -281,6 +296,7 @@ class AssetGroupRepository:
                 asset_id=row.AssetGroupMember.asset_id,
                 asset_name=row.asset_name,
                 asset_display_name=row.asset_display_name,
+                asset_type_name=row.asset_type_name,
                 weight=row.AssetGroupMember.weight,
             )
             for row in member_rows
@@ -306,6 +322,7 @@ class AssetGroupRepository:
             name=group.name,
             display_name=group.display_name,
             description=group.description,
+            color=group.color,
             members=members,
             subgroups=subgroups,
             created_at=group.created_at,
@@ -318,6 +335,7 @@ class AssetGroupRepository:
         *,
         display_name: str | None = None,
         description: str | None = None,
+        color: str | None = None,
         members: list[AssetGroupMemberCreate] | None = None,
         subgroups: list[AssetGroupSubgroupCreate] | None = None,
     ) -> AssetGroupRead:
@@ -327,6 +345,7 @@ class AssetGroupRepository:
             name: Unique name for this group.
             display_name: Optional human-readable label.
             description: Optional description text.
+            color: Optional hex color; auto-assigned from palette if omitted.
             members: Initial member assets to add.
             subgroups: Initial child groups to add.
 
@@ -338,6 +357,7 @@ class AssetGroupRepository:
             name=name,
             display_name=display_name,
             description=description,
+            color=color if color is not None else random.choice(GROUP_COLOR_PALETTE),  # noqa: S311
         )
         self._session.add(group)
         await self._session.flush()  # get group.id
@@ -370,7 +390,7 @@ class AssetGroupRepository:
 
         Args:
             name: Unique group name to update.
-            **kwargs: Fields to update (display_name, description).
+            **kwargs: Fields to update (display_name, description, color).
 
         Returns:
             Updated AssetGroupRead, or None if not found.

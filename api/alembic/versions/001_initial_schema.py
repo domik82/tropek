@@ -2,7 +2,7 @@
 
 Revision ID: 001
 Revises:
-Create Date: 2026-03-24 07:36:12.398043
+Create Date: 2026-03-28 13:53:02.127252
 
 """
 
@@ -28,6 +28,7 @@ def upgrade() -> None:
         sa.Column("name", sa.Text(), nullable=False),
         sa.Column("display_name", sa.Text(), nullable=True),
         sa.Column("description", sa.Text(), nullable=True),
+        sa.Column("color", sa.Text(), nullable=True),
         sa.Column(
             "created_at",
             sa.DateTime(timezone=True),
@@ -290,6 +291,7 @@ def upgrade() -> None:
             nullable=False,
         ),
         sa.Column("heatmap_config", postgresql.JSONB(astext_type=sa.Text()), nullable=True),
+        sa.Column("color", sa.Text(), nullable=True),
         sa.Column(
             "created_at",
             sa.DateTime(timezone=True),
