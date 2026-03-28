@@ -50,6 +50,13 @@ export function EvaluationIndicatorSection({ evaluation: ev, onMetricClick, asse
 
         <SLIBreakdownTable
           indicators={tabIndicators}
+          scoreSummary={{
+            score: ev.score,
+            result: ev.invalidated ? 'invalidated' : ev.result,
+            totalWeight: ev.indicator_results.reduce((s, i) => s + i.weight, 0),
+            passPct: ev.total_score_pass_pct,
+            warningPct: ev.total_score_warning_pct,
+          }}
           onIndicatorClick={(metric, tabGroup) => {
             if (activeTab !== 'all') setActiveTab(tabGroup)
             if (onMetricClick) {
