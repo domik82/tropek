@@ -31,6 +31,7 @@ const baseMockData: MetricHeatmapResponse = {
       result: 'pass',
       score: 1.0,
       eval_id: 'e1',
+      evaluation_name: 'load-test',
     },
   ],
 }

@@ -42,12 +42,11 @@ function buildData(evals: EvaluationSummary[], fallbackNames?: Map<string, strin
   const assetNames = Array.from(new Set(evals.map(e => e.asset_snapshot.name))).sort()
   const rows = assetNames.map(n => displayNameMap.get(n) ?? n)
 
-  // Step 2: group evaluations into cells, merging duplicates by asset+slot
+  // Step 2: group evaluations into cells, keyed by asset+slot+evalName
   const cellMap = new Map<string, CellAccum>()
 
   for (const e of evals) {
-    const rowKey = e.asset_snapshot.name
-    const key = `${rowKey}::${e.period_start}`
+    const key = `${e.asset_snapshot.name}\0${e.period_start}\0${e.evaluation_name}`
     const existing = cellMap.get(key)
     const effectiveResult = e.invalidated ? 'invalidated' : e.result
     const hasNote = (e.annotation_count ?? 0) > 0
@@ -68,23 +67,39 @@ function buildData(evals: EvaluationSummary[], fallbackNames?: Map<string, strin
     }
   }
 
-  // Step 3: produce one HeatmapCell per grid position + build evalName lookup for tooltip
+  // Step 3: produce HeatmapCells per grid position + build evalName lookup for tooltip
   const cells: HeatmapCell[] = []
   const evalNameMap = new Map<string, string>()
   for (let xi = 0; xi < slots.length; xi++) {
     for (let yi = 0; yi < assetNames.length; yi++) {
-      const key = `${assetNames[yi]}::${slots[xi]}`
-      const cell = cellMap.get(key)
-      if (cell) evalNameMap.set(`${rows[yi]}::${slots[xi]}`, cell.evalName)
-      cells.push({
-        value: [xi, yi],
-        result: cell?.result ?? 'none',
-        score: cell ? Math.round(cell.score) : 0,
-        slot: slots[xi],
-        rowLabel: rows[yi],
-        hasNote: cell?.hasNote ?? false,
-        noteContent: cell?.noteContent ?? '',
-      })
+      const prefix = `${assetNames[yi]}\0${slots[xi]}\0`
+      const matchingKeys = [...cellMap.keys()].filter(k => k.startsWith(prefix))
+      if (matchingKeys.length === 0) {
+        cells.push({
+          value: [xi, yi],
+          result: 'none',
+          score: 0,
+          slot: slots[xi],
+          rowLabel: rows[yi],
+          hasNote: false,
+          noteContent: '',
+        })
+      } else {
+        for (const mk of matchingKeys) {
+          const cell = cellMap.get(mk)!
+          evalNameMap.set(`${rows[yi]}::${slots[xi]}`, cell.evalName)
+          cells.push({
+            value: [xi, yi],
+            result: cell.result,
+            score: Math.round(cell.score),
+            slot: slots[xi],
+            rowLabel: rows[yi],
+            hasNote: cell.hasNote,
+            noteContent: cell.noteContent,
+            evaluation_name: cell.evalName,
+          })
+        }
+      }
     }
   }
 
@@ -105,7 +120,7 @@ export function EvaluationHeatmap({ evaluations, selectedDate, onDateSelect, onA
         return `${cell.rowLabel}<br/>${fmtDateTime(cell.slot)}<br/><em>no data</em>`
       }
       const rc = colours[cell.result as keyof ResultColours] ?? '#ccc'
-      const evalName = evalNameMap.get(`${cell.rowLabel}::${cell.slot}`)
+      const evalName = cell.evaluation_name ?? evalNameMap.get(`${cell.rowLabel}::${cell.slot}`)
       const lines = [
         `<b>${cell.rowLabel}</b>`,
         evalName ? `<span style="color:#94a3b8">${evalName}</span>` : '',

@@ -177,6 +177,7 @@ class HeatmapCell(BaseModel):
     result: str
     score: float
     eval_id: uuid.UUID
+    evaluation_name: str
 
 
 class MetricHeatmapResponse(BaseModel):
@@ -186,6 +187,14 @@ class MetricHeatmapResponse(BaseModel):
     slots: list[datetime]
     metrics: list[HeatmapMetric]
     cells: list[HeatmapCell]
+
+
+class EvaluationNameEntry(BaseModel):
+    """A distinct evaluation name with usage stats."""
+
+    name: str
+    count: int
+    last_run: datetime
 
 
 class TriggerRequest(BaseModel):

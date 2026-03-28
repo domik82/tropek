@@ -100,6 +100,7 @@ export interface TrendPoint {
 export interface EvaluationFilters {
   group_name?: string
   asset_name?: string
+  evaluation_name?: string[]
   date?: string
   from?: string
   to?: string

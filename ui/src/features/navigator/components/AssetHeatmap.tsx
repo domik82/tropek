@@ -33,13 +33,14 @@ export function AssetHeatmap({ data, selectedEvalId, onEvalSelect, notedSlots }:
     }
     const rc = colours[cell.result as keyof typeof colours] ?? '#ccc'
     return [
+      cell.evaluation_name ? `<span style="color:#94a3b8">${cell.evaluation_name}</span>` : '',
       `<b>${cell.rowLabel}</b>`,
       fmtDateTime(cell.slot),
       `Score: <b style="color:${rc}">${cell.score}</b> · <b style="color:${rc}">${cell.result.toUpperCase()}</b>`,
       cell.evalId
         ? `<span style="color:#888;font-size:10px">Click to select this evaluation</span>`
         : '',
-    ].join('<br/>')
+    ].filter(Boolean).join('<br/>')
   }
 
   function onCellClick(cell: HeatmapCell): void {

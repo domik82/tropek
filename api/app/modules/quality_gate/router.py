@@ -24,6 +24,7 @@ from app.modules.quality_gate.schemas import (
     BatchTriggerRequest,
     BatchTriggerResponse,
     EvaluationDetail,
+    EvaluationNameEntry,
     EvaluationSummary,
     HeatmapCell,
     HeatmapMetric,
@@ -129,7 +130,7 @@ async def get_metric_heatmap(
     evaluation_name: list[str] | None = Query(default=None),  # noqa: B008
     from_ts: datetime | None = Query(default=None, alias="from"),  # noqa: B008
     to_ts: datetime | None = Query(default=None, alias="to"),  # noqa: B008
-    limit: int = 20,
+    limit: int = 500,
     repos: QualityGateRepos = Depends(get_qg_repos),  # noqa: B008
 ) -> MetricHeatmapResponse:
     """Return a metric x evaluation heatmap grid for an asset."""
@@ -169,6 +170,7 @@ async def get_metric_heatmap(
                     ),
                     score=row.score,
                     eval_id=ev.id,
+                    evaluation_name=ev.evaluation_name,
                 )
             )
     return MetricHeatmapResponse(
@@ -189,6 +191,36 @@ async def re_evaluate_evaluations(
         return await re_evaluate(body, session)
     except ValueError as e:
         raise HTTPException(status_code=422, detail=str(e)) from e
+
+
+@router.get("/evaluations/names", response_model=list[EvaluationNameEntry])
+async def list_evaluation_names(
+    asset_name: str | None = None,
+    group_name: str | None = None,
+    repos: QualityGateRepos = Depends(get_qg_repos),  # noqa: B008
+) -> list[EvaluationNameEntry]:
+    """Return distinct evaluation names with count and last-run date."""
+    resolved_asset_id = None
+    asset_ids = None
+    if asset_name:
+        asset = await repos.asset_repo.get_by_name(asset_name)
+        if asset is None:
+            return []
+        resolved_asset_id = asset.id
+    if group_name:
+        group = await repos.asset_group_repo.get_by_name(group_name)
+        if group:
+            asset_ids = [m.asset_id for m in (group.members or [])]
+        else:
+            return []
+    rows = await repos.eval_repo.list_evaluation_names(
+        asset_id=resolved_asset_id,
+        asset_ids=asset_ids,
+    )
+    return [
+        EvaluationNameEntry(name=name, count=count, last_run=last_run)
+        for name, count, last_run in rows
+    ]
 
 
 @router.get("/evaluations/{eval_id}", response_model=EvaluationDetail)

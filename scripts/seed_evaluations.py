@@ -53,6 +53,22 @@ WINDOWS = [
 TERMINAL_STATUSES = {"completed", "failed", "partial"}
 
 
+def get_eval_runs(asset_name: str, slo_name: str) -> list[tuple[str, list[int]]]:
+    """Return (evaluation_name, window_indices) pairs for this asset."""
+    if "laptop" in asset_name:
+        return [("load-test", list(range(10)))]
+    if "vm-" in asset_name:
+        return [
+            ("user-experience", list(range(10))),
+            ("optimization-testing", [0, 3, 6, 9]),
+        ]
+    # E-commerce
+    return [
+        ("load-test", list(range(10))),
+        ("prod-validation", [0, 2, 4, 6, 8]),
+    ]
+
+
 def main() -> None:
     """Trigger all evaluations, then poll until every one completes."""
     if len(sys.argv) != 2:
@@ -60,20 +76,23 @@ def main() -> None:
         sys.exit(1)
 
     client = TropekClient(sys.argv[1])
-    total = len(ASSETS) * len(WINDOWS)
+    total = sum(sum(len(indices) for _, indices in get_eval_runs(a, s)) for a, s in ASSETS)
     print(f"Triggering {total} evaluations...")
 
     eval_ids: list[str] = []
-    for asset_idx, (asset_name, slo_name) in enumerate(ASSETS):
-        for _window_idx, (start, end) in enumerate(WINDOWS):
-            result = client.evaluations.trigger(
-                asset_name,
-                f"seed-{asset_idx}",
-                slo_name,
-                start,
-                end,
-            )
-            eval_ids.append(result["id"])
+    for asset_name, slo_name in ASSETS:
+        runs = get_eval_runs(asset_name, slo_name)
+        for eval_name, window_indices in runs:
+            for wi in window_indices:
+                start, end = WINDOWS[wi]
+                result = client.evaluations.trigger(
+                    asset_name,
+                    eval_name,
+                    slo_name,
+                    start,
+                    end,
+                )
+                eval_ids.append(result["id"])
 
     print(f"Triggered {len(eval_ids)}, waiting for completion...")
     pending = set(eval_ids)

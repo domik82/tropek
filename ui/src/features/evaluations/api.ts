@@ -20,20 +20,50 @@ function toParams(filters: EvaluationFilters): string {
   const p = new URLSearchParams()
   if (filters.group_name) p.set('group_name', filters.group_name)
   if (filters.asset_name) p.set('asset_name', filters.asset_name)
+  if (filters.evaluation_name?.length) {
+    for (const n of filters.evaluation_name) p.append('evaluation_name', n)
+  }
   if (filters.date) p.set('date', filters.date)
   if (filters.from) p.set('from', filters.from)
   if (filters.to) p.set('to', filters.to)
   return p.toString()
 }
 
+import { getConfig } from '@/lib/config'
+
+
+export interface EvaluationResult {
+  items: EvaluationSummary[]
+  total: number
+  truncated: boolean
+}
+
 export async function fetchEvaluations(
   filters: EvaluationFilters = {}
-): Promise<EvaluationSummary[]> {
-  const qs = toParams(filters)
-  const res = await fetch(`${BASE}/evaluations${qs ? `?${qs}` : ''}`)
-  if (!res.ok) throw new Error(`fetchEvaluations: ${res.status}`)
-  const data: { items: EvaluationSummary[]; total: number } = await res.json()
-  return data.items
+): Promise<EvaluationResult> {
+  const base = toParams(filters)
+  const all: EvaluationSummary[] = []
+  const { maxEvaluations, pageSize } = getConfig()
+  let total = 0
+  let offset = 0
+
+  for (;;) {
+    const qs = `${base}&limit=${pageSize}&offset=${offset}`
+    const res = await fetch(`${BASE}/evaluations?${qs}`)
+    if (!res.ok) throw new Error(`fetchEvaluations: ${res.status}`)
+    const data: { items: EvaluationSummary[]; total: number } = await res.json()
+    total = data.total
+    all.push(...data.items)
+    if (all.length >= data.total || data.items.length < pageSize) break
+    if (all.length >= maxEvaluations) break
+    offset += pageSize
+  }
+
+  return {
+    items: all.slice(0, maxEvaluations),
+    total,
+    truncated: total > maxEvaluations,
+  }
 }
 
 export async function fetchEvaluationDetail(id: string): Promise<EvaluationDetail> {
@@ -128,13 +158,34 @@ export async function pinBaseline(
 
 export async function fetchMetricHeatmap(
   assetName: string,
-  filters?: { from?: string; to?: string },
+  filters?: { from?: string; to?: string; evaluation_name?: string[] },
 ): Promise<MetricHeatmapResponse> {
   const params = new URLSearchParams({ asset_name: assetName })
   if (filters?.from) params.set('from', filters.from)
   if (filters?.to) params.set('to', filters.to)
+  if (filters?.evaluation_name?.length) {
+    for (const n of filters.evaluation_name) params.append('evaluation_name', n)
+  }
   const res = await fetch(`${BASE}/evaluations/metric-heatmap?${params}`)
   if (!res.ok) throw new Error(`fetchMetricHeatmap: ${res.status}`)
+  return res.json()
+}
+
+export interface EvaluationNameEntry {
+  name: string
+  count: number
+  last_run: string
+}
+
+export async function fetchEvaluationNames(
+  params: { asset_name?: string; group_name?: string },
+): Promise<EvaluationNameEntry[]> {
+  const p = new URLSearchParams()
+  if (params.asset_name) p.set('asset_name', params.asset_name)
+  if (params.group_name) p.set('group_name', params.group_name)
+  const qs = p.toString()
+  const res = await fetch(`${BASE}/evaluations/names${qs ? `?${qs}` : ''}`)
+  if (!res.ok) throw new Error(`fetchEvaluationNames: ${res.status}`)
   return res.json()
 }
 

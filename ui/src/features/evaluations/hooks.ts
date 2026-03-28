@@ -24,11 +24,17 @@ import { FIXED_COLS, DEFAULT_VISIBLE_KEYS } from './constants'
 export function useEvaluations(filters: EvaluationFilters = {}) {
   const { from, to } = useTimeRange()
   const merged = { ...filters, from, ...(to ? { to } : {}) }
-  return useQuery({
+  const query = useQuery({
     queryKey: evaluationKeys.list(merged),
     queryFn: () => fetchEvaluations(merged),
     placeholderData: keepPreviousData,
   })
+  return {
+    ...query,
+    data: query.data?.items,
+    truncated: query.data?.truncated ?? false,
+    total: query.data?.total ?? 0,
+  }
 }
 
 // ── Detail ────────────────────────────────────────────────────────────────────
@@ -89,6 +95,7 @@ export function useInvalidateEvaluation(evalId: string) {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: evaluationKeys.detail(evalId) })
       qc.invalidateQueries({ queryKey: evaluationKeys.all })
+      qc.invalidateQueries({ queryKey: ['evaluation-names'] })
     },
   })
 }
@@ -123,6 +130,7 @@ export function useReEvaluate() {
     mutationFn: (payload: ReEvaluatePayload) => reEvaluate(payload),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: evaluationKeys.all })
+      qc.invalidateQueries({ queryKey: ['evaluation-names'] })
     },
   })
 }
