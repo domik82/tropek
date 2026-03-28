@@ -43,8 +43,8 @@ export function EvaluationNameFilter({ names, selected, onChange }: Props) {
         onClick={handleAll}
         className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${
           isAll
-            ? 'bg-primary/20 text-primary border border-primary/40'
-            : 'bg-gray-800 text-slate-400 border border-slate-700 hover:text-slate-200'
+            ? 'bg-gray-800/60 text-slate-500 border border-slate-700 hover:text-slate-300'
+            : 'bg-primary/20 text-primary border border-primary/40'
         }`}
       >
         All
@@ -57,8 +57,8 @@ export function EvaluationNameFilter({ names, selected, onChange }: Props) {
             onClick={() => handleToggle(entry.name)}
             className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${
               active
-                ? 'bg-primary/20 text-primary border border-primary/40'
-                : 'bg-gray-800 text-slate-400 border border-slate-700 hover:text-slate-200'
+                ? 'bg-gray-800/60 text-slate-500 border border-slate-700 hover:text-slate-300'
+                : 'bg-primary/20 text-primary border border-primary/40'
             }`}
           >
             {entry.name}
