@@ -6,16 +6,24 @@ import { useEvaluations, useDynamicColumns, useColumnVisibility } from '@/featur
 import { EvaluationHeatmap } from '@/features/evaluations/components/EvaluationHeatmap'
 import { EvaluationTable } from '@/features/evaluations/components/EvaluationTable'
 import { EvaluationHeader } from '@/features/evaluations/components/EvaluationHeader'
+import { TruncationWarning } from '@/features/evaluations/components/TruncationWarning'
+import { EvaluationNameFilter } from './EvaluationNameFilter'
+import { useEvaluationNames } from '../hooks'
 import { TimeRangePicker } from '@/components/TimeRangePicker'
 
 interface Props {
-  onSelectAsset: (name: string) => void
+  onSelectAsset: (name: string, evalId?: string) => void
 }
 
 export function AllEvaluationsPanel({ onSelectAsset }: Props) {
   const [selectedDate, setSelectedDate] = useState<string | null>(null)
+  const [selectedNames, setSelectedNames] = useState<string[] | undefined>(undefined)
 
-  const { data: evals = [], isLoading } = useEvaluations({})
+  const { data: evalNames = [] } = useEvaluationNames()
+
+  const { data: evals = [], isLoading, truncated, total } = useEvaluations({
+    evaluation_name: selectedNames,
+  })
 
   // Live display name lookups — fallback for evaluations whose snapshot lacks display_name
   const { data: assets } = useAssets()
@@ -56,6 +64,16 @@ export function AllEvaluationsPanel({ onSelectAsset }: Props) {
         toolbar={<TimeRangePicker />}
       />
 
+      {evalNames.length >= 1 && (
+        <EvaluationNameFilter
+          names={evalNames}
+          selected={selectedNames}
+          onChange={setSelectedNames}
+        />
+      )}
+
+      {truncated && <TruncationWarning total={total} />}
+
       {isLoading && <p className="text-sm text-slate-400">Loading…</p>}
       {!isLoading && evals.length === 0 && (
         <p className="text-sm text-slate-400">No evaluations found.</p>
@@ -80,7 +98,7 @@ export function AllEvaluationsPanel({ onSelectAsset }: Props) {
             dynamicCols={dynamicCols}
             {...colVis}
             onAssetSelect={onSelectAsset}
-            onEvalClick={ev => onSelectAsset(ev.asset_snapshot.name)}
+            onEvalClick={ev => onSelectAsset(ev.asset_snapshot.name, ev.id)}
             assetDisplayNames={assetDisplayNames}
             sloDisplayNames={sloDisplayNames}
           />

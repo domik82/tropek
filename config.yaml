@@ -52,6 +52,10 @@ file_ingestion:
   allowed_path_prefix: "/data/results"
   max_file_size_mb: 50
 
+ui:
+  max_evaluations: 1000
+  page_size: 200
+
 logging:
   level: "INFO"
   format: "json"

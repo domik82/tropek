@@ -1,7 +1,7 @@
 // ui/src/features/navigator/components/AssetPanel.tsx
 import { useState, useMemo, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useAssetEvaluations, useMetricHeatmap } from '../hooks'
+import { useAssetEvaluations, useMetricHeatmap, useEvaluationNames } from '../hooks'
 import { useEvaluationDetail } from '@/features/evaluations/hooks'
 import { useAssets } from '@/features/assets/hooks'
 import { useSlos } from '@/features/slos/hooks'
@@ -11,8 +11,10 @@ import { AnnotationSection, type AnnotationSectionHandle } from '@/features/eval
 import { EvaluationActionsButton, EvaluationActionForm, NoteIconButton } from '@/features/evaluations/components/EvaluationActions'
 import type { ActionKind } from '@/features/evaluations/types'
 import type { ViewMode } from '@/components/charts/ViewToggle'
+import { EvaluationNameFilter } from './EvaluationNameFilter'
 import { AssetPanelHeatmapView } from './AssetPanelHeatmapView'
 import { AssetPanelChartView } from './AssetPanelChartView'
+import { TruncationWarning } from '@/features/evaluations/components/TruncationWarning'
 import { TimeRangePicker } from '@/components/TimeRangePicker'
 
 interface Props {
@@ -24,11 +26,13 @@ export function AssetPanel({ assetName, initialEvalId }: Props) {
   const [mode, setMode] = useState<ViewMode>('heatmap')
   const [selectedEvalId, setSelectedEvalId] = useState<string | undefined>(initialEvalId)
   const [activeAction, setActiveAction] = useState<ActionKind | null>(null)
+  const [selectedNames, setSelectedNames] = useState<string[] | undefined>(undefined)
 
   // Reset local state when the asset changes (defense in depth alongside key= on parent)
   useEffect(() => {
     setSelectedEvalId(undefined)
     setActiveAction(null)
+    setSelectedNames(undefined)
   }, [assetName])
   const notesRef = useRef<AnnotationSectionHandle>(null)
   const notesSectionRef = useRef<HTMLDivElement>(null)
@@ -54,8 +58,10 @@ export function AssetPanel({ assetName, initialEvalId }: Props) {
     </button>
   )
 
-  const { data: evals = [], isLoading: evalsLoading } = useAssetEvaluations(assetName)
-  const { data: heatmapData, isLoading: heatmapLoading } = useMetricHeatmap(assetName)
+  const { data: evalNames = [] } = useEvaluationNames(assetName)
+
+  const { data: evals = [], isLoading: evalsLoading, truncated, total } = useAssetEvaluations(assetName, selectedNames)
+  const { data: heatmapData, isLoading: heatmapLoading } = useMetricHeatmap(assetName, selectedNames)
 
   // Live display name lookups
   const { data: assets } = useAssets()
@@ -165,6 +171,16 @@ export function AssetPanel({ assetName, initialEvalId }: Props) {
           defaultFromDate={earliestPeriodStart?.slice(0, 16)}
         />
       )}
+
+      {evalNames.length >= 1 && (
+        <EvaluationNameFilter
+          names={evalNames}
+          selected={selectedNames}
+          onChange={setSelectedNames}
+        />
+      )}
+
+      {truncated && <TruncationWarning total={total} />}
 
       {isLoading && <p className="text-sm text-slate-400">Loading…</p>}
       {!isLoading && evals.length === 0 && (

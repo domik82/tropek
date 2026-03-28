@@ -31,10 +31,24 @@ export function AssetNavigatorPage() {
       <div className="flex-1 overflow-y-auto">
         {selectedAsset && <AssetPanel key={selectedAsset} assetName={selectedAsset} initialEvalId={selectedEvalId} />}
         {!selectedAsset && selectedGroup && (
-          <GroupPanel groupName={selectedGroup} onSelectAsset={(name: string) => handleSelectAsset(name)} />
+          <GroupPanel
+            groupName={selectedGroup}
+            onSelectAsset={(name: string, evalId?: string) => {
+              const next: Record<string, string> = { asset: name }
+              if (selectedGroup) next.group = selectedGroup
+              if (evalId) next.eval = evalId
+              setParams(next)
+            }}
+          />
         )}
         {!selectedAsset && !selectedGroup && (
-          <AllEvaluationsPanel onSelectAsset={(name: string) => handleSelectAsset(name)} />
+          <AllEvaluationsPanel
+            onSelectAsset={(name: string, evalId?: string) => {
+              const next: Record<string, string> = { asset: name }
+              if (evalId) next.eval = evalId
+              setParams(next)
+            }}
+          />
         )}
       </div>
     </div>

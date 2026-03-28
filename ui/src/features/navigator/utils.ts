@@ -18,19 +18,21 @@ export function buildGroupHeatmapData(evals: EvaluationSummary[], fallbackNames?
   }
   const rows = assetNames.map(n => displayNameMap.get(n) ?? n)
 
-  const cellMap = new Map<string, { result: string; score: number; count: number }>()
+  // Key by asset+slot+evalName to prevent cross-name merging
+  const cellMap = new Map<string, { result: string; score: number; count: number; evalName: string }>()
   for (const e of evals) {
-    const key = `${e.asset_snapshot.name}::${e.period_start}`
+    const key = `${e.asset_snapshot.name}\0${e.period_start}\0${e.evaluation_name}`
     const effectiveResult = e.invalidated ? 'invalidated' : e.result
     const existing = cellMap.get(key)
     if (!existing) {
-      cellMap.set(key, { result: effectiveResult, score: e.score, count: 1 })
+      cellMap.set(key, { result: effectiveResult, score: e.score, count: 1, evalName: e.evaluation_name })
     } else {
       cellMap.set(key, {
         result: (RESULT_RANK[effectiveResult] ?? 0) > (RESULT_RANK[existing.result] ?? 0)
           ? effectiveResult : existing.result,
         score: (existing.score * existing.count + e.score) / (existing.count + 1),
         count: existing.count + 1,
+        evalName: existing.evalName,
       })
     }
   }
@@ -38,15 +40,29 @@ export function buildGroupHeatmapData(evals: EvaluationSummary[], fallbackNames?
   const cells: HeatmapCell[] = []
   for (let xi = 0; xi < slots.length; xi++) {
     for (let yi = 0; yi < assetNames.length; yi++) {
-      const key = `${assetNames[yi]}::${slots[xi]}`
-      const cell = cellMap.get(key)
-      cells.push({
-        value: [xi, yi],
-        result: cell?.result ?? 'none',
-        score: cell ? Math.round(cell.score) : 0,
-        slot: slots[xi],
-        rowLabel: rows[yi],
-      })
+      const prefix = `${assetNames[yi]}\0${slots[xi]}\0`
+      const matchingKeys = [...cellMap.keys()].filter(k => k.startsWith(prefix))
+      if (matchingKeys.length === 0) {
+        cells.push({
+          value: [xi, yi],
+          result: 'none',
+          score: 0,
+          slot: slots[xi],
+          rowLabel: rows[yi],
+        })
+      } else {
+        for (const mk of matchingKeys) {
+          const cell = cellMap.get(mk)!
+          cells.push({
+            value: [xi, yi],
+            result: cell.result,
+            score: Math.round(cell.score),
+            slot: slots[xi],
+            rowLabel: rows[yi],
+            evaluation_name: cell.evalName,
+          })
+        }
+      }
     }
   }
 
@@ -75,27 +91,45 @@ export function buildGroupScoreData(evals: EvaluationSummary[]): SlotScoreData[]
 }
 
 export function buildAssetHeatmapData(resp: MetricHeatmapResponse): AssetHeatmapData {
-  const { slots, metrics, cells } = resp
+  const { metrics, cells } = resp
 
-  const cellMap = new Map<string, MetricHeatmapResponse['cells'][0]>()
+  // Build ordered unique columns. Each column is a (slot, evaluationName) pair.
+  const colEntries: Array<{ slot: string; evalName: string }> = []
+  const colKeySet = new Set<string>()
   for (const c of cells) {
-    cellMap.set(`${c.metric}::${c.slot}`, c)
+    const ck = `${c.slot}\0${c.evaluation_name}`
+    if (!colKeySet.has(ck)) {
+      colKeySet.add(ck)
+      colEntries.push({ slot: c.slot, evalName: c.evaluation_name })
+    }
+  }
+  if (colEntries.length === 0) {
+    for (const s of resp.slots) colEntries.push({ slot: s, evalName: '' })
   }
 
+  const slots = colEntries.map(e => e.slot)
   const rows = metrics.map(m => m.display_name)
 
+  // Cell map keyed by metric + slot + evalName
+  const cellMap = new Map<string, MetricHeatmapResponse['cells'][0]>()
+  for (const c of cells) {
+    cellMap.set(`${c.metric}\0${c.slot}\0${c.evaluation_name}`, c)
+  }
+
   const gridCells: HeatmapCell[] = []
-  for (let xi = 0; xi < slots.length; xi++) {
+  for (let xi = 0; xi < colEntries.length; xi++) {
+    const col = colEntries[xi]
     for (let yi = 0; yi < metrics.length; yi++) {
-      const key = `${metrics[yi].name}::${slots[xi]}`
+      const key = `${metrics[yi].name}\0${col.slot}\0${col.evalName}`
       const c = cellMap.get(key)
       gridCells.push({
         value: [xi, yi],
         result: c?.result ?? 'none',
         score: c ? Math.round(c.score) : 0,
-        slot: slots[xi],
+        slot: col.slot,
         rowLabel: metrics[yi].display_name,
         evalId: c?.eval_id,
+        evaluation_name: c?.evaluation_name,
       })
     }
   }

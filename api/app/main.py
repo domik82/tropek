@@ -68,3 +68,13 @@ app.include_router(quality_gate_router)
 async def health() -> dict[str, str]:
     """Return service health status."""
     return {"status": "ok"}
+
+
+@app.get("/config/ui")
+async def ui_config() -> dict[str, int]:
+    """Return UI-facing configuration limits."""
+    settings = get_settings()
+    return {
+        "maxEvaluations": settings.ui.max_evaluations,
+        "pageSize": settings.ui.page_size,
+    }

@@ -6,7 +6,10 @@ import { useEvaluations, useDynamicColumns, useColumnVisibility } from '@/featur
 import { EvaluationHeatmap } from '@/features/evaluations/components/EvaluationHeatmap'
 import { EvaluationTable } from '@/features/evaluations/components/EvaluationTable'
 import { EvaluationHeader } from '@/features/evaluations/components/EvaluationHeader'
+import { TruncationWarning } from '@/features/evaluations/components/TruncationWarning'
 import { TimeRangePicker } from '@/components/TimeRangePicker'
+import { EvaluationNameFilter } from './EvaluationNameFilter'
+import { useEvaluationNames } from '../hooks'
 import { GroupScoreChart } from './GroupScoreChart'
 import { ViewToggle } from '@/components/charts/ViewToggle'
 import type { ViewMode } from '@/components/charts/ViewToggle'
@@ -23,12 +26,18 @@ function prettyGroupName(name: string) {
 export function GroupPanel({ groupName, onSelectAsset }: Props) {
   const [mode, setMode] = useState<ViewMode>('heatmap')
   const [selectedDate, setSelectedDate] = useState<string | null>(null)
+  const [selectedNames, setSelectedNames] = useState<string[] | undefined>(undefined)
 
   const { data: tree } = useAssetGroups()
   const group = tree?.all_groups.find(g => g.name === groupName)
   const groupLabel = group?.display_name ?? prettyGroupName(groupName)
 
-  const { data: evals = [], isLoading } = useEvaluations({ group_name: groupName })
+  const { data: evalNames = [] } = useEvaluationNames(undefined, groupName)
+
+  const { data: evals = [], isLoading, truncated, total } = useEvaluations({
+    group_name: groupName,
+    evaluation_name: selectedNames,
+  })
 
   // Live display name lookups — fallback for evaluations whose snapshot lacks display_name
   const { data: assets } = useAssets()
@@ -58,6 +67,16 @@ export function GroupPanel({ groupName, onSelectAsset }: Props) {
         subtitle={evals.length > 0 ? `${evals.length} evaluations` : undefined}
         toolbar={<TimeRangePicker />}
       />
+
+      {evalNames.length >= 1 && (
+        <EvaluationNameFilter
+          names={evalNames}
+          selected={selectedNames}
+          onChange={setSelectedNames}
+        />
+      )}
+
+      {truncated && <TruncationWarning total={total} />}
 
       {/* Content */}
       {isLoading && <p className="text-sm text-slate-400">Loading…</p>}
