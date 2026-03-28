@@ -31,7 +31,6 @@ function toParams(filters: EvaluationFilters): string {
 
 import { getConfig } from '@/lib/config'
 
-const PAGE_SIZE = 200
 
 export interface EvaluationResult {
   items: EvaluationSummary[]
@@ -44,20 +43,20 @@ export async function fetchEvaluations(
 ): Promise<EvaluationResult> {
   const base = toParams(filters)
   const all: EvaluationSummary[] = []
-  const maxEvaluations = getConfig().maxEvaluations
+  const { maxEvaluations, pageSize } = getConfig()
   let total = 0
   let offset = 0
 
   for (;;) {
-    const qs = `${base}&limit=${PAGE_SIZE}&offset=${offset}`
+    const qs = `${base}&limit=${pageSize}&offset=${offset}`
     const res = await fetch(`${BASE}/evaluations?${qs}`)
     if (!res.ok) throw new Error(`fetchEvaluations: ${res.status}`)
     const data: { items: EvaluationSummary[]; total: number } = await res.json()
     total = data.total
     all.push(...data.items)
-    if (all.length >= data.total || data.items.length < PAGE_SIZE) break
+    if (all.length >= data.total || data.items.length < pageSize) break
     if (all.length >= maxEvaluations) break
-    offset += PAGE_SIZE
+    offset += pageSize
   }
 
   return {
