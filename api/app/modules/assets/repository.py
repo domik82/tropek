@@ -397,10 +397,9 @@ class AssetGroupRepository:
         Returns:
             Updated AssetGroupRead, or None if not found.
         """
-        filtered = {k: v for k, v in kwargs.items() if v is not None}
-        if filtered:
+        if kwargs:
             await self._session.execute(
-                update(AssetGroup).where(AssetGroup.name == name).values(**filtered)
+                update(AssetGroup).where(AssetGroup.name == name).values(**kwargs)
             )
         result = await self._session.execute(select(AssetGroup).where(AssetGroup.name == name))
         group = result.scalar_one_or_none()
