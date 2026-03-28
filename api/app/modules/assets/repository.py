@@ -147,6 +147,7 @@ class AssetRepository:
         *,
         type_name: str = "vm",
         display_name: str | None = None,
+        color: str | None = None,
         tags: dict[str, Any] | None = None,
         variables: dict[str, Any] | None = None,
     ) -> Asset:
@@ -156,6 +157,7 @@ class AssetRepository:
             name: Unique name for this asset.
             type_name: Asset type name (must exist in asset_types).
             display_name: Optional human-readable label.
+            color: Optional hex color string.
             tags: Optional free-form metadata tags.
             variables: Optional template variable bindings.
 
@@ -166,6 +168,7 @@ class AssetRepository:
             id=uuid.uuid4(),
             name=name,
             display_name=display_name,
+            color=color,
             type_name=type_name,
             tags=tags or {},
             variables=variables or {},
