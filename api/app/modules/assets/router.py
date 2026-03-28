@@ -178,6 +178,7 @@ async def create_asset(
         body.name,
         type_name=body.type_name,
         display_name=body.display_name,
+        color=body.color,
         tags=body.tags,
         variables=body.variables,
     )
