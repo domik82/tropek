@@ -14,6 +14,7 @@ import type { ViewMode } from '@/components/charts/ViewToggle'
 import { EvaluationNameFilter } from './EvaluationNameFilter'
 import { AssetPanelHeatmapView } from './AssetPanelHeatmapView'
 import { AssetPanelChartView } from './AssetPanelChartView'
+import { TruncationWarning } from '@/features/evaluations/components/TruncationWarning'
 import { TimeRangePicker } from '@/components/TimeRangePicker'
 
 interface Props {
@@ -59,7 +60,7 @@ export function AssetPanel({ assetName, initialEvalId }: Props) {
 
   const { data: evalNames = [] } = useEvaluationNames(assetName)
 
-  const { data: evals = [], isLoading: evalsLoading } = useAssetEvaluations(assetName, selectedNames)
+  const { data: evals = [], isLoading: evalsLoading, truncated, total } = useAssetEvaluations(assetName, selectedNames)
   const { data: heatmapData, isLoading: heatmapLoading } = useMetricHeatmap(assetName, selectedNames)
 
   // Live display name lookups
@@ -178,6 +179,8 @@ export function AssetPanel({ assetName, initialEvalId }: Props) {
           onChange={setSelectedNames}
         />
       )}
+
+      {truncated && <TruncationWarning total={total} />}
 
       {isLoading && <p className="text-sm text-slate-400">Loading…</p>}
       {!isLoading && evals.length === 0 && (

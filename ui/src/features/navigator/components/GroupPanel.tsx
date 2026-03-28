@@ -6,6 +6,7 @@ import { useEvaluations, useDynamicColumns, useColumnVisibility } from '@/featur
 import { EvaluationHeatmap } from '@/features/evaluations/components/EvaluationHeatmap'
 import { EvaluationTable } from '@/features/evaluations/components/EvaluationTable'
 import { EvaluationHeader } from '@/features/evaluations/components/EvaluationHeader'
+import { TruncationWarning } from '@/features/evaluations/components/TruncationWarning'
 import { TimeRangePicker } from '@/components/TimeRangePicker'
 import { EvaluationNameFilter } from './EvaluationNameFilter'
 import { useEvaluationNames } from '../hooks'
@@ -33,7 +34,7 @@ export function GroupPanel({ groupName, onSelectAsset }: Props) {
 
   const { data: evalNames = [] } = useEvaluationNames(undefined, groupName)
 
-  const { data: evals = [], isLoading } = useEvaluations({
+  const { data: evals = [], isLoading, truncated, total } = useEvaluations({
     group_name: groupName,
     evaluation_name: selectedNames,
   })
@@ -74,6 +75,8 @@ export function GroupPanel({ groupName, onSelectAsset }: Props) {
           onChange={setSelectedNames}
         />
       )}
+
+      {truncated && <TruncationWarning total={total} />}
 
       {/* Content */}
       {isLoading && <p className="text-sm text-slate-400">Loading…</p>}

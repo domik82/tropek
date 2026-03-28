@@ -30,12 +30,20 @@ function toParams(filters: EvaluationFilters): string {
 }
 
 const PAGE_SIZE = 200
+export const MAX_EVALUATIONS = 1000
+
+export interface EvaluationResult {
+  items: EvaluationSummary[]
+  total: number
+  truncated: boolean
+}
 
 export async function fetchEvaluations(
   filters: EvaluationFilters = {}
-): Promise<EvaluationSummary[]> {
+): Promise<EvaluationResult> {
   const base = toParams(filters)
   const all: EvaluationSummary[] = []
+  let total = 0
   let offset = 0
 
   for (;;) {
@@ -43,12 +51,18 @@ export async function fetchEvaluations(
     const res = await fetch(`${BASE}/evaluations?${qs}`)
     if (!res.ok) throw new Error(`fetchEvaluations: ${res.status}`)
     const data: { items: EvaluationSummary[]; total: number } = await res.json()
+    total = data.total
     all.push(...data.items)
     if (all.length >= data.total || data.items.length < PAGE_SIZE) break
+    if (all.length >= MAX_EVALUATIONS) break
     offset += PAGE_SIZE
   }
 
-  return all
+  return {
+    items: all.slice(0, MAX_EVALUATIONS),
+    total,
+    truncated: total > MAX_EVALUATIONS,
+  }
 }
 
 export async function fetchEvaluationDetail(id: string): Promise<EvaluationDetail> {
