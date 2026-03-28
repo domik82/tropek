@@ -24,7 +24,7 @@ class TrendRepository:
         self,
         *,
         asset_id: uuid.UUID,
-        limit: int = 20,
+        limit: int = 500,
         evaluation_name: list[str] | None = None,
         from_ts: datetime | None = None,
         to_ts: datetime | None = None,

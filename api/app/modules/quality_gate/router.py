@@ -130,7 +130,7 @@ async def get_metric_heatmap(
     evaluation_name: list[str] | None = Query(default=None),  # noqa: B008
     from_ts: datetime | None = Query(default=None, alias="from"),  # noqa: B008
     to_ts: datetime | None = Query(default=None, alias="to"),  # noqa: B008
-    limit: int = 20,
+    limit: int = 500,
     repos: QualityGateRepos = Depends(get_qg_repos),  # noqa: B008
 ) -> MetricHeatmapResponse:
     """Return a metric x evaluation heatmap grid for an asset."""
