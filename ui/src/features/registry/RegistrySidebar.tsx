@@ -1,6 +1,7 @@
 import { useState, useMemo, useRef, useEffect } from 'react'
 import { useQueries } from '@tanstack/react-query'
 import { Plus } from 'lucide-react'
+import { TreeFilter } from '@/components/tree'
 import { ENTITY_COLORS } from '@/lib/entity-colors'
 import { SANS_SERIF } from '@/lib/fonts'
 import { groupKeys } from '@/lib/queryKeys'
@@ -127,8 +128,18 @@ export function RegistrySidebar({ mode, onModeChange, selected, onSelect, onCrea
         ))}
       </div>
 
-      {/* Search + tag filter */}
-      <div className="mt-2">
+      {/* Search filter */}
+      <div className="px-2 pt-2">
+        <TreeFilter
+          value={search}
+          onChange={setSearch}
+          placeholder="Filter..."
+          resultCount={search ? filteredNodes.length : undefined}
+        />
+      </div>
+
+      {/* Tag filter */}
+      <div className="mt-1">
         <TagFilterBar
           search={search}
           onSearchChange={setSearch}
@@ -139,6 +150,7 @@ export function RegistrySidebar({ mode, onModeChange, selected, onSelect, onCrea
           onTagKeySelected={setPendingTagKey}
           isLoadingKeys={isLoadingKeys}
           isLoadingValues={isLoadingValues}
+          hideSearch
         />
       </div>
 
