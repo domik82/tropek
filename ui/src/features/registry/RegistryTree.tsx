@@ -1,10 +1,11 @@
 import { useState } from 'react'
-import { ChevronRight, ChevronDown } from 'lucide-react'
+import { TreeNode } from '@/components/tree'
+import { getEntityIcon, getAssetTypeIcon } from '@/components/tree'
 import { NODE_TYPE_COLORS } from '@/lib/entity-colors'
-import type { TreeNode, SelectedNode } from './types'
+import type { TreeNode as TreeNodeData, SelectedNode } from './types'
 
 interface Props {
-  nodes: TreeNode[]
+  nodes: TreeNodeData[]
   selected: SelectedNode | null
   onSelect: (node: SelectedNode) => void
 }
@@ -27,7 +28,7 @@ export function RegistryTree({ nodes, selected, onSelect }: Props) {
       style={{ fontFamily: "system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" }}
     >
       {nodes.map(node => (
-        <TreeNodeRow
+        <RegistryNodeRow
           key={node.id}
           node={node}
           depth={0}
@@ -44,16 +45,25 @@ export function RegistryTree({ nodes, selected, onSelect }: Props) {
   )
 }
 
-function TreeNodeRow({
-  node,
-  depth,
-  expanded,
-  onToggle,
-  selected,
-  onSelect,
-  parentGroupName,
+function getIconForNode(node: TreeNodeData) {
+  if (node.type === 'asset') return getAssetTypeIcon('vm')
+  return getEntityIcon(node.type)
+}
+
+function getColorForNode(node: TreeNodeData) {
+  return NODE_TYPE_COLORS[node.type] ?? '#c9d1d9'
+}
+
+function getBadgeForNode(node: TreeNodeData): { type: 'count' | 'version'; value: string | number } | undefined {
+  if (!node.badge) return undefined
+  if (node.badge.startsWith('v')) return { type: 'version', value: node.badge }
+  return { type: 'count', value: node.badge }
+}
+
+function RegistryNodeRow({
+  node, depth, expanded, onToggle, selected, onSelect, parentGroupName,
 }: {
-  node: TreeNode
+  node: TreeNodeData
   depth: number
   expanded: Set<string>
   onToggle: (id: string) => void
@@ -64,66 +74,38 @@ function TreeNodeRow({
   const hasChildren = node.children && node.children.length > 0
   const isExpanded = expanded.has(node.id)
   const isSelected = selected?.type === node.type && selected?.name === node.name
-  const color = NODE_TYPE_COLORS[node.type] ?? '#c9d1d9'
-
-  // Track group context: if this node IS a group, children inherit its name
+  const color = getColorForNode(node)
   const groupContext = node.type === 'group' ? node.name : parentGroupName
 
   return (
     <>
-      <div
-        data-testid={`node-${node.id}`}
-        data-selected={isSelected ? 'true' : 'false'}
-        className="flex items-center gap-1 px-2 py-1 cursor-pointer transition-colors hover:bg-accent/50"
-        style={{
-          paddingLeft: `${8 + depth * 16}px`,
-          ...(isSelected ? { backgroundColor: `${color}12`, borderLeft: `2px solid ${color}` } : {}),
-        }}
-      >
-        {hasChildren ? (
-          <button
-            data-testid={`toggle-${node.id}`}
-            aria-expanded={isExpanded}
-            aria-label={`Toggle ${node.name}`}
-            onClick={e => {
-              e.stopPropagation()
-              onToggle(node.id)
-            }}
-            className="shrink-0 p-0.5 text-muted-foreground hover:text-foreground"
-          >
-            {isExpanded ? <ChevronDown className="size-3" /> : <ChevronRight className="size-3" />}
-          </button>
-        ) : (
-          <span className="shrink-0 w-4" />
-        )}
-
-        <button
-          onClick={() => onSelect({ type: node.type, name: node.name, groupName: groupContext })}
-          className="flex-1 text-left text-xs truncate"
-          style={{ color }}
-        >
-          {node.displayName ?? node.name}
-        </button>
-
-        {node.badge && (
-          <span className="shrink-0 text-[10px] text-muted-foreground">{node.badge}</span>
-        )}
-      </div>
-
-      {hasChildren &&
-        isExpanded &&
-        node.children!.map(child => (
-          <TreeNodeRow
-            key={child.id}
-            node={child}
-            depth={depth + 1}
-            expanded={expanded}
-            onToggle={onToggle}
-            selected={selected}
-            onSelect={onSelect}
-            parentGroupName={groupContext}
-          />
-        ))}
+      <TreeNode
+        testId={`node-${node.id}`}
+        icon={getIconForNode(node)}
+        iconColor={color}
+        label={node.displayName ?? node.name}
+        depth={depth}
+        isExpandable={!!hasChildren}
+        isExpanded={isExpanded}
+        isSelected={isSelected}
+        selectionColor={color}
+        isGroup={node.type === 'group'}
+        badge={getBadgeForNode(node)}
+        onClick={() => onSelect({ type: node.type, name: node.name, groupName: groupContext })}
+        onToggle={() => onToggle(node.id)}
+      />
+      {hasChildren && isExpanded && node.children!.map(child => (
+        <RegistryNodeRow
+          key={child.id}
+          node={child}
+          depth={depth + 1}
+          expanded={expanded}
+          onToggle={onToggle}
+          selected={selected}
+          onSelect={onSelect}
+          parentGroupName={groupContext}
+        />
+      ))}
     </>
   )
 }

@@ -22,7 +22,7 @@ describe('RegistryTree', () => {
 
   it('expands node on toggle click to show children', () => {
     render(<RegistryTree nodes={nodes} selected={null} onSelect={vi.fn()} />)
-    fireEvent.click(screen.getByTestId('toggle-slo:http-slo'))
+    fireEvent.click(screen.getByLabelText('Toggle http-slo'))
     expect(screen.getByText('http-sli')).toBeInTheDocument()
   })
 
@@ -30,7 +30,7 @@ describe('RegistryTree', () => {
     const onSelect = vi.fn()
     render(<RegistryTree nodes={nodes} selected={null} onSelect={onSelect} />)
     fireEvent.click(screen.getByText('http-slo'))
-    expect(onSelect).toHaveBeenCalledWith({ type: 'slo', name: 'http-slo' })
+    expect(onSelect).toHaveBeenCalledWith({ type: 'slo', name: 'http-slo', groupName: undefined })
   })
 
   it('highlights selected node', () => {
