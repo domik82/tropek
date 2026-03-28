@@ -126,6 +126,8 @@ export function AssetPanel({ assetName, initialEvalId }: Props) {
         titleMono
         result={displayResult}
         score={score}
+        passPct={ev?.total_score_pass_pct}
+        warningPct={ev?.total_score_warning_pct}
         toolbar={<TimeRangePicker />}
         metadata={hasEvals && ev ? (
           <>

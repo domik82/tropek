@@ -16,6 +16,10 @@ interface Props {
   score?: number
   /** Color the score with the result color. False → foreground color. */
   scoreColored?: boolean
+  /** SLO pass threshold — shown next to the score (e.g. "pass ≥90%") */
+  passPct?: number | null
+  /** SLO warning threshold — shown next to the score (e.g. "warn ≥75%") */
+  warningPct?: number | null
   /** Metadata lines rendered below the title (asset info, SLO, etc.) */
   metadata?: ReactNode
   /** Toolbar rendered in right column, before noteButton/actions (e.g. time range picker) */
@@ -33,6 +37,8 @@ export function EvaluationHeader({
   result,
   score,
   scoreColored = true,
+  passPct,
+  warningPct,
   metadata,
   toolbar,
   noteButton,
@@ -71,7 +77,18 @@ export function EvaluationHeader({
             >
               {score % 1 === 0 ? `${score}%` : `${score.toFixed(1)}%`}
             </div>
-            <div className="text-xs text-slate-500 mt-0.5">total score</div>
+            {(passPct != null || warningPct != null) ? (
+              <div className="flex items-center justify-center gap-3 text-[11px] mt-1">
+                {passPct != null && (
+                  <span className="text-pass">pass ≥{passPct}%</span>
+                )}
+                {warningPct != null && (
+                  <span className="text-warning">warn ≥{warningPct}%</span>
+                )}
+              </div>
+            ) : (
+              <div className="text-xs text-slate-500 mt-0.5">total score</div>
+            )}
           </>
         )}
       </div>
