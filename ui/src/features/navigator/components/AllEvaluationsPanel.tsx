@@ -6,6 +6,7 @@ import { useEvaluations, useDynamicColumns, useColumnVisibility } from '@/featur
 import { EvaluationHeatmap } from '@/features/evaluations/components/EvaluationHeatmap'
 import { EvaluationTable } from '@/features/evaluations/components/EvaluationTable'
 import { EvaluationHeader } from '@/features/evaluations/components/EvaluationHeader'
+import { TruncationWarning } from '@/features/evaluations/components/TruncationWarning'
 import { EvaluationNameFilter } from './EvaluationNameFilter'
 import { useEvaluationNames } from '../hooks'
 import { TimeRangePicker } from '@/components/TimeRangePicker'
@@ -20,7 +21,7 @@ export function AllEvaluationsPanel({ onSelectAsset }: Props) {
 
   const { data: evalNames = [] } = useEvaluationNames()
 
-  const { data: evals = [], isLoading } = useEvaluations({
+  const { data: evals = [], isLoading, truncated, total } = useEvaluations({
     evaluation_name: selectedNames,
   })
 
@@ -70,6 +71,8 @@ export function AllEvaluationsPanel({ onSelectAsset }: Props) {
           onChange={setSelectedNames}
         />
       )}
+
+      {truncated && <TruncationWarning total={total} />}
 
       {isLoading && <p className="text-sm text-slate-400">Loading…</p>}
       {!isLoading && evals.length === 0 && (

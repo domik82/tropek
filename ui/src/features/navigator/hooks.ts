@@ -11,11 +11,17 @@ export function useAssetEvaluations(assetName: string | undefined, evaluationNam
     from,
     ...(to ? { to } : {}),
   }
-  return useQuery({
+  const query = useQuery({
     queryKey: evaluationKeys.list(filters),
     queryFn: () => fetchEvaluations(filters),
     enabled: !!assetName,
   })
+  return {
+    ...query,
+    data: query.data?.items,
+    truncated: query.data?.truncated ?? false,
+    total: query.data?.total ?? 0,
+  }
 }
 
 export function useMetricHeatmap(assetName: string | undefined, evaluationNames?: string[]) {
