@@ -21,6 +21,8 @@ export function EvaluationSummaryCard({ evaluation: ev, onAddNote, actions, asse
       title={ev.evaluation_name}
       result={displayResult}
       score={ev.score}
+      passPct={ev.total_score_pass_pct}
+      warningPct={ev.total_score_warning_pct}
       noteButton={
         onAddNote && !ev.invalidated ? (
           <NoteIconButton onClick={onAddNote} annotationCount={ev.annotations.length} />
