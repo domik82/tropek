@@ -510,7 +510,7 @@ class EvaluationRepository:
         )
         if asset_id is not None:
             stmt = stmt.where(Evaluation.asset_id == asset_id)
-        if asset_ids is not None:
+        if asset_ids:
             stmt = stmt.where(Evaluation.asset_id.in_(asset_ids))
         rows = (await self._session.execute(stmt)).all()
         return [(r.evaluation_name, r.cnt, r.last_run) for r in rows]
