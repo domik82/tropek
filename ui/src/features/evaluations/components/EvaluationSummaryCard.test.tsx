@@ -34,6 +34,8 @@ function makeEvaluation(overrides: Partial<EvaluationDetail> = {}): EvaluationDe
     compared_evaluation_ids: [],
     annotations: [],
     indicator_results: [],
+    total_score_pass_pct: 90,
+    total_score_warning_pct: 75,
     latest_annotation: undefined,
     annotation_count: 0,
     created_at: '2026-03-15T10:30:00Z',

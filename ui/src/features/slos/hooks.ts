@@ -6,7 +6,7 @@ import {
   fetchGroupTree, createGroup, updateGroup, deleteGroup,
   addSubgroup, fetchSloTagKeys, fetchSloTagValues,
   fetchAssetSloBindings, fetchGroupSloBindings,
-  createAssetSloBinding, createGroupSloBinding, deleteGroupSloBinding,
+  createGroupSloBinding, deleteGroupSloBinding,
 } from './api'
 
 export function useSlos() {

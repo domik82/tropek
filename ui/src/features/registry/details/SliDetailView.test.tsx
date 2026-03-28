@@ -46,6 +46,9 @@ const mockSlos: SloDefinition[] = [
     notes: null,
     tags: {},
     variables: {},
+    kind: 'standard',
+    sli_name: null,
+    sli_version: null,
     created_at: '2024-01-01T00:00:00Z',
     active: true,
     objectives: [
@@ -73,6 +76,9 @@ const mockSlos: SloDefinition[] = [
     notes: null,
     tags: {},
     variables: {},
+    kind: 'standard',
+    sli_name: null,
+    sli_version: null,
     created_at: '2024-01-01T00:00:00Z',
     active: true,
     objectives: [
