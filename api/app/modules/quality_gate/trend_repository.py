@@ -81,7 +81,7 @@ class TrendRepository:
                 Evaluation.period_start,
                 SLIValue.value,
                 SLIValue.eval_id,
-                Evaluation.result,
+                IndicatorResultRow.status.label("result"),
                 IndicatorResultRow.compared_value,
                 IndicatorResultRow.score,
                 total_weight_sq,
