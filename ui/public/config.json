@@ -1,3 +1,4 @@
 {
-  "maxEvaluations": 1000
+  "maxEvaluations": 1000,
+  "pageSize": 200
 }

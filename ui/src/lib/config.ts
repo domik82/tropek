@@ -1,9 +1,11 @@
 interface UIConfig {
   maxEvaluations: number
+  pageSize: number
 }
 
 const DEFAULTS: UIConfig = {
   maxEvaluations: 1000,
+  pageSize: 200,
 }
 
 let config: UIConfig = DEFAULTS
