@@ -17,7 +17,6 @@ interface AssetTreeNodeProps {
   expandedGroups: Set<string>
   renamingGroup: string | null
   sloLinkCounts?: Map<string, number>
-  isLastChild: boolean
   onToggleExpand: (name: string) => void
   onSelectGroup: (name: string) => void
   onSelectAsset?: (name: string, groupName: string) => void
@@ -49,7 +48,7 @@ function matchesFilter(group: AssetGroup, tree: AssetGroupTree, filter: string, 
 
 export function AssetTreeNode({
   group, tree, mode, depth, filter, selectedGroup, selectedAsset,
-  expandedGroups, renamingGroup, sloLinkCounts, isLastChild,
+  expandedGroups, renamingGroup, sloLinkCounts,
   onToggleExpand, onSelectGroup, onSelectAsset, onOpenContextMenu,
   onStartRename, onFinishRename, onCancelRename,
 }: AssetTreeNodeProps) {
@@ -143,7 +142,6 @@ export function AssetTreeNode({
               expandedGroups={expandedGroups}
               renamingGroup={renamingGroup}
               sloLinkCounts={sloLinkCounts}
-              isLastChild={i === subgroups.length - 1 && filteredMembers.length === 0}
               onToggleExpand={onToggleExpand}
               onSelectGroup={onSelectGroup}
               onSelectAsset={onSelectAsset}
