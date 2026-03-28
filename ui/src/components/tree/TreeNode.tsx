@@ -90,7 +90,6 @@ export function TreeNode({
         className={`text-[14px] truncate flex-1 leading-4 ${
           isGroup ? 'font-semibold' : 'font-normal'
         }`}
-        style={{ color: isSelected ? selectionColor : undefined }}
       >
         {label}
       </span>

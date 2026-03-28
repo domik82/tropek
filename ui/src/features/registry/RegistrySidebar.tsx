@@ -26,7 +26,7 @@ interface Props {
   mode: RegistryMode
   onModeChange: (mode: RegistryMode) => void
   selected: SelectedNode | null
-  onSelect: (node: SelectedNode) => void
+  onSelect: (node: SelectedNode | null) => void
   onCreateAction: (type: 'datasource' | 'sli' | 'slo' | 'group', context?: { adapterType?: string }) => void
 }
 
@@ -166,7 +166,7 @@ export function RegistrySidebar({ mode, onModeChange, selected, onSelect, onCrea
           isSelected={!selected}
           selectionColor="var(--primary)"
           isGroup
-          onClick={() => onSelect(null as unknown as SelectedNode)}
+          onClick={() => onSelect(null)}
         />
         <div className="mx-3 my-1 border-t border-border/50" />
       </div>

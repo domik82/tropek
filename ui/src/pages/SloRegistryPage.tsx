@@ -75,12 +75,16 @@ export function SloRegistryPage() {
   )
 
   const handleSelect = useCallback(
-    (node: SelectedNode) => {
-      updateParams({
-        selected: node.name,
-        type: node.type,
-        group: node.groupName ?? null,
-      })
+    (node: SelectedNode | null) => {
+      if (node) {
+        updateParams({
+          selected: node.name,
+          type: node.type,
+          group: node.groupName ?? null,
+        })
+      } else {
+        updateParams({ selected: null, type: null, group: null })
+      }
       setWizardOpen(false)
     },
     [updateParams],
