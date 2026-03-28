@@ -31,7 +31,7 @@ export interface MinBinding {
 export interface MinGroup {
   name: string
   display_name?: string | null
-  members?: { asset_name: string }[]
+  members?: { asset_name: string; asset_type_name?: string }[]
   subgroups?: { group_id: string; group_name: string }[]
 }
 
@@ -215,6 +215,7 @@ export function buildAssetTree(
         id: `asset:${member.asset_name}`,
         name: member.asset_name,
         type: 'asset' as const,
+        assetTypeName: member.asset_type_name,
         groupName: group.name,
         children: sloChildren.length > 0 ? sloChildren : undefined,
       }
