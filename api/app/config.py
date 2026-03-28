@@ -154,6 +154,13 @@ class EvaluationSettings(BaseSettings):
     async_threshold_metrics: int = _yaml.get("evaluation", {}).get("async_threshold_metrics", 10)
 
 
+class UISettings(BaseSettings):
+    """UI-facing limits served via GET /config/ui."""
+
+    max_evaluations: int = _yaml.get("ui", {}).get("max_evaluations", 1000)
+    page_size: int = _yaml.get("ui", {}).get("page_size", 200)
+
+
 class FileIngestionSettings(BaseSettings):
     """File-mode ingestion security and size limits."""
 
@@ -214,6 +221,11 @@ class Settings(BaseSettings):
     def evaluation(self) -> EvaluationSettings:
         """Evaluation job behaviour settings."""
         return EvaluationSettings()
+
+    @property
+    def ui(self) -> UISettings:
+        """UI-facing configuration."""
+        return UISettings()
 
     @property
     def file_ingestion(self) -> FileIngestionSettings:
