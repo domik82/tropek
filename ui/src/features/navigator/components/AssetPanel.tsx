@@ -171,7 +171,7 @@ export function AssetPanel({ assetName, initialEvalId }: Props) {
         />
       )}
 
-      {evalNames.length > 1 && (
+      {evalNames.length >= 1 && (
         <EvaluationNameFilter
           names={evalNames}
           selected={selectedNames}

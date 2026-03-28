@@ -67,7 +67,7 @@ export function GroupPanel({ groupName, onSelectAsset }: Props) {
         toolbar={<TimeRangePicker />}
       />
 
-      {evalNames.length > 1 && (
+      {evalNames.length >= 1 && (
         <EvaluationNameFilter
           names={evalNames}
           selected={selectedNames}
