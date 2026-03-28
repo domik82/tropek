@@ -14,6 +14,7 @@ export interface Asset {
   type_name: string
   tags: Record<string, string>
   variables: Record<string, string>
+  color?: string | null
   created_at: string
   updated_at: string
 }
@@ -22,6 +23,7 @@ export interface AssetGroupMember {
   asset_id: string
   asset_name: string
   asset_display_name?: string | null
+  asset_type_name?: string
   weight: number
 }
 
@@ -36,6 +38,7 @@ export interface AssetGroup {
   name: string
   display_name?: string
   description?: string
+  color?: string | null
   members: AssetGroupMember[]
   subgroups: AssetGroupSubgroup[]
 }
