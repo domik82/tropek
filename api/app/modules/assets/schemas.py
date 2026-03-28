@@ -46,6 +46,7 @@ class AssetCreate(BaseModel):
     type_name: str
     tags: dict[str, str] = {}
     variables: dict[str, str] = {}
+    color: str | None = None
 
 
 class AssetUpdate(BaseModel):
@@ -56,6 +57,7 @@ class AssetUpdate(BaseModel):
     tags: dict[str, str] | None = None
     variables: dict[str, str] | None = None
     heatmap_config: dict[str, Any] | None = None
+    color: str | None = None
 
 
 class TagKeyCount(BaseModel):
@@ -82,6 +84,7 @@ class AssetRead(BaseModel):
     tags: dict[str, Any]
     variables: dict[str, Any]
     heatmap_config: dict[str, Any] | None = None
+    color: str | None = None
     created_at: datetime
     updated_at: datetime
 
@@ -111,6 +114,7 @@ class AssetGroupCreate(BaseModel):
     name: str
     display_name: str | None = None
     description: str | None = None
+    color: str | None = None
     members: list[AssetGroupMemberCreate] = []
     subgroups: list[AssetGroupSubgroupCreate] = []
 
@@ -120,6 +124,7 @@ class AssetGroupUpdate(BaseModel):
 
     display_name: str | None = None
     description: str | None = None
+    color: str | None = None
 
 
 class AssetGroupMemberRead(BaseModel):
@@ -128,6 +133,7 @@ class AssetGroupMemberRead(BaseModel):
     asset_id: uuid.UUID
     asset_name: str
     asset_display_name: str | None = None
+    asset_type_name: str = "vm"
     weight: float
 
 
@@ -146,6 +152,7 @@ class AssetGroupRead(BaseModel):
     name: str
     display_name: str | None
     description: str | None
+    color: str | None = None
     members: list[AssetGroupMemberRead]
     subgroups: list[AssetGroupSubgroupRead]
     created_at: datetime

@@ -387,6 +387,7 @@ async def create_asset_group(
         body.name,
         display_name=body.display_name,
         description=body.description,
+        color=body.color,
         members=body.members,
         subgroups=body.subgroups,
     )

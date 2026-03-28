@@ -68,6 +68,7 @@ class Asset(Base):
     tags:           Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, server_default=text("'{}'"), default=dict)
     variables:      Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, server_default=text("'{}'"), default=dict)
     heatmap_config: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
+    color:          Mapped[str | None]    = mapped_column(Text, nullable=True)
     created_at:   Mapped[datetime]       = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at:   Mapped[datetime]       = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
     # fmt: on
@@ -88,6 +89,7 @@ class AssetGroup(Base):
     name:         Mapped[str]        = mapped_column(Text, unique=True, nullable=False)
     display_name: Mapped[str | None] = mapped_column(Text, nullable=True)
     description:  Mapped[str | None] = mapped_column(Text, nullable=True)
+    color:        Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at:   Mapped[datetime]   = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at:   Mapped[datetime]   = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
 

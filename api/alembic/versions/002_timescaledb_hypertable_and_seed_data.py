@@ -33,7 +33,8 @@ def upgrade() -> None:
             (gen_random_uuid(), 'service',   false),
             (gen_random_uuid(), 'database',  false),
             (gen_random_uuid(), 'container', false),
-            (gen_random_uuid(), 'endpoint',  false)
+            (gen_random_uuid(), 'endpoint',  false),
+            (gen_random_uuid(), 'load-test', false)
         ON CONFLICT (name) DO NOTHING
     """)
 
@@ -43,7 +44,7 @@ def downgrade() -> None:
     # Remove seeded rows (leaves user-created types untouched).
     op.execute("""
         DELETE FROM asset_types
-        WHERE name IN ('vm', 'service', 'database', 'container', 'endpoint')
+        WHERE name IN ('vm', 'service', 'database', 'container', 'endpoint', 'load-test')
     """)
     # TimescaleDB hypertables cannot be converted back to plain tables;
     # the table itself is dropped with the schema in migration 1 downgrade.
