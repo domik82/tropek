@@ -20,10 +20,11 @@ export function useAssetEvaluations(assetName: string | undefined, evaluationNam
 
 export function useMetricHeatmap(assetName: string | undefined, evaluationNames?: string[]) {
   const { from, to } = useTimeRange()
-  const timeFilters = { from, ...(to ? { to } : {}), evaluation_name: evaluationNames }
+  const timeFilters = { from, ...(to ? { to } : {}) }
+  const fetchFilters = { ...timeFilters, evaluation_name: evaluationNames }
   return useQuery({
     queryKey: evaluationKeys.heatmap(assetName!, timeFilters, evaluationNames),
-    queryFn: () => fetchMetricHeatmap(assetName!, timeFilters),
+    queryFn: () => fetchMetricHeatmap(assetName!, fetchFilters),
     enabled: !!assetName,
   })
 }

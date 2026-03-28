@@ -680,6 +680,7 @@ export function getMetricHeatmap(assetName: string): MetricHeatmapResponse {
         result: ev.invalidated ? 'invalidated' : ind.status,
         score: ind.score,
         eval_id: ev.id,
+        evaluation_name: ev.evaluation_name,
       })
     }
   }
