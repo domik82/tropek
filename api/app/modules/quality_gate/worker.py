@@ -19,7 +19,8 @@ from app.modules.quality_gate.engine.criteria import aggregate_values
 from app.modules.quality_gate.engine.evaluator import evaluate
 from app.modules.quality_gate.engine.slo_models import SLO
 from app.modules.quality_gate.engine.slo_parser import build_slo
-from app.modules.quality_gate.engine.variables import build_variables, substitute_variables
+from app.modules.quality_gate.engine.variables import substitute_variables
+from app.modules.quality_gate.evaluation_helpers import build_eval_variables as _build_eval_variables_shared
 from app.modules.quality_gate.indicator_repository import IndicatorRepository
 from app.modules.quality_gate.repository import EvaluationRepository
 from app.modules.quality_gate.sli_repository import SLIValueRepository
@@ -119,24 +120,16 @@ def _build_eval_variables(
 
     Merge priority: reserved < asset.variables < asset.tags < slo.variables < eval.variables.
     """
-    variables = build_variables(
-        metadata={},
-        asset_name=asset_snapshot.get("name"),
+    return _build_eval_variables_shared(
+        asset_name=asset_snapshot.get('name'),
         evaluation_name=ev.evaluation_name,
         start=ev.period_start.isoformat(),
         end=ev.period_end.isoformat(),
+        asset_variables=asset_snapshot.get('variables'),
+        asset_tags=asset_snapshot.get('tags'),
+        slo_variables=slo_def.variables,
+        eval_variables=ev.variables,
     )
-    # Low priority: identity bindings from asset (setdefault = won't overwrite reserved)
-    for k, v in (asset_snapshot.get("variables") or {}).items():
-        variables.setdefault(k, str(v))
-    for k, v in (asset_snapshot.get("tags") or {}).items():
-        variables.setdefault(k, str(v))
-    # High priority: SLO and per-run overrides (direct assignment = overwrites everything)
-    for k, v in (slo_def.variables or {}).items():
-        variables[k] = str(v)
-    for k, v in (ev.variables or {}).items():
-        variables[k] = str(v)
-    return variables
 
 
 async def _query_adapter_safe(
