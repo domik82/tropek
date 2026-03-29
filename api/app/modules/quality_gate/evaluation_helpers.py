@@ -1,0 +1,48 @@
+"""Shared helper functions for evaluation workflows.
+
+Used by both the async worker and the SLO test-run service.
+"""
+
+from __future__ import annotations
+
+from app.modules.quality_gate.engine.variables import build_variables
+
+
+def build_eval_variables(
+    *,
+    asset_name: str | None,
+    evaluation_name: str,
+    start: str,
+    end: str,
+    asset_variables: dict[str, object] | None,
+    asset_tags: dict[str, object] | None,
+    slo_variables: dict[str, object] | None,
+    eval_variables: dict[str, object] | None,
+) -> dict[str, str]:
+    """Build merged variables for query substitution.
+
+    Merge priority (lowest → highest):
+      reserved < asset.variables < asset.tags < slo.variables < eval.variables
+    """
+    variables = build_variables(
+        metadata={},
+        asset_name=asset_name,
+        evaluation_name=evaluation_name,
+        start=start,
+        end=end,
+    )
+    # Add TROPEK-prefixed reserved vars for use in queries
+    if asset_name:
+        variables['TROPEK_ASSET'] = asset_name
+    variables['TROPEK_EVALUATION'] = evaluation_name
+    # Low priority: identity bindings from asset (setdefault = won't overwrite reserved)
+    for k, v in (asset_variables or {}).items():
+        variables.setdefault(k, str(v))
+    for k, v in (asset_tags or {}).items():
+        variables.setdefault(k, str(v))
+    # High priority: SLO and per-run overrides (direct assignment = overwrites everything)
+    for k, v in (slo_variables or {}).items():
+        variables[k] = str(v)
+    for k, v in (eval_variables or {}).items():
+        variables[k] = str(v)
+    return variables
