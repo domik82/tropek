@@ -151,8 +151,7 @@ async def _query_adapter_safe(
     """Query adapter, mark failed on error. Returns None if query failed."""
     # Wrap bare query strings into v2 raw-mode query specs
     query_specs: dict[str, dict] = {
-        name: {"mode": "raw", "query": query}
-        for name, query in resolved_queries.items()
+        name: {"mode": "raw", "query": query} for name, query in resolved_queries.items()
     }
     try:
         adapter_client = HttpAdapterClient(

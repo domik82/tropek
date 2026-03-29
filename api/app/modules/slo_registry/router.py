@@ -43,7 +43,7 @@ async def list_slo_definitions(
     tag_key: str | None = None,
     tag_val: str | None = None,
     kind: str | None = None,
-    session: AsyncSession = Depends(get_session),  # noqa: B008
+    session: AsyncSession = Depends(get_session),
 ) -> PagedResponse[SLODefinitionRead]:
     """List all active SLO definitions."""
     repo = SLORepository(session)
@@ -56,7 +56,7 @@ async def list_slo_definitions(
 @router.post("/slo-definitions", response_model=SLODefinitionRead, status_code=201)
 async def create_slo_definition(
     body: SLODefinitionCreate,
-    session: AsyncSession = Depends(get_session),  # noqa: B008
+    session: AsyncSession = Depends(get_session),
 ) -> SLODefinitionRead:
     """Create a new SLO definition (or a new version if name already exists)."""
     if body.sli_name is not None:
@@ -151,7 +151,7 @@ async def validate_slo(body: SLOValidateRequest) -> SLOValidationResult:  # noqa
 @router.post("/slo-definitions/test", response_model=SLOTestResult)
 async def test_slo(  # noqa: C901
     body: SLOTestRequest,
-    session: AsyncSession = Depends(get_session),  # noqa: B008, PT028
+    session: AsyncSession = Depends(get_session),  # noqa: PT028
 ) -> SLOTestResult:
     """Dry-run SLO evaluation — fetch metrics, evaluate, return result without persisting."""
     # 1. Build SLO model from structured request
@@ -303,7 +303,7 @@ async def test_slo(  # noqa: C901
 
 @router.get("/slo-definitions/tag-keys", response_model=list[TagKeyCount])
 async def get_slo_tag_keys(
-    session: AsyncSession = Depends(get_session),  # noqa: B008
+    session: AsyncSession = Depends(get_session),
 ) -> list[TagKeyCount]:
     """Return distinct tag keys with usage counts."""
     repo = SLORepository(session)
@@ -314,7 +314,7 @@ async def get_slo_tag_keys(
 @router.get("/slo-definitions/tag-values", response_model=list[TagValueCount])
 async def get_slo_tag_values(
     key: str = Query(...),
-    session: AsyncSession = Depends(get_session),  # noqa: B008
+    session: AsyncSession = Depends(get_session),
 ) -> list[TagValueCount]:
     """Return distinct tag values for a key with usage counts."""
     repo = SLORepository(session)
@@ -325,7 +325,7 @@ async def get_slo_tag_values(
 @router.get("/slo-definitions/{name}", response_model=SLODefinitionRead)
 async def get_slo_definition(
     name: str,
-    session: AsyncSession = Depends(get_session),  # noqa: B008
+    session: AsyncSession = Depends(get_session),
 ) -> SLODefinitionRead:
     """Get the latest active version of an SLO definition."""
     repo = SLORepository(session)
@@ -338,7 +338,7 @@ async def get_slo_definition(
 @router.get("/slo-definitions/{name}/versions", response_model=list[SLODefinitionRead])
 async def list_slo_versions(
     name: str,
-    session: AsyncSession = Depends(get_session),  # noqa: B008
+    session: AsyncSession = Depends(get_session),
 ) -> list[SLODefinitionRead]:
     """List all versions of an SLO definition."""
     repo = SLORepository(session)
@@ -349,7 +349,7 @@ async def list_slo_versions(
 @router.delete("/slo-definitions/{name}", status_code=204)
 async def delete_slo_definition(
     name: str,
-    session: AsyncSession = Depends(get_session),  # noqa: B008
+    session: AsyncSession = Depends(get_session),
 ) -> None:
     """Deactivate all versions of an SLO definition."""
     repo = SLORepository(session)

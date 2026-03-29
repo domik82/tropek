@@ -85,7 +85,10 @@ async def sync_query(
     """Submit queries, wait for results, return {values, errors}."""
     logger.info(
         "sync /query: %d queries, datasource=%s, start=%s, end=%s",
-        len(body.queries), x_datasource_name, body.start, body.end,
+        len(body.queries),
+        x_datasource_name,
+        body.start,
+        body.end,
     )
     manager: JobManager = request.app.state.job_manager
     result = await manager.submit(
@@ -123,6 +126,8 @@ async def sync_query(
 
     logger.info(
         "sync /query: job_id=%s done, values=%d errors=%d",
-        job_id, len(values), len(errors),
+        job_id,
+        len(values),
+        len(errors),
     )
     return {"values": values, "errors": errors}

@@ -190,7 +190,7 @@ class Settings(BaseSettings):
         if not self.secret_key.get_secret_value():
             missing.append("QG_SECRET_KEY")
         if missing:
-            raise RuntimeError(f"required secrets not set: {', '.join(missing)}")
+            raise RuntimeError(f'required secrets not set: {", ".join(missing)}')
 
     @property
     def database(self) -> DatabaseSettings:

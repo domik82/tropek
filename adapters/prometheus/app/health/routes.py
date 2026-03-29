@@ -22,7 +22,7 @@ async def liveness() -> dict[str, str]:
 async def readiness(request: Request) -> dict[str, Any]:
     """Return 200 with component status. Checks Prometheus reachability."""
     settings = Settings()
-    prom_url = f"{settings.prometheus_url.rstrip('/')}/-/ready"
+    prom_url = f'{settings.prometheus_url.rstrip("/")}/-/ready'
     prom_ok = False
     try:
         async with httpx.AsyncClient(timeout=5.0) as client:

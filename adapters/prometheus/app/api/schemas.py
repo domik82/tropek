@@ -33,7 +33,7 @@ class AggregatedQuerySpec(BaseModel):
         """Reject any method name not in the supported aggregation set."""
         invalid = set(v) - ALLOWED_METHODS
         if invalid:
-            msg = f"invalid aggregation methods: {', '.join(sorted(invalid))}"
+            msg = f'invalid aggregation methods: {", ".join(sorted(invalid))}'
             raise ValueError(msg)
         return v
 

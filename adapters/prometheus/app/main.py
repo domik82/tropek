@@ -56,7 +56,7 @@ def _configure_logging(settings: Settings) -> None:
 
 async def _check_prometheus(base_url: str, timeout: float = 5.0) -> bool:
     """Probe Prometheus readiness at startup. Returns True if reachable."""
-    url = f"{base_url.rstrip('/')}/-/ready"
+    url = f'{base_url.rstrip("/")}/-/ready'
     try:
         async with httpx.AsyncClient(timeout=timeout) as client:
             resp = await client.get(url)
@@ -82,16 +82,17 @@ def create_app(use_fakeredis: bool = False) -> FastAPI:
 
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncGenerator[None, Any]:
-        logger.info("adapter starting: prometheus_url=%s redis_url=%s", settings.prometheus_url,
-                     settings.redis_url)
+        logger.info(
+            "adapter starting: prometheus_url=%s redis_url=%s",
+            settings.prometheus_url,
+            settings.redis_url,
+        )
 
         redis_client: aioredis.Redis[Any]
         if use_fakeredis:
             redis_client = fakeredis.aioredis.FakeRedis()
         else:
-            redis_client = aioredis.from_url(
-                settings.redis_url, decode_responses=True
-            )
+            redis_client = aioredis.from_url(settings.redis_url, decode_responses=True)
 
         # Verify Redis connectivity
         try:

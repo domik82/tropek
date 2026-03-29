@@ -48,8 +48,8 @@ router = APIRouter()
 @router.post("/evaluations", response_model=TriggerResponse, status_code=202)
 async def trigger_evaluation(
     body: TriggerRequest,
-    repos: QualityGateRepos = Depends(get_qg_repos),  # noqa: B008
-    arq_pool: ArqRedis = Depends(get_arq_pool),  # noqa: B008
+    repos: QualityGateRepos = Depends(get_qg_repos),
+    arq_pool: ArqRedis = Depends(get_arq_pool),
 ) -> TriggerResponse:
     """Trigger a single asset evaluation."""
     service = TriggerService(repos, arq_pool)
@@ -59,8 +59,8 @@ async def trigger_evaluation(
 @router.post("/evaluations/batch", response_model=BatchTriggerResponse, status_code=202)
 async def trigger_batch(
     body: BatchTriggerRequest,
-    repos: QualityGateRepos = Depends(get_qg_repos),  # noqa: B008
-    arq_pool: ArqRedis = Depends(get_arq_pool),  # noqa: B008
+    repos: QualityGateRepos = Depends(get_qg_repos),
+    arq_pool: ArqRedis = Depends(get_arq_pool),
 ) -> BatchTriggerResponse:
     """Trigger evaluations for all assets in a group."""
     service = TriggerService(repos, arq_pool)
@@ -71,15 +71,15 @@ async def trigger_batch(
 async def list_evaluations(
     asset_name: str | None = None,
     slo_name: str | None = None,
-    evaluation_name: list[str] | None = Query(default=None),  # noqa: B008
+    evaluation_name: list[str] | None = Query(default=None),
     result: str | None = None,
     date: str | None = None,
     group_name: str | None = None,
-    from_ts: datetime | None = Query(default=None, alias="from"),  # noqa: B008
-    to_ts: datetime | None = Query(default=None, alias="to"),  # noqa: B008
+    from_ts: datetime | None = Query(default=None, alias="from"),
+    to_ts: datetime | None = Query(default=None, alias="to"),
     limit: int = Query(default=50, le=200),
     offset: int = 0,
-    repos: QualityGateRepos = Depends(get_qg_repos),  # noqa: B008
+    repos: QualityGateRepos = Depends(get_qg_repos),
 ) -> PagedResponse[EvaluationSummary]:
     """List evaluations with optional filters."""
     if date and (from_ts or to_ts):
@@ -127,11 +127,11 @@ async def list_evaluations(
 @router.get("/evaluations/metric-heatmap", response_model=MetricHeatmapResponse)
 async def get_metric_heatmap(
     asset_name: str,
-    evaluation_name: list[str] | None = Query(default=None),  # noqa: B008
-    from_ts: datetime | None = Query(default=None, alias="from"),  # noqa: B008
-    to_ts: datetime | None = Query(default=None, alias="to"),  # noqa: B008
+    evaluation_name: list[str] | None = Query(default=None),
+    from_ts: datetime | None = Query(default=None, alias="from"),
+    to_ts: datetime | None = Query(default=None, alias="to"),
     limit: int = 500,
-    repos: QualityGateRepos = Depends(get_qg_repos),  # noqa: B008
+    repos: QualityGateRepos = Depends(get_qg_repos),
 ) -> MetricHeatmapResponse:
     """Return a metric x evaluation heatmap grid for an asset."""
     asset = await repos.asset_repo.get_by_name(asset_name)
@@ -203,7 +203,7 @@ async def get_metric_heatmap(
 @router.post("/evaluations/re-evaluate", response_model=ReEvaluateResponse)
 async def re_evaluate_evaluations(
     body: ReEvaluateRequest,
-    session: AsyncSession = Depends(get_session),  # noqa: B008
+    session: AsyncSession = Depends(get_session),
 ) -> ReEvaluateResponse:
     """Re-evaluate completed evaluations from stored SLI values."""
     try:
@@ -216,7 +216,7 @@ async def re_evaluate_evaluations(
 async def list_evaluation_names(
     asset_name: str | None = None,
     group_name: str | None = None,
-    repos: QualityGateRepos = Depends(get_qg_repos),  # noqa: B008
+    repos: QualityGateRepos = Depends(get_qg_repos),
 ) -> list[EvaluationNameEntry]:
     """Return distinct evaluation names with count and last-run date."""
     resolved_asset_id = None
@@ -245,7 +245,7 @@ async def list_evaluation_names(
 @router.get("/evaluations/{eval_id}", response_model=EvaluationDetail)
 async def get_evaluation(
     eval_id: uuid.UUID,
-    repos: QualityGateRepos = Depends(get_qg_repos),  # noqa: B008
+    repos: QualityGateRepos = Depends(get_qg_repos),
 ) -> EvaluationDetail:
     """Get full evaluation detail including annotations and indicator results."""
     ev = await repos.eval_repo.get_by_id(eval_id)
@@ -258,7 +258,7 @@ async def get_evaluation(
 async def invalidate_evaluation(
     eval_id: uuid.UUID,
     body: InvalidateRequest,
-    repos: QualityGateRepos = Depends(get_qg_repos),  # noqa: B008
+    repos: QualityGateRepos = Depends(get_qg_repos),
 ) -> EvaluationSummary:
     """Mark an evaluation as invalidated."""
     ev = await repos.eval_repo.invalidate(eval_id, note=body.invalidation_note)
@@ -270,7 +270,7 @@ async def invalidate_evaluation(
 @router.patch("/evaluations/{eval_id}/restore", response_model=EvaluationSummary)
 async def restore_evaluation(
     eval_id: uuid.UUID,
-    repos: QualityGateRepos = Depends(get_qg_repos),  # noqa: B008
+    repos: QualityGateRepos = Depends(get_qg_repos),
 ) -> EvaluationSummary:
     """Clear invalidation flag on an evaluation."""
     ev = await repos.eval_repo.restore(eval_id)
@@ -283,7 +283,7 @@ async def restore_evaluation(
 async def pin_baseline(
     eval_id: uuid.UUID,
     body: PinBaselineRequest,
-    repos: QualityGateRepos = Depends(get_qg_repos),  # noqa: B008
+    repos: QualityGateRepos = Depends(get_qg_repos),
 ) -> EvaluationDetail:
     """Pin an evaluation as the new baseline for future comparisons."""
     ev = await repos.eval_repo.get_by_id(eval_id)
@@ -300,7 +300,7 @@ async def pin_baseline(
 @router.patch("/evaluations/{eval_id}/unpin-baseline", response_model=EvaluationDetail)
 async def unpin_baseline(
     eval_id: uuid.UUID,
-    repos: QualityGateRepos = Depends(get_qg_repos),  # noqa: B008
+    repos: QualityGateRepos = Depends(get_qg_repos),
 ) -> EvaluationDetail:
     """Remove baseline pin from an evaluation."""
     ev = await repos.eval_repo.get_by_id(eval_id)
@@ -314,7 +314,7 @@ async def unpin_baseline(
 async def override_status(
     eval_id: uuid.UUID,
     body: OverrideStatusRequest,
-    repos: QualityGateRepos = Depends(get_qg_repos),  # noqa: B008
+    repos: QualityGateRepos = Depends(get_qg_repos),
 ) -> EvaluationDetail:
     """Override the evaluation result."""
     ev = await repos.eval_repo.get_by_id(eval_id)
@@ -333,7 +333,7 @@ async def override_status(
 @router.patch("/evaluations/{eval_id}/restore-override", response_model=EvaluationDetail)
 async def restore_override(
     eval_id: uuid.UUID,
-    repos: QualityGateRepos = Depends(get_qg_repos),  # noqa: B008
+    repos: QualityGateRepos = Depends(get_qg_repos),
 ) -> EvaluationDetail:
     """Restore the original evaluation result."""
     ev = await repos.eval_repo.get_by_id(eval_id)
@@ -351,7 +351,7 @@ async def restore_override(
 @router.get("/evaluations/{eval_id}/annotations", response_model=list[AnnotationRead])
 async def list_annotations(
     eval_id: uuid.UUID,
-    repos: QualityGateRepos = Depends(get_qg_repos),  # noqa: B008
+    repos: QualityGateRepos = Depends(get_qg_repos),
 ) -> list[AnnotationRead]:
     """List all annotations for an evaluation."""
     ev = await repos.eval_repo.get_by_id(eval_id)
@@ -364,7 +364,7 @@ async def list_annotations(
 async def create_annotation(
     eval_id: uuid.UUID,
     body: AnnotationCreate,
-    repos: QualityGateRepos = Depends(get_qg_repos),  # noqa: B008
+    repos: QualityGateRepos = Depends(get_qg_repos),
 ) -> AnnotationRead:
     """Add an annotation to an evaluation."""
     ev = await repos.eval_repo.get_by_id(eval_id)
@@ -385,7 +385,7 @@ async def update_annotation(
     eval_id: uuid.UUID,
     ann_id: uuid.UUID,
     body: AnnotationUpdate,
-    repos: QualityGateRepos = Depends(get_qg_repos),  # noqa: B008
+    repos: QualityGateRepos = Depends(get_qg_repos),
 ) -> AnnotationRead:
     """Update an annotation."""
     ann = await repos.annotation_repo.update_annotation(
@@ -404,7 +404,7 @@ async def hide_annotation(
     eval_id: uuid.UUID,
     ann_id: uuid.UUID,
     body: AnnotationHide,
-    repos: QualityGateRepos = Depends(get_qg_repos),  # noqa: B008
+    repos: QualityGateRepos = Depends(get_qg_repos),
 ) -> AnnotationRead:
     """Soft-delete (hide) an annotation."""
     ann = await repos.annotation_repo.hide_annotation(
@@ -425,7 +425,7 @@ async def get_trend(
     asset_name: str | None = None,
     slo_name: str | None = None,
     limit: int = Query(default=50, le=200),
-    repos: QualityGateRepos = Depends(get_qg_repos),  # noqa: B008
+    repos: QualityGateRepos = Depends(get_qg_repos),
 ) -> list[TrendPoint]:
     """Return time-series trend data for a specific metric.
 
