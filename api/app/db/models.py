@@ -182,6 +182,10 @@ class SLIDefinition(Base):
     notes:        Mapped[str | None]       = mapped_column(Text, nullable=True)
     author:       Mapped[str | None]       = mapped_column(Text, nullable=True)
     tags:         Mapped[dict[str, Any]]   = mapped_column(JSONB, nullable=False, server_default=text("'{}'"), default=dict)
+    mode:         Mapped[str]              = mapped_column(Text, nullable=False, server_default=text("'raw'"), default="raw")
+    query_template: Mapped[str | None]     = mapped_column(Text, nullable=True)
+    interval:     Mapped[str | None]       = mapped_column(Text, nullable=True)
+    methods:      Mapped[list[str] | None] = mapped_column(JSONB, nullable=True)
     active:       Mapped[bool]             = mapped_column(Boolean, nullable=False, server_default=true(), default=True)
     created_at:   Mapped[datetime]         = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
