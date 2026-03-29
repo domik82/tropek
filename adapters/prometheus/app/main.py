@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from typing import Any
@@ -20,6 +21,12 @@ from app.core.prometheus_client import PrometheusClient
 from app.core.strategies.raw import RawQueryStrategy
 from app.health.routes import router as health_router
 from app.redis.repository import JobRepository
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)-7s] %(name)s: %(message)s",
+    datefmt="%H:%M:%S",
+)
 
 
 def create_app(use_fakeredis: bool = False) -> FastAPI:
