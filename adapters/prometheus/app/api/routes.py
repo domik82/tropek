@@ -9,6 +9,7 @@ from fastapi import APIRouter, Header, HTTPException, Request, Response
 from pydantic import BaseModel
 
 from app.api.schemas import JobSubmitRequest
+from app.config import Settings
 from app.core.job_manager import JobManager
 
 router = APIRouter(prefix="/api/v1", tags=["jobs"])
@@ -89,7 +90,12 @@ async def sync_query(
     )
     job_id = result["job_id"]
 
-    for _ in range(300):
+    # Poll until job finishes.  The coordinator's per-query timeout is
+    # QUERY_TIMEOUT_SECONDS (default 30s).  We allow 2x that so the job
+    # always finishes before this loop gives up.
+    settings: Settings = Settings()
+    max_polls = int(settings.query_timeout_seconds * 2 / 0.1)
+    for _ in range(max_polls):
         status = await manager.get_status(job_id)
         if status and status.get("status") in ("completed", "timed_out"):
             break
