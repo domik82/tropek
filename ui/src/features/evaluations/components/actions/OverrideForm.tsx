@@ -1,6 +1,7 @@
 // ui/src/features/evaluations/components/actions/OverrideForm.tsx
 import { useState, useCallback } from 'react'
 import { useOverrideStatus } from '../../hooks'
+import { Input } from '@/components/ui/input'
 import { ActionFormShell } from './ActionFormShell'
 
 interface Props {
@@ -49,18 +50,16 @@ export function OverrideForm({ evaluationId, currentResult, onComplete }: Props)
       canConfirm={canConfirm}
       isPending={override.isPending}
     >
-      <input
+      <Input
         value={reason}
         onChange={e => setReason(e.target.value)}
         placeholder="Reason…"
-        className="w-full px-3 py-2 bg-background border border-border rounded-md text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none"
       />
-      <input
+      <Input
         value={author}
         onChange={e => setAuthor(e.target.value)}
         placeholder="Author"
         autoComplete="name"
-        className="w-full px-3 py-2 bg-background border border-border rounded-md text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none"
       />
     </ActionFormShell>
   )

@@ -2,6 +2,7 @@
 import { useState } from 'react'
 import { Pencil, Star, Trash2, Check, X } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
 import {
   useAssetTypes, useCreateAssetType, useRenameAssetType,
   useSetDefaultAssetType, useDeleteAssetType,
@@ -127,7 +128,7 @@ export function AssetTypesDialog({ open, onOpenChange }: Props) {
                 <div className="flex-1">
                   {renamingName === type.name ? (
                     <div className="flex items-center gap-1">
-                      <input
+                      <Input
                         value={renameValue}
                         onChange={e => setRenameValue(e.target.value)}
                         onKeyDown={e => {
@@ -135,7 +136,7 @@ export function AssetTypesDialog({ open, onOpenChange }: Props) {
                           if (e.key === 'Escape') setRenamingName(null)
                         }}
                         autoFocus
-                        className="bg-black border border-action-primary-border rounded px-2 py-1 text-sm font-mono text-foreground focus:outline-none w-full"
+                        className="font-mono"
                       />
                       <button
                         onClick={() => void confirmRename()}
@@ -210,7 +211,7 @@ export function AssetTypesDialog({ open, onOpenChange }: Props) {
           {/* Add new type form */}
           {addingNew && (
             <div className="flex items-center gap-2 px-2 py-2 mt-1">
-              <input
+              <Input
                 value={newName}
                 onChange={e => setNewName(e.target.value)}
                 onKeyDown={e => {
@@ -219,7 +220,7 @@ export function AssetTypesDialog({ open, onOpenChange }: Props) {
                 }}
                 autoFocus
                 placeholder="e.g. database"
-                className="flex-1 bg-black border border-border rounded px-3 py-1.5 text-sm font-mono text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:border-primary/50"
+                className="flex-1 font-mono"
               />
               <button
                 onClick={() => void handleAdd()}

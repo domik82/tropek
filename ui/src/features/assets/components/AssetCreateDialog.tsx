@@ -4,6 +4,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui/dialog'
 import { FieldLabel } from '@/components/ui/field-label'
+import { Input } from '@/components/ui/input'
 import { LabelChips } from '@/components/labels/LabelChips'
 import { LabelsEditorDialog } from '@/components/labels/LabelsEditorDialog'
 import { GroupTreeSelector } from './GroupTreeSelector'
@@ -65,11 +66,11 @@ export function AssetCreateDialog({ open, onOpenChange }: Props) {
           {/* Name */}
           <div>
             <FieldLabel required>Asset Name</FieldLabel>
-            <input
+            <Input
               value={name}
               onChange={e => setName(e.target.value)}
               placeholder="linux-cache-01"
-              className="w-full bg-input border border-border rounded px-3 py-2 text-sm font-mono text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50"
+              className="font-mono"
             />
             {name && !isValid && (
               <p className="text-xs text-destructive mt-1">lowercase letters, numbers, hyphens only</p>
@@ -117,13 +118,13 @@ export function AssetCreateDialog({ open, onOpenChange }: Props) {
           {groupName && (
             <div>
               <FieldLabel>Weight</FieldLabel>
-              <input
+              <Input
                 type="number"
                 value={weight}
                 onChange={e => setWeight(e.target.value)}
                 step="0.1"
                 min="0"
-                className="w-24 bg-input border border-border rounded px-3 py-2 text-sm font-mono text-foreground focus:outline-none focus:border-primary/50"
+                className="w-24 font-mono"
               />
             </div>
           )}
