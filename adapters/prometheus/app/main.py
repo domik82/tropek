@@ -85,20 +85,27 @@ def create_app(use_fakeredis: bool = False) -> FastAPI:
         logger.info("adapter starting: prometheus_url=%s redis_url=%s", settings.prometheus_url,
                      settings.redis_url)
 
-        # Probe Prometheus connectivity (non-blocking, adapter starts either way)
-        prom_ok = await _check_prometheus(settings.prometheus_url)
-        if not prom_ok:
-            logger.warning(
-                "adapter will start but queries will fail until prometheus is available at %s",
-                settings.prometheus_url,
-            )
-
         redis_client: aioredis.Redis[Any]
         if use_fakeredis:
             redis_client = fakeredis.aioredis.FakeRedis()
         else:
             redis_client = aioredis.from_url(
                 settings.redis_url, decode_responses=True
+            )
+
+        # Verify Redis connectivity
+        try:
+            pong = await redis_client.ping()
+            logger.info("redis connected: %s (ping=%s)", settings.redis_url, pong)
+        except Exception:
+            logger.exception("redis connection failed: %s", settings.redis_url)
+
+        # Probe Prometheus connectivity (non-blocking, adapter starts either way)
+        prom_ok = await _check_prometheus(settings.prometheus_url)
+        if not prom_ok:
+            logger.warning(
+                "adapter will start but queries will fail until prometheus is available at %s",
+                settings.prometheus_url,
             )
 
         repo = JobRepository(redis_client, prefix=settings.redis_key_prefix)
