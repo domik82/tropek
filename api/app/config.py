@@ -114,7 +114,7 @@ class QueueSettings(BaseSettings):
 class ReliabilitySettings(BaseSettings):
     """Timeout, retry, and watchdog settings for evaluation job reliability."""
 
-    adapter_timeout_seconds: int = _yaml.get("reliability", {}).get("adapter_timeout_seconds", 30)
+    adapter_timeout_seconds: int = _yaml.get("reliability", {}).get("adapter_timeout_seconds", 90)
     adapter_retry_attempts: int = _yaml.get("reliability", {}).get("adapter_retry_attempts", 3)
     adapter_retry_backoff_seconds: int = _yaml.get("reliability", {}).get(
         "adapter_retry_backoff_seconds", 2

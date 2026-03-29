@@ -3,6 +3,9 @@
 from __future__ import annotations
 
 import httpx
+import structlog
+
+logger = structlog.get_logger()
 
 
 class HttpAdapterClient:
@@ -16,7 +19,8 @@ class HttpAdapterClient:
         *,
         adapter_url: str,
         datasource_name: str,
-        queries: dict[str, str],
+        queries: dict[str, dict],
+        variables: dict[str, str],
         start: str,
         end: str,
     ) -> tuple[dict[str, float | None], dict[str, str]]:
@@ -25,7 +29,8 @@ class HttpAdapterClient:
         Args:
             adapter_url: Base URL of the adapter service.
             datasource_name: Datasource name forwarded in the X-Datasource-Name header.
-            queries: Metric name to query string mapping (variables substituted).
+            queries: Metric name to mode-aware query spec mapping.
+            variables: Variable dict forwarded to the adapter for substitution.
             start: ISO timestamp for the evaluation period start.
             end: ISO timestamp for the evaluation period end.
 
@@ -37,11 +42,26 @@ class HttpAdapterClient:
             httpx.TimeoutException: If the adapter does not respond in time.
             httpx.HTTPStatusError: If the adapter returns a non-2xx response.
         """
+        url = f"{adapter_url}/query"
+        logger.info(
+            "adapter request",
+            url=url,
+            datasource=datasource_name,
+            query_count=len(queries),
+            start=start,
+            end=end,
+            timeout=self._timeout,
+        )
         async with httpx.AsyncClient(timeout=self._timeout) as http_client:
             resp = await http_client.post(
-                f"{adapter_url}/query",
+                url,
                 headers={"X-Datasource-Name": datasource_name},
-                json={"queries": queries, "start": start, "end": end},
+                json={
+                    "queries": queries,
+                    "variables": variables,
+                    "start": start,
+                    "end": end,
+                },
             )
             resp.raise_for_status()
             data = resp.json()
@@ -53,6 +73,12 @@ class HttpAdapterClient:
         fetch_errors: dict[str, str] = {
             name: str(err) for name, err in data.get("errors", {}).items()
         }
+        logger.info(
+            "adapter response",
+            url=url,
+            values=len(metrics_fetched),
+            errors=len(fetch_errors),
+        )
         return metrics_fetched, fetch_errors
 
     async def health(self, adapter_url: str) -> bool:

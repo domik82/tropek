@@ -15,11 +15,15 @@ class SLIDefinitionCreate(BaseModel):
     name: str
     adapter_type: str
     display_name: str | None = None
-    indicators: dict[str, str]
+    indicators: dict[str, str] = {}
     notes: str | None = None
     author: str | None = None
     tags: dict[str, Any] = {}
     comparable_from_version: int | None = None
+    mode: str = "raw"
+    query_template: str | None = None
+    interval: str | None = None
+    methods: list[str] | None = None
 
 
 class SLIDefinitionRead(BaseModel):
@@ -35,6 +39,10 @@ class SLIDefinitionRead(BaseModel):
     notes: str | None
     author: str | None
     tags: dict[str, Any]
+    mode: str
+    query_template: str | None
+    interval: str | None
+    methods: list[str] | None
     active: bool
     created_at: datetime
 
