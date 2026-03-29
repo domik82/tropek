@@ -89,9 +89,9 @@ def _handle_aggregated(
     interval_seconds = _parse_interval(spec.get('interval', '1m'))
     window = (body.end - body.start).total_seconds()
     expected = max(1, int(window / interval_seconds))
-    actual = max(1, int(expected * random.uniform(0.85, 1.0)))
+    actual = max(1, int(expected * random.uniform(0.85, 1.0)))  # noqa: S311
 
-    base = random.uniform(1.0, 100.0)
+    base = random.uniform(1.0, 100.0)  # noqa: S311
     for method in methods:
         key = f'{name}.{method}'
         multiplier = _METHOD_MULTIPLIERS.get(method, 1.0)

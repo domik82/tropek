@@ -20,7 +20,20 @@
           "uid": "influxdb"
         },
         "query": "SHOW TAG VALUES FROM \"http_requests_total\" WITH KEY = \"service\""
-      }    ]
+      }
+,      {
+        "name": "interval",
+        "type": "custom",
+        "label": "Interval",
+        "query": "1s,10s,30s,1m,5m,15m,1h,4h,12h,24h",
+        "current": {
+          "text": "5m",
+          "value": "5m"
+        },
+        "options": [
+          {"text": "1s", "value": "1s", "selected": false},          {"text": "10s", "value": "10s", "selected": false},          {"text": "30s", "value": "30s", "selected": false},          {"text": "1m", "value": "1m", "selected": false},          {"text": "5m", "value": "5m", "selected": true},          {"text": "15m", "value": "15m", "selected": false},          {"text": "1h", "value": "1h", "selected": false},          {"text": "4h", "value": "4h", "selected": false},          {"text": "12h", "value": "12h", "selected": false},          {"text": "24h", "value": "24h", "selected": false}        ]
+      }
+    ]
   },
   "panels": [
     {
@@ -43,7 +56,7 @@
             "type": "influxdb",
             "uid": "influxdb"
           },
-          "query": "SELECT mean(\"total\") AS \"throughput\" FROM (SELECT sum(\"value\") AS \"total\" FROM \"http_requests_total\" WHERE $timeFilter GROUP BY time(1s)) WHERE $timeFilter GROUP BY time(5m) fill(0)",
+          "query": "SELECT mean(\"total\") AS \"throughput\" FROM (SELECT sum(\"value\") AS \"total\" FROM \"http_requests_total\" WHERE $timeFilter GROUP BY time(1s)) WHERE $timeFilter GROUP BY time($interval) fill(0)",
           "rawQuery": true,
           "resultFormat": "time_series",
           "refId": "A"
@@ -69,7 +82,7 @@
             "type": "influxdb",
             "uid": "influxdb"
           },
-          "query": "SELECT mean(\"err\") / mean(\"req\") AS \"error_rate\" FROM (SELECT sum(\"value\") AS \"err\" FROM \"http_errors_total\" WHERE $timeFilter GROUP BY time(1s)),\n     (SELECT sum(\"value\") AS \"req\" FROM \"http_requests_total\" WHERE $timeFilter GROUP BY time(1s))\nWHERE $timeFilter GROUP BY time(5m) fill(0)",
+          "query": "SELECT mean(\"err\") / mean(\"req\") AS \"error_rate\" FROM (SELECT sum(\"value\") AS \"err\" FROM \"http_errors_total\" WHERE $timeFilter GROUP BY time(1s)),\n     (SELECT sum(\"value\") AS \"req\" FROM \"http_requests_total\" WHERE $timeFilter GROUP BY time(1s))\nWHERE $timeFilter GROUP BY time($interval) fill(0)",
           "rawQuery": true,
           "resultFormat": "time_series",
           "refId": "A"
@@ -147,7 +160,7 @@
             "type": "influxdb",
             "uid": "influxdb"
           },
-          "query": "SELECT mean(\"total\") AS \"throughput\" FROM (SELECT sum(\"value\") AS \"total\" FROM \"http_requests_total\" WHERE \"service\" = \u0027$service\u0027 AND $timeFilter GROUP BY time(1s)) WHERE $timeFilter GROUP BY time(5m) fill(0)",
+          "query": "SELECT mean(\"total\") AS \"throughput\" FROM (SELECT sum(\"value\") AS \"total\" FROM \"http_requests_total\" WHERE \"service\" = \u0027$service\u0027 AND $timeFilter GROUP BY time(1s)) WHERE $timeFilter GROUP BY time($interval) fill(0)",
           "rawQuery": true,
           "resultFormat": "time_series",
           "refId": "A"
@@ -173,7 +186,7 @@
             "type": "influxdb",
             "uid": "influxdb"
           },
-          "query": "SELECT percentile(\"value\", 99) AS \"p99_latency\" FROM \"http_request_duration_seconds\" WHERE \"service\" = \u0027$service\u0027 AND $timeFilter GROUP BY time(5m) fill(null)",
+          "query": "SELECT percentile(\"value\", 99) / 1000.0 AS \"p99_latency\" FROM \"http_request_latency\" WHERE \"service\" = \u0027$service\u0027 AND $timeFilter GROUP BY time($interval) fill(null)",
           "rawQuery": true,
           "resultFormat": "time_series",
           "refId": "A"
@@ -199,7 +212,7 @@
             "type": "influxdb",
             "uid": "influxdb"
           },
-          "query": "SELECT mean(\"total\") AS \"errors\" FROM (SELECT sum(\"value\") AS \"total\" FROM \"http_errors_total\" WHERE $timeFilter GROUP BY time(1s), \"service\") WHERE $timeFilter GROUP BY time(5m), \"service\" fill(0)",
+          "query": "SELECT mean(\"total\") AS \"errors\" FROM (SELECT sum(\"value\") AS \"total\" FROM \"http_errors_total\" WHERE $timeFilter GROUP BY time(1s), \"service\") WHERE $timeFilter GROUP BY time($interval), \"service\" fill(0)",
           "rawQuery": true,
           "resultFormat": "time_series",
           "refId": "A"
@@ -225,7 +238,7 @@
             "type": "influxdb",
             "uid": "influxdb"
           },
-          "query": "SELECT mean(\"value\") AS \"cpu\" FROM \"cpu_usage_percent\" WHERE $timeFilter GROUP BY time(5m), \"host\" fill(null)",
+          "query": "SELECT mean(\"value\") AS \"cpu\" FROM \"cpu_usage_percent\" WHERE $timeFilter GROUP BY time($interval), \"host\" fill(null)",
           "rawQuery": true,
           "resultFormat": "time_series",
           "refId": "A"
@@ -251,7 +264,7 @@
             "type": "influxdb",
             "uid": "influxdb"
           },
-          "query": "SELECT percentile(\"value\", 50) AS \"p50_latency\" FROM \"http_request_duration_seconds\" WHERE $timeFilter GROUP BY time(5m), \"service\", \"host\" fill(null)",
+          "query": "SELECT percentile(\"value\", 50) / 1000.0 AS \"p50_latency\" FROM \"http_request_latency\" WHERE $timeFilter GROUP BY time($interval), \"service\", \"host\" fill(null)",
           "rawQuery": true,
           "resultFormat": "time_series",
           "refId": "A"
@@ -277,7 +290,7 @@
             "type": "influxdb",
             "uid": "influxdb"
           },
-          "query": "SELECT mean(\"total\") AS \"throughput\" FROM (SELECT sum(\"value\") AS \"total\" FROM \"http_requests_total\" WHERE $timeFilter GROUP BY time(1s), \"service\") WHERE $timeFilter GROUP BY time(5m), \"service\" fill(0)",
+          "query": "SELECT mean(\"total\") AS \"throughput\" FROM (SELECT sum(\"value\") AS \"total\" FROM \"http_requests_total\" WHERE $timeFilter GROUP BY time(1s), \"service\") WHERE $timeFilter GROUP BY time($interval), \"service\" fill(0)",
           "rawQuery": true,
           "resultFormat": "time_series",
           "refId": "A"
@@ -303,7 +316,7 @@
             "type": "influxdb",
             "uid": "influxdb"
           },
-          "query": "SELECT mean(\"total\") AS \"errors\" FROM (SELECT sum(\"value\") AS \"total\" FROM \"http_errors_total\" WHERE $timeFilter GROUP BY time(1s), \"host\") WHERE $timeFilter GROUP BY time(5m), \"host\" fill(0)",
+          "query": "SELECT mean(\"total\") AS \"errors\" FROM (SELECT sum(\"value\") AS \"total\" FROM \"http_errors_total\" WHERE $timeFilter GROUP BY time(1s), \"host\") WHERE $timeFilter GROUP BY time($interval), \"host\" fill(0)",
           "rawQuery": true,
           "resultFormat": "time_series",
           "refId": "A"
@@ -329,7 +342,7 @@
             "type": "influxdb",
             "uid": "influxdb"
           },
-          "query": "SELECT percentile(\"value\", 99) AS \"p99_latency\" FROM \"http_request_duration_seconds\" WHERE $timeFilter GROUP BY time(5m), \"service\" fill(null)",
+          "query": "SELECT percentile(\"value\", 99) / 1000.0 AS \"p99_latency\" FROM \"http_request_latency\" WHERE $timeFilter GROUP BY time($interval), \"service\" fill(null)",
           "rawQuery": true,
           "resultFormat": "time_series",
           "refId": "A"
@@ -381,7 +394,7 @@
             "type": "influxdb",
             "uid": "influxdb"
           },
-          "query": "SELECT mean(\"value\") AS \"avg_latency\" FROM \"http_request_duration_seconds\" WHERE $timeFilter",
+          "query": "SELECT mean(\"value\") / 1000.0 AS \"avg_latency\" FROM \"http_request_latency\" WHERE $timeFilter",
           "rawQuery": true,
           "resultFormat": "time_series",
           "refId": "A"
@@ -389,7 +402,7 @@
       ]
     },    {
       "id": 15,
-      "title": "Throughput ($__interval)",
+      "title": "Throughput ($interval)",
       "type": "timeseries",
       "gridPos": {
         "x": 12,
@@ -407,7 +420,7 @@
             "type": "influxdb",
             "uid": "influxdb"
           },
-          "query": "SELECT mean(\"total\") AS \"throughput\" FROM (SELECT sum(\"value\") AS \"total\" FROM \"http_requests_total\" WHERE $timeFilter GROUP BY time(1s)) WHERE $timeFilter GROUP BY time($__interval) fill(0)",
+          "query": "SELECT mean(\"total\") AS \"throughput\" FROM (SELECT sum(\"value\") AS \"total\" FROM \"http_requests_total\" WHERE $timeFilter GROUP BY time(1s)) WHERE $timeFilter GROUP BY time($interval) fill(0)",
           "rawQuery": true,
           "resultFormat": "time_series",
           "refId": "A"
@@ -433,7 +446,7 @@
             "type": "influxdb",
             "uid": "influxdb"
           },
-          "query": "SELECT mean(\"total\") AS \"requests\" FROM (SELECT sum(\"value\") AS \"total\" FROM \"http_requests_total\" WHERE $timeFilter GROUP BY time(1s), \"service\") WHERE $timeFilter GROUP BY time(5m), \"service\" fill(0)",
+          "query": "SELECT mean(\"total\") AS \"requests\" FROM (SELECT sum(\"value\") AS \"total\" FROM \"http_requests_total\" WHERE $timeFilter GROUP BY time(1s), \"service\") WHERE $timeFilter GROUP BY time($interval), \"service\" fill(0)",
           "rawQuery": true,
           "resultFormat": "time_series",
           "refId": "A"

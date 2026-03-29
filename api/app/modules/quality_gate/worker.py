@@ -225,6 +225,36 @@ async def _write_indicator_rows(
         await indicator_repo.bulk_insert(eval_id, rows)
 
 
+def _build_sli_rows(
+    *,
+    eval_id: uuid.UUID,
+    ev: Evaluation,
+    sli_def: SLIDefinition,
+    indicator_results: list[Any],
+    asset_snapshot: dict[str, Any],
+) -> list[dict[str, Any]]:
+    """Build SLI value rows for TimescaleDB hypertable."""
+    rows: list[dict[str, Any]] = []
+    for ir in indicator_results:
+        if ir.value is None:
+            continue
+        aggregation = 'raw'
+        if sli_def.mode == 'aggregated' and '.' in ir.metric:
+            aggregation = ir.metric.rsplit('.', 1)[1]
+        rows.append({
+            'eval_id': eval_id,
+            'eval_start': ev.period_start,
+            'metric_name': ir.metric,
+            'aggregation': aggregation,
+            'value': ir.value,
+            'asset_name': asset_snapshot.get('name'),
+            'evaluation_name': ev.evaluation_name,
+            'os_tag': asset_snapshot.get('tags', {}).get('os')
+            or asset_snapshot.get('variables', {}).get('os'),
+        })
+    return rows
+
+
 async def run_evaluation(
     session: AsyncSession,
     eval_id: uuid.UUID,
@@ -355,7 +385,7 @@ async def run_evaluation(
             'fetch_errors': fetch_errors,
             'total_score_pass_pct': slo_def.total_score_pass_pct,
             'total_score_warning_pct': slo_def.total_score_warning_pct,
-            **(({'sli_metadata': sli_metadata} if sli_metadata else {})),
+            **({'sli_metadata': sli_metadata} if sli_metadata else {}),
         },
         compared_evaluation_ids=compared_eval_ids,
     )
@@ -364,24 +394,13 @@ async def run_evaluation(
     await _write_indicator_rows(log, session, eval_id, slo_def, eval_result.indicator_results)
 
     # Write SLI values to TimescaleDB hypertable
-    sli_rows: list[dict[str, Any]] = []
-    for ir in eval_result.indicator_results:
-        if ir.value is None:
-            continue
-        aggregation = 'raw'
-        if sli_def.mode == 'aggregated' and '.' in ir.metric:
-            aggregation = ir.metric.rsplit('.', 1)[1]
-        sli_rows.append({
-            'eval_id': eval_id,
-            'eval_start': ev.period_start,
-            'metric_name': ir.metric,
-            'aggregation': aggregation,
-            'value': ir.value,
-            'asset_name': asset_snapshot.get('name'),
-            'evaluation_name': ev.evaluation_name,
-            'os_tag': asset_snapshot.get('tags', {}).get('os')
-            or asset_snapshot.get('variables', {}).get('os'),
-        })
+    sli_rows = _build_sli_rows(
+        eval_id=eval_id,
+        ev=ev,
+        sli_def=sli_def,
+        indicator_results=eval_result.indicator_results,
+        asset_snapshot=asset_snapshot,
+    )
     if sli_rows:
         sli_repo = SLIValueRepository(session)
         await sli_repo.write_sli_values(sli_rows)

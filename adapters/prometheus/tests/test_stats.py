@@ -1,7 +1,6 @@
 """Tests for statistical computation module."""
 
 import pytest
-
 from app.core.methods import AggregationMethod
 from app.core.stats import compute_statistics
 

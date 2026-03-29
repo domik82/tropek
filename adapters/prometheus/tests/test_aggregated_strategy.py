@@ -142,7 +142,7 @@ async def test_aggregated_variable_substitution(
 async def test_aggregated_unresolved_variable_error(
     strategy: AggregatedQueryStrategy,
 ) -> None:
-    values, errors, metadata = await strategy.execute(
+    values, errors, _metadata = await strategy.execute(
         sli_name='cpu',
         query_spec={
             'mode': 'aggregated',
@@ -172,7 +172,7 @@ async def test_aggregated_empty_result_returns_none(
             },
         )
     )
-    values, errors, metadata = await strategy.execute(
+    values, errors, _metadata = await strategy.execute(
         sli_name='cpu',
         query_spec={
             'mode': 'aggregated',
@@ -228,7 +228,7 @@ async def test_aggregated_prometheus_error_captured(
     respx.get('http://prom:9090/api/v1/query_range').mock(
         return_value=Response(500, text='internal server error')
     )
-    values, errors, metadata = await strategy.execute(
+    values, errors, _metadata = await strategy.execute(
         sli_name='cpu',
         query_spec={
             'mode': 'aggregated',
@@ -258,7 +258,7 @@ async def test_aggregated_chunking_8h_window() -> None:
         ])
     )
 
-    values, errors, metadata = await strat.execute(
+    values, _errors, metadata = await strat.execute(
         sli_name='cpu',
         query_spec={
             'mode': 'aggregated',
@@ -295,7 +295,7 @@ async def test_aggregated_chunk_failure_isolated() -> None:
 
     respx.get('http://prom:9090/api/v1/query_range').mock(side_effect=side_effect)
 
-    values, errors, metadata = await strat.execute(
+    values, _errors, metadata = await strat.execute(
         sli_name='cpu',
         query_spec={
             'mode': 'aggregated',

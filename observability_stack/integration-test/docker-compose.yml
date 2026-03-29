@@ -1,6 +1,7 @@
 services:
   prometheus:
     image: prom/prometheus:latest
+    user: "65534:65534"
     ports:
       - "9090:9090"
     volumes:
