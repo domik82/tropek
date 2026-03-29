@@ -3,6 +3,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui/dialog'
 import { FieldLabel } from '@/components/ui/field-label'
+import { Input } from '@/components/ui/input'
 import { LabelChips } from '@/components/labels/LabelChips'
 import { LabelsEditorDialog } from '@/components/labels/LabelsEditorDialog'
 import { useAsset, useAssetTypes, useUpdateAsset } from '../hooks'
@@ -55,11 +56,10 @@ export function AssetEditDialog({ open, onOpenChange, assetName }: Props) {
           {/* Display name */}
           <div>
             <FieldLabel>Display Name</FieldLabel>
-            <input
+            <Input
               value={displayName}
               onChange={e => setDisplayName(e.target.value)}
               placeholder={assetName ?? ''}
-              className="w-full bg-input border border-border rounded px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50"
             />
           </div>
 

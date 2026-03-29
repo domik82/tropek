@@ -1,6 +1,7 @@
 // ui/src/features/evaluations/components/actions/BaselineForm.tsx
 import { useState, useCallback } from 'react'
 import { usePinBaseline } from '../../hooks'
+import { Input } from '@/components/ui/input'
 import { ActionFormShell } from './ActionFormShell'
 
 const ACTION_DEF = {
@@ -37,18 +38,16 @@ export function BaselineForm({ evaluationId, onComplete }: Props) {
       canConfirm={canConfirm}
       isPending={baseline.isPending}
     >
-      <input
+      <Input
         value={reason}
         onChange={e => setReason(e.target.value)}
         placeholder="Reason…"
-        className="w-full px-3 py-2 bg-background border border-border rounded-md text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none"
       />
-      <input
+      <Input
         value={author}
         onChange={e => setAuthor(e.target.value)}
         placeholder="Author"
         autoComplete="name"
-        className="w-full px-3 py-2 bg-background border border-border rounded-md text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none"
       />
     </ActionFormShell>
   )

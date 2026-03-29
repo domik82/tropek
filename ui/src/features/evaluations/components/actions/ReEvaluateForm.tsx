@@ -1,6 +1,7 @@
 // ui/src/features/evaluations/components/actions/ReEvaluateForm.tsx
 import { useState, useCallback } from 'react'
 import { useReEvaluate } from '../../hooks'
+import { Input } from '@/components/ui/input'
 import { ActionFormShell } from './ActionFormShell'
 import type { ReEvaluateResponse } from '../../types'
 
@@ -123,11 +124,10 @@ export function ReEvaluateForm({ assetName, sloName, defaultFromDate, onComplete
       {!fromBaseline && (
         <div>
           <label className="block text-xs text-muted-foreground mb-1">Start date</label>
-          <input
+          <Input
             type="datetime-local"
             value={fromDate}
             onChange={(e) => setFromDate(e.target.value)}
-            className="w-full px-3 py-2 bg-background border border-border rounded-md text-sm text-foreground focus:outline-none focus:border-entity-sli"
           />
         </div>
       )}
