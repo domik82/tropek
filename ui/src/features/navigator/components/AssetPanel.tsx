@@ -34,6 +34,7 @@ export function AssetPanel({ assetName, initialEvalId }: Props) {
     setActiveAction(null)
     setSelectedNames(undefined)
   }, [assetName])
+
   const notesRef = useRef<AnnotationSectionHandle>(null)
   const notesSectionRef = useRef<HTMLDivElement>(null)
 
@@ -88,6 +89,15 @@ export function AssetPanel({ assetName, initialEvalId }: Props) {
 
   const effectiveEvalId = selectedEvalId ?? defaultEvalId
   const { data: ev } = useEvaluationDetail(effectiveEvalId)
+
+  // Close any open action form when the user selects a different evaluation
+  const prevEvalId = useRef(effectiveEvalId)
+  useEffect(() => {
+    if (prevEvalId.current !== effectiveEvalId) {
+      setActiveAction(null)
+      prevEvalId.current = effectiveEvalId
+    }
+  }, [effectiveEvalId])
 
   const { availableGroups, counts, activeTab, setActiveTab, tabIndicators } =
     useTabState(ev?.indicator_results)
@@ -162,7 +172,7 @@ export function AssetPanel({ assetName, initialEvalId }: Props) {
       />
 
       {/* Action form */}
-      {evals.length > 0 && activeAction && effectiveEvalId && ev && !ev.invalidated && (
+      {evals.length > 0 && activeAction && effectiveEvalId && ev && (activeAction === 'restore' || !ev.invalidated) && (
         <EvaluationActionForm
           evalId={effectiveEvalId}
           currentResult={ev.result}
