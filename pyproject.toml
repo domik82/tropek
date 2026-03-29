@@ -40,6 +40,10 @@ select = [
     "C90",   # McCabe complexity
     "PERF",  # perflint
     "TRY",   # tryceratops (exception handling)
+    "PLC",   # pylint convention (import placement)
+    "PLR",   # pylint refactor (too-many-args/branches/statements)
+    "BLE",   # blind-except
+    "Q",     # quote enforcement
 ]
 ignore = [
     "E501",    # line too long — handled by ruff format
@@ -50,10 +54,17 @@ ignore = [
     "TRY003",  # long exception messages — we use these intentionally for clarity
     "TRY300",  # consider moving return into else — stylistic, disagree
     "S105",    # hardcoded password — false positive on enum values like PASS = "pass"
+    "PLR0917",  # too-many-positional-arguments — redundant with PLR0913
 ]
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"
+
+[tool.ruff.format]
+quote-style = "single"
+
+[tool.ruff.lint.pylint]
+max-args = 8
 
 [tool.ruff.lint.per-file-ignores]
 # Test function names are self-documenting — docstrings add noise, not value
@@ -61,6 +72,7 @@ convention = "google"
 "**/test_*.py" = ["D"]
 "**/alembic/versions/*.py" = ["D", "W291", "E501"]
 "observability_stack/**" = ["D", "S", "C901", "SIM115", "RUF002", "RUF003", "RUF005"]
+"**/router.py" = ["B008"]
 
 [tool.mypy]
 python_version = "3.13"
