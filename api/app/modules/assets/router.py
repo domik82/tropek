@@ -41,7 +41,7 @@ from app.modules.assets.schemas import (
     TagKeyCount,
     TagValueCount,
 )
-from app.modules.common.errors import raise_not_found
+from app.modules.common.exceptions import NotFoundError
 from app.modules.common.schemas import PagedResponse
 from app.modules.datasource.repository import DataSourceRepository
 from app.modules.sli_registry.repository import SLIRepository
@@ -119,7 +119,7 @@ async def set_default_asset_type(
     repo = AssetTypeRepository(session)
     at = await repo.set_default(name)
     if at is None:
-        raise_not_found("asset type", name)
+        raise NotFoundError("asset type", name)
     return AssetTypeRead.model_validate(at)
 
 
@@ -132,7 +132,7 @@ async def delete_asset_type(
     repo = AssetTypeRepository(session)
     found = await repo.delete(name)
     if not found:
-        raise_not_found("asset type", name)
+        raise NotFoundError("asset type", name)
 
 
 @router.patch("/asset-types/{name}", response_model=AssetTypeRead)
@@ -147,7 +147,7 @@ async def rename_asset_type(
     repo = AssetTypeRepository(session)
     at = await repo.rename(name, body.name)
     if at is None:
-        raise_not_found("asset type", name)
+        raise NotFoundError("asset type", name)
     return AssetTypeRead.model_validate(at)
 
 
@@ -215,7 +215,7 @@ async def get_asset(
     repo = AssetRepository(session)
     asset = await repo.get_by_name(name)
     if asset is None:
-        raise_not_found("asset", name)
+        raise NotFoundError("asset", name)
     return AssetRead.model_validate(asset)
 
 
@@ -240,7 +240,7 @@ async def delete_asset(
     repo = AssetRepository(session)
     found = await repo.delete(name)
     if not found:
-        raise_not_found("asset", name)
+        raise NotFoundError("asset", name)
 
 
 # ---- Asset SLO Links ----
@@ -255,7 +255,7 @@ async def list_asset_slo_links(
     asset_repo = AssetRepository(session)
     asset = await asset_repo.get_by_name(name)
     if asset is None:
-        raise_not_found("asset", name)
+        raise NotFoundError("asset", name)
     link_repo = AssetSLOLinkRepository(session)
     links = await link_repo.list_by_asset(asset.id)
     return [AssetSLOLinkRead.model_validate(lnk) for lnk in links]
@@ -271,7 +271,7 @@ async def create_asset_slo_link(
     asset_repo = AssetRepository(session)
     asset = await asset_repo.get_by_name(name)
     if asset is None:
-        raise_not_found("asset", name)
+        raise NotFoundError("asset", name)
     link_repo = AssetSLOLinkRepository(session)
     link = await link_repo.create(
         asset_id=asset.id,
@@ -293,7 +293,7 @@ async def delete_asset_slo_link(
     asset_repo = AssetRepository(session)
     asset = await asset_repo.get_by_name(name)
     if asset is None:
-        raise_not_found("asset", name)
+        raise NotFoundError("asset", name)
     link_repo = AssetSLOLinkRepository(session)
     await link_repo.delete(asset.id, link_name)
 
@@ -311,11 +311,11 @@ async def get_comparison_rules(
     asset_repo = AssetRepository(session)
     asset = await asset_repo.get_by_name(name)
     if asset is None:
-        raise_not_found("asset", name)
+        raise NotFoundError("asset", name)
     link_repo = AssetSLOLinkRepository(session)
     link = await link_repo.get_by_link_name(asset.id, link_name)
     if link is None:
-        raise_not_found("slo link", link_name)
+        raise NotFoundError("slo link", link_name)
     return link.comparison_rules
 
 
@@ -340,11 +340,11 @@ async def update_comparison_rules_endpoint(
     asset_repo = AssetRepository(session)
     asset = await asset_repo.get_by_name(name)
     if asset is None:
-        raise_not_found("asset", name)
+        raise NotFoundError("asset", name)
     link_repo = AssetSLOLinkRepository(session)
     link = await link_repo.get_by_link_name(asset.id, link_name)
     if link is None:
-        raise_not_found("slo link", link_name)
+        raise NotFoundError("slo link", link_name)
     try:
         validated = validate_comparison_rules(body.rules)
     except ValueError as exc:
@@ -403,7 +403,7 @@ async def get_asset_group(
     repo = AssetGroupRepository(session)
     group = await repo.get_by_name(name)
     if group is None:
-        raise_not_found("asset group", name)
+        raise NotFoundError("asset group", name)
     return group
 
 
@@ -417,7 +417,7 @@ async def update_asset_group(
     repo = AssetGroupRepository(session)
     group = await repo.update(name, **body.model_dump(exclude_none=True))
     if group is None:
-        raise_not_found("asset group", name)
+        raise NotFoundError("asset group", name)
     return group
 
 
@@ -431,7 +431,7 @@ async def delete_asset_group(
     repo = AssetGroupRepository(session)
     found = await repo.delete_group(name, deactivate_slos=deactivate_slos)
     if not found:
-        raise_not_found("asset group", name)
+        raise NotFoundError("asset group", name)
 
 
 @router.post("/asset-groups/{name}/members", response_model=AssetGroupRead, status_code=201)
@@ -444,7 +444,7 @@ async def add_group_member(
     repo = AssetGroupRepository(session)
     group = await repo.get_by_name(name)
     if group is None:
-        raise_not_found("asset group", name)
+        raise NotFoundError("asset group", name)
     return await repo.add_member(name, body.asset_id, weight=body.weight)
 
 
@@ -458,7 +458,7 @@ async def remove_group_member(
     repo = AssetGroupRepository(session)
     group = await repo.get_by_name(name)
     if group is None:
-        raise_not_found("asset group", name)
+        raise NotFoundError("asset group", name)
     await repo.remove_member(name, asset_id)
 
 
@@ -472,7 +472,7 @@ async def add_group_subgroup(
     repo = AssetGroupRepository(session)
     group = await repo.get_by_name(name)
     if group is None:
-        raise_not_found("asset group", name)
+        raise NotFoundError("asset group", name)
     return await repo.add_subgroup(name, body.child_group_id, weight=body.weight)
 
 
@@ -486,7 +486,7 @@ async def remove_group_subgroup(
     repo = AssetGroupRepository(session)
     group = await repo.get_by_name(name)
     if group is None:
-        raise_not_found("asset group", name)
+        raise NotFoundError("asset group", name)
     await repo.remove_subgroup(name, child_group_id)
 
 
@@ -502,7 +502,7 @@ async def list_group_slo_links(
     group_repo = AssetGroupRepository(session)
     group = await group_repo.get_by_name(name)
     if group is None:
-        raise_not_found("asset group", name)
+        raise NotFoundError("asset group", name)
     link_repo = AssetGroupSLOLinkRepository(session)
     links = await link_repo.list_by_group(group.id)
     return [AssetGroupSLOLinkRead.model_validate(lnk) for lnk in links]
@@ -520,7 +520,7 @@ async def create_group_slo_link(
     group_repo = AssetGroupRepository(session)
     group = await group_repo.get_by_name(name)
     if group is None:
-        raise_not_found("asset group", name)
+        raise NotFoundError("asset group", name)
     link_repo = AssetGroupSLOLinkRepository(session)
     link = await link_repo.create(
         group_id=group.id,
@@ -541,7 +541,7 @@ async def delete_group_slo_link(
     group_repo = AssetGroupRepository(session)
     group = await group_repo.get_by_name(name)
     if group is None:
-        raise_not_found("asset group", name)
+        raise NotFoundError("asset group", name)
     link_repo = AssetGroupSLOLinkRepository(session)
     await link_repo.delete(group.id, link_name)
 
@@ -558,7 +558,7 @@ async def list_asset_slo_bindings(
     asset_repo = AssetRepository(session)
     asset = await asset_repo.get_by_name(name)
     if asset is None:
-        raise_not_found("asset", name)
+        raise NotFoundError("asset", name)
     binding_repo = SLOBindingRepository(session)
     bindings = await binding_repo.list_by_target("asset", asset.id)
     return [SLOBindingRead.model_validate(b) for b in bindings]
@@ -574,7 +574,7 @@ async def create_asset_slo_binding(
     asset_repo = AssetRepository(session)
     asset = await asset_repo.get_by_name(name)
     if asset is None:
-        raise_not_found("asset", name)
+        raise NotFoundError("asset", name)
     await _validate_binding_adapter_type(session, body.slo_name, body.data_source_name)
     binding_repo = SLOBindingRepository(session)
     binding = await binding_repo.create(
@@ -596,7 +596,7 @@ async def delete_asset_slo_binding(
     asset_repo = AssetRepository(session)
     asset = await asset_repo.get_by_name(name)
     if asset is None:
-        raise_not_found("asset", name)
+        raise NotFoundError("asset", name)
     binding_repo = SLOBindingRepository(session)
     await binding_repo.delete_by_target_and_slo("asset", asset.id, slo_name)
 
@@ -610,7 +610,7 @@ async def list_group_slo_bindings(
     group_repo = AssetGroupRepository(session)
     group = await group_repo.get_by_name(name)
     if group is None:
-        raise_not_found("asset group", name)
+        raise NotFoundError("asset group", name)
     binding_repo = SLOBindingRepository(session)
     bindings = await binding_repo.list_by_target("asset_group", group.id)
     return [SLOBindingRead.model_validate(b) for b in bindings]
@@ -626,7 +626,7 @@ async def create_group_slo_binding(
     group_repo = AssetGroupRepository(session)
     group = await group_repo.get_by_name(name)
     if group is None:
-        raise_not_found("asset group", name)
+        raise NotFoundError("asset group", name)
     await _validate_binding_adapter_type(session, body.slo_name, body.data_source_name)
     binding_repo = SLOBindingRepository(session)
     binding = await binding_repo.create(
@@ -648,6 +648,6 @@ async def delete_group_slo_binding(
     group_repo = AssetGroupRepository(session)
     group = await group_repo.get_by_name(name)
     if group is None:
-        raise_not_found("asset group", name)
+        raise NotFoundError("asset group", name)
     binding_repo = SLOBindingRepository(session)
     await binding_repo.delete_by_target_and_slo("asset_group", group.id, slo_name)

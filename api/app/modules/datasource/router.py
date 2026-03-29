@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.models import AssetGroupSLOLink, AssetSLOLink, DataSource
 from app.db.session import get_session
 from app.modules.assets.schemas import TagKeyCount, TagValueCount
-from app.modules.common.errors import raise_conflict, raise_not_found
+from app.modules.common.exceptions import ConflictError, NotFoundError
 from app.modules.common.schemas import PagedResponse
 from app.modules.datasource.repository import DataSourceRepository
 from app.modules.datasource.schemas import DataSourceCreate, DataSourceRead, DataSourceUpdate
@@ -85,7 +85,7 @@ async def get_datasource(
     repo = DataSourceRepository(session)
     ds = await repo.get_by_name(name)
     if ds is None:
-        raise_not_found("datasource", name)
+        raise NotFoundError("datasource", name)
     return _ds_read(ds)
 
 
@@ -99,7 +99,7 @@ async def update_datasource(
     repo = DataSourceRepository(session)
     ds = await repo.update(name, **body.model_dump(exclude_none=True))
     if ds is None:
-        raise_not_found("datasource", name)
+        raise NotFoundError("datasource", name)
     return _ds_read(ds)
 
 
@@ -130,10 +130,10 @@ async def delete_datasource(
     )
     if asset_links or group_links:
         link_names = [lnk.link_name for lnk in asset_links] + [lnk.link_name for lnk in group_links]
-        raise_conflict("datasource", name, f'referenced by SLO links: {", ".join(link_names)}')
+        raise ConflictError("datasource", name, f'referenced by SLO links: {", ".join(link_names)}')
 
     repo = DataSourceRepository(session)
     deleted = await repo.delete_by_name(name)
     if not deleted:
-        raise_not_found("datasource", name)
+        raise NotFoundError("datasource", name)
     return Response(status_code=204)

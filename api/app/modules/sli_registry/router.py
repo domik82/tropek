@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_session
 from app.modules.assets.schemas import TagKeyCount, TagValueCount
-from app.modules.common.errors import raise_not_found
+from app.modules.common.exceptions import NotFoundError
 from app.modules.common.schemas import PagedResponse
 from app.modules.sli_registry.repository import SLIRepository
 from app.modules.sli_registry.schemas import SLIDefinitionCreate, SLIDefinitionRead
@@ -80,7 +80,7 @@ async def get_sli_definition(
     repo = SLIRepository(session)
     sli = await repo.get_latest(name)
     if sli is None:
-        raise_not_found("sli definition", name)
+        raise NotFoundError("sli definition", name)
     return SLIDefinitionRead.model_validate(sli)
 
 
@@ -104,5 +104,5 @@ async def delete_sli_definition(
     repo = SLIRepository(session)
     existing = await repo.get_latest(name)
     if existing is None:
-        raise_not_found("sli definition", name)
+        raise NotFoundError("sli definition", name)
     await repo.deactivate(name)
