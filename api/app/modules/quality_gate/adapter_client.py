@@ -42,9 +42,9 @@ class HttpAdapterClient:
             httpx.TimeoutException: If the adapter does not respond in time.
             httpx.HTTPStatusError: If the adapter returns a non-2xx response.
         """
-        url = f"{adapter_url}/query"
+        url = f'{adapter_url}/query'
         logger.info(
-            "adapter request",
+            'adapter request',
             url=url,
             datasource=datasource_name,
             query_count=len(queries),
@@ -55,12 +55,12 @@ class HttpAdapterClient:
         async with httpx.AsyncClient(timeout=self._timeout) as http_client:
             resp = await http_client.post(
                 url,
-                headers={"X-Datasource-Name": datasource_name},
+                headers={'X-Datasource-Name': datasource_name},
                 json={
-                    "queries": queries,
-                    "variables": variables,
-                    "start": start,
-                    "end": end,
+                    'queries': queries,
+                    'variables': variables,
+                    'start': start,
+                    'end': end,
                 },
             )
             resp.raise_for_status()
@@ -68,13 +68,13 @@ class HttpAdapterClient:
 
         metrics_fetched: dict[str, float | None] = {
             name: float(val) if val is not None else None
-            for name, val in data.get("values", {}).items()
+            for name, val in data.get('values', {}).items()
         }
         fetch_errors: dict[str, str] = {
-            name: str(err) for name, err in data.get("errors", {}).items()
+            name: str(err) for name, err in data.get('errors', {}).items()
         }
         logger.info(
-            "adapter response",
+            'adapter response',
             url=url,
             values=len(metrics_fetched),
             errors=len(fetch_errors),
@@ -92,7 +92,7 @@ class HttpAdapterClient:
         """
         try:
             async with httpx.AsyncClient(timeout=self._timeout) as http_client:
-                resp = await http_client.get(f"{adapter_url}/health")
+                resp = await http_client.get(f'{adapter_url}/health')
                 return bool(resp.is_success)
         except (httpx.ConnectError, httpx.TimeoutException):
             return False

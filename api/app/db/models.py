@@ -36,15 +36,15 @@ class Base(DeclarativeBase):
 class AssetType(Base):
     """User-extensible asset type vocabulary. One row may be marked as the default."""
 
-    __tablename__ = "asset_types"
+    __tablename__ = 'asset_types'
     __table_args__ = (
-        Index("idx_asset_types_name", "name"),
+        Index('idx_asset_types_name', 'name'),
         # Enforces at most one default at the DB level
         Index(
-            "uq_asset_types_default",
-            "is_default",
+            'uq_asset_types_default',
+            'is_default',
             unique=True,
-            postgresql_where=text("is_default = true"),
+            postgresql_where=text('is_default = true'),
         ),
     )
 
@@ -58,13 +58,13 @@ class AssetType(Base):
 class Asset(Base):
     """A named entity under test — VM, service, container, or endpoint."""
 
-    __tablename__ = "assets"
+    __tablename__ = 'assets'
 
     # fmt: off
     id:           Mapped[uuid.UUID]      = mapped_column(UUID, primary_key=True, default=uuid.uuid4)
     name:         Mapped[str]            = mapped_column(Text, unique=True, nullable=False)
     display_name: Mapped[str | None]     = mapped_column(Text, nullable=True)
-    type_name:    Mapped[str]            = mapped_column(Text, ForeignKey("asset_types.name"), nullable=False, default="vm")
+    type_name:    Mapped[str]            = mapped_column(Text, ForeignKey('asset_types.name'), nullable=False, default='vm')
     tags:           Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, server_default=text("'{}'"), default=dict)
     variables:      Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, server_default=text("'{}'"), default=dict)
     heatmap_config: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
@@ -81,7 +81,7 @@ class AssetGroup(Base):
     group-of-groups (software_xyz = [linux_boxes, windows_vms]).
     """
 
-    __tablename__ = "asset_groups"
+    __tablename__ = 'asset_groups'
 
     # fmt: off
 
@@ -99,16 +99,16 @@ class AssetGroup(Base):
 class AssetGroupMember(Base):
     """Associates individual assets with an asset group, with optional weight."""
 
-    __tablename__ = "asset_group_members"
+    __tablename__ = 'asset_group_members'
     __table_args__ = (
-        Index("idx_asset_group_members_group", "group_id"),
-        Index("idx_asset_group_members_asset", "asset_id"),
+        Index('idx_asset_group_members_group', 'group_id'),
+        Index('idx_asset_group_members_asset', 'asset_id'),
     )
 
     # fmt: off
 
-    group_id:  Mapped[uuid.UUID] = mapped_column(UUID, ForeignKey("asset_groups.id", ondelete="CASCADE"), nullable=False, primary_key=True)
-    asset_id:  Mapped[uuid.UUID] = mapped_column(UUID, ForeignKey("assets.id", ondelete="CASCADE"), nullable=False, primary_key=True)
+    group_id:  Mapped[uuid.UUID] = mapped_column(UUID, ForeignKey('asset_groups.id', ondelete='CASCADE'), nullable=False, primary_key=True)
+    asset_id:  Mapped[uuid.UUID] = mapped_column(UUID, ForeignKey('assets.id', ondelete='CASCADE'), nullable=False, primary_key=True)
     weight:    Mapped[float]     = mapped_column(Float, nullable=False, default=1.0)
 
     # fmt: on
@@ -117,13 +117,13 @@ class AssetGroupMember(Base):
 class AssetGroupLink(Base):
     """Links a child group inside a parent group (group-of-groups)."""
 
-    __tablename__ = "asset_group_links"
-    __table_args__ = (Index("idx_asset_group_links_parent", "parent_group_id"),)
+    __tablename__ = 'asset_group_links'
+    __table_args__ = (Index('idx_asset_group_links_parent', 'parent_group_id'),)
 
     # fmt: off
 
-    parent_group_id: Mapped[uuid.UUID] = mapped_column(UUID, ForeignKey("asset_groups.id", ondelete="CASCADE"), nullable=False, primary_key=True)
-    child_group_id:  Mapped[uuid.UUID] = mapped_column(UUID, ForeignKey("asset_groups.id", ondelete="CASCADE"), nullable=False, primary_key=True)
+    parent_group_id: Mapped[uuid.UUID] = mapped_column(UUID, ForeignKey('asset_groups.id', ondelete='CASCADE'), nullable=False, primary_key=True)
+    child_group_id:  Mapped[uuid.UUID] = mapped_column(UUID, ForeignKey('asset_groups.id', ondelete='CASCADE'), nullable=False, primary_key=True)
     weight:          Mapped[float]     = mapped_column(Float, nullable=False, default=1.0)
 
     # fmt: on
@@ -137,8 +137,8 @@ class DataSource(Base):
     tags for discovery. Names are unique across the deployment.
     """
 
-    __tablename__ = "data_sources"
-    __table_args__ = (Index("idx_data_sources_name", "name"),)
+    __tablename__ = 'data_sources'
+    __table_args__ = (Index('idx_data_sources_name', 'name'),)
 
     # fmt: off
 
@@ -163,11 +163,11 @@ class SLIDefinition(Base):
     Variable tokens ($vm_ip, $period_start, etc.) are substituted at evaluation time.
     """
 
-    __tablename__ = "sli_definitions"
+    __tablename__ = 'sli_definitions'
     __table_args__ = (
-        UniqueConstraint("name", "version", name="uq_sli_name_version"),
-        Index("idx_sli_definitions_name", "name"),
-        Index("idx_sli_definitions_latest", "name", text("version DESC")),
+        UniqueConstraint('name', 'version', name='uq_sli_name_version'),
+        Index('idx_sli_definitions_name', 'name'),
+        Index('idx_sli_definitions_latest', 'name', text('version DESC')),
     )
 
     # fmt: off
@@ -177,12 +177,12 @@ class SLIDefinition(Base):
     adapter_type: Mapped[str]              = mapped_column(Text, nullable=False)
     display_name: Mapped[str | None]       = mapped_column(Text, nullable=True)
     version:                  Mapped[int]              = mapped_column(Integer, nullable=False)
-    comparable_from_version:  Mapped[int]              = mapped_column(Integer, nullable=False, server_default=text("1"))
+    comparable_from_version:  Mapped[int]              = mapped_column(Integer, nullable=False, server_default=text('1'))
     indicators:               Mapped[dict[str, Any]]   = mapped_column(JSONB, nullable=False, server_default=text("'{}'"), default=dict)
     notes:        Mapped[str | None]       = mapped_column(Text, nullable=True)
     author:       Mapped[str | None]       = mapped_column(Text, nullable=True)
     tags:         Mapped[dict[str, Any]]   = mapped_column(JSONB, nullable=False, server_default=text("'{}'"), default=dict)
-    mode:         Mapped[str]              = mapped_column(Text, nullable=False, server_default=text("'raw'"), default="raw")
+    mode:         Mapped[str]              = mapped_column(Text, nullable=False, server_default=text("'raw'"), default='raw')
     query_template: Mapped[str | None]     = mapped_column(Text, nullable=True)
     interval:     Mapped[str | None]       = mapped_column(Text, nullable=True)
     methods:      Mapped[list[str] | None] = mapped_column(JSONB, nullable=True)
@@ -195,15 +195,15 @@ class SLIDefinition(Base):
 class SLOObjective(Base):
     """One objective row per SLO definition version — immutable after insert."""
 
-    __tablename__ = "slo_objectives"
-    __table_args__ = (Index("idx_slo_objectives_definition", "slo_definition_id"),)
+    __tablename__ = 'slo_objectives'
+    __table_args__ = (Index('idx_slo_objectives_definition', 'slo_definition_id'),)
 
     # fmt: off
     id:                Mapped[uuid.UUID]      = mapped_column(UUID, primary_key=True, default=uuid.uuid4)
-    slo_definition_id: Mapped[uuid.UUID]      = mapped_column(UUID, ForeignKey("slo_definitions.id", ondelete="CASCADE"), nullable=False)
+    slo_definition_id: Mapped[uuid.UUID]      = mapped_column(UUID, ForeignKey('slo_definitions.id', ondelete='CASCADE'), nullable=False)
     sli:               Mapped[str]            = mapped_column(Text, nullable=False)
-    display_name:      Mapped[str]            = mapped_column(Text, nullable=False, server_default="")
-    weight:            Mapped[int]            = mapped_column(Integer, nullable=False, server_default=text("1"))
+    display_name:      Mapped[str]            = mapped_column(Text, nullable=False, server_default='')
+    weight:            Mapped[int]            = mapped_column(Integer, nullable=False, server_default=text('1'))
     key_sli:           Mapped[bool]           = mapped_column(Boolean, nullable=False, server_default=false())
     sort_order:        Mapped[int]            = mapped_column(Integer, nullable=False)
     pass_criteria:     Mapped[list[str]]      = mapped_column(ARRAY(Text), nullable=False, server_default=text("'{}'"))
@@ -215,42 +215,42 @@ class SLOObjective(Base):
 class IndicatorResultRow(Base):
     """Normalized indicator result — one row per SLI per evaluation."""
 
-    __tablename__ = "indicator_results"
+    __tablename__ = 'indicator_results'
     __table_args__ = (
-        Index("idx_indicator_results_evaluation", "evaluation_id"),
-        Index("idx_indicator_results_objective_status", "slo_objective_id", "status"),
+        Index('idx_indicator_results_evaluation', 'evaluation_id'),
+        Index('idx_indicator_results_objective_status', 'slo_objective_id', 'status'),
         UniqueConstraint(
-            "evaluation_id",
-            "slo_objective_id",
-            name="uq_indicator_results_eval_objective",
+            'evaluation_id',
+            'slo_objective_id',
+            name='uq_indicator_results_eval_objective',
         ),
     )
 
     # fmt: off
     id:               Mapped[uuid.UUID]      = mapped_column(UUID, primary_key=True, default=uuid.uuid4)
-    evaluation_id:    Mapped[uuid.UUID]      = mapped_column(UUID, ForeignKey("evaluations.id", ondelete="CASCADE"), nullable=False)
-    slo_objective_id: Mapped[uuid.UUID]      = mapped_column(UUID, ForeignKey("slo_objectives.id", ondelete="CASCADE"), nullable=False)
+    evaluation_id:    Mapped[uuid.UUID]      = mapped_column(UUID, ForeignKey('evaluations.id', ondelete='CASCADE'), nullable=False)
+    slo_objective_id: Mapped[uuid.UUID]      = mapped_column(UUID, ForeignKey('slo_objectives.id', ondelete='CASCADE'), nullable=False)
     value:            Mapped[float | None]   = mapped_column(Float, nullable=True)
     compared_value:   Mapped[float | None]   = mapped_column(Float, nullable=True)
     change_absolute:  Mapped[float | None]   = mapped_column(Float, nullable=True)
     change_relative_pct: Mapped[float | None] = mapped_column(Float, nullable=True)
     status:           Mapped[str]            = mapped_column(Text, nullable=False)
-    score:            Mapped[float]          = mapped_column(Float, nullable=False, server_default=text("0"))
+    score:            Mapped[float]          = mapped_column(Float, nullable=False, server_default=text('0'))
     # fmt: on
 
     # Relationships for eager loading
-    objective: Mapped[SLOObjective] = relationship("SLOObjective", lazy="joined")
+    objective: Mapped[SLOObjective] = relationship('SLOObjective', lazy='joined')
 
 
 class SLODefinition(Base):
     """Versioned SLO definition — rows are immutable after insert."""
 
-    __tablename__ = "slo_definitions"
+    __tablename__ = 'slo_definitions'
     __table_args__ = (
-        UniqueConstraint("name", "version", name="uq_slo_name_version"),
-        Index("idx_slo_definitions_name", "name"),
+        UniqueConstraint('name', 'version', name='uq_slo_name_version'),
+        Index('idx_slo_definitions_name', 'name'),
         # version DESC so get_latest() queries hit this index efficiently
-        Index("idx_slo_definitions_latest", "name", text("version DESC")),
+        Index('idx_slo_definitions_latest', 'name', text('version DESC')),
     )
 
     # fmt: off
@@ -259,25 +259,25 @@ class SLODefinition(Base):
     name:                    Mapped[str]                    = mapped_column(Text, nullable=False)
     display_name:            Mapped[str | None]             = mapped_column(Text, nullable=True)
     version:                 Mapped[int]                    = mapped_column(Integer, nullable=False)
-    comparable_from_version: Mapped[int]                    = mapped_column(Integer, nullable=False, server_default=text("1"))
-    total_score_pass_pct:    Mapped[float]                  = mapped_column(Float, nullable=False, server_default=text("90.0"))
-    total_score_warning_pct: Mapped[float]                  = mapped_column(Float, nullable=False, server_default=text("75.0"))
+    comparable_from_version: Mapped[int]                    = mapped_column(Integer, nullable=False, server_default=text('1'))
+    total_score_pass_pct:    Mapped[float]                  = mapped_column(Float, nullable=False, server_default=text('90.0'))
+    total_score_warning_pct: Mapped[float]                  = mapped_column(Float, nullable=False, server_default=text('75.0'))
     comparison:              Mapped[dict[str, Any]]         = mapped_column(JSONB, nullable=False, server_default=text("'{}'::jsonb"), default=dict)
     notes:                   Mapped[str | None]             = mapped_column(Text, nullable=True)
     author:                  Mapped[str | None]             = mapped_column(Text, nullable=True)
     tags:                    Mapped[dict[str, Any]]         = mapped_column(JSONB, nullable=False, server_default=text("'{}'"), default=dict)
     variables:               Mapped[dict[str, Any]]         = mapped_column(JSONB, nullable=False, server_default=text("'{}'"), default=dict)
-    kind:                    Mapped[str]                    = mapped_column(Text, nullable=False, server_default=text("'standard'"), default="standard")
+    kind:                    Mapped[str]                    = mapped_column(Text, nullable=False, server_default=text("'standard'"), default='standard')
     sli_name:                Mapped[str | None]             = mapped_column(Text, nullable=True)
     sli_version:             Mapped[int | None]             = mapped_column(Integer, nullable=True)
     generated_by_group_id:   Mapped[uuid.UUID | None]       = mapped_column(UUID, nullable=True)
     active:                  Mapped[bool]                   = mapped_column(Boolean, nullable=False, server_default=true(), default=True)
     created_at:              Mapped[datetime]               = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     objectives:              Mapped[list[SLOObjective]]     = relationship(
-        "SLOObjective",
-        order_by="SLOObjective.sort_order",
-        cascade="all, delete-orphan",
-        lazy="selectin",
+        'SLOObjective',
+        order_by='SLOObjective.sort_order',
+        cascade='all, delete-orphan',
+        lazy='selectin',
     )
 
     # fmt: on
@@ -286,26 +286,26 @@ class SLODefinition(Base):
 class Evaluation(Base):
     """One evaluation run — triggered, executed, stored."""
 
-    __tablename__ = "evaluations"
+    __tablename__ = 'evaluations'
     __table_args__ = (
-        Index("idx_evaluations_evaluation_name", "evaluation_name"),
-        Index("idx_evaluations_asset", "asset_id"),
-        Index("idx_evaluations_result", "result"),
-        Index("idx_evaluations_start", "period_start"),
-        Index("idx_evaluations_status", "status"),
-        Index("idx_evaluations_slo", "slo_name", "slo_version"),
+        Index('idx_evaluations_evaluation_name', 'evaluation_name'),
+        Index('idx_evaluations_asset', 'asset_id'),
+        Index('idx_evaluations_result', 'result'),
+        Index('idx_evaluations_start', 'period_start'),
+        Index('idx_evaluations_status', 'status'),
+        Index('idx_evaluations_slo', 'slo_name', 'slo_version'),
         Index(
-            "idx_evaluations_baseline_lookup",
-            "asset_id",
-            "slo_name",
-            text("period_start DESC"),
+            'idx_evaluations_baseline_lookup',
+            'asset_id',
+            'slo_name',
+            text('period_start DESC'),
             postgresql_where=text("status = 'completed' AND invalidated = false"),
         ),
         # Partial index for watchdog: find stuck running jobs efficiently
         Index(
-            "idx_evaluations_stuck",
-            "status",
-            "started_at",
+            'idx_evaluations_stuck',
+            'status',
+            'started_at',
             postgresql_where=text("status = 'running'"),
         ),
         # Duplicate prevention: at most one non-failed evaluation per identity tuple.
@@ -316,26 +316,26 @@ class Evaluation(Base):
         #   - Existing pending/running → 409 "already in progress"
         #   - Existing completed/partial/invalidated → 409 "use re-evaluate"
         Index(
-            "uq_evaluations_identity",
-            "asset_id",
-            "slo_name",
-            "evaluation_name",
-            "period_start",
-            "period_end",
+            'uq_evaluations_identity',
+            'asset_id',
+            'slo_name',
+            'evaluation_name',
+            'period_start',
+            'period_end',
             unique=True,
             postgresql_where=text("status != 'failed'"),
         ),
         CheckConstraint(
             "status IN ('pending','running','completed','failed','partial')",
-            name="ck_evaluations_status",
+            name='ck_evaluations_status',
         ),
         CheckConstraint(
             "ingestion_mode IN ('pull','push','file')",
-            name="ck_evaluations_ingestion_mode",
+            name='ck_evaluations_ingestion_mode',
         ),
         CheckConstraint(
             "result IN ('pass','warning','fail','error') OR result IS NULL",
-            name="ck_evaluations_result",
+            name='ck_evaluations_result',
         ),
     )
 
@@ -343,7 +343,7 @@ class Evaluation(Base):
 
     id: Mapped[uuid.UUID] = mapped_column(UUID, primary_key=True, default=uuid.uuid4)
     evaluation_name: Mapped[str] = mapped_column(Text, nullable=False)
-    asset_id: Mapped[uuid.UUID] = mapped_column(UUID, ForeignKey("assets.id", ondelete="RESTRICT"), nullable=False)
+    asset_id: Mapped[uuid.UUID] = mapped_column(UUID, ForeignKey('assets.id', ondelete='RESTRICT'), nullable=False)
     asset_snapshot: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, server_default=text("'{}'"), default=dict)
     period_start: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     period_end:   Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
@@ -367,13 +367,13 @@ class Evaluation(Base):
     override_reason:      Mapped[str | None]        = mapped_column(Text, nullable=True)
     override_author:      Mapped[str | None]        = mapped_column(Text, nullable=True)
     # Job lifecycle
-    status: Mapped[str] = mapped_column(Text, nullable=False, server_default=text("'pending'"), default="pending")
+    status: Mapped[str] = mapped_column(Text, nullable=False, server_default=text("'pending'"), default='pending')
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     job_stats: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, server_default=text("'{}'"), default=dict)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
-    annotations: Mapped[list[EvaluationAnnotation]] = relationship("EvaluationAnnotation", back_populates="evaluation", cascade="all, delete-orphan")
+    annotations: Mapped[list[EvaluationAnnotation]] = relationship('EvaluationAnnotation', back_populates='evaluation', cascade='all, delete-orphan')
     indicator_rows: Mapped[list[IndicatorResultRow]] = relationship(
-        "IndicatorResultRow", cascade="all, delete-orphan", lazy="selectin",
+        'IndicatorResultRow', cascade='all, delete-orphan', lazy='selectin',
     )
 
     # fmt: on
@@ -382,13 +382,13 @@ class Evaluation(Base):
 class EvaluationAnnotation(Base):
     """Append-only contextual note on an evaluation."""
 
-    __tablename__ = "evaluation_annotations"
-    __table_args__ = (Index("idx_annotations_evaluation", "evaluation_id"),)
+    __tablename__ = 'evaluation_annotations'
+    __table_args__ = (Index('idx_annotations_evaluation', 'evaluation_id'),)
 
     # fmt: off
 
     id: Mapped[uuid.UUID] = mapped_column(UUID, primary_key=True, default=uuid.uuid4)
-    evaluation_id: Mapped[uuid.UUID] = mapped_column(UUID, ForeignKey("evaluations.id", ondelete="CASCADE"), nullable=False, )
+    evaluation_id: Mapped[uuid.UUID] = mapped_column(UUID, ForeignKey('evaluations.id', ondelete='CASCADE'), nullable=False, )
     content: Mapped[str] = mapped_column(Text, nullable=False)
     author: Mapped[str | None] = mapped_column(Text, nullable=True)
     category: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -400,7 +400,7 @@ class EvaluationAnnotation(Base):
     updated_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), onupdate=func.now(), nullable=True
     )
-    evaluation: Mapped[Evaluation] = relationship("Evaluation", back_populates="annotations")
+    evaluation: Mapped[Evaluation] = relationship('Evaluation', back_populates='annotations')
 
     # fmt: on
 
@@ -415,15 +415,15 @@ class SLIValue(Base):
     of potentially thousands of hypertable rows.
     """
 
-    __tablename__ = "sli_values"
+    __tablename__ = 'sli_values'
     __table_args__ = (
-        Index("idx_sli_values_lookup", "evaluation_name", "metric_name", "eval_start"),
+        Index('idx_sli_values_lookup', 'evaluation_name', 'metric_name', 'eval_start'),
     )
 
     # fmt: off
     # TODO : probably to flat stucture - joins should probably be used in Grafana - not convinced this is good
 
-    eval_id: Mapped[uuid.UUID] = mapped_column(UUID, ForeignKey("evaluations.id"), nullable=False, primary_key=True)
+    eval_id: Mapped[uuid.UUID] = mapped_column(UUID, ForeignKey('evaluations.id'), nullable=False, primary_key=True)
     eval_start: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, primary_key=True)
     metric_name: Mapped[str] = mapped_column(Text, nullable=False, primary_key=True)
     aggregation: Mapped[str] = mapped_column(Text, nullable=False, primary_key=True)
@@ -443,17 +443,17 @@ class AssetSLOLink(Base):
     SLO, SLI, and DataSource names resolve to their latest active version.
     """
 
-    __tablename__ = "asset_slo_links"
+    __tablename__ = 'asset_slo_links'
     __table_args__ = (
-        Index("idx_asset_slo_links_asset", "asset_id"),
-        UniqueConstraint("asset_id", "link_name", name="uq_asset_slo_link_name"),
+        Index('idx_asset_slo_links_asset', 'asset_id'),
+        UniqueConstraint('asset_id', 'link_name', name='uq_asset_slo_link_name'),
     )
 
     # fmt: off
 
     id:               Mapped[uuid.UUID]  = mapped_column(UUID, primary_key=True, default=uuid.uuid4)
     link_name:        Mapped[str]        = mapped_column(Text, nullable=False)
-    asset_id:         Mapped[uuid.UUID]  = mapped_column(UUID, ForeignKey("assets.id", ondelete="CASCADE"), nullable=False)
+    asset_id:         Mapped[uuid.UUID]  = mapped_column(UUID, ForeignKey('assets.id', ondelete='CASCADE'), nullable=False)
     slo_name:         Mapped[str]        = mapped_column(Text, nullable=False)
     sli_name:         Mapped[str]        = mapped_column(Text, nullable=False)
     data_source_name: Mapped[str]        = mapped_column(Text, nullable=False)
@@ -466,18 +466,18 @@ class AssetSLOLink(Base):
 class AssetGroupSLOLink(Base):
     """Same as AssetSLOLink but bound to an asset group instead of a single asset."""
 
-    __tablename__ = "asset_group_slo_links"
+    __tablename__ = 'asset_group_slo_links'
     __table_args__ = (
-        Index("idx_asset_group_slo_links_group", "group_id"),
-        UniqueConstraint("group_id", "link_name", name="uq_asset_group_slo_link_name"),
-        UniqueConstraint("group_id", "slo_name", name="uq_asset_group_slo_link_group_slo"),
+        Index('idx_asset_group_slo_links_group', 'group_id'),
+        UniqueConstraint('group_id', 'link_name', name='uq_asset_group_slo_link_name'),
+        UniqueConstraint('group_id', 'slo_name', name='uq_asset_group_slo_link_group_slo'),
     )
 
     # fmt: off
 
     id:               Mapped[uuid.UUID]  = mapped_column(UUID, primary_key=True, default=uuid.uuid4)
     link_name:        Mapped[str]        = mapped_column(Text, nullable=False)
-    group_id:         Mapped[uuid.UUID]  = mapped_column(UUID, ForeignKey("asset_groups.id", ondelete="CASCADE"), nullable=False)
+    group_id:         Mapped[uuid.UUID]  = mapped_column(UUID, ForeignKey('asset_groups.id', ondelete='CASCADE'), nullable=False)
     slo_name:         Mapped[str]        = mapped_column(Text, nullable=False)
     sli_name:         Mapped[str]        = mapped_column(Text, nullable=False)
     data_source_name: Mapped[str]        = mapped_column(Text, nullable=False)
@@ -489,13 +489,13 @@ class AssetGroupSLOLink(Base):
 class SLOBinding(Base):
     """Polymorphic binding of an SLO to an asset or asset group with a datasource."""
 
-    __tablename__ = "slo_bindings"
+    __tablename__ = 'slo_bindings'
     __table_args__ = (
-        UniqueConstraint("target_type", "target_id", "slo_name", name="uq_slo_binding"),
-        Index("idx_slo_bindings_target", "target_type", "target_id"),
+        UniqueConstraint('target_type', 'target_id', 'slo_name', name='uq_slo_binding'),
+        Index('idx_slo_bindings_target', 'target_type', 'target_id'),
         CheckConstraint(
             "target_type IN ('asset', 'asset_group')",
-            name="ck_slo_bindings_target_type",
+            name='ck_slo_bindings_target_type',
         ),
     )
 
@@ -520,13 +520,13 @@ class EvaluationBatch(Base):
     instead of tracking individual evaluation IDs.
     """
 
-    __tablename__ = "evaluation_batches"
-    __table_args__ = (Index("idx_evaluation_batches_status", "status"),)
+    __tablename__ = 'evaluation_batches'
+    __table_args__ = (Index('idx_evaluation_batches_status', 'status'),)
 
     # fmt: off
 
     id:             Mapped[uuid.UUID]        = mapped_column(UUID, primary_key=True, default=uuid.uuid4)
-    status:         Mapped[str]              = mapped_column(Text, nullable=False, server_default=text("'pending'"), default="pending")
+    status:         Mapped[str]              = mapped_column(Text, nullable=False, server_default=text("'pending'"), default='pending')
     trigger_params: Mapped[dict[str, Any]]   = mapped_column(JSONB, nullable=False, server_default=text("'{}'"), default=dict)
     evaluation_ids: Mapped[list[Any]]        = mapped_column(JSONB, nullable=False, server_default=text("'[]'"), default=list)
     result:         Mapped[str | None]            = mapped_column(Text, nullable=True)

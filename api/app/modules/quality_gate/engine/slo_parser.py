@@ -36,12 +36,12 @@ def build_slo(
         SLOParseError: If objectives is empty or data is structurally invalid.
     """
     if not objectives:
-        raise SLOParseError("objectives list is empty")
+        raise SLOParseError('objectives list is empty')
     try:
         parsed_objectives = [SLOObjective.model_validate(o) for o in objectives]
         parsed_comparison = SLOComparison.model_validate(comparison or {})
     except ValidationError as e:
-        raise SLOParseError(f"invalid slo structure: {e}") from e
+        raise SLOParseError(f'invalid slo structure: {e}') from e
     return SLO(
         objectives=parsed_objectives,
         comparison=parsed_comparison,

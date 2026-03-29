@@ -15,7 +15,7 @@ class SLOObjectiveIn(BaseModel):
     """SLO objective for create/validate requests."""
 
     sli: str
-    display_name: str = ""
+    display_name: str = ''
     pass_criteria: list[str] = Field(default_factory=list)
     warning_criteria: list[str] = Field(default_factory=list)
     weight: int = 1
@@ -44,7 +44,7 @@ class SLODefinitionCreate(BaseModel):
     tags: dict[str, Any] = Field(default_factory=dict)
     variables: dict[str, Any] = Field(default_factory=dict)
     comparable_from_version: int | None = None
-    kind: str = "standard"
+    kind: str = 'standard'
     sli_name: str | None = None
     sli_version: int | None = None
 
@@ -101,7 +101,7 @@ class SLOValidationResult(BaseModel):
 class BaselineConfig(BaseModel):
     """Configuration for baseline comparison in SLO test."""
 
-    mode: Literal["none", "asset_history", "manual"] = "none"
+    mode: Literal['none', 'asset_history', 'manual'] = 'none'
     limit: int = 3
     values: dict[str, float] | None = None
 
@@ -120,7 +120,7 @@ class SLOTestRequest(BaseModel):
     asset_name: str
     period_start: datetime
     period_end: datetime
-    evaluation_name: str = ""
+    evaluation_name: str = ''
     baseline: BaselineConfig | None = None
     variables: dict[str, str] = Field(default_factory=dict)
 

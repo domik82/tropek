@@ -131,7 +131,7 @@ class EvaluationDetail(EvaluationSummary):
     total_score_pass_pct: float | None = None
     total_score_warning_pct: float | None = None
 
-    @model_validator(mode="after")
+    @model_validator(mode='after')
     def sync_annotation_count(self) -> EvaluationDetail:
         """Keep annotation_count in sync with the annotations list."""
         self.annotation_count = len(self.annotations)

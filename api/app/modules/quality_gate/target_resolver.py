@@ -31,9 +31,9 @@ def resolve_targets(
         violated = not evaluate_criteria(c, value, compared_value) if value is not None else True
         targets.append(
             {
-                "criteria": raw,
-                "target_value": target_value,
-                "violated": violated,
+                'criteria': raw,
+                'target_value': target_value,
+                'violated': violated,
             }
         )
     return targets

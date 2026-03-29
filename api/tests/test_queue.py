@@ -11,9 +11,9 @@ from sqlalchemy.exc import DBAPIError
 
 def _make_deadlock_error() -> DBAPIError:
     """Create a DBAPIError that looks like a PostgreSQL deadlock."""
-    orig = Exception("deadlock detected")
+    orig = Exception('deadlock detected')
     return DBAPIError(
-        statement="UPDATE evaluations SET ...",
+        statement='UPDATE evaluations SET ...',
         params={},
         orig=orig,
     )
@@ -21,9 +21,9 @@ def _make_deadlock_error() -> DBAPIError:
 
 def _make_non_deadlock_error() -> DBAPIError:
     """Create a DBAPIError that is not a deadlock."""
-    orig = Exception("connection refused")
+    orig = Exception('connection refused')
     return DBAPIError(
-        statement="SELECT ...",
+        statement='SELECT ...',
         params={},
         orig=orig,
     )
@@ -70,11 +70,11 @@ async def test_deadlock_retry_succeeds_on_second_attempt(mock_session_factory: t
             raise _make_deadlock_error()
 
     with (
-        patch("app.queue.get_session_factory", return_value=factory),
-        patch("app.queue.run_evaluation", side_effect=fake_run_evaluation),
-        patch("asyncio.sleep", new_callable=AsyncMock),
+        patch('app.queue.get_session_factory', return_value=factory),
+        patch('app.queue.run_evaluation', side_effect=fake_run_evaluation),
+        patch('asyncio.sleep', new_callable=AsyncMock),
     ):
-        await run_evaluation_job({}, "00000000-0000-0000-0000-000000000001")
+        await run_evaluation_job({}, '00000000-0000-0000-0000-000000000001')
 
     assert call_count == 2
     assert session.commit.await_count == 1
@@ -85,12 +85,12 @@ async def test_deadlock_retry_exhausted(mock_session_factory: tuple) -> None:
     factory, _session = mock_session_factory
 
     with (
-        patch("app.queue.get_session_factory", return_value=factory),
-        patch("app.queue.run_evaluation", side_effect=_make_deadlock_error()),
-        patch("asyncio.sleep", new_callable=AsyncMock),
+        patch('app.queue.get_session_factory', return_value=factory),
+        patch('app.queue.run_evaluation', side_effect=_make_deadlock_error()),
+        patch('asyncio.sleep', new_callable=AsyncMock),
         pytest.raises(DBAPIError),
     ):
-        await run_evaluation_job({}, "00000000-0000-0000-0000-000000000001")
+        await run_evaluation_job({}, '00000000-0000-0000-0000-000000000001')
 
 
 async def test_non_deadlock_error_not_retried(mock_session_factory: tuple) -> None:
@@ -98,12 +98,12 @@ async def test_non_deadlock_error_not_retried(mock_session_factory: tuple) -> No
     factory, session = mock_session_factory
 
     with (
-        patch("app.queue.get_session_factory", return_value=factory),
-        patch("app.queue.run_evaluation", side_effect=_make_non_deadlock_error()),
-        patch("asyncio.sleep", new_callable=AsyncMock) as mock_sleep,
+        patch('app.queue.get_session_factory', return_value=factory),
+        patch('app.queue.run_evaluation', side_effect=_make_non_deadlock_error()),
+        patch('asyncio.sleep', new_callable=AsyncMock) as mock_sleep,
         pytest.raises(DBAPIError),
     ):
-        await run_evaluation_job({}, "00000000-0000-0000-0000-000000000001")
+        await run_evaluation_job({}, '00000000-0000-0000-0000-000000000001')
 
     # No sleep called because no retry happened
     mock_sleep.assert_not_awaited()
@@ -116,12 +116,12 @@ async def test_non_dbapi_error_not_retried(mock_session_factory: tuple) -> None:
     factory, session = mock_session_factory
 
     with (
-        patch("app.queue.get_session_factory", return_value=factory),
-        patch("app.queue.run_evaluation", side_effect=RuntimeError("unexpected")),
-        patch("asyncio.sleep", new_callable=AsyncMock) as mock_sleep,
-        pytest.raises(RuntimeError, match="unexpected"),
+        patch('app.queue.get_session_factory', return_value=factory),
+        patch('app.queue.run_evaluation', side_effect=RuntimeError('unexpected')),
+        patch('asyncio.sleep', new_callable=AsyncMock) as mock_sleep,
+        pytest.raises(RuntimeError, match='unexpected'),
     ):
-        await run_evaluation_job({}, "00000000-0000-0000-0000-000000000001")
+        await run_evaluation_job({}, '00000000-0000-0000-0000-000000000001')
 
     mock_sleep.assert_not_awaited()
     session.rollback.assert_awaited_once()
@@ -132,11 +132,11 @@ async def test_successful_job_no_retry(mock_session_factory: tuple) -> None:
     factory, session = mock_session_factory
 
     with (
-        patch("app.queue.get_session_factory", return_value=factory),
-        patch("app.queue.run_evaluation", new_callable=AsyncMock),
-        patch("asyncio.sleep", new_callable=AsyncMock) as mock_sleep,
+        patch('app.queue.get_session_factory', return_value=factory),
+        patch('app.queue.run_evaluation', new_callable=AsyncMock),
+        patch('asyncio.sleep', new_callable=AsyncMock) as mock_sleep,
     ):
-        await run_evaluation_job({}, "00000000-0000-0000-0000-000000000001")
+        await run_evaluation_job({}, '00000000-0000-0000-0000-000000000001')
 
     mock_sleep.assert_not_awaited()
     session.commit.assert_awaited_once()

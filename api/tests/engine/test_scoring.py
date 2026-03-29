@@ -15,7 +15,7 @@ from app.modules.quality_gate.engine.slo_parser import build_slo
 
 # All criteria use AND logic — OR-block semantics were deliberately removed
 def _slo(slo_fixture: Callable[[str], SLO]) -> SLO:
-    return slo_fixture("multi_objective_weighted.yaml")
+    return slo_fixture('multi_objective_weighted.yaml')
 
 
 # --- score_objective ---
@@ -65,7 +65,7 @@ def test_key_sli_pass_not_flagged(slo_fixture) -> None:
 
 def test_empty_pass_criteria_list_is_informational() -> None:
     """Empty pass_criteria list must be treated same as no pass criteria."""
-    slo = build_slo(objectives=[{"sli": "m", "pass_criteria": [], "weight": 1}])
+    slo = build_slo(objectives=[{'sli': 'm', 'pass_criteria': [], 'weight': 1}])
     result = score_objective(slo.objectives[0], value=50.0, baseline=None)
     assert result.status == IndicatorStatus.INFO
     assert result.contributes_to_score is False
@@ -74,7 +74,7 @@ def test_empty_pass_criteria_list_is_informational() -> None:
 
 def test_sign_without_pct_relative_scoring() -> None:
     """<=+10 without % treated as relative (baseline + 10), matching Go behaviour."""
-    slo = build_slo(objectives=[{"sli": "m", "pass_criteria": ["<=+10"], "weight": 1}])
+    slo = build_slo(objectives=[{'sli': 'm', 'pass_criteria': ['<=+10'], 'weight': 1}])
     assert (
         score_objective(slo.objectives[0], value=105.0, baseline=100.0).status
         == IndicatorStatus.PASS
@@ -107,7 +107,7 @@ def test_total_score_all_pass(slo_fixture) -> None:
         _make_result(slo.objectives[2], IndicatorStatus.INFO, 0.0, False, False),
     ]
     total = calculate_total_score(results, slo.total_score)
-    assert total.result == "pass"
+    assert total.result == 'pass'
     assert total.score == pytest.approx(100.0)
 
 
@@ -119,14 +119,14 @@ def test_total_score_key_sli_fails_regardless_of_score(slo_fixture) -> None:
         _make_result(slo.objectives[2], IndicatorStatus.INFO, 0.0, False, False),
     ]
     total = calculate_total_score(results, slo.total_score)
-    assert total.result == "fail"
+    assert total.result == 'fail'
 
 
 def test_total_score_no_pass_criteria_returns_pass_100() -> None:
-    slo = build_slo(objectives=[{"sli": "m", "weight": 1}])
+    slo = build_slo(objectives=[{'sli': 'm', 'weight': 1}])
     results = [_make_result(slo.objectives[0], IndicatorStatus.INFO, 0.0, False, False)]
     total = calculate_total_score(results, slo.total_score)
-    assert total.result == "pass"
+    assert total.result == 'pass'
     assert total.score == 100.0
 
 
@@ -139,14 +139,14 @@ def test_total_score_warning_band(slo_fixture) -> None:
         _make_result(slo.objectives[2], IndicatorStatus.INFO, 0.0, False, False),
     ]
     total = calculate_total_score(results, slo.total_score)
-    assert total.result == "fail"
+    assert total.result == 'fail'
 
 
 def test_total_score_warning_result() -> None:
     slo = build_slo(
         objectives=[
-            {"sli": "m1", "pass_criteria": ["<100"], "weight": 1},
-            {"sli": "m2", "pass_criteria": ["<100"], "weight": 1},
+            {'sli': 'm1', 'pass_criteria': ['<100'], 'weight': 1},
+            {'sli': 'm2', 'pass_criteria': ['<100'], 'weight': 1},
         ],
         total_score_pass_pct=100.0,
         total_score_warning_pct=50.0,
@@ -156,5 +156,5 @@ def test_total_score_warning_result() -> None:
         _make_result(slo.objectives[1], IndicatorStatus.FAIL, 0.0, True, False),
     ]
     total = calculate_total_score(results, slo.total_score)
-    assert total.result == "warning"
+    assert total.result == 'warning'
     assert total.score == pytest.approx(50.0)

@@ -16,8 +16,8 @@ class AdapterQueryRequest:
 
     queries: dict[str, dict]  # metric_name → {"mode": "raw", "query": "..."} or aggregated spec
     variables: dict[str, str] = field(default_factory=dict)
-    start: str = ""
-    end: str = ""
+    start: str = ''
+    end: str = ''
 
 
 @dataclass

@@ -18,7 +18,7 @@ _BASE = datetime(2026, 3, 15, 10, 0, 0, tzinfo=UTC)
 
 
 async def _create_asset(session: AsyncSession, name: str) -> uuid.UUID:
-    type_name = f"vm-{uuid.uuid4().hex[:8]}"
+    type_name = f'vm-{uuid.uuid4().hex[:8]}'
     session.add(AssetType(id=uuid.uuid4(), name=type_name))
     await session.flush()
     asset_id = uuid.uuid4()
@@ -27,13 +27,13 @@ async def _create_asset(session: AsyncSession, name: str) -> uuid.UUID:
     return asset_id
 
 
-async def _seed_slo_objective(session: AsyncSession, sli: str = "response_time") -> SLOObjective:
+async def _seed_slo_objective(session: AsyncSession, sli: str = 'response_time') -> SLOObjective:
     """Create a minimal SLO definition with one objective and return it."""
     sli_def = SLIDefinition(
         id=uuid.uuid4(),
-        name="trend-sli",
+        name='trend-sli',
         version=1,
-        adapter_type="prometheus",
+        adapter_type='prometheus',
         indicators={},
         tags={},
     )
@@ -42,9 +42,9 @@ async def _seed_slo_objective(session: AsyncSession, sli: str = "response_time")
     slo_id = uuid.uuid4()
     slo = SLODefinition(
         id=slo_id,
-        name="test-slo",
+        name='test-slo',
         version=1,
-        display_name="Test SLO",
+        display_name='Test SLO',
         comparison={},
         total_score_pass_pct=90.0,
         total_score_warning_pct=75.0,
@@ -61,7 +61,7 @@ async def _seed_slo_objective(session: AsyncSession, sli: str = "response_time")
         weight=1,
         key_sli=False,
         sort_order=0,
-        pass_criteria=["<600"],
+        pass_criteria=['<600'],
         warning_criteria=[],
     )
     session.add(obj)
@@ -71,7 +71,7 @@ async def _seed_slo_objective(session: AsyncSession, sli: str = "response_time")
 
 @pytest.mark.integration
 async def test_trend_returns_points_with_baseline(db_session: AsyncSession) -> None:
-    asset_id = await _create_asset(db_session, "trend-asset")
+    asset_id = await _create_asset(db_session, 'trend-asset')
     obj = await _seed_slo_objective(db_session)
     repo = EvaluationRepository(db_session)
     sli_repo = SLIValueRepository(db_session)
@@ -87,7 +87,7 @@ async def test_trend_returns_points_with_baseline(db_session: AsyncSession) -> N
         asset_id=asset_id,
         slo_name='test-slo',
     ))
-    await repo.mark_completed(ev.id, result="pass", score=90.0, slo_name="test-slo")
+    await repo.mark_completed(ev.id, result='pass', score=90.0, slo_name='test-slo')
 
     # Seed indicator row with compared_value for baseline
     indicator_repo = IndicatorRepository(db_session)
@@ -95,14 +95,14 @@ async def test_trend_returns_points_with_baseline(db_session: AsyncSession) -> N
         ev.id,
         [
             {
-                "evaluation_id": ev.id,
-                "slo_objective_id": obj.id,
-                "value": 250.0,
-                "compared_value": 200.0,
-                "change_absolute": 50.0,
-                "change_relative_pct": 25.0,
-                "status": "pass",
-                "score": 1.0,
+                'evaluation_id': ev.id,
+                'slo_objective_id': obj.id,
+                'value': 250.0,
+                'compared_value': 200.0,
+                'change_absolute': 50.0,
+                'change_relative_pct': 25.0,
+                'status': 'pass',
+                'score': 1.0,
             },
         ],
     )
@@ -111,29 +111,29 @@ async def test_trend_returns_points_with_baseline(db_session: AsyncSession) -> N
     await sli_repo.write_sli_values(
         [
             {
-                "eval_id": ev.id,
-                "eval_start": _BASE,
-                "metric_name": "response_time",
-                "aggregation": "avg",
-                "value": 250.0,
-                "asset_name": "trend-asset",
-                "evaluation_name": "trend-test",
-                "os_tag": None,
+                'eval_id': ev.id,
+                'eval_start': _BASE,
+                'metric_name': 'response_time',
+                'aggregation': 'avg',
+                'value': 250.0,
+                'asset_name': 'trend-asset',
+                'evaluation_name': 'trend-test',
+                'os_tag': None,
             }
         ]
     )
 
     points = await trend_repo.get_trend_by_domain(
-        asset_id=asset_id, slo_name="test-slo", metric_name="response_time", limit=50
+        asset_id=asset_id, slo_name='test-slo', metric_name='response_time', limit=50
     )
     assert len(points) == 1
-    assert points[0]["value"] == 250.0
-    assert points[0]["baseline"] == 200.0  # from IndicatorResultRow.compared_value
+    assert points[0]['value'] == 250.0
+    assert points[0]['baseline'] == 200.0  # from IndicatorResultRow.compared_value
 
 
 @pytest.mark.integration
 async def test_trend_excludes_invalidated(db_session: AsyncSession) -> None:
-    asset_id = await _create_asset(db_session, "trend-inv-asset")
+    asset_id = await _create_asset(db_session, 'trend-inv-asset')
     repo = EvaluationRepository(db_session)
     sli_repo = SLIValueRepository(db_session)
     trend_repo = TrendRepository(db_session)
@@ -148,25 +148,25 @@ async def test_trend_excludes_invalidated(db_session: AsyncSession) -> None:
         asset_id=asset_id,
         slo_name='test-slo',
     ))
-    await repo.mark_completed(ev.id, result="pass", score=90.0, slo_name="test-slo")
+    await repo.mark_completed(ev.id, result='pass', score=90.0, slo_name='test-slo')
     await sli_repo.write_sli_values(
         [
             {
-                "eval_id": ev.id,
-                "eval_start": _BASE,
-                "metric_name": "response_time",
-                "aggregation": "avg",
-                "value": 250.0,
-                "asset_name": "trend-inv-asset",
-                "evaluation_name": "trend-inv",
-                "os_tag": None,
+                'eval_id': ev.id,
+                'eval_start': _BASE,
+                'metric_name': 'response_time',
+                'aggregation': 'avg',
+                'value': 250.0,
+                'asset_name': 'trend-inv-asset',
+                'evaluation_name': 'trend-inv',
+                'os_tag': None,
             }
         ]
     )
 
-    await repo.invalidate(ev.id, note="bad")
+    await repo.invalidate(ev.id, note='bad')
 
     points = await trend_repo.get_trend_by_domain(
-        asset_id=asset_id, slo_name="test-slo", metric_name="response_time", limit=50
+        asset_id=asset_id, slo_name='test-slo', metric_name='response_time', limit=50
     )
     assert len(points) == 0

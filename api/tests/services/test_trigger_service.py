@@ -21,9 +21,9 @@ _END = datetime(2026, 3, 15, 10, 30, 0, tzinfo=UTC)
 
 
 def _make_request(
-    asset_name: str = "vm-01",
-    slo_name: str = "perf-slo",
-    evaluation_name: str = "nightly",
+    asset_name: str = 'vm-01',
+    slo_name: str = 'perf-slo',
+    evaluation_name: str = 'nightly',
 ) -> TriggerRequest:
     return TriggerRequest(
         asset_name=asset_name,
@@ -35,33 +35,33 @@ def _make_request(
     )
 
 
-def _make_asset(name: str = "vm-01") -> MagicMock:
+def _make_asset(name: str = 'vm-01') -> MagicMock:
     asset = MagicMock()
     asset.id = uuid.uuid4()
     asset.name = name
-    asset.tags = {"env": "prod"}
+    asset.tags = {'env': 'prod'}
     return asset
 
 
-def _make_link(slo_name: str = "perf-slo") -> MagicMock:
+def _make_link(slo_name: str = 'perf-slo') -> MagicMock:
     link = MagicMock()
     link.slo_name = slo_name
-    link.sli_name = "system-sli"
-    link.data_source_name = "prom-1"
+    link.sli_name = 'system-sli'
+    link.data_source_name = 'prom-1'
     return link
 
 
 def _make_sli_def() -> MagicMock:
     sli = MagicMock()
-    sli.name = "system-sli"
+    sli.name = 'system-sli'
     sli.version = 1
-    sli.indicators = {"cpu": "query"}
+    sli.indicators = {'cpu': 'query'}
     return sli
 
 
 def _make_slo_def() -> MagicMock:
     slo = MagicMock()
-    slo.name = "perf-slo"
+    slo.name = 'perf-slo'
     slo.version = 1
     slo.sli_name = None
     slo.sli_version = None
@@ -70,13 +70,13 @@ def _make_slo_def() -> MagicMock:
 
 def _make_ds() -> MagicMock:
     ds = MagicMock()
-    ds.name = "prom-1"
-    ds.adapter_url = "http://prom:8081"
-    ds.adapter_type = "prometheus"
+    ds.name = 'prom-1'
+    ds.adapter_url = 'http://prom:8081'
+    ds.adapter_type = 'prometheus'
     return ds
 
 
-def _make_evaluation(eval_id: uuid.UUID | None = None, status: str = "pending") -> MagicMock:
+def _make_evaluation(eval_id: uuid.UUID | None = None, status: str = 'pending') -> MagicMock:
     ev = MagicMock()
     ev.id = eval_id or uuid.uuid4()
     ev.status = status
@@ -124,7 +124,7 @@ async def test_trigger_single_happy_path() -> None:
     service = TriggerService(repos, pool)
     result = await service.trigger_single(_make_request())
 
-    assert result.status == "pending"
+    assert result.status == 'pending'
     assert result.id is not None
     pool.enqueue_job.assert_awaited_once()
 
@@ -135,7 +135,7 @@ async def test_trigger_single_asset_not_found() -> None:
     pool = AsyncMock()
 
     service = TriggerService(repos, pool)
-    with pytest.raises(AssetNotFoundError, match="asset"):
+    with pytest.raises(AssetNotFoundError, match='asset'):
         await service.trigger_single(_make_request())
 
 
@@ -155,24 +155,24 @@ async def test_trigger_single_slo_not_configured() -> None:
 async def test_trigger_single_duplicate_in_progress() -> None:
     repos = _make_repos()
     _configure_happy_path(repos)
-    existing = _make_evaluation(status="pending")
+    existing = _make_evaluation(status='pending')
     repos.eval_repo.find_duplicate.return_value = existing
     pool = AsyncMock()
 
     service = TriggerService(repos, pool)
-    with pytest.raises(DuplicateEvaluationError, match="already in progress"):
+    with pytest.raises(DuplicateEvaluationError, match='already in progress'):
         await service.trigger_single(_make_request())
 
 
 async def test_trigger_single_duplicate_completed() -> None:
     repos = _make_repos()
     _configure_happy_path(repos)
-    existing = _make_evaluation(status="completed")
+    existing = _make_evaluation(status='completed')
     repos.eval_repo.find_duplicate.return_value = existing
     pool = AsyncMock()
 
     service = TriggerService(repos, pool)
-    with pytest.raises(DuplicateEvaluationError, match="already exists"):
+    with pytest.raises(DuplicateEvaluationError, match='already exists'):
         await service.trigger_single(_make_request())
 
 
@@ -184,11 +184,11 @@ async def test_trigger_batch_group_not_found() -> None:
     from app.modules.quality_gate.schemas import BatchTriggerRequest
 
     request = BatchTriggerRequest(
-        group_name="nonexistent",
-        evaluation_name="nightly",
+        group_name='nonexistent',
+        evaluation_name='nightly',
         period_start=_START,
         period_end=_END,
     )
     service = TriggerService(repos, pool)
-    with pytest.raises(AssetNotFoundError, match="asset group"):
+    with pytest.raises(AssetNotFoundError, match='asset group'):
         await service.trigger_batch(request)

@@ -24,16 +24,16 @@ def _make_slo(objectives: list[SLOObjective]) -> SLO:
 def _get_indicator(result: object, metric_name: str) -> dict:
     """Get an indicator result by metric name, handling both dict and object forms."""
     for ir in result.indicator_results:  # type: ignore[attr-defined]
-        name = ir.metric if hasattr(ir, "metric") else ir["metric"]
+        name = ir.metric if hasattr(ir, 'metric') else ir['metric']
         if name == metric_name:
             return ir
-    msg = f"no indicator with metric={metric_name!r}"
+    msg = f'no indicator with metric={metric_name!r}'
     raise ValueError(msg)
 
 
 def _status(ir: object) -> str:
     """Get status from an indicator result (dict or IndicatorResult object)."""
-    return ir.status if hasattr(ir, "status") else ir["status"]  # type: ignore[union-attr]
+    return ir.status if hasattr(ir, 'status') else ir['status']  # type: ignore[union-attr]
 
 
 # --- score_objective with no pass_criteria ---
@@ -42,10 +42,10 @@ def _status(ir: object) -> str:
 def test_objective_with_only_warning_criteria_returns_info() -> None:
     """Objective with warning_criteria but no pass_criteria returns INFO status."""
     obj = SLOObjective(
-        sli="cpu",
-        display_name="CPU",
+        sli='cpu',
+        display_name='CPU',
         pass_criteria=[],
-        warning_criteria=["<90"],
+        warning_criteria=['<90'],
         weight=1,
     )
     result = score_objective(obj, value=50.0, baseline=None)
@@ -57,8 +57,8 @@ def test_objective_with_only_warning_criteria_returns_info() -> None:
 def test_objective_with_no_criteria_returns_info() -> None:
     """Objective with neither pass nor warning criteria is informational only."""
     obj = SLOObjective(
-        sli="cpu",
-        display_name="CPU",
+        sli='cpu',
+        display_name='CPU',
         pass_criteria=[],
         warning_criteria=[],
         weight=1,
@@ -71,8 +71,8 @@ def test_objective_with_no_criteria_returns_info() -> None:
 def test_objective_with_no_criteria_none_value() -> None:
     """INFO objective with None value still returns INFO (not FAIL)."""
     obj = SLOObjective(
-        sli="cpu",
-        display_name="CPU",
+        sli='cpu',
+        display_name='CPU',
         pass_criteria=[],
         warning_criteria=[],
         weight=1,
@@ -86,8 +86,8 @@ def test_objective_with_no_criteria_none_value() -> None:
 
 def test_all_info_objectives_result_is_pass() -> None:
     """When all objectives are INFO, maximum is 0 and result is PASS with 100% score."""
-    obj1 = SLOObjective(sli="a", pass_criteria=[], weight=1)
-    obj2 = SLOObjective(sli="b", pass_criteria=[], weight=2)
+    obj1 = SLOObjective(sli='a', pass_criteria=[], weight=1)
+    obj2 = SLOObjective(sli='b', pass_criteria=[], weight=2)
 
     results = [
         score_objective(obj1, value=10.0, baseline=None),
@@ -105,11 +105,11 @@ def test_evaluate_mixed_info_and_scored() -> None:
     """Mix of info-only and scored objectives: only scored contribute to final score."""
     slo = _make_slo(
         [
-            SLOObjective(sli="cpu", display_name="CPU", pass_criteria=["<90"], weight=1),
-            SLOObjective(sli="mem", display_name="Memory", pass_criteria=[], weight=1),
+            SLOObjective(sli='cpu', display_name='CPU', pass_criteria=['<90'], weight=1),
+            SLOObjective(sli='mem', display_name='Memory', pass_criteria=[], weight=1),
         ]
     )
-    metrics = {"cpu": 50.0, "mem": 80.0}
+    metrics = {'cpu': 50.0, 'mem': 80.0}
     result = evaluate(slo, metrics, baselines={})
     # cpu passes (weight 1), mem is info (does not contribute)
     # maximum = 1 (only cpu), achieved = 1 -> 100%
@@ -118,21 +118,21 @@ def test_evaluate_mixed_info_and_scored() -> None:
 
     # Check individual indicators
     assert len(result.indicator_results) == 2
-    cpu_ir = _get_indicator(result, "cpu")
-    mem_ir = _get_indicator(result, "mem")
-    assert _status(cpu_ir) == "pass"
-    assert _status(mem_ir) == "info"
+    cpu_ir = _get_indicator(result, 'cpu')
+    mem_ir = _get_indicator(result, 'mem')
+    assert _status(cpu_ir) == 'pass'
+    assert _status(mem_ir) == 'info'
 
 
 def test_evaluate_all_info_objectives() -> None:
     """All objectives are info-only: result should be pass."""
     slo = _make_slo(
         [
-            SLOObjective(sli="a", display_name="A", pass_criteria=[], weight=1),
-            SLOObjective(sli="b", display_name="B", pass_criteria=[], weight=2),
+            SLOObjective(sli='a', display_name='A', pass_criteria=[], weight=1),
+            SLOObjective(sli='b', display_name='B', pass_criteria=[], weight=2),
         ]
     )
-    metrics = {"a": 10.0, "b": 20.0}
+    metrics = {'a': 10.0, 'b': 20.0}
     result = evaluate(slo, metrics, baselines={})
     assert result.result == EvaluationOutcome.PASS
     assert result.score == 100.0

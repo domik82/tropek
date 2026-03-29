@@ -45,7 +45,7 @@ router = APIRouter()
 # ---- Evaluations ----
 
 
-@router.post("/evaluations", response_model=TriggerResponse, status_code=202)
+@router.post('/evaluations', response_model=TriggerResponse, status_code=202)
 async def trigger_evaluation(
     body: TriggerRequest,
     repos: QualityGateRepos = Depends(get_qg_repos),
@@ -56,7 +56,7 @@ async def trigger_evaluation(
     return await service.trigger_single(body)
 
 
-@router.post("/evaluations/batch", response_model=BatchTriggerResponse, status_code=202)
+@router.post('/evaluations/batch', response_model=BatchTriggerResponse, status_code=202)
 async def trigger_batch(
     body: BatchTriggerRequest,
     repos: QualityGateRepos = Depends(get_qg_repos),
@@ -67,7 +67,7 @@ async def trigger_batch(
     return await service.trigger_batch(body)
 
 
-@router.get("/evaluations", response_model=PagedResponse[EvaluationSummary])
+@router.get('/evaluations', response_model=PagedResponse[EvaluationSummary])
 async def list_evaluations(  # noqa: PLR0913
     asset_name: str | None = None,
     slo_name: str | None = None,
@@ -75,8 +75,8 @@ async def list_evaluations(  # noqa: PLR0913
     result: str | None = None,
     date: str | None = None,
     group_name: str | None = None,
-    from_ts: datetime | None = Query(default=None, alias="from"),
-    to_ts: datetime | None = Query(default=None, alias="to"),
+    from_ts: datetime | None = Query(default=None, alias='from'),
+    to_ts: datetime | None = Query(default=None, alias='to'),
     limit: int = Query(default=50, le=200),
     offset: int = 0,
     repos: QualityGateRepos = Depends(get_qg_repos),
@@ -85,7 +85,7 @@ async def list_evaluations(  # noqa: PLR0913
     if date and (from_ts or to_ts):
         raise HTTPException(
             status_code=422,
-            detail="date and from/to filters are mutually exclusive",
+            detail='date and from/to filters are mutually exclusive',
         )
     resolved_asset_id: uuid.UUID | None = None
     asset_ids: list[uuid.UUID] | None = None
@@ -93,7 +93,7 @@ async def list_evaluations(  # noqa: PLR0913
     if asset_name:
         asset = await repos.asset_repo.get_by_name(asset_name)
         if asset is None:
-            raise NotFoundError("asset", asset_name)
+            raise NotFoundError('asset', asset_name)
         resolved_asset_id = asset.id
 
     if group_name:
@@ -124,12 +124,12 @@ async def list_evaluations(  # noqa: PLR0913
     return PagedResponse(items=items, total=total)
 
 
-@router.get("/evaluations/metric-heatmap", response_model=MetricHeatmapResponse)
+@router.get('/evaluations/metric-heatmap', response_model=MetricHeatmapResponse)
 async def get_metric_heatmap(
     asset_name: str,
     evaluation_name: list[str] | None = Query(default=None),
-    from_ts: datetime | None = Query(default=None, alias="from"),
-    to_ts: datetime | None = Query(default=None, alias="to"),
+    from_ts: datetime | None = Query(default=None, alias='from'),
+    to_ts: datetime | None = Query(default=None, alias='to'),
     limit: int = 500,
     repos: QualityGateRepos = Depends(get_qg_repos),
 ) -> MetricHeatmapResponse:
@@ -148,7 +148,7 @@ async def get_metric_heatmap(
     slots: list[datetime] = []
     metric_set: dict[str, str] = {}  # name -> display_name
     cells: list[HeatmapCell] = []
-    score_metric = "__score__"
+    score_metric = '__score__'
     for ev in reversed(evals):  # oldest first for display
         slots.append(ev.period_start)
         # Overall evaluation score row
@@ -156,8 +156,8 @@ async def get_metric_heatmap(
             HeatmapCell(
                 slot=ev.period_start,
                 metric=score_metric,
-                display_name="Score",
-                result="invalidated" if ev.invalidated else (ev.result or "none"),
+                display_name='Score',
+                result='invalidated' if ev.invalidated else (ev.result or 'none'),
                 score=ev.score or 0.0,
                 eval_id=ev.id,
                 evaluation_name=ev.evaluation_name,
@@ -175,7 +175,7 @@ async def get_metric_heatmap(
                     metric=metric_name,
                     display_name=display,
                     result=(
-                        "invalidated"
+                        'invalidated'
                         if ev.invalidated
                         else (ev.result or row.status)
                         if ev.original_result is not None
@@ -194,13 +194,13 @@ async def get_metric_heatmap(
         # See also: ui/src/components/charts/HeatmapChart.tsx (yAxis)
         metrics=[
             *[HeatmapMetric(name=k, display_name=v) for k, v in metric_set.items()],
-            HeatmapMetric(name=score_metric, display_name="Score"),
+            HeatmapMetric(name=score_metric, display_name='Score'),
         ],
         cells=cells,
     )
 
 
-@router.post("/evaluations/re-evaluate", response_model=ReEvaluateResponse)
+@router.post('/evaluations/re-evaluate', response_model=ReEvaluateResponse)
 async def re_evaluate_evaluations(
     body: ReEvaluateRequest,
     session: AsyncSession = Depends(get_session),
@@ -212,7 +212,7 @@ async def re_evaluate_evaluations(
         raise HTTPException(status_code=422, detail=str(e)) from e
 
 
-@router.get("/evaluations/names", response_model=list[EvaluationNameEntry])
+@router.get('/evaluations/names', response_model=list[EvaluationNameEntry])
 async def list_evaluation_names(
     asset_name: str | None = None,
     group_name: str | None = None,
@@ -242,7 +242,7 @@ async def list_evaluation_names(
     ]
 
 
-@router.get("/evaluations/{eval_id}", response_model=EvaluationDetail)
+@router.get('/evaluations/{eval_id}', response_model=EvaluationDetail)
 async def get_evaluation(
     eval_id: uuid.UUID,
     repos: QualityGateRepos = Depends(get_qg_repos),
@@ -250,11 +250,11 @@ async def get_evaluation(
     """Get full evaluation detail including annotations and indicator results."""
     ev = await repos.eval_repo.get_by_id(eval_id)
     if ev is None:
-        raise NotFoundError("evaluation", str(eval_id))
+        raise NotFoundError('evaluation', str(eval_id))
     return build_detail(ev)
 
 
-@router.patch("/evaluations/{eval_id}/invalidate", response_model=EvaluationSummary)
+@router.patch('/evaluations/{eval_id}/invalidate', response_model=EvaluationSummary)
 async def invalidate_evaluation(
     eval_id: uuid.UUID,
     body: InvalidateRequest,
@@ -263,11 +263,11 @@ async def invalidate_evaluation(
     """Mark an evaluation as invalidated."""
     ev = await repos.eval_repo.invalidate(eval_id, note=body.invalidation_note)
     if ev is None:
-        raise NotFoundError("evaluation", str(eval_id))
+        raise NotFoundError('evaluation', str(eval_id))
     return build_summary(ev, annotation_count=0, latest_ann=None)
 
 
-@router.patch("/evaluations/{eval_id}/restore", response_model=EvaluationSummary)
+@router.patch('/evaluations/{eval_id}/restore', response_model=EvaluationSummary)
 async def restore_evaluation(
     eval_id: uuid.UUID,
     repos: QualityGateRepos = Depends(get_qg_repos),
@@ -275,11 +275,11 @@ async def restore_evaluation(
     """Clear invalidation flag on an evaluation."""
     ev = await repos.eval_repo.restore(eval_id)
     if ev is None:
-        raise NotFoundError("evaluation", str(eval_id))
+        raise NotFoundError('evaluation', str(eval_id))
     return build_summary(ev, annotation_count=0, latest_ann=None)
 
 
-@router.patch("/evaluations/{eval_id}/pin-baseline", response_model=EvaluationDetail)
+@router.patch('/evaluations/{eval_id}/pin-baseline', response_model=EvaluationDetail)
 async def pin_baseline(
     eval_id: uuid.UUID,
     body: PinBaselineRequest,
@@ -288,16 +288,16 @@ async def pin_baseline(
     """Pin an evaluation as the new baseline for future comparisons."""
     ev = await repos.eval_repo.get_by_id(eval_id)
     if ev is None:
-        raise HTTPException(status_code=404, detail="evaluation not found")
-    if ev.status != "completed":
-        raise HTTPException(status_code=409, detail="only completed evaluations can be pinned")
+        raise HTTPException(status_code=404, detail='evaluation not found')
+    if ev.status != 'completed':
+        raise HTTPException(status_code=409, detail='only completed evaluations can be pinned')
     if ev.invalidated:
-        raise HTTPException(status_code=409, detail="cannot pin an invalidated evaluation")
+        raise HTTPException(status_code=409, detail='cannot pin an invalidated evaluation')
     updated = await repos.eval_repo.pin_baseline(eval_id, reason=body.reason, author=body.author)
     return build_detail(updated)
 
 
-@router.patch("/evaluations/{eval_id}/unpin-baseline", response_model=EvaluationDetail)
+@router.patch('/evaluations/{eval_id}/unpin-baseline', response_model=EvaluationDetail)
 async def unpin_baseline(
     eval_id: uuid.UUID,
     repos: QualityGateRepos = Depends(get_qg_repos),
@@ -305,12 +305,12 @@ async def unpin_baseline(
     """Remove baseline pin from an evaluation."""
     ev = await repos.eval_repo.get_by_id(eval_id)
     if ev is None:
-        raise HTTPException(status_code=404, detail="evaluation not found")
+        raise HTTPException(status_code=404, detail='evaluation not found')
     updated = await repos.eval_repo.unpin_baseline(eval_id)
     return build_detail(updated)
 
 
-@router.patch("/evaluations/{eval_id}/override-status", response_model=EvaluationDetail)
+@router.patch('/evaluations/{eval_id}/override-status', response_model=EvaluationDetail)
 async def override_status(
     eval_id: uuid.UUID,
     body: OverrideStatusRequest,
@@ -319,18 +319,18 @@ async def override_status(
     """Override the evaluation result."""
     ev = await repos.eval_repo.get_by_id(eval_id)
     if ev is None:
-        raise HTTPException(status_code=404, detail="evaluation not found")
-    if ev.status != "completed":
-        raise HTTPException(status_code=409, detail="only completed evaluations can be overridden")
-    if body.new_result not in ("pass", "warning", "fail"):
-        raise HTTPException(status_code=422, detail="new_result must be pass, warning, or fail")
+        raise HTTPException(status_code=404, detail='evaluation not found')
+    if ev.status != 'completed':
+        raise HTTPException(status_code=409, detail='only completed evaluations can be overridden')
+    if body.new_result not in ('pass', 'warning', 'fail'):
+        raise HTTPException(status_code=422, detail='new_result must be pass, warning, or fail')
     updated = await repos.eval_repo.override_status(
         eval_id, new_result=body.new_result, reason=body.reason, author=body.author
     )
     return build_detail(updated)
 
 
-@router.patch("/evaluations/{eval_id}/restore-override", response_model=EvaluationDetail)
+@router.patch('/evaluations/{eval_id}/restore-override', response_model=EvaluationDetail)
 async def restore_override(
     eval_id: uuid.UUID,
     repos: QualityGateRepos = Depends(get_qg_repos),
@@ -338,9 +338,9 @@ async def restore_override(
     """Restore the original evaluation result."""
     ev = await repos.eval_repo.get_by_id(eval_id)
     if ev is None:
-        raise HTTPException(status_code=404, detail="evaluation not found")
+        raise HTTPException(status_code=404, detail='evaluation not found')
     if ev.original_result is None:
-        raise HTTPException(status_code=409, detail="evaluation has no override to restore")
+        raise HTTPException(status_code=409, detail='evaluation has no override to restore')
     updated = await repos.eval_repo.restore_override(eval_id)
     return build_detail(updated)
 
@@ -348,7 +348,7 @@ async def restore_override(
 # ---- Annotations ----
 
 
-@router.get("/evaluations/{eval_id}/annotations", response_model=list[AnnotationRead])
+@router.get('/evaluations/{eval_id}/annotations', response_model=list[AnnotationRead])
 async def list_annotations(
     eval_id: uuid.UUID,
     repos: QualityGateRepos = Depends(get_qg_repos),
@@ -356,11 +356,11 @@ async def list_annotations(
     """List all annotations for an evaluation."""
     ev = await repos.eval_repo.get_by_id(eval_id)
     if ev is None:
-        raise NotFoundError("evaluation", str(eval_id))
+        raise NotFoundError('evaluation', str(eval_id))
     return [AnnotationRead.model_validate(a) for a in ev.annotations if a.hidden_at is None]
 
 
-@router.post("/evaluations/{eval_id}/annotations", response_model=AnnotationRead, status_code=201)
+@router.post('/evaluations/{eval_id}/annotations', response_model=AnnotationRead, status_code=201)
 async def create_annotation(
     eval_id: uuid.UUID,
     body: AnnotationCreate,
@@ -369,7 +369,7 @@ async def create_annotation(
     """Add an annotation to an evaluation."""
     ev = await repos.eval_repo.get_by_id(eval_id)
     if ev is None:
-        raise NotFoundError("evaluation", str(eval_id))
+        raise NotFoundError('evaluation', str(eval_id))
     ann = await repos.annotation_repo.add_annotation(
         eval_id,
         content=body.content,
@@ -380,7 +380,7 @@ async def create_annotation(
     return AnnotationRead.model_validate(ann)
 
 
-@router.patch("/evaluations/{eval_id}/annotations/{ann_id}", response_model=AnnotationRead)
+@router.patch('/evaluations/{eval_id}/annotations/{ann_id}', response_model=AnnotationRead)
 async def update_annotation(
     eval_id: uuid.UUID,
     ann_id: uuid.UUID,
@@ -392,12 +392,12 @@ async def update_annotation(
         ann_id, **body.model_dump(exclude_unset=True)
     )
     if ann is None:
-        raise NotFoundError("annotation", str(ann_id))
+        raise NotFoundError('annotation', str(ann_id))
     return AnnotationRead.model_validate(ann)
 
 
 @router.post(
-    "/evaluations/{eval_id}/annotations/{ann_id}/hide",
+    '/evaluations/{eval_id}/annotations/{ann_id}/hide',
     response_model=AnnotationRead,
 )
 async def hide_annotation(
@@ -411,14 +411,14 @@ async def hide_annotation(
         ann_id, reason=body.reason, author=body.author
     )
     if ann is None:
-        raise NotFoundError("annotation", str(ann_id))
+        raise NotFoundError('annotation', str(ann_id))
     return AnnotationRead.model_validate(ann)
 
 
 # ---- Trend ----
 
 
-@router.get("/trend", response_model=list[TrendPoint])
+@router.get('/trend', response_model=list[TrendPoint])
 async def get_trend(
     metric: str,
     eval_id: uuid.UUID | None = None,
@@ -437,27 +437,27 @@ async def get_trend(
     if has_eval and has_any_asset_param:
         raise HTTPException(
             status_code=422,
-            detail="provide either eval_id or (asset_name + slo_name), not both",
+            detail='provide either eval_id or (asset_name + slo_name), not both',
         )
     if not has_eval and not has_any_asset_param:
         raise HTTPException(
             status_code=422,
-            detail="provide either eval_id or (asset_name + slo_name)",
+            detail='provide either eval_id or (asset_name + slo_name)',
         )
     if has_any_asset_param and (asset_name is None or slo_name is None):
         raise HTTPException(
             status_code=422,
-            detail="both asset_name and slo_name are required when not using eval_id",
+            detail='both asset_name and slo_name are required when not using eval_id',
         )
 
     if eval_id is not None:
         ev = await repos.eval_repo.get_by_id(eval_id)
         if ev is None:
-            raise NotFoundError("evaluation", str(eval_id))
+            raise NotFoundError('evaluation', str(eval_id))
         if ev.asset_id is None:
-            raise HTTPException(status_code=422, detail="evaluation has no associated asset")
+            raise HTTPException(status_code=422, detail='evaluation has no associated asset')
         if ev.slo_name is None:
-            raise HTTPException(status_code=422, detail="evaluation has no associated slo")
+            raise HTTPException(status_code=422, detail='evaluation has no associated slo')
         resolved_asset_id = ev.asset_id
         resolved_slo_name = ev.slo_name
     else:
@@ -465,7 +465,7 @@ async def get_trend(
         assert slo_name is not None  # guarded by has_any_asset_param checks above
         asset = await repos.asset_repo.get_by_name(asset_name)
         if asset is None:
-            raise NotFoundError("asset", asset_name)
+            raise NotFoundError('asset', asset_name)
         resolved_asset_id = asset.id
         resolved_slo_name = slo_name
 

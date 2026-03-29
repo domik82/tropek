@@ -20,7 +20,7 @@ class SLIDefinitionCreate(BaseModel):
     author: str | None = None
     tags: dict[str, Any] = {}
     comparable_from_version: int | None = None
-    mode: str = "raw"
+    mode: str = 'raw'
     query_template: str | None = None
     interval: str | None = None
     methods: list[str] | None = None

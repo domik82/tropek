@@ -14,7 +14,7 @@ def configure_logging(*, json_output: bool = False) -> None:
     processors: list[structlog.types.Processor] = [
         structlog.contextvars.merge_contextvars,
         structlog.processors.add_log_level,
-        structlog.processors.TimeStamper(fmt="iso"),
+        structlog.processors.TimeStamper(fmt='iso'),
         structlog.processors.StackInfoRenderer(),
     ]
     if json_output:

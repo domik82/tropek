@@ -37,8 +37,8 @@ def _make_repos() -> QualityGateRepos:
 
 def _make_batch_request() -> BatchTriggerRequest:
     return BatchTriggerRequest(
-        group_name="linux-boxes",
-        evaluation_name="nightly",
+        group_name='linux-boxes',
+        evaluation_name='nightly',
         period_start=_START,
         period_end=_END,
     )
@@ -72,69 +72,69 @@ def _make_trigger_context(asset_name: str, slo_name: str) -> TriggerContext:
         asset_variables={},
         slo_name=slo_name,
         slo_version=1,
-        sli_name="system-sli",
+        sli_name='system-sli',
         sli_version=1,
-        data_source_name="prom-1",
-        adapter_url="http://prom:8081",
-        adapter_type="prometheus",
-        indicators={"cpu": "query"},
+        data_source_name='prom-1',
+        adapter_url='http://prom:8081',
+        adapter_type='prometheus',
+        indicators={'cpu': 'query'},
     )
 
 
 async def test_scan_no_conflicts() -> None:
     """All batch members resolve cleanly with no duplicates."""
     repos = _make_repos()
-    asset = _make_asset("vm-01")
+    asset = _make_asset('vm-01')
     repos.asset_repo.get_by_name.return_value = asset
-    repos.slo_link_repo.list_by_asset.return_value = [_make_link("perf-slo")]
+    repos.slo_link_repo.list_by_asset.return_value = [_make_link('perf-slo')]
     repos.eval_repo.find_duplicate.return_value = None
 
-    ctx = _make_trigger_context("vm-01", "perf-slo")
+    ctx = _make_trigger_context('vm-01', 'perf-slo')
     service = TriggerService(repos, AsyncMock())
 
     with patch(
-        "app.modules.quality_gate.trigger_service.resolve_single_trigger",
+        'app.modules.quality_gate.trigger_service.resolve_single_trigger',
         return_value=ctx,
     ):
         resolved, conflicts = await service._scan_batch_members(
-            members=[_make_member("vm-01")],
+            members=[_make_member('vm-01')],
             request=_make_batch_request(),
             group_links=[],
         )
 
     assert len(resolved) == 1
     assert len(conflicts) == 0
-    assert resolved[0][1] == "vm-01"
+    assert resolved[0][1] == 'vm-01'
 
 
 async def test_scan_detects_duplicate() -> None:
     """Existing evaluation for same asset/SLO/period reports as conflict."""
     repos = _make_repos()
-    asset = _make_asset("vm-01")
+    asset = _make_asset('vm-01')
     repos.asset_repo.get_by_name.return_value = asset
-    repos.slo_link_repo.list_by_asset.return_value = [_make_link("perf-slo")]
+    repos.slo_link_repo.list_by_asset.return_value = [_make_link('perf-slo')]
 
     existing = MagicMock()
-    existing.status = "completed"
+    existing.status = 'completed'
     repos.eval_repo.find_duplicate.return_value = existing
 
-    ctx = _make_trigger_context("vm-01", "perf-slo")
+    ctx = _make_trigger_context('vm-01', 'perf-slo')
     service = TriggerService(repos, AsyncMock())
 
     with patch(
-        "app.modules.quality_gate.trigger_service.resolve_single_trigger",
+        'app.modules.quality_gate.trigger_service.resolve_single_trigger',
         return_value=ctx,
     ):
         resolved, conflicts = await service._scan_batch_members(
-            members=[_make_member("vm-01")],
+            members=[_make_member('vm-01')],
             request=_make_batch_request(),
             group_links=[],
         )
 
     assert len(resolved) == 0
     assert len(conflicts) == 1
-    assert conflicts[0].asset_name == "vm-01"
-    assert conflicts[0].existing_status == "completed"
+    assert conflicts[0].asset_name == 'vm-01'
+    assert conflicts[0].existing_status == 'completed'
 
 
 async def test_scan_skips_missing_asset() -> None:
@@ -144,7 +144,7 @@ async def test_scan_skips_missing_asset() -> None:
 
     service = TriggerService(repos, AsyncMock())
     resolved, conflicts = await service._scan_batch_members(
-        members=[_make_member("missing-asset")],
+        members=[_make_member('missing-asset')],
         request=_make_batch_request(),
         group_links=[],
     )
@@ -170,18 +170,18 @@ async def test_scan_empty_batch() -> None:
 async def test_scan_skips_unresolvable_trigger() -> None:
     """If resolve_single_trigger raises EvaluationError, that SLO is skipped."""
     repos = _make_repos()
-    asset = _make_asset("vm-01")
+    asset = _make_asset('vm-01')
     repos.asset_repo.get_by_name.return_value = asset
-    repos.slo_link_repo.list_by_asset.return_value = [_make_link("bad-slo")]
+    repos.slo_link_repo.list_by_asset.return_value = [_make_link('bad-slo')]
 
     service = TriggerService(repos, AsyncMock())
 
     with patch(
-        "app.modules.quality_gate.trigger_service.resolve_single_trigger",
-        side_effect=EvaluationError("slo not found"),
+        'app.modules.quality_gate.trigger_service.resolve_single_trigger',
+        side_effect=EvaluationError('slo not found'),
     ):
         resolved, conflicts = await service._scan_batch_members(
-            members=[_make_member("vm-01")],
+            members=[_make_member('vm-01')],
             request=_make_batch_request(),
             group_links=[],
         )
@@ -193,24 +193,24 @@ async def test_scan_skips_unresolvable_trigger() -> None:
 async def test_scan_merges_group_links() -> None:
     """Group-level SLO links are used when asset has no direct link for that SLO."""
     repos = _make_repos()
-    asset = _make_asset("vm-01")
+    asset = _make_asset('vm-01')
     repos.asset_repo.get_by_name.return_value = asset
     repos.slo_link_repo.list_by_asset.return_value = []  # no asset-level links
     repos.eval_repo.find_duplicate.return_value = None
 
-    group_link = _make_link("group-slo")
-    ctx = _make_trigger_context("vm-01", "group-slo")
+    group_link = _make_link('group-slo')
+    ctx = _make_trigger_context('vm-01', 'group-slo')
     service = TriggerService(repos, AsyncMock())
 
     with patch(
-        "app.modules.quality_gate.trigger_service.resolve_single_trigger",
+        'app.modules.quality_gate.trigger_service.resolve_single_trigger',
         return_value=ctx,
     ):
         resolved, _conflicts = await service._scan_batch_members(
-            members=[_make_member("vm-01")],
+            members=[_make_member('vm-01')],
             request=_make_batch_request(),
             group_links=[group_link],
         )
 
     assert len(resolved) == 1
-    assert resolved[0][0].slo_name == "group-slo"
+    assert resolved[0][0].slo_name == 'group-slo'

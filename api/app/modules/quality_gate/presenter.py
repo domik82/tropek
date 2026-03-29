@@ -24,7 +24,7 @@ def _indicators_from_orm_rows(rows: list) -> list[IndicatorResult]:  # type: ign
             IndicatorResult(
                 metric=obj.sli,
                 display_name=obj.display_name,
-                tab_group=getattr(obj, "tab_group", None),
+                tab_group=getattr(obj, 'tab_group', None),
                 value=row.value,
                 compared_value=row.compared_value,
                 change_absolute=row.change_absolute,
@@ -51,7 +51,7 @@ def _indicators_from_orm_rows(rows: list) -> list[IndicatorResult]:  # type: ign
 
 def _get_indicator_results(ev: object) -> list[IndicatorResult]:
     """Get indicator results from ORM rows."""
-    orm_rows = getattr(ev, "indicator_rows", None)
+    orm_rows = getattr(ev, 'indicator_rows', None)
     if orm_rows:
         return _indicators_from_orm_rows(orm_rows)
     return []
@@ -64,10 +64,10 @@ def _top_failures(indicators: list[IndicatorResult]) -> list[FailingIndicator]:
             metric=ind.metric,
             display_name=ind.display_name,
             value=ind.value,
-            threshold=(ind.pass_targets or [{}])[0].get("criteria", ""),
+            threshold=(ind.pass_targets or [{}])[0].get('criteria', ''),
         )
         for ind in indicators
-        if ind.status == "fail"
+        if ind.status == 'fail'
     ]
 
 
@@ -76,14 +76,14 @@ def build_summary(
 ) -> EvaluationSummary:
     """Transform ORM Evaluation into API summary schema."""
     indicators = _get_indicator_results(ev)
-    job_stats = getattr(ev, "job_stats", None) or {}
+    job_stats = getattr(ev, 'job_stats', None) or {}
     return EvaluationSummary.model_validate(
         {
             **ev.__dict__,
-            "original_score": job_stats.get("original_score"),
-            "annotation_count": annotation_count,
-            "latest_annotation": latest_ann,
-            "top_failures": _top_failures(indicators),
+            'original_score': job_stats.get('original_score'),
+            'annotation_count': annotation_count,
+            'latest_annotation': latest_ann,
+            'top_failures': _top_failures(indicators),
         }
     )
 
@@ -95,19 +95,19 @@ def build_detail(ev: Any) -> EvaluationDetail:
     ]
     indicators = _get_indicator_results(ev)
     job_stats_detail = ev.job_stats or {}
-    compared_ids = job_stats_detail.get("compared_evaluation_ids", [])
+    compared_ids = job_stats_detail.get('compared_evaluation_ids', [])
     sorted_annotations = sorted(annotations, key=lambda a: a.created_at)
     return EvaluationDetail.model_validate(
         {
             **ev.__dict__,
-            "original_score": job_stats_detail.get("original_score"),
-            "annotation_count": len(annotations),
-            "latest_annotation": sorted_annotations[-1] if sorted_annotations else None,
-            "top_failures": _top_failures(indicators),
-            "compared_evaluation_ids": [uuid.UUID(eid) for eid in compared_ids],
-            "annotations": sorted_annotations,
-            "indicator_results": indicators,
-            "total_score_pass_pct": job_stats_detail.get("total_score_pass_pct"),
-            "total_score_warning_pct": job_stats_detail.get("total_score_warning_pct"),
+            'original_score': job_stats_detail.get('original_score'),
+            'annotation_count': len(annotations),
+            'latest_annotation': sorted_annotations[-1] if sorted_annotations else None,
+            'top_failures': _top_failures(indicators),
+            'compared_evaluation_ids': [uuid.UUID(eid) for eid in compared_ids],
+            'annotations': sorted_annotations,
+            'indicator_results': indicators,
+            'total_score_pass_pct': job_stats_detail.get('total_score_pass_pct'),
+            'total_score_warning_pct': job_stats_detail.get('total_score_warning_pct'),
         }
     )

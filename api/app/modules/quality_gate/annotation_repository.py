@@ -51,8 +51,8 @@ class AnnotationRepository:
         self._session.add(ann)
         await self._session.commit()
         if self._cache:
-            await self._cache.invalidate(f"annot_count:{eval_id}")
-            await self._cache.invalidate(f"annot_latest:{eval_id}")
+            await self._cache.invalidate(f'annot_count:{eval_id}')
+            await self._cache.invalidate(f'annot_latest:{eval_id}')
         return ann
 
     async def get_annotation_by_id(self, annotation_id: uuid.UUID) -> EvaluationAnnotation | None:
@@ -74,13 +74,13 @@ class AnnotationRepository:
         """Update mutable annotation fields."""
         values: dict[str, Any] = {}
         if content is not None:
-            values["content"] = content
+            values['content'] = content
         if author is not None:
-            values["author"] = author
+            values['author'] = author
         if category is not None:
-            values["category"] = category
+            values['category'] = category
         if tags is not None:
-            values["tags"] = tags
+            values['tags'] = tags
         if values:
             await self._session.execute(
                 update(EvaluationAnnotation)
@@ -119,6 +119,6 @@ class AnnotationRepository:
         await self._session.commit()
         ann = await self.get_annotation_by_id(annotation_id)
         if self._cache and ann is not None:
-            await self._cache.invalidate(f"annot_count:{ann.evaluation_id}")
-            await self._cache.invalidate(f"annot_latest:{ann.evaluation_id}")
+            await self._cache.invalidate(f'annot_count:{ann.evaluation_id}')
+            await self._cache.invalidate(f'annot_latest:{ann.evaluation_id}')
         return ann

@@ -16,7 +16,7 @@ _BASE = datetime(2026, 3, 15, 10, 0, 0, tzinfo=UTC)
 
 
 async def _create_asset(session: AsyncSession, name: str) -> uuid.UUID:
-    type_name = f"vm-{uuid.uuid4().hex[:8]}"
+    type_name = f'vm-{uuid.uuid4().hex[:8]}'
     session.add(AssetType(id=uuid.uuid4(), name=type_name))
     await session.flush()
     asset_id = uuid.uuid4()
@@ -27,7 +27,7 @@ async def _create_asset(session: AsyncSession, name: str) -> uuid.UUID:
 
 @pytest.mark.integration
 async def test_heatmap_returns_completed_evals(db_session: AsyncSession) -> None:
-    asset_id = await _create_asset(db_session, "heatmap-asset")
+    asset_id = await _create_asset(db_session, 'heatmap-asset')
     eval_repo = EvaluationRepository(db_session)
     trend_repo = TrendRepository(db_session)
 
@@ -43,7 +43,7 @@ async def test_heatmap_returns_completed_evals(db_session: AsyncSession) -> None
             asset_id=asset_id,
             slo_name='test-slo',
         ))
-        await eval_repo.mark_completed(ev.id, result="pass", score=90.0, slo_name="test-slo")
+        await eval_repo.mark_completed(ev.id, result='pass', score=90.0, slo_name='test-slo')
 
     evals = await trend_repo.get_metric_heatmap(asset_id=asset_id, limit=10)
     assert len(evals) == 3
@@ -52,7 +52,7 @@ async def test_heatmap_returns_completed_evals(db_session: AsyncSession) -> None
 @pytest.mark.integration
 async def test_heatmap_includes_invalidated_completed(db_session: AsyncSession) -> None:
     """The repository query returns invalidated evals (router handles display)."""
-    asset_id = await _create_asset(db_session, "hm-inv-asset")
+    asset_id = await _create_asset(db_session, 'hm-inv-asset')
     eval_repo = EvaluationRepository(db_session)
     trend_repo = TrendRepository(db_session)
 
@@ -66,8 +66,8 @@ async def test_heatmap_includes_invalidated_completed(db_session: AsyncSession) 
         asset_id=asset_id,
         slo_name='test-slo',
     ))
-    await eval_repo.mark_completed(ev.id, result="pass", score=90.0, slo_name="test-slo")
-    await eval_repo.invalidate(ev.id, note="bad data")
+    await eval_repo.mark_completed(ev.id, result='pass', score=90.0, slo_name='test-slo')
+    await eval_repo.invalidate(ev.id, note='bad data')
 
     evals = await trend_repo.get_metric_heatmap(asset_id=asset_id, limit=10)
     # Repository returns it — router transforms result to "invalidated"

@@ -33,16 +33,16 @@ from app.modules.assets.schemas import (
 )
 
 GROUP_COLOR_PALETTE = [
-    "#6897BB",
-    "#E8915A",
-    "#A371F7",
-    "#7DC540",
-    "#F85149",
-    "#58A6FF",
-    "#D4A032",
-    "#2DD4A0",
-    "#DB61A2",
-    "#8B949E",
+    '#6897BB',
+    '#E8915A',
+    '#A371F7',
+    '#7DC540',
+    '#F85149',
+    '#58A6FF',
+    '#D4A032',
+    '#2DD4A0',
+    '#DB61A2',
+    '#8B949E',
 ]
 
 
@@ -142,7 +142,7 @@ class AssetRepository(TagQueryMixin):
         self,
         name: str,
         *,
-        type_name: str = "vm",
+        type_name: str = 'vm',
         display_name: str | None = None,
         color: str | None = None,
         tags: dict[str, Any] | None = None,
@@ -221,8 +221,8 @@ class AssetRepository(TagQueryMixin):
         if asset is None:
             raise NotFoundError('asset', name)
         if self._cache:
-            await self._cache.invalidate(f"asset:{asset.id}")
-            await self._cache.invalidate(f"asset:name:{name}")
+            await self._cache.invalidate(f'asset:{asset.id}')
+            await self._cache.invalidate(f'asset:name:{name}')
         return asset
 
     async def delete(self, name: str) -> bool:
@@ -242,8 +242,8 @@ class AssetRepository(TagQueryMixin):
         # Delete the asset itself
         await self._session.execute(delete(Asset).where(Asset.id == asset.id))
         if self._cache:
-            await self._cache.invalidate(f"asset:{asset.id}")
-            await self._cache.invalidate(f"asset:name:{name}")
+            await self._cache.invalidate(f'asset:{asset.id}')
+            await self._cache.invalidate(f'asset:name:{name}')
         return True
 
 
@@ -260,9 +260,9 @@ class AssetGroupRepository:
         member_rows = await self._session.execute(
             select(
                 AssetGroupMember,
-                Asset.name.label("asset_name"),
-                Asset.display_name.label("asset_display_name"),
-                Asset.type_name.label("asset_type_name"),
+                Asset.name.label('asset_name'),
+                Asset.display_name.label('asset_display_name'),
+                Asset.type_name.label('asset_type_name'),
             )
             .join(Asset, AssetGroupMember.asset_id == Asset.id)
             .where(AssetGroupMember.group_id == group.id)
@@ -280,7 +280,7 @@ class AssetGroupRepository:
 
         # Subgroups: join with asset_groups to get group_name
         subgroup_rows = await self._session.execute(
-            select(AssetGroupLink, AssetGroup.name.label("group_name"))
+            select(AssetGroupLink, AssetGroup.name.label('group_name'))
             .join(AssetGroup, AssetGroupLink.child_group_id == AssetGroup.id)
             .where(AssetGroupLink.parent_group_id == group.id)
         )
@@ -668,7 +668,7 @@ class AssetGroupSLOLinkRepository:
         """
         link = AssetGroupSLOLink(
             id=uuid.uuid4(),
-            link_name=f"{slo_name}--{sli_name}",
+            link_name=f'{slo_name}--{sli_name}',
             group_id=group_id,
             slo_name=slo_name,
             sli_name=sli_name,
@@ -745,11 +745,11 @@ class SLOBindingRepository:
     ) -> list[SLOBinding]:
         """Collect all bindings relevant to an asset: direct + via groups."""
         conditions = [
-            (SLOBinding.target_type == "asset") & (SLOBinding.target_id == asset_id),
+            (SLOBinding.target_type == 'asset') & (SLOBinding.target_id == asset_id),
         ]
         if group_ids:
             conditions.append(
-                (SLOBinding.target_type == "asset_group") & (SLOBinding.target_id.in_(group_ids))
+                (SLOBinding.target_type == 'asset_group') & (SLOBinding.target_id.in_(group_ids))
             )
         result = await self._session.execute(
             select(SLOBinding).where(or_(*conditions)).order_by(SLOBinding.slo_name)
@@ -780,7 +780,7 @@ class SLOBindingRepository:
         # Direct asset binding
         result = await self._session.execute(
             select(SLOBinding).where(
-                SLOBinding.target_type == "asset",
+                SLOBinding.target_type == 'asset',
                 SLOBinding.target_id == asset_id,
                 SLOBinding.slo_name == slo_name,
             )
@@ -799,7 +799,7 @@ class SLOBindingRepository:
 
         result = await self._session.execute(
             select(SLOBinding).where(
-                SLOBinding.target_type == "asset_group",
+                SLOBinding.target_type == 'asset_group',
                 SLOBinding.target_id.in_(group_ids),
                 SLOBinding.slo_name == slo_name,
             )

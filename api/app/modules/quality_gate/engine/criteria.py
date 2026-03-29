@@ -26,7 +26,7 @@ class ParsedCriteria(BaseModel):
     type: CriteriaType
     threshold: float = 0.0
     relative_pct: float = 0.0
-    relative_direction: str = "+"
+    relative_direction: str = '+'
 
     def compute_target_value(self, baseline: float | None) -> float:
         """Compute the concrete target value to compare the metric against.
@@ -43,7 +43,7 @@ class ParsedCriteria(BaseModel):
         if baseline is None:
             return 0.0
         delta = baseline * (self.relative_pct / 100.0)
-        if self.relative_direction == "+":
+        if self.relative_direction == '+':
             return baseline + delta
         return baseline - delta
 
@@ -88,16 +88,16 @@ def parse_criteria_string(raw: str) -> ParsedCriteria:
     """
     # str.split() on no argument splits on any whitespace; join eliminates all spaces.
     # This normalises "  <=+10   %" -> "<=+10%" without needing a regex.
-    normalised = "".join(raw.split())
+    normalised = ''.join(raw.split())
 
     m = _PATTERN.match(normalised)
     if not m:
-        raise ValueError(f"Cannot parse criteria string: {raw!r}")
+        raise ValueError(f'Cannot parse criteria string: {raw!r}')
 
-    op = m.group("op")
-    sign = m.group("sign")
-    value = float(m.group("value"))
-    is_pct = m.group("pct") is not None
+    op = m.group('op')
+    sign = m.group('sign')
+    value = float(m.group('value'))
+    is_pct = m.group('pct') is not None
     is_relative = is_pct or sign is not None
 
     if is_relative:
@@ -106,7 +106,7 @@ def parse_criteria_string(raw: str) -> ParsedCriteria:
             operator=op,
             type=CriteriaType.RELATIVE,
             relative_pct=value,
-            relative_direction=sign or "+",
+            relative_direction=sign or '+',
         )
     return ParsedCriteria(
         raw=raw,
@@ -118,15 +118,15 @@ def parse_criteria_string(raw: str) -> ParsedCriteria:
 
 def _compare(operator: str, value: float, target: float) -> bool:
     match operator:
-        case "<":
+        case '<':
             return value < target
-        case "<=":
+        case '<=':
             return value <= target
-        case ">":
+        case '>':
             return value > target
-        case ">=":
+        case '>=':
             return value >= target
-        case "=":
+        case '=':
             return value == target
         case _:
             return False
@@ -172,7 +172,7 @@ def aggregate_values(values: list[float], function: AggregateFunction) -> float:
         ValueError: If values is empty or function is unknown.
     """
     if not values:
-        raise ValueError("Cannot aggregate empty values list")
+        raise ValueError('Cannot aggregate empty values list')
     sorted_vals = sorted(values)
     match function:
         case AggregateFunction.AVG:
@@ -186,11 +186,11 @@ def aggregate_values(values: list[float], function: AggregateFunction) -> float:
         case AggregateFunction.P99:
             return _percentile(sorted_vals, 99)
         case _:
-            raise ValueError(f"Unknown aggregate function: {function!r}")
+            raise ValueError(f'Unknown aggregate function: {function!r}')
 
 
 def _percentile(sorted_values: list[float], pct: int) -> float:
     if not sorted_values:
-        raise ValueError("Cannot calculate percentile of empty list")
+        raise ValueError('Cannot calculate percentile of empty list')
     idx = int(len(sorted_values) * pct / 100)
     return sorted_values[min(idx, len(sorted_values) - 1)]

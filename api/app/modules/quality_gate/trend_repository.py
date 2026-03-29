@@ -73,7 +73,7 @@ class TrendRepository:
             .where(IndicatorResultRow.evaluation_id == Evaluation.id)
             .correlate(Evaluation)
             .scalar_subquery()
-            .label("total_weight")
+            .label('total_weight')
         )
 
         inner = (
@@ -81,7 +81,7 @@ class TrendRepository:
                 Evaluation.period_start,
                 SLIValue.value,
                 SLIValue.eval_id,
-                IndicatorResultRow.status.label("result"),
+                IndicatorResultRow.status.label('result'),
                 IndicatorResultRow.compared_value,
                 IndicatorResultRow.score,
                 total_weight_sq,
@@ -110,13 +110,13 @@ class TrendRepository:
         rows = await self._session.execute(select(inner).order_by(inner.c.period_start))
         return [
             {
-                "timestamp": r.period_start.isoformat(),
-                "value": r.value,
+                'timestamp': r.period_start.isoformat(),
+                'value': r.value,
                 # Percentage contribution: stacks to 100% when all indicators pass
-                "score": round(r.score / r.total_weight * 100, 2) if r.total_weight else 0,
-                "eval_id": str(r.eval_id),
-                "result": r.result,
-                "baseline": r.compared_value,
+                'score': round(r.score / r.total_weight * 100, 2) if r.total_weight else 0,
+                'eval_id': str(r.eval_id),
+                'result': r.result,
+                'baseline': r.compared_value,
             }
             for r in rows
         ]
@@ -170,10 +170,10 @@ class TrendRepository:
         rows = await self._session.execute(q)
         return [
             {
-                "timestamp": r.eval_start.isoformat(),
-                "value": r.value,
-                "eval_id": str(r.eval_id),
-                "result": r.result,
+                'timestamp': r.eval_start.isoformat(),
+                'value': r.value,
+                'eval_id': str(r.eval_id),
+                'result': r.result,
             }
             for r in rows
         ]

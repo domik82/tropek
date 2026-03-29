@@ -112,13 +112,13 @@ class DataSourceRepository:
         """
         values: dict[str, Any] = {}
         if display_name is not None:
-            values["display_name"] = display_name
+            values['display_name'] = display_name
         if adapter_url is not None:
-            values["adapter_url"] = adapter_url
+            values['adapter_url'] = adapter_url
         if tags is not None:
-            values["tags"] = tags
+            values['tags'] = tags
         if token is not None:
-            values["token"] = token
+            values['token'] = token
         if values:
             await self._session.execute(
                 update(DataSource).where(DataSource.name == name).values(**values)
@@ -152,9 +152,9 @@ class DataSourceRepository:
         """Return all distinct tag keys with count of datasources using each."""
         result = await self._session.execute(
             text(
-                "SELECT key, COUNT(*) as cnt "
-                "FROM data_sources, jsonb_object_keys(tags) AS key "
-                "GROUP BY key ORDER BY cnt DESC"
+                'SELECT key, COUNT(*) as cnt '
+                'FROM data_sources, jsonb_object_keys(tags) AS key '
+                'GROUP BY key ORDER BY cnt DESC'
             )
         )
         return {row[0]: row[1] for row in result}
@@ -163,11 +163,11 @@ class DataSourceRepository:
         """Return all distinct values for a tag key with usage counts."""
         result = await self._session.execute(
             text(
-                "SELECT tags->>:key AS val, COUNT(*) as cnt "
-                "FROM data_sources "
-                "WHERE tags ? :key "
-                "GROUP BY val ORDER BY cnt DESC"
+                'SELECT tags->>:key AS val, COUNT(*) as cnt '
+                'FROM data_sources '
+                'WHERE tags ? :key '
+                'GROUP BY val ORDER BY cnt DESC'
             ),
-            {"key": key},
+            {'key': key},
         )
         return {row[0]: row[1] for row in result}

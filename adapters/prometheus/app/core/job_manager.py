@@ -24,14 +24,14 @@ class JobManager:
         queries: dict[str, dict[str, Any]],
         variables: dict[str, str],
         timeout_seconds: int | None,
-        start: str = "",
-        end: str = "",
+        start: str = '',
+        end: str = '',
     ) -> dict[str, Any]:
         """Create and enqueue a new job, enforcing queue depth and timeout limits."""
         depth = await self._repo.queue_depth()
         if depth >= self._settings.max_queue_depth:
             raise self.QueueFullError(
-                f"queue depth {depth} >= max {self._settings.max_queue_depth}"
+                f'queue depth {depth} >= max {self._settings.max_queue_depth}'
             )
 
         timeout = min(
@@ -43,11 +43,11 @@ class JobManager:
         await self._repo.enqueue(job_id)
 
         return {
-            "job_id": job_id,
-            "status": "queued",
-            "created_at": datetime.now(UTC),
-            "poll_url": f"/api/v1/query-jobs/{job_id}",
-            "total_queries": len(queries),
+            'job_id': job_id,
+            'status': 'queued',
+            'created_at': datetime.now(UTC),
+            'poll_url': f'/api/v1/query-jobs/{job_id}',
+            'total_queries': len(queries),
         }
 
     async def get_status(self, job_id: str) -> dict[str, Any] | None:
@@ -57,21 +57,21 @@ class JobManager:
             return None
 
         result: dict[str, Any] = {
-            "job_id": job_id,
-            "status": status["status"],
+            'job_id': job_id,
+            'status': status['status'],
         }
 
-        if status["status"] == "running":
-            result["progress"] = {
-                "total": status["total_queries"],
-                "completed": status["completed_count"],
-                "failed": status["failed_count"],
+        if status['status'] == 'running':
+            result['progress'] = {
+                'total': status['total_queries'],
+                'completed': status['completed_count'],
+                'failed': status['failed_count'],
             }
-        elif status["status"] in ("completed", "timed_out"):
-            result["completed_at"] = status.get("completed_at")
-            result["duration_ms"] = status.get("duration_ms")
+        elif status['status'] in ('completed', 'timed_out'):
+            result['completed_at'] = status.get('completed_at')
+            result['duration_ms'] = status.get('duration_ms')
             results = await self._repo.get_results(job_id)
-            result["results"] = [{"indicator": k, **v} for k, v in results.items()]
+            result['results'] = [{'indicator': k, **v} for k, v in results.items()]
 
         return result
 

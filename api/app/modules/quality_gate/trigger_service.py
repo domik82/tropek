@@ -55,11 +55,11 @@ class TriggerService:
             period_end=request.period_end,
         )
         if existing is not None:
-            if existing.status in ("pending", "running"):
-                msg = "evaluation is already in progress for this period"
+            if existing.status in ('pending', 'running'):
+                msg = 'evaluation is already in progress for this period'
                 raise DuplicateEvaluationError(msg)
             msg = (
-                "evaluation already exists for this asset/SLO/period — use re-evaluate to re-score"
+                'evaluation already exists for this asset/SLO/period — use re-evaluate to re-score'
             )
             raise DuplicateEvaluationError(msg)
 
@@ -87,8 +87,8 @@ class TriggerService:
         )
         await self._repos.session.commit()
 
-        await self._pool.enqueue_job("run_evaluation_job", str(ev.id))
-        return TriggerResponse(id=ev.id, status="pending")
+        await self._pool.enqueue_job('run_evaluation_job', str(ev.id))
+        return TriggerResponse(id=ev.id, status='pending')
 
     async def trigger_batch(self, request: BatchTriggerRequest) -> BatchTriggerResponse:
         """Validate batch, detect conflicts, enqueue all-or-nothing."""
@@ -107,7 +107,7 @@ class TriggerService:
         )
 
         if conflicts:
-            msg = "batch contains duplicate evaluations"
+            msg = 'batch contains duplicate evaluations'
             raise DuplicateEvaluationError(msg)
 
         # Phase 2: create all evaluations (single transaction)
@@ -140,22 +140,22 @@ class TriggerService:
         batch = EvaluationBatch(
             evaluation_ids=[str(eid) for eid in evaluation_ids],
             trigger_params={
-                "group_name": request.group_name,
-                "evaluation_name": request.evaluation_name,
-                "period_start": request.period_start.isoformat(),
-                "period_end": request.period_end.isoformat(),
+                'group_name': request.group_name,
+                'evaluation_name': request.evaluation_name,
+                'period_start': request.period_start.isoformat(),
+                'period_end': request.period_end.isoformat(),
             },
         )
         self._repos.session.add(batch)
         await self._repos.session.commit()
 
         for eid in evaluation_ids:
-            await self._pool.enqueue_job("run_evaluation_job", str(eid))
+            await self._pool.enqueue_job('run_evaluation_job', str(eid))
 
         return BatchTriggerResponse(
             batch_id=batch.id,
             evaluation_ids=evaluation_ids,
-            status="pending",
+            status='pending',
         )
 
     async def _scan_batch_members(

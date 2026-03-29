@@ -18,9 +18,9 @@ from typing import Any
 import httpx
 import pytest
 
-ADAPTER_URL = os.environ.get("ADAPTER_URL", "http://localhost:8081")
-QUERY_START = os.environ.get("QUERY_START", "2026-03-18T12:00:00Z")
-QUERY_END = os.environ.get("QUERY_END", "2026-03-18T12:05:00Z")
+ADAPTER_URL = os.environ.get('ADAPTER_URL', 'http://localhost:8081')
+QUERY_START = os.environ.get('QUERY_START', '2026-03-18T12:00:00Z')
+QUERY_END = os.environ.get('QUERY_END', '2026-03-18T12:05:00Z')
 
 pytestmark = pytest.mark.e2e
 
@@ -34,10 +34,10 @@ async def poll_job(
 ) -> dict[str, Any]:
     """Poll a job until it reaches a terminal state."""
     for _ in range(max_attempts):
-        resp = await client.get(f"{ADAPTER_URL}/api/v1/query-jobs/{job_id}")
+        resp = await client.get(f'{ADAPTER_URL}/api/v1/query-jobs/{job_id}')
         resp.raise_for_status()
         data = resp.json()
-        if data["status"] in ("completed", "timed_out"):
+        if data['status'] in ('completed', 'timed_out'):
             return data
         await asyncio.sleep(interval)
     return data
@@ -54,14 +54,14 @@ class TestHealth:
     """Health endpoint checks."""
 
     async def test_liveness(self, client: httpx.AsyncClient) -> None:
-        resp = await client.get(f"{ADAPTER_URL}/health/live")
+        resp = await client.get(f'{ADAPTER_URL}/health/live')
         assert resp.status_code == 200
-        assert resp.json()["status"] == "ok"
+        assert resp.json()['status'] == 'ok'
 
     async def test_readiness(self, client: httpx.AsyncClient) -> None:
-        resp = await client.get(f"{ADAPTER_URL}/health/ready")
+        resp = await client.get(f'{ADAPTER_URL}/health/ready')
         assert resp.status_code == 200
-        assert resp.json()["status"] == "ok"
+        assert resp.json()['status'] == 'ok'
 
 
 class TestSingleQuery:
@@ -69,43 +69,43 @@ class TestSingleQuery:
 
     async def test_submit_returns_202(self, client: httpx.AsyncClient) -> None:
         resp = await client.post(
-            f"{ADAPTER_URL}/api/v1/query-jobs",
+            f'{ADAPTER_URL}/api/v1/query-jobs',
             json={
-                "queries": {
-                    "cpu": {
-                        "mode": "raw",
-                        "query": 'avg(cpu_usage_percent{service="api"})',
+                'queries': {
+                    'cpu': {
+                        'mode': 'raw',
+                        'query': 'avg(cpu_usage_percent{service="api"})',
                     },
                 },
-                "start": QUERY_START,
-                "end": QUERY_END,
+                'start': QUERY_START,
+                'end': QUERY_END,
             },
         )
         assert resp.status_code == 202
         body = resp.json()
-        assert body["status"] == "queued"
-        assert "job_id" in body
-        assert body["total_queries"] == 1
+        assert body['status'] == 'queued'
+        assert 'job_id' in body
+        assert body['total_queries'] == 1
 
     async def test_job_completes_with_result(self, client: httpx.AsyncClient) -> None:
         submit = await client.post(
-            f"{ADAPTER_URL}/api/v1/query-jobs",
+            f'{ADAPTER_URL}/api/v1/query-jobs',
             json={
-                "queries": {
-                    "cpu": {
-                        "mode": "raw",
-                        "query": 'avg(cpu_usage_percent{service="api"})',
+                'queries': {
+                    'cpu': {
+                        'mode': 'raw',
+                        'query': 'avg(cpu_usage_percent{service="api"})',
                     },
                 },
-                "start": QUERY_START,
-                "end": QUERY_END,
+                'start': QUERY_START,
+                'end': QUERY_END,
             },
         )
-        job_id = submit.json()["job_id"]
+        job_id = submit.json()['job_id']
         result = await poll_job(client, job_id)
-        assert result["status"] == "completed"
-        assert len(result["results"]) == 1
-        assert result["results"][0]["indicator"] == "cpu"
+        assert result['status'] == 'completed'
+        assert len(result['results']) == 1
+        assert result['results'][0]['indicator'] == 'cpu'
 
 
 class TestMultiQuery:
@@ -113,39 +113,39 @@ class TestMultiQuery:
 
     async def test_three_metrics_return_three_results(self, client: httpx.AsyncClient) -> None:
         submit = await client.post(
-            f"{ADAPTER_URL}/api/v1/query-jobs",
+            f'{ADAPTER_URL}/api/v1/query-jobs',
             json={
-                "queries": {
-                    "error_rate": {
-                        "mode": "raw",
-                        "query": (
+                'queries': {
+                    'error_rate': {
+                        'mode': 'raw',
+                        'query': (
                             'sum(rate(http_errors_total{service="api"}[5m]))'
                             ' / sum(rate(http_requests_total{service="api"}[5m]))'
                         ),
                     },
-                    "cpu": {
-                        "mode": "raw",
-                        "query": 'avg(cpu_usage_percent{service="api"})',
+                    'cpu': {
+                        'mode': 'raw',
+                        'query': 'avg(cpu_usage_percent{service="api"})',
                     },
-                    "p99_latency": {
-                        "mode": "raw",
-                        "query": (
+                    'p99_latency': {
+                        'mode': 'raw',
+                        'query': (
                             'histogram_quantile(0.99,'
                             ' sum(rate(http_request_duration_seconds_bucket{service="api"}[5m]))'
                             ' by (le))'
                         ),
                     },
                 },
-                "start": QUERY_START,
-                "end": QUERY_END,
+                'start': QUERY_START,
+                'end': QUERY_END,
             },
         )
-        job_id = submit.json()["job_id"]
+        job_id = submit.json()['job_id']
         result = await poll_job(client, job_id)
-        assert result["status"] == "completed"
-        assert len(result["results"]) == 3
-        indicators = {r["indicator"] for r in result["results"]}
-        assert indicators == {"error_rate", "cpu", "p99_latency"}
+        assert result['status'] == 'completed'
+        assert len(result['results']) == 3
+        indicators = {r['indicator'] for r in result['results']}
+        assert indicators == {'error_rate', 'cpu', 'p99_latency'}
 
 
 class TestVariableSubstitution:
@@ -153,42 +153,42 @@ class TestVariableSubstitution:
 
     async def test_user_variable_resolved(self, client: httpx.AsyncClient) -> None:
         submit = await client.post(
-            f"{ADAPTER_URL}/api/v1/query-jobs",
+            f'{ADAPTER_URL}/api/v1/query-jobs',
             json={
-                "queries": {
-                    "cpu_by_service": {
-                        "mode": "raw",
-                        "query": 'avg(cpu_usage_percent{service="$SERVICE"})',
+                'queries': {
+                    'cpu_by_service': {
+                        'mode': 'raw',
+                        'query': 'avg(cpu_usage_percent{service="$SERVICE"})',
                     },
                 },
-                "variables": {"SERVICE": "frontend"},
-                "start": QUERY_START,
-                "end": QUERY_END,
+                'variables': {'SERVICE': 'frontend'},
+                'start': QUERY_START,
+                'end': QUERY_END,
             },
         )
-        job_id = submit.json()["job_id"]
+        job_id = submit.json()['job_id']
         result = await poll_job(client, job_id)
-        assert result["status"] == "completed"
+        assert result['status'] == 'completed'
 
     async def test_duration_seconds_auto_computed(self, client: httpx.AsyncClient) -> None:
         submit = await client.post(
-            f"{ADAPTER_URL}/api/v1/query-jobs",
+            f'{ADAPTER_URL}/api/v1/query-jobs',
             json={
-                "queries": {
-                    "with_duration": {
-                        "mode": "raw",
-                        "query": (
+                'queries': {
+                    'with_duration': {
+                        'mode': 'raw',
+                        'query': (
                             'avg_over_time(cpu_usage_percent{service="api"}[$DURATION_SECONDS])'
                         ),
                     },
                 },
-                "start": QUERY_START,
-                "end": QUERY_END,
+                'start': QUERY_START,
+                'end': QUERY_END,
             },
         )
-        job_id = submit.json()["job_id"]
+        job_id = submit.json()['job_id']
         result = await poll_job(client, job_id)
-        assert result["status"] == "completed"
+        assert result['status'] == 'completed'
 
 
 class TestErrorHandling:
@@ -196,27 +196,27 @@ class TestErrorHandling:
 
     async def test_nonexistent_metric_returns_error(self, client: httpx.AsyncClient) -> None:
         submit = await client.post(
-            f"{ADAPTER_URL}/api/v1/query-jobs",
+            f'{ADAPTER_URL}/api/v1/query-jobs',
             json={
-                "queries": {
-                    "missing": {
-                        "mode": "raw",
-                        "query": "definitely_not_a_real_metric_xyz",
+                'queries': {
+                    'missing': {
+                        'mode': 'raw',
+                        'query': 'definitely_not_a_real_metric_xyz',
                     },
                 },
-                "start": QUERY_START,
-                "end": QUERY_END,
+                'start': QUERY_START,
+                'end': QUERY_END,
             },
         )
-        job_id = submit.json()["job_id"]
+        job_id = submit.json()['job_id']
         result = await poll_job(client, job_id)
-        assert result["status"] == "completed"
-        assert len(result["results"]) == 1
-        assert result["results"][0]["success"] is False
+        assert result['status'] == 'completed'
+        assert len(result['results']) == 1
+        assert result['results'][0]['success'] is False
 
     async def test_unknown_job_returns_404(self, client: httpx.AsyncClient) -> None:
         resp = await client.get(
-            f"{ADAPTER_URL}/api/v1/query-jobs/00000000-0000-0000-0000-000000000000"
+            f'{ADAPTER_URL}/api/v1/query-jobs/00000000-0000-0000-0000-000000000000'
         )
         assert resp.status_code == 404
 
@@ -227,15 +227,15 @@ class TestCancel:
     async def test_cancel_returns_204_or_409(self, client: httpx.AsyncClient) -> None:
         """Cancel may return 204 (cancelled) or 409 (already completed by coordinator)."""
         submit = await client.post(
-            f"{ADAPTER_URL}/api/v1/query-jobs",
+            f'{ADAPTER_URL}/api/v1/query-jobs',
             json={
-                "queries": {
-                    "slow": {"mode": "raw", "query": "up"},
+                'queries': {
+                    'slow': {'mode': 'raw', 'query': 'up'},
                 },
-                "start": QUERY_START,
-                "end": QUERY_END,
+                'start': QUERY_START,
+                'end': QUERY_END,
             },
         )
-        job_id = submit.json()["job_id"]
-        resp = await client.delete(f"{ADAPTER_URL}/api/v1/query-jobs/{job_id}")
+        job_id = submit.json()['job_id']
+        resp = await client.delete(f'{ADAPTER_URL}/api/v1/query-jobs/{job_id}')
         assert resp.status_code in (204, 409)

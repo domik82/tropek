@@ -4,7 +4,7 @@ import math
 import re
 from datetime import datetime
 
-_VAR_PATTERN = re.compile(r"\$([a-zA-Z_][a-zA-Z0-9_.]*)")
+_VAR_PATTERN = re.compile(r'\$([a-zA-Z_][a-zA-Z0-9_.]*)')
 
 
 class UnresolvedVariableError(Exception):
@@ -37,13 +37,13 @@ def substitute(
     merged = dict(variables)
 
     if interval_override is not None:
-        merged["interval"] = interval_override
+        merged['interval'] = interval_override
 
-    if "DURATION_SECONDS" not in merged and start_iso and end_iso:
+    if 'DURATION_SECONDS' not in merged and start_iso and end_iso:
         start = datetime.fromisoformat(start_iso)
         end = datetime.fromisoformat(end_iso)
         seconds = math.ceil((end - start).total_seconds())
-        merged["DURATION_SECONDS"] = f"{seconds}s"
+        merged['DURATION_SECONDS'] = f'{seconds}s'
 
     # Collect variable names from the original template before any substitution.
     # Only these are checked for unresolved status — variables introduced by substituted

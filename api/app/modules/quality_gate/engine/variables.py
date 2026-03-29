@@ -90,12 +90,12 @@ def build_variables(
     """
     variables: dict[str, str] = dict(metadata)
     if asset_name:
-        variables.setdefault("asset_name", asset_name)
+        variables.setdefault('asset_name', asset_name)
     if evaluation_name:
-        variables.setdefault("evaluation_name", evaluation_name)
-        variables.setdefault("test_name", evaluation_name)  # backward compat alias
+        variables.setdefault('evaluation_name', evaluation_name)
+        variables.setdefault('test_name', evaluation_name)  # backward compat alias
     if start:
-        variables.setdefault("start", start)
+        variables.setdefault('start', start)
     if end:
-        variables.setdefault("end", end)
+        variables.setdefault('end', end)
     return variables

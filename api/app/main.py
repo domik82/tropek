@@ -43,7 +43,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     await app.state.arq_pool.close()
 
 
-app = FastAPI(title="TROPEK API", version="0.2.0", lifespan=lifespan)
+app = FastAPI(title='TROPEK API', version='0.2.0', lifespan=lifespan)
 
 # Domain exception handlers — convert domain errors to HTTP responses
 app.add_exception_handler(NotFoundError, not_found_handler)  # type: ignore[arg-type]
@@ -58,17 +58,17 @@ app.include_router(slo_router)
 app.include_router(quality_gate_router)
 
 
-@app.get("/health")
+@app.get('/health')
 async def health() -> dict[str, str]:
     """Return service health status."""
-    return {"status": "ok"}
+    return {'status': 'ok'}
 
 
-@app.get("/config/ui")
+@app.get('/config/ui')
 async def ui_config() -> dict[str, int]:
     """Return UI-facing configuration limits."""
     settings = get_settings()
     return {
-        "maxEvaluations": settings.ui.max_evaluations,
-        "pageSize": settings.ui.page_size,
+        'maxEvaluations': settings.ui.max_evaluations,
+        'pageSize': settings.ui.page_size,
     }

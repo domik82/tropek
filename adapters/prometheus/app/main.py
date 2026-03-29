@@ -27,8 +27,8 @@ from app.redis.repository import JobRepository
 
 logger = logging.getLogger(__name__)
 
-LOG_FORMAT = "%(asctime)s [%(levelname)-7s] %(name)s: %(message)s"
-LOG_DATEFMT = "%Y-%m-%d %H:%M:%S"
+LOG_FORMAT = '%(asctime)s [%(levelname)-7s] %(name)s: %(message)s'
+LOG_DATEFMT = '%Y-%m-%d %H:%M:%S'
 
 
 def _configure_logging(settings: Settings) -> None:
@@ -47,11 +47,11 @@ def _configure_logging(settings: Settings) -> None:
     if settings.log_dir:
         log_path = Path(settings.log_dir)
         log_path.mkdir(parents=True, exist_ok=True)
-        file_handler = logging.FileHandler(log_path / "adapter.log")
+        file_handler = logging.FileHandler(log_path / 'adapter.log')
         file_handler.setLevel(level)
         file_handler.setFormatter(logging.Formatter(LOG_FORMAT, datefmt=LOG_DATEFMT))
         root.addHandler(file_handler)
-        logger.info("file logging enabled: %s/adapter.log", log_path)
+        logger.info('file logging enabled: %s/adapter.log', log_path)
 
 
 async def _check_prometheus(base_url: str, timeout: float = 5.0) -> bool:
@@ -61,17 +61,17 @@ async def _check_prometheus(base_url: str, timeout: float = 5.0) -> bool:
         async with httpx.AsyncClient(timeout=timeout) as client:
             resp = await client.get(url)
             if resp.is_success:
-                logger.info("prometheus reachable at %s (status=%d)", base_url, resp.status_code)
+                logger.info('prometheus reachable at %s (status=%d)', base_url, resp.status_code)
                 return True
             logger.warning(
-                "prometheus responded but not ready: %s (status=%d)", base_url, resp.status_code
+                'prometheus responded but not ready: %s (status=%d)', base_url, resp.status_code
             )
             return False
     except httpx.ConnectError:
-        logger.warning("prometheus unreachable at %s (connection refused)", base_url)
+        logger.warning('prometheus unreachable at %s (connection refused)', base_url)
         return False
     except httpx.TimeoutException:
-        logger.warning("prometheus unreachable at %s (timeout after %.0fs)", base_url, timeout)
+        logger.warning('prometheus unreachable at %s (timeout after %.0fs)', base_url, timeout)
         return False
 
 
@@ -83,7 +83,7 @@ def create_app(use_fakeredis: bool = False) -> FastAPI:
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncGenerator[None, Any]:
         logger.info(
-            "adapter starting: prometheus_url=%s redis_url=%s",
+            'adapter starting: prometheus_url=%s redis_url=%s',
             settings.prometheus_url,
             settings.redis_url,
         )
@@ -97,15 +97,15 @@ def create_app(use_fakeredis: bool = False) -> FastAPI:
         # Verify Redis connectivity
         try:
             pong = await redis_client.ping()
-            logger.info("redis connected: %s (ping=%s)", settings.redis_url, pong)
+            logger.info('redis connected: %s (ping=%s)', settings.redis_url, pong)
         except Exception:
-            logger.exception("redis connection failed: %s", settings.redis_url)
+            logger.exception('redis connection failed: %s', settings.redis_url)
 
         # Probe Prometheus connectivity (non-blocking, adapter starts either way)
         prom_ok = await _check_prometheus(settings.prometheus_url)
         if not prom_ok:
             logger.warning(
-                "adapter will start but queries will fail until prometheus is available at %s",
+                'adapter will start but queries will fail until prometheus is available at %s',
                 settings.prometheus_url,
             )
 
@@ -121,24 +121,24 @@ def create_app(use_fakeredis: bool = False) -> FastAPI:
             auth=auth,
         )
 
-        strategies = {"raw": RawQueryStrategy(prom_client)}
+        strategies = {'raw': RawQueryStrategy(prom_client)}
 
         app.state.job_manager = JobManager(repo, settings)
         app.state.coordinator = Coordinator(repo, settings, strategies)
         app.state.prometheus_ok = prom_ok
 
         coordinator_task = asyncio.create_task(app.state.coordinator.run())
-        logger.info("adapter ready")
+        logger.info('adapter ready')
 
         yield
 
         app.state.coordinator.stop()
         coordinator_task.cancel()
-        if hasattr(redis_client, "aclose"):
+        if hasattr(redis_client, 'aclose'):
             await redis_client.aclose()
-        logger.info("adapter shut down")
+        logger.info('adapter shut down')
 
-    app = FastAPI(title="Prometheus SLI Adapter", lifespan=lifespan)
+    app = FastAPI(title='Prometheus SLI Adapter', lifespan=lifespan)
     app.include_router(health_router)
     app.include_router(api_router)
     app.include_router(sync_router)
