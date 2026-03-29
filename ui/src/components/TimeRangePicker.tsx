@@ -2,6 +2,7 @@
 import { useState } from 'react'
 import { Calendar as CalendarIcon, ChevronDown } from 'lucide-react'
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover'
+import { Button } from '@/components/ui/button'
 import { Calendar } from '@/components/ui/calendar'
 import { useTimeRange, PRESETS, toDateInputValue } from '@/lib/time-range-context'
 import { SANS_SERIF } from '@/lib/fonts'
@@ -131,13 +132,15 @@ export function TimeRangePicker() {
               </div>
             )}
 
-            <button
+            <Button
+              variant="default"
+              size="sm"
               onClick={handleApply}
               disabled={!fromDate || rangeInvalid}
-              className="w-full mt-3 px-3 py-1.5 text-xs rounded bg-primary text-primary-foreground hover:bg-primary/90 transition-colors font-medium disabled:opacity-40 disabled:cursor-not-allowed"
+              className="w-full mt-3"
             >
               Apply time range
-            </button>
+            </Button>
           </div>
 
           {/* Right — quick presets */}

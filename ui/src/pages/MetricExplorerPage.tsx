@@ -11,6 +11,7 @@ import { MultiSeriesChart } from '@/components/charts/MultiSeriesChart'
 import type { MultiSeriesChartProps } from '@/components/charts/MultiSeriesChart'
 import { buildColorMap } from '@/components/charts/colors'
 import { TimeRangePicker } from '@/components/TimeRangePicker'
+import { Button } from '@/components/ui/button'
 import type { TrendPoint } from '@/features/evaluations/types'
 
 // ── useEnabledTrends ──────────────────────────────────────────────────────────
@@ -129,18 +130,22 @@ function ChartSection({
         {/* All / None — centered between title and right controls */}
         <div className="flex-1 flex justify-center">
           <div className="flex items-center gap-1 text-xs">
-            <button
+            <Button
+              variant="outline"
+              size="xs"
               onClick={() => setEnabled(new Set(indicators.map(i => i.metric)))}
-              className="px-2 py-0.5 rounded border border-border text-muted-foreground hover:text-foreground hover:bg-state-hover-bg transition-colors"
+              className="text-muted-foreground hover:text-foreground"
             >
               All
-            </button>
-            <button
+            </Button>
+            <Button
+              variant="outline"
+              size="xs"
               onClick={() => setEnabled(new Set())}
-              className="px-2 py-0.5 rounded border border-border text-muted-foreground hover:text-foreground hover:bg-state-hover-bg transition-colors"
+              className="text-muted-foreground hover:text-foreground"
             >
               None
-            </button>
+            </Button>
           </div>
         </div>
         <div className="shrink-0 flex items-center gap-3">
@@ -163,18 +168,22 @@ function ChartSection({
           </div>
           {/* Line / Bar toggle */}
           <div className="flex border border-border rounded overflow-hidden text-xs">
-            <button
+            <Button
+              variant="ghost"
+              size="xs"
               onClick={() => setChartType('line')}
-              className={`px-2 py-0.5 transition-colors ${chartType === 'line' ? 'bg-state-selected-bg text-foreground' : 'text-muted-foreground hover:bg-state-hover-bg'}`}
+              className={`rounded-none ${chartType === 'line' ? 'bg-state-selected-bg text-foreground' : 'text-muted-foreground'}`}
             >
               Line
-            </button>
-            <button
+            </Button>
+            <Button
+              variant="ghost"
+              size="xs"
               onClick={() => setChartType('bar')}
-              className={`px-2 py-0.5 transition-colors ${chartType === 'bar' ? 'bg-state-selected-bg text-foreground' : 'text-muted-foreground hover:bg-state-hover-bg'}`}
+              className={`rounded-none ${chartType === 'bar' ? 'bg-state-selected-bg text-foreground' : 'text-muted-foreground'}`}
             >
               Bar
-            </button>
+            </Button>
           </div>
         </div>
       </div>

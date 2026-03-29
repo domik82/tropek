@@ -5,6 +5,7 @@
 // and pagination across a flat ordered list of all labels.
 
 import { useState } from 'react'
+import { Button } from '@/components/ui/button'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -123,18 +124,22 @@ export function MetricLabelPanel({
                 {groupName}
               </span>
               <div className="flex gap-1">
-                <button
+                <Button
+                  variant="ghost"
+                  size="xs"
                   onClick={() => onGroupAll(groupName)}
-                  className="text-[10px] text-muted-foreground hover:text-foreground"
+                  className="h-auto px-1 py-0 text-[10px] text-muted-foreground hover:text-foreground"
                 >
                   All
-                </button>
-                <button
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="xs"
                   onClick={() => onGroupNone(groupName)}
-                  className="text-[10px] text-muted-foreground hover:text-foreground"
+                  className="h-auto px-1 py-0 text-[10px] text-muted-foreground hover:text-foreground"
                 >
                   None
-                </button>
+                </Button>
               </div>
             </div>
 
@@ -182,23 +187,25 @@ export function MetricLabelPanel({
       {/* Pagination footer */}
       {totalPages > 1 && (
         <div className="flex items-center justify-center gap-2 pt-2 border-t border-border text-xs text-muted-foreground">
-          <button
+          <Button
+            variant="ghost"
+            size="icon-xs"
             disabled={safePage === 0}
             onClick={() => setPage((p) => p - 1)}
-            className="disabled:opacity-30 hover:text-foreground"
           >
             ◀
-          </button>
+          </Button>
           <span>
             {safePage + 1}/{totalPages}
           </span>
-          <button
+          <Button
+            variant="ghost"
+            size="icon-xs"
             disabled={safePage === totalPages - 1}
             onClick={() => setPage((p) => p + 1)}
-            className="disabled:opacity-30 hover:text-foreground"
           >
             ▶
-          </button>
+          </Button>
         </div>
       )}
     </div>

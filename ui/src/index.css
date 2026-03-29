@@ -66,8 +66,8 @@
   --state-disabled-bg:       var(--color-slate-800);
   --state-disabled-border:   var(--color-slate-700);
   --state-focus-ring:        var(--color-slate-500);
-  --state-selected-bg:       var(--color-slate-800);
-  --state-hover-bg:          var(--color-slate-800);
+  --state-selected-bg:       var(--color-slate-700);
+  --state-hover-bg:          var(--color-slate-700);
   /* ── Links ───────────────────────────────── */
   --link:                    #58A6FF;
   --link-hover:              #79b8ff;
