@@ -180,7 +180,9 @@ Component tests use **Vitest + React Testing Library + happy-dom**. Config lives
 
 ### Theme system
 
-Three themes via `data-theme` attribute on `<html>`: `forest` (green primary), `current` (neutral/Dynatrace), `corporate` (blue, stub).
+Three themes via `data-theme` attribute on `<html>`: `dark` (Radix-based, green primary), `current` (neutral/Dynatrace — "Alt"), `light` (stub — Radix light reversal, TODO).
+The `dark` theme uses Radix UI color scales (slate, green, red, yellow, sky, amber) with semantic aliasing.
+The TROPEK logo color is a fixed brand constant (`--tropek-logo`) that never changes with theme.
 Colors are CSS custom properties defined in `ui/src/index.css`. Always use semantic tokens:
 
 | Token | Use for |

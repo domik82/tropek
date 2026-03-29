@@ -18,6 +18,21 @@ export default defineConfig({
     setupFiles: ['./src/test-setup.ts'],
     globals: true,
     exclude: ['**/node_modules/**', '**/.claude/**'],
+    pool: 'forks',
+    deps: {
+      optimizer: {
+        web: {
+          include: [
+            'echarts',
+            'echarts-for-react',
+            'lucide-react',
+            'react-day-picker',
+            'cmdk',
+            'zod',
+          ],
+        },
+      },
+    },
   },
   server: {
     watch: {
