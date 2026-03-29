@@ -13,7 +13,7 @@ from app.modules.quality_gate.exceptions import (
     DuplicateEvaluationError,
     SLONotConfiguredError,
 )
-from app.modules.quality_gate.schemas import TriggerRequest
+from app.modules.quality_gate.schemas import BatchTriggerRequest, TriggerRequest
 from app.modules.quality_gate.trigger_service import TriggerService
 
 _START = datetime(2026, 3, 15, 10, 0, 0, tzinfo=UTC)
@@ -180,8 +180,6 @@ async def test_trigger_batch_group_not_found() -> None:
     repos = _make_repos()
     repos.asset_group_repo.get_by_name.return_value = None
     pool = AsyncMock()
-
-    from app.modules.quality_gate.schemas import BatchTriggerRequest
 
     request = BatchTriggerRequest(
         group_name='nonexistent',

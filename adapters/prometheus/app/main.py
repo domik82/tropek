@@ -63,9 +63,7 @@ async def _check_prometheus(base_url: str, timeout: float = 5.0) -> bool:
             if resp.is_success:
                 logger.info('prometheus reachable at %s (status=%d)', base_url, resp.status_code)
                 return True
-            logger.warning(
-                'prometheus responded but not ready: %s (status=%d)', base_url, resp.status_code
-            )
+            logger.warning('prometheus responded but not ready: %s (status=%d)', base_url, resp.status_code)
             return False
     except httpx.ConnectError:
         logger.warning('prometheus unreachable at %s (connection refused)', base_url)

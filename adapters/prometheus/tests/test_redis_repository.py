@@ -105,8 +105,6 @@ async def test_dequeue_empty_returns_none(repo: JobRepository):
 @pytest.mark.asyncio
 async def test_queue_depth(repo: JobRepository):
     for _ in range(3):
-        jid = await repo.create_job(
-            queries={'x': {'mode': 'raw', 'query': 'x'}}, variables={}, timeout=120
-        )
+        jid = await repo.create_job(queries={'x': {'mode': 'raw', 'query': 'x'}}, variables={}, timeout=120)
         await repo.enqueue(jid)
     assert await repo.queue_depth() == 3

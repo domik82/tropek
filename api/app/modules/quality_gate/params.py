@@ -7,6 +7,9 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.db.models import SLOObjective
+from app.modules.quality_gate.engine.result_models import IndicatorResult
+
 
 class EvalCreateParams(BaseModel):
     """Parameters for EvaluationRepository.create_pending()."""
@@ -16,7 +19,7 @@ class EvalCreateParams(BaseModel):
     period_end: datetime
     ingestion_mode: str
     asset_snapshot: dict[str, object]
-    variables: dict[str, object] = Field(default_factory=dict)
+    variables: dict[str, str] = Field(default_factory=dict)
     asset_id: uuid.UUID
     slo_name: str
     slo_version: int | None = None
@@ -34,8 +37,8 @@ class ReEvalUpdateParams(BaseModel):
     eval_id: uuid.UUID
     new_result: str
     new_score: float
-    new_engine_results: list[object] | None = None
-    slo_objectives: list[object] | None = None
+    new_engine_results: list[IndicatorResult] | None = None
+    slo_objectives: list[SLOObjective] | None = None
     old_result: str
     old_score: float
     slo_version: int | None = None

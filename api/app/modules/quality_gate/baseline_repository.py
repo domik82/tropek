@@ -248,22 +248,22 @@ class BaselineRepository:
         if new_engine_results and slo_objectives:
             indicator_repo = IndicatorRepository(self._session)
             await indicator_repo.delete_for_evaluation(params.eval_id)
-            obj_lookup = {obj.sli: obj.id for obj in slo_objectives}  # type: ignore[attr-defined]
+            obj_lookup = {obj.sli: obj.id for obj in slo_objectives}
             rows: list[dict[str, Any]] = []
             for ir in new_engine_results:
-                obj_id = obj_lookup.get(ir.metric)  # type: ignore[attr-defined]
+                obj_id = obj_lookup.get(ir.metric)
                 if obj_id is None:
                     continue
                 rows.append(
                     {
                         'evaluation_id': params.eval_id,
                         'slo_objective_id': obj_id,
-                        'value': ir.value,  # type: ignore[attr-defined]
-                        'compared_value': ir.compared_value,  # type: ignore[attr-defined]
-                        'change_absolute': ir.change_absolute,  # type: ignore[attr-defined]
-                        'change_relative_pct': ir.change_relative_pct,  # type: ignore[attr-defined]
-                        'status': ir.status,  # type: ignore[attr-defined]
-                        'score': ir.score,  # type: ignore[attr-defined]
+                        'value': ir.value,
+                        'compared_value': ir.compared_value,
+                        'change_absolute': ir.change_absolute,
+                        'change_relative_pct': ir.change_relative_pct,
+                        'status': ir.status,
+                        'score': ir.score,
                     }
                 )
             if rows:

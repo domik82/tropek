@@ -30,9 +30,7 @@ class JobManager:
         """Create and enqueue a new job, enforcing queue depth and timeout limits."""
         depth = await self._repo.queue_depth()
         if depth >= self._settings.max_queue_depth:
-            raise self.QueueFullError(
-                f'queue depth {depth} >= max {self._settings.max_queue_depth}'
-            )
+            raise self.QueueFullError(f'queue depth {depth} >= max {self._settings.max_queue_depth}')
 
         timeout = min(
             timeout_seconds or self._settings.default_job_timeout_seconds,
