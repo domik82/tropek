@@ -1,8 +1,7 @@
 import { useState } from 'react'
 import { Search, X, Plus } from 'lucide-react'
 import type { TagFilter } from '@/features/registry/types'
-
-const SANS_SERIF = "system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif"
+import { SANS_SERIF } from '@/lib/fonts'
 
 interface TagKeySuggestion {
   key: string

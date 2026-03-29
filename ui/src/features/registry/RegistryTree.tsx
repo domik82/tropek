@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { TreeNode } from '@/components/tree'
 import { getEntityIcon, getAssetTypeIcon } from '@/components/tree'
 import { NODE_TYPE_COLORS } from '@/lib/entity-colors'
+import { SANS_SERIF } from '@/lib/fonts'
 import type { TreeNode as TreeNodeData, SelectedNode } from './types'
 
 interface Props {
@@ -25,7 +26,7 @@ export function RegistryTree({ nodes, selected, onSelect }: Props) {
   return (
     <div
       className="flex-1 overflow-y-auto py-1"
-      style={{ fontFamily: "system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" }}
+      style={{ fontFamily: SANS_SERIF }}
     >
       {nodes.map(node => (
         <RegistryNodeRow

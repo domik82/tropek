@@ -8,6 +8,7 @@ import { AssetTreeContextMenu } from './AssetTreeContextMenu'
 import { AssetTreeFooter } from './AssetTreeFooter'
 import { AssetTreeDialogs, useDialogState } from './AssetTreeDialogs'
 import { useAssetTreeActions } from './useAssetTreeActions'
+import { SANS_SERIF } from '@/lib/fonts'
 import type { TreeMode, ContextMenuState } from './types'
 
 export interface AssetTreeProps {
@@ -133,7 +134,7 @@ export function AssetTree({
   return (
     <div
       className="flex flex-col h-full bg-sidebar-bg border-r border-border shrink-0"
-      style={{ width, fontFamily: "system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" }}
+      style={{ width, fontFamily: SANS_SERIF }}
     >
       {/* Header */}
       <div className="px-3 py-2.5 border-b border-border flex items-center justify-between">

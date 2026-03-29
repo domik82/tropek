@@ -5,6 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { FieldLabel } from '@/components/ui/field-label'
 import { LabelComboBox } from './LabelComboBox'
 import { useTagKeys, useTagValues } from '@/features/assets/hooks'
+import { SANS_SERIF } from '@/lib/fonts'
 
 interface Props {
   open: boolean
@@ -55,7 +56,7 @@ export function LabelsEditorDialog({ open, onOpenChange, title, subtitle, labels
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent style={{ fontFamily: "system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" }}>
+      <DialogContent style={{ fontFamily: SANS_SERIF }}>
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
           {subtitle && <p className="text-sm text-muted-foreground">{subtitle}</p>}

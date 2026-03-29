@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react'
 import { Search } from 'lucide-react'
 import { useAssets, useAddGroupMember, useAssetGroups } from '@/features/assets/hooks'
+import { SANS_SERIF } from '@/lib/fonts'
 
 interface Props {
   open: boolean
@@ -45,7 +46,7 @@ export function AddAssetToGroupDialog({ open, onOpenChange, groupName }: Props) 
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
       <div
         className="bg-popover border border-border rounded-lg shadow-xl w-full max-w-sm mx-4"
-        style={{ fontFamily: "system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" }}
+        style={{ fontFamily: SANS_SERIF }}
       >
         <div className="px-4 pt-4 pb-3 border-b border-border">
           <h3 className="text-sm font-semibold text-foreground">

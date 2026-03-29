@@ -6,6 +6,7 @@ import {
   useAssetTypes, useCreateAssetType, useRenameAssetType,
   useSetDefaultAssetType, useDeleteAssetType,
 } from '../hooks'
+import { SANS_SERIF } from '@/lib/fonts'
 
 interface Props {
   open: boolean
@@ -58,7 +59,7 @@ export function AssetTypesDialog({ open, onOpenChange }: Props) {
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         className="max-w-lg"
-        style={{ fontFamily: "system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" }}
+        style={{ fontFamily: SANS_SERIF }}
       >
         <DialogHeader>
           <div className="flex items-center justify-between">

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { SANS_SERIF } from '@/lib/fonts'
 
 interface DeletionConfirmFormProps {
   title: string
@@ -40,7 +41,7 @@ export function DeletionConfirmForm({
       <div className="p-3 space-y-2">
         <p
           className="text-xs font-medium text-destructive-form-text"
-          style={{ fontFamily: "system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" }}
+          style={{ fontFamily: SANS_SERIF }}
         >
           {title}
         </p>

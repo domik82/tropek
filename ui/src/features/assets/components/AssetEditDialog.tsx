@@ -6,6 +6,7 @@ import { FieldLabel } from '@/components/ui/field-label'
 import { LabelChips } from '@/components/labels/LabelChips'
 import { LabelsEditorDialog } from '@/components/labels/LabelsEditorDialog'
 import { useAsset, useAssetTypes, useUpdateAsset } from '../hooks'
+import { SANS_SERIF } from '@/lib/fonts'
 
 interface Props {
   open: boolean
@@ -45,7 +46,7 @@ export function AssetEditDialog({ open, onOpenChange, assetName }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent style={{ fontFamily: "system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" }}>
+      <DialogContent style={{ fontFamily: SANS_SERIF }}>
         <DialogHeader>
           <DialogTitle>Edit Asset — <span className="font-mono text-primary">{assetName}</span></DialogTitle>
         </DialogHeader>
