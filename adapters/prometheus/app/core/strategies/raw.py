@@ -1,5 +1,9 @@
 """Raw query strategy — executes complete PromQL as instant query."""
 
+from __future__ import annotations
+
+from typing import Any
+
 from app.core.prometheus_client import PrometheusClient, PrometheusQueryError
 from app.core.variable_substitutor import UnresolvedVariableError, substitute
 
@@ -14,11 +18,11 @@ class RawQueryStrategy:
         self,
         *,
         sli_name: str,
-        query_spec: dict,
+        query_spec: dict[str, Any],
         variables: dict[str, str],
         start: str,
         end: str,
-    ) -> tuple[dict[str, float | None], dict[str, str], dict | None]:
+    ) -> tuple[dict[str, float | None], dict[str, str], dict[str, Any] | None]:
         """Execute a raw PromQL query and return (values, errors, metadata)."""
         query_template = query_spec["query"]
 

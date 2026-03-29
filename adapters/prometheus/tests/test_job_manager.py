@@ -2,7 +2,6 @@
 
 import fakeredis.aioredis
 import pytest
-
 from app.config import Settings
 from app.core.job_manager import JobManager
 from app.redis.repository import JobRepository

@@ -1,10 +1,8 @@
 """Tests for the job coordinator."""
 
-import asyncio
 
 import fakeredis.aioredis
 import pytest
-
 from app.config import Settings
 from app.core.coordinator import Coordinator
 from app.core.strategies.raw import RawQueryStrategy

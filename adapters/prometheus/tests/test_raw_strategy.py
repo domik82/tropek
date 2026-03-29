@@ -4,10 +4,9 @@ from urllib.parse import unquote
 
 import pytest
 import respx
-from httpx import Response
-
 from app.core.prometheus_client import PrometheusClient
 from app.core.strategies.raw import RawQueryStrategy
+from httpx import Response
 
 
 @pytest.fixture
@@ -80,7 +79,7 @@ async def test_raw_strategy_captures_error(strategy: RawQueryStrategy) -> None:
             },
         )
     )
-    values, errors, metadata = await strategy.execute(
+    values, errors, _metadata = await strategy.execute(
         sli_name="missing_metric",
         query_spec={"mode": "raw", "query": "nonexistent_metric"},
         variables={},

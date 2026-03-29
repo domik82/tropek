@@ -1,7 +1,6 @@
 import pytest
+from app.api.schemas import AggregatedQuerySpec, JobSubmitRequest, RawQuerySpec
 from pydantic import ValidationError
-
-from app.api.schemas import JobSubmitRequest, RawQuerySpec, AggregatedQuerySpec
 
 
 def test_raw_query_spec_valid():

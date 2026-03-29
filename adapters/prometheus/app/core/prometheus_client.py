@@ -1,6 +1,9 @@
 """Async HTTP wrapper for the Prometheus query API."""
 
+from __future__ import annotations
+
 import math
+from typing import Any
 
 import httpx
 
@@ -31,7 +34,7 @@ class PrometheusClient:
         data = await self._get("/api/v1/query", params)
         return self._extract_scalar(data)
 
-    async def _get(self, path: str, params: dict[str, str]) -> dict:
+    async def _get(self, path: str, params: dict[str, str]) -> dict[str, Any]:
         auth = httpx.BasicAuth(*self._auth) if self._auth else None
         async with httpx.AsyncClient(
             base_url=self._base_url, timeout=self._timeout, auth=auth
@@ -41,14 +44,15 @@ class PrometheusClient:
                 raise PrometheusQueryError(
                     f"prometheus returned {resp.status_code}: {resp.text[:200]}"
                 )
-            body = resp.json()
+            body: dict[str, Any] = resp.json()
             if body.get("status") != "success":
                 raise PrometheusQueryError(
                     f"prometheus error: {body.get('error', 'unknown')}"
                 )
-            return body["data"]
+            data: dict[str, Any] = body["data"]
+            return data
 
-    def _extract_scalar(self, data: dict) -> float:
+    def _extract_scalar(self, data: dict[str, Any]) -> float:
         result_type = data["resultType"]
 
         if result_type == "scalar":

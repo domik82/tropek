@@ -1,8 +1,7 @@
 import pytest
 import respx
-from httpx import Response
-
 from app.core.prometheus_client import PrometheusClient, PrometheusQueryError
+from httpx import Response
 
 
 @pytest.fixture

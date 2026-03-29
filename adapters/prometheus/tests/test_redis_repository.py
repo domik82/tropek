@@ -1,8 +1,6 @@
-import json
 
 import fakeredis.aioredis
 import pytest
-
 from app.redis.repository import JobRepository
 
 
