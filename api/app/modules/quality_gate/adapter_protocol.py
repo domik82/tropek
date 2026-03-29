@@ -14,9 +14,10 @@ from typing import Protocol
 class AdapterQueryRequest:
     """Request payload for an adapter metric query."""
 
-    queries: dict[str, str]
-    start: str
-    end: str
+    queries: dict[str, dict]  # metric_name → {"mode": "raw", "query": "..."} or aggregated spec
+    variables: dict[str, str] = field(default_factory=dict)
+    start: str = ""
+    end: str = ""
 
 
 @dataclass
@@ -25,6 +26,7 @@ class AdapterQueryResponse:
 
     values: dict[str, float | None] = field(default_factory=dict)
     errors: dict[str, str] = field(default_factory=dict)
+    metadata: dict[str, dict] = field(default_factory=dict)
 
 
 class AdapterClient(Protocol):
@@ -35,7 +37,8 @@ class AdapterClient(Protocol):
         *,
         adapter_url: str,
         datasource_name: str,
-        queries: dict[str, str],
+        queries: dict[str, dict],
+        variables: dict[str, str],
         start: str,
         end: str,
     ) -> tuple[dict[str, float | None], dict[str, str]]:
