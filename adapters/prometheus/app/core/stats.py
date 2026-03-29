@@ -48,7 +48,7 @@ def compute_statistics(
     clean: NDArray[np.float64] = arr[~np.isnan(arr)]
 
     if clean.size == 0:
-        return {m: None for m in methods}
+        return dict.fromkeys(methods, None)
 
     result: dict[AggregationMethod, float | None] = {}
     for method in methods:

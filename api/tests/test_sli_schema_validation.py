@@ -1,9 +1,8 @@
 """Tests for SLI definition mode-dependent validation."""
 
 import pytest
-from pydantic import ValidationError
-
 from app.modules.sli_registry.schemas import AggregationMethod, SLIDefinitionCreate
+from pydantic import ValidationError
 
 
 class TestRawModeValidation:

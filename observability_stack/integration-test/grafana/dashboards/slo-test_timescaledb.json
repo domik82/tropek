@@ -20,7 +20,20 @@
           "uid": "timescaledb"
         },
         "query": "SELECT DISTINCT service FROM metrics ORDER BY service"
-      }    ]
+      }
+,      {
+        "name": "interval",
+        "type": "custom",
+        "label": "Interval",
+        "query": "1s,10s,30s,1m,5m,15m,1h,4h,12h,24h",
+        "current": {
+          "text": "5m",
+          "value": "5m"
+        },
+        "options": [
+          {"text": "1s", "value": "1s", "selected": false},          {"text": "10s", "value": "10s", "selected": false},          {"text": "30s", "value": "30s", "selected": false},          {"text": "1m", "value": "1m", "selected": false},          {"text": "5m", "value": "5m", "selected": true},          {"text": "15m", "value": "15m", "selected": false},          {"text": "1h", "value": "1h", "selected": false},          {"text": "4h", "value": "4h", "selected": false},          {"text": "12h", "value": "12h", "selected": false},          {"text": "24h", "value": "24h", "selected": false}        ]
+      }
+    ]
   },
   "panels": [
     {
@@ -43,7 +56,7 @@
             "type": "grafana-postgresql-datasource",
             "uid": "timescaledb"
           },
-          "rawSql": "SELECT time_bucket(\u00275 minutes\u0027, t.timestamp) AS time,\n       avg(t.total) AS throughput\nFROM (\n  SELECT timestamp, sum(value) AS total\n  FROM metrics\n  WHERE metric = \u0027http_requests_total\u0027\n    AND timestamp BETWEEN $__timeFrom() AND $__timeTo()\n  GROUP BY timestamp\n) t GROUP BY 1 ORDER BY 1",
+          "rawSql": "SELECT time_bucket(\u0027$interval\u0027, t.timestamp) AS time,\n       avg(t.total) AS throughput\nFROM (\n  SELECT timestamp, sum(value) AS total\n  FROM metrics\n  WHERE metric = \u0027http_requests_total\u0027\n    AND timestamp BETWEEN $__timeFrom() AND $__timeTo()\n  GROUP BY timestamp\n) t GROUP BY 1 ORDER BY 1",
           "rawQuery": true,
           "format": "time_series",
           "refId": "A"
@@ -69,7 +82,7 @@
             "type": "grafana-postgresql-datasource",
             "uid": "timescaledb"
           },
-          "rawSql": "SELECT time_bucket(\u00275 minutes\u0027, t.timestamp) AS time,\n       avg(t.err) / NULLIF(avg(t.req), 0) AS error_rate\nFROM (\n  SELECT timestamp,\n         sum(CASE WHEN metric = \u0027http_errors_total\u0027 THEN value END) AS err,\n         sum(CASE WHEN metric = \u0027http_requests_total\u0027 THEN value END) AS req\n  FROM metrics\n  WHERE metric IN (\u0027http_errors_total\u0027, \u0027http_requests_total\u0027)\n    AND timestamp BETWEEN $__timeFrom() AND $__timeTo()\n  GROUP BY timestamp\n) t GROUP BY 1 ORDER BY 1",
+          "rawSql": "SELECT time_bucket(\u0027$interval\u0027, t.timestamp) AS time,\n       avg(t.err) / NULLIF(avg(t.req), 0) AS error_rate\nFROM (\n  SELECT timestamp,\n         sum(CASE WHEN metric = \u0027http_errors_total\u0027 THEN value END) AS err,\n         sum(CASE WHEN metric = \u0027http_requests_total\u0027 THEN value END) AS req\n  FROM metrics\n  WHERE metric IN (\u0027http_errors_total\u0027, \u0027http_requests_total\u0027)\n    AND timestamp BETWEEN $__timeFrom() AND $__timeTo()\n  GROUP BY timestamp\n) t GROUP BY 1 ORDER BY 1",
           "rawQuery": true,
           "format": "time_series",
           "refId": "A"
@@ -147,7 +160,7 @@
             "type": "grafana-postgresql-datasource",
             "uid": "timescaledb"
           },
-          "rawSql": "SELECT time_bucket(\u00275 minutes\u0027, t.timestamp) AS time,\n       avg(t.total) AS throughput\nFROM (\n  SELECT timestamp, sum(value) AS total\n  FROM metrics\n  WHERE metric = \u0027http_requests_total\u0027\n    AND service = \u0027$service\u0027\n    AND timestamp BETWEEN $__timeFrom() AND $__timeTo()\n  GROUP BY timestamp\n) t GROUP BY 1 ORDER BY 1",
+          "rawSql": "SELECT time_bucket(\u0027$interval\u0027, t.timestamp) AS time,\n       avg(t.total) AS throughput\nFROM (\n  SELECT timestamp, sum(value) AS total\n  FROM metrics\n  WHERE metric = \u0027http_requests_total\u0027\n    AND service = \u0027$service\u0027\n    AND timestamp BETWEEN $__timeFrom() AND $__timeTo()\n  GROUP BY timestamp\n) t GROUP BY 1 ORDER BY 1",
           "rawQuery": true,
           "format": "time_series",
           "refId": "A"
@@ -173,7 +186,7 @@
             "type": "grafana-postgresql-datasource",
             "uid": "timescaledb"
           },
-          "rawSql": "SELECT time_bucket(\u00275 minutes\u0027, timestamp) AS time,\n       avg(value) AS p99_latency\nFROM metrics WHERE metric = \u0027http_request_duration_seconds_p99\u0027\n  AND service = \u0027$service\u0027\n  AND timestamp BETWEEN $__timeFrom() AND $__timeTo()\nGROUP BY 1 ORDER BY 1",
+          "rawSql": "SELECT time_bucket(\u0027$interval\u0027, timestamp) AS time,\n       percentile_cont(0.99) WITHIN GROUP (ORDER BY latency_ms) / 1000.0 AS p99_latency\nFROM request_latencies WHERE service = \u0027$service\u0027\n  AND timestamp BETWEEN $__timeFrom() AND $__timeTo()\nGROUP BY 1 ORDER BY 1",
           "rawQuery": true,
           "format": "time_series",
           "refId": "A"
@@ -199,7 +212,7 @@
             "type": "grafana-postgresql-datasource",
             "uid": "timescaledb"
           },
-          "rawSql": "SELECT time_bucket(\u00275 minutes\u0027, t.timestamp) AS time,\n       t.service,\n       avg(t.err) / NULLIF(avg(t.req), 0) AS error_rate\nFROM (\n  SELECT timestamp, service,\n         sum(CASE WHEN metric = \u0027http_errors_total\u0027 THEN value END) AS err,\n         sum(CASE WHEN metric = \u0027http_requests_total\u0027 THEN value END) AS req\n  FROM metrics\n  WHERE metric IN (\u0027http_errors_total\u0027, \u0027http_requests_total\u0027)\n    AND timestamp BETWEEN $__timeFrom() AND $__timeTo()\n  GROUP BY timestamp, service\n) t GROUP BY 1, 2 ORDER BY 1, 2",
+          "rawSql": "SELECT time_bucket(\u0027$interval\u0027, t.timestamp) AS time,\n       t.service,\n       avg(t.err) / NULLIF(avg(t.req), 0) AS error_rate\nFROM (\n  SELECT timestamp, service,\n         sum(CASE WHEN metric = \u0027http_errors_total\u0027 THEN value END) AS err,\n         sum(CASE WHEN metric = \u0027http_requests_total\u0027 THEN value END) AS req\n  FROM metrics\n  WHERE metric IN (\u0027http_errors_total\u0027, \u0027http_requests_total\u0027)\n    AND timestamp BETWEEN $__timeFrom() AND $__timeTo()\n  GROUP BY timestamp, service\n) t GROUP BY 1, 2 ORDER BY 1, 2",
           "rawQuery": true,
           "format": "time_series",
           "refId": "A"
@@ -225,7 +238,7 @@
             "type": "grafana-postgresql-datasource",
             "uid": "timescaledb"
           },
-          "rawSql": "SELECT time_bucket(\u00275 minutes\u0027, timestamp) AS time,\n       host,\n       avg(value) AS cpu\nFROM metrics WHERE metric = \u0027cpu_usage_percent\u0027\n  AND timestamp BETWEEN $__timeFrom() AND $__timeTo()\nGROUP BY 1, 2 ORDER BY 1, 2",
+          "rawSql": "SELECT time_bucket(\u0027$interval\u0027, timestamp) AS time,\n       host,\n       avg(value) AS cpu\nFROM metrics WHERE metric = \u0027cpu_usage_percent\u0027\n  AND timestamp BETWEEN $__timeFrom() AND $__timeTo()\nGROUP BY 1, 2 ORDER BY 1, 2",
           "rawQuery": true,
           "format": "time_series",
           "refId": "A"
@@ -251,7 +264,7 @@
             "type": "grafana-postgresql-datasource",
             "uid": "timescaledb"
           },
-          "rawSql": "SELECT time_bucket(\u00275 minutes\u0027, timestamp) AS time,\n       service,\n       host,\n       avg(value) AS p50_latency\nFROM metrics WHERE metric = \u0027http_request_duration_seconds_p50\u0027\n  AND timestamp BETWEEN $__timeFrom() AND $__timeTo()\nGROUP BY 1, 2, 3 ORDER BY 1, 2, 3",
+          "rawSql": "SELECT time_bucket(\u0027$interval\u0027, timestamp) AS time,\n       service,\n       host,\n       percentile_cont(0.50) WITHIN GROUP (ORDER BY latency_ms) / 1000.0 AS p50_latency\nFROM request_latencies WHERE timestamp BETWEEN $__timeFrom() AND $__timeTo() GROUP BY 1, 2, 3 ORDER BY 1, 2, 3",
           "rawQuery": true,
           "format": "time_series",
           "refId": "A"
@@ -277,7 +290,7 @@
             "type": "grafana-postgresql-datasource",
             "uid": "timescaledb"
           },
-          "rawSql": "SELECT time_bucket(\u00275 minutes\u0027, t.timestamp) AS time,\n       t.service,\n       avg(t.total) AS throughput\nFROM (\n  SELECT timestamp, service, sum(value) AS total\n  FROM metrics\n  WHERE metric = \u0027http_requests_total\u0027\n    AND timestamp BETWEEN $__timeFrom() AND $__timeTo()\n  GROUP BY timestamp, service\n) t GROUP BY 1, 2 ORDER BY 1, 2",
+          "rawSql": "SELECT time_bucket(\u0027$interval\u0027, t.timestamp) AS time,\n       t.service,\n       avg(t.total) AS throughput\nFROM (\n  SELECT timestamp, service, sum(value) AS total\n  FROM metrics\n  WHERE metric = \u0027http_requests_total\u0027\n    AND timestamp BETWEEN $__timeFrom() AND $__timeTo()\n  GROUP BY timestamp, service\n) t GROUP BY 1, 2 ORDER BY 1, 2",
           "rawQuery": true,
           "format": "time_series",
           "refId": "A"
@@ -303,7 +316,7 @@
             "type": "grafana-postgresql-datasource",
             "uid": "timescaledb"
           },
-          "rawSql": "SELECT time_bucket(\u00275 minutes\u0027, t.timestamp) AS time,\n       t.host,\n       avg(t.total) AS errors\nFROM (\n  SELECT timestamp, host, sum(value) AS total\n  FROM metrics\n  WHERE metric = \u0027http_errors_total\u0027\n    AND timestamp BETWEEN $__timeFrom() AND $__timeTo()\n  GROUP BY timestamp, host\n) t GROUP BY 1, 2 ORDER BY 1, 2",
+          "rawSql": "SELECT time_bucket(\u0027$interval\u0027, t.timestamp) AS time,\n       t.host,\n       avg(t.total) AS errors\nFROM (\n  SELECT timestamp, host, sum(value) AS total\n  FROM metrics\n  WHERE metric = \u0027http_errors_total\u0027\n    AND timestamp BETWEEN $__timeFrom() AND $__timeTo()\n  GROUP BY timestamp, host\n) t GROUP BY 1, 2 ORDER BY 1, 2",
           "rawQuery": true,
           "format": "time_series",
           "refId": "A"
@@ -329,7 +342,7 @@
             "type": "grafana-postgresql-datasource",
             "uid": "timescaledb"
           },
-          "rawSql": "SELECT time_bucket(\u00275 minutes\u0027, timestamp) AS time,\n       service,\n       avg(value) AS p99_latency\nFROM metrics WHERE metric = \u0027http_request_duration_seconds_p99\u0027\n  AND timestamp BETWEEN $__timeFrom() AND $__timeTo()\nGROUP BY 1, 2 ORDER BY 1, 2",
+          "rawSql": "SELECT time_bucket(\u0027$interval\u0027, timestamp) AS time,\n       service,\n       percentile_cont(0.99) WITHIN GROUP (ORDER BY latency_ms) / 1000.0 AS p99_latency\nFROM request_latencies WHERE timestamp BETWEEN $__timeFrom() AND $__timeTo() GROUP BY 1, 2 ORDER BY 1, 2",
           "rawQuery": true,
           "format": "time_series",
           "refId": "A"
@@ -381,7 +394,7 @@
             "type": "grafana-postgresql-datasource",
             "uid": "timescaledb"
           },
-          "rawSql": "SELECT avg(value) AS avg_latency FROM metrics WHERE metric = \u0027http_request_duration_seconds_p50\u0027\n  AND timestamp BETWEEN $__timeFrom() AND $__timeTo()",
+          "rawSql": "SELECT avg(latency_ms) / 1000.0 AS avg_latency FROM request_latencies WHERE timestamp BETWEEN $__timeFrom() AND $__timeTo()",
           "rawQuery": true,
           "format": "table",
           "refId": "A"
@@ -389,7 +402,7 @@
       ]
     },    {
       "id": 15,
-      "title": "Throughput ($__interval)",
+      "title": "Throughput ($interval)",
       "type": "timeseries",
       "gridPos": {
         "x": 12,
@@ -407,7 +420,7 @@
             "type": "grafana-postgresql-datasource",
             "uid": "timescaledb"
           },
-          "rawSql": "SELECT time_bucket(\u0027$__interval\u0027, t.timestamp) AS time,\n       avg(t.total) AS throughput\nFROM (\n  SELECT timestamp, sum(value) AS total\n  FROM metrics\n  WHERE metric = \u0027http_requests_total\u0027\n    AND timestamp BETWEEN $__timeFrom() AND $__timeTo()\n  GROUP BY timestamp\n) t GROUP BY 1 ORDER BY 1",
+          "rawSql": "SELECT time_bucket(\u0027$interval\u0027, t.timestamp) AS time,\n       avg(t.total) AS throughput\nFROM (\n  SELECT timestamp, sum(value) AS total\n  FROM metrics\n  WHERE metric = \u0027http_requests_total\u0027\n    AND timestamp BETWEEN $__timeFrom() AND $__timeTo()\n  GROUP BY timestamp\n) t GROUP BY 1 ORDER BY 1",
           "rawQuery": true,
           "format": "time_series",
           "refId": "A"
@@ -433,7 +446,7 @@
             "type": "grafana-postgresql-datasource",
             "uid": "timescaledb"
           },
-          "rawSql": "SELECT time_bucket(\u00275 minutes\u0027, t.timestamp) AS time,\n       t.service,\n       t.metric,\n       avg(t.total) AS value\nFROM (\n  SELECT timestamp, service, metric, sum(value) AS total\n  FROM metrics\n  WHERE metric IN (\u0027http_requests_total\u0027, \u0027http_errors_total\u0027)\n    AND timestamp BETWEEN $__timeFrom() AND $__timeTo()\n  GROUP BY timestamp, service, metric\n) t GROUP BY 1, 2, 3 ORDER BY 1, 2, 3",
+          "rawSql": "SELECT time_bucket(\u0027$interval\u0027, t.timestamp) AS time,\n       t.service,\n       t.metric,\n       avg(t.total) AS value\nFROM (\n  SELECT timestamp, service, metric, sum(value) AS total\n  FROM metrics\n  WHERE metric IN (\u0027http_requests_total\u0027, \u0027http_errors_total\u0027)\n    AND timestamp BETWEEN $__timeFrom() AND $__timeTo()\n  GROUP BY timestamp, service, metric\n) t GROUP BY 1, 2, 3 ORDER BY 1, 2, 3",
           "rawQuery": true,
           "format": "time_series",
           "refId": "A"

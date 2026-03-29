@@ -27,6 +27,36 @@ class AggregationMethod(StrEnum):
     P99 = 'p99'
 
 
+def _validate_raw_mode(sli: SLIDefinitionCreate) -> None:
+    if not sli.indicators:
+        msg = 'indicators must be non-empty for mode raw'
+        raise ValueError(msg)
+    if sli.query_template is not None:
+        msg = 'query_template must not be set for mode raw'
+        raise ValueError(msg)
+    if sli.interval is not None:
+        msg = 'interval must not be set for mode raw'
+        raise ValueError(msg)
+    if sli.methods is not None:
+        msg = 'methods must not be set for mode raw'
+        raise ValueError(msg)
+
+
+def _validate_aggregated_mode(sli: SLIDefinitionCreate) -> None:
+    if sli.indicators:
+        msg = 'indicators must be empty for mode aggregated'
+        raise ValueError(msg)
+    if not sli.query_template:
+        msg = 'query_template is required for mode aggregated'
+        raise ValueError(msg)
+    if not sli.interval:
+        msg = 'interval is required for mode aggregated'
+        raise ValueError(msg)
+    if not sli.methods:
+        msg = 'methods must be non-empty for mode aggregated'
+        raise ValueError(msg)
+
+
 class SLIDefinitionCreate(BaseModel):
     """Request body for creating an SLI definition."""
 
@@ -57,32 +87,9 @@ class SLIDefinitionCreate(BaseModel):
             raise ValueError(msg)
 
         if self.mode == 'raw':
-            if not self.indicators:
-                msg = 'indicators must be non-empty for mode raw'
-                raise ValueError(msg)
-            if self.query_template is not None:
-                msg = 'query_template must not be set for mode raw'
-                raise ValueError(msg)
-            if self.interval is not None:
-                msg = 'interval must not be set for mode raw'
-                raise ValueError(msg)
-            if self.methods is not None:
-                msg = 'methods must not be set for mode raw'
-                raise ValueError(msg)
-
+            _validate_raw_mode(self)
         elif self.mode == 'aggregated':
-            if self.indicators:
-                msg = 'indicators must be empty for mode aggregated'
-                raise ValueError(msg)
-            if not self.query_template:
-                msg = 'query_template is required for mode aggregated'
-                raise ValueError(msg)
-            if not self.interval:
-                msg = 'interval is required for mode aggregated'
-                raise ValueError(msg)
-            if not self.methods:
-                msg = 'methods must be non-empty for mode aggregated'
-                raise ValueError(msg)
+            _validate_aggregated_mode(self)
 
         return self
 

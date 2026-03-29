@@ -18,7 +18,12 @@
       "Bash(pnpm exec:*)",
       "Bash(./scripts/ui-test.sh --tail 40)",
       "Bash(bash /mnt/d/DEV/keptn_rewrite/tropek/scripts/approve-safe-bash.sh)",
-      "Bash(bash /mnt/d/DEV/keptn_rewrite/tropek/.claude/worktrees/registry-detail-views/scripts/ui-test.sh --tail 15)"
+      "Bash(bash /mnt/d/DEV/keptn_rewrite/tropek/.claude/worktrees/registry-detail-views/scripts/ui-test.sh --tail 15)",
+      "Bash(bash /home/domik/projects/tropek/.worktrees/prometheus-adapter-phase0/scripts/db-regen-migrations.sh)",
+      "Bash(bash scripts/ui-test.sh --tail 10)",
+      "Bash(/home/domik/projects/tropek/.worktrees/prometheus-adapter-phase0/scripts/live-test-adapter.sh)",
+      "Bash(/home/domik/projects/tropek/.worktrees/prometheus-adapter-phase0/scripts/e2e-start.sh 2>&1)",
+      "Skill(commit-commands:commit)"
     ],
     "deny": [
       "Bash(sudo *)",
