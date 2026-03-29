@@ -13,6 +13,7 @@ from app.modules.assets.repository import (
     AssetTypeRepository,
 )
 from app.modules.assets.schemas import AssetGroupMemberCreate
+from app.modules.slo_registry.params import SLOCreateParams
 from app.modules.slo_registry.repository import SLORepository
 from fastapi import HTTPException
 from sqlalchemy import select
@@ -267,10 +268,12 @@ async def test_group_delete_keeps_slos(db_session: AsyncSession) -> None:
 async def test_group_delete_deactivates_slos(db_session: AsyncSession) -> None:
     slo_repo = SLORepository(db_session)
     await slo_repo.create(
-        name='deact-slo',
-        objectives=[],
-        total_score_pass_pct=90.0,
-        total_score_warning_pct=75.0,
+        SLOCreateParams(
+            name='deact-slo',
+            objectives=[],
+            total_score_pass_pct=90.0,
+            total_score_warning_pct=75.0,
+        )
     )
     group_repo = AssetGroupRepository(db_session)
     group = await group_repo.create('deact-grp')

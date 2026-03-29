@@ -21,6 +21,7 @@ from app.modules.quality_gate.engine.slo_parser import build_slo
 from app.modules.quality_gate.engine.variables import build_variables, substitute_variables
 from app.modules.quality_gate.schemas import IndicatorResult
 from app.modules.sli_registry.repository import SLIRepository
+from app.modules.slo_registry.params import SLOCreateParams, SLOObjectiveParams
 from app.modules.slo_registry.repository import SLORepository
 from app.modules.slo_registry.schemas import (
     BaselineConfig,
@@ -76,12 +77,12 @@ async def create_slo_definition(
                     detail=f"objective sli '{obj.sli}' not found in SLI definition '{body.sli_name}' indicators",
                 )
     repo = SLORepository(session)
-    slo = await repo.create(
-        body.name,
-        objectives=[o.model_dump() for o in body.objectives],
+    params = SLOCreateParams(
+        name=body.name,
+        objectives=[SLOObjectiveParams(**o.model_dump()) for o in body.objectives],
         total_score_pass_pct=body.total_score_pass_pct,
         total_score_warning_pct=body.total_score_warning_pct,
-        comparison=body.comparison,
+        comparison=body.comparison or None,
         display_name=body.display_name,
         notes=body.notes,
         author=body.author,
@@ -92,6 +93,7 @@ async def create_slo_definition(
         sli_name=body.sli_name,
         sli_version=body.sli_version,
     )
+    slo = await repo.create(params)
     return SLODefinitionRead.model_validate(slo)
 
 

@@ -10,6 +10,7 @@ from app.db.models import Asset, AssetType, SLOObjective
 from app.modules.quality_gate.indicator_repository import IndicatorRepository
 from app.modules.quality_gate.params import EvalCreateParams
 from app.modules.quality_gate.repository import EvaluationRepository
+from app.modules.slo_registry.params import SLOCreateParams, SLOObjectiveParams
 from app.modules.slo_registry.repository import SLORepository
 from httpx import AsyncClient
 from sqlalchemy import select
@@ -33,8 +34,10 @@ async def _setup_re_eval(
     slo_repo = SLORepository(session)
     # SLO v1: pass if cpu < 90
     await slo_repo.create(
-        name='re-eval-ep-slo',
-        objectives=[{'sli': 'cpu', 'pass_criteria': ['<90'], 'weight': 1}],
+        SLOCreateParams(
+            name='re-eval-ep-slo',
+            objectives=[SLOObjectiveParams(sli='cpu', pass_criteria=['<90'], weight=1)],
+        )
     )
 
     repo = EvaluationRepository(session)
@@ -80,8 +83,10 @@ async def _setup_re_eval(
 
     # SLO v2: relaxed threshold — pass if cpu < 100
     await slo_repo.create(
-        name='re-eval-ep-slo',
-        objectives=[{'sli': 'cpu', 'pass_criteria': ['<100'], 'weight': 1}],
+        SLOCreateParams(
+            name='re-eval-ep-slo',
+            objectives=[SLOObjectiveParams(sli='cpu', pass_criteria=['<100'], weight=1)],
+        )
     )
 
     return asset_name, ev.id
@@ -131,8 +136,10 @@ async def test_re_evaluate_preserves_original_on_second_reeval(
     # Create SLO v3 (same threshold, just to trigger a second re-eval)
     slo_repo = SLORepository(db_session)
     await slo_repo.create(
-        name='re-eval-ep-slo',
-        objectives=[{'sli': 'cpu', 'pass_criteria': ['<100'], 'weight': 1}],
+        SLOCreateParams(
+            name='re-eval-ep-slo',
+            objectives=[SLOObjectiveParams(sli='cpu', pass_criteria=['<100'], weight=1)],
+        )
     )
 
     # Second re-eval

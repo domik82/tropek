@@ -143,7 +143,9 @@ async def _query_adapter_safe(
 ) -> tuple[dict[str, float | None], dict[str, str]] | None:
     """Query adapter, mark failed on error. Returns None if query failed."""
     # Wrap bare query strings into v2 raw-mode query specs
-    query_specs: dict[str, dict[str, str]] = {name: {'mode': 'raw', 'query': query} for name, query in resolved_queries.items()}
+    query_specs: dict[str, dict[str, str]] = {
+        name: {'mode': 'raw', 'query': query} for name, query in resolved_queries.items()
+    }
     try:
         adapter_client = HttpAdapterClient(
             timeout=get_settings().reliability.adapter_timeout_seconds,
