@@ -2,6 +2,7 @@ import { useState } from 'react'
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose,
 } from '@/components/ui/dialog'
+import { FieldLabel } from '@/components/ui/field-label'
 import { GroupTreeSelector } from '@/features/assets/components/GroupTreeSelector'
 import { useCreateGroup, useGroupTree, useAddSubgroup } from '../hooks'
 
@@ -48,9 +49,7 @@ export function GroupCreateDialog({ open, onOpenChange }: Props) {
         </DialogHeader>
         <div className="space-y-3 py-2">
           <div>
-            <label className="text-xs uppercase text-muted-foreground block mb-1">
-              Name <span className="text-destructive">*</span>
-            </label>
+            <FieldLabel required>Name</FieldLabel>
             <input
               value={name}
               onChange={e => setName(e.target.value)}
@@ -62,7 +61,7 @@ export function GroupCreateDialog({ open, onOpenChange }: Props) {
             )}
           </div>
           <div>
-            <label className="text-xs uppercase text-muted-foreground block mb-1">Display Name</label>
+            <FieldLabel>Display Name</FieldLabel>
             <input
               value={displayName}
               onChange={e => setDisplayName(e.target.value)}
@@ -71,7 +70,7 @@ export function GroupCreateDialog({ open, onOpenChange }: Props) {
             />
           </div>
           <div>
-            <label className="text-xs uppercase text-muted-foreground block mb-1">Description</label>
+            <FieldLabel>Description</FieldLabel>
             <input
               value={description}
               onChange={e => setDescription(e.target.value)}
@@ -80,7 +79,7 @@ export function GroupCreateDialog({ open, onOpenChange }: Props) {
             />
           </div>
           <div>
-            <label className="text-xs uppercase text-muted-foreground block mb-1">Parent Group</label>
+            <FieldLabel>Parent Group</FieldLabel>
             {tree && (
               <GroupTreeSelector
                 tree={tree}

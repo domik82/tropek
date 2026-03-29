@@ -3,6 +3,7 @@ import { useState } from 'react'
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui/dialog'
+import { FieldLabel } from '@/components/ui/field-label'
 import { LabelChips } from '@/components/labels/LabelChips'
 import { LabelsEditorDialog } from '@/components/labels/LabelsEditorDialog'
 import { GroupTreeSelector } from './GroupTreeSelector'
@@ -62,9 +63,7 @@ export function AssetCreateDialog({ open, onOpenChange }: Props) {
         <div className="space-y-3 py-2">
           {/* Name */}
           <div>
-            <label className="text-xs uppercase text-muted-foreground block mb-1">
-              Asset Name <span className="text-destructive">*</span>
-            </label>
+            <FieldLabel required>Asset Name</FieldLabel>
             <input
               value={name}
               onChange={e => setName(e.target.value)}
@@ -78,9 +77,7 @@ export function AssetCreateDialog({ open, onOpenChange }: Props) {
 
           {/* Type */}
           <div>
-            <label className="text-xs uppercase text-muted-foreground block mb-1">
-              Type <span className="text-destructive">*</span>
-            </label>
+            <FieldLabel required>Type</FieldLabel>
             <select
               value={effectiveType}
               onChange={e => setTypeName(e.target.value)}
@@ -96,7 +93,7 @@ export function AssetCreateDialog({ open, onOpenChange }: Props) {
 
           {/* Labels */}
           <div>
-            <label className="text-xs uppercase text-muted-foreground block mb-1">Labels</label>
+            <FieldLabel>Labels</FieldLabel>
             <LabelChips
               labels={labels}
               onEdit={() => setLabelsEditorOpen(true)}
@@ -105,7 +102,7 @@ export function AssetCreateDialog({ open, onOpenChange }: Props) {
 
           {/* Group */}
           <div>
-            <label className="text-xs uppercase text-muted-foreground block mb-1">Add to Group</label>
+            <FieldLabel>Add to Group</FieldLabel>
             {tree && (
               <GroupTreeSelector
                 tree={tree}
@@ -118,7 +115,7 @@ export function AssetCreateDialog({ open, onOpenChange }: Props) {
           {/* Weight (only show when group selected) */}
           {groupName && (
             <div>
-              <label className="text-xs uppercase text-muted-foreground block mb-1">Weight</label>
+              <FieldLabel>Weight</FieldLabel>
               <input
                 type="number"
                 value={weight}

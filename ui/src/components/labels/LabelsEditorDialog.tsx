@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react'
 import { X } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { FieldLabel } from '@/components/ui/field-label'
 import { LabelComboBox } from './LabelComboBox'
 import { useTagKeys, useTagValues } from '@/features/assets/hooks'
 
@@ -63,9 +64,7 @@ export function LabelsEditorDialog({ open, onOpenChange, title, subtitle, labels
         <div className="space-y-4 py-2">
           {/* Assigned labels */}
           <div>
-            <label className="text-xs uppercase text-muted-foreground block mb-2">
-              Assigned {Object.keys(labels).length}
-            </label>
+            <FieldLabel className="mb-2">Assigned {Object.keys(labels).length}</FieldLabel>
             {Object.entries(labels).length === 0 && (
               <p className="text-sm text-muted-foreground italic">No labels assigned</p>
             )}
@@ -93,7 +92,7 @@ export function LabelsEditorDialog({ open, onOpenChange, title, subtitle, labels
 
           {/* Add new label */}
           <div>
-            <label className="text-xs uppercase text-muted-foreground block mb-2">Add New Label</label>
+            <FieldLabel className="mb-2">Add New Label</FieldLabel>
             <div className="flex gap-2">
               <div className="flex-1">
                 <label className="text-[10px] text-muted-foreground mb-0.5 block">Key</label>

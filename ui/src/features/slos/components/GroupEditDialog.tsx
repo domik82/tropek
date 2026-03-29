@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose,
 } from '@/components/ui/dialog'
+import { FieldLabel } from '@/components/ui/field-label'
 import { GroupTreeSelector } from '@/features/assets/components/GroupTreeSelector'
 import {
   useUpdateGroup, useGroupSloBindings, useDeleteGroupSloBinding, useGroupTree,
@@ -65,13 +66,13 @@ export function GroupEditDialog({ open, onOpenChange, groupName }: Props) {
         </DialogHeader>
         <div className="space-y-3 py-2">
           <div>
-            <label className="text-xs uppercase text-muted-foreground block mb-1">Name</label>
+            <FieldLabel>Name</FieldLabel>
             <div className="bg-muted/30 border border-border rounded px-3 py-2 text-sm text-muted-foreground">
               {groupName}
             </div>
           </div>
           <div>
-            <label className="text-xs uppercase text-muted-foreground block mb-1">Display Name</label>
+            <FieldLabel>Display Name</FieldLabel>
             <input
               value={displayName}
               onChange={e => setDisplayName(e.target.value)}
@@ -79,7 +80,7 @@ export function GroupEditDialog({ open, onOpenChange, groupName }: Props) {
             />
           </div>
           <div>
-            <label className="text-xs uppercase text-muted-foreground block mb-1">Description</label>
+            <FieldLabel>Description</FieldLabel>
             <input
               value={description}
               onChange={e => setDescription(e.target.value)}
@@ -88,7 +89,7 @@ export function GroupEditDialog({ open, onOpenChange, groupName }: Props) {
             />
           </div>
           <div>
-            <label className="text-xs uppercase text-muted-foreground block mb-1">Parent Group</label>
+            <FieldLabel>Parent Group</FieldLabel>
             {tree && (
               <GroupTreeSelector
                 tree={tree}
@@ -100,9 +101,7 @@ export function GroupEditDialog({ open, onOpenChange, groupName }: Props) {
           </div>
           {bindings && bindings.length > 0 && (
             <div>
-              <label className="text-xs uppercase text-muted-foreground block mb-1">
-                Linked SLOs ({bindings.length})
-              </label>
+              <FieldLabel>Linked SLOs ({bindings.length})</FieldLabel>
               <div className="space-y-1">
                 {bindings.map(binding => (
                   <div
