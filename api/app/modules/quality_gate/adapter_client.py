@@ -16,7 +16,8 @@ class HttpAdapterClient:
         *,
         adapter_url: str,
         datasource_name: str,
-        queries: dict[str, str],
+        queries: dict[str, dict],
+        variables: dict[str, str],
         start: str,
         end: str,
     ) -> tuple[dict[str, float | None], dict[str, str]]:
@@ -25,7 +26,8 @@ class HttpAdapterClient:
         Args:
             adapter_url: Base URL of the adapter service.
             datasource_name: Datasource name forwarded in the X-Datasource-Name header.
-            queries: Metric name to query string mapping (variables substituted).
+            queries: Metric name to mode-aware query spec mapping.
+            variables: Variable dict forwarded to the adapter for substitution.
             start: ISO timestamp for the evaluation period start.
             end: ISO timestamp for the evaluation period end.
 
@@ -41,7 +43,12 @@ class HttpAdapterClient:
             resp = await http_client.post(
                 f"{adapter_url}/query",
                 headers={"X-Datasource-Name": datasource_name},
-                json={"queries": queries, "start": start, "end": end},
+                json={
+                    "queries": queries,
+                    "variables": variables,
+                    "start": start,
+                    "end": end,
+                },
             )
             resp.raise_for_status()
             data = resp.json()
