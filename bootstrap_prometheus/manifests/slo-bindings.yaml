@@ -1,0 +1,31 @@
+# Bind each observability stack asset to the HTTP SLO via the live Prometheus datasource.
+
+api_version: tropek/v1
+kind: SLOBinding
+metadata:
+  name: obs-api-http-binding
+spec:
+  target_type: asset
+  target_name: obs-api
+  slo_name: obs-http-slo
+  data_source_name: prometheus-live
+---
+api_version: tropek/v1
+kind: SLOBinding
+metadata:
+  name: obs-frontend-http-binding
+spec:
+  target_type: asset
+  target_name: obs-frontend
+  slo_name: obs-http-slo
+  data_source_name: prometheus-live
+---
+api_version: tropek/v1
+kind: SLOBinding
+metadata:
+  name: obs-backend-http-binding
+spec:
+  target_type: asset
+  target_name: obs-backend
+  slo_name: obs-http-slo
+  data_source_name: prometheus-live

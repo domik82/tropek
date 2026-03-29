@@ -1,0 +1,41 @@
+# Assets matching the observability stack's generated metrics.
+# Metrics have labels: service ∈ {frontend, api, backend}, host ∈ {host1, host2}
+
+api_version: tropek/v1
+kind: Asset
+metadata:
+  name: obs-api
+  display_name: API Service (observability stack)
+  tags:
+    env: integration-test
+    team: platform
+  variables:
+    SERVICE: api
+spec:
+  type_name: service
+---
+api_version: tropek/v1
+kind: Asset
+metadata:
+  name: obs-frontend
+  display_name: Frontend (observability stack)
+  tags:
+    env: integration-test
+    team: platform
+  variables:
+    SERVICE: frontend
+spec:
+  type_name: service
+---
+api_version: tropek/v1
+kind: Asset
+metadata:
+  name: obs-backend
+  display_name: Backend (observability stack)
+  tags:
+    env: integration-test
+    team: platform
+  variables:
+    SERVICE: backend
+spec:
+  type_name: service
