@@ -21,6 +21,7 @@ from app.config import Settings
 from app.core.coordinator import Coordinator
 from app.core.job_manager import JobManager
 from app.core.prometheus_client import PrometheusClient
+from app.core.strategies.aggregated import AggregatedQueryStrategy
 from app.core.strategies.raw import RawQueryStrategy
 from app.health.routes import router as health_router
 from app.redis.repository import JobRepository
@@ -123,7 +124,14 @@ def create_app(use_fakeredis: bool = False) -> FastAPI:
             auth=auth,
         )
 
-        strategies = {'raw': RawQueryStrategy(prom_client)}
+        strategies = {
+            'raw': RawQueryStrategy(prom_client),
+            'aggregated': AggregatedQueryStrategy(
+                prom_client,
+                chunk_size=settings.default_chunk_size,
+                parallel_chunks=settings.default_parallel_chunks,
+            ),
+        }
 
         app.state.job_manager = JobManager(repo, settings)
         app.state.coordinator = Coordinator(repo, settings, strategies)

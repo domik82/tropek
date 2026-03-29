@@ -134,6 +134,19 @@ class JobRepository:
         raw = await self._r.hgetall(self._key('job', job_id, 'results'))
         return {_decode(k): json.loads(_decode(v)) for k, v in raw.items()}
 
+    async def write_metadata(
+        self, job_id: str, sli_name: str, metadata: dict[str, Any]
+    ) -> None:
+        """Store per-SLI metadata (sample counts, etc.) for a job."""
+        await self._r.hset(
+            self._key('job', job_id, 'metadata'), sli_name, json.dumps(metadata)
+        )
+
+    async def get_metadata(self, job_id: str) -> dict[str, dict[str, Any]]:
+        """Return all per-SLI metadata for a job."""
+        raw = await self._r.hgetall(self._key('job', job_id, 'metadata'))
+        return {_decode(k): json.loads(_decode(v)) for k, v in raw.items()}
+
     async def mark_completed(self, job_id: str, retention_seconds: int) -> None:
         """Transition a job to completed, compute duration, and set TTL on all keys."""
         now = datetime.now(UTC).isoformat()
@@ -154,6 +167,7 @@ class JobRepository:
         await self._r.expire(job_key, retention_seconds)
         await self._r.expire(self._key('job', job_id, 'results'), retention_seconds)
         await self._r.expire(self._key('job', job_id, 'queries'), retention_seconds)
+        await self._r.expire(self._key('job', job_id, 'metadata'), retention_seconds)
 
     async def mark_timed_out(self, job_id: str, retention_seconds: int) -> None:
         """Transition a job to timed_out status and set TTL on the job key."""

@@ -70,6 +70,9 @@ class JobManager:
             result['duration_ms'] = status.get('duration_ms')
             results = await self._repo.get_results(job_id)
             result['results'] = [{'indicator': k, **v} for k, v in results.items()]
+            metadata = await self._repo.get_metadata(job_id)
+            if metadata:
+                result['metadata'] = metadata
 
         return result
 
