@@ -37,6 +37,10 @@ def _configure_logging(settings: Settings) -> None:
     root = logging.getLogger()
     root.setLevel(level)
 
+    # httpx logs every request at INFO with URL-encoded params — noisy and unreadable.
+    # The adapter logs its own readable version at INFO via prometheus_client.
+    logging.getLogger('httpx').setLevel(logging.WARNING)
+
     # Always log to stderr (Docker picks this up)
     stderr_handler = logging.StreamHandler(sys.stderr)
     stderr_handler.setLevel(level)

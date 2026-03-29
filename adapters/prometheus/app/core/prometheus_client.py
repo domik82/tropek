@@ -40,7 +40,7 @@ class PrometheusClient:
 
     async def _get(self, path: str, params: dict[str, str]) -> dict[str, Any]:
         url = f'{self._base_url}{path}'
-        logger.debug('prometheus request: GET %s params=%s', url, params)
+        logger.info(f'prometheus query: GET {url} query={params.get("query", "?")}')
         auth = httpx.BasicAuth(*self._auth) if self._auth else None
         try:
             async with httpx.AsyncClient(base_url=self._base_url, timeout=self._timeout, auth=auth) as client:
