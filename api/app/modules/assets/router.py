@@ -50,9 +50,7 @@ from app.modules.slo_registry.repository import SLORepository
 router = APIRouter()
 
 
-async def _validate_binding_adapter_type(
-    session: AsyncSession, slo_name: str, data_source_name: str
-) -> None:
+async def _validate_binding_adapter_type(session: AsyncSession, slo_name: str, data_source_name: str) -> None:
     """Validate datasource adapter_type matches SLO's SLI adapter_type."""
     slo_repo = SLORepository(session)
     slo_def = await slo_repo.get_latest(slo_name)
@@ -508,9 +506,7 @@ async def list_group_slo_links(
     return [AssetGroupSLOLinkRead.model_validate(lnk) for lnk in links]
 
 
-@router.post(
-    '/asset-groups/{name}/slo-links', response_model=AssetGroupSLOLinkRead, status_code=201
-)
+@router.post('/asset-groups/{name}/slo-links', response_model=AssetGroupSLOLinkRead, status_code=201)
 async def create_group_slo_link(
     name: str,
     body: AssetGroupSLOLinkCreate,

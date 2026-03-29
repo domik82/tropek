@@ -116,15 +116,9 @@ class ReliabilitySettings(BaseSettings):
 
     adapter_timeout_seconds: int = _yaml.get('reliability', {}).get('adapter_timeout_seconds', 90)
     adapter_retry_attempts: int = _yaml.get('reliability', {}).get('adapter_retry_attempts', 3)
-    adapter_retry_backoff_seconds: int = _yaml.get('reliability', {}).get(
-        'adapter_retry_backoff_seconds', 2
-    )
-    watchdog_interval_seconds: int = _yaml.get('reliability', {}).get(
-        'watchdog_interval_seconds', 60
-    )
-    stuck_job_threshold_seconds: int = _yaml.get('reliability', {}).get(
-        'stuck_job_threshold_seconds', 180
-    )
+    adapter_retry_backoff_seconds: int = _yaml.get('reliability', {}).get('adapter_retry_backoff_seconds', 2)
+    watchdog_interval_seconds: int = _yaml.get('reliability', {}).get('watchdog_interval_seconds', 60)
+    stuck_job_threshold_seconds: int = _yaml.get('reliability', {}).get('stuck_job_threshold_seconds', 180)
 
 
 class AdapterInstanceSettings:
@@ -138,9 +132,7 @@ class AdapterInstanceSettings:
 class AdaptersSettings(BaseSettings):
     """Configuration for all registered data source adapters."""
 
-    max_concurrent_queries_per_adapter: int = _yaml.get('adapters', {}).get(
-        'max_concurrent_queries_per_adapter', 10
-    )
+    max_concurrent_queries_per_adapter: int = _yaml.get('adapters', {}).get('max_concurrent_queries_per_adapter', 10)
 
     @property
     def prometheus(self) -> AdapterInstanceSettings:
@@ -164,9 +156,7 @@ class UISettings(BaseSettings):
 class FileIngestionSettings(BaseSettings):
     """File-mode ingestion security and size limits."""
 
-    allowed_path_prefix: str = _yaml.get('file_ingestion', {}).get(
-        'allowed_path_prefix', '/data/results'
-    )
+    allowed_path_prefix: str = _yaml.get('file_ingestion', {}).get('allowed_path_prefix', '/data/results')
     max_file_size_mb: int = _yaml.get('file_ingestion', {}).get('max_file_size_mb', 50)
 
 

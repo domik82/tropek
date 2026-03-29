@@ -33,16 +33,18 @@ async def test_heatmap_returns_completed_evals(db_session: AsyncSession) -> None
 
     for i in range(3):
         start = _BASE + timedelta(hours=i)
-        ev = await eval_repo.create_pending(EvalCreateParams(
-            evaluation_name='hm-test',
-            period_start=start,
-            period_end=start + timedelta(minutes=30),
-            ingestion_mode='push',
-            asset_snapshot={'name': 'heatmap-asset', 'tags': {}},
-            variables={},
-            asset_id=asset_id,
-            slo_name='test-slo',
-        ))
+        ev = await eval_repo.create_pending(
+            EvalCreateParams(
+                evaluation_name='hm-test',
+                period_start=start,
+                period_end=start + timedelta(minutes=30),
+                ingestion_mode='push',
+                asset_snapshot={'name': 'heatmap-asset', 'tags': {}},
+                variables={},
+                asset_id=asset_id,
+                slo_name='test-slo',
+            )
+        )
         await eval_repo.mark_completed(ev.id, result='pass', score=90.0, slo_name='test-slo')
 
     evals = await trend_repo.get_metric_heatmap(asset_id=asset_id, limit=10)
@@ -56,16 +58,18 @@ async def test_heatmap_includes_invalidated_completed(db_session: AsyncSession) 
     eval_repo = EvaluationRepository(db_session)
     trend_repo = TrendRepository(db_session)
 
-    ev = await eval_repo.create_pending(EvalCreateParams(
-        evaluation_name='hm-inv',
-        period_start=_BASE,
-        period_end=_BASE + timedelta(minutes=30),
-        ingestion_mode='push',
-        asset_snapshot={'name': 'hm-inv-asset', 'tags': {}},
-        variables={},
-        asset_id=asset_id,
-        slo_name='test-slo',
-    ))
+    ev = await eval_repo.create_pending(
+        EvalCreateParams(
+            evaluation_name='hm-inv',
+            period_start=_BASE,
+            period_end=_BASE + timedelta(minutes=30),
+            ingestion_mode='push',
+            asset_snapshot={'name': 'hm-inv-asset', 'tags': {}},
+            variables={},
+            asset_id=asset_id,
+            slo_name='test-slo',
+        )
+    )
     await eval_repo.mark_completed(ev.id, result='pass', score=90.0, slo_name='test-slo')
     await eval_repo.invalidate(ev.id, note='bad data')
 

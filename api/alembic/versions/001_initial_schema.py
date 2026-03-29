@@ -125,9 +125,7 @@ def upgrade() -> None:
         sa.Column('adapter_type', sa.Text(), nullable=False),
         sa.Column('display_name', sa.Text(), nullable=True),
         sa.Column('version', sa.Integer(), nullable=False),
-        sa.Column(
-            'comparable_from_version', sa.Integer(), server_default=sa.text('1'), nullable=False
-        ),
+        sa.Column('comparable_from_version', sa.Integer(), server_default=sa.text('1'), nullable=False),
         sa.Column(
             'indicators',
             postgresql.JSONB(astext_type=sa.Text()),
@@ -177,30 +175,20 @@ def upgrade() -> None:
             server_default=sa.text('now()'),
             nullable=False,
         ),
-        sa.CheckConstraint(
-            "target_type IN ('asset', 'asset_group')", name='ck_slo_bindings_target_type'
-        ),
+        sa.CheckConstraint("target_type IN ('asset', 'asset_group')", name='ck_slo_bindings_target_type'),
         sa.PrimaryKeyConstraint('id'),
         sa.UniqueConstraint('target_type', 'target_id', 'slo_name', name='uq_slo_binding'),
     )
-    op.create_index(
-        'idx_slo_bindings_target', 'slo_bindings', ['target_type', 'target_id'], unique=False
-    )
+    op.create_index('idx_slo_bindings_target', 'slo_bindings', ['target_type', 'target_id'], unique=False)
     op.create_table(
         'slo_definitions',
         sa.Column('id', sa.UUID(), nullable=False),
         sa.Column('name', sa.Text(), nullable=False),
         sa.Column('display_name', sa.Text(), nullable=True),
         sa.Column('version', sa.Integer(), nullable=False),
-        sa.Column(
-            'comparable_from_version', sa.Integer(), server_default=sa.text('1'), nullable=False
-        ),
-        sa.Column(
-            'total_score_pass_pct', sa.Float(), server_default=sa.text('90.0'), nullable=False
-        ),
-        sa.Column(
-            'total_score_warning_pct', sa.Float(), server_default=sa.text('75.0'), nullable=False
-        ),
+        sa.Column('comparable_from_version', sa.Integer(), server_default=sa.text('1'), nullable=False),
+        sa.Column('total_score_pass_pct', sa.Float(), server_default=sa.text('90.0'), nullable=False),
+        sa.Column('total_score_warning_pct', sa.Float(), server_default=sa.text('75.0'), nullable=False),
         sa.Column(
             'comparison',
             postgresql.JSONB(astext_type=sa.Text()),
@@ -251,9 +239,7 @@ def upgrade() -> None:
         sa.ForeignKeyConstraint(['parent_group_id'], ['asset_groups.id'], ondelete='CASCADE'),
         sa.PrimaryKeyConstraint('parent_group_id', 'child_group_id'),
     )
-    op.create_index(
-        'idx_asset_group_links_parent', 'asset_group_links', ['parent_group_id'], unique=False
-    )
+    op.create_index('idx_asset_group_links_parent', 'asset_group_links', ['parent_group_id'], unique=False)
     op.create_table(
         'asset_group_slo_links',
         sa.Column('id', sa.UUID(), nullable=False),
@@ -273,9 +259,7 @@ def upgrade() -> None:
         sa.UniqueConstraint('group_id', 'link_name', name='uq_asset_group_slo_link_name'),
         sa.UniqueConstraint('group_id', 'slo_name', name='uq_asset_group_slo_link_group_slo'),
     )
-    op.create_index(
-        'idx_asset_group_slo_links_group', 'asset_group_slo_links', ['group_id'], unique=False
-    )
+    op.create_index('idx_asset_group_slo_links_group', 'asset_group_slo_links', ['group_id'], unique=False)
     op.create_table(
         'assets',
         sa.Column('id', sa.UUID(), nullable=False),
@@ -324,19 +308,13 @@ def upgrade() -> None:
         sa.Column('weight', sa.Integer(), server_default=sa.text('1'), nullable=False),
         sa.Column('key_sli', sa.Boolean(), server_default=sa.text('false'), nullable=False),
         sa.Column('sort_order', sa.Integer(), nullable=False),
-        sa.Column(
-            'pass_criteria', sa.ARRAY(sa.Text()), server_default=sa.text("'{}'"), nullable=False
-        ),
-        sa.Column(
-            'warning_criteria', sa.ARRAY(sa.Text()), server_default=sa.text("'{}'"), nullable=False
-        ),
+        sa.Column('pass_criteria', sa.ARRAY(sa.Text()), server_default=sa.text("'{}'"), nullable=False),
+        sa.Column('warning_criteria', sa.ARRAY(sa.Text()), server_default=sa.text("'{}'"), nullable=False),
         sa.Column('tab_group', sa.Text(), nullable=True),
         sa.ForeignKeyConstraint(['slo_definition_id'], ['slo_definitions.id'], ondelete='CASCADE'),
         sa.PrimaryKeyConstraint('id'),
     )
-    op.create_index(
-        'idx_slo_objectives_definition', 'slo_objectives', ['slo_definition_id'], unique=False
-    )
+    op.create_index('idx_slo_objectives_definition', 'slo_objectives', ['slo_definition_id'], unique=False)
     op.create_table(
         'asset_group_members',
         sa.Column('group_id', sa.UUID(), nullable=False),
@@ -346,12 +324,8 @@ def upgrade() -> None:
         sa.ForeignKeyConstraint(['group_id'], ['asset_groups.id'], ondelete='CASCADE'),
         sa.PrimaryKeyConstraint('group_id', 'asset_id'),
     )
-    op.create_index(
-        'idx_asset_group_members_asset', 'asset_group_members', ['asset_id'], unique=False
-    )
-    op.create_index(
-        'idx_asset_group_members_group', 'asset_group_members', ['group_id'], unique=False
-    )
+    op.create_index('idx_asset_group_members_asset', 'asset_group_members', ['asset_id'], unique=False)
+    op.create_index('idx_asset_group_members_group', 'asset_group_members', ['group_id'], unique=False)
     op.create_table(
         'asset_slo_links',
         sa.Column('id', sa.UUID(), nullable=False),
@@ -428,9 +402,7 @@ def upgrade() -> None:
             server_default=sa.text('now()'),
             nullable=False,
         ),
-        sa.CheckConstraint(
-            "ingestion_mode IN ('pull','push','file')", name='ck_evaluations_ingestion_mode'
-        ),
+        sa.CheckConstraint("ingestion_mode IN ('pull','push','file')", name='ck_evaluations_ingestion_mode'),
         sa.CheckConstraint(
             "result IN ('pass','warning','fail','error') OR result IS NULL",
             name='ck_evaluations_result',
@@ -450,9 +422,7 @@ def upgrade() -> None:
         unique=False,
         postgresql_where=sa.text("status = 'completed' AND invalidated = false"),
     )
-    op.create_index(
-        'idx_evaluations_evaluation_name', 'evaluations', ['evaluation_name'], unique=False
-    )
+    op.create_index('idx_evaluations_evaluation_name', 'evaluations', ['evaluation_name'], unique=False)
     op.create_index('idx_evaluations_result', 'evaluations', ['result'], unique=False)
     op.create_index('idx_evaluations_slo', 'evaluations', ['slo_name', 'slo_version'], unique=False)
     op.create_index('idx_evaluations_start', 'evaluations', ['period_start'], unique=False)
@@ -497,9 +467,7 @@ def upgrade() -> None:
         sa.ForeignKeyConstraint(['evaluation_id'], ['evaluations.id'], ondelete='CASCADE'),
         sa.PrimaryKeyConstraint('id'),
     )
-    op.create_index(
-        'idx_annotations_evaluation', 'evaluation_annotations', ['evaluation_id'], unique=False
-    )
+    op.create_index('idx_annotations_evaluation', 'evaluation_annotations', ['evaluation_id'], unique=False)
     op.create_table(
         'indicator_results',
         sa.Column('id', sa.UUID(), nullable=False),
@@ -514,13 +482,9 @@ def upgrade() -> None:
         sa.ForeignKeyConstraint(['evaluation_id'], ['evaluations.id'], ondelete='CASCADE'),
         sa.ForeignKeyConstraint(['slo_objective_id'], ['slo_objectives.id'], ondelete='CASCADE'),
         sa.PrimaryKeyConstraint('id'),
-        sa.UniqueConstraint(
-            'evaluation_id', 'slo_objective_id', name='uq_indicator_results_eval_objective'
-        ),
+        sa.UniqueConstraint('evaluation_id', 'slo_objective_id', name='uq_indicator_results_eval_objective'),
     )
-    op.create_index(
-        'idx_indicator_results_evaluation', 'indicator_results', ['evaluation_id'], unique=False
-    )
+    op.create_index('idx_indicator_results_evaluation', 'indicator_results', ['evaluation_id'], unique=False)
     op.create_index(
         'idx_indicator_results_objective_status',
         'indicator_results',

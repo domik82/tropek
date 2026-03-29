@@ -54,16 +54,18 @@ async def _create_completed_eval(
     period_end: datetime = _END,
 ) -> uuid.UUID:
     repo = EvaluationRepository(session)
-    ev = await repo.create_pending(EvalCreateParams(
-        evaluation_name=evaluation_name,
-        period_start=period_start,
-        period_end=period_end,
-        ingestion_mode='push',
-        asset_snapshot=_make_snapshot(),
-        variables={},
-        asset_id=asset_id,
-        slo_name=slo_name,
-    ))
+    ev = await repo.create_pending(
+        EvalCreateParams(
+            evaluation_name=evaluation_name,
+            period_start=period_start,
+            period_end=period_end,
+            ingestion_mode='push',
+            asset_snapshot=_make_snapshot(),
+            variables={},
+            asset_id=asset_id,
+            slo_name=slo_name,
+        )
+    )
     await repo.mark_completed(
         ev.id,
         result=result,

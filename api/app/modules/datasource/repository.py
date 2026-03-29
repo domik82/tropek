@@ -120,9 +120,7 @@ class DataSourceRepository:
         if token is not None:
             values['token'] = token
         if values:
-            await self._session.execute(
-                update(DataSource).where(DataSource.name == name).values(**values)
-            )
+            await self._session.execute(update(DataSource).where(DataSource.name == name).values(**values))
         return await self.get_by_name(name)
 
     async def delete(self, datasource_id: uuid.UUID) -> None:

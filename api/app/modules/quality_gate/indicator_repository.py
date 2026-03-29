@@ -40,7 +40,5 @@ class IndicatorRepository:
 
     async def delete_for_evaluation(self, evaluation_id: uuid.UUID) -> None:
         """Delete all indicator rows for an evaluation (used by re-evaluation)."""
-        await self._session.execute(
-            delete(IndicatorResultRow).where(IndicatorResultRow.evaluation_id == evaluation_id)
-        )
+        await self._session.execute(delete(IndicatorResultRow).where(IndicatorResultRow.evaluation_id == evaluation_id))
         await self._session.flush()

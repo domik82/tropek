@@ -236,10 +236,7 @@ async def list_evaluation_names(
         asset_id=resolved_asset_id,
         asset_ids=asset_ids,
     )
-    return [
-        EvaluationNameEntry(name=name, count=count, last_run=last_run)
-        for name, count, last_run in rows
-    ]
+    return [EvaluationNameEntry(name=name, count=count, last_run=last_run) for name, count, last_run in rows]
 
 
 @router.get('/evaluations/{eval_id}', response_model=EvaluationDetail)
@@ -388,9 +385,7 @@ async def update_annotation(
     repos: QualityGateRepos = Depends(get_qg_repos),
 ) -> AnnotationRead:
     """Update an annotation."""
-    ann = await repos.annotation_repo.update_annotation(
-        ann_id, **body.model_dump(exclude_unset=True)
-    )
+    ann = await repos.annotation_repo.update_annotation(ann_id, **body.model_dump(exclude_unset=True))
     if ann is None:
         raise NotFoundError('annotation', str(ann_id))
     return AnnotationRead.model_validate(ann)
@@ -407,9 +402,7 @@ async def hide_annotation(
     repos: QualityGateRepos = Depends(get_qg_repos),
 ) -> AnnotationRead:
     """Soft-delete (hide) an annotation."""
-    ann = await repos.annotation_repo.hide_annotation(
-        ann_id, reason=body.reason, author=body.author
-    )
+    ann = await repos.annotation_repo.hide_annotation(ann_id, reason=body.reason, author=body.author)
     if ann is None:
         raise NotFoundError('annotation', str(ann_id))
     return AnnotationRead.model_validate(ann)

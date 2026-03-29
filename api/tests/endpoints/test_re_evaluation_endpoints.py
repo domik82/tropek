@@ -38,16 +38,18 @@ async def _setup_re_eval(
     )
 
     repo = EvaluationRepository(session)
-    ev = await repo.create_pending(EvalCreateParams(
-        evaluation_name='daily',
-        period_start=_START,
-        period_end=_START + timedelta(minutes=30),
-        ingestion_mode='push',
-        asset_snapshot={'name': asset_name},
-        variables={},
-        asset_id=asset_id,
-        slo_name='re-eval-ep-slo',
-    ))
+    ev = await repo.create_pending(
+        EvalCreateParams(
+            evaluation_name='daily',
+            period_start=_START,
+            period_end=_START + timedelta(minutes=30),
+            ingestion_mode='push',
+            asset_snapshot={'name': asset_name},
+            variables={},
+            asset_id=asset_id,
+            slo_name='re-eval-ep-slo',
+        )
+    )
     await repo.mark_completed(
         ev.id,
         result='fail',
@@ -86,9 +88,7 @@ async def _setup_re_eval(
 
 
 @pytest.mark.integration
-async def test_re_evaluate_sets_original_result(
-    async_client: AsyncClient, db_session: AsyncSession
-) -> None:
+async def test_re_evaluate_sets_original_result(async_client: AsyncClient, db_session: AsyncSession) -> None:
     """First re-evaluation must set original_result and original_score."""
     asset_name, eval_id = await _setup_re_eval(db_session)
 

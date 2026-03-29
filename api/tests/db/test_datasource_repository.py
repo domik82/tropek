@@ -65,9 +65,7 @@ async def test_update_adapter_url(db_session: AsyncSession) -> None:
 async def test_list_all_filter_by_adapter_type(db_session: AsyncSession) -> None:
     repo = DataSourceRepository(db_session)
     await repo.create(**_ds_kwargs(name='prom-1', adapter_type='prometheus'))
-    await repo.create(
-        **_ds_kwargs(name='pg-1', adapter_type='postgres', adapter_url='http://pg:5432')
-    )
+    await repo.create(**_ds_kwargs(name='pg-1', adapter_type='postgres', adapter_url='http://pg:5432'))
     prom_only = await repo.list_all(adapter_type='prometheus')
     names = {ds.name for ds in prom_only}
     assert 'prom-1' in names

@@ -111,20 +111,10 @@ async def delete_datasource(
     """Delete a datasource by name. Returns 409 if active SLO links reference it."""
     # Check for active SLO links referencing this datasource
     asset_links = (
-        (
-            await session.execute(
-                sa_select(AssetSLOLink).where(AssetSLOLink.data_source_name == name)
-            )
-        )
-        .scalars()
-        .all()
+        (await session.execute(sa_select(AssetSLOLink).where(AssetSLOLink.data_source_name == name))).scalars().all()
     )
     group_links = (
-        (
-            await session.execute(
-                sa_select(AssetGroupSLOLink).where(AssetGroupSLOLink.data_source_name == name)
-            )
-        )
+        (await session.execute(sa_select(AssetGroupSLOLink).where(AssetGroupSLOLink.data_source_name == name)))
         .scalars()
         .all()
     )

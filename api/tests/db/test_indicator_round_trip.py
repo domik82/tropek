@@ -123,16 +123,18 @@ async def test_detail_round_trip_all_fields(db_session: AsyncSession) -> None:
     asset_id = await _create_asset(db_session)
     objs = await _seed_slo_objectives(db_session)
     repo = EvaluationRepository(db_session)
-    ev = await repo.create_pending(EvalCreateParams(
-        evaluation_name='round-trip-test',
-        period_start=_START,
-        period_end=_END,
-        ingestion_mode='push',
-        asset_snapshot={'name': 'vm-test-01', 'tags': {}},
-        variables={},
-        asset_id=asset_id,
-        slo_name='test-slo',
-    ))
+    ev = await repo.create_pending(
+        EvalCreateParams(
+            evaluation_name='round-trip-test',
+            period_start=_START,
+            period_end=_END,
+            ingestion_mode='push',
+            asset_snapshot={'name': 'vm-test-01', 'tags': {}},
+            variables={},
+            asset_id=asset_id,
+            slo_name='test-slo',
+        )
+    )
     await repo.mark_completed(ev.id, result='fail', score=25.0, slo_name='test-slo')
 
     # Seed normalized indicator rows
@@ -223,16 +225,18 @@ async def test_summary_top_failures(db_session: AsyncSession) -> None:
     asset_id = await _create_asset(db_session)
     objs = await _seed_slo_objectives(db_session)
     repo = EvaluationRepository(db_session)
-    ev = await repo.create_pending(EvalCreateParams(
-        evaluation_name='failures-test',
-        period_start=_START,
-        period_end=_END,
-        ingestion_mode='push',
-        asset_snapshot={'name': 'vm-test-01', 'tags': {}},
-        variables={},
-        asset_id=asset_id,
-        slo_name='test-slo',
-    ))
+    ev = await repo.create_pending(
+        EvalCreateParams(
+            evaluation_name='failures-test',
+            period_start=_START,
+            period_end=_END,
+            ingestion_mode='push',
+            asset_snapshot={'name': 'vm-test-01', 'tags': {}},
+            variables={},
+            asset_id=asset_id,
+            slo_name='test-slo',
+        )
+    )
     await repo.mark_completed(ev.id, result='fail', score=25.0, slo_name='test-slo')
 
     indicator_repo = IndicatorRepository(db_session)
@@ -275,16 +279,18 @@ async def test_empty_indicator_results(db_session: AsyncSession) -> None:
     """Evaluation with no indicators produces empty lists."""
     asset_id = await _create_asset(db_session)
     repo = EvaluationRepository(db_session)
-    ev = await repo.create_pending(EvalCreateParams(
-        evaluation_name='empty-test',
-        period_start=_START,
-        period_end=_END,
-        ingestion_mode='push',
-        asset_snapshot={'name': 'vm-test-01', 'tags': {}},
-        variables={},
-        asset_id=asset_id,
-        slo_name='test-slo',
-    ))
+    ev = await repo.create_pending(
+        EvalCreateParams(
+            evaluation_name='empty-test',
+            period_start=_START,
+            period_end=_END,
+            ingestion_mode='push',
+            asset_snapshot={'name': 'vm-test-01', 'tags': {}},
+            variables={},
+            asset_id=asset_id,
+            slo_name='test-slo',
+        )
+    )
     await repo.mark_completed(ev.id, result='pass', score=100.0, slo_name='test-slo')
 
     fetched = await repo.get_by_id(ev.id)

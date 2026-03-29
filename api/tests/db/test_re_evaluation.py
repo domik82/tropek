@@ -40,17 +40,19 @@ async def _create_completed_eval(
     sli_version: int | None = None,
     slo_name: str = 'http-slo',
 ) -> uuid.UUID:
-    ev = await repo.create_pending(EvalCreateParams(
-        evaluation_name='daily',
-        period_start=period_start,
-        period_end=period_start + timedelta(minutes=30),
-        ingestion_mode='push',
-        asset_snapshot={'name': 'test'},
-        variables={},
-        asset_id=asset_id,
-        slo_name=slo_name,
-        sli_version=sli_version,
-    ))
+    ev = await repo.create_pending(
+        EvalCreateParams(
+            evaluation_name='daily',
+            period_start=period_start,
+            period_end=period_start + timedelta(minutes=30),
+            ingestion_mode='push',
+            asset_snapshot={'name': 'test'},
+            variables={},
+            asset_id=asset_id,
+            slo_name=slo_name,
+            sli_version=sli_version,
+        )
+    )
     await repo.mark_completed(
         ev.id,
         result=result,

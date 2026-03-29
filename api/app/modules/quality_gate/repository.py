@@ -155,13 +155,9 @@ class EvaluationRepository:
             values['slo_name'] = slo_name
         if slo_version is not None:
             values['slo_version'] = slo_version
-        await self._session.execute(
-            update(Evaluation).where(Evaluation.id == eval_id).values(**values)
-        )
+        await self._session.execute(update(Evaluation).where(Evaluation.id == eval_id).values(**values))
 
-    async def mark_failed(
-        self, eval_id: uuid.UUID, job_stats: dict[str, Any] | None = None
-    ) -> None:
+    async def mark_failed(self, eval_id: uuid.UUID, job_stats: dict[str, Any] | None = None) -> None:
         """Transition evaluation to failed, recording error info.
 
         Args:
@@ -177,9 +173,7 @@ class EvaluationRepository:
             )
         )
 
-    async def mark_partial(
-        self, eval_id: uuid.UUID, job_stats: dict[str, Any] | None = None
-    ) -> None:
+    async def mark_partial(self, eval_id: uuid.UUID, job_stats: dict[str, Any] | None = None) -> None:
         """Transition evaluation to partial — job crashed mid-execution.
 
         Args:
@@ -271,7 +265,7 @@ class EvaluationRepository:
         )
         return list(result.scalars().all())
 
-    async def list_with_counts(
+    async def list_with_counts(  # noqa: PLR0913
         self,
         *,
         asset_id: uuid.UUID | None = None,
@@ -352,18 +346,14 @@ class EvaluationRepository:
     async def invalidate(self, eval_id: uuid.UUID, *, note: str) -> Evaluation | None:
         """Mark an evaluation as invalidated."""
         await self._session.execute(
-            update(Evaluation)
-            .where(Evaluation.id == eval_id)
-            .values(invalidated=True, invalidation_note=note)
+            update(Evaluation).where(Evaluation.id == eval_id).values(invalidated=True, invalidation_note=note)
         )
         return await self.get_by_id(eval_id)
 
     async def restore(self, eval_id: uuid.UUID) -> Evaluation | None:
         """Clear invalidation flag."""
         await self._session.execute(
-            update(Evaluation)
-            .where(Evaluation.id == eval_id)
-            .values(invalidated=False, invalidation_note=None)
+            update(Evaluation).where(Evaluation.id == eval_id).values(invalidated=False, invalidation_note=None)
         )
         return await self.get_by_id(eval_id)
 
@@ -410,9 +400,7 @@ class EvaluationRepository:
     async def unpin_baseline(self, eval_id: uuid.UUID) -> Evaluation | None:
         """Remove the baseline pin from an evaluation."""
         await self._session.execute(
-            update(Evaluation)
-            .where(Evaluation.id == eval_id)
-            .values(baseline_unpinned_at=func.now())
+            update(Evaluation).where(Evaluation.id == eval_id).values(baseline_unpinned_at=func.now())
         )
         await self._session.flush()
         return await self.get_by_id(eval_id)
@@ -437,9 +425,7 @@ class EvaluationRepository:
         # Only set original on first override — preserve the true original
         if ev.original_result is None:
             values['original_result'] = ev.result
-        await self._session.execute(
-            update(Evaluation).where(Evaluation.id == eval_id).values(**values)
-        )
+        await self._session.execute(update(Evaluation).where(Evaluation.id == eval_id).values(**values))
         await self._session.flush()
         return await self.get_by_id(eval_id)
 

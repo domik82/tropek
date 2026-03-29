@@ -257,9 +257,7 @@ async def test_group_delete_keeps_slos(db_session: AsyncSession) -> None:
     repo = AssetGroupRepository(db_session)
     group = await repo.create('del-grp')
     link_repo = AssetGroupSLOLinkRepository(db_session)
-    await link_repo.create(
-        group_id=group.id, slo_name='keep-slo', sli_name='sli', data_source_name='ds'
-    )
+    await link_repo.create(group_id=group.id, slo_name='keep-slo', sli_name='sli', data_source_name='ds')
     deleted = await repo.delete_group('del-grp', deactivate_slos=False)
     assert deleted is True
     assert await repo.get_by_name('del-grp') is None
@@ -277,9 +275,7 @@ async def test_group_delete_deactivates_slos(db_session: AsyncSession) -> None:
     group_repo = AssetGroupRepository(db_session)
     group = await group_repo.create('deact-grp')
     link_repo = AssetGroupSLOLinkRepository(db_session)
-    await link_repo.create(
-        group_id=group.id, slo_name='deact-slo', sli_name='sli', data_source_name='ds'
-    )
+    await link_repo.create(group_id=group.id, slo_name='deact-slo', sli_name='sli', data_source_name='ds')
     await group_repo.delete_group('deact-grp', deactivate_slos=True)
     slo = await slo_repo.get_latest('deact-slo')
     assert slo is None

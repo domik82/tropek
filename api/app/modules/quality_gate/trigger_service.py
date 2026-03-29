@@ -58,9 +58,7 @@ class TriggerService:
             if existing.status in ('pending', 'running'):
                 msg = 'evaluation is already in progress for this period'
                 raise DuplicateEvaluationError(msg)
-            msg = (
-                'evaluation already exists for this asset/SLO/period — use re-evaluate to re-score'
-            )
+            msg = 'evaluation already exists for this asset/SLO/period — use re-evaluate to re-score'
             raise DuplicateEvaluationError(msg)
 
         ev = await self._repos.eval_repo.create_pending(
@@ -173,9 +171,7 @@ class TriggerService:
             if asset is None:
                 continue
             asset_links = await self._repos.slo_link_repo.list_by_asset(asset.id)
-            all_links: dict[str, AssetSLOLink | AssetGroupSLOLink] = {
-                lnk.slo_name: lnk for lnk in asset_links
-            }
+            all_links: dict[str, AssetSLOLink | AssetGroupSLOLink] = {lnk.slo_name: lnk for lnk in asset_links}
             for gl in group_links:
                 if gl.slo_name not in all_links:
                     all_links[gl.slo_name] = gl

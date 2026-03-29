@@ -34,9 +34,7 @@ async def async_client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient]:
 async def test_create_and_list_asset_slo_binding(async_client: AsyncClient) -> None:
     """Creating an SLO binding for an asset stores and lists correctly."""
     await async_client.post('/asset-types', json={'name': 'vm-bind-test'})
-    await async_client.post(
-        '/assets', json={'name': 'bind-test-asset', 'type_name': 'vm-bind-test'}
-    )
+    await async_client.post('/assets', json={'name': 'bind-test-asset', 'type_name': 'vm-bind-test'})
     await async_client.post(
         '/sli-definitions',
         json={

@@ -153,9 +153,7 @@ async def test_bulk_insert_and_read_back(db_session: AsyncSession) -> None:
     ]
     await repo.bulk_insert(eval_id, rows_to_insert)
 
-    result = await db_session.execute(
-        select(IndicatorResultRow).where(IndicatorResultRow.evaluation_id == eval_id)
-    )
+    result = await db_session.execute(select(IndicatorResultRow).where(IndicatorResultRow.evaluation_id == eval_id))
     rows = list(result.scalars().all())
     assert len(rows) == 2
 
@@ -213,9 +211,7 @@ async def test_delete_and_reinsert(db_session: AsyncSession) -> None:
         ],
     )
 
-    result = await db_session.execute(
-        select(IndicatorResultRow).where(IndicatorResultRow.evaluation_id == eval_id)
-    )
+    result = await db_session.execute(select(IndicatorResultRow).where(IndicatorResultRow.evaluation_id == eval_id))
     rows = list(result.scalars().all())
     assert len(rows) == 1
     assert rows[0].value == 620.0

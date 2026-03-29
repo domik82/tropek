@@ -29,9 +29,7 @@ async def test_create_annotation(async_client: AsyncClient, db_session: AsyncSes
 
 
 @pytest.mark.integration
-async def test_annotation_appears_in_eval_detail(
-    async_client: AsyncClient, db_session: AsyncSession
-) -> None:
+async def test_annotation_appears_in_eval_detail(async_client: AsyncClient, db_session: AsyncSession) -> None:
     asset_id = await _create_asset(db_session)
     eval_id = await _create_completed_eval(db_session, asset_id)
 
@@ -90,9 +88,7 @@ async def test_update_annotation(async_client: AsyncClient, db_session: AsyncSes
 
 
 @pytest.mark.integration
-async def test_hide_annotation_excludes_from_detail(
-    async_client: AsyncClient, db_session: AsyncSession
-) -> None:
+async def test_hide_annotation_excludes_from_detail(async_client: AsyncClient, db_session: AsyncSession) -> None:
     asset_id = await _create_asset(db_session)
     eval_id = await _create_completed_eval(db_session, asset_id)
 

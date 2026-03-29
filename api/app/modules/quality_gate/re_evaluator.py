@@ -238,15 +238,11 @@ async def re_evaluate(
         from_date=from_date,
     )
     if not evals_to_process:
-        return ReEvaluateResponse(
-            affected_evaluations=0, slo_version_used=slo_def.version, results=[]
-        )
+        return ReEvaluateResponse(affected_evaluations=0, slo_version_used=slo_def.version, results=[])
 
     # Determine default SLI version range from the first eval
     first = evals_to_process[0]
-    default_sli_range = await _resolve_sli_version_range(
-        first.sli_name, first.sli_version, sli_repo
-    )
+    default_sli_range = await _resolve_sli_version_range(first.sli_name, first.sli_version, sli_repo)
 
     # Seed eligible IDs from pre-window baselines
     pre_baselines = await baseline_repo.get_reeval_baselines(

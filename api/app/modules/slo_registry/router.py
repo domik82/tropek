@@ -48,9 +48,7 @@ async def list_slo_definitions(
     """List all active SLO definitions."""
     repo = SLORepository(session)
     items = await repo.list_all(tag_key=tag_key, tag_val=tag_val, kind=kind)
-    return PagedResponse(
-        items=[SLODefinitionRead.model_validate(i) for i in items], total=len(items)
-    )
+    return PagedResponse(items=[SLODefinitionRead.model_validate(i) for i in items], total=len(items))
 
 
 @router.post('/slo-definitions', response_model=SLODefinitionRead, status_code=201)
@@ -132,9 +130,7 @@ async def validate_slo(body: SLOValidateRequest) -> SLOValidationResult:  # noqa
             try:
                 parse_criteria_string(raw)
             except ValueError as e:
-                errors.append(
-                    SLOValError(field=f'objectives[{i}].warning_criteria', message=str(e))
-                )
+                errors.append(SLOValError(field=f'objectives[{i}].warning_criteria', message=str(e)))
 
     # Validate total_score percentages
     if not (0 <= slo.total_score.pass_pct <= 100):
@@ -286,9 +282,7 @@ async def test_slo(  # noqa: C901
         {k: v for k, v in baselines.items() if v is not None},
     )
 
-    indicator_results_typed = [
-        IndicatorResult.model_validate(ir) for ir in eval_result.indicator_results
-    ]
+    indicator_results_typed = [IndicatorResult.model_validate(ir) for ir in eval_result.indicator_results]
 
     return SLOTestResult(
         result=eval_result.result.value,

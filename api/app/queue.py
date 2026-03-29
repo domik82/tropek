@@ -46,7 +46,7 @@ def get_arq_pool(request: Request) -> ArqRedis:
     pool = getattr(request.app.state, 'arq_pool', None)
     if pool is None:
         raise RuntimeError('arq pool not initialised — lifespan did not run')
-    return cast(ArqRedis, pool)
+    return cast('ArqRedis', pool)
 
 
 async def create_arq_pool() -> ArqRedis:

@@ -4,9 +4,8 @@ import importlib
 import os
 from pathlib import Path
 
-import pytest
-
 import app.config as config_module
+import pytest
 
 
 @pytest.fixture(autouse=True)

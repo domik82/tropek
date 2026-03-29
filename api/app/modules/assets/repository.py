@@ -6,12 +6,10 @@ import random
 import uuid
 from typing import Any
 
-from sqlalchemy import delete, func, or_, select, text, update
+from sqlalchemy import delete, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.cache.redis_cache import RedisCache
-from app.modules.common.exceptions import ConflictError, NotFoundError
-from app.modules.common.tag_mixin import TagQueryMixin
 from app.db.models import (
     Asset,
     AssetGroup,
@@ -31,6 +29,8 @@ from app.modules.assets.schemas import (
     AssetGroupSubgroupRead,
     AssetGroupTreeResponse,
 )
+from app.modules.common.exceptions import ConflictError, NotFoundError
+from app.modules.common.tag_mixin import TagQueryMixin
 
 GROUP_COLOR_PALETTE = [
     '#6897BB',
@@ -85,9 +85,7 @@ class AssetTypeRepository:
         if at is None:
             return None
         await self._session.execute(update(AssetType).values(is_default=False))
-        await self._session.execute(
-            update(AssetType).where(AssetType.name == name).values(is_default=True)
-        )
+        await self._session.execute(update(AssetType).where(AssetType.name == name).values(is_default=True))
         await self._session.refresh(at)
         return at
 
@@ -96,9 +94,7 @@ class AssetTypeRepository:
         existing = await self.get_by_name(name)
         if existing is None:
             return False
-        in_use = await self._session.execute(
-            select(Asset.id).where(Asset.type_name == name).limit(1)
-        )
+        in_use = await self._session.execute(select(Asset.id).where(Asset.type_name == name).limit(1))
         if in_use.scalar_one_or_none() is not None:
             raise ConflictError('asset type', name, 'in use by one or more assets')
         await self._session.execute(delete(AssetType).where(AssetType.name == name))
@@ -112,20 +108,14 @@ class AssetTypeRepository:
         conflict = await self.get_by_name(new_name)
         if conflict is not None:
             raise ConflictError('asset type', new_name, 'already exists')
-        await self._session.execute(
-            update(AssetType).where(AssetType.name == old_name).values(name=new_name)
-        )
+        await self._session.execute(update(AssetType).where(AssetType.name == old_name).values(name=new_name))
         # Also update all assets referencing this type
-        await self._session.execute(
-            update(Asset).where(Asset.type_name == old_name).values(type_name=new_name)
-        )
+        await self._session.execute(update(Asset).where(Asset.type_name == old_name).values(type_name=new_name))
         return await self.get_by_name(new_name)
 
     async def get_asset_counts(self) -> dict[str, int]:
         """Return count of assets per type name."""
-        result = await self._session.execute(
-            select(Asset.type_name, func.count(Asset.id)).group_by(Asset.type_name)
-        )
+        result = await self._session.execute(select(Asset.type_name, func.count(Asset.id)).group_by(Asset.type_name))
         return {row[0]: row[1] for row in result}
 
 
@@ -234,9 +224,7 @@ class AssetRepository(TagQueryMixin):
         if asset is None:
             return False
         # Remove group memberships
-        await self._session.execute(
-            delete(AssetGroupMember).where(AssetGroupMember.asset_id == asset.id)
-        )
+        await self._session.execute(delete(AssetGroupMember).where(AssetGroupMember.asset_id == asset.id))
         # Remove SLO links
         await self._session.execute(delete(AssetSLOLink).where(AssetSLOLink.asset_id == asset.id))
         # Delete the asset itself
@@ -245,7 +233,6 @@ class AssetRepository(TagQueryMixin):
             await self._cache.invalidate(f'asset:{asset.id}')
             await self._cache.invalidate(f'asset:name:{name}')
         return True
-
 
 
 class AssetGroupRepository:
@@ -339,9 +326,7 @@ class AssetGroupRepository:
         await self._session.flush()  # get group.id
 
         for m in members or []:
-            self._session.add(
-                AssetGroupMember(group_id=group.id, asset_id=m.asset_id, weight=m.weight)
-            )
+            self._session.add(AssetGroupMember(group_id=group.id, asset_id=m.asset_id, weight=m.weight))
         for sg in subgroups or []:
             self._session.add(
                 AssetGroupLink(
@@ -372,9 +357,7 @@ class AssetGroupRepository:
             Updated AssetGroupRead, or None if not found.
         """
         if kwargs:
-            await self._session.execute(
-                update(AssetGroup).where(AssetGroup.name == name).values(**kwargs)
-            )
+            await self._session.execute(update(AssetGroup).where(AssetGroup.name == name).values(**kwargs))
         result = await self._session.execute(select(AssetGroup).where(AssetGroup.name == name))
         group = result.scalar_one_or_none()
         if group is None:
@@ -410,16 +393,12 @@ class AssetGroupRepository:
         all_group_ids = [group.id, *await self._collect_subgroup_ids(group.id)]
         if deactivate_slos:
             slo_names_result = await self._session.execute(
-                select(AssetGroupSLOLink.slo_name)
-                .where(AssetGroupSLOLink.group_id.in_(all_group_ids))
-                .distinct()
+                select(AssetGroupSLOLink.slo_name).where(AssetGroupSLOLink.group_id.in_(all_group_ids)).distinct()
             )
             slo_names = list(slo_names_result.scalars().all())
             if slo_names:
                 await self._session.execute(
-                    update(SLODefinition)
-                    .where(SLODefinition.name.in_(slo_names))
-                    .values(active=False)
+                    update(SLODefinition).where(SLODefinition.name.in_(slo_names)).values(active=False)
                 )
         for gid in reversed(all_group_ids):
             await self._session.execute(delete(AssetGroup).where(AssetGroup.id == gid))
@@ -439,9 +418,7 @@ class AssetGroupRepository:
             AssetGroupTreeResponse with top_level (not children of any group) and all_groups.
         """
         # child_ids = groups that appear as a child of some other group
-        child_ids_result = await self._session.execute(
-            select(AssetGroupLink.child_group_id).distinct()
-        )
+        child_ids_result = await self._session.execute(select(AssetGroupLink.child_group_id).distinct())
         child_ids = {row for row in child_ids_result.scalars()}
 
         all_result = await self._session.execute(select(AssetGroup).order_by(AssetGroup.name))
@@ -450,9 +427,7 @@ class AssetGroupRepository:
         top_level = [r for r in all_reads if r.id not in child_ids]
         return AssetGroupTreeResponse(top_level=top_level, all_groups=all_reads)
 
-    async def add_member(
-        self, group_name: str, asset_id: uuid.UUID, *, weight: float = 1.0
-    ) -> AssetGroupRead:
+    async def add_member(self, group_name: str, asset_id: uuid.UUID, *, weight: float = 1.0) -> AssetGroupRead:
         """Add an asset as a member of a group. Raises 404 if group not found.
 
         Args:
@@ -463,9 +438,7 @@ class AssetGroupRepository:
         Returns:
             Updated AssetGroupRead with the new member.
         """
-        result = await self._session.execute(
-            select(AssetGroup).where(AssetGroup.name == group_name)
-        )
+        result = await self._session.execute(select(AssetGroup).where(AssetGroup.name == group_name))
         group = result.scalar_one_or_none()
         if group is None:
             raise NotFoundError('asset group', group_name)
@@ -480,9 +453,7 @@ class AssetGroupRepository:
             group_name: Name of the parent group.
             asset_id: UUID of the asset to remove.
         """
-        result = await self._session.execute(
-            select(AssetGroup).where(AssetGroup.name == group_name)
-        )
+        result = await self._session.execute(select(AssetGroup).where(AssetGroup.name == group_name))
         group = result.scalar_one_or_none()
         if group is None:
             raise NotFoundError('asset group', group_name)
@@ -493,9 +464,7 @@ class AssetGroupRepository:
             )
         )
 
-    async def add_subgroup(
-        self, parent_name: str, child_group_id: uuid.UUID, *, weight: float = 1.0
-    ) -> AssetGroupRead:
+    async def add_subgroup(self, parent_name: str, child_group_id: uuid.UUID, *, weight: float = 1.0) -> AssetGroupRead:
         """Add a child group as a subgroup of a parent. Raises 404 if parent not found.
 
         Args:
@@ -506,15 +475,11 @@ class AssetGroupRepository:
         Returns:
             Updated AssetGroupRead with the new subgroup.
         """
-        result = await self._session.execute(
-            select(AssetGroup).where(AssetGroup.name == parent_name)
-        )
+        result = await self._session.execute(select(AssetGroup).where(AssetGroup.name == parent_name))
         group = result.scalar_one_or_none()
         if group is None:
             raise NotFoundError('asset group', parent_name)
-        self._session.add(
-            AssetGroupLink(parent_group_id=group.id, child_group_id=child_group_id, weight=weight)
-        )
+        self._session.add(AssetGroupLink(parent_group_id=group.id, child_group_id=child_group_id, weight=weight))
         await self._session.flush()
         return await self._build_read(group)
 
@@ -525,9 +490,7 @@ class AssetGroupRepository:
             parent_name: Name of the parent group.
             child_group_id: UUID of the child group to remove.
         """
-        result = await self._session.execute(
-            select(AssetGroup).where(AssetGroup.name == parent_name)
-        )
+        result = await self._session.execute(select(AssetGroup).where(AssetGroup.name == parent_name))
         group = result.scalar_one_or_none()
         if group is None:
             raise NotFoundError('asset group', parent_name)
@@ -581,9 +544,7 @@ class AssetSLOLinkRepository:
     async def list_by_asset(self, asset_id: uuid.UUID) -> list[AssetSLOLink]:
         """Return all SLO links for an asset ordered by link name."""
         result = await self._session.execute(
-            select(AssetSLOLink)
-            .where(AssetSLOLink.asset_id == asset_id)
-            .order_by(AssetSLOLink.link_name)
+            select(AssetSLOLink).where(AssetSLOLink.asset_id == asset_id).order_by(AssetSLOLink.link_name)
         )
         return list(result.scalars().all())
 
@@ -748,12 +709,8 @@ class SLOBindingRepository:
             (SLOBinding.target_type == 'asset') & (SLOBinding.target_id == asset_id),
         ]
         if group_ids:
-            conditions.append(
-                (SLOBinding.target_type == 'asset_group') & (SLOBinding.target_id.in_(group_ids))
-            )
-        result = await self._session.execute(
-            select(SLOBinding).where(or_(*conditions)).order_by(SLOBinding.slo_name)
-        )
+            conditions.append((SLOBinding.target_type == 'asset_group') & (SLOBinding.target_id.in_(group_ids)))
+        result = await self._session.execute(select(SLOBinding).where(or_(*conditions)).order_by(SLOBinding.slo_name))
         return list(result.scalars().all())
 
     async def delete_by_target_and_slo(

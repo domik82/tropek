@@ -41,9 +41,7 @@ def substitute_variables(template: str, variables: dict[str, str]) -> str:
     def replace(match: re.Match[str]) -> str:
         name = match.group(1)
         if name not in variables:
-            raise UnresolvedVariableError(
-                f"Unresolved variable '${name}'. Available: {sorted(variables)}"
-            )
+            raise UnresolvedVariableError(f"Unresolved variable '${name}'. Available: {sorted(variables)}")
         return variables[name]
 
     return _VAR_RE.sub(replace, template)
