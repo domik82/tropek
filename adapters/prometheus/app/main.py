@@ -12,6 +12,7 @@ import redis.asyncio as aioredis
 from fastapi import FastAPI
 
 from app.api.routes import router as api_router
+from app.api.routes import sync_router
 from app.config import Settings
 from app.core.coordinator import Coordinator
 from app.core.job_manager import JobManager
@@ -64,6 +65,7 @@ def create_app(use_fakeredis: bool = False) -> FastAPI:
     app = FastAPI(title="Prometheus SLI Adapter", lifespan=lifespan)
     app.include_router(health_router)
     app.include_router(api_router)
+    app.include_router(sync_router)
     return app
 
 
