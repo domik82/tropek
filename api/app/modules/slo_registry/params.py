@@ -33,3 +33,4 @@ class SLOCreateParams(BaseModel):
     kind: str = 'standard'
     sli_name: str | None = None
     sli_version: int | None = None
+    method_criteria: dict[str, object] | None = None

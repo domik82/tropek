@@ -84,6 +84,7 @@ async def create_slo_definition(
         kind=body.kind,
         sli_name=body.sli_name,
         sli_version=body.sli_version,
+        method_criteria=body.method_criteria,
     )
     slo = await repo.create(params)
     return SLODefinitionRead.model_validate(slo)
