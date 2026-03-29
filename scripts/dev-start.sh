@@ -102,9 +102,22 @@ uv run --directory clients/python python ../../scripts/seed_evaluations.py "http
 echo "=== Running e2e tests ==="
 uv run --directory clients/python python ../../scripts/e2e_tests.py "http://localhost:$API_PORT"
 
-echo "=== Applying Prometheus bootstrap manifests ==="
-BOOTSTRAP_PROMETHEUS_DIR="$(pwd)/bootstrap_prometheus/manifests"
-uv run --directory clients/python python -c "
+echo "    waiting for Prometheus adapter health..."
+ADAPTER_HEALTHY=false
+for i in $(seq 1 10); do
+  HEALTH=$(curl -sf http://localhost:$ADAPTER_PORT/health/ready 2>/dev/null)
+  if echo "$HEALTH" | grep -q '"prometheus":"ok"'; then
+    ADAPTER_HEALTHY=true
+    echo "    adapter healthy — Prometheus reachable"
+    break
+  fi
+  sleep 1
+done
+
+if [ "$ADAPTER_HEALTHY" = true ]; then
+  echo "=== Applying Prometheus bootstrap manifests ==="
+  BOOTSTRAP_PROMETHEUS_DIR="$(pwd)/bootstrap_prometheus/manifests"
+  uv run --directory clients/python python -c "
 import sys; sys.path.insert(0, '.')
 from tropek_client import TropekClient
 from tropek_client.manifest import apply, load_manifests
@@ -114,8 +127,12 @@ print(f'prometheus bootstrap: {result.created} created, {result.updated} updated
 if result.failed: print(f'  errors: {result.errors}')
 "
 
-echo "=== Seeding Prometheus evaluations (7 days x 3 assets) ==="
-uv run --directory clients/python python ../../scripts/seed_e2e_prometheus.py "http://localhost:$API_PORT"
+  echo "=== Seeding Prometheus evaluations (7 days x 3 assets) ==="
+  uv run --directory clients/python python ../../scripts/seed_e2e_prometheus.py "http://localhost:$API_PORT"
+else
+  echo "    adapter unhealthy — Prometheus unreachable, skipping Prometheus bootstrap + seeding"
+  echo "    (start the observability stack and re-run to get Prometheus data)"
+fi
 
 echo "=== Installing UI dependencies ==="
 pnpm --dir ui install
