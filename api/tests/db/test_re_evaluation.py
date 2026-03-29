@@ -13,6 +13,7 @@ from app.modules.quality_gate.params import EvalCreateParams, ReEvalUpdateParams
 from app.modules.quality_gate.re_evaluation_schemas import ReEvaluateRequest
 from app.modules.quality_gate.re_evaluator import re_evaluate
 from app.modules.quality_gate.repository import EvaluationRepository
+from app.modules.slo_registry.params import SLOCreateParams, SLOObjectiveParams
 from app.modules.slo_registry.repository import SLORepository
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -200,8 +201,10 @@ async def test_re_evaluate_updates_results_and_adds_annotation(
 
     # Create SLO v1: pass if cpu < 90
     await slo_repo.create(
-        name='re-eval-slo',
-        objectives=[{'sli': 'cpu', 'pass_criteria': ['<90'], 'weight': 1}],
+        SLOCreateParams(
+            name='re-eval-slo',
+            objectives=[SLOObjectiveParams(sli='cpu', pass_criteria=['<90'], weight=1)],
+        )
     )
 
     # Create eval that fails under v1 (cpu=95)
@@ -219,8 +222,10 @@ async def test_re_evaluate_updates_results_and_adds_annotation(
 
     # Create SLO v2: pass if cpu < 100 (relaxed threshold)
     await slo_repo.create(
-        name='re-eval-slo',
-        objectives=[{'sli': 'cpu', 'pass_criteria': ['<100'], 'weight': 1}],
+        SLOCreateParams(
+            name='re-eval-slo',
+            objectives=[SLOObjectiveParams(sli='cpu', pass_criteria=['<100'], weight=1)],
+        )
     )
 
     # Get asset name for the request
@@ -261,8 +266,10 @@ async def test_re_evaluate_dry_run_does_not_write(db_session: AsyncSession) -> N
     asset_id = await _create_asset(db_session)
 
     await slo_repo.create(
-        name='dry-run-slo',
-        objectives=[{'sli': 'cpu', 'pass_criteria': ['<100'], 'weight': 1}],
+        SLOCreateParams(
+            name='dry-run-slo',
+            objectives=[SLOObjectiveParams(sli='cpu', pass_criteria=['<100'], weight=1)],
+        )
     )
 
     eid = await _create_completed_eval(
@@ -309,9 +316,11 @@ async def test_re_evaluate_cascading_baselines(db_session: AsyncSession) -> None
 
     # SLO with relative criteria: value must be <= +10% of baseline
     await slo_repo.create(
-        name='cascade-slo',
-        objectives=[{'sli': 'rt', 'pass_criteria': ['<=+10%'], 'weight': 1}],
-        comparison={'include_result_with_score': 'all', 'number_of_comparison_results': 1},
+        SLOCreateParams(
+            name='cascade-slo',
+            objectives=[SLOObjectiveParams(sli='rt', pass_criteria=['<=+10%'], weight=1)],
+            comparison={'include_result_with_score': 'all', 'number_of_comparison_results': 1},
+        )
     )
 
     # Create 3 evals with response times: 100, 105, 110

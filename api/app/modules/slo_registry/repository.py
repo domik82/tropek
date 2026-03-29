@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.cache.redis_cache import RedisCache
 from app.db.models import SLODefinition
 from app.db.models import SLOObjective as SLOObjectiveORM
+from app.modules.slo_registry.params import SLOCreateParams
 
 
 class SLORepository:
@@ -21,50 +22,21 @@ class SLORepository:
         self._session = session
         self._cache = cache
 
-    async def create(
-        self,
-        name: str,
-        objectives: list[dict[str, Any]],
-        total_score_pass_pct: float = 90.0,
-        total_score_warning_pct: float = 75.0,
-        comparison: dict[str, Any] | None = None,
-        display_name: str | None = None,
-        notes: str | None = None,
-        author: str | None = None,
-        tags: dict[str, Any] | None = None,
-        variables: dict[str, Any] | None = None,
-        comparable_from_version: int | None = None,
-        kind: str = 'standard',
-        sli_name: str | None = None,
-        sli_version: int | None = None,
-    ) -> SLODefinition:
+    async def create(self, params: SLOCreateParams) -> SLODefinition:
         """Insert a new version of a named SLO.
 
         Version is auto-incremented using SELECT ... FOR UPDATE to prevent races.
 
         Args:
-            name: Stable external identifier for the SLO.
-            objectives: List of objective dicts; must be non-empty (caller must supply at least one).
-            total_score_pass_pct: Minimum score percentage to pass. Default 90.0.
-            total_score_warning_pct: Minimum score percentage to warn. Default 75.0.
-            comparison: Optional comparison config dict. None uses defaults.
-            display_name: Optional human-readable display name for the SLO.
-            notes: Optional description of changes in this version.
-            author: Optional identifier of who created this version.
-            tags: Optional free-form metadata tags.
-            variables: Optional template variable defaults.
-            comparable_from_version: Earliest version whose baselines are valid to compare against.
-                Defaults to the previous version when one exists, otherwise 1.
-            kind: SLO kind discriminator (e.g. "standard" or "template"). Default "standard".
-            sli_name: Optional SLI definition name this SLO is bound to.
-            sli_version: Optional specific SLI version; None means latest at evaluation time.
+            params: SLO creation parameters including name, objectives, scoring thresholds,
+                comparison config, metadata, and optional SLI binding.
 
         Returns:
             The newly created SLODefinition with its assigned version.
         """
         result = await self._session.execute(
             select(SLODefinition.version)
-            .where(SLODefinition.name == name)
+            .where(SLODefinition.name == params.name)
             .order_by(SLODefinition.version.desc())
             .limit(1)
             .with_for_update()
@@ -72,8 +44,8 @@ class SLORepository:
         max_version = result.scalar_one_or_none()
         next_version = (max_version or 0) + 1
 
-        if comparable_from_version is not None:
-            resolved_cfv = comparable_from_version
+        if params.comparable_from_version is not None:
+            resolved_cfv = params.comparable_from_version
         elif max_version is not None:
             resolved_cfv = max_version
         else:
@@ -81,44 +53,44 @@ class SLORepository:
 
         slo = SLODefinition(
             id=uuid.uuid4(),
-            name=name,
+            name=params.name,
             version=next_version,
             comparable_from_version=resolved_cfv,
-            total_score_pass_pct=total_score_pass_pct,
-            total_score_warning_pct=total_score_warning_pct,
-            comparison=comparison or {},
-            display_name=display_name,
-            notes=notes,
-            author=author,
-            tags=tags or {},
-            variables=variables or {},
-            kind=kind,
-            sli_name=sli_name,
-            sli_version=sli_version,
+            total_score_pass_pct=params.total_score_pass_pct,
+            total_score_warning_pct=params.total_score_warning_pct,
+            comparison=params.comparison or {},
+            display_name=params.display_name,
+            notes=params.notes,
+            author=params.author,
+            tags=params.tags,
+            variables=params.variables,
+            kind=params.kind,
+            sli_name=params.sli_name,
+            sli_version=params.sli_version,
             active=True,
         )
         self._session.add(slo)
         await self._session.flush()
 
-        for i, obj_dict in enumerate(objectives):
-            obj = SLOObjectiveORM(
+        for i, obj in enumerate(params.objectives):
+            orm_obj = SLOObjectiveORM(
                 id=uuid.uuid4(),
                 slo_definition_id=slo.id,
-                sli=obj_dict['sli'],
-                display_name=obj_dict.get('display_name', ''),
-                weight=obj_dict.get('weight', 1),
-                key_sli=obj_dict.get('key_sli', False),
+                sli=obj.sli,
+                display_name=obj.display_name or '',
+                weight=obj.weight,
+                key_sli=obj.key_sli,
                 sort_order=i,
-                pass_criteria=obj_dict.get('pass_criteria', []),
-                warning_criteria=obj_dict.get('warning_criteria', []),
+                pass_criteria=obj.pass_criteria,
+                warning_criteria=obj.warning_criteria,
             )
-            self._session.add(obj)
+            self._session.add(orm_obj)
 
         await self._session.flush()
         # Eagerly load objectives so callers can access them outside async context
         await self._session.refresh(slo, ['objectives'])
         if self._cache:
-            await self._cache.invalidate(f'slo:{name}:latest')
+            await self._cache.invalidate(f'slo:{params.name}:latest')
         return slo
 
     async def get_latest(self, name: str) -> SLODefinition | None:
