@@ -9,6 +9,7 @@ from app.db.session import get_session
 from app.modules.assets.schemas import TagKeyCount, TagValueCount
 from app.modules.common.exceptions import NotFoundError
 from app.modules.common.schemas import PagedResponse
+from app.modules.sli_registry.params import SLICreateParams
 from app.modules.sli_registry.repository import SLIRepository
 from app.modules.sli_registry.schemas import SLIDefinitionCreate, SLIDefinitionRead
 
@@ -36,14 +37,16 @@ async def create_sli_definition(
     """Create a new SLI definition (or a new version if name already exists)."""
     repo = SLIRepository(session)
     sli = await repo.create(
-        body.name,
-        indicators=body.indicators,
-        adapter_type=body.adapter_type,
-        display_name=body.display_name,
-        notes=body.notes,
-        author=body.author,
-        tags=body.tags,
-        comparable_from_version=body.comparable_from_version,
+        SLICreateParams(
+            name=body.name,
+            indicators=body.indicators,
+            adapter_type=body.adapter_type,
+            display_name=body.display_name,
+            notes=body.notes,
+            author=body.author,
+            tags=body.tags,
+            comparable_from_version=body.comparable_from_version,
+        )
     )
     return SLIDefinitionRead.model_validate(sli)
 
