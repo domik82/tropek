@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 import httpx
 import structlog
 
@@ -23,8 +25,8 @@ class HttpAdapterClient:
         variables: dict[str, str],
         start: str,
         end: str,
-    ) -> tuple[dict[str, float | None], dict[str, str]]:
-        """Send metric queries to the adapter and return (values, errors).
+    ) -> tuple[dict[str, float | None], dict[str, str], dict[str, Any]]:
+        """Send metric queries to the adapter and return (values, errors, metadata).
 
         Args:
             adapter_url: Base URL of the adapter service.
@@ -35,7 +37,7 @@ class HttpAdapterClient:
             end: ISO timestamp for the evaluation period end.
 
         Returns:
-            Tuple of (metrics_fetched, fetch_errors).
+            Tuple of (metrics_fetched, fetch_errors, metadata).
 
         Raises:
             httpx.ConnectError: If the adapter is unreachable.
@@ -70,13 +72,15 @@ class HttpAdapterClient:
             name: float(val) if val is not None else None for name, val in data.get('values', {}).items()
         }
         fetch_errors: dict[str, str] = {name: str(err) for name, err in data.get('errors', {}).items()}
+        metadata: dict[str, Any] = data.get('metadata', {})
         logger.info(
             'adapter response',
             url=url,
             values=len(metrics_fetched),
             errors=len(fetch_errors),
+            metadata_slis=len(metadata),
         )
-        return metrics_fetched, fetch_errors
+        return metrics_fetched, fetch_errors, metadata
 
     async def health(self, adapter_url: str) -> bool:
         """Check adapter health by hitting the /health endpoint.
