@@ -134,14 +134,36 @@ else
     exit 1
 fi
 
-# Check Redis
+# Check Redis — try redis-cli first, fall back to TCP probe via bash or Python
 echo -n "  Redis (${REDIS_URL})... "
 REDIS_HOST=$(echo "${REDIS_URL}" | sed -n 's|redis://\([^:]*\):\([0-9]*\).*|\1|p')
 REDIS_PORT=$(echo "${REDIS_URL}" | sed -n 's|redis://\([^:]*\):\([0-9]*\).*|\2|p')
 REDIS_HOST="${REDIS_HOST:-localhost}"
 REDIS_PORT="${REDIS_PORT:-6379}"
 
-if redis-cli -h "${REDIS_HOST}" -p "${REDIS_PORT}" ping > /dev/null 2>&1; then
+REDIS_OK=false
+if command -v redis-cli > /dev/null 2>&1; then
+    redis-cli -h "${REDIS_HOST}" -p "${REDIS_PORT}" ping > /dev/null 2>&1&& REDIS_OK=true
+fi
+if [[ "${REDIS_OK}" == "false" ]]; then
+    # TCP probe via Python (always available)
+    python3 -c "
+import socket, sys
+s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+s.settimeout(2)
+try:
+    s.connect(('${REDIS_HOST}', ${REDIS_PORT}))
+    s.sendall(b'PING\r\n')
+    resp = s.recv(64)
+    sys.exit(0 if b'PONG' in resp else 1)
+except Exception:
+    sys.exit(1)
+finally:
+    s.close()
+" 2>/dev/null && REDIS_OK=true
+fi
+
+if [[ "${REDIS_OK}" == "true" ]]; then
     echo -e "${GREEN}ok${NC}"
 else
     echo -e "${RED}unreachable${NC}"
