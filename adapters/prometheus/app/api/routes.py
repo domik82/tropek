@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 from typing import Any
 
 from fastapi import APIRouter, Header, HTTPException, Request, Response
@@ -11,6 +12,8 @@ from pydantic import BaseModel
 from app.api.schemas import JobSubmitRequest
 from app.config import Settings
 from app.core.job_manager import JobManager
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/v1", tags=["jobs"])
 sync_router = APIRouter(tags=["sync"])
@@ -80,6 +83,10 @@ async def sync_query(
     x_datasource_name: str = Header(default="default"),
 ) -> dict[str, Any]:
     """Submit queries, wait for results, return {values, errors}."""
+    logger.info(
+        "sync /query: %d queries, datasource=%s, start=%s, end=%s",
+        len(body.queries), x_datasource_name, body.start, body.end,
+    )
     manager: JobManager = request.app.state.job_manager
     result = await manager.submit(
         queries=body.queries,
@@ -89,6 +96,7 @@ async def sync_query(
         end=body.end,
     )
     job_id = result["job_id"]
+    logger.info("sync /query: submitted job_id=%s", job_id)
 
     # Poll until job finishes.  The coordinator's per-query timeout is
     # QUERY_TIMEOUT_SECONDS (default 30s).  We allow 2x that so the job
@@ -101,6 +109,7 @@ async def sync_query(
             break
         await asyncio.sleep(0.1)
     else:
+        logger.error("sync /query: job_id=%s did not complete in time", job_id)
         raise HTTPException(status_code=504, detail="job did not complete in time")
 
     values: dict[str, float | None] = {}
@@ -112,4 +121,8 @@ async def sync_query(
         else:
             errors[name] = indicator.get("message", "unknown error")
 
+    logger.info(
+        "sync /query: job_id=%s done, values=%d errors=%d",
+        job_id, len(values), len(errors),
+    )
     return {"values": values, "errors": errors}

@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
+import logging
 from typing import Any
 
 from app.core.prometheus_client import PrometheusClient, PrometheusQueryError
 from app.core.variable_substitutor import UnresolvedVariableError, substitute
+
+logger = logging.getLogger(__name__)
 
 
 class RawQueryStrategy:
@@ -29,11 +32,16 @@ class RawQueryStrategy:
         try:
             query = substitute(query_template, variables, start_iso=start, end_iso=end)
         except UnresolvedVariableError as exc:
+            logger.warning("variable substitution failed: sli=%s error=%s", sli_name, exc)
             return {sli_name: None}, {sli_name: str(exc)}, None
+
+        logger.info("executing query: sli=%s query=%s time=%s", sli_name, query, end)
 
         try:
             value = await self._client.instant_query(query, time=end)
         except PrometheusQueryError as exc:
+            logger.exception("query failed: sli=%s", sli_name)
             return {sli_name: None}, {sli_name: str(exc)}, None
 
+        logger.info("query result: sli=%s value=%s", sli_name, value)
         return {sli_name: value}, {}, None
