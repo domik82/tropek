@@ -8,6 +8,7 @@ from datetime import UTC, datetime, timedelta
 import pytest
 from app.db.models import Asset, AssetType, SLOObjective
 from app.modules.quality_gate.indicator_repository import IndicatorRepository
+from app.modules.quality_gate.params import EvalCreateParams
 from app.modules.quality_gate.repository import EvaluationRepository
 from app.modules.slo_registry.repository import SLORepository
 from httpx import AsyncClient
@@ -37,16 +38,16 @@ async def _setup_re_eval(
     )
 
     repo = EvaluationRepository(session)
-    ev = await repo.create_pending(
-        evaluation_name="daily",
+    ev = await repo.create_pending(EvalCreateParams(
+        evaluation_name='daily',
         period_start=_START,
         period_end=_START + timedelta(minutes=30),
-        ingestion_mode="push",
-        asset_snapshot={"name": asset_name},
+        ingestion_mode='push',
+        asset_snapshot={'name': asset_name},
         variables={},
         asset_id=asset_id,
-        slo_name="re-eval-ep-slo",
-    )
+        slo_name='re-eval-ep-slo',
+    ))
     await repo.mark_completed(
         ev.id,
         result="fail",

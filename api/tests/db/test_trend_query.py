@@ -8,6 +8,7 @@ from datetime import UTC, datetime, timedelta
 import pytest
 from app.db.models import Asset, AssetType, SLIDefinition, SLODefinition, SLOObjective
 from app.modules.quality_gate.indicator_repository import IndicatorRepository
+from app.modules.quality_gate.params import EvalCreateParams
 from app.modules.quality_gate.repository import EvaluationRepository
 from app.modules.quality_gate.sli_repository import SLIValueRepository
 from app.modules.quality_gate.trend_repository import TrendRepository
@@ -76,16 +77,16 @@ async def test_trend_returns_points_with_baseline(db_session: AsyncSession) -> N
     sli_repo = SLIValueRepository(db_session)
     trend_repo = TrendRepository(db_session)
 
-    ev = await repo.create_pending(
-        evaluation_name="trend-test",
+    ev = await repo.create_pending(EvalCreateParams(
+        evaluation_name='trend-test',
         period_start=_BASE,
         period_end=_BASE + timedelta(minutes=30),
-        ingestion_mode="push",
-        asset_snapshot={"name": "trend-asset", "tags": {}},
+        ingestion_mode='push',
+        asset_snapshot={'name': 'trend-asset', 'tags': {}},
         variables={},
         asset_id=asset_id,
-        slo_name="test-slo",
-    )
+        slo_name='test-slo',
+    ))
     await repo.mark_completed(ev.id, result="pass", score=90.0, slo_name="test-slo")
 
     # Seed indicator row with compared_value for baseline
@@ -137,16 +138,16 @@ async def test_trend_excludes_invalidated(db_session: AsyncSession) -> None:
     sli_repo = SLIValueRepository(db_session)
     trend_repo = TrendRepository(db_session)
 
-    ev = await repo.create_pending(
-        evaluation_name="trend-inv",
+    ev = await repo.create_pending(EvalCreateParams(
+        evaluation_name='trend-inv',
         period_start=_BASE,
         period_end=_BASE + timedelta(minutes=30),
-        ingestion_mode="push",
-        asset_snapshot={"name": "trend-inv-asset", "tags": {}},
+        ingestion_mode='push',
+        asset_snapshot={'name': 'trend-inv-asset', 'tags': {}},
         variables={},
         asset_id=asset_id,
-        slo_name="test-slo",
-    )
+        slo_name='test-slo',
+    ))
     await repo.mark_completed(ev.id, result="pass", score=90.0, slo_name="test-slo")
     await sli_repo.write_sli_values(
         [
