@@ -111,9 +111,7 @@ class TestSingleQuery:
 class TestMultiQuery:
     """Submit a multi-metric job."""
 
-    async def test_three_metrics_return_three_results(
-        self, client: httpx.AsyncClient
-    ) -> None:
+    async def test_three_metrics_return_three_results(self, client: httpx.AsyncClient) -> None:
         submit = await client.post(
             f"{ADAPTER_URL}/api/v1/query-jobs",
             json={
@@ -132,9 +130,9 @@ class TestMultiQuery:
                     "p99_latency": {
                         "mode": "raw",
                         "query": (
-                            "histogram_quantile(0.99,"
+                            'histogram_quantile(0.99,'
                             ' sum(rate(http_request_duration_seconds_bucket{service="api"}[5m]))'
-                            " by (le))"
+                            ' by (le))'
                         ),
                     },
                 },
@@ -172,9 +170,7 @@ class TestVariableSubstitution:
         result = await poll_job(client, job_id)
         assert result["status"] == "completed"
 
-    async def test_duration_seconds_auto_computed(
-        self, client: httpx.AsyncClient
-    ) -> None:
+    async def test_duration_seconds_auto_computed(self, client: httpx.AsyncClient) -> None:
         submit = await client.post(
             f"{ADAPTER_URL}/api/v1/query-jobs",
             json={
@@ -182,8 +178,7 @@ class TestVariableSubstitution:
                     "with_duration": {
                         "mode": "raw",
                         "query": (
-                            'avg_over_time(cpu_usage_percent{service="api"}'
-                            "[$DURATION_SECONDS])"
+                            'avg_over_time(cpu_usage_percent{service="api"}[$DURATION_SECONDS])'
                         ),
                     },
                 },
@@ -199,9 +194,7 @@ class TestVariableSubstitution:
 class TestErrorHandling:
     """Error scenarios."""
 
-    async def test_nonexistent_metric_returns_error(
-        self, client: httpx.AsyncClient
-    ) -> None:
+    async def test_nonexistent_metric_returns_error(self, client: httpx.AsyncClient) -> None:
         submit = await client.post(
             f"{ADAPTER_URL}/api/v1/query-jobs",
             json={

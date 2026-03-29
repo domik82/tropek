@@ -1,6 +1,5 @@
 """Tests for the job coordinator."""
 
-
 import fakeredis.aioredis
 import pytest
 from app.config import Settings

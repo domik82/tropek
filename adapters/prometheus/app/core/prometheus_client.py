@@ -27,7 +27,9 @@ class PrometheusClient:
         self._base_url = base_url.rstrip("/")
         self._timeout = timeout
         self._auth = auth
-        logger.info("prometheus client configured: url=%s timeout=%s", self._base_url, self._timeout)
+        logger.info(
+            "prometheus client configured: url=%s timeout=%s", self._base_url, self._timeout
+        )
 
     async def instant_query(self, query: str, *, time: str) -> float:
         """Execute an instant query and return a single float value.
@@ -59,15 +61,11 @@ class PrometheusClient:
             ) from exc
         if resp.status_code != 200:
             logger.error("prometheus error: status=%d body=%s", resp.status_code, resp.text[:200])
-            raise PrometheusQueryError(
-                f"prometheus returned {resp.status_code}: {resp.text[:200]}"
-            )
+            raise PrometheusQueryError(f"prometheus returned {resp.status_code}: {resp.text[:200]}")
         body: dict[str, Any] = resp.json()
         if body.get("status") != "success":
             logger.error("prometheus query failed: %s", body.get("error", "unknown"))
-            raise PrometheusQueryError(
-                f"prometheus error: {body.get('error', 'unknown')}"
-            )
+            raise PrometheusQueryError(f'prometheus error: {body.get("error", "unknown")}')
         data: dict[str, Any] = body["data"]
         return data
 

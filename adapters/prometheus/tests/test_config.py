@@ -1,6 +1,5 @@
 """Tests for adapter configuration defaults and env-var overrides."""
 
-
 import pytest
 from app.config import Settings
 

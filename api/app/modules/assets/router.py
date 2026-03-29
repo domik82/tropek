@@ -81,7 +81,7 @@ async def _validate_binding_adapter_type(
 
 @router.get("/asset-types", response_model=PagedResponse[AssetTypeRead])
 async def list_asset_types(
-    session: AsyncSession = Depends(get_session),  # noqa: B008
+    session: AsyncSession = Depends(get_session),
 ) -> PagedResponse[AssetTypeRead]:
     """List all asset types with asset counts."""
     repo = AssetTypeRepository(session)
@@ -102,7 +102,7 @@ async def list_asset_types(
 @router.post("/asset-types", response_model=AssetTypeRead, status_code=201)
 async def create_asset_type(
     body: AssetTypeCreate,
-    session: AsyncSession = Depends(get_session),  # noqa: B008
+    session: AsyncSession = Depends(get_session),
 ) -> AssetTypeRead:
     """Create a new asset type."""
     repo = AssetTypeRepository(session)
@@ -113,7 +113,7 @@ async def create_asset_type(
 @router.patch("/asset-types/{name}/set-default", response_model=AssetTypeRead)
 async def set_default_asset_type(
     name: str,
-    session: AsyncSession = Depends(get_session),  # noqa: B008
+    session: AsyncSession = Depends(get_session),
 ) -> AssetTypeRead:
     """Set an asset type as the default."""
     repo = AssetTypeRepository(session)
@@ -126,7 +126,7 @@ async def set_default_asset_type(
 @router.delete("/asset-types/{name}", status_code=204)
 async def delete_asset_type(
     name: str,
-    session: AsyncSession = Depends(get_session),  # noqa: B008
+    session: AsyncSession = Depends(get_session),
 ) -> None:
     """Delete an asset type if not in use."""
     repo = AssetTypeRepository(session)
@@ -139,7 +139,7 @@ async def delete_asset_type(
 async def rename_asset_type(
     name: str,
     body: AssetTypeUpdate,
-    session: AsyncSession = Depends(get_session),  # noqa: B008
+    session: AsyncSession = Depends(get_session),
 ) -> AssetTypeRead:
     """Rename an asset type."""
     if body.name is None:
@@ -159,7 +159,7 @@ async def list_assets(
     type_name: str | None = None,
     tag_key: str | None = None,
     tag_val: str | None = None,
-    session: AsyncSession = Depends(get_session),  # noqa: B008
+    session: AsyncSession = Depends(get_session),
 ) -> PagedResponse[AssetRead]:
     """List all assets with optional type or tag filters."""
     repo = AssetRepository(session)
@@ -170,7 +170,7 @@ async def list_assets(
 @router.post("/assets", response_model=AssetRead, status_code=201)
 async def create_asset(
     body: AssetCreate,
-    session: AsyncSession = Depends(get_session),  # noqa: B008
+    session: AsyncSession = Depends(get_session),
 ) -> AssetRead:
     """Create a new asset."""
     repo = AssetRepository(session)
@@ -187,7 +187,7 @@ async def create_asset(
 
 @router.get("/assets/tag-keys", response_model=list[TagKeyCount])
 async def list_tag_keys(
-    session: AsyncSession = Depends(get_session),  # noqa: B008
+    session: AsyncSession = Depends(get_session),
 ) -> list[TagKeyCount]:
     """List all distinct tag keys with usage counts."""
     repo = AssetRepository(session)
@@ -198,7 +198,7 @@ async def list_tag_keys(
 @router.get("/assets/tag-values", response_model=list[TagValueCount])
 async def list_tag_values(
     key: str,
-    session: AsyncSession = Depends(get_session),  # noqa: B008
+    session: AsyncSession = Depends(get_session),
 ) -> list[TagValueCount]:
     """List all distinct values for a tag key with usage counts."""
     repo = AssetRepository(session)
@@ -209,7 +209,7 @@ async def list_tag_values(
 @router.get("/assets/{name}", response_model=AssetRead)
 async def get_asset(
     name: str,
-    session: AsyncSession = Depends(get_session),  # noqa: B008
+    session: AsyncSession = Depends(get_session),
 ) -> AssetRead:
     """Get an asset by name."""
     repo = AssetRepository(session)
@@ -223,7 +223,7 @@ async def get_asset(
 async def update_asset(
     name: str,
     body: AssetUpdate,
-    session: AsyncSession = Depends(get_session),  # noqa: B008
+    session: AsyncSession = Depends(get_session),
 ) -> AssetRead:
     """Update mutable asset fields."""
     repo = AssetRepository(session)
@@ -234,7 +234,7 @@ async def update_asset(
 @router.delete("/assets/{name}", status_code=204)
 async def delete_asset(
     name: str,
-    session: AsyncSession = Depends(get_session),  # noqa: B008
+    session: AsyncSession = Depends(get_session),
 ) -> None:
     """Delete an asset and all its group memberships and SLO links."""
     repo = AssetRepository(session)
@@ -249,7 +249,7 @@ async def delete_asset(
 @router.get("/assets/{name}/slo-links", response_model=list[AssetSLOLinkRead])
 async def list_asset_slo_links(
     name: str,
-    session: AsyncSession = Depends(get_session),  # noqa: B008
+    session: AsyncSession = Depends(get_session),
 ) -> list[AssetSLOLinkRead]:
     """List all SLO links for an asset."""
     asset_repo = AssetRepository(session)
@@ -265,7 +265,7 @@ async def list_asset_slo_links(
 async def create_asset_slo_link(
     name: str,
     body: AssetSLOLinkCreate,
-    session: AsyncSession = Depends(get_session),  # noqa: B008
+    session: AsyncSession = Depends(get_session),
 ) -> AssetSLOLinkRead:
     """Create an SLO link for an asset."""
     asset_repo = AssetRepository(session)
@@ -287,7 +287,7 @@ async def create_asset_slo_link(
 async def delete_asset_slo_link(
     name: str,
     link_name: str,
-    session: AsyncSession = Depends(get_session),  # noqa: B008
+    session: AsyncSession = Depends(get_session),
 ) -> None:
     """Delete an SLO link from an asset."""
     asset_repo = AssetRepository(session)
@@ -305,7 +305,7 @@ async def delete_asset_slo_link(
 async def get_comparison_rules(
     name: str,
     link_name: str,
-    session: AsyncSession = Depends(get_session),  # noqa: B008
+    session: AsyncSession = Depends(get_session),
 ) -> list[dict[str, Any]]:
     """Return comparison rules for an asset SLO link."""
     asset_repo = AssetRepository(session)
@@ -327,7 +327,7 @@ async def update_comparison_rules_endpoint(
     name: str,
     link_name: str,
     body: ComparisonRulesUpdate,
-    session: AsyncSession = Depends(get_session),  # noqa: B008
+    session: AsyncSession = Depends(get_session),
 ) -> list[dict[str, Any]]:
     """Replace comparison rules for an asset SLO link.
 
@@ -360,7 +360,7 @@ async def update_comparison_rules_endpoint(
 
 @router.get("/asset-groups", response_model=PagedResponse[AssetGroupRead])
 async def list_asset_groups(
-    session: AsyncSession = Depends(get_session),  # noqa: B008
+    session: AsyncSession = Depends(get_session),
 ) -> PagedResponse[AssetGroupRead]:
     """List all asset groups."""
     repo = AssetGroupRepository(session)
@@ -370,7 +370,7 @@ async def list_asset_groups(
 
 @router.get("/asset-groups/tree", response_model=AssetGroupTreeResponse)
 async def get_asset_group_tree(
-    session: AsyncSession = Depends(get_session),  # noqa: B008
+    session: AsyncSession = Depends(get_session),
 ) -> AssetGroupTreeResponse:
     """Get the full asset group hierarchy tree."""
     repo = AssetGroupRepository(session)
@@ -380,7 +380,7 @@ async def get_asset_group_tree(
 @router.post("/asset-groups", response_model=AssetGroupRead, status_code=201)
 async def create_asset_group(
     body: AssetGroupCreate,
-    session: AsyncSession = Depends(get_session),  # noqa: B008
+    session: AsyncSession = Depends(get_session),
 ) -> AssetGroupRead:
     """Create a new asset group."""
     repo = AssetGroupRepository(session)
@@ -397,7 +397,7 @@ async def create_asset_group(
 @router.get("/asset-groups/{name}", response_model=AssetGroupRead)
 async def get_asset_group(
     name: str,
-    session: AsyncSession = Depends(get_session),  # noqa: B008
+    session: AsyncSession = Depends(get_session),
 ) -> AssetGroupRead:
     """Get an asset group by name."""
     repo = AssetGroupRepository(session)
@@ -411,7 +411,7 @@ async def get_asset_group(
 async def update_asset_group(
     name: str,
     body: AssetGroupUpdate,
-    session: AsyncSession = Depends(get_session),  # noqa: B008
+    session: AsyncSession = Depends(get_session),
 ) -> AssetGroupRead:
     """Update mutable asset group fields."""
     repo = AssetGroupRepository(session)
@@ -425,7 +425,7 @@ async def update_asset_group(
 async def delete_asset_group(
     name: str,
     deactivate_slos: bool = False,
-    session: AsyncSession = Depends(get_session),  # noqa: B008
+    session: AsyncSession = Depends(get_session),
 ) -> None:
     """Delete an asset group and optionally deactivate linked SLOs."""
     repo = AssetGroupRepository(session)
@@ -438,7 +438,7 @@ async def delete_asset_group(
 async def add_group_member(
     name: str,
     body: AddMemberRequest,
-    session: AsyncSession = Depends(get_session),  # noqa: B008
+    session: AsyncSession = Depends(get_session),
 ) -> AssetGroupRead:
     """Add a member asset to a group."""
     repo = AssetGroupRepository(session)
@@ -452,7 +452,7 @@ async def add_group_member(
 async def remove_group_member(
     name: str,
     asset_id: uuid.UUID,
-    session: AsyncSession = Depends(get_session),  # noqa: B008
+    session: AsyncSession = Depends(get_session),
 ) -> None:
     """Remove a member asset from a group."""
     repo = AssetGroupRepository(session)
@@ -466,7 +466,7 @@ async def remove_group_member(
 async def add_group_subgroup(
     name: str,
     body: AddSubgroupRequest,
-    session: AsyncSession = Depends(get_session),  # noqa: B008
+    session: AsyncSession = Depends(get_session),
 ) -> AssetGroupRead:
     """Add a child subgroup to a group."""
     repo = AssetGroupRepository(session)
@@ -480,7 +480,7 @@ async def add_group_subgroup(
 async def remove_group_subgroup(
     name: str,
     child_group_id: uuid.UUID,
-    session: AsyncSession = Depends(get_session),  # noqa: B008
+    session: AsyncSession = Depends(get_session),
 ) -> None:
     """Remove a child subgroup from a group."""
     repo = AssetGroupRepository(session)
@@ -496,7 +496,7 @@ async def remove_group_subgroup(
 @router.get("/asset-groups/{name}/slo-links", response_model=list[AssetGroupSLOLinkRead])
 async def list_group_slo_links(
     name: str,
-    session: AsyncSession = Depends(get_session),  # noqa: B008
+    session: AsyncSession = Depends(get_session),
 ) -> list[AssetGroupSLOLinkRead]:
     """List all SLO links for an asset group."""
     group_repo = AssetGroupRepository(session)
@@ -514,7 +514,7 @@ async def list_group_slo_links(
 async def create_group_slo_link(
     name: str,
     body: AssetGroupSLOLinkCreate,
-    session: AsyncSession = Depends(get_session),  # noqa: B008
+    session: AsyncSession = Depends(get_session),
 ) -> AssetGroupSLOLinkRead:
     """Create an SLO link for an asset group."""
     group_repo = AssetGroupRepository(session)
@@ -535,7 +535,7 @@ async def create_group_slo_link(
 async def delete_group_slo_link(
     name: str,
     link_name: str,
-    session: AsyncSession = Depends(get_session),  # noqa: B008
+    session: AsyncSession = Depends(get_session),
 ) -> None:
     """Delete an SLO link from an asset group."""
     group_repo = AssetGroupRepository(session)
@@ -552,7 +552,7 @@ async def delete_group_slo_link(
 @router.get("/assets/{name}/slo-bindings", response_model=list[SLOBindingRead])
 async def list_asset_slo_bindings(
     name: str,
-    session: AsyncSession = Depends(get_session),  # noqa: B008
+    session: AsyncSession = Depends(get_session),
 ) -> list[SLOBindingRead]:
     """List all SLO bindings for an asset."""
     asset_repo = AssetRepository(session)
@@ -568,7 +568,7 @@ async def list_asset_slo_bindings(
 async def create_asset_slo_binding(
     name: str,
     body: SLOBindingCreate,
-    session: AsyncSession = Depends(get_session),  # noqa: B008
+    session: AsyncSession = Depends(get_session),
 ) -> SLOBindingRead:
     """Create an SLO binding for an asset."""
     asset_repo = AssetRepository(session)
@@ -590,7 +590,7 @@ async def create_asset_slo_binding(
 async def delete_asset_slo_binding(
     name: str,
     slo_name: str,
-    session: AsyncSession = Depends(get_session),  # noqa: B008
+    session: AsyncSession = Depends(get_session),
 ) -> None:
     """Delete an SLO binding from an asset."""
     asset_repo = AssetRepository(session)
@@ -604,7 +604,7 @@ async def delete_asset_slo_binding(
 @router.get("/asset-groups/{name}/slo-bindings", response_model=list[SLOBindingRead])
 async def list_group_slo_bindings(
     name: str,
-    session: AsyncSession = Depends(get_session),  # noqa: B008
+    session: AsyncSession = Depends(get_session),
 ) -> list[SLOBindingRead]:
     """List all SLO bindings for an asset group."""
     group_repo = AssetGroupRepository(session)
@@ -620,7 +620,7 @@ async def list_group_slo_bindings(
 async def create_group_slo_binding(
     name: str,
     body: SLOBindingCreate,
-    session: AsyncSession = Depends(get_session),  # noqa: B008
+    session: AsyncSession = Depends(get_session),
 ) -> SLOBindingRead:
     """Create an SLO binding for an asset group."""
     group_repo = AssetGroupRepository(session)
@@ -642,7 +642,7 @@ async def create_group_slo_binding(
 async def delete_group_slo_binding(
     name: str,
     slo_name: str,
-    session: AsyncSession = Depends(get_session),  # noqa: B008
+    session: AsyncSession = Depends(get_session),
 ) -> None:
     """Delete an SLO binding from an asset group."""
     group_repo = AssetGroupRepository(session)

@@ -53,7 +53,7 @@ def substitute(
     unresolved = {name for name in original_vars if name not in merged}
     if unresolved:
         raise UnresolvedVariableError(
-            f"unresolved variables: {', '.join('$' + v for v in sorted(unresolved))}"
+            f'unresolved variables: {", ".join("$" + v for v in sorted(unresolved))}'
         )
 
     def _replace(match: re.Match[str]) -> str:

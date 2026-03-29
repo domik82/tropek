@@ -20,7 +20,7 @@ async def list_sli_definitions(
     adapter_type: str | None = None,
     tag_key: str | None = None,
     tag_val: str | None = None,
-    session: AsyncSession = Depends(get_session),  # noqa: B008
+    session: AsyncSession = Depends(get_session),
 ) -> PagedResponse[SLIDefinitionRead]:
     """List all active SLI definitions."""
     repo = SLIRepository(session)
@@ -33,7 +33,7 @@ async def list_sli_definitions(
 @router.post("/sli-definitions", response_model=SLIDefinitionRead, status_code=201)
 async def create_sli_definition(
     body: SLIDefinitionCreate,
-    session: AsyncSession = Depends(get_session),  # noqa: B008
+    session: AsyncSession = Depends(get_session),
 ) -> SLIDefinitionRead:
     """Create a new SLI definition (or a new version if name already exists)."""
     repo = SLIRepository(session)
@@ -52,7 +52,7 @@ async def create_sli_definition(
 
 @router.get("/sli-definitions/tag-keys", response_model=list[TagKeyCount])
 async def get_sli_tag_keys(
-    session: AsyncSession = Depends(get_session),  # noqa: B008
+    session: AsyncSession = Depends(get_session),
 ) -> list[TagKeyCount]:
     """Return distinct tag keys with usage counts."""
     repo = SLIRepository(session)
@@ -63,7 +63,7 @@ async def get_sli_tag_keys(
 @router.get("/sli-definitions/tag-values", response_model=list[TagValueCount])
 async def get_sli_tag_values(
     key: str = Query(...),
-    session: AsyncSession = Depends(get_session),  # noqa: B008
+    session: AsyncSession = Depends(get_session),
 ) -> list[TagValueCount]:
     """Return distinct tag values for a key with usage counts."""
     repo = SLIRepository(session)
@@ -74,7 +74,7 @@ async def get_sli_tag_values(
 @router.get("/sli-definitions/{name}", response_model=SLIDefinitionRead)
 async def get_sli_definition(
     name: str,
-    session: AsyncSession = Depends(get_session),  # noqa: B008
+    session: AsyncSession = Depends(get_session),
 ) -> SLIDefinitionRead:
     """Get the latest active version of an SLI definition."""
     repo = SLIRepository(session)
@@ -87,7 +87,7 @@ async def get_sli_definition(
 @router.get("/sli-definitions/{name}/versions", response_model=list[SLIDefinitionRead])
 async def list_sli_versions(
     name: str,
-    session: AsyncSession = Depends(get_session),  # noqa: B008
+    session: AsyncSession = Depends(get_session),
 ) -> list[SLIDefinitionRead]:
     """List all versions of an SLI definition."""
     repo = SLIRepository(session)
@@ -98,7 +98,7 @@ async def list_sli_versions(
 @router.delete("/sli-definitions/{name}", status_code=204)
 async def delete_sli_definition(
     name: str,
-    session: AsyncSession = Depends(get_session),  # noqa: B008
+    session: AsyncSession = Depends(get_session),
 ) -> None:
     """Deactivate all versions of an SLI definition."""
     repo = SLIRepository(session)

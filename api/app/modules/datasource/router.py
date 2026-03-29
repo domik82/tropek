@@ -29,7 +29,7 @@ async def list_datasources(
     adapter_type: str | None = None,
     tag_key: str | None = None,
     tag_val: str | None = None,
-    session: AsyncSession = Depends(get_session),  # noqa: B008
+    session: AsyncSession = Depends(get_session),
 ) -> PagedResponse[DataSourceRead]:
     """List all datasources with optional filters."""
     repo = DataSourceRepository(session)
@@ -40,7 +40,7 @@ async def list_datasources(
 @router.post("/datasources", response_model=DataSourceRead, status_code=201)
 async def create_datasource(
     body: DataSourceCreate,
-    session: AsyncSession = Depends(get_session),  # noqa: B008
+    session: AsyncSession = Depends(get_session),
 ) -> DataSourceRead:
     """Create a new datasource."""
     repo = DataSourceRepository(session)
@@ -57,7 +57,7 @@ async def create_datasource(
 
 @router.get("/datasources/tag-keys", response_model=list[TagKeyCount])
 async def get_tag_keys(
-    session: AsyncSession = Depends(get_session),  # noqa: B008
+    session: AsyncSession = Depends(get_session),
 ) -> list[TagKeyCount]:
     """Return distinct tag keys with usage counts."""
     repo = DataSourceRepository(session)
@@ -68,7 +68,7 @@ async def get_tag_keys(
 @router.get("/datasources/tag-values", response_model=list[TagValueCount])
 async def get_tag_values(
     key: str = Query(...),
-    session: AsyncSession = Depends(get_session),  # noqa: B008
+    session: AsyncSession = Depends(get_session),
 ) -> list[TagValueCount]:
     """Return distinct tag values for a key with usage counts."""
     repo = DataSourceRepository(session)
@@ -79,7 +79,7 @@ async def get_tag_values(
 @router.get("/datasources/{name}", response_model=DataSourceRead)
 async def get_datasource(
     name: str,
-    session: AsyncSession = Depends(get_session),  # noqa: B008
+    session: AsyncSession = Depends(get_session),
 ) -> DataSourceRead:
     """Get a datasource by name."""
     repo = DataSourceRepository(session)
@@ -93,7 +93,7 @@ async def get_datasource(
 async def update_datasource(
     name: str,
     body: DataSourceUpdate,
-    session: AsyncSession = Depends(get_session),  # noqa: B008
+    session: AsyncSession = Depends(get_session),
 ) -> DataSourceRead:
     """Update mutable datasource fields."""
     repo = DataSourceRepository(session)
@@ -106,7 +106,7 @@ async def update_datasource(
 @router.delete("/datasources/{name}", status_code=204)
 async def delete_datasource(
     name: str,
-    session: AsyncSession = Depends(get_session),  # noqa: B008
+    session: AsyncSession = Depends(get_session),
 ) -> Response:
     """Delete a datasource by name. Returns 409 if active SLO links reference it."""
     # Check for active SLO links referencing this datasource
@@ -130,7 +130,7 @@ async def delete_datasource(
     )
     if asset_links or group_links:
         link_names = [lnk.link_name for lnk in asset_links] + [lnk.link_name for lnk in group_links]
-        raise_conflict("datasource", name, f"referenced by SLO links: {', '.join(link_names)}")
+        raise_conflict("datasource", name, f'referenced by SLO links: {", ".join(link_names)}')
 
     repo = DataSourceRepository(session)
     deleted = await repo.delete_by_name(name)

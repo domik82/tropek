@@ -115,12 +115,14 @@ class JobRepository:
         query_executed: str = "",
     ) -> None:
         """Persist a single indicator result and increment the success or failure counter."""
-        result = json.dumps({
-            "value": value,
-            "success": success,
-            "message": message,
-            "query_executed": query_executed,
-        })
+        result = json.dumps(
+            {
+                "value": value,
+                "success": success,
+                "message": message,
+                "query_executed": query_executed,
+            }
+        )
         await self._r.hset(self._key("job", job_id, "results"), indicator, result)
         if success:
             await self._r.hincrby(self._key("job", job_id), "completed_count", 1)

@@ -46,7 +46,10 @@ class Coordinator:
         start, end = await self._repo.get_start_end(job_id)
         logger.info(
             "processing job: id=%s queries=%d start=%s end=%s",
-            job_id, len(queries), start, end,
+            job_id,
+            len(queries),
+            start,
+            end,
         )
 
         async def _run_query(sli_name: str, query_spec: dict[str, Any]) -> None:
