@@ -130,4 +130,5 @@ async def sync_query(
         len(values),
         len(errors),
     )
-    return {'values': values, 'errors': errors}
+    metadata = status.get('metadata', {})
+    return {'values': values, 'errors': errors, 'metadata': metadata}

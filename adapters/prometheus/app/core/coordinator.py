@@ -71,7 +71,7 @@ class Coordinator:
                 if current and current['status'] == 'cancelled':
                     return
 
-                values, errors, _metadata = await strategy.execute(
+                values, errors, metadata = await strategy.execute(
                     sli_name=sli_name,
                     query_spec=query_spec,
                     variables=variables,
@@ -89,6 +89,9 @@ class Coordinator:
                         message=error_msg,
                         query_executed=query_spec.get('query', query_spec.get('query_template', '')),
                     )
+
+                if metadata is not None:
+                    await self._repo.write_metadata(job_id, sli_name, metadata)
 
         tasks = [_run_query(name, spec) for name, spec in queries.items()]
         await asyncio.gather(*tasks)
