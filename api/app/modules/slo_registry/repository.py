@@ -70,6 +70,7 @@ class SLORepository(TagQueryMixin):
             kind=params.kind,
             sli_name=params.sli_name,
             sli_version=params.sli_version,
+            method_criteria=params.method_criteria,
             active=True,
         )
         self._session.add(slo)

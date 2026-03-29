@@ -47,6 +47,7 @@ class SLODefinitionCreate(BaseModel):
     kind: str = 'standard'
     sli_name: str | None = None
     sli_version: int | None = None
+    method_criteria: dict[str, Any] | None = None
 
 
 class SLODefinitionRead(BaseModel):
@@ -69,6 +70,7 @@ class SLODefinitionRead(BaseModel):
     kind: str
     sli_name: str | None
     sli_version: int | None
+    method_criteria: dict[str, Any] | None
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)

@@ -270,6 +270,7 @@ class SLODefinition(Base):
     kind:                    Mapped[str]                    = mapped_column(Text, nullable=False, server_default=text("'standard'"), default='standard')
     sli_name:                Mapped[str | None]             = mapped_column(Text, nullable=True)
     sli_version:             Mapped[int | None]             = mapped_column(Integer, nullable=True)
+    method_criteria:         Mapped[dict[str, Any] | None]  = mapped_column(JSONB, nullable=True)
     generated_by_group_id:   Mapped[uuid.UUID | None]       = mapped_column(UUID, nullable=True)
     active:                  Mapped[bool]                   = mapped_column(Boolean, nullable=False, server_default=true(), default=True)
     created_at:              Mapped[datetime]               = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
