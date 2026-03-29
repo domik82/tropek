@@ -34,8 +34,10 @@ class Coordinator:
         if job_id is None:
             return False
 
+        logger.info("dequeued job: id=%s", job_id)
         status = await self._repo.get_status(job_id)
         if status is None or status["status"] == "cancelled":
+            logger.info("job skipped (cancelled or missing): id=%s", job_id)
             return True
 
         await self._repo.mark_running(job_id)
@@ -103,9 +105,14 @@ class Coordinator:
     async def run(self) -> None:
         """Main loop: continuously process jobs from the queue."""
         self._running = True
+        logger.info("coordinator started, polling for jobs")
         while self._running:
             async with self._job_semaphore:
-                processed = await self.process_one()
+                try:
+                    processed = await self.process_one()
+                except Exception:
+                    logger.exception("coordinator error processing job")
+                    processed = False
             if not processed:
                 await asyncio.sleep(0.1)
 
