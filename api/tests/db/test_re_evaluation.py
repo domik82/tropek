@@ -9,6 +9,7 @@ import pytest
 from app.db.models import Asset, AssetType, SLOObjective
 from app.modules.quality_gate.baseline_repository import BaselineRepository
 from app.modules.quality_gate.indicator_repository import IndicatorRepository
+from app.modules.quality_gate.params import EvalCreateParams
 from app.modules.quality_gate.re_evaluation_schemas import ReEvaluateRequest
 from app.modules.quality_gate.re_evaluator import re_evaluate
 from app.modules.quality_gate.repository import EvaluationRepository
@@ -39,17 +40,17 @@ async def _create_completed_eval(
     sli_version: int | None = None,
     slo_name: str = "http-slo",
 ) -> uuid.UUID:
-    ev = await repo.create_pending(
-        evaluation_name="daily",
+    ev = await repo.create_pending(EvalCreateParams(
+        evaluation_name='daily',
         period_start=period_start,
         period_end=period_start + timedelta(minutes=30),
-        ingestion_mode="push",
-        asset_snapshot={"name": "test"},
+        ingestion_mode='push',
+        asset_snapshot={'name': 'test'},
         variables={},
         asset_id=asset_id,
         slo_name=slo_name,
         sli_version=sli_version,
-    )
+    ))
     await repo.mark_completed(
         ev.id,
         result=result,

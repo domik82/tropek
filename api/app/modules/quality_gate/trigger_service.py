@@ -14,6 +14,7 @@ from app.modules.quality_gate.exceptions import (
     DuplicateEvaluationError,
     EvaluationError,
 )
+from app.modules.quality_gate.params import EvalCreateParams
 from app.modules.quality_gate.schemas import (
     BatchConflict,
     BatchTriggerRequest,
@@ -63,24 +64,26 @@ class TriggerService:
             raise DuplicateEvaluationError(msg)
 
         ev = await self._repos.eval_repo.create_pending(
-            evaluation_name=request.evaluation_name,
-            period_start=request.period_start,
-            period_end=request.period_end,
-            ingestion_mode="pull",
-            asset_snapshot={
-                "name": ctx.asset_name,
-                "display_name": ctx.asset_display_name,
-                "tags": ctx.asset_tags,
-                "variables": ctx.asset_variables,
-            },
-            variables=request.variables,
-            asset_id=ctx.asset_id,
-            slo_name=ctx.slo_name,
-            slo_version=ctx.slo_version,
-            sli_name=ctx.sli_name,
-            sli_version=ctx.sli_version,
-            data_source_name=ctx.data_source_name,
-            adapter_used=ctx.adapter_type,
+            EvalCreateParams(
+                evaluation_name=request.evaluation_name,
+                period_start=request.period_start,
+                period_end=request.period_end,
+                ingestion_mode='pull',
+                asset_snapshot={
+                    'name': ctx.asset_name,
+                    'display_name': ctx.asset_display_name,
+                    'tags': ctx.asset_tags,
+                    'variables': ctx.asset_variables,
+                },
+                variables=request.variables,
+                asset_id=ctx.asset_id,
+                slo_name=ctx.slo_name,
+                slo_version=ctx.slo_version,
+                sli_name=ctx.sli_name,
+                sli_version=ctx.sli_version,
+                data_source_name=ctx.data_source_name,
+                adapter_used=ctx.adapter_type,
+            )
         )
         await self._repos.session.commit()
 
@@ -111,24 +114,26 @@ class TriggerService:
         evaluation_ids: list[uuid.UUID] = []
         for ctx, _asset_name in resolved:
             ev = await self._repos.eval_repo.create_pending(
-                evaluation_name=request.evaluation_name,
-                period_start=request.period_start,
-                period_end=request.period_end,
-                ingestion_mode="pull",
-                asset_snapshot={
-                    "name": ctx.asset_name,
-                    "display_name": ctx.asset_display_name,
-                    "tags": ctx.asset_tags,
-                    "variables": ctx.asset_variables,
-                },
-                variables=request.variables,
-                asset_id=ctx.asset_id,
-                slo_name=ctx.slo_name,
-                slo_version=ctx.slo_version,
-                sli_name=ctx.sli_name,
-                sli_version=ctx.sli_version,
-                data_source_name=ctx.data_source_name,
-                adapter_used=ctx.adapter_type,
+                EvalCreateParams(
+                    evaluation_name=request.evaluation_name,
+                    period_start=request.period_start,
+                    period_end=request.period_end,
+                    ingestion_mode='pull',
+                    asset_snapshot={
+                        'name': ctx.asset_name,
+                        'display_name': ctx.asset_display_name,
+                        'tags': ctx.asset_tags,
+                        'variables': ctx.asset_variables,
+                    },
+                    variables=request.variables,
+                    asset_id=ctx.asset_id,
+                    slo_name=ctx.slo_name,
+                    slo_version=ctx.slo_version,
+                    sli_name=ctx.sli_name,
+                    sli_version=ctx.sli_version,
+                    data_source_name=ctx.data_source_name,
+                    adapter_used=ctx.adapter_type,
+                )
             )
             evaluation_ids.append(ev.id)
 

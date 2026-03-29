@@ -63,6 +63,8 @@ def _make_slo_def() -> MagicMock:
     slo = MagicMock()
     slo.name = "perf-slo"
     slo.version = 1
+    slo.sli_name = None
+    slo.sli_version = None
     return slo
 
 

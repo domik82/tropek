@@ -8,6 +8,7 @@ from datetime import UTC, datetime, timedelta
 import pytest
 from app.db.models import Asset, AssetType
 from app.modules.quality_gate.baseline_repository import BaselineRepository
+from app.modules.quality_gate.params import EvalCreateParams
 from app.modules.quality_gate.repository import EvaluationRepository
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -34,16 +35,16 @@ async def _create_eval(
     offset_hours: int = 0,
 ) -> uuid.UUID:
     start = _BASE + timedelta(hours=offset_hours)
-    ev = await repo.create_pending(
-        evaluation_name="baseline-test",
+    ev = await repo.create_pending(EvalCreateParams(
+        evaluation_name='baseline-test',
         period_start=start,
         period_end=start + timedelta(minutes=30),
-        ingestion_mode="push",
-        asset_snapshot={"name": "baseline-asset", "tags": {}},
+        ingestion_mode='push',
+        asset_snapshot={'name': 'baseline-asset', 'tags': {}},
         variables={},
         asset_id=asset_id,
-        slo_name="test-slo",
-    )
+        slo_name='test-slo',
+    ))
     await repo.mark_completed(ev.id, result=result, score=score, slo_name="test-slo")
     return ev.id
 

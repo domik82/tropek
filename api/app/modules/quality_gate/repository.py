@@ -14,6 +14,7 @@ from sqlalchemy.orm import selectinload
 from app.db.models import Asset, Evaluation, EvaluationAnnotation, IndicatorResultRow
 from app.modules.quality_gate.engine.constants import EvaluationStatus
 from app.modules.quality_gate.exceptions import DuplicateEvaluationError
+from app.modules.quality_gate.params import EvalCreateParams
 
 
 class EvaluationRepository:
@@ -22,65 +23,37 @@ class EvaluationRepository:
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
 
-    async def create_pending(
-        self,
-        *,
-        evaluation_name: str,
-        period_start: datetime,
-        period_end: datetime,
-        ingestion_mode: str,
-        asset_snapshot: dict[str, Any],
-        variables: dict[str, Any],
-        asset_id: uuid.UUID,
-        slo_name: str,
-        slo_version: int | None = None,
-        adapter_used: str | None = None,
-        sli_name: str | None = None,
-        sli_version: int | None = None,
-        data_source_name: str | None = None,
-    ) -> Evaluation:
+    async def create_pending(self, params: EvalCreateParams) -> Evaluation:
         """Create a new evaluation record in pending status.
 
         Args:
-            evaluation_name: Evaluation identifier (e.g. "compilation-test").
-            period_start: Evaluation window start.
-            period_end: Evaluation window end.
-            ingestion_mode: One of "pull", "push", "file".
-            asset_snapshot: Denormalised asset state at trigger time.
-            variables: Caller-provided key-value pairs for template substitution.
-            asset_id: UUID of the associated asset.
-            slo_name: Named SLO used for this evaluation.
-            slo_version: Version of the named SLO, if any.
-            adapter_used: Adapter name, if pull mode (e.g. "prometheus").
-            sli_name: Named SLI definition used, if any.
-            sli_version: Version of the named SLI definition, if any.
-            data_source_name: Data source used for metric collection, if any.
+            params: Validated parameters for the new evaluation record.
 
         Returns:
             Newly created Evaluation in pending status.
         """
         # Merge asset tags as defaults into variables (caller values take precedence)
-        merged_variables = dict(variables)
-        asset_row = await self._session.get(Asset, asset_id)
+        merged_variables = dict(params.variables)
+        asset_row = await self._session.get(Asset, params.asset_id)
         if asset_row is not None and asset_row.tags:
             for key, value in asset_row.tags.items():
                 merged_variables.setdefault(str(key), str(value))
 
         ev = Evaluation(
             id=uuid.uuid4(),
-            evaluation_name=evaluation_name,
-            period_start=period_start,
-            period_end=period_end,
-            ingestion_mode=ingestion_mode,
-            asset_snapshot=asset_snapshot,
+            evaluation_name=params.evaluation_name,
+            period_start=params.period_start,
+            period_end=params.period_end,
+            ingestion_mode=params.ingestion_mode,
+            asset_snapshot=params.asset_snapshot,
             variables=merged_variables,
-            asset_id=asset_id,
-            slo_name=slo_name,
-            slo_version=slo_version,
-            adapter_used=adapter_used,
-            sli_name=sli_name,
-            sli_version=sli_version,
-            data_source_name=data_source_name,
+            asset_id=params.asset_id,
+            slo_name=params.slo_name,
+            slo_version=params.slo_version,
+            adapter_used=params.adapter_used,
+            sli_name=params.sli_name,
+            sli_version=params.sli_version,
+            data_source_name=params.data_source_name,
             status=EvaluationStatus.PENDING,
         )
         self._session.add(ev)
