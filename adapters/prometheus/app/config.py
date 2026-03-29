@@ -28,3 +28,4 @@ class Settings(BaseSettings):
     default_parallel_chunks: int = 3
 
     log_level: str = "INFO"
+    log_dir: str | None = None
