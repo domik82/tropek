@@ -1,0 +1,18 @@
+# SLI definitions for the observability stack metrics.
+# Uses $SERVICE variable resolved from asset variables.
+# Metrics: http_requests_total, http_errors_total, http_request_duration_seconds, cpu_usage_percent
+
+api_version: tropek/v1
+kind: SLI
+metadata:
+  name: obs-http-sli
+  display_name: HTTP Service Indicators (observability stack)
+  author: bootstrap
+  notes: Error rate, latency, throughput, and CPU for services in the integration test stack.
+spec:
+  adapter_type: prometheus
+  indicators:
+    error_rate: 'sum(rate(http_errors_total{service="$SERVICE"}[5m])) / sum(rate(http_requests_total{service="$SERVICE"}[5m]))'
+    p99_latency: 'histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket{service="$SERVICE"}[5m])) by (le))'
+    throughput: 'sum(rate(http_requests_total{service="$SERVICE"}[5m]))'
+    cpu: 'avg(cpu_usage_percent{service="$SERVICE"})'

@@ -84,8 +84,12 @@ services:
       - "8081:8081"
     environment:
       PROMETHEUS_URL: ${PROMETHEUS_URL:-http://prometheus:9090}
+      REDIS_URL: redis://:${QG_REDIS_PASSWORD}@redis:6379/1
       QG_ADAPTER_PROMETHEUS_USERNAME: ${QG_ADAPTER_PROMETHEUS_USERNAME:-}
       QG_ADAPTER_PROMETHEUS_PASSWORD: ${QG_ADAPTER_PROMETHEUS_PASSWORD:-}
+    depends_on:
+      redis:
+        condition: service_healthy
 
   adapter-mock:
     build:

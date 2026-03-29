@@ -1,0 +1,37 @@
+api_version: tropek/v1
+kind: SLO
+metadata:
+  name: obs-http-slo
+  display_name: HTTP Service Quality Gate (observability stack)
+  author: bootstrap
+  notes: Thresholds for error rate, latency, throughput and CPU.
+spec:
+  sli_name: obs-http-sli
+  sli_version: 1
+  kind: standard
+  total_score:
+    pass_pct: 90.0
+    warning_pct: 75.0
+  objectives:
+    - sli: error_rate
+      display_name: Error Rate
+      pass_criteria: ["<0.01"]
+      warning_criteria: ["<0.05"]
+      weight: 2
+      key_sli: true
+    - sli: p99_latency
+      display_name: P99 Latency
+      pass_criteria: ["<0.5"]
+      warning_criteria: ["<1.0"]
+      weight: 2
+      key_sli: true
+    - sli: throughput
+      display_name: Throughput
+      pass_criteria: [">1"]
+      warning_criteria: [">0.5"]
+      weight: 1
+    - sli: cpu
+      display_name: CPU Usage
+      pass_criteria: ["<80"]
+      warning_criteria: ["<90"]
+      weight: 1

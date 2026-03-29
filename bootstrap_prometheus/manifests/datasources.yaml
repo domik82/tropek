@@ -1,0 +1,10 @@
+api_version: tropek/v1
+kind: DataSource
+metadata:
+  name: prometheus-live
+  display_name: Prometheus (observability stack)
+  tags:
+    env: integration-test
+spec:
+  adapter_type: prometheus
+  adapter_url: http://127.0.0.1:8081
