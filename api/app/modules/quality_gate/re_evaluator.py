@@ -128,7 +128,7 @@ async def _resolve_sli_version_range(
     return (sli_def.comparable_from_version, sli_def.version)
 
 
-async def _rescore_single(
+async def _rescore_single(  # noqa: PLR0913
     ev: Evaluation,
     *,
     slo_model: SLO,
