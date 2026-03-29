@@ -5,9 +5,9 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field
 
-ALLOWED_METHODS = frozenset(['min', 'mean', 'max', 'std', 'sum', 'median', 'p75', 'p90', 'p95', 'p99'])
+from app.core.methods import AggregationMethod
 
 
 class RawQuerySpec(BaseModel):
@@ -23,17 +23,7 @@ class AggregatedQuerySpec(BaseModel):
     mode: str = 'aggregated'
     query_template: str
     interval: str
-    methods: list[str] = Field(min_length=1)
-
-    @field_validator('methods')
-    @classmethod
-    def validate_methods(cls, v: list[str]) -> list[str]:
-        """Reject any method name not in the supported aggregation set."""
-        invalid = set(v) - ALLOWED_METHODS
-        if invalid:
-            msg = f'invalid aggregation methods: {", ".join(sorted(invalid))}'
-            raise ValueError(msg)
-        return v
+    methods: list[AggregationMethod] = Field(min_length=1)
 
 
 class JobSubmitRequest(BaseModel):
