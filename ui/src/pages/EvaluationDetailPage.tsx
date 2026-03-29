@@ -68,7 +68,7 @@ export function EvaluationDetailPage() {
       />
 
       {/* Action form */}
-      {activeAction && !ev.invalidated && (
+      {activeAction && (activeAction === 'restore' || !ev.invalidated) && (
         <EvaluationActionForm
           evalId={id!}
           currentResult={ev.result}
