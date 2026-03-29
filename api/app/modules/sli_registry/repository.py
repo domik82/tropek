@@ -4,16 +4,19 @@ from __future__ import annotations
 
 import uuid
 
-from sqlalchemy import select, text, update
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.cache.redis_cache import RedisCache
 from app.db.models import SLIDefinition
+from app.modules.common.tag_mixin import TagQueryMixin
 from app.modules.sli_registry.params import SLICreateParams
 
 
-class SLIRepository:
+class SLIRepository(TagQueryMixin):
     """Data access layer for versioned SLI definitions."""
+
+    _tag_table = 'sli_definitions'
 
     def __init__(self, session: AsyncSession, cache: RedisCache | None = None) -> None:
         self._session = session
@@ -160,27 +163,3 @@ class SLIRepository:
             name: Stable external SLI identifier.
         """
         await self._session.execute(update(SLIDefinition).where(SLIDefinition.name == name).values(active=False))
-
-    async def get_tag_keys(self) -> dict[str, int]:
-        """Return all distinct tag keys with count of SLI definitions using each."""
-        result = await self._session.execute(
-            text(
-                'SELECT key, COUNT(*) as cnt '
-                'FROM sli_definitions, jsonb_object_keys(tags) AS key '
-                'GROUP BY key ORDER BY cnt DESC'
-            )
-        )
-        return {row[0]: row[1] for row in result}
-
-    async def get_tag_values(self, key: str) -> dict[str, int]:
-        """Return all distinct values for a tag key with usage counts."""
-        result = await self._session.execute(
-            text(
-                'SELECT tags->>:key AS val, COUNT(*) as cnt '
-                'FROM sli_definitions '
-                'WHERE tags ? :key '
-                'GROUP BY val ORDER BY cnt DESC'
-            ),
-            {'key': key},
-        )
-        return {row[0]: row[1] for row in result}
