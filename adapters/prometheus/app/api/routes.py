@@ -96,7 +96,7 @@ async def sync_query(
         end=body.end,
     )
     job_id = result["job_id"]
-    logger.info("sync /query: submitted job_id=%s", job_id)
+    logger.info("sync /query: submitted job_id=%s, polling for completion", job_id)
 
     # Poll until job finishes.  The coordinator's per-query timeout is
     # QUERY_TIMEOUT_SECONDS (default 30s).  We allow 2x that so the job
