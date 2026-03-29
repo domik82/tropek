@@ -148,7 +148,7 @@ export function SliForm({ open, onOpenChange, editFrom, defaultAdapterType }: Sl
                 placeholder="my-sli"
               />
               {errors.name && (
-                <p className="text-xs text-red-400 mt-0.5">{errors.name.message}</p>
+                <p className="text-xs text-destructive-form-text mt-0.5">{errors.name.message}</p>
               )}
             </div>
 
@@ -171,7 +171,7 @@ export function SliForm({ open, onOpenChange, editFrom, defaultAdapterType }: Sl
                 placeholder="prometheus"
               />
               {errors.adapter_type && (
-                <p className="text-xs text-red-400 mt-0.5">{errors.adapter_type.message}</p>
+                <p className="text-xs text-destructive-form-text mt-0.5">{errors.adapter_type.message}</p>
               )}
             </div>
 
@@ -205,7 +205,7 @@ export function SliForm({ open, onOpenChange, editFrom, defaultAdapterType }: Sl
                 </button>
               </div>
               {errors.indicators?.root && (
-                <p className="text-xs text-red-400 mb-1">{errors.indicators.root.message}</p>
+                <p className="text-xs text-destructive-form-text mb-1">{errors.indicators.root.message}</p>
               )}
               <div className="space-y-1.5">
                 {fields.map((field, i) => (
@@ -224,7 +224,7 @@ export function SliForm({ open, onOpenChange, editFrom, defaultAdapterType }: Sl
                       type="button"
                       aria-label="remove indicator"
                       onClick={() => remove(i)}
-                      className="text-muted-foreground hover:text-red-400"
+                      className="text-muted-foreground hover:text-action-destructive"
                     >
                       <X className="size-3.5" />
                     </button>
@@ -284,7 +284,7 @@ function TagRowEditor({ rows, onChange }: { rows: TagRow[]; onChange: (rows: Tag
               type="button"
               aria-label="remove tag"
               onClick={() => onChange(rows.filter((_, j) => j !== i))}
-              className="text-muted-foreground hover:text-red-400"
+              className="text-muted-foreground hover:text-action-destructive"
             >
               <X className="size-3.5" />
             </button>

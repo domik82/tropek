@@ -144,7 +144,7 @@ export function DatasourceForm({ open, onOpenChange, editFrom }: DatasourceFormP
                 </label>
                 <Input id="ds-name" {...createForm.register('name')} placeholder="my-datasource" />
                 {createForm.formState.errors.name && (
-                  <p className="text-xs text-red-400 mt-0.5">{createForm.formState.errors.name.message}</p>
+                  <p className="text-xs text-destructive-form-text mt-0.5">{createForm.formState.errors.name.message}</p>
                 )}
               </div>
             )}
@@ -173,7 +173,7 @@ export function DatasourceForm({ open, onOpenChange, editFrom }: DatasourceFormP
                 </label>
                 <Input id="ds-adapter-type" {...createForm.register('adapter_type')} placeholder="prometheus" />
                 {createForm.formState.errors.adapter_type && (
-                  <p className="text-xs text-red-400 mt-0.5">{createForm.formState.errors.adapter_type.message}</p>
+                  <p className="text-xs text-destructive-form-text mt-0.5">{createForm.formState.errors.adapter_type.message}</p>
                 )}
               </div>
             )}
@@ -193,7 +193,7 @@ export function DatasourceForm({ open, onOpenChange, editFrom }: DatasourceFormP
               </label>
               <Input id="ds-adapter-url" {...(isEdit ? editForm.register('adapter_url') : createForm.register('adapter_url'))} placeholder="http://adapter:8081" />
               {(isEdit ? editForm.formState.errors.adapter_url : createForm.formState.errors.adapter_url) && (
-                <p className="text-xs text-red-400 mt-0.5">{(isEdit ? editForm.formState.errors.adapter_url : createForm.formState.errors.adapter_url)?.message}</p>
+                <p className="text-xs text-destructive-form-text mt-0.5">{(isEdit ? editForm.formState.errors.adapter_url : createForm.formState.errors.adapter_url)?.message}</p>
               )}
             </div>
 
@@ -278,7 +278,7 @@ function TagRowEditor({ rows, onChange }: { rows: TagRow[]; onChange: (rows: Tag
               type="button"
               aria-label="remove tag"
               onClick={() => handleRemove(i)}
-              className="text-muted-foreground hover:text-red-400"
+              className="text-muted-foreground hover:text-action-destructive"
             >
               <X className="size-3.5" />
             </button>

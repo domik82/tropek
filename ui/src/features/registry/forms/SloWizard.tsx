@@ -226,12 +226,12 @@ export function SloWizard({ editSlo, onClose }: SloWizardProps) {
       </div>
 
       {/* Steps in card wrappers */}
-      <section className="border border-slate-700 rounded-lg p-5">
+      <section className="border border-border rounded-lg p-5">
         <WizardStepIdentity data={identity} onChange={setIdentity} nameReadOnly={isEdit} />
       </section>
 
       {showStep2 && (
-        <section className="border border-slate-700 rounded-lg p-5">
+        <section className="border border-border rounded-lg p-5">
           <WizardStepPickSli
             data={pickSli}
             onChange={handlePickSliChange}
@@ -241,20 +241,20 @@ export function SloWizard({ editSlo, onClose }: SloWizardProps) {
       )}
 
       {showStep3 && (
-        <section className="border border-slate-700 rounded-lg p-5">
+        <section className="border border-border rounded-lg p-5">
           <WizardStepIndicators rows={indicatorRows} onChange={setIndicatorRows} />
         </section>
       )}
 
       {showStep4 && (
-        <section className="border border-slate-700 rounded-lg p-5">
+        <section className="border border-border rounded-lg p-5">
           <WizardStepComparison data={comparison} onChange={setComparison} />
         </section>
       )}
 
       {/* Mutation error banner */}
       {createMutation.isError && (
-        <div className="rounded-md border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400">
+        <div className="rounded-md border border-action-destructive-border/30 bg-destructive-form-bg px-4 py-3 text-sm text-destructive-form-text">
           <p className="font-medium">Save failed</p>
           <p className="mt-0.5 text-xs opacity-80">
             {createMutation.error instanceof Error ? createMutation.error.message : 'Unknown error'}
@@ -263,7 +263,7 @@ export function SloWizard({ editSlo, onClose }: SloWizardProps) {
       )}
 
       {/* Submit buttons — inline at bottom of scroll, not fixed */}
-      <div className="flex justify-end gap-2 pt-2 border-t border-slate-700">
+      <div className="flex justify-end gap-2 pt-2 border-t border-border">
         {onClose && (
           <button
             type="button"

@@ -22,9 +22,9 @@ const INVALIDATE: ActionDef = {
   label: 'Invalidate',
   description: 'Discard this evaluation — it will not be used for scoring or baselines.',
   accentColor: '#8B949E',
-  accentBorder: 'border-slate-500/25',
-  accentText: 'text-slate-400',
-  confirmClasses: 'bg-slate-500 hover:bg-slate-400',
+  accentBorder: 'border-action-secondary-border/25',
+  accentText: 'text-muted-foreground',
+  confirmClasses: 'bg-action-secondary-bg hover:bg-action-secondary-bg/80',
 }
 
 const OVERRIDE_TO_PASS: ActionDef = {
@@ -42,9 +42,9 @@ const OVERRIDE_TO_FAIL: ActionDef = {
   label: 'Mark as Failure',
   description: 'Override the passed result — SLOs missed an issue in this evaluation.',
   accentColor: '#F85149',
-  accentBorder: 'border-red-500/25',
-  accentText: 'text-red-400',
-  confirmClasses: 'bg-red-600 hover:bg-red-500',
+  accentBorder: 'border-action-destructive-border/25',
+  accentText: 'text-action-destructive',
+  confirmClasses: 'bg-action-destructive-confirm hover:bg-action-destructive-confirm/80',
 }
 
 const BASELINE: ActionDef = {
@@ -61,10 +61,10 @@ const RE_EVALUATE: ActionDef = {
   kind: 're-evaluate',
   label: 'Run Evaluations',
   description: 'Re-score all evaluations from stored data with current SLO thresholds.',
-  accentColor: '#A371F7',
-  accentBorder: 'border-purple-500/25',
-  accentText: 'text-purple-400',
-  confirmClasses: 'bg-purple-600 hover:bg-purple-500',
+  accentColor: 'var(--entity-sli)',
+  accentBorder: 'border-entity-sli/25',
+  accentText: 'text-entity-sli',
+  confirmClasses: 'bg-entity-sli hover:bg-entity-sli/80',
 }
 
 const RESTORE: ActionDef = {
@@ -145,7 +145,7 @@ export function EvaluationActionsButton({ currentResult, invalidated, activeActi
               >
                 <div
                   className="w-[3px] rounded-full shrink-0 mt-0.5"
-                  style={{ backgroundColor: '#F59E0B', height: 36 }}
+                  style={{ backgroundColor: 'var(--indicator-note)', height: 36 }}
                 />
                 <div className="min-w-0">
                   <div className="text-[13px] font-medium text-amber-400">Add Note</div>

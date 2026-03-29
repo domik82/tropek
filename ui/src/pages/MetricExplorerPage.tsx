@@ -119,25 +119,25 @@ function ChartSection({
   }
 
   return (
-    <div className="flex flex-col border-b border-slate-700" style={{ minHeight: '50%' }}>
+    <div className="flex flex-col border-b border-border" style={{ minHeight: '50%' }}>
       {/* Section title bar */}
-      <div className="px-4 py-2 border-b border-slate-700 shrink-0 flex items-center">
+      <div className="px-4 py-2 border-b border-border shrink-0 flex items-center">
         <div className="shrink-0">
-          <span className="text-sm font-semibold text-slate-200">{title}</span>
-          <span className="ml-2 text-xs text-slate-400">{subtitle}</span>
+          <span className="text-sm font-semibold text-foreground">{title}</span>
+          <span className="ml-2 text-xs text-muted-foreground">{subtitle}</span>
         </div>
         {/* All / None — centered between title and right controls */}
         <div className="flex-1 flex justify-center">
           <div className="flex items-center gap-1 text-xs">
             <button
               onClick={() => setEnabled(new Set(indicators.map(i => i.metric)))}
-              className="px-2 py-0.5 rounded border border-slate-700 text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 transition-colors"
+              className="px-2 py-0.5 rounded border border-border text-muted-foreground hover:text-foreground hover:bg-state-hover-bg transition-colors"
             >
               All
             </button>
             <button
               onClick={() => setEnabled(new Set())}
-              className="px-2 py-0.5 rounded border border-slate-700 text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 transition-colors"
+              className="px-2 py-0.5 rounded border border-border text-muted-foreground hover:text-foreground hover:bg-state-hover-bg transition-colors"
             >
               None
             </button>
@@ -145,33 +145,33 @@ function ChartSection({
         </div>
         <div className="shrink-0 flex items-center gap-3">
           {/* Y-axis range */}
-          <div className="flex items-center gap-2 text-xs text-slate-500">
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
             <label className="flex items-center gap-1">
               Y <input
                 type="number" value={yMin} onChange={e => setYMin(e.target.value)}
                 placeholder="min"
-                className="w-14 px-1 py-0.5 bg-slate-800 border border-slate-700 rounded text-slate-300 text-xs"
+                className="w-14 px-1 py-0.5 bg-surface-sunken border border-border rounded text-foreground text-xs"
               />
             </label>
             <label className="flex items-center gap-1">
               – <input
                 type="number" value={yMax} onChange={e => setYMax(e.target.value)}
                 placeholder="max"
-                className="w-14 px-1 py-0.5 bg-slate-800 border border-slate-700 rounded text-slate-300 text-xs"
+                className="w-14 px-1 py-0.5 bg-surface-sunken border border-border rounded text-foreground text-xs"
               />
             </label>
           </div>
           {/* Line / Bar toggle */}
-          <div className="flex border border-slate-700 rounded overflow-hidden text-xs">
+          <div className="flex border border-border rounded overflow-hidden text-xs">
             <button
               onClick={() => setChartType('line')}
-              className={`px-2 py-0.5 transition-colors ${chartType === 'line' ? 'bg-gray-800 text-slate-200' : 'text-slate-400 hover:bg-gray-800/50'}`}
+              className={`px-2 py-0.5 transition-colors ${chartType === 'line' ? 'bg-state-selected-bg text-foreground' : 'text-muted-foreground hover:bg-state-hover-bg'}`}
             >
               Line
             </button>
             <button
               onClick={() => setChartType('bar')}
-              className={`px-2 py-0.5 transition-colors ${chartType === 'bar' ? 'bg-gray-800 text-slate-200' : 'text-slate-400 hover:bg-gray-800/50'}`}
+              className={`px-2 py-0.5 transition-colors ${chartType === 'bar' ? 'bg-state-selected-bg text-foreground' : 'text-muted-foreground hover:bg-state-hover-bg'}`}
             >
               Bar
             </button>
@@ -181,7 +181,7 @@ function ChartSection({
 
       {/* Label panel + chart */}
       <div className="flex flex-1 min-h-0">
-        <div className="shrink-0 border-r border-slate-700 p-3 overflow-y-auto" style={{ width: 280 }}>
+        <div className="shrink-0 border-r border-border p-3 overflow-y-auto" style={{ width: 280 }}>
           <MetricLabelPanel
             indicators={indicators}
             colors={colors}
@@ -271,13 +271,13 @@ export function MetricExplorerPage() {
   return (
     <div className="flex flex-col" style={{ height: 'calc(100vh - 49px)' }}>
       {/* Header bar */}
-      <div className="px-6 py-3 border-b border-slate-700 flex items-center gap-3 shrink-0">
-        <Link to={backHref} className="text-sm text-slate-400 hover:text-slate-200">
+      <div className="px-6 py-3 border-b border-border flex items-center gap-3 shrink-0">
+        <Link to={backHref} className="text-sm text-muted-foreground hover:text-foreground">
           ← Back
         </Link>
-        <h1 className="text-lg font-semibold text-slate-100">Metric Explorer</h1>
+        <h1 className="text-lg font-semibold text-foreground">Metric Explorer</h1>
         {(groupName || assetName) && (
-          <span className="text-sm text-slate-400">— {assetName ?? groupName}</span>
+          <span className="text-sm text-muted-foreground">— {assetName ?? groupName}</span>
         )}
         <div className="ml-auto">
           <TimeRangePicker />

@@ -119,19 +119,19 @@ export function MetricLabelPanel({
           <div key={groupName}>
             {/* Group header */}
             <div className="flex items-center justify-between mb-1">
-              <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide">
+              <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">
                 {groupName}
               </span>
               <div className="flex gap-1">
                 <button
                   onClick={() => onGroupAll(groupName)}
-                  className="text-[10px] text-slate-500 hover:text-slate-300"
+                  className="text-[10px] text-muted-foreground hover:text-foreground"
                 >
                   All
                 </button>
                 <button
                   onClick={() => onGroupNone(groupName)}
-                  className="text-[10px] text-slate-500 hover:text-slate-300"
+                  className="text-[10px] text-muted-foreground hover:text-foreground"
                 >
                   None
                 </button>
@@ -151,8 +151,8 @@ export function MetricLabelPanel({
                     className={[
                       'flex items-center gap-1 px-1.5 py-0.5 rounded text-xs truncate text-left',
                       isEnabled
-                        ? 'bg-[#1e293b] text-slate-200'
-                        : 'bg-transparent border border-transparent text-slate-500',
+                        ? 'bg-secondary text-foreground'
+                        : 'bg-transparent border border-transparent text-muted-foreground',
                     ].join(' ')}
                     style={
                       isEnabled
@@ -181,11 +181,11 @@ export function MetricLabelPanel({
 
       {/* Pagination footer */}
       {totalPages > 1 && (
-        <div className="flex items-center justify-center gap-2 pt-2 border-t border-slate-700 text-xs text-slate-400">
+        <div className="flex items-center justify-center gap-2 pt-2 border-t border-border text-xs text-muted-foreground">
           <button
             disabled={safePage === 0}
             onClick={() => setPage((p) => p - 1)}
-            className="disabled:opacity-30 hover:text-slate-200"
+            className="disabled:opacity-30 hover:text-foreground"
           >
             ◀
           </button>
@@ -195,7 +195,7 @@ export function MetricLabelPanel({
           <button
             disabled={safePage === totalPages - 1}
             onClick={() => setPage((p) => p + 1)}
-            className="disabled:opacity-30 hover:text-slate-200"
+            className="disabled:opacity-30 hover:text-foreground"
           >
             ▶
           </button>

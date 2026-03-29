@@ -47,14 +47,14 @@ function IndicatorCombobox({
       <button
         type="button"
         onClick={() => setOpen(v => !v)}
-        className="w-full text-left px-2 py-1.5 bg-slate-800 border border-slate-600 rounded text-xs font-mono text-[#7dc540] hover:border-slate-500 truncate"
+        className="w-full text-left px-2 py-1.5 bg-surface-sunken border border-border rounded text-xs font-mono text-pass hover:border-border truncate"
       >
-        {value || <span className="text-slate-500">Select indicator…</span>}
+        {value || <span className="text-muted-foreground">Select indicator…</span>}
       </button>
       {open && (
-        <div className="absolute z-10 mt-1 w-full bg-slate-800 border border-slate-600 rounded shadow-lg max-h-48 overflow-y-auto">
+        <div className="absolute z-10 mt-1 w-full bg-surface-sunken border border-border rounded shadow-lg max-h-48 overflow-y-auto">
           <input
-            className="w-full px-2 py-1.5 bg-slate-900 border-b border-slate-700 text-xs text-slate-200 placeholder-slate-500 focus:outline-none"
+            className="w-full px-2 py-1.5 bg-surface-sunken border-b border-border text-xs text-foreground placeholder:text-muted-foreground focus:outline-none"
             placeholder="Filter…"
             value={search}
             onChange={e => setSearch(e.target.value)}
@@ -64,14 +64,14 @@ function IndicatorCombobox({
             <button
               key={ind}
               type="button"
-              className="w-full text-left px-2 py-1.5 text-xs font-mono text-[#7dc540] hover:bg-slate-700"
+              className="w-full text-left px-2 py-1.5 text-xs font-mono text-pass hover:bg-state-hover-bg"
               onClick={() => { onChange(ind); setOpen(false); setSearch('') }}
             >
               {ind}
             </button>
           ))}
           {filtered.length === 0 && (
-            <p className="px-2 py-1.5 text-xs text-slate-500">No indicators found</p>
+            <p className="px-2 py-1.5 text-xs text-muted-foreground">No indicators found</p>
           )}
         </div>
       )}
@@ -141,18 +141,18 @@ export function SloObjectiveEditor({ slo, onCancel, onSaved }: Props) {
     })
   }
 
-  const inp = 'w-full px-2 py-1.5 bg-slate-800 border border-slate-600 rounded text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500'
+  const inp = 'w-full px-2 py-1.5 bg-surface-sunken border border-border rounded text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary'
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-3">
       {/* Score thresholds */}
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <label className="block text-xs text-slate-500 mb-1">Total Pass %</label>
+          <label className="block text-xs text-muted-foreground mb-1">Total Pass %</label>
           <input {...register('total_score_pass_pct')} type="number" min={0} max={100} className={inp} />
         </div>
         <div>
-          <label className="block text-xs text-slate-500 mb-1">Total Warning %</label>
+          <label className="block text-xs text-muted-foreground mb-1">Total Warning %</label>
           <input {...register('total_score_warning_pct')} type="number" min={0} max={100} className={inp} />
         </div>
       </div>
@@ -160,15 +160,15 @@ export function SloObjectiveEditor({ slo, onCancel, onSaved }: Props) {
       {/* Version compatibility */}
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <label className="block text-[10px] text-slate-500 mb-0.5">Comparable From Version</label>
+          <label className="block text-[10px] text-muted-foreground mb-0.5">Comparable From Version</label>
           <input {...register('comparable_from_version')} type="number" min={1} className={inp} placeholder={`${slo.version}`} />
-          <p className="text-[10px] text-slate-600 mt-0.5">Baselines from older versions are excluded</p>
+          <p className="text-[10px] text-muted-foreground/60 mt-0.5">Baselines from older versions are excluded</p>
         </div>
       </div>
 
-      <div className="overflow-x-auto rounded-lg border border-slate-700">
+      <div className="overflow-hidden rounded-lg border border-border">
         <table className="w-full text-sm">
-          <thead className="text-xs uppercase text-slate-400 bg-slate-800/60 border-b border-slate-700">
+          <thead className="text-xs uppercase text-muted-foreground bg-table-header-bg border-b border-border">
             <tr>
               <th className="text-left px-2 py-2 min-w-[160px]">Indicator</th>
               <th className="text-left px-2 py-2 min-w-[140px]">Display Name</th>
@@ -179,9 +179,9 @@ export function SloObjectiveEditor({ slo, onCancel, onSaved }: Props) {
               <th className="w-8"></th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-800">
+          <tbody className="divide-y divide-border">
             {fields.map((field, i) => (
-              <tr key={field.id} className="hover:bg-slate-800/40">
+              <tr key={field.id} className="hover:bg-state-hover-bg">
                 <td className="px-2 py-1.5">
                   <Controller
                     control={control}
@@ -198,21 +198,21 @@ export function SloObjectiveEditor({ slo, onCancel, onSaved }: Props) {
                 <td className="px-2 py-1.5">
                   <input
                     {...register(`objectives.${i}.display_name`)}
-                    className="w-full px-2 py-1.5 bg-slate-800 border border-slate-600 rounded text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500"
+                    className="w-full px-2 py-1.5 bg-surface-sunken border border-border rounded text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary"
                     placeholder="Human name"
                   />
                 </td>
                 <td className="px-2 py-1.5">
                   <input
                     {...register(`objectives.${i}.pass_criteria`)}
-                    className="w-full px-2 py-1.5 bg-slate-800 border border-slate-600 rounded text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500"
+                    className="w-full px-2 py-1.5 bg-surface-sunken border border-border rounded text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary"
                     placeholder="e.g. <=+10%"
                   />
                 </td>
                 <td className="px-2 py-1.5">
                   <input
                     {...register(`objectives.${i}.warning_criteria`)}
-                    className="w-full px-2 py-1.5 bg-slate-800 border border-slate-600 rounded text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500"
+                    className="w-full px-2 py-1.5 bg-surface-sunken border border-border rounded text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary"
                     placeholder="optional"
                   />
                 </td>
@@ -220,18 +220,18 @@ export function SloObjectiveEditor({ slo, onCancel, onSaved }: Props) {
                   <input
                     {...register(`objectives.${i}.weight`)}
                     type="number"
-                    className="w-full px-2 py-1.5 bg-slate-800 border border-slate-600 rounded text-xs text-slate-200 text-center focus:outline-none focus:border-indigo-500"
+                    className="w-full px-2 py-1.5 bg-surface-sunken border border-border rounded text-xs text-foreground text-center focus:outline-none focus:border-primary"
                   />
                 </td>
                 <td className="px-2 py-1.5 text-center">
                   <input
                     type="checkbox"
                     {...register(`objectives.${i}.key_sli`)}
-                    className="accent-cyan-400"
+                    className="accent-[var(--indicator-key-sli)]"
                   />
                 </td>
                 <td className="px-2 py-1.5 text-center">
-                  <button type="button" onClick={() => remove(i)} className="text-red-400 hover:text-red-300 text-xs">✕</button>
+                  <button type="button" onClick={() => remove(i)} className="text-action-destructive hover:text-action-destructive/80 text-xs">✕</button>
                 </td>
               </tr>
             ))}
@@ -249,34 +249,34 @@ export function SloObjectiveEditor({ slo, onCancel, onSaved }: Props) {
           weight: 1,
           key_sli: false,
         })}
-        className="px-3 py-1.5 text-xs rounded border border-slate-600 text-slate-300 hover:border-slate-400 hover:text-slate-100 transition-colors"
+        className="px-3 py-1.5 text-xs rounded border border-border text-foreground hover:border-border hover:text-foreground transition-colors"
       >
         + Add Objective
       </button>
 
       {validate.data && !validate.data.valid && (
-        <div className="text-xs text-red-400 space-y-0.5">
+        <div className="text-xs text-destructive-form-text space-y-0.5">
           {validate.data.errors.map((e, i) => (
             <p key={i}>{e.field}: {e.message}</p>
           ))}
         </div>
       )}
       {create.isError && (
-        <p className="text-xs text-red-400">Failed to save — please try again.</p>
+        <p className="text-xs text-destructive-form-text">Failed to save — please try again.</p>
       )}
 
       <div className="flex justify-end gap-2">
         <button
           type="button"
           onClick={onCancel}
-          className="px-3 py-1.5 text-xs rounded border border-slate-600 text-slate-400 hover:text-slate-200 transition-colors"
+          className="px-3 py-1.5 text-xs rounded border border-border text-muted-foreground hover:text-foreground transition-colors"
         >
           Cancel
         </button>
         <button
           type="submit"
           disabled={validate.isPending || create.isPending}
-          className="px-3 py-1.5 text-xs font-medium rounded bg-indigo-600 text-white hover:bg-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          className="px-3 py-1.5 text-xs font-medium rounded bg-primary text-primary-foreground hover:bg-primary/80 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
         >
           {validate.isPending ? 'Validating…' : create.isPending ? 'Saving…' : 'Save Changes'}
         </button>

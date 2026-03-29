@@ -14,7 +14,7 @@ export function MetricGroupFilter({ allIndicators, metricGroups, activeFilter, o
       <button
         onClick={() => onFilterChange('all')}
         className={`px-3 py-1.5 rounded text-sm transition-colors ${
-          activeFilter === 'all' ? 'bg-gray-800 text-slate-200' : 'text-slate-400 hover:text-slate-200'
+          activeFilter === 'all' ? 'bg-state-selected-bg text-foreground' : 'text-muted-foreground hover:text-foreground'
         }`}
       >
         All ({allIndicators.length})
@@ -24,7 +24,7 @@ export function MetricGroupFilter({ allIndicators, metricGroups, activeFilter, o
           key={g}
           onClick={() => onFilterChange(g)}
           className={`px-3 py-1.5 rounded text-sm transition-colors ${
-            activeFilter === g ? 'bg-gray-800 text-slate-200' : 'text-slate-400 hover:text-slate-200'
+            activeFilter === g ? 'bg-state-selected-bg text-foreground' : 'text-muted-foreground hover:text-foreground'
           }`}
         >
           {g} ({allIndicators.filter(i => i.tab_group === g).length})

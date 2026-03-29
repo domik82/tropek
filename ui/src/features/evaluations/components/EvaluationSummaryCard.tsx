@@ -30,16 +30,16 @@ export function EvaluationSummaryCard({ evaluation: ev, onAddNote, actions, asse
       }
       metadata={
         <>
-          <div className="flex flex-wrap gap-x-6 gap-y-1 text-sm text-slate-400">
-            <span>Asset: <span className="text-slate-200">{ev.asset_snapshot.display_name ?? assetDisplayName ?? ev.asset_snapshot.name}</span></span>
+          <div className="flex flex-wrap gap-x-6 gap-y-1 text-sm text-muted-foreground">
+            <span>Asset: <span className="text-foreground">{ev.asset_snapshot.display_name ?? assetDisplayName ?? ev.asset_snapshot.name}</span></span>
             {Object.entries(ev.asset_snapshot.tags ?? {}).map(([k, v]) => (
-              <span key={k} className="text-slate-500 text-xs">{k}: {v as string}</span>
+              <span key={k} className="text-muted-foreground text-xs">{k}: {v as string}</span>
             ))}
             <span className="text-xs">
               {ev.period_start.slice(0, 16).replace('T', ' ')} → {ev.period_end.slice(11, 16)}
             </span>
           </div>
-          <div className="mt-1 text-xs text-slate-500">
+          <div className="mt-1 text-xs text-muted-foreground">
             SLO: {sloDisplayName ?? ev.slo_name ?? '—'}{ev.slo_version != null && ` v${ev.slo_version}`}
             {' · '}mode: {ev.ingestion_mode}
             {ev.adapter_used && ` · adapter: ${ev.adapter_used}`}
@@ -47,9 +47,9 @@ export function EvaluationSummaryCard({ evaluation: ev, onAddNote, actions, asse
           </div>
           {ev.invalidated && ev.invalidation_note && (
             <div className="mt-2">
-              <span className="text-xs text-red-300 bg-red-900/30 border border-red-700/40 px-2 py-1 rounded inline-flex flex-wrap items-center gap-x-1.5">
+              <span className="text-xs text-destructive-form-text bg-destructive-form-bg border border-destructive-form-border px-2 py-1 rounded inline-flex flex-wrap items-center gap-x-1.5">
                 <span className="font-medium">Invalidated</span>
-                <span className="text-red-400/80">— {ev.invalidation_note}</span>
+                <span className="text-destructive-form-text/80">— {ev.invalidation_note}</span>
               </span>
             </div>
           )}
@@ -69,13 +69,13 @@ export function EvaluationSummaryCard({ evaluation: ev, onAddNote, actions, asse
           )}
           {ev.original_result && !ev.override_author && (
             <div className="mt-2 flex flex-col gap-1">
-              <span className="text-xs text-purple-300 bg-purple-900/20 border border-purple-700/30 px-2 py-1 rounded inline-flex flex-wrap items-center gap-x-1.5">
+              <span className="text-xs text-entity-sli bg-entity-sli/10 border border-entity-sli/30 px-2 py-1 rounded inline-flex flex-wrap items-center gap-x-1.5">
                 <span className="font-medium">Re-evaluated</span>
-                <span className="text-purple-400">
+                <span className="text-entity-sli">
                   {ev.original_result} → {ev.result}
                 </span>
                 {ev.original_score != null && (
-                  <span className="text-purple-500">
+                  <span className="text-entity-sli/80">
                     ({ev.original_score.toFixed(1)} → {ev.score.toFixed(1)})
                   </span>
                 )}

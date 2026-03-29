@@ -7,10 +7,10 @@ import type { ReEvaluateResponse } from '../../types'
 const ACTION_DEF = {
   label: 'Run Evaluations',
   description: 'Re-score all evaluations from stored data with current SLO thresholds.',
-  accentColor: '#A371F7',
-  accentBorder: 'border-purple-500/25',
-  accentText: 'text-purple-400',
-  confirmClasses: 'bg-purple-600 hover:bg-purple-500',
+  accentColor: 'var(--entity-sli)',
+  accentBorder: 'border-entity-sli/25',
+  accentText: 'text-entity-sli',
+  confirmClasses: 'bg-entity-sli hover:bg-entity-sli/80',
 }
 
 interface Props {
@@ -116,7 +116,7 @@ export function ReEvaluateForm({ assetName, sloName, defaultFromDate, onComplete
           type="checkbox"
           checked={fromBaseline}
           onChange={(e) => setFromBaseline(e.target.checked)}
-          className="rounded border-border accent-purple-500"
+          className="rounded border-border accent-[var(--entity-sli)]"
         />
         Run from last baseline
       </label>
@@ -127,7 +127,7 @@ export function ReEvaluateForm({ assetName, sloName, defaultFromDate, onComplete
             type="datetime-local"
             value={fromDate}
             onChange={(e) => setFromDate(e.target.value)}
-            className="w-full px-3 py-2 bg-background border border-border rounded-md text-sm text-foreground focus:outline-none focus:border-purple-500"
+            className="w-full px-3 py-2 bg-background border border-border rounded-md text-sm text-foreground focus:outline-none focus:border-entity-sli"
           />
         </div>
       )}

@@ -218,7 +218,7 @@ function IndicatorRowView({
                 type="button"
                 aria-label="remove criterion"
                 onClick={() => onRemoveCriterion(ci)}
-                className="text-muted-foreground hover:text-red-400"
+                className="text-muted-foreground hover:text-action-destructive"
               >
                 <Minus className="size-3.5" />
               </button>

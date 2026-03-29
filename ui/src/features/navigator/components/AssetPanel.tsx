@@ -47,7 +47,7 @@ export function AssetPanel({ assetName, initialEvalId }: Props) {
   const explorerButton = (
     <button
       onClick={() => navigate(`/explorer?asset=${encodeURIComponent(assetName)}`)}
-      className="p-1.5 rounded border border-slate-600 text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 transition-colors"
+      className="p-1.5 rounded border border-border text-muted-foreground hover:text-foreground hover:bg-state-hover-bg transition-colors"
       title="Open Metric Explorer"
     >
       <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
@@ -131,16 +131,16 @@ export function AssetPanel({ assetName, initialEvalId }: Props) {
         toolbar={<TimeRangePicker />}
         metadata={hasEvals && ev ? (
           <>
-            <div className="flex flex-wrap gap-x-6 gap-y-1 text-sm text-slate-400">
-              <span>Asset: <span className="text-slate-200">{ev.asset_snapshot.display_name ?? assetDisplayName ?? ev.asset_snapshot.name}</span></span>
+            <div className="flex flex-wrap gap-x-6 gap-y-1 text-sm text-muted-foreground">
+              <span>Asset: <span className="text-foreground">{ev.asset_snapshot.display_name ?? assetDisplayName ?? ev.asset_snapshot.name}</span></span>
               {Object.entries(ev.asset_snapshot.tags ?? {}).map(([k, v]) => (
-                <span key={k} className="text-slate-500 text-xs">{k}: {v as string}</span>
+                <span key={k} className="text-muted-foreground text-xs">{k}: {v as string}</span>
               ))}
               <span className="text-xs">
                 {ev.period_start.slice(0, 16).replace('T', ' ')} → {ev.period_end.slice(11, 16)}
               </span>
             </div>
-            <div className="mt-1 text-xs text-slate-500">
+            <div className="mt-1 text-xs text-muted-foreground">
               SLO: {(ev.slo_name && sloDisplayNames.get(ev.slo_name)) ?? ev.slo_name ?? '—'}{ev.slo_version != null && ` v${ev.slo_version}`}
               {ev.adapter_used && ` · adapter: ${ev.adapter_used}`}
               {ev.asset_snapshot.build_ref && ` · build: ${ev.asset_snapshot.build_ref}`}
@@ -184,9 +184,9 @@ export function AssetPanel({ assetName, initialEvalId }: Props) {
 
       {truncated && <TruncationWarning total={total} />}
 
-      {isLoading && <p className="text-sm text-slate-400">Loading…</p>}
+      {isLoading && <p className="text-sm text-muted-foreground">Loading…</p>}
       {!isLoading && evals.length === 0 && (
-        <p className="text-sm text-slate-400">No evaluations found in this time range.</p>
+        <p className="text-sm text-muted-foreground">No evaluations found in this time range.</p>
       )}
 
       {/* Notes */}

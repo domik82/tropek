@@ -132,7 +132,7 @@ export function AssetTree({
 
   return (
     <div
-      className="flex flex-col h-full bg-card/50 border-r border-border shrink-0"
+      className="flex flex-col h-full bg-sidebar-bg border-r border-border shrink-0"
       style={{ width, fontFamily: "system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" }}
     >
       {/* Header */}
@@ -172,7 +172,7 @@ export function AssetTree({
                   <>
                     <div className="my-1 mx-2 border-t border-border" />
                     <button
-                      className="w-full px-3 py-1.5 text-sm text-left hover:bg-accent transition-colors flex items-center gap-2 text-[#58A6FF]"
+                      className="w-full px-3 py-1.5 text-sm text-left hover:bg-accent transition-colors flex items-center gap-2 text-link"
                       onClick={() => { updateDialog('typesDialogOpen', true); setBulkMenuOpen(false) }}
                     >
                       <Settings className="w-4 h-4" />

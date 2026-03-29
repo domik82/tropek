@@ -1,190 +1,464 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
-/* dark: variant fires when [data-theme="forest"] or [data-theme="current"] ancestor present.
-   Replace the original .dark class-based variant. */
-@custom-variant dark (&:is([data-theme="forest"] *), &:is([data-theme="current"] *));
+/* Radix colour scales — dark variants loaded via .dark-theme class */
+@import "@radix-ui/colors/gray-dark.css";
+@import "@radix-ui/colors/slate-dark.css";
+@import "@radix-ui/colors/green-dark.css";
+@import "@radix-ui/colors/grass-dark.css";
+@import "@radix-ui/colors/red-dark.css";
+@import "@radix-ui/colors/yellow-dark.css";
+@import "@radix-ui/colors/sky-dark.css";
+@import "@radix-ui/colors/amber-dark.css";
+@import "@radix-ui/colors/blue-dark.css";
+@import "@radix-ui/colors/lime-dark.css";
 
-/* ── Base (light/fallback) defaults ──────────────────────────── */
+/* dark: variant fires when [data-theme="dark"] or [data-theme="current"] ancestor present. */
+@custom-variant dark (&:is([data-theme="dark"] *), &:is([data-theme="current"] *));
+
+/* ── Brand constant — never changes with theme ───────────────── */
 :root {
-  --background:          oklch(1 0 0);
-  --foreground:          oklch(0.145 0 0);
-  --card:                oklch(1 0 0);
-  --card-foreground:     oklch(0.145 0 0);
-  --popover:             oklch(1 0 0);
-  --popover-foreground:  oklch(0.145 0 0);
-  --primary:             oklch(0.205 0 0);
-  --primary-foreground:  oklch(0.985 0 0);
-  --secondary:           oklch(0.97 0 0);
-  --secondary-foreground:oklch(0.205 0 0);
-  --muted:               oklch(0.97 0 0);
-  --muted-foreground:    oklch(0.556 0 0);
-  --accent:              oklch(0.97 0 0);
-  --accent-foreground:   oklch(0.205 0 0);
-  --destructive:         oklch(0.577 0.245 27.325);
-  --destructive-foreground: oklch(0.985 0 0);
-  --border:              oklch(0.922 0 0);
-  --input:               oklch(0.922 0 0);
-  --ring:                oklch(0.708 0 0);
-  --radius:              0.5rem;
-  --chart-1:             oklch(0.646 0.222 41.116);
-  --chart-2:             oklch(0.6 0.118 184.704);
-  --chart-3:             oklch(0.398 0.07 227.392);
-  --chart-4:             oklch(0.828 0.189 84.429);
-  --chart-5:             oklch(0.769 0.188 70.08);
-  /* Status colour defaults (corporate/light values) */
-  --status-pass:         oklch(62% 0.194 149.214);
-  --status-warning:      oklch(85% 0.199 91.936);
-  --status-fail:         oklch(70% 0.191 22.216);
-  --status-error:        oklch(50% 0 0);
-  --status-invalidated:  oklch(65% 0 0);
+  --tropek-logo: oklch(68.628% 0.185 148.958);
+  --radius:      0.5rem;
 }
 
-/* ── Current dark theme (shadcn/ui neutral) ───────────────────── */
+/* ═══════════════════════════════════════════════════════════════
+   FUNCTIONAL COLOUR ALIASES
+   Every colour in the UI is assigned by FUNCTION, not by hue.
+   Multiple aliases may resolve to the same value — that's the point.
+   To change "what destructive looks like", edit --action-destructive.
+   To change "what sky-11 looks like everywhere", change the Radix import.
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── Current dark theme ("Alt") ──────────────────────────────── */
+/* Uses Tailwind's slate scale (var(--color-slate-*)) for the blue tint. */
 [data-theme="current"] {
-  --background:          oklch(0.145 0 0);
-  --foreground:          oklch(0.985 0 0);
-  --card:                oklch(0.205 0 0);
-  --card-foreground:     oklch(0.985 0 0);
-  --popover:             oklch(0.205 0 0);
-  --popover-foreground:  oklch(0.985 0 0);
-  --primary:             oklch(0.985 0 0);
-  --primary-foreground:  oklch(0.205 0 0);
-  --secondary:           oklch(0.269 0 0);
-  --secondary-foreground:oklch(0.985 0 0);
-  --muted:               oklch(0.269 0 0);
-  --muted-foreground:    oklch(0.708 0 0);
-  --accent:              oklch(0.269 0 0);
-  --accent-foreground:   oklch(0.985 0 0);
-  --destructive:         oklch(0.396 0.141 25.723);
-  --destructive-foreground: oklch(0.985 0 0);
-  --border:              oklch(1 0 0 / 10%);
-  --input:               oklch(1 0 0 / 15%);
-  --ring:                oklch(0.556 0 0);
-  --chart-1:             oklch(0.488 0.243 264.376);
-  --chart-2:             oklch(0.696 0.17 162.48);
-  --chart-3:             oklch(0.769 0.188 70.08);
-  --chart-4:             oklch(0.627 0.265 303.9);
-  --chart-5:             oklch(0.645 0.246 16.439);
-  --status-pass:         #7dc540;
-  --status-warning:      #e6be00;
-  --status-fail:         #dc172a;
-  --status-error:        #888888;
-  --status-invalidated:  #b0b0b0;
+  /* ── Surface ─────────────────────────────── */
+  --surface-base:            var(--color-slate-950);
+  --surface-raised:          var(--color-slate-900);
+  --surface-overlay:         var(--color-slate-800);
+  --surface-sunken:          var(--color-gray-900);
+  --surface-inset:           var(--color-slate-950);
+  /* ── Border ──────────────────────────────── */
+  --border-default:          var(--color-slate-700);
+  --border-subtle:           var(--color-slate-800);
+  --border-strong:           var(--color-slate-600);
+  --border-input:            var(--color-slate-700);
+  /* ── Text ────────────────────────────────── */
+  --text-primary:            var(--color-slate-200);
+  --text-secondary:          var(--color-slate-400);
+  --text-muted:              var(--color-slate-500);
+  --text-inverse:            var(--color-slate-950);
+  /* ── Actions ─────────────────────────────── */
+  --action-primary:          #58A6FF;
+  --action-primary-bg:       #0D2847;
+  --action-primary-border:   #58A6FF;
+  --action-primary-hover:    #0D2847cc;
+  --action-secondary:        var(--color-slate-200);
+  --action-secondary-bg:     var(--color-slate-800);
+  --action-secondary-border: var(--color-slate-600);
+  --action-destructive:      #F85149;
+  --action-destructive-bg:   #3D1418;
+  --action-destructive-border: #F85149;
+  --action-destructive-confirm: #F85149;
+  /* ── State ───────────────────────────────── */
+  --state-disabled:          var(--color-slate-600);
+  --state-disabled-bg:       var(--color-slate-800);
+  --state-disabled-border:   var(--color-slate-700);
+  --state-focus-ring:        var(--color-slate-500);
+  --state-selected-bg:       var(--color-slate-800);
+  --state-hover-bg:          var(--color-slate-800);
+  /* ── Links ───────────────────────────────── */
+  --link:                    #58A6FF;
+  --link-hover:              #79b8ff;
+  /* ── Status (evaluation results) ─────────── */
+  --status-pass:             #7dc540;
+  --status-pass-bg:          #7dc54033;
+  --status-warning:          #e6be00;
+  --status-warning-bg:       #e6be0033;
+  --status-fail:             #dc172a;
+  --status-fail-bg:          #dc172a33;
+  --status-error:            #888888;
+  --status-invalidated:      #b0b0b0;
+  /* ── Entity identity ─────────────────────── */
+  --entity-slo:              #7dc540;
+  --entity-sli:              #A371F7;
+  --entity-datasource:       #58A6FF;
+  --entity-group:            #8B949E;
+  --entity-asset:            var(--color-slate-200);
+  /* ── Sidebar / Tree ──────────────────────── */
+  --sidebar-bg:              var(--color-slate-900);
+  --sidebar-border:          var(--color-slate-700);
+  --tree-selected-bg:        var(--color-slate-800);
+  --tree-selected-border:    var(--color-slate-200);
+  --tree-hover-bg:           var(--color-slate-800);
+  --tree-node-icon:          var(--color-slate-500);
+  /* ── Table ───────────────────────────────── */
+  --table-header-bg:         var(--color-slate-800);
+  --table-row-bg:            var(--color-gray-900);
+  --table-row-alt:           color-mix(in oklch, var(--color-gray-800) 50%, transparent);
+  --table-row-hover:         var(--color-slate-700);
+  --table-row-selected:      var(--color-gray-600);
+  --table-border:            var(--color-slate-700);
+  /* ── Heatmap ─────────────────────────────── */
+  --heatmap-bg:              var(--color-slate-950);
+  --heatmap-cell-empty:      var(--color-slate-800);
+  --heatmap-cell-border:     var(--color-slate-950);
+  --heatmap-text:            var(--color-slate-400);
+  --heatmap-selection-ring:  #ffffff;
+  /* ── Chart ───────────────────────────────── */
+  --chart-bg:                var(--color-slate-900);
+  --chart-border:            var(--color-slate-700);
+  --chart-grid:              var(--color-slate-800);
+  --chart-axis-text:         var(--color-slate-400);
+  --chart-series-line:       var(--color-slate-700);
+  /* ── Labels / Chips ──────────────────────── */
+  --label-key:               #58A6FF;
+  --label-pill-bg:           var(--color-slate-800);
+  --label-pill-border:       var(--color-slate-700);
+  --chip-tag-key:            #58A6FF;
+  --chip-tag-value:          var(--color-slate-200);
+  --chip-tag-bg:             #0D2847;
+  --chip-tag-border:         #1f4a7a;
+  --chip-var-key:            #FFA657;
+  --chip-var-value:          var(--color-slate-200);
+  --chip-var-bg:             #3D2A08;
+  --chip-var-border:         #714f19;
+  --chip-filter-bg:          color-mix(in oklch, var(--color-gray-800) 60%, transparent);
+  --chip-filter-border:      var(--color-slate-700);
+  --chip-filter-text:        var(--color-slate-500);
+  --chip-filter-text-hover:  var(--color-slate-300);
+  /* ── Forms ───────────────────────────────── */
+  --input-bg:                var(--color-slate-800);
+  --input-border:            var(--color-slate-700);
+  --input-focus:             var(--color-slate-500);
+  --input-error:             #dc172a;
+  --input-placeholder:       var(--color-slate-600);
+  /* ── Indicators ──────────────────────────── */
+  --indicator-note:          #F59E0B;
+  --indicator-key-sli:       #22d3ee;
+  --indicator-default:       #2DD4A0;
+  /* ── Destructive form ────────────────────── */
+  --destructive-form-bg:     #dc172a1a;
+  --destructive-form-border: #dc172a66;
+  --destructive-form-stripe: #dc172a;
+  --destructive-form-text:   #F87171;
+  /* ── Legacy shadcn mapping ───────────────── */
+  --primary:                 var(--color-slate-200);
+  --primary-foreground:      var(--color-slate-900);
+  --destructive:             oklch(0.396 0.141 25.723);
+  --destructive-foreground:  var(--color-slate-200);
+  --ring:                    var(--color-slate-500);
+  /* Chart series (ECharts JS) */
+  --chart-1: oklch(0.488 0.243 264.376);
+  --chart-2: oklch(0.696 0.17 162.48);
+  --chart-3: oklch(0.769 0.188 70.08);
+  --chart-4: oklch(0.627 0.265 303.9);
+  --chart-5: oklch(0.645 0.246 16.439);
 }
 
-/* ── Forest dark theme ────────────────────────────────────────── */
-/* Palette derived from Penpot design: navy-blue tinted darks, not neutral blacks.
-   Key source colors: sidebar #111827, cards #141822, border #374151. */
-[data-theme="forest"] {
-  --background:          oklch(0.145 0 0);
-  --foreground:          oklch(0.985 0 0);
-  --card:                #141822;
-  --card-foreground:     oklch(0.985 0 0);
-  --popover:             #141822;
-  --popover-foreground:  oklch(0.985 0 0);
-  --primary:             oklch(68.628% 0.185 148.958);
-  --primary-foreground:  oklch(0% 0 0);
-  --secondary:           #1e293b;
-  --secondary-foreground:oklch(86.139% 0.007 171.364);
-  --muted:               #1e293b;
-  --muted-foreground:    oklch(70% 0.01 250);
-  --accent:              #1e293b;
-  --accent-foreground:   oklch(86.139% 0.007 171.364);
-  --destructive:         oklch(71.76% 0.221 22.18);
-  --destructive-foreground: oklch(0% 0 0);
-  --border:              #374151;
-  --input:               #1e293b;
-  --ring:                oklch(68.628% 0.185 148.958 / 50%);
-  --chart-1:             oklch(68.628% 0.185 148.958);
-  --chart-2:             oklch(69.776% 0.135 168.327);
-  --chart-3:             oklch(70.628% 0.119 185.713);
-  --chart-4:             oklch(84.71% 0.199 83.87);
-  --chart-5:             oklch(72.06% 0.191 231.6);
-  --status-pass:         oklch(64.8% 0.15 160);
-  --status-warning:      oklch(84.71% 0.199 83.87);
-  --status-fail:         oklch(71.76% 0.221 22.18);
-  --status-error:        oklch(50% 0 0);
-  --status-invalidated:  oklch(65% 0 0);
+/* ── Dark theme — built on Radix colour scales ───────────────── */
+[data-theme="dark"] {
+  /* ── Surface ─────────────────────────────── */
+  --surface-base:            var(--gray-1);
+  --surface-raised:          var(--blue-2);
+  --surface-overlay:         var(--blue-2);
+  --surface-sunken:          var(--blue-2);
+  --surface-inset:           var(--blue-2);
+  /* ── Border ──────────────────────────────── */
+  --border-default:          var(--slate-6);
+  --border-subtle:           var(--slate-4);
+  --border-strong:           var(--slate-7);
+  --border-input:            var(--slate-5);
+  /* ── Text ────────────────────────────────── */
+  --text-primary:            var(--slate-12);
+  --text-secondary:          var(--slate-11);
+  --text-muted:              var(--slate-9);
+  --text-inverse:            var(--slate-1);
+  /* ── Actions ─────────────────────────────── */
+  --action-primary:          var(--sky-9);
+  --action-primary-bg:       var(--sky-3);
+  --action-primary-border:   var(--sky-7);
+  --action-primary-hover:    var(--sky-4);
+  --action-secondary:        var(--slate-12);
+  --action-secondary-bg:     var(--slate-3);
+  --action-secondary-border: var(--slate-7);
+  --action-destructive:      var(--red-11);
+  --action-destructive-bg:   var(--red-3);
+  --action-destructive-border: var(--red-7);
+  --action-destructive-confirm: var(--red-9);
+  /* ── State ───────────────────────────────── */
+  --state-disabled:          var(--slate-8);
+  --state-disabled-bg:       var(--slate-3);
+  --state-disabled-border:   var(--slate-5);
+  --state-focus-ring:        var(--sky-8);
+  --state-selected-bg:       var(--slate-4);
+  --state-hover-bg:          var(--slate-3);
+  /* ── Links ───────────────────────────────── */
+  --link:                    var(--sky-11);
+  --link-hover:              var(--sky-12);
+  /* ── Status (evaluation results) ─────────── */
+  --status-pass:             var(--grass-9);
+  --status-pass-bg:          var(--grass-3);
+  --status-warning:          var(--yellow-9);
+  --status-warning-bg:       var(--yellow-3);
+  --status-fail:             var(--red-9);
+  --status-fail-bg:          var(--red-3);
+  --status-error:            var(--slate-9);
+  --status-invalidated:      var(--slate-10);
+  /* ── Entity identity ─────────────────────── */
+  --entity-slo:              var(--grass-11);
+  --entity-sli:              #AB4ABA;
+  --entity-datasource:       var(--sky-11);
+  --entity-group:            var(--slate-10);
+  --entity-asset:            var(--slate-12);
+  /* ── Sidebar / Tree ──────────────────────── */
+  --sidebar-bg:              var(--blue-2);
+  --sidebar-border:          var(--slate-6);
+  --tree-selected-bg:        var(--slate-4);
+  --tree-selected-border:    var(--green-9);
+  --tree-hover-bg:           var(--slate-3);
+  --tree-node-icon:          var(--slate-9);
+  /* ── Table ───────────────────────────────── */
+  --table-header-bg:         var(--blue-4);
+  --table-row-bg:            var(--blue-2);
+  --table-row-alt:           color-mix(in oklch, var(--blue-3) 50%, transparent);
+  --table-row-hover:         var(--slate-4);
+  --table-row-selected:      var(--slate-5);
+  --table-border:            var(--slate-4);
+  /* ── Heatmap ─────────────────────────────── */
+  --heatmap-bg:              var(--blue-2);
+  --heatmap-cell-empty:      var(--slate-3);
+  --heatmap-cell-border:     var(--blue-2);
+  --heatmap-text:            var(--slate-11);
+  --heatmap-selection-ring:  #ffffff;
+  /* ── Chart ───────────────────────────────── */
+  --chart-bg:                var(--blue-2);
+  --chart-border:            var(--slate-6);
+  --chart-grid:              var(--blue-3);
+  --chart-axis-text:         var(--slate-11);
+  --chart-series-line:       var(--slate-6);
+  /* ── Labels / Chips ──────────────────────── */
+  --label-key:               var(--sky-11);
+  --label-pill-bg:           var(--slate-2);
+  --label-pill-border:       var(--slate-6);
+  --chip-tag-key:            var(--sky-11);
+  --chip-tag-value:          var(--sky-12);
+  --chip-tag-bg:             color-mix(in oklch, var(--sky-5) 60%, var(--sky-7));
+  --chip-tag-border:         var(--sky-7);
+  --chip-var-key:            var(--amber-11);
+  --chip-var-value:          var(--amber-12);
+  --chip-var-bg:             color-mix(in oklch, var(--amber-5) 60%, var(--amber-7));
+  --chip-var-border:         var(--amber-7);
+  --chip-filter-bg:          color-mix(in oklch, var(--slate-5) 60%, transparent);
+  --chip-filter-border:      var(--slate-6);
+  --chip-filter-text:        var(--slate-9);
+  --chip-filter-text-hover:  var(--slate-11);
+  /* ── Forms ───────────────────────────────── */
+  --input-bg:                var(--slate-3);
+  --input-border:            var(--slate-5);
+  --input-focus:             var(--sky-8);
+  --input-error:             var(--red-9);
+  --input-placeholder:       var(--slate-8);
+  /* ── Indicators ──────────────────────────── */
+  --indicator-note:          var(--amber-9);
+  --indicator-key-sli:       var(--sky-9);
+  --indicator-default:       var(--green-11);
+  /* ── Destructive form ────────────────────── */
+  --destructive-form-bg:     var(--red-2);
+  --destructive-form-border: var(--red-6);
+  --destructive-form-stripe: var(--red-9);
+  --destructive-form-text:   var(--red-11);
+  /* ── Legacy shadcn mapping ───────────────── */
+  --primary:                 var(--sky-9);
+  --primary-foreground:      var(--slate-1);
+  --destructive:             var(--red-9);
+  --destructive-foreground:  var(--slate-1);
+  --ring:                    var(--sky-8);
+  /* Chart series (ECharts JS) */
+  --chart-1: var(--green-9);
+  --chart-2: var(--sky-9);
+  --chart-3: var(--amber-9);
+  --chart-4: var(--red-9);
+  --chart-5: var(--yellow-9);
 }
 
-/* ── Corporate light theme (stub — not yet activated in navbar) ── */
-[data-theme="corporate"] {
-  --background:          oklch(100% 0 0);
-  --foreground:          oklch(22.389% 0.031 278.072);
-  --card:                oklch(93% 0 0);
-  --card-foreground:     oklch(22.389% 0.031 278.072);
-  --popover:             oklch(93% 0 0);
-  --popover-foreground:  oklch(22.389% 0.031 278.072);
-  --primary:             oklch(58% 0.158 241.966);
-  --primary-foreground:  oklch(100% 0 0);
-  --secondary:           oklch(86% 0 0);
-  --secondary-foreground:oklch(22.389% 0.031 278.072);
-  --muted:               oklch(86% 0 0);
-  --muted-foreground:    oklch(22.389% 0.031 278.072);
-  --accent:              oklch(86% 0 0);
-  --accent-foreground:   oklch(22.389% 0.031 278.072);
-  --destructive:         oklch(70% 0.191 22.216);
-  --destructive-foreground: oklch(100% 0 0);
-  --border:              oklch(86% 0 0);
-  --input:               oklch(86% 0 0);
-  --ring:                oklch(58% 0.158 241.966 / 50%);
-  --status-pass:         oklch(62% 0.194 149.214);
-  --status-warning:      oklch(85% 0.199 91.936);
-  --status-fail:         oklch(70% 0.191 22.216);
-  --status-error:        oklch(50% 0 0);
-  --status-invalidated:  oklch(65% 0 0);
+/* ── Light theme (stub — Radix light reversal, TODO) ─────────── */
+[data-theme="light"] {
+  /* Will be filled with Radix light scales once designed */
 }
 
 /* ── Tailwind token registration ─────────────────────────────── */
 @theme inline {
-  --color-background:          var(--background);
-  --color-foreground:          var(--foreground);
-  --color-card:                var(--card);
-  --color-card-foreground:     var(--card-foreground);
-  --color-popover:             var(--popover);
-  --color-popover-foreground:  var(--popover-foreground);
-  --color-primary:             var(--primary);
-  --color-primary-foreground:  var(--primary-foreground);
-  --color-secondary:           var(--secondary);
-  --color-secondary-foreground:var(--secondary-foreground);
-  --color-muted:               var(--muted);
-  --color-muted-foreground:    var(--muted-foreground);
-  --color-accent:              var(--accent);
-  --color-accent-foreground:   var(--accent-foreground);
-  --color-destructive:         var(--destructive);
+  --radius-sm:                    calc(var(--radius) - 4px);
+  --radius-md:                    calc(var(--radius) - 2px);
+  --radius-lg:                    var(--radius);
+  --radius-xl:                    calc(var(--radius) + 4px);
+
+  /* Surface */
+  --color-background:             var(--surface-base);
+  --color-foreground:             var(--text-primary);
+  --color-card:                   var(--surface-raised);
+  --color-card-foreground:        var(--text-primary);
+  --color-popover:                var(--surface-overlay);
+  --color-popover-foreground:     var(--text-primary);
+  --color-secondary:              var(--state-hover-bg);
+  --color-secondary-foreground:   var(--text-secondary);
+  --color-muted:                  var(--state-hover-bg);
+  --color-muted-foreground:       var(--text-secondary);
+  --color-accent:                 var(--state-hover-bg);
+  --color-accent-foreground:      var(--text-secondary);
+
+  /* Primary / destructive (shadcn button compat) */
+  --color-primary:                var(--primary);
+  --color-primary-foreground:     var(--primary-foreground);
+  --color-destructive:            var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
-  --color-border:              var(--border);
-  --color-input:               var(--input);
-  --color-ring:                var(--ring);
-  --color-chart-1:             var(--chart-1);
-  --color-chart-2:             var(--chart-2);
-  --color-chart-3:             var(--chart-3);
-  --color-chart-4:             var(--chart-4);
-  --color-chart-5:             var(--chart-5);
-  --radius-sm:                 calc(var(--radius) - 4px);
-  --radius-md:                 calc(var(--radius) - 2px);
-  --radius-lg:                 var(--radius);
-  --radius-xl:                 calc(var(--radius) + 4px);
-  /* Status colour utilities: text-pass, bg-pass, bg-pass/20, border-pass, etc.
-     Values are CSS vars so they auto-update when data-theme changes. */
-  --color-pass:                var(--status-pass);
-  --color-warning:             var(--status-warning);
-  --color-fail:                var(--status-fail);
-  --color-status-error:        var(--status-error);
-  --color-invalidated:         var(--status-invalidated);
-  /* info colour — static, not status-specific */
-  --color-info:                oklch(0.556 0 0);
+
+  /* Border & input */
+  --color-border:                 var(--border-default);
+  --color-input:                  var(--input-border);
+  --color-ring:                   var(--ring);
+
+  /* Chart series */
+  --color-chart-1:                var(--chart-1);
+  --color-chart-2:                var(--chart-2);
+  --color-chart-3:                var(--chart-3);
+  --color-chart-4:                var(--chart-4);
+  --color-chart-5:                var(--chart-5);
+
+  /* Status (evaluation results) */
+  --color-pass:                   var(--status-pass);
+  --color-warning:                var(--status-warning);
+  --color-fail:                   var(--status-fail);
+  --color-status-error:           var(--status-error);
+  --color-invalidated:            var(--status-invalidated);
+
+  /* Actions */
+  --color-action-primary:         var(--action-primary);
+  --color-action-primary-bg:      var(--action-primary-bg);
+  --color-action-primary-border:  var(--action-primary-border);
+  --color-action-primary-hover:   var(--action-primary-hover);
+  --color-action-secondary:       var(--action-secondary);
+  --color-action-secondary-bg:    var(--action-secondary-bg);
+  --color-action-secondary-border:var(--action-secondary-border);
+  --color-action-destructive:     var(--action-destructive);
+  --color-action-destructive-bg:  var(--action-destructive-bg);
+  --color-action-destructive-border: var(--action-destructive-border);
+  --color-action-destructive-confirm: var(--action-destructive-confirm);
+
+  /* State */
+  --color-state-disabled:         var(--state-disabled);
+  --color-state-disabled-bg:      var(--state-disabled-bg);
+  --color-state-disabled-border:  var(--state-disabled-border);
+  --color-state-focus-ring:       var(--state-focus-ring);
+  --color-state-selected-bg:      var(--state-selected-bg);
+  --color-state-hover-bg:         var(--state-hover-bg);
+
+  /* Links */
+  --color-link:                   var(--link);
+  --color-link-hover:             var(--link-hover);
+
+  /* Entity identity */
+  --color-entity-slo:             var(--entity-slo);
+  --color-entity-sli:             var(--entity-sli);
+  --color-entity-datasource:      var(--entity-datasource);
+  --color-entity-group:           var(--entity-group);
+  --color-entity-asset:           var(--entity-asset);
+
+  /* Sidebar / Tree */
+  --color-sidebar-bg:             var(--sidebar-bg);
+  --color-sidebar-border:         var(--sidebar-border);
+  --color-tree-selected-bg:       var(--tree-selected-bg);
+  --color-tree-selected-border:   var(--tree-selected-border);
+  --color-tree-hover-bg:          var(--tree-hover-bg);
+  --color-tree-node-icon:         var(--tree-node-icon);
+
+  /* Table */
+  --color-table-header-bg:        var(--table-header-bg);
+  --color-table-row-bg:           var(--table-row-bg);
+  --color-table-row-alt:          var(--table-row-alt);
+  --color-table-row-hover:        var(--table-row-hover);
+  --color-table-row-selected:     var(--table-row-selected);
+  --color-table-border:           var(--table-border);
+
+  /* Heatmap */
+  --color-heatmap-bg:             var(--heatmap-bg);
+  --color-heatmap-cell-empty:     var(--heatmap-cell-empty);
+  --color-heatmap-cell-border:    var(--heatmap-cell-border);
+  --color-heatmap-text:           var(--heatmap-text);
+  --color-heatmap-selection-ring: var(--heatmap-selection-ring);
+
+  /* Chart chrome */
+  --color-chart-bg:               var(--chart-bg);
+  --color-chart-border:           var(--chart-border);
+  --color-chart-grid:             var(--chart-grid);
+  --color-chart-axis-text:        var(--chart-axis-text);
+  --color-chart-series-line:      var(--chart-series-line);
+
+  /* Labels / Chips */
+  --color-label-key:              var(--label-key);
+  --color-label-pill-bg:          var(--label-pill-bg);
+  --color-label-pill-border:      var(--label-pill-border);
+  --color-chip-tag-key:           var(--chip-tag-key);
+  --color-chip-tag-value:         var(--chip-tag-value);
+  --color-chip-tag-bg:            var(--chip-tag-bg);
+  --color-chip-tag-border:        var(--chip-tag-border);
+  --color-chip-var-key:           var(--chip-var-key);
+  --color-chip-var-value:         var(--chip-var-value);
+  --color-chip-var-bg:            var(--chip-var-bg);
+  --color-chip-var-border:        var(--chip-var-border);
+  --color-chip-filter-bg:         var(--chip-filter-bg);
+  --color-chip-filter-border:     var(--chip-filter-border);
+  --color-chip-filter-text:       var(--chip-filter-text);
+  --color-chip-filter-text-hover: var(--chip-filter-text-hover);
+
+  /* Forms */
+  --color-input-bg:               var(--input-bg);
+  --color-input-focus:            var(--input-focus);
+  --color-input-error:            var(--input-error);
+  --color-input-placeholder:      var(--input-placeholder);
+
+  /* Indicators */
+  --color-indicator-note:         var(--indicator-note);
+  --color-indicator-key-sli:      var(--indicator-key-sli);
+  --color-indicator-default:      var(--indicator-default);
+
+  /* Destructive form */
+  --color-destructive-form-bg:    var(--destructive-form-bg);
+  --color-destructive-form-border:var(--destructive-form-border);
+  --color-destructive-form-stripe:var(--destructive-form-stripe);
+  --color-destructive-form-text:  var(--destructive-form-text);
+
+  /* Text hierarchy */
+  --color-text-primary:           var(--text-primary);
+  --color-text-secondary:         var(--text-secondary);
+  --color-text-muted:             var(--text-muted);
+  --color-text-inverse:           var(--text-inverse);
+
+  /* Surface */
+  --color-surface-base:           var(--surface-base);
+  --color-surface-raised:         var(--surface-raised);
+  --color-surface-overlay:        var(--surface-overlay);
+  --color-surface-sunken:         var(--surface-sunken);
+  --color-surface-inset:          var(--surface-inset);
+
+  /* Border */
+  --color-border-subtle:          var(--border-subtle);
+  --color-border-strong:          var(--border-strong);
+  --color-border-input:           var(--border-input);
+
+  /* Info — static */
+  --color-info:                   var(--text-muted);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
+  background: var(--surface-base);
+  color: var(--text-primary);
   font-family: ui-monospace, 'Cascadia Code', 'Source Code Pro', Menlo, Consolas, 'DejaVu Sans Mono', monospace;
 }
 
-/* Native <select> dropdown options use OS rendering and ignore dark-mode CSS.
-   Force dark text so options are readable on the browser's default light background. */
+/* Native <select> dropdown options use OS rendering and ignore dark-mode CSS. */
 option {
   color: #1a1a1a;
   background: #f5f5f5;
@@ -207,21 +481,21 @@ option {
 .tropek-calendar .rdp-month_caption {
   font-size: 0.8rem;
   font-weight: 600;
-  color: var(--foreground);
+  color: var(--text-primary);
   justify-content: flex-start;
 }
 .tropek-calendar .rdp-weekday {
-  color: var(--muted-foreground);
+  color: var(--text-secondary);
   font-size: 0.65rem;
   font-weight: 500;
 }
 .tropek-calendar .rdp-day_button {
-  color: var(--foreground);
+  color: var(--text-primary);
   border-radius: 0.25rem;
   font-size: 0.75rem;
 }
 .tropek-calendar .rdp-day_button:hover {
-  background: var(--muted);
+  background: var(--state-hover-bg);
 }
 .tropek-calendar .rdp-today .rdp-day_button {
   font-weight: 700;
@@ -236,12 +510,12 @@ option {
   background: color-mix(in oklch, var(--primary) 85%, black);
 }
 .tropek-calendar .rdp-outside .rdp-day_button {
-  color: var(--muted-foreground);
+  color: var(--text-muted);
   opacity: 0.4;
 }
 .tropek-calendar .rdp-button_previous,
 .tropek-calendar .rdp-button_next {
-  color: var(--muted-foreground);
+  color: var(--text-secondary);
   border-radius: 0.25rem;
   width: 1.75rem;
   height: 1.75rem;
@@ -251,6 +525,6 @@ option {
 }
 .tropek-calendar .rdp-button_previous:hover,
 .tropek-calendar .rdp-button_next:hover {
-  background: var(--muted);
-  color: var(--foreground);
+  background: var(--state-hover-bg);
+  color: var(--text-primary);
 }

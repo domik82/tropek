@@ -7,9 +7,9 @@ const ACTION_DEF = {
   label: 'Invalidate',
   description: 'Discard this evaluation — it will not be used for scoring or baselines.',
   accentColor: '#8B949E',
-  accentBorder: 'border-slate-500/25',
-  accentText: 'text-slate-400',
-  confirmClasses: 'bg-slate-500 hover:bg-slate-400',
+  accentBorder: 'border-action-secondary-border/25',
+  accentText: 'text-muted-foreground',
+  confirmClasses: 'bg-action-secondary-bg hover:bg-action-secondary-bg/80',
 }
 
 interface Props {

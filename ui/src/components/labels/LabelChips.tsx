@@ -19,7 +19,7 @@ export function LabelChips({ labels, maxVisible = 3, size = 'normal', onEdit }: 
         {onEdit && (
           <button
             onClick={onEdit}
-            className="ml-2 px-2 py-0.5 text-xs rounded border border-[#58A6FF] bg-[#0D2847] text-[#58A6FF] hover:bg-[#0D2847]/80"
+            className="ml-2 px-2 py-0.5 text-xs rounded border border-action-primary-border bg-action-primary-bg text-action-primary hover:bg-action-primary-hover"
           >
             + Add Labels
           </button>
@@ -42,7 +42,7 @@ export function LabelChips({ labels, maxVisible = 3, size = 'normal', onEdit }: 
           key={key}
           className={`inline-flex items-center gap-0.5 bg-card border border-border rounded font-mono ${chipClass}`}
         >
-          <span className="text-[#58A6FF]">{key}</span>
+          <span className="text-label-key">{key}</span>
           <span className="text-muted-foreground">=</span>
           <span className="text-foreground">{value}</span>
         </span>
@@ -51,7 +51,7 @@ export function LabelChips({ labels, maxVisible = 3, size = 'normal', onEdit }: 
       {!expanded && remaining > 0 && (
         <button
           onClick={() => setExpanded(true)}
-          className={`inline-flex items-center rounded-full border border-[#58A6FF] bg-[#0D2847] text-[#58A6FF] cursor-pointer hover:bg-[#0D2847]/80 ${chipClass}`}
+          className={`inline-flex items-center rounded-full border border-action-primary-border bg-action-primary-bg text-action-primary cursor-pointer hover:bg-action-primary-hover ${chipClass}`}
         >
           +{remaining} more
         </button>
@@ -60,7 +60,7 @@ export function LabelChips({ labels, maxVisible = 3, size = 'normal', onEdit }: 
       {expanded && entries.length > maxVisible && (
         <button
           onClick={() => setExpanded(false)}
-          className="text-[#58A6FF] text-xs cursor-pointer hover:underline"
+          className="text-link text-xs cursor-pointer hover:underline"
         >
           show less
         </button>
@@ -69,7 +69,7 @@ export function LabelChips({ labels, maxVisible = 3, size = 'normal', onEdit }: 
       {onEdit && (
         <button
           onClick={onEdit}
-          className={`inline-flex items-center rounded border border-[#58A6FF] bg-[#0D2847] text-[#58A6FF] cursor-pointer hover:bg-[#0D2847]/80 ${chipClass}`}
+          className={`inline-flex items-center rounded border border-action-primary-border bg-action-primary-bg text-action-primary cursor-pointer hover:bg-action-primary-hover ${chipClass}`}
         >
           Edit Labels
         </button>

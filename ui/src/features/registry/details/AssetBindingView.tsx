@@ -67,7 +67,7 @@ export function AssetBindingView({
           <div className="flex gap-2">
             <button
               onClick={onLinkSlo}
-              className="px-3 py-1.5 text-xs rounded bg-[#0D2847] border border-[#58A6FF] text-[#58A6FF] hover:bg-[#0D2847]/80 transition-colors flex items-center gap-1.5"
+              className="px-3 py-1.5 text-xs rounded bg-action-primary-bg border border-action-primary-border text-action-primary hover:bg-action-primary-hover transition-colors flex items-center gap-1.5"
             >
               <Link className="w-3.5 h-3.5" />
               Link SLO
@@ -77,10 +77,10 @@ export function AssetBindingView({
 
         {/* Variables row — monospace like GroupDetailPanel metadata */}
         {varCount > 0 && (
-          <div className="mt-3 flex flex-wrap gap-x-6 gap-y-1 text-sm text-slate-400">
+          <div className="mt-3 flex flex-wrap gap-x-6 gap-y-1 text-sm text-muted-foreground">
             {Object.entries(asset!.variables).map(([k, v]) => (
               <span key={k} className="font-mono">
-                <span className="text-[#FFA657]">{`$${k}`}</span>{` = ${v}`}
+                <span className="text-chip-var-key">{`$${k}`}</span>{` = ${v}`}
               </span>
             ))}
           </div>
@@ -148,9 +148,9 @@ function BindingCard({
   const reserved: Record<string, string> = {}
 
   return (
-    <div className="border border-slate-700 rounded-lg overflow-hidden">
+    <div className="border border-border rounded-lg overflow-hidden">
       {/* Binding header — dark bg like table headers */}
-      <div className="flex items-center justify-between gap-2 px-3 py-2.5 bg-[#111827] border-b border-slate-700">
+      <div className="flex items-center justify-between gap-2 px-3 py-2.5 bg-table-header-bg border-b border-border">
         <BindingChainBreadcrumb
           sloName={link.slo_name}
           sloVersion={slo ? String(slo.version) : undefined}
@@ -170,7 +170,7 @@ function BindingCard({
           </button>
           <button
             onClick={() => deleteMutation.mutate({ groupName, sloName: link.slo_name })}
-            className="px-3 py-1.5 text-xs rounded bg-[#3D1418] border border-[#F85149] text-[#F85149] hover:bg-[#3D1418]/80 transition-colors flex items-center gap-1.5"
+            className="px-3 py-1.5 text-xs rounded bg-action-destructive-bg border border-action-destructive-border text-action-destructive hover:bg-action-destructive-bg transition-colors flex items-center gap-1.5"
           >
             <Unlink className="w-3.5 h-3.5" />
             Unlink

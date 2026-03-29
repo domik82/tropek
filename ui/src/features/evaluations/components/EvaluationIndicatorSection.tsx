@@ -37,7 +37,7 @@ export function EvaluationIndicatorSection({ evaluation: ev, onMetricClick, asse
       {/* SLI breakdown - tab bar + table */}
       <div ref={sliTableRef} id="sli-table" className="space-y-0 scroll-mt-4">
         <div className="flex items-center justify-between mb-2">
-          <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wide">SLI Breakdown</h2>
+          <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">SLI Breakdown</h2>
         </div>
 
         <EvaluationTabs
@@ -63,10 +63,10 @@ export function EvaluationIndicatorSection({ evaluation: ev, onMetricClick, asse
 
       {/* Trend charts */}
       <div className="space-y-4">
-        <p className="text-xs text-slate-500">
+        <p className="text-xs text-muted-foreground">
           30-day trend for{' '}
-          <strong className="text-slate-300">{activeTab === 'all' ? 'All' : tabLabel(activeTab)}</strong>{' '}
-          metrics on <strong className="text-slate-300">{ev.asset_snapshot.display_name ?? assetDisplayName ?? ev.asset_snapshot.name}</strong>.
+          <strong className="text-foreground">{activeTab === 'all' ? 'All' : tabLabel(activeTab)}</strong>{' '}
+          metrics on <strong className="text-foreground">{ev.asset_snapshot.display_name ?? assetDisplayName ?? ev.asset_snapshot.name}</strong>.
           Dot colour reflects each metric's own pass/warn/fail result.
         </p>
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">

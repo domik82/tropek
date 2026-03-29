@@ -16,7 +16,7 @@ interface Props {
 export function EvaluationTabs({ availableGroups, allCount, counts, activeTab, onTabChange }: Props) {
   const tabs = ['all', ...availableGroups]
   return (
-    <div className="flex items-center gap-0 border-b border-slate-700">
+    <div className="flex items-center gap-0 border-b border-border mx-3">
       {tabs.map(tab => (
         <button
           key={tab}
@@ -24,7 +24,7 @@ export function EvaluationTabs({ availableGroups, allCount, counts, activeTab, o
           className={`px-4 py-2.5 text-sm font-medium transition-colors border-b-2 -mb-px ${
             activeTab === tab
               ? 'border-pass text-pass'
-              : 'border-transparent text-slate-400 hover:text-slate-200'
+              : 'border-transparent text-muted-foreground hover:text-foreground'
           }`}
         >
           {tabLabel(tab)}

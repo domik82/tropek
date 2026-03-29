@@ -224,11 +224,11 @@ describe('GroupDetailPanel', () => {
     )
     // The row containing 'Cart Service' should have highlight styling
     const row = screen.getByText('Cart Service').closest('tr')!
-    expect(row.className).toContain('bg-gray-700/60')
+    expect(row.className).toContain('bg-table-row-selected')
 
     // The other row should NOT be highlighted
     const otherRow = screen.getByText('checkout-api').closest('tr')!
-    expect(otherRow.className).not.toContain('bg-gray-700/60')
+    expect(otherRow.className).not.toContain('bg-table-row-selected')
   })
 
   it('does not highlight any row when selectedAsset is null', () => {
@@ -237,7 +237,7 @@ describe('GroupDetailPanel', () => {
       { wrapper: TestWrapper }
     )
     const row = screen.getByText('Cart Service').closest('tr')!
-    expect(row.className).not.toContain('bg-gray-700/60')
+    expect(row.className).not.toContain('bg-table-row-selected')
   })
 
   it("shows 'Loading…' when group data not yet available", () => {

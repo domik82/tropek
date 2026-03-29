@@ -37,18 +37,18 @@ export function EvaluationDetailPage() {
     return slos?.find(s => s.name === ev.slo_name)?.display_name ?? undefined
   }, [slos, ev])
 
-  if (isLoading) return <div className="p-6 text-slate-400">Loading…</div>
-  if (!ev) return <div className="p-6 text-red-400">Evaluation not found.</div>
+  if (isLoading) return <div className="p-6 text-muted-foreground">Loading…</div>
+  if (!ev) return <div className="p-6 text-destructive-form-text">Evaluation not found.</div>
 
   return (
     <div className="p-6 space-y-6">
       {/* Breadcrumb */}
-      <div className="text-sm text-slate-400 flex items-center gap-2">
-        <Link to={backHref} className="hover:text-indigo-400 flex items-center gap-1">
-          ← Navigator{backGroup && <span className="text-slate-600"> ({backGroup})</span>}{backAsset && <span className="text-slate-600"> ({backAsset})</span>}
+      <div className="text-sm text-muted-foreground flex items-center gap-2">
+        <Link to={backHref} className="hover:text-link-hover flex items-center gap-1">
+          ← Navigator{backGroup && <span className="text-muted-foreground/60"> ({backGroup})</span>}{backAsset && <span className="text-muted-foreground/60"> ({backAsset})</span>}
         </Link>
         <span>/</span>
-        <span className="text-slate-200">{ev.evaluation_name}</span>
+        <span className="text-foreground">{ev.evaluation_name}</span>
       </div>
 
       <EvaluationSummaryCard

@@ -210,7 +210,7 @@ export function HeatmapChart({
                   width: s,
                   height: s,
                 },
-                style: { fill: '#F59E0B' },  // amber-500
+                style: { fill: 'var(--indicator-note)' },
               })
             }
 
@@ -234,7 +234,7 @@ export function HeatmapChart({
       {/* Instruction text above the chart */}
       {instructionText && (
         <div className="mb-1 px-1">
-          <span className="text-xs text-gray-400">{instructionText}</span>
+          <span className="text-xs text-muted-foreground">{instructionText}</span>
         </div>
       )}
       {aboveChart}
@@ -249,7 +249,7 @@ export function HeatmapChart({
         }}
       />
       {/* Colour legend below the chart */}
-      <div className="flex items-center justify-end gap-3 text-xs text-gray-400 mt-1 px-1" role="legend" aria-label="Status colour legend">
+      <div className="flex items-center justify-end gap-3 text-xs text-muted-foreground mt-1 px-1" role="legend" aria-label="Status colour legend">
         {(['pass', 'warning', 'fail', 'error', 'invalidated'] as const).map(r => (
           <span key={r} className="flex items-center gap-1" aria-label={`${r} status`}>
             <span

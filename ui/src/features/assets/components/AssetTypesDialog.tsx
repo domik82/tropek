@@ -68,7 +68,7 @@ export function AssetTypesDialog({ open, onOpenChange }: Props) {
             </div>
             <button
               onClick={() => { setAddingNew(true); setRenamingName(null); setDeletingName(null) }}
-              className="px-3 py-1.5 text-xs rounded border border-[#58A6FF] bg-[#0D2847] text-[#58A6FF] hover:bg-[#0D2847]/80"
+              className="px-3 py-1.5 text-xs rounded border border-action-primary-border bg-action-primary-bg text-action-primary hover:bg-action-primary-hover"
             >
               + Add Type
             </button>
@@ -94,20 +94,20 @@ export function AssetTypesDialog({ open, onOpenChange }: Props) {
               return (
                 <div
                   key={type.name}
-                  className="flex items-center gap-3 px-3 py-2 my-1 rounded bg-[#3D1418] border border-[#F85149]"
+                  className="flex items-center gap-3 px-3 py-2 my-1 rounded bg-action-destructive-bg border border-action-destructive-border"
                 >
                   <span className="flex-1 text-sm text-foreground">
                     Delete type &quot;{type.name}&quot;? This cannot be undone.
                   </span>
                   <button
                     onClick={() => setDeletingName(null)}
-                    className="px-3 py-1 text-xs rounded bg-[#1A1F2E] border border-[#9CA3AF] text-white"
+                    className="px-3 py-1 text-xs rounded bg-action-secondary-bg border border-action-secondary-border text-white"
                   >
                     Cancel
                   </button>
                   <button
                     onClick={confirmDelete}
-                    className="px-3 py-1 text-xs rounded bg-[#F85149] text-white font-bold"
+                    className="px-3 py-1 text-xs rounded bg-action-destructive-confirm text-white font-bold"
                   >
                     Delete
                   </button>
@@ -134,17 +134,17 @@ export function AssetTypesDialog({ open, onOpenChange }: Props) {
                           if (e.key === 'Escape') setRenamingName(null)
                         }}
                         autoFocus
-                        className="bg-black border border-[#58A6FF] rounded px-2 py-1 text-sm font-mono text-foreground focus:outline-none w-full"
+                        className="bg-black border border-action-primary-border rounded px-2 py-1 text-sm font-mono text-foreground focus:outline-none w-full"
                       />
                       <button
                         onClick={() => void confirmRename()}
-                        className="w-6 h-6 flex items-center justify-center rounded bg-[#0D2847] border border-[#58A6FF] text-[#58A6FF]"
+                        className="w-6 h-6 flex items-center justify-center rounded bg-action-primary-bg border border-action-primary-border text-action-primary"
                       >
                         <Check className="w-3.5 h-3.5" />
                       </button>
                       <button
                         onClick={() => setRenamingName(null)}
-                        className="w-6 h-6 flex items-center justify-center rounded bg-[#1A1F2E] border border-[#9CA3AF] text-white"
+                        className="w-6 h-6 flex items-center justify-center rounded bg-action-secondary-bg border border-action-secondary-border text-white"
                       >
                         <X className="w-3.5 h-3.5" />
                       </button>
@@ -157,7 +157,7 @@ export function AssetTypesDialog({ open, onOpenChange }: Props) {
                 {/* Default indicator */}
                 <div className="w-[80px] flex items-center justify-center">
                   {type.is_default ? (
-                    <span className="text-xs text-[#2DD4A0] font-medium">default</span>
+                    <span className="text-xs text-indicator-default font-medium">default</span>
                   ) : (
                     <span className="w-2.5 h-2.5 rounded-full border border-muted-foreground/40" />
                   )}
@@ -172,7 +172,7 @@ export function AssetTypesDialog({ open, onOpenChange }: Props) {
                 <div className="w-[100px] flex items-center justify-center gap-1">
                   <button
                     onClick={() => startRename(type.name)}
-                    className="w-7 h-6 flex items-center justify-center rounded-md border border-border text-[#58A6FF] hover:bg-[#0D2847]/50"
+                    className="w-7 h-6 flex items-center justify-center rounded-md border border-border text-action-primary hover:bg-action-primary-hover"
                     title="Rename"
                   >
                     <Pencil className="w-3.5 h-3.5" />
@@ -182,8 +182,8 @@ export function AssetTypesDialog({ open, onOpenChange }: Props) {
                     disabled={type.is_default}
                     className={`w-7 h-6 flex items-center justify-center rounded-md border ${
                       type.is_default
-                        ? 'border-border text-[#2DD4A0]'
-                        : 'border-border text-muted-foreground hover:text-[#2DD4A0] hover:bg-muted/30'
+                        ? 'border-border text-indicator-default'
+                        : 'border-border text-muted-foreground hover:text-indicator-default hover:bg-muted/30'
                     }`}
                     title="Set as default"
                   >
@@ -194,8 +194,8 @@ export function AssetTypesDialog({ open, onOpenChange }: Props) {
                     disabled={!canDelete}
                     className={`w-7 h-6 flex items-center justify-center rounded-md border ${
                       canDelete
-                        ? 'border-[#F85149] text-[#F85149] hover:bg-[#3D1418]/50'
-                        : 'border-border text-[#4B5563] cursor-not-allowed'
+                        ? 'border-action-destructive-border text-action-destructive hover:bg-action-destructive-bg'
+                        : 'border-border text-muted-foreground cursor-not-allowed'
                     }`}
                     title={canDelete ? 'Delete' : type.is_default ? 'Cannot delete default type' : 'Cannot delete type with assets'}
                   >
@@ -223,13 +223,13 @@ export function AssetTypesDialog({ open, onOpenChange }: Props) {
               <button
                 onClick={() => void handleAdd()}
                 disabled={!newName}
-                className="px-3 py-1.5 text-xs rounded border border-[#58A6FF] bg-[#0D2847] text-[#58A6FF] disabled:opacity-40"
+                className="px-3 py-1.5 text-xs rounded border border-action-primary-border bg-action-primary-bg text-action-primary disabled:opacity-40"
               >
                 Save
               </button>
               <button
                 onClick={() => { setAddingNew(false); setNewName('') }}
-                className="px-3 py-1.5 text-xs rounded bg-[#1A1F2E] border border-[#9CA3AF] text-white"
+                className="px-3 py-1.5 text-xs rounded bg-action-secondary-bg border border-action-secondary-border text-white"
               >
                 Cancel
               </button>

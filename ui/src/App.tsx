@@ -46,8 +46,8 @@ function NavControls() {
       {/* Theme toggle */}
       <div className="flex border border-border rounded overflow-hidden text-xs">
         <button
-          onClick={() => setTheme('forest')}
-          className={`px-3 py-1 transition-colors ${theme === 'forest' ? 'bg-muted text-foreground font-semibold' : 'text-muted-foreground hover:bg-muted/50'}`}
+          onClick={() => setTheme('dark')}
+          className={`px-3 py-1 transition-colors ${theme === 'dark' ? 'bg-muted text-foreground font-semibold' : 'text-muted-foreground hover:bg-muted/50'}`}
         >
           🌙 Dark
         </button>
@@ -71,7 +71,7 @@ export default function App() {
           <BrowserRouter>
           <div className="min-h-screen bg-background text-foreground">
             <nav className="border-b border-border px-6 py-3 flex items-center gap-6">
-              <span className="font-bold text-sm tracking-widest" style={{ color: 'oklch(68.628% 0.185 148.958)' }}>TROPEK</span>
+              <span className="font-bold text-sm tracking-widest" style={{ color: 'var(--tropek-logo)' }}>TROPEK</span>
               {NAV_ITEMS.map(item => (
                 <NavLink
                   key={item.to}

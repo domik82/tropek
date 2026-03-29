@@ -52,17 +52,17 @@ export function EvaluationHeader({
     : undefined
 
   return (
-    <div className="bg-[#111827] border border-slate-700 rounded-xl p-5 grid grid-cols-[1fr_auto_1fr] items-start gap-4">
+    <div className="bg-card border border-border rounded-xl p-5 grid grid-cols-[1fr_auto_1fr] items-start gap-4">
       {/* Left — title + badge + metadata */}
       <div className="min-w-0">
         <div className="flex items-center gap-3 flex-wrap">
-          <h1 className={`text-xl font-bold text-slate-100 ${titleMono ? 'font-mono' : ''}`}>
+          <h1 className={`text-xl font-bold text-foreground ${titleMono ? 'font-mono' : ''}`}>
             {title}
           </h1>
           {result && <ResultBadge result={result} />}
         </div>
         {subtitle && (
-          <p className="text-xs text-slate-500 mt-0.5">{subtitle}</p>
+          <p className="text-xs text-muted-foreground mt-0.5">{subtitle}</p>
         )}
         {metadata && <div className="mt-2">{metadata}</div>}
       </div>
@@ -87,7 +87,7 @@ export function EvaluationHeader({
                 )}
               </div>
             ) : (
-              <div className="text-xs text-slate-500 mt-0.5">total score</div>
+              <div className="text-xs text-muted-foreground mt-0.5">total score</div>
             )}
           </>
         )}

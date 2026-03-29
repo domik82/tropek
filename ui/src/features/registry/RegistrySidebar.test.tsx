@@ -4,8 +4,38 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { RegistrySidebar } from './RegistrySidebar'
 import type { RegistryMode, SelectedNode } from './types'
 
+vi.mock('@/features/slos/hooks', () => ({
+  useSlos: () => ({ data: [] }),
+  useGroupTree: () => ({ data: { top_level: [], all_groups: [] } }),
+  useSloTagKeys: () => ({ data: [], isLoading: false }),
+  useSloTagValues: () => ({ data: [], isLoading: false }),
+}))
+
+vi.mock('@/features/slos/api', () => ({
+  fetchGroupSloBindings: () => Promise.resolve([]),
+}))
+
+vi.mock('@/features/slis/hooks', () => ({
+  useSliDefinitions: () => ({ data: [] }),
+}))
+
+vi.mock('@/features/datasources/hooks', () => ({
+  useDatasources: () => ({ data: [] }),
+  useDatasourceTagKeys: () => ({ data: [], isLoading: false }),
+  useDatasourceTagValues: () => ({ data: [], isLoading: false }),
+}))
+
+vi.mock('@/features/assets/hooks', () => ({
+  useTagKeys: () => ({ data: [], isLoading: false }),
+  useTagValues: () => ({ data: [], isLoading: false }),
+}))
+
 function Wrapper({ children }: { children: React.ReactNode }) {
-  return <QueryClientProvider client={new QueryClient()}>{children}</QueryClientProvider>
+  return (
+    <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+      {children}
+    </QueryClientProvider>
+  )
 }
 
 describe('RegistrySidebar', () => {
@@ -15,18 +45,13 @@ describe('RegistrySidebar', () => {
     selected: null as SelectedNode | null,
     onSelect: vi.fn(),
     onCreateAction: vi.fn() as (type: 'datasource' | 'sli' | 'slo' | 'group', context?: { adapterType?: string }) => void,
-    allBindings: [] as { slo_name: string; data_source_name: string }[],
-    groupBindingsMap: {} as Record<string, { slo_name: string; data_source_name: string }[]>,
   }
 
   it('renders segmented control with Asset as default/first', () => {
     render(<RegistrySidebar {...defaultProps} />, { wrapper: Wrapper })
-    const assetBtn = screen.getByText('Asset')
-    const sloBtn = screen.getByText('SLO')
-    const dsBtn = screen.getByText('Datasource')
-    expect(assetBtn).toBeInTheDocument()
-    expect(sloBtn).toBeInTheDocument()
-    expect(dsBtn).toBeInTheDocument()
+    expect(screen.getByText('Asset')).toBeInTheDocument()
+    expect(screen.getByText('SLO')).toBeInTheDocument()
+    expect(screen.getByText('Datasource')).toBeInTheDocument()
   })
 
   it('switches mode on click', () => {

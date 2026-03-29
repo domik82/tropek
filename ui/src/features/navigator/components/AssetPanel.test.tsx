@@ -65,6 +65,14 @@ vi.mock('./AssetPanelChartView', () => ({
   AssetPanelChartView: () => <div data-testid="chart-view" />,
 }))
 
+vi.mock('@/features/assets/hooks', () => ({
+  useAssets: () => ({ data: [] }),
+}))
+
+vi.mock('@/features/slos/hooks', () => ({
+  useSlos: () => ({ data: [] }),
+}))
+
 // ── Fixtures ───────────────────────────────────────────────────────────────────
 
 function makeSummary(overrides: Partial<EvaluationSummary> = {}): EvaluationSummary {

@@ -103,7 +103,7 @@ export function SliDetailView({ name, onNavigate, onNewVersion }: SliDetailViewP
           <Button
             size="xs"
             variant="outline"
-            className="text-red-400 border-red-700/40 hover:bg-red-950/20"
+            className="text-destructive-form-text border-destructive-form-border hover:bg-destructive-form-bg"
             onClick={() => setShowDeleteConfirm(true)}
           >
             <Trash2 className="size-3" />

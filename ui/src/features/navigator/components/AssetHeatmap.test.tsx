@@ -5,7 +5,7 @@ import type { MetricHeatmapResponse } from '../types'
 
 // Mock theme context
 vi.mock('@/lib/theme-context', () => ({
-  useTheme: () => ({ theme: 'forest' }),
+  useTheme: () => ({ theme: 'dark' }),
 }))
 
 // Mock the chart component to inspect what data AssetHeatmap passes to it

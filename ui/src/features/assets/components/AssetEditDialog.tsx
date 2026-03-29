@@ -91,14 +91,14 @@ export function AssetEditDialog({ open, onOpenChange, assetName }: Props) {
         <DialogFooter>
           <button
             onClick={() => onOpenChange(false)}
-            className="px-3 py-1.5 text-sm rounded bg-[#1A1F2E] border border-[#9CA3AF] text-white hover:bg-[#1A1F2E]/80 transition-colors"
+            className="px-3 py-1.5 text-sm rounded bg-action-secondary-bg border border-action-secondary-border text-white hover:bg-action-secondary-bg/80 transition-colors"
           >
             Cancel
           </button>
           <button
             onClick={handleSave}
             disabled={updateAsset.isPending}
-            className="px-3 py-1.5 text-sm rounded bg-[#0D2847] border border-[#58A6FF] text-[#58A6FF] hover:bg-[#0D2847]/80 transition-colors disabled:opacity-40"
+            className="px-3 py-1.5 text-sm rounded bg-action-primary-bg border border-action-primary-border text-action-primary hover:bg-action-primary-hover transition-colors disabled:opacity-40"
           >
             {updateAsset.isPending ? 'Saving…' : 'Save'}
           </button>
