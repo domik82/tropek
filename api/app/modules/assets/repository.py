@@ -6,11 +6,11 @@ import random
 import uuid
 from typing import Any
 
-from fastapi import HTTPException
 from sqlalchemy import delete, func, or_, select, text, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.cache.redis_cache import RedisCache
+from app.modules.common.exceptions import ConflictError, NotFoundError
 from app.db.models import (
     Asset,
     AssetGroup,
@@ -99,10 +99,7 @@ class AssetTypeRepository:
             select(Asset.id).where(Asset.type_name == name).limit(1)
         )
         if in_use.scalar_one_or_none() is not None:
-            raise HTTPException(
-                status_code=409,
-                detail=f"asset type '{name}' is in use by one or more assets",
-            )
+            raise ConflictError('asset type', name, 'in use by one or more assets')
         await self._session.execute(delete(AssetType).where(AssetType.name == name))
         return True
 
@@ -113,10 +110,7 @@ class AssetTypeRepository:
             return None
         conflict = await self.get_by_name(new_name)
         if conflict is not None:
-            raise HTTPException(
-                status_code=409,
-                detail=f"asset type '{new_name}' already exists",
-            )
+            raise ConflictError('asset type', new_name, 'already exists')
         await self._session.execute(
             update(AssetType).where(AssetType.name == old_name).values(name=new_name)
         )
@@ -222,7 +216,7 @@ class AssetRepository:
             await self._session.execute(update(Asset).where(Asset.name == name).values(**kwargs))
         asset = await self.get_by_name(name)
         if asset is None:
-            raise HTTPException(status_code=404, detail=f"asset '{name}' not found")
+            raise NotFoundError('asset', name)
         if self._cache:
             await self._cache.invalidate(f"asset:{asset.id}")
             await self._cache.invalidate(f"asset:name:{name}")
@@ -494,7 +488,7 @@ class AssetGroupRepository:
         )
         group = result.scalar_one_or_none()
         if group is None:
-            raise HTTPException(status_code=404, detail=f"asset group '{group_name}' not found")
+            raise NotFoundError('asset group', group_name)
         self._session.add(AssetGroupMember(group_id=group.id, asset_id=asset_id, weight=weight))
         await self._session.flush()
         return await self._build_read(group)
@@ -511,7 +505,7 @@ class AssetGroupRepository:
         )
         group = result.scalar_one_or_none()
         if group is None:
-            raise HTTPException(status_code=404, detail=f"asset group '{group_name}' not found")
+            raise NotFoundError('asset group', group_name)
         await self._session.execute(
             delete(AssetGroupMember).where(
                 AssetGroupMember.group_id == group.id,
@@ -537,7 +531,7 @@ class AssetGroupRepository:
         )
         group = result.scalar_one_or_none()
         if group is None:
-            raise HTTPException(status_code=404, detail=f"asset group '{parent_name}' not found")
+            raise NotFoundError('asset group', parent_name)
         self._session.add(
             AssetGroupLink(parent_group_id=group.id, child_group_id=child_group_id, weight=weight)
         )
@@ -556,7 +550,7 @@ class AssetGroupRepository:
         )
         group = result.scalar_one_or_none()
         if group is None:
-            raise HTTPException(status_code=404, detail=f"asset group '{parent_name}' not found")
+            raise NotFoundError('asset group', parent_name)
         await self._session.execute(
             delete(AssetGroupLink).where(
                 AssetGroupLink.parent_group_id == group.id,
