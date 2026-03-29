@@ -43,11 +43,11 @@ def validate_comparison_rules(
     catch_all_indices = [i for i, r in enumerate(rules) if r.match == {}]
 
     if len(catch_all_indices) > 1:
-        msg = "at most one catch-all rule (match: {}) is allowed"
+        msg = 'at most one catch-all rule (match: {}) is allowed'
         raise ValueError(msg)
 
     if len(catch_all_indices) == 1 and catch_all_indices[0] != len(rules) - 1:
-        msg = "catch-all rule (match: {}) must be last in the list"
+        msg = 'catch-all rule (match: {}) must be last in the list'
         raise ValueError(msg)
 
     return rules

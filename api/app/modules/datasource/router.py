@@ -24,7 +24,7 @@ def _ds_read(ds: DataSource) -> DataSourceRead:
     return r
 
 
-@router.get("/datasources", response_model=PagedResponse[DataSourceRead])
+@router.get('/datasources', response_model=PagedResponse[DataSourceRead])
 async def list_datasources(
     adapter_type: str | None = None,
     tag_key: str | None = None,
@@ -37,7 +37,7 @@ async def list_datasources(
     return PagedResponse(items=[_ds_read(d) for d in items], total=len(items))
 
 
-@router.post("/datasources", response_model=DataSourceRead, status_code=201)
+@router.post('/datasources', response_model=DataSourceRead, status_code=201)
 async def create_datasource(
     body: DataSourceCreate,
     session: AsyncSession = Depends(get_session),
@@ -55,7 +55,7 @@ async def create_datasource(
     return _ds_read(ds)
 
 
-@router.get("/datasources/tag-keys", response_model=list[TagKeyCount])
+@router.get('/datasources/tag-keys', response_model=list[TagKeyCount])
 async def get_tag_keys(
     session: AsyncSession = Depends(get_session),
 ) -> list[TagKeyCount]:
@@ -65,7 +65,7 @@ async def get_tag_keys(
     return [TagKeyCount(key=k, count=v) for k, v in keys.items()]
 
 
-@router.get("/datasources/tag-values", response_model=list[TagValueCount])
+@router.get('/datasources/tag-values', response_model=list[TagValueCount])
 async def get_tag_values(
     key: str = Query(...),
     session: AsyncSession = Depends(get_session),
@@ -76,7 +76,7 @@ async def get_tag_values(
     return [TagValueCount(value=v, count=c) for v, c in values.items()]
 
 
-@router.get("/datasources/{name}", response_model=DataSourceRead)
+@router.get('/datasources/{name}', response_model=DataSourceRead)
 async def get_datasource(
     name: str,
     session: AsyncSession = Depends(get_session),
@@ -85,11 +85,11 @@ async def get_datasource(
     repo = DataSourceRepository(session)
     ds = await repo.get_by_name(name)
     if ds is None:
-        raise NotFoundError("datasource", name)
+        raise NotFoundError('datasource', name)
     return _ds_read(ds)
 
 
-@router.patch("/datasources/{name}", response_model=DataSourceRead)
+@router.patch('/datasources/{name}', response_model=DataSourceRead)
 async def update_datasource(
     name: str,
     body: DataSourceUpdate,
@@ -99,11 +99,11 @@ async def update_datasource(
     repo = DataSourceRepository(session)
     ds = await repo.update(name, **body.model_dump(exclude_none=True))
     if ds is None:
-        raise NotFoundError("datasource", name)
+        raise NotFoundError('datasource', name)
     return _ds_read(ds)
 
 
-@router.delete("/datasources/{name}", status_code=204)
+@router.delete('/datasources/{name}', status_code=204)
 async def delete_datasource(
     name: str,
     session: AsyncSession = Depends(get_session),
@@ -130,10 +130,10 @@ async def delete_datasource(
     )
     if asset_links or group_links:
         link_names = [lnk.link_name for lnk in asset_links] + [lnk.link_name for lnk in group_links]
-        raise ConflictError("datasource", name, f'referenced by SLO links: {", ".join(link_names)}')
+        raise ConflictError('datasource', name, f'referenced by SLO links: {", ".join(link_names)}')
 
     repo = DataSourceRepository(session)
     deleted = await repo.delete_by_name(name)
     if not deleted:
-        raise NotFoundError("datasource", name)
+        raise NotFoundError('datasource', name)
     return Response(status_code=204)

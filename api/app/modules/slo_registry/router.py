@@ -38,7 +38,7 @@ from app.modules.slo_registry.schemas import (
 router = APIRouter()
 
 
-@router.get("/slo-definitions", response_model=PagedResponse[SLODefinitionRead])
+@router.get('/slo-definitions', response_model=PagedResponse[SLODefinitionRead])
 async def list_slo_definitions(
     tag_key: str | None = None,
     tag_val: str | None = None,
@@ -53,7 +53,7 @@ async def list_slo_definitions(
     )
 
 
-@router.post("/slo-definitions", response_model=SLODefinitionRead, status_code=201)
+@router.post('/slo-definitions', response_model=SLODefinitionRead, status_code=201)
 async def create_slo_definition(
     body: SLODefinitionCreate,
     session: AsyncSession = Depends(get_session),
@@ -97,7 +97,7 @@ async def create_slo_definition(
     return SLODefinitionRead.model_validate(slo)
 
 
-@router.post("/slo-definitions/validate", response_model=SLOValidationResult)
+@router.post('/slo-definitions/validate', response_model=SLOValidationResult)
 async def validate_slo(body: SLOValidateRequest) -> SLOValidationResult:  # noqa: C901
     """Validate SLO structure without saving."""
     errors: list[SLOValError] = []
@@ -105,7 +105,7 @@ async def validate_slo(body: SLOValidateRequest) -> SLOValidationResult:  # noqa
     if not body.objectives:
         return SLOValidationResult(
             valid=False,
-            errors=[SLOValError(field="objectives", message="objectives list is empty")],
+            errors=[SLOValError(field='objectives', message='objectives list is empty')],
         )
 
     try:
@@ -118,7 +118,7 @@ async def validate_slo(body: SLOValidateRequest) -> SLOValidationResult:  # noqa
     except SLOParseError as e:
         return SLOValidationResult(
             valid=False,
-            errors=[SLOValError(field="objectives", message=str(e))],
+            errors=[SLOValError(field='objectives', message=str(e))],
         )
 
     # Validate all criteria strings
@@ -127,20 +127,20 @@ async def validate_slo(body: SLOValidateRequest) -> SLOValidationResult:  # noqa
             try:
                 parse_criteria_string(raw)
             except ValueError as e:
-                errors.append(SLOValError(field=f"objectives[{i}].pass_criteria", message=str(e)))
+                errors.append(SLOValError(field=f'objectives[{i}].pass_criteria', message=str(e)))
         for raw in obj.warning_criteria:
             try:
                 parse_criteria_string(raw)
             except ValueError as e:
                 errors.append(
-                    SLOValError(field=f"objectives[{i}].warning_criteria", message=str(e))
+                    SLOValError(field=f'objectives[{i}].warning_criteria', message=str(e))
                 )
 
     # Validate total_score percentages
     if not (0 <= slo.total_score.pass_pct <= 100):
-        errors.append(SLOValError(field="total_score_pass_pct", message="must be 0-100"))
+        errors.append(SLOValError(field='total_score_pass_pct', message='must be 0-100'))
     if not (0 <= slo.total_score.warning_pct <= 100):
-        errors.append(SLOValError(field="total_score_warning_pct", message="must be 0-100"))
+        errors.append(SLOValError(field='total_score_warning_pct', message='must be 0-100'))
 
     if errors:
         return SLOValidationResult(valid=False, errors=errors)
@@ -148,7 +148,7 @@ async def validate_slo(body: SLOValidateRequest) -> SLOValidationResult:  # noqa
     return SLOValidationResult(valid=True, errors=[], objectives=body.objectives)
 
 
-@router.post("/slo-definitions/test", response_model=SLOTestResult)
+@router.post('/slo-definitions/test', response_model=SLOTestResult)
 async def test_slo(  # noqa: C901
     body: SLOTestRequest,
     session: AsyncSession = Depends(get_session),  # noqa: PT028
@@ -163,25 +163,25 @@ async def test_slo(  # noqa: C901
             comparison=body.comparison,
         )
     except SLOParseError as e:
-        raise HTTPException(status_code=422, detail=f"invalid slo: {e}") from e
+        raise HTTPException(status_code=422, detail=f'invalid slo: {e}') from e
 
     # 2. Resolve SLI definition
     sli_repo = SLIRepository(session)
     sli_def = await sli_repo.get_latest(body.sli_name)
     if sli_def is None:
-        raise NotFoundError("sli definition", body.sli_name)
+        raise NotFoundError('sli definition', body.sli_name)
 
     # 3. Resolve data source
     ds_repo = DataSourceRepository(session)
     ds = await ds_repo.get_by_name(body.data_source_name)
     if ds is None:
-        raise NotFoundError("data source", body.data_source_name)
+        raise NotFoundError('data source', body.data_source_name)
 
     # 4. Resolve asset
     asset_repo = AssetRepository(session)
     asset = await asset_repo.get_by_name(body.asset_name)
     if asset is None:
-        raise NotFoundError("asset", body.asset_name)
+        raise NotFoundError('asset', body.asset_name)
 
     # 5. Build variables and substitute in SLI queries
     # Reserved variables (lowest priority)
@@ -193,10 +193,10 @@ async def test_slo(  # noqa: C901
         end=body.period_end.isoformat(),
     )
     # Asset variables (identity bindings)
-    for k, v in (getattr(asset, "variables", {}) or {}).items():
+    for k, v in (getattr(asset, 'variables', {}) or {}).items():
         variables.setdefault(k, str(v))
     # Asset tags as fallback variables (backward compat)
-    for k, v in (getattr(asset, "tags", {}) or {}).items():
+    for k, v in (getattr(asset, 'tags', {}) or {}).items():
         variables.setdefault(k, str(v))
     # Request variables (highest priority)
     for k, v in body.variables.items():
@@ -207,7 +207,7 @@ async def test_slo(  # noqa: C901
         try:
             resolved_queries[indicator_name] = substitute_variables(query_template, variables)
         except Exception as e:
-            resolved_queries[indicator_name] = f"ERROR: {e}"
+            resolved_queries[indicator_name] = f'ERROR: {e}'
 
     # 6. Query adapter
     metrics_fetched: dict[str, float] = {}
@@ -217,34 +217,34 @@ async def test_slo(  # noqa: C901
     try:
         async with httpx.AsyncClient(timeout=adapter_timeout) as http_client:
             adapter_resp = await http_client.post(
-                f"{ds.adapter_url}/query",
+                f'{ds.adapter_url}/query',
                 json={
-                    "queries": resolved_queries,
-                    "start": body.period_start.isoformat(),
-                    "end": body.period_end.isoformat(),
+                    'queries': resolved_queries,
+                    'start': body.period_start.isoformat(),
+                    'end': body.period_end.isoformat(),
                 },
             )
             adapter_resp.raise_for_status()
             adapter_data = adapter_resp.json()
-            for name, val in adapter_data.get("values", {}).items():
+            for name, val in adapter_data.get('values', {}).items():
                 if val is not None:
                     metrics_fetched[name] = float(val)
-            for name, err in adapter_data.get("errors", {}).items():
+            for name, err in adapter_data.get('errors', {}).items():
                 fetch_errors[name] = str(err)
     except httpx.ConnectError as e:
         raise HTTPException(
             status_code=502,
-            detail=f"could not reach adapter at {ds.adapter_url}",
+            detail=f'could not reach adapter at {ds.adapter_url}',
         ) from e
     except httpx.TimeoutException as e:
         raise HTTPException(
             status_code=504,
-            detail=f"adapter query timed out after {adapter_timeout}s",
+            detail=f'adapter query timed out after {adapter_timeout}s',
         ) from e
     except httpx.HTTPStatusError as e:
         raise HTTPException(
             status_code=502,
-            detail=f"adapter returned {e.response.status_code}",
+            detail=f'adapter returned {e.response.status_code}',
         ) from e
 
     # 7. Resolve baselines
@@ -252,10 +252,10 @@ async def test_slo(  # noqa: C901
     baselines: dict[str, float | None] = {}
     compared_values: dict[str, float] | None = None
 
-    if baseline_cfg.mode == "manual" and baseline_cfg.values:
+    if baseline_cfg.mode == 'manual' and baseline_cfg.values:
         baselines = {k: v for k, v in baseline_cfg.values.items()}
         compared_values = dict(baseline_cfg.values)
-    elif baseline_cfg.mode == "asset_history":
+    elif baseline_cfg.mode == 'asset_history':
         baseline_repo = BaselineRepository(session)
         past_evals = await baseline_repo.get_evaluation_baselines(
             asset_id=asset.id,
@@ -301,7 +301,7 @@ async def test_slo(  # noqa: C901
     )
 
 
-@router.get("/slo-definitions/tag-keys", response_model=list[TagKeyCount])
+@router.get('/slo-definitions/tag-keys', response_model=list[TagKeyCount])
 async def get_slo_tag_keys(
     session: AsyncSession = Depends(get_session),
 ) -> list[TagKeyCount]:
@@ -311,7 +311,7 @@ async def get_slo_tag_keys(
     return [TagKeyCount(key=k, count=v) for k, v in keys.items()]
 
 
-@router.get("/slo-definitions/tag-values", response_model=list[TagValueCount])
+@router.get('/slo-definitions/tag-values', response_model=list[TagValueCount])
 async def get_slo_tag_values(
     key: str = Query(...),
     session: AsyncSession = Depends(get_session),
@@ -322,7 +322,7 @@ async def get_slo_tag_values(
     return [TagValueCount(value=v, count=c) for v, c in values.items()]
 
 
-@router.get("/slo-definitions/{name}", response_model=SLODefinitionRead)
+@router.get('/slo-definitions/{name}', response_model=SLODefinitionRead)
 async def get_slo_definition(
     name: str,
     session: AsyncSession = Depends(get_session),
@@ -331,11 +331,11 @@ async def get_slo_definition(
     repo = SLORepository(session)
     slo = await repo.get_latest(name)
     if slo is None:
-        raise NotFoundError("slo definition", name)
+        raise NotFoundError('slo definition', name)
     return SLODefinitionRead.model_validate(slo)
 
 
-@router.get("/slo-definitions/{name}/versions", response_model=list[SLODefinitionRead])
+@router.get('/slo-definitions/{name}/versions', response_model=list[SLODefinitionRead])
 async def list_slo_versions(
     name: str,
     session: AsyncSession = Depends(get_session),
@@ -346,7 +346,7 @@ async def list_slo_versions(
     return [SLODefinitionRead.model_validate(v) for v in versions]
 
 
-@router.delete("/slo-definitions/{name}", status_code=204)
+@router.delete('/slo-definitions/{name}', status_code=204)
 async def delete_slo_definition(
     name: str,
     session: AsyncSession = Depends(get_session),
@@ -355,5 +355,5 @@ async def delete_slo_definition(
     repo = SLORepository(session)
     existing = await repo.get_latest(name)
     if existing is None:
-        raise NotFoundError("slo definition", name)
+        raise NotFoundError('slo definition', name)
     await repo.deactivate(name)

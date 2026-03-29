@@ -22,11 +22,11 @@ _END = datetime(2026, 3, 15, 10, 30, 0, tzinfo=UTC)
 
 async def _create_asset(session: AsyncSession) -> uuid.UUID:
     """Insert an AssetType and Asset, returning the asset ID."""
-    type_name = f"vm-{uuid.uuid4().hex[:8]}"
+    type_name = f'vm-{uuid.uuid4().hex[:8]}'
     session.add(AssetType(id=uuid.uuid4(), name=type_name))
     await session.flush()
     asset_id = uuid.uuid4()
-    session.add(Asset(id=asset_id, name=f"asset-{asset_id.hex[:8]}", type_name=type_name))
+    session.add(Asset(id=asset_id, name=f'asset-{asset_id.hex[:8]}', type_name=type_name))
     await session.flush()
     return asset_id
 
@@ -37,8 +37,8 @@ async def test_find_duplicate_returns_none_when_no_match(db_session: AsyncSessio
     repo = EvaluationRepository(db_session)
     result = await repo.find_duplicate(
         asset_id=asset_id,
-        slo_name="latency-slo",
-        evaluation_name="nightly",
+        slo_name='latency-slo',
+        evaluation_name='nightly',
         period_start=_START,
         period_end=_END,
     )
@@ -62,19 +62,19 @@ async def test_find_duplicate_returns_existing_completed(db_session: AsyncSessio
     await repo.mark_running(ev.id)
     await repo.mark_completed(
         eval_id=ev.id,
-        result="pass",
+        result='pass',
         score=95.0,
     )
     dup = await repo.find_duplicate(
         asset_id=asset_id,
-        slo_name="latency-slo",
-        evaluation_name="nightly",
+        slo_name='latency-slo',
+        evaluation_name='nightly',
         period_start=_START,
         period_end=_END,
     )
     assert dup is not None
     assert dup.id == ev.id
-    assert dup.status == "completed"
+    assert dup.status == 'completed'
 
 
 @pytest.mark.integration
@@ -91,11 +91,11 @@ async def test_find_duplicate_ignores_failed(db_session: AsyncSession) -> None:
         asset_id=asset_id,
         slo_name='latency-slo',
     ))
-    await repo.mark_failed(ev.id, job_stats={"error": "boom"})
+    await repo.mark_failed(ev.id, job_stats={'error': 'boom'})
     dup = await repo.find_duplicate(
         asset_id=asset_id,
-        slo_name="latency-slo",
-        evaluation_name="nightly",
+        slo_name='latency-slo',
+        evaluation_name='nightly',
         period_start=_START,
         period_end=_END,
     )
@@ -118,13 +118,13 @@ async def test_find_duplicate_returns_pending(db_session: AsyncSession) -> None:
     ))
     dup = await repo.find_duplicate(
         asset_id=asset_id,
-        slo_name="latency-slo",
-        evaluation_name="nightly",
+        slo_name='latency-slo',
+        evaluation_name='nightly',
         period_start=_START,
         period_end=_END,
     )
     assert dup is not None
-    assert dup.status == "pending"
+    assert dup.status == 'pending'
 
 
 @pytest.mark.integration
@@ -143,8 +143,8 @@ async def test_find_duplicate_different_name_no_conflict(db_session: AsyncSessio
     ))
     dup = await repo.find_duplicate(
         asset_id=asset_id,
-        slo_name="latency-slo",
-        evaluation_name="nightly-daily",
+        slo_name='latency-slo',
+        evaluation_name='nightly-daily',
         period_start=_START,
         period_end=_END,
     )

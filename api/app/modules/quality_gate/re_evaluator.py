@@ -39,12 +39,12 @@ def _build_slo_model(slo_def: SLODefinition) -> SLO:
     """Build the engine SLO model from a database SLO definition."""
     objectives_dicts = [
         {
-            "sli": obj.sli,
-            "display_name": obj.display_name,
-            "weight": obj.weight,
-            "key_sli": obj.key_sli,
-            "pass_criteria": list(obj.pass_criteria),
-            "warning_criteria": list(obj.warning_criteria),
+            'sli': obj.sli,
+            'display_name': obj.display_name,
+            'weight': obj.weight,
+            'key_sli': obj.key_sli,
+            'pass_criteria': list(obj.pass_criteria),
+            'warning_criteria': list(obj.warning_criteria),
         }
         for obj in slo_def.objectives
     ]
@@ -112,7 +112,7 @@ async def _resolve_from_date(
         if ev.baseline_pinned_at is not None and ev.baseline_unpinned_at is None:
             return ev.period_start
 
-    raise ValueError("no evaluation with pinned baseline found")
+    raise ValueError('no evaluation with pinned baseline found')
 
 
 async def _resolve_sli_version_range(
@@ -162,7 +162,7 @@ async def _rescore_single(  # noqa: PLR0913
     baselines, compared_ids = _compute_baselines(baseline_evals, slo_model)
     eval_result = evaluate(slo_model, metrics, baselines, compared_ids)
 
-    old_result = ev.result or "error"
+    old_result = ev.result or 'error'
     old_score = ev.score if ev.score is not None else 0.0
 
     if not dry_run:

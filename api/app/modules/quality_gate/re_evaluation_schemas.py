@@ -23,7 +23,7 @@ class ReEvaluateRequest(BaseModel):
     slo_version: int | None = None
     dry_run: bool = False
 
-    @model_validator(mode="after")
+    @model_validator(mode='after')
     def exactly_one_scope(self) -> ReEvaluateRequest:
         """Ensure exactly one scope parameter is provided."""
         scopes = sum(
@@ -34,7 +34,7 @@ class ReEvaluateRequest(BaseModel):
             ]
         )
         if scopes != 1:
-            msg = "exactly one of from_date, from_baseline, or from_evaluation_id is required"
+            msg = 'exactly one of from_date, from_baseline, or from_evaluation_id is required'
             raise ValueError(msg)
         return self
 

@@ -19,7 +19,7 @@ class SLOObjective(BaseModel):
     """A single SLO objective — one metric with pass/warning thresholds and weighting."""
 
     sli: str
-    display_name: str = ""
+    display_name: str = ''
     pass_criteria: list[str] = Field(default_factory=list)
     warning_criteria: list[str] = Field(default_factory=list)
     weight: int = 1
@@ -33,7 +33,7 @@ class SLOComparison(BaseModel):
     number_of_comparison_results: int = 3
     include_result_with_score: IncludeResultWithScore = IncludeResultWithScore.ALL
     aggregate_function: AggregateFunction = AggregateFunction.AVG
-    scope_tags: list[str] = Field(default_factory=lambda: ["os"])
+    scope_tags: list[str] = Field(default_factory=lambda: ['os'])
 
 
 class SLOTotalScore(BaseModel):

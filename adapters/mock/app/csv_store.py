@@ -49,12 +49,12 @@ class CsvStore:
             matching = [
                 r
                 for r in rows
-                if r["metric_name"] == metric_name and start <= _parse_ts(r["timestamp"]) <= end
+                if r['metric_name'] == metric_name and start <= _parse_ts(r['timestamp']) <= end
             ]
             if matching:
                 # Take the last value in the range (sorted by timestamp)
-                matching.sort(key=lambda r: r["timestamp"])
-                result.values[metric_name] = float(matching[-1]["value"])
+                matching.sort(key=lambda r: r['timestamp'])
+                result.values[metric_name] = float(matching[-1]['value'])
             else:
                 result.errors[metric_name] = f"no data for '{metric_name}' in range"
 
@@ -63,7 +63,7 @@ class CsvStore:
     def _load_namespace(self, ns_dir: Path) -> list[dict[str, str]]:
         """Load all CSV files in a namespace directory."""
         rows: list[dict[str, str]] = []
-        for csv_path in ns_dir.glob("*.csv"):
+        for csv_path in ns_dir.glob('*.csv'):
             with csv_path.open() as f:
                 reader = csv.DictReader(f)
                 rows.extend(reader)
@@ -72,7 +72,7 @@ class CsvStore:
 
 def _parse_ts(ts_str: str) -> datetime:
     """Parse an ISO 8601 timestamp string to a timezone-aware datetime."""
-    dt = datetime.fromisoformat(ts_str.replace("Z", "+00:00"))
+    dt = datetime.fromisoformat(ts_str.replace('Z', '+00:00'))
     if dt.tzinfo is None:
         dt = dt.replace(tzinfo=UTC)
     return dt

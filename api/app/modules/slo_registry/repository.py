@@ -34,7 +34,7 @@ class SLORepository:
         tags: dict[str, Any] | None = None,
         variables: dict[str, Any] | None = None,
         comparable_from_version: int | None = None,
-        kind: str = "standard",
+        kind: str = 'standard',
         sli_name: str | None = None,
         sli_version: int | None = None,
     ) -> SLODefinition:
@@ -104,21 +104,21 @@ class SLORepository:
             obj = SLOObjectiveORM(
                 id=uuid.uuid4(),
                 slo_definition_id=slo.id,
-                sli=obj_dict["sli"],
-                display_name=obj_dict.get("display_name", ""),
-                weight=obj_dict.get("weight", 1),
-                key_sli=obj_dict.get("key_sli", False),
+                sli=obj_dict['sli'],
+                display_name=obj_dict.get('display_name', ''),
+                weight=obj_dict.get('weight', 1),
+                key_sli=obj_dict.get('key_sli', False),
                 sort_order=i,
-                pass_criteria=obj_dict.get("pass_criteria", []),
-                warning_criteria=obj_dict.get("warning_criteria", []),
+                pass_criteria=obj_dict.get('pass_criteria', []),
+                warning_criteria=obj_dict.get('warning_criteria', []),
             )
             self._session.add(obj)
 
         await self._session.flush()
         # Eagerly load objectives so callers can access them outside async context
-        await self._session.refresh(slo, ["objectives"])
+        await self._session.refresh(slo, ['objectives'])
         if self._cache:
-            await self._cache.invalidate(f"slo:{name}:latest")
+            await self._cache.invalidate(f'slo:{name}:latest')
         return slo
 
     async def get_latest(self, name: str) -> SLODefinition | None:
@@ -223,7 +223,7 @@ class SLORepository:
             Number of rows affected (versions deactivated).
         """
         cursor = cast(
-            "CursorResult[Any]",
+            'CursorResult[Any]',
             await self._session.execute(
                 update(SLODefinition).where(SLODefinition.name == name).values(active=False)
             ),
@@ -234,9 +234,9 @@ class SLORepository:
         """Return all distinct tag keys with count of SLO definitions using each."""
         result = await self._session.execute(
             text(
-                "SELECT key, COUNT(*) as cnt "
-                "FROM slo_definitions, jsonb_object_keys(tags) AS key "
-                "GROUP BY key ORDER BY cnt DESC"
+                'SELECT key, COUNT(*) as cnt '
+                'FROM slo_definitions, jsonb_object_keys(tags) AS key '
+                'GROUP BY key ORDER BY cnt DESC'
             )
         )
         return {row[0]: row[1] for row in result}
@@ -245,11 +245,11 @@ class SLORepository:
         """Return all distinct values for a tag key with usage counts."""
         result = await self._session.execute(
             text(
-                "SELECT tags->>:key AS val, COUNT(*) as cnt "
-                "FROM slo_definitions "
-                "WHERE tags ? :key "
-                "GROUP BY val ORDER BY cnt DESC"
+                'SELECT tags->>:key AS val, COUNT(*) as cnt '
+                'FROM slo_definitions '
+                'WHERE tags ? :key '
+                'GROUP BY val ORDER BY cnt DESC'
             ),
-            {"key": key},
+            {'key': key},
         )
         return {row[0]: row[1] for row in result}

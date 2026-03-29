@@ -27,16 +27,16 @@ _START = datetime(2026, 3, 15, 10, 0, 0, tzinfo=UTC)
 _END = datetime(2026, 3, 15, 10, 30, 0, tzinfo=UTC)
 
 
-def _make_snapshot(name: str = "vm-test-01", os: str = "windows-11", arch: str = "x64") -> dict:
-    return {"name": name, "tags": {"os": os, "arch": arch}}
+def _make_snapshot(name: str = 'vm-test-01', os: str = 'windows-11', arch: str = 'x64') -> dict:
+    return {'name': name, 'tags': {'os': os, 'arch': arch}}
 
 
 async def _create_asset(session: AsyncSession, name: str | None = None) -> uuid.UUID:
-    type_name = f"vm-{uuid.uuid4().hex[:8]}"
+    type_name = f'vm-{uuid.uuid4().hex[:8]}'
     session.add(AssetType(id=uuid.uuid4(), name=type_name))
     await session.flush()
     asset_id = uuid.uuid4()
-    asset_name = name or f"asset-{asset_id.hex[:8]}"
+    asset_name = name or f'asset-{asset_id.hex[:8]}'
     session.add(Asset(id=asset_id, name=asset_name, type_name=type_name))
     await session.flush()
     return asset_id
@@ -46,10 +46,10 @@ async def _create_completed_eval(
     session: AsyncSession,
     asset_id: uuid.UUID,
     *,
-    result: str = "pass",
+    result: str = 'pass',
     score: float = 90.0,
-    slo_name: str = "test-slo",
-    evaluation_name: str = "compile-test",
+    slo_name: str = 'test-slo',
+    evaluation_name: str = 'compile-test',
     period_start: datetime = _START,
     period_end: datetime = _END,
 ) -> uuid.UUID:
@@ -75,8 +75,8 @@ async def _create_completed_eval(
 
 async def _ensure_slo_objective(
     session: AsyncSession,
-    slo_name: str = "test-slo",
-    sli: str = "response_time",
+    slo_name: str = 'test-slo',
+    sli: str = 'response_time',
 ) -> SLOObjective:
     """Create a minimal SLO definition with one objective if it doesn't exist, return the objective."""
     slo_id = uuid.uuid4()
@@ -100,7 +100,7 @@ async def _ensure_slo_objective(
         weight=1,
         key_sli=False,
         sort_order=0,
-        pass_criteria=["<600"],
+        pass_criteria=['<600'],
         warning_criteria=[],
     )
     session.add(obj)
@@ -114,7 +114,7 @@ async def _seed_indicator_row(
     objective: SLOObjective,
     *,
     value: float = 250.0,
-    status: str = "pass",
+    status: str = 'pass',
     score: float = 1.0,
 ) -> None:
     """Seed a single IndicatorResultRow for an evaluation."""
@@ -142,6 +142,6 @@ async def async_client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient]:
 
     app.dependency_overrides[get_session] = _override_session
     transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://test") as client:
+    async with AsyncClient(transport=transport, base_url='http://test') as client:
         yield client
     app.dependency_overrides.clear()

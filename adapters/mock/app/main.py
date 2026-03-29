@@ -10,9 +10,9 @@ from app.csv_store import CsvStore
 from fastapi import FastAPI, Header
 from pydantic import BaseModel
 
-app = FastAPI(title="TROPEK Mock Adapter", version="0.1.0")
+app = FastAPI(title='TROPEK Mock Adapter', version='0.1.0')
 
-DATA_DIR = Path(os.getenv("MOCK_DATA_DIR", "/app/data"))
+DATA_DIR = Path(os.getenv('MOCK_DATA_DIR', '/app/data'))
 _store = CsvStore(DATA_DIR)
 
 
@@ -32,16 +32,16 @@ class QueryResponse(BaseModel):
     errors: dict[str, str]
 
 
-@app.post("/query", response_model=QueryResponse)
+@app.post('/query', response_model=QueryResponse)
 async def query_metrics(
     body: QueryRequest,
-    x_datasource_name: str = Header(default="default"),
+    x_datasource_name: str = Header(default='default'),
 ) -> QueryResponse:
     """Execute metric queries against CSV data store."""
     # Normalize v2 query specs to plain strings (mock ignores mode/query content)
     flat: dict[str, str] = {}
     for name, spec in body.queries.items():
-        flat[name] = spec["query"] if isinstance(spec, dict) else spec
+        flat[name] = spec['query'] if isinstance(spec, dict) else spec
     result = _store.query(
         namespace=x_datasource_name,
         queries=flat,
@@ -51,7 +51,7 @@ async def query_metrics(
     return QueryResponse(values=result.values, errors=result.errors)
 
 
-@app.get("/health")
+@app.get('/health')
 async def health() -> dict[str, str]:
     """Return adapter health status."""
-    return {"status": "ok", "datasource": "mock"}
+    return {'status': 'ok', 'datasource': 'mock'}

@@ -9,9 +9,9 @@ from app.modules.quality_gate.worker import DefinitionLoadError, _load_definitio
 
 
 def _make_evaluation(
-    slo_name: str | None = "perf-slo",
+    slo_name: str | None = 'perf-slo',
     slo_version: int | None = 1,
-    sli_name: str | None = "system-sli",
+    sli_name: str | None = 'system-sli',
     sli_version: int | None = 1,
 ) -> MagicMock:
     ev = MagicMock()
@@ -27,7 +27,7 @@ async def test_load_definitions_slo_name_missing() -> None:
     ev = _make_evaluation(slo_name=None)
     session = AsyncMock()
 
-    with pytest.raises(DefinitionLoadError, match="no slo_name"):
+    with pytest.raises(DefinitionLoadError, match='no slo_name'):
         await _load_definitions(session, ev)
 
 
@@ -36,7 +36,7 @@ async def test_load_definitions_slo_version_missing() -> None:
     ev = _make_evaluation(slo_version=None)
     session = AsyncMock()
 
-    with pytest.raises(DefinitionLoadError, match="no slo_name"):
+    with pytest.raises(DefinitionLoadError, match='no slo_name'):
         await _load_definitions(session, ev)
 
 
@@ -49,10 +49,10 @@ async def test_load_definitions_slo_not_found() -> None:
 
     with (
         patch(
-            "app.modules.quality_gate.worker.SLORepository",
+            'app.modules.quality_gate.worker.SLORepository',
             return_value=mock_slo_repo,
         ),
-        pytest.raises(DefinitionLoadError, match=r"perf-slo.*not found"),
+        pytest.raises(DefinitionLoadError, match=r'perf-slo.*not found'),
     ):
         await _load_definitions(session, ev)
 
@@ -66,10 +66,10 @@ async def test_load_definitions_sli_name_missing() -> None:
 
     with (
         patch(
-            "app.modules.quality_gate.worker.SLORepository",
+            'app.modules.quality_gate.worker.SLORepository',
             return_value=mock_slo_repo,
         ),
-        pytest.raises(DefinitionLoadError, match="no sli_name"),
+        pytest.raises(DefinitionLoadError, match='no sli_name'),
     ):
         await _load_definitions(session, ev)
 
@@ -83,10 +83,10 @@ async def test_load_definitions_sli_version_missing() -> None:
 
     with (
         patch(
-            "app.modules.quality_gate.worker.SLORepository",
+            'app.modules.quality_gate.worker.SLORepository',
             return_value=mock_slo_repo,
         ),
-        pytest.raises(DefinitionLoadError, match="no sli_name"),
+        pytest.raises(DefinitionLoadError, match='no sli_name'),
     ):
         await _load_definitions(session, ev)
 
@@ -102,14 +102,14 @@ async def test_load_definitions_sli_not_found() -> None:
 
     with (
         patch(
-            "app.modules.quality_gate.worker.SLORepository",
+            'app.modules.quality_gate.worker.SLORepository',
             return_value=mock_slo_repo,
         ),
         patch(
-            "app.modules.quality_gate.worker.SLIRepository",
+            'app.modules.quality_gate.worker.SLIRepository',
             return_value=mock_sli_repo,
         ),
-        pytest.raises(DefinitionLoadError, match=r"system-sli.*not found"),
+        pytest.raises(DefinitionLoadError, match=r'system-sli.*not found'),
     ):
         await _load_definitions(session, ev)
 
@@ -127,19 +127,19 @@ async def test_load_definitions_success() -> None:
 
     with (
         patch(
-            "app.modules.quality_gate.worker.SLORepository",
+            'app.modules.quality_gate.worker.SLORepository',
             return_value=mock_slo_repo,
         ),
         patch(
-            "app.modules.quality_gate.worker.SLIRepository",
+            'app.modules.quality_gate.worker.SLIRepository',
             return_value=mock_sli_repo,
         ),
     ):
         result = await _load_definitions(session, ev)
 
     assert result == (slo_def, sli_def)
-    mock_slo_repo.get_version.assert_awaited_once_with("perf-slo", 1)
-    mock_sli_repo.get_version.assert_awaited_once_with("system-sli", 1)
+    mock_slo_repo.get_version.assert_awaited_once_with('perf-slo', 1)
+    mock_sli_repo.get_version.assert_awaited_once_with('system-sli', 1)
 
 
 def test_variable_merge_priority() -> None:
@@ -149,15 +149,15 @@ def test_variable_merge_priority() -> None:
     # Simulate the merge order from worker.py
     variables = build_variables(
         metadata={},
-        asset_name="my-asset",
-        evaluation_name="daily-check",
-        start="2025-01-01T00:00:00",
-        end="2025-01-01T01:00:00",
+        asset_name='my-asset',
+        evaluation_name='daily-check',
+        start='2025-01-01T00:00:00',
+        end='2025-01-01T01:00:00',
     )
-    asset_variables = {"job": "checkout-api", "namespace": "ecommerce"}
-    asset_tags = {"team": "payments", "namespace": "old-value"}
-    slo_variables = {"aggregation_window": "5m", "job": "slo-override"}
-    eval_variables = {"branch": "main", "job": "eval-override"}
+    asset_variables = {'job': 'checkout-api', 'namespace': 'ecommerce'}
+    asset_tags = {'team': 'payments', 'namespace': 'old-value'}
+    slo_variables = {'aggregation_window': '5m', 'job': 'slo-override'}
+    eval_variables = {'branch': 'main', 'job': 'eval-override'}
 
     for k, v in asset_variables.items():
         variables.setdefault(k, str(v))
@@ -168,10 +168,10 @@ def test_variable_merge_priority() -> None:
     for k, v in eval_variables.items():
         variables[k] = str(v)
 
-    assert variables["asset_name"] == "my-asset"
-    assert variables["evaluation_name"] == "daily-check"
-    assert variables["namespace"] == "ecommerce"  # asset_variables wins over asset_tags
-    assert variables["team"] == "payments"
-    assert variables["aggregation_window"] == "5m"
-    assert variables["branch"] == "main"
-    assert variables["job"] == "eval-override"  # eval wins over slo
+    assert variables['asset_name'] == 'my-asset'
+    assert variables['evaluation_name'] == 'daily-check'
+    assert variables['namespace'] == 'ecommerce'  # asset_variables wins over asset_tags
+    assert variables['team'] == 'payments'
+    assert variables['aggregation_window'] == '5m'
+    assert variables['branch'] == 'main'
+    assert variables['job'] == 'eval-override'  # eval wins over slo

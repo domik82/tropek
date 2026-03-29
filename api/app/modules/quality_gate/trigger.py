@@ -112,9 +112,9 @@ async def resolve_single_trigger(
     return TriggerContext(
         asset_id=asset.id,
         asset_name=asset.name,
-        asset_display_name=getattr(asset, "display_name", None),
-        asset_tags=getattr(asset, "tags", {}),
-        asset_variables=getattr(asset, "variables", {}),
+        asset_display_name=getattr(asset, 'display_name', None),
+        asset_tags=getattr(asset, 'tags', {}),
+        asset_variables=getattr(asset, 'variables', {}),
         slo_name=slo_def.name,
         slo_version=slo_def.version,
         sli_name=sli_def.name,

@@ -8,7 +8,7 @@ from app.db.session import get_session
 from app.main import app
 from fastapi.testclient import TestClient
 
-VALID_OBJECTIVES = [{"sli": "response_time_p99", "pass_criteria": ["<600"], "weight": 1}]
+VALID_OBJECTIVES = [{'sli': 'response_time_p99', 'pass_criteria': ['<600'], 'weight': 1}]
 
 
 @pytest.fixture
@@ -30,24 +30,24 @@ def client():
 
 def test_slo_test_rejects_empty_objectives(client):
     resp = client.post(
-        "/slo-definitions/test",
+        '/slo-definitions/test',
         json={
-            "objectives": [],
-            "sli_name": "my-sli",
-            "data_source_name": "prometheus",
-            "asset_name": "vm-01",
-            "period_start": "2026-03-01T00:00:00Z",
-            "period_end": "2026-03-01T01:00:00Z",
+            'objectives': [],
+            'sli_name': 'my-sli',
+            'data_source_name': 'prometheus',
+            'asset_name': 'vm-01',
+            'period_start': '2026-03-01T00:00:00Z',
+            'period_end': '2026-03-01T01:00:00Z',
         },
     )
     assert resp.status_code == 422
-    assert "invalid slo" in resp.json()["detail"].lower()
+    assert 'invalid slo' in resp.json()['detail'].lower()
 
 
 def test_slo_test_rejects_missing_required_fields(client):
     resp = client.post(
-        "/slo-definitions/test",
-        json={"objectives": VALID_OBJECTIVES},
+        '/slo-definitions/test',
+        json={'objectives': VALID_OBJECTIVES},
     )
     assert resp.status_code == 422
 
@@ -59,14 +59,14 @@ def test_slo_test_accepts_valid_request_shape(client):
     but the request shape itself should be accepted.
     """
     resp = client.post(
-        "/slo-definitions/test",
+        '/slo-definitions/test',
         json={
-            "objectives": VALID_OBJECTIVES,
-            "sli_name": "nonexistent-sli",
-            "data_source_name": "nonexistent-ds",
-            "asset_name": "nonexistent-asset",
-            "period_start": "2026-03-01T00:00:00Z",
-            "period_end": "2026-03-01T01:00:00Z",
+            'objectives': VALID_OBJECTIVES,
+            'sli_name': 'nonexistent-sli',
+            'data_source_name': 'nonexistent-ds',
+            'asset_name': 'nonexistent-asset',
+            'period_start': '2026-03-01T00:00:00Z',
+            'period_end': '2026-03-01T01:00:00Z',
         },
     )
     # Should be 404 (entity not found) not 422 (bad request shape)

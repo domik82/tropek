@@ -27,13 +27,13 @@ class IndicatorRepository:
             self._session.add(
                 IndicatorResultRow(
                     evaluation_id=evaluation_id,
-                    slo_objective_id=row["slo_objective_id"],
-                    value=row.get("value"),
-                    compared_value=row.get("compared_value"),
-                    change_absolute=row.get("change_absolute"),
-                    change_relative_pct=row.get("change_relative_pct"),
-                    status=row["status"],
-                    score=row.get("score", 0.0),
+                    slo_objective_id=row['slo_objective_id'],
+                    value=row.get('value'),
+                    compared_value=row.get('compared_value'),
+                    change_absolute=row.get('change_absolute'),
+                    change_relative_pct=row.get('change_relative_pct'),
+                    status=row['status'],
+                    score=row.get('score', 0.0),
                 )
             )
         await self._session.flush()

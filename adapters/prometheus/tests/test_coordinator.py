@@ -18,18 +18,18 @@ class FakePrometheusClient:
 @pytest.fixture
 async def coordinator():
     redis = fakeredis.aioredis.FakeRedis()
-    repo = JobRepository(redis, prefix="test:")
+    repo = JobRepository(redis, prefix='test:')
     settings = Settings(max_concurrent_queries=2, max_concurrent_jobs=1)
     client = FakePrometheusClient()
     strategy = RawQueryStrategy(client)
-    return Coordinator(repo, settings, strategies={"raw": strategy})
+    return Coordinator(repo, settings, strategies={'raw': strategy})
 
 
 @pytest.mark.asyncio
 async def test_coordinator_processes_single_job(coordinator: Coordinator):
     repo = coordinator._repo
     job_id = await repo.create_job(
-        queries={"cpu": {"mode": "raw", "query": "x"}},
+        queries={'cpu': {'mode': 'raw', 'query': 'x'}},
         variables={},
         timeout=120,
     )
@@ -38,23 +38,23 @@ async def test_coordinator_processes_single_job(coordinator: Coordinator):
     await coordinator.process_one()
 
     status = await repo.get_status(job_id)
-    assert status["status"] == "completed"
+    assert status['status'] == 'completed'
     results = await repo.get_results(job_id)
-    assert results["cpu"]["value"] == 42.0
-    assert results["cpu"]["success"] is True
+    assert results['cpu']['value'] == 42.0
+    assert results['cpu']['success'] is True
 
 
 @pytest.mark.asyncio
 async def test_coordinator_handles_multiple_queries(coordinator: Coordinator):
     repo = coordinator._repo
-    queries = {f"metric_{i}": {"mode": "raw", "query": f"q{i}"} for i in range(5)}
+    queries = {f'metric_{i}': {'mode': 'raw', 'query': f'q{i}'} for i in range(5)}
     job_id = await repo.create_job(queries=queries, variables={}, timeout=120)
     await repo.enqueue(job_id)
 
     await coordinator.process_one()
 
     status = await repo.get_status(job_id)
-    assert status["status"] == "completed"
+    assert status['status'] == 'completed'
     results = await repo.get_results(job_id)
     assert len(results) == 5
 
@@ -63,7 +63,7 @@ async def test_coordinator_handles_multiple_queries(coordinator: Coordinator):
 async def test_coordinator_skips_cancelled_job(coordinator: Coordinator):
     repo = coordinator._repo
     job_id = await repo.create_job(
-        queries={"cpu": {"mode": "raw", "query": "x"}},
+        queries={'cpu': {'mode': 'raw', 'query': 'x'}},
         variables={},
         timeout=120,
     )
@@ -73,4 +73,4 @@ async def test_coordinator_skips_cancelled_job(coordinator: Coordinator):
     await coordinator.process_one()
 
     status = await repo.get_status(job_id)
-    assert status["status"] == "cancelled"
+    assert status['status'] == 'cancelled'

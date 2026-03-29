@@ -30,19 +30,19 @@ from sqlalchemy.ext.asyncio import (
 # override=False: shell env vars take precedence if already set.
 # Must come after imports but before fixtures — pydantic-settings reads env vars
 # lazily when settings objects are instantiated inside test fixtures, not here.
-load_dotenv(Path(__file__).parents[3] / ".env.test", override=False)
+load_dotenv(Path(__file__).parents[3] / '.env.test', override=False)
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope='session')
 def db_url() -> str:
     """Return the test database URL, skipping if not configured."""
-    url = os.environ.get("TEST_DATABASE_URL")
+    url = os.environ.get('TEST_DATABASE_URL')
     if not url:
-        pytest.skip("TEST_DATABASE_URL not set — skipping integration tests")
+        pytest.skip('TEST_DATABASE_URL not set — skipping integration tests')
     return url
 
 
-@pytest_asyncio.fixture(scope="session")
+@pytest_asyncio.fixture(scope='session')
 async def db_engine(db_url: str) -> AsyncGenerator[AsyncEngine, None]:  # noqa: UP043
     """Create engine and tables once per test session, drop on teardown."""
     engine = create_async_engine(db_url, echo=False)
@@ -67,7 +67,7 @@ async def db_session(db_engine: AsyncEngine) -> AsyncGenerator[AsyncSession, Non
         session = AsyncSession(
             bind=conn,
             expire_on_commit=False,
-            join_transaction_mode="create_savepoint",
+            join_transaction_mode='create_savepoint',
         )
         try:
             yield session

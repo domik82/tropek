@@ -24,18 +24,18 @@ _END = datetime(2026, 3, 12, 10, 30, 0, tzinfo=UTC)
 
 async def _create_asset(session: AsyncSession, name: str | None = None) -> uuid.UUID:
     """Insert an AssetType and Asset, returning the asset ID."""
-    type_name = f"vm-{uuid.uuid4().hex[:8]}"
+    type_name = f'vm-{uuid.uuid4().hex[:8]}'
     session.add(AssetType(id=uuid.uuid4(), name=type_name))
     await session.flush()
     asset_id = uuid.uuid4()
-    asset_name = name or f"asset-{asset_id.hex[:8]}"
+    asset_name = name or f'asset-{asset_id.hex[:8]}'
     session.add(Asset(id=asset_id, name=asset_name, type_name=type_name))
     await session.flush()
     return asset_id
 
 
-def _make_snapshot(os: str = "windows-11", arch: str = "x64") -> dict[str, str | dict[str, str]]:
-    return {"name": "vm-test-01", "tags": {"os": os, "arch": arch}}
+def _make_snapshot(os: str = 'windows-11', arch: str = 'x64') -> dict[str, str | dict[str, str]]:
+    return {'name': 'vm-test-01', 'tags': {'os': os, 'arch': arch}}
 
 
 @pytest.mark.integration
@@ -52,7 +52,7 @@ async def test_create_pending_returns_evaluation(db_session: AsyncSession) -> No
         asset_id=asset_id,
         slo_name='test-slo',
     ))
-    assert ev.status == "pending"
+    assert ev.status == 'pending'
     assert ev.result is None
     assert ev.id is not None
 
@@ -92,13 +92,13 @@ async def test_mark_completed_updates_fields(db_session: AsyncSession) -> None:
     ))
     await repo.mark_completed(
         ev.id,
-        result="pass",
+        result='pass',
         score=95.0,
     )
     fetched = await repo.get_by_id(ev.id)
     assert fetched is not None
-    assert fetched.status == "completed"
-    assert fetched.result == "pass"
+    assert fetched.status == 'completed'
+    assert fetched.result == 'pass'
     assert fetched.score == 95.0
 
 
@@ -119,7 +119,7 @@ async def test_mark_running_sets_status(db_session: AsyncSession) -> None:
     await repo.mark_running(ev.id)
     fetched = await repo.get_by_id(ev.id)
     assert fetched is not None
-    assert fetched.status == "running"
+    assert fetched.status == 'running'
 
 
 @pytest.mark.integration
@@ -132,7 +132,7 @@ async def test_list_evaluations_filters_by_name(db_session: AsyncSession) -> Non
         datetime(2026, 3, 12, 11, 0, 0, tzinfo=UTC),
         datetime(2026, 3, 12, 12, 0, 0, tzinfo=UTC),
     ]
-    for n, s in zip(("alpha", "alpha", "beta"), starts, strict=True):
+    for n, s in zip(('alpha', 'alpha', 'beta'), starts, strict=True):
         await repo.create_pending(EvalCreateParams(
             evaluation_name=n,
             period_start=s,
@@ -143,9 +143,9 @@ async def test_list_evaluations_filters_by_name(db_session: AsyncSession) -> Non
             asset_id=asset_id,
             slo_name='test-slo',
         ))
-    results = await repo.list_evaluations(evaluation_name="alpha")
+    results = await repo.list_evaluations(evaluation_name='alpha')
     assert len(results) == 2
-    assert all(e.evaluation_name == "alpha" for e in results)
+    assert all(e.evaluation_name == 'alpha' for e in results)
 
 
 @pytest.mark.integration
@@ -167,9 +167,9 @@ async def test_get_baselines_excludes_invalidated(db_session: AsyncSession) -> N
     ))
     await repo.mark_completed(
         ev1.id,
-        result="pass",
+        result='pass',
         score=90.0,
-        slo_name="http-slo",
+        slo_name='http-slo',
     )
 
     ev2 = await repo.create_pending(EvalCreateParams(
@@ -184,17 +184,17 @@ async def test_get_baselines_excludes_invalidated(db_session: AsyncSession) -> N
     ))
     await repo.mark_completed(
         ev2.id,
-        result="pass",
+        result='pass',
         score=90.0,
-        slo_name="http-slo",
+        slo_name='http-slo',
     )
-    await repo.invalidate(ev2.id, note="bad data")
+    await repo.invalidate(ev2.id, note='bad data')
 
     baselines = await baseline_repo.get_evaluation_baselines(
         asset_id=asset_id,
-        slo_name="http-slo",
+        slo_name='http-slo',
         period_start_before=datetime(2027, 1, 1, tzinfo=UTC),
-        include_result_with_score="all",
+        include_result_with_score='all',
         limit=10,
     )
     assert len(baselines) == 1
@@ -216,11 +216,11 @@ async def test_add_and_list_annotations(db_session: AsyncSession) -> None:
         asset_id=asset_id,
         slo_name='test-slo',
     ))
-    await ann_repo.add_annotation(ev.id, content="Defender update applied", author="ops")
+    await ann_repo.add_annotation(ev.id, content='Defender update applied', author='ops')
     fetched = await repo.get_by_id(ev.id)
     assert fetched is not None
     assert len(fetched.annotations) == 1
-    assert fetched.annotations[0].content == "Defender update applied"
+    assert fetched.annotations[0].content == 'Defender update applied'
 
 
 @pytest.mark.integration
@@ -238,12 +238,12 @@ async def test_hide_annotation(db_session: AsyncSession) -> None:
         asset_id=asset_id,
         slo_name='test-slo',
     ))
-    ann = await ann_repo.add_annotation(ev.id, content="wrong note", author="ops")
-    hidden = await ann_repo.hide_annotation(ann.id, reason="typo", author="admin")
+    ann = await ann_repo.add_annotation(ev.id, content='wrong note', author='ops')
+    hidden = await ann_repo.hide_annotation(ann.id, reason='typo', author='admin')
     assert hidden is not None
     assert hidden.hidden_at is not None
-    assert hidden.hidden_by == "admin"
-    assert hidden.hidden_reason == "typo"
+    assert hidden.hidden_by == 'admin'
+    assert hidden.hidden_reason == 'typo'
 
     # Verify hidden annotation is excluded from counts
     _, _, count_map, _ = await repo.list_with_counts()
@@ -267,20 +267,20 @@ async def test_write_and_read_sli_values(db_session: AsyncSession) -> None:
     ))
     rows = [
         {
-            "eval_id": ev.id,
-            "eval_start": _START,
-            "metric_name": "cpu_usage",
-            "aggregation": "avg",
-            "value": 72.3,
-            "asset_name": "vm-test-01",
-            "evaluation_name": "sli-test",
-            "os_tag": "windows-11",
+            'eval_id': ev.id,
+            'eval_start': _START,
+            'metric_name': 'cpu_usage',
+            'aggregation': 'avg',
+            'value': 72.3,
+            'asset_name': 'vm-test-01',
+            'evaluation_name': 'sli-test',
+            'os_tag': 'windows-11',
         }
     ]
     await sli_val_repo.write_sli_values(rows)
     stored = await sli_val_repo.get_sli_values_for_eval(ev.id)
     assert len(stored) == 1
-    assert stored[0].metric_name == "cpu_usage"
+    assert stored[0].metric_name == 'cpu_usage'
     assert stored[0].value == pytest.approx(72.3)
 
 
@@ -306,9 +306,9 @@ async def test_get_baselines_excludes_null_sli_version_with_range(
     ))
     await repo.mark_completed(
         ev1.id,
-        result="pass",
+        result='pass',
         score=90.0,
-        slo_name="http-slo",
+        slo_name='http-slo',
     )
 
     ev2 = await repo.create_pending(EvalCreateParams(
@@ -323,16 +323,16 @@ async def test_get_baselines_excludes_null_sli_version_with_range(
     ))
     await repo.mark_completed(
         ev2.id,
-        result="pass",
+        result='pass',
         score=90.0,
-        slo_name="http-slo",
+        slo_name='http-slo',
     )
 
     baselines = await baseline_repo.get_reeval_baselines(
         asset_id=asset_id,
-        slo_name="http-slo",
+        slo_name='http-slo',
         period_start_before=datetime(2027, 1, 1, tzinfo=UTC),
-        include_result_with_score="all",
+        include_result_with_score='all',
         limit=10,
         sli_version_range=(1, 3),
     )
@@ -361,16 +361,16 @@ async def test_get_baselines_by_asset_and_slo(db_session: AsyncSession) -> None:
         ))
         await repo.mark_completed(
             ev.id,
-            result="pass",
+            result='pass',
             score=90.0,
-            slo_name="http-slo",
+            slo_name='http-slo',
         )
 
     baselines = await baseline_repo.get_evaluation_baselines(
         asset_id=asset_id,
-        slo_name="http-slo",
+        slo_name='http-slo',
         period_start_before=datetime(2027, 1, 1, tzinfo=UTC),
-        include_result_with_score="all",
+        include_result_with_score='all',
         limit=10,
     )
     assert len(baselines) == 2
@@ -401,16 +401,16 @@ async def test_get_baselines_excludes_future_period_start(db_session: AsyncSessi
         ))
         await repo.mark_completed(
             ev.id,
-            result="pass",
+            result='pass',
             score=90.0,
-            slo_name="http-slo",
+            slo_name='http-slo',
         )
 
     baselines = await baseline_repo.get_evaluation_baselines(
         asset_id=asset_id,
-        slo_name="http-slo",
+        slo_name='http-slo',
         period_start_before=datetime(2026, 3, 12, tzinfo=UTC),
-        include_result_with_score="all",
+        include_result_with_score='all',
         limit=10,
     )
     assert len(baselines) == 1
@@ -424,7 +424,7 @@ async def test_get_baselines_with_tag_filters(db_session: AsyncSession) -> None:
     baseline_repo = BaselineRepository(db_session)
     asset_id = await _create_asset(db_session)
 
-    for i, branch in enumerate(("main", "main", "feature-x")):
+    for i, branch in enumerate(('main', 'main', 'feature-x')):
         ev = await repo.create_pending(EvalCreateParams(
             evaluation_name=f'ci-run-{i}',
             period_start=_START,
@@ -437,18 +437,18 @@ async def test_get_baselines_with_tag_filters(db_session: AsyncSession) -> None:
         ))
         await repo.mark_completed(
             ev.id,
-            result="pass",
+            result='pass',
             score=90.0,
-            slo_name="http-slo",
+            slo_name='http-slo',
         )
 
     baselines = await baseline_repo.get_reeval_baselines(
         asset_id=asset_id,
-        slo_name="http-slo",
+        slo_name='http-slo',
         period_start_before=datetime(2027, 1, 1, tzinfo=UTC),
-        include_result_with_score="all",
+        include_result_with_score='all',
         limit=10,
-        tag_filters={"branch": "main"},
+        tag_filters={'branch': 'main'},
     )
     assert len(baselines) == 2
 
@@ -474,16 +474,16 @@ async def test_get_baselines_with_sli_version_range(db_session: AsyncSession) ->
         ))
         await repo.mark_completed(
             ev.id,
-            result="pass",
+            result='pass',
             score=90.0,
-            slo_name="http-slo",
+            slo_name='http-slo',
         )
 
     baselines = await baseline_repo.get_reeval_baselines(
         asset_id=asset_id,
-        slo_name="http-slo",
+        slo_name='http-slo',
         period_start_before=datetime(2027, 1, 1, tzinfo=UTC),
-        include_result_with_score="all",
+        include_result_with_score='all',
         limit=10,
         sli_version_range=(2, 4),
     )
@@ -514,17 +514,17 @@ async def test_get_baselines_restrict_to_ids(db_session: AsyncSession) -> None:
         ))
         await repo.mark_completed(
             ev.id,
-            result="pass",
+            result='pass',
             score=90.0,
-            slo_name="http-slo",
+            slo_name='http-slo',
         )
         eval_ids.append(ev.id)
 
     baselines = await baseline_repo.get_reeval_baselines(
         asset_id=asset_id,
-        slo_name="http-slo",
+        slo_name='http-slo',
         period_start_before=datetime(2027, 1, 1, tzinfo=UTC),
-        include_result_with_score="all",
+        include_result_with_score='all',
         limit=10,
         restrict_to_ids=eval_ids[:2],
     )
@@ -537,16 +537,16 @@ async def test_create_pending_merges_asset_tags_into_variables(
     db_session: AsyncSession,
 ) -> None:
     """Asset tags become defaults in variables; caller values take precedence."""
-    type_name = f"vm-{uuid.uuid4().hex[:8]}"
+    type_name = f'vm-{uuid.uuid4().hex[:8]}'
     db_session.add(AssetType(id=uuid.uuid4(), name=type_name))
     await db_session.flush()
     asset_id = uuid.uuid4()
     db_session.add(
         Asset(
             id=asset_id,
-            name=f"tag-test-{asset_id.hex[:8]}",
+            name=f'tag-test-{asset_id.hex[:8]}',
             type_name=type_name,
-            tags={"os": "ubuntu-22", "region": "us-east-1", "branch": "main"},
+            tags={'os': 'ubuntu-22', 'region': 'us-east-1', 'branch': 'main'},
         )
     )
     await db_session.flush()
@@ -563,12 +563,12 @@ async def test_create_pending_merges_asset_tags_into_variables(
         slo_name='test-slo',
     ))
     # Caller's "branch" wins over asset tag's "branch"
-    assert ev.variables["branch"] == "feature-x"
+    assert ev.variables['branch'] == 'feature-x'
     # Asset tag "os" is merged as default
-    assert ev.variables["os"] == "ubuntu-22"
-    assert ev.variables["region"] == "us-east-1"
+    assert ev.variables['os'] == 'ubuntu-22'
+    assert ev.variables['region'] == 'us-east-1'
     # Caller's "env" is preserved
-    assert ev.variables["env"] == "staging"
+    assert ev.variables['env'] == 'staging'
 
 
 @pytest.mark.integration
@@ -586,17 +586,17 @@ async def test_override_double_apply_preserves_original(db_session: AsyncSession
         asset_id=asset_id,
         slo_name='test-slo',
     ))
-    await repo.mark_completed(ev.id, result="fail", score=30.0, slo_name="test-slo")
+    await repo.mark_completed(ev.id, result='fail', score=30.0, slo_name='test-slo')
 
     # First override: fail → pass
-    await repo.override_status(ev.id, new_result="pass", reason="false alarm", author="alice")
+    await repo.override_status(ev.id, new_result='pass', reason='false alarm', author='alice')
     ev1 = await repo.get_by_id(ev.id)
-    assert ev1.original_result == "fail"
-    assert ev1.result == "pass"
+    assert ev1.original_result == 'fail'
+    assert ev1.result == 'pass'
 
     # Second override: pass → warning — original must still be "fail"
-    await repo.override_status(ev.id, new_result="warning", reason="adjusted", author="bob")
+    await repo.override_status(ev.id, new_result='warning', reason='adjusted', author='bob')
     ev2 = await repo.get_by_id(ev.id)
-    assert ev2.original_result == "fail"  # NOT "pass"
-    assert ev2.result == "warning"
-    assert ev2.override_author == "bob"
+    assert ev2.original_result == 'fail'  # NOT "pass"
+    assert ev2.result == 'warning'
+    assert ev2.override_author == 'bob'

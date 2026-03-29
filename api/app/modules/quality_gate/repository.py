@@ -116,7 +116,7 @@ class EvaluationRepository:
             .values(
                 status=EvaluationStatus.RUNNING,
                 started_at=datetime.now(tz=UTC),
-                job_stats={"worker_id": worker_id} if worker_id else {},
+                job_stats={'worker_id': worker_id} if worker_id else {},
             )
         )
 
@@ -144,17 +144,17 @@ class EvaluationRepository:
         """
         merged_stats: dict[str, Any] = dict(job_stats or {})
         if compared_evaluation_ids is not None:
-            merged_stats["compared_evaluation_ids"] = compared_evaluation_ids
+            merged_stats['compared_evaluation_ids'] = compared_evaluation_ids
         values: dict[str, Any] = {
-            "status": EvaluationStatus.COMPLETED,
-            "result": result,
-            "score": score,
-            "job_stats": merged_stats,
+            'status': EvaluationStatus.COMPLETED,
+            'result': result,
+            'score': score,
+            'job_stats': merged_stats,
         }
         if slo_name is not None:
-            values["slo_name"] = slo_name
+            values['slo_name'] = slo_name
         if slo_version is not None:
-            values["slo_version"] = slo_version
+            values['slo_version'] = slo_version
         await self._session.execute(
             update(Evaluation).where(Evaluation.id == eval_id).values(**values)
         )
@@ -240,7 +240,7 @@ class EvaluationRepository:
         if evaluation_name:
             q = q.where(Evaluation.evaluation_name == evaluation_name)
         if asset_name:
-            q = q.where(Evaluation.asset_snapshot["name"].as_string() == asset_name)
+            q = q.where(Evaluation.asset_snapshot['name'].as_string() == asset_name)
         if result:
             q = q.where(Evaluation.result == result)
         if from_:
@@ -306,7 +306,7 @@ class EvaluationRepository:
         if result:
             q = q.where(Evaluation.result == result)
         if date_prefix:
-            q = q.where(Evaluation.period_start.cast(String).like(f"{date_prefix}%"))
+            q = q.where(Evaluation.period_start.cast(String).like(f'{date_prefix}%'))
         if asset_ids:
             q = q.where(Evaluation.asset_id.in_(asset_ids))
         if from_ts:
@@ -324,7 +324,7 @@ class EvaluationRepository:
         if evals:
             eval_ids = [ev.id for ev in evals]
             cnt_rows = await self._session.execute(
-                select(EvaluationAnnotation.evaluation_id, func.count().label("cnt"))
+                select(EvaluationAnnotation.evaluation_id, func.count().label('cnt'))
                 .where(
                     EvaluationAnnotation.evaluation_id.in_(eval_ids),
                     EvaluationAnnotation.hidden_at.is_(None),
@@ -430,13 +430,13 @@ class EvaluationRepository:
         if ev is None:
             return None
         values: dict[str, Any] = {
-            "result": new_result,
-            "override_reason": reason,
-            "override_author": author,
+            'result': new_result,
+            'override_reason': reason,
+            'override_author': author,
         }
         # Only set original on first override — preserve the true original
         if ev.original_result is None:
-            values["original_result"] = ev.result
+            values['original_result'] = ev.result
         await self._session.execute(
             update(Evaluation).where(Evaluation.id == eval_id).values(**values)
         )
@@ -474,8 +474,8 @@ class EvaluationRepository:
         stmt = (
             select(
                 Evaluation.evaluation_name,
-                func.count().label("cnt"),
-                func.max(Evaluation.period_start).label("last_run"),
+                func.count().label('cnt'),
+                func.max(Evaluation.period_start).label('last_run'),
             )
             .where(Evaluation.status == EvaluationStatus.COMPLETED)
             .group_by(Evaluation.evaluation_name)

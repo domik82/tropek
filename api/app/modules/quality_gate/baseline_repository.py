@@ -136,10 +136,10 @@ class BaselineRepository:
             Evaluation.status == EvaluationStatus.COMPLETED,
             Evaluation.invalidated == False,  # noqa: E712
         )
-        if include_result_with_score == "pass":
-            q = q.where(Evaluation.result == "pass")
-        elif include_result_with_score == "pass_or_warn":
-            q = q.where(Evaluation.result.in_(["pass", "warning"]))
+        if include_result_with_score == 'pass':
+            q = q.where(Evaluation.result == 'pass')
+        elif include_result_with_score == 'pass_or_warn':
+            q = q.where(Evaluation.result.in_(['pass', 'warning']))
         return q
 
     async def _apply_pin_filter(
@@ -215,36 +215,36 @@ class BaselineRepository:
             return
 
         stats = dict(ev.job_stats)
-        if "original_result" not in stats:
-            stats["original_result"] = params.old_result
-            stats["original_score"] = params.old_score
-        stats["re_evaluated_at"] = datetime.now(tz=UTC).isoformat()
-        stats["re_eval_slo_version"] = params.slo_version
+        if 'original_result' not in stats:
+            stats['original_result'] = params.old_result
+            stats['original_score'] = params.old_score
+        stats['re_evaluated_at'] = datetime.now(tz=UTC).isoformat()
+        stats['re_eval_slo_version'] = params.slo_version
 
         values: dict[str, Any] = {
-            "result": params.new_result,
-            "score": params.new_score,
-            "job_stats": stats,
+            'result': params.new_result,
+            'score': params.new_score,
+            'job_stats': stats,
         }
         if params.slo_version is not None:
-            values["slo_version"] = params.slo_version
+            values['slo_version'] = params.slo_version
 
         await self._session.execute(
             update(Evaluation).where(Evaluation.id == params.eval_id).values(**values)
         )
 
         annotation_content = (
-            f"re-evaluated: {params.old_result} -> {params.new_result},"
-            f" score {params.old_score} -> {params.new_score}"
+            f're-evaluated: {params.old_result} -> {params.new_result},'
+            f' score {params.old_score} -> {params.new_score}'
         )
         if self._cache:
-            await self._cache.invalidate(f"baseline:{ev.asset_id}:{ev.slo_name}")
+            await self._cache.invalidate(f'baseline:{ev.asset_id}:{ev.slo_name}')
         ann_repo = AnnotationRepository(self._session, cache=self._cache)
         await ann_repo.add_annotation(
             params.eval_id,
             content=annotation_content,
-            author="system",
-            category="re-evaluation",
+            author='system',
+            category='re-evaluation',
         )
 
         # Write to normalized table
@@ -261,14 +261,14 @@ class BaselineRepository:
                     continue
                 rows.append(
                     {
-                        "evaluation_id": params.eval_id,
-                        "slo_objective_id": obj_id,
-                        "value": ir.value,  # type: ignore[attr-defined]
-                        "compared_value": ir.compared_value,  # type: ignore[attr-defined]
-                        "change_absolute": ir.change_absolute,  # type: ignore[attr-defined]
-                        "change_relative_pct": ir.change_relative_pct,  # type: ignore[attr-defined]
-                        "status": ir.status,  # type: ignore[attr-defined]
-                        "score": ir.score,  # type: ignore[attr-defined]
+                        'evaluation_id': params.eval_id,
+                        'slo_objective_id': obj_id,
+                        'value': ir.value,  # type: ignore[attr-defined]
+                        'compared_value': ir.compared_value,  # type: ignore[attr-defined]
+                        'change_absolute': ir.change_absolute,  # type: ignore[attr-defined]
+                        'change_relative_pct': ir.change_relative_pct,  # type: ignore[attr-defined]
+                        'status': ir.status,  # type: ignore[attr-defined]
+                        'score': ir.score,  # type: ignore[attr-defined]
                     }
                 )
             if rows:

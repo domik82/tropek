@@ -9,8 +9,9 @@ members = [
 ]
 
 [tool.ruff]
-line-length = 120
+line-length = 100
 target-version = "py313"
+# Exclude specific directories
 exclude = [
     ".bzr",
     ".direnv",
@@ -28,7 +29,7 @@ select = [
     "F",     # pyflakes
     "I",     # isort
     "N",     # pep8-naming
-    "UP",    # pyupgrade (includes f-string enforcement via UP032)
+    "UP",    # pyupgrade
     "B",     # flake8-bugbear
     "SIM",   # flake8-simplify
     "D",     # pydocstyle
@@ -37,62 +38,43 @@ select = [
     "RUF",   # ruff-native rules
     "PT",    # flake8-pytest-style
     "C90",   # McCabe complexity
-    "C4",    # flake8-comprehensions (list/dict/set comprehension misuse)
     "PERF",  # perflint
     "TRY",   # tryceratops (exception handling)
     "PLC",   # pylint convention (import placement)
     "PLR",   # pylint refactor (too-many-args/branches/statements)
     "BLE",   # blind-except
-    "A",     # flake8-builtins (shadowed builtins: id, type, list, ...)
-    "ISC",   # flake8-implicit-str-concat
-    "RET",   # flake8-return (unnecessary else, missing explicit return)
-    "G",     # flake8-logging-format
-    "TC",    # flake8-type-checking (TYPE_CHECKING imports)
+    "Q",     # quote enforcement
 ]
 ignore = [
-    # Formatter owns line length — un-wrappable lines (long strings, URLs) are fine
-    "E501",
-    # __init__.py, magic methods, and __init__ are self-documenting by convention
-    "D104", "D105", "D107",
-    # assert is valid in application code (e.g. narrowing types); tests are covered by per-file-ignores
-    "S101",
-    # We write descriptive exception messages inline — extracting to a variable adds noise
-    "TRY003",
-    # Moving a return into an else branch is not always clearer; we decide case by case
-    "TRY300",
-    # False positive: status enum values like PASS = "pass" trip the hardcoded-password rule
-    "S105",
-    # PLR0913 (too-many-arguments) already covers this; PLR0917 is redundant
-    "PLR0917",
-    # ISC001 (implicit concat on one line) conflicts with ruff formatter — must be off
-    "ISC001",
-    # f-strings in logging are fine; the lazy-% micro-optimisation is not worth it here
-    "G004",
-    # Assigning before return is often intentional (naming the value aids debugging)
-    "RET504",
+    "E501",    # line too long — handled by ruff format
+    "D104",    # missing docstring in public package (__init__.py)
+    "D105",    # missing docstring in magic method
+    "D107",    # missing docstring in __init__
+    "S101",    # use of assert — required in tests
+    "TRY003",  # long exception messages — we use these intentionally for clarity
+    "TRY300",  # consider moving return into else — stylistic, disagree
+    "S105",    # hardcoded password — false positive on enum values like PASS = "pass"
+    "PLR0917",  # too-many-positional-arguments — redundant with PLR0913
 ]
 
+[tool.ruff.lint.flake8-quotes]
+inline-quotes = "single"
+
 [tool.ruff.lint.pydocstyle]
-# Google style: Args/Returns/Raises sections, no blank line before class docstring
 convention = "google"
 
 [tool.ruff.format]
-# Formatter enforces single quotes — keeps Q lint rules out of the picture
 quote-style = "single"
 
 [tool.ruff.lint.pylint]
-# Raise the default (5) to accommodate FastAPI dependencies injected via Depends()
 max-args = 8
 
 [tool.ruff.lint.per-file-ignores]
-# Tests: no docstrings, asserts allowed, fixtures look unused, magic numbers in assertions are fine
-"**/tests/**" = ["D", "S101", "S106", "ARG", "PLR2004"]
-"**/test_*.py" = ["D", "S101", "S106", "ARG", "PLR2004"]
-# Alembic auto-generated migrations: formatting is Alembic's job, not ours
+# Test function names are self-documenting — docstrings add noise, not value
+"**/tests/**" = ["D"]
+"**/test_*.py" = ["D"]
 "**/alembic/versions/*.py" = ["D", "W291", "E501"]
-# Observability stack is third-party-adjacent config — don't enforce our style on it
 "observability_stack/**" = ["D", "S", "C901", "SIM115", "RUF002", "RUF003", "RUF005"]
-# FastAPI uses Depends() as a default argument — B008 (mutable default) is a false positive here
 "**/router.py" = ["B008"]
 
 [tool.mypy]

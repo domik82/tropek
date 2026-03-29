@@ -15,7 +15,7 @@ from app.modules.sli_registry.schemas import SLIDefinitionCreate, SLIDefinitionR
 router = APIRouter()
 
 
-@router.get("/sli-definitions", response_model=PagedResponse[SLIDefinitionRead])
+@router.get('/sli-definitions', response_model=PagedResponse[SLIDefinitionRead])
 async def list_sli_definitions(
     adapter_type: str | None = None,
     tag_key: str | None = None,
@@ -30,7 +30,7 @@ async def list_sli_definitions(
     )
 
 
-@router.post("/sli-definitions", response_model=SLIDefinitionRead, status_code=201)
+@router.post('/sli-definitions', response_model=SLIDefinitionRead, status_code=201)
 async def create_sli_definition(
     body: SLIDefinitionCreate,
     session: AsyncSession = Depends(get_session),
@@ -50,7 +50,7 @@ async def create_sli_definition(
     return SLIDefinitionRead.model_validate(sli)
 
 
-@router.get("/sli-definitions/tag-keys", response_model=list[TagKeyCount])
+@router.get('/sli-definitions/tag-keys', response_model=list[TagKeyCount])
 async def get_sli_tag_keys(
     session: AsyncSession = Depends(get_session),
 ) -> list[TagKeyCount]:
@@ -60,7 +60,7 @@ async def get_sli_tag_keys(
     return [TagKeyCount(key=k, count=v) for k, v in keys.items()]
 
 
-@router.get("/sli-definitions/tag-values", response_model=list[TagValueCount])
+@router.get('/sli-definitions/tag-values', response_model=list[TagValueCount])
 async def get_sli_tag_values(
     key: str = Query(...),
     session: AsyncSession = Depends(get_session),
@@ -71,7 +71,7 @@ async def get_sli_tag_values(
     return [TagValueCount(value=v, count=c) for v, c in values.items()]
 
 
-@router.get("/sli-definitions/{name}", response_model=SLIDefinitionRead)
+@router.get('/sli-definitions/{name}', response_model=SLIDefinitionRead)
 async def get_sli_definition(
     name: str,
     session: AsyncSession = Depends(get_session),
@@ -80,11 +80,11 @@ async def get_sli_definition(
     repo = SLIRepository(session)
     sli = await repo.get_latest(name)
     if sli is None:
-        raise NotFoundError("sli definition", name)
+        raise NotFoundError('sli definition', name)
     return SLIDefinitionRead.model_validate(sli)
 
 
-@router.get("/sli-definitions/{name}/versions", response_model=list[SLIDefinitionRead])
+@router.get('/sli-definitions/{name}/versions', response_model=list[SLIDefinitionRead])
 async def list_sli_versions(
     name: str,
     session: AsyncSession = Depends(get_session),
@@ -95,7 +95,7 @@ async def list_sli_versions(
     return [SLIDefinitionRead.model_validate(v) for v in versions]
 
 
-@router.delete("/sli-definitions/{name}", status_code=204)
+@router.delete('/sli-definitions/{name}', status_code=204)
 async def delete_sli_definition(
     name: str,
     session: AsyncSession = Depends(get_session),
@@ -104,5 +104,5 @@ async def delete_sli_definition(
     repo = SLIRepository(session)
     existing = await repo.get_latest(name)
     if existing is None:
-        raise NotFoundError("sli definition", name)
+        raise NotFoundError('sli definition', name)
     await repo.deactivate(name)

@@ -30,16 +30,16 @@ class TestAssetSchemaContract:
 
     def test_asset_read_has_tags(self) -> None:
         fields = _field_names(AssetRead)
-        assert "tags" in fields, "AssetRead missing 'tags' -- was it renamed?"
-        assert "labels" not in fields, "AssetRead still has 'labels' -- rename incomplete"
+        assert 'tags' in fields, "AssetRead missing 'tags' -- was it renamed?"
+        assert 'labels' not in fields, "AssetRead still has 'labels' -- rename incomplete"
 
     def test_asset_read_has_variables(self) -> None:
-        assert "variables" in _field_names(AssetRead)
+        assert 'variables' in _field_names(AssetRead)
 
     def test_asset_create_has_tags(self) -> None:
         fields = _field_names(AssetCreate)
-        assert "tags" in fields
-        assert "labels" not in fields
+        assert 'tags' in fields
+        assert 'labels' not in fields
 
 
 # -- DataSource ---------------------------------------------------------------
@@ -50,14 +50,14 @@ class TestDataSourceSchemaContract:
 
     def test_datasource_read_has_tags(self) -> None:
         fields = _field_names(DataSourceRead)
-        assert "tags" in fields
-        assert "labels" not in fields
+        assert 'tags' in fields
+        assert 'labels' not in fields
 
     def test_datasource_read_has_has_token(self) -> None:
-        assert "has_token" in _field_names(DataSourceRead)
+        assert 'has_token' in _field_names(DataSourceRead)
 
     def test_datasource_read_excludes_token_value(self) -> None:
-        assert "token" not in _field_names(DataSourceRead)
+        assert 'token' not in _field_names(DataSourceRead)
 
 
 # -- SLI Registry -------------------------------------------------------------
@@ -68,8 +68,8 @@ class TestSLISchemaContract:
 
     def test_sli_read_has_tags(self) -> None:
         fields = _field_names(SLIDefinitionRead)
-        assert "tags" in fields
-        assert "meta" not in fields
+        assert 'tags' in fields
+        assert 'meta' not in fields
 
 
 # -- SLO Registry -------------------------------------------------------------
@@ -80,11 +80,11 @@ class TestSLOSchemaContract:
 
     def test_slo_read_has_tags(self) -> None:
         fields = _field_names(SLODefinitionRead)
-        assert "tags" in fields
-        assert "meta" not in fields
+        assert 'tags' in fields
+        assert 'meta' not in fields
 
     def test_slo_read_has_variables(self) -> None:
-        assert "variables" in _field_names(SLODefinitionRead)
+        assert 'variables' in _field_names(SLODefinitionRead)
 
 
 # -- Evaluations --------------------------------------------------------------
@@ -95,13 +95,13 @@ class TestEvaluationSchemaContract:
 
     def test_evaluation_summary_has_variables(self) -> None:
         fields = _field_names(EvaluationSummary)
-        assert "variables" in fields
-        assert "evaluation_metadata" not in fields
+        assert 'variables' in fields
+        assert 'evaluation_metadata' not in fields
 
     def test_trigger_request_has_variables(self) -> None:
         fields = _field_names(TriggerRequest)
-        assert "variables" in fields
-        assert "metadata" not in fields
+        assert 'variables' in fields
+        assert 'metadata' not in fields
 
 
 # -- Annotations --------------------------------------------------------------
@@ -112,5 +112,5 @@ class TestAnnotationSchemaContract:
 
     def test_annotation_read_has_tags(self) -> None:
         fields = _field_names(AnnotationRead)
-        assert "tags" in fields
-        assert "meta" not in fields
+        assert 'tags' in fields
+        assert 'meta' not in fields

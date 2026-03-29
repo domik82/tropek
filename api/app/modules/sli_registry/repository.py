@@ -82,7 +82,7 @@ class SLIRepository:
         self._session.add(sli)
         await self._session.flush()
         if self._cache:
-            await self._cache.invalidate(f"sli:{name}:latest")
+            await self._cache.invalidate(f'sli:{name}:latest')
         return sli
 
     async def get_latest(self, name: str) -> SLIDefinition | None:
@@ -192,9 +192,9 @@ class SLIRepository:
         """Return all distinct tag keys with count of SLI definitions using each."""
         result = await self._session.execute(
             text(
-                "SELECT key, COUNT(*) as cnt "
-                "FROM sli_definitions, jsonb_object_keys(tags) AS key "
-                "GROUP BY key ORDER BY cnt DESC"
+                'SELECT key, COUNT(*) as cnt '
+                'FROM sli_definitions, jsonb_object_keys(tags) AS key '
+                'GROUP BY key ORDER BY cnt DESC'
             )
         )
         return {row[0]: row[1] for row in result}
@@ -203,11 +203,11 @@ class SLIRepository:
         """Return all distinct values for a tag key with usage counts."""
         result = await self._session.execute(
             text(
-                "SELECT tags->>:key AS val, COUNT(*) as cnt "
-                "FROM sli_definitions "
-                "WHERE tags ? :key "
-                "GROUP BY val ORDER BY cnt DESC"
+                'SELECT tags->>:key AS val, COUNT(*) as cnt '
+                'FROM sli_definitions '
+                'WHERE tags ? :key '
+                'GROUP BY val ORDER BY cnt DESC'
             ),
-            {"key": key},
+            {'key': key},
         )
         return {row[0]: row[1] for row in result}

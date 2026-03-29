@@ -79,7 +79,7 @@ async def _validate_binding_adapter_type(
 # ---- Asset Types ----
 
 
-@router.get("/asset-types", response_model=PagedResponse[AssetTypeRead])
+@router.get('/asset-types', response_model=PagedResponse[AssetTypeRead])
 async def list_asset_types(
     session: AsyncSession = Depends(get_session),
 ) -> PagedResponse[AssetTypeRead]:
@@ -99,7 +99,7 @@ async def list_asset_types(
     return PagedResponse(items=reads, total=len(reads))
 
 
-@router.post("/asset-types", response_model=AssetTypeRead, status_code=201)
+@router.post('/asset-types', response_model=AssetTypeRead, status_code=201)
 async def create_asset_type(
     body: AssetTypeCreate,
     session: AsyncSession = Depends(get_session),
@@ -110,7 +110,7 @@ async def create_asset_type(
     return AssetTypeRead.model_validate(at)
 
 
-@router.patch("/asset-types/{name}/set-default", response_model=AssetTypeRead)
+@router.patch('/asset-types/{name}/set-default', response_model=AssetTypeRead)
 async def set_default_asset_type(
     name: str,
     session: AsyncSession = Depends(get_session),
@@ -119,11 +119,11 @@ async def set_default_asset_type(
     repo = AssetTypeRepository(session)
     at = await repo.set_default(name)
     if at is None:
-        raise NotFoundError("asset type", name)
+        raise NotFoundError('asset type', name)
     return AssetTypeRead.model_validate(at)
 
 
-@router.delete("/asset-types/{name}", status_code=204)
+@router.delete('/asset-types/{name}', status_code=204)
 async def delete_asset_type(
     name: str,
     session: AsyncSession = Depends(get_session),
@@ -132,10 +132,10 @@ async def delete_asset_type(
     repo = AssetTypeRepository(session)
     found = await repo.delete(name)
     if not found:
-        raise NotFoundError("asset type", name)
+        raise NotFoundError('asset type', name)
 
 
-@router.patch("/asset-types/{name}", response_model=AssetTypeRead)
+@router.patch('/asset-types/{name}', response_model=AssetTypeRead)
 async def rename_asset_type(
     name: str,
     body: AssetTypeUpdate,
@@ -143,18 +143,18 @@ async def rename_asset_type(
 ) -> AssetTypeRead:
     """Rename an asset type."""
     if body.name is None:
-        raise HTTPException(status_code=422, detail="name is required")
+        raise HTTPException(status_code=422, detail='name is required')
     repo = AssetTypeRepository(session)
     at = await repo.rename(name, body.name)
     if at is None:
-        raise NotFoundError("asset type", name)
+        raise NotFoundError('asset type', name)
     return AssetTypeRead.model_validate(at)
 
 
 # ---- Assets ----
 
 
-@router.get("/assets", response_model=PagedResponse[AssetRead])
+@router.get('/assets', response_model=PagedResponse[AssetRead])
 async def list_assets(
     type_name: str | None = None,
     tag_key: str | None = None,
@@ -167,7 +167,7 @@ async def list_assets(
     return PagedResponse(items=[AssetRead.model_validate(a) for a in items], total=len(items))
 
 
-@router.post("/assets", response_model=AssetRead, status_code=201)
+@router.post('/assets', response_model=AssetRead, status_code=201)
 async def create_asset(
     body: AssetCreate,
     session: AsyncSession = Depends(get_session),
@@ -185,7 +185,7 @@ async def create_asset(
     return AssetRead.model_validate(asset)
 
 
-@router.get("/assets/tag-keys", response_model=list[TagKeyCount])
+@router.get('/assets/tag-keys', response_model=list[TagKeyCount])
 async def list_tag_keys(
     session: AsyncSession = Depends(get_session),
 ) -> list[TagKeyCount]:
@@ -195,7 +195,7 @@ async def list_tag_keys(
     return [TagKeyCount(key=k, count=v) for k, v in keys.items()]
 
 
-@router.get("/assets/tag-values", response_model=list[TagValueCount])
+@router.get('/assets/tag-values', response_model=list[TagValueCount])
 async def list_tag_values(
     key: str,
     session: AsyncSession = Depends(get_session),
@@ -206,7 +206,7 @@ async def list_tag_values(
     return [TagValueCount(value=k, count=v) for k, v in values.items()]
 
 
-@router.get("/assets/{name}", response_model=AssetRead)
+@router.get('/assets/{name}', response_model=AssetRead)
 async def get_asset(
     name: str,
     session: AsyncSession = Depends(get_session),
@@ -215,11 +215,11 @@ async def get_asset(
     repo = AssetRepository(session)
     asset = await repo.get_by_name(name)
     if asset is None:
-        raise NotFoundError("asset", name)
+        raise NotFoundError('asset', name)
     return AssetRead.model_validate(asset)
 
 
-@router.patch("/assets/{name}", response_model=AssetRead)
+@router.patch('/assets/{name}', response_model=AssetRead)
 async def update_asset(
     name: str,
     body: AssetUpdate,
@@ -231,7 +231,7 @@ async def update_asset(
     return AssetRead.model_validate(asset)
 
 
-@router.delete("/assets/{name}", status_code=204)
+@router.delete('/assets/{name}', status_code=204)
 async def delete_asset(
     name: str,
     session: AsyncSession = Depends(get_session),
@@ -240,13 +240,13 @@ async def delete_asset(
     repo = AssetRepository(session)
     found = await repo.delete(name)
     if not found:
-        raise NotFoundError("asset", name)
+        raise NotFoundError('asset', name)
 
 
 # ---- Asset SLO Links ----
 
 
-@router.get("/assets/{name}/slo-links", response_model=list[AssetSLOLinkRead])
+@router.get('/assets/{name}/slo-links', response_model=list[AssetSLOLinkRead])
 async def list_asset_slo_links(
     name: str,
     session: AsyncSession = Depends(get_session),
@@ -255,13 +255,13 @@ async def list_asset_slo_links(
     asset_repo = AssetRepository(session)
     asset = await asset_repo.get_by_name(name)
     if asset is None:
-        raise NotFoundError("asset", name)
+        raise NotFoundError('asset', name)
     link_repo = AssetSLOLinkRepository(session)
     links = await link_repo.list_by_asset(asset.id)
     return [AssetSLOLinkRead.model_validate(lnk) for lnk in links]
 
 
-@router.post("/assets/{name}/slo-links", response_model=AssetSLOLinkRead, status_code=201)
+@router.post('/assets/{name}/slo-links', response_model=AssetSLOLinkRead, status_code=201)
 async def create_asset_slo_link(
     name: str,
     body: AssetSLOLinkCreate,
@@ -271,7 +271,7 @@ async def create_asset_slo_link(
     asset_repo = AssetRepository(session)
     asset = await asset_repo.get_by_name(name)
     if asset is None:
-        raise NotFoundError("asset", name)
+        raise NotFoundError('asset', name)
     link_repo = AssetSLOLinkRepository(session)
     link = await link_repo.create(
         asset_id=asset.id,
@@ -283,7 +283,7 @@ async def create_asset_slo_link(
     return AssetSLOLinkRead.model_validate(link)
 
 
-@router.delete("/assets/{name}/slo-links/{link_name}", status_code=204)
+@router.delete('/assets/{name}/slo-links/{link_name}', status_code=204)
 async def delete_asset_slo_link(
     name: str,
     link_name: str,
@@ -293,13 +293,13 @@ async def delete_asset_slo_link(
     asset_repo = AssetRepository(session)
     asset = await asset_repo.get_by_name(name)
     if asset is None:
-        raise NotFoundError("asset", name)
+        raise NotFoundError('asset', name)
     link_repo = AssetSLOLinkRepository(session)
     await link_repo.delete(asset.id, link_name)
 
 
 @router.get(
-    "/assets/{name}/slo-links/{link_name}/comparison-rules",
+    '/assets/{name}/slo-links/{link_name}/comparison-rules',
     response_model=list[dict[str, Any]],
 )
 async def get_comparison_rules(
@@ -311,16 +311,16 @@ async def get_comparison_rules(
     asset_repo = AssetRepository(session)
     asset = await asset_repo.get_by_name(name)
     if asset is None:
-        raise NotFoundError("asset", name)
+        raise NotFoundError('asset', name)
     link_repo = AssetSLOLinkRepository(session)
     link = await link_repo.get_by_link_name(asset.id, link_name)
     if link is None:
-        raise NotFoundError("slo link", link_name)
+        raise NotFoundError('slo link', link_name)
     return link.comparison_rules
 
 
 @router.put(
-    "/assets/{name}/slo-links/{link_name}/comparison-rules",
+    '/assets/{name}/slo-links/{link_name}/comparison-rules',
     response_model=list[dict[str, Any]],
 )
 async def update_comparison_rules_endpoint(
@@ -340,11 +340,11 @@ async def update_comparison_rules_endpoint(
     asset_repo = AssetRepository(session)
     asset = await asset_repo.get_by_name(name)
     if asset is None:
-        raise NotFoundError("asset", name)
+        raise NotFoundError('asset', name)
     link_repo = AssetSLOLinkRepository(session)
     link = await link_repo.get_by_link_name(asset.id, link_name)
     if link is None:
-        raise NotFoundError("slo link", link_name)
+        raise NotFoundError('slo link', link_name)
     try:
         validated = validate_comparison_rules(body.rules)
     except ValueError as exc:
@@ -358,7 +358,7 @@ async def update_comparison_rules_endpoint(
 # NOTE: /asset-groups/tree MUST be registered before /asset-groups/{name}
 
 
-@router.get("/asset-groups", response_model=PagedResponse[AssetGroupRead])
+@router.get('/asset-groups', response_model=PagedResponse[AssetGroupRead])
 async def list_asset_groups(
     session: AsyncSession = Depends(get_session),
 ) -> PagedResponse[AssetGroupRead]:
@@ -368,7 +368,7 @@ async def list_asset_groups(
     return PagedResponse(items=items, total=len(items))
 
 
-@router.get("/asset-groups/tree", response_model=AssetGroupTreeResponse)
+@router.get('/asset-groups/tree', response_model=AssetGroupTreeResponse)
 async def get_asset_group_tree(
     session: AsyncSession = Depends(get_session),
 ) -> AssetGroupTreeResponse:
@@ -377,7 +377,7 @@ async def get_asset_group_tree(
     return await repo.get_tree()
 
 
-@router.post("/asset-groups", response_model=AssetGroupRead, status_code=201)
+@router.post('/asset-groups', response_model=AssetGroupRead, status_code=201)
 async def create_asset_group(
     body: AssetGroupCreate,
     session: AsyncSession = Depends(get_session),
@@ -394,7 +394,7 @@ async def create_asset_group(
     )
 
 
-@router.get("/asset-groups/{name}", response_model=AssetGroupRead)
+@router.get('/asset-groups/{name}', response_model=AssetGroupRead)
 async def get_asset_group(
     name: str,
     session: AsyncSession = Depends(get_session),
@@ -403,11 +403,11 @@ async def get_asset_group(
     repo = AssetGroupRepository(session)
     group = await repo.get_by_name(name)
     if group is None:
-        raise NotFoundError("asset group", name)
+        raise NotFoundError('asset group', name)
     return group
 
 
-@router.patch("/asset-groups/{name}", response_model=AssetGroupRead)
+@router.patch('/asset-groups/{name}', response_model=AssetGroupRead)
 async def update_asset_group(
     name: str,
     body: AssetGroupUpdate,
@@ -417,11 +417,11 @@ async def update_asset_group(
     repo = AssetGroupRepository(session)
     group = await repo.update(name, **body.model_dump(exclude_none=True))
     if group is None:
-        raise NotFoundError("asset group", name)
+        raise NotFoundError('asset group', name)
     return group
 
 
-@router.delete("/asset-groups/{name}", status_code=204)
+@router.delete('/asset-groups/{name}', status_code=204)
 async def delete_asset_group(
     name: str,
     deactivate_slos: bool = False,
@@ -431,10 +431,10 @@ async def delete_asset_group(
     repo = AssetGroupRepository(session)
     found = await repo.delete_group(name, deactivate_slos=deactivate_slos)
     if not found:
-        raise NotFoundError("asset group", name)
+        raise NotFoundError('asset group', name)
 
 
-@router.post("/asset-groups/{name}/members", response_model=AssetGroupRead, status_code=201)
+@router.post('/asset-groups/{name}/members', response_model=AssetGroupRead, status_code=201)
 async def add_group_member(
     name: str,
     body: AddMemberRequest,
@@ -444,11 +444,11 @@ async def add_group_member(
     repo = AssetGroupRepository(session)
     group = await repo.get_by_name(name)
     if group is None:
-        raise NotFoundError("asset group", name)
+        raise NotFoundError('asset group', name)
     return await repo.add_member(name, body.asset_id, weight=body.weight)
 
 
-@router.delete("/asset-groups/{name}/members/{asset_id}", status_code=204)
+@router.delete('/asset-groups/{name}/members/{asset_id}', status_code=204)
 async def remove_group_member(
     name: str,
     asset_id: uuid.UUID,
@@ -458,11 +458,11 @@ async def remove_group_member(
     repo = AssetGroupRepository(session)
     group = await repo.get_by_name(name)
     if group is None:
-        raise NotFoundError("asset group", name)
+        raise NotFoundError('asset group', name)
     await repo.remove_member(name, asset_id)
 
 
-@router.post("/asset-groups/{name}/subgroups", response_model=AssetGroupRead, status_code=201)
+@router.post('/asset-groups/{name}/subgroups', response_model=AssetGroupRead, status_code=201)
 async def add_group_subgroup(
     name: str,
     body: AddSubgroupRequest,
@@ -472,11 +472,11 @@ async def add_group_subgroup(
     repo = AssetGroupRepository(session)
     group = await repo.get_by_name(name)
     if group is None:
-        raise NotFoundError("asset group", name)
+        raise NotFoundError('asset group', name)
     return await repo.add_subgroup(name, body.child_group_id, weight=body.weight)
 
 
-@router.delete("/asset-groups/{name}/subgroups/{child_group_id}", status_code=204)
+@router.delete('/asset-groups/{name}/subgroups/{child_group_id}', status_code=204)
 async def remove_group_subgroup(
     name: str,
     child_group_id: uuid.UUID,
@@ -486,14 +486,14 @@ async def remove_group_subgroup(
     repo = AssetGroupRepository(session)
     group = await repo.get_by_name(name)
     if group is None:
-        raise NotFoundError("asset group", name)
+        raise NotFoundError('asset group', name)
     await repo.remove_subgroup(name, child_group_id)
 
 
 # ---- Asset Group SLO Links ----
 
 
-@router.get("/asset-groups/{name}/slo-links", response_model=list[AssetGroupSLOLinkRead])
+@router.get('/asset-groups/{name}/slo-links', response_model=list[AssetGroupSLOLinkRead])
 async def list_group_slo_links(
     name: str,
     session: AsyncSession = Depends(get_session),
@@ -502,14 +502,14 @@ async def list_group_slo_links(
     group_repo = AssetGroupRepository(session)
     group = await group_repo.get_by_name(name)
     if group is None:
-        raise NotFoundError("asset group", name)
+        raise NotFoundError('asset group', name)
     link_repo = AssetGroupSLOLinkRepository(session)
     links = await link_repo.list_by_group(group.id)
     return [AssetGroupSLOLinkRead.model_validate(lnk) for lnk in links]
 
 
 @router.post(
-    "/asset-groups/{name}/slo-links", response_model=AssetGroupSLOLinkRead, status_code=201
+    '/asset-groups/{name}/slo-links', response_model=AssetGroupSLOLinkRead, status_code=201
 )
 async def create_group_slo_link(
     name: str,
@@ -520,7 +520,7 @@ async def create_group_slo_link(
     group_repo = AssetGroupRepository(session)
     group = await group_repo.get_by_name(name)
     if group is None:
-        raise NotFoundError("asset group", name)
+        raise NotFoundError('asset group', name)
     link_repo = AssetGroupSLOLinkRepository(session)
     link = await link_repo.create(
         group_id=group.id,
@@ -531,7 +531,7 @@ async def create_group_slo_link(
     return AssetGroupSLOLinkRead.model_validate(link)
 
 
-@router.delete("/asset-groups/{name}/slo-links/{link_name}", status_code=204)
+@router.delete('/asset-groups/{name}/slo-links/{link_name}', status_code=204)
 async def delete_group_slo_link(
     name: str,
     link_name: str,
@@ -541,7 +541,7 @@ async def delete_group_slo_link(
     group_repo = AssetGroupRepository(session)
     group = await group_repo.get_by_name(name)
     if group is None:
-        raise NotFoundError("asset group", name)
+        raise NotFoundError('asset group', name)
     link_repo = AssetGroupSLOLinkRepository(session)
     await link_repo.delete(group.id, link_name)
 
@@ -549,7 +549,7 @@ async def delete_group_slo_link(
 # ---- SLO Bindings (new model) ----
 
 
-@router.get("/assets/{name}/slo-bindings", response_model=list[SLOBindingRead])
+@router.get('/assets/{name}/slo-bindings', response_model=list[SLOBindingRead])
 async def list_asset_slo_bindings(
     name: str,
     session: AsyncSession = Depends(get_session),
@@ -558,13 +558,13 @@ async def list_asset_slo_bindings(
     asset_repo = AssetRepository(session)
     asset = await asset_repo.get_by_name(name)
     if asset is None:
-        raise NotFoundError("asset", name)
+        raise NotFoundError('asset', name)
     binding_repo = SLOBindingRepository(session)
-    bindings = await binding_repo.list_by_target("asset", asset.id)
+    bindings = await binding_repo.list_by_target('asset', asset.id)
     return [SLOBindingRead.model_validate(b) for b in bindings]
 
 
-@router.post("/assets/{name}/slo-bindings", response_model=SLOBindingRead, status_code=201)
+@router.post('/assets/{name}/slo-bindings', response_model=SLOBindingRead, status_code=201)
 async def create_asset_slo_binding(
     name: str,
     body: SLOBindingCreate,
@@ -574,11 +574,11 @@ async def create_asset_slo_binding(
     asset_repo = AssetRepository(session)
     asset = await asset_repo.get_by_name(name)
     if asset is None:
-        raise NotFoundError("asset", name)
+        raise NotFoundError('asset', name)
     await _validate_binding_adapter_type(session, body.slo_name, body.data_source_name)
     binding_repo = SLOBindingRepository(session)
     binding = await binding_repo.create(
-        target_type="asset",
+        target_type='asset',
         target_id=asset.id,
         slo_name=body.slo_name,
         data_source_name=body.data_source_name,
@@ -586,7 +586,7 @@ async def create_asset_slo_binding(
     return SLOBindingRead.model_validate(binding)
 
 
-@router.delete("/assets/{name}/slo-bindings/{slo_name}", status_code=204)
+@router.delete('/assets/{name}/slo-bindings/{slo_name}', status_code=204)
 async def delete_asset_slo_binding(
     name: str,
     slo_name: str,
@@ -596,12 +596,12 @@ async def delete_asset_slo_binding(
     asset_repo = AssetRepository(session)
     asset = await asset_repo.get_by_name(name)
     if asset is None:
-        raise NotFoundError("asset", name)
+        raise NotFoundError('asset', name)
     binding_repo = SLOBindingRepository(session)
-    await binding_repo.delete_by_target_and_slo("asset", asset.id, slo_name)
+    await binding_repo.delete_by_target_and_slo('asset', asset.id, slo_name)
 
 
-@router.get("/asset-groups/{name}/slo-bindings", response_model=list[SLOBindingRead])
+@router.get('/asset-groups/{name}/slo-bindings', response_model=list[SLOBindingRead])
 async def list_group_slo_bindings(
     name: str,
     session: AsyncSession = Depends(get_session),
@@ -610,13 +610,13 @@ async def list_group_slo_bindings(
     group_repo = AssetGroupRepository(session)
     group = await group_repo.get_by_name(name)
     if group is None:
-        raise NotFoundError("asset group", name)
+        raise NotFoundError('asset group', name)
     binding_repo = SLOBindingRepository(session)
-    bindings = await binding_repo.list_by_target("asset_group", group.id)
+    bindings = await binding_repo.list_by_target('asset_group', group.id)
     return [SLOBindingRead.model_validate(b) for b in bindings]
 
 
-@router.post("/asset-groups/{name}/slo-bindings", response_model=SLOBindingRead, status_code=201)
+@router.post('/asset-groups/{name}/slo-bindings', response_model=SLOBindingRead, status_code=201)
 async def create_group_slo_binding(
     name: str,
     body: SLOBindingCreate,
@@ -626,11 +626,11 @@ async def create_group_slo_binding(
     group_repo = AssetGroupRepository(session)
     group = await group_repo.get_by_name(name)
     if group is None:
-        raise NotFoundError("asset group", name)
+        raise NotFoundError('asset group', name)
     await _validate_binding_adapter_type(session, body.slo_name, body.data_source_name)
     binding_repo = SLOBindingRepository(session)
     binding = await binding_repo.create(
-        target_type="asset_group",
+        target_type='asset_group',
         target_id=group.id,
         slo_name=body.slo_name,
         data_source_name=body.data_source_name,
@@ -638,7 +638,7 @@ async def create_group_slo_binding(
     return SLOBindingRead.model_validate(binding)
 
 
-@router.delete("/asset-groups/{name}/slo-bindings/{slo_name}", status_code=204)
+@router.delete('/asset-groups/{name}/slo-bindings/{slo_name}', status_code=204)
 async def delete_group_slo_binding(
     name: str,
     slo_name: str,
@@ -648,6 +648,6 @@ async def delete_group_slo_binding(
     group_repo = AssetGroupRepository(session)
     group = await group_repo.get_by_name(name)
     if group is None:
-        raise NotFoundError("asset group", name)
+        raise NotFoundError('asset group', name)
     binding_repo = SLOBindingRepository(session)
-    await binding_repo.delete_by_target_and_slo("asset_group", group.id, slo_name)
+    await binding_repo.delete_by_target_and_slo('asset_group', group.id, slo_name)
