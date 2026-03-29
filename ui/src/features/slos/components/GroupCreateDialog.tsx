@@ -3,6 +3,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose,
 } from '@/components/ui/dialog'
 import { FieldLabel } from '@/components/ui/field-label'
+import { Input } from '@/components/ui/input'
 import { GroupTreeSelector } from '@/features/assets/components/GroupTreeSelector'
 import { useCreateGroup, useGroupTree, useAddSubgroup } from '../hooks'
 
@@ -50,11 +51,10 @@ export function GroupCreateDialog({ open, onOpenChange }: Props) {
         <div className="space-y-3 py-2">
           <div>
             <FieldLabel required>Name</FieldLabel>
-            <input
+            <Input
               value={name}
               onChange={e => setName(e.target.value)}
               placeholder="production-apis"
-              className="w-full bg-input border border-border rounded px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50"
             />
             {name && !isValid && (
               <p className="text-xs text-destructive mt-1">lowercase letters, numbers, hyphens only</p>
@@ -62,20 +62,18 @@ export function GroupCreateDialog({ open, onOpenChange }: Props) {
           </div>
           <div>
             <FieldLabel>Display Name</FieldLabel>
-            <input
+            <Input
               value={displayName}
               onChange={e => setDisplayName(e.target.value)}
               placeholder="Production APIs"
-              className="w-full bg-input border border-border rounded px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50"
             />
           </div>
           <div>
             <FieldLabel>Description</FieldLabel>
-            <input
+            <Input
               value={description}
               onChange={e => setDescription(e.target.value)}
               placeholder="Optional description…"
-              className="w-full bg-input border border-border rounded px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50"
             />
           </div>
           <div>
