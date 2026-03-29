@@ -5,18 +5,21 @@ from __future__ import annotations
 import uuid
 from typing import Any, cast
 
-from sqlalchemy import select, text, update
+from sqlalchemy import select, update
 from sqlalchemy.engine import CursorResult
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.cache.redis_cache import RedisCache
 from app.db.models import SLODefinition
 from app.db.models import SLOObjective as SLOObjectiveORM
+from app.modules.common.tag_mixin import TagQueryMixin
 from app.modules.slo_registry.params import SLOCreateParams
 
 
-class SLORepository:
+class SLORepository(TagQueryMixin):
     """Data access layer for versioned SLO definitions."""
+
+    _tag_table = 'slo_definitions'
 
     def __init__(self, session: AsyncSession, cache: RedisCache | None = None) -> None:
         self._session = session
@@ -197,27 +200,3 @@ class SLORepository:
             await self._session.execute(update(SLODefinition).where(SLODefinition.name == name).values(active=False)),
         )
         return cursor.rowcount
-
-    async def get_tag_keys(self) -> dict[str, int]:
-        """Return all distinct tag keys with count of SLO definitions using each."""
-        result = await self._session.execute(
-            text(
-                'SELECT key, COUNT(*) as cnt '
-                'FROM slo_definitions, jsonb_object_keys(tags) AS key '
-                'GROUP BY key ORDER BY cnt DESC'
-            )
-        )
-        return {row[0]: row[1] for row in result}
-
-    async def get_tag_values(self, key: str) -> dict[str, int]:
-        """Return all distinct values for a tag key with usage counts."""
-        result = await self._session.execute(
-            text(
-                'SELECT tags->>:key AS val, COUNT(*) as cnt '
-                'FROM slo_definitions '
-                'WHERE tags ? :key '
-                'GROUP BY val ORDER BY cnt DESC'
-            ),
-            {'key': key},
-        )
-        return {row[0]: row[1] for row in result}
