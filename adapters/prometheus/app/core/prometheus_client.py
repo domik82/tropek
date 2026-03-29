@@ -38,6 +38,36 @@ class PrometheusClient:
         data = await self._get('/api/v1/query', params)
         return self._extract_scalar(data)
 
+    async def range_query(
+        self,
+        query: str,
+        *,
+        start: str,
+        end: str,
+        step: str,
+    ) -> list[float]:
+        """Execute a range query and return a flat list of float values.
+
+        All series in the matrix result are concatenated into a single list.
+        NaN/Inf values are preserved (caller is responsible for filtering).
+
+        Raises PrometheusQueryError on any failure.
+        """
+        params = {'query': query, 'start': start, 'end': end, 'step': step}
+        data = await self._get('/api/v1/query_range', params)
+        return self._extract_matrix(data)
+
+    def _extract_matrix(self, data: dict[str, Any]) -> list[float]:
+        result_type = data['resultType']
+        if result_type != 'matrix':
+            raise PrometheusQueryError(f'expected matrix result type, got: {result_type}')
+
+        values: list[float] = []
+        for series in data['result']:
+            for _ts, raw in series['values']:
+                values.append(float(raw))
+        return values
+
     async def _get(self, path: str, params: dict[str, str]) -> dict[str, Any]:
         url = f'{self._base_url}{path}'
         logger.info(f'prometheus query: GET {url} query={params.get("query", "?")}')
