@@ -127,9 +127,9 @@ async def validate_slo(body: SLOValidateRequest) -> SLOValidationResult:  # noqa
                 errors.append(SLOValError(field=f'objectives[{i}].warning_criteria', message=str(e)))
 
     # Validate total_score percentages
-    if not (0 <= slo.total_score.pass_pct <= 100):
+    if not (0 <= slo.total_score.pass_pct <= 100):  # noqa: PLR2004
         errors.append(SLOValError(field='total_score_pass_pct', message='must be 0-100'))
-    if not (0 <= slo.total_score.warning_pct <= 100):
+    if not (0 <= slo.total_score.warning_pct <= 100):  # noqa: PLR2004
         errors.append(SLOValError(field='total_score_warning_pct', message='must be 0-100'))
 
     if errors:

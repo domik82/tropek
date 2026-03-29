@@ -38,7 +38,7 @@ class CsvStore:
         ns_dir = self._data_dir / namespace
         if not ns_dir.is_dir():
             return QueryResult(
-                errors={name: f"namespace '{namespace}' not found" for name in queries},
+                errors=dict.fromkeys(queries, f"namespace '{namespace}' not found"),
             )
 
         # Load all CSV rows from the namespace
@@ -47,9 +47,7 @@ class CsvStore:
         result = QueryResult()
         for metric_name in queries:
             matching = [
-                r
-                for r in rows
-                if r['metric_name'] == metric_name and start <= _parse_ts(r['timestamp']) <= end
+                r for r in rows if r['metric_name'] == metric_name and start <= _parse_ts(r['timestamp']) <= end
             ]
             if matching:
                 # Take the last value in the range (sorted by timestamp)

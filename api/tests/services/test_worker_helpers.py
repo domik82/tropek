@@ -5,6 +5,7 @@ from __future__ import annotations
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from app.modules.quality_gate.engine.variables import build_variables
 from app.modules.quality_gate.worker import DefinitionLoadError, _load_definitions
 
 
@@ -144,8 +145,6 @@ async def test_load_definitions_success() -> None:
 
 def test_variable_merge_priority() -> None:
     """Variables merge with correct priority: reserved < asset.variables < asset.tags < slo.variables < eval.variables."""
-    from app.modules.quality_gate.engine.variables import build_variables
-
     # Simulate the merge order from worker.py
     variables = build_variables(
         metadata={},

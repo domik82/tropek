@@ -104,8 +104,6 @@ async def test_instant_query_scalar_result_type(client: PrometheusClient):
 @respx.mock
 @pytest.mark.asyncio
 async def test_instant_query_http_error(client: PrometheusClient):
-    respx.get('http://prom:9090/api/v1/query').mock(
-        return_value=Response(500, text='Internal Server Error')
-    )
+    respx.get('http://prom:9090/api/v1/query').mock(return_value=Response(500, text='Internal Server Error'))
     with pytest.raises(PrometheusQueryError, match='500'):
         await client.instant_query('some_query', time='2026-01-15T10:00:00Z')

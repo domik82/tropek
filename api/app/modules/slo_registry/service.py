@@ -7,13 +7,14 @@ from fastapi import HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
+from app.db.models import Asset, DataSource, SLIDefinition
 from app.modules.assets.repository import AssetRepository
 from app.modules.common.exceptions import DomainValidationError, NotFoundError
 from app.modules.datasource.repository import DataSourceRepository
 from app.modules.quality_gate.baseline_repository import BaselineRepository
 from app.modules.quality_gate.engine.criteria import aggregate_values
 from app.modules.quality_gate.engine.evaluator import evaluate
-from app.modules.quality_gate.engine.slo_models import SLOParseError
+from app.modules.quality_gate.engine.slo_models import SLO, SLOParseError
 from app.modules.quality_gate.engine.slo_parser import build_slo
 from app.modules.quality_gate.engine.variables import build_variables, substitute_variables
 from app.modules.quality_gate.schemas import IndicatorResult
@@ -64,7 +65,7 @@ class SLOTestService:
             compared_values=compared_values,
         )
 
-    def _parse_slo(self, body: SLOTestRequest):  # type: ignore[return]
+    def _parse_slo(self, body: SLOTestRequest) -> SLO:
         """Parse and validate SLO structure from request body."""
         try:
             return build_slo(
@@ -76,7 +77,7 @@ class SLOTestService:
         except SLOParseError as e:
             raise DomainValidationError(f'invalid slo: {e}') from e
 
-    async def _resolve_sli(self, sli_name: str):  # type: ignore[return]
+    async def _resolve_sli(self, sli_name: str) -> SLIDefinition:
         """Look up the latest version of an SLI definition."""
         sli_repo = SLIRepository(self._session)
         sli_def = await sli_repo.get_latest(sli_name)
@@ -84,7 +85,7 @@ class SLOTestService:
             raise NotFoundError('sli definition', sli_name)
         return sli_def
 
-    async def _resolve_datasource(self, data_source_name: str):  # type: ignore[return]
+    async def _resolve_datasource(self, data_source_name: str) -> DataSource:
         """Look up a datasource by name."""
         ds_repo = DataSourceRepository(self._session)
         ds = await ds_repo.get_by_name(data_source_name)
@@ -92,7 +93,7 @@ class SLOTestService:
             raise NotFoundError('data source', data_source_name)
         return ds
 
-    async def _resolve_asset(self, asset_name: str):  # type: ignore[return]
+    async def _resolve_asset(self, asset_name: str) -> Asset:
         """Look up an asset by name."""
         asset_repo = AssetRepository(self._session)
         asset = await asset_repo.get_by_name(asset_name)
@@ -100,7 +101,7 @@ class SLOTestService:
             raise NotFoundError('asset', asset_name)
         return asset
 
-    def _build_variables(self, body: SLOTestRequest, asset) -> dict[str, str]:  # type: ignore[return]
+    def _build_variables(self, body: SLOTestRequest, asset: Asset) -> dict[str, str]:
         """Build merged variable map for query substitution."""
         variables = build_variables(
             metadata={},
@@ -133,7 +134,7 @@ class SLOTestService:
     async def _query_adapter(
         self,
         body: SLOTestRequest,
-        ds,
+        ds: DataSource,
         resolved_queries: dict[str, str],
     ) -> tuple[dict[str, float], dict[str, str]]:
         """Call the adapter to fetch metric values for the given time range."""
@@ -177,9 +178,9 @@ class SLOTestService:
     async def _resolve_baselines(
         self,
         body: SLOTestRequest,
-        slo,
-        sli_def,
-        asset,
+        slo: SLO,
+        sli_def: SLIDefinition,
+        asset: Asset,
         baseline_cfg: BaselineConfig,
     ) -> tuple[dict[str, float | None], dict[str, float] | None]:
         """Resolve comparison baselines according to the configured mode."""

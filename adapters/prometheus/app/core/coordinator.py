@@ -87,9 +87,7 @@ class Coordinator:
                         value=value,
                         success=name not in errors,
                         message=error_msg,
-                        query_executed=query_spec.get(
-                            'query', query_spec.get('query_template', '')
-                        ),
+                        query_executed=query_spec.get('query', query_spec.get('query_template', '')),
                     )
 
         tasks = [_run_query(name, spec) for name, spec in queries.items()]

@@ -419,7 +419,7 @@ class AssetGroupRepository:
         """
         # child_ids = groups that appear as a child of some other group
         child_ids_result = await self._session.execute(select(AssetGroupLink.child_group_id).distinct())
-        child_ids = {row for row in child_ids_result.scalars()}
+        child_ids = set(child_ids_result.scalars())
 
         all_result = await self._session.execute(select(AssetGroup).order_by(AssetGroup.name))
         all_groups = list(all_result.scalars().all())

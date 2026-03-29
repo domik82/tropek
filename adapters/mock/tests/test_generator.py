@@ -52,6 +52,4 @@ def test_main_merges_scenarios_into_shared_namespace() -> None:
 
     for ns, rows in ns_rows.items():
         metric_names = {r['metric_name'] for r in rows}
-        assert expected[ns] == metric_names, (
-            f'namespace {ns}: expected {expected[ns]}, got {metric_names}'
-        )
+        assert expected[ns] == metric_names, f'namespace {ns}: expected {expected[ns]}, got {metric_names}'

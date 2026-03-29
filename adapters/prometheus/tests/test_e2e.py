@@ -177,9 +177,7 @@ class TestVariableSubstitution:
                 'queries': {
                     'with_duration': {
                         'mode': 'raw',
-                        'query': (
-                            'avg_over_time(cpu_usage_percent{service="api"}[$DURATION_SECONDS])'
-                        ),
+                        'query': ('avg_over_time(cpu_usage_percent{service="api"}[$DURATION_SECONDS])'),
                     },
                 },
                 'start': QUERY_START,
@@ -215,9 +213,7 @@ class TestErrorHandling:
         assert result['results'][0]['success'] is False
 
     async def test_unknown_job_returns_404(self, client: httpx.AsyncClient) -> None:
-        resp = await client.get(
-            f'{ADAPTER_URL}/api/v1/query-jobs/00000000-0000-0000-0000-000000000000'
-        )
+        resp = await client.get(f'{ADAPTER_URL}/api/v1/query-jobs/00000000-0000-0000-0000-000000000000')
         assert resp.status_code == 404
 
 

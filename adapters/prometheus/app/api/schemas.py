@@ -7,9 +7,7 @@ from typing import Any
 
 from pydantic import BaseModel, Field, field_validator
 
-ALLOWED_METHODS = frozenset(
-    ['min', 'mean', 'max', 'std', 'sum', 'median', 'p75', 'p90', 'p95', 'p99']
-)
+ALLOWED_METHODS = frozenset(['min', 'mean', 'max', 'std', 'sum', 'median', 'p75', 'p90', 'p95', 'p99'])
 
 
 class RawQuerySpec(BaseModel):
