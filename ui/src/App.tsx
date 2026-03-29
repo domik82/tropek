@@ -6,6 +6,7 @@ import { SloRegistryPage } from './pages/SloRegistryPage'
 import { AssetsPage } from './pages/AssetsPage'
 import { AssetNavigatorPage } from './pages/AssetNavigatorPage'
 import { MetricExplorerPage } from './pages/MetricExplorerPage'
+import { Button } from './components/ui/button'
 import { ThemeProvider, useTheme } from './lib/theme-context'
 import { TimeRangeProvider } from './lib/time-range-context'
 
@@ -26,38 +27,46 @@ function NavControls() {
     <div className="flex items-center gap-2 ml-auto">
       {/* Font size control */}
       <div className="flex items-center border border-border rounded overflow-hidden text-xs">
-        <button
+        <Button
+          variant="ghost"
+          size="icon-xs"
           onClick={() => setFontSize(fontSize - 1)}
-          className="px-2 py-1 hover:bg-muted transition-colors text-muted-foreground"
+          className="rounded-none text-muted-foreground"
           aria-label="Decrease font size"
         >
           −
-        </button>
+        </Button>
         <span className="px-2 py-1 text-muted-foreground tabular-nums">{fontSize}px</span>
-        <button
+        <Button
+          variant="ghost"
+          size="icon-xs"
           onClick={() => setFontSize(fontSize + 1)}
-          className="px-2 py-1 hover:bg-muted transition-colors text-muted-foreground"
+          className="rounded-none text-muted-foreground"
           aria-label="Increase font size"
         >
           +
-        </button>
+        </Button>
       </div>
 
       {/* Theme toggle */}
       <div className="flex border border-border rounded overflow-hidden text-xs">
-        <button
+        <Button
+          variant="ghost"
+          size="sm"
           onClick={() => setTheme('dark')}
-          className={`px-3 py-1 transition-colors ${theme === 'dark' ? 'bg-muted text-foreground font-semibold' : 'text-muted-foreground hover:bg-muted/50'}`}
+          className={`rounded-none ${theme === 'dark' ? 'bg-muted text-foreground font-semibold' : 'text-muted-foreground'}`}
         >
           🌙 Dark
-        </button>
-        <button
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
           onClick={() => setTheme('current')}
-          className={`px-3 py-1 transition-colors ${theme === 'current' ? 'bg-muted text-foreground font-semibold' : 'text-muted-foreground hover:bg-muted/50'}`}
+          className={`rounded-none ${theme === 'current' ? 'bg-muted text-foreground font-semibold' : 'text-muted-foreground'}`}
           title="Original shadcn neutral dark (comparison)"
         >
           ◑ Alt
-        </button>
+        </Button>
       </div>
     </div>
   )

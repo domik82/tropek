@@ -1,6 +1,7 @@
 // ui/src/components/charts/NoteIndicatorRow.tsx
 import { useState, useRef, useCallback } from 'react'
 import { MessageSquareWarning, Loader2 } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 import { useEvaluationDetail } from '@/features/evaluations/hooks'
 
 export interface SlotNote {
@@ -35,15 +36,17 @@ function NoteIcon({ slot, info, onIndicatorClick }: { slot: string; info: SlotNo
 
   return (
     <div onMouseEnter={show} onMouseLeave={hide}>
-      <button
+      <Button
+        variant="ghost"
+        size="icon-xs"
         onClick={() => onIndicatorClick?.(slot)}
-        className="text-amber-400 hover:text-amber-300 transition-colors p-1.5 -m-1.5 relative"
+        className="text-amber-400 hover:text-amber-300 relative -m-1.5"
       >
         <MessageSquareWarning className="w-3.5 h-3.5" />
         {open && isFetching && (
           <Loader2 className="w-2.5 h-2.5 absolute -top-1 -right-1 text-amber-300 animate-spin" />
         )}
-      </button>
+      </Button>
       {open && (
         <div className="absolute bottom-full mb-1.5 z-30 w-56 bg-popover border border-amber-700/40 rounded-lg shadow-xl p-2.5"
           style={{ left: '50%', transform: 'translateX(-50%)' }}

@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react'
 import { X } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Button } from '@/components/ui/button'
 import { FieldLabel } from '@/components/ui/field-label'
 import { LabelComboBox } from './LabelComboBox'
 import { useTagKeys, useTagValues } from '@/features/assets/hooks'
@@ -80,12 +81,14 @@ export function LabelsEditorDialog({ open, onOpenChange, title, subtitle, labels
                       {value}
                     </span>
                   </div>
-                  <button
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
                     onClick={() => handleRemove(key)}
-                    className="p-1 text-muted-foreground hover:text-action-destructive transition-colors"
+                    className="text-muted-foreground hover:text-action-destructive"
                   >
                     <X className="w-4 h-4" />
-                  </button>
+                  </Button>
                 </div>
               ))}
             </div>
@@ -117,13 +120,14 @@ export function LabelsEditorDialog({ open, onOpenChange, title, subtitle, labels
               </div>
             </div>
             <div className="flex items-center gap-2 mt-2">
-              <button
+              <Button
+                variant="default"
+                size="sm"
                 onClick={handleAdd}
                 disabled={!newKey || !newValue}
-                className="px-3 py-1.5 text-xs rounded border border-action-primary-border bg-action-primary-bg text-action-primary hover:bg-action-primary-hover disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 + Add
-              </button>
+              </Button>
               <span className="text-xs text-muted-foreground">Type or select from existing</span>
             </div>
           </div>
@@ -131,12 +135,9 @@ export function LabelsEditorDialog({ open, onOpenChange, title, subtitle, labels
 
         {/* Footer: Done button on the right */}
         <div className="flex justify-end pt-2 border-t border-border">
-          <button
-            onClick={handleDone}
-            className="px-4 py-1.5 text-sm rounded border border-action-primary-border bg-action-primary-bg text-action-primary hover:bg-action-primary-hover font-medium"
-          >
+          <Button variant="default" size="sm" onClick={handleDone}>
             Done
-          </button>
+          </Button>
         </div>
       </DialogContent>
     </Dialog>
