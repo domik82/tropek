@@ -46,6 +46,10 @@ async def create_sli_definition(
             author=body.author,
             tags=body.tags,
             comparable_from_version=body.comparable_from_version,
+            mode=body.mode,
+            query_template=body.query_template,
+            interval=body.interval,
+            methods=body.methods,
         )
     )
     return SLIDefinitionRead.model_validate(sli)

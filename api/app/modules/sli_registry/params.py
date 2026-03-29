@@ -16,3 +16,7 @@ class SLICreateParams(BaseModel):
     author: str | None = None
     tags: dict[str, object] = Field(default_factory=dict)
     comparable_from_version: int | None = None
+    mode: str = 'raw'
+    query_template: str | None = None
+    interval: str | None = None
+    methods: list[str] | None = None

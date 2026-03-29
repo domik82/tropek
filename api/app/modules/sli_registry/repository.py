@@ -62,6 +62,10 @@ class SLIRepository(TagQueryMixin):
             tags=params.tags,
             active=True,
             comparable_from_version=resolved_cfv,
+            mode=params.mode,
+            query_template=params.query_template,
+            interval=params.interval,
+            methods=params.methods,
         )
         self._session.add(sli)
         await self._session.flush()
