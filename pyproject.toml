@@ -60,6 +60,7 @@ convention = "google"
 "**/tests/**" = ["D"]
 "**/test_*.py" = ["D"]
 "**/alembic/versions/*.py" = ["D", "W291", "E501"]
+"observability_stack/**" = ["D", "S", "C901", "SIM115", "RUF002", "RUF003", "RUF005"]
 
 [tool.mypy]
 python_version = "3.13"

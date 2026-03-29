@@ -1,5 +1,5 @@
-import { describe, it, expect, vi } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { render, screen, fireEvent, cleanup } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { RegistrySidebar } from './RegistrySidebar'
 import type { RegistryMode, SelectedNode } from './types'
@@ -30,9 +30,21 @@ vi.mock('@/features/assets/hooks', () => ({
   useTagValues: () => ({ data: [], isLoading: false }),
 }))
 
+let queryClient: QueryClient
+
+beforeEach(() => {
+  queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+})
+
+afterEach(() => {
+  queryClient.cancelQueries()
+  queryClient.clear()
+  cleanup()
+})
+
 function Wrapper({ children }: { children: React.ReactNode }) {
   return (
-    <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+    <QueryClientProvider client={queryClient}>
       {children}
     </QueryClientProvider>
   )

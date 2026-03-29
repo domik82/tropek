@@ -1,0 +1,4 @@
+influxdb-client==1.41.0
+numpy==1.26.4
+click==8.1.7
+rich==13.7.1
