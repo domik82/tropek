@@ -66,9 +66,11 @@ uv run --directory adapters/mock uvicorn app.main:app --host 127.0.0.1 --port $M
 PIDS+=($!)
 
 echo "=== Starting Prometheus adapter on :$ADAPTER_PORT (background) ==="
+mkdir -p out/logs
 PROMETHEUS_URL="$PROMETHEUS_URL" \
 REDIS_URL="$ADAPTER_REDIS_URL" \
 PORT="$ADAPTER_PORT" \
+LOG_DIR="$(pwd)/out/logs" \
 uv run --directory adapters/prometheus \
     uvicorn app.main:app --host 127.0.0.1 --port $ADAPTER_PORT --log-level info &
 PIDS+=($!)
