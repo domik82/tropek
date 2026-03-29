@@ -11,11 +11,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.cache.redis_cache import RedisCache
-from app.db.models import Evaluation, IndicatorResultRow, SLOObjective
+from app.db.models import Evaluation, IndicatorResultRow
 from app.modules.quality_gate.annotation_repository import AnnotationRepository
 from app.modules.quality_gate.engine.constants import EvaluationStatus
-from app.modules.quality_gate.engine.result_models import IndicatorResult
 from app.modules.quality_gate.indicator_repository import IndicatorRepository
+from app.modules.quality_gate.params import ReEvalUpdateParams
 
 
 class BaselineRepository:
@@ -199,34 +199,16 @@ class BaselineRepository:
         rows = await self._session.execute(q)
         return list(rows.scalars().all())
 
-    async def update_reeval_result(
-        self,
-        eval_id: uuid.UUID,
-        *,
-        new_result: str,
-        new_score: float,
-        new_engine_results: list[IndicatorResult] | None = None,
-        slo_objectives: list[SLOObjective] | None = None,
-        old_result: str,
-        old_score: float,
-        slo_version: int | None = None,
-    ) -> None:
+    async def update_reeval_result(self, params: ReEvalUpdateParams) -> None:
         """Overwrite evaluation result from re-evaluation, preserving original on first call.
 
         Args:
-            eval_id: Evaluation to update.
-            new_result: Re-evaluated result value ("pass", "warning", "fail", "error").
-            new_score: Re-evaluated weighted score 0.0-100.0.
-            new_engine_results: Engine IndicatorResult objects for normalized row writing.
-            slo_objectives: SLOObjective ORM instances for objective ID lookup.
-            old_result: Previous result value (stored in job_stats on first call only).
-            old_score: Previous score (stored in job_stats on first call only).
-            slo_version: SLO version used for re-evaluation, if any.
+            params: ReEvalUpdateParams with all fields needed for the update.
         """
         result = await self._session.execute(
             select(Evaluation)
             .options(selectinload(Evaluation.annotations))
-            .where(Evaluation.id == eval_id)
+            .where(Evaluation.id == params.eval_id)
         )
         ev = result.scalar_one_or_none()
         if ev is None:
@@ -234,57 +216,60 @@ class BaselineRepository:
 
         stats = dict(ev.job_stats)
         if "original_result" not in stats:
-            stats["original_result"] = old_result
-            stats["original_score"] = old_score
+            stats["original_result"] = params.old_result
+            stats["original_score"] = params.old_score
         stats["re_evaluated_at"] = datetime.now(tz=UTC).isoformat()
-        stats["re_eval_slo_version"] = slo_version
+        stats["re_eval_slo_version"] = params.slo_version
 
         values: dict[str, Any] = {
-            "result": new_result,
-            "score": new_score,
+            "result": params.new_result,
+            "score": params.new_score,
             "job_stats": stats,
         }
-        if slo_version is not None:
-            values["slo_version"] = slo_version
+        if params.slo_version is not None:
+            values["slo_version"] = params.slo_version
 
         await self._session.execute(
-            update(Evaluation).where(Evaluation.id == eval_id).values(**values)
+            update(Evaluation).where(Evaluation.id == params.eval_id).values(**values)
         )
 
         annotation_content = (
-            f"re-evaluated: {old_result} -> {new_result}, score {old_score} -> {new_score}"
+            f"re-evaluated: {params.old_result} -> {params.new_result},"
+            f" score {params.old_score} -> {params.new_score}"
         )
         if self._cache:
             await self._cache.invalidate(f"baseline:{ev.asset_id}:{ev.slo_name}")
         ann_repo = AnnotationRepository(self._session, cache=self._cache)
         await ann_repo.add_annotation(
-            eval_id,
+            params.eval_id,
             content=annotation_content,
             author="system",
             category="re-evaluation",
         )
 
         # Write to normalized table
+        new_engine_results = params.new_engine_results
+        slo_objectives = params.slo_objectives
         if new_engine_results and slo_objectives:
             indicator_repo = IndicatorRepository(self._session)
-            await indicator_repo.delete_for_evaluation(eval_id)
-            obj_lookup = {obj.sli: obj.id for obj in slo_objectives}
+            await indicator_repo.delete_for_evaluation(params.eval_id)
+            obj_lookup = {obj.sli: obj.id for obj in slo_objectives}  # type: ignore[attr-defined]
             rows: list[dict[str, Any]] = []
             for ir in new_engine_results:
-                obj_id = obj_lookup.get(ir.metric)
+                obj_id = obj_lookup.get(ir.metric)  # type: ignore[attr-defined]
                 if obj_id is None:
                     continue
                 rows.append(
                     {
-                        "evaluation_id": eval_id,
+                        "evaluation_id": params.eval_id,
                         "slo_objective_id": obj_id,
-                        "value": ir.value,
-                        "compared_value": ir.compared_value,
-                        "change_absolute": ir.change_absolute,
-                        "change_relative_pct": ir.change_relative_pct,
-                        "status": ir.status,
-                        "score": ir.score,
+                        "value": ir.value,  # type: ignore[attr-defined]
+                        "compared_value": ir.compared_value,  # type: ignore[attr-defined]
+                        "change_absolute": ir.change_absolute,  # type: ignore[attr-defined]
+                        "change_relative_pct": ir.change_relative_pct,  # type: ignore[attr-defined]
+                        "status": ir.status,  # type: ignore[attr-defined]
+                        "score": ir.score,  # type: ignore[attr-defined]
                     }
                 )
             if rows:
-                await indicator_repo.bulk_insert(eval_id, rows)
+                await indicator_repo.bulk_insert(params.eval_id, rows)

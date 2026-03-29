@@ -5,7 +5,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class EvalCreateParams(BaseModel):
@@ -24,3 +24,18 @@ class EvalCreateParams(BaseModel):
     sli_name: str | None = None
     sli_version: int | None = None
     data_source_name: str | None = None
+
+
+class ReEvalUpdateParams(BaseModel):
+    """Parameters for BaselineRepository.update_reeval_result()."""
+
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
+    eval_id: uuid.UUID
+    new_result: str
+    new_score: float
+    new_engine_results: list[object] | None = None
+    slo_objectives: list[object] | None = None
+    old_result: str
+    old_score: float
+    slo_version: int | None = None

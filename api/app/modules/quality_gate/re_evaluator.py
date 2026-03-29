@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.models import Evaluation, IndicatorResultRow, SLODefinition
 from app.modules.assets.repository import AssetRepository
 from app.modules.quality_gate.baseline_repository import BaselineRepository
+from app.modules.quality_gate.params import ReEvalUpdateParams
 from app.modules.quality_gate.engine.criteria import aggregate_values
 from app.modules.quality_gate.engine.evaluator import evaluate
 from app.modules.quality_gate.engine.slo_models import SLO
@@ -166,14 +167,16 @@ async def _rescore_single(  # noqa: PLR0913
 
     if not dry_run:
         await baseline_repo.update_reeval_result(
-            ev.id,
-            new_result=eval_result.result,
-            new_score=eval_result.score,
-            new_engine_results=eval_result.indicator_results,
-            slo_objectives=slo_def.objectives,
-            old_result=old_result,
-            old_score=old_score,
-            slo_version=slo_version,
+            ReEvalUpdateParams(
+                eval_id=ev.id,
+                new_result=eval_result.result,
+                new_score=eval_result.score,
+                new_engine_results=eval_result.indicator_results,
+                slo_objectives=slo_def.objectives,
+                old_result=old_result,
+                old_score=old_score,
+                slo_version=slo_version,
+            )
         )
 
     return ReEvalResultItem(

@@ -9,7 +9,7 @@ import pytest
 from app.db.models import Asset, AssetType, SLOObjective
 from app.modules.quality_gate.baseline_repository import BaselineRepository
 from app.modules.quality_gate.indicator_repository import IndicatorRepository
-from app.modules.quality_gate.params import EvalCreateParams
+from app.modules.quality_gate.params import EvalCreateParams, ReEvalUpdateParams
 from app.modules.quality_gate.re_evaluation_schemas import ReEvaluateRequest
 from app.modules.quality_gate.re_evaluator import re_evaluate
 from app.modules.quality_gate.repository import EvaluationRepository
@@ -152,12 +152,14 @@ async def test_update_reeval_result_preserves_original(db_session: AsyncSession)
 
     # First re-eval
     await baseline_repo.update_reeval_result(
-        eval_id=eid,
-        new_result="pass",
-        new_score=92.0,
-        old_result="fail",
-        old_score=45.0,
-        slo_version=2,
+        ReEvalUpdateParams(
+            eval_id=eid,
+            new_result="pass",
+            new_score=92.0,
+            old_result="fail",
+            old_score=45.0,
+            slo_version=2,
+        )
     )
     ev = await repo.get_by_id(eid)
     assert ev is not None
@@ -169,12 +171,14 @@ async def test_update_reeval_result_preserves_original(db_session: AsyncSession)
 
     # Second re-eval should NOT overwrite original
     await baseline_repo.update_reeval_result(
-        eval_id=eid,
-        new_result="warning",
-        new_score=78.0,
-        old_result="pass",
-        old_score=92.0,
-        slo_version=3,
+        ReEvalUpdateParams(
+            eval_id=eid,
+            new_result="warning",
+            new_score=78.0,
+            old_result="pass",
+            old_score=92.0,
+            slo_version=3,
+        )
     )
     ev2 = await repo.get_by_id(eid)
     assert ev2 is not None
