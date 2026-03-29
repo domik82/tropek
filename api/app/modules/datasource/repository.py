@@ -5,14 +5,17 @@ from __future__ import annotations
 import uuid
 from typing import Any
 
-from sqlalchemy import delete, select, text, update
+from sqlalchemy import delete, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import DataSource
+from app.modules.common.tag_mixin import TagQueryMixin
 
 
-class DataSourceRepository:
+class DataSourceRepository(TagQueryMixin):
     """Data access layer for datasource registrations."""
+
+    _tag_table = 'data_sources'
 
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
@@ -145,27 +148,3 @@ class DataSourceRepository:
             return False
         await self._session.execute(delete(DataSource).where(DataSource.id == ds.id))
         return True
-
-    async def get_tag_keys(self) -> dict[str, int]:
-        """Return all distinct tag keys with count of datasources using each."""
-        result = await self._session.execute(
-            text(
-                'SELECT key, COUNT(*) as cnt '
-                'FROM data_sources, jsonb_object_keys(tags) AS key '
-                'GROUP BY key ORDER BY cnt DESC'
-            )
-        )
-        return {row[0]: row[1] for row in result}
-
-    async def get_tag_values(self, key: str) -> dict[str, int]:
-        """Return all distinct values for a tag key with usage counts."""
-        result = await self._session.execute(
-            text(
-                'SELECT tags->>:key AS val, COUNT(*) as cnt '
-                'FROM data_sources '
-                'WHERE tags ? :key '
-                'GROUP BY val ORDER BY cnt DESC'
-            ),
-            {'key': key},
-        )
-        return {row[0]: row[1] for row in result}
