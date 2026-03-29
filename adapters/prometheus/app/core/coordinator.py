@@ -42,6 +42,10 @@ class Coordinator:
         queries = await self._repo.get_queries(job_id)
         variables = await self._repo.get_variables(job_id)
         start, end = await self._repo.get_start_end(job_id)
+        logger.info(
+            "processing job: id=%s queries=%d start=%s end=%s",
+            job_id, len(queries), start, end,
+        )
 
         async def _run_query(sli_name: str, query_spec: dict[str, Any]) -> None:
             mode = query_spec.get("mode", "raw")
@@ -90,6 +94,9 @@ class Coordinator:
         final_status = await self._repo.get_status(job_id)
         if final_status and final_status["status"] != "cancelled":
             await self._repo.mark_completed(job_id, self._settings.job_retention_seconds)
+            logger.info("job completed: id=%s", job_id)
+        else:
+            logger.info("job cancelled: id=%s", job_id)
 
         return True
 

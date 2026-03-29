@@ -70,7 +70,7 @@ PROMETHEUS_URL="$PROMETHEUS_URL" \
 REDIS_URL="$ADAPTER_REDIS_URL" \
 PORT="$ADAPTER_PORT" \
 uv run --directory adapters/prometheus \
-    uvicorn app.main:app --host 127.0.0.1 --port $ADAPTER_PORT --log-level warning &
+    uvicorn app.main:app --host 127.0.0.1 --port $ADAPTER_PORT --log-level info &
 PIDS+=($!)
 
 echo "=== Starting API on :$API_PORT (background) ==="
