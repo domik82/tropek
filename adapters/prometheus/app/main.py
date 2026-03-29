@@ -1,7 +1,11 @@
 """FastAPI application factory with lifespan management."""
 
+from __future__ import annotations
+
 import asyncio
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
+from typing import Any
 
 import fakeredis.aioredis
 import redis.asyncio as aioredis
@@ -18,10 +22,12 @@ from app.redis.repository import JobRepository
 
 
 def create_app(use_fakeredis: bool = False) -> FastAPI:
+    """Create and configure the FastAPI application with lifespan management."""
     settings = Settings()
 
     @asynccontextmanager
-    async def lifespan(app: FastAPI):
+    async def lifespan(app: FastAPI) -> AsyncGenerator[None, Any]:
+        redis_client: aioredis.Redis[Any]
         if use_fakeredis:
             redis_client = fakeredis.aioredis.FakeRedis()
         else:
@@ -52,7 +58,8 @@ def create_app(use_fakeredis: bool = False) -> FastAPI:
 
         app.state.coordinator.stop()
         coordinator_task.cancel()
-        await redis_client.aclose()
+        if hasattr(redis_client, "aclose"):
+            await redis_client.aclose()
 
     app = FastAPI(title="Prometheus SLI Adapter", lifespan=lifespan)
     app.include_router(health_router)

@@ -1,7 +1,10 @@
 """Background coordinator: picks jobs from queue, fans out queries."""
 
+from __future__ import annotations
+
 import asyncio
 import logging
+from typing import Any
 
 from app.config import Settings
 from app.redis.repository import JobRepository
@@ -16,7 +19,7 @@ class Coordinator:
         self,
         repo: JobRepository,
         settings: Settings,
-        strategies: dict,
+        strategies: dict[str, Any],
     ) -> None:
         self._repo = repo
         self._settings = settings
@@ -40,7 +43,7 @@ class Coordinator:
         variables = await self._repo.get_variables(job_id)
         start, end = await self._repo.get_start_end(job_id)
 
-        async def _run_query(sli_name: str, query_spec: dict) -> None:
+        async def _run_query(sli_name: str, query_spec: dict[str, Any]) -> None:
             mode = query_spec.get("mode", "raw")
             strategy = self._strategies.get(mode)
             if strategy is None:
@@ -59,7 +62,7 @@ class Coordinator:
                 if current and current["status"] == "cancelled":
                     return
 
-                values, errors, metadata = await strategy.execute(
+                values, errors, _metadata = await strategy.execute(
                     sli_name=sli_name,
                     query_spec=query_spec,
                     variables=variables,

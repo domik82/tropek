@@ -1,6 +1,8 @@
 """Strategy interface for query mode execution."""
 
-from typing import Protocol
+from __future__ import annotations
+
+from typing import Any, Protocol
 
 
 class QueryStrategy(Protocol):
@@ -10,11 +12,11 @@ class QueryStrategy(Protocol):
         self,
         *,
         sli_name: str,
-        query_spec: dict,
+        query_spec: dict[str, Any],
         variables: dict[str, str],
         start: str,
         end: str,
-    ) -> tuple[dict[str, float | None], dict[str, str], dict | None]:
+    ) -> tuple[dict[str, float | None], dict[str, str], dict[str, Any] | None]:
         """Execute a query and return (values, errors, metadata).
 
         Returns:

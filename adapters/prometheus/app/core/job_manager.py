@@ -1,6 +1,9 @@
 """Job lifecycle management — submit, poll, cancel."""
 
-from datetime import datetime, timezone
+from __future__ import annotations
+
+from datetime import UTC, datetime
+from typing import Any
 
 from app.config import Settings
 from app.redis.repository import JobRepository
@@ -18,12 +21,12 @@ class JobManager:
 
     async def submit(
         self,
-        queries: dict[str, dict],
+        queries: dict[str, dict[str, Any]],
         variables: dict[str, str],
         timeout_seconds: int | None,
         start: str = "",
         end: str = "",
-    ) -> dict:
+    ) -> dict[str, Any]:
         """Create and enqueue a new job, enforcing queue depth and timeout limits."""
         depth = await self._repo.queue_depth()
         if depth >= self._settings.max_queue_depth:
@@ -42,18 +45,18 @@ class JobManager:
         return {
             "job_id": job_id,
             "status": "queued",
-            "created_at": datetime.now(timezone.utc),
+            "created_at": datetime.now(UTC),
             "poll_url": f"/api/v1/query-jobs/{job_id}",
             "total_queries": len(queries),
         }
 
-    async def get_status(self, job_id: str) -> dict | None:
+    async def get_status(self, job_id: str) -> dict[str, Any] | None:
         """Return current job status, or None if not found."""
         status = await self._repo.get_status(job_id)
         if status is None:
             return None
 
-        result: dict = {
+        result: dict[str, Any] = {
             "job_id": job_id,
             "status": status["status"],
         }

@@ -1,6 +1,5 @@
 import pytest
-
-from app.core.variable_substitutor import substitute, UnresolvedVariableError
+from app.core.variable_substitutor import UnresolvedVariableError, substitute
 
 
 def test_simple_substitution():
