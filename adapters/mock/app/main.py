@@ -19,7 +19,8 @@ _store = CsvStore(DATA_DIR)
 class QueryRequest(BaseModel):
     """Adapter query request body."""
 
-    queries: dict[str, str]
+    queries: dict[str, str | dict]
+    variables: dict[str, str] = {}
     start: datetime
     end: datetime
 
@@ -37,9 +38,13 @@ async def query_metrics(
     x_datasource_name: str = Header(default="default"),
 ) -> QueryResponse:
     """Execute metric queries against CSV data store."""
+    # Normalize v2 query specs to plain strings (mock ignores mode/query content)
+    flat: dict[str, str] = {}
+    for name, spec in body.queries.items():
+        flat[name] = spec["query"] if isinstance(spec, dict) else spec
     result = _store.query(
         namespace=x_datasource_name,
-        queries=body.queries,
+        queries=flat,
         start=body.start,
         end=body.end,
     )
