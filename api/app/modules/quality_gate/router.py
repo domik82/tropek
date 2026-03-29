@@ -10,7 +10,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_session
-from app.modules.common.errors import raise_not_found
+from app.modules.common.exceptions import NotFoundError
 from app.modules.common.schemas import PagedResponse
 from app.modules.quality_gate.dependencies import QualityGateRepos, get_qg_repos
 from app.modules.quality_gate.presenter import build_detail, build_summary
@@ -93,7 +93,7 @@ async def list_evaluations(  # noqa: PLR0913
     if asset_name:
         asset = await repos.asset_repo.get_by_name(asset_name)
         if asset is None:
-            raise_not_found("asset", asset_name)
+            raise NotFoundError("asset", asset_name)
         resolved_asset_id = asset.id
 
     if group_name:
@@ -250,7 +250,7 @@ async def get_evaluation(
     """Get full evaluation detail including annotations and indicator results."""
     ev = await repos.eval_repo.get_by_id(eval_id)
     if ev is None:
-        raise_not_found("evaluation", str(eval_id))
+        raise NotFoundError("evaluation", str(eval_id))
     return build_detail(ev)
 
 
@@ -263,7 +263,7 @@ async def invalidate_evaluation(
     """Mark an evaluation as invalidated."""
     ev = await repos.eval_repo.invalidate(eval_id, note=body.invalidation_note)
     if ev is None:
-        raise_not_found("evaluation", str(eval_id))
+        raise NotFoundError("evaluation", str(eval_id))
     return build_summary(ev, annotation_count=0, latest_ann=None)
 
 
@@ -275,7 +275,7 @@ async def restore_evaluation(
     """Clear invalidation flag on an evaluation."""
     ev = await repos.eval_repo.restore(eval_id)
     if ev is None:
-        raise_not_found("evaluation", str(eval_id))
+        raise NotFoundError("evaluation", str(eval_id))
     return build_summary(ev, annotation_count=0, latest_ann=None)
 
 
@@ -356,7 +356,7 @@ async def list_annotations(
     """List all annotations for an evaluation."""
     ev = await repos.eval_repo.get_by_id(eval_id)
     if ev is None:
-        raise_not_found("evaluation", str(eval_id))
+        raise NotFoundError("evaluation", str(eval_id))
     return [AnnotationRead.model_validate(a) for a in ev.annotations if a.hidden_at is None]
 
 
@@ -369,7 +369,7 @@ async def create_annotation(
     """Add an annotation to an evaluation."""
     ev = await repos.eval_repo.get_by_id(eval_id)
     if ev is None:
-        raise_not_found("evaluation", str(eval_id))
+        raise NotFoundError("evaluation", str(eval_id))
     ann = await repos.annotation_repo.add_annotation(
         eval_id,
         content=body.content,
@@ -392,7 +392,7 @@ async def update_annotation(
         ann_id, **body.model_dump(exclude_unset=True)
     )
     if ann is None:
-        raise_not_found("annotation", str(ann_id))
+        raise NotFoundError("annotation", str(ann_id))
     return AnnotationRead.model_validate(ann)
 
 
@@ -411,7 +411,7 @@ async def hide_annotation(
         ann_id, reason=body.reason, author=body.author
     )
     if ann is None:
-        raise_not_found("annotation", str(ann_id))
+        raise NotFoundError("annotation", str(ann_id))
     return AnnotationRead.model_validate(ann)
 
 
@@ -453,7 +453,7 @@ async def get_trend(
     if eval_id is not None:
         ev = await repos.eval_repo.get_by_id(eval_id)
         if ev is None:
-            raise_not_found("evaluation", str(eval_id))
+            raise NotFoundError("evaluation", str(eval_id))
         if ev.asset_id is None:
             raise HTTPException(status_code=422, detail="evaluation has no associated asset")
         if ev.slo_name is None:
@@ -465,7 +465,7 @@ async def get_trend(
         assert slo_name is not None  # guarded by has_any_asset_param checks above
         asset = await repos.asset_repo.get_by_name(asset_name)
         if asset is None:
-            raise_not_found("asset", asset_name)
+            raise NotFoundError("asset", asset_name)
         resolved_asset_id = asset.id
         resolved_slo_name = slo_name
 

@@ -10,7 +10,7 @@ from app.config import get_settings
 from app.db.session import get_session
 from app.modules.assets.repository import AssetRepository
 from app.modules.assets.schemas import TagKeyCount, TagValueCount
-from app.modules.common.errors import raise_not_found
+from app.modules.common.exceptions import NotFoundError
 from app.modules.common.schemas import PagedResponse
 from app.modules.datasource.repository import DataSourceRepository
 from app.modules.quality_gate.baseline_repository import BaselineRepository
@@ -169,19 +169,19 @@ async def test_slo(  # noqa: C901
     sli_repo = SLIRepository(session)
     sli_def = await sli_repo.get_latest(body.sli_name)
     if sli_def is None:
-        raise_not_found("sli definition", body.sli_name)
+        raise NotFoundError("sli definition", body.sli_name)
 
     # 3. Resolve data source
     ds_repo = DataSourceRepository(session)
     ds = await ds_repo.get_by_name(body.data_source_name)
     if ds is None:
-        raise_not_found("data source", body.data_source_name)
+        raise NotFoundError("data source", body.data_source_name)
 
     # 4. Resolve asset
     asset_repo = AssetRepository(session)
     asset = await asset_repo.get_by_name(body.asset_name)
     if asset is None:
-        raise_not_found("asset", body.asset_name)
+        raise NotFoundError("asset", body.asset_name)
 
     # 5. Build variables and substitute in SLI queries
     # Reserved variables (lowest priority)
@@ -331,7 +331,7 @@ async def get_slo_definition(
     repo = SLORepository(session)
     slo = await repo.get_latest(name)
     if slo is None:
-        raise_not_found("slo definition", name)
+        raise NotFoundError("slo definition", name)
     return SLODefinitionRead.model_validate(slo)
 
 
@@ -355,5 +355,5 @@ async def delete_slo_definition(
     repo = SLORepository(session)
     existing = await repo.get_latest(name)
     if existing is None:
-        raise_not_found("slo definition", name)
+        raise NotFoundError("slo definition", name)
     await repo.deactivate(name)
