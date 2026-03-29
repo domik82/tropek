@@ -3,13 +3,13 @@
 from __future__ import annotations
 
 import uuid
-from typing import Any
 
 from sqlalchemy import select, text, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.cache.redis_cache import RedisCache
 from app.db.models import SLIDefinition
+from app.modules.sli_registry.params import SLICreateParams
 
 
 class SLIRepository:
@@ -19,39 +19,20 @@ class SLIRepository:
         self._session = session
         self._cache = cache
 
-    async def create(
-        self,
-        name: str,
-        indicators: dict[str, str],
-        adapter_type: str,
-        display_name: str | None = None,
-        notes: str | None = None,
-        author: str | None = None,
-        tags: dict[str, Any] | None = None,
-        comparable_from_version: int | None = None,
-    ) -> SLIDefinition:
+    async def create(self, params: SLICreateParams) -> SLIDefinition:
         """Insert a new version of a named SLI.
 
         Version is auto-incremented using SELECT ... FOR UPDATE to prevent races.
 
         Args:
-            name: Stable external identifier for the SLI.
-            indicators: Mapping of indicator name to adapter query string.
-            adapter_type: Type of adapter this SLI targets (e.g. "prometheus").
-            display_name: Optional human-readable display name.
-            notes: Optional description of changes in this version.
-            author: Optional identifier of who created this version.
-            tags: Optional arbitrary key-value tags.
-            comparable_from_version: Earliest version whose baselines are valid for
-                comparison against this version. Defaults to the previous version
-                (N-1) for subsequent versions, or 1 for the first version.
+            params: SLICreateParams with all fields for the new SLI version.
 
         Returns:
             The newly created SLIDefinition with its assigned version.
         """
         result = await self._session.execute(
             select(SLIDefinition.version)
-            .where(SLIDefinition.name == name)
+            .where(SLIDefinition.name == params.name)
             .order_by(SLIDefinition.version.desc())
             .limit(1)
             .with_for_update()
@@ -59,8 +40,8 @@ class SLIRepository:
         max_version = result.scalar_one_or_none()
         next_version = (max_version or 0) + 1
 
-        if comparable_from_version is not None:
-            resolved_cfv = comparable_from_version
+        if params.comparable_from_version is not None:
+            resolved_cfv = params.comparable_from_version
         elif max_version is not None:
             resolved_cfv = max_version  # previous version (N-1)
         else:
@@ -68,21 +49,21 @@ class SLIRepository:
 
         sli = SLIDefinition(
             id=uuid.uuid4(),
-            name=name,
-            adapter_type=adapter_type,
-            display_name=display_name,
+            name=params.name,
+            adapter_type=params.adapter_type,
+            display_name=params.display_name,
             version=next_version,
-            indicators=indicators,
-            notes=notes,
-            author=author,
-            tags=tags or {},
+            indicators=params.indicators,
+            notes=params.notes,
+            author=params.author,
+            tags=params.tags,
             active=True,
             comparable_from_version=resolved_cfv,
         )
         self._session.add(sli)
         await self._session.flush()
         if self._cache:
-            await self._cache.invalidate(f'sli:{name}:latest')
+            await self._cache.invalidate(f'sli:{params.name}:latest')
         return sli
 
     async def get_latest(self, name: str) -> SLIDefinition | None:
