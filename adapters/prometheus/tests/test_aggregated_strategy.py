@@ -242,3 +242,127 @@ async def test_aggregated_prometheus_error_captured(
     )
     assert values['cpu.mean'] is None
     assert 'cpu.mean' in errors
+
+
+@respx.mock
+@pytest.mark.asyncio
+async def test_aggregated_chunking_8h_window() -> None:
+    """8h eval with 4h chunk_size -> 2 query_range calls."""
+    client = PrometheusClient(base_url='http://prom:9090', timeout=5.0)
+    strat = AggregatedQueryStrategy(client, chunk_size='4h', parallel_chunks=3)
+
+    route = respx.get('http://prom:9090/api/v1/query_range').mock(
+        return_value=_matrix_response([
+            [1705312800, '1.0'],
+            [1705312860, '2.0'],
+        ])
+    )
+
+    values, errors, metadata = await strat.execute(
+        sli_name='cpu',
+        query_spec={
+            'mode': 'aggregated',
+            'query_template': 'rate(cpu[$interval])',
+            'interval': '1m',
+            'methods': ['mean'],
+        },
+        variables={},
+        start='2026-01-15T00:00:00+00:00',
+        end='2026-01-15T08:00:00+00:00',
+    )
+    # 2 chunks x 2 values each = 4 total values -> mean = 1.5
+    assert len(route.calls) == 2
+    assert values['cpu.mean'] == pytest.approx(1.5)
+    assert metadata is not None
+    assert metadata['chunks_failed'] == 0
+
+
+@respx.mock
+@pytest.mark.asyncio
+async def test_aggregated_chunk_failure_isolated() -> None:
+    """If one chunk fails, remaining chunks still produce valid stats."""
+    client = PrometheusClient(base_url='http://prom:9090', timeout=5.0)
+    strat = AggregatedQueryStrategy(client, chunk_size='4h', parallel_chunks=3)
+
+    call_count = 0
+
+    def side_effect(request, route):
+        nonlocal call_count
+        call_count += 1
+        if call_count == 1:
+            return Response(500, text='chunk error')
+        return _matrix_response([[1705312800, '10.0'], [1705312860, '20.0']])
+
+    respx.get('http://prom:9090/api/v1/query_range').mock(side_effect=side_effect)
+
+    values, errors, metadata = await strat.execute(
+        sli_name='cpu',
+        query_spec={
+            'mode': 'aggregated',
+            'query_template': 'rate(cpu[$interval])',
+            'interval': '1m',
+            'methods': ['mean'],
+        },
+        variables={},
+        start='2026-01-15T00:00:00+00:00',
+        end='2026-01-15T08:00:00+00:00',
+    )
+    assert values['cpu.mean'] == pytest.approx(15.0)
+    assert metadata is not None
+    assert metadata['chunks_failed'] == 1
+
+
+@respx.mock
+@pytest.mark.asyncio
+async def test_aggregated_all_chunks_fail() -> None:
+    """All chunks fail -> all methods return None with error."""
+    client = PrometheusClient(base_url='http://prom:9090', timeout=5.0)
+    strat = AggregatedQueryStrategy(client, chunk_size='4h', parallel_chunks=3)
+
+    respx.get('http://prom:9090/api/v1/query_range').mock(
+        return_value=Response(500, text='error')
+    )
+
+    values, errors, metadata = await strat.execute(
+        sli_name='cpu',
+        query_spec={
+            'mode': 'aggregated',
+            'query_template': 'rate(cpu[$interval])',
+            'interval': '1m',
+            'methods': ['mean', 'p99'],
+        },
+        variables={},
+        start='2026-01-15T00:00:00+00:00',
+        end='2026-01-15T08:00:00+00:00',
+    )
+    assert values['cpu.mean'] is None
+    assert values['cpu.p99'] is None
+    assert 'no valid data points' in errors['cpu.mean']
+    assert metadata is not None
+    assert metadata['chunks_failed'] == 2
+
+
+@respx.mock
+@pytest.mark.asyncio
+async def test_aggregated_short_window_no_chunking() -> None:
+    """Window shorter than chunk_size -> exactly 1 query_range call."""
+    client = PrometheusClient(base_url='http://prom:9090', timeout=5.0)
+    strat = AggregatedQueryStrategy(client, chunk_size='4h', parallel_chunks=3)
+
+    route = respx.get('http://prom:9090/api/v1/query_range').mock(
+        return_value=_matrix_response([[1705312800, '5.0']])
+    )
+
+    await strat.execute(
+        sli_name='cpu',
+        query_spec={
+            'mode': 'aggregated',
+            'query_template': 'rate(cpu[$interval])',
+            'interval': '1m',
+            'methods': ['mean'],
+        },
+        variables={},
+        start='2026-01-15T10:00:00Z',
+        end='2026-01-15T10:30:00Z',
+    )
+    assert len(route.calls) == 1
