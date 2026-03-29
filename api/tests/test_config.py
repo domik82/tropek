@@ -6,6 +6,8 @@ from pathlib import Path
 
 import pytest
 
+import app.config as config_module
+
 
 @pytest.fixture(autouse=True)
 def _isolate_env():
@@ -25,8 +27,6 @@ def _isolate_env():
             del os.environ[k]
     os.environ.update(saved)
 
-    import app.config as config_module
-
     config_module.get_settings.cache_clear()
 
 
@@ -39,8 +39,6 @@ def test_config_loads_from_yaml(tmp_path: Path) -> None:
     os.environ["QG_DB_PASSWORD"] = "testpass"
     os.environ["QG_REDIS_PASSWORD"] = "redispass"
     os.environ["QG_SECRET_KEY"] = "testsecret"
-
-    import app.config as config_module
 
     importlib.reload(config_module)
 
@@ -61,8 +59,6 @@ def test_env_overrides_yaml(tmp_path: Path) -> None:
     os.environ["QG_REDIS_PASSWORD"] = "rpass"
     os.environ["QG_SECRET_KEY"] = "secret"
 
-    import app.config as config_module
-
     importlib.reload(config_module)
 
     settings = config_module.get_settings()
@@ -78,8 +74,6 @@ def test_async_db_url_format(tmp_path: Path) -> None:
     os.environ["QG_DB_PASSWORD"] = "secret"
     os.environ["QG_REDIS_PASSWORD"] = "r"
     os.environ["QG_SECRET_KEY"] = "s"
-
-    import app.config as config_module
 
     importlib.reload(config_module)
 
@@ -99,8 +93,6 @@ def test_cache_url_includes_password(tmp_path: Path) -> None:
     os.environ["QG_REDIS_PASSWORD"] = "myredispass"
     os.environ["QG_SECRET_KEY"] = "s"
 
-    import app.config as config_module
-
     importlib.reload(config_module)
 
     url = config_module.get_settings().cache.url
@@ -114,8 +106,6 @@ def test_missing_config_file_uses_defaults(tmp_path: Path) -> None:
     os.environ["QG_DB_PASSWORD"] = "p"
     os.environ["QG_REDIS_PASSWORD"] = "r"
     os.environ["QG_SECRET_KEY"] = "s"
-
-    import app.config as config_module
 
     importlib.reload(config_module)
 
