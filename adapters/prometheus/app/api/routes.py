@@ -1,15 +1,18 @@
-"""Job submission, polling, and cancellation endpoints."""
+"""Job submission, polling, cancellation, and synchronous query endpoints."""
 
 from __future__ import annotations
 
+import asyncio
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, Request, Response
+from fastapi import APIRouter, Header, HTTPException, Request, Response
+from pydantic import BaseModel
 
 from app.api.schemas import JobSubmitRequest
 from app.core.job_manager import JobManager
 
 router = APIRouter(prefix="/api/v1", tags=["jobs"])
+sync_router = APIRouter(tags=["sync"])
 
 
 @router.post("/query-jobs", status_code=202, response_model=None)
@@ -52,3 +55,55 @@ async def cancel_job(job_id: str, request: Request) -> Response:
     if not cancelled:
         raise HTTPException(status_code=409, detail="job already in terminal state")
     return Response(status_code=204)
+
+
+# ---------------------------------------------------------------------------
+# Synchronous /query — compatibility with the TROPEK worker adapter protocol.
+# Submits a job internally, polls until complete, returns {values, errors}.
+# ---------------------------------------------------------------------------
+
+
+class SyncQueryRequest(BaseModel):
+    """Request body for the synchronous POST /query endpoint."""
+
+    queries: dict[str, dict[str, Any]]
+    variables: dict[str, str] = {}
+    start: str
+    end: str
+
+
+@sync_router.post("/query")
+async def sync_query(
+    body: SyncQueryRequest,
+    request: Request,
+    x_datasource_name: str = Header(default="default"),
+) -> dict[str, Any]:
+    """Submit queries, wait for results, return {values, errors}."""
+    manager: JobManager = request.app.state.job_manager
+    result = await manager.submit(
+        queries=body.queries,
+        variables=body.variables,
+        timeout_seconds=None,
+        start=body.start,
+        end=body.end,
+    )
+    job_id = result["job_id"]
+
+    for _ in range(300):
+        status = await manager.get_status(job_id)
+        if status and status.get("status") in ("completed", "timed_out"):
+            break
+        await asyncio.sleep(0.1)
+    else:
+        raise HTTPException(status_code=504, detail="job did not complete in time")
+
+    values: dict[str, float | None] = {}
+    errors: dict[str, str] = {}
+    for indicator in status.get("results", []):
+        name = indicator["indicator"]
+        if indicator.get("success"):
+            values[name] = indicator.get("value")
+        else:
+            errors[name] = indicator.get("message", "unknown error")
+
+    return {"values": values, "errors": errors}
