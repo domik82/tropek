@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose,
 } from '@/components/ui/dialog'
+import { FieldLabel } from '@/components/ui/field-label'
 import { useDatasources } from '@/features/datasources/hooks'
 import { useSliDefinitions } from '@/features/slis/hooks'
 import {
@@ -70,7 +71,7 @@ export function SloLinkDialog({ open, onOpenChange, lockedSloName, lockedGroupNa
         <div className="space-y-3 py-2">
           {/* Datasource */}
           <div>
-            <label className="text-xs uppercase text-muted-foreground block mb-1">Datasource</label>
+            <FieldLabel>Datasource</FieldLabel>
             <select
               value={datasource}
               onChange={e => setDatasource(e.target.value)}
@@ -87,9 +88,9 @@ export function SloLinkDialog({ open, onOpenChange, lockedSloName, lockedGroupNa
 
           {/* SLI (filtered by datasource adapter_type) */}
           <div>
-            <label className="text-xs uppercase text-muted-foreground block mb-1">
+            <FieldLabel>
               SLI {selectedDs && <span className="text-[10px] opacity-60 normal-case">— filtered to {selectedDs.adapter_type}</span>}
-            </label>
+            </FieldLabel>
             <select
               value={sliName}
               onChange={e => setSliName(e.target.value)}
@@ -109,14 +110,14 @@ export function SloLinkDialog({ open, onOpenChange, lockedSloName, lockedGroupNa
           {/* SLO (locked or selectable) */}
           {lockedSloName ? (
             <div>
-              <label className="text-xs uppercase text-muted-foreground block mb-1">SLO</label>
+              <FieldLabel>SLO</FieldLabel>
               <div className="bg-muted/30 border border-border rounded px-3 py-2 text-sm text-muted-foreground">
                 {lockedSloName} <span className="text-xs opacity-50">(locked)</span>
               </div>
             </div>
           ) : (
             <div>
-              <label className="text-xs uppercase text-muted-foreground block mb-1">SLO</label>
+              <FieldLabel>SLO</FieldLabel>
               <select
                 value={sloName}
                 onChange={e => setSloName(e.target.value)}
@@ -133,14 +134,14 @@ export function SloLinkDialog({ open, onOpenChange, lockedSloName, lockedGroupNa
           {/* Group (locked or selectable) */}
           {lockedGroupName ? (
             <div>
-              <label className="text-xs uppercase text-muted-foreground block mb-1">Asset Group</label>
+              <FieldLabel>Asset Group</FieldLabel>
               <div className="bg-muted/30 border border-border rounded px-3 py-2 text-sm text-muted-foreground">
                 {lockedGroupName} <span className="text-xs opacity-50">(locked)</span>
               </div>
             </div>
           ) : (
             <div>
-              <label className="text-xs uppercase text-muted-foreground block mb-1">Asset Group</label>
+              <FieldLabel>Asset Group</FieldLabel>
               <select
                 value={groupName}
                 onChange={e => setGroupName(e.target.value)}

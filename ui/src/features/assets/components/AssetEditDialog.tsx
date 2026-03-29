@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui/dialog'
+import { FieldLabel } from '@/components/ui/field-label'
 import { LabelChips } from '@/components/labels/LabelChips'
 import { LabelsEditorDialog } from '@/components/labels/LabelsEditorDialog'
 import { useAsset, useAssetTypes, useUpdateAsset } from '../hooks'
@@ -52,7 +53,7 @@ export function AssetEditDialog({ open, onOpenChange, assetName }: Props) {
         <div className="space-y-3 py-2">
           {/* Display name */}
           <div>
-            <label className="text-xs uppercase text-muted-foreground block mb-1">Display Name</label>
+            <FieldLabel>Display Name</FieldLabel>
             <input
               value={displayName}
               onChange={e => setDisplayName(e.target.value)}
@@ -63,7 +64,7 @@ export function AssetEditDialog({ open, onOpenChange, assetName }: Props) {
 
           {/* Type */}
           <div>
-            <label className="text-xs uppercase text-muted-foreground block mb-1">Type</label>
+            <FieldLabel>Type</FieldLabel>
             <select
               value={typeName}
               onChange={e => setTypeName(e.target.value)}
@@ -79,7 +80,7 @@ export function AssetEditDialog({ open, onOpenChange, assetName }: Props) {
 
           {/* Labels */}
           <div>
-            <label className="text-xs uppercase text-muted-foreground block mb-1">Labels</label>
+            <FieldLabel>Labels</FieldLabel>
             <LabelChips
               labels={labels}
               onEdit={() => setLabelsEditorOpen(true)}
