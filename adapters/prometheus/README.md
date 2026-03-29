@@ -13,6 +13,15 @@ Async FastAPI service that executes PromQL queries against Prometheus via a Redi
 | Config | Pydantic Settings (env vars) |
 | Logging | structlog |
 
+### Why httpx over requests
+
+httpx was chosen instead of requests because the adapter is fully async (FastAPI + asyncio).
+`httpx.AsyncClient` integrates natively with `async/await` — no thread pool workarounds needed.
+It also supports ASGI transport, which lets unit tests hit FastAPI routes directly without starting
+a real server (see `test_routes.py`). The API surface mirrors requests (`get`, `post`,
+`raise_for_status`, `json()`), so there is no learning curve. One HTTP library serves production
+code, unit tests, and e2e tests.
+
 ## Quick Start
 
 ### Docker Compose (full TROPEK stack)
