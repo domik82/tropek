@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react'
 import { Search } from 'lucide-react'
+import { Input } from '@/components/ui/input'
 import { useAssets, useAddGroupMember, useAssetGroups } from '@/features/assets/hooks'
 import { SANS_SERIF } from '@/lib/fonts'
 
@@ -57,13 +58,13 @@ export function AddAssetToGroupDialog({ open, onOpenChange, groupName }: Props) 
         <div className="px-4 py-3">
           <div className="relative mb-3">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
-            <input
+            <Input
               type="text"
               placeholder="Search assets..."
               value={filter}
               onChange={e => setFilter(e.target.value)}
               autoFocus
-              className="w-full bg-input border border-border rounded-md pl-8 pr-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:border-primary/50"
+              className="pl-8"
             />
           </div>
 

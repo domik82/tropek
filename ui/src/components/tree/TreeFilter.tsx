@@ -1,4 +1,5 @@
 import { Search, X } from 'lucide-react'
+import { Input } from '@/components/ui/input'
 
 interface TreeFilterProps {
   value: string
@@ -12,12 +13,12 @@ export function TreeFilter({ value, onChange, placeholder = 'Filter...', resultC
     <div>
       <div className="relative">
         <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
-        <input
+        <Input
           type="text"
           placeholder={placeholder}
           value={value}
           onChange={e => onChange(e.target.value)}
-          className="w-full bg-input border border-border rounded-md py-1.5 pl-8 pr-7 text-[13px] text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:border-primary/50"
+          className="py-1.5 pl-8 pr-7 text-[13px]"
         />
         {value && (
           <button

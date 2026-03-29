@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
+import { Input } from '@/components/ui/input'
 
 interface Props {
   currentName: string
@@ -24,7 +25,7 @@ export function AssetTreeInlineRename({ currentName, onSave, onCancel }: Props) 
   }
 
   return (
-    <input
+    <Input
       ref={inputRef}
       type="text"
       value={value}
@@ -35,7 +36,7 @@ export function AssetTreeInlineRename({ currentName, onSave, onCancel }: Props) 
       }}
       onBlur={handleSave}
       autoFocus
-      className="bg-input border border-primary rounded px-1 py-0.5 text-sm text-foreground w-full focus:outline-none focus:ring-1 focus:ring-primary"
+      className="h-auto px-1 py-0.5"
     />
   )
 }
