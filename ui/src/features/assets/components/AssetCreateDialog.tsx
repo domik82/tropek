@@ -8,6 +8,7 @@ import { LabelChips } from '@/components/labels/LabelChips'
 import { LabelsEditorDialog } from '@/components/labels/LabelsEditorDialog'
 import { GroupTreeSelector } from './GroupTreeSelector'
 import { useAssetTypes, useCreateAsset, useAddGroupMember, useAssetGroups } from '../hooks'
+import { SANS_SERIF } from '@/lib/fonts'
 
 interface Props {
   open: boolean
@@ -55,7 +56,7 @@ export function AssetCreateDialog({ open, onOpenChange }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent style={{ fontFamily: "system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" }}>
+      <DialogContent style={{ fontFamily: SANS_SERIF }}>
         <DialogHeader>
           <DialogTitle>Add Asset</DialogTitle>
         </DialogHeader>

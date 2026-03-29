@@ -1,4 +1,5 @@
 import type { EvaluationNameEntry } from '@/features/evaluations/api'
+import { SANS_SERIF } from '@/lib/fonts'
 
 interface Props {
   names: EvaluationNameEntry[]
@@ -35,7 +36,7 @@ export function EvaluationNameFilter({ names, selected, onChange }: Props) {
     <div className="flex flex-wrap items-center gap-1.5">
       <span
         className="text-xs uppercase tracking-wide text-muted-foreground mr-1"
-        style={{ fontFamily: "system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" }}
+        style={{ fontFamily: SANS_SERIF }}
       >
         Eval name
       </span>

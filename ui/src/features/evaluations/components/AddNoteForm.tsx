@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { useAddAnnotation } from '../hooks'
+import { SANS_SERIF } from '@/lib/fonts'
 
 interface Props {
   evalId: string
@@ -31,7 +32,7 @@ export function AddNoteForm({ evalId, onClose }: Props) {
         <div className="p-4 space-y-3">
           <div className="flex items-center justify-between">
             <p className="text-sm font-medium text-amber-400"
-              style={{ fontFamily: "system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" }}>
+              style={{ fontFamily: SANS_SERIF }}>
               Add Note
             </p>
             <button onClick={onClose}

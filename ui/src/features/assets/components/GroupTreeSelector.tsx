@@ -2,6 +2,7 @@
 import { useState } from 'react'
 import { ChevronRight, ChevronDown } from 'lucide-react'
 import type { AssetGroup, AssetGroupTree } from '../types'
+import { SANS_SERIF } from '@/lib/fonts'
 
 interface Props {
   tree: AssetGroupTree
@@ -95,7 +96,7 @@ export function GroupTreeSelector({ tree, value, onChange, excludeName }: Props)
   return (
     <div
       className="border border-border rounded-md bg-input max-h-[200px] overflow-y-auto py-1"
-      style={{ fontFamily: "system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" }}
+      style={{ fontFamily: SANS_SERIF }}
     >
       <button
         type="button"

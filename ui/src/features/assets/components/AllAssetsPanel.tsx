@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { Trash2 } from 'lucide-react'
 import { LabelChips } from '@/components/labels/LabelChips'
 import { useAssets, useAssetTypes, useDeleteAsset } from '../hooks'
+import { SANS_SERIF } from '@/lib/fonts'
 
 export function AllAssetsPanel() {
   const { data: assets = [], isLoading } = useAssets()
@@ -17,7 +18,7 @@ export function AllAssetsPanel() {
   return (
     <div
       className="p-6 space-y-4"
-      style={{ fontFamily: "system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" }}
+      style={{ fontFamily: SANS_SERIF }}
     >
       {/* Header */}
       <div>

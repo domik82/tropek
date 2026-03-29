@@ -156,7 +156,7 @@ export function RegistrySidebar({ mode, onModeChange, selected, onSelect, onCrea
 
       {/* "All" row — only shown in asset mode where the tree has group hierarchy */}
       {mode === 'asset' && (
-        <div style={{ fontFamily: "system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" }}>
+        <div style={{ fontFamily: SANS_SERIF }}>
           <TreeNode
             icon={getEntityIcon('all')}
             iconColor={!selected ? 'var(--primary)' : '#8b949e'}

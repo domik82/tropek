@@ -4,6 +4,7 @@ import {
   Copy, Trash2, BarChart3, X,
 } from 'lucide-react'
 import type { TreeMode, ContextMenuState, MenuItemDef } from './types'
+import { SANS_SERIF } from '@/lib/fonts'
 
 const ICON_MAP: Record<string, typeof Pencil> = {
   Pencil, Settings, FolderPlus, Plus, Link, ArrowUpRight,
@@ -72,7 +73,7 @@ export function AssetTreeContextMenu({ state, mode, onAction, onClose }: Props) 
     <div
       ref={menuRef}
       className="fixed z-50 bg-popover border border-border rounded-lg shadow-lg py-1.5 min-w-[220px]"
-      style={{ left: x, top: y, fontFamily: "system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" }}
+      style={{ left: x, top: y, fontFamily: SANS_SERIF }}
     >
       {visibleItems.map((item, i) => {
         const Icon = ICON_MAP[item.icon]

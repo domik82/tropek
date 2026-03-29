@@ -1,5 +1,6 @@
 // ui/src/components/labels/LabelComboBox.tsx
 import { useState, useRef, useEffect } from 'react'
+import { SANS_SERIF } from '@/lib/fonts'
 
 interface Suggestion {
   value: string
@@ -55,7 +56,7 @@ export function LabelComboBox({ value, onChange, suggestions, placeholder, isLoa
         <div
           ref={dropdownRef}
           className="absolute z-50 top-full mt-1 w-full bg-popover border border-border rounded-lg shadow-lg max-h-[200px] overflow-y-auto py-1"
-          style={{ fontFamily: "system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" }}
+          style={{ fontFamily: SANS_SERIF }}
         >
           {isLoading && (
             <div className="px-3 py-2 text-xs text-muted-foreground">Loading...</div>

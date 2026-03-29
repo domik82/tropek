@@ -4,8 +4,7 @@ import { Calendar as CalendarIcon, ChevronDown } from 'lucide-react'
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover'
 import { Calendar } from '@/components/ui/calendar'
 import { useTimeRange, PRESETS, toDateInputValue } from '@/lib/time-range-context'
-
-const SANS = "system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif"
+import { SANS_SERIF } from '@/lib/fonts'
 
 function presetFromDate(days: number): Date {
   const d = new Date()
@@ -70,13 +69,13 @@ export function TimeRangePicker() {
     <Popover open={open} onOpenChange={(next) => { setOpen(next); if (!next) setEditing(null) }}>
       <PopoverTrigger
         className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg border border-border bg-popover text-foreground hover:bg-muted transition-colors"
-        style={{ fontFamily: SANS }}
+        style={{ fontFamily: SANS_SERIF }}
       >
         <CalendarIcon size={15} className="text-muted-foreground" />
         {label}
         <ChevronDown size={13} className="text-muted-foreground" />
       </PopoverTrigger>
-      <PopoverContent align="end" className="w-auto p-0 z-[100]" style={{ fontFamily: SANS }}>
+      <PopoverContent align="end" className="w-auto p-0 z-[100]" style={{ fontFamily: SANS_SERIF }}>
         <div className="flex">
           {/* Left — absolute date range */}
           <div className="p-4 border-r border-border" style={{ width: 260 }}>

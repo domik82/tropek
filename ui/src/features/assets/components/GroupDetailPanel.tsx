@@ -8,6 +8,7 @@ import { useGroupSloBindings, useDeleteGroupSloBinding } from '@/features/slos/h
 import { GroupEditDialog } from '@/features/slos/components/GroupEditDialog'
 import { GroupDeleteDialog } from '@/features/slos/components/GroupDeleteDialog'
 import { GroupCreateDialog } from '@/features/slos/components/GroupCreateDialog'
+import { SANS_SERIF } from '@/lib/fonts'
 import { SloLinkDialog } from '@/features/slos/components/SloLinkDialog'
 import { AddAssetToGroupDialog } from './AddAssetToGroupDialog'
 import { AssetEditDialog } from './AssetEditDialog'
@@ -62,7 +63,7 @@ export function GroupDetailPanel({ groupName, onSelectGroup, selectedAsset }: Pr
   return (
     <div
       className="p-6 space-y-6"
-      style={{ fontFamily: "system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" }}
+      style={{ fontFamily: SANS_SERIF }}
     >
       {/* Header */}
       <div>

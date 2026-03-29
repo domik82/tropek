@@ -3,6 +3,7 @@ import { useState, useImperativeHandle, forwardRef } from 'react'
 import type { Annotation } from '../types'
 import { NoteEntry } from './NoteEntry'
 import { AddNoteForm } from './AddNoteForm'
+import { SANS_SERIF } from '@/lib/fonts'
 
 export interface AnnotationSectionHandle {
   openForm: () => void
@@ -27,7 +28,7 @@ export const AnnotationSection = forwardRef<AnnotationSectionHandle, Props>(
         {/* Header row — always visible */}
         <div className="flex items-center justify-between">
           <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide"
-            style={{ fontFamily: "system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" }}>
+            style={{ fontFamily: SANS_SERIF }}>
             Notes
             <span className="normal-case font-normal ml-1 text-muted-foreground/60">
               ({annotations.length})
@@ -38,7 +39,7 @@ export const AnnotationSection = forwardRef<AnnotationSectionHandle, Props>(
             {/* View mode toggle */}
             {annotations.length > 0 && (
               <div className="flex items-center gap-1 text-[10px]"
-                style={{ fontFamily: "system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" }}>
+                style={{ fontFamily: SANS_SERIF }}>
                 <button
                   onClick={() => setViewMode('compact')}
                   className={viewMode === 'compact' ? 'text-amber-400 font-semibold' : 'text-muted-foreground/50 hover:text-muted-foreground'}
@@ -59,7 +60,7 @@ export const AnnotationSection = forwardRef<AnnotationSectionHandle, Props>(
             <button
               onClick={() => setShowForm(v => !v)}
               className="px-2 py-1 text-[10px] font-medium rounded border border-amber-700/50 text-amber-400 hover:border-amber-500 hover:text-amber-300 transition-colors"
-              style={{ fontFamily: "system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" }}
+              style={{ fontFamily: SANS_SERIF }}
             >
               {showForm ? 'Cancel' : '+ Note'}
             </button>
