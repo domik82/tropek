@@ -75,6 +75,7 @@ testpaths = ["api/tests", "adapters/prometheus/tests"]
 pythonpath = ["api", "adapters/prometheus", "clients/python"]   # makes 'app' importable from workspace root
 markers = [
     "integration: requires a running TimescaleDB instance (deselect with -m 'not integration')",
+    "e2e: requires running adapter + Prometheus + Redis (deselect with -m 'not e2e')",
 ]
 
 [dependency-groups]
