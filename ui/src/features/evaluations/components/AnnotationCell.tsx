@@ -7,12 +7,12 @@ interface Props {
 }
 
 export function AnnotationCell({ annotation, count }: Props) {
-  if (!annotation) return <span className="text-gray-500">—</span>
+  if (!annotation) return <span className="text-muted-foreground">—</span>
   return (
     <div className="text-sm">
-      <p className="line-clamp-2 text-gray-300">{annotation.content}</p>
+      <p className="line-clamp-2 text-foreground">{annotation.content}</p>
       {count && count > 1 && (
-        <span className="text-xs text-gray-500 ml-1">+{count - 1} more</span>
+        <span className="text-xs text-muted-foreground ml-1">+{count - 1} more</span>
       )}
     </div>
   )

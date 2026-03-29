@@ -32,10 +32,10 @@ export function AllAssetsPanel() {
         <p className="text-sm text-muted-foreground italic">No assets yet</p>
       )}
       {assets.length > 0 && (
-        <div className="border border-slate-700 rounded-lg overflow-hidden">
+        <div className="border border-border rounded-lg overflow-hidden">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-slate-700 bg-[#111827]">
+              <tr className="border-b border-border bg-table-header-bg">
                 <th className="text-left px-3 py-2 text-xs uppercase text-muted-foreground font-medium">Name</th>
                 <th className="text-left px-3 py-2 text-xs uppercase text-muted-foreground font-medium w-[100px]">Type</th>
                 <th className="text-left px-3 py-2 text-xs uppercase text-muted-foreground font-medium min-w-[200px]">Labels</th>
@@ -44,7 +44,7 @@ export function AllAssetsPanel() {
             </thead>
             <tbody>
               {assets.map((asset, idx) => (
-                <tr key={asset.id} className={`border-b border-slate-800/60 last:border-0 hover:bg-gray-700/50 transition-colors ${idx % 2 === 0 ? 'bg-gray-900' : 'bg-gray-800/50'}`}>
+                <tr key={asset.id} className={`border-b border-border/60 last:border-0 hover:bg-table-row-hover transition-colors ${idx % 2 === 0 ? 'bg-table-row-bg' : 'bg-table-row-alt'}`}>
                   <td className="px-3 py-2">
                     <span className="font-mono text-foreground">{asset.display_name ?? asset.name}</span>
                     {asset.display_name && (
@@ -66,13 +66,13 @@ export function AllAssetsPanel() {
                               void deleteAsset.mutateAsync(asset.name)
                               setConfirmDelete(null)
                             }}
-                            className="px-2 py-0.5 text-xs rounded bg-[#F85149] text-white font-bold"
+                            className="px-2 py-0.5 text-xs rounded bg-action-destructive-confirm text-white font-bold"
                           >
                             Delete
                           </button>
                           <button
                             onClick={() => setConfirmDelete(null)}
-                            className="px-2 py-0.5 text-xs rounded bg-[#1A1F2E] border border-[#9CA3AF] text-white"
+                            className="px-2 py-0.5 text-xs rounded bg-action-secondary-bg border border-action-secondary-border text-white"
                           >
                             Cancel
                           </button>
@@ -80,7 +80,7 @@ export function AllAssetsPanel() {
                       ) : (
                         <button
                           onClick={() => setConfirmDelete(asset.name)}
-                          className="p-1 text-[#F85149] hover:bg-[#3D1418]/50 rounded transition-colors"
+                          className="p-1 text-action-destructive hover:bg-action-destructive-confirm-bg/50 rounded transition-colors"
                           title="Delete asset"
                         >
                           <Trash2 className="w-3.5 h-3.5" />

@@ -63,33 +63,33 @@ export function TriggerEvaluationModal({ open, onClose }: Props) {
         </DialogHeader>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-3 pt-2">
           <div>
-            <label className="text-xs text-gray-400">Asset Group</label>
-            <select {...register('group_name')} className="w-full mt-1 bg-gray-800 border border-gray-600 rounded px-3 py-2 text-sm">
+            <label className="text-xs text-muted-foreground">Asset Group</label>
+            <select {...register('group_name')} className="w-full mt-1 bg-surface-sunken border border-border rounded px-3 py-2 text-sm">
               <option value="">Select group...</option>
               {groupNames.map(n => <option key={n} value={n}>{n}</option>)}
             </select>
-            {errors.group_name && <p className="text-red-400 text-xs mt-1">{errors.group_name.message}</p>}
+            {errors.group_name && <p className="text-destructive-form-text text-xs mt-1">{errors.group_name.message}</p>}
           </div>
           <div>
-            <label className="text-xs text-gray-400">Evaluation Name</label>
+            <label className="text-xs text-muted-foreground">Evaluation Name</label>
             <Input {...register('evaluation_name')} placeholder="e.g. perf-test-linux" className="mt-1" />
-            {errors.evaluation_name && <p className="text-red-400 text-xs mt-1">{errors.evaluation_name.message}</p>}
+            {errors.evaluation_name && <p className="text-destructive-form-text text-xs mt-1">{errors.evaluation_name.message}</p>}
           </div>
           <div>
-            <label className="text-xs text-gray-400">SLO</label>
-            <select {...register('slo_name')} className="w-full mt-1 bg-gray-800 border border-gray-600 rounded px-3 py-2 text-sm">
+            <label className="text-xs text-muted-foreground">SLO</label>
+            <select {...register('slo_name')} className="w-full mt-1 bg-surface-sunken border border-border rounded px-3 py-2 text-sm">
               <option value="">Select SLO...</option>
               {sloNames.map(n => <option key={n} value={n}>{n}</option>)}
             </select>
-            {errors.slo_name && <p className="text-red-400 text-xs mt-1">{errors.slo_name.message}</p>}
+            {errors.slo_name && <p className="text-destructive-form-text text-xs mt-1">{errors.slo_name.message}</p>}
           </div>
           <div className="flex gap-2">
             <div className="flex-1">
-              <label className="text-xs text-gray-400">Start</label>
+              <label className="text-xs text-muted-foreground">Start</label>
               <Input {...register('period_start')} type="datetime-local" className="mt-1" />
             </div>
             <div className="flex-1">
-              <label className="text-xs text-gray-400">End</label>
+              <label className="text-xs text-muted-foreground">End</label>
               <Input {...register('period_end')} type="datetime-local" className="mt-1" />
             </div>
           </div>

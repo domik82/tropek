@@ -7,55 +7,55 @@ interface Props {
 
 export function SloObjectiveTable({ slo }: Props) {
   if (slo.objectives.length === 0) {
-    return <p className="text-xs text-slate-500 italic">No objectives defined.</p>
+    return <p className="text-xs text-muted-foreground italic">No objectives defined.</p>
   }
 
   return (
     <div>
-      <div className="overflow-x-auto rounded-lg border border-slate-700">
+      <div className="overflow-hidden rounded-lg border border-border">
         <table className="w-full text-sm text-left">
-          <thead className="text-xs uppercase text-slate-400 bg-slate-800/60 border-b border-slate-700">
+          <thead className="text-xs uppercase text-muted-foreground bg-table-header-bg border-b border-border">
             <tr>
-              <th className="px-2 py-2 text-center w-6 text-cyan-500/70" title="Key SLI">◆</th>
+              <th className="px-2 py-2 text-center w-6 text-indicator-key-sli" title="Key SLI">◆</th>
               <th className="px-3 py-2">Indicator</th>
               <th className="px-3 py-2 text-center">Pass</th>
               <th className="px-3 py-2 text-center">Warning</th>
               <th className="px-3 py-2 text-center w-16">Weight</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-800">
-            {slo.objectives.map(obj => (
-              <tr key={obj.sli} className="hover:bg-slate-800/40 transition-colors">
+          <tbody className="divide-y divide-border">
+            {slo.objectives.map((obj, idx) => (
+              <tr key={obj.sli} className={`hover:bg-table-row-hover transition-colors ${idx % 2 === 0 ? 'bg-table-row-bg' : 'bg-table-row-alt'}`}>
                 <td className="px-2 py-2 text-center">
                   {obj.key_sli
-                    ? <span className="text-cyan-400 text-xs" title="Key SLI">◆</span>
-                    : <span className="text-slate-700">—</span>
+                    ? <span className="text-indicator-key-sli text-xs" title="Key SLI">◆</span>
+                    : <span className="text-muted-foreground/40">—</span>
                   }
                 </td>
                 <td className="px-3 py-2">
-                  <div className="font-mono text-xs text-[#7dc540]">{obj.sli}</div>
+                  <div className="font-mono text-xs text-pass">{obj.sli}</div>
                   {obj.display_name && obj.display_name !== obj.sli && (
-                    <div className="text-xs text-slate-400">{obj.display_name}</div>
+                    <div className="text-xs text-muted-foreground">{obj.display_name}</div>
                   )}
                 </td>
-                <td className="px-3 py-2 text-center text-xs text-[#7dc540]">
+                <td className="px-3 py-2 text-center text-xs text-pass">
                   {obj.pass_criteria.join(', ') || '—'}
                 </td>
-                <td className="px-3 py-2 text-center text-xs text-[#e6be00]">
+                <td className="px-3 py-2 text-center text-xs text-warning">
                   {obj.warning_criteria.join(', ') || '—'}
                 </td>
-                <td className="px-3 py-2 text-center text-slate-400">{obj.weight}</td>
+                <td className="px-3 py-2 text-center text-muted-foreground">{obj.weight}</td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
 
-      <div className="mt-3 flex flex-wrap gap-6 text-sm text-slate-400">
-        <span>Total pass: <strong className="text-[#7dc540]">{slo.total_score_pass_pct}%</strong></span>
-        <span>Total warning: <strong className="text-[#e6be00]">{slo.total_score_warning_pct}%</strong></span>
+      <div className="mt-3 flex flex-wrap gap-6 text-sm text-muted-foreground">
+        <span>Total pass: <strong className="text-pass">{slo.total_score_pass_pct}%</strong></span>
+        <span>Total warning: <strong className="text-warning">{slo.total_score_warning_pct}%</strong></span>
         {slo.comparable_from_version != null && (
-          <span>Comparable from: <strong className="text-indigo-300">v{slo.comparable_from_version}</strong></span>
+          <span>Comparable from: <strong className="text-link">v{slo.comparable_from_version}</strong></span>
         )}
       </div>
     </div>

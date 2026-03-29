@@ -1,10 +1,7 @@
 // src/features/evaluations/components/EvaluationTable.tsx
 import type { RefObject } from 'react'
 import { Link } from 'react-router-dom'
-import { Badge } from '@/components/ui/badge'
-import { useTheme } from '@/lib/theme-context'
-import { RESULT_COLOUR } from '@/lib/theme'
-import type { ResultColours } from '@/lib/theme'
+import { ResultBadge } from './ResultBadge'
 import { fmtDateTime } from '@/lib/format'
 import { AnnotationCell } from './AnnotationCell'
 import type { EvaluationSummary, ColumnDef } from '../types'
@@ -34,7 +31,6 @@ const STATIC_KEYS = new Set([
 function cell(
   ev: EvaluationSummary,
   key: string,
-  colours: ResultColours,
   onAssetSelect?: (name: string) => void,
   onEvalClick?: (ev: EvaluationSummary) => void,
   assetDisplayNames?: Map<string, string>,
@@ -47,12 +43,12 @@ function cell(
           {onEvalClick ? (
             <button
               onClick={() => onEvalClick(ev)}
-              className="text-slate-200 hover:text-indigo-300 hover:underline decoration-dotted underline-offset-2 font-medium cursor-pointer transition-colors"
+              className="text-foreground hover:text-link-hover hover:underline decoration-dotted underline-offset-2 font-medium cursor-pointer transition-colors"
             >
               {ev.evaluation_name}
             </button>
           ) : (
-            <Link to={`/evaluations/${ev.id}`} className="text-slate-200 hover:text-indigo-300 hover:underline decoration-dotted underline-offset-2 font-medium transition-colors">
+            <Link to={`/evaluations/${ev.id}`} className="text-foreground hover:text-link-hover hover:underline decoration-dotted underline-offset-2 font-medium transition-colors">
               {ev.evaluation_name}
             </Link>
           )}
@@ -68,12 +64,12 @@ function cell(
           {onAssetSelect ? (
             <button
               onClick={() => onAssetSelect(ev.asset_snapshot.name)}
-              className="text-slate-200 hover:text-indigo-300 hover:underline decoration-dotted underline-offset-2 cursor-pointer transition-colors"
+              className="text-foreground hover:text-link-hover hover:underline decoration-dotted underline-offset-2 cursor-pointer transition-colors"
             >
               {assetLabel}
             </button>
           ) : (
-            <span className="text-slate-200">{assetLabel}</span>
+            <span className="text-foreground">{assetLabel}</span>
           )}
           {hasDisplayName && (
             <span className="block text-xs text-muted-foreground font-mono">{ev.asset_snapshot.name}</span>
@@ -82,21 +78,19 @@ function cell(
       )
     }
     case 'start':
-      return <td key="start" className="px-4 py-3 text-sm text-slate-400 tabular-nums whitespace-nowrap">{fmtDateTime(ev.period_start)}</td>
+      return <td key="start" className="px-4 py-3 text-sm text-muted-foreground tabular-nums whitespace-nowrap">{fmtDateTime(ev.period_start)}</td>
     case 'score':
       return <td key="score" className="px-4 py-3 tabular-nums font-medium font-mono">{ev.score.toFixed(1)}%</td>
     case 'result':
       return (
         <td key="result" className="px-4 py-3">
-          <Badge style={{ backgroundColor: colours[ev.result as keyof ResultColours] ?? colours.error, color: '#fff' }}>
-            {ev.result.toUpperCase()}
-          </Badge>
+          <ResultBadge result={ev.result} />
         </td>
       )
     case 'slo': {
       const sloLabel = (ev.slo_name && sloDisplayNames?.get(ev.slo_name)) ?? ev.slo_name
       return (
-        <td key="slo" className="px-4 py-3 text-sm text-slate-400">
+        <td key="slo" className="px-4 py-3 text-sm text-muted-foreground">
           {sloLabel ? `${sloLabel}${ev.slo_version != null ? ` v${ev.slo_version}` : ''}` : '—'}
         </td>
       )
@@ -117,27 +111,25 @@ export function EvaluationTable({
   visibleKeys, allCols, open, setOpen, toggle, pickerRef,
   onAssetSelect, onEvalClick, assetDisplayNames, sloDisplayNames,
 }: Props) {
-  const { theme } = useTheme()
-  const colours = RESULT_COLOUR[theme]
   const visibleCols = allCols.filter(c => visibleKeys.has(c.key))
 
   return (
-    <div className="relative overflow-x-auto rounded-lg border border-slate-700 bg-gray-900">
+    <div className="relative overflow-hidden rounded-lg border border-border bg-table-row-bg">
       <table className="w-full text-sm text-left">
-        <thead className="text-xs uppercase text-slate-400 bg-gray-800 border-b border-slate-700">
+        <thead className="text-xs uppercase text-muted-foreground bg-table-header-bg border-b border-border">
           <tr>
             {visibleCols.map(col => (
               <th key={col.key} className="text-left px-4 py-3">{col.label}</th>
             ))}
-            <th className="px-2 py-2 text-right sticky right-0 bg-gray-800 w-px" ref={pickerRef}>
+            <th className="px-2 py-2 text-right sticky right-0 bg-table-header-bg w-px" ref={pickerRef}>
               <button
                 onClick={() => setOpen(!open)}
-                className="text-xs normal-case text-slate-400 hover:text-slate-200 transition-colors"
+                className="text-xs normal-case text-muted-foreground hover:text-foreground transition-colors"
               >
                 Columns ▾
               </button>
               {open && (
-                <div className="absolute right-2 top-10 z-10 bg-gray-800 border border-slate-700 rounded p-3 min-w-48 text-left normal-case shadow-lg">
+                <div className="absolute right-2 top-10 z-10 bg-table-header-bg border border-border rounded p-3 min-w-48 text-left normal-case shadow-lg">
                   {allCols.map(col => (
                     <label key={col.key} className="flex items-center gap-2 py-1 cursor-pointer">
                       <input
@@ -146,7 +138,7 @@ export function EvaluationTable({
                         disabled={col.required}
                         onChange={() => toggle(col.key)}
                       />
-                      <span className="text-sm text-slate-300">{col.label}</span>
+                      <span className="text-sm text-foreground">{col.label}</span>
                     </label>
                   ))}
                 </div>
@@ -158,15 +150,15 @@ export function EvaluationTable({
             {evaluations.map((ev, idx) => (
               <tr
                 key={ev.id}
-                className={`border-b border-slate-800/60 last:border-0 transition-colors hover:bg-gray-700/50 ${
-                  idx % 2 === 0 ? 'bg-gray-900' : 'bg-gray-800/50'
+                className={`border-b border-border/60 last:border-0 transition-colors hover:bg-table-row-hover ${
+                  idx % 2 === 0 ? 'bg-table-row-bg' : 'bg-table-row-alt'
                 }`}
               >
                 {visibleCols.map(col =>
                   STATIC_KEYS.has(col.key)
-                    ? cell(ev, col.key, colours, onAssetSelect, onEvalClick, assetDisplayNames, sloDisplayNames)
+                    ? cell(ev, col.key, onAssetSelect, onEvalClick, assetDisplayNames, sloDisplayNames)
                     : (
-                      <td key={col.key} className="px-4 py-3 text-sm text-slate-400">
+                      <td key={col.key} className="px-4 py-3 text-sm text-muted-foreground">
                         {ev.asset_snapshot.tags?.[col.key] ?? ev.evaluation_metadata?.[col.key] ?? '—'}
                       </td>
                     )

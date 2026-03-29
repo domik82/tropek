@@ -42,9 +42,9 @@ export function AssetPanelHeatmapView({
     <>
       {/* Metric Heatmap with view toggle */}
       {heatmapData && (
-        <div className="rounded-lg border border-slate-700 bg-gray-900 p-4">
+        <div className="rounded-lg border border-border bg-surface-sunken p-4">
           <div className="flex items-center justify-between mb-2">
-            <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Metric Heatmap</h2>
+            <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Metric Heatmap</h2>
             <div className="flex items-center gap-3">
               <ViewToggle mode={mode} setMode={setMode} />
               {explorerButton}
@@ -63,7 +63,7 @@ export function AssetPanelHeatmapView({
       {ev && (
         <div ref={sliTableRef} className="space-y-0 scroll-mt-4">
           <div className="flex items-center justify-between mb-2">
-            <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wide">SLI Breakdown</h2>
+            <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">SLI Breakdown</h2>
           </div>
           <EvaluationTabs
             availableGroups={availableGroups}
@@ -87,10 +87,10 @@ export function AssetPanelHeatmapView({
       {/* Metric Trend Charts */}
       {effectiveEvalId && tabIndicators.length > 0 && (
         <div className="space-y-4">
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-muted-foreground">
             30-day trend for{' '}
-            <strong className="text-slate-300">{activeTab === 'all' ? 'All' : tabLabel(activeTab)}</strong>{' '}
-            metrics on <strong className="text-slate-300">{assetName}</strong>.
+            <strong className="text-foreground">{activeTab === 'all' ? 'All' : tabLabel(activeTab)}</strong>{' '}
+            metrics on <strong className="text-foreground">{assetName}</strong>.
           </p>
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
             {tabIndicators.map(ind => (

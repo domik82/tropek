@@ -110,7 +110,7 @@ export function RegistrySidebar({ mode, onModeChange, selected, onSelect, onCrea
   const filteredNodes = useMemo(() => filterTree(treeNodes, search), [treeNodes, search])
 
   return (
-    <div className="flex flex-col h-full border-r border-border bg-black/30" style={{ width: 260 }}>
+    <div className="flex flex-col h-full border-r border-border bg-sidebar-bg" style={{ width: 260 }}>
       {/* Segmented control */}
       <div className="flex gap-0.5 p-2 bg-muted/30 mx-2 mt-2 rounded-md">
         {MODES.map(m => (

@@ -19,7 +19,7 @@ function VariableEntries({ vars }: { vars: Record<string, string> }) {
       {Object.entries(vars).map(([k, v], i) => (
         <span key={k}>
           {i > 0 && '  '}
-          <span style={{ color: 'var(--primary)' }}>${k}</span>
+          <span className="text-chip-var-key">${k}</span>
           <span className="text-muted-foreground">=</span>
           <span>{v}</span>
         </span>

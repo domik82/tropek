@@ -9,7 +9,7 @@ import type { Theme } from './theme'
 import { clampFontSize } from './theme-utils'
 
 const FONT_DEFAULT = 18
-const THEME_DEFAULT: Theme = 'forest'
+const THEME_DEFAULT: Theme = 'dark'
 
 interface ThemeCtx {
   theme:       Theme
@@ -22,15 +22,18 @@ interface ThemeCtx {
 const Ctx = createContext<ThemeCtx | null>(null)
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [theme, _setTheme] = useState<Theme>(() =>
-    (localStorage.getItem('tropek-theme') as Theme | null) ?? THEME_DEFAULT
-  )
+  const [theme, _setTheme] = useState<Theme>(() => {
+    const stored = localStorage.getItem('tropek-theme')
+    if (stored === 'current' || stored === 'dark' || stored === 'light') return stored
+    return THEME_DEFAULT
+  })
   const [fontSize, _setFontSize] = useState<number>(() =>
     clampFontSize(Number(localStorage.getItem('tropek-font-size')) || FONT_DEFAULT)
   )
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme)
+    document.documentElement.classList.toggle('dark-theme', theme === 'dark')
     localStorage.setItem('tropek-theme', theme)
   }, [theme])
 
@@ -43,7 +46,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   function setFontSize(n: number) { _setFontSize(clampFontSize(n)) }
 
   return (
-    <Ctx.Provider value={{ theme, setTheme, isDark: theme !== 'corporate', fontSize, setFontSize }}>
+    <Ctx.Provider value={{ theme, setTheme, isDark: theme !== 'light', fontSize, setFontSize }}>
       {children}
     </Ctx.Provider>
   )

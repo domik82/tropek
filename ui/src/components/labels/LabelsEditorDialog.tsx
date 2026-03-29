@@ -72,7 +72,7 @@ export function LabelsEditorDialog({ open, onOpenChange, title, subtitle, labels
               {Object.entries(labels).map(([key, value]) => (
                 <div key={key} className="flex items-center gap-2">
                   <div className="flex-1 flex items-center gap-0 border border-border rounded overflow-hidden">
-                    <span className="px-3 py-1.5 text-sm font-mono text-[#58A6FF] bg-card border-r border-border min-w-[80px]">
+                    <span className="px-3 py-1.5 text-sm font-mono text-label-key bg-card border-r border-border min-w-[80px]">
                       {key}
                     </span>
                     <span className="px-3 py-1.5 text-sm font-mono text-foreground bg-input flex-1">
@@ -81,7 +81,7 @@ export function LabelsEditorDialog({ open, onOpenChange, title, subtitle, labels
                   </div>
                   <button
                     onClick={() => handleRemove(key)}
-                    className="p-1 text-muted-foreground hover:text-[#F85149] transition-colors"
+                    className="p-1 text-muted-foreground hover:text-action-destructive transition-colors"
                   >
                     <X className="w-4 h-4" />
                   </button>
@@ -119,7 +119,7 @@ export function LabelsEditorDialog({ open, onOpenChange, title, subtitle, labels
               <button
                 onClick={handleAdd}
                 disabled={!newKey || !newValue}
-                className="px-3 py-1.5 text-xs rounded border border-[#58A6FF] bg-[#0D2847] text-[#58A6FF] hover:bg-[#0D2847]/80 disabled:opacity-40 disabled:cursor-not-allowed"
+                className="px-3 py-1.5 text-xs rounded border border-action-primary-border bg-action-primary-bg text-action-primary hover:bg-action-primary-hover disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 + Add
               </button>
@@ -132,7 +132,7 @@ export function LabelsEditorDialog({ open, onOpenChange, title, subtitle, labels
         <div className="flex justify-end pt-2 border-t border-border">
           <button
             onClick={handleDone}
-            className="px-4 py-1.5 text-sm rounded border border-[#58A6FF] bg-[#0D2847] text-[#58A6FF] hover:bg-[#0D2847]/80 font-medium"
+            className="px-4 py-1.5 text-sm rounded border border-action-primary-border bg-action-primary-bg text-action-primary hover:bg-action-primary-hover font-medium"
           >
             Done
           </button>

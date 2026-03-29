@@ -34,7 +34,7 @@ export function EvaluationNameFilter({ names, selected, onChange }: Props) {
   return (
     <div className="flex flex-wrap items-center gap-1.5">
       <span
-        className="text-xs uppercase tracking-wide text-slate-500 mr-1"
+        className="text-xs uppercase tracking-wide text-muted-foreground mr-1"
         style={{ fontFamily: "system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" }}
       >
         Eval name
@@ -44,7 +44,7 @@ export function EvaluationNameFilter({ names, selected, onChange }: Props) {
         className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${
           isAll
             ? 'bg-blue-600 text-white border border-blue-500'
-            : 'bg-gray-800/60 text-slate-500 border border-slate-700 hover:text-slate-300'
+            : 'bg-chip-filter-bg text-chip-filter-text border border-chip-filter-border hover:text-chip-filter-text-hover'
         }`}
       >
         All
@@ -58,7 +58,7 @@ export function EvaluationNameFilter({ names, selected, onChange }: Props) {
             className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${
               active
                 ? 'bg-blue-600 text-white border border-blue-500'
-                : 'bg-gray-800/60 text-slate-500 border border-slate-700 hover:text-slate-300'
+                : 'bg-chip-filter-bg text-chip-filter-text border border-chip-filter-border hover:text-chip-filter-text-hover'
             }`}
           >
             {entry.name}

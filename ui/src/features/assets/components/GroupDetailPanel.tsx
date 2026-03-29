@@ -83,14 +83,14 @@ export function GroupDetailPanel({ groupName, onSelectGroup, selectedAsset }: Pr
             </button>
             <button
               onClick={() => setLinkSloOpen(true)}
-              className="px-3 py-1.5 text-xs rounded bg-[#0D2847] border border-[#58A6FF] text-[#58A6FF] hover:bg-[#0D2847]/80 transition-colors flex items-center gap-1.5"
+              className="px-3 py-1.5 text-xs rounded bg-action-primary-bg border border-action-primary-border text-action-primary hover:bg-action-primary-hover transition-colors flex items-center gap-1.5"
             >
               <Link className="w-3.5 h-3.5" />
               Link SLO
             </button>
             <button
               onClick={() => setDeleteDialogOpen(true)}
-              className="px-3 py-1.5 text-xs rounded bg-[#3D1418] border border-[#F85149] text-[#F85149] hover:bg-[#3D1418]/80 transition-colors flex items-center gap-1.5"
+              className="px-3 py-1.5 text-xs rounded bg-action-destructive-bg border border-action-destructive-border text-action-destructive hover:bg-action-destructive-bg transition-colors flex items-center gap-1.5"
             >
               <Trash2 className="w-3.5 h-3.5" />
               Delete
@@ -111,7 +111,7 @@ export function GroupDetailPanel({ groupName, onSelectGroup, selectedAsset }: Pr
             </h3>
             <button
               onClick={() => setCreateSubgroupOpen(true)}
-              className="px-2.5 py-1 text-xs rounded border border-[#58A6FF] bg-[#0D2847] text-[#58A6FF] hover:bg-[#0D2847]/80 flex items-center gap-1"
+              className="px-2.5 py-1 text-xs rounded border border-action-primary-border bg-action-primary-bg text-action-primary hover:bg-action-primary-hover flex items-center gap-1"
             >
               <FolderPlus className="w-3 h-3" />
               Add Subgroup
@@ -125,7 +125,7 @@ export function GroupDetailPanel({ groupName, onSelectGroup, selectedAsset }: Pr
               <button
                 key={sg.id}
                 onClick={() => onSelectGroup(sg.name)}
-                className="bg-card border border-border rounded-lg border-t-[3px] border-t-[#2DD4A0] p-3 min-w-[160px] text-left hover:bg-muted/30 transition-colors"
+                className="bg-card border border-border rounded-lg border-t-[3px] border-t-indicator-default p-3 min-w-[160px] text-left hover:bg-muted/30 transition-colors"
               >
                 <p className="text-sm font-medium text-foreground">{sg.display_name ?? sg.name}</p>
                 <p className="text-xs text-muted-foreground mt-1">{sg.members.length} assets</p>
@@ -143,7 +143,7 @@ export function GroupDetailPanel({ groupName, onSelectGroup, selectedAsset }: Pr
           </h3>
           <button
             onClick={() => setAddAssetOpen(true)}
-            className="px-2.5 py-1 text-xs rounded border border-[#58A6FF] bg-[#0D2847] text-[#58A6FF] hover:bg-[#0D2847]/80 flex items-center gap-1"
+            className="px-2.5 py-1 text-xs rounded border border-action-primary-border bg-action-primary-bg text-action-primary hover:bg-action-primary-hover flex items-center gap-1"
           >
             <Plus className="w-3 h-3" />
             Add Asset to Group
@@ -153,10 +153,10 @@ export function GroupDetailPanel({ groupName, onSelectGroup, selectedAsset }: Pr
           <p className="text-sm text-muted-foreground italic">No members</p>
         )}
         {group.members.length > 0 && (
-          <div className="border border-slate-700 rounded-lg overflow-hidden">
+          <div className="border border-border rounded-lg overflow-hidden">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-slate-700 bg-[#111827]">
+                <tr className="border-b border-border bg-table-header-bg">
                   <th className="text-left px-3 py-2 text-xs uppercase text-muted-foreground font-medium">Name</th>
                   <th className="text-left px-3 py-2 text-xs uppercase text-muted-foreground font-medium">Type</th>
                   <th className="text-left px-3 py-2 text-xs uppercase text-muted-foreground font-medium min-w-[200px]">Labels</th>
@@ -168,7 +168,7 @@ export function GroupDetailPanel({ groupName, onSelectGroup, selectedAsset }: Pr
                 {memberAssets.map(({ asset_id, asset_name, weight, asset }, idx) => {
                   const isHighlighted = selectedAsset === asset_name
                   return (
-                  <tr key={asset_id} className={`border-b border-slate-800/60 last:border-0 hover:bg-gray-700/50 transition-colors ${isHighlighted ? 'bg-gray-700/60' : idx % 2 === 0 ? 'bg-gray-900' : 'bg-gray-800/50'}`}>
+                  <tr key={asset_id} className={`border-b border-border/60 last:border-0 hover:bg-table-row-hover transition-colors ${isHighlighted ? 'bg-table-row-selected' : idx % 2 === 0 ? 'bg-table-row-bg' : 'bg-table-row-alt'}`}>
                     <td className="px-3 py-2">
                       <span className="font-mono text-foreground">{asset?.display_name ?? asset_name}</span>
                       {asset?.display_name && (
@@ -193,14 +193,14 @@ export function GroupDetailPanel({ groupName, onSelectGroup, selectedAsset }: Pr
                       <div className="flex items-center justify-center gap-1">
                         <button
                           onClick={() => setEditingAssetName(asset_name)}
-                          className="p-1 text-[#58A6FF] hover:bg-[#0D2847]/50 rounded transition-colors"
+                          className="p-1 text-action-primary hover:bg-action-primary-hover rounded transition-colors"
                           title="Edit asset"
                         >
                           <Pencil className="w-3.5 h-3.5" />
                         </button>
                         <button
                           onClick={() => removeMember.mutate({ groupName, assetId: asset_id })}
-                          className="p-1 text-[#F85149] hover:bg-[#3D1418]/50 rounded transition-colors"
+                          className="p-1 text-action-destructive hover:bg-action-destructive-bg rounded transition-colors"
                           title="Remove from group"
                         >
                           <X className="w-3.5 h-3.5" />
@@ -224,7 +224,7 @@ export function GroupDetailPanel({ groupName, onSelectGroup, selectedAsset }: Pr
           </h3>
           <button
             onClick={() => setLinkSloOpen(true)}
-            className="px-2.5 py-1 text-xs rounded border border-[#58A6FF] bg-[#0D2847] text-[#58A6FF] hover:bg-[#0D2847]/80 flex items-center gap-1"
+            className="px-2.5 py-1 text-xs rounded border border-action-primary-border bg-action-primary-bg text-action-primary hover:bg-action-primary-hover flex items-center gap-1"
           >
             <Link className="w-3 h-3" />
             Link SLO
@@ -234,10 +234,10 @@ export function GroupDetailPanel({ groupName, onSelectGroup, selectedAsset }: Pr
           <p className="text-sm text-muted-foreground italic">No linked SLOs</p>
         )}
         {bindings.length > 0 && (
-          <div className="border border-slate-700 rounded-lg overflow-hidden">
+          <div className="border border-border rounded-lg overflow-hidden">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-slate-700 bg-[#111827]">
+                <tr className="border-b border-border bg-table-header-bg">
                   <th className="text-left px-3 py-2 text-xs uppercase text-muted-foreground font-medium">SLO Name</th>
                   <th className="text-left px-3 py-2 text-xs uppercase text-muted-foreground font-medium">Datasource</th>
                   <th className="text-center px-3 py-2 text-xs uppercase text-muted-foreground font-medium w-[60px]"></th>
@@ -245,13 +245,13 @@ export function GroupDetailPanel({ groupName, onSelectGroup, selectedAsset }: Pr
               </thead>
               <tbody>
                 {bindings.map((binding, idx) => (
-                  <tr key={binding.id} className={`border-b border-slate-800/60 last:border-0 hover:bg-gray-700/50 transition-colors ${idx % 2 === 0 ? 'bg-gray-900' : 'bg-gray-800/50'}`}>
+                  <tr key={binding.id} className={`border-b border-border/60 last:border-0 hover:bg-table-row-hover transition-colors ${idx % 2 === 0 ? 'bg-table-row-bg' : 'bg-table-row-alt'}`}>
                     <td className="px-3 py-2 font-medium text-foreground">{binding.slo_name}</td>
                     <td className="px-3 py-2 text-muted-foreground/60">{binding.data_source_name}</td>
                     <td className="px-3 py-2 text-center">
                       <button
                         onClick={() => unlinkSlo.mutate({ groupName, sloName: binding.slo_name })}
-                        className="p-1 text-muted-foreground hover:text-[#F85149] transition-colors"
+                        className="p-1 text-muted-foreground hover:text-action-destructive transition-colors"
                         title="Unlink"
                       >
                         <X className="w-3.5 h-3.5" />

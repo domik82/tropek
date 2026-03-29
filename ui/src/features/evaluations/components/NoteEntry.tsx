@@ -13,7 +13,7 @@ function LinkifiedText({ text }: { text: string }) {
     if (m.index! > last) parts.push(text.slice(last, m.index))
     parts.push(
       <a key={m.index} href={m[0]} target="_blank" rel="noopener noreferrer"
-        className="text-indigo-400 hover:text-indigo-300 hover:underline break-all">
+        className="text-link hover:text-link-hover hover:underline break-all">
         {m[0]}
       </a>
     )
@@ -53,7 +53,7 @@ export function NoteEntry({ evalId, annotation: a, compact }: Props) {
         </span>
         <button
           onClick={() => setHiding(true)}
-          className="text-muted-foreground/40 hover:text-red-400 text-xs transition-colors shrink-0"
+          className="text-muted-foreground/40 hover:text-action-destructive text-xs transition-colors shrink-0"
           title="Delete note"
         >
           ✕
@@ -76,7 +76,7 @@ export function NoteEntry({ evalId, annotation: a, compact }: Props) {
         {!hiding && (
           <button
             onClick={() => setHiding(true)}
-            className="text-muted-foreground/40 hover:text-red-400 text-xs transition-colors shrink-0"
+            className="text-muted-foreground/40 hover:text-action-destructive text-xs transition-colors shrink-0"
             title="Delete note"
           >
             ✕

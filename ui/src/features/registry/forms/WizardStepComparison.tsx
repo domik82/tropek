@@ -223,7 +223,7 @@ export function WizardStepComparison({ data, onChange }: WizardStepComparisonPro
                 type="button"
                 aria-label="remove tag"
                 onClick={() => update('tags', data.tags.filter((_, j) => j !== i))}
-                className="text-muted-foreground hover:text-red-400"
+                className="text-muted-foreground hover:text-action-destructive"
               >
                 <X className="size-3.5" />
               </button>
@@ -264,7 +264,7 @@ export function WizardStepComparison({ data, onChange }: WizardStepComparisonPro
                 type="button"
                 aria-label="remove variable"
                 onClick={() => update('variables', data.variables.filter((_, j) => j !== i))}
-                className="text-muted-foreground hover:text-red-400"
+                className="text-muted-foreground hover:text-action-destructive"
               >
                 <X className="size-3.5" />
               </button>

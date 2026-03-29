@@ -1,7 +1,9 @@
 // src/lib/theme.ts
-// Single source of truth for theme types, status colours, and ECharts chrome colours.
+// Single source of truth for theme types and ECharts-specific colour lookups.
+// ECharts needs JS hex strings — it can't resolve CSS vars. Everything else
+// should use the functional CSS aliases from index.css directly.
 
-export type Theme = 'current' | 'forest' | 'corporate'
+export type Theme = 'current' | 'dark' | 'light'
 
 export interface ResultColours {
   pass:        string
@@ -14,13 +16,13 @@ export interface ResultColours {
 export interface ChartTheme {
   bg:        string
   border:    string
-  line:      string   // series connector line colour
+  line:      string
   axisLabel: string
   grid:      string
 }
 
-// Status colours per theme — used in ECharts chart options (JS strings, not Tailwind).
-// For Tailwind-class components, use CSS utilities text-pass / bg-pass / etc. instead.
+// Status colours per theme — ONLY for ECharts (JS hex strings).
+// For CSS/Tailwind components, use text-pass / bg-pass / etc. instead.
 export const RESULT_COLOUR: Record<Theme, ResultColours> = {
   current: {
     pass:        '#7dc540',
@@ -29,48 +31,49 @@ export const RESULT_COLOUR: Record<Theme, ResultColours> = {
     error:       '#888888',
     invalidated: '#b0b0b0',
   },
-  forest: {
-    pass:        '#0a9f66',  // oklch(64.8% 0.15 160)
-    warning:     '#ffb800',  // oklch(84.71% 0.199 83.87)
-    fail:        '#ff4e57',  // oklch(71.76% 0.221 22.18)
-    error:       '#595959',  // oklch(50% 0 0)
-    invalidated: '#878787',  // oklch(65% 0 0)
+  dark: {
+    pass:        '#46a758',  // Radix grass-9
+    warning:     '#ffe629',  // Radix yellow-9
+    fail:        '#e5484d',  // Radix red-9
+    error:       '#696e77',  // Radix slate-9
+    invalidated: '#777b84',  // Radix slate-10
   },
-  corporate: {
-    pass:        '#37a266',  // oklch(62% 0.194 149.214)
-    warning:     '#d4b030',  // oklch(85% 0.199 91.936)
-    fail:        '#e05050',  // oklch(70% 0.191 22.216)
-    error:       '#595959',  // oklch(50% 0 0)
-    invalidated: '#878787',  // oklch(65% 0 0)
+  light: {
+    pass:        '#46a758',  // TODO: Radix grass-9 light
+    warning:     '#ffe629',
+    fail:        '#e5484d',
+    error:       '#696e77',
+    invalidated: '#777b84',
   },
 }
 
 // ECharts chrome colours per theme — tooltip bg/border, axis label, grid line.
+// ONLY for ECharts JS context. For CSS, use chart-bg / chart-border / etc.
 export const CHART_THEME: Record<Theme, ChartTheme> = {
-  current:   {
+  current: {
     bg:        '#1a2030',
     border:    '#374151',
     line:      '#374151',
     axisLabel: '#c0c8d0',
     grid:      '#2a3040',
   },
-  forest:    {
-    bg:        '#1a1714',              // oklch(16.203% 0.007 17.911)
-    border:    'rgba(28, 44, 36, 0.6)', // oklch(30% 0.039 171.364 / 60%)
-    line:      '#374151',             // same gray as Alt — user preference
-    axisLabel: '#c0c0c0',
-    grid:      '#2a2a2a',
+  dark: {
+    bg:        '#18191b',   // Radix slate-2
+    border:    '#363a3f',   // Radix slate-6
+    line:      '#363a3f',   // Radix slate-6
+    axisLabel: '#b0b4ba',   // Radix slate-11
+    grid:      '#212225',   // Radix slate-3
   },
-  corporate: {
-    bg:        '#ededed',              // oklch(93% 0 0)
-    border:    '#cccccc',              // oklch(80% 0 0)
-    line:      '#cccccc',             // oklch(80% 0 0)
-    axisLabel: '#595959',              // oklch(50% 0 0)
-    grid:      '#e0e0e0',              // oklch(88% 0 0)
+  light: {
+    bg:        '#ffffff',   // TODO: Radix light scales
+    border:    '#e0e0e0',
+    line:      '#e0e0e0',
+    axisLabel: '#595959',
+    grid:      '#f5f5f5',
   },
 }
 
-// Default OS → colour mapping for the asset registry colour legend.
+// Default OS -> colour mapping for the asset registry colour legend.
 export const DEFAULT_OS_COLOUR_MAP: Record<string, string> = {
   linux:   '#7dc540',
   windows: '#6495ed',

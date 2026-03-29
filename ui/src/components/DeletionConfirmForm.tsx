@@ -35,11 +35,11 @@ export function DeletionConfirmForm({
   }
 
   return (
-    <div className="border border-red-700/40 rounded-md bg-red-950/20 overflow-hidden">
-      <div className="h-[3px] bg-red-500" />
+    <div className="border border-destructive-form-border rounded-md bg-destructive-form-bg overflow-hidden">
+      <div className="h-[3px] bg-destructive-form-stripe" />
       <div className="p-3 space-y-2">
         <p
-          className="text-xs font-medium text-red-400"
+          className="text-xs font-medium text-destructive-form-text"
           style={{ fontFamily: "system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" }}
         >
           {title}
@@ -66,7 +66,7 @@ export function DeletionConfirmForm({
             size="xs"
             onClick={handleConfirm}
             disabled={!canConfirm || isPending}
-            className="bg-red-600 text-white hover:bg-red-500"
+            className="bg-action-destructive-confirm text-white hover:bg-action-destructive-confirm/80"
           >
             {isPending ? pendingLabel : confirmLabel}
           </Button>

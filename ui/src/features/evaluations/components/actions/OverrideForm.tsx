@@ -20,9 +20,9 @@ export function OverrideForm({ evaluationId, currentResult, onComplete }: Props)
         label: 'Mark as Failure',
         description: 'Override the passed result — SLOs missed an issue in this evaluation.',
         accentColor: '#F85149',
-        accentBorder: 'border-red-500/25',
-        accentText: 'text-red-400',
-        confirmClasses: 'bg-red-600 hover:bg-red-500',
+        accentBorder: 'border-action-destructive-border/25',
+        accentText: 'text-action-destructive',
+        confirmClasses: 'bg-action-destructive-confirm hover:bg-action-destructive-confirm/80',
       }
     : {
         label: 'Mark as Successful',

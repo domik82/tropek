@@ -64,7 +64,7 @@ export function AssetPanelChartView({
       </div>
 
       {/* Score over time */}
-      <div className="rounded-lg border border-slate-700 bg-gray-900 p-4">
+      <div className="rounded-lg border border-border bg-surface-sunken p-4">
         <AssetScoreChart evaluations={evals} selectedEvalId={effectiveEvalId} onEvalSelect={onEvalSelect} />
       </div>
 

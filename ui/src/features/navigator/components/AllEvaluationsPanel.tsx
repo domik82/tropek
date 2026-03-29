@@ -74,16 +74,16 @@ export function AllEvaluationsPanel({ onSelectAsset }: Props) {
 
       {truncated && <TruncationWarning total={total} />}
 
-      {isLoading && <p className="text-sm text-slate-400">Loading…</p>}
+      {isLoading && <p className="text-sm text-muted-foreground">Loading…</p>}
       {!isLoading && evals.length === 0 && (
-        <p className="text-sm text-slate-400">No evaluations found.</p>
+        <p className="text-sm text-muted-foreground">No evaluations found.</p>
       )}
 
       {!isLoading && evals.length > 0 && (
         <>
-          <div className="rounded-lg border border-slate-700 bg-gray-900 p-4">
+          <div className="rounded-lg border border-border bg-surface-sunken p-4">
             <div className="flex items-center justify-between mb-2">
-              <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Evaluation Heatmap</h2>
+              <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Evaluation Heatmap</h2>
             </div>
             <EvaluationHeatmap
               evaluations={evals}
