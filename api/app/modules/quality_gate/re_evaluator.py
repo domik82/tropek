@@ -10,11 +10,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.models import Evaluation, IndicatorResultRow, SLODefinition
 from app.modules.assets.repository import AssetRepository
 from app.modules.quality_gate.baseline_repository import BaselineRepository
-from app.modules.quality_gate.params import ReEvalUpdateParams
 from app.modules.quality_gate.engine.criteria import aggregate_values
 from app.modules.quality_gate.engine.evaluator import evaluate
 from app.modules.quality_gate.engine.slo_models import SLO
 from app.modules.quality_gate.engine.slo_parser import build_slo
+from app.modules.quality_gate.params import ReEvalUpdateParams
 from app.modules.quality_gate.re_evaluation_schemas import (
     ReEvalResultItem,
     ReEvaluateRequest,
