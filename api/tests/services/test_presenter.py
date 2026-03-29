@@ -261,7 +261,7 @@ def test_build_detail_latest_annotation_is_most_recent() -> None:
     assert detail.latest_annotation.content == "New"
 
 
-def _make_indicator_row(
+def _make_indicator_row(  # noqa: PLR0913
     *,
     sli: str = "response_time",
     display_name: str = "Response Time",

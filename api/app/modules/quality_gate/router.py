@@ -68,7 +68,7 @@ async def trigger_batch(
 
 
 @router.get("/evaluations", response_model=PagedResponse[EvaluationSummary])
-async def list_evaluations(
+async def list_evaluations(  # noqa: PLR0913
     asset_name: str | None = None,
     slo_name: str | None = None,
     evaluation_name: list[str] | None = Query(default=None),
