@@ -206,9 +206,7 @@ class BaselineRepository:
             params: ReEvalUpdateParams with all fields needed for the update.
         """
         result = await self._session.execute(
-            select(Evaluation)
-            .options(selectinload(Evaluation.annotations))
-            .where(Evaluation.id == params.eval_id)
+            select(Evaluation).options(selectinload(Evaluation.annotations)).where(Evaluation.id == params.eval_id)
         )
         ev = result.scalar_one_or_none()
         if ev is None:
@@ -229,13 +227,10 @@ class BaselineRepository:
         if params.slo_version is not None:
             values['slo_version'] = params.slo_version
 
-        await self._session.execute(
-            update(Evaluation).where(Evaluation.id == params.eval_id).values(**values)
-        )
+        await self._session.execute(update(Evaluation).where(Evaluation.id == params.eval_id).values(**values))
 
         annotation_content = (
-            f're-evaluated: {params.old_result} -> {params.new_result},'
-            f' score {params.old_score} -> {params.new_score}'
+            f're-evaluated: {params.old_result} -> {params.new_result}, score {params.old_score} -> {params.new_score}'
         )
         if self._cache:
             await self._cache.invalidate(f'baseline:{ev.asset_id}:{ev.slo_name}')

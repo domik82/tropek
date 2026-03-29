@@ -62,8 +62,6 @@ def test_score_defaults() -> None:
 
 
 def test_score_overridden() -> None:
-    slo = build_slo(
-        objectives=[{'sli': 'm'}], total_score_pass_pct=95.0, total_score_warning_pct=80.0
-    )
+    slo = build_slo(objectives=[{'sli': 'm'}], total_score_pass_pct=95.0, total_score_warning_pct=80.0)
     assert slo.total_score.pass_pct == 95.0
     assert slo.total_score.warning_pct == 80.0

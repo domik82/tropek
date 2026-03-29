@@ -416,9 +416,7 @@ class SLIValue(Base):
     """
 
     __tablename__ = 'sli_values'
-    __table_args__ = (
-        Index('idx_sli_values_lookup', 'evaluation_name', 'metric_name', 'eval_start'),
-    )
+    __table_args__ = (Index('idx_sli_values_lookup', 'evaluation_name', 'metric_name', 'eval_start'),)
 
     # fmt: off
     # TODO : probably to flat stucture - joins should probably be used in Grafana - not convinced this is good

@@ -24,9 +24,7 @@ async def test_invalidate_evaluation(async_client: AsyncClient, db_session: Asyn
 
 
 @pytest.mark.integration
-async def test_restore_invalidated_evaluation(
-    async_client: AsyncClient, db_session: AsyncSession
-) -> None:
+async def test_restore_invalidated_evaluation(async_client: AsyncClient, db_session: AsyncSession) -> None:
     asset_id = await _create_asset(db_session)
     eval_id = await _create_completed_eval(db_session, asset_id)
 
@@ -42,9 +40,7 @@ async def test_restore_invalidated_evaluation(
 
 
 @pytest.mark.integration
-async def test_invalidate_restore_cycle(
-    async_client: AsyncClient, db_session: AsyncSession
-) -> None:
+async def test_invalidate_restore_cycle(async_client: AsyncClient, db_session: AsyncSession) -> None:
     """Full cycle: valid -> invalidated -> restored to valid."""
     asset_id = await _create_asset(db_session)
     eval_id = await _create_completed_eval(db_session, asset_id, result='pass', score=85.0)

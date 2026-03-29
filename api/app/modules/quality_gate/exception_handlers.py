@@ -22,8 +22,6 @@ async def conflict_handler(request: Request, exc: ConflictError) -> JSONResponse
     return JSONResponse(status_code=409, content={'detail': str(exc)})
 
 
-async def domain_validation_handler(
-    request: Request, exc: DomainValidationError
-) -> JSONResponse:
+async def domain_validation_handler(request: Request, exc: DomainValidationError) -> JSONResponse:
     """Map DomainValidationError to 422."""
     return JSONResponse(status_code=422, content={'detail': str(exc)})

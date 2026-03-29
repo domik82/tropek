@@ -75,14 +75,8 @@ def test_empty_pass_criteria_list_is_informational() -> None:
 def test_sign_without_pct_relative_scoring() -> None:
     """<=+10 without % treated as relative (baseline + 10), matching Go behaviour."""
     slo = build_slo(objectives=[{'sli': 'm', 'pass_criteria': ['<=+10'], 'weight': 1}])
-    assert (
-        score_objective(slo.objectives[0], value=105.0, baseline=100.0).status
-        == IndicatorStatus.PASS
-    )
-    assert (
-        score_objective(slo.objectives[0], value=115.0, baseline=100.0).status
-        == IndicatorStatus.FAIL
-    )
+    assert score_objective(slo.objectives[0], value=105.0, baseline=100.0).status == IndicatorStatus.PASS
+    assert score_objective(slo.objectives[0], value=115.0, baseline=100.0).status == IndicatorStatus.FAIL
 
 
 # --- calculate_total_score ---

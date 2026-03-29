@@ -67,12 +67,9 @@ class HttpAdapterClient:
             data = resp.json()
 
         metrics_fetched: dict[str, float | None] = {
-            name: float(val) if val is not None else None
-            for name, val in data.get('values', {}).items()
+            name: float(val) if val is not None else None for name, val in data.get('values', {}).items()
         }
-        fetch_errors: dict[str, str] = {
-            name: str(err) for name, err in data.get('errors', {}).items()
-        }
+        fetch_errors: dict[str, str] = {name: str(err) for name, err in data.get('errors', {}).items()}
         logger.info(
             'adapter response',
             url=url,

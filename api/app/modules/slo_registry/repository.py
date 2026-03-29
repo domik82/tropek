@@ -166,9 +166,7 @@ class SLORepository:
             All SLODefinition rows for this name, ordered by version descending.
         """
         result = await self._session.execute(
-            select(SLODefinition)
-            .where(SLODefinition.name == name)
-            .order_by(SLODefinition.version.desc())
+            select(SLODefinition).where(SLODefinition.name == name).order_by(SLODefinition.version.desc())
         )
         return list(result.scalars().all())
 
@@ -224,9 +222,7 @@ class SLORepository:
         """
         cursor = cast(
             'CursorResult[Any]',
-            await self._session.execute(
-                update(SLODefinition).where(SLODefinition.name == name).values(active=False)
-            ),
+            await self._session.execute(update(SLODefinition).where(SLODefinition.name == name).values(active=False)),
         )
         return cursor.rowcount
 

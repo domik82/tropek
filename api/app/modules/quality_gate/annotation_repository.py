@@ -83,9 +83,7 @@ class AnnotationRepository:
             values['tags'] = tags
         if values:
             await self._session.execute(
-                update(EvaluationAnnotation)
-                .where(EvaluationAnnotation.id == annotation_id)
-                .values(**values)
+                update(EvaluationAnnotation).where(EvaluationAnnotation.id == annotation_id).values(**values)
             )
             await self._session.commit()
         return await self.get_annotation_by_id(annotation_id)

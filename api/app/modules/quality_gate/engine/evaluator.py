@@ -80,13 +80,9 @@ def evaluate(
             key_sli=obj.key_sli,
             pass_targets=pass_targets,
             warning_targets=warning_targets if obj.warning_criteria else None,
-            change_absolute=(
-                (value - baseline) if value is not None and baseline is not None else None
-            ),
+            change_absolute=((value - baseline) if value is not None and baseline is not None else None),
             change_relative_pct=(
-                ((value / baseline) - 1) * 100
-                if value is not None and baseline is not None and baseline != 0
-                else None
+                ((value / baseline) - 1) * 100 if value is not None and baseline is not None and baseline != 0 else None
             ),
         )
         indicator_results.append(ir)

@@ -25,9 +25,7 @@ async def list_sli_definitions(
     """List all active SLI definitions."""
     repo = SLIRepository(session)
     items = await repo.list_all(adapter_type=adapter_type, tag_key=tag_key, tag_val=tag_val)
-    return PagedResponse(
-        items=[SLIDefinitionRead.model_validate(i) for i in items], total=len(items)
-    )
+    return PagedResponse(items=[SLIDefinitionRead.model_validate(i) for i in items], total=len(items))
 
 
 @router.post('/sli-definitions', response_model=SLIDefinitionRead, status_code=201)

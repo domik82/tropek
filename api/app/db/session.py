@@ -35,9 +35,7 @@ def get_session_factory() -> async_sessionmaker[AsyncSession]:
     """Return the shared session factory, creating it on first call."""
     global _session_factory
     if _session_factory is None:
-        _session_factory = async_sessionmaker(
-            _get_engine(), expire_on_commit=False, class_=AsyncSession
-        )
+        _session_factory = async_sessionmaker(_get_engine(), expire_on_commit=False, class_=AsyncSession)
     return _session_factory
 
 

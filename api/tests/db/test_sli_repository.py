@@ -26,9 +26,7 @@ async def test_create_first_version(db_session: AsyncSession) -> None:
 async def test_create_increments_version(db_session: AsyncSession) -> None:
     repo = SLIRepository(db_session)
     await repo.create(name='versioned-sli', indicators=_INDICATORS, adapter_type='prometheus')
-    v2 = await repo.create(
-        name='versioned-sli', indicators={'cpu': 'some_query'}, adapter_type='prometheus'
-    )
+    v2 = await repo.create(name='versioned-sli', indicators={'cpu': 'some_query'}, adapter_type='prometheus')
     assert v2.version == 2
 
 

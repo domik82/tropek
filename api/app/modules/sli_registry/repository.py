@@ -130,9 +130,7 @@ class SLIRepository:
             All SLIDefinition rows for this name, ordered by version descending.
         """
         result = await self._session.execute(
-            select(SLIDefinition)
-            .where(SLIDefinition.name == name)
-            .order_by(SLIDefinition.version.desc())
+            select(SLIDefinition).where(SLIDefinition.name == name).order_by(SLIDefinition.version.desc())
         )
         return list(result.scalars().all())
 
@@ -164,11 +162,7 @@ class SLIRepository:
             base = base.where(SLIDefinition.tags[tag_key].as_string() == tag_val)
         elif tag_key:
             base = base.where(SLIDefinition.tags.has_key(tag_key))
-        subq = (
-            base.distinct(SLIDefinition.name).order_by(
-                SLIDefinition.name, SLIDefinition.version.desc()
-            )
-        ).subquery()
+        subq = (base.distinct(SLIDefinition.name).order_by(SLIDefinition.name, SLIDefinition.version.desc())).subquery()
 
         result = await self._session.execute(
             select(SLIDefinition).join(
@@ -184,9 +178,7 @@ class SLIRepository:
         Args:
             name: Stable external SLI identifier.
         """
-        await self._session.execute(
-            update(SLIDefinition).where(SLIDefinition.name == name).values(active=False)
-        )
+        await self._session.execute(update(SLIDefinition).where(SLIDefinition.name == name).values(active=False))
 
     async def get_tag_keys(self) -> dict[str, int]:
         """Return all distinct tag keys with count of SLI definitions using each."""

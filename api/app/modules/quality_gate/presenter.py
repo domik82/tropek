@@ -71,9 +71,7 @@ def _top_failures(indicators: list[IndicatorResult]) -> list[FailingIndicator]:
     ]
 
 
-def build_summary(
-    ev: object, annotation_count: int, latest_ann: object | None
-) -> EvaluationSummary:
+def build_summary(ev: object, annotation_count: int, latest_ann: object | None) -> EvaluationSummary:
     """Transform ORM Evaluation into API summary schema."""
     indicators = _get_indicator_results(ev)
     job_stats = getattr(ev, 'job_stats', None) or {}
@@ -90,9 +88,7 @@ def build_summary(
 
 def build_detail(ev: Any) -> EvaluationDetail:
     """Transform ORM Evaluation with annotations into API detail schema."""
-    annotations = [
-        AnnotationRead.model_validate(a) for a in (ev.annotations or []) if a.hidden_at is None
-    ]
+    annotations = [AnnotationRead.model_validate(a) for a in (ev.annotations or []) if a.hidden_at is None]
     indicators = _get_indicator_results(ev)
     job_stats_detail = ev.job_stats or {}
     compared_ids = job_stats_detail.get('compared_evaluation_ids', [])

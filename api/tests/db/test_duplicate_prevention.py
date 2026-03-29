@@ -49,16 +49,18 @@ async def test_find_duplicate_returns_none_when_no_match(db_session: AsyncSessio
 async def test_find_duplicate_returns_existing_completed(db_session: AsyncSession) -> None:
     asset_id = await _create_asset(db_session)
     repo = EvaluationRepository(db_session)
-    ev = await repo.create_pending(EvalCreateParams(
-        evaluation_name='nightly',
-        period_start=_START,
-        period_end=_END,
-        ingestion_mode='pull',
-        asset_snapshot={'name': 'test'},
-        variables={},
-        asset_id=asset_id,
-        slo_name='latency-slo',
-    ))
+    ev = await repo.create_pending(
+        EvalCreateParams(
+            evaluation_name='nightly',
+            period_start=_START,
+            period_end=_END,
+            ingestion_mode='pull',
+            asset_snapshot={'name': 'test'},
+            variables={},
+            asset_id=asset_id,
+            slo_name='latency-slo',
+        )
+    )
     await repo.mark_running(ev.id)
     await repo.mark_completed(
         eval_id=ev.id,
@@ -81,16 +83,18 @@ async def test_find_duplicate_returns_existing_completed(db_session: AsyncSessio
 async def test_find_duplicate_ignores_failed(db_session: AsyncSession) -> None:
     asset_id = await _create_asset(db_session)
     repo = EvaluationRepository(db_session)
-    ev = await repo.create_pending(EvalCreateParams(
-        evaluation_name='nightly',
-        period_start=_START,
-        period_end=_END,
-        ingestion_mode='pull',
-        asset_snapshot={'name': 'test'},
-        variables={},
-        asset_id=asset_id,
-        slo_name='latency-slo',
-    ))
+    ev = await repo.create_pending(
+        EvalCreateParams(
+            evaluation_name='nightly',
+            period_start=_START,
+            period_end=_END,
+            ingestion_mode='pull',
+            asset_snapshot={'name': 'test'},
+            variables={},
+            asset_id=asset_id,
+            slo_name='latency-slo',
+        )
+    )
     await repo.mark_failed(ev.id, job_stats={'error': 'boom'})
     dup = await repo.find_duplicate(
         asset_id=asset_id,
@@ -106,16 +110,18 @@ async def test_find_duplicate_ignores_failed(db_session: AsyncSession) -> None:
 async def test_find_duplicate_returns_pending(db_session: AsyncSession) -> None:
     asset_id = await _create_asset(db_session)
     repo = EvaluationRepository(db_session)
-    await repo.create_pending(EvalCreateParams(
-        evaluation_name='nightly',
-        period_start=_START,
-        period_end=_END,
-        ingestion_mode='pull',
-        asset_snapshot={'name': 'test'},
-        variables={},
-        asset_id=asset_id,
-        slo_name='latency-slo',
-    ))
+    await repo.create_pending(
+        EvalCreateParams(
+            evaluation_name='nightly',
+            period_start=_START,
+            period_end=_END,
+            ingestion_mode='pull',
+            asset_snapshot={'name': 'test'},
+            variables={},
+            asset_id=asset_id,
+            slo_name='latency-slo',
+        )
+    )
     dup = await repo.find_duplicate(
         asset_id=asset_id,
         slo_name='latency-slo',
@@ -131,16 +137,18 @@ async def test_find_duplicate_returns_pending(db_session: AsyncSession) -> None:
 async def test_find_duplicate_different_name_no_conflict(db_session: AsyncSession) -> None:
     asset_id = await _create_asset(db_session)
     repo = EvaluationRepository(db_session)
-    await repo.create_pending(EvalCreateParams(
-        evaluation_name='nightly-hourly',
-        period_start=_START,
-        period_end=_END,
-        ingestion_mode='pull',
-        asset_snapshot={'name': 'test'},
-        variables={},
-        asset_id=asset_id,
-        slo_name='latency-slo',
-    ))
+    await repo.create_pending(
+        EvalCreateParams(
+            evaluation_name='nightly-hourly',
+            period_start=_START,
+            period_end=_END,
+            ingestion_mode='pull',
+            asset_snapshot={'name': 'test'},
+            variables={},
+            asset_id=asset_id,
+            slo_name='latency-slo',
+        )
+    )
     dup = await repo.find_duplicate(
         asset_id=asset_id,
         slo_name='latency-slo',
@@ -156,18 +164,8 @@ async def test_create_pending_raises_on_constraint_violation(db_session: AsyncSe
     """Simulate a race condition where two creates pass the app-level check."""
     asset_id = await _create_asset(db_session)
     repo = EvaluationRepository(db_session)
-    await repo.create_pending(EvalCreateParams(
-        evaluation_name='nightly',
-        period_start=_START,
-        period_end=_END,
-        ingestion_mode='pull',
-        asset_snapshot={'name': 'test'},
-        variables={},
-        asset_id=asset_id,
-        slo_name='latency-slo',
-    ))
-    with pytest.raises(DuplicateEvaluationError):
-        await repo.create_pending(EvalCreateParams(
+    await repo.create_pending(
+        EvalCreateParams(
             evaluation_name='nightly',
             period_start=_START,
             period_end=_END,
@@ -176,4 +174,18 @@ async def test_create_pending_raises_on_constraint_violation(db_session: AsyncSe
             variables={},
             asset_id=asset_id,
             slo_name='latency-slo',
-        ))
+        )
+    )
+    with pytest.raises(DuplicateEvaluationError):
+        await repo.create_pending(
+            EvalCreateParams(
+                evaluation_name='nightly',
+                period_start=_START,
+                period_end=_END,
+                ingestion_mode='pull',
+                asset_snapshot={'name': 'test'},
+                variables={},
+                asset_id=asset_id,
+                slo_name='latency-slo',
+            )
+        )

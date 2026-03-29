@@ -56,9 +56,7 @@ def score_objective(
             key_sli_failed=False,
         )
 
-    if objective.warning_criteria and _evaluate_criteria_block(
-        objective.warning_criteria, value, baseline
-    ):
+    if objective.warning_criteria and _evaluate_criteria_block(objective.warning_criteria, value, baseline):
         return ObjectiveResult(
             objective=objective,
             status=IndicatorStatus.WARNING,
