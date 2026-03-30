@@ -6,13 +6,14 @@ import { Plus, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { useCreateSli } from '@/features/slis/hooks'
+import { AggregatedModeFields } from './AggregatedModeFields'
 import { ENTITY_COLORS } from '@/lib/entity-colors'
 import { SANS_SERIF } from '@/lib/fonts'
 import { tagsToRows, rowsToTags } from './tagUtils'
 import type { TagRow } from './tagUtils'
 import type { SliDefinition } from '@/features/slis/types'
 
-const schema = z.object({
+const rawSchema = z.object({
   name: z.string().min(1, 'Name is required'),
   display_name: z.string().optional(),
   adapter_type: z.string().min(1, 'Adapter type is required'),
@@ -24,7 +25,19 @@ const schema = z.object({
   })).min(1, 'At least one indicator is required'),
 })
 
-type FormValues = z.infer<typeof schema>
+const aggregatedSchema = z.object({
+  name: z.string().min(1, 'Name is required'),
+  display_name: z.string().optional(),
+  adapter_type: z.string().min(1, 'Adapter type is required'),
+  author: z.string().optional(),
+  notes: z.string().optional(),
+  indicators: z.array(z.object({
+    name: z.string(),
+    query: z.string(),
+  })),
+})
+
+type FormValues = z.infer<typeof rawSchema>
 
 interface SliFormProps {
   open: boolean
@@ -49,6 +62,14 @@ function rowsToIndicators(rows: { name: string; query: string }[]): Record<strin
 
 export function SliForm({ open, onOpenChange, editFrom, defaultAdapterType }: SliFormProps) {
   const isNewVersion = !!editFrom
+  const initialMode = editFrom?.mode ?? 'raw'
+
+  const [mode, setMode] = useState<'raw' | 'aggregated'>(initialMode)
+  const [queryTemplate, setQueryTemplate] = useState(editFrom?.query_template ?? '')
+  const [interval, setInterval] = useState(editFrom?.interval ?? '1m')
+  const [methods, setMethods] = useState<string[]>(editFrom?.methods ?? [])
+
+  const schema = mode === 'raw' ? rawSchema : aggregatedSchema
 
   const { register, handleSubmit, control, formState: { errors }, reset } = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -68,7 +89,6 @@ export function SliForm({ open, onOpenChange, editFrom, defaultAdapterType }: Sl
     editFrom?.tags ? tagsToRows(editFrom.tags) : [],
   )
 
-  // Reset form when editFrom changes
   useEffect(() => {
     if (editFrom) {
       reset({
@@ -79,6 +99,10 @@ export function SliForm({ open, onOpenChange, editFrom, defaultAdapterType }: Sl
         notes: editFrom.notes ?? '',
         indicators: indicatorsToRows(editFrom.indicators),
       })
+      setMode(editFrom.mode ?? 'raw')
+      setQueryTemplate(editFrom.query_template ?? '')
+      setInterval(editFrom.interval ?? '1m')
+      setMethods(editFrom.methods ?? [])
       setTagRows(tagsToRows(editFrom.tags))
     }
   }, [editFrom, reset])
@@ -90,18 +114,32 @@ export function SliForm({ open, onOpenChange, editFrom, defaultAdapterType }: Sl
 
   function onSubmit(values: FormValues) {
     const tags = rowsToTags(tagRows)
-    createMutation.mutate(
-      {
-        name: values.name,
-        display_name: values.display_name || undefined,
-        adapter_type: values.adapter_type,
-        indicators: rowsToIndicators(values.indicators),
-        notes: values.notes || undefined,
-        author: values.author || undefined,
-        tags: Object.keys(tags).length > 0 ? tags : undefined,
-      },
-      { onSuccess: () => { reset(); onOpenChange(false) } },
-    )
+    const base = {
+      name: values.name,
+      display_name: values.display_name || undefined,
+      adapter_type: values.adapter_type,
+      notes: values.notes || undefined,
+      author: values.author || undefined,
+      tags: Object.keys(tags).length > 0 ? tags : undefined,
+    }
+
+    if (mode === 'raw') {
+      createMutation.mutate(
+        { ...base, mode: 'raw', indicators: rowsToIndicators(values.indicators) },
+        { onSuccess: () => { reset(); onOpenChange(false) } },
+      )
+    } else {
+      createMutation.mutate(
+        {
+          ...base,
+          mode: 'aggregated',
+          query_template: queryTemplate,
+          interval,
+          methods,
+        },
+        { onSuccess: () => { reset(); onOpenChange(false) } },
+      )
+    }
   }
 
   const title = isNewVersion ? `New Version of: ${editFrom!.name}` : 'New SLI'
@@ -175,6 +213,86 @@ export function SliForm({ open, onOpenChange, editFrom, defaultAdapterType }: Sl
               )}
             </div>
 
+            {/* Mode toggle */}
+            <div>
+              <span className="block text-xs text-muted-foreground mb-1">Mode</span>
+              <div className="flex gap-4">
+                <label className="inline-flex items-center gap-1.5 text-xs cursor-pointer">
+                  <input
+                    type="radio"
+                    name="sli-mode"
+                    value="raw"
+                    checked={mode === 'raw'}
+                    onChange={() => setMode('raw')}
+                  />
+                  <span className="text-foreground">Raw</span>
+                </label>
+                <label className="inline-flex items-center gap-1.5 text-xs cursor-pointer">
+                  <input
+                    type="radio"
+                    name="sli-mode"
+                    value="aggregated"
+                    checked={mode === 'aggregated'}
+                    onChange={() => setMode('aggregated')}
+                  />
+                  <span className="text-foreground">Aggregated</span>
+                </label>
+              </div>
+            </div>
+
+            {/* Mode-specific fields */}
+            {mode === 'raw' ? (
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-xs text-muted-foreground">Indicators</span>
+                  <button
+                    type="button"
+                    aria-label="Add indicator"
+                    onClick={() => append({ name: '', query: '' })}
+                    className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-primary"
+                  >
+                    <Plus className="size-3" /> Add indicator
+                  </button>
+                </div>
+                {errors.indicators?.root && (
+                  <p className="text-xs text-destructive-form-text mb-1">{errors.indicators.root.message}</p>
+                )}
+                <div className="space-y-1.5">
+                  {fields.map((field, i) => (
+                    <div key={field.id} className="flex gap-1.5 items-center">
+                      <Input
+                        {...register(`indicators.${i}.name`)}
+                        placeholder="metric_name"
+                        className="w-1/3 font-mono text-xs"
+                      />
+                      <Input
+                        {...register(`indicators.${i}.query`)}
+                        placeholder="rate(metric[5m])"
+                        className="flex-1 font-mono text-xs"
+                      />
+                      <button
+                        type="button"
+                        aria-label="remove indicator"
+                        onClick={() => remove(i)}
+                        className="text-muted-foreground hover:text-action-destructive"
+                      >
+                        <X className="size-3.5" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <AggregatedModeFields
+                queryTemplate={queryTemplate}
+                interval={interval}
+                methods={methods}
+                onQueryTemplateChange={setQueryTemplate}
+                onIntervalChange={setInterval}
+                onMethodsChange={setMethods}
+              />
+            )}
+
             {/* Author */}
             <div>
               <label htmlFor="sli-author" className="block text-xs text-muted-foreground mb-1">
@@ -189,48 +307,6 @@ export function SliForm({ open, onOpenChange, editFrom, defaultAdapterType }: Sl
                 Notes
               </label>
               <Input id="sli-notes" {...register('notes')} placeholder="Optional notes" />
-            </div>
-
-            {/* Indicators */}
-            <div>
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-xs text-muted-foreground">Indicators</span>
-                <button
-                  type="button"
-                  aria-label="Add indicator"
-                  onClick={() => append({ name: '', query: '' })}
-                  className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-primary"
-                >
-                  <Plus className="size-3" /> Add indicator
-                </button>
-              </div>
-              {errors.indicators?.root && (
-                <p className="text-xs text-destructive-form-text mb-1">{errors.indicators.root.message}</p>
-              )}
-              <div className="space-y-1.5">
-                {fields.map((field, i) => (
-                  <div key={field.id} className="flex gap-1.5 items-center">
-                    <Input
-                      {...register(`indicators.${i}.name`)}
-                      placeholder="metric_name"
-                      className="w-1/3 font-mono text-xs"
-                    />
-                    <Input
-                      {...register(`indicators.${i}.query`)}
-                      placeholder="rate(metric[5m])"
-                      className="flex-1 font-mono text-xs"
-                    />
-                    <button
-                      type="button"
-                      aria-label="remove indicator"
-                      onClick={() => remove(i)}
-                      className="text-muted-foreground hover:text-action-destructive"
-                    >
-                      <X className="size-3.5" />
-                    </button>
-                  </div>
-                ))}
-              </div>
             </div>
 
             {/* Tags */}
