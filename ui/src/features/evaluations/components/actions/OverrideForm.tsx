@@ -1,8 +1,9 @@
 // ui/src/features/evaluations/components/actions/OverrideForm.tsx
-import { useState, useCallback } from 'react'
+import { useCallback } from 'react'
 import { useOverrideStatus } from '../../hooks'
-import { Input } from '@/components/ui/input'
 import { ActionFormShell } from './ActionFormShell'
+import { ReasonAuthorFields } from './ReasonAuthorFields'
+import { useReasonAuthor } from './useReasonAuthor'
 
 interface Props {
   evaluationId: string
@@ -11,8 +12,7 @@ interface Props {
 }
 
 export function OverrideForm({ evaluationId, currentResult, onComplete }: Props) {
-  const [reason, setReason] = useState('')
-  const [author, setAuthor] = useState('')
+  const { reason, setReason, author, setAuthor, canConfirm } = useReasonAuthor()
   const override = useOverrideStatus(evaluationId)
 
   const isOverrideToFail = currentResult === 'pass'
@@ -34,8 +34,6 @@ export function OverrideForm({ evaluationId, currentResult, onComplete }: Props)
         confirmClasses: 'bg-green-600 hover:bg-green-500',
       }
 
-  const canConfirm = !!reason.trim() && !!author.trim()
-
   const handleConfirm = useCallback(() => {
     if (!canConfirm) return
     const newResult = currentResult === 'pass' ? 'fail' : 'pass'
@@ -50,16 +48,11 @@ export function OverrideForm({ evaluationId, currentResult, onComplete }: Props)
       canConfirm={canConfirm}
       isPending={override.isPending}
     >
-      <Input
-        value={reason}
-        onChange={e => setReason(e.target.value)}
-        placeholder="Reason…"
-      />
-      <Input
-        value={author}
-        onChange={e => setAuthor(e.target.value)}
-        placeholder="Author"
-        autoComplete="name"
+      <ReasonAuthorFields
+        reason={reason}
+        onReasonChange={setReason}
+        author={author}
+        onAuthorChange={setAuthor}
       />
     </ActionFormShell>
   )
