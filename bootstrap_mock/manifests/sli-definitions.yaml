@@ -73,3 +73,17 @@ spec:
     process_memory_mb: 'windows_process_working_set_bytes{instance="$host",process="$process_name"} / 1048576'
     process_handles: 'windows_process_handle_count{instance="$host",process="$process_name"}'
     process_io_bytes: 'rate(windows_process_io_bytes_total{instance="$host",process="$process_name"}[5m])'
+---
+api_version: tropek/v1
+kind: SLI
+metadata:
+  name: agg-latency-sli
+  display_name: Aggregated Latency Indicators
+  author: bootstrap
+  notes: Aggregated-mode SLI for latency statistics using query_range + statistical methods.
+spec:
+  adapter_type: prometheus
+  mode: aggregated
+  query_template: 'http_request_duration_seconds{job="$job",namespace="$namespace"}'
+  interval: '1m'
+  methods: ['mean', 'p95', 'p99', 'max']

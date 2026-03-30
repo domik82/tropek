@@ -65,3 +65,13 @@ spec:
   slo_name: db-performance-slo
   sli_name: db-sli
   data_source_name: prometheus-local
+---
+api_version: tropek/v1
+kind: AssetSLOLink
+metadata:
+  name: checkout-api-agg-latency
+spec:
+  asset_name: checkout-api
+  slo_name: agg-latency-slo
+  sli_name: agg-latency-sli
+  data_source_name: prometheus-local
