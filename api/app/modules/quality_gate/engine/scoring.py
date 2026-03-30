@@ -41,7 +41,7 @@ def score_objective(
     if value is None:
         return ObjectiveResult(
             objective=objective,
-            status=IndicatorStatus.FAIL,
+            status=IndicatorStatus.ERROR,
             score=0.0,
             contributes_to_score=True,
             key_sli_failed=objective.key_sli,

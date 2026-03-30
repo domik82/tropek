@@ -39,9 +39,9 @@ def test_objective_fails(slo_fixture) -> None:
     assert result.score == 0.0
 
 
-def test_objective_missing_metric_fails(slo_fixture) -> None:
+def test_objective_missing_metric_is_error(slo_fixture) -> None:
     result = score_objective(_slo(slo_fixture).objectives[0], value=None, baseline=None)
-    assert result.status == IndicatorStatus.FAIL
+    assert result.status == IndicatorStatus.ERROR
     assert result.score == 0.0
 
 
