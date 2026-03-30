@@ -2,6 +2,7 @@
 import { useState } from 'react'
 import { fmt } from '@/lib/format'
 import { STATUS_TEXT } from '@/lib/status'
+import { DataTable, DataTableHeader, dataTableRowClass } from '@/components/ui/data-table'
 import type { IndicatorResult } from '../types'
 
 function fmtPct(v: number | null | undefined): string {
@@ -24,34 +25,30 @@ export function SLIBreakdownTable({ indicators, onIndicatorClick }: Props) {
   }
 
   return (
-    <div className="overflow-hidden rounded-lg border border-border bg-table-row-bg">
-      <table className="w-full text-sm text-left">
-        <thead className="text-xs uppercase text-muted-foreground bg-table-header-bg border-b border-border">
-          <tr>
-            <th className="px-2 py-3 text-center w-6 text-indicator-key-sli" title="Key SLI">◆</th>
-            <th className="px-4 py-3">Indicator</th>
-            <th className="px-4 py-3 text-right">Value</th>
-            <th className="px-4 py-3 text-right">Baseline</th>
-            <th className="px-4 py-3 text-right">Δ</th>
-            <th className="px-4 py-3 text-right">Weight</th>
-            <th className="px-4 py-3 text-right">Score</th>
-            <th className="px-4 py-3">Status</th>
-            <th className="px-4 py-3">Pass criteria</th>
-            <th className="px-4 py-3">Warn criteria</th>
-          </tr>
-        </thead>
-        <tbody>
-          {indicators.map((ind, idx) => {
-            const isSelected = ind.metric === selectedMetric
-            const zebraBase = idx % 2 === 0 ? 'bg-table-row-bg' : 'bg-table-row-alt'
-            const rowBg = isSelected ? 'bg-table-row-selected' : zebraBase
-            const rowHover = isSelected ? 'hover:bg-table-row-selected' : 'hover:bg-table-row-hover'
-            const rowRing = isSelected ? 'ring-1 ring-inset ring-muted-foreground/60' : ''
-            return (
+    <DataTable>
+      <DataTableHeader>
+        <tr>
+          <th className="px-2 py-3 text-center w-6 text-indicator-key-sli" title="Key SLI">◆</th>
+          <th className="px-4 py-3">Indicator</th>
+          <th className="px-4 py-3 text-right">Value</th>
+          <th className="px-4 py-3 text-right">Baseline</th>
+          <th className="px-4 py-3 text-right">Δ</th>
+          <th className="px-4 py-3 text-right">Weight</th>
+          <th className="px-4 py-3 text-right">Score</th>
+          <th className="px-4 py-3">Status</th>
+          <th className="px-4 py-3">Pass criteria</th>
+          <th className="px-4 py-3">Warn criteria</th>
+        </tr>
+      </DataTableHeader>
+      <tbody>
+        {indicators.map((ind, idx) => {
+          const isSelected = ind.metric === selectedMetric
+          const rowRing = isSelected ? 'ring-1 ring-inset ring-muted-foreground/60' : ''
+          return (
             <tr
               key={ind.metric}
               onClick={() => handleRowClick(ind.metric, ind.tab_group ?? 'summary')}
-              className={`transition-colors group border-b border-border/60 last:border-0 cursor-pointer ${rowBg} ${rowHover} ${rowRing}`}
+              className={`cursor-pointer group ${dataTableRowClass(idx, isSelected)} ${rowRing}`}
             >
               <td className="px-2 py-3 text-center">
                 {ind.key_sli && (
@@ -104,10 +101,9 @@ export function SLIBreakdownTable({ indicators, onIndicatorClick }: Props) {
                 ))}
               </td>
             </tr>
-            )
-          })}
-        </tbody>
-      </table>
-    </div>
+          )
+        })}
+      </tbody>
+    </DataTable>
   )
 }
