@@ -2,16 +2,20 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { SloDetailView } from './SloDetailView'
-import type { SloDefinition } from '@/features/slos/types'
+import type { SloDefinition } from '@/features/slos'
 
-vi.mock('@/features/slos/hooks', () => ({
-  useSloDetail: vi.fn(),
-  useSloVersions: vi.fn(),
-  useDeleteSlo: vi.fn(),
-  useGroupTree: vi.fn(),
-}))
+vi.mock('@/features/slos', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/features/slos')>()
+  return {
+    ...actual,
+    useSloDetail: vi.fn(),
+    useSloVersions: vi.fn(),
+    useDeleteSlo: vi.fn(),
+    useGroupTree: vi.fn(),
+  }
+})
 
-import { useSloDetail, useSloVersions, useDeleteSlo, useGroupTree } from '@/features/slos/hooks'
+import { useSloDetail, useSloVersions, useDeleteSlo, useGroupTree } from '@/features/slos'
 
 const mockSlo: SloDefinition = {
   id: 'slo-1',

@@ -1,12 +1,7 @@
 // ui/src/components/AssetTree/AssetTreeDialogs.tsx
 import { useState } from 'react'
-import { GroupCreateDialog } from '@/features/slos/components/GroupCreateDialog'
-import { GroupEditDialog } from '@/features/slos/components/GroupEditDialog'
-import { GroupDeleteDialog } from '@/features/slos/components/GroupDeleteDialog'
-import { SloLinkDialog } from '@/features/slos/components/SloLinkDialog'
-import { AssetTypesDialog } from '@/features/assets/components/AssetTypesDialog'
-import { AddAssetToGroupDialog } from '@/features/assets/components/AddAssetToGroupDialog'
-import { AssetEditDialog } from '@/features/assets/components/AssetEditDialog'
+import { GroupCreateDialog, GroupEditDialog, GroupDeleteDialog, SloLinkDialog } from '@/features/slos'
+import { AssetTypesDialog, AddAssetToGroupDialog, AssetEditDialog } from '@/features/assets'
 import type { TreeMode } from './types'
 
 export interface DialogState {

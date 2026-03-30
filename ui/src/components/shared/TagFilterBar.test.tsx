@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import { TagFilterBar } from './TagFilterBar'
-import type { TagFilter } from '@/features/registry/types'
+import type { TagFilter } from '@/features/registry'
 
 describe('TagFilterBar', () => {
   const defaultProps = {

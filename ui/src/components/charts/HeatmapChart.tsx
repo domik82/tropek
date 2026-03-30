@@ -13,7 +13,7 @@ import { useTheme } from '@/lib/theme-context'
 import { RESULT_COLOUR, CHART_THEME } from '@/lib/theme'
 import type { ResultColours } from '@/lib/theme'
 import { fmtSlot } from '@/lib/format'
-import type { HeatmapCell } from '@/features/navigator/types'
+import type { HeatmapCell } from '@/features/navigator'
 
 // ── brighten ─────────────────────────────────────────────────────────────────
 // Lightens a hex colour by multiplying each channel by `factor`.

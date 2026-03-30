@@ -5,12 +5,12 @@ import { z } from 'zod'
 import { Plus, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { useCreateDatasource, useUpdateDatasource } from '@/features/datasources/hooks'
+import { useCreateDatasource, useUpdateDatasource } from '@/features/datasources'
 import { ENTITY_COLORS } from '@/lib/entity-colors'
 import { SANS_SERIF } from '@/lib/fonts'
 import { tagsToRows, rowsToTags } from './tagUtils'
 import type { TagRow } from './tagUtils'
-import type { DataSource } from '@/features/datasources/types'
+import type { DataSource } from '@/features/datasources'
 
 const createSchema = z.object({
   name: z.string().min(1, 'Name is required'),

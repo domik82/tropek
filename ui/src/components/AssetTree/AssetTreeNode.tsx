@@ -1,6 +1,6 @@
 import { MoreHorizontal } from 'lucide-react'
-import type { AssetGroup, AssetGroupTree } from '@/features/assets/types'
-import { countLeafMembers } from '@/features/navigator/components/treeUtils'
+import type { AssetGroup, AssetGroupTree } from '@/features/assets'
+import { countLeafMembers } from '@/features/navigator'
 import { TreeNode } from '@/components/tree'
 import { getAssetTypeIcon, getEntityIcon } from '@/components/tree'
 import { AssetTreeInlineRename } from './AssetTreeInlineRename'

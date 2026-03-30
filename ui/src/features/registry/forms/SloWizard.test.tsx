@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { SloWizard } from './SloWizard'
-import type { SloDefinition } from '@/features/slos/types'
+import type { SloDefinition } from '@/features/slos'
 
 vi.mock('@/features/slos/hooks', () => ({
   useCreateSlo: vi.fn(),

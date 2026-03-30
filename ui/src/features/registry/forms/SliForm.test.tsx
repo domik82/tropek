@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { SliForm } from './SliForm'
-import type { SliDefinition } from '@/features/slis/types'
+import type { SliDefinition } from '@/features/slis'
 
 vi.mock('@/features/slis/hooks', () => ({
   useCreateSli: vi.fn(),
