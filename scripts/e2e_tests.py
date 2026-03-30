@@ -49,6 +49,28 @@ def test_single_evaluation(client: TropekClient) -> None:
     print('PASS: single evaluation')
 
 
+def test_asset_trigger(client: TropekClient) -> None:
+    """Trigger all SLOs for an asset and verify multiple evaluations are created."""
+    step('Step 7b: Trigger asset-level evaluation (all SLOs)')
+    result = client.evaluations.trigger_asset(
+        'checkout-api',
+        'asset-trigger-test',
+        '2026-03-15T09:00:00Z',
+        '2026-03-15T09:30:00Z',
+    )
+    eval_ids = result['evaluation_ids']
+    slo_names = result['slo_names']
+    print(f'triggered {len(eval_ids)} evaluations for SLOs: {slo_names}')
+    assert len(eval_ids) >= 2, f'expected at least 2 evaluations, got {len(eval_ids)}'
+
+    for eval_id in eval_ids:
+        ev = poll_eval(client, str(eval_id))
+        print(f'  {ev.slo_name}: status={ev.status} result={ev.result} score={ev.score}')
+        assert ev.status == 'completed', f'expected completed for {ev.slo_name}, got {ev.status}'
+
+    print(f'PASS: asset trigger — {len(eval_ids)} SLOs evaluated')
+
+
 def test_pin_baseline(client: TropekClient) -> None:
     """Pin a baseline on the first evaluation."""
     step('Step 8: Pin baseline')
@@ -385,6 +407,7 @@ def main() -> None:
     client = TropekClient(sys.argv[1])
 
     test_single_evaluation(client)
+    test_asset_trigger(client)
     test_pin_baseline(client)
     test_batch_evaluation(client)
     test_regression_eval(client)
