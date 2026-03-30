@@ -18,6 +18,7 @@ from tropek_client import TropekClient
 ASSETS = [
     # E-Commerce (existing)
     ("checkout-api", "http-availability-slo"),
+    ("checkout-api", "agg-latency-slo"),
     ("product-catalog", "http-availability-slo"),
     ("user-service", "http-availability-slo"),
     ("orders-db", "db-performance-slo"),
