@@ -44,27 +44,9 @@ spec:
   data_source_name: prometheus-local
 
 # --- Asset group SLO links ---
+# Note: core-services-http and data-tier-db are now bound via SLOBinding (slo-bindings.yaml)
+# using the new polymorphic model to avoid unique constraint violations.
 
----
-api_version: tropek/v1
-kind: AssetGroupSLOLink
-metadata:
-  name: core-services-http
-spec:
-  group_name: core-services
-  slo_name: http-availability-slo
-  sli_name: http-service-sli
-  data_source_name: prometheus-local
----
-api_version: tropek/v1
-kind: AssetGroupSLOLink
-metadata:
-  name: data-tier-db
-spec:
-  group_name: data-tier
-  slo_name: db-performance-slo
-  sli_name: db-sli
-  data_source_name: prometheus-local
 ---
 api_version: tropek/v1
 kind: AssetSLOLink

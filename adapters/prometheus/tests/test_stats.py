@@ -13,9 +13,7 @@ class TestComputeStatistics:
         assert result == {AggregationMethod.MEAN: pytest.approx(3.0)}
 
     def test_min_max(self) -> None:
-        result = compute_statistics(
-            [10.0, 1.0, 5.0, 9.0], [AggregationMethod.MIN, AggregationMethod.MAX]
-        )
+        result = compute_statistics([10.0, 1.0, 5.0, 9.0], [AggregationMethod.MIN, AggregationMethod.MAX])
         assert result == {
             AggregationMethod.MIN: pytest.approx(1.0),
             AggregationMethod.MAX: pytest.approx(10.0),
@@ -26,9 +24,7 @@ class TestComputeStatistics:
         assert result == {AggregationMethod.SUM: pytest.approx(6.0)}
 
     def test_std_population(self) -> None:
-        result = compute_statistics(
-            [2.0, 4.0, 4.0, 4.0, 5.0, 5.0, 7.0, 9.0], [AggregationMethod.STD]
-        )
+        result = compute_statistics([2.0, 4.0, 4.0, 4.0, 5.0, 5.0, 7.0, 9.0], [AggregationMethod.STD])
         assert result == {AggregationMethod.STD: pytest.approx(2.0)}
 
     def test_median(self) -> None:
@@ -71,8 +67,10 @@ class TestComputeStatistics:
 
     def test_single_element(self) -> None:
         methods = [
-            AggregationMethod.MEAN, AggregationMethod.MIN,
-            AggregationMethod.MAX, AggregationMethod.MEDIAN,
+            AggregationMethod.MEAN,
+            AggregationMethod.MIN,
+            AggregationMethod.MAX,
+            AggregationMethod.MEDIAN,
         ]
         result = compute_statistics([42.0], methods)
         for m in methods:
@@ -84,8 +82,11 @@ class TestComputeStatistics:
 
     def test_empty_array_returns_none_for_all(self) -> None:
         methods = [
-            AggregationMethod.MEAN, AggregationMethod.MIN,
-            AggregationMethod.MAX, AggregationMethod.STD, AggregationMethod.P99,
+            AggregationMethod.MEAN,
+            AggregationMethod.MIN,
+            AggregationMethod.MAX,
+            AggregationMethod.STD,
+            AggregationMethod.P99,
         ]
         result = compute_statistics([], methods)
         for m in methods:
@@ -99,9 +100,7 @@ class TestComputeStatistics:
         assert len(AggregationMethod) == 10
 
     def test_nan_values_filtered_out(self) -> None:
-        result = compute_statistics(
-            [1.0, float('nan'), 3.0, float('nan'), 5.0], [AggregationMethod.MEAN]
-        )
+        result = compute_statistics([1.0, float('nan'), 3.0, float('nan'), 5.0], [AggregationMethod.MEAN])
         assert result == {AggregationMethod.MEAN: pytest.approx(3.0)}
 
     def test_all_nan_returns_none(self) -> None:

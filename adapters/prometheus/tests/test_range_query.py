@@ -145,9 +145,7 @@ async def test_range_query_sends_correct_params(client: PrometheusClient) -> Non
             },
         )
     )
-    await client.range_query(
-        'up', start='2026-01-15T10:00:00Z', end='2026-01-15T11:00:00Z', step='5m'
-    )
+    await client.range_query('up', start='2026-01-15T10:00:00Z', end='2026-01-15T11:00:00Z', step='5m')
     url = str(route.calls[0].request.url)
     params = parse_qs(urlparse(url).query)
     assert params['query'] == ['up']

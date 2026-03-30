@@ -44,4 +44,13 @@ describe('RegistryTree', () => {
     render(<RegistryTree nodes={nodes} selected={null} onSelect={vi.fn()} />)
     expect(screen.getByText('v3.1')).toBeInTheDocument()
   })
+
+  it('renders subtitle text below the node name', () => {
+    const subtitleNodes: TreeNode[] = [
+      { id: 'slo-group:g1', name: 'app-plugins', type: 'slo-group', badge: '30 SLOs', subtitle: 'via plugin-tpl' },
+    ]
+    render(<RegistryTree nodes={subtitleNodes} selected={null} onSelect={vi.fn()} />)
+    expect(screen.getByText('app-plugins')).toBeInTheDocument()
+    expect(screen.getByText('via plugin-tpl')).toBeInTheDocument()
+  })
 })
