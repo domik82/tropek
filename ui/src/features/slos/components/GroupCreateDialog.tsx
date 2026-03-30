@@ -3,6 +3,7 @@ import { FieldLabel } from '@/components/ui/field-label'
 import { Input } from '@/components/ui/input'
 import { FormDialog } from '@/components/ui/form-dialog'
 import { GroupTreeSelector } from '@/features/assets/components/GroupTreeSelector'
+import { isValidEntityName, ENTITY_NAME_HINT } from '@/lib/validation'
 import { useCreateGroup, useGroupTree, useAddSubgroup } from '../hooks'
 
 interface Props {
@@ -38,7 +39,7 @@ export function GroupCreateDialog({ open, onOpenChange }: Props) {
     onOpenChange(false)
   }
 
-  const isValid = name.length > 0 && /^[a-z0-9-]+$/.test(name)
+  const isValid = isValidEntityName(name)
 
   return (
     <FormDialog
@@ -55,7 +56,7 @@ export function GroupCreateDialog({ open, onOpenChange }: Props) {
         <FieldLabel required>Name</FieldLabel>
         <Input value={name} onChange={e => setName(e.target.value)} placeholder="production-apis" />
         {name && !isValid && (
-          <p className="text-xs text-destructive mt-1">lowercase letters, numbers, hyphens only</p>
+          <p className="text-xs text-destructive mt-1">{ENTITY_NAME_HINT}</p>
         )}
       </div>
       <div>

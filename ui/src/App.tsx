@@ -9,6 +9,7 @@ import { MetricExplorerPage } from './pages/MetricExplorerPage'
 import { Button } from './components/ui/button'
 import { ThemeProvider, useTheme } from './lib/theme-context'
 import { TimeRangeProvider } from './lib/time-range-context'
+import { ErrorBoundary } from './components/ErrorBoundary'
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { staleTime: 30_000 } },
@@ -95,14 +96,16 @@ export default function App() {
               <NavControls />
             </nav>
             <main>
-              <Routes>
-                <Route path="/" element={<Navigate to="/navigator" replace />} />
-                <Route path="/navigator" element={<AssetNavigatorPage />} />
-                <Route path="/explorer" element={<MetricExplorerPage />} />
-                <Route path="/evaluations/:id" element={<EvaluationDetailPage />} />
-                <Route path="/slos" element={<SloRegistryPage />} />
-                <Route path="/assets" element={<AssetsPage />} />
-              </Routes>
+              <ErrorBoundary>
+                <Routes>
+                  <Route path="/" element={<Navigate to="/navigator" replace />} />
+                  <Route path="/navigator" element={<AssetNavigatorPage />} />
+                  <Route path="/explorer" element={<MetricExplorerPage />} />
+                  <Route path="/evaluations/:id" element={<EvaluationDetailPage />} />
+                  <Route path="/slos" element={<SloRegistryPage />} />
+                  <Route path="/assets" element={<AssetsPage />} />
+                </Routes>
+              </ErrorBoundary>
             </main>
           </div>
         </BrowserRouter>

@@ -39,8 +39,9 @@ export async function updateDatasource(name: string, payload: DataSourceUpdate):
   return res.json()
 }
 
-export async function deleteDatasource(name: string): Promise<Response> {
-  return fetch(`${BASE}/datasources/${encodeURIComponent(name)}`, { method: 'DELETE' })
+export async function deleteDatasource(name: string): Promise<void> {
+  const res = await fetch(`${BASE}/datasources/${encodeURIComponent(name)}`, { method: 'DELETE' })
+  if (!res.ok) throw new Error(`deleteDatasource: ${res.status}`)
 }
 
 export async function fetchDatasourceTagKeys(): Promise<TagKeyCount[]> {
