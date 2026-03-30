@@ -1868,8 +1868,8 @@ Include sli_metadata in job_stats:
 ```python
     job_stats: dict[str, Any] = {
         'fetch_errors': fetch_errors,
-        'total_score_pass_pct': slo_def.total_score_pass_pct,
-        'total_score_warning_pct': slo_def.total_score_warning_pct,
+        'total_score_pass_threshold': slo_def.total_score_pass_threshold,
+        'total_score_warning_threshold': slo_def.total_score_warning_threshold,
     }
     if sli_metadata:
         job_stats['sli_metadata'] = sli_metadata

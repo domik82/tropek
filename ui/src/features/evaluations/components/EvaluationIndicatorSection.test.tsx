@@ -59,8 +59,8 @@ function makeEval(indicators: IndicatorResult[]): EvaluationDetail {
     compared_evaluation_ids: [],
     annotations: [],
     indicator_results: indicators,
-    total_score_pass_pct: 90,
-    total_score_warning_pct: 75,
+    total_score_pass_threshold: 90,
+    total_score_warning_threshold: 75,
     created_at: '2026-03-15T10:30:00Z',
   }
 }

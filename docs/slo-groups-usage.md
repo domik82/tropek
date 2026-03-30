@@ -79,12 +79,12 @@ spec:
     process_name: "$__gen_process_name"
     AGGREGATION_WINDOW: "5m"
   total_score:
-    pass_pct: 90.0
-    warning_pct: 75.0
+    pass_threshold: 90.0
+    warning_threshold: 75.0
   objectives:
     - sli: cpu_usage_pct
-      pass_criteria: ["<80"]
-      warning_criteria: ["<90"]
+      pass_threshold: ["<80"]
+      warning_threshold: ["<90"]
       weight: 1
       key_sli: true
 ```
@@ -152,12 +152,12 @@ spec:
     AGGREGATION_WINDOW: "5m"
   objectives:
     - sli: cpu_usage
-      pass_criteria: ["<80"]
-      warning_criteria: ["<90"]
+      pass_threshold: ["<80"]
+      warning_threshold: ["<90"]
       weight: 1
       key_sli: true
     - sli: memory_usage
-      pass_criteria: ["<1073741824"]
+      pass_threshold: ["<1073741824"]
       weight: 1
 ```
 
@@ -231,12 +231,12 @@ spec:
     AGGREGATION_WINDOW: "5m"
   objectives:
     - sli: cpu_usage
-      pass_criteria: ["<80"]
-      warning_criteria: ["<90"]
+      pass_threshold: ["<80"]
+      warning_threshold: ["<90"]
       weight: 1
       key_sli: true
     - sli: memory_usage
-      pass_criteria: ["<1073741824"]
+      pass_threshold: ["<1073741824"]
       weight: 1
 ```
 

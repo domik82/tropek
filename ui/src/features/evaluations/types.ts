@@ -94,8 +94,8 @@ export interface EvaluationDetail extends EvaluationSummary {
   compared_evaluation_ids: string[]
   annotations: Annotation[]
   indicator_results: IndicatorResult[]
-  total_score_pass_pct: number | null
-  total_score_warning_pct: number | null
+  total_score_pass_threshold: number | null
+  total_score_warning_threshold: number | null
   sli_metadata?: Record<string, SliMetadata>
 }
 

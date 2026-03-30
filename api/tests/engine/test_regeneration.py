@@ -23,8 +23,8 @@ def _spec(name: str) -> GeneratedSLOSpec:
         sli_version=1,
         variables={},
         objectives=[],
-        total_score_pass_pct=90.0,
-        total_score_warning_pct=75.0,
+        total_score_pass_threshold=90.0,
+        total_score_warning_threshold=75.0,
         comparison={},
         tags={},
     )

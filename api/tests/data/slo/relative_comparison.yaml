@@ -11,5 +11,5 @@ objectives:
     weight: 2
     key_sli: true
 total_score:
-  pass_pct: 90.0
-  warning_pct: 75.0
+  pass_threshold: 90.0
+  warning_threshold: 75.0

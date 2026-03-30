@@ -243,8 +243,8 @@ spec:
   sli_version: 1
   kind: standard
   total_score:
-    pass_pct: 90.0
-    warning_pct: 75.0
+    pass_threshold: 90.0
+    warning_threshold: 75.0
   objectives:
     - sli: agg-latency-sli.mean
       display_name: "Mean Latency"

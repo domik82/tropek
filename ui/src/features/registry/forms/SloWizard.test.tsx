@@ -55,8 +55,8 @@ const mockSlo: SloDefinition = {
       sort_order: 1,
     },
   ],
-  total_score_pass_pct: 90,
-  total_score_warning_pct: 75,
+  total_score_pass_threshold: 90,
+  total_score_warning_threshold: 75,
   comparison: {
     baseline_mode: 'previous',
     number_of_comparison_results: 3,

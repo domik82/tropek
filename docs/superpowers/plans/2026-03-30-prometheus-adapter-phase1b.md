@@ -1988,7 +1988,7 @@ In `api/app/modules/quality_gate/presenter.py`, in the `build_detail()` function
             'sli_metadata': job_stats_detail.get('sli_metadata'),
 ```
 
-Add this line after the `'total_score_warning_pct'` line (around line 107).
+Add this line after the `'total_score_warning_threshold'` line (around line 107).
 
 - [ ] **Step 3: Add test for sli_metadata round-trip**
 

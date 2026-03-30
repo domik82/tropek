@@ -217,8 +217,8 @@ class TemplateInput(Protocol):
     sli_version: int | None
     variables: dict[str, Any]
     objectives: list[dict[str, Any]]
-    total_score_pass_pct: float
-    total_score_warning_pct: float
+    total_score_pass_threshold: float
+    total_score_warning_threshold: float
     comparison: dict[str, Any]
     tags: dict[str, Any]
 
@@ -232,8 +232,8 @@ class GeneratedSLOSpec:
     sli_version: int | None
     variables: dict[str, Any]
     objectives: list[dict[str, Any]]
-    total_score_pass_pct: float
-    total_score_warning_pct: float
+    total_score_pass_threshold: float
+    total_score_warning_threshold: float
     comparison: dict[str, Any]
     tags: dict[str, Any]
 
@@ -335,8 +335,8 @@ def generate_slo_specs(
                 sli_version=template.sli_version,
                 variables=gen_vars,
                 objectives=[dict(obj) for obj in template.objectives],
-                total_score_pass_pct=template.total_score_pass_pct,
-                total_score_warning_pct=template.total_score_warning_pct,
+                total_score_pass_threshold=template.total_score_pass_threshold,
+                total_score_warning_threshold=template.total_score_warning_threshold,
                 comparison=dict(template.comparison),
                 tags=gen_tags,
             )
@@ -394,8 +394,8 @@ class FakeTemplate:
     objectives: list[dict[str, Any]] = field(
         default_factory=lambda: [{"sli": "cpu", "pass_threshold": ["<80"]}]
     )
-    total_score_pass_pct: float = 90.0
-    total_score_warning_pct: float = 75.0
+    total_score_pass_threshold: float = 90.0
+    total_score_warning_threshold: float = 75.0
     comparison: dict[str, Any] = field(default_factory=dict)
     tags: dict[str, Any] = field(default_factory=lambda: {"env": "prod"})
 
@@ -656,8 +656,8 @@ def _spec(name: str) -> GeneratedSLOSpec:
         sli_version=1,
         variables={},
         objectives=[],
-        total_score_pass_pct=90.0,
-        total_score_warning_pct=75.0,
+        total_score_pass_threshold=90.0,
+        total_score_warning_threshold=75.0,
         comparison={},
         tags={},
     )

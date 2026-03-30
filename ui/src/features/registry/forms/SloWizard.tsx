@@ -51,8 +51,8 @@ function buildComparisonFromEdit(slo: SloDefinition): ComparisonData {
     compare_count: comp.number_of_comparison_results ?? 3,
     aggregate_function: comp.aggregate_function ?? 'avg',
     include_result_with_score: comp.include_result_with_score ?? 'pass_or_warn',
-    pass_threshold: slo.total_score_pass_pct,
-    warn_criteria: slo.total_score_warning_pct,
+    pass_threshold: slo.total_score_pass_threshold,
+    warn_criteria: slo.total_score_warning_threshold,
     tags: tagsToRows(slo.tags),
     variables: Object.entries(slo.variables).map(([key, value]) => ({ key, value })),
   }
@@ -203,8 +203,8 @@ export function SloWizard({ editSlo, defaultKind, onClose }: SloWizardProps) {
         sli_version: pickSli.sliVersion ?? undefined,
         objectives,
         method_criteria: mc,
-        total_score_pass_pct: comparison.pass_threshold,
-        total_score_warning_pct: comparison.warn_criteria,
+        total_score_pass_threshold: comparison.pass_threshold,
+        total_score_warning_threshold: comparison.warn_criteria,
         comparison: {
           baseline_mode: comparison.baseline_mode,
           number_of_comparison_results: comparison.compare_count,

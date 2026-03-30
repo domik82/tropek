@@ -29,8 +29,8 @@ const formSchema = z.object({
   number_of_comparison_results: z.coerce.number().min(1),
   include_result_with_score: z.string(),
   aggregate_function: z.string(),
-  total_score_pass_pct: z.coerce.number().min(0).max(100),
-  total_score_warning_pct: z.coerce.number().min(0).max(100),
+  total_score_pass_threshold: z.coerce.number().min(0).max(100),
+  total_score_warning_threshold: z.coerce.number().min(0).max(100),
   comparable_from_version: z.coerce.number().min(1).optional(),
   objectives: z.array(objSchema),
   labels: z.array(labelSchema),
@@ -44,8 +44,8 @@ const DEFAULTS: FormValues = {
   number_of_comparison_results: 3,
   include_result_with_score: 'pass_or_warn',
   aggregate_function: 'avg',
-  total_score_pass_pct: 90,
-  total_score_warning_pct: 75,
+  total_score_pass_threshold: 90,
+  total_score_warning_threshold: 75,
   objectives: [],
   labels: [],
 }
@@ -93,8 +93,8 @@ export function SloCreateForm({ onCancel, onSaved }: Props) {
           key_sli: obj.key_sli,
           sort_order: i,
         })),
-        total_score_pass_pct: values.total_score_pass_pct,
-        total_score_warning_pct: values.total_score_warning_pct,
+        total_score_pass_threshold: values.total_score_pass_threshold,
+        total_score_warning_threshold: values.total_score_warning_threshold,
         comparison: {
           compare_with: values.compare_with,
           number_of_comparison_results: values.number_of_comparison_results,
@@ -179,11 +179,11 @@ export function SloCreateForm({ onCancel, onSaved }: Props) {
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="block text-xs text-muted-foreground mb-1">Total Pass %</label>
-            <input {...register('total_score_pass_pct')} type="number" min={0} max={100} className={inp} />
+            <input {...register('total_score_pass_threshold')} type="number" min={0} max={100} className={inp} />
           </div>
           <div>
             <label className="block text-xs text-muted-foreground mb-1">Total Warning %</label>
-            <input {...register('total_score_warning_pct')} type="number" min={0} max={100} className={inp} />
+            <input {...register('total_score_warning_threshold')} type="number" min={0} max={100} className={inp} />
           </div>
         </div>
         <div>

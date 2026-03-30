@@ -50,7 +50,7 @@ SLODefinition
   sli_name: str                        # NEW — explicit SLI reference
   sli_version: int                     # NEW — pinned version
   objectives: [{sli: "cpu_usage", pass_threshold: [...], ...}]
-  total_score_pass_pct, total_score_warning_pct
+  total_score_pass_threshold, total_score_warning_threshold
   comparison: {...}
   variables: {key: value}
   display_name, notes, author, tags

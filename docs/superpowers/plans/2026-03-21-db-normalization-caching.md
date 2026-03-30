@@ -354,7 +354,7 @@ async def _seed_slo_with_objectives(session: AsyncSession) -> tuple[str, int, li
     slo = SLODefinition(
         id=slo_id, name="test-slo", version=1, display_name="Test SLO",
         comparison={"compare_with": "single_result", "number_of_comparison_results": 3},
-        total_score_pass_pct=90.0, total_score_warning_pct=75.0,
+        total_score_pass_threshold=90.0, total_score_warning_threshold=75.0,
         tags={}, variables={},
     )
     session.add(slo)

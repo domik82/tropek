@@ -1586,8 +1586,8 @@ async def run_evaluation(
     ]
     slo = build_slo(
         objectives=objectives,
-        total_score_pass_pct=slo_def.total_score_pass_pct,
-        total_score_warning_pct=slo_def.total_score_warning_pct,
+        total_score_pass_threshold=slo_def.total_score_pass_threshold,
+        total_score_warning_threshold=slo_def.total_score_warning_threshold,
         comparison=slo_def.comparison,
     )
 

@@ -477,8 +477,8 @@ export function generateEvaluationDetail(
       return []
     })(),
     indicator_results: indicators,
-    total_score_pass_pct: 90,
-    total_score_warning_pct: 75,
+    total_score_pass_threshold: 90,
+    total_score_warning_threshold: 75,
   }
 }
 

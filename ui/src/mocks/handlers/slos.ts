@@ -71,8 +71,8 @@ export const sloHandlers = [
     const body = await request.json() as {
       name: string
       objectives: unknown[]
-      total_score_pass_pct: number
-      total_score_warning_pct: number
+      total_score_pass_threshold: number
+      total_score_warning_threshold: number
       comparison: Record<string, unknown>
       display_name?: string
       notes?: string
@@ -90,8 +90,8 @@ export const sloHandlers = [
       variables: {},
       created_at: new Date().toISOString(),
       objectives: body.objectives,
-      total_score_pass_pct: body.total_score_pass_pct,
-      total_score_warning_pct: body.total_score_warning_pct,
+      total_score_pass_threshold: body.total_score_pass_threshold,
+      total_score_warning_threshold: body.total_score_warning_threshold,
       comparison: body.comparison,
     }, { status: 201 })
   }),

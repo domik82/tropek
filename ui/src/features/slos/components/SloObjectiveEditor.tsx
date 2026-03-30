@@ -16,8 +16,8 @@ const objectiveSchema = z.object({
 })
 
 const formSchema = z.object({
-  total_score_pass_pct: z.coerce.number().min(0).max(100),
-  total_score_warning_pct: z.coerce.number().min(0).max(100),
+  total_score_pass_threshold: z.coerce.number().min(0).max(100),
+  total_score_warning_threshold: z.coerce.number().min(0).max(100),
   comparable_from_version: z.coerce.number().min(1).optional(),
   objectives: z.array(objectiveSchema),
 })
@@ -96,8 +96,8 @@ export function SloObjectiveEditor({ slo, onCancel, onSaved }: Props) {
   const { register, control, handleSubmit } = useForm<FormValues, unknown, FormValues>({
     resolver: zodResolver(formSchema) as import('react-hook-form').Resolver<FormValues>,
     defaultValues: {
-      total_score_pass_pct: slo.total_score_pass_pct,
-      total_score_warning_pct: slo.total_score_warning_pct,
+      total_score_pass_threshold: slo.total_score_pass_threshold,
+      total_score_warning_threshold: slo.total_score_warning_threshold,
       objectives: defaultObjectives,
     },
   })
@@ -115,8 +115,8 @@ export function SloObjectiveEditor({ slo, onCancel, onSaved }: Props) {
         key_sli: obj.key_sli,
         sort_order: i,
       })),
-      total_score_pass_pct: values.total_score_pass_pct,
-      total_score_warning_pct: values.total_score_warning_pct,
+      total_score_pass_threshold: values.total_score_pass_threshold,
+      total_score_warning_threshold: values.total_score_warning_threshold,
       comparison: slo.comparison ?? {},
       comparable_from_version: values.comparable_from_version || undefined,
     }
@@ -149,11 +149,11 @@ export function SloObjectiveEditor({ slo, onCancel, onSaved }: Props) {
       <div className="grid grid-cols-2 gap-3">
         <div>
           <label className="block text-xs text-muted-foreground mb-1">Total Pass %</label>
-          <input {...register('total_score_pass_pct')} type="number" min={0} max={100} className={inp} />
+          <input {...register('total_score_pass_threshold')} type="number" min={0} max={100} className={inp} />
         </div>
         <div>
           <label className="block text-xs text-muted-foreground mb-1">Total Warning %</label>
-          <input {...register('total_score_warning_pct')} type="number" min={0} max={100} className={inp} />
+          <input {...register('total_score_warning_threshold')} type="number" min={0} max={100} className={inp} />
         </div>
       </div>
 
