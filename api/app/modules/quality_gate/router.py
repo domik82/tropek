@@ -21,6 +21,8 @@ from app.modules.quality_gate.schemas import (
     AnnotationHide,
     AnnotationRead,
     AnnotationUpdate,
+    AssetTriggerRequest,
+    AssetTriggerResponse,
     BatchTriggerRequest,
     BatchTriggerResponse,
     EvaluationDetail,
@@ -54,6 +56,17 @@ async def trigger_evaluation(
     """Trigger a single asset evaluation."""
     service = TriggerService(repos, arq_pool)
     return await service.trigger_single(body)
+
+
+@router.post('/evaluations/asset', response_model=AssetTriggerResponse, status_code=202)
+async def trigger_asset(
+    body: AssetTriggerRequest,
+    repos: QualityGateRepos = Depends(get_qg_repos),
+    arq_pool: ArqRedis = Depends(get_arq_pool),
+) -> AssetTriggerResponse:
+    """Trigger evaluations for all SLOs linked to an asset."""
+    service = TriggerService(repos, arq_pool)
+    return await service.trigger_asset(body)
 
 
 @router.post('/evaluations/batch', response_model=BatchTriggerResponse, status_code=202)
