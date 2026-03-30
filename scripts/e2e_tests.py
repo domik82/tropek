@@ -142,12 +142,9 @@ def test_override_to_pass(client: TropekClient) -> None:
 def test_reeval_from_pinned_baseline(client: TropekClient) -> None:
     """Pin the 2nd evaluation, then re-evaluate from that pinned baseline."""
     step("Step 14: Pin baseline + re-evaluate from pinned")
-    evals = client.evaluations.list(asset_name="checkout-api")
-    completed = [
-        e for e in evals.items
-        if e.status == "completed" and e.slo_name == "http-availability-slo"
-    ]
-    assert len(completed) >= 2, f"need >= 2 completed http-availability evals, got {len(completed)}"
+    evals = client.evaluations.list(asset_name="checkout-api", slo_name="http-availability-slo")
+    completed = [e for e in evals.items if e.status == "completed"]
+    assert len(completed) >= 2, f"need >= 2 completed evals, got {len(completed)}"
 
     # Pin the 2nd evaluation (not the most recent)
     pin_target = str(completed[1].id)
