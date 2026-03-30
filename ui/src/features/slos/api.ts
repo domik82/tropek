@@ -25,8 +25,8 @@ export async function fetchSloDetail(name: string): Promise<SloDefinition> {
 
 export async function validateSlo(payload: {
   objectives: SloObjective[]
-  total_score_pass_pct: number
-  total_score_warning_pct: number
+  total_score_pass_threshold: number
+  total_score_warning_threshold: number
   comparison: SloComparisonConfig
 }): Promise<SloValidationResult> {
   const res = await fetch(`${BASE}/slo-definitions/validate`, {
@@ -41,8 +41,8 @@ export async function validateSlo(payload: {
 export async function createSloDefinition(payload: {
   name: string
   objectives: SloObjective[]
-  total_score_pass_pct: number
-  total_score_warning_pct: number
+  total_score_pass_threshold: number
+  total_score_warning_threshold: number
   comparison: SloComparisonConfig
   display_name?: string
   notes?: string

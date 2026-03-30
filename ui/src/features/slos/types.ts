@@ -41,8 +41,8 @@ export interface SloDefinition {
   created_at: string
   active: boolean
   objectives: SloObjective[]
-  total_score_pass_pct: number
-  total_score_warning_pct: number
+  total_score_pass_threshold: number
+  total_score_warning_threshold: number
   comparison: SloComparisonConfig
   method_criteria: Record<string, MethodCriteriaOverride> | null
 }

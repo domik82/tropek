@@ -65,8 +65,8 @@ const mockSlos: SloDefinition[] = [
         sort_order: 0,
       },
     ],
-    total_score_pass_pct: 90,
-    total_score_warning_pct: 75,
+    total_score_pass_threshold: 90,
+    total_score_warning_threshold: 75,
     comparison: {},
   },
   {
@@ -98,8 +98,8 @@ const mockSlos: SloDefinition[] = [
         sort_order: 0,
       },
     ],
-    total_score_pass_pct: 90,
-    total_score_warning_pct: 75,
+    total_score_pass_threshold: 90,
+    total_score_warning_threshold: 75,
     comparison: {},
   },
 ]

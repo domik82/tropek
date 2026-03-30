@@ -6,7 +6,7 @@
 ## Summary
 
 The backend replaced the opaque `slo_yaml: string` field on `SLODefinition` with structured
-fields (`objectives[]`, `total_score_pass_pct`, `total_score_warning_pct`, `comparison`).
+fields (`objectives[]`, `total_score_pass_threshold`, `total_score_warning_threshold`, `comparison`).
 This spec covers the corresponding UI refactor: updating types, API calls, all SLO feature
 components, and mock data.
 
@@ -49,8 +49,8 @@ export interface SloDefinition {
   created_at: string
   active: boolean
   objectives: SloObjective[]
-  total_score_pass_pct: number
-  total_score_warning_pct: number
+  total_score_pass_threshold: number
+  total_score_warning_threshold: number
   comparison: Record<string, unknown>
 }
 ```
@@ -79,8 +79,8 @@ refactor; the opaque type is intentional and sufficient.
 ```typescript
 export async function validateSlo(payload: {
   objectives: SloObjective[]
-  total_score_pass_pct: number
-  total_score_warning_pct: number
+  total_score_pass_threshold: number
+  total_score_warning_threshold: number
   comparison: Record<string, unknown>
 }): Promise<SloValidationResult>
 ```
@@ -91,8 +91,8 @@ export async function validateSlo(payload: {
 export async function createSloDefinition(payload: {
   name: string
   objectives: SloObjective[]
-  total_score_pass_pct: number
-  total_score_warning_pct: number
+  total_score_pass_threshold: number
+  total_score_warning_threshold: number
   comparison: Record<string, unknown>   // required; pass {} for all-default comparison settings
   display_name?: string
   notes?: string
@@ -127,7 +127,7 @@ No longer needed. `SloHistoryPanel` displays version details using structured fi
 - Removes its dependency on `SloYamlViewer`
 - Each version entry shows: version number, active badge, author, notes, timestamp
 - Expandable section per version shows the objectives using `SloObjectiveTable` (read-only)
-  plus the `total_score_pass_pct`, `total_score_warning_pct` values as plain text
+  plus the `total_score_pass_threshold`, `total_score_warning_threshold` values as plain text
 
 ### `SloObjectiveTable.tsx`
 
@@ -142,7 +142,7 @@ No longer needed. `SloHistoryPanel` displays version details using structured fi
 Props: receives the full `SloDefinition` being edited plus an `onSave` callback. Internally
 manages a list of `SloObjective` items with flat `pass_threshold`/`warning_threshold` arrays.
 On save: calls `createSloDefinition` with the SLO's existing metadata fields plus the updated
-objectives list, `total_score_pass_pct`, `total_score_warning_pct`, and `comparison` —
+objectives list, `total_score_pass_threshold`, `total_score_warning_threshold`, and `comparison` —
 creates a new version. The `comparison` field is passed through unchanged from the existing
 `SloDefinition` (the editor has no UI surface for it); if absent or `{}`, pass `{}` as
 `createSloDefinition` accepts it as a valid default.
@@ -159,8 +159,8 @@ useSloValidation(yaml: string)  →  calls validateSloYaml(yaml)
 // After
 useSloValidation(payload: {
   objectives: SloObjective[]
-  total_score_pass_pct: number
-  total_score_warning_pct: number
+  total_score_pass_threshold: number
+  total_score_warning_threshold: number
   comparison: Record<string, unknown>
 })  →  calls validateSlo(payload)
 ```
@@ -201,8 +201,8 @@ All 5 entries replace `slo_yaml` with structured fields. Shape per entry:
   "meta": {},
   "created_at": "2026-03-01T09:00:00Z",
   "active": true,
-  "total_score_pass_pct": 90.0,
-  "total_score_warning_pct": 75.0,
+  "total_score_pass_threshold": 90.0,
+  "total_score_warning_threshold": 75.0,
   "comparison": {
     "compare_with": "several_results",
     "number_of_comparison_results": 3,
@@ -228,7 +228,7 @@ All 5 entries replace `slo_yaml` with structured fields. Shape per entry:
 - `POST /api/slo-definitions/validate` response: `objectives` uses flat
   `pass_threshold`/`warning_threshold`, drops old `pass: [{criteria: []}]` shape
 - `POST /api/slo-definitions` request: expects structured fields (no `slo_yaml`); response
-  echoes back a full `SloDefinition` with `objectives[]`, `total_score_pass_pct`, etc.
+  echoes back a full `SloDefinition` with `objectives[]`, `total_score_pass_threshold`, etc.
 - `GET` handlers: no changes (serve from updated `slo-definitions.json`)
 
 ---

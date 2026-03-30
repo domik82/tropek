@@ -219,8 +219,8 @@ class SLOComparison:
 
 @dataclass
 class SLOTotalScore:
-    pass_pct: float = 90.0
-    warning_pct: float = 75.0
+    pass_threshold: float = 90.0
+    warning_threshold: float = 75.0
 
 
 @dataclass
@@ -260,8 +260,8 @@ def parse_slo(yaml_text: str) -> SLO:
 
     raw_score = data.get("total_score") or {}
     total_score = SLOTotalScore(
-        pass_pct=_parse_pct(str(raw_score.get("pass", "90%"))),
-        warning_pct=_parse_pct(str(raw_score.get("warning", "75%"))),
+        pass_threshold=_parse_pct(str(raw_score.get("pass", "90%"))),
+        warning_threshold=_parse_pct(str(raw_score.get("warning", "75%"))),
     )
 
     objectives: list[SLOObjective] = []

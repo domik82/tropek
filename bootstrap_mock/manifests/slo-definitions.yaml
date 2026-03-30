@@ -10,8 +10,8 @@ spec:
   sli_version: 1
   kind: standard
   total_score:
-    pass_pct: 90.0
-    warning_pct: 75.0
+    pass_threshold: 90.0
+    warning_threshold: 75.0
   objectives:
     - sli: response_time_p99
       display_name: "Response Time P99 (ms)"
@@ -42,8 +42,8 @@ spec:
   sli_version: 1
   kind: standard
   total_score:
-    pass_pct: 90.0
-    warning_pct: 75.0
+    pass_threshold: 90.0
+    warning_threshold: 75.0
   objectives:
     - sli: query_latency_p99
       display_name: "Query Latency P99 (ms)"
@@ -69,8 +69,8 @@ spec:
   sli_version: 1
   kind: standard
   total_score:
-    pass_pct: 90.0
-    warning_pct: 75.0
+    pass_threshold: 90.0
+    warning_threshold: 75.0
   objectives:
     - sli: cpu_usage_pct
       display_name: "CPU Usage %"
@@ -106,8 +106,8 @@ spec:
   sli_version: 1
   kind: standard
   total_score:
-    pass_pct: 90.0
-    warning_pct: 75.0
+    pass_threshold: 90.0
+    warning_threshold: 75.0
   objectives:
     - sli: process_cpu_pct
       display_name: "Process CPU %"
@@ -140,8 +140,8 @@ spec:
   variables:
     process_name: "WINWORD"
   total_score:
-    pass_pct: 90.0
-    warning_pct: 75.0
+    pass_threshold: 90.0
+    warning_threshold: 75.0
   objectives:
     - sli: process_cpu_pct
       display_name: "CPU %"
@@ -174,8 +174,8 @@ spec:
   variables:
     process_name: "EXCEL"
   total_score:
-    pass_pct: 90.0
-    warning_pct: 75.0
+    pass_threshold: 90.0
+    warning_threshold: 75.0
   objectives:
     - sli: process_cpu_pct
       display_name: "CPU %"
@@ -208,8 +208,8 @@ spec:
   variables:
     process_name: "POWERPNT"
   total_score:
-    pass_pct: 90.0
-    warning_pct: 75.0
+    pass_threshold: 90.0
+    warning_threshold: 75.0
   objectives:
     - sli: process_cpu_pct
       display_name: "CPU %"
@@ -242,8 +242,8 @@ spec:
   variables:
     process_name: "OUTLOOK"
   total_score:
-    pass_pct: 90.0
-    warning_pct: 75.0
+    pass_threshold: 90.0
+    warning_threshold: 75.0
   objectives:
     - sli: process_cpu_pct
       display_name: "CPU %"
@@ -274,8 +274,8 @@ spec:
   sli_version: 1
   kind: standard
   total_score:
-    pass_pct: 90.0
-    warning_pct: 75.0
+    pass_threshold: 90.0
+    warning_threshold: 75.0
   objectives:
     - sli: agg-latency-sli.mean
       display_name: "Mean Latency"
@@ -335,8 +335,8 @@ spec:
       pass_threshold:
         - "<40"
   total_score:
-    pass_pct: 90.0
-    warning_pct: 75.0
+    pass_threshold: 90.0
+    warning_threshold: 75.0
 ---
 api_version: tropek/v1
 kind: SLO

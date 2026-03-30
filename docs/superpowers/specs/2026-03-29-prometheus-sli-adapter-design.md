@@ -485,8 +485,8 @@ objectives:
     weight: 1
 
 total_score:
-  pass_pct: 90.0
-  warning_pct: 75.0
+  pass_threshold: 90.0
+  warning_threshold: 75.0
 ```
 
 The evaluation engine sees this as a normal SLO with 3 objectives. No special handling needed.
