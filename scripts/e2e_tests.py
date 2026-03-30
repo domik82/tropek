@@ -339,6 +339,34 @@ def test_label_autocomplete(client: TropekClient) -> None:
     print("PASS: tag autocomplete")
 
 
+def test_aggregated_evaluation(client: TropekClient) -> None:
+    """Trigger an aggregated-mode evaluation and verify method-keyed results."""
+    step('Step 22: Aggregated-mode evaluation')
+    result = client.evaluations.trigger(
+        'checkout-api',
+        'agg-test',
+        'agg-latency-slo',
+        '2026-03-15T08:00:00Z',
+        '2026-03-15T08:30:00Z',
+    )
+    eval_id = result['id']
+    print(f'triggered aggregated eval: {eval_id}')
+
+    ev = poll_eval(client, eval_id)
+    print(f'status={ev.status} result={ev.result} score={ev.score}')
+    assert ev.status == 'completed', f'expected completed, got {ev.status}'
+    assert ev.result in ('pass', 'warning', 'fail'), f'unexpected result: {ev.result}'
+
+    # Verify indicator results contain {sli}.{method} keys
+    metric_names = [i.metric for i in ev.indicator_results]
+    print(f'indicator metrics: {metric_names}')
+    for method in ['mean', 'p95', 'p99', 'max']:
+        expected = f'agg-latency-sli.{method}'
+        assert expected in metric_names, f'missing indicator {expected}, got {metric_names}'
+
+    print('PASS: aggregated-mode evaluation')
+
+
 def test_asset_type_delete_with_assets(client: TropekClient) -> None:
     """Verify that deleting a type with assets raises 409 Conflict."""
     step("Step 21: Delete type with assets (expect 409)")
@@ -374,6 +402,7 @@ def main() -> None:
     test_asset_type_rename(client)
     test_asset_delete(client)
     test_label_autocomplete(client)
+    test_aggregated_evaluation(client)
     test_asset_type_delete_with_assets(client)
 
     print("\n=== All integration tests passed ===")
