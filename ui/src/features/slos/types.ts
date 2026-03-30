@@ -1,5 +1,12 @@
 // src/features/slos/types.ts
 
+export interface MethodCriteriaOverride {
+  pass_criteria?: string[]
+  warning_criteria?: string[]
+  weight?: number
+  key_sli?: boolean
+}
+
 export interface SloObjective {
   sli: string
   display_name: string
@@ -37,6 +44,7 @@ export interface SloDefinition {
   total_score_pass_pct: number
   total_score_warning_pct: number
   comparison: SloComparisonConfig
+  method_criteria: Record<string, MethodCriteriaOverride> | null
 }
 
 export interface SloValidationResult {
