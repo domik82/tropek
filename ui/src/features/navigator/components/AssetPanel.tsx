@@ -117,6 +117,18 @@ export function AssetPanel({ assetName, initialEvalId }: Props) {
     return ev?.indicator_results ?? []
   }, [allSlotEvals, ev])
 
+  // Map each metric to the eval ID that owns it (for multi-SLO trend charts)
+  const metricEvalMap = useMemo((): Map<string, string> | undefined => {
+    if (allSlotEvals.length <= 1) return undefined
+    const m = new Map<string, string>()
+    for (const e of allSlotEvals) {
+      for (const ind of e.indicator_results) {
+        m.set(ind.metric, e.id)
+      }
+    }
+    return m
+  }, [allSlotEvals])
+
   const mergedSliMetadata = useMemo((): Record<string, SliMetadata> | undefined => {
     if (allSlotEvals.length > 1) {
       const meta: Record<string, SliMetadata> = {}
@@ -275,6 +287,7 @@ export function AssetPanel({ assetName, initialEvalId }: Props) {
           activeTab={activeTab}
           setActiveTab={setActiveTab}
           tabIndicators={tabIndicators}
+          metricEvalMap={metricEvalMap}
         />
       )}
 
