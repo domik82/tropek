@@ -1,9 +1,8 @@
-"""Async SQLAlchemy session factory and session context manager."""
+"""Async SQLAlchemy session factory and FastAPI session dependency."""
 
 from __future__ import annotations
 
-from collections.abc import AsyncGenerator
-
+from fastapi import Request
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
     AsyncSession,
@@ -35,24 +34,12 @@ def get_session_factory() -> async_sessionmaker[AsyncSession]:
     """Return the shared session factory, creating it on first call."""
     global _session_factory
     if _session_factory is None:
-        _session_factory = async_sessionmaker(_get_engine(), expire_on_commit=False, class_=AsyncSession)
+        _session_factory = async_sessionmaker(
+            _get_engine(), expire_on_commit=False, class_=AsyncSession
+        )
     return _session_factory
 
 
-async def get_session() -> AsyncGenerator[AsyncSession, None]:  # noqa: UP043
-    """Async context manager that yields a session with auto commit/rollback.
-
-    Yields:
-        An AsyncSession bound to the shared engine.
-
-    Raises:
-        Exception: Re-raises any exception after rolling back the session.
-    """
-    factory = get_session_factory()
-    async with factory() as session:
-        try:
-            yield session
-            await session.commit()
-        except Exception:
-            await session.rollback()
-            raise
+async def get_session(request: Request) -> AsyncSession:
+    """Return the per-request session created by SessionMiddleware."""
+    return request.state.session
