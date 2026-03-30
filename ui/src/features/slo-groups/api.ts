@@ -1,4 +1,4 @@
-import type { SloGroup, SloGroupCreate } from './types'
+import type { SloGroup, SloGroupCreate, SloGroupUpdate } from './types'
 
 const BASE = '/api'
 
@@ -22,6 +22,16 @@ export async function createSloGroup(body: SloGroupCreate): Promise<SloGroup> {
     body: JSON.stringify(body),
   })
   if (!res.ok) throw new Error(`createSloGroup: ${res.status}`)
+  return res.json()
+}
+
+export async function updateSloGroup(name: string, body: SloGroupUpdate): Promise<SloGroup> {
+  const res = await fetch(`${BASE}/slo-groups/${encodeURIComponent(name)}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+  if (!res.ok) throw new Error(`updateSloGroup: ${res.status}`)
   return res.json()
 }
 

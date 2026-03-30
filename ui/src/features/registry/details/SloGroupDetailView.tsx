@@ -1,10 +1,11 @@
 import { useState } from 'react'
-import { Trash2 } from 'lucide-react'
+import { Plus, RefreshCw, Trash2, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { DeletionConfirmForm } from '@/components/DeletionConfirmForm'
 import { ENTITY_COLORS } from '@/lib/entity-colors'
 import { SANS_SERIF } from '@/lib/fonts'
-import { useSloGroupDetail, useDeleteSloGroup } from '@/features/slo-groups/hooks'
+import { useSloGroupDetail, useDeleteSloGroup, useUpdateSloGroup } from '@/features/slo-groups/hooks'
+import { useSloVersions } from '@/features/slos/hooks'
 import type { SelectedNode } from '@/features/registry/types'
 
 interface Props {
@@ -14,8 +15,13 @@ interface Props {
 
 export function SloGroupDetailView({ name, onNavigate }: Props) {
   const [showDelete, setShowDelete] = useState(false)
+  const [showRegenerate, setShowRegenerate] = useState(false)
+  const [selectedVersion, setSelectedVersion] = useState<number | null>(null)
+  const [editVars, setEditVars] = useState<Record<string, string[]> | null>(null)
   const { data: group, isLoading } = useSloGroupDetail(name)
   const deleteMutation = useDeleteSloGroup()
+  const updateMutation = useUpdateSloGroup()
+  const { data: versions } = useSloVersions(group?.template_slo_name ?? '', showRegenerate && !!group)
 
   if (isLoading || !group) {
     return (
@@ -57,15 +63,187 @@ export function SloGroupDetailView({ name, onNavigate }: Props) {
 
           <div className="flex gap-2 mt-3">
             <Button
-              size="xs"
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                setShowRegenerate(true)
+                setShowDelete(false)
+                setEditVars(JSON.parse(JSON.stringify(group.gen_variables)))
+              }}
+            >
+              <RefreshCw className="size-3.5" />
+              New Version
+            </Button>
+            <Button
+              size="sm"
               variant="outline"
               className="text-red-400 border-red-700/40 hover:bg-red-950/20"
-              onClick={() => setShowDelete(true)}
+              onClick={() => { setShowDelete(true); setShowRegenerate(false) }}
             >
-              <Trash2 className="size-3" />
+              <Trash2 className="size-3.5" />
               Delete Group
             </Button>
           </div>
+
+          {showRegenerate && editVars && (() => {
+            const editKeys = Object.keys(editVars)
+            const editRowCount = Math.max(0, ...editKeys.map(k => editVars[k].length))
+
+            function updateCell(key: string, rowIdx: number, value: string) {
+              setEditVars(prev => {
+                if (!prev) return prev
+                const next = { ...prev, [key]: [...prev[key]] }
+                next[key][rowIdx] = value
+                return next
+              })
+            }
+
+            function addRow() {
+              setEditVars(prev => {
+                if (!prev) return prev
+                const next: Record<string, string[]> = {}
+                for (const k of Object.keys(prev)) {
+                  next[k] = [...prev[k], '']
+                }
+                return next
+              })
+            }
+
+            function removeRow(rowIdx: number) {
+              setEditVars(prev => {
+                if (!prev) return prev
+                const next: Record<string, string[]> = {}
+                for (const k of Object.keys(prev)) {
+                  next[k] = prev[k].filter((_, i) => i !== rowIdx)
+                }
+                return next
+              })
+            }
+
+            const varsChanged = JSON.stringify(editVars) !== JSON.stringify(group.gen_variables)
+            const versionChanged = selectedVersion !== null && selectedVersion !== group.template_slo_version
+            const hasChanges = varsChanged || versionChanged
+            const hasEmptyCells = editKeys.some(k => editVars[k].some(v => v.trim() === ''))
+
+            return (
+              <div className="mt-3 p-3 border border-border rounded bg-muted/20 space-y-3">
+                <p className="text-xs text-muted-foreground">
+                  Edit variables and/or pick a template version, then regenerate.
+                </p>
+
+                {/* Version picker */}
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-muted-foreground">Template version:</span>
+                  {versions && versions.length > 0 ? (
+                    <select
+                      className="text-xs bg-background border border-border rounded px-2 py-1 text-foreground"
+                      value={selectedVersion ?? group.template_slo_version}
+                      onChange={e => setSelectedVersion(Number(e.target.value))}
+                    >
+                      {versions.map(v => (
+                        <option key={v.version} value={v.version}>
+                          v{v.version}{v.version === group.template_slo_version ? ' (current)' : ''}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <span className="text-xs text-muted-foreground">v{group.template_slo_version} (loading…)</span>
+                  )}
+                </div>
+
+                {/* Editable variables table */}
+                {editKeys.length > 0 && (
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1">Variables</p>
+                    <div className="border border-border rounded overflow-hidden">
+                      <table className="w-full text-xs">
+                        <thead>
+                          <tr className="bg-muted/30">
+                            {editKeys.map(k => (
+                              <th key={k} className="text-left px-2 py-1 text-muted-foreground font-medium">{k}</th>
+                            ))}
+                            <th className="w-6" />
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {Array.from({ length: editRowCount }, (_, i) => (
+                            <tr key={i} className="border-t border-border/50">
+                              {editKeys.map(k => (
+                                <td key={k} className="px-1 py-0.5">
+                                  <input
+                                    className="w-full text-xs font-mono bg-background border border-border/50 rounded px-1.5 py-0.5 text-foreground focus:outline-none focus:border-primary"
+                                    value={editVars[k][i] ?? ''}
+                                    onChange={e => updateCell(k, i, e.target.value)}
+                                  />
+                                </td>
+                              ))}
+                              <td className="px-1 py-0.5">
+                                {editRowCount > 1 && (
+                                  <button
+                                    className="text-muted-foreground hover:text-red-400 p-0.5"
+                                    onClick={() => removeRow(i)}
+                                    title="Remove row"
+                                  >
+                                    <X className="size-3" />
+                                  </button>
+                                )}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                    <button
+                      className="flex items-center gap-1 text-xs text-primary hover:underline mt-1.5"
+                      onClick={addRow}
+                    >
+                      <Plus className="size-3" />
+                      Add row
+                    </button>
+                  </div>
+                )}
+
+                {/* Actions */}
+                <div className="flex items-center gap-2">
+                  <Button
+                    size="xs"
+                    disabled={!hasChanges || hasEmptyCells || updateMutation.isPending}
+                    onClick={() => {
+                      const body: Record<string, unknown> = {}
+                      if (versionChanged && selectedVersion) body.template_slo_version = selectedVersion
+                      if (varsChanged) body.gen_variables = editVars
+                      updateMutation.mutate(
+                        { name: group.name, body },
+                        {
+                          onSuccess: () => {
+                            setShowRegenerate(false)
+                            setSelectedVersion(null)
+                            setEditVars(null)
+                          },
+                        },
+                      )
+                    }}
+                  >
+                    <RefreshCw className={`size-3 ${updateMutation.isPending ? 'animate-spin' : ''}`} />
+                    {updateMutation.isPending ? 'Regenerating…' : 'Regenerate'}
+                  </Button>
+                  <Button
+                    size="xs"
+                    variant="ghost"
+                    onClick={() => { setShowRegenerate(false); setSelectedVersion(null); setEditVars(null) }}
+                  >
+                    Cancel
+                  </Button>
+                </div>
+
+                {updateMutation.isError && (
+                  <p className="text-xs text-red-400">
+                    {updateMutation.error instanceof Error ? updateMutation.error.message : 'Regeneration failed'}
+                  </p>
+                )}
+              </div>
+            )
+          })()}
 
           {showDelete && (
             <div className="mt-3">

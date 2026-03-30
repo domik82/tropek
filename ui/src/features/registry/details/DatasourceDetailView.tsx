@@ -37,60 +37,58 @@ export function DatasourceDetailView({ name, onNavigate, onEdit }: DatasourceDet
   }
 
   return (
-    <div className="flex flex-col h-full overflow-auto" style={{ fontFamily: SANS_SERIF }}>
+    <div className="overflow-auto h-full" style={{ fontFamily: SANS_SERIF }}>
       {/* Accent strip */}
       <div className="h-[3px]" style={{ backgroundColor: ENTITY_COLORS.ds }} />
 
-      {/* Header */}
-      <div className="p-4 border-b border-border">
-        <div className="flex items-start justify-between gap-2">
-          <div className="min-w-0">
-            <h2 className="text-base font-semibold text-foreground truncate">
-              {ds.display_name ?? ds.name}
-            </h2>
-            <p className="text-xs font-mono text-muted-foreground mt-0.5">{ds.name}</p>
+      <div className="p-6 space-y-6">
+        {/* Header */}
+        <div>
+          <div className="flex items-start justify-between gap-2">
+            <div className="min-w-0">
+              <h2 className="text-xl font-semibold text-foreground truncate">
+                {ds.display_name ?? ds.name}
+              </h2>
+              <p className="text-xs font-mono text-muted-foreground mt-0.5">{ds.name}</p>
+            </div>
+            <span
+              className="shrink-0 px-2 py-0.5 text-xs rounded-full border border-border bg-muted/40 text-muted-foreground"
+            >
+              {ds.adapter_type}
+            </span>
           </div>
-          <span
-            className="shrink-0 px-2 py-0.5 text-xs rounded-full border border-border bg-muted/40 text-muted-foreground"
-          >
-            {ds.adapter_type}
-          </span>
-        </div>
 
-        {/* Actions */}
-        <div className="flex gap-2 mt-3">
-          <Button size="xs" variant="outline" onClick={onEdit}>
-            <Pencil className="size-3" />
-            Edit
-          </Button>
-          <Button
-            size="xs"
-            variant="outline"
-            className="text-red-400 border-red-700/40 hover:bg-red-950/20"
-            onClick={() => setShowDeleteConfirm(true)}
-          >
-            <Trash2 className="size-3" />
-            Delete
-          </Button>
-        </div>
-
-        {showDeleteConfirm && (
-          <div className="mt-3">
-            <DeletionConfirmForm
-              title={`Delete datasource "${ds.name}"?`}
-              onConfirm={handleDelete}
-              onCancel={() => setShowDeleteConfirm(false)}
-              confirmLabel="Delete"
-              pendingLabel="Deleting…"
-              isPending={deleteMutation.isPending}
-              requireReason={false}
-            />
+          {/* Actions */}
+          <div className="flex gap-2 mt-3">
+            <Button size="sm" variant="outline" onClick={onEdit}>
+              <Pencil className="size-3.5" />
+              Edit
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              className="text-red-400 border-red-700/40 hover:bg-red-950/20"
+              onClick={() => setShowDeleteConfirm(true)}
+            >
+              <Trash2 className="size-3.5" />
+              Delete
+            </Button>
           </div>
-        )}
-      </div>
 
-      {/* Fields */}
-      <div className="p-4 space-y-4">
+          {showDeleteConfirm && (
+            <div className="mt-3">
+              <DeletionConfirmForm
+                title={`Delete datasource "${ds.name}"?`}
+                onConfirm={handleDelete}
+                onCancel={() => setShowDeleteConfirm(false)}
+                confirmLabel="Delete"
+                pendingLabel="Deleting…"
+                isPending={deleteMutation.isPending}
+                requireReason={false}
+              />
+            </div>
+          )}
+        </div>
         {/* Adapter URL */}
         <div>
           <p className="text-xs text-muted-foreground mb-1">Adapter URL</p>

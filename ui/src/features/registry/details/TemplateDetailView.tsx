@@ -57,11 +57,14 @@ export function TemplateDetailView({ name, onNavigate, onNewVersion }: Props) {
               >
                 template
               </span>
-              <Button size="xs" variant="outline" onClick={() => onNewVersion(slo)}>
-                <GitBranch className="size-3" />
-                New Version
-              </Button>
             </div>
+          </div>
+
+          <div className="flex gap-2 mt-3">
+            <Button size="sm" variant="outline" onClick={() => onNewVersion(slo)}>
+              <GitBranch className="size-3.5" />
+              New Version
+            </Button>
           </div>
         </div>
 

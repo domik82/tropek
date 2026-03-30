@@ -92,17 +92,17 @@ export function SloDetailView({ name, onNavigate, onNewVersion }: SloDetailViewP
 
         {/* Actions */}
         <div className="flex gap-2 mt-3">
-          <Button size="xs" variant="outline" onClick={() => onNewVersion(slo)}>
-            <GitBranch className="size-3" />
+          <Button size="sm" variant="outline" onClick={() => onNewVersion(slo)}>
+            <GitBranch className="size-3.5" />
             New Version
           </Button>
           <Button
-            size="xs"
+            size="sm"
             variant="outline"
             className="text-red-400 border-red-700/40 hover:bg-red-950/20"
             onClick={() => setShowDeleteConfirm(true)}
           >
-            <Trash2 className="size-3" />
+            <Trash2 className="size-3.5" />
             Deactivate
           </Button>
         </div>
