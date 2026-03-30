@@ -51,9 +51,12 @@ export function AssetHeatmap({ data, selectedEvalId, onEvalSelect, onSlotSelect,
 
   function onCellClick(cell: HeatmapCell): void {
     if (onSlotSelect) {
-      // Collect all eval IDs for this time slot (column)
-      const slotCells = cells.filter(c => c.slot === cell.slot && c.evalId)
-      const evalIds = [...new Set(slotCells.map(c => c.evalId!))]
+      // Collect all eval IDs in the same column (same slot + evaluation_name).
+      // Filter by column index, not slot string, because multiple columns can
+      // share the same timestamp when evaluation_names differ.
+      const colIdx = cell.value[0]
+      const colCells = cells.filter(c => c.value[0] === colIdx && c.evalId)
+      const evalIds = [...new Set(colCells.map(c => c.evalId!))]
       if (evalIds.length > 0) {
         onSlotSelect({ periodStart: cell.slot, evalIds })
       }
