@@ -309,11 +309,19 @@ spec:
   sli_name: process-cpu-agg
   kind: template
   objectives:
-    - sli: process_cpu
-      pass_criteria:
-        - "<25"
+    - sli: process-cpu-agg.mean
+      display_name: "CPU Mean %"
+      pass_criteria: ["<10"]
       weight: 1
-      key_sli: false
+    - sli: process-cpu-agg.p99
+      display_name: "CPU P99 %"
+      pass_criteria: ["<25"]
+      weight: 2
+      key_sli: true
+    - sli: process-cpu-agg.max
+      display_name: "CPU Max %"
+      pass_criteria: ["<40"]
+      weight: 1
   method_criteria:
     mean:
       pass_criteria:
@@ -327,5 +335,5 @@ spec:
       pass_criteria:
         - "<40"
   total_score:
-    pass: 90
-    warning: 75
+    pass_pct: 90.0
+    warning_pct: 75.0
