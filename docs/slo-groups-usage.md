@@ -11,6 +11,125 @@ SLO groups generate multiple SLO definitions from a single **template SLO** by e
 | **Generated SLO** | A normal `kind: standard` SLO created by the group. Behaves identically to a hand-written SLO — it has bindings, triggers evaluations, and stores results. The only difference: it's read-only (changes come from the group). |
 | **Template Binding** | Links an SLO group to an asset or asset group with a datasource. When created, it fans out into real `slo_bindings` for each generated SLO — so evaluations work without any special handling. |
 
+## Loading via manifest files (recommended)
+
+The preferred way to provision SLO groups is through YAML manifest files loaded by the Python client. This is how `dev-start.sh` bootstraps the dev environment, and how `bootstrap_tropek` (or any other seed dataset) should do it.
+
+### Where manifest files live
+
+```
+bootstrap_mock/manifests/          ← mock/dev seed data
+    sli-definitions.yaml
+    slo-definitions.yaml           ← template SLOs go here, mixed with standard SLOs
+    slo-groups.yaml                ← SLOGroup manifests
+    template-bindings.yaml         ← TemplateBinding manifests
+    ...
+
+bootstrap_tropek/manifests/        ← production-style seed data (same structure)
+    sli-definitions.yaml
+    slo-definitions.yaml
+    slo-groups.yaml
+    template-bindings.yaml
+    ...
+```
+
+Each file holds one or more YAML documents separated by `---`. Kind can be anything — `load_manifests` reads all files and routes each document by its `kind` field.
+
+### Apply order
+
+The client applies manifests in dependency order automatically:
+
+```
+SLI → SLO (template) → SLOGroup → TemplateBinding
+```
+
+So you can put all kinds in any file — ordering within files does not matter.
+
+### How dev-start.sh loads them
+
+```
+scripts/dev-start.sh
+  → scripts/bootstrap.py <api_url>
+    → load_manifests("bootstrap_mock/manifests/")   # reads all *.yaml files
+    → apply(client, docs)                           # posts each doc to the API
+```
+
+To run bootstrap manually against a live API:
+
+```bash
+uv run --directory clients/python python ../../scripts/bootstrap.py http://localhost:9080
+```
+
+### Full manifest example (41 processes × 1 category)
+
+**`slo-definitions.yaml`** — add the template SLO alongside standard SLOs:
+
+```yaml
+---
+api_version: tropek/v1
+kind: SLO
+metadata:
+  name: "process/$__gen_process_name/cpu"
+spec:
+  kind: template
+  sli_name: process-metrics-sli
+  sli_version: 1
+  display_name: "CPU — $__gen_process_name"
+  variables:
+    process_name: "$__gen_process_name"
+    AGGREGATION_WINDOW: "5m"
+  total_score:
+    pass_pct: 90.0
+    warning_pct: 75.0
+  objectives:
+    - sli: cpu_usage_pct
+      pass_criteria: ["<80"]
+      warning_criteria: ["<90"]
+      weight: 1
+      key_sli: true
+```
+
+**`slo-groups.yaml`** — one group expands to N SLOs:
+
+```yaml
+---
+api_version: tropek/v1
+kind: SLOGroup
+metadata:
+  name: all-processes-cpu
+spec:
+  display_name: All Processes — CPU
+  template_slo_name: "process/$__gen_process_name/cpu"
+  template_slo_version: 1
+  gen_variables:
+    process_name:
+      - auth
+      - cache
+      - db
+      # ... 41 total
+  tags:
+    category: cpu
+```
+
+**`template-bindings.yaml`** — bind the group to an asset group:
+
+```yaml
+---
+api_version: tropek/v1
+kind: TemplateBinding
+metadata:
+  name: all-processes-cpu-binding
+spec:
+  target_type: asset_group
+  target_name: production-hosts
+  template_group_name: all-processes-cpu
+  data_source_name: prometheus-local
+```
+
+This produces 41 generated SLOs and 41 `slo_bindings` from three YAML documents — no manual duplication.
+
+---
+
 ## Quick Start
 
 ### 1. Create a template SLO

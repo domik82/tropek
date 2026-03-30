@@ -23,3 +23,11 @@ export interface SloGroupCreate {
   tags?: Record<string, string>
   author?: string
 }
+
+export interface SloGroupUpdate {
+  template_slo_version?: number
+  template_slo_name?: string
+  gen_variables?: Record<string, string[]>
+  display_name?: string
+  tags?: Record<string, string>
+}

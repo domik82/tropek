@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, fireEvent } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import type { ReactNode } from 'react'
 import { SloGroupDetailView } from './SloGroupDetailView'
@@ -24,6 +24,11 @@ vi.mock('@/features/slo-groups/hooks', () => ({
     isLoading: false,
   }),
   useDeleteSloGroup: () => ({ mutate: vi.fn(), isPending: false }),
+  useUpdateSloGroup: () => ({ mutate: vi.fn(), isPending: false, isError: false }),
+}))
+
+vi.mock('@/features/slos/hooks', () => ({
+  useSloVersions: () => ({ data: [] }),
 }))
 
 function wrapper({ children }: { children: ReactNode }) {
@@ -49,5 +54,32 @@ describe('SloGroupDetailView', () => {
   it('shows generated SLO count', () => {
     render(<SloGroupDetailView name="app-x-plugins" onNavigate={vi.fn()} />, { wrapper })
     expect(screen.getByText('3 SLOs generated')).toBeInTheDocument()
+  })
+
+  it('shows new version button', () => {
+    render(<SloGroupDetailView name="app-x-plugins" onNavigate={vi.fn()} />, { wrapper })
+    expect(screen.getByText('New Version')).toBeInTheDocument()
+  })
+
+  it('opens regenerate panel with editable variables on click', () => {
+    render(<SloGroupDetailView name="app-x-plugins" onNavigate={vi.fn()} />, { wrapper })
+    fireEvent.click(screen.getByText('New Version'))
+    // Should show editable inputs pre-filled with current values
+    const inputs = screen.getAllByRole('textbox')
+    expect(inputs).toHaveLength(3)
+    expect(inputs[0]).toHaveValue('auth')
+    expect(inputs[1]).toHaveValue('cache')
+    expect(inputs[2]).toHaveValue('db')
+    // Should show Add row link
+    expect(screen.getByText('Add row')).toBeInTheDocument()
+  })
+
+  it('adds a row when Add row is clicked', () => {
+    render(<SloGroupDetailView name="app-x-plugins" onNavigate={vi.fn()} />, { wrapper })
+    fireEvent.click(screen.getByText('New Version'))
+    fireEvent.click(screen.getByText('Add row'))
+    const inputs = screen.getAllByRole('textbox')
+    expect(inputs).toHaveLength(4)
+    expect(inputs[3]).toHaveValue('')
   })
 })
