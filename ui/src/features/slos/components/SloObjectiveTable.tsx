@@ -1,4 +1,5 @@
 // src/features/slos/components/SloObjectiveTable.tsx
+import { DataTable, DataTableHeader, dataTableRowClass } from '@/components/ui/data-table'
 import type { SloDefinition } from '../types'
 
 interface Props {
@@ -12,44 +13,42 @@ export function SloObjectiveTable({ slo }: Props) {
 
   return (
     <div>
-      <div className="overflow-hidden rounded-lg border border-border">
-        <table className="w-full text-sm text-left">
-          <thead className="text-xs uppercase text-muted-foreground bg-table-header-bg border-b border-border">
-            <tr>
-              <th className="px-2 py-2 text-center w-6 text-indicator-key-sli" title="Key SLI">◆</th>
-              <th className="px-3 py-2">Indicator</th>
-              <th className="px-3 py-2 text-center">Pass</th>
-              <th className="px-3 py-2 text-center">Warning</th>
-              <th className="px-3 py-2 text-center w-16">Weight</th>
+      <DataTable>
+        <DataTableHeader>
+          <tr>
+            <th className="px-2 py-2 text-center w-6 text-indicator-key-sli" title="Key SLI">◆</th>
+            <th className="px-3 py-2">Indicator</th>
+            <th className="px-3 py-2 text-center">Pass</th>
+            <th className="px-3 py-2 text-center">Warning</th>
+            <th className="px-3 py-2 text-center w-16">Weight</th>
+          </tr>
+        </DataTableHeader>
+        <tbody className="divide-y divide-border">
+          {slo.objectives.map((obj, idx) => (
+            <tr key={obj.sli} className={dataTableRowClass(idx)}>
+              <td className="px-2 py-2 text-center">
+                {obj.key_sli
+                  ? <span className="text-indicator-key-sli text-xs" title="Key SLI">◆</span>
+                  : <span className="text-muted-foreground/40">—</span>
+                }
+              </td>
+              <td className="px-3 py-2">
+                <div className="font-mono text-xs text-pass">{obj.sli}</div>
+                {obj.display_name && obj.display_name !== obj.sli && (
+                  <div className="text-xs text-muted-foreground">{obj.display_name}</div>
+                )}
+              </td>
+              <td className="px-3 py-2 text-center text-xs text-pass">
+                {obj.pass_criteria.join(', ') || '—'}
+              </td>
+              <td className="px-3 py-2 text-center text-xs text-warning">
+                {obj.warning_criteria.join(', ') || '—'}
+              </td>
+              <td className="px-3 py-2 text-center text-muted-foreground">{obj.weight}</td>
             </tr>
-          </thead>
-          <tbody className="divide-y divide-border">
-            {slo.objectives.map((obj, idx) => (
-              <tr key={obj.sli} className={`hover:bg-table-row-hover transition-colors ${idx % 2 === 0 ? 'bg-table-row-bg' : 'bg-table-row-alt'}`}>
-                <td className="px-2 py-2 text-center">
-                  {obj.key_sli
-                    ? <span className="text-indicator-key-sli text-xs" title="Key SLI">◆</span>
-                    : <span className="text-muted-foreground/40">—</span>
-                  }
-                </td>
-                <td className="px-3 py-2">
-                  <div className="font-mono text-xs text-pass">{obj.sli}</div>
-                  {obj.display_name && obj.display_name !== obj.sli && (
-                    <div className="text-xs text-muted-foreground">{obj.display_name}</div>
-                  )}
-                </td>
-                <td className="px-3 py-2 text-center text-xs text-pass">
-                  {obj.pass_criteria.join(', ') || '—'}
-                </td>
-                <td className="px-3 py-2 text-center text-xs text-warning">
-                  {obj.warning_criteria.join(', ') || '—'}
-                </td>
-                <td className="px-3 py-2 text-center text-muted-foreground">{obj.weight}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+          ))}
+        </tbody>
+      </DataTable>
 
       <div className="mt-3 flex flex-wrap gap-6 text-sm text-muted-foreground">
         <span>Total pass: <strong className="text-pass">{slo.total_score_pass_pct}%</strong></span>
