@@ -21,7 +21,7 @@ class HttpAdapterClient:
         *,
         adapter_url: str,
         datasource_name: str,
-        queries: dict[str, dict],
+        queries: dict[str, dict[str, Any]],
         variables: dict[str, str],
         start: str,
         end: str,

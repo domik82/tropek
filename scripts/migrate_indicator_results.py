@@ -39,14 +39,12 @@ async def _resolve_objectives(
         version = (await session.execute(version_q)).scalar_one_or_none()
         if version is None:
             # Last resort: current latest version
-            version_q = select(func.max(SLODefinition.version)).where(
-                SLODefinition.name == slo_name
-            )
+            version_q = select(func.max(SLODefinition.version)).where(SLODefinition.name == slo_name)
             version = (await session.execute(version_q)).scalar_one_or_none()
             if version is None:
                 return {}
             logger.warning(
-                "No SLO version found at eval time for %s, using latest v%d",
+                'No SLO version found at eval time for %s, using latest v%d',
                 slo_name,
                 version,
             )
@@ -97,7 +95,7 @@ async def migrate(session: AsyncSession) -> tuple[int, int]:
 
         if not obj_lookup:
             logger.warning(
-                "No objectives found for eval %s (slo=%s, v=%s)",
+                'No objectives found for eval %s (slo=%s, v=%s)',
                 ev.id,
                 ev.slo_name,
                 ev.slo_version,
@@ -106,21 +104,21 @@ async def migrate(session: AsyncSession) -> tuple[int, int]:
             continue
 
         for ir in ev.indicator_results:
-            metric = ir.get("metric", "")
+            metric = ir.get('metric', '')
             obj_id = obj_lookup.get(metric)
             if obj_id is None:
-                logger.warning("No objective match for metric %r in eval %s", metric, ev.id)
+                logger.warning('No objective match for metric %r in eval %s', metric, ev.id)
                 continue
             session.add(
                 IndicatorResultRow(
                     evaluation_id=ev.id,
                     slo_objective_id=obj_id,
-                    value=ir.get("value"),
-                    compared_value=ir.get("compared_value"),
-                    change_absolute=ir.get("change_absolute"),
-                    change_relative_pct=ir.get("change_relative_pct"),
-                    status=ir.get("status", "error"),
-                    score=ir.get("score", 0.0),
+                    value=ir.get('value'),
+                    compared_value=ir.get('compared_value'),
+                    change_absolute=ir.get('change_absolute'),
+                    change_relative_pct=ir.get('change_relative_pct'),
+                    status=ir.get('status', 'error'),
+                    score=ir.get('score', 0.0),
                 )
             )
         migrated += 1
@@ -128,7 +126,7 @@ async def migrate(session: AsyncSession) -> tuple[int, int]:
         # Flush in batches of 100
         if migrated % 100 == 0:
             await session.flush()
-            logger.info("Migrated %d evaluations...", migrated)
+            logger.info('Migrated %d evaluations...', migrated)
 
     await session.flush()
     return migrated, skipped
@@ -143,10 +141,10 @@ async def main() -> None:
 
     async with async_session() as session, session.begin():
         migrated, skipped = await migrate(session)
-        logger.info("Migration complete: %d migrated, %d skipped", migrated, skipped)
+        logger.info('Migration complete: %d migrated, %d skipped', migrated, skipped)
 
     await engine.dispose()
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     asyncio.run(main())

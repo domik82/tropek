@@ -7,7 +7,10 @@ from unittest.mock import AsyncMock
 
 import pytest
 from app.modules.quality_gate.exceptions import AssetNotFoundError, SLONotConfiguredError
-from app.modules.quality_gate.trigger import resolve_single_trigger
+from app.modules.quality_gate.trigger import (
+    resolve_all_bindings_for_asset,
+    resolve_single_trigger,
+)
 
 
 @pytest.fixture
@@ -158,3 +161,81 @@ async def test_resolve_no_link_no_binding_raises(mock_repos: dict) -> None:
             binding_repo=binding_repo,
             **mock_repos,
         )
+
+
+async def test_resolve_direct_and_template_bindings() -> None:
+    """Asset with both direct and template-sourced bindings resolves all SLO names."""
+    asset_id = uuid.uuid4()
+
+    def _binding(slo_name: str, ds: str, target_type: str, source: str) -> object:
+        return type(
+            'B',
+            (),
+            {
+                'slo_name': slo_name,
+                'data_source_name': ds,
+                'target_type': target_type,
+                'source': source,
+            },
+        )()
+
+    binding_repo = AsyncMock()
+    binding_repo.list_for_asset_evaluation.return_value = [
+        _binding('direct-slo', 'prom-1', 'asset', 'direct'),
+        _binding('gen-slo-a', 'prom-2', 'asset', 'template'),
+        _binding('gen-slo-b', 'prom-2', 'asset', 'template'),
+    ]
+
+    result = await resolve_all_bindings_for_asset(
+        asset_id=asset_id,
+        group_ids=[],
+        binding_repo=binding_repo,
+    )
+
+    slo_names = [r.slo_name for r in result]
+    assert 'direct-slo' in slo_names
+    assert 'gen-slo-a' in slo_names
+    assert 'gen-slo-b' in slo_names
+    assert len(result) == 3
+
+    direct = next(r for r in result if r.slo_name == 'direct-slo')
+    assert direct.source == 'direct_asset'
+    assert direct.data_source_name == 'prom-1'
+
+    gen_a = next(r for r in result if r.slo_name == 'gen-slo-a')
+    assert gen_a.source == 'template_asset'
+    assert gen_a.data_source_name == 'prom-2'
+
+
+async def test_resolve_direct_wins_over_template() -> None:
+    """When both direct and template bindings exist for the same SLO name, direct wins."""
+    asset_id = uuid.uuid4()
+
+    def _binding(slo_name: str, ds: str, target_type: str, source: str) -> object:
+        return type(
+            'B',
+            (),
+            {
+                'slo_name': slo_name,
+                'data_source_name': ds,
+                'target_type': target_type,
+                'source': source,
+            },
+        )()
+
+    binding_repo = AsyncMock()
+    binding_repo.list_for_asset_evaluation.return_value = [
+        _binding('shared-slo', 'prom-direct', 'asset', 'direct'),
+        _binding('shared-slo', 'prom-template', 'asset', 'template'),
+    ]
+
+    result = await resolve_all_bindings_for_asset(
+        asset_id=asset_id,
+        group_ids=[],
+        binding_repo=binding_repo,
+    )
+
+    assert len(result) == 1
+    assert result[0].slo_name == 'shared-slo'
+    assert result[0].source == 'direct_asset'
+    assert result[0].data_source_name == 'prom-direct'

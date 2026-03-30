@@ -34,13 +34,15 @@ def strategy() -> AggregatedQueryStrategy:
 async def test_aggregated_basic_mean_and_max(strategy: AggregatedQueryStrategy) -> None:
     """Short eval window (< chunk_size) -> single query_range call."""
     respx.get('http://prom:9090/api/v1/query_range').mock(
-        return_value=_matrix_response([
-            [1705312800, '1.0'],
-            [1705312860, '2.0'],
-            [1705312920, '3.0'],
-            [1705312980, '4.0'],
-            [1705313040, '5.0'],
-        ])
+        return_value=_matrix_response(
+            [
+                [1705312800, '1.0'],
+                [1705312860, '2.0'],
+                [1705312920, '3.0'],
+                [1705312980, '4.0'],
+                [1705313040, '5.0'],
+            ]
+        )
     )
     values, errors, metadata = await strategy.execute(
         sli_name='cpu',
@@ -68,9 +70,7 @@ async def test_aggregated_interval_substitution(
     strategy: AggregatedQueryStrategy,
 ) -> None:
     """$interval in query_template is replaced with the spec's interval value."""
-    route = respx.get('http://prom:9090/api/v1/query_range').mock(
-        return_value=_matrix_response([[1705312800, '1.0']])
-    )
+    route = respx.get('http://prom:9090/api/v1/query_range').mock(return_value=_matrix_response([[1705312800, '1.0']]))
     await strategy.execute(
         sli_name='cpu',
         query_spec={
@@ -93,9 +93,7 @@ async def test_aggregated_step_matches_interval(
     strategy: AggregatedQueryStrategy,
 ) -> None:
     """query_range step parameter must equal the spec's interval."""
-    route = respx.get('http://prom:9090/api/v1/query_range').mock(
-        return_value=_matrix_response([[1705312800, '1.0']])
-    )
+    route = respx.get('http://prom:9090/api/v1/query_range').mock(return_value=_matrix_response([[1705312800, '1.0']]))
     await strategy.execute(
         sli_name='cpu',
         query_spec={
@@ -118,9 +116,7 @@ async def test_aggregated_variable_substitution(
     strategy: AggregatedQueryStrategy,
 ) -> None:
     """User variables are substituted alongside $interval."""
-    route = respx.get('http://prom:9090/api/v1/query_range').mock(
-        return_value=_matrix_response([[1705312800, '1.0']])
-    )
+    route = respx.get('http://prom:9090/api/v1/query_range').mock(return_value=_matrix_response([[1705312800, '1.0']]))
     await strategy.execute(
         sli_name='cpu',
         query_spec={
@@ -195,11 +191,13 @@ async def test_aggregated_metadata_sample_counts(
 ) -> None:
     """Metadata includes expected and actual sample counts."""
     respx.get('http://prom:9090/api/v1/query_range').mock(
-        return_value=_matrix_response([
-            [1705312800, '1.0'],
-            [1705312860, '2.0'],
-            [1705312920, '3.0'],
-        ])
+        return_value=_matrix_response(
+            [
+                [1705312800, '1.0'],
+                [1705312860, '2.0'],
+                [1705312920, '3.0'],
+            ]
+        )
     )
     _values, _errors, metadata = await strategy.execute(
         sli_name='cpu',
@@ -225,9 +223,7 @@ async def test_aggregated_metadata_sample_counts(
 async def test_aggregated_prometheus_error_captured(
     strategy: AggregatedQueryStrategy,
 ) -> None:
-    respx.get('http://prom:9090/api/v1/query_range').mock(
-        return_value=Response(500, text='internal server error')
-    )
+    respx.get('http://prom:9090/api/v1/query_range').mock(return_value=Response(500, text='internal server error'))
     values, errors, _metadata = await strategy.execute(
         sli_name='cpu',
         query_spec={
@@ -252,10 +248,12 @@ async def test_aggregated_chunking_8h_window() -> None:
     strat = AggregatedQueryStrategy(client, chunk_size='4h', parallel_chunks=3)
 
     route = respx.get('http://prom:9090/api/v1/query_range').mock(
-        return_value=_matrix_response([
-            [1705312800, '1.0'],
-            [1705312860, '2.0'],
-        ])
+        return_value=_matrix_response(
+            [
+                [1705312800, '1.0'],
+                [1705312860, '2.0'],
+            ]
+        )
     )
 
     values, _errors, metadata = await strat.execute(
@@ -319,9 +317,7 @@ async def test_aggregated_all_chunks_fail() -> None:
     client = PrometheusClient(base_url='http://prom:9090', timeout=5.0)
     strat = AggregatedQueryStrategy(client, chunk_size='4h', parallel_chunks=3)
 
-    respx.get('http://prom:9090/api/v1/query_range').mock(
-        return_value=Response(500, text='error')
-    )
+    respx.get('http://prom:9090/api/v1/query_range').mock(return_value=Response(500, text='error'))
 
     values, errors, metadata = await strat.execute(
         sli_name='cpu',
@@ -349,9 +345,7 @@ async def test_aggregated_short_window_no_chunking() -> None:
     client = PrometheusClient(base_url='http://prom:9090', timeout=5.0)
     strat = AggregatedQueryStrategy(client, chunk_size='4h', parallel_chunks=3)
 
-    route = respx.get('http://prom:9090/api/v1/query_range').mock(
-        return_value=_matrix_response([[1705312800, '5.0']])
-    )
+    route = respx.get('http://prom:9090/api/v1/query_range').mock(return_value=_matrix_response([[1705312800, '5.0']]))
 
     await strat.execute(
         sli_name='cpu',
