@@ -319,6 +319,35 @@ def test_build_detail_from_orm_rows() -> None:
     assert detail.top_failures[0].metric == 'error_rate'
 
 
+def test_build_detail_sli_metadata_from_job_stats() -> None:
+    """sli_metadata from job_stats appears in the detail response."""
+    ev = _make_evaluation(
+        job_stats={
+            'sli_metadata': {
+                'cpu': {
+                    'mode': 'aggregated',
+                    'expected_samples': 100,
+                    'actual_samples': 95,
+                    'missing_pct': 5.0,
+                    'chunks_failed': 0,
+                },
+            },
+        },
+    )
+    detail = build_detail(ev)
+    assert detail.sli_metadata is not None
+    assert detail.sli_metadata['cpu']['expected_samples'] == 100
+    assert detail.sli_metadata['cpu']['mode'] == 'aggregated'
+    assert detail.sli_metadata['cpu']['missing_pct'] == 5.0
+
+
+def test_build_detail_sli_metadata_none_when_absent() -> None:
+    """sli_metadata is None when job_stats has no sli_metadata key."""
+    ev = _make_evaluation()
+    detail = build_detail(ev)
+    assert detail.sli_metadata is None
+
+
 def test_build_summary_from_orm_rows() -> None:
     """build_summary works with ORM indicator rows (new path)."""
     row_fail = _make_indicator_row(

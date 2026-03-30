@@ -105,5 +105,6 @@ def build_detail(ev: Any) -> EvaluationDetail:
             'indicator_results': indicators,
             'total_score_pass_pct': job_stats_detail.get('total_score_pass_pct'),
             'total_score_warning_pct': job_stats_detail.get('total_score_warning_pct'),
+            'sli_metadata': job_stats_detail.get('sli_metadata'),
         }
     )

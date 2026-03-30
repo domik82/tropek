@@ -130,6 +130,7 @@ class EvaluationDetail(EvaluationSummary):
     indicator_results: list[IndicatorResult]
     total_score_pass_pct: float | None = None
     total_score_warning_pct: float | None = None
+    sli_metadata: dict[str, Any] | None = None
 
     @model_validator(mode='after')
     def sync_annotation_count(self) -> EvaluationDetail:
