@@ -80,6 +80,14 @@ export interface IndicatorResult {
   warning_targets: PassTarget[] | null
 }
 
+export interface SliMetadata {
+  mode: 'aggregated'
+  expected_samples: number
+  actual_samples: number
+  missing_pct: number
+  chunks_failed: number
+}
+
 export interface EvaluationDetail extends EvaluationSummary {
   invalidation_note: string | null
   evaluation_metadata: Record<string, string>
@@ -88,6 +96,7 @@ export interface EvaluationDetail extends EvaluationSummary {
   indicator_results: IndicatorResult[]
   total_score_pass_pct: number | null
   total_score_warning_pct: number | null
+  sli_metadata?: Record<string, SliMetadata>
 }
 
 export interface TrendPoint {
