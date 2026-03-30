@@ -6,8 +6,9 @@ import { SLIBreakdownTable } from '@/features/evaluations/components/SLIBreakdow
 import { EvaluationTabs, tabLabel } from '@/features/evaluations/components/EvaluationTabs'
 import { ViewToggle } from '@/components/charts/ViewToggle'
 import type { ViewMode } from '@/components/charts/ViewToggle'
+import type { TimeSlotSelection } from './AssetHeatmap'
 import type { MetricHeatmapResponse } from '../types'
-import type { EvaluationDetail, IndicatorResult } from '@/features/evaluations/types'
+import type { EvaluationDetail, IndicatorResult, SliMetadata } from '@/features/evaluations/types'
 
 interface Props {
   assetName: string
@@ -16,6 +17,8 @@ interface Props {
   effectiveEvalId: string | undefined
   notedSlots: Map<string, { evalId: string; count: number }>
   onEvalSelect: (evalId: string) => void
+  onSlotSelect?: (slot: TimeSlotSelection) => void
+  sliMetadata?: Record<string, SliMetadata>
   mode: ViewMode
   setMode: (m: ViewMode) => void
   explorerButton: React.ReactNode
@@ -29,8 +32,9 @@ interface Props {
 
 export function AssetPanelHeatmapView({
   assetName, heatmapData, ev, effectiveEvalId, notedSlots,
-  onEvalSelect, mode, setMode, explorerButton,
+  onEvalSelect, onSlotSelect, mode, setMode, explorerButton,
   availableGroups, counts, activeTab, setActiveTab, tabIndicators,
+  sliMetadata,
 }: Props) {
   const sliTableRef = useRef<HTMLDivElement>(null)
 
@@ -54,6 +58,7 @@ export function AssetPanelHeatmapView({
             data={heatmapData}
             selectedEvalId={effectiveEvalId}
             onEvalSelect={onEvalSelect}
+            onSlotSelect={onSlotSelect}
             notedSlots={notedSlots}
           />
         </div>
@@ -74,6 +79,7 @@ export function AssetPanelHeatmapView({
           />
           <SLIBreakdownTable
             indicators={tabIndicators}
+            sliMetadata={sliMetadata}
             onIndicatorClick={(metric, tabGroup) => {
               if (activeTab !== 'all') setActiveTab(tabGroup)
               // Trend blocks are dynamic list items — use id-based scroll

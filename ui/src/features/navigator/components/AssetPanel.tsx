@@ -1,15 +1,19 @@
 // ui/src/features/navigator/components/AssetPanel.tsx
 import { useState, useMemo, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useQueries } from '@tanstack/react-query'
 import { useAssetEvaluations, useMetricHeatmap, useEvaluationNames } from '../hooks'
 import { useEvaluationDetail } from '@/features/evaluations/hooks'
+import { fetchEvaluationDetail } from '@/features/evaluations/api'
+import { evaluationKeys } from '@/lib/queryKeys'
 import { useAssets } from '@/features/assets/hooks'
 import { useSlos } from '@/features/slos/hooks'
 import { useTabState } from '@/features/evaluations/hooks/useTabState'
 import { EvaluationHeader } from '@/features/evaluations/components/EvaluationHeader'
 import { AnnotationSection, type AnnotationSectionHandle } from '@/features/evaluations/components/AnnotationForm'
 import { EvaluationActionsButton, EvaluationActionForm, NoteIconButton } from '@/features/evaluations/components/EvaluationActions'
-import type { ActionKind } from '@/features/evaluations/types'
+import type { ActionKind, EvaluationDetail, SliMetadata, IndicatorResult } from '@/features/evaluations/types'
+import type { TimeSlotSelection } from './AssetHeatmap'
 import type { ViewMode } from '@/components/charts/ViewToggle'
 import { EvaluationNameFilter } from './EvaluationNameFilter'
 import { AssetPanelHeatmapView } from './AssetPanelHeatmapView'
@@ -25,12 +29,14 @@ interface Props {
 export function AssetPanel({ assetName, initialEvalId }: Props) {
   const [mode, setMode] = useState<ViewMode>('heatmap')
   const [selectedEvalId, setSelectedEvalId] = useState<string | undefined>(initialEvalId)
+  const [selectedSlot, setSelectedSlot] = useState<TimeSlotSelection | undefined>(undefined)
   const [activeAction, setActiveAction] = useState<ActionKind | null>(null)
   const [selectedNames, setSelectedNames] = useState<string[] | undefined>(undefined)
 
   // Reset local state when the asset changes (defense in depth alongside key= on parent)
   useEffect(() => {
     setSelectedEvalId(undefined)
+    setSelectedSlot(undefined)
     setActiveAction(null)
     setSelectedNames(undefined)
   }, [assetName])
@@ -90,6 +96,46 @@ export function AssetPanel({ assetName, initialEvalId }: Props) {
   const effectiveEvalId = selectedEvalId ?? defaultEvalId
   const { data: ev } = useEvaluationDetail(effectiveEvalId)
 
+  // Multi-eval fetching for time slot selection (shows all SLOs together)
+  const slotEvalQueries = useQueries({
+    queries: (selectedSlot?.evalIds ?? []).map(id => ({
+      queryKey: evaluationKeys.detail(id),
+      queryFn: () => fetchEvaluationDetail(id),
+      enabled: !!id,
+    })),
+  })
+  const allSlotEvals = useMemo(
+    () => slotEvalQueries.filter(q => q.data != null).map(q => q.data!),
+    [slotEvalQueries],
+  )
+
+  // Merge indicators from all evals in selected slot
+  const mergedIndicators = useMemo((): IndicatorResult[] => {
+    if (allSlotEvals.length > 1) {
+      return allSlotEvals.flatMap(e => e.indicator_results)
+    }
+    return ev?.indicator_results ?? []
+  }, [allSlotEvals, ev])
+
+  const mergedSliMetadata = useMemo((): Record<string, SliMetadata> | undefined => {
+    if (allSlotEvals.length > 1) {
+      const meta: Record<string, SliMetadata> = {}
+      for (const e of allSlotEvals) {
+        if (e.sli_metadata) Object.assign(meta, e.sli_metadata)
+      }
+      return Object.keys(meta).length > 0 ? meta : undefined
+    }
+    return ev?.sli_metadata
+  }, [allSlotEvals, ev])
+
+  function handleSlotSelect(slot: TimeSlotSelection) {
+    setSelectedSlot(slot)
+    // Also set first eval as the selected one (for header display, actions, etc.)
+    if (slot.evalIds.length > 0) {
+      setSelectedEvalId(slot.evalIds[0])
+    }
+  }
+
   // Close any open action form when the user selects a different evaluation
   const prevEvalId = useRef(effectiveEvalId)
   useEffect(() => {
@@ -100,7 +146,7 @@ export function AssetPanel({ assetName, initialEvalId }: Props) {
   }, [effectiveEvalId])
 
   const { availableGroups, counts, activeTab, setActiveTab, tabIndicators } =
-    useTabState(ev?.indicator_results)
+    useTabState(mergedIndicators.length > 0 ? mergedIndicators : ev?.indicator_results)
 
   const isLoading = evalsLoading || heatmapLoading
 
@@ -151,7 +197,11 @@ export function AssetPanel({ assetName, initialEvalId }: Props) {
               </span>
             </div>
             <div className="mt-1 text-xs text-muted-foreground">
-              SLO: {(ev.slo_name && sloDisplayNames.get(ev.slo_name)) ?? ev.slo_name ?? '—'}{ev.slo_version != null && ` v${ev.slo_version}`}
+              {allSlotEvals.length > 1 ? (
+                <>SLOs: {allSlotEvals.map(e => (e.slo_name && sloDisplayNames.get(e.slo_name)) ?? e.slo_name ?? '—').join(', ')}</>
+              ) : (
+                <>SLO: {(ev.slo_name && sloDisplayNames.get(ev.slo_name)) ?? ev.slo_name ?? '—'}{ev.slo_version != null && ` v${ev.slo_version}`}</>
+              )}
               {ev.adapter_used && ` · adapter: ${ev.adapter_used}`}
               {ev.asset_snapshot.build_ref && ` · build: ${ev.asset_snapshot.build_ref}`}
             </div>
@@ -215,6 +265,8 @@ export function AssetPanel({ assetName, initialEvalId }: Props) {
           effectiveEvalId={effectiveEvalId}
           notedSlots={notedSlots}
           onEvalSelect={setSelectedEvalId}
+          onSlotSelect={handleSlotSelect}
+          sliMetadata={mergedSliMetadata}
           mode={mode}
           setMode={setMode}
           explorerButton={explorerButton}
