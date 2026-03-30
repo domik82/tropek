@@ -14,7 +14,11 @@ from app.modules.common.exceptions import NotFoundError
 from app.modules.common.schemas import PagedResponse
 from app.modules.quality_gate.dependencies import QualityGateRepos, get_qg_repos
 from app.modules.quality_gate.presenter import build_detail, build_summary
-from app.modules.quality_gate.re_evaluation_schemas import ReEvaluateRequest, ReEvaluateResponse
+from app.modules.quality_gate.re_evaluation_schemas import (
+    BaselinePinConflictError,
+    ReEvaluateRequest,
+    ReEvaluateResponse,
+)
 from app.modules.quality_gate.re_evaluator import re_evaluate
 from app.modules.quality_gate.schemas import (
     AnnotationCreate,
@@ -221,6 +225,15 @@ async def re_evaluate_evaluations(
     """Re-evaluate completed evaluations from stored SLI values."""
     try:
         return await re_evaluate(body, session)
+    except BaselinePinConflictError as e:
+        raise HTTPException(
+            status_code=409,
+            detail={
+                'detail': str(e),
+                'pin_date': e.pin_date.isoformat(),
+                'pin_evaluation_id': str(e.pin_evaluation_id),
+            },
+        ) from e
     except ValueError as e:
         raise HTTPException(status_code=422, detail=str(e)) from e
 
