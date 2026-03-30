@@ -42,4 +42,5 @@ def get_session_factory() -> async_sessionmaker[AsyncSession]:
 
 async def get_session(request: Request) -> AsyncSession:
     """Return the per-request session created by SessionMiddleware."""
-    return request.state.session
+    session: AsyncSession = request.state.session
+    return session
