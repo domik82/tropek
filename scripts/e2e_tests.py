@@ -247,6 +247,7 @@ def test_reeval_dry_run(client: TropekClient) -> None:
         'http-availability-slo',
         from_date='2026-03-15T00:00:00Z',
         dry_run=True,
+        pin_strategy='ignore_pin',
     )
     print(f'dry run: {result["affected_evaluations"]} evals would be affected (SLO v{result["slo_version_used"]})')
     assert result['affected_evaluations'] >= 0
