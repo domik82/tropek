@@ -230,6 +230,7 @@ def test_reeval_from_date(client: TropekClient) -> None:
         'checkout-api',
         'http-availability-slo',
         from_date='2026-03-15T16:00:00Z',
+        pin_strategy='ignore_pin',
     )
     print(f're-evaluated {result["affected_evaluations"]} evals (SLO v{result["slo_version_used"]})')
     assert result['affected_evaluations'] >= 1, 'expected at least 1 re-evaluated eval'
