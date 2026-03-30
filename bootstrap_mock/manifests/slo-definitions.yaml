@@ -361,3 +361,41 @@ spec:
       weight: 1
   tags:
     category: plugin-health
+---
+# Combined example: SLO Groups ($__gen_ expansion) + Aggregated-mode SLI.
+# The generator clones this template per process_name, and each generated SLO
+# evaluates mean/p99/max via the aggregated adapter — both engines compose.
+api_version: tropek/v1
+kind: SLO
+metadata:
+  name: "cpu-agg/$__gen_process_name"
+  display_name: "CPU Aggregated — $__gen_process_name"
+  author: bootstrap
+  notes: >-
+    Template combining $__gen_ variable expansion with aggregated-mode SLI.
+    The group creates one SLO per process; each SLO evaluates mean, p99, and max.
+spec:
+  kind: template
+  sli_name: process-cpu-agg
+  variables:
+    process_name: "$__gen_process_name"
+    host: "localhost"
+  objectives:
+    - sli: process-cpu-agg.mean
+      display_name: "CPU Mean %"
+      pass_threshold: ["<10"]
+      weight: 1
+    - sli: process-cpu-agg.p99
+      display_name: "CPU P99 %"
+      pass_threshold: ["<25"]
+      weight: 2
+      key_sli: true
+    - sli: process-cpu-agg.max
+      display_name: "CPU Max %"
+      pass_threshold: ["<40"]
+      weight: 1
+  total_score:
+    pass_threshold: 90.0
+    warning_threshold: 75.0
+  tags:
+    category: cpu-aggregated
