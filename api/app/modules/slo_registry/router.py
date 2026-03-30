@@ -61,7 +61,10 @@ async def create_slo_definition(
                 status_code=422,
                 detail=f"sli definition '{body.sli_name}' version {body.sli_version} not found",
             )
-        indicator_keys = set(sli_def.indicators.keys())
+        if sli_def.mode == 'aggregated' and sli_def.methods:
+            indicator_keys = {f'{body.sli_name}.{m}' for m in sli_def.methods}
+        else:
+            indicator_keys = set(sli_def.indicators.keys())
         for obj in body.objectives:
             if obj.sli not in indicator_keys:
                 raise HTTPException(
