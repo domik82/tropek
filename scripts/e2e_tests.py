@@ -341,7 +341,7 @@ def test_label_autocomplete(client: TropekClient) -> None:
 
 def test_aggregated_evaluation(client: TropekClient) -> None:
     """Trigger an aggregated-mode evaluation and verify method-keyed results."""
-    step('Step 22: Aggregated-mode evaluation')
+    step("Step 21: Aggregated-mode evaluation")
     result = client.evaluations.trigger(
         'checkout-api',
         'agg-test',
@@ -369,7 +369,7 @@ def test_aggregated_evaluation(client: TropekClient) -> None:
 
 def test_asset_type_delete_with_assets(client: TropekClient) -> None:
     """Verify that deleting a type with assets raises 409 Conflict."""
-    step("Step 21: Delete type with assets (expect 409)")
+    step("Step 22: Delete type with assets (expect 409)")
     got_error = False
     try:
         client.asset_types.delete("service")
