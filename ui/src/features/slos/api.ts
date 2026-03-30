@@ -53,6 +53,7 @@ export async function createSloDefinition(payload: {
   kind?: string
   sli_name?: string
   sli_version?: number
+  method_criteria?: Record<string, import('./types').MethodCriteriaOverride>
 }): Promise<SloDefinition> {
   const res = await fetch(`${BASE}/slo-definitions`, {
     method: 'POST',

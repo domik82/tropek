@@ -1,7 +1,9 @@
 import { Plus, Minus } from 'lucide-react'
 import { StructuredCriteriaInput } from '@/components/shared/StructuredCriteriaInput'
+import { MethodCriteriaTable } from './MethodCriteriaTable'
 import { DEFAULT_CRITERIA } from './criteriaUtils'
 import type { CriteriaParts } from './criteriaUtils'
+import type { MethodCriteriaOverride } from '@/features/slos/types'
 
 export interface IndicatorRow {
   sli: string
@@ -15,9 +17,38 @@ export interface IndicatorRow {
 interface WizardStepIndicatorsProps {
   rows: IndicatorRow[]
   onChange: (rows: IndicatorRow[]) => void
+  aggregatedMode?: boolean
+  aggregatedMethods?: string[]
+  methodCriteria?: Record<string, MethodCriteriaOverride>
+  onMethodCriteriaChange?: (criteria: Record<string, MethodCriteriaOverride>) => void
+  blueprintPassCriteria?: string[]
+  blueprintWeight?: number
 }
 
-export function WizardStepIndicators({ rows, onChange }: WizardStepIndicatorsProps) {
+export function WizardStepIndicators({ rows, onChange, aggregatedMode, aggregatedMethods, methodCriteria, onMethodCriteriaChange, blueprintPassCriteria, blueprintWeight }: WizardStepIndicatorsProps) {
+  if (aggregatedMode && aggregatedMethods && aggregatedMethods.length > 0) {
+    return (
+      <div className="space-y-3">
+        <div>
+          <div className="flex items-center gap-2 mb-3">
+            <span className="inline-flex items-center justify-center size-5 rounded-full bg-primary/15 text-primary text-[10px] font-bold">3</span>
+            <h3 className="text-sm font-semibold text-foreground">Method Criteria</h3>
+          </div>
+          <p className="text-xs text-muted-foreground mt-1">
+            The linked SLI uses aggregated mode. Set criteria per method — inherited values shown in <span className="italic">italic</span>.
+          </p>
+        </div>
+        <MethodCriteriaTable
+          methods={aggregatedMethods}
+          criteria={methodCriteria ?? {}}
+          blueprintPassCriteria={blueprintPassCriteria ?? ['<100']}
+          blueprintWeight={blueprintWeight ?? 1}
+          onChange={onMethodCriteriaChange ?? (() => {})}
+        />
+      </div>
+    )
+  }
+
   function updateRow(index: number, patch: Partial<IndicatorRow>) {
     onChange(rows.map((row, i) => (i === index ? { ...row, ...patch } : row)))
   }

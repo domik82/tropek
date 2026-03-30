@@ -12,7 +12,7 @@ import type { IdentityData } from './WizardStepIdentity'
 import type { PickSliData } from './WizardStepPickSli'
 import type { IndicatorRow } from './WizardStepIndicators'
 import type { ComparisonData } from './WizardStepComparison'
-import type { SloDefinition } from '@/features/slos/types'
+import type { SloDefinition, MethodCriteriaOverride } from '@/features/slos/types'
 
 interface SloWizardProps {
   editSlo?: SloDefinition
@@ -74,6 +74,10 @@ export function SloWizard({ editSlo, onClose }: SloWizardProps) {
     editSlo ? buildIndicatorRowsFromEdit(editSlo) : [],
   )
 
+  const [methodCriteria, setMethodCriteria] = useState<Record<string, MethodCriteriaOverride>>(
+    editSlo?.method_criteria ?? {},
+  )
+
   const [comparison, setComparison] = useState<ComparisonData>(
     editSlo
       ? buildComparisonFromEdit(editSlo)
@@ -94,7 +98,9 @@ export function SloWizard({ editSlo, onClose }: SloWizardProps) {
 
   // In edit mode, fetch the full SLI definition to show ALL indicators
   // (not just the subset used by the current SLO objectives)
-  const { data: fullSli } = useSliDetail(editSlo?.sli_name ?? '')
+  const { data: fullSli } = useSliDetail(pickSli.sliName || editSlo?.sli_name || '')
+  const isAggregatedSli = fullSli?.mode === 'aggregated'
+  const aggregatedMethods = fullSli?.methods ?? []
   const sliMergedRef = useRef(false)
   useEffect(() => {
     if (sliMergedRef.current || !fullSli || !isEdit) return
@@ -129,9 +135,11 @@ export function SloWizard({ editSlo, onClose }: SloWizardProps) {
   const showStep3 = isEdit
     ? indicatorRows.length > 0
     : Object.keys(pickSli.indicators).length > 0
-  const showStep4 = indicatorRows.some(
-    (r) => r.checked && r.passCriteria.some((c) => c.value !== 0),
-  )
+  const showStep4 = isAggregatedSli
+    ? Object.keys(methodCriteria).length >= 0  // always show comparison for aggregated
+    : indicatorRows.some(
+        (r) => r.checked && r.passCriteria.some((c) => c.value !== 0),
+      )
 
   // When SLI selection changes, rebuild indicator rows
   function handlePickSliChange(data: PickSliData) {
@@ -181,6 +189,8 @@ export function SloWizard({ editSlo, onClose }: SloWizardProps) {
       if (v.key.trim()) variables[v.key.trim()] = v.value
     }
 
+    const mc = Object.keys(methodCriteria).length > 0 ? methodCriteria : undefined
+
     createMutation.mutate(
       {
         name: identity.name,
@@ -190,6 +200,7 @@ export function SloWizard({ editSlo, onClose }: SloWizardProps) {
         sli_name: pickSli.sliName || undefined,
         sli_version: pickSli.sliVersion ?? undefined,
         objectives,
+        method_criteria: mc,
         total_score_pass_pct: comparison.pass_pct,
         total_score_warning_pct: comparison.warn_pct,
         comparison: {
@@ -242,7 +253,20 @@ export function SloWizard({ editSlo, onClose }: SloWizardProps) {
 
       {showStep3 && (
         <section className="border border-border rounded-lg p-5">
-          <WizardStepIndicators rows={indicatorRows} onChange={setIndicatorRows} />
+          <WizardStepIndicators
+            rows={indicatorRows}
+            onChange={setIndicatorRows}
+            aggregatedMode={isAggregatedSli}
+            aggregatedMethods={aggregatedMethods}
+            methodCriteria={methodCriteria}
+            onMethodCriteriaChange={setMethodCriteria}
+            blueprintPassCriteria={
+              indicatorRows.find(r => r.checked)?.passCriteria.map(c =>
+                `${c.operator}${c.value}${c.suffix}`,
+              ) ?? ['<100']
+            }
+            blueprintWeight={indicatorRows.find(r => r.checked)?.weight ?? 1}
+          />
         </section>
       )}
 
