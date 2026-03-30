@@ -6,7 +6,7 @@ import { ActionFormShell } from './ActionFormShell'
 const ACTION_DEF = {
   label: 'Restore',
   description: 'Un-invalidate this evaluation — bring it back into scoring and baselines.',
-  accentColor: '#22C55E',
+  accentColor: 'var(--status-pass)',
   accentBorder: 'border-green-500/25',
   accentText: 'text-green-400',
   confirmClasses: 'bg-green-600 hover:bg-green-500',

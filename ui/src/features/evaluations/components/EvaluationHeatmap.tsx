@@ -119,17 +119,17 @@ export function EvaluationHeatmap({ evaluations, selectedDate, onDateSelect, onA
       if (cell.result === 'none') {
         return `${cell.rowLabel}<br/>${fmtDateTime(cell.slot)}<br/><em>no data</em>`
       }
-      const rc = colours[cell.result as keyof ResultColours] ?? '#ccc'
+      const rc = colours[cell.result as keyof ResultColours] ?? 'var(--heatmap-text)'
       const evalName = cell.evaluation_name ?? evalNameMap.get(`${cell.rowLabel}::${cell.slot}`)
       const lines = [
         `<b>${cell.rowLabel}</b>`,
-        evalName ? `<span style="color:#94a3b8">${evalName}</span>` : '',
+        evalName ? `<span style="color:var(--heatmap-text)">${evalName}</span>` : '',
         fmtDateTime(cell.slot),
         `Score: <b style="color:${rc}">${cell.score}%</b> · <b style="color:${rc}">${cell.result.toUpperCase()}</b>`,
       ].filter(Boolean)
       if (cell.hasNote && cell.noteContent) {
         const escaped = cell.noteContent.replace(/</g, '&lt;').replace(/>/g, '&gt;')
-        lines.push(`<em style="color:#fbbf24">Note: ${escaped}</em>`)
+        lines.push(`<em style="color:var(--indicator-note)">Note: ${escaped}</em>`)
       }
       return lines.join('<br/>')
     },

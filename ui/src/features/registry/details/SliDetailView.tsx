@@ -9,7 +9,7 @@ import { SANS_SERIF } from '@/lib/fonts'
 import type { SliDefinition } from '@/features/slis/types'
 import type { SelectedNode } from '@/features/registry/types'
 
-const VARIABLE_COLOR = '#FFA657'
+const VARIABLE_COLOR = 'var(--chip-var-key)'
 
 interface SliDetailViewProps {
   name: string

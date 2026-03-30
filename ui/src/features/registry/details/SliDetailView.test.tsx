@@ -149,8 +149,8 @@ describe('SliDetailView', () => {
       <SliDetailView name="http-error-rate" onNavigate={vi.fn()} onNewVersion={vi.fn()} />,
       { wrapper: Wrapper }
     )
-    // The $service variable should be highlighted in orange
-    const highlighted = document.querySelectorAll('span[style*="#FFA657"]')
+    // The $service variable should be highlighted with the chip-var-key color
+    const highlighted = document.querySelectorAll('span[style*="--chip-var-key"]')
     expect(highlighted.length).toBeGreaterThan(0)
     const texts = Array.from(highlighted).map(el => el.textContent)
     expect(texts).toContain('$service')

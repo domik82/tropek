@@ -116,7 +116,7 @@ export function HeatmapChart({
           hoverColor: brighten(colour, 1.4),
           itemStyle: {
             color: colour,
-            borderColor: isSelected ? '#ffffff' : 'transparent',
+            borderColor: isSelected ? ct.selectionRing : 'transparent',
             borderWidth: isSelected ? 2 : 0,
           },
         }
@@ -193,7 +193,7 @@ export function HeatmapChart({
                 emphasis: {
                   style: {
                     fill: cellData?.hoverColor,
-                    stroke: '#ffffff',
+                    stroke: ct.selectionRing,
                     lineWidth: 2,
                   },
                 },

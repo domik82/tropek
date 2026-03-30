@@ -207,7 +207,7 @@ export function AssetTree({
             {/* "All" item */}
             <TreeNode
               icon={getEntityIcon('all')}
-              iconColor={selectedGroup === null ? 'var(--primary)' : '#8b949e'}
+              iconColor={selectedGroup === null ? 'var(--primary)' : 'var(--entity-group)'}
               label="All"
               depth={0}
               isExpandable={false}
@@ -250,7 +250,7 @@ export function AssetTree({
             {/* Ungrouped */}
             <TreeNode
               icon={getEntityIcon('group')}
-              iconColor="#8b949e80"
+              iconColor="var(--entity-group)"
               label="Ungrouped"
               depth={0}
               isExpandable={false}
