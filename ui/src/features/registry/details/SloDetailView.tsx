@@ -146,7 +146,7 @@ export function SloDetailView({ name, onNavigate, onNewVersion }: SloDetailViewP
                     <tr key={method} className="border-b border-border/40">
                       <td className="py-1.5 pr-3 font-mono text-foreground">{method}</td>
                       <td className="py-1.5 pr-3 font-mono text-muted-foreground">
-                        {override.pass_criteria?.join(', ') ?? '—'}
+                        {override.pass_threshold?.join(', ') ?? '—'}
                       </td>
                       <td className="py-1.5 pr-3 text-muted-foreground">
                         {override.weight ?? '—'}

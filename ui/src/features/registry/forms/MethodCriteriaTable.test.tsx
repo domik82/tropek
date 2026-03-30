@@ -42,7 +42,7 @@ describe('MethodCriteriaTable', () => {
 
   it('shows override values without muted style', () => {
     const criteria: Record<string, MethodCriteriaOverride> = {
-      p99: { pass_criteria: ['<25'], weight: 2 },
+      p99: { pass_threshold: ['<25'], weight: 2 },
     }
     render(
       <MethodCriteriaTable
@@ -72,7 +72,7 @@ describe('MethodCriteriaTable', () => {
     fireEvent.change(passInputs[1], { target: { value: '<25' } })
     expect(onChange).toHaveBeenCalledWith(
       expect.objectContaining({
-        p99: expect.objectContaining({ pass_criteria: ['<25'] }),
+        p99: expect.objectContaining({ pass_threshold: ['<25'] }),
       }),
     )
   })
@@ -119,7 +119,7 @@ describe('MethodCriteriaTable', () => {
 
   it('removes override when value is reset to blueprint default', () => {
     const criteria: Record<string, MethodCriteriaOverride> = {
-      p99: { pass_criteria: ['<25'], weight: 2 },
+      p99: { pass_threshold: ['<25'], weight: 2 },
     }
     const onChange = vi.fn()
     render(
@@ -134,7 +134,7 @@ describe('MethodCriteriaTable', () => {
     const p99Input = screen.getByDisplayValue('<25')
     fireEvent.change(p99Input, { target: { value: '<10' } })
     const call = onChange.mock.calls[0][0]
-    expect(call.p99.pass_criteria).toBeUndefined()
+    expect(call.p99.pass_threshold).toBeUndefined()
     expect(call.p99.weight).toBe(2)
   })
 })

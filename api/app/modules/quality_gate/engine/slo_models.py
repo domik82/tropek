@@ -20,8 +20,8 @@ class SLOObjective(BaseModel):
 
     sli: str
     display_name: str = ''
-    pass_criteria: list[str] = Field(default_factory=list)
-    warning_criteria: list[str] = Field(default_factory=list)
+    pass_threshold: list[str] = Field(default_factory=list)
+    warning_threshold: list[str] = Field(default_factory=list)
     weight: int = 1
     key_sli: bool = False
 
@@ -39,8 +39,8 @@ class SLOComparison(BaseModel):
 class SLOTotalScore(BaseModel):
     """Pass and warning percentage thresholds for the overall weighted score."""
 
-    pass_pct: float = 90.0
-    warning_pct: float = 75.0
+    pass_threshold: float = 90.0
+    warning_threshold: float = 75.0
 
 
 class SLO(BaseModel):

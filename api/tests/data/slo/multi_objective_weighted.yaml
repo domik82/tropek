@@ -2,13 +2,13 @@
 objectives:
   - sli: m1
     display_name: "Response Time"
-    pass_criteria: ["<100"]
-    warning_criteria: ["<200"]
+    pass_threshold: ["<100"]
+    warning_threshold: ["<200"]
     weight: 2
     key_sli: false
   - sli: m2
     display_name: "Error Count (key)"
-    pass_criteria: ["<50"]
+    pass_threshold: ["<50"]
     weight: 1
     key_sli: true
   - sli: m3

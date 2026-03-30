@@ -392,7 +392,7 @@ class FakeTemplate:
         }
     )
     objectives: list[dict[str, Any]] = field(
-        default_factory=lambda: [{"sli": "cpu", "pass_criteria": ["<80"]}]
+        default_factory=lambda: [{"sli": "cpu", "pass_threshold": ["<80"]}]
     )
     total_score_pass_pct: float = 90.0
     total_score_warning_pct: float = 75.0
@@ -468,7 +468,7 @@ def test_generate_warns_no_gen_placeholders() -> None:
 def test_generate_objectives_not_substituted() -> None:
     """Objectives are copied as-is — $__gen_ in objectives is NOT substituted."""
     tpl = FakeTemplate(
-        objectives=[{"sli": "$__gen_x", "pass_criteria": ["<80"]}]
+        objectives=[{"sli": "$__gen_x", "pass_threshold": ["<80"]}]
     )
     gen_vars = {"x": ["replaced"]}
     result = generate_slo_specs(tpl, gen_vars, group_name="g")
@@ -1498,12 +1498,12 @@ spec:
     AGGREGATION_WINDOW: "5m"
   objectives:
     - sli: cpu_usage
-      pass_criteria: ["<80"]
-      warning_criteria: ["<90"]
+      pass_threshold: ["<80"]
+      warning_threshold: ["<90"]
       weight: 1
       key_sli: true
     - sli: memory_usage
-      pass_criteria: ["<1073741824"]
+      pass_threshold: ["<1073741824"]
       weight: 1
   tags:
     category: plugin-health

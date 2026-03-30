@@ -1577,8 +1577,8 @@ async def run_evaluation(
         {
             "sli": obj.sli,
             "display_name": obj.display_name,
-            "pass_criteria": obj.pass_criteria,
-            "warning_criteria": obj.warning_criteria,
+            "pass_threshold": obj.pass_threshold,
+            "warning_threshold": obj.warning_threshold,
             "weight": obj.weight,
             "key_sli": obj.key_sli,
         }

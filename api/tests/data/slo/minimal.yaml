@@ -1,6 +1,6 @@
 objectives:
   - sli: response_time_p99
-    pass_criteria: ["<600"]
+    pass_threshold: ["<600"]
     weight: 1
 total_score:
   pass_pct: 90.0

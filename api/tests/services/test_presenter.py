@@ -95,7 +95,7 @@ def test_build_summary_with_failures() -> None:
             value=800.0,
             status='fail',
             score=0.0,
-            pass_criteria=['<600'],
+            pass_threshold=['<600'],
         ),
         _make_indicator_row(
             sli='cpu_usage',
@@ -103,7 +103,7 @@ def test_build_summary_with_failures() -> None:
             value=45.0,
             status='pass',
             score=1.0,
-            pass_criteria=['<80'],
+            pass_threshold=['<80'],
         ),
     ]
     ev = _make_evaluation(result='fail', score=50.0, indicator_rows=rows)
@@ -185,7 +185,7 @@ def test_build_detail_empty_indicator_results() -> None:
 
 
 def test_build_summary_no_pass_targets_in_failure() -> None:
-    """Failing indicator without pass_criteria -> threshold defaults to empty string."""
+    """Failing indicator without pass_threshold -> threshold defaults to empty string."""
     rows = [
         _make_indicator_row(
             sli='cpu',
@@ -198,8 +198,8 @@ def test_build_summary_no_pass_targets_in_failure() -> None:
             score=0.0,
             weight=1,
             key_sli=False,
-            pass_criteria=[],
-            warning_criteria=[],
+            pass_threshold=[],
+            warning_threshold=[],
         ),
     ]
     ev = _make_evaluation(indicator_rows=rows)
@@ -274,8 +274,8 @@ def _make_indicator_row(  # noqa: PLR0913
     score: float = 1.0,
     weight: int = 1,
     key_sli: bool = False,
-    pass_criteria: list[str] | None = None,
-    warning_criteria: list[str] | None = None,
+    pass_threshold: list[str] | None = None,
+    warning_threshold: list[str] | None = None,
 ) -> SimpleNamespace:
     """Build a fake ORM IndicatorResultRow with joined objective."""
     objective = SimpleNamespace(
@@ -284,8 +284,8 @@ def _make_indicator_row(  # noqa: PLR0913
         tab_group=tab_group,
         weight=weight,
         key_sli=key_sli,
-        pass_criteria=['<600'] if pass_criteria is None else pass_criteria,
-        warning_criteria=[] if warning_criteria is None else warning_criteria,
+        pass_threshold=['<600'] if pass_threshold is None else pass_threshold,
+        warning_threshold=[] if warning_threshold is None else warning_threshold,
     )
     return SimpleNamespace(
         value=value,
@@ -308,7 +308,7 @@ def test_build_detail_from_orm_rows() -> None:
         value=5.2,
         score=0.0,
         weight=2,
-        pass_criteria=['<2'],
+        pass_threshold=['<2'],
     )
     ev = _make_evaluation(indicator_rows=[row_pass, row_fail])
     detail = build_detail(ev)
@@ -356,7 +356,7 @@ def test_build_summary_from_orm_rows() -> None:
         status='fail',
         value=5.2,
         score=0.0,
-        pass_criteria=['<2'],
+        pass_threshold=['<2'],
     )
     ev = _make_evaluation(indicator_rows=[row_fail])
     summary = build_summary(ev, annotation_count=0, latest_ann=None)

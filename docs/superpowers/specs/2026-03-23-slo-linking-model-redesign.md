@@ -49,7 +49,7 @@ SLODefinition
   kind: "standard" | "template"        # NEW — default "standard"
   sli_name: str                        # NEW — explicit SLI reference
   sli_version: int                     # NEW — pinned version
-  objectives: [{sli: "cpu_usage", pass_criteria: [...], ...}]
+  objectives: [{sli: "cpu_usage", pass_threshold: [...], ...}]
   total_score_pass_pct, total_score_warning_pct
   comparison: {...}
   variables: {key: value}
@@ -82,8 +82,8 @@ SLODefinition (kind: "template")
     "AGGREGATION_WINDOW": "5m"
   }
   objectives: [
-    {sli: "cpu_usage", pass_criteria: ["<80"], weight: 1, key_sli: true},
-    {sli: "memory_usage", pass_criteria: ["<1073741824"], weight: 1}
+    {sli: "cpu_usage", pass_threshold: ["<80"], weight: 1, key_sli: true},
+    {sli: "memory_usage", pass_threshold: ["<1073741824"], weight: 1}
   ]
 ```
 

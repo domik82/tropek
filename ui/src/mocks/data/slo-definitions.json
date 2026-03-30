@@ -21,13 +21,13 @@
         "aggregate_function": "avg"
       },
       "objectives": [
-        { "sli": "compilation_errors", "display_name": "Compilation Errors", "pass_criteria": ["=0"], "warning_criteria": [], "weight": 3, "key_sli": true, "sort_order": 0 },
-        { "sli": "compilation_duration_s", "display_name": "Compilation Duration", "pass_criteria": ["<=+10%"], "warning_criteria": ["<=+20%"], "weight": 2, "key_sli": false, "sort_order": 1 },
-        { "sli": "error_rate", "display_name": "Error Rate", "pass_criteria": ["<1.0"], "warning_criteria": ["<2.0"], "weight": 3, "key_sli": true, "sort_order": 2 },
-        { "sli": "cpu_usage_avg", "display_name": "CPU Usage Avg", "pass_criteria": ["<80"], "warning_criteria": ["<90"], "weight": 2, "key_sli": false, "sort_order": 3 },
-        { "sli": "memory_peak_mb", "display_name": "Peak Memory", "pass_criteria": ["<2048"], "warning_criteria": [], "weight": 2, "key_sli": false, "sort_order": 4 },
-        { "sli": "link_errors", "display_name": "Link Errors", "pass_criteria": ["=0"], "warning_criteria": [], "weight": 3, "key_sli": true, "sort_order": 5 },
-        { "sli": "test_failures", "display_name": "Test Failures", "pass_criteria": ["=0"], "warning_criteria": [], "weight": 3, "key_sli": true, "sort_order": 6 }
+        { "sli": "compilation_errors", "display_name": "Compilation Errors", "pass_threshold": ["=0"], "warning_threshold": [], "weight": 3, "key_sli": true, "sort_order": 0 },
+        { "sli": "compilation_duration_s", "display_name": "Compilation Duration", "pass_threshold": ["<=+10%"], "warning_threshold": ["<=+20%"], "weight": 2, "key_sli": false, "sort_order": 1 },
+        { "sli": "error_rate", "display_name": "Error Rate", "pass_threshold": ["<1.0"], "warning_threshold": ["<2.0"], "weight": 3, "key_sli": true, "sort_order": 2 },
+        { "sli": "cpu_usage_avg", "display_name": "CPU Usage Avg", "pass_threshold": ["<80"], "warning_threshold": ["<90"], "weight": 2, "key_sli": false, "sort_order": 3 },
+        { "sli": "memory_peak_mb", "display_name": "Peak Memory", "pass_threshold": ["<2048"], "warning_threshold": [], "weight": 2, "key_sli": false, "sort_order": 4 },
+        { "sli": "link_errors", "display_name": "Link Errors", "pass_threshold": ["=0"], "warning_threshold": [], "weight": 3, "key_sli": true, "sort_order": 5 },
+        { "sli": "test_failures", "display_name": "Test Failures", "pass_threshold": ["=0"], "warning_threshold": [], "weight": 3, "key_sli": true, "sort_order": 6 }
       ]
     },
     {
@@ -51,11 +51,11 @@
         "aggregate_function": "avg"
       },
       "objectives": [
-        { "sli": "compilation_errors", "display_name": "Compilation Errors", "pass_criteria": ["=0"], "warning_criteria": [], "weight": 3, "key_sli": true, "sort_order": 0 },
-        { "sli": "compilation_duration_s", "display_name": "Compilation Duration", "pass_criteria": ["<=+10%"], "warning_criteria": ["<=+20%"], "weight": 2, "key_sli": false, "sort_order": 1 },
-        { "sli": "swap_usage_mb", "display_name": "Swap Usage", "pass_criteria": ["<256"], "warning_criteria": [], "weight": 1, "key_sli": false, "sort_order": 2 },
-        { "sli": "disk_io_write_mbps", "display_name": "Disk Write", "pass_criteria": ["<100"], "warning_criteria": [], "weight": 1, "key_sli": false, "sort_order": 3 },
-        { "sli": "link_errors", "display_name": "Link Errors", "pass_criteria": ["=0"], "warning_criteria": [], "weight": 3, "key_sli": true, "sort_order": 4 }
+        { "sli": "compilation_errors", "display_name": "Compilation Errors", "pass_threshold": ["=0"], "warning_threshold": [], "weight": 3, "key_sli": true, "sort_order": 0 },
+        { "sli": "compilation_duration_s", "display_name": "Compilation Duration", "pass_threshold": ["<=+10%"], "warning_threshold": ["<=+20%"], "weight": 2, "key_sli": false, "sort_order": 1 },
+        { "sli": "swap_usage_mb", "display_name": "Swap Usage", "pass_threshold": ["<256"], "warning_threshold": [], "weight": 1, "key_sli": false, "sort_order": 2 },
+        { "sli": "disk_io_write_mbps", "display_name": "Disk Write", "pass_threshold": ["<100"], "warning_threshold": [], "weight": 1, "key_sli": false, "sort_order": 3 },
+        { "sli": "link_errors", "display_name": "Link Errors", "pass_threshold": ["=0"], "warning_threshold": [], "weight": 3, "key_sli": true, "sort_order": 4 }
       ]
     },
     {
@@ -79,10 +79,10 @@
         "aggregate_function": "avg"
       },
       "objectives": [
-        { "sli": "compilation_errors", "display_name": "Compilation Errors", "pass_criteria": ["=0"], "warning_criteria": [], "weight": 3, "key_sli": true, "sort_order": 0 },
-        { "sli": "compilation_duration_s", "display_name": "Compilation Duration", "pass_criteria": ["<=+15%"], "warning_criteria": ["<=+25%"], "weight": 2, "key_sli": false, "sort_order": 1 },
-        { "sli": "cpu_usage_avg", "display_name": "CPU Usage Avg", "pass_criteria": ["<85"], "warning_criteria": ["<95"], "weight": 2, "key_sli": false, "sort_order": 2 },
-        { "sli": "link_errors", "display_name": "Link Errors", "pass_criteria": ["=0"], "warning_criteria": [], "weight": 3, "key_sli": true, "sort_order": 3 }
+        { "sli": "compilation_errors", "display_name": "Compilation Errors", "pass_threshold": ["=0"], "warning_threshold": [], "weight": 3, "key_sli": true, "sort_order": 0 },
+        { "sli": "compilation_duration_s", "display_name": "Compilation Duration", "pass_threshold": ["<=+15%"], "warning_threshold": ["<=+25%"], "weight": 2, "key_sli": false, "sort_order": 1 },
+        { "sli": "cpu_usage_avg", "display_name": "CPU Usage Avg", "pass_threshold": ["<85"], "warning_threshold": ["<95"], "weight": 2, "key_sli": false, "sort_order": 2 },
+        { "sli": "link_errors", "display_name": "Link Errors", "pass_threshold": ["=0"], "warning_threshold": [], "weight": 3, "key_sli": true, "sort_order": 3 }
       ]
     },
     {
@@ -106,12 +106,12 @@
         "aggregate_function": "avg"
       },
       "objectives": [
-        { "sli": "response_time_p95", "display_name": "Response Time P95", "pass_criteria": ["<550"], "warning_criteria": ["<700"], "weight": 2, "key_sli": true, "sort_order": 0 },
-        { "sli": "response_time_p99", "display_name": "Response Time P99", "pass_criteria": ["<=+10%"], "warning_criteria": ["<900"], "weight": 2, "key_sli": true, "sort_order": 1 },
-        { "sli": "throughput_rps", "display_name": "Throughput", "pass_criteria": [">1200"], "warning_criteria": [">1000"], "weight": 2, "key_sli": false, "sort_order": 2 },
-        { "sli": "error_rate", "display_name": "Error Rate", "pass_criteria": ["<1.0"], "warning_criteria": ["<2.0"], "weight": 3, "key_sli": true, "sort_order": 3 },
-        { "sli": "packet_loss_pct", "display_name": "Packet Loss", "pass_criteria": ["<0.1"], "warning_criteria": ["<0.5"], "weight": 2, "key_sli": true, "sort_order": 4 },
-        { "sli": "connection_errors", "display_name": "Connection Errors", "pass_criteria": ["=0"], "warning_criteria": [], "weight": 2, "key_sli": true, "sort_order": 5 }
+        { "sli": "response_time_p95", "display_name": "Response Time P95", "pass_threshold": ["<550"], "warning_threshold": ["<700"], "weight": 2, "key_sli": true, "sort_order": 0 },
+        { "sli": "response_time_p99", "display_name": "Response Time P99", "pass_threshold": ["<=+10%"], "warning_threshold": ["<900"], "weight": 2, "key_sli": true, "sort_order": 1 },
+        { "sli": "throughput_rps", "display_name": "Throughput", "pass_threshold": [">1200"], "warning_threshold": [">1000"], "weight": 2, "key_sli": false, "sort_order": 2 },
+        { "sli": "error_rate", "display_name": "Error Rate", "pass_threshold": ["<1.0"], "warning_threshold": ["<2.0"], "weight": 3, "key_sli": true, "sort_order": 3 },
+        { "sli": "packet_loss_pct", "display_name": "Packet Loss", "pass_threshold": ["<0.1"], "warning_threshold": ["<0.5"], "weight": 2, "key_sli": true, "sort_order": 4 },
+        { "sli": "connection_errors", "display_name": "Connection Errors", "pass_threshold": ["=0"], "warning_threshold": [], "weight": 2, "key_sli": true, "sort_order": 5 }
       ]
     },
     {
@@ -135,11 +135,11 @@
         "aggregate_function": "avg"
       },
       "objectives": [
-        { "sli": "response_time_p95", "display_name": "Response Time P95", "pass_criteria": ["<600"], "warning_criteria": ["<750"], "weight": 2, "key_sli": true, "sort_order": 0 },
-        { "sli": "response_time_p99", "display_name": "Response Time P99", "pass_criteria": ["<=+10%"], "warning_criteria": ["<950"], "weight": 2, "key_sli": true, "sort_order": 1 },
-        { "sli": "throughput_rps", "display_name": "Throughput", "pass_criteria": [">1100"], "warning_criteria": [">900"], "weight": 2, "key_sli": false, "sort_order": 2 },
-        { "sli": "error_rate", "display_name": "Error Rate", "pass_criteria": ["<1.5"], "warning_criteria": ["<3.0"], "weight": 3, "key_sli": true, "sort_order": 3 },
-        { "sli": "crash_count", "display_name": "Crashes", "pass_criteria": ["=0"], "warning_criteria": [], "weight": 3, "key_sli": true, "sort_order": 4 }
+        { "sli": "response_time_p95", "display_name": "Response Time P95", "pass_threshold": ["<600"], "warning_threshold": ["<750"], "weight": 2, "key_sli": true, "sort_order": 0 },
+        { "sli": "response_time_p99", "display_name": "Response Time P99", "pass_threshold": ["<=+10%"], "warning_threshold": ["<950"], "weight": 2, "key_sli": true, "sort_order": 1 },
+        { "sli": "throughput_rps", "display_name": "Throughput", "pass_threshold": [">1100"], "warning_threshold": [">900"], "weight": 2, "key_sli": false, "sort_order": 2 },
+        { "sli": "error_rate", "display_name": "Error Rate", "pass_threshold": ["<1.5"], "warning_threshold": ["<3.0"], "weight": 3, "key_sli": true, "sort_order": 3 },
+        { "sli": "crash_count", "display_name": "Crashes", "pass_threshold": ["=0"], "warning_threshold": [], "weight": 3, "key_sli": true, "sort_order": 4 }
       ]
     }
   ]

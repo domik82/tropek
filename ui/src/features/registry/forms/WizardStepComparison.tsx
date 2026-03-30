@@ -8,8 +8,8 @@ export interface ComparisonData {
   compare_count: number
   aggregate_function: string
   include_result_with_score: string
-  pass_pct: number
-  warn_pct: number
+  pass_threshold: number
+  warn_criteria: number
   tags: TagRow[]
   variables: { key: string; value: string }[]
 }
@@ -41,8 +41,8 @@ export function WizardStepComparison({ data, onChange }: WizardStepComparisonPro
     update('variables', vars)
   }
 
-  const passPct = Math.max(0, Math.min(100, data.pass_pct))
-  const warnPct = Math.max(0, Math.min(passPct, data.warn_pct))
+  const passPct = Math.max(0, Math.min(100, data.pass_threshold))
+  const warnPct = Math.max(0, Math.min(passPct, data.warn_criteria))
 
   return (
     <div className="space-y-4">
@@ -134,8 +134,8 @@ export function WizardStepComparison({ data, onChange }: WizardStepComparisonPro
                 id="pass-pct"
                 type="number"
                 className="w-20"
-                value={data.pass_pct}
-                onChange={(e) => update('pass_pct', parseInt(e.target.value) || 0)}
+                value={data.pass_threshold}
+                onChange={(e) => update('pass_threshold', parseInt(e.target.value) || 0)}
                 min={0}
                 max={100}
               />
@@ -152,8 +152,8 @@ export function WizardStepComparison({ data, onChange }: WizardStepComparisonPro
                 id="warn-pct"
                 type="number"
                 className="w-20"
-                value={data.warn_pct}
-                onChange={(e) => update('warn_pct', parseInt(e.target.value) || 0)}
+                value={data.warn_criteria}
+                onChange={(e) => update('warn_criteria', parseInt(e.target.value) || 0)}
                 min={0}
                 max={100}
               />

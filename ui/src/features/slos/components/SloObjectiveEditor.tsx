@@ -9,8 +9,8 @@ import type { SloDefinition } from '../types'
 const objectiveSchema = z.object({
   sli: z.string().min(1),
   display_name: z.string(),
-  pass_criteria: z.string(),
-  warning_criteria: z.string(),
+  pass_threshold: z.string(),
+  warning_threshold: z.string(),
   weight: z.coerce.number().min(0),
   key_sli: z.boolean(),
 })
@@ -87,8 +87,8 @@ export function SloObjectiveEditor({ slo, onCancel, onSaved }: Props) {
   const defaultObjectives = slo.objectives.map(obj => ({
     sli: obj.sli,
     display_name: obj.display_name,
-    pass_criteria: obj.pass_criteria.join(', '),
-    warning_criteria: obj.warning_criteria.join(', '),
+    pass_threshold: obj.pass_threshold.join(', '),
+    warning_threshold: obj.warning_threshold.join(', '),
     weight: obj.weight,
     key_sli: obj.key_sli,
   }))
@@ -109,8 +109,8 @@ export function SloObjectiveEditor({ slo, onCancel, onSaved }: Props) {
       objectives: values.objectives.map((obj, i) => ({
         sli: obj.sli,
         display_name: obj.display_name || obj.sli,
-        pass_criteria: obj.pass_criteria ? obj.pass_criteria.split(',').map(s => s.trim()).filter(Boolean) : [],
-        warning_criteria: obj.warning_criteria ? obj.warning_criteria.split(',').map(s => s.trim()).filter(Boolean) : [],
+        pass_threshold: obj.pass_threshold ? obj.pass_threshold.split(',').map(s => s.trim()).filter(Boolean) : [],
+        warning_threshold: obj.warning_threshold ? obj.warning_threshold.split(',').map(s => s.trim()).filter(Boolean) : [],
         weight: obj.weight,
         key_sli: obj.key_sli,
         sort_order: i,
@@ -204,14 +204,14 @@ export function SloObjectiveEditor({ slo, onCancel, onSaved }: Props) {
                 </td>
                 <td className="px-2 py-1.5">
                   <input
-                    {...register(`objectives.${i}.pass_criteria`)}
+                    {...register(`objectives.${i}.pass_threshold`)}
                     className="w-full px-2 py-1.5 bg-surface-sunken border border-border rounded text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary"
                     placeholder="e.g. <=+10%"
                   />
                 </td>
                 <td className="px-2 py-1.5">
                   <input
-                    {...register(`objectives.${i}.warning_criteria`)}
+                    {...register(`objectives.${i}.warning_threshold`)}
                     className="w-full px-2 py-1.5 bg-surface-sunken border border-border rounded text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary"
                     placeholder="optional"
                   />
@@ -244,8 +244,8 @@ export function SloObjectiveEditor({ slo, onCancel, onSaved }: Props) {
         onClick={() => append({
           sli: availableIndicators[0] ?? '',
           display_name: '',
-          pass_criteria: '',
-          warning_criteria: '',
+          pass_threshold: '',
+          warning_threshold: '',
           weight: 1,
           key_sli: false,
         })}

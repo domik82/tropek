@@ -1,8 +1,8 @@
 // src/features/slos/types.ts
 
 export interface MethodCriteriaOverride {
-  pass_criteria?: string[]
-  warning_criteria?: string[]
+  pass_threshold?: string[]
+  warning_threshold?: string[]
   weight?: number
   key_sli?: boolean
 }
@@ -10,8 +10,8 @@ export interface MethodCriteriaOverride {
 export interface SloObjective {
   sli: string
   display_name: string
-  pass_criteria: string[]
-  warning_criteria: string[]
+  pass_threshold: string[]
+  warning_threshold: string[]
   weight: number
   key_sli: boolean
   sort_order: number

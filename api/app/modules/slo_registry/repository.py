@@ -59,8 +59,8 @@ class SLORepository(TagQueryMixin):
             name=params.name,
             version=next_version,
             comparable_from_version=resolved_cfv,
-            total_score_pass_pct=params.total_score_pass_pct,
-            total_score_warning_pct=params.total_score_warning_pct,
+            total_score_pass_threshold=params.total_score_pass_threshold,
+            total_score_warning_threshold=params.total_score_warning_threshold,
             comparison=params.comparison or {},
             display_name=params.display_name,
             notes=params.notes,
@@ -85,8 +85,8 @@ class SLORepository(TagQueryMixin):
                 weight=obj.weight,
                 key_sli=obj.key_sli,
                 sort_order=i,
-                pass_criteria=obj.pass_criteria,
-                warning_criteria=obj.warning_criteria,
+                pass_threshold=obj.pass_threshold,
+                warning_threshold=obj.warning_threshold,
             )
             self._session.add(orm_obj)
 

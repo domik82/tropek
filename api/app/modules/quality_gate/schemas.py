@@ -128,8 +128,8 @@ class EvaluationDetail(EvaluationSummary):
     compared_evaluation_ids: list[uuid.UUID] = []
     annotations: list[AnnotationRead]
     indicator_results: list[IndicatorResult]
-    total_score_pass_pct: float | None = None
-    total_score_warning_pct: float | None = None
+    total_score_pass_threshold: float | None = None
+    total_score_warning_threshold: float | None = None
     sli_metadata: dict[str, Any] | None = None
 
     @model_validator(mode='after')

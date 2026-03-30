@@ -218,12 +218,12 @@ variables: {
 }
 objectives:
   - sli: "cpu_usage"
-    pass_criteria: ["<80"]
-    warning_criteria: ["<90"]
+    pass_threshold: ["<80"]
+    warning_threshold: ["<90"]
     weight: 1
     key_sli: true
   - sli: "memory_usage"
-    pass_criteria: ["<1073741824"]
+    pass_threshold: ["<1073741824"]
     weight: 1
 ```
 

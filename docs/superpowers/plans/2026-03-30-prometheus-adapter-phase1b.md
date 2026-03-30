@@ -173,8 +173,8 @@ Add the helper type at the top of the file:
 
 ```ts
 export interface MethodCriteriaOverride {
-  pass_criteria?: string[]
-  warning_criteria?: string[]
+  pass_threshold?: string[]
+  warning_threshold?: string[]
   weight?: number
   key_sli?: boolean
 }
@@ -1067,7 +1067,7 @@ describe('MethodCriteriaTable', () => {
 
   it('shows override values without muted style', () => {
     const criteria: Record<string, MethodCriteriaOverride> = {
-      p99: { pass_criteria: ['<25'], weight: 2 },
+      p99: { pass_threshold: ['<25'], weight: 2 },
     }
     render(
       <MethodCriteriaTable
@@ -1097,7 +1097,7 @@ describe('MethodCriteriaTable', () => {
     fireEvent.change(passInputs[1], { target: { value: '<25' } })
     expect(onChange).toHaveBeenCalledWith(
       expect.objectContaining({
-        p99: expect.objectContaining({ pass_criteria: ['<25'] }),
+        p99: expect.objectContaining({ pass_threshold: ['<25'] }),
       }),
     )
   })
@@ -1144,7 +1144,7 @@ describe('MethodCriteriaTable', () => {
 
   it('removes override when value is reset to blueprint default', () => {
     const criteria: Record<string, MethodCriteriaOverride> = {
-      p99: { pass_criteria: ['<25'], weight: 2 },
+      p99: { pass_threshold: ['<25'], weight: 2 },
     }
     const onChange = vi.fn()
     render(
@@ -1160,7 +1160,7 @@ describe('MethodCriteriaTable', () => {
     fireEvent.change(p99Input, { target: { value: '<10' } })
     // When pass goes back to default AND weight was 2 (not default), only pass is removed
     const call = onChange.mock.calls[0][0]
-    expect(call.p99.pass_criteria).toBeUndefined()
+    expect(call.p99.pass_threshold).toBeUndefined()
     expect(call.p99.weight).toBe(2)
   })
 })
@@ -1197,10 +1197,10 @@ export function MethodCriteriaTable({
   function getEffective(method: string) {
     const override = criteria[method]
     return {
-      pass: override?.pass_criteria?.[0] ?? blueprintPass,
+      pass: override?.pass_threshold?.[0] ?? blueprintPass,
       weight: override?.weight ?? blueprintWeight,
       key_sli: override?.key_sli ?? false,
-      hasPassOverride: override?.pass_criteria != null,
+      hasPassOverride: override?.pass_threshold != null,
       hasWeightOverride: override?.weight != null,
       hasKeySliOverride: override?.key_sli != null,
     }
@@ -1212,8 +1212,8 @@ export function MethodCriteriaTable({
 
     // Remove fields that match blueprint defaults
     const cleaned: MethodCriteriaOverride = {}
-    if (merged.pass_criteria && merged.pass_criteria[0] !== blueprintPass) {
-      cleaned.pass_criteria = merged.pass_criteria
+    if (merged.pass_threshold && merged.pass_threshold[0] !== blueprintPass) {
+      cleaned.pass_threshold = merged.pass_threshold
     }
     if (merged.weight != null && merged.weight !== blueprintWeight) {
       cleaned.weight = merged.weight
@@ -1256,7 +1256,7 @@ export function MethodCriteriaTable({
                     <input
                       type="text"
                       value={eff.pass}
-                      onChange={e => updateMethod(method, { pass_criteria: [e.target.value] })}
+                      onChange={e => updateMethod(method, { pass_threshold: [e.target.value] })}
                       className={`w-24 rounded border border-border bg-popover px-1.5 py-0.5 text-xs font-mono ${
                         eff.hasPassOverride ? 'text-foreground' : 'text-muted-foreground italic'
                       }`}
@@ -1469,7 +1469,7 @@ In `SloDetailView.tsx`, add a section after the `{/* Objectives table */}` block
                     <tr key={method} className="border-b border-border/40">
                       <td className="py-1.5 pr-3 font-mono text-foreground">{method}</td>
                       <td className="py-1.5 pr-3 font-mono text-muted-foreground">
-                        {override.pass_criteria?.join(', ') ?? '—'}
+                        {override.pass_threshold?.join(', ') ?? '—'}
                       </td>
                       <td className="py-1.5 pr-3 text-muted-foreground">
                         {override.weight ?? '—'}
@@ -2155,21 +2155,21 @@ spec:
   kind: template
   objectives:
     - sli: process_cpu
-      pass_criteria:
+      pass_threshold:
         - "<25"
       weight: 1
       key_sli: false
   method_criteria:
     mean:
-      pass_criteria:
+      pass_threshold:
         - "<10"
     p99:
-      pass_criteria:
+      pass_threshold:
         - "<25"
       weight: 2
       key_sli: true
     max:
-      pass_criteria:
+      pass_threshold:
         - "<40"
   total_score:
     pass: 90
