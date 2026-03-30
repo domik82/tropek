@@ -96,8 +96,8 @@ export function useInvalidateEvaluation(evalId: string) {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: evaluationKeys.detail(evalId) })
       qc.invalidateQueries({ queryKey: evaluationKeys.all })
-      qc.invalidateQueries({ queryKey: ['evaluation-names'] })
-      qc.invalidateQueries({ queryKey: ['metric-heatmap'] })
+      qc.invalidateQueries({ queryKey: evaluationKeys.allNames })
+      qc.invalidateQueries({ queryKey: evaluationKeys.allHeatmaps })
     },
   })
 }
@@ -109,8 +109,8 @@ export function useRestoreEvaluation(evalId: string) {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: evaluationKeys.detail(evalId) })
       qc.invalidateQueries({ queryKey: evaluationKeys.all })
-      qc.invalidateQueries({ queryKey: ['evaluation-names'] })
-      qc.invalidateQueries({ queryKey: ['metric-heatmap'] })
+      qc.invalidateQueries({ queryKey: evaluationKeys.allNames })
+      qc.invalidateQueries({ queryKey: evaluationKeys.allHeatmaps })
     },
   })
 }
@@ -123,7 +123,7 @@ export function useOverrideStatus(evalId: string) {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: evaluationKeys.detail(evalId) })
       qc.invalidateQueries({ queryKey: evaluationKeys.all })
-      qc.invalidateQueries({ queryKey: ['metric-heatmap'] })
+      qc.invalidateQueries({ queryKey: evaluationKeys.allHeatmaps })
     },
   })
 }
@@ -146,8 +146,8 @@ export function useReEvaluate() {
     mutationFn: (payload: ReEvaluatePayload) => reEvaluate(payload),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: evaluationKeys.all })
-      qc.invalidateQueries({ queryKey: ['evaluation-names'] })
-      qc.invalidateQueries({ queryKey: ['metric-heatmap'] })
+      qc.invalidateQueries({ queryKey: evaluationKeys.allNames })
+      qc.invalidateQueries({ queryKey: evaluationKeys.allHeatmaps })
     },
   })
 }

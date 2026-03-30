@@ -6,6 +6,7 @@ import { FormDialog } from '@/components/ui/form-dialog'
 import { LabelChips } from '@/components/labels/LabelChips'
 import { LabelsEditorDialog } from '@/components/labels/LabelsEditorDialog'
 import { GroupTreeSelector } from './GroupTreeSelector'
+import { isValidEntityName, ENTITY_NAME_HINT } from '@/lib/validation'
 import { useAssetTypes, useCreateAsset, useAddGroupMember, useAssetGroups } from '../hooks'
 
 interface Props {
@@ -27,7 +28,7 @@ export function AssetCreateDialog({ open, onOpenChange }: Props) {
   const [labelsEditorOpen, setLabelsEditorOpen] = useState(false)
 
   const effectiveType = typeName || types.find(t => t.is_default)?.name || types[0]?.name || ''
-  const isValid = name.length > 0 && /^[a-z0-9-]+$/.test(name) && !!effectiveType
+  const isValid = isValidEntityName(name) && !!effectiveType
 
   const handleCreate = async () => {
     const asset = await createAsset.mutateAsync({
@@ -70,7 +71,7 @@ export function AssetCreateDialog({ open, onOpenChange }: Props) {
           className="font-mono"
         />
         {name && !isValid && (
-          <p className="text-xs text-destructive mt-1">lowercase letters, numbers, hyphens only</p>
+          <p className="text-xs text-destructive mt-1">{ENTITY_NAME_HINT}</p>
         )}
       </div>
       <div>

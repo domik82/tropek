@@ -48,8 +48,7 @@ function NoteIcon({ slot, info, onIndicatorClick }: { slot: string; info: SlotNo
         )}
       </Button>
       {open && (
-        <div className="absolute bottom-full mb-1.5 z-30 w-56 bg-popover border border-amber-700/40 rounded-lg shadow-xl p-2.5"
-          style={{ left: '50%', transform: 'translateX(-50%)' }}
+        <div className="absolute bottom-full mb-1.5 z-30 left-1/2 -translate-x-1/2 w-56 bg-popover border border-amber-700/40 rounded-lg shadow-xl p-2.5"
         >
           <div className="flex items-center gap-1.5 mb-1">
             <span className="text-amber-400 text-xs">⚑</span>
