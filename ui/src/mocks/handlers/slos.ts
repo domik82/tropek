@@ -12,8 +12,8 @@ export const sloHandlers = [
       valid: true,
       errors: [],
       objectives: [
-        { sli: 'response_time_p95', display_name: 'Response Time P95', pass_criteria: ['<500'], warning_criteria: ['<800'], weight: 1, key_sli: false, sort_order: 0 },
-        { sli: 'error_rate', display_name: 'Error Rate', pass_criteria: ['<=0.5%'], warning_criteria: ['<=2%'], weight: 1, key_sli: false, sort_order: 1 },
+        { sli: 'response_time_p95', display_name: 'Response Time P95', pass_threshold: ['<500'], warning_threshold: ['<800'], weight: 1, key_sli: false, sort_order: 0 },
+        { sli: 'error_rate', display_name: 'Error Rate', pass_threshold: ['<=0.5%'], warning_threshold: ['<=2%'], weight: 1, key_sli: false, sort_order: 1 },
       ],
     })
   }),
@@ -71,8 +71,8 @@ export const sloHandlers = [
     const body = await request.json() as {
       name: string
       objectives: unknown[]
-      total_score_pass_pct: number
-      total_score_warning_pct: number
+      total_score_pass_threshold: number
+      total_score_warning_threshold: number
       comparison: Record<string, unknown>
       display_name?: string
       notes?: string
@@ -90,8 +90,8 @@ export const sloHandlers = [
       variables: {},
       created_at: new Date().toISOString(),
       objectives: body.objectives,
-      total_score_pass_pct: body.total_score_pass_pct,
-      total_score_warning_pct: body.total_score_warning_pct,
+      total_score_pass_threshold: body.total_score_pass_threshold,
+      total_score_warning_threshold: body.total_score_warning_threshold,
       comparison: body.comparison,
     }, { status: 201 })
   }),

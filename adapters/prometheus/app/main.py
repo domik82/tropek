@@ -7,6 +7,7 @@ import logging
 import sys
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
+from logging.handlers import RotatingFileHandler
 from pathlib import Path
 from typing import Any
 
@@ -48,15 +49,19 @@ def _configure_logging(settings: Settings) -> None:
     stderr_handler.setFormatter(logging.Formatter(LOG_FORMAT, datefmt=LOG_DATEFMT))
     root.addHandler(stderr_handler)
 
-    # Optionally log to file (LOG_DIR env var)
+    # Optionally log to file (LOG_DIR env var) — rotating 10 MB x 100 files
     if settings.log_dir:
         log_path = Path(settings.log_dir)
         log_path.mkdir(parents=True, exist_ok=True)
-        file_handler = logging.FileHandler(log_path / 'adapter.log')
+        file_handler = RotatingFileHandler(
+            log_path / 'prometheus-adapter.log',
+            maxBytes=10 * 1024 * 1024,
+            backupCount=100,
+        )
         file_handler.setLevel(level)
         file_handler.setFormatter(logging.Formatter(LOG_FORMAT, datefmt=LOG_DATEFMT))
         root.addHandler(file_handler)
-        logger.info('file logging enabled: %s/adapter.log', log_path)
+        logger.info('file logging enabled: %s/prometheus-adapter.log', log_path)
 
 
 async def _check_prometheus(base_url: str, timeout: float = 5.0) -> bool:

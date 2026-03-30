@@ -56,7 +56,7 @@ async def _create_fixtures(
             'sli_name': f'{prefix}-sli',
             'sli_version': 1,
             'variables': {'process_name': '$__gen_process_name', 'WINDOW': '5m'},
-            'objectives': [{'sli': 'cpu', 'pass_criteria': ['<80']}],
+            'objectives': [{'sli': 'cpu', 'pass_threshold': ['<80']}],
         },
     )
     assert resp.status_code == 201, resp.text
@@ -137,7 +137,7 @@ async def test_create_group_rejects_non_template(async_client: AsyncClient) -> N
             'kind': 'standard',
             'sli_name': 'grp2-sli',
             'sli_version': 1,
-            'objectives': [{'sli': 'cpu', 'pass_criteria': ['<80']}],
+            'objectives': [{'sli': 'cpu', 'pass_threshold': ['<80']}],
         },
     )
 
@@ -165,7 +165,7 @@ async def test_create_group_name_collision(async_client: AsyncClient) -> None:
             'name': 'grp3-tpl-auth',
             'sli_name': 'grp3-sli',
             'sli_version': 1,
-            'objectives': [{'sli': 'cpu', 'pass_criteria': ['<80']}],
+            'objectives': [{'sli': 'cpu', 'pass_threshold': ['<80']}],
         },
     )
 

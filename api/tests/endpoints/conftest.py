@@ -88,8 +88,8 @@ async def _ensure_slo_objective(
         version=1,
         display_name=slo_name,
         comparison={},
-        total_score_pass_pct=90.0,
-        total_score_warning_pct=75.0,
+        total_score_pass_threshold=90.0,
+        total_score_warning_threshold=75.0,
         tags={},
         variables={},
     )
@@ -102,8 +102,8 @@ async def _ensure_slo_objective(
         weight=1,
         key_sli=False,
         sort_order=0,
-        pass_criteria=['<600'],
-        warning_criteria=[],
+        pass_threshold=['<600'],
+        warning_threshold=[],
     )
     session.add(obj)
     await session.flush()

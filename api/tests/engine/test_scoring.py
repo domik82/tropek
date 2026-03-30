@@ -39,13 +39,13 @@ def test_objective_fails(slo_fixture) -> None:
     assert result.score == 0.0
 
 
-def test_objective_missing_metric_fails(slo_fixture) -> None:
+def test_objective_missing_metric_is_error(slo_fixture) -> None:
     result = score_objective(_slo(slo_fixture).objectives[0], value=None, baseline=None)
-    assert result.status == IndicatorStatus.FAIL
+    assert result.status == IndicatorStatus.ERROR
     assert result.score == 0.0
 
 
-def test_objective_no_pass_criteria_is_informational(slo_fixture) -> None:
+def test_objective_no_pass_threshold_is_informational(slo_fixture) -> None:
     result = score_objective(_slo(slo_fixture).objectives[2], value=999.0, baseline=None)
     assert result.status == IndicatorStatus.INFO
     assert result.score == 0.0
@@ -63,9 +63,9 @@ def test_key_sli_pass_not_flagged(slo_fixture) -> None:
     assert result.key_sli_failed is False
 
 
-def test_empty_pass_criteria_list_is_informational() -> None:
-    """Empty pass_criteria list must be treated same as no pass criteria."""
-    slo = build_slo(objectives=[{'sli': 'm', 'pass_criteria': [], 'weight': 1}])
+def test_empty_pass_threshold_list_is_informational() -> None:
+    """Empty pass_threshold list must be treated same as no pass criteria."""
+    slo = build_slo(objectives=[{'sli': 'm', 'pass_threshold': [], 'weight': 1}])
     result = score_objective(slo.objectives[0], value=50.0, baseline=None)
     assert result.status == IndicatorStatus.INFO
     assert result.contributes_to_score is False
@@ -74,7 +74,7 @@ def test_empty_pass_criteria_list_is_informational() -> None:
 
 def test_sign_without_pct_relative_scoring() -> None:
     """<=+10 without % treated as relative (baseline + 10), matching Go behaviour."""
-    slo = build_slo(objectives=[{'sli': 'm', 'pass_criteria': ['<=+10'], 'weight': 1}])
+    slo = build_slo(objectives=[{'sli': 'm', 'pass_threshold': ['<=+10'], 'weight': 1}])
     assert score_objective(slo.objectives[0], value=105.0, baseline=100.0).status == IndicatorStatus.PASS
     assert score_objective(slo.objectives[0], value=115.0, baseline=100.0).status == IndicatorStatus.FAIL
 
@@ -116,7 +116,7 @@ def test_total_score_key_sli_fails_regardless_of_score(slo_fixture) -> None:
     assert total.result == 'fail'
 
 
-def test_total_score_no_pass_criteria_returns_pass_100() -> None:
+def test_total_score_no_pass_threshold_returns_pass_100() -> None:
     slo = build_slo(objectives=[{'sli': 'm', 'weight': 1}])
     results = [_make_result(slo.objectives[0], IndicatorStatus.INFO, 0.0, False, False)]
     total = calculate_total_score(results, slo.total_score)
@@ -139,11 +139,11 @@ def test_total_score_warning_band(slo_fixture) -> None:
 def test_total_score_warning_result() -> None:
     slo = build_slo(
         objectives=[
-            {'sli': 'm1', 'pass_criteria': ['<100'], 'weight': 1},
-            {'sli': 'm2', 'pass_criteria': ['<100'], 'weight': 1},
+            {'sli': 'm1', 'pass_threshold': ['<100'], 'weight': 1},
+            {'sli': 'm2', 'pass_threshold': ['<100'], 'weight': 1},
         ],
-        total_score_pass_pct=100.0,
-        total_score_warning_pct=50.0,
+        total_score_pass_threshold=100.0,
+        total_score_warning_threshold=50.0,
     )
     results = [
         _make_result(slo.objectives[0], IndicatorStatus.PASS, 1.0, True, False),

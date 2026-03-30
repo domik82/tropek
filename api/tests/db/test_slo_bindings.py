@@ -49,7 +49,7 @@ async def test_create_and_list_asset_slo_binding(async_client: AsyncClient) -> N
             'name': 'bind-slo',
             'sli_name': 'bind-sli',
             'sli_version': 1,
-            'objectives': [{'sli': 'cpu', 'pass_criteria': ['<80']}],
+            'objectives': [{'sli': 'cpu', 'pass_threshold': ['<80']}],
         },
     )
     await async_client.post(
@@ -95,7 +95,7 @@ async def test_delete_asset_slo_binding(async_client: AsyncClient) -> None:
             'name': 'del-slo',
             'sli_name': 'del-sli',
             'sli_version': 1,
-            'objectives': [{'sli': 'cpu', 'pass_criteria': ['<80']}],
+            'objectives': [{'sli': 'cpu', 'pass_threshold': ['<80']}],
         },
     )
     await async_client.post(
@@ -136,7 +136,7 @@ async def test_create_group_slo_binding(async_client: AsyncClient) -> None:
             'name': 'grp-bind-slo',
             'sli_name': 'grp-bind-sli',
             'sli_version': 1,
-            'objectives': [{'sli': 'cpu', 'pass_criteria': ['<80']}],
+            'objectives': [{'sli': 'cpu', 'pass_threshold': ['<80']}],
         },
     )
     await async_client.post(

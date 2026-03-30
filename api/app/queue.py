@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import random
 import uuid
+from datetime import timedelta
 from typing import Any, ClassVar, cast
 
 import redis.asyncio as aioredis
@@ -17,11 +18,35 @@ from sqlalchemy.exc import DBAPIError
 from app.cache.redis_cache import RedisCache
 from app.config import get_settings
 from app.db.session import get_session_factory
+from app.logging_config import configure_logging
+from app.modules.quality_gate.repository import EvaluationRepository
 from app.modules.quality_gate.worker import run_evaluation
 
 logger = structlog.get_logger()
 
 _MAX_DEADLOCK_RETRIES = 8
+_MAX_PREDECESSOR_DEFERS = 60
+
+
+async def _has_pending_predecessor(session_factory: Any, eval_id: uuid.UUID) -> bool:
+    """Check if an earlier eval for the same asset+SLO is still pending/running.
+
+    Returns False on any error so the evaluation proceeds normally.
+    """
+    try:
+        async with session_factory() as session:
+            repo = EvaluationRepository(session)
+            ev = await repo.get_by_id(eval_id)
+            if ev is None or ev.status not in ('pending', 'running'):
+                return False
+            return await repo.has_pending_predecessor(
+                asset_id=ev.asset_id,
+                slo_name=ev.slo_name,
+                period_start=ev.period_start,
+            )
+    except (OSError, ValueError, AttributeError):
+        logger.warning('predecessor check failed, proceeding', evaluation_id=str(eval_id))
+        return False
 
 
 def _is_deadlock(exc: DBAPIError) -> bool:
@@ -55,7 +80,8 @@ async def create_arq_pool() -> ArqRedis:
 
 
 async def _worker_startup(ctx: dict[str, Any]) -> None:
-    """Initialize Redis cache for worker processes."""
+    """Initialize Redis cache and logging for worker processes."""
+    configure_logging(service_name='worker')
     settings = get_settings()
     redis_client = aioredis.from_url(settings.cache.url)
     ctx['cache'] = RedisCache(redis_client)
@@ -68,8 +94,12 @@ async def _worker_shutdown(ctx: dict[str, Any]) -> None:
         await cache._redis.close()
 
 
-async def run_evaluation_job(ctx: dict[str, Any], eval_id_str: str) -> None:
+async def run_evaluation_job(ctx: dict[str, Any], eval_id_str: str, defer_count: int = 0) -> None:
     """Arq job function — wraps run_evaluation with a DB session.
+
+    Ensures chronological ordering: if an earlier evaluation for the same
+    asset+SLO is still pending/running, this job is re-enqueued with a delay
+    so that baselines are always available when needed.
 
     Retries up to _MAX_DEADLOCK_RETRIES times on PostgreSQL deadlock errors.
     Deadlocks are safe to retry because the entire transaction is rolled back
@@ -78,6 +108,22 @@ async def run_evaluation_job(ctx: dict[str, Any], eval_id_str: str) -> None:
     session_factory = get_session_factory()
     eval_id = uuid.UUID(eval_id_str)
     cache: RedisCache | None = ctx.get('cache')
+
+    # Check for pending predecessors (same asset+SLO, earlier period_start)
+    if defer_count < _MAX_PREDECESSOR_DEFERS and await _has_pending_predecessor(session_factory, eval_id):
+            logger.info(
+                'deferring evaluation — predecessor still pending',
+                evaluation_id=eval_id_str,
+                defer_count=defer_count + 1,
+            )
+            pool: ArqRedis = ctx['redis']
+            await pool.enqueue_job(
+                'run_evaluation_job',
+                eval_id_str,
+                defer_count + 1,
+                _defer_by=timedelta(seconds=2),
+            )
+            return
 
     for attempt in range(_MAX_DEADLOCK_RETRIES):
         async with session_factory() as session:

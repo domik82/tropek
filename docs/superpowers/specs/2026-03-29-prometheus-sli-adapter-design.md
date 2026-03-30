@@ -375,18 +375,18 @@ sli_name: process_cpu                    # Aggregated-mode SLI
 
 objectives:
   - sli: "process_cpu"                   # No .method suffix — framework expands
-    pass_criteria: ["<25"]               # Default for methods without override
+    pass_threshold: ["<25"]               # Default for methods without override
     weight: 1
 
 method_criteria:                          # Per-method overrides (optional)
   mean:
-    pass_criteria: ["<10"]
+    pass_threshold: ["<10"]
   p99:
-    pass_criteria: ["<25"]
+    pass_threshold: ["<25"]
     weight: 2
     key_sli: true
   max:
-    pass_criteria: ["<40"]
+    pass_threshold: ["<40"]
 ```
 
 ### 5.3 Generation Pipeline
@@ -437,9 +437,9 @@ Schema of the JSON value:
 
 ```json
 {
-  "mean": {"pass_criteria": ["<10"]},
-  "p99": {"pass_criteria": ["<25"], "weight": 2, "key_sli": true},
-  "max": {"pass_criteria": ["<40"]}
+  "mean": {"pass_threshold": ["<10"]},
+  "p99": {"pass_threshold": ["<25"], "weight": 2, "key_sli": true},
+  "max": {"pass_threshold": ["<40"]}
 }
 ```
 
@@ -474,19 +474,19 @@ variables:
 
 objectives:
   - sli: "process_cpu.mean"
-    pass_criteria: ["<10"]
+    pass_threshold: ["<10"]
     weight: 1
   - sli: "process_cpu.p99"
-    pass_criteria: ["<25"]
+    pass_threshold: ["<25"]
     weight: 2
     key_sli: true
   - sli: "process_cpu.max"
-    pass_criteria: ["<40"]
+    pass_threshold: ["<40"]
     weight: 1
 
 total_score:
-  pass_pct: 90.0
-  warning_pct: 75.0
+  pass_threshold: 90.0
+  warning_threshold: 75.0
 ```
 
 The evaluation engine sees this as a normal SLO with 3 objectives. No special handling needed.

@@ -103,10 +103,10 @@ class ParsedCriteria:
 
 | Condition | Status | Score |
 |-----------|--------|-------|
-| No pass_criteria defined | INFO | 0 (does not contribute) |
+| No pass_threshold defined | INFO | 0 (does not contribute) |
 | Value is None | FAIL | 0 |
-| All pass_criteria pass | PASS | weight |
-| All warning_criteria pass | WARNING | 0.5 * weight |
+| All pass_threshold pass | PASS | weight |
+| All warning_threshold pass | WARNING | 0.5 * weight |
 | Otherwise | FAIL | 0 |
 
 ### Total Score (calculate_total_score)
@@ -124,8 +124,8 @@ class ParsedCriteria:
 class SLOObjective:
     sli: str
     display_name: str
-    pass_criteria: list[list[str]]   # Outer = OR, inner = AND
-    warning_criteria: list[list[str]]
+    pass_threshold: list[list[str]]   # Outer = OR, inner = AND
+    warning_threshold: list[list[str]]
     weight: int
     key_sli: bool
 

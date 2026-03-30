@@ -6,10 +6,10 @@ comparison:
   scope_tags: [os, arch]
 objectives:
   - sli: cpu_usage
-    pass_criteria: ["<=+10%"]
-    warning_criteria: ["<=+20%"]
+    pass_threshold: ["<=+10%"]
+    warning_threshold: ["<=+20%"]
     weight: 2
     key_sli: true
 total_score:
-  pass_pct: 90.0
-  warning_pct: 75.0
+  pass_threshold: 90.0
+  warning_threshold: 75.0

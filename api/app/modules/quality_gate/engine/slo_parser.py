@@ -17,16 +17,16 @@ from app.modules.quality_gate.engine.slo_models import (
 
 def build_slo(
     objectives: list[dict[str, Any]],
-    total_score_pass_pct: float = 90.0,
-    total_score_warning_pct: float = 75.0,
+    total_score_pass_threshold: float = 90.0,
+    total_score_warning_threshold: float = 75.0,
     comparison: dict[str, Any] | None = None,
 ) -> SLO:
     """Build and validate an SLO model from structured data.
 
     Args:
         objectives: List of objective dicts matching SLOObjective fields.
-        total_score_pass_pct: Minimum % to pass. Default 90.0.
-        total_score_warning_pct: Minimum % to warn. Default 75.0.
+        total_score_pass_threshold: Minimum % to pass. Default 90.0.
+        total_score_warning_threshold: Minimum % to warn. Default 75.0.
         comparison: Optional comparison config dict. Empty/None uses all defaults.
 
     Returns:
@@ -46,7 +46,7 @@ def build_slo(
         objectives=parsed_objectives,
         comparison=parsed_comparison,
         total_score=SLOTotalScore(
-            pass_pct=total_score_pass_pct,
-            warning_pct=total_score_warning_pct,
+            pass_threshold=total_score_pass_threshold,
+            warning_threshold=total_score_warning_threshold,
         ),
     )

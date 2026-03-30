@@ -123,8 +123,8 @@ def _collect_documents(client: TropekClient) -> list[dict[str, Any]]:
                 },
                 'spec': {
                     'total_score': {
-                        'pass_pct': slo.total_score_pass_pct,
-                        'warning_pct': slo.total_score_warning_pct,
+                        'pass_threshold': slo.total_score_pass_threshold,
+                        'warning_threshold': slo.total_score_warning_threshold,
                     },
                     'objectives': objectives,
                     **({'comparison': slo.comparison} if slo.comparison else {}),

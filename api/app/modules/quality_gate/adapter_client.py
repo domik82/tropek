@@ -76,9 +76,11 @@ class HttpAdapterClient:
         logger.info(
             'adapter response',
             url=url,
-            values=len(metrics_fetched),
-            errors=len(fetch_errors),
-            metadata_slis=len(metadata),
+            values_count=len(metrics_fetched),
+            errors_count=len(fetch_errors),
+            values=metrics_fetched,
+            errors=fetch_errors,
+            metadata=metadata,
         )
         return metrics_fetched, fetch_errors, metadata
 

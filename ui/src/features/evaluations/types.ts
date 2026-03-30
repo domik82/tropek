@@ -80,14 +80,23 @@ export interface IndicatorResult {
   warning_targets: PassTarget[] | null
 }
 
+export interface SliMetadata {
+  mode: 'aggregated'
+  expected_samples: number
+  actual_samples: number
+  missing_pct: number
+  chunks_failed: number
+}
+
 export interface EvaluationDetail extends EvaluationSummary {
   invalidation_note: string | null
   evaluation_metadata: Record<string, string>
   compared_evaluation_ids: string[]
   annotations: Annotation[]
   indicator_results: IndicatorResult[]
-  total_score_pass_pct: number | null
-  total_score_warning_pct: number | null
+  total_score_pass_threshold: number | null
+  total_score_warning_threshold: number | null
+  sli_metadata?: Record<string, SliMetadata>
 }
 
 export interface TrendPoint {
@@ -133,6 +142,7 @@ export interface ReEvaluatePayload {
   from_evaluation_id?: string
   slo_version?: number
   dry_run?: boolean
+  pin_strategy?: 'skip_to_pin' | 'ignore_pin'
 }
 
 export interface ReEvalResultItem {
@@ -150,4 +160,9 @@ export interface ReEvaluateResponse {
   affected_evaluations: number
   slo_version_used: number
   results: ReEvalResultItem[]
+}
+
+export interface PinConflictInfo {
+  pin_date: string
+  pin_evaluation_id: string
 }

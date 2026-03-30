@@ -388,9 +388,10 @@ def _has_diff(doc: ManifestDocument, existing: Any) -> bool:  # noqa: C901, PLR0
             ]
             return (
                 doc.spec.get('objectives') != existing_objectives
-                or doc.spec.get('total_score', {}).get('pass_pct') != getattr(existing, 'total_score_pass_pct', None)
-                or doc.spec.get('total_score', {}).get('warning_pct')
-                != getattr(existing, 'total_score_warning_pct', None)
+                or doc.spec.get('total_score', {}).get('pass_threshold')
+                != getattr(existing, 'total_score_pass_threshold', None)
+                or doc.spec.get('total_score', {}).get('warning_threshold')
+                != getattr(existing, 'total_score_warning_threshold', None)
                 or doc.spec.get('comparison', {}) != getattr(existing, 'comparison', {})
             )
         case 'AssetSLOLink' | 'AssetGroupSLOLink':
@@ -534,8 +535,8 @@ def _create(client: Any, doc: ManifestDocument) -> None:  # noqa: C901
             client.slo_definitions.create(
                 name,
                 objectives=doc.spec['objectives'],
-                total_score_pass_pct=total.get('pass_pct', 90.0),
-                total_score_warning_pct=total.get('warning_pct', 75.0),
+                total_score_pass_threshold=total.get('pass_threshold', 90.0),
+                total_score_warning_threshold=total.get('warning_threshold', 75.0),
                 comparison=doc.spec.get('comparison', {}),
                 display_name=doc.metadata.get('display_name'),
                 notes=doc.metadata.get('notes'),
@@ -544,6 +545,7 @@ def _create(client: Any, doc: ManifestDocument) -> None:  # noqa: C901
                 sli_version=doc.spec.get('sli_version'),
                 kind=doc.spec.get('kind', 'standard'),
                 variables=doc.spec.get('variables', {}),
+                method_criteria=doc.spec.get('method_criteria'),
             )
         case 'AssetSLOLink':
             asset_name = doc.spec['asset_name']
@@ -615,8 +617,8 @@ def _update(client: Any, doc: ManifestDocument) -> None:  # noqa: C901
             client.slo_definitions.create(
                 name,
                 objectives=doc.spec['objectives'],
-                total_score_pass_pct=total.get('pass_pct', 90.0),
-                total_score_warning_pct=total.get('warning_pct', 75.0),
+                total_score_pass_threshold=total.get('pass_threshold', 90.0),
+                total_score_warning_threshold=total.get('warning_threshold', 75.0),
                 comparison=doc.spec.get('comparison', {}),
                 display_name=doc.metadata.get('display_name'),
                 notes=doc.metadata.get('notes'),
@@ -625,6 +627,7 @@ def _update(client: Any, doc: ManifestDocument) -> None:  # noqa: C901
                 sli_version=doc.spec.get('sli_version'),
                 kind=doc.spec.get('kind', 'standard'),
                 variables=doc.spec.get('variables', {}),
+                method_criteria=doc.spec.get('method_criteria'),
             )
         case 'AssetSLOLink':
             # Delete + recreate

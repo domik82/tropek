@@ -58,6 +58,11 @@ def mock_session_factory():
     return factory, session
 
 
+def _no_predecessor():
+    """Patch context that disables the predecessor check."""
+    return patch('app.queue._has_pending_predecessor', new_callable=AsyncMock, return_value=False)
+
+
 async def test_deadlock_retry_succeeds_on_second_attempt(mock_session_factory: tuple) -> None:
     """Job retries after deadlock and succeeds on the second attempt."""
     factory, session = mock_session_factory
@@ -73,6 +78,7 @@ async def test_deadlock_retry_succeeds_on_second_attempt(mock_session_factory: t
         patch('app.queue.get_session_factory', return_value=factory),
         patch('app.queue.run_evaluation', side_effect=fake_run_evaluation),
         patch('asyncio.sleep', new_callable=AsyncMock),
+        _no_predecessor(),
     ):
         await run_evaluation_job({}, '00000000-0000-0000-0000-000000000001')
 
@@ -88,6 +94,7 @@ async def test_deadlock_retry_exhausted(mock_session_factory: tuple) -> None:
         patch('app.queue.get_session_factory', return_value=factory),
         patch('app.queue.run_evaluation', side_effect=_make_deadlock_error()),
         patch('asyncio.sleep', new_callable=AsyncMock),
+        _no_predecessor(),
         pytest.raises(DBAPIError),
     ):
         await run_evaluation_job({}, '00000000-0000-0000-0000-000000000001')
@@ -101,6 +108,7 @@ async def test_non_deadlock_error_not_retried(mock_session_factory: tuple) -> No
         patch('app.queue.get_session_factory', return_value=factory),
         patch('app.queue.run_evaluation', side_effect=_make_non_deadlock_error()),
         patch('asyncio.sleep', new_callable=AsyncMock) as mock_sleep,
+        _no_predecessor(),
         pytest.raises(DBAPIError),
     ):
         await run_evaluation_job({}, '00000000-0000-0000-0000-000000000001')
@@ -119,6 +127,7 @@ async def test_non_dbapi_error_not_retried(mock_session_factory: tuple) -> None:
         patch('app.queue.get_session_factory', return_value=factory),
         patch('app.queue.run_evaluation', side_effect=RuntimeError('unexpected')),
         patch('asyncio.sleep', new_callable=AsyncMock) as mock_sleep,
+        _no_predecessor(),
         pytest.raises(RuntimeError, match='unexpected'),
     ):
         await run_evaluation_job({}, '00000000-0000-0000-0000-000000000001')
@@ -135,8 +144,49 @@ async def test_successful_job_no_retry(mock_session_factory: tuple) -> None:
         patch('app.queue.get_session_factory', return_value=factory),
         patch('app.queue.run_evaluation', new_callable=AsyncMock),
         patch('asyncio.sleep', new_callable=AsyncMock) as mock_sleep,
+        _no_predecessor(),
     ):
         await run_evaluation_job({}, '00000000-0000-0000-0000-000000000001')
 
     mock_sleep.assert_not_awaited()
+    session.commit.assert_awaited_once()
+
+
+async def test_predecessor_defers_job(mock_session_factory: tuple) -> None:
+    """Job is deferred when a predecessor evaluation is still pending."""
+    factory, _session = mock_session_factory
+    mock_pool = AsyncMock()
+
+    with (
+        patch('app.queue.get_session_factory', return_value=factory),
+        patch('app.queue._has_pending_predecessor', new_callable=AsyncMock, return_value=True),
+        patch('app.queue.run_evaluation', new_callable=AsyncMock) as mock_run,
+    ):
+        await run_evaluation_job(
+            {'redis': mock_pool},
+            '00000000-0000-0000-0000-000000000001',
+        )
+
+    mock_run.assert_not_awaited()
+    mock_pool.enqueue_job.assert_awaited_once()
+
+
+async def test_predecessor_max_defers_exceeded(mock_session_factory: tuple) -> None:
+    """Job proceeds when max defer count is exceeded, even with pending predecessor."""
+    factory, session = mock_session_factory
+
+    with (
+        patch('app.queue.get_session_factory', return_value=factory),
+        patch('app.queue._has_pending_predecessor', new_callable=AsyncMock, return_value=True) as mock_check,
+        patch('app.queue.run_evaluation', new_callable=AsyncMock) as mock_run,
+        patch('asyncio.sleep', new_callable=AsyncMock),
+    ):
+        await run_evaluation_job(
+            {},
+            '00000000-0000-0000-0000-000000000001',
+            defer_count=999,
+        )
+
+    mock_check.assert_not_awaited()
+    mock_run.assert_awaited_once()
     session.commit.assert_awaited_once()

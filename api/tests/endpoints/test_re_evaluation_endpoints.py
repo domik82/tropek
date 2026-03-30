@@ -36,7 +36,7 @@ async def _setup_re_eval(
     await slo_repo.create(
         SLOCreateParams(
             name='re-eval-ep-slo',
-            objectives=[SLOObjectiveParams(sli='cpu', pass_criteria=['<90'], weight=1)],
+            objectives=[SLOObjectiveParams(sli='cpu', pass_threshold=['<90'], weight=1)],
         )
     )
 
@@ -85,7 +85,7 @@ async def _setup_re_eval(
     await slo_repo.create(
         SLOCreateParams(
             name='re-eval-ep-slo',
-            objectives=[SLOObjectiveParams(sli='cpu', pass_criteria=['<100'], weight=1)],
+            objectives=[SLOObjectiveParams(sli='cpu', pass_threshold=['<100'], weight=1)],
         )
     )
 
@@ -138,7 +138,7 @@ async def test_re_evaluate_preserves_original_on_second_reeval(
     await slo_repo.create(
         SLOCreateParams(
             name='re-eval-ep-slo',
-            objectives=[SLOObjectiveParams(sli='cpu', pass_criteria=['<100'], weight=1)],
+            objectives=[SLOObjectiveParams(sli='cpu', pass_threshold=['<100'], weight=1)],
         )
     )
 

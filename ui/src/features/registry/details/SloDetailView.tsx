@@ -127,6 +127,41 @@ export function SloDetailView({ name, onNavigate, onNewVersion }: SloDetailViewP
           <SloObjectiveTable slo={slo} />
         </div>
 
+        {/* Method criteria overrides (aggregated-mode SLO templates) */}
+        {slo.method_criteria && Object.keys(slo.method_criteria).length > 0 && (
+          <div>
+            <p className="text-xs text-muted-foreground mb-2">Method Criteria Overrides</p>
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs border-collapse">
+                <thead>
+                  <tr className="border-b border-border">
+                    <th className="text-left py-1.5 pr-3 text-muted-foreground font-medium">Method</th>
+                    <th className="text-left py-1.5 pr-3 text-muted-foreground font-medium">Pass</th>
+                    <th className="text-left py-1.5 pr-3 text-muted-foreground font-medium">Weight</th>
+                    <th className="text-left py-1.5 text-muted-foreground font-medium">Key SLI</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {Object.entries(slo.method_criteria).map(([method, override]) => (
+                    <tr key={method} className="border-b border-border/40">
+                      <td className="py-1.5 pr-3 font-mono text-foreground">{method}</td>
+                      <td className="py-1.5 pr-3 font-mono text-muted-foreground">
+                        {override.pass_threshold?.join(', ') ?? '—'}
+                      </td>
+                      <td className="py-1.5 pr-3 text-muted-foreground">
+                        {override.weight ?? '—'}
+                      </td>
+                      <td className="py-1.5 text-muted-foreground">
+                        {override.key_sli ? '◆' : '—'}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
         {/* Comparison summary */}
         {Object.keys(comparison).length > 0 && (
           <div>

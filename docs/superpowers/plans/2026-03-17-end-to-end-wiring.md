@@ -1577,8 +1577,8 @@ async def run_evaluation(
         {
             "sli": obj.sli,
             "display_name": obj.display_name,
-            "pass_criteria": obj.pass_criteria,
-            "warning_criteria": obj.warning_criteria,
+            "pass_threshold": obj.pass_threshold,
+            "warning_threshold": obj.warning_threshold,
             "weight": obj.weight,
             "key_sli": obj.key_sli,
         }
@@ -1586,8 +1586,8 @@ async def run_evaluation(
     ]
     slo = build_slo(
         objectives=objectives,
-        total_score_pass_pct=slo_def.total_score_pass_pct,
-        total_score_warning_pct=slo_def.total_score_warning_pct,
+        total_score_pass_threshold=slo_def.total_score_pass_threshold,
+        total_score_warning_threshold=slo_def.total_score_warning_threshold,
         comparison=slo_def.comparison,
     )
 

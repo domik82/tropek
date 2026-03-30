@@ -83,6 +83,13 @@ export function SliDetailView({ name, onNavigate, onNewVersion }: SliDetailViewP
               >
                 {sli.adapter_type}
               </span>
+              {(sli.mode ?? 'raw') === 'aggregated' && (
+                <span
+                  className="px-2 py-0.5 text-xs rounded-full border border-primary/40 bg-primary/10 text-primary"
+                >
+                  aggregated
+                </span>
+              )}
               <span
                 className={`px-2 py-0.5 text-xs rounded-full border ${
                   sli.active
@@ -126,40 +133,71 @@ export function SliDetailView({ name, onNavigate, onNewVersion }: SliDetailViewP
             </div>
           )}
         </div>
-        {/* Indicators table */}
-        <div>
-          <p className="text-xs text-muted-foreground mb-2">Indicators</p>
-          {Object.keys(sli.indicators).length === 0 ? (
-            <p className="text-xs text-muted-foreground">No indicators defined.</p>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-xs border-collapse">
-                <thead>
-                  <tr className="border-b border-border">
-                    <th className="text-left py-1.5 pr-3 text-muted-foreground font-medium w-1/3">
-                      Name
-                    </th>
-                    <th className="text-left py-1.5 text-muted-foreground font-medium">
-                      Query
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {Object.entries(sli.indicators).map(([metricName, query]) => (
-                    <tr key={metricName} className="border-b border-border/40">
-                      <td className="py-1.5 pr-3 font-mono align-top text-foreground">
-                        {metricName}
-                      </td>
-                      <td className="py-1.5 font-mono text-muted-foreground break-all">
-                        {highlightVariables(query)}
-                      </td>
+
+        {/* Mode-specific content */}
+        {(sli.mode ?? 'raw') === 'raw' ? (
+          <div>
+            <p className="text-xs text-muted-foreground mb-2">Indicators</p>
+            {Object.keys(sli.indicators).length === 0 ? (
+              <p className="text-xs text-muted-foreground">No indicators defined.</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs border-collapse">
+                  <thead>
+                    <tr className="border-b border-border">
+                      <th className="text-left py-1.5 pr-3 text-muted-foreground font-medium w-1/3">
+                        Name
+                      </th>
+                      <th className="text-left py-1.5 text-muted-foreground font-medium">
+                        Query
+                      </th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {Object.entries(sli.indicators).map(([metricName, query]) => (
+                      <tr key={metricName} className="border-b border-border/40">
+                        <td className="py-1.5 pr-3 font-mono align-top text-foreground">
+                          {metricName}
+                        </td>
+                        <td className="py-1.5 font-mono text-muted-foreground break-all">
+                          {highlightVariables(query)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <div>
+              <p className="text-xs text-muted-foreground mb-1">Query Template</p>
+              <p className="text-sm font-mono text-foreground break-all">
+                {sli.query_template ? highlightVariables(sli.query_template) : '—'}
+              </p>
             </div>
-          )}
-        </div>
+            <div className="flex gap-6">
+              <div>
+                <p className="text-xs text-muted-foreground mb-1">Interval</p>
+                <p className="text-sm font-mono text-foreground">{sli.interval ?? '—'}</p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground mb-1">Methods</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {(sli.methods ?? []).map(m => (
+                    <span
+                      key={m}
+                      className="px-2 py-0.5 text-xs rounded-full bg-primary/10 text-primary border border-primary/20 font-mono"
+                    >
+                      {m}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Tags */}
         {Object.keys(sli.tags).length > 0 && (

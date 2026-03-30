@@ -18,8 +18,8 @@ class TemplateInput(Protocol):
     sli_version: int | None
     variables: dict[str, Any]
     objectives: list[dict[str, Any]]
-    total_score_pass_pct: float
-    total_score_warning_pct: float
+    total_score_pass_threshold: float
+    total_score_warning_threshold: float
     comparison: dict[str, Any]
     tags: dict[str, Any]
 
@@ -33,8 +33,8 @@ class GeneratedSLOSpec:
     sli_version: int | None
     variables: dict[str, Any]
     objectives: list[dict[str, Any]]
-    total_score_pass_pct: float
-    total_score_warning_pct: float
+    total_score_pass_threshold: float
+    total_score_warning_threshold: float
     comparison: dict[str, Any]
     tags: dict[str, Any]
 
@@ -49,7 +49,7 @@ class GeneratorResult:
 
 _GEN_PATTERN = re.compile(r'\$__gen_(\w+)')
 
-_OBJ_KEYS = ('sli', 'display_name', 'weight', 'key_sli', 'pass_criteria', 'warning_criteria')
+_OBJ_KEYS = ('sli', 'display_name', 'weight', 'key_sli', 'pass_threshold', 'warning_threshold')
 
 
 def _obj_to_dict(obj: Any) -> dict[str, Any]:
@@ -144,8 +144,8 @@ def generate_slo_specs(
                 sli_version=template.sli_version,
                 variables=gen_vars,
                 objectives=[_obj_to_dict(obj) for obj in template.objectives],
-                total_score_pass_pct=template.total_score_pass_pct,
-                total_score_warning_pct=template.total_score_warning_pct,
+                total_score_pass_threshold=template.total_score_pass_threshold,
+                total_score_warning_threshold=template.total_score_warning_threshold,
                 comparison=dict(template.comparison),
                 tags=gen_tags,
             )

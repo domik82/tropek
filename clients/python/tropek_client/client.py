@@ -424,8 +424,8 @@ class _SLODefinitions:
         self,
         name: str,
         objectives: list[dict],
-        total_score_pass_pct: float = 90.0,
-        total_score_warning_pct: float = 75.0,
+        total_score_pass_threshold: float = 90.0,
+        total_score_warning_threshold: float = 75.0,
         *,
         comparison: dict | None = None,
         **kwargs: Any,
@@ -434,8 +434,8 @@ class _SLODefinitions:
         body = {
             'name': name,
             'objectives': objectives,
-            'total_score_pass_pct': total_score_pass_pct,
-            'total_score_warning_pct': total_score_warning_pct,
+            'total_score_pass_threshold': total_score_pass_threshold,
+            'total_score_warning_threshold': total_score_warning_threshold,
             'comparison': comparison or {},
             **kwargs,
         }
@@ -572,6 +572,29 @@ class _Evaluations:
         _raise_for_status(resp)
         return resp.json()  # type: ignore[no-any-return]
 
+    def trigger_asset(
+        self,
+        asset_name: str,
+        evaluation_name: str,
+        period_start: str,
+        period_end: str,
+        *,
+        variables: dict[str, str] | None = None,
+    ) -> dict[str, Any]:
+        """Trigger evaluations for all SLOs linked to an asset."""
+        resp = self._http.post(
+            '/evaluations/asset',
+            json={
+                'asset_name': asset_name,
+                'evaluation_name': evaluation_name,
+                'period_start': period_start,
+                'period_end': period_end,
+                'variables': variables or {},
+            },
+        )
+        _raise_for_status(resp)
+        return resp.json()  # type: ignore[no-any-return]
+
     def trigger_batch(
         self,
         group_name: str,
@@ -635,6 +658,7 @@ class _Evaluations:
         from_evaluation_id: str | None = None,
         slo_version: int | None = None,
         dry_run: bool = False,
+        pin_strategy: str | None = None,
     ) -> dict[str, Any]:
         """Re-evaluate completed evaluations from stored SLI values."""
         body: dict[str, Any] = {'asset_name': asset_name, 'slo_name': slo_name}
@@ -648,6 +672,8 @@ class _Evaluations:
             body['slo_version'] = slo_version
         if dry_run:
             body['dry_run'] = True
+        if pin_strategy is not None:
+            body['pin_strategy'] = pin_strategy
         resp = self._http.post('/evaluations/re-evaluate', json=body)
         _raise_for_status(resp)
         return resp.json()  # type: ignore[no-any-return]

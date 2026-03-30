@@ -85,6 +85,7 @@ function RegistryNodeRow({
         icon={getIconForNode(node)}
         iconColor={color}
         label={node.displayName ?? node.name}
+        subtitle={node.subtitle}
         depth={depth}
         isExpandable={!!hasChildren}
         isExpanded={isExpanded}

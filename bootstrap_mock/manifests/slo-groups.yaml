@@ -12,3 +12,18 @@ spec:
     process_name: ["auth", "cache", "db"]
   tags:
     app: app-x
+---
+# Combined example: SLO Groups + Aggregated-mode SLI.
+# Each generated SLO evaluates mean/p99/max for one process via the aggregated adapter.
+api_version: tropek/v1
+kind: SLOGroup
+metadata:
+  name: process-cpu-agg-group
+spec:
+  display_name: Process CPU Aggregated Monitoring
+  template_slo_name: "cpu-agg/$__gen_process_name"
+  template_slo_version: 1
+  gen_variables:
+    process_name: ["auth", "cache", "db", "worker"]
+  tags:
+    category: cpu-aggregated

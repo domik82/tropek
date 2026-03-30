@@ -8,7 +8,7 @@ from app.modules.slo_registry.params import SLOCreateParams, SLOObjectiveParams
 from app.modules.slo_registry.repository import SLORepository
 from sqlalchemy.ext.asyncio import AsyncSession
 
-_OBJECTIVES = [SLOObjectiveParams(sli='cpu_usage', pass_criteria=['<90'], weight=1)]
+_OBJECTIVES = [SLOObjectiveParams(sli='cpu_usage', pass_threshold=['<90'], weight=1)]
 
 
 @pytest.mark.integration

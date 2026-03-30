@@ -12,7 +12,7 @@ import type { IdentityData } from './WizardStepIdentity'
 import type { PickSliData } from './WizardStepPickSli'
 import type { IndicatorRow } from './WizardStepIndicators'
 import type { ComparisonData } from './WizardStepComparison'
-import type { SloDefinition } from '@/features/slos/types'
+import type { SloDefinition, MethodCriteriaOverride } from '@/features/slos/types'
 
 interface SloWizardProps {
   editSlo?: SloDefinition
@@ -35,11 +35,11 @@ function buildIndicatorRowsFromEdit(slo: SloDefinition): IndicatorRow[] {
     checked: true,
     weight: obj.weight,
     key_sli: obj.key_sli,
-    passCriteria: obj.pass_criteria.length > 0
-      ? obj.pass_criteria.map((c) => parseCriteria(c) ?? { ...DEFAULT_CRITERIA })
+    passCriteria: obj.pass_threshold.length > 0
+      ? obj.pass_threshold.map((c) => parseCriteria(c) ?? { ...DEFAULT_CRITERIA })
       : [{ ...DEFAULT_CRITERIA }],
-    warnCriteria: obj.warning_criteria.length > 0
-      ? obj.warning_criteria.map((c) => parseCriteria(c) ?? { ...DEFAULT_CRITERIA })
+    warnCriteria: obj.warning_threshold.length > 0
+      ? obj.warning_threshold.map((c) => parseCriteria(c) ?? { ...DEFAULT_CRITERIA })
       : [{ ...DEFAULT_CRITERIA }],
   }))
 }
@@ -51,8 +51,8 @@ function buildComparisonFromEdit(slo: SloDefinition): ComparisonData {
     compare_count: comp.number_of_comparison_results ?? 3,
     aggregate_function: comp.aggregate_function ?? 'avg',
     include_result_with_score: comp.include_result_with_score ?? 'pass_or_warn',
-    pass_pct: slo.total_score_pass_pct,
-    warn_pct: slo.total_score_warning_pct,
+    pass_threshold: slo.total_score_pass_threshold,
+    warn_criteria: slo.total_score_warning_threshold,
     tags: tagsToRows(slo.tags),
     variables: Object.entries(slo.variables).map(([key, value]) => ({ key, value })),
   }
@@ -75,6 +75,10 @@ export function SloWizard({ editSlo, defaultKind, onClose }: SloWizardProps) {
     editSlo ? buildIndicatorRowsFromEdit(editSlo) : [],
   )
 
+  const [methodCriteria, setMethodCriteria] = useState<Record<string, MethodCriteriaOverride>>(
+    editSlo?.method_criteria ?? {},
+  )
+
   const [comparison, setComparison] = useState<ComparisonData>(
     editSlo
       ? buildComparisonFromEdit(editSlo)
@@ -83,8 +87,8 @@ export function SloWizard({ editSlo, defaultKind, onClose }: SloWizardProps) {
           compare_count: 3,
           aggregate_function: 'avg',
           include_result_with_score: 'pass_or_warn',
-          pass_pct: 90,
-          warn_pct: 75,
+          pass_threshold: 90,
+          warn_criteria: 75,
           tags: [],
           variables: [],
         },
@@ -98,7 +102,9 @@ export function SloWizard({ editSlo, defaultKind, onClose }: SloWizardProps) {
 
   // In edit mode, fetch the full SLI definition to show ALL indicators
   // (not just the subset used by the current SLO objectives)
-  const { data: fullSli } = useSliDetail(editSlo?.sli_name ?? '')
+  const { data: fullSli } = useSliDetail(pickSli.sliName || editSlo?.sli_name || '')
+  const isAggregatedSli = fullSli?.mode === 'aggregated'
+  const aggregatedMethods = fullSli?.methods ?? []
   const sliMergedRef = useRef(false)
   useEffect(() => {
     if (sliMergedRef.current || !fullSli || !isEdit) return
@@ -133,9 +139,11 @@ export function SloWizard({ editSlo, defaultKind, onClose }: SloWizardProps) {
   const showStep3 = isEdit
     ? indicatorRows.length > 0
     : Object.keys(pickSli.indicators).length > 0
-  const showStep4 = indicatorRows.some(
-    (r) => r.checked && r.passCriteria.some((c) => c.value !== 0),
-  )
+  const showStep4 = isAggregatedSli
+    ? Object.keys(methodCriteria).length >= 0  // always show comparison for aggregated
+    : indicatorRows.some(
+        (r) => r.checked && r.passCriteria.some((c) => c.value !== 0),
+      )
 
   // When SLI selection changes, rebuild indicator rows
   function handlePickSliChange(data: PickSliData) {
@@ -170,8 +178,8 @@ export function SloWizard({ editSlo, defaultKind, onClose }: SloWizardProps) {
     const objectives = checkedRows.map((row, idx) => ({
       sli: row.sli,
       display_name: row.sli,
-      pass_criteria: row.passCriteria.map(serializeCriteria),
-      warning_criteria: row.warnCriteria.map(serializeCriteria),
+      pass_threshold: row.passCriteria.map(serializeCriteria),
+      warning_threshold: row.warnCriteria.map(serializeCriteria),
       weight: row.weight,
       key_sli: row.key_sli,
       sort_order: idx,
@@ -183,6 +191,8 @@ export function SloWizard({ editSlo, defaultKind, onClose }: SloWizardProps) {
       if (v.key.trim()) variables[v.key.trim()] = v.value
     }
 
+    const mc = Object.keys(methodCriteria).length > 0 ? methodCriteria : undefined
+
     createMutation.mutate(
       {
         name: identity.name,
@@ -192,8 +202,9 @@ export function SloWizard({ editSlo, defaultKind, onClose }: SloWizardProps) {
         sli_name: pickSli.sliName || undefined,
         sli_version: pickSli.sliVersion ?? undefined,
         objectives,
-        total_score_pass_pct: comparison.pass_pct,
-        total_score_warning_pct: comparison.warn_pct,
+        method_criteria: mc,
+        total_score_pass_threshold: comparison.pass_threshold,
+        total_score_warning_threshold: comparison.warn_criteria,
         comparison: {
           baseline_mode: comparison.baseline_mode,
           number_of_comparison_results: comparison.compare_count,
@@ -263,7 +274,20 @@ export function SloWizard({ editSlo, defaultKind, onClose }: SloWizardProps) {
 
       {showStep3 && (
         <section className="border border-border rounded-lg p-5">
-          <WizardStepIndicators rows={indicatorRows} onChange={setIndicatorRows} />
+          <WizardStepIndicators
+            rows={indicatorRows}
+            onChange={setIndicatorRows}
+            aggregatedMode={isAggregatedSli}
+            aggregatedMethods={aggregatedMethods}
+            methodCriteria={methodCriteria}
+            onMethodCriteriaChange={setMethodCriteria}
+            blueprintPassCriteria={
+              indicatorRows.find(r => r.checked)?.passCriteria.map(c =>
+                `${c.operator}${c.value}${c.suffix}`,
+              ) ?? ['<100']
+            }
+            blueprintWeight={indicatorRows.find(r => r.checked)?.weight ?? 1}
+          />
         </section>
       )}
 

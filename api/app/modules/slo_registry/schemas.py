@@ -16,8 +16,8 @@ class SLOObjectiveIn(BaseModel):
 
     sli: str
     display_name: str = ''
-    pass_criteria: list[str] = Field(default_factory=list)
-    warning_criteria: list[str] = Field(default_factory=list)
+    pass_threshold: list[str] = Field(default_factory=list)
+    warning_threshold: list[str] = Field(default_factory=list)
     weight: int = 1
     key_sli: bool = False
 
@@ -36,8 +36,8 @@ class SLODefinitionCreate(BaseModel):
     name: str
     display_name: str | None = None
     objectives: list[SLOObjectiveIn]
-    total_score_pass_pct: float = 90.0
-    total_score_warning_pct: float = 75.0
+    total_score_pass_threshold: float = 90.0
+    total_score_warning_threshold: float = 75.0
     comparison: dict[str, Any] = Field(default_factory=dict)
     notes: str | None = None
     author: str | None = None
@@ -60,8 +60,8 @@ class SLODefinitionRead(BaseModel):
     comparable_from_version: int
     active: bool
     objectives: list[SLOObjectiveRead]
-    total_score_pass_pct: float
-    total_score_warning_pct: float
+    total_score_pass_threshold: float
+    total_score_warning_threshold: float
     comparison: dict[str, Any]
     notes: str | None
     author: str | None
@@ -80,8 +80,8 @@ class SLOValidateRequest(BaseModel):
     """Request body for SLO validation (no save)."""
 
     objectives: list[SLOObjectiveIn]
-    total_score_pass_pct: float = 90.0
-    total_score_warning_pct: float = 75.0
+    total_score_pass_threshold: float = 90.0
+    total_score_warning_threshold: float = 75.0
     comparison: dict[str, Any] = Field(default_factory=dict)
 
 
@@ -113,8 +113,8 @@ class SLOTestRequest(BaseModel):
 
     # SLO content — replaces slo_yaml
     objectives: list[SLOObjectiveIn]
-    total_score_pass_pct: float = 90.0
-    total_score_warning_pct: float = 75.0
+    total_score_pass_threshold: float = 90.0
+    total_score_warning_threshold: float = 75.0
     comparison: dict[str, Any] = Field(default_factory=dict)
     # Evaluation context — unchanged
     sli_name: str
