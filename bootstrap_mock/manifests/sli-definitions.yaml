@@ -87,3 +87,23 @@ spec:
   query_template: 'http_request_duration_seconds{job="$job",namespace="$namespace"}'
   interval: '1m'
   methods: ['mean', 'p95', 'p99', 'max']
+---
+api_version: tropek/v1
+kind: SLI
+metadata:
+  name: process-cpu-agg
+  display_name: Process CPU (Aggregated)
+  author: bootstrap
+  notes: Aggregated-mode SLI for per-process CPU — computes mean, p99, and max from time-series data.
+  tags:
+    domain: endpoint-monitoring
+    mode: aggregated
+spec:
+  adapter_type: prometheus
+  mode: aggregated
+  query_template: 'rate(windows_process_cpu_time_total{instance="$host",process="$process_name"}[$interval]) * 100'
+  interval: 1m
+  methods:
+    - mean
+    - p99
+    - max
