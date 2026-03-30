@@ -337,7 +337,13 @@ def _has_diff(doc: ManifestDocument, existing: Any) -> bool:
                 or doc.metadata.get("tags", {}) != getattr(existing, "tags", {})
             )
         case "SLI":
-            return doc.spec.get("indicators") != getattr(existing, "indicators", {})
+            return (
+                doc.spec.get("indicators", {}) != getattr(existing, "indicators", {})
+                or doc.spec.get("mode", "raw") != getattr(existing, "mode", "raw")
+                or doc.spec.get("query_template") != getattr(existing, "query_template", None)
+                or doc.spec.get("interval") != getattr(existing, "interval", None)
+                or doc.spec.get("methods") != getattr(existing, "methods", None)
+            )
         case "SLO":
             existing_objectives = [
                 {k: v for k, v in o.model_dump().items() if k != "sort_order"}
@@ -444,11 +450,15 @@ def _create(client: Any, doc: ManifestDocument) -> None:
         case "SLI":
             client.sli_definitions.create(
                 name,
-                indicators=doc.spec["indicators"],
+                indicators=doc.spec.get("indicators", {}),
                 adapter_type=doc.spec.get("adapter_type", "prometheus"),
                 display_name=doc.metadata.get("display_name"),
                 notes=doc.metadata.get("notes"),
                 author=doc.metadata.get("author"),
+                mode=doc.spec.get("mode", "raw"),
+                query_template=doc.spec.get("query_template"),
+                interval=doc.spec.get("interval"),
+                methods=doc.spec.get("methods"),
             )
         case "SLO":
             total = doc.spec.get("total_score", {})
@@ -516,11 +526,15 @@ def _update(client: Any, doc: ManifestDocument) -> None:
             # Creates new version
             client.sli_definitions.create(
                 name,
-                indicators=doc.spec["indicators"],
+                indicators=doc.spec.get("indicators", {}),
                 adapter_type=doc.spec.get("adapter_type", "prometheus"),
                 display_name=doc.metadata.get("display_name"),
                 notes=doc.metadata.get("notes"),
                 author=doc.metadata.get("author"),
+                mode=doc.spec.get("mode", "raw"),
+                query_template=doc.spec.get("query_template"),
+                interval=doc.spec.get("interval"),
+                methods=doc.spec.get("methods"),
             )
         case "SLO":
             # Creates new version
