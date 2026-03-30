@@ -219,6 +219,24 @@ class TriggerResponse(BaseModel):
     status: str
 
 
+class AssetTriggerRequest(BaseModel):
+    """Request body for triggering all SLOs for an asset."""
+
+    asset_name: str
+    evaluation_name: str
+    period_start: datetime
+    period_end: datetime
+    variables: dict[str, str] = {}
+
+
+class AssetTriggerResponse(BaseModel):
+    """Response from asset-level trigger."""
+
+    evaluation_ids: list[uuid.UUID]
+    slo_names: list[str]
+    status: str
+
+
 class BatchTriggerRequest(BaseModel):
     """Request body for triggering a group evaluation batch."""
 

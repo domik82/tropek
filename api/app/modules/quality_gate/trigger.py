@@ -14,6 +14,7 @@ from app.modules.quality_gate.exceptions import (
 from app.modules.quality_gate.protocols import (
     AssetReader,
     DataSourceReader,
+    GroupSLOLinkReader,
     SLIReader,
     SLOBindingReader,
     SLOLinkReader,
@@ -140,6 +141,42 @@ async def resolve_single_trigger(
         adapter_type=ds.adapter_type,
         indicators=sli_def.indicators,
     )
+
+
+async def resolve_all_slos_for_asset(
+    *,
+    asset_id: uuid.UUID,
+    slo_link_repo: SLOLinkReader,
+    group_link_repo: GroupSLOLinkReader,
+    binding_repo: SLOBindingReader,
+    group_ids: list[uuid.UUID],
+) -> list[str]:
+    """Collect all SLO names linked to an asset from all binding sources.
+
+    Sources:
+      1. AssetSLOLink — direct asset-level links
+      2. AssetGroupSLOLink — group-level links (from groups the asset belongs to)
+      3. SLOBinding — polymorphic bindings (direct asset + via group membership)
+    """
+    slo_names: set[str] = set()
+
+    # Source 1: Direct AssetSLOLinks
+    asset_links = await slo_link_repo.list_by_asset(asset_id)
+    for lnk in asset_links:
+        slo_names.add(lnk.slo_name)
+
+    # Source 2: AssetGroupSLOLinks (from groups the asset belongs to)
+    for gid in group_ids:
+        group_links = await group_link_repo.list_by_group(gid)
+        for gl in group_links:
+            slo_names.add(gl.slo_name)
+
+    # Source 3: SLOBindings (direct asset + via group membership)
+    bindings = await binding_repo.list_for_asset_evaluation(asset_id, group_ids)
+    for b in bindings:
+        slo_names.add(b.slo_name)
+
+    return sorted(slo_names)
 
 
 async def resolve_all_bindings_for_asset(

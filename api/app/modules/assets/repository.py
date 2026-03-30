@@ -405,6 +405,13 @@ class AssetGroupRepository:
         await self._session.flush()
         return True
 
+    async def list_group_ids_for_asset(self, asset_id: uuid.UUID) -> list[uuid.UUID]:
+        """Return IDs of all groups that contain this asset as a direct member."""
+        result = await self._session.execute(
+            select(AssetGroupMember.group_id).where(AssetGroupMember.asset_id == asset_id)
+        )
+        return list(result.scalars().all())
+
     async def list_all(self) -> list[AssetGroupRead]:
         """Return all asset groups ordered by name, each with members and subgroups."""
         result = await self._session.execute(select(AssetGroup).order_by(AssetGroup.name))
