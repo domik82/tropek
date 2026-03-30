@@ -27,6 +27,22 @@ ADAPTER_PORT=8081
 PROMETHEUS_URL="${PROMETHEUS_URL:-http://localhost:9090}"
 ADAPTER_REDIS_URL="${ADAPTER_REDIS_URL:-redis://:e2e_redis@localhost:$REDIS_PORT/1}"
 
+# --- Kill any previous dev-start instance and tear down containers ---
+echo "=== Cleaning up previous instance ==="
+# Kill processes on our ports
+for port in $API_PORT $MOCK_PORT; do
+  pid=$(lsof -ti tcp:$port 2>/dev/null || true)
+  if [ -n "$pid" ]; then
+    echo "  Killing process on port $port (pid $pid)"
+    kill $pid 2>/dev/null || true
+    sleep 0.5
+    kill -9 $pid 2>/dev/null || true
+  fi
+done
+# Tear down e2e containers and volumes (fresh DB)
+docker compose --profile e2e down -v 2>/dev/null || true
+echo "  Done"
+
 PIDS=()
 
 cleanup() {

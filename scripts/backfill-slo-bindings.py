@@ -22,16 +22,12 @@ async def backfill() -> None:
     async with session_factory() as session:
         # 1. Backfill sli_name on SLOs from their asset links
         slos_without_sli = (
-            (await session.execute(select(SLODefinition).where(SLODefinition.sli_name.is_(None))))
-            .scalars()
-            .all()
+            (await session.execute(select(SLODefinition).where(SLODefinition.sli_name.is_(None)))).scalars().all()
         )
 
         for slo in slos_without_sli:
             link = (
-                await session.execute(
-                    select(AssetSLOLink).where(AssetSLOLink.slo_name == slo.name).limit(1)
-                )
+                await session.execute(select(AssetSLOLink).where(AssetSLOLink.slo_name == slo.name).limit(1))
             ).scalar_one_or_none()
             if link and link.sli_name:
                 slo.sli_name = link.sli_name
@@ -43,7 +39,7 @@ async def backfill() -> None:
             existing = (
                 await session.execute(
                     select(SLOBinding).where(
-                        SLOBinding.target_type == "asset",
+                        SLOBinding.target_type == 'asset',
                         SLOBinding.target_id == link.asset_id,
                         SLOBinding.slo_name == link.slo_name,
                     )
@@ -52,7 +48,7 @@ async def backfill() -> None:
             if not existing:
                 session.add(
                     SLOBinding(
-                        target_type="asset",
+                        target_type='asset',
                         target_id=link.asset_id,
                         slo_name=link.slo_name,
                         data_source_name=link.data_source_name,
@@ -65,7 +61,7 @@ async def backfill() -> None:
             existing = (
                 await session.execute(
                     select(SLOBinding).where(
-                        SLOBinding.target_type == "asset_group",
+                        SLOBinding.target_type == 'asset_group',
                         SLOBinding.target_id == link.group_id,
                         SLOBinding.slo_name == link.slo_name,
                     )
@@ -74,7 +70,7 @@ async def backfill() -> None:
             if not existing:
                 session.add(
                     SLOBinding(
-                        target_type="asset_group",
+                        target_type='asset_group',
                         target_id=link.group_id,
                         slo_name=link.slo_name,
                         data_source_name=link.data_source_name,
@@ -82,7 +78,7 @@ async def backfill() -> None:
                 )
 
         await session.commit()
-        print("backfill complete")
+        print('backfill complete')
 
 
 asyncio.run(backfill())

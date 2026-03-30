@@ -10,15 +10,17 @@ from pydantic import BaseModel, Field
 
 # Processing order — dependencies must come first
 _KIND_ORDER = [
-    "AssetType",
-    "DataSource",
-    "Asset",
-    "SLI",
-    "SLO",
-    "AssetGroup",
-    "AssetSLOLink",
-    "AssetGroupSLOLink",
-    "SLOBinding",
+    'AssetType',
+    'DataSource',
+    'Asset',
+    'SLI',
+    'SLO',
+    'AssetGroup',
+    'AssetSLOLink',
+    'AssetGroupSLOLink',
+    'SLOBinding',
+    'SLOGroup',
+    'TemplateBinding',
 ]
 
 
@@ -70,9 +72,9 @@ def load_manifests(path: str) -> list[ManifestDocument]:
     raw_docs: list[dict[str, Any]] = []
 
     if p.is_dir():
-        for f in sorted(p.glob("*.yaml")):
+        for f in sorted(p.glob('*.yaml')):
             raw_docs.extend(_load_file(f))
-        for f in sorted(p.glob("*.yml")):
+        for f in sorted(p.glob('*.yml')):
             raw_docs.extend(_load_file(f))
     else:
         raw_docs.extend(_load_file(p))
@@ -83,26 +85,26 @@ def load_manifests(path: str) -> list[ManifestDocument]:
 
 def _load_file(path: Path) -> list[dict[str, Any]]:
     """Load all YAML documents from a single file."""
-    text = path.read_text(encoding="utf-8")
+    text = path.read_text(encoding='utf-8')
     return [doc for doc in yaml.safe_load_all(text) if doc]
 
 
 def _parse_document(raw: dict[str, Any]) -> ManifestDocument:
     """Validate and parse a raw YAML document into a ManifestDocument."""
-    if "api_version" not in raw:
-        raise ValueError("manifest document missing required field: api_version")
-    if "kind" not in raw:
-        raise ValueError("manifest document missing required field: kind")
-    if "metadata" not in raw:
-        raise ValueError("manifest document missing required field: metadata")
-    if raw["kind"] not in _KIND_ORDER:
-        raise ValueError(f"unknown kind: {raw['kind']}. valid: {_KIND_ORDER}")
+    if 'api_version' not in raw:
+        raise ValueError('manifest document missing required field: api_version')
+    if 'kind' not in raw:
+        raise ValueError('manifest document missing required field: kind')
+    if 'metadata' not in raw:
+        raise ValueError('manifest document missing required field: metadata')
+    if raw['kind'] not in _KIND_ORDER:
+        raise ValueError(f'unknown kind: {raw["kind"]}. valid: {_KIND_ORDER}')
 
     return ManifestDocument(
-        api_version=raw["api_version"],
-        kind=raw["kind"],
-        metadata=raw["metadata"],
-        spec=raw.get("spec", {}),
+        api_version=raw['api_version'],
+        kind=raw['kind'],
+        metadata=raw['metadata'],
+        spec=raw.get('spec', {}),
     )
 
 
@@ -118,23 +120,23 @@ def _topological_sort(docs: list[ManifestDocument]) -> list[ManifestDocument]:
     return sorted(docs, key=sort_key)
 
 
-def _validate_doc_refs(
+def _validate_doc_refs(  # noqa: C901, PLR0912
     doc: ManifestDocument, names_by_kind: dict[str, set[str]], errors: list[str]
 ) -> None:
     """Validate cross-references in a single manifest document (appends warnings to errors)."""
-    doc_name = doc.metadata.get("name", "")
-    if doc.kind == "Asset":
-        type_name = doc.spec.get("type_name")
-        if type_name and type_name not in names_by_kind.get("AssetType", set()):
+    doc_name = doc.metadata.get('name', '')
+    if doc.kind == 'Asset':
+        type_name = doc.spec.get('type_name')
+        if type_name and type_name not in names_by_kind.get('AssetType', set()):
             errors.append(
                 f"WARNING: Asset '{doc_name}' references AssetType "
                 f"'{type_name}' not found in manifest (may exist in API)"
             )
-    elif doc.kind in ("AssetSLOLink", "AssetGroupSLOLink"):
+    elif doc.kind in ('AssetSLOLink', 'AssetGroupSLOLink'):
         for ref_field, ref_kind in [
-            ("slo_name", "SLO"),
-            ("sli_name", "SLI"),
-            ("data_source_name", "DataSource"),
+            ('slo_name', 'SLO'),
+            ('sli_name', 'SLI'),
+            ('data_source_name', 'DataSource'),
         ]:
             ref_val = doc.spec.get(ref_field)
             if ref_val and ref_val not in names_by_kind.get(ref_kind, set()):
@@ -142,12 +144,29 @@ def _validate_doc_refs(
                     f"WARNING: {doc.kind} '{doc_name}' references {ref_kind} "
                     f"'{ref_val}' not found in manifest (may exist in API)"
                 )
-    elif doc.kind == "SLOBinding":
-        for ref_field, ref_kind in [("slo_name", "SLO"), ("data_source_name", "DataSource")]:
+    elif doc.kind == 'SLOBinding':
+        for ref_field, ref_kind in [('slo_name', 'SLO'), ('data_source_name', 'DataSource')]:
             ref_val = doc.spec.get(ref_field)
             if ref_val and ref_val not in names_by_kind.get(ref_kind, set()):
                 errors.append(
                     f"WARNING: SLOBinding '{doc_name}' references {ref_kind} "
+                    f"'{ref_val}' not found in manifest (may exist in API)"
+                )
+    elif doc.kind == 'SLOGroup':
+        tpl_name = doc.spec.get('template_slo_name')
+        if tpl_name and tpl_name not in names_by_kind.get('SLO', set()):
+            errors.append(
+                f"WARNING: SLOGroup '{doc_name}' references SLO '{tpl_name}' not found in manifest (may exist in API)"
+            )
+    elif doc.kind == 'TemplateBinding':
+        for ref_field, ref_kind in [
+            ('template_group_name', 'SLOGroup'),
+            ('data_source_name', 'DataSource'),
+        ]:
+            ref_val = doc.spec.get(ref_field)
+            if ref_val and ref_val not in names_by_kind.get(ref_kind, set()):
+                errors.append(
+                    f"WARNING: TemplateBinding '{doc_name}' references {ref_kind} "
                     f"'{ref_val}' not found in manifest (may exist in API)"
                 )
 
@@ -164,7 +183,7 @@ def validate_manifests(path: str) -> list[str]:
     # Cross-reference validation (warnings, not errors — refs may exist in API)
     names_by_kind: dict[str, set[str]] = {}
     for doc in docs:
-        names_by_kind.setdefault(doc.kind, set()).add(doc.metadata["name"])
+        names_by_kind.setdefault(doc.kind, set()).add(doc.metadata['name'])
 
     for doc in docs:
         _validate_doc_refs(doc, names_by_kind, errors)
@@ -176,38 +195,32 @@ def dry_run(client: Any, manifests: list[ManifestDocument]) -> ApplyPlan:
     """Compare manifests against API state and return planned actions."""
     plan = ApplyPlan()
     for doc in manifests:
-        name = doc.metadata.get("name", "unknown")
+        name = doc.metadata.get('name', 'unknown')
         try:
             existing = _lookup(client, doc)
             if existing is None:
                 plan.actions.append(
                     PlanAction(
-                        operation="CREATE",
+                        operation='CREATE',
                         kind=doc.kind,
                         name=name,
-                        reason="not found in current state",
+                        reason='not found in current state',
                     )
                 )
             elif _has_diff(doc, existing):
                 reason = _diff_reason(doc, existing)
-                plan.actions.append(
-                    PlanAction(operation="UPDATE", kind=doc.kind, name=name, reason=reason)
-                )
+                plan.actions.append(PlanAction(operation='UPDATE', kind=doc.kind, name=name, reason=reason))
             else:
                 plan.actions.append(
                     PlanAction(
-                        operation="SKIP",
+                        operation='SKIP',
                         kind=doc.kind,
                         name=name,
-                        reason="already exists, no changes",
+                        reason='already exists, no changes',
                     )
                 )
-        except Exception as e:
-            plan.actions.append(
-                PlanAction(
-                    operation="CREATE", kind=doc.kind, name=name, reason=f"lookup failed: {e}"
-                )
-            )
+        except Exception as e:  # noqa: BLE001
+            plan.actions.append(PlanAction(operation='CREATE', kind=doc.kind, name=name, reason=f'lookup failed: {e}'))
     return plan
 
 
@@ -218,24 +231,22 @@ def apply(client: Any, manifests: list[ManifestDocument]) -> ApplyResult:
     blocked_kinds: set[str] = set()
 
     for action, doc in zip(plan.actions, manifests, strict=False):
-        name = doc.metadata.get("name", "unknown")
-        if action.operation == "SKIP":
+        name = doc.metadata.get('name', 'unknown')
+        if action.operation == 'SKIP':
             result.skipped += 1
             continue
         if doc.kind in blocked_kinds:
             result.failed += 1
-            result.errors.append(
-                ApplyError(kind=doc.kind, name=name, error="blocked by prior error")
-            )
+            result.errors.append(ApplyError(kind=doc.kind, name=name, error='blocked by prior error'))
             continue
         try:
-            if action.operation == "CREATE":
+            if action.operation == 'CREATE':
                 _create(client, doc)
                 result.created += 1
-            elif action.operation == "UPDATE":
+            elif action.operation == 'UPDATE':
                 _update(client, doc)
                 result.updated += 1
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             result.failed += 1
             result.errors.append(ApplyError(kind=doc.kind, name=name, error=str(e)))
             # Block only kinds that depend on the failed kind
@@ -246,12 +257,13 @@ def apply(client: Any, manifests: list[ManifestDocument]) -> ApplyResult:
 
 
 _KIND_DEPS: dict[str, set[str]] = {
-    "AssetType": {"Asset"},
-    "DataSource": {"AssetSLOLink", "AssetGroupSLOLink", "SLOBinding"},
-    "Asset": {"AssetGroup", "AssetSLOLink", "SLOBinding"},
-    "SLI": {"AssetSLOLink", "AssetGroupSLOLink"},
-    "SLO": {"AssetSLOLink", "AssetGroupSLOLink", "SLOBinding"},
-    "AssetGroup": {"AssetGroupSLOLink", "SLOBinding"},
+    'AssetType': {'Asset'},
+    'DataSource': {'AssetSLOLink', 'AssetGroupSLOLink', 'SLOBinding', 'TemplateBinding'},
+    'Asset': {'AssetGroup', 'AssetSLOLink', 'SLOBinding', 'TemplateBinding'},
+    'SLI': {'AssetSLOLink', 'AssetGroupSLOLink'},
+    'SLO': {'AssetSLOLink', 'AssetGroupSLOLink', 'SLOBinding', 'SLOGroup'},
+    'AssetGroup': {'AssetGroupSLOLink', 'SLOBinding', 'TemplateBinding'},
+    'SLOGroup': {'TemplateBinding'},
 }
 
 
@@ -270,101 +282,132 @@ def _dependents_of(kind: str) -> set[str]:
 
 def _lookup_slo_link(client: Any, doc: ManifestDocument, link_name: str) -> Any | None:
     """Look up an existing AssetSLOLink or AssetGroupSLOLink via the client."""
-    if doc.kind == "AssetSLOLink":
-        links = client.asset_slo_links.list(doc.spec.get("asset_name", ""))
+    if doc.kind == 'AssetSLOLink':
+        links = client.asset_slo_links.list(doc.spec.get('asset_name', ''))
     else:
-        links = client.group_slo_links.list(doc.spec.get("group_name", ""))
+        links = client.group_slo_links.list(doc.spec.get('group_name', ''))
     return next((lnk for lnk in links if lnk.link_name == link_name), None)
+
+
+def _lookup_slo_group(client: Any, doc: ManifestDocument) -> Any | None:
+    """Look up an existing SLO group by name."""
+    name = doc.metadata['name']
+    try:
+        return client.slo_groups.get(name)
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def _lookup_template_binding(client: Any, doc: ManifestDocument) -> Any | None:
+    """Look up an existing template binding."""
+    target_type = doc.spec.get('target_type', '')
+    target_name = doc.spec.get('target_name', '')
+    group_name = doc.spec.get('template_group_name', '')
+    if target_type == 'asset':
+        bindings = client.template_bindings.list_for_asset(target_name)
+    else:
+        bindings = client.template_bindings.list_for_group(target_name)
+    return next((b for b in bindings if b.template_group_name == group_name), None)
 
 
 def _lookup_slo_binding(client: Any, doc: ManifestDocument) -> Any | None:
     """Look up an existing SLOBinding via the client."""
-    target_type = doc.spec.get("target_type", "")
-    target_name = doc.spec.get("target_name", "")
-    if target_type == "asset":
+    target_type = doc.spec.get('target_type', '')
+    target_name = doc.spec.get('target_name', '')
+    if target_type == 'asset':
         bindings = client.slo_bindings.list_for_asset(target_name)
     else:
         bindings = client.slo_bindings.list_for_group(target_name)
-    return next((b for b in bindings if b.slo_name == doc.spec.get("slo_name")), None)
+    return next((b for b in bindings if b.slo_name == doc.spec.get('slo_name')), None)
 
 
-def _lookup(client: Any, doc: ManifestDocument) -> Any | None:
+def _lookup(client: Any, doc: ManifestDocument) -> Any | None:  # noqa: C901, PLR0911
     """Look up an existing entity by name via the client."""
-    name = doc.metadata["name"]
+    name = doc.metadata['name']
     try:
         match doc.kind:
-            case "AssetType":
+            case 'AssetType':
                 types = client.asset_types.list()
                 return next((t for t in types if t.name == name), None)
-            case "Asset":
+            case 'Asset':
                 return client.assets.get(name)
-            case "AssetGroup":
+            case 'AssetGroup':
                 return client.asset_groups.get(name)
-            case "DataSource":
+            case 'DataSource':
                 return client.datasources.get(name)
-            case "SLI":
+            case 'SLI':
                 return client.sli_definitions.get(name)
-            case "SLO":
+            case 'SLO':
                 return client.slo_definitions.get(name)
-            case "AssetSLOLink" | "AssetGroupSLOLink":
+            case 'AssetSLOLink' | 'AssetGroupSLOLink':
                 return _lookup_slo_link(client, doc, name)
-            case "SLOBinding":
+            case 'SLOBinding':
                 return _lookup_slo_binding(client, doc)
+            case 'SLOGroup':
+                return _lookup_slo_group(client, doc)
+            case 'TemplateBinding':
+                return _lookup_template_binding(client, doc)
             case _:
                 return None
-    except Exception:
+    except Exception:  # noqa: BLE001
         return None
 
 
-def _has_diff(doc: ManifestDocument, existing: Any) -> bool:
+def _has_diff(doc: ManifestDocument, existing: Any) -> bool:  # noqa: C901, PLR0911
     """Check if the manifest differs from the existing entity."""
     match doc.kind:
-        case "AssetType":
-            return doc.spec.get("is_default") != getattr(existing, "is_default", None)
-        case "Asset":
+        case 'AssetType':
+            return doc.spec.get('is_default') != getattr(existing, 'is_default', None)
+        case 'Asset':
             return (
-                doc.metadata.get("display_name") != getattr(existing, "display_name", None)
-                or doc.metadata.get("tags", {}) != getattr(existing, "tags", {})
-                or doc.metadata.get("variables", {}) != getattr(existing, "variables", {})
+                doc.metadata.get('display_name') != getattr(existing, 'display_name', None)
+                or doc.metadata.get('tags', {}) != getattr(existing, 'tags', {})
+                or doc.metadata.get('variables', {}) != getattr(existing, 'variables', {})
             )
-        case "AssetGroup":
+        case 'AssetGroup':
             # Member/subgroup sync not yet implemented; skip updates
             return False
-        case "DataSource":
+        case 'DataSource':
             return (
-                doc.metadata.get("display_name") != getattr(existing, "display_name", None)
-                or doc.spec.get("adapter_url") != getattr(existing, "adapter_url", None)
-                or doc.metadata.get("tags", {}) != getattr(existing, "tags", {})
+                doc.metadata.get('display_name') != getattr(existing, 'display_name', None)
+                or doc.spec.get('adapter_url') != getattr(existing, 'adapter_url', None)
+                or doc.metadata.get('tags', {}) != getattr(existing, 'tags', {})
             )
-        case "SLI":
+        case 'SLI':
             return (
-                doc.spec.get("indicators", {}) != getattr(existing, "indicators", {})
-                or doc.spec.get("mode", "raw") != getattr(existing, "mode", "raw")
-                or doc.spec.get("query_template") != getattr(existing, "query_template", None)
-                or doc.spec.get("interval") != getattr(existing, "interval", None)
-                or doc.spec.get("methods") != getattr(existing, "methods", None)
+                doc.spec.get('indicators', {}) != getattr(existing, 'indicators', {})
+                or doc.spec.get('mode', 'raw') != getattr(existing, 'mode', 'raw')
+                or doc.spec.get('query_template') != getattr(existing, 'query_template', None)
+                or doc.spec.get('interval') != getattr(existing, 'interval', None)
+                or doc.spec.get('methods') != getattr(existing, 'methods', None)
             )
-        case "SLO":
+        case 'SLO':
             existing_objectives = [
-                {k: v for k, v in o.model_dump().items() if k != "sort_order"}
-                for o in (existing.objectives if hasattr(existing, "objectives") else [])
+                {k: v for k, v in o.model_dump().items() if k != 'sort_order'}
+                for o in (existing.objectives if hasattr(existing, 'objectives') else [])
             ]
             return (
-                doc.spec.get("objectives") != existing_objectives
-                or doc.spec.get("total_score", {}).get("pass_threshold")
-                != getattr(existing, "total_score_pass_threshold", None)
-                or doc.spec.get("total_score", {}).get("warning_threshold")
-                != getattr(existing, "total_score_warning_threshold", None)
-                or doc.spec.get("comparison", {}) != getattr(existing, "comparison", {})
+                doc.spec.get('objectives') != existing_objectives
+                or doc.spec.get('total_score', {}).get('pass_threshold')
+                != getattr(existing, 'total_score_pass_threshold', None)
+                or doc.spec.get('total_score', {}).get('warning_threshold')
+                != getattr(existing, 'total_score_warning_threshold', None)
+                or doc.spec.get('comparison', {}) != getattr(existing, 'comparison', {})
             )
-        case "AssetSLOLink" | "AssetGroupSLOLink":
+        case 'AssetSLOLink' | 'AssetGroupSLOLink':
             return (
-                doc.spec.get("slo_name") != getattr(existing, "slo_name", None)
-                or doc.spec.get("sli_name") != getattr(existing, "sli_name", None)
-                or doc.spec.get("data_source_name") != getattr(existing, "data_source_name", None)
+                doc.spec.get('slo_name') != getattr(existing, 'slo_name', None)
+                or doc.spec.get('sli_name') != getattr(existing, 'sli_name', None)
+                or doc.spec.get('data_source_name') != getattr(existing, 'data_source_name', None)
             )
-        case "SLOBinding":
-            return doc.spec.get("data_source_name") != getattr(existing, "data_source_name", None)
+        case 'SLOBinding':
+            return doc.spec.get('data_source_name') != getattr(existing, 'data_source_name', None)
+        case 'SLOGroup':
+            return doc.spec.get('gen_variables') != getattr(existing, 'gen_variables', None) or doc.spec.get(
+                'template_slo_version'
+            ) != getattr(existing, 'template_slo_version', None)
+        case 'TemplateBinding':
+            return doc.spec.get('data_source_name') != getattr(existing, 'data_source_name', None)
         case _:
             return False
 
@@ -372,36 +415,65 @@ def _has_diff(doc: ManifestDocument, existing: Any) -> bool:
 def _diff_reason(doc: ManifestDocument, existing: Any) -> str:
     """Generate a human-readable diff reason."""
     match doc.kind:
-        case "SLI":
-            return "indicators differ (new version will be created)"
-        case "SLO":
-            return "objectives or score differ (new version will be created)"
+        case 'SLI':
+            return 'indicators differ (new version will be created)'
+        case 'SLO':
+            return 'objectives or score differ (new version will be created)'
         case _:
-            return "fields differ"
+            return 'fields differ'
 
 
 def _create_slo_binding(client: Any, spec: dict[str, Any]) -> None:
     """Create an SLO binding for an asset or group."""
-    target_type = spec["target_type"]
-    target_name = spec["target_name"]
-    if target_type == "asset":
-        client.slo_bindings.create_for_asset(
-            target_name, spec["slo_name"], spec["data_source_name"]
-        )
+    target_type = spec['target_type']
+    target_name = spec['target_name']
+    if target_type == 'asset':
+        client.slo_bindings.create_for_asset(target_name, spec['slo_name'], spec['data_source_name'])
     else:
-        client.slo_bindings.create_for_group(
-            target_name, spec["slo_name"], spec["data_source_name"]
-        )
+        client.slo_bindings.create_for_group(target_name, spec['slo_name'], spec['data_source_name'])
 
 
 def _delete_slo_binding(client: Any, spec: dict[str, Any]) -> None:
     """Delete an SLO binding for an asset or group."""
-    target_type = spec["target_type"]
-    target_name = spec["target_name"]
-    if target_type == "asset":
-        client.slo_bindings.delete_for_asset(target_name, spec["slo_name"])
+    target_type = spec['target_type']
+    target_name = spec['target_name']
+    if target_type == 'asset':
+        client.slo_bindings.delete_for_asset(target_name, spec['slo_name'])
     else:
-        client.slo_bindings.delete_for_group(target_name, spec["slo_name"])
+        client.slo_bindings.delete_for_group(target_name, spec['slo_name'])
+
+
+def _create_slo_group(client: Any, name: str, spec: dict[str, Any]) -> None:
+    """Create an SLO group."""
+    client.slo_groups.create(
+        name,
+        template_slo_name=spec['template_slo_name'],
+        template_slo_version=spec['template_slo_version'],
+        gen_variables=spec['gen_variables'],
+        display_name=spec.get('display_name'),
+        tags=spec.get('tags'),
+        author=spec.get('author'),
+    )
+
+
+def _create_template_binding(client: Any, spec: dict[str, Any]) -> None:
+    """Create a template binding."""
+    target_type = spec['target_type']
+    target_name = spec['target_name']
+    if target_type == 'asset':
+        client.template_bindings.create_for_asset(target_name, spec['template_group_name'], spec['data_source_name'])
+    else:
+        client.template_bindings.create_for_group(target_name, spec['template_group_name'], spec['data_source_name'])
+
+
+def _delete_template_binding(client: Any, spec: dict[str, Any]) -> None:
+    """Delete a template binding."""
+    target_type = spec['target_type']
+    target_name = spec['target_name']
+    if target_type == 'asset':
+        client.template_bindings.delete_for_asset(target_name, spec['template_group_name'])
+    else:
+        client.template_bindings.delete_for_group(target_name, spec['template_group_name'])
 
 
 def _create_asset_group(
@@ -413,171 +485,185 @@ def _create_asset_group(
 ) -> None:
     """Create an asset group with members and subgroups."""
     client.asset_groups.create(name, display_name=display_name)
-    for member in spec.get("members", []):
-        asset = client.assets.get(member["asset_name"])
-        client.asset_groups.add_member(name, str(asset.id), weight=member.get("weight", 1.0))
-    for subgroup in spec.get("subgroups", []):
-        child = client.asset_groups.get(subgroup["group_name"])
-        client.asset_groups.add_subgroup(name, str(child.id), weight=subgroup.get("weight", 1.0))
+    for member in spec.get('members', []):
+        asset = client.assets.get(member['asset_name'])
+        client.asset_groups.add_member(name, str(asset.id), weight=member.get('weight', 1.0))
+    for subgroup in spec.get('subgroups', []):
+        child = client.asset_groups.get(subgroup['group_name'])
+        client.asset_groups.add_subgroup(name, str(child.id), weight=subgroup.get('weight', 1.0))
 
 
-def _create(client: Any, doc: ManifestDocument) -> None:
+def _create(client: Any, doc: ManifestDocument) -> None:  # noqa: C901
     """Create a new entity via the client."""
-    name = doc.metadata["name"]
+    name = doc.metadata['name']
     match doc.kind:
-        case "AssetType":
-            client.asset_types.create(name, is_default=doc.spec.get("is_default", False))
-        case "Asset":
+        case 'AssetType':
+            client.asset_types.create(name, is_default=doc.spec.get('is_default', False))
+        case 'Asset':
             client.assets.create(
                 name,
-                type_name=doc.spec.get("type_name", "vm"),
-                display_name=doc.metadata.get("display_name"),
-                tags=doc.metadata.get("tags"),
-                variables=doc.metadata.get("variables"),
+                type_name=doc.spec.get('type_name', 'vm'),
+                display_name=doc.metadata.get('display_name'),
+                tags=doc.metadata.get('tags'),
+                variables=doc.metadata.get('variables'),
             )
-        case "AssetGroup":
-            _create_asset_group(
-                client, name, doc.spec, display_name=doc.metadata.get("display_name")
-            )
-        case "DataSource":
+        case 'AssetGroup':
+            _create_asset_group(client, name, doc.spec, display_name=doc.metadata.get('display_name'))
+        case 'DataSource':
             client.datasources.create(
                 name,
-                adapter_type=doc.spec["adapter_type"],
-                adapter_url=doc.spec["adapter_url"],
-                display_name=doc.metadata.get("display_name"),
-                tags=doc.metadata.get("tags"),
+                adapter_type=doc.spec['adapter_type'],
+                adapter_url=doc.spec['adapter_url'],
+                display_name=doc.metadata.get('display_name'),
+                tags=doc.metadata.get('tags'),
             )
-        case "SLI":
+        case 'SLI':
             client.sli_definitions.create(
                 name,
-                indicators=doc.spec.get("indicators", {}),
-                adapter_type=doc.spec.get("adapter_type", "prometheus"),
-                display_name=doc.metadata.get("display_name"),
-                notes=doc.metadata.get("notes"),
-                author=doc.metadata.get("author"),
-                mode=doc.spec.get("mode", "raw"),
-                query_template=doc.spec.get("query_template"),
-                interval=doc.spec.get("interval"),
-                methods=doc.spec.get("methods"),
+                indicators=doc.spec.get('indicators', {}),
+                adapter_type=doc.spec.get('adapter_type', 'prometheus'),
+                display_name=doc.metadata.get('display_name'),
+                notes=doc.metadata.get('notes'),
+                author=doc.metadata.get('author'),
+                mode=doc.spec.get('mode', 'raw'),
+                query_template=doc.spec.get('query_template'),
+                interval=doc.spec.get('interval'),
+                methods=doc.spec.get('methods'),
             )
-        case "SLO":
-            total = doc.spec.get("total_score", {})
+        case 'SLO':
+            total = doc.spec.get('total_score', {})
             client.slo_definitions.create(
                 name,
-                objectives=doc.spec["objectives"],
-                total_score_pass_threshold=total.get("pass_threshold", 90.0),
-                total_score_warning_threshold=total.get("warning_threshold", 75.0),
-                comparison=doc.spec.get("comparison", {}),
-                display_name=doc.metadata.get("display_name"),
-                notes=doc.metadata.get("notes"),
-                author=doc.metadata.get("author"),
-                sli_name=doc.spec.get("sli_name"),
-                sli_version=doc.spec.get("sli_version"),
-                kind=doc.spec.get("kind", "standard"),
-                variables=doc.spec.get("variables", {}),
-                method_criteria=doc.spec.get("method_criteria"),
+                objectives=doc.spec['objectives'],
+                total_score_pass_threshold=total.get('pass_threshold', 90.0),
+                total_score_warning_threshold=total.get('warning_threshold', 75.0),
+                comparison=doc.spec.get('comparison', {}),
+                display_name=doc.metadata.get('display_name'),
+                notes=doc.metadata.get('notes'),
+                author=doc.metadata.get('author'),
+                sli_name=doc.spec.get('sli_name'),
+                sli_version=doc.spec.get('sli_version'),
+                kind=doc.spec.get('kind', 'standard'),
+                variables=doc.spec.get('variables', {}),
+                method_criteria=doc.spec.get('method_criteria'),
             )
-        case "AssetSLOLink":
-            asset_name = doc.spec["asset_name"]
+        case 'AssetSLOLink':
+            asset_name = doc.spec['asset_name']
             client.asset_slo_links.create(
                 asset_name,
                 name,
-                doc.spec["slo_name"],
-                doc.spec["sli_name"],
-                doc.spec["data_source_name"],
+                doc.spec['slo_name'],
+                doc.spec['sli_name'],
+                doc.spec['data_source_name'],
             )
-        case "AssetGroupSLOLink":
-            group_name = doc.spec["group_name"]
+        case 'AssetGroupSLOLink':
+            group_name = doc.spec['group_name']
             client.group_slo_links.create(
                 group_name,
                 name,
-                doc.spec["slo_name"],
-                doc.spec["sli_name"],
-                doc.spec["data_source_name"],
+                doc.spec['slo_name'],
+                doc.spec['sli_name'],
+                doc.spec['data_source_name'],
             )
-        case "SLOBinding":
+        case 'SLOBinding':
             _create_slo_binding(client, doc.spec)
+        case 'SLOGroup':
+            _create_slo_group(client, name, doc.spec)
+        case 'TemplateBinding':
+            _create_template_binding(client, doc.spec)
 
 
-def _update(client: Any, doc: ManifestDocument) -> None:
+def _update(client: Any, doc: ManifestDocument) -> None:  # noqa: C901
     """Update an existing entity via the client."""
-    name = doc.metadata["name"]
+    name = doc.metadata['name']
     match doc.kind:
-        case "AssetType":
-            client.asset_types.set_default(name) if doc.spec.get("is_default") else None
-        case "Asset":
+        case 'AssetType':
+            client.asset_types.set_default(name) if doc.spec.get('is_default') else None
+        case 'Asset':
             client.assets.update(
                 name,
-                display_name=doc.metadata.get("display_name"),
-                tags=doc.metadata.get("tags"),
-                variables=doc.metadata.get("variables"),
+                display_name=doc.metadata.get('display_name'),
+                tags=doc.metadata.get('tags'),
+                variables=doc.metadata.get('variables'),
             )
-        case "AssetGroup":
+        case 'AssetGroup':
             # TODO: sync members/subgroups — requires add/remove member API calls
             # For v1, log that group exists but member sync is not yet implemented
             pass
-        case "DataSource":
+        case 'DataSource':
             client.datasources.update(
                 name,
-                display_name=doc.metadata.get("display_name"),
-                adapter_url=doc.spec.get("adapter_url"),
-                tags=doc.metadata.get("tags"),
+                display_name=doc.metadata.get('display_name'),
+                adapter_url=doc.spec.get('adapter_url'),
+                tags=doc.metadata.get('tags'),
             )
-        case "SLI":
+        case 'SLI':
             # Creates new version
             client.sli_definitions.create(
                 name,
-                indicators=doc.spec.get("indicators", {}),
-                adapter_type=doc.spec.get("adapter_type", "prometheus"),
-                display_name=doc.metadata.get("display_name"),
-                notes=doc.metadata.get("notes"),
-                author=doc.metadata.get("author"),
-                mode=doc.spec.get("mode", "raw"),
-                query_template=doc.spec.get("query_template"),
-                interval=doc.spec.get("interval"),
-                methods=doc.spec.get("methods"),
+                indicators=doc.spec.get('indicators', {}),
+                adapter_type=doc.spec.get('adapter_type', 'prometheus'),
+                display_name=doc.metadata.get('display_name'),
+                notes=doc.metadata.get('notes'),
+                author=doc.metadata.get('author'),
+                mode=doc.spec.get('mode', 'raw'),
+                query_template=doc.spec.get('query_template'),
+                interval=doc.spec.get('interval'),
+                methods=doc.spec.get('methods'),
             )
-        case "SLO":
+        case 'SLO':
             # Creates new version
-            total = doc.spec.get("total_score", {})
+            total = doc.spec.get('total_score', {})
             client.slo_definitions.create(
                 name,
-                objectives=doc.spec["objectives"],
-                total_score_pass_threshold=total.get("pass_threshold", 90.0),
-                total_score_warning_threshold=total.get("warning_threshold", 75.0),
-                comparison=doc.spec.get("comparison", {}),
-                display_name=doc.metadata.get("display_name"),
-                notes=doc.metadata.get("notes"),
-                author=doc.metadata.get("author"),
-                sli_name=doc.spec.get("sli_name"),
-                sli_version=doc.spec.get("sli_version"),
-                kind=doc.spec.get("kind", "standard"),
-                variables=doc.spec.get("variables", {}),
-                method_criteria=doc.spec.get("method_criteria"),
+                objectives=doc.spec['objectives'],
+                total_score_pass_threshold=total.get('pass_threshold', 90.0),
+                total_score_warning_threshold=total.get('warning_threshold', 75.0),
+                comparison=doc.spec.get('comparison', {}),
+                display_name=doc.metadata.get('display_name'),
+                notes=doc.metadata.get('notes'),
+                author=doc.metadata.get('author'),
+                sli_name=doc.spec.get('sli_name'),
+                sli_version=doc.spec.get('sli_version'),
+                kind=doc.spec.get('kind', 'standard'),
+                variables=doc.spec.get('variables', {}),
+                method_criteria=doc.spec.get('method_criteria'),
             )
-        case "AssetSLOLink":
+        case 'AssetSLOLink':
             # Delete + recreate
-            asset_name = doc.spec["asset_name"]
+            asset_name = doc.spec['asset_name']
             client.asset_slo_links.delete(asset_name, name)
             client.asset_slo_links.create(
                 asset_name,
                 name,
-                doc.spec["slo_name"],
-                doc.spec["sli_name"],
-                doc.spec["data_source_name"],
+                doc.spec['slo_name'],
+                doc.spec['sli_name'],
+                doc.spec['data_source_name'],
             )
-        case "AssetGroupSLOLink":
+        case 'AssetGroupSLOLink':
             # Delete + recreate
-            group_name = doc.spec["group_name"]
+            group_name = doc.spec['group_name']
             client.group_slo_links.delete(group_name, name)
             client.group_slo_links.create(
                 group_name,
                 name,
-                doc.spec["slo_name"],
-                doc.spec["sli_name"],
-                doc.spec["data_source_name"],
+                doc.spec['slo_name'],
+                doc.spec['sli_name'],
+                doc.spec['data_source_name'],
             )
-        case "SLOBinding":
+        case 'SLOBinding':
             # Delete + recreate
             _delete_slo_binding(client, doc.spec)
             _create_slo_binding(client, doc.spec)
+        case 'SLOGroup':
+            client.slo_groups.update(
+                name,
+                template_slo_name=doc.spec.get('template_slo_name'),
+                template_slo_version=doc.spec.get('template_slo_version'),
+                gen_variables=doc.spec.get('gen_variables'),
+                display_name=doc.spec.get('display_name'),
+                tags=doc.spec.get('tags'),
+            )
+        case 'TemplateBinding':
+            _delete_template_binding(client, doc.spec)
+            _create_template_binding(client, doc.spec)

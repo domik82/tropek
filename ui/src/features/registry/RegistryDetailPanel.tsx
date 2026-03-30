@@ -6,6 +6,8 @@ import { DatasourceDetailView } from './details/DatasourceDetailView'
 import { SliDetailView } from './details/SliDetailView'
 import { SloDetailView } from './details/SloDetailView'
 import { AssetBindingView } from './details/AssetBindingView'
+import { TemplateDetailView } from './details/TemplateDetailView'
+import { SloGroupDetailView } from './details/SloGroupDetailView'
 
 interface RegistryDetailPanelProps {
   selected: SelectedNode | null
@@ -63,6 +65,14 @@ export function RegistryDetailPanel({
         onEdit={() => onEditDatasource?.(selected.name)}
       />
     )
+  }
+
+  if (selected.type === 'template') {
+    return <TemplateDetailView name={selected.name} onNavigate={onNavigate} onNewVersion={onNewSloVersion ?? (() => {})} />
+  }
+
+  if (selected.type === 'slo-group') {
+    return <SloGroupDetailView name={selected.name} onNavigate={onNavigate} />
   }
 
   // asset, group, binding — show binding context

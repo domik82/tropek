@@ -135,7 +135,7 @@ def _build_eval_variables(
 def _build_query_specs(
     sli_def: SLIDefinition,
     resolved_queries: dict[str, str],
-) -> dict[str, dict]:
+) -> dict[str, dict[str, Any]]:
     """Build adapter query specs from the SLI definition.
 
     For raw mode: wraps each resolved query string into {mode: raw, query: ...}.
@@ -150,10 +150,7 @@ def _build_query_specs(
                 'methods': sli_def.methods,
             }
         }
-    return {
-        name: {'mode': 'raw', 'query': query}
-        for name, query in resolved_queries.items()
-    }
+    return {name: {'mode': 'raw', 'query': query} for name, query in resolved_queries.items()}
 
 
 async def _query_adapter_safe(
@@ -161,7 +158,7 @@ async def _query_adapter_safe(
     repo: EvaluationRepository,
     eval_id: uuid.UUID,
     ds: DataSource,
-    query_specs: dict[str, dict],
+    query_specs: dict[str, dict[str, Any]],
     variables: dict[str, str],
     start: str,
     end: str,
@@ -241,17 +238,18 @@ def _build_sli_rows(
         aggregation = 'raw'
         if sli_def.mode == 'aggregated' and '.' in ir.metric:
             aggregation = ir.metric.rsplit('.', 1)[1]
-        rows.append({
-            'eval_id': eval_id,
-            'eval_start': ev.period_start,
-            'metric_name': ir.metric,
-            'aggregation': aggregation,
-            'value': ir.value,
-            'asset_name': asset_snapshot.get('name'),
-            'evaluation_name': ev.evaluation_name,
-            'os_tag': asset_snapshot.get('tags', {}).get('os')
-            or asset_snapshot.get('variables', {}).get('os'),
-        })
+        rows.append(
+            {
+                'eval_id': eval_id,
+                'eval_start': ev.period_start,
+                'metric_name': ir.metric,
+                'aggregation': aggregation,
+                'value': ir.value,
+                'asset_name': asset_snapshot.get('name'),
+                'evaluation_name': ev.evaluation_name,
+                'os_tag': asset_snapshot.get('tags', {}).get('os') or asset_snapshot.get('variables', {}).get('os'),
+            }
+        )
     return rows
 
 
@@ -329,10 +327,7 @@ async def run_evaluation(
     # For raw mode, substitute variables into indicator queries locally
     resolved_queries: dict[str, str] = {}
     if sli_def.mode == 'raw':
-        resolved_queries = {
-            name: substitute_variables(tmpl, variables)
-            for name, tmpl in sli_def.indicators.items()
-        }
+        resolved_queries = {name: substitute_variables(tmpl, variables) for name, tmpl in sli_def.indicators.items()}
 
     query_specs = _build_query_specs(sli_def, resolved_queries)
 
@@ -364,11 +359,7 @@ async def run_evaluation(
 
     # Resolve baselines (pin-aware) and evaluate
     baseline_repo = BaselineRepository(session, cache=cache)
-    indicator_names = (
-        list(sli_def.indicators)
-        if sli_def.mode == 'raw'
-        else [obj.sli for obj in slo.objectives]
-    )
+    indicator_names = list(sli_def.indicators) if sli_def.mode == 'raw' else [obj.sli for obj in slo.objectives]
     baselines, compared_eval_ids = await _resolve_baselines(
         baseline_repo=baseline_repo, slo=slo, ev=ev, indicator_names=indicator_names
     )

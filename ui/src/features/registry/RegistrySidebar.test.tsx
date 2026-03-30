@@ -4,6 +4,10 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { RegistrySidebar } from './RegistrySidebar'
 import type { RegistryMode, SelectedNode } from './types'
 
+vi.mock('@/features/slo-groups/hooks', () => ({
+  useSloGroups: () => ({ data: [] }),
+}))
+
 vi.mock('@/features/slos/hooks', () => ({
   useSlos: () => ({ data: [] }),
   useGroupTree: () => ({ data: { top_level: [], all_groups: [] } }),
@@ -56,7 +60,7 @@ describe('RegistrySidebar', () => {
     onModeChange: vi.fn(),
     selected: null as SelectedNode | null,
     onSelect: vi.fn(),
-    onCreateAction: vi.fn() as (type: 'datasource' | 'sli' | 'slo' | 'group', context?: { adapterType?: string }) => void,
+    onCreateAction: vi.fn() as (type: 'datasource' | 'sli' | 'slo' | 'group' | 'slo-template' | 'slo-group', context?: { adapterType?: string }) => void,
   }
 
   it('renders segmented control with Asset as default/first', () => {

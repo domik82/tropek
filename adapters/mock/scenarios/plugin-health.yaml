@@ -1,0 +1,37 @@
+name: plugin-health
+namespaces:
+  - prometheus-local
+metrics:
+  # Process CPU usage (seconds/second rate) — generally low, spikes during
+  # the same degraded window as the HTTP services (hours 18-24).
+  # Pass threshold: <80, warn: <90
+  cpu_usage:
+    baseline: 12.0
+    phases:
+      - duration_hours: 18
+        pattern: stable
+        jitter_pct: 15
+      - duration_hours: 6
+        pattern: spike
+        target: 85.0
+        jitter_pct: 4
+      - duration_hours: 24
+        pattern: stable
+        jitter_pct: 15
+  # Resident memory bytes — steady ~400 MB, small leak during spike window.
+  # Pass threshold: <1073741824 (1 GB)
+  memory_usage:
+    baseline: 420000000
+    phases:
+      - duration_hours: 18
+        pattern: stable
+        jitter_pct: 3
+      - duration_hours: 6
+        pattern: ramp
+        target: 780000000
+        jitter_pct: 2
+      - duration_hours: 24
+        pattern: stable
+        jitter_pct: 3
+interval_minutes: 5
+start: "2026-03-15T00:00:00Z"

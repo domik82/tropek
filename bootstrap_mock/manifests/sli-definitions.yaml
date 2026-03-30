@@ -107,3 +107,17 @@ spec:
     - mean
     - p99
     - max
+---
+api_version: tropek/v1
+kind: SLI
+metadata:
+  name: plugin-metrics-sli
+spec:
+  adapter_type: prometheus
+  display_name: Plugin Process Metrics
+  indicators:
+    cpu_usage: "rate(process_cpu_seconds_total{process_name='$process_name'}[$AGGREGATION_WINDOW])"
+    memory_usage: "process_resident_memory_bytes{process_name='$process_name'}"
+  tags:
+    category: resources
+    platform: linux
