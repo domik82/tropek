@@ -49,7 +49,7 @@ async def create_sli_definition(
             mode=body.mode,
             query_template=body.query_template,
             interval=body.interval,
-            methods=body.methods,
+            methods=[str(m) for m in body.methods] if body.methods is not None else None,
         )
     )
     return SLIDefinitionRead.model_validate(sli)

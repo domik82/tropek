@@ -115,7 +115,7 @@ class SLOObjective(BaseModel):
     """SLO objective in client responses."""
 
     sli: str
-    display_name: str = ""
+    display_name: str = ''
     pass_criteria: list[str] = []
     warning_criteria: list[str] = []
     weight: int = 1
@@ -162,7 +162,7 @@ class SLOValidationResult(BaseModel):
 class BaselineConfig(BaseModel):
     """Baseline configuration for SLO testing."""
 
-    mode: Literal["none", "asset_history", "manual"]
+    mode: Literal['none', 'asset_history', 'manual']
     values: dict[str, float] | None = None
 
 
@@ -313,4 +313,33 @@ class SLOBinding(BaseModel):
     slo_name: str
     data_source_name: str
     comparison_rules: list[dict[str, Any]] | None = None
+    source: str = 'direct'
+    template_binding_id: str | None = None
+    created_at: str
+
+
+class SLOGroup(BaseModel):
+    """SLO group response model."""
+
+    id: str
+    name: str
+    display_name: str | None
+    template_slo_name: str
+    template_slo_version: int
+    gen_variables: dict[str, list[str]]
+    tags: dict[str, Any]
+    author: str | None
+    version: int
+    active: bool
+    generated_slo_count: int
+
+
+class TemplateBinding(BaseModel):
+    """Template binding response model."""
+
+    id: str
+    target_type: str
+    target_id: str
+    template_group_name: str
+    data_source_name: str
     created_at: str

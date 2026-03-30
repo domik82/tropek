@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
-import { buildSloTree, buildDatasourceTree, buildAssetTree, filterTree } from './useRegistryTree'
+import { buildSloTree, buildDatasourceTree, buildAssetTree, filterTree, buildSloSections } from './useRegistryTree'
 import type { TreeNode } from './types'
+import type { SloGroup } from '@/features/slo-groups/types'
 
 describe('buildSloTree', () => {
   it('builds SLO → SLI → DS hierarchy from bindings and SLO sli_name', () => {
@@ -102,6 +103,46 @@ describe('buildAssetTree', () => {
     const groups = [{ name: 'core', members: [{ asset_name: 'lonely-svc' }] }]
     const tree = buildAssetTree(groups, groups, {})
     expect(tree[0].children![0].children).toBeUndefined()
+  })
+})
+
+describe('buildSloSections', () => {
+  const slis = [
+    { name: 'http-sli', display_name: null, adapter_type: 'prometheus', active: true, indicators: { latency: 'q' } },
+  ]
+  const datasources = [{ name: 'prom', display_name: null, adapter_type: 'prometheus' }]
+  const bindings = [{ slo_name: 'web-perf', data_source_name: 'prom' }]
+
+  it('separates standard SLOs from templates', () => {
+    const slos = [
+      { name: 'web-perf', display_name: null, version: 3, active: true, sli_name: 'http-sli', sli_version: 1, kind: 'standard' },
+      { name: 'plugin-tpl', display_name: null, version: 1, active: true, sli_name: 'http-sli', sli_version: 1, kind: 'template' },
+    ]
+    const groups: SloGroup[] = []
+    const { standard, templates, groupNodes } = buildSloSections(slos, slis, datasources, bindings, groups)
+    expect(standard).toHaveLength(1)
+    expect(standard[0].name).toBe('web-perf')
+    expect(templates).toHaveLength(1)
+    expect(templates[0].name).toBe('plugin-tpl')
+    expect(templates[0].type).toBe('template')
+    expect(groupNodes).toHaveLength(0)
+  })
+
+  it('builds group nodes with badge and subtitle', () => {
+    const slos = [
+      { name: 'web-perf', display_name: null, version: 1, active: true, sli_name: null, sli_version: null, kind: 'standard' },
+    ]
+    const groups: SloGroup[] = [
+      { id: '1', name: 'app-plugins', display_name: 'App Plugins', template_slo_name: 'plugin-tpl',
+        template_slo_version: 1, gen_variables: {}, tags: {}, author: null, version: 1,
+        active: true, created_at: '', updated_at: '', generated_slo_count: 30 },
+    ]
+    const { groupNodes } = buildSloSections(slos, slis, datasources, bindings, groups)
+    expect(groupNodes).toHaveLength(1)
+    expect(groupNodes[0].name).toBe('app-plugins')
+    expect(groupNodes[0].type).toBe('slo-group')
+    expect(groupNodes[0].badge).toBe('30 SLOs')
+    expect(groupNodes[0].subtitle).toBe('via plugin-tpl')
   })
 })
 

@@ -110,3 +110,14 @@ function RegistryNodeRow({
     </>
   )
 }
+
+export function SectionHeader({ label }: { label: string }) {
+  return (
+    <div className="px-3 pt-3 pb-1">
+      <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+        {label}
+      </span>
+      <div className="border-b border-border/50 mt-1" />
+    </div>
+  )
+}

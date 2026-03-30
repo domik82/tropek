@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import uuid
+
 from pydantic import BaseModel, Field
 
 
@@ -34,3 +36,4 @@ class SLOCreateParams(BaseModel):
     sli_name: str | None = None
     sli_version: int | None = None
     method_criteria: dict[str, object] | None = None
+    generated_by_group_id: uuid.UUID | None = None

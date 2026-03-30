@@ -6,6 +6,8 @@ before computation. Empty arrays after filtering produce None for all methods.
 
 from __future__ import annotations
 
+from collections.abc import Callable
+
 import numpy as np
 from numpy.typing import NDArray
 
@@ -19,7 +21,7 @@ _PERCENTILE_MAP: dict[AggregationMethod, float] = {
     AggregationMethod.P99: 99.0,
 }
 
-_SIMPLE_DISPATCH: dict[AggregationMethod, object] = {
+_SIMPLE_DISPATCH: dict[AggregationMethod, Callable[[NDArray[np.float64]], float]] = {
     AggregationMethod.MIN: lambda a: float(np.min(a)),
     AggregationMethod.MAX: lambda a: float(np.max(a)),
     AggregationMethod.MEAN: lambda a: float(np.mean(a)),
