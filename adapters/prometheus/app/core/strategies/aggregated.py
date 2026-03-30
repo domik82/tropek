@@ -73,7 +73,9 @@ class AggregatedQueryStrategy:
             return early_values, early_errors, None
 
         # Fetch data (with chunking for long time ranges)
-        all_values, chunks_failed = await self._fetch_range(query=query, start=start, end=end, step=interval)
+        all_values, chunks_failed = await self._fetch_range(
+            sli_name=sli_name, query=query, start=start, end=end, step=interval,
+        )
 
         # Compute expected sample count
         interval_seconds = _parse_duration_seconds(interval)
@@ -118,7 +120,9 @@ class AggregatedQueryStrategy:
         )
         return values, errors, metadata
 
-    async def _fetch_range(self, *, query: str, start: str, end: str, step: str) -> tuple[list[float], int]:
+    async def _fetch_range(
+        self, *, sli_name: str, query: str, start: str, end: str, step: str,
+    ) -> tuple[list[float], int]:
         """Fetch range data, chunking if the window exceeds chunk_size.
 
         Returns (all_values, chunks_failed_count).
@@ -131,8 +135,11 @@ class AggregatedQueryStrategy:
             try:
                 values = await self._client.range_query(query, start=start, end=end, step=step)
                 return values, 0
-            except PrometheusQueryError:
-                logger.exception('range query failed: query=%s', query)
+            except PrometheusQueryError as exc:
+                logger.warning(
+                    'range query returned no data: sli=%s query=%s start=%s end=%s error=%s',
+                    sli_name, query, start, end, exc,
+                )
                 return [], 1
 
         # Split into chunks
@@ -153,8 +160,11 @@ class AggregatedQueryStrategy:
             async with sem:
                 try:
                     return await self._client.range_query(query, start=c_start, end=c_end, step=step)
-                except PrometheusQueryError:
-                    logger.exception('chunk failed: query=%s start=%s end=%s', query, c_start, c_end)
+                except PrometheusQueryError as exc:
+                    logger.warning(
+                        'chunk returned no data: sli=%s query=%s start=%s end=%s error=%s',
+                        sli_name, query, c_start, c_end, exc,
+                    )
                     return None
 
         tasks = [_fetch_chunk(cs, ce) for cs, ce in chunks]

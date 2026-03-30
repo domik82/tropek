@@ -10,28 +10,28 @@ spec:
   sli_version: 1
   kind: standard
   total_score:
-    pass_pct: 90.0
-    warning_pct: 75.0
+    pass_threshold: 90.0
+    warning_threshold: 75.0
   objectives:
     - sli: error_rate
       display_name: Error Rate
-      pass_criteria: ["<0.01"]
-      warning_criteria: ["<0.05"]
+      pass_threshold: ["<0.01"]
+      warning_threshold: ["<0.05"]
       weight: 2
       key_sli: true
     - sli: p99_latency
       display_name: P99 Latency
-      pass_criteria: ["<0.5"]
-      warning_criteria: ["<1.0"]
+      pass_threshold: ["<0.5"]
+      warning_threshold: ["<1.0"]
       weight: 2
       key_sli: true
     - sli: throughput
       display_name: Throughput
-      pass_criteria: [">1"]
-      warning_criteria: [">0.5"]
+      pass_threshold: [">1"]
+      warning_threshold: [">0.5"]
       weight: 1
     - sli: cpu
       display_name: CPU Usage
-      pass_criteria: ["<80"]
-      warning_criteria: ["<90"]
+      pass_threshold: ["<80"]
+      warning_threshold: ["<90"]
       weight: 1

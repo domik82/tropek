@@ -3,6 +3,41 @@
 Usage: uv run --directory clients/python python ../../scripts/e2e_tests.py <api_url>
 
 Bootstrap manifests must be applied before running (see scripts/bootstrap.py).
+
+Evaluation flows and their endpoints
+-------------------------------------
+Each test that triggers evaluations uses a distinct evaluation_name so they
+are easy to identify in the heatmap and logs.
+
+  evaluation_name     endpoint                 what it tests
+  ─────────────────── ──────────────────────── ─────────────────────────────────
+  single-eval         POST /evaluations        Legacy single-SLO trigger.
+                                               Targets ONE explicit SLO. Proves
+                                               the old endpoint still works.
+                                               Rarely the right choice in prod.
+
+  asset-trigger-test  POST /evaluations/asset  Asset-level trigger — resolves
+                                               ALL SLOs for an asset from all 3
+                                               binding sources. Preferred path.
+
+  batch-test          POST /evaluations/batch  Group-level trigger — resolves
+                                               all SLOs for every asset in the
+                                               group via unified resolution.
+
+  regression-test     POST /evaluations        Single-SLO on purpose: exercises
+                                               baseline comparison after a pin.
+                                               Needs a specific SLO to verify
+                                               the comparison engine works.
+
+  agg-baseline-test   POST /evaluations        Single-SLO on purpose: exercises
+                                               aggregated-mode evaluation with
+                                               method-keyed indicators and
+                                               baseline comparison. Needs a
+                                               specific SLO (agg-latency-slo).
+
+The last two use the single-SLO endpoint intentionally — they are testing
+engine features (baseline comparison, aggregated mode), not the trigger
+mechanism. Don't convert them to asset-level triggers.
 """
 
 from __future__ import annotations
@@ -32,11 +67,16 @@ def poll_eval(client: TropekClient, eval_id: str, timeout: int = 30) -> object:
 
 
 def test_single_evaluation(client: TropekClient) -> None:
-    """Trigger one evaluation and assert it completes."""
-    step('Step 7: Trigger single evaluation')
+    """Trigger one SLO evaluation via the legacy single-SLO endpoint.
+
+    This flow targets a single explicit SLO — useful for ad-hoc debugging
+    but normally the asset-level trigger (test_asset_trigger) should be
+    preferred since it resolves all SLOs automatically.
+    """
+    step('Step 7: Trigger single-SLO evaluation (legacy)')
     result = client.evaluations.trigger(
         'checkout-api',
-        'integration-test',
+        'single-eval',
         'http-availability-slo',
         '2026-03-15T08:00:00Z',
         '2026-03-15T08:30:00Z',
@@ -46,7 +86,29 @@ def test_single_evaluation(client: TropekClient) -> None:
     ev = poll_eval(client, eval_id)
     print(f'status={ev.status} result={ev.result} score={ev.score}')
     assert ev.status == 'completed', f'expected completed, got {ev.status}'
-    print('PASS: single evaluation')
+    print('PASS: single-SLO evaluation')
+
+
+def test_asset_trigger(client: TropekClient) -> None:
+    """Trigger all SLOs for an asset and verify multiple evaluations are created."""
+    step('Step 7b: Trigger asset-level evaluation (all SLOs)')
+    result = client.evaluations.trigger_asset(
+        'checkout-api',
+        'asset-trigger-test',
+        '2026-03-15T09:00:00Z',
+        '2026-03-15T09:30:00Z',
+    )
+    eval_ids = result['evaluation_ids']
+    slo_names = result['slo_names']
+    print(f'triggered {len(eval_ids)} evaluations for SLOs: {slo_names}')
+    assert len(eval_ids) >= 2, f'expected at least 2 evaluations, got {len(eval_ids)}'
+
+    for eval_id in eval_ids:
+        ev = poll_eval(client, str(eval_id))
+        print(f'  {ev.slo_name}: status={ev.status} result={ev.result} score={ev.score}')
+        assert ev.status == 'completed', f'expected completed for {ev.slo_name}, got {ev.status}'
+
+    print(f'PASS: asset trigger — {len(eval_ids)} SLOs evaluated')
 
 
 def test_pin_baseline(client: TropekClient) -> None:
@@ -84,8 +146,12 @@ def test_batch_evaluation(client: TropekClient) -> None:
 
 
 def test_regression_eval(client: TropekClient) -> None:
-    """Trigger a second evaluation to exercise baseline comparison."""
-    step('Step 10: Trigger regression eval after pin')
+    """Trigger a second evaluation to exercise baseline comparison.
+
+    Uses single-SLO endpoint intentionally — needs http-availability-slo
+    specifically to verify that baseline comparison works after a pin.
+    """
+    step('Step 10: Trigger regression eval after pin (single-SLO, intentional)')
     result = client.evaluations.trigger(
         'checkout-api',
         'regression-test',
@@ -164,6 +230,7 @@ def test_reeval_from_date(client: TropekClient) -> None:
         'checkout-api',
         'http-availability-slo',
         from_date='2026-03-15T16:00:00Z',
+        pin_strategy='ignore_pin',
     )
     print(f're-evaluated {result["affected_evaluations"]} evals (SLO v{result["slo_version_used"]})')
     assert result['affected_evaluations'] >= 1, 'expected at least 1 re-evaluated eval'
@@ -180,6 +247,7 @@ def test_reeval_dry_run(client: TropekClient) -> None:
         'http-availability-slo',
         from_date='2026-03-15T00:00:00Z',
         dry_run=True,
+        pin_strategy='ignore_pin',
     )
     print(f'dry run: {result["affected_evaluations"]} evals would be affected (SLO v{result["slo_version_used"]})')
     assert result['affected_evaluations'] >= 0
@@ -321,8 +389,13 @@ def test_label_autocomplete(client: TropekClient) -> None:
 
 
 def test_aggregated_evaluation(client: TropekClient) -> None:
-    """Trigger an aggregated-mode evaluation and verify method-keyed results with baselines."""
-    step('Step 21: Aggregated-mode evaluation')
+    """Trigger an aggregated-mode evaluation and verify method-keyed results with baselines.
+
+    Uses single-SLO endpoint intentionally — needs agg-latency-slo
+    specifically to verify aggregated-mode indicators (mean/p95/p99/max)
+    and baseline comparison with method-keyed metrics.
+    """
+    step('Step 21: Aggregated-mode evaluation (single-SLO, intentional)')
 
     # Use a late time window so seeded evaluations (00:00 through 16:00) provide baselines
     result = client.evaluations.trigger(
@@ -385,6 +458,7 @@ def main() -> None:
     client = TropekClient(sys.argv[1])
 
     test_single_evaluation(client)
+    test_asset_trigger(client)
     test_pin_baseline(client)
     test_batch_evaluation(client)
     test_regression_eval(client)

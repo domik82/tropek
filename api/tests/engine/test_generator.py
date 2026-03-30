@@ -25,9 +25,9 @@ class FakeTemplate:
             'AGGREGATION_WINDOW': '5m',
         }
     )
-    objectives: list[dict[str, Any]] = field(default_factory=lambda: [{'sli': 'cpu', 'pass_criteria': ['<80']}])
-    total_score_pass_pct: float = 90.0
-    total_score_warning_pct: float = 75.0
+    objectives: list[dict[str, Any]] = field(default_factory=lambda: [{'sli': 'cpu', 'pass_threshold': ['<80']}])
+    total_score_pass_threshold: float = 90.0
+    total_score_warning_threshold: float = 75.0
     comparison: dict[str, Any] = field(default_factory=dict)
     tags: dict[str, Any] = field(default_factory=lambda: {'env': 'prod'})
 
@@ -99,7 +99,7 @@ def test_generate_warns_no_gen_placeholders() -> None:
 
 def test_generate_objectives_not_substituted() -> None:
     """Objectives are copied as-is — $__gen_ in objectives is NOT substituted."""
-    tpl = FakeTemplate(objectives=[{'sli': '$__gen_x', 'pass_criteria': ['<80']}])
+    tpl = FakeTemplate(objectives=[{'sli': '$__gen_x', 'pass_threshold': ['<80']}])
     gen_vars = {'x': ['replaced']}
     result = generate_slo_specs(tpl, gen_vars, group_name='g')
     assert result.specs[0].objectives[0]['sli'] == '$__gen_x'

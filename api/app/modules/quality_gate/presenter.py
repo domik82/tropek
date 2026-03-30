@@ -35,12 +35,12 @@ def _indicators_from_orm_rows(rows: list) -> list[IndicatorResult]:  # type: ign
                 weight=obj.weight,
                 key_sli=obj.key_sli,
                 pass_targets=resolve_targets(
-                    list(obj.pass_criteria) if obj.pass_criteria else None,
+                    list(obj.pass_threshold) if obj.pass_threshold else None,
                     value=row.value,
                     compared_value=row.compared_value,
                 ),
                 warning_targets=resolve_targets(
-                    list(obj.warning_criteria) if obj.warning_criteria else None,
+                    list(obj.warning_threshold) if obj.warning_threshold else None,
                     value=row.value,
                     compared_value=row.compared_value,
                 ),
@@ -103,7 +103,8 @@ def build_detail(ev: Any) -> EvaluationDetail:
             'compared_evaluation_ids': [uuid.UUID(eid) for eid in compared_ids],
             'annotations': sorted_annotations,
             'indicator_results': indicators,
-            'total_score_pass_pct': job_stats_detail.get('total_score_pass_pct'),
-            'total_score_warning_pct': job_stats_detail.get('total_score_warning_pct'),
+            'total_score_pass_threshold': job_stats_detail.get('total_score_pass_threshold'),
+            'total_score_warning_threshold': job_stats_detail.get('total_score_warning_threshold'),
+            'sli_metadata': job_stats_detail.get('sli_metadata'),
         }
     )

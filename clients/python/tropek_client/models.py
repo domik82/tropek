@@ -116,8 +116,8 @@ class SLOObjective(BaseModel):
 
     sli: str
     display_name: str = ''
-    pass_criteria: list[str] = []
-    warning_criteria: list[str] = []
+    pass_threshold: list[str] = []
+    warning_threshold: list[str] = []
     weight: int = 1
     key_sli: bool = False
     sort_order: int = 0
@@ -132,8 +132,8 @@ class SLODefinition(BaseModel):
     version: int
     active: bool
     objectives: list[SLOObjective]
-    total_score_pass_pct: float
-    total_score_warning_pct: float
+    total_score_pass_threshold: float
+    total_score_warning_threshold: float
     comparison: dict[str, Any]
     notes: str | None
     author: str | None

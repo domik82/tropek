@@ -2565,8 +2565,8 @@ import type { SloDefinition, SloObjective } from '../types'
 
 const objectiveSchema = z.object({
   sli: z.string().min(1),
-  pass_criteria: z.string().min(1),
-  warning_criteria: z.string(),
+  pass_threshold: z.string().min(1),
+  warning_threshold: z.string(),
   weight: z.coerce.number().min(0),
   key_sli: z.boolean(),
 })
@@ -2643,8 +2643,8 @@ export function SloObjectiveEditor({ slo, onCancel, onSaved }: Props) {
     defaultValues: {
       objectives: (slo.objectives ?? []).map((obj: SloObjective) => ({
         sli: obj.sli,
-        pass_criteria: obj.pass?.[0]?.criteria?.join(', ') ?? '',
-        warning_criteria: obj.warning?.[0]?.criteria?.join(', ') ?? '',
+        pass_threshold: obj.pass?.[0]?.criteria?.join(', ') ?? '',
+        warning_threshold: obj.warning?.[0]?.criteria?.join(', ') ?? '',
         weight: obj.weight,
         key_sli: obj.key_sli ?? false,
       })),
@@ -2693,10 +2693,10 @@ export function SloObjectiveEditor({ slo, onCancel, onSaved }: Props) {
                   />
                 </td>
                 <td className="px-2 py-1">
-                  <Input {...register(`objectives.${i}.pass_criteria`)} className="text-xs" placeholder="e.g. <=+10%" />
+                  <Input {...register(`objectives.${i}.pass_threshold`)} className="text-xs" placeholder="e.g. <=+10%" />
                 </td>
                 <td className="px-2 py-1">
-                  <Input {...register(`objectives.${i}.warning_criteria`)} className="text-xs" placeholder="optional" />
+                  <Input {...register(`objectives.${i}.warning_threshold`)} className="text-xs" placeholder="optional" />
                 </td>
                 <td className="px-2 py-1">
                   <Input {...register(`objectives.${i}.weight`)} type="number" className="text-xs text-center" />
@@ -2716,7 +2716,7 @@ export function SloObjectiveEditor({ slo, onCancel, onSaved }: Props) {
         type="button"
         variant="outline"
         size="sm"
-        onClick={() => append({ sli: availableIndicators[0] ?? '', pass_criteria: '', warning_criteria: '', weight: 1, key_sli: false })}
+        onClick={() => append({ sli: availableIndicators[0] ?? '', pass_threshold: '', warning_threshold: '', weight: 1, key_sli: false })}
       >
         + Add Objective
       </Button>
@@ -2750,9 +2750,9 @@ function buildYamlFromObjectives(slo: SloDefinition, objectives: FormValues['obj
     ...objectives.flatMap(obj => [
       `  - sli: ${obj.sli}`,
       `    pass:`,
-      `      - criteria: [${obj.pass_criteria}]`,
-      ...(obj.warning_criteria
-        ? ['    warning:', `      - criteria: [${obj.warning_criteria}]`]
+      `      - criteria: [${obj.pass_threshold}]`,
+      ...(obj.warning_threshold
+        ? ['    warning:', `      - criteria: [${obj.warning_threshold}]`]
         : []),
       `    weight: ${obj.weight}`,
       `    key_sli: ${obj.key_sli}`,

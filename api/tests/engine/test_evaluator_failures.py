@@ -20,7 +20,7 @@ def _make_slo(objectives: list[SLOObjective]) -> SLO:
     return SLO(
         objectives=objectives,
         comparison=SLOComparison(),
-        total_score=SLOTotalScore(pass_pct=90.0, warning_pct=75.0),
+        total_score=SLOTotalScore(pass_threshold=90.0, warning_threshold=75.0),
     )
 
 
@@ -33,8 +33,8 @@ def test_all_metrics_return_none() -> None:
     """When all SLI queries return None (adapter error), result should be fail."""
     slo = _make_slo(
         [
-            SLOObjective(sli='response_time', display_name='RT', pass_criteria=['<600'], weight=1),
-            SLOObjective(sli='error_rate', display_name='Err', pass_criteria=['<1'], weight=1),
+            SLOObjective(sli='response_time', display_name='RT', pass_threshold=['<600'], weight=1),
+            SLOObjective(sli='error_rate', display_name='Err', pass_threshold=['<1'], weight=1),
         ]
     )
     metrics: dict[str, float | None] = {'response_time': None, 'error_rate': None}
@@ -47,8 +47,8 @@ def test_some_metrics_return_none() -> None:
     """When some metrics succeed and some fail, score is based on available ones."""
     slo = _make_slo(
         [
-            SLOObjective(sli='response_time', display_name='RT', pass_criteria=['<600'], weight=1),
-            SLOObjective(sli='error_rate', display_name='Err', pass_criteria=['<1'], weight=1),
+            SLOObjective(sli='response_time', display_name='RT', pass_threshold=['<600'], weight=1),
+            SLOObjective(sli='error_rate', display_name='Err', pass_threshold=['<1'], weight=1),
         ]
     )
     metrics: dict[str, float | None] = {'response_time': 500.0, 'error_rate': None}
@@ -65,14 +65,14 @@ def test_key_sli_fails_means_overall_fail() -> None:
             SLOObjective(
                 sli='response_time',
                 display_name='RT',
-                pass_criteria=['<600'],
+                pass_threshold=['<600'],
                 weight=1,
                 key_sli=False,
             ),
             SLOObjective(
                 sli='error_rate',
                 display_name='Err',
-                pass_criteria=['<1'],
+                pass_threshold=['<1'],
                 weight=1,
                 key_sli=True,
             ),
@@ -93,14 +93,14 @@ def test_key_sli_none_value_fails_overall() -> None:
             SLOObjective(
                 sli='response_time',
                 display_name='RT',
-                pass_criteria=['<600'],
+                pass_threshold=['<600'],
                 weight=1,
                 key_sli=False,
             ),
             SLOObjective(
                 sli='error_rate',
                 display_name='Err',
-                pass_criteria=['<1'],
+                pass_threshold=['<1'],
                 weight=1,
                 key_sli=True,
             ),
@@ -118,10 +118,10 @@ def test_all_passing_with_baselines() -> None:
             SLOObjective(
                 sli='response_time',
                 display_name='RT',
-                pass_criteria=['<600', '<=+10%'],
+                pass_threshold=['<600', '<=+10%'],
                 weight=2,
             ),
-            SLOObjective(sli='error_rate', display_name='Err', pass_criteria=['<1'], weight=1),
+            SLOObjective(sli='error_rate', display_name='Err', pass_threshold=['<1'], weight=1),
         ]
     )
     metrics: dict[str, float | None] = {'response_time': 500.0, 'error_rate': 0.0}
@@ -135,8 +135,8 @@ def test_missing_metric_key_not_in_dict() -> None:
     """Metric not present in dict at all (not even as None) should be treated as None."""
     slo = _make_slo(
         [
-            SLOObjective(sli='response_time', display_name='RT', pass_criteria=['<600'], weight=1),
-            SLOObjective(sli='error_rate', display_name='Err', pass_criteria=['<1'], weight=1),
+            SLOObjective(sli='response_time', display_name='RT', pass_threshold=['<600'], weight=1),
+            SLOObjective(sli='error_rate', display_name='Err', pass_threshold=['<1'], weight=1),
         ]
     )
     # error_rate not in metrics dict at all

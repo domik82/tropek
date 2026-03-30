@@ -206,8 +206,8 @@ class SLOObjective(Base):
     weight:            Mapped[int]            = mapped_column(Integer, nullable=False, server_default=text('1'))
     key_sli:           Mapped[bool]           = mapped_column(Boolean, nullable=False, server_default=false())
     sort_order:        Mapped[int]            = mapped_column(Integer, nullable=False)
-    pass_criteria:     Mapped[list[str]]      = mapped_column(ARRAY(Text), nullable=False, server_default=text("'{}'"))
-    warning_criteria:  Mapped[list[str]]      = mapped_column(ARRAY(Text), nullable=False, server_default=text("'{}'"))
+    pass_threshold:     Mapped[list[str]]      = mapped_column(ARRAY(Text), nullable=False, server_default=text("'{}'"))
+    warning_threshold:  Mapped[list[str]]      = mapped_column(ARRAY(Text), nullable=False, server_default=text("'{}'"))
     tab_group:         Mapped[str | None]     = mapped_column(Text, nullable=True)
     # fmt: on
 
@@ -260,8 +260,8 @@ class SLODefinition(Base):
     display_name:            Mapped[str | None]             = mapped_column(Text, nullable=True)
     version:                 Mapped[int]                    = mapped_column(Integer, nullable=False)
     comparable_from_version: Mapped[int]                    = mapped_column(Integer, nullable=False, server_default=text('1'))
-    total_score_pass_pct:    Mapped[float]                  = mapped_column(Float, nullable=False, server_default=text('90.0'))
-    total_score_warning_pct: Mapped[float]                  = mapped_column(Float, nullable=False, server_default=text('75.0'))
+    total_score_pass_threshold:    Mapped[float]                  = mapped_column(Float, nullable=False, server_default=text('90.0'))
+    total_score_warning_threshold: Mapped[float]                  = mapped_column(Float, nullable=False, server_default=text('75.0'))
     comparison:              Mapped[dict[str, Any]]         = mapped_column(JSONB, nullable=False, server_default=text("'{}'::jsonb"), default=dict)
     notes:                   Mapped[str | None]             = mapped_column(Text, nullable=True)
     author:                  Mapped[str | None]             = mapped_column(Text, nullable=True)

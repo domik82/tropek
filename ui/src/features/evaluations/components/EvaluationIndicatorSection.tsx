@@ -4,7 +4,7 @@ import { useTabState } from '../hooks/useTabState'
 import { SLIBreakdownTable } from './SLIBreakdownTable'
 import { MetricTrendBlock } from './MetricTrendBlock'
 import { EvaluationTabs, tabLabel } from './EvaluationTabs'
-import type { EvaluationDetail } from '../types'
+import type { EvaluationDetail, SliMetadata } from '../types'
 
 interface Props {
   evaluation: EvaluationDetail
@@ -16,6 +16,8 @@ interface Props {
 export function EvaluationIndicatorSection({ evaluation: ev, onMetricClick, assetDisplayName }: Props) {
   const { availableGroups, counts, activeTab, setActiveTab, tabIndicators } =
     useTabState(ev.indicator_results)
+
+  const sliMetadata = ev.sli_metadata as Record<string, SliMetadata> | undefined
 
   const sliTableRef = useRef<HTMLDivElement>(null)
 
@@ -50,6 +52,7 @@ export function EvaluationIndicatorSection({ evaluation: ev, onMetricClick, asse
 
         <SLIBreakdownTable
           indicators={tabIndicators}
+          sliMetadata={sliMetadata}
           onIndicatorClick={(metric, tabGroup) => {
             if (activeTab !== 'all') setActiveTab(tabGroup)
             if (onMetricClick) {

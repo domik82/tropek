@@ -11,6 +11,7 @@ import type {
   Annotation,
   ReEvaluatePayload,
   ReEvaluateResponse,
+  PinConflictInfo,
 } from './types'
 import type { MetricHeatmapResponse } from '@/features/navigator/types'
 
@@ -199,6 +200,17 @@ export async function fetchEvaluationNames(
   return res.json()
 }
 
+export class PinConflictError extends Error {
+  pin_date: string
+  pin_evaluation_id: string
+
+  constructor(info: PinConflictInfo) {
+    super('re-evaluation start date is before the active baseline pin')
+    this.pin_date = info.pin_date
+    this.pin_evaluation_id = info.pin_evaluation_id
+  }
+}
+
 export async function reEvaluate(
   payload: ReEvaluatePayload
 ): Promise<ReEvaluateResponse> {
@@ -209,7 +221,11 @@ export async function reEvaluate(
   })
   if (!res.ok) {
     const body = await res.json().catch(() => ({}))
-    throw new Error(body.detail ?? `reEvaluate: ${res.status}`)
+    if (res.status === 409 && body.detail?.pin_date) {
+      throw new PinConflictError(body.detail)
+    }
+    const message = typeof body.detail === 'string' ? body.detail : `reEvaluate: ${res.status}`
+    throw new Error(message)
   }
   return res.json()
 }

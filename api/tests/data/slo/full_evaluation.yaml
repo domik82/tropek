@@ -8,19 +8,19 @@ comparison:
 objectives:
   - sli: response_time_p99
     display_name: "Response Time P99 (ms)"
-    pass_criteria: ["<600", "<=+10%"]
-    warning_criteria: ["<800"]
+    pass_threshold: ["<600", "<=+10%"]
+    warning_threshold: ["<800"]
     weight: 2
     key_sli: false
   - sli: error_rate
     display_name: "Error Rate"
-    pass_criteria: ["=0"]
+    pass_threshold: ["=0"]
     weight: 3
     key_sli: true
   - sli: compilation_s
     display_name: "Compilation Duration (s)"
-    pass_criteria: ["<=+5%"]
+    pass_threshold: ["<=+5%"]
     weight: 1
 total_score:
-  pass_pct: 90.0
-  warning_pct: 75.0
+  pass_threshold: 90.0
+  warning_threshold: 75.0

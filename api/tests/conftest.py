@@ -25,8 +25,8 @@ def slo_fixture():
         data: dict[str, Any] = yaml.safe_load(path.read_text(encoding='utf-8'))
         return build_slo(
             objectives=data.get('objectives', []),
-            total_score_pass_pct=data.get('total_score', {}).get('pass_pct', 90.0),
-            total_score_warning_pct=data.get('total_score', {}).get('warning_pct', 75.0),
+            total_score_pass_threshold=data.get('total_score', {}).get('pass_threshold', 90.0),
+            total_score_warning_threshold=data.get('total_score', {}).get('warning_threshold', 75.0),
             comparison=data.get('comparison', {}),
         )
 

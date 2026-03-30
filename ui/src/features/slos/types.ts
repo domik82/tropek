@@ -1,10 +1,17 @@
 // src/features/slos/types.ts
 
+export interface MethodCriteriaOverride {
+  pass_threshold?: string[]
+  warning_threshold?: string[]
+  weight?: number
+  key_sli?: boolean
+}
+
 export interface SloObjective {
   sli: string
   display_name: string
-  pass_criteria: string[]
-  warning_criteria: string[]
+  pass_threshold: string[]
+  warning_threshold: string[]
   weight: number
   key_sli: boolean
   sort_order: number
@@ -34,9 +41,10 @@ export interface SloDefinition {
   created_at: string
   active: boolean
   objectives: SloObjective[]
-  total_score_pass_pct: number
-  total_score_warning_pct: number
+  total_score_pass_threshold: number
+  total_score_warning_threshold: number
   comparison: SloComparisonConfig
+  method_criteria: Record<string, MethodCriteriaOverride> | null
 }
 
 export interface SloValidationResult {

@@ -173,8 +173,8 @@ def upgrade() -> None:  # noqa: PLR0915
         sa.Column('display_name', sa.Text(), nullable=True),
         sa.Column('version', sa.Integer(), nullable=False),
         sa.Column('comparable_from_version', sa.Integer(), server_default=sa.text('1'), nullable=False),
-        sa.Column('total_score_pass_pct', sa.Float(), server_default=sa.text('90.0'), nullable=False),
-        sa.Column('total_score_warning_pct', sa.Float(), server_default=sa.text('75.0'), nullable=False),
+        sa.Column('total_score_pass_threshold', sa.Float(), server_default=sa.text('90.0'), nullable=False),
+        sa.Column('total_score_warning_threshold', sa.Float(), server_default=sa.text('75.0'), nullable=False),
         sa.Column(
             'comparison', postgresql.JSONB(astext_type=sa.Text()), server_default=sa.text("'{}'::jsonb"), nullable=False
         ),
@@ -253,8 +253,8 @@ def upgrade() -> None:  # noqa: PLR0915
         sa.Column('weight', sa.Integer(), server_default=sa.text('1'), nullable=False),
         sa.Column('key_sli', sa.Boolean(), server_default=sa.text('false'), nullable=False),
         sa.Column('sort_order', sa.Integer(), nullable=False),
-        sa.Column('pass_criteria', sa.ARRAY(sa.Text()), server_default=sa.text("'{}'"), nullable=False),
-        sa.Column('warning_criteria', sa.ARRAY(sa.Text()), server_default=sa.text("'{}'"), nullable=False),
+        sa.Column('pass_threshold', sa.ARRAY(sa.Text()), server_default=sa.text("'{}'"), nullable=False),
+        sa.Column('warning_threshold', sa.ARRAY(sa.Text()), server_default=sa.text("'{}'"), nullable=False),
         sa.Column('tab_group', sa.Text(), nullable=True),
         sa.ForeignKeyConstraint(['slo_definition_id'], ['slo_definitions.id'], ondelete='CASCADE'),
         sa.PrimaryKeyConstraint('id'),

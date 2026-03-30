@@ -203,7 +203,7 @@ async def test_re_evaluate_updates_results_and_adds_annotation(
     await slo_repo.create(
         SLOCreateParams(
             name='re-eval-slo',
-            objectives=[SLOObjectiveParams(sli='cpu', pass_criteria=['<90'], weight=1)],
+            objectives=[SLOObjectiveParams(sli='cpu', pass_threshold=['<90'], weight=1)],
         )
     )
 
@@ -224,7 +224,7 @@ async def test_re_evaluate_updates_results_and_adds_annotation(
     await slo_repo.create(
         SLOCreateParams(
             name='re-eval-slo',
-            objectives=[SLOObjectiveParams(sli='cpu', pass_criteria=['<100'], weight=1)],
+            objectives=[SLOObjectiveParams(sli='cpu', pass_threshold=['<100'], weight=1)],
         )
     )
 
@@ -268,7 +268,7 @@ async def test_re_evaluate_dry_run_does_not_write(db_session: AsyncSession) -> N
     await slo_repo.create(
         SLOCreateParams(
             name='dry-run-slo',
-            objectives=[SLOObjectiveParams(sli='cpu', pass_criteria=['<100'], weight=1)],
+            objectives=[SLOObjectiveParams(sli='cpu', pass_threshold=['<100'], weight=1)],
         )
     )
 
@@ -318,7 +318,7 @@ async def test_re_evaluate_cascading_baselines(db_session: AsyncSession) -> None
     await slo_repo.create(
         SLOCreateParams(
             name='cascade-slo',
-            objectives=[SLOObjectiveParams(sli='rt', pass_criteria=['<=+10%'], weight=1)],
+            objectives=[SLOObjectiveParams(sli='rt', pass_threshold=['<=+10%'], weight=1)],
             comparison={'include_result_with_score': 'all', 'number_of_comparison_results': 1},
         )
     )

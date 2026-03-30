@@ -1,9 +1,10 @@
 // ui/src/features/evaluations/components/actions/ReEvaluateForm.tsx
 import { useState, useCallback } from 'react'
 import { useReEvaluate } from '../../hooks'
+import { PinConflictError } from '../../api'
 import { Input } from '@/components/ui/input'
 import { ActionFormShell } from './ActionFormShell'
-import type { ReEvaluateResponse } from '../../types'
+import type { ReEvaluateResponse, PinConflictInfo } from '../../types'
 
 const ACTION_DEF = {
   label: 'Run Evaluations',
@@ -26,21 +27,38 @@ export function ReEvaluateForm({ assetName, sloName, defaultFromDate, onComplete
   const [fromDate, setFromDate] = useState(defaultFromDate ?? '')
   const [fromBaseline, setFromBaseline] = useState(false)
   const [reEvalResult, setReEvalResult] = useState<ReEvaluateResponse | null>(null)
+  const [pinConflict, setPinConflict] = useState<PinConflictInfo | null>(null)
   const reEvaluate = useReEvaluate()
 
   const canConfirm = fromBaseline || !!fromDate
 
+  const submitReEval = useCallback(
+    (pinStrategy?: 'skip_to_pin' | 'ignore_pin') => {
+      setPinConflict(null)
+      reEvaluate.mutate(
+        {
+          asset_name: assetName,
+          slo_name: sloName,
+          ...(fromBaseline ? { from_baseline: true } : { from_date: new Date(fromDate).toISOString() }),
+          ...(pinStrategy ? { pin_strategy: pinStrategy } : {}),
+        },
+        {
+          onSuccess: (data) => setReEvalResult(data),
+          onError: (err) => {
+            if (err instanceof PinConflictError) {
+              setPinConflict({ pin_date: err.pin_date, pin_evaluation_id: err.pin_evaluation_id })
+            }
+          },
+        },
+      )
+    },
+    [fromBaseline, fromDate, assetName, sloName, reEvaluate],
+  )
+
   const handleConfirm = useCallback(() => {
     if (!canConfirm) return
-    reEvaluate.mutate(
-      {
-        asset_name: assetName,
-        slo_name: sloName,
-        ...(fromBaseline ? { from_baseline: true } : { from_date: new Date(fromDate).toISOString() }),
-      },
-      { onSuccess: (data) => setReEvalResult(data) },
-    )
-  }, [canConfirm, fromBaseline, fromDate, assetName, sloName, reEvaluate])
+    submitReEval()
+  }, [canConfirm, submitReEval])
 
   // Results view
   if (reEvalResult) {
@@ -99,11 +117,35 @@ export function ReEvaluateForm({ assetName, sloName, defaultFromDate, onComplete
       actionDef={ACTION_DEF}
       onClose={onComplete}
       onConfirm={handleConfirm}
-      canConfirm={canConfirm}
+      canConfirm={canConfirm && !pinConflict}
       isPending={reEvaluate.isPending}
       confirmLabel={'\u25B6 Run'}
     >
-      {reEvaluate.isError && (
+      {/* Pin conflict dialog */}
+      {pinConflict && (
+        <div className="text-xs border border-warning/30 bg-warning/5 rounded px-3 py-2 space-y-2">
+          <p className="text-warning">
+            Start date is before the baseline pin at{' '}
+            <span className="text-foreground">{new Date(pinConflict.pin_date).toLocaleString()}</span>
+          </p>
+          <div className="flex gap-2">
+            <button
+              onClick={() => submitReEval('skip_to_pin')}
+              className="px-2 py-1 rounded border border-border text-muted-foreground hover:text-foreground transition-colors"
+            >
+              Start from pin
+            </button>
+            <button
+              onClick={() => submitReEval('ignore_pin')}
+              className="px-2 py-1 rounded border border-border text-muted-foreground hover:text-foreground transition-colors"
+            >
+              Ignore pin
+            </button>
+          </div>
+        </div>
+      )}
+      {/* Generic error (non-conflict) */}
+      {reEvaluate.isError && !pinConflict && (
         <p className="text-xs text-fail bg-fail/10 border border-fail/20 rounded px-3 py-2">
           {reEvaluate.error instanceof Error ? reEvaluate.error.message : 'Request failed'}
         </p>
@@ -116,7 +158,7 @@ export function ReEvaluateForm({ assetName, sloName, defaultFromDate, onComplete
         <input
           type="checkbox"
           checked={fromBaseline}
-          onChange={(e) => setFromBaseline(e.target.checked)}
+          onChange={(e) => { setFromBaseline(e.target.checked); setPinConflict(null) }}
           className="rounded border-border accent-[var(--entity-sli)]"
         />
         Run from last baseline
@@ -127,7 +169,7 @@ export function ReEvaluateForm({ assetName, sloName, defaultFromDate, onComplete
           <Input
             type="datetime-local"
             value={fromDate}
-            onChange={(e) => setFromDate(e.target.value)}
+            onChange={(e) => { setFromDate(e.target.value); setPinConflict(null) }}
           />
         </div>
       )}

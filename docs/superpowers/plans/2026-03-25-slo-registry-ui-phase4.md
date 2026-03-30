@@ -669,7 +669,7 @@ vi.mock('@/features/slos/hooks', () => ({
       display_name: 'Plugin Health', objectives: [], tags: {},
       variables: { process_name: '$__gen_process_name', AGGREGATION_WINDOW: '5m' },
       comparison: {}, notes: null, author: null,
-      total_score_pass_pct: 90, total_score_warning_pct: 75,
+      total_score_pass_threshold: 90, total_score_warning_threshold: 75,
       sli_name: 'plugin-sli', sli_version: 1, created_at: '2026-01-01',
       comparable_from_version: 1, id: '1',
     },

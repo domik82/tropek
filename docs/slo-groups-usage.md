@@ -79,12 +79,12 @@ spec:
     process_name: "$__gen_process_name"
     AGGREGATION_WINDOW: "5m"
   total_score:
-    pass_pct: 90.0
-    warning_pct: 75.0
+    pass_threshold: 90.0
+    warning_threshold: 75.0
   objectives:
     - sli: cpu_usage_pct
-      pass_criteria: ["<80"]
-      warning_criteria: ["<90"]
+      pass_threshold: ["<80"]
+      warning_threshold: ["<90"]
       weight: 1
       key_sli: true
 ```
@@ -152,12 +152,12 @@ spec:
     AGGREGATION_WINDOW: "5m"
   objectives:
     - sli: cpu_usage
-      pass_criteria: ["<80"]
-      warning_criteria: ["<90"]
+      pass_threshold: ["<80"]
+      warning_threshold: ["<90"]
       weight: 1
       key_sli: true
     - sli: memory_usage
-      pass_criteria: ["<1073741824"]
+      pass_threshold: ["<1073741824"]
       weight: 1
 ```
 
@@ -231,12 +231,12 @@ spec:
     AGGREGATION_WINDOW: "5m"
   objectives:
     - sli: cpu_usage
-      pass_criteria: ["<80"]
-      warning_criteria: ["<90"]
+      pass_threshold: ["<80"]
+      warning_threshold: ["<90"]
       weight: 1
       key_sli: true
     - sli: memory_usage
-      pass_criteria: ["<1073741824"]
+      pass_threshold: ["<1073741824"]
       weight: 1
 ```
 
@@ -279,6 +279,108 @@ This generates:
 - PROD: `plugin/prod/auth`, `plugin/prod/cache`, `plugin/prod/db`
 
 **Deleting the TEST group** deactivates only its generated SLOs (`plugin/test/auth`, `plugin/test/cache`) and its template bindings. The template SLO and the PROD group are completely unaffected.
+
+## Combining with Aggregated-Mode SLIs
+
+SLO groups and aggregated-mode SLIs compose naturally because they operate at different layers:
+
+| Engine | When it runs | What it does |
+|---|---|---|
+| **SLO Groups** (`$__gen_`) | SLO creation | Clones the template N times, substituting name + variables. Objectives are copied as-is. |
+| **Aggregated mode** | Evaluation time | Adapter computes statistical methods (mean, p99, max, ...) and returns `sli.method` metrics. |
+
+The generator never touches objectives, so aggregated `sli_name.method` references survive generation intact.
+
+### Example: Per-process CPU monitoring with aggregated statistics
+
+**Step 1 — Aggregated SLI** (computes mean, p99, and max from raw time-series):
+
+```yaml
+api_version: tropek/v1
+kind: SLI
+metadata:
+  name: process-cpu-agg
+spec:
+  adapter_type: prometheus
+  mode: aggregated
+  query_template: 'rate(process_cpu_seconds_total{process="$process_name"}[$interval]) * 100'
+  interval: 1m
+  methods: [mean, p99, max]
+```
+
+**Step 2 — Template SLO** with `$__gen_` placeholders and aggregated objectives:
+
+```yaml
+api_version: tropek/v1
+kind: SLO
+metadata:
+  name: "cpu-agg/$__gen_process_name"
+  display_name: "CPU Aggregated — $__gen_process_name"
+spec:
+  kind: template
+  sli_name: process-cpu-agg
+  variables:
+    process_name: "$__gen_process_name"
+    host: "localhost"
+  objectives:
+    - sli: process-cpu-agg.mean
+      display_name: "CPU Mean %"
+      pass_threshold: ["<10"]
+      weight: 1
+    - sli: process-cpu-agg.p99
+      display_name: "CPU P99 %"
+      pass_threshold: ["<25"]
+      weight: 2
+      key_sli: true
+    - sli: process-cpu-agg.max
+      display_name: "CPU Max %"
+      pass_threshold: ["<40"]
+      weight: 1
+  total_score:
+    pass_threshold: 90.0
+    warning_threshold: 75.0
+```
+
+Note: objectives reference `process-cpu-agg.mean`, `process-cpu-agg.p99`, `process-cpu-agg.max` — these are the expanded indicator names that the aggregated adapter returns.
+
+**Step 3 — SLO Group** expands the template per process:
+
+```yaml
+api_version: tropek/v1
+kind: SLOGroup
+metadata:
+  name: process-cpu-agg-group
+spec:
+  display_name: Process CPU Aggregated Monitoring
+  template_slo_name: "cpu-agg/$__gen_process_name"
+  template_slo_version: 1
+  gen_variables:
+    process_name: ["auth", "cache", "db", "worker"]
+  tags:
+    category: cpu-aggregated
+```
+
+**Result at creation time** — 4 generated SLOs:
+
+| Generated SLO name | `variables.process_name` | Objectives |
+|---|---|---|
+| `cpu-agg/auth` | `auth` | `.mean`, `.p99`, `.max` |
+| `cpu-agg/cache` | `cache` | `.mean`, `.p99`, `.max` |
+| `cpu-agg/db` | `db` | `.mean`, `.p99`, `.max` |
+| `cpu-agg/worker` | `worker` | `.mean`, `.p99`, `.max` |
+
+**Result at evaluation time** — each SLO's adapter call:
+1. Substitutes `$process_name` in the query template (e.g., `process="auth"`)
+2. Executes the query and computes mean, p99, max over the interval
+3. Returns `{process-cpu-agg.mean: 4.2, process-cpu-agg.p99: 18.7, process-cpu-agg.max: 31.5}`
+4. Evaluator matches metrics to objectives and scores pass/warning/fail
+
+### Key rules for combined usage
+
+- **Objective `sli` values must use the `sli_name.method` format** — e.g., `process-cpu-agg.mean`, not `mean`
+- **`$__gen_` substitution only applies to name and variable values** — objectives are copied verbatim
+- **SLI variable substitution (`$process_name`) is separate** — it happens at evaluation time using the generated SLO's `variables` dict
+- **All generated SLOs share the same objectives** — if you need different thresholds per process, extract the SLO (see "Extracting a Generated SLO" below)
 
 ## Updating a Group
 
