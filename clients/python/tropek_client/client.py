@@ -572,6 +572,29 @@ class _Evaluations:
         _raise_for_status(resp)
         return resp.json()  # type: ignore[no-any-return]
 
+    def trigger_asset(
+        self,
+        asset_name: str,
+        evaluation_name: str,
+        period_start: str,
+        period_end: str,
+        *,
+        variables: dict[str, str] | None = None,
+    ) -> dict[str, Any]:
+        """Trigger evaluations for all SLOs linked to an asset."""
+        resp = self._http.post(
+            '/evaluations/asset',
+            json={
+                'asset_name': asset_name,
+                'evaluation_name': evaluation_name,
+                'period_start': period_start,
+                'period_end': period_end,
+                'variables': variables or {},
+            },
+        )
+        _raise_for_status(resp)
+        return resp.json()  # type: ignore[no-any-return]
+
     def trigger_batch(
         self,
         group_name: str,
