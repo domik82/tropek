@@ -7,18 +7,27 @@ default:
 
 # ─── Stack management ────────────────────────────────────────────────
 
-# Build images, generate data, start all services
+# Start prometheus + grafana + generator (prometheus only)
 up: dashboard
     ./scripts/stack-up.sh
+
+# Start all services including InfluxDB and TimescaleDB
+up-full: dashboard
+    ./scripts/stack-up.sh --profile full
 
 # Stop all services
 down:
     ./scripts/stack-down.sh
 
-# Wipe all data volumes and restart from scratch
+# Wipe all data volumes and restart from scratch (prometheus only)
 reset:
     ./scripts/stack-down.sh
     ./scripts/stack-up.sh
+
+# Wipe all data volumes and restart full stack
+reset-full:
+    ./scripts/stack-down.sh
+    ./scripts/stack-up.sh --profile full
 
 # Tail logs for all services
 logs:

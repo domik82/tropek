@@ -15,6 +15,9 @@ COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
 WORKDIR /app
 COPY pyproject.toml uv.lock ./
 COPY src/ src/
+ENV UV_CACHE_DIR=/tmp/.cache/uv
+RUN chown -R nobody:nogroup /app
+USER nobody
 RUN uv sync --frozen --all-extras --no-dev
 
 ENTRYPOINT ["uv", "run", "slo-generate"]

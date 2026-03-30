@@ -4,11 +4,11 @@ set -euo pipefail
 DIR="$(cd "$(dirname "$0")/.." && pwd)"
 
 echo "==> Starting stack..."
-docker compose -f "$DIR/docker-compose.yml" up --build -d
+docker compose -f "$DIR/docker-compose.yml" "$@" up --build -d
 
 echo ""
 echo "==> Waiting for generator to finish..."
-docker compose -f "$DIR/docker-compose.yml" logs -f generator 2>&1
+docker compose -f "$DIR/docker-compose.yml" "$@" logs -f generator 2>&1
 
 echo ""
 echo "==> Stack is up!"
