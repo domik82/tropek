@@ -49,7 +49,7 @@ class AnnotationRepository:
             tags=tags or {},
         )
         self._session.add(ann)
-        await self._session.commit()
+        await self._session.flush()
         if self._cache:
             await self._cache.invalidate(f'annot_count:{eval_id}')
             await self._cache.invalidate(f'annot_latest:{eval_id}')
@@ -85,7 +85,7 @@ class AnnotationRepository:
             await self._session.execute(
                 update(EvaluationAnnotation).where(EvaluationAnnotation.id == annotation_id).values(**values)
             )
-            await self._session.commit()
+            await self._session.flush()
         return await self.get_annotation_by_id(annotation_id)
 
     async def hide_annotation(
@@ -114,7 +114,7 @@ class AnnotationRepository:
                 hidden_reason=reason,
             )
         )
-        await self._session.commit()
+        await self._session.flush()
         ann = await self.get_annotation_by_id(annotation_id)
         if self._cache and ann is not None:
             await self._cache.invalidate(f'annot_count:{ann.evaluation_id}')
