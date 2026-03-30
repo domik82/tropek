@@ -98,6 +98,10 @@ class SLIDefinition(BaseModel):
     display_name: str | None
     version: int
     indicators: dict[str, str]
+    mode: str = 'raw'
+    query_template: str | None = None
+    interval: str | None = None
+    methods: list[str] | None = None
     notes: str | None
     author: str | None
     tags: dict[str, Any]
