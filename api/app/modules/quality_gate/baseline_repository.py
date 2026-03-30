@@ -25,6 +25,25 @@ class BaselineRepository:
         self._session = session
         self._cache = cache
 
+    async def get_active_pin(
+        self,
+        *,
+        asset_id: uuid.UUID,
+        slo_name: str,
+    ) -> tuple[datetime, uuid.UUID] | None:
+        """Return (period_start, evaluation_id) of the active baseline pin, or None."""
+        q = select(Evaluation.period_start, Evaluation.id).where(
+            Evaluation.asset_id == asset_id,
+            Evaluation.slo_name == slo_name,
+            Evaluation.baseline_pinned_at.is_not(None),
+            Evaluation.baseline_unpinned_at.is_(None),
+        )
+        row = await self._session.execute(q)
+        result = row.one_or_none()
+        if result is None:
+            return None
+        return result.period_start, result.id
+
     async def get_evaluation_baselines(
         self,
         *,
@@ -74,6 +93,7 @@ class BaselineRepository:
         sli_version_range: tuple[int, int] | None = None,
         restrict_to_ids: list[uuid.UUID] | None = None,
         tag_filters: dict[str, str] | None = None,
+        skip_pin_filter: bool = False,
     ) -> list[Evaluation]:
         """Fetch previous completed evaluations for re-evaluation baseline comparison.
 
@@ -115,7 +135,8 @@ class BaselineRepository:
             for key, value in tag_filters.items():
                 q = q.where(Evaluation.variables[key].astext == value)
 
-        q = await self._apply_pin_filter(q, asset_id=asset_id, slo_name=slo_name)
+        if not skip_pin_filter:
+            q = await self._apply_pin_filter(q, asset_id=asset_id, slo_name=slo_name)
         q = q.order_by(Evaluation.period_start.desc()).limit(limit)
         rows = await self._session.execute(q)
         return list(rows.scalars().all())
