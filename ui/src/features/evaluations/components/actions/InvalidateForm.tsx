@@ -8,7 +8,7 @@ import { useReasonAuthor } from './useReasonAuthor'
 const ACTION_DEF = {
   label: 'Invalidate',
   description: 'Discard this evaluation — it will not be used for scoring or baselines.',
-  accentColor: '#8B949E',
+  accentColor: 'var(--entity-group)',
   accentBorder: 'border-action-secondary-border/25',
   accentText: 'text-muted-foreground',
   confirmClasses: 'bg-action-secondary-bg hover:bg-action-secondary-bg/80',

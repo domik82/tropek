@@ -52,7 +52,7 @@ function getIconForNode(node: TreeNodeData) {
 }
 
 function getColorForNode(node: TreeNodeData) {
-  return NODE_TYPE_COLORS[node.type] ?? '#c9d1d9'
+  return NODE_TYPE_COLORS[node.type] ?? 'var(--text-primary)'
 }
 
 function getBadgeForNode(node: TreeNodeData): { type: 'count' | 'version'; value: string | number } | undefined {

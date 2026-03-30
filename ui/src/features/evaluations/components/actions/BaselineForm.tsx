@@ -8,7 +8,7 @@ import { useReasonAuthor } from './useReasonAuthor'
 const ACTION_DEF = {
   label: 'Pin Baseline',
   description: 'Set this evaluation as the new baseline — future comparisons start from here.',
-  accentColor: '#58A6FF',
+  accentColor: 'var(--action-primary)',
   accentBorder: 'border-blue-500/25',
   accentText: 'text-blue-400',
   confirmClasses: 'bg-blue-600 hover:bg-blue-500',
