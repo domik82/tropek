@@ -297,3 +297,35 @@ spec:
       pass_criteria: ["<5000"]
       warning_criteria: ["<8000"]
       weight: 1
+---
+api_version: tropek/v1
+kind: SLO
+metadata:
+  name: process-cpu-agg-slo
+  display_name: Process CPU (Aggregated)
+  author: bootstrap
+  notes: SLO template using aggregated-mode SLI with per-method criteria overrides.
+spec:
+  sli_name: process-cpu-agg
+  kind: template
+  objectives:
+    - sli: process_cpu
+      pass_criteria:
+        - "<25"
+      weight: 1
+      key_sli: false
+  method_criteria:
+    mean:
+      pass_criteria:
+        - "<10"
+    p99:
+      pass_criteria:
+        - "<25"
+      weight: 2
+      key_sli: true
+    max:
+      pass_criteria:
+        - "<40"
+  total_score:
+    pass: 90
+    warning: 75
