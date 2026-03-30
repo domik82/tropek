@@ -116,6 +116,39 @@ async def _resolve_from_date(
     raise ValueError('no evaluation with pinned baseline found')
 
 
+async def _resolve_pin_conflict(
+    request: ReEvaluateRequest,
+    from_date: datetime,
+    asset_id: uuid.UUID,
+    baseline_repo: BaselineRepository,
+) -> tuple[datetime, bool]:
+    """Check for baseline pin conflict and apply the chosen strategy.
+
+    Returns:
+        Tuple of (possibly adjusted from_date, skip_pin flag).
+
+    Raises:
+        BaselinePinConflictError: When conflict exists and no strategy was provided.
+    """
+    if request.from_baseline:
+        return from_date, False
+
+    pin_info = await baseline_repo.get_active_pin(asset_id=asset_id, slo_name=request.slo_name)
+    if pin_info is None:
+        return from_date, False
+
+    pin_date, pin_eval_id = pin_info
+    if from_date >= pin_date:
+        return from_date, False
+
+    if request.pin_strategy is None:
+        raise BaselinePinConflictError(pin_date, pin_eval_id)
+    if request.pin_strategy == 'skip_to_pin':
+        return pin_date, False
+    # ignore_pin
+    return from_date, True
+
+
 async def _resolve_sli_version_range(
     sli_name: str | None,
     sli_version: int | None,
@@ -235,18 +268,7 @@ async def re_evaluate(
     from_date = await _resolve_from_date(request, asset.id, eval_repo, baseline_repo)
 
     # Detect baseline pin conflict
-    skip_pin = False
-    if not request.from_baseline:
-        pin_info = await baseline_repo.get_active_pin(asset_id=asset.id, slo_name=request.slo_name)
-        if pin_info is not None:
-            pin_date, pin_eval_id = pin_info
-            if from_date < pin_date:
-                if request.pin_strategy is None:
-                    raise BaselinePinConflictError(pin_date, pin_eval_id)
-                if request.pin_strategy == 'skip_to_pin':
-                    from_date = pin_date
-                elif request.pin_strategy == 'ignore_pin':
-                    skip_pin = True
+    from_date, skip_pin = await _resolve_pin_conflict(request, from_date, asset.id, baseline_repo)
 
     # Load evaluations to re-process (chronological order)
     evals_to_process = await baseline_repo.load_evaluations_for_reeval(

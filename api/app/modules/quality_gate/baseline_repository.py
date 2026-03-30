@@ -82,7 +82,7 @@ class BaselineRepository:
         rows = await self._session.execute(q)
         return list(rows.scalars().all())
 
-    async def get_reeval_baselines(
+    async def get_reeval_baselines(  # noqa: PLR0913
         self,
         *,
         asset_id: uuid.UUID,
@@ -109,6 +109,7 @@ class BaselineRepository:
             sli_version_range: Optional (min, max) inclusive version range for sli_version.
             restrict_to_ids: Optional list of evaluation IDs to restrict results to.
             tag_filters: Optional JSONB key-value filters on variables.
+            skip_pin_filter: When True, skip baseline pin filtering for this query.
 
         Returns:
             Matching completed evaluations ordered by period_start descending.
