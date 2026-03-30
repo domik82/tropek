@@ -658,6 +658,7 @@ class _Evaluations:
         from_evaluation_id: str | None = None,
         slo_version: int | None = None,
         dry_run: bool = False,
+        pin_strategy: str | None = None,
     ) -> dict[str, Any]:
         """Re-evaluate completed evaluations from stored SLI values."""
         body: dict[str, Any] = {'asset_name': asset_name, 'slo_name': slo_name}
@@ -671,6 +672,8 @@ class _Evaluations:
             body['slo_version'] = slo_version
         if dry_run:
             body['dry_run'] = True
+        if pin_strategy is not None:
+            body['pin_strategy'] = pin_strategy
         resp = self._http.post('/evaluations/re-evaluate', json=body)
         _raise_for_status(resp)
         return resp.json()  # type: ignore[no-any-return]
