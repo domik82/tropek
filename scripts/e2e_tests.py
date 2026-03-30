@@ -32,11 +32,16 @@ def poll_eval(client: TropekClient, eval_id: str, timeout: int = 30) -> object:
 
 
 def test_single_evaluation(client: TropekClient) -> None:
-    """Trigger one evaluation and assert it completes."""
-    step('Step 7: Trigger single evaluation')
+    """Trigger one SLO evaluation via the legacy single-SLO endpoint.
+
+    This flow targets a single explicit SLO — useful for ad-hoc debugging
+    but normally the asset-level trigger (test_asset_trigger) should be
+    preferred since it resolves all SLOs automatically.
+    """
+    step('Step 7: Trigger single-SLO evaluation (legacy)')
     result = client.evaluations.trigger(
         'checkout-api',
-        'integration-test',
+        'single-eval',
         'http-availability-slo',
         '2026-03-15T08:00:00Z',
         '2026-03-15T08:30:00Z',
@@ -46,7 +51,7 @@ def test_single_evaluation(client: TropekClient) -> None:
     ev = poll_eval(client, eval_id)
     print(f'status={ev.status} result={ev.result} score={ev.score}')
     assert ev.status == 'completed', f'expected completed, got {ev.status}'
-    print('PASS: single evaluation')
+    print('PASS: single-SLO evaluation')
 
 
 def test_asset_trigger(client: TropekClient) -> None:
