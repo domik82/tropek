@@ -142,6 +142,7 @@ export interface ReEvaluatePayload {
   from_evaluation_id?: string
   slo_version?: number
   dry_run?: boolean
+  pin_strategy?: 'skip_to_pin' | 'ignore_pin'
 }
 
 export interface ReEvalResultItem {
@@ -159,4 +160,9 @@ export interface ReEvaluateResponse {
   affected_evaluations: number
   slo_version_used: number
   results: ReEvalResultItem[]
+}
+
+export interface PinConflictInfo {
+  pin_date: string
+  pin_evaluation_id: string
 }
