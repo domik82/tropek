@@ -1,7 +1,6 @@
 services:
   prometheus:
     image: prom/prometheus:latest
-    user: "65534:65534"
     ports:
       - "9090:9090"
     volumes:
@@ -13,32 +12,25 @@ services:
       - "--web.enable-admin-api"
     restart: unless-stopped
 
-  influxdb:
-    image: influxdb:2.7
-    ports:
-      - "8086:8086"
+  generator:
+    build:
+      context: ./generator
+    user: "65534:65534"
+    depends_on:
+      - prometheus
     environment:
-      DOCKER_INFLUXDB_INIT_MODE: setup
-      DOCKER_INFLUXDB_INIT_USERNAME: admin
-      DOCKER_INFLUXDB_INIT_PASSWORD: adminpassword
-      DOCKER_INFLUXDB_INIT_ORG: tropek
-      DOCKER_INFLUXDB_INIT_BUCKET: slo_metrics
-      DOCKER_INFLUXDB_INIT_ADMIN_TOKEN: tropek-dev-token
+      UV_CACHE_DIR: /tmp/.cache/uv
+    command:
+      - "--timeline"
+      - "/timelines/quick-test.yaml"
+      - "--backends"
+      - "prometheus"
+      - "--run-promtool"
+      - "--prometheus-data-dir"
+      - "/prometheus"
     volumes:
-      - influxdb-data:/var/lib/influxdb2
-    restart: unless-stopped
-
-  timescaledb-metrics:
-    image: timescale/timescaledb:latest-pg16
-    environment:
-      POSTGRES_USER: metrics
-      POSTGRES_PASSWORD: metrics
-      POSTGRES_DB: slo_metrics
-    ports:
-      - "5534:5432"
-    volumes:
-      - timescaledb-metrics-data:/var/lib/postgresql/data
-    restart: unless-stopped
+      - prometheus-data:/prometheus
+      - ./timelines:/timelines:ro
 
   grafana:
     image: grafana/grafana:latest
@@ -58,13 +50,42 @@ services:
       - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
     depends_on:
       - prometheus
-      - influxdb
-      - timescaledb-metrics
     restart: unless-stopped
 
-  generator:
+  influxdb:
+    profiles: [full]
+    image: influxdb:2.7
+    ports:
+      - "8086:8086"
+    environment:
+      DOCKER_INFLUXDB_INIT_MODE: setup
+      DOCKER_INFLUXDB_INIT_USERNAME: admin
+      DOCKER_INFLUXDB_INIT_PASSWORD: adminpassword
+      DOCKER_INFLUXDB_INIT_ORG: tropek
+      DOCKER_INFLUXDB_INIT_BUCKET: slo_metrics
+      DOCKER_INFLUXDB_INIT_ADMIN_TOKEN: tropek-dev-token
+    volumes:
+      - influxdb-data:/var/lib/influxdb2
+    restart: unless-stopped
+
+  timescaledb-metrics:
+    profiles: [full]
+    image: timescale/timescaledb:latest-pg16
+    environment:
+      POSTGRES_USER: metrics
+      POSTGRES_PASSWORD: metrics
+      POSTGRES_DB: slo_metrics
+    ports:
+      - "5534:5432"
+    volumes:
+      - timescaledb-metrics-data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  generator-full:
+    profiles: [full]
     build:
       context: ./generator
+    user: "65534:65534"
     depends_on:
       - influxdb
       - timescaledb-metrics
@@ -74,25 +95,21 @@ services:
       INFLUXDB_ORG: tropek
       INFLUXDB_BUCKET: slo_metrics
       TIMESCALEDB_DSN: postgresql://metrics:metrics@timescaledb-metrics:5432/slo_metrics
+      UV_CACHE_DIR: /tmp/.cache/uv
     command:
       - "--timeline"
       - "/timelines/quick-test.yaml"
       - "--backends"
-      - "prometheus"
-      - "--backends"
       - "influxdb"
       - "--backends"
       - "timescaledb"
-      - "--run-promtool"
-      - "--prometheus-data-dir"
-      - "/prometheus"
     volumes:
-      - prometheus-data:/prometheus
       - ./timelines:/timelines:ro
-      - ./output:/app/output
+      - generator-output:/app/output
 
 volumes:
   prometheus-data:
   influxdb-data:
   timescaledb-metrics-data:
   grafana-data:
+  generator-output:
