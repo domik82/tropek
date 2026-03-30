@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { DatasourceForm } from './DatasourceForm'
-import type { DataSource } from '@/features/datasources/types'
+import type { DataSource } from '@/features/datasources'
 
 vi.mock('@/features/datasources/hooks', () => ({
   useCreateDatasource: vi.fn(),

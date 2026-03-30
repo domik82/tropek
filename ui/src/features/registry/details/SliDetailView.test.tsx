@@ -2,8 +2,8 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { SliDetailView } from './SliDetailView'
-import type { SliDefinition } from '@/features/slis/types'
-import type { SloDefinition } from '@/features/slos/types'
+import type { SliDefinition } from '@/features/slis'
+import type { SloDefinition } from '@/features/slos'
 
 vi.mock('@/features/slis/hooks', () => ({
   useSliDetail: vi.fn(),

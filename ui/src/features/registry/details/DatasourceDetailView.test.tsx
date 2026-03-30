@@ -2,8 +2,8 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { DatasourceDetailView } from './DatasourceDetailView'
-import type { DataSource } from '@/features/datasources/types'
-import type { SliDefinition } from '@/features/slis/types'
+import type { DataSource } from '@/features/datasources'
+import type { SliDefinition } from '@/features/slis'
 
 vi.mock('@/features/datasources/hooks', () => ({
   useDatasource: vi.fn(),

@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
 import { useQueries } from '@tanstack/react-query'
 import { groupKeys } from '@/lib/queryKeys'
-import { fetchGroupSloBindings } from '@/features/slos/api'
+import { fetchGroupSloBindings } from '@/features/slos'
 import type { MinBinding } from './useRegistryTree'
 
 export function useAllGroupLinks(groupNames: string[]) {

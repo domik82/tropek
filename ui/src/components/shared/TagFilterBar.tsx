@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Search, X, Plus } from 'lucide-react'
-import type { TagFilter } from '@/features/registry/types'
+import type { TagFilter } from '@/features/registry'
 import { SANS_SERIF } from '@/lib/fonts'
 
 interface TagKeySuggestion {

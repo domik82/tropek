@@ -2,9 +2,7 @@
 import { useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { AssetTree } from '@/components/AssetTree'
-import { GroupDetailPanel } from '@/features/assets/components/GroupDetailPanel'
-import { AllAssetsPanel } from '@/features/assets/components/AllAssetsPanel'
-import { AssetCreateDialog } from '@/features/assets/components/AssetCreateDialog'
+import { GroupDetailPanel, AllAssetsPanel, AssetCreateDialog } from '@/features/assets'
 
 export function AssetsPage() {
   const [params, setParams] = useSearchParams()

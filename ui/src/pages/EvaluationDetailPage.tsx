@@ -1,14 +1,13 @@
 // src/pages/EvaluationDetailPage.tsx
 import { useState, useMemo } from 'react'
 import { useParams, useSearchParams, Link } from 'react-router-dom'
-import { useEvaluationDetail } from '@/features/evaluations/hooks'
-import { useAssets } from '@/features/assets/hooks'
-import { useSlos } from '@/features/slos/hooks'
-import { EvaluationSummaryCard } from '@/features/evaluations/components/EvaluationSummaryCard'
+import { useEvaluationDetail, EvaluationSummaryCard } from '@/features/evaluations'
+import type { ActionKind } from '@/features/evaluations'
+import { useAssets } from '@/features/assets'
+import { useSlos } from '@/features/slos'
 import { EvaluationIndicatorSection } from '@/features/evaluations/components/EvaluationIndicatorSection'
 import { EvaluationNotesSection, useNotesActions } from '@/features/evaluations/components/EvaluationNotesSection'
 import { EvaluationActionsButton, EvaluationActionForm } from '@/features/evaluations/components/EvaluationActions'
-import type { ActionKind } from '@/features/evaluations/types'
 
 export function EvaluationDetailPage() {
   const { id } = useParams<{ id: string }>()

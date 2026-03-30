@@ -5,12 +5,12 @@ import { z } from 'zod'
 import { Plus, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { useCreateSli } from '@/features/slis/hooks'
+import { useCreateSli } from '@/features/slis'
 import { ENTITY_COLORS } from '@/lib/entity-colors'
 import { SANS_SERIF } from '@/lib/fonts'
 import { tagsToRows, rowsToTags } from './tagUtils'
 import type { TagRow } from './tagUtils'
-import type { SliDefinition } from '@/features/slis/types'
+import type { SliDefinition } from '@/features/slis'
 
 const schema = z.object({
   name: z.string().min(1, 'Name is required'),
