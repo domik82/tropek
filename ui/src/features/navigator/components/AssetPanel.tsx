@@ -109,10 +109,15 @@ export function AssetPanel({ assetName, initialEvalId }: Props) {
     [slotEvalQueries],
   )
 
-  // Merge indicators from all evals in selected slot
+  // Merge indicators from all evals in selected slot.
+  // Use allSlotEvals when a slot is selected (even for single-eval columns)
+  // to avoid showing stale ev data during transitions.
   const mergedIndicators = useMemo((): IndicatorResult[] => {
     if (allSlotEvals.length > 1) {
       return allSlotEvals.flatMap(e => e.indicator_results)
+    }
+    if (allSlotEvals.length === 1) {
+      return allSlotEvals[0].indicator_results
     }
     return ev?.indicator_results ?? []
   }, [allSlotEvals, ev])
@@ -130,7 +135,7 @@ export function AssetPanel({ assetName, initialEvalId }: Props) {
   }, [allSlotEvals])
 
   const mergedSliMetadata = useMemo((): Record<string, SliMetadata> | undefined => {
-    if (allSlotEvals.length > 1) {
+    if (allSlotEvals.length > 0) {
       const meta: Record<string, SliMetadata> = {}
       for (const e of allSlotEvals) {
         if (e.sli_metadata) Object.assign(meta, e.sli_metadata)
