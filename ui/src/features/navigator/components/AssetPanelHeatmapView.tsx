@@ -28,14 +28,13 @@ interface Props {
   activeTab: string
   setActiveTab: (tab: string) => void
   tabIndicators: IndicatorResult[]
-  metricEvalMap?: Map<string, string>
 }
 
 export function AssetPanelHeatmapView({
   assetName, heatmapData, ev, effectiveEvalId, notedSlots,
   onEvalSelect, onSlotSelect, mode, setMode, explorerButton,
   availableGroups, counts, activeTab, setActiveTab, tabIndicators,
-  sliMetadata, metricEvalMap,
+  sliMetadata,
 }: Props) {
   const sliTableRef = useRef<HTMLDivElement>(null)
 
@@ -103,7 +102,7 @@ export function AssetPanelHeatmapView({
             {tabIndicators.map(ind => (
               <MetricTrendBlock
                 key={ind.metric}
-                evalId={metricEvalMap?.get(ind.metric) ?? effectiveEvalId}
+                evalId={effectiveEvalId}
                 indicator={ind}
                 onEvalSelect={onEvalSelect}
                 onScrollToTable={handleScrollToTable}
