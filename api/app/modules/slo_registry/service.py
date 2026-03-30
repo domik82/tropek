@@ -70,8 +70,8 @@ class SLOTestService:
         try:
             return build_slo(
                 objectives=[o.model_dump() for o in body.objectives],
-                total_score_pass_pct=body.total_score_pass_pct,
-                total_score_warning_pct=body.total_score_warning_pct,
+                total_score_pass_threshold=body.total_score_pass_threshold,
+                total_score_warning_threshold=body.total_score_warning_threshold,
                 comparison=body.comparison,
             )
         except SLOParseError as e:

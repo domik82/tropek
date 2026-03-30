@@ -39,10 +39,10 @@ export function SloObjectiveTable({ slo }: Props) {
                   )}
                 </td>
                 <td className="px-3 py-2 text-center text-xs text-pass">
-                  {obj.pass_criteria.join(', ') || '—'}
+                  {obj.pass_threshold.join(', ') || '—'}
                 </td>
                 <td className="px-3 py-2 text-center text-xs text-warning">
-                  {obj.warning_criteria.join(', ') || '—'}
+                  {obj.warning_threshold.join(', ') || '—'}
                 </td>
                 <td className="px-3 py-2 text-center text-muted-foreground">{obj.weight}</td>
               </tr>

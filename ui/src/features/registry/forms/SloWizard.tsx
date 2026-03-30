@@ -34,11 +34,11 @@ function buildIndicatorRowsFromEdit(slo: SloDefinition): IndicatorRow[] {
     checked: true,
     weight: obj.weight,
     key_sli: obj.key_sli,
-    passCriteria: obj.pass_criteria.length > 0
-      ? obj.pass_criteria.map((c) => parseCriteria(c) ?? { ...DEFAULT_CRITERIA })
+    passCriteria: obj.pass_threshold.length > 0
+      ? obj.pass_threshold.map((c) => parseCriteria(c) ?? { ...DEFAULT_CRITERIA })
       : [{ ...DEFAULT_CRITERIA }],
-    warnCriteria: obj.warning_criteria.length > 0
-      ? obj.warning_criteria.map((c) => parseCriteria(c) ?? { ...DEFAULT_CRITERIA })
+    warnCriteria: obj.warning_threshold.length > 0
+      ? obj.warning_threshold.map((c) => parseCriteria(c) ?? { ...DEFAULT_CRITERIA })
       : [{ ...DEFAULT_CRITERIA }],
   }))
 }
@@ -50,8 +50,8 @@ function buildComparisonFromEdit(slo: SloDefinition): ComparisonData {
     compare_count: comp.number_of_comparison_results ?? 3,
     aggregate_function: comp.aggregate_function ?? 'avg',
     include_result_with_score: comp.include_result_with_score ?? 'pass_or_warn',
-    pass_pct: slo.total_score_pass_pct,
-    warn_pct: slo.total_score_warning_pct,
+    pass_threshold: slo.total_score_pass_pct,
+    warn_criteria: slo.total_score_warning_pct,
     tags: tagsToRows(slo.tags),
     variables: Object.entries(slo.variables).map(([key, value]) => ({ key, value })),
   }
@@ -86,8 +86,8 @@ export function SloWizard({ editSlo, onClose }: SloWizardProps) {
           compare_count: 3,
           aggregate_function: 'avg',
           include_result_with_score: 'pass_or_warn',
-          pass_pct: 90,
-          warn_pct: 75,
+          pass_threshold: 90,
+          warn_criteria: 75,
           tags: [],
           variables: [],
         },
@@ -176,8 +176,8 @@ export function SloWizard({ editSlo, onClose }: SloWizardProps) {
     const objectives = checkedRows.map((row, idx) => ({
       sli: row.sli,
       display_name: row.sli,
-      pass_criteria: row.passCriteria.map(serializeCriteria),
-      warning_criteria: row.warnCriteria.map(serializeCriteria),
+      pass_threshold: row.passCriteria.map(serializeCriteria),
+      warning_threshold: row.warnCriteria.map(serializeCriteria),
       weight: row.weight,
       key_sli: row.key_sli,
       sort_order: idx,
@@ -201,8 +201,8 @@ export function SloWizard({ editSlo, onClose }: SloWizardProps) {
         sli_version: pickSli.sliVersion ?? undefined,
         objectives,
         method_criteria: mc,
-        total_score_pass_pct: comparison.pass_pct,
-        total_score_warning_pct: comparison.warn_pct,
+        total_score_pass_pct: comparison.pass_threshold,
+        total_score_warning_pct: comparison.warn_criteria,
         comparison: {
           baseline_mode: comparison.baseline_mode,
           number_of_comparison_results: comparison.compare_count,

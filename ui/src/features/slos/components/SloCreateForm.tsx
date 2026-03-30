@@ -9,8 +9,8 @@ import { useCreateSlo } from '../hooks'
 const objSchema = z.object({
   sli: z.string().min(1),
   display_name: z.string(),
-  pass_criteria: z.string(),
-  warning_criteria: z.string(),
+  pass_threshold: z.string(),
+  warning_threshold: z.string(),
   weight: z.coerce.number().min(0),
   key_sli: z.boolean(),
 })
@@ -87,8 +87,8 @@ export function SloCreateForm({ onCancel, onSaved }: Props) {
         objectives: values.objectives.map((obj, i) => ({
           sli: obj.sli,
           display_name: obj.display_name || obj.sli,
-          pass_criteria: obj.pass_criteria ? obj.pass_criteria.split(',').map(s => s.trim()).filter(Boolean) : [],
-          warning_criteria: obj.warning_criteria ? obj.warning_criteria.split(',').map(s => s.trim()).filter(Boolean) : [],
+          pass_threshold: obj.pass_threshold ? obj.pass_threshold.split(',').map(s => s.trim()).filter(Boolean) : [],
+          warning_threshold: obj.warning_threshold ? obj.warning_threshold.split(',').map(s => s.trim()).filter(Boolean) : [],
           weight: obj.weight,
           key_sli: obj.key_sli,
           sort_order: i,
@@ -245,7 +245,7 @@ export function SloCreateForm({ onCancel, onSaved }: Props) {
           <button
             type="button"
             onClick={() => objectives.append({
-              sli: '', display_name: '', pass_criteria: '', warning_criteria: '',
+              sli: '', display_name: '', pass_threshold: '', warning_threshold: '',
               weight: 1, key_sli: false,
             })}
             className="px-3 py-1.5 text-xs font-medium rounded border bg-primary border-primary text-primary-foreground hover:bg-primary/80 transition-colors"
@@ -280,10 +280,10 @@ export function SloCreateForm({ onCancel, onSaved }: Props) {
                       <input {...register(`objectives.${i}.display_name`)} className={inp} placeholder="Human name" />
                     </td>
                     <td className="px-2 py-1.5">
-                      <input {...register(`objectives.${i}.pass_criteria`)} className={inp} placeholder="<=+10%" />
+                      <input {...register(`objectives.${i}.pass_threshold`)} className={inp} placeholder="<=+10%" />
                     </td>
                     <td className="px-2 py-1.5">
-                      <input {...register(`objectives.${i}.warning_criteria`)} className={inp} placeholder="optional" />
+                      <input {...register(`objectives.${i}.warning_threshold`)} className={inp} placeholder="optional" />
                     </td>
                     <td className="px-2 py-1.5">
                       <input {...register(`objectives.${i}.weight`)} type="number" className={inp + ' text-center'} />

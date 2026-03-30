@@ -75,8 +75,8 @@ async def create_slo_definition(
     params = SLOCreateParams(
         name=body.name,
         objectives=[SLOObjectiveParams(**o.model_dump()) for o in body.objectives],
-        total_score_pass_pct=body.total_score_pass_pct,
-        total_score_warning_pct=body.total_score_warning_pct,
+        total_score_pass_threshold=body.total_score_pass_threshold,
+        total_score_warning_threshold=body.total_score_warning_threshold,
         comparison=body.comparison or None,
         display_name=body.display_name,
         notes=body.notes,
@@ -107,8 +107,8 @@ async def validate_slo(body: SLOValidateRequest) -> SLOValidationResult:  # noqa
     try:
         slo = build_slo(
             objectives=[o.model_dump() for o in body.objectives],
-            total_score_pass_pct=body.total_score_pass_pct,
-            total_score_warning_pct=body.total_score_warning_pct,
+            total_score_pass_threshold=body.total_score_pass_threshold,
+            total_score_warning_threshold=body.total_score_warning_threshold,
             comparison=body.comparison,
         )
     except SLOParseError as e:
@@ -119,22 +119,22 @@ async def validate_slo(body: SLOValidateRequest) -> SLOValidationResult:  # noqa
 
     # Validate all criteria strings
     for i, obj in enumerate(slo.objectives):
-        for raw in obj.pass_criteria:
+        for raw in obj.pass_threshold:
             try:
                 parse_criteria_string(raw)
             except ValueError as e:
-                errors.append(SLOValError(field=f'objectives[{i}].pass_criteria', message=str(e)))
-        for raw in obj.warning_criteria:
+                errors.append(SLOValError(field=f'objectives[{i}].pass_threshold', message=str(e)))
+        for raw in obj.warning_threshold:
             try:
                 parse_criteria_string(raw)
             except ValueError as e:
-                errors.append(SLOValError(field=f'objectives[{i}].warning_criteria', message=str(e)))
+                errors.append(SLOValError(field=f'objectives[{i}].warning_threshold', message=str(e)))
 
     # Validate total_score percentages
-    if not (0 <= slo.total_score.pass_pct <= 100):  # noqa: PLR2004
-        errors.append(SLOValError(field='total_score_pass_pct', message='must be 0-100'))
-    if not (0 <= slo.total_score.warning_pct <= 100):  # noqa: PLR2004
-        errors.append(SLOValError(field='total_score_warning_pct', message='must be 0-100'))
+    if not (0 <= slo.total_score.pass_threshold <= 100):  # noqa: PLR2004
+        errors.append(SLOValError(field='total_score_pass_threshold', message='must be 0-100'))
+    if not (0 <= slo.total_score.warning_threshold <= 100):  # noqa: PLR2004
+        errors.append(SLOValError(field='total_score_warning_threshold', message='must be 0-100'))
 
     if errors:
         return SLOValidationResult(valid=False, errors=errors)

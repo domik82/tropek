@@ -32,8 +32,8 @@ const mockSlo: SloDefinition = {
     {
       sli: 'error-rate',
       display_name: 'Error Rate',
-      pass_criteria: ['<1%', '<100'],
-      warning_criteria: ['<5%'],
+      pass_threshold: ['<1%', '<100'],
+      warning_threshold: ['<5%'],
       weight: 2,
       key_sli: true,
       sort_order: 0,
@@ -41,8 +41,8 @@ const mockSlo: SloDefinition = {
     {
       sli: 'latency-p99',
       display_name: 'P99 Latency',
-      pass_criteria: ['<200ms'],
-      warning_criteria: ['<500ms', '<1000ms'],
+      pass_threshold: ['<200ms'],
+      warning_threshold: ['<500ms', '<1000ms'],
       weight: 1,
       key_sli: false,
       sort_order: 1,

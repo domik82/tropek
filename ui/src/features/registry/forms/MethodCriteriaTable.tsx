@@ -20,10 +20,10 @@ export function MethodCriteriaTable({
   function getEffective(method: string) {
     const override = criteria[method]
     return {
-      pass: override?.pass_criteria?.[0] ?? blueprintPass,
+      pass: override?.pass_threshold?.[0] ?? blueprintPass,
       weight: override?.weight ?? blueprintWeight,
       key_sli: override?.key_sli ?? false,
-      hasPassOverride: override?.pass_criteria != null,
+      hasPassOverride: override?.pass_threshold != null,
       hasWeightOverride: override?.weight != null,
       hasKeySliOverride: override?.key_sli != null,
     }
@@ -34,8 +34,8 @@ export function MethodCriteriaTable({
     const merged = { ...prev, ...patch }
 
     const cleaned: MethodCriteriaOverride = {}
-    if (merged.pass_criteria && merged.pass_criteria[0] !== blueprintPass) {
-      cleaned.pass_criteria = merged.pass_criteria
+    if (merged.pass_threshold && merged.pass_threshold[0] !== blueprintPass) {
+      cleaned.pass_threshold = merged.pass_threshold
     }
     if (merged.weight != null && merged.weight !== blueprintWeight) {
       cleaned.weight = merged.weight
@@ -78,7 +78,7 @@ export function MethodCriteriaTable({
                     <input
                       type="text"
                       value={eff.pass}
-                      onChange={e => updateMethod(method, { pass_criteria: [e.target.value] })}
+                      onChange={e => updateMethod(method, { pass_threshold: [e.target.value] })}
                       className={`w-24 rounded border border-border bg-popover px-1.5 py-0.5 text-xs font-mono ${
                         eff.hasPassOverride ? 'text-foreground' : 'text-muted-foreground italic'
                       }`}

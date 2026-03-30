@@ -248,23 +248,23 @@ spec:
   objectives:
     - sli: agg-latency-sli.mean
       display_name: "Mean Latency"
-      pass_criteria: ["<500"]
-      warning_criteria: ["<800"]
+      pass_threshold: ["<500"]
+      warning_threshold: ["<800"]
       weight: 2
     - sli: agg-latency-sli.p95
       display_name: "P95 Latency"
-      pass_criteria: ["<1000"]
-      warning_criteria: ["<1500"]
+      pass_threshold: ["<1000"]
+      warning_threshold: ["<1500"]
       weight: 2
     - sli: agg-latency-sli.p99
       display_name: "P99 Latency"
-      pass_criteria: ["<2000"]
-      warning_criteria: ["<3000"]
+      pass_threshold: ["<2000"]
+      warning_threshold: ["<3000"]
       weight: 1
     - sli: agg-latency-sli.max
       display_name: "Max Latency"
-      pass_criteria: ["<5000"]
-      warning_criteria: ["<8000"]
+      pass_threshold: ["<5000"]
+      warning_threshold: ["<8000"]
       weight: 1
 ```
 

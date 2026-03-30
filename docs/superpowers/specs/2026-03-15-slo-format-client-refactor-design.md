@@ -63,8 +63,8 @@ class SLOObjective(Base):
     weight:            Integer NOT NULL  server_default=1
     key_sli:           Boolean NOT NULL  server_default=false
     sort_order:        Integer NOT NULL
-    pass_criteria:     ARRAY(Text) NOT NULL  server_default="{}"
-    warning_criteria:  ARRAY(Text) NOT NULL  server_default="{}"
+    pass_threshold:     ARRAY(Text) NOT NULL  server_default="{}"
+    warning_threshold:  ARRAY(Text) NOT NULL  server_default="{}"
 ```
 
 Add relationship on `SLODefinition`:
@@ -90,8 +90,8 @@ display_name      TEXT NOT NULL DEFAULT ''
 weight            INT  NOT NULL DEFAULT 1
 key_sli           BOOL NOT NULL DEFAULT false
 sort_order        INT  NOT NULL        -- preserves user-defined order; 0-based
-pass_criteria     TEXT[] NOT NULL DEFAULT '{}'   -- e.g. {"<500","<=+10%"}
-warning_criteria  TEXT[] NOT NULL DEFAULT '{}'
+pass_threshold     TEXT[] NOT NULL DEFAULT '{}'   -- e.g. {"<500","<=+10%"}
+warning_threshold  TEXT[] NOT NULL DEFAULT '{}'
 ```
 
 Criteria are flat `TEXT[]`. The Keptn-inherited multi-block AND/OR structure (list of
@@ -139,8 +139,8 @@ Criteria flatten from `list[SLOCriteria]` to `list[str]`:
 class SLOObjective(BaseModel):
     sli: str
     display_name: str = ""
-    pass_criteria: list[str] = []
-    warning_criteria: list[str] = []
+    pass_threshold: list[str] = []
+    warning_threshold: list[str] = []
     weight: int = 1
     key_sli: bool = False
 
@@ -193,9 +193,9 @@ Two changes:
 1. Signature: `evaluate(slo_yaml: str, ...)` → `evaluate(slo: SLO, ...)`. The
    `parse_slo(slo_yaml)` call at the top of the function is removed; `slo` is used directly.
 
-2. `_build_targets`: currently iterates `for block in objective.pass_criteria` then
+2. `_build_targets`: currently iterates `for block in objective.pass_threshold` then
    `for raw in block.criteria`. With flat `list[str]`, this becomes a single loop:
-   `for raw in objective.pass_criteria`. Update both `pass_criteria` and `warning_criteria`
+   `for raw in objective.pass_threshold`. Update both `pass_threshold` and `warning_threshold`
    paths in `_build_targets`.
 
 No other logic changes inside the evaluator.
@@ -210,8 +210,8 @@ No other logic changes inside the evaluator.
 class SLOObjectiveIn(BaseModel):
     sli: str
     display_name: str = ""
-    pass_criteria: list[str] = []
-    warning_criteria: list[str] = []
+    pass_threshold: list[str] = []
+    warning_threshold: list[str] = []
     weight: int = 1
     key_sli: bool = False
 
@@ -344,8 +344,8 @@ Add `SLOObjective` pydantic model (mirrors the API `SLOObjectiveRead`):
 class SLOObjective(BaseModel):
     sli: str
     display_name: str = ""
-    pass_criteria: list[str] = []
-    warning_criteria: list[str] = []
+    pass_threshold: list[str] = []
+    warning_threshold: list[str] = []
     weight: int = 1
     key_sli: bool = False
     sort_order: int = 0
@@ -401,13 +401,13 @@ spec:
   objectives:
     - sli: response_time_p99
       display_name: "Response Time P99"
-      pass_criteria: ["<500"]
-      warning_criteria: ["<800"]
+      pass_threshold: ["<500"]
+      warning_threshold: ["<800"]
       weight: 2
     - sli: error_rate
       key_sli: true
-      pass_criteria: ["<0.01"]
-      warning_criteria: ["<0.05"]
+      pass_threshold: ["<0.01"]
+      warning_threshold: ["<0.05"]
       weight: 3
 ```
 

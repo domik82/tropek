@@ -41,8 +41,8 @@ const MOCK_SLO = {
   created_at: '2026-03-15T00:00:00Z',
   active: true,
   objectives: [
-    { sli: 'response_time_p99', display_name: 'P99 Latency', pass_criteria: ['<600'], warning_criteria: ['<800'], weight: 2, key_sli: false, sort_order: 0 },
-    { sli: 'error_rate', display_name: 'Error Rate', pass_criteria: ['<1%'], warning_criteria: ['<2%'], weight: 3, key_sli: true, sort_order: 1 },
+    { sli: 'response_time_p99', display_name: 'P99 Latency', pass_threshold: ['<600'], warning_threshold: ['<800'], weight: 2, key_sli: false, sort_order: 0 },
+    { sli: 'error_rate', display_name: 'Error Rate', pass_threshold: ['<1%'], warning_threshold: ['<2%'], weight: 3, key_sli: true, sort_order: 1 },
   ],
   total_score_pass_pct: 90,
   total_score_warning_pct: 75,

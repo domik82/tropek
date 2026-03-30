@@ -39,8 +39,8 @@ const mockSlo: SloDefinition = {
     {
       sli: 'response_time',
       display_name: 'Response Time',
-      pass_criteria: ['<600'],
-      warning_criteria: ['<800'],
+      pass_threshold: ['<600'],
+      warning_threshold: ['<800'],
       weight: 1,
       key_sli: true,
       sort_order: 0,
@@ -48,8 +48,8 @@ const mockSlo: SloDefinition = {
     {
       sli: 'error_rate',
       display_name: 'Error Rate',
-      pass_criteria: ['<5%'],
-      warning_criteria: ['<10%'],
+      pass_threshold: ['<5%'],
+      warning_threshold: ['<10%'],
       weight: 2,
       key_sli: false,
       sort_order: 1,

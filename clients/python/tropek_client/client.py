@@ -424,8 +424,8 @@ class _SLODefinitions:
         self,
         name: str,
         objectives: list[dict],
-        total_score_pass_pct: float = 90.0,
-        total_score_warning_pct: float = 75.0,
+        total_score_pass_threshold: float = 90.0,
+        total_score_warning_threshold: float = 75.0,
         *,
         comparison: dict | None = None,
         **kwargs: Any,
@@ -434,8 +434,8 @@ class _SLODefinitions:
         body = {
             "name": name,
             "objectives": objectives,
-            "total_score_pass_pct": total_score_pass_pct,
-            "total_score_warning_pct": total_score_warning_pct,
+            "total_score_pass_threshold": total_score_pass_threshold,
+            "total_score_warning_threshold": total_score_warning_threshold,
             "comparison": comparison or {},
             **kwargs,
         }

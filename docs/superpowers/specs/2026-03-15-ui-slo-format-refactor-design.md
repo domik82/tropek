@@ -27,8 +27,8 @@ with structured data.
 export interface SloObjective {
   sli: string
   display_name: string
-  pass_criteria: string[]       // was: pass: { criteria: string[] }[]
-  warning_criteria: string[]    // was: warning?: { criteria: string[] }[]
+  pass_threshold: string[]       // was: pass: { criteria: string[] }[]
+  warning_threshold: string[]    // was: warning?: { criteria: string[] }[]
   weight: number
   key_sli: boolean
   sort_order: number            // new: preserves server-defined order
@@ -131,8 +131,8 @@ No longer needed. `SloHistoryPanel` displays version details using structured fi
 
 ### `SloObjectiveTable.tsx`
 
-- Reads `obj.pass_criteria` (flat `string[]`) directly instead of `obj.pass[0].criteria`
-- Same for `warning_criteria`
+- Reads `obj.pass_threshold` (flat `string[]`) directly instead of `obj.pass[0].criteria`
+- Same for `warning_threshold`
 - Columns: **Indicator** (`sli`), **Display Name**, **Pass Criteria**, **Warning Criteria**,
   **Weight**, **Key SLI**. `tab_group` is dropped from the type entirely; `sort_order` remains
   on `SloObjective` (server-defined ordering) but is not displayed as a column.
@@ -140,7 +140,7 @@ No longer needed. `SloHistoryPanel` displays version details using structured fi
 ### `SloObjectiveEditor.tsx`
 
 Props: receives the full `SloDefinition` being edited plus an `onSave` callback. Internally
-manages a list of `SloObjective` items with flat `pass_criteria`/`warning_criteria` arrays.
+manages a list of `SloObjective` items with flat `pass_threshold`/`warning_threshold` arrays.
 On save: calls `createSloDefinition` with the SLO's existing metadata fields plus the updated
 objectives list, `total_score_pass_pct`, `total_score_warning_pct`, and `comparison` —
 creates a new version. The `comparison` field is passed through unchanged from the existing
@@ -171,7 +171,7 @@ Caller: `SloObjectiveEditor` passes the structured payload directly.
 
 - Pure structured form — the YAML paste tab is removed entirely
 - Submits structured fields directly to `createSloDefinition`
-- Internal form state uses flat `pass_criteria`/`warning_criteria`
+- Internal form state uses flat `pass_threshold`/`warning_threshold`
 
 ### Pages
 
@@ -213,8 +213,8 @@ All 5 entries replace `slo_yaml` with structured fields. Shape per entry:
     {
       "sli": "compilation_errors",
       "display_name": "Compilation Errors",
-      "pass_criteria": ["=0"],
-      "warning_criteria": [],
+      "pass_threshold": ["=0"],
+      "warning_threshold": [],
       "weight": 3,
       "key_sli": true,
       "sort_order": 0
@@ -226,7 +226,7 @@ All 5 entries replace `slo_yaml` with structured fields. Shape per entry:
 ### `mocks/handlers/slos.ts`
 
 - `POST /api/slo-definitions/validate` response: `objectives` uses flat
-  `pass_criteria`/`warning_criteria`, drops old `pass: [{criteria: []}]` shape
+  `pass_threshold`/`warning_threshold`, drops old `pass: [{criteria: []}]` shape
 - `POST /api/slo-definitions` request: expects structured fields (no `slo_yaml`); response
   echoes back a full `SloDefinition` with `objectives[]`, `total_score_pass_pct`, etc.
 - `GET` handlers: no changes (serve from updated `slo-definitions.json`)

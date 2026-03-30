@@ -65,13 +65,13 @@ Prerequisite from the spec: the SLOObjective model lacks a `tab_group` column. A
 
 - [ ] **Step 1: Add tab_group column**
 
-In `api/app/db/models.py`, add after the `warning_criteria` line (204):
+In `api/app/db/models.py`, add after the `warning_threshold` line (204):
 
 ```python
 tab_group:         Mapped[str | None]    = mapped_column(Text, nullable=True)
 ```
 
-The full `SLOObjective` model should now have columns: `id`, `slo_definition_id`, `sli`, `display_name`, `weight`, `key_sli`, `sort_order`, `pass_criteria`, `warning_criteria`, `tab_group`.
+The full `SLOObjective` model should now have columns: `id`, `slo_definition_id`, `sli`, `display_name`, `weight`, `key_sli`, `sort_order`, `pass_threshold`, `warning_threshold`, `tab_group`.
 
 - [ ] **Step 2: Regenerate migrations**
 
@@ -362,13 +362,13 @@ async def _seed_slo_with_objectives(session: AsyncSession) -> tuple[str, int, li
     obj1 = SLOObjective(
         id=uuid.uuid4(), slo_definition_id=slo_id, sli="response_time",
         display_name="Response Time P95", weight=1, key_sli=True,
-        sort_order=0, pass_criteria=["<600"], warning_criteria=["<800"],
+        sort_order=0, pass_threshold=["<600"], warning_threshold=["<800"],
         tab_group="latency",
     )
     obj2 = SLOObjective(
         id=uuid.uuid4(), slo_definition_id=slo_id, sli="error_rate",
         display_name="Error Rate", weight=2, key_sli=False,
-        sort_order=1, pass_criteria=["<2"], warning_criteria=["<5"],
+        sort_order=1, pass_threshold=["<2"], warning_threshold=["<5"],
         tab_group=None,
     )
     session.add_all([obj1, obj2])
@@ -589,8 +589,8 @@ def _make_indicator_row(
     score: float = 1.0,
     weight: int = 1,
     key_sli: bool = False,
-    pass_criteria: list[str] | None = None,
-    warning_criteria: list[str] | None = None,
+    pass_threshold: list[str] | None = None,
+    warning_threshold: list[str] | None = None,
 ) -> SimpleNamespace:
     """Build a fake ORM IndicatorResultRow with joined objective."""
     objective = SimpleNamespace(
@@ -599,8 +599,8 @@ def _make_indicator_row(
         tab_group=tab_group,
         weight=weight,
         key_sli=key_sli,
-        pass_criteria=pass_criteria or ["<600"],
-        warning_criteria=warning_criteria or [],
+        pass_threshold=pass_threshold or ["<600"],
+        warning_threshold=warning_threshold or [],
     )
     return SimpleNamespace(
         value=value,
@@ -618,7 +618,7 @@ def test_build_detail_from_orm_rows():
     row_pass = _make_indicator_row(status="pass", value=580.0)
     row_fail = _make_indicator_row(
         sli="error_rate", display_name="Error Rate", status="fail",
-        value=5.2, score=0.0, weight=2, pass_criteria=["<2"],
+        value=5.2, score=0.0, weight=2, pass_threshold=["<2"],
     )
     ev = _make_evaluation(indicator_results=[])
     ev.indicator_rows = [row_pass, row_fail]
@@ -634,7 +634,7 @@ def test_build_summary_from_orm_rows():
     """build_summary works with ORM indicator rows (new path)."""
     row_fail = _make_indicator_row(
         sli="error_rate", display_name="Error Rate", status="fail",
-        value=5.2, score=0.0, pass_criteria=["<2"],
+        value=5.2, score=0.0, pass_threshold=["<2"],
     )
     ev = _make_evaluation(indicator_results=[])
     ev.indicator_rows = [row_fail]
@@ -690,12 +690,12 @@ def _indicators_from_orm_rows(rows: list) -> list[IndicatorResult]:
             weight=obj.weight,
             key_sli=obj.key_sli,
             pass_targets=resolve_targets(
-                list(obj.pass_criteria) if obj.pass_criteria else None,
+                list(obj.pass_threshold) if obj.pass_threshold else None,
                 value=row.value,
                 compared_value=row.compared_value,
             ),
             warning_targets=resolve_targets(
-                list(obj.warning_criteria) if obj.warning_criteria else None,
+                list(obj.warning_threshold) if obj.warning_threshold else None,
                 value=row.value,
                 compared_value=row.compared_value,
             ),

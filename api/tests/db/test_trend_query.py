@@ -46,8 +46,8 @@ async def _seed_slo_objective(session: AsyncSession, sli: str = 'response_time')
         version=1,
         display_name='Test SLO',
         comparison={},
-        total_score_pass_pct=90.0,
-        total_score_warning_pct=75.0,
+        total_score_pass_threshold=90.0,
+        total_score_warning_threshold=75.0,
         tags={},
         variables={},
     )
@@ -61,8 +61,8 @@ async def _seed_slo_objective(session: AsyncSession, sli: str = 'response_time')
         weight=1,
         key_sli=False,
         sort_order=0,
-        pass_criteria=['<600'],
-        warning_criteria=[],
+        pass_threshold=['<600'],
+        warning_threshold=[],
     )
     session.add(obj)
     await session.flush()

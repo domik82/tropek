@@ -52,7 +52,7 @@ Note: `score` is stored despite being derivable (`weight * status_multiplier`) b
 **What's NOT on this table (comes from joins):**
 - `metric_name`, `display_name`, `tab_group` → from `slo_objectives.sli`, `slo_objectives.display_name`, `slo_objectives.tab_group`
 - `weight`, `key_sli` → from `slo_objectives.weight`, `slo_objectives.key_sli`
-- `pass_criteria`, `warning_criteria` → from `slo_objectives.pass_criteria`, `slo_objectives.warning_criteria`
+- `pass_threshold`, `warning_threshold` → from `slo_objectives.pass_threshold`, `slo_objectives.warning_threshold`
 - `pass_targets`, `warning_targets` (computed violated flags + resolved target values) → derivable at read time from `compared_value` + criteria strings
 
 **Deriving pass_targets/warning_targets at read time:**
@@ -191,7 +191,7 @@ The `top_failures` field on `EvaluationSummary` becomes a join query instead of 
 - `api/app/modules/quality_gate/trend_repository.py` — `get_trend_by_domain()` currently extracts `compared_value` from JSONB subquery; rewrite to join `indicator_results`
 - `api/app/modules/quality_gate/baseline_repository.py` — `update_reeval_result()` writes JSONB; rewrite to update `indicator_results` rows
 - `api/app/modules/quality_gate/presenter.py` — **central transformation layer**: `build_summary()` extracts `top_failures` from JSONB dicts (line 21-31), `build_detail()` constructs `IndicatorResult` objects from JSONB (line 49). Both must be rewritten to accept joined ORM results instead of raw dicts. This is the main file that changes.
-- `api/app/modules/quality_gate/schemas.py` — response shapes stay identical (no UI breakage); `FailingIndicator.threshold` currently reads `pass_targets[0].criteria` from JSONB — after normalization, derive from `slo_objectives.pass_criteria[0]`
+- `api/app/modules/quality_gate/schemas.py` — response shapes stay identical (no UI breakage); `FailingIndicator.threshold` currently reads `pass_targets[0].criteria` from JSONB — after normalization, derive from `slo_objectives.pass_threshold[0]`
 - `api/app/modules/quality_gate/engine/evaluator.py` — return type may change to structured objects instead of dicts
 - `api/app/modules/quality_gate/router.py` — `_build_detail()` and `_build_summary()` currently read from JSONB; rewrite to construct from joined query results
 - Worker job (`worker.py`) — writes to new table instead of JSONB (lines 90, 216, 235)
@@ -215,7 +215,7 @@ These tests validate that data written through the new `indicator_results` table
 
 4. **Trend query equivalence:** run `get_trend_by_domain()` against known data, assert trend points include correct `compared_value` (previously extracted from JSONB, now joined from `indicator_results`).
 
-5. **Top failures derivation:** verify `build_summary()` produces the same `top_failures` list — particularly `threshold` field, which now comes from `slo_objectives.pass_criteria[0]` instead of `pass_targets[0].criteria` in JSONB.
+5. **Top failures derivation:** verify `build_summary()` produces the same `top_failures` list — particularly `threshold` field, which now comes from `slo_objectives.pass_threshold[0]` instead of `pass_targets[0].criteria` in JSONB.
 
 6. **Edge cases:** null `compared_value` (no baseline), info-only objectives (no criteria), missing metrics (value=null), evaluations with 0 indicator results.
 

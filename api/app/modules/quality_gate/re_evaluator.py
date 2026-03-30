@@ -43,15 +43,15 @@ def _build_slo_model(slo_def: SLODefinition) -> SLO:
             'display_name': obj.display_name,
             'weight': obj.weight,
             'key_sli': obj.key_sli,
-            'pass_criteria': list(obj.pass_criteria),
-            'warning_criteria': list(obj.warning_criteria),
+            'pass_threshold': list(obj.pass_threshold),
+            'warning_threshold': list(obj.warning_threshold),
         }
         for obj in slo_def.objectives
     ]
     return build_slo(
         objectives=objectives_dicts,
-        total_score_pass_pct=slo_def.total_score_pass_pct,
-        total_score_warning_pct=slo_def.total_score_warning_pct,
+        total_score_pass_threshold=slo_def.total_score_pass_threshold,
+        total_score_warning_threshold=slo_def.total_score_warning_threshold,
         comparison=slo_def.comparison,
     )
 

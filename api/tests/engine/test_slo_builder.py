@@ -8,12 +8,12 @@ from app.modules.quality_gate.engine.slo_parser import build_slo
 
 
 def test_build_minimal_slo() -> None:
-    slo = build_slo(objectives=[{'sli': 'm', 'pass_criteria': ['<100']}])
+    slo = build_slo(objectives=[{'sli': 'm', 'pass_threshold': ['<100']}])
     assert len(slo.objectives) == 1
     assert slo.objectives[0].sli == 'm'
-    assert slo.objectives[0].pass_criteria == ['<100']
-    assert slo.total_score.pass_pct == 90.0
-    assert slo.total_score.warning_pct == 75.0
+    assert slo.objectives[0].pass_threshold == ['<100']
+    assert slo.total_score.pass_threshold == 90.0
+    assert slo.total_score.warning_threshold == 75.0
 
 
 def test_build_slo_comparison_defaults() -> None:
@@ -49,19 +49,19 @@ def test_objective_defaults() -> None:
     slo = build_slo(objectives=[{'sli': 'm'}])
     obj = slo.objectives[0]
     assert obj.display_name == ''
-    assert obj.pass_criteria == []
-    assert obj.warning_criteria == []
+    assert obj.pass_threshold == []
+    assert obj.warning_threshold == []
     assert obj.weight == 1
     assert obj.key_sli is False
 
 
 def test_score_defaults() -> None:
     slo = build_slo(objectives=[{'sli': 'm'}])
-    assert slo.total_score.pass_pct == 90.0
-    assert slo.total_score.warning_pct == 75.0
+    assert slo.total_score.pass_threshold == 90.0
+    assert slo.total_score.warning_threshold == 75.0
 
 
 def test_score_overridden() -> None:
-    slo = build_slo(objectives=[{'sli': 'm'}], total_score_pass_pct=95.0, total_score_warning_pct=80.0)
-    assert slo.total_score.pass_pct == 95.0
-    assert slo.total_score.warning_pct == 80.0
+    slo = build_slo(objectives=[{'sli': 'm'}], total_score_pass_threshold=95.0, total_score_warning_threshold=80.0)
+    assert slo.total_score.pass_threshold == 95.0
+    assert slo.total_score.warning_threshold == 80.0
