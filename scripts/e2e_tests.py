@@ -340,14 +340,16 @@ def test_label_autocomplete(client: TropekClient) -> None:
 
 
 def test_aggregated_evaluation(client: TropekClient) -> None:
-    """Trigger an aggregated-mode evaluation and verify method-keyed results."""
+    """Trigger an aggregated-mode evaluation and verify method-keyed results with baselines."""
     step("Step 21: Aggregated-mode evaluation")
+
+    # Use a late time window so seeded evaluations (00:00 through 16:00) provide baselines
     result = client.evaluations.trigger(
         'checkout-api',
-        'agg-test',
+        'agg-baseline-test',
         'agg-latency-slo',
-        '2026-03-15T08:00:00Z',
-        '2026-03-15T08:30:00Z',
+        '2026-03-16T14:00:00Z',
+        '2026-03-16T14:30:00Z',
     )
     eval_id = result['id']
     print(f'triggered aggregated eval: {eval_id}')
@@ -364,7 +366,30 @@ def test_aggregated_evaluation(client: TropekClient) -> None:
         expected = f'agg-latency-sli.{method}'
         assert expected in metric_names, f'missing indicator {expected}, got {metric_names}'
 
-    print('PASS: aggregated-mode evaluation')
+    # Verify baseline comparison was performed (seeded evals should provide baselines)
+    print(f'compared_evaluation_ids: {ev.compared_evaluation_ids}')
+    assert len(ev.compared_evaluation_ids) > 0, (
+        'expected at least 1 compared evaluation for baseline, got none'
+    )
+
+    # Verify each indicator has a compared_value (baseline) populated
+    for ir in ev.indicator_results:
+        print(
+            f'  {ir.metric}: value={ir.value} baseline={ir.compared_value} '
+            f'change={ir.change_relative_pct}%'
+        )
+        assert ir.compared_value is not None, (
+            f'expected compared_value for {ir.metric}, got None '
+            f'(compared_eval_ids={ev.compared_evaluation_ids})'
+        )
+        assert ir.change_absolute is not None, (
+            f'expected change_absolute for {ir.metric}, got None'
+        )
+        assert ir.change_relative_pct is not None, (
+            f'expected change_relative_pct for {ir.metric}, got None'
+        )
+
+    print('PASS: aggregated-mode evaluation with baselines')
 
 
 def test_asset_type_delete_with_assets(client: TropekClient) -> None:
