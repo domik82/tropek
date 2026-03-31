@@ -84,6 +84,8 @@ export interface HeatmapChartProps {
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
+const EMPTY_HEADER_INDICES = new Set<number>()
+
 export function HeatmapChart({
   rows,
   columns,
@@ -96,7 +98,7 @@ export function HeatmapChart({
   formatColumnLabel = fmtSlot,
   instructionText,
   aboveChart,
-  headerRowIndices = new Set<number>(),
+  headerRowIndices = EMPTY_HEADER_INDICES,
 }: HeatmapChartProps) {
   const { theme } = useTheme()
   const colours = RESULT_COLOUR[theme]

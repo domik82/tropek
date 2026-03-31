@@ -353,7 +353,8 @@ class EvaluationRepository:
             q = q.where(SLOEvaluation.period_start >= from_ts)
         if to_ts:
             q = q.where(SLOEvaluation.period_start <= to_ts)
-        count_q = select(func.count()).select_from(q.subquery())
+        sub = q.subquery()
+        count_q = select(func.count(func.distinct(sub.c.evaluation_id)))
         total_result = await self._session.execute(count_q)
         total = total_result.scalar_one()
         q = q.order_by(SLOEvaluation.period_start.desc()).limit(limit).offset(offset)
