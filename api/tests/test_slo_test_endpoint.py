@@ -8,7 +8,7 @@ from app.db.session import get_session
 from app.main import app
 from fastapi.testclient import TestClient
 
-VALID_OBJECTIVES = [{'sli': 'response_time_p99', 'pass_criteria': ['<600'], 'weight': 1}]
+VALID_OBJECTIVES = [{'sli': 'response_time_p99', 'pass_threshold': ['<600'], 'weight': 1}]
 
 
 @pytest.fixture

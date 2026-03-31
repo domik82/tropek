@@ -27,6 +27,28 @@ ADAPTER_PORT=8081
 PROMETHEUS_URL="${PROMETHEUS_URL:-http://localhost:9090}"
 ADAPTER_REDIS_URL="${ADAPTER_REDIS_URL:-redis://:e2e_redis@localhost:$REDIS_PORT/1}"
 
+# --- Kill any previous dev-start instance and tear down containers ---
+echo "=== Cleaning up previous instance ==="
+# Kill processes on our ports
+for port in $API_PORT $MOCK_PORT; do
+  pid=$(lsof -ti tcp:$port 2>/dev/null || true)
+  if [ -n "$pid" ]; then
+    echo "  Killing process on port $port (pid $pid)"
+    kill $pid 2>/dev/null || true
+    sleep 0.5
+    kill -9 $pid 2>/dev/null || true
+  fi
+done
+# Tear down e2e containers and volumes (fresh DB)
+docker compose --profile e2e down -v 2>/dev/null || true
+echo "  Done"
+
+# --- Clean and prepare log directory ---
+LOG_DIR_LOCAL="$(pwd)/out/logs"
+rm -rf "$LOG_DIR_LOCAL"
+mkdir -p "$LOG_DIR_LOCAL"
+echo "=== Logs directory cleaned: $LOG_DIR_LOCAL ==="
+
 PIDS=()
 
 cleanup() {
@@ -58,28 +80,28 @@ export QG_REDIS_PORT=$REDIS_PORT
 export QG_SECRET_KEY=e2e-test-key
 export QG_CONFIG_PATH=config.yaml
 export MOCK_DATA_DIR=data  # relative to adapters/mock/ (the adapter's --directory CWD)
+export LOG_DIR="$LOG_DIR_LOCAL"
 
 uv run --directory api alembic upgrade head
 
-echo "=== Starting mock adapter on :$MOCK_PORT (background) ==="
-uv run --directory adapters/mock uvicorn app.main:app --host 127.0.0.1 --port $MOCK_PORT &
+echo "=== Starting mock adapter on :$MOCK_PORT (log: $LOG_DIR_LOCAL/mock-adapter.log) ==="
+uv run --directory adapters/mock \
+    uvicorn app.main:app --host 127.0.0.1 --port $MOCK_PORT --log-level info &
 PIDS+=($!)
 
-echo "=== Starting Prometheus adapter on :$ADAPTER_PORT (background) ==="
-mkdir -p out/logs
+echo "=== Starting Prometheus adapter on :$ADAPTER_PORT (log: $LOG_DIR_LOCAL/prometheus-adapter.log) ==="
 PROMETHEUS_URL="$PROMETHEUS_URL" \
 REDIS_URL="$ADAPTER_REDIS_URL" \
 PORT="$ADAPTER_PORT" \
-LOG_DIR="$(pwd)/out/logs" \
 uv run --directory adapters/prometheus \
     uvicorn app.main:app --host 127.0.0.1 --port $ADAPTER_PORT --log-level info &
 PIDS+=($!)
 
-echo "=== Starting API on :$API_PORT (background) ==="
+echo "=== Starting API on :$API_PORT (log: $LOG_DIR_LOCAL/api.log) ==="
 uv run --directory api uvicorn app.main:app --host 127.0.0.1 --port $API_PORT &
 PIDS+=($!)
 
-echo "=== Starting arq worker (background) ==="
+echo "=== Starting arq worker (log: $LOG_DIR_LOCAL/worker.log) ==="
 # PYTHONPATH=. resolves to api/ (the uv --directory target), making app.queue importable
 PYTHONPATH=. uv run --directory api arq app.queue.WorkerSettings &
 PIDS+=($!)
@@ -148,6 +170,12 @@ echo "  UI:      http://localhost:5173"
 echo "  API:     http://localhost:$API_PORT"
 echo "  Adapter: http://localhost:$ADAPTER_PORT"
 echo "  Docs:    http://localhost:$API_PORT/docs"
+echo ""
+echo "  Logs:    $LOG_DIR_LOCAL/"
+echo "    worker.log          — evaluation jobs, scoring, per-indicator results"
+echo "    mock-adapter.log    — CSV lookups, query values/errors"
+echo "    api.log             — HTTP requests"
+echo "    prometheus-adapter.log — Prometheus queries"
 echo ""
 echo "  Press Ctrl+C to stop"
 echo "============================================"

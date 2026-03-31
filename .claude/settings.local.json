@@ -23,7 +23,9 @@
       "Bash(bash scripts/ui-test.sh --tail 10)",
       "Bash(/home/domik/projects/tropek/.worktrees/prometheus-adapter-phase0/scripts/live-test-adapter.sh)",
       "Bash(/home/domik/projects/tropek/.worktrees/prometheus-adapter-phase0/scripts/e2e-start.sh 2>&1)",
-      "Skill(commit-commands:commit)"
+      "Skill(commit-commands:commit)",
+      "Bash(pnpm --dir /home/domik/projects/tropek/.worktrees/ui-tech-debt-phase5/ui exec vitest run src/features/evaluations/components/EvaluationActions.test.tsx)",
+      "Bash(pnpm --dir /home/domik/projects/tropek/.worktrees/ui-tech-debt-phase5/ui exec vitest run)"
     ],
     "deny": [
       "Bash(sudo *)",

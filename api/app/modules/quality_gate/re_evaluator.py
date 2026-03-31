@@ -16,6 +16,7 @@ from app.modules.quality_gate.engine.slo_models import SLO
 from app.modules.quality_gate.engine.slo_parser import build_slo
 from app.modules.quality_gate.params import ReEvalUpdateParams
 from app.modules.quality_gate.re_evaluation_schemas import (
+    BaselinePinConflictError,
     ReEvalResultItem,
     ReEvaluateRequest,
     ReEvaluateResponse,
@@ -43,15 +44,15 @@ def _build_slo_model(slo_def: SLODefinition) -> SLO:
             'display_name': obj.display_name,
             'weight': obj.weight,
             'key_sli': obj.key_sli,
-            'pass_criteria': list(obj.pass_criteria),
-            'warning_criteria': list(obj.warning_criteria),
+            'pass_threshold': list(obj.pass_threshold),
+            'warning_threshold': list(obj.warning_threshold),
         }
         for obj in slo_def.objectives
     ]
     return build_slo(
         objectives=objectives_dicts,
-        total_score_pass_pct=slo_def.total_score_pass_pct,
-        total_score_warning_pct=slo_def.total_score_warning_pct,
+        total_score_pass_threshold=slo_def.total_score_pass_threshold,
+        total_score_warning_threshold=slo_def.total_score_warning_threshold,
         comparison=slo_def.comparison,
     )
 
@@ -115,6 +116,39 @@ async def _resolve_from_date(
     raise ValueError('no evaluation with pinned baseline found')
 
 
+async def _resolve_pin_conflict(
+    request: ReEvaluateRequest,
+    from_date: datetime,
+    asset_id: uuid.UUID,
+    baseline_repo: BaselineRepository,
+) -> tuple[datetime, bool]:
+    """Check for baseline pin conflict and apply the chosen strategy.
+
+    Returns:
+        Tuple of (possibly adjusted from_date, skip_pin flag).
+
+    Raises:
+        BaselinePinConflictError: When conflict exists and no strategy was provided.
+    """
+    if request.from_baseline:
+        return from_date, False
+
+    pin_info = await baseline_repo.get_active_pin(asset_id=asset_id, slo_name=request.slo_name)
+    if pin_info is None:
+        return from_date, False
+
+    pin_date, pin_eval_id = pin_info
+    if from_date >= pin_date:
+        return from_date, False
+
+    if request.pin_strategy is None:
+        raise BaselinePinConflictError(pin_date, pin_eval_id)
+    if request.pin_strategy == 'skip_to_pin':
+        return pin_date, False
+    # ignore_pin
+    return from_date, True
+
+
 async def _resolve_sli_version_range(
     sli_name: str | None,
     sli_version: int | None,
@@ -142,6 +176,7 @@ async def _rescore_single(  # noqa: PLR0913
     baseline_repo: BaselineRepository,
     sli_repo: SLIRepository,
     dry_run: bool,
+    skip_pin_filter: bool = False,
 ) -> ReEvalResultItem:
     """Re-score a single evaluation and optionally persist the update."""
     metrics = _metrics_from_indicator_rows(ev.indicator_rows)
@@ -157,6 +192,7 @@ async def _rescore_single(  # noqa: PLR0913
         limit=slo_model.comparison.number_of_comparison_results,
         sli_version_range=sli_range,
         restrict_to_ids=eligible_ids if eligible_ids else None,
+        skip_pin_filter=skip_pin_filter,
     )
 
     baselines, compared_ids = _compute_baselines(baseline_evals, slo_model)
@@ -231,6 +267,9 @@ async def re_evaluate(
     # Determine window start
     from_date = await _resolve_from_date(request, asset.id, eval_repo, baseline_repo)
 
+    # Detect baseline pin conflict
+    from_date, skip_pin = await _resolve_pin_conflict(request, from_date, asset.id, baseline_repo)
+
     # Load evaluations to re-process (chronological order)
     evals_to_process = await baseline_repo.load_evaluations_for_reeval(
         asset_id=asset.id,
@@ -252,6 +291,7 @@ async def re_evaluate(
         include_result_with_score=slo_model.comparison.include_result_with_score.value,
         limit=slo_model.comparison.number_of_comparison_results,
         sli_version_range=default_sli_range,
+        skip_pin_filter=skip_pin,
     )
     eligible_ids: list[uuid.UUID] = [ev.id for ev in pre_baselines]
 
@@ -270,6 +310,7 @@ async def re_evaluate(
             baseline_repo=baseline_repo,
             sli_repo=sli_repo,
             dry_run=request.dry_run,
+            skip_pin_filter=skip_pin,
         )
         eligible_ids.append(ev.id)
         results.append(item)

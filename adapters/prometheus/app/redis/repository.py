@@ -134,13 +134,9 @@ class JobRepository:
         raw = await self._r.hgetall(self._key('job', job_id, 'results'))
         return {_decode(k): json.loads(_decode(v)) for k, v in raw.items()}
 
-    async def write_metadata(
-        self, job_id: str, sli_name: str, metadata: dict[str, Any]
-    ) -> None:
+    async def write_metadata(self, job_id: str, sli_name: str, metadata: dict[str, Any]) -> None:
         """Store per-SLI metadata (sample counts, etc.) for a job."""
-        await self._r.hset(
-            self._key('job', job_id, 'metadata'), sli_name, json.dumps(metadata)
-        )
+        await self._r.hset(self._key('job', job_id, 'metadata'), sli_name, json.dumps(metadata))
 
     async def get_metadata(self, job_id: str) -> dict[str, dict[str, Any]]:
         """Return all per-SLI metadata for a job."""
@@ -197,4 +193,4 @@ class JobRepository:
 
     async def queue_depth(self) -> int:
         """Return the number of jobs currently waiting in the pending queue."""
-        return await self._r.llen(self._key('queue', 'pending'))
+        return int(await self._r.llen(self._key('queue', 'pending')))

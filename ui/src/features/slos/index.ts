@@ -1,6 +1,6 @@
-export type { SloDefinition, SloObjective, SloBinding, SloBindingCreate } from './types'
+export type { SloDefinition, SloObjective, SloBinding, SloBindingCreate, MethodCriteriaOverride } from './types'
 export {
-  useSlos, useSloDetail, useCreateSlo, useDeleteSlo,
+  useSlos, useSloDetail, useSloVersions, useCreateSlo, useDeleteSlo,
   useGroupTree, useCreateGroup, useUpdateGroup, useDeleteGroup, useAddSubgroup,
   useAssetSloBindings, useGroupSloBindings,
   useCreateGroupSloBinding, useDeleteGroupSloBinding,

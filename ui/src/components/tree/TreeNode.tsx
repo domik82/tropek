@@ -10,6 +10,7 @@ export interface TreeNodeProps {
   icon: LucideIcon
   iconColor: string
   label: string
+  subtitle?: string
   depth: number
   isExpandable: boolean
   isExpanded: boolean
@@ -29,6 +30,7 @@ export function TreeNode({
   icon: Icon,
   iconColor,
   label,
+  subtitle,
   depth,
   isExpandable,
   isExpanded,
@@ -86,12 +88,19 @@ export function TreeNode({
 
       <Icon className="w-4 h-4 shrink-0" style={{ color: iconColor }} strokeWidth={2} />
 
-      <span
-        className={`text-[14px] truncate flex-1 leading-4 ${
-          isGroup ? 'font-semibold' : 'font-normal'
-        }`}
-      >
-        {label}
+      <span className="truncate flex-1 min-w-0">
+        <span
+          className={`text-[14px] truncate leading-4 ${
+            isGroup ? 'font-semibold' : 'font-normal'
+          }`}
+        >
+          {label}
+        </span>
+        {subtitle && (
+          <span className="block text-[10px] text-muted-foreground truncate leading-3">
+            {subtitle}
+          </span>
+        )}
       </span>
 
       {trailingAction ? (

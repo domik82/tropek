@@ -80,10 +80,10 @@ export function NoteIndicatorRow({ columns, notedColumns, onIndicatorClick }: Pr
 
   return (
     <div className="flex items-center -mb-2" style={{ paddingLeft: 210, paddingRight: 20 }}>
-      {columns.map(col => {
+      {columns.map((col, i) => {
         const info = notedColumns.get(col)
         return (
-          <div key={col} className="flex-1 flex justify-center relative">
+          <div key={i} className="flex-1 flex justify-center relative">
             {info ? (
               <NoteIcon slot={col} info={info} onIndicatorClick={onIndicatorClick} />
             ) : (

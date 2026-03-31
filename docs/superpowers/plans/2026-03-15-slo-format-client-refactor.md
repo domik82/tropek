@@ -94,8 +94,8 @@ class SLOObjective(BaseModel):
 
     sli: str
     display_name: str = ""
-    pass_criteria: list[str] = Field(default_factory=list)
-    warning_criteria: list[str] = Field(default_factory=list)
+    pass_threshold: list[str] = Field(default_factory=list)
+    warning_threshold: list[str] = Field(default_factory=list)
     weight: int = 1
     key_sli: bool = False
 
@@ -113,8 +113,8 @@ class SLOComparison(BaseModel):
 class SLOTotalScore(BaseModel):
     """Pass and warning percentage thresholds for the overall weighted score."""
 
-    pass_pct: float = 90.0
-    warning_pct: float = 75.0
+    pass_threshold: float = 90.0
+    warning_threshold: float = 75.0
 
 
 class SLO(BaseModel):
@@ -154,63 +154,63 @@ from app.modules.quality_gate.engine.slo_parser import build_slo
 
 
 def test_build_minimal_slo() -> None:
-    slo = build_slo(objectives=[{"sli": "m", "pass_criteria": ["<100"]}])
-    assert len(slo.objectives) == 1
-    assert slo.objectives[0].sli == "m"
-    assert slo.objectives[0].pass_criteria == ["<100"]
-    assert slo.total_score.pass_pct == 90.0
-    assert slo.total_score.warning_pct == 75.0
+  slo = build_slo(objectives=[{"sli": "m", "pass_threshold": ["<100"]}])
+  assert len(slo.objectives) == 1
+  assert slo.objectives[0].sli == "m"
+  assert slo.objectives[0].pass_threshold == ["<100"]
+  assert slo.total_score.pass_threshold == 90.0
+  assert slo.total_score.warning_threshold == 75.0
 
 
 def test_build_slo_comparison_defaults() -> None:
-    slo = build_slo(objectives=[{"sli": "m"}])
-    assert slo.comparison.compare_with == "single_result"
-    assert slo.comparison.number_of_comparison_results == 3
-    assert slo.comparison.scope_tags == ["os"]
+  slo = build_slo(objectives=[{"sli": "m"}])
+  assert slo.comparison.compare_with == "single_result"
+  assert slo.comparison.number_of_comparison_results == 3
+  assert slo.comparison.scope_tags == ["os"]
 
 
 def test_build_slo_comparison_overridden() -> None:
-    slo = build_slo(
-        objectives=[{"sli": "m"}],
-        comparison={"compare_with": "several_results", "scope_tags": ["os", "arch"]},
-    )
-    assert slo.comparison.compare_with == "several_results"
-    assert slo.comparison.scope_tags == ["os", "arch"]
+  slo = build_slo(
+    objectives=[{"sli": "m"}],
+    comparison={"compare_with": "several_results", "scope_tags": ["os", "arch"]},
+  )
+  assert slo.comparison.compare_with == "several_results"
+  assert slo.comparison.scope_tags == ["os", "arch"]
 
 
 def test_empty_objectives_raises() -> None:
-    with pytest.raises(SLOParseError, match="empty"):
-        build_slo(objectives=[])
+  with pytest.raises(SLOParseError, match="empty"):
+    build_slo(objectives=[])
 
 
 def test_invalid_comparison_raises() -> None:
-    with pytest.raises(SLOParseError):
-        build_slo(
-            objectives=[{"sli": "m"}],
-            comparison={"aggregate_function": "median"},  # not a valid AggregateFunction
-        )
+  with pytest.raises(SLOParseError):
+    build_slo(
+      objectives=[{"sli": "m"}],
+      comparison={"aggregate_function": "median"},  # not a valid AggregateFunction
+    )
 
 
 def test_objective_defaults() -> None:
-    slo = build_slo(objectives=[{"sli": "m"}])
-    obj = slo.objectives[0]
-    assert obj.display_name == ""
-    assert obj.pass_criteria == []
-    assert obj.warning_criteria == []
-    assert obj.weight == 1
-    assert obj.key_sli is False
+  slo = build_slo(objectives=[{"sli": "m"}])
+  obj = slo.objectives[0]
+  assert obj.display_name == ""
+  assert obj.pass_threshold == []
+  assert obj.warning_threshold == []
+  assert obj.weight == 1
+  assert obj.key_sli is False
 
 
 def test_score_defaults() -> None:
-    slo = build_slo(objectives=[{"sli": "m"}])
-    assert slo.total_score.pass_pct == 90.0
-    assert slo.total_score.warning_pct == 75.0
+  slo = build_slo(objectives=[{"sli": "m"}])
+  assert slo.total_score.pass_threshold == 90.0
+  assert slo.total_score.warning_threshold == 75.0
 
 
 def test_score_overridden() -> None:
-    slo = build_slo(objectives=[{"sli": "m"}], total_score_pass_pct=95.0, total_score_warning_pct=80.0)
-    assert slo.total_score.pass_pct == 95.0
-    assert slo.total_score.warning_pct == 80.0
+  slo = build_slo(objectives=[{"sli": "m"}], total_score_pass_threshold=95.0, total_score_warning_threshold=80.0)
+  assert slo.total_score.pass_threshold == 95.0
+  assert slo.total_score.warning_threshold == 80.0
 ```
 
 - [ ] **Step 2: Run to confirm FAIL**
@@ -249,16 +249,16 @@ from app.modules.quality_gate.engine.slo_models import (
 
 def build_slo(
     objectives: list[dict[str, Any]],
-    total_score_pass_pct: float = 90.0,
-    total_score_warning_pct: float = 75.0,
+    total_score_pass_threshold: float = 90.0,
+    total_score_warning_threshold: float = 75.0,
     comparison: dict[str, Any] | None = None,
 ) -> SLO:
     """Build and validate an SLO model from structured data.
 
     Args:
         objectives: List of objective dicts matching SLOObjective fields.
-        total_score_pass_pct: Minimum % to pass. Default 90.0.
-        total_score_warning_pct: Minimum % to warn. Default 75.0.
+        total_score_pass_threshold: Minimum % to pass. Default 90.0.
+        total_score_warning_threshold: Minimum % to warn. Default 75.0.
         comparison: Optional comparison config dict. Empty/None uses all defaults.
 
     Returns:
@@ -278,8 +278,8 @@ def build_slo(
         objectives=parsed_objectives,
         comparison=parsed_comparison,
         total_score=SLOTotalScore(
-            pass_pct=total_score_pass_pct,
-            warning_pct=total_score_warning_pct,
+            pass_threshold=total_score_pass_threshold,
+            warning_threshold=total_score_warning_threshold,
         ),
     )
 ```
@@ -312,92 +312,92 @@ from app.modules.quality_gate.engine.slo_models import SLOObjective, SLOTotalSco
 
 
 def _evaluate_criteria_block(
-    criteria_list: list[str],
-    value: float,
-    baseline: float | None,
+        criteria_list: list[str],
+        value: float,
+        baseline: float | None,
 ) -> bool:
-    """Evaluate a flat criteria list with AND logic — all must pass."""
-    for raw in criteria_list:
-        c = parse_criteria_string(raw)
-        if not evaluate_criteria(c, value, baseline):
-            return False
-    return True
+  """Evaluate a flat criteria list with AND logic — all must pass."""
+  for raw in criteria_list:
+    c = parse_criteria_string(raw)
+    if not evaluate_criteria(c, value, baseline):
+      return False
+  return True
 
 
 def score_objective(
-    objective: SLOObjective,
-    value: float | None,
-    baseline: float | None,
+        objective: SLOObjective,
+        value: float | None,
+        baseline: float | None,
 ) -> ObjectiveResult:
-    """Score a single SLO objective against a metric value and optional baseline."""
-    has_pass = bool(objective.pass_criteria)
+  """Score a single SLO objective against a metric value and optional baseline."""
+  has_pass = bool(objective.pass_threshold)
 
-    if not has_pass:
-        return ObjectiveResult(
-            objective=objective,
-            status=IndicatorStatus.INFO,
-            score=0.0,
-            contributes_to_score=False,
-            key_sli_failed=False,
-        )
-
-    if value is None:
-        return ObjectiveResult(
-            objective=objective,
-            status=IndicatorStatus.FAIL,
-            score=0.0,
-            contributes_to_score=True,
-            key_sli_failed=objective.key_sli,
-        )
-
-    if _evaluate_criteria_block(objective.pass_criteria, value, baseline):
-        return ObjectiveResult(
-            objective=objective,
-            status=IndicatorStatus.PASS,
-            score=float(objective.weight),
-            contributes_to_score=True,
-            key_sli_failed=False,
-        )
-
-    if _evaluate_criteria_block(objective.warning_criteria, value, baseline):
-        return ObjectiveResult(
-            objective=objective,
-            status=IndicatorStatus.WARNING,
-            score=0.5 * objective.weight,
-            contributes_to_score=True,
-            key_sli_failed=False,
-        )
-
+  if not has_pass:
     return ObjectiveResult(
-        objective=objective,
-        status=IndicatorStatus.FAIL,
-        score=0.0,
-        contributes_to_score=True,
-        key_sli_failed=objective.key_sli,
+      objective=objective,
+      status=IndicatorStatus.INFO,
+      score=0.0,
+      contributes_to_score=False,
+      key_sli_failed=False,
     )
+
+  if value is None:
+    return ObjectiveResult(
+      objective=objective,
+      status=IndicatorStatus.FAIL,
+      score=0.0,
+      contributes_to_score=True,
+      key_sli_failed=objective.key_sli,
+    )
+
+  if _evaluate_criteria_block(objective.pass_threshold, value, baseline):
+    return ObjectiveResult(
+      objective=objective,
+      status=IndicatorStatus.PASS,
+      score=float(objective.weight),
+      contributes_to_score=True,
+      key_sli_failed=False,
+    )
+
+  if _evaluate_criteria_block(objective.warning_threshold, value, baseline):
+    return ObjectiveResult(
+      objective=objective,
+      status=IndicatorStatus.WARNING,
+      score=0.5 * objective.weight,
+      contributes_to_score=True,
+      key_sli_failed=False,
+    )
+
+  return ObjectiveResult(
+    objective=objective,
+    status=IndicatorStatus.FAIL,
+    score=0.0,
+    contributes_to_score=True,
+    key_sli_failed=objective.key_sli,
+  )
 
 
 def calculate_total_score(
-    results: list[ObjectiveResult],
-    total_score: SLOTotalScore,
+        results: list[ObjectiveResult],
+        total_score: SLOTotalScore,
 ) -> TotalScore:
-    """Calculate the overall evaluation result from individual objective scores."""
-    maximum = sum(r.objective.weight for r in results if r.contributes_to_score)
+  """Calculate the overall evaluation result from individual objective scores."""
+  maximum = sum(r.objective.weight for r in results if r.contributes_to_score)
 
-    if maximum == 0:
-        return TotalScore(result=EvaluationOutcome.PASS, score=100.0)
+  if maximum == 0:
+    return TotalScore(result=EvaluationOutcome.PASS, score=100.0)
 
-    achieved = sum(r.score for r in results)
-    pct = 100.0 * achieved / maximum
+  achieved = sum(r.score for r in results)
+  pct = 100.0 * achieved / maximum
 
-    key_sli_failed = any(r.key_sli_failed for r in results)
-    if key_sli_failed:
-        return TotalScore(result=EvaluationOutcome.FAIL, score=pct)
-    if pct >= total_score.pass_pct:
-        return TotalScore(result=EvaluationOutcome.PASS, score=pct)
-    if pct >= total_score.warning_pct:
-        return TotalScore(result=EvaluationOutcome.WARNING, score=pct)
+  key_sli_failed = any(r.key_sli_failed for r in results)
+  if key_sli_failed:
     return TotalScore(result=EvaluationOutcome.FAIL, score=pct)
+  if pct >= total_score.pass_threshold:
+    return TotalScore(result=EvaluationOutcome.PASS, score=pct)
+  if pct >= total_score.warning_threshold:
+    return TotalScore(result=EvaluationOutcome.WARNING, score=pct)
+  return TotalScore(result=EvaluationOutcome.FAIL, score=pct)
 ```
 
 ---
@@ -432,7 +432,7 @@ def _build_targets(
     is_pass: bool,
 ) -> list[dict[str, Any]]:
     """Build the pass or warning target list for a single objective."""
-    criteria_list = objective.pass_criteria if is_pass else objective.warning_criteria
+    criteria_list = objective.pass_threshold if is_pass else objective.warning_threshold
     targets = []
     for raw in criteria_list:
         c = parse_criteria_string(raw)
@@ -489,7 +489,7 @@ def evaluate(
             "weight": obj.weight,
             "key_sli": obj.key_sli,
             "pass_targets": pass_targets,
-            "warning_targets": warning_targets if obj.warning_criteria else None,
+            "warning_targets": warning_targets if obj.warning_threshold else None,
             "change_absolute": (value - baseline)
             if value is not None and baseline is not None
             else None,
@@ -522,11 +522,11 @@ def evaluate(
 ```yaml
 objectives:
   - sli: response_time_p99
-    pass_criteria: ["<600"]
+    pass_threshold: ["<600"]
     weight: 1
 total_score:
-  pass_pct: 90.0
-  warning_pct: 75.0
+  pass_threshold: 90.0
+  warning_threshold: 75.0
 ```
 
 - [ ] **Step 2: Rewrite `full_evaluation.yaml`**
@@ -542,22 +542,22 @@ comparison:
 objectives:
   - sli: response_time_p99
     display_name: "Response Time P99 (ms)"
-    pass_criteria: ["<600", "<=+10%"]
-    warning_criteria: ["<800"]
+    pass_threshold: ["<600", "<=+10%"]
+    warning_threshold: ["<800"]
     weight: 2
     key_sli: false
   - sli: error_rate
     display_name: "Error Rate"
-    pass_criteria: ["=0"]
+    pass_threshold: ["=0"]
     weight: 3
     key_sli: true
   - sli: compilation_s
     display_name: "Compilation Duration (s)"
-    pass_criteria: ["<=+5%"]
+    pass_threshold: ["<=+5%"]
     weight: 1
 total_score:
-  pass_pct: 90.0
-  warning_pct: 75.0
+  pass_threshold: 90.0
+  warning_threshold: 75.0
 ```
 
 - [ ] **Step 3: Rewrite `relative_comparison.yaml`**
@@ -571,13 +571,13 @@ comparison:
   scope_tags: [os, arch]
 objectives:
   - sli: cpu_usage
-    pass_criteria: ["<=+10%"]
-    warning_criteria: ["<=+20%"]
+    pass_threshold: ["<=+10%"]
+    warning_threshold: ["<=+20%"]
     weight: 2
     key_sli: true
 total_score:
-  pass_pct: 90.0
-  warning_pct: 75.0
+  pass_threshold: 90.0
+  warning_threshold: 75.0
 ```
 
 - [ ] **Step 4: Rewrite `multi_objective_weighted.yaml`**
@@ -587,21 +587,21 @@ total_score:
 objectives:
   - sli: m1
     display_name: "Response Time"
-    pass_criteria: ["<100"]
-    warning_criteria: ["<200"]
+    pass_threshold: ["<100"]
+    warning_threshold: ["<200"]
     weight: 2
     key_sli: false
   - sli: m2
     display_name: "Error Count (key)"
-    pass_criteria: ["<50"]
+    pass_threshold: ["<50"]
     weight: 1
     key_sli: true
   - sli: m3
     display_name: "Info Only — no pass criteria"
     weight: 1
 total_score:
-  pass_pct: 90.0
-  warning_pct: 75.0
+  pass_threshold: 90.0
+  warning_threshold: 75.0
 ```
 
 - [ ] **Step 5: Update `conftest.py` — rename `slo_data` → `slo_fixture`, return `SLO`**
@@ -635,8 +635,8 @@ def slo_fixture():
         data: dict[str, Any] = yaml.safe_load(path.read_text(encoding="utf-8"))
         return build_slo(
             objectives=data.get("objectives", []),
-            total_score_pass_pct=data.get("total_score", {}).get("pass_pct", 90.0),
-            total_score_warning_pct=data.get("total_score", {}).get("warning_pct", 75.0),
+            total_score_pass_threshold=data.get("total_score", {}).get("pass_threshold", 90.0),
+            total_score_warning_threshold=data.get("total_score", {}).get("warning_threshold", 75.0),
             comparison=data.get("comparison", {}),
         )
 
@@ -768,8 +768,8 @@ class SLOObjective(Base):
     weight:            Mapped[int]            = mapped_column(Integer, nullable=False, server_default=text("1"))
     key_sli:           Mapped[bool]           = mapped_column(Boolean, nullable=False, server_default=false())
     sort_order:        Mapped[int]            = mapped_column(Integer, nullable=False)
-    pass_criteria:     Mapped[list[str]]      = mapped_column(ARRAY(Text), nullable=False, server_default=text("'{}'"))
-    warning_criteria:  Mapped[list[str]]      = mapped_column(ARRAY(Text), nullable=False, server_default=text("'{}'"))
+    pass_threshold:     Mapped[list[str]]      = mapped_column(ARRAY(Text), nullable=False, server_default=text("'{}'"))
+    warning_threshold:  Mapped[list[str]]      = mapped_column(ARRAY(Text), nullable=False, server_default=text("'{}'"))
     # fmt: on
 ```
 
@@ -777,8 +777,8 @@ class SLOObjective(Base):
 
 Remove the `slo_yaml` mapped column. Add:
 ```python
-    total_score_pass_pct:    Mapped[float]           = mapped_column(Float, nullable=False, server_default=text("90.0"))
-    total_score_warning_pct: Mapped[float]           = mapped_column(Float, nullable=False, server_default=text("75.0"))
+    total_score_pass_threshold:    Mapped[float]           = mapped_column(Float, nullable=False, server_default=text("90.0"))
+    total_score_warning_threshold: Mapped[float]           = mapped_column(Float, nullable=False, server_default=text("75.0"))
     comparison:              Mapped[dict[str, Any]]  = mapped_column(JSONB, nullable=False, server_default=text("'{}'"), default=dict)
     objectives:              Mapped[list[SLOObjective]] = relationship(
         "SLOObjective",
@@ -817,7 +817,7 @@ ENV_FILE=.env.test uv run --directory api alembic revision --autogenerate -m "sl
 Expected: creates `api/alembic/versions/<hash>_slo_format_redesign.py`
 
 - [ ] **Step 4: Open the generated migration and verify it contains**
-  - `op.add_column("slo_definitions", ...)` for `total_score_pass_pct`, `total_score_warning_pct`, `comparison`
+  - `op.add_column("slo_definitions", ...)` for `total_score_pass_threshold`, `total_score_warning_threshold`, `comparison`
   - `op.drop_column("slo_definitions", "slo_yaml")`
   - `op.create_table("slo_objectives", ...)`
   - `op.drop_column("evaluations", "slo_yaml")`
@@ -872,8 +872,8 @@ async def mark_completed(
 Replace `YAML_V1` / `YAML_V2` string constants with structured dicts:
 
 ```python
-OBJECTIVES_V1 = [{"sli": "m", "pass_criteria": ["<100"]}]
-OBJECTIVES_V2 = [{"sli": "m", "pass_criteria": ["<80"]}]
+OBJECTIVES_V1 = [{"sli": "m", "pass_threshold": ["<100"]}]
+OBJECTIVES_V2 = [{"sli": "m", "pass_threshold": ["<80"]}]
 ```
 
 Update all `repo.create(name, YAML_V1, ...)` calls to:
@@ -883,10 +883,10 @@ repo.create(name, objectives=OBJECTIVES_V1, ...)
 
 Replace all `assert slo.slo_yaml == YAML_V2` checks with:
 ```python
-assert slo.objectives[0].pass_criteria == ["<80"]
+assert slo.objectives[0].pass_threshold == ["<80"]
 ```
 
-Replace `assert latest.slo_yaml == YAML_V2` with `assert latest.total_score_pass_pct == 90.0` or a comparable field check.
+Replace `assert latest.slo_yaml == YAML_V2` with `assert latest.total_score_pass_threshold == 90.0` or a comparable field check.
 
 - [ ] **Step 2: Fix `test_evaluation_repository.py`** — remove `slo_yaml` from `mark_completed` calls
 
@@ -943,8 +943,8 @@ class SLOObjectiveIn(BaseModel):
 
     sli: str
     display_name: str = ""
-    pass_criteria: list[str] = Field(default_factory=list)
-    warning_criteria: list[str] = Field(default_factory=list)
+    pass_threshold: list[str] = Field(default_factory=list)
+    warning_threshold: list[str] = Field(default_factory=list)
     weight: int = 1
     key_sli: bool = False
 
@@ -963,8 +963,8 @@ class SLODefinitionCreate(BaseModel):
     name: str
     display_name: str | None = None
     objectives: list[SLOObjectiveIn]
-    total_score_pass_pct: float = 90.0
-    total_score_warning_pct: float = 75.0
+    total_score_pass_threshold: float = 90.0
+    total_score_warning_threshold: float = 75.0
     comparison: dict[str, Any] = Field(default_factory=dict)
     notes: str | None = None
     author: str | None = None
@@ -980,8 +980,8 @@ class SLODefinitionRead(BaseModel):
     version: int
     active: bool
     objectives: list[SLOObjectiveRead]
-    total_score_pass_pct: float
-    total_score_warning_pct: float
+    total_score_pass_threshold: float
+    total_score_warning_threshold: float
     comparison: dict[str, Any]
     notes: str | None
     author: str | None
@@ -995,8 +995,8 @@ class SLOValidateRequest(BaseModel):
     """Request body for SLO validation (no save)."""
 
     objectives: list[SLOObjectiveIn]
-    total_score_pass_pct: float = 90.0
-    total_score_warning_pct: float = 75.0
+    total_score_pass_threshold: float = 90.0
+    total_score_warning_threshold: float = 75.0
     comparison: dict[str, Any] = Field(default_factory=dict)
 
 
@@ -1028,8 +1028,8 @@ class SLOTestRequest(BaseModel):
 
     # SLO content — replaces slo_yaml
     objectives: list[SLOObjectiveIn]
-    total_score_pass_pct: float = 90.0
-    total_score_warning_pct: float = 75.0
+    total_score_pass_threshold: float = 90.0
+    total_score_warning_threshold: float = 75.0
     comparison: dict[str, Any] = Field(default_factory=dict)
     # Evaluation context — unchanged
     sli_name: str
@@ -1066,8 +1066,8 @@ async def create(
     self,
     name: str,
     objectives: list[dict[str, Any]],
-    total_score_pass_pct: float = 90.0,
-    total_score_warning_pct: float = 75.0,
+    total_score_pass_threshold: float = 90.0,
+    total_score_warning_threshold: float = 75.0,
     comparison: dict[str, Any] | None = None,
     display_name: str | None = None,
     notes: str | None = None,
@@ -1089,8 +1089,8 @@ async def create(
         id=uuid.uuid4(),
         name=name,
         version=next_version,
-        total_score_pass_pct=total_score_pass_pct,
-        total_score_warning_pct=total_score_warning_pct,
+        total_score_pass_threshold=total_score_pass_threshold,
+        total_score_warning_threshold=total_score_warning_threshold,
         comparison=comparison or {},
         display_name=display_name,
         notes=notes,
@@ -1110,8 +1110,8 @@ async def create(
             weight=obj_dict.get("weight", 1),
             key_sli=obj_dict.get("key_sli", False),
             sort_order=i,
-            pass_criteria=obj_dict.get("pass_criteria", []),
-            warning_criteria=obj_dict.get("warning_criteria", []),
+            pass_threshold=obj_dict.get("pass_threshold", []),
+            warning_threshold=obj_dict.get("warning_threshold", []),
         )
         self._session.add(obj)
 
@@ -1154,8 +1154,8 @@ async def create_slo_definition(
     slo = await repo.create(
         body.name,
         objectives=[o.model_dump() for o in body.objectives],
-        total_score_pass_pct=body.total_score_pass_pct,
-        total_score_warning_pct=body.total_score_warning_pct,
+        total_score_pass_threshold=body.total_score_pass_threshold,
+        total_score_warning_threshold=body.total_score_warning_threshold,
         comparison=body.comparison,
         display_name=body.display_name,
         notes=body.notes,
@@ -1170,51 +1170,51 @@ async def create_slo_definition(
 ```python
 @router.post("/slo-definitions/validate", response_model=SLOValidationResult)
 async def validate_slo(body: SLOValidateRequest) -> SLOValidationResult:
-    """Validate SLO structure without saving."""
-    errors: list[SLOValError] = []
+  """Validate SLO structure without saving."""
+  errors: list[SLOValError] = []
 
-    if not body.objectives:
-        return SLOValidationResult(
-            valid=False,
-            errors=[SLOValError(field="objectives", message="objectives list is empty")],
-        )
+  if not body.objectives:
+    return SLOValidationResult(
+      valid=False,
+      errors=[SLOValError(field="objectives", message="objectives list is empty")],
+    )
 
-    try:
-        slo = build_slo(
-            objectives=[o.model_dump() for o in body.objectives],
-            total_score_pass_pct=body.total_score_pass_pct,
-            total_score_warning_pct=body.total_score_warning_pct,
-            comparison=body.comparison,
-        )
-    except SLOParseError as e:
-        return SLOValidationResult(
-            valid=False,
-            errors=[SLOValError(field="objectives", message=str(e))],
-        )
+  try:
+    slo = build_slo(
+      objectives=[o.model_dump() for o in body.objectives],
+      total_score_pass_threshold=body.total_score_pass_threshold,
+      total_score_warning_threshold=body.total_score_warning_threshold,
+      comparison=body.comparison,
+    )
+  except SLOParseError as e:
+    return SLOValidationResult(
+      valid=False,
+      errors=[SLOValError(field="objectives", message=str(e))],
+    )
 
-    # Validate all criteria strings
-    for i, obj in enumerate(slo.objectives):
-        for raw in obj.pass_criteria:
-            try:
-                parse_criteria_string(raw)
-            except ValueError as e:
-                errors.append(SLOValError(field=f"objectives[{i}].pass_criteria", message=str(e)))
-        for raw in obj.warning_criteria:
-            try:
-                parse_criteria_string(raw)
-            except ValueError as e:
-                errors.append(SLOValError(field=f"objectives[{i}].warning_criteria", message=str(e)))
+  # Validate all criteria strings
+  for i, obj in enumerate(slo.objectives):
+    for raw in obj.pass_threshold:
+      try:
+        parse_criteria_string(raw)
+      except ValueError as e:
+        errors.append(SLOValError(field=f"objectives[{i}].pass_threshold", message=str(e)))
+    for raw in obj.warning_threshold:
+      try:
+        parse_criteria_string(raw)
+      except ValueError as e:
+        errors.append(SLOValError(field=f"objectives[{i}].warning_threshold", message=str(e)))
 
-    # Validate total_score percentages
-    if not (0 <= slo.total_score.pass_pct <= 100):
-        errors.append(SLOValError(field="total_score_pass_pct", message="must be 0-100"))
-    if not (0 <= slo.total_score.warning_pct <= 100):
-        errors.append(SLOValError(field="total_score_warning_pct", message="must be 0-100"))
+  # Validate total_score percentages
+  if not (0 <= slo.total_score.pass_threshold <= 100):
+    errors.append(SLOValError(field="total_score_pass_threshold", message="must be 0-100"))
+  if not (0 <= slo.total_score.warning_threshold <= 100):
+    errors.append(SLOValError(field="total_score_warning_threshold", message="must be 0-100"))
 
-    if errors:
-        return SLOValidationResult(valid=False, errors=errors)
+  if errors:
+    return SLOValidationResult(valid=False, errors=errors)
 
-    return SLOValidationResult(valid=True, errors=[], objectives=body.objectives)
+  return SLOValidationResult(valid=True, errors=[], objectives=body.objectives)
 ```
 
 - [ ] **Step 4: Update `test_slo` handler** — replace `parse_slo(body.slo_yaml)` with `build_slo`
@@ -1225,8 +1225,8 @@ Near the top of `test_slo`:
 try:
     slo = build_slo(
         objectives=[o.model_dump() for o in body.objectives],
-        total_score_pass_pct=body.total_score_pass_pct,
-        total_score_warning_pct=body.total_score_warning_pct,
+        total_score_pass_threshold=body.total_score_pass_threshold,
+        total_score_warning_threshold=body.total_score_warning_threshold,
         comparison=body.comparison,
     )
 except SLOParseError as e:
@@ -1356,8 +1356,8 @@ case "SLO":
     ] if hasattr(existing, "objectives") else existing.get("objectives", [])
     return (
         doc.spec.get("objectives") != existing_objectives
-        or doc.spec.get("total_score", {}).get("pass_pct") != getattr(existing, "total_score_pass_pct", None)
-        or doc.spec.get("total_score", {}).get("warning_pct") != getattr(existing, "total_score_warning_pct", None)
+        or doc.spec.get("total_score", {}).get("pass_threshold") != getattr(existing, "total_score_pass_threshold", None)
+        or doc.spec.get("total_score", {}).get("warning_threshold") != getattr(existing, "total_score_warning_threshold", None)
         or doc.spec.get("comparison", {}) != getattr(existing, "comparison", {})
     )
 ```
@@ -1375,8 +1375,8 @@ case "SLO":
     client.slo_definitions.create(
         name,
         objectives=doc.spec["objectives"],
-        total_score_pass_pct=total.get("pass_pct", 90.0),
-        total_score_warning_pct=total.get("warning_pct", 75.0),
+        total_score_pass_threshold=total.get("pass_threshold", 90.0),
+        total_score_warning_threshold=total.get("warning_threshold", 75.0),
         comparison=doc.spec.get("comparison", {}),
         display_name=doc.metadata.get("display_name"),
         notes=doc.metadata.get("notes"),
@@ -1391,8 +1391,8 @@ case "SLO":
     client.slo_definitions.create(
         name,
         objectives=doc.spec["objectives"],
-        total_score_pass_pct=total.get("pass_pct", 90.0),
-        total_score_warning_pct=total.get("warning_pct", 75.0),
+        total_score_pass_threshold=total.get("pass_threshold", 90.0),
+        total_score_warning_threshold=total.get("warning_threshold", 75.0),
         comparison=doc.spec.get("comparison", {}),
         display_name=doc.metadata.get("display_name"),
         notes=doc.metadata.get("notes"),
@@ -1498,8 +1498,8 @@ def export(path: str | None, base_url: str, api_key: str | None) -> None:
                              "notes": slo.notes, "author": slo.author},
                 "spec": {
                     "total_score": {
-                        "pass_pct": slo.total_score_pass_pct,
-                        "warning_pct": slo.total_score_warning_pct,
+                        "pass_threshold": slo.total_score_pass_threshold,
+                        "warning_threshold": slo.total_score_warning_threshold,
                     },
                     "objectives": objectives,
                     **({"comparison": slo.comparison} if slo.comparison else {}),
@@ -1597,8 +1597,8 @@ class SLOObjective(BaseModel):
 
     sli: str
     display_name: str = ""
-    pass_criteria: list[str] = []
-    warning_criteria: list[str] = []
+    pass_threshold: list[str] = []
+    warning_threshold: list[str] = []
     weight: int = 1
     key_sli: bool = False
     sort_order: int = 0
@@ -1615,8 +1615,8 @@ class SLODefinition(BaseModel):
     version: int
     active: bool
     objectives: list[SLOObjective]
-    total_score_pass_pct: float
-    total_score_warning_pct: float
+    total_score_pass_threshold: float
+    total_score_warning_threshold: float
     comparison: dict[str, Any]
     notes: str | None
     author: str | None
@@ -1632,8 +1632,8 @@ def create(
     self,
     name: str,
     objectives: list[dict],
-    total_score_pass_pct: float = 90.0,
-    total_score_warning_pct: float = 75.0,
+    total_score_pass_threshold: float = 90.0,
+    total_score_warning_threshold: float = 75.0,
     *,
     comparison: dict | None = None,
     **kwargs: Any,
@@ -1642,8 +1642,8 @@ def create(
     body = {
         "name": name,
         "objectives": objectives,
-        "total_score_pass_pct": total_score_pass_pct,
-        "total_score_warning_pct": total_score_warning_pct,
+        "total_score_pass_threshold": total_score_pass_threshold,
+        "total_score_warning_threshold": total_score_warning_threshold,
         "comparison": comparison or {},
         **kwargs,
     }
@@ -1725,24 +1725,24 @@ metadata:
   notes: Covers P99 latency, error rate, and availability for HTTP services.
 spec:
   total_score:
-    pass_pct: 90.0
-    warning_pct: 75.0
+    pass_threshold: 90.0
+    warning_threshold: 75.0
   objectives:
     - sli: response_time_p99
       display_name: "Response Time P99 (ms)"
-      pass_criteria: ["<500"]
-      warning_criteria: ["<800"]
+      pass_threshold: ["<500"]
+      warning_threshold: ["<800"]
       weight: 2
     - sli: error_rate
       display_name: "Error Rate"
-      pass_criteria: ["<0.01"]
-      warning_criteria: ["<0.05"]
+      pass_threshold: ["<0.01"]
+      warning_threshold: ["<0.05"]
       weight: 3
       key_sli: true
     - sli: availability
       display_name: "Availability"
-      pass_criteria: [">=0.999"]
-      warning_criteria: [">=0.99"]
+      pass_threshold: [">=0.999"]
+      warning_threshold: [">=0.99"]
       weight: 2
 ---
 api_version: tropek/v1
@@ -1754,19 +1754,19 @@ metadata:
   notes: Covers query latency and connection saturation for PostgreSQL instances.
 spec:
   total_score:
-    pass_pct: 90.0
-    warning_pct: 75.0
+    pass_threshold: 90.0
+    warning_threshold: 75.0
   objectives:
     - sli: query_latency_p99
       display_name: "Query Latency P99 (ms)"
-      pass_criteria: ["<100"]
-      warning_criteria: ["<250"]
+      pass_threshold: ["<100"]
+      warning_threshold: ["<250"]
       weight: 2
       key_sli: true
     - sli: connection_saturation
       display_name: "Connection Saturation"
-      pass_criteria: ["<0.7"]
-      warning_criteria: ["<0.85"]
+      pass_threshold: ["<0.7"]
+      warning_threshold: ["<0.85"]
       weight: 1
 ```
 

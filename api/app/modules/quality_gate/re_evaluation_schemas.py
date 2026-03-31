@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
+from typing import Literal
 
 from pydantic import BaseModel, model_validator
 
@@ -22,6 +23,7 @@ class ReEvaluateRequest(BaseModel):
     # Optional
     slo_version: int | None = None
     dry_run: bool = False
+    pin_strategy: Literal['skip_to_pin', 'ignore_pin'] | None = None
 
     @model_validator(mode='after')
     def exactly_one_scope(self) -> ReEvaluateRequest:
@@ -37,6 +39,15 @@ class ReEvaluateRequest(BaseModel):
             msg = 'exactly one of from_date, from_baseline, or from_evaluation_id is required'
             raise ValueError(msg)
         return self
+
+
+class BaselinePinConflictError(Exception):
+    """Raised when re-evaluation from_date is before the active baseline pin."""
+
+    def __init__(self, pin_date: datetime, pin_evaluation_id: uuid.UUID) -> None:
+        self.pin_date = pin_date
+        self.pin_evaluation_id = pin_evaluation_id
+        super().__init__('re-evaluation start date is before the active baseline pin')
 
 
 class ReEvalResultItem(BaseModel):

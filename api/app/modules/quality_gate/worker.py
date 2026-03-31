@@ -135,7 +135,7 @@ def _build_eval_variables(
 def _build_query_specs(
     sli_def: SLIDefinition,
     resolved_queries: dict[str, str],
-) -> dict[str, dict]:
+) -> dict[str, dict[str, Any]]:
     """Build adapter query specs from the SLI definition.
 
     For raw mode: wraps each resolved query string into {mode: raw, query: ...}.
@@ -150,10 +150,7 @@ def _build_query_specs(
                 'methods': sli_def.methods,
             }
         }
-    return {
-        name: {'mode': 'raw', 'query': query}
-        for name, query in resolved_queries.items()
-    }
+    return {name: {'mode': 'raw', 'query': query} for name, query in resolved_queries.items()}
 
 
 async def _query_adapter_safe(
@@ -161,7 +158,7 @@ async def _query_adapter_safe(
     repo: EvaluationRepository,
     eval_id: uuid.UUID,
     ds: DataSource,
-    query_specs: dict[str, dict],
+    query_specs: dict[str, dict[str, Any]],
     variables: dict[str, str],
     start: str,
     end: str,
@@ -236,23 +233,71 @@ def _build_sli_rows(
     """Build SLI value rows for TimescaleDB hypertable."""
     rows: list[dict[str, Any]] = []
     for ir in indicator_results:
-        if ir.value is None:
-            continue
         aggregation = 'raw'
         if sli_def.mode == 'aggregated' and '.' in ir.metric:
             aggregation = ir.metric.rsplit('.', 1)[1]
-        rows.append({
-            'eval_id': eval_id,
-            'eval_start': ev.period_start,
-            'metric_name': ir.metric,
-            'aggregation': aggregation,
-            'value': ir.value,
-            'asset_name': asset_snapshot.get('name'),
-            'evaluation_name': ev.evaluation_name,
-            'os_tag': asset_snapshot.get('tags', {}).get('os')
-            or asset_snapshot.get('variables', {}).get('os'),
-        })
+        rows.append(
+            {
+                'eval_id': eval_id,
+                'eval_start': ev.period_start,
+                'metric_name': ir.metric,
+                'aggregation': aggregation,
+                'value': ir.value if ir.value is not None else 0.0,
+                'asset_name': asset_snapshot.get('name'),
+                'evaluation_name': ev.evaluation_name,
+                'os_tag': asset_snapshot.get('tags', {}).get('os') or asset_snapshot.get('variables', {}).get('os'),
+            }
+        )
     return rows
+
+
+def _log_adapter_response(
+    log: structlog.stdlib.BoundLogger,
+    metrics_fetched: dict[str, float | None],
+    fetch_errors: dict[str, str],
+    sli_metadata: dict[str, Any],
+) -> None:
+    """Log adapter response and override errored metrics to None."""
+    log.info(
+        'adapter raw response',
+        values=metrics_fetched,
+        errors=fetch_errors,
+        metadata=sli_metadata,
+    )
+    for err_name in fetch_errors:
+        metrics_fetched[err_name] = None
+    if fetch_errors:
+        log.warning(
+            'metrics overridden to None due to adapter errors',
+            overridden_metrics=list(fetch_errors.keys()),
+        )
+
+
+def _log_eval_result(
+    log: structlog.stdlib.BoundLogger,
+    eval_result: Any,
+    metrics_fetched: dict[str, float | None],
+    baselines: dict[str, float | None],
+) -> None:
+    """Log per-indicator results and final score."""
+    for ir in eval_result.indicator_results:
+        log.info(
+            'indicator result',
+            metric=ir.metric,
+            value=ir.value,
+            status=ir.status,
+            score=ir.score,
+            compared_value=ir.compared_value,
+            change_pct=ir.change_relative_pct,
+        )
+    log.info(
+        'evaluation scored',
+        result=eval_result.result,
+        score=eval_result.score,
+        indicator_count=len(eval_result.indicator_results),
+        metrics_input=metrics_fetched,
+        baselines=baselines,
+    )
 
 
 async def run_evaluation(
@@ -279,7 +324,11 @@ async def run_evaluation(
         cache: Optional Redis cache for repository lookups.
     """
     log = logger.bind(evaluation_id=str(eval_id), worker_id=worker_id)
-    log.info('evaluation started')
+    log.info(
+        'evaluation started',
+        eval_id=str(eval_id),
+        worker_id=worker_id,
+    )
 
     repo = EvaluationRepository(session)
     await repo.mark_running(eval_id, worker_id)
@@ -310,15 +359,15 @@ async def run_evaluation(
             {
                 'sli': obj.sli,
                 'display_name': obj.display_name,
-                'pass_criteria': obj.pass_criteria,
-                'warning_criteria': obj.warning_criteria,
+                'pass_threshold': obj.pass_threshold,
+                'warning_threshold': obj.warning_threshold,
                 'weight': obj.weight,
                 'key_sli': obj.key_sli,
             }
             for obj in slo_def.objectives
         ],
-        total_score_pass_pct=slo_def.total_score_pass_pct,
-        total_score_warning_pct=slo_def.total_score_warning_pct,
+        total_score_pass_threshold=slo_def.total_score_pass_threshold,
+        total_score_warning_threshold=slo_def.total_score_warning_threshold,
         comparison=slo_def.comparison,
     )
 
@@ -329,12 +378,24 @@ async def run_evaluation(
     # For raw mode, substitute variables into indicator queries locally
     resolved_queries: dict[str, str] = {}
     if sli_def.mode == 'raw':
-        resolved_queries = {
-            name: substitute_variables(tmpl, variables)
-            for name, tmpl in sli_def.indicators.items()
-        }
+        resolved_queries = {name: substitute_variables(tmpl, variables) for name, tmpl in sli_def.indicators.items()}
 
     query_specs = _build_query_specs(sli_def, resolved_queries)
+
+    log.info(
+        'evaluation context',
+        asset_name=asset_snapshot.get('name'),
+        evaluation_name=ev.evaluation_name,
+        slo_name=ev.slo_name,
+        slo_version=ev.slo_version,
+        sli_name=ev.sli_name,
+        sli_version=ev.sli_version,
+        sli_mode=sli_def.mode,
+        period_start=ev.period_start.isoformat(),
+        period_end=ev.period_end.isoformat(),
+        datasource=ev.data_source_name,
+        query_specs=query_specs,
+    )
 
     # Query adapter
     if ev.data_source_name is None:
@@ -362,17 +423,17 @@ async def run_evaluation(
         return
     metrics_fetched, fetch_errors, sli_metadata = adapter_result
 
+    _log_adapter_response(log, metrics_fetched, fetch_errors, sli_metadata)
+
     # Resolve baselines (pin-aware) and evaluate
     baseline_repo = BaselineRepository(session, cache=cache)
-    indicator_names = (
-        list(sli_def.indicators)
-        if sli_def.mode == 'raw'
-        else [obj.sli for obj in slo.objectives]
-    )
+    indicator_names = list(sli_def.indicators) if sli_def.mode == 'raw' else [obj.sli for obj in slo.objectives]
     baselines, compared_eval_ids = await _resolve_baselines(
         baseline_repo=baseline_repo, slo=slo, ev=ev, indicator_names=indicator_names
     )
     eval_result = evaluate(slo, metrics_fetched, baselines, compared_eval_ids)
+
+    _log_eval_result(log, eval_result, metrics_fetched, baselines)
 
     # Write results
     await repo.mark_completed(
@@ -383,8 +444,8 @@ async def run_evaluation(
         slo_version=ev.slo_version,
         job_stats={
             'fetch_errors': fetch_errors,
-            'total_score_pass_pct': slo_def.total_score_pass_pct,
-            'total_score_warning_pct': slo_def.total_score_warning_pct,
+            'total_score_pass_threshold': slo_def.total_score_pass_threshold,
+            'total_score_warning_threshold': slo_def.total_score_warning_threshold,
             **({'sli_metadata': sli_metadata} if sli_metadata else {}),
         },
         compared_evaluation_ids=compared_eval_ids,

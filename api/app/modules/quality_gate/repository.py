@@ -103,6 +103,27 @@ class EvaluationRepository:
         result = await self._session.execute(q)
         return result.scalar_one_or_none()
 
+    async def has_pending_predecessor(
+        self,
+        *,
+        asset_id: uuid.UUID,
+        slo_name: str,
+        period_start: datetime,
+    ) -> bool:
+        """Check whether an earlier evaluation for the same asset+SLO is still pending or running.
+
+        Used by the worker to defer processing until predecessors complete,
+        ensuring baselines are available in chronological order.
+        """
+        q = select(func.count()).select_from(Evaluation).where(
+            Evaluation.asset_id == asset_id,
+            Evaluation.slo_name == slo_name,
+            Evaluation.period_start < period_start,
+            Evaluation.status.in_([EvaluationStatus.PENDING, EvaluationStatus.RUNNING]),
+        )
+        result = await self._session.execute(q)
+        return (result.scalar() or 0) > 0
+
     async def mark_running(self, eval_id: uuid.UUID, worker_id: str | None = None) -> None:
         """Transition evaluation to running status, recording worker and start time.
 

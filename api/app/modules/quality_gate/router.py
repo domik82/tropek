@@ -14,13 +14,19 @@ from app.modules.common.exceptions import NotFoundError
 from app.modules.common.schemas import PagedResponse
 from app.modules.quality_gate.dependencies import QualityGateRepos, get_qg_repos
 from app.modules.quality_gate.presenter import build_detail, build_summary
-from app.modules.quality_gate.re_evaluation_schemas import ReEvaluateRequest, ReEvaluateResponse
+from app.modules.quality_gate.re_evaluation_schemas import (
+    BaselinePinConflictError,
+    ReEvaluateRequest,
+    ReEvaluateResponse,
+)
 from app.modules.quality_gate.re_evaluator import re_evaluate
 from app.modules.quality_gate.schemas import (
     AnnotationCreate,
     AnnotationHide,
     AnnotationRead,
     AnnotationUpdate,
+    AssetTriggerRequest,
+    AssetTriggerResponse,
     BatchTriggerRequest,
     BatchTriggerResponse,
     EvaluationDetail,
@@ -54,6 +60,17 @@ async def trigger_evaluation(
     """Trigger a single asset evaluation."""
     service = TriggerService(repos, arq_pool)
     return await service.trigger_single(body)
+
+
+@router.post('/evaluations/asset', response_model=AssetTriggerResponse, status_code=202)
+async def trigger_asset(
+    body: AssetTriggerRequest,
+    repos: QualityGateRepos = Depends(get_qg_repos),
+    arq_pool: ArqRedis = Depends(get_arq_pool),
+) -> AssetTriggerResponse:
+    """Trigger evaluations for all SLOs linked to an asset."""
+    service = TriggerService(repos, arq_pool)
+    return await service.trigger_asset(body)
 
 
 @router.post('/evaluations/batch', response_model=BatchTriggerResponse, status_code=202)
@@ -208,6 +225,15 @@ async def re_evaluate_evaluations(
     """Re-evaluate completed evaluations from stored SLI values."""
     try:
         return await re_evaluate(body, session)
+    except BaselinePinConflictError as e:
+        raise HTTPException(
+            status_code=409,
+            detail={
+                'detail': str(e),
+                'pin_date': e.pin_date.isoformat(),
+                'pin_evaluation_id': str(e.pin_evaluation_id),
+            },
+        ) from e
     except ValueError as e:
         raise HTTPException(status_code=422, detail=str(e)) from e
 

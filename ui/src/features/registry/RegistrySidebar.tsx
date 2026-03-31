@@ -1,4 +1,5 @@
 import { useState, useMemo, useRef, useEffect } from 'react'
+import { useSloGroups } from '@/features/slo-groups/hooks'
 import { useQueries } from '@tanstack/react-query'
 import { Plus } from 'lucide-react'
 import { TreeFilter, TreeNode, getEntityIcon } from '@/components/tree'
@@ -6,8 +7,8 @@ import { ENTITY_COLORS } from '@/lib/entity-colors'
 import { SANS_SERIF } from '@/lib/fonts'
 import { groupKeys } from '@/lib/queryKeys'
 import { TagFilterBar } from '@/components/shared/TagFilterBar'
-import { RegistryTree } from './RegistryTree'
-import { buildSloTree, buildDatasourceTree, buildAssetTree, filterTree } from './useRegistryTree'
+import { RegistryTree, SectionHeader } from './RegistryTree'
+import { buildSloTree, buildSloSections, buildDatasourceTree, buildAssetTree, filterTree } from './useRegistryTree'
 import type { MinBinding } from './useRegistryTree'
 import { useSlos, useGroupTree, useSloTagKeys, useSloTagValues, fetchGroupSloBindings } from '@/features/slos'
 import { useSliDefinitions } from '@/features/slis'
@@ -26,7 +27,7 @@ interface Props {
   onModeChange: (mode: RegistryMode) => void
   selected: SelectedNode | null
   onSelect: (node: SelectedNode | null) => void
-  onCreateAction: (type: 'datasource' | 'sli' | 'slo' | 'group', context?: { adapterType?: string }) => void
+  onCreateAction: (type: 'datasource' | 'sli' | 'slo' | 'group' | 'slo-template' | 'slo-group', context?: { adapterType?: string }) => void
 }
 
 export function RegistrySidebar({ mode, onModeChange, selected, onSelect, onCreateAction }: Props) {
@@ -39,6 +40,7 @@ export function RegistrySidebar({ mode, onModeChange, selected, onSelect, onCrea
   const { data: slis } = useSliDefinitions()
   const { data: datasources } = useDatasources()
   const { data: tree } = useGroupTree()
+  const { data: sloGroups } = useSloGroups()
 
   // Tag suggestions — mode-dependent
   const { data: sloTagKeys, isLoading: sloKeysLoading } = useSloTagKeys()
@@ -108,6 +110,11 @@ export function RegistrySidebar({ mode, onModeChange, selected, onSelect, onCrea
 
   const filteredNodes = useMemo(() => filterTree(treeNodes, search), [treeNodes, search])
 
+  const sloSections = useMemo(() => {
+    if (mode !== 'slo') return null
+    return buildSloSections(slos ?? [], slis ?? [], datasources ?? [], allBindings, sloGroups ?? [])
+  }, [mode, slos, slis, datasources, allBindings, sloGroups])
+
   return (
     <div className="flex flex-col h-full border-r border-border bg-sidebar-bg" style={{ width: 260 }}>
       {/* Segmented control */}
@@ -173,7 +180,18 @@ export function RegistrySidebar({ mode, onModeChange, selected, onSelect, onCrea
       )}
 
       {/* Tree */}
-      <RegistryTree nodes={filteredNodes} selected={selected} onSelect={onSelect} />
+      {mode === 'slo' && sloSections ? (
+        <div className="flex-1 overflow-y-auto" style={{ fontFamily: "system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" }}>
+          <SectionHeader label="STANDARD" />
+          <RegistryTree nodes={filterTree(sloSections.standard, search)} selected={selected} onSelect={onSelect} />
+          <SectionHeader label="TEMPLATES" />
+          <RegistryTree nodes={filterTree(sloSections.templates, search)} selected={selected} onSelect={onSelect} />
+          <SectionHeader label="GROUPS" />
+          <RegistryTree nodes={filterTree(sloSections.groupNodes, search)} selected={selected} onSelect={onSelect} />
+        </div>
+      ) : (
+        <RegistryTree nodes={filteredNodes} selected={selected} onSelect={onSelect} />
+      )}
 
       {/* Create button */}
       <div className="p-2 border-t border-border">
@@ -204,10 +222,12 @@ function CreateDropdown({
   }, [open])
 
   const items = [
-    { type: 'slo' as const, label: 'New SLO', desc: 'Versioned quality gate definition', color: ENTITY_COLORS.slo },
-    { type: 'sli' as const, label: 'New SLI Definition', desc: 'Service level indicator template', color: ENTITY_COLORS.sli },
-    { type: 'datasource' as const, label: 'New Datasource', desc: 'Metric source connection', color: ENTITY_COLORS.ds },
-    { type: 'group' as const, label: 'New Asset Group', desc: 'Group assets and bind SLOs', color: ENTITY_COLORS.group },
+    { type: 'slo' as const, label: 'SLO Definition', desc: 'Standard SLO with criteria', color: ENTITY_COLORS.slo },
+    { type: 'slo-template' as const, label: 'SLO Template', desc: 'Reusable template for groups', color: ENTITY_COLORS.template },
+    { type: 'slo-group' as const, label: 'SLO Group', desc: 'Generate SLOs from template', color: ENTITY_COLORS.sloGroup },
+    { type: 'sli' as const, label: 'SLI Definition', desc: 'Query templates for metrics', color: ENTITY_COLORS.sli },
+    { type: 'datasource' as const, label: 'Datasource', desc: 'Connection to data backend', color: ENTITY_COLORS.ds },
+    { type: 'group' as const, label: 'Asset Group', desc: 'Group assets and bind SLOs', color: ENTITY_COLORS.group },
   ]
 
   return (

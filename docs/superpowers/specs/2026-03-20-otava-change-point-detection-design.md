@@ -162,14 +162,14 @@ The detector is a pure function (no I/O) wrapping Otava's API. Direction is dete
 
 ### Metric directionality
 
-To determine whether a change is a "regression" or "improvement," the detector needs to know the metric's polarity. The caller derives `higher_is_better` from the SLO objective's `pass_criteria` using this algorithm:
+To determine whether a change is a "regression" or "improvement," the detector needs to know the metric's polarity. The caller derives `higher_is_better` from the SLO objective's `pass_threshold` using this algorithm:
 
-1. Take the **first** criterion in `pass_criteria`
+1. Take the **first** criterion in `pass_threshold`
 2. Parse its operator:
    - `<`, `<=` → lower is better → `higher_is_better = False`
    - `>`, `>=` → higher is better → `higher_is_better = True`
    - Relative criteria (`<=+10%`, `<=+50`) → lower is better (the `+` means "allow up to X% increase")
-3. If `pass_criteria` is empty (info-only objective) or contains conflicting operators (range check like `>=95` + `<=100`), default to `higher_is_better = False` (most metrics are latency/error-like)
+3. If `pass_threshold` is empty (info-only objective) or contains conflicting operators (range check like `>=95` + `<=100`), default to `higher_is_better = False` (most metrics are latency/error-like)
 
 This is computed by the caller before invoking `detect_change_points`, not inside the detector itself.
 

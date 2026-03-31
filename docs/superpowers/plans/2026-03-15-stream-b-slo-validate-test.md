@@ -229,7 +229,7 @@ async def validate_slo(body: SLOValidateRequest) -> SLOValidationResult:
 
     # Validate all criteria strings
     for i, obj in enumerate(slo.objectives):
-        for block in obj.pass_criteria:
+        for block in obj.pass_threshold:
             for raw in block.criteria:
                 try:
                     parse_criteria_string(raw)
@@ -240,7 +240,7 @@ async def validate_slo(body: SLOValidateRequest) -> SLOValidationResult:
                             message=str(e),
                         )
                     )
-        for block in obj.warning_criteria:
+        for block in obj.warning_threshold:
             for raw in block.criteria:
                 try:
                     parse_criteria_string(raw)
@@ -253,11 +253,11 @@ async def validate_slo(body: SLOValidateRequest) -> SLOValidationResult:
                     )
 
     # Validate total_score percentages
-    if not (0 <= slo.total_score.pass_pct <= 100):
+    if not (0 <= slo.total_score.pass_threshold <= 100):
         errors.append(
             SLOValError(field="total_score.pass", message="must be 0-100")
         )
-    if not (0 <= slo.total_score.warning_pct <= 100):
+    if not (0 <= slo.total_score.warning_threshold <= 100):
         errors.append(
             SLOValError(field="total_score.warning", message="must be 0-100")
         )

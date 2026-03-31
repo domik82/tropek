@@ -10,6 +10,8 @@ from fastapi import FastAPI
 
 from app.cache.redis_cache import RedisCache
 from app.config import get_settings
+from app.db.middleware import SessionMiddleware
+from app.db.session import get_session_factory
 from app.logging_config import configure_logging
 from app.modules.assets.router import router as assets_router
 from app.modules.common.exceptions import (
@@ -25,6 +27,7 @@ from app.modules.quality_gate.exception_handlers import (
 )
 from app.modules.quality_gate.router import router as quality_gate_router
 from app.modules.sli_registry.router import router as sli_router
+from app.modules.slo_groups.router import router as slo_groups_router
 from app.modules.slo_registry.router import router as slo_router
 from app.queue import create_arq_pool
 
@@ -44,6 +47,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
 
 app = FastAPI(title='TROPEK API', version='0.2.0', lifespan=lifespan)
+app.add_middleware(SessionMiddleware, session_factory=get_session_factory())
 
 # Domain exception handlers — convert domain errors to HTTP responses
 app.add_exception_handler(NotFoundError, not_found_handler)  # type: ignore[arg-type]
@@ -55,6 +59,7 @@ app.include_router(assets_router)
 app.include_router(datasource_router)
 app.include_router(sli_router)
 app.include_router(slo_router)
+app.include_router(slo_groups_router)
 app.include_router(quality_gate_router)
 
 

@@ -40,7 +40,7 @@ class RawQueryStrategy:
         try:
             value = await self._client.instant_query(query, time=end)
         except PrometheusQueryError as exc:
-            logger.exception('query failed: sli=%s', sli_name)
+            logger.warning('query returned no data: sli=%s error=%s query=%s time=%s', sli_name, exc, query, end)
             return {sli_name: None}, {sli_name: str(exc)}, None
 
         logger.info('query result: sli=%s value=%s', sli_name, value)

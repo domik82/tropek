@@ -3,11 +3,11 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, Query, Response
-from sqlalchemy import select as sa_select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.models import AssetGroupSLOLink, AssetSLOLink, DataSource
+from app.db.models import DataSource
 from app.db.session import get_session
+from app.modules.assets.repository import SLOBindingRepository
 from app.modules.assets.schemas import TagKeyCount, TagValueCount
 from app.modules.common.exceptions import ConflictError, NotFoundError
 from app.modules.common.schemas import PagedResponse
@@ -108,19 +108,13 @@ async def delete_datasource(
     name: str,
     session: AsyncSession = Depends(get_session),
 ) -> Response:
-    """Delete a datasource by name. Returns 409 if active SLO links reference it."""
-    # Check for active SLO links referencing this datasource
-    asset_links = (
-        (await session.execute(sa_select(AssetSLOLink).where(AssetSLOLink.data_source_name == name))).scalars().all()
-    )
-    group_links = (
-        (await session.execute(sa_select(AssetGroupSLOLink).where(AssetGroupSLOLink.data_source_name == name)))
-        .scalars()
-        .all()
-    )
-    if asset_links or group_links:
-        link_names = [lnk.link_name for lnk in asset_links] + [lnk.link_name for lnk in group_links]
-        raise ConflictError('datasource', name, f'referenced by SLO links: {", ".join(link_names)}')
+    """Delete a datasource by name. Returns 409 if active SLO bindings reference it."""
+    # Check for active SLO bindings referencing this datasource
+    binding_repo = SLOBindingRepository(session)
+    slo_bindings = await binding_repo.list_by_datasource(name)
+    if slo_bindings:
+        slo_names = [b.slo_name for b in slo_bindings]
+        raise ConflictError('datasource', name, f'referenced by slo bindings: {", ".join(slo_names)}')
 
     repo = DataSourceRepository(session)
     deleted = await repo.delete_by_name(name)

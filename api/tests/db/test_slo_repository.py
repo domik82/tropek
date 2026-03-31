@@ -17,8 +17,8 @@ from app.modules.slo_registry.repository import SLORepository
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
-OBJECTIVES_V1 = [SLOObjectiveParams(sli='m', pass_criteria=['<100'])]
-OBJECTIVES_V2 = [SLOObjectiveParams(sli='m', pass_criteria=['<80'])]
+OBJECTIVES_V1 = [SLOObjectiveParams(sli='m', pass_threshold=['<100'])]
+OBJECTIVES_V2 = [SLOObjectiveParams(sli='m', pass_threshold=['<80'])]
 
 
 @pytest_asyncio.fixture()
@@ -62,8 +62,8 @@ async def test_get_latest_returns_highest_version(db_session: AsyncSession) -> N
     latest = await repo.get_latest('latest-slo')
     assert latest is not None
     assert latest.version == 2
-    assert latest.total_score_pass_pct == 90.0
-    assert latest.objectives[0].pass_criteria == ['<80']
+    assert latest.total_score_pass_threshold == 90.0
+    assert latest.objectives[0].pass_threshold == ['<80']
 
 
 @pytest.mark.integration
@@ -73,7 +73,7 @@ async def test_get_version_specific(db_session: AsyncSession) -> None:
     await repo.create(SLOCreateParams(name='specific-slo', objectives=OBJECTIVES_V2))
     v1 = await repo.get_version('specific-slo', 1)
     assert v1 is not None
-    assert v1.objectives[0].pass_criteria == ['<100']
+    assert v1.objectives[0].pass_threshold == ['<100']
 
 
 @pytest.mark.integration
@@ -137,7 +137,7 @@ async def test_create_with_variables(db_session: AsyncSession) -> None:
     slo = await repo.create(
         SLOCreateParams(
             name='slo-vars',
-            objectives=[SLOObjectiveParams(sli='m1', pass_criteria=['<600'])],
+            objectives=[SLOObjectiveParams(sli='m1', pass_threshold=['<600'])],
             tags={'team': 'alpha'},
             variables={'aggregation_window': '5m'},
         )
@@ -151,12 +151,12 @@ async def test_list_all_filters_by_tag(db_session: AsyncSession) -> None:
     repo = SLORepository(db_session)
     await repo.create(
         SLOCreateParams(
-            name='slo-a', objectives=[SLOObjectiveParams(sli='m1', pass_criteria=['<600'])], tags={'env': 'prod'}
+            name='slo-a', objectives=[SLOObjectiveParams(sli='m1', pass_threshold=['<600'])], tags={'env': 'prod'}
         )
     )
     await repo.create(
         SLOCreateParams(
-            name='slo-b', objectives=[SLOObjectiveParams(sli='m2', pass_criteria=['<100'])], tags={'env': 'staging'}
+            name='slo-b', objectives=[SLOObjectiveParams(sli='m2', pass_threshold=['<100'])], tags={'env': 'staging'}
         )
     )
     result = await repo.list_all(tag_key='env', tag_val='prod')
@@ -170,14 +170,14 @@ async def test_get_tag_keys(db_session: AsyncSession) -> None:
     await repo.create(
         SLOCreateParams(
             name='slo-a',
-            objectives=[SLOObjectiveParams(sli='m1', pass_criteria=['<600'])],
+            objectives=[SLOObjectiveParams(sli='m1', pass_threshold=['<600'])],
             tags={'team': 'a', 'env': 'prod'},
         )
     )
     await repo.create(
         SLOCreateParams(
             name='slo-b',
-            objectives=[SLOObjectiveParams(sli='m2', pass_criteria=['<100'])],
+            objectives=[SLOObjectiveParams(sli='m2', pass_threshold=['<100'])],
             tags={'env': 'staging'},
         )
     )
@@ -204,7 +204,7 @@ async def test_create_slo_with_sli_reference(async_client: AsyncClient) -> None:
             'name': 'test-slo-ref',
             'sli_name': 'test-sli-ref',
             'sli_version': 1,
-            'objectives': [{'sli': 'cpu', 'pass_criteria': ['<80']}],
+            'objectives': [{'sli': 'cpu', 'pass_threshold': ['<80']}],
         },
     )
     assert slo_resp.status_code == 201
@@ -231,7 +231,7 @@ async def test_create_slo_rejects_invalid_indicator(async_client: AsyncClient) -
             'name': 'val-slo',
             'sli_name': 'val-sli',
             'sli_version': 1,
-            'objectives': [{'sli': 'disk', 'pass_criteria': ['<80']}],
+            'objectives': [{'sli': 'disk', 'pass_threshold': ['<80']}],
         },
     )
     assert resp.status_code == 422

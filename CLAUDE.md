@@ -177,6 +177,21 @@ Component tests use **Vitest + React Testing Library + happy-dom**. Config lives
 - Place test files next to the component: `ComponentName.test.tsx`
 - Wrap components that use React Query in `QueryClientProvider` (see `NoteEntry.test.tsx` for pattern)
 - Use `@testing-library/jest-dom/vitest` matchers (loaded via setup file)
+- **Happy-dom + React Query cleanup** — happy-dom aborts all in-flight fetches on teardown, causing
+  `DOMException: AbortError` noise. Every test file that renders a component using React Query hooks
+  (`useQuery`, `useQueries`, `useMutation`) **must** create a fresh `QueryClient` in `beforeEach` and
+  cancel queries in `afterEach`:
+  ```tsx
+  let queryClient: QueryClient
+  beforeEach(() => {
+    queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  })
+  afterEach(() => {
+    queryClient.cancelQueries()
+    queryClient.clear()
+    cleanup()
+  })
+  ```
 
 ### Theme system
 

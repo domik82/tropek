@@ -128,8 +128,9 @@ class EvaluationDetail(EvaluationSummary):
     compared_evaluation_ids: list[uuid.UUID] = []
     annotations: list[AnnotationRead]
     indicator_results: list[IndicatorResult]
-    total_score_pass_pct: float | None = None
-    total_score_warning_pct: float | None = None
+    total_score_pass_threshold: float | None = None
+    total_score_warning_threshold: float | None = None
+    sli_metadata: dict[str, Any] | None = None
 
     @model_validator(mode='after')
     def sync_annotation_count(self) -> EvaluationDetail:
@@ -215,6 +216,24 @@ class TriggerResponse(BaseModel):
     """Response from evaluation trigger."""
 
     id: uuid.UUID
+    status: str
+
+
+class AssetTriggerRequest(BaseModel):
+    """Request body for triggering all SLOs for an asset."""
+
+    asset_name: str
+    evaluation_name: str
+    period_start: datetime
+    period_end: datetime
+    variables: dict[str, str] = {}
+
+
+class AssetTriggerResponse(BaseModel):
+    """Response from asset-level trigger."""
+
+    evaluation_ids: list[uuid.UUID]
+    slo_names: list[str]
     status: str
 
 
