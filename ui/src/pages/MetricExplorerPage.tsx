@@ -250,12 +250,12 @@ export function MetricExplorerPage() {
   // Build indicator list
   const allIndicators = useMemo(() => {
     if (heatmapData) {
-      return heatmapData.metrics
+      return heatmapData.groups
+        .flatMap(g => g.metrics)
         .filter(m => m.name !== '__score__')
         .map(m => ({
           metric: m.name,
           display_name: m.display_name,
-          tab_group: m.tab_group,
         }))
     }
     if (latestDetail) {
