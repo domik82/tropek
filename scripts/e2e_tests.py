@@ -9,35 +9,24 @@ Evaluation flows and their endpoints
 Each test that triggers evaluations uses a distinct evaluation_name so they
 are easy to identify in the heatmap and logs.
 
-  evaluation_name     endpoint                 what it tests
-  ─────────────────── ──────────────────────── ─────────────────────────────────
-  single-eval         POST /evaluations        Legacy single-SLO trigger.
-                                               Targets ONE explicit SLO. Proves
-                                               the old endpoint still works.
-                                               Rarely the right choice in prod.
+  evaluation_name     endpoint              what it tests
+  ─────────────────── ───────────────────── ─────────────────────────────────
+  single-eval         POST /evaluate        Asset-level trigger — resolves
+                                            ALL SLOs for an asset at once.
 
-  asset-trigger-test  POST /evaluations/asset  Asset-level trigger — resolves
-                                               ALL SLOs for an asset from all 3
-                                               binding sources. Preferred path.
+  asset-trigger-test  POST /evaluate        Same endpoint, verifies multiple
+                                            SLO evaluations are created.
 
-  batch-test          POST /evaluations/batch  Group-level trigger — resolves
-                                               all SLOs for every asset in the
-                                               group via unified resolution.
+  batch-test          POST /evaluate/batch  Batch trigger across multiple
+                                            assets for a shared time window.
 
-  regression-test     POST /evaluations        Single-SLO on purpose: exercises
-                                               baseline comparison after a pin.
-                                               Needs a specific SLO to verify
-                                               the comparison engine works.
+  regression-test     POST /evaluate        Exercises baseline comparison
+                                            after a pin (checks first SLO).
 
-  agg-baseline-test   POST /evaluations        Single-SLO on purpose: exercises
-                                               aggregated-mode evaluation with
-                                               method-keyed indicators and
-                                               baseline comparison. Needs a
-                                               specific SLO (agg-latency-slo).
-
-The last two use the single-SLO endpoint intentionally — they are testing
-engine features (baseline comparison, aggregated mode), not the trigger
-mechanism. Don't convert them to asset-level triggers.
+  agg-baseline-test   POST /evaluate        Exercises aggregated-mode eval
+                                            with method-keyed indicators and
+                                            baseline comparison (finds the
+                                            agg-latency-slo eval by name).
 """
 
 from __future__ import annotations
@@ -67,48 +56,42 @@ def poll_eval(client: TropekClient, eval_id: str, timeout: int = 30) -> object:
 
 
 def test_single_evaluation(client: TropekClient) -> None:
-    """Trigger one SLO evaluation via the legacy single-SLO endpoint.
-
-    This flow targets a single explicit SLO — useful for ad-hoc debugging
-    but normally the asset-level trigger (test_asset_trigger) should be
-    preferred since it resolves all SLOs automatically.
-    """
-    step('Step 7: Trigger single-SLO evaluation (legacy)')
-    result = client.evaluations.trigger(
+    """Trigger evaluations for an asset and verify at least one completes."""
+    step('Step 7: Trigger asset evaluation')
+    result = client.evaluations.evaluate(
         'checkout-api',
         'single-eval',
-        'http-availability-slo',
         '2026-03-15T08:00:00Z',
         '2026-03-15T08:30:00Z',
     )
-    eval_id = result['id']
-    print(f'triggered: {eval_id}')
-    ev = poll_eval(client, eval_id)
+    slo_eval_ids = result['slo_evaluation_ids']
+    assert slo_eval_ids, 'expected at least one slo_evaluation_id'
+    print(f'triggered: evaluation_id={result["evaluation_id"]}, {len(slo_eval_ids)} SLO eval(s)')
+    ev = poll_eval(client, str(slo_eval_ids[0]))
     print(f'status={ev.status} result={ev.result} score={ev.score}')
     assert ev.status == 'completed', f'expected completed, got {ev.status}'
-    print('PASS: single-SLO evaluation')
+    print('PASS: asset evaluation')
 
 
 def test_asset_trigger(client: TropekClient) -> None:
-    """Trigger all SLOs for an asset and verify multiple evaluations are created."""
+    """Trigger all SLOs for an asset and verify multiple SLO evaluations are created."""
     step('Step 7b: Trigger asset-level evaluation (all SLOs)')
-    result = client.evaluations.trigger_asset(
+    result = client.evaluations.evaluate(
         'checkout-api',
         'asset-trigger-test',
         '2026-03-15T09:00:00Z',
         '2026-03-15T09:30:00Z',
     )
-    eval_ids = result['evaluation_ids']
-    slo_names = result['slo_names']
-    print(f'triggered {len(eval_ids)} evaluations for SLOs: {slo_names}')
-    assert len(eval_ids) >= 2, f'expected at least 2 evaluations, got {len(eval_ids)}'
+    slo_eval_ids = result['slo_evaluation_ids']
+    print(f'triggered {len(slo_eval_ids)} SLO evaluations (evaluation_id={result["evaluation_id"]})')
+    assert len(slo_eval_ids) >= 2, f'expected at least 2 SLO evaluations, got {len(slo_eval_ids)}'
 
-    for eval_id in eval_ids:
-        ev = poll_eval(client, str(eval_id))
+    for slo_eval_id in slo_eval_ids:
+        ev = poll_eval(client, str(slo_eval_id))
         print(f'  {ev.slo_name}: status={ev.status} result={ev.result} score={ev.score}')
         assert ev.status == 'completed', f'expected completed for {ev.slo_name}, got {ev.status}'
 
-    print(f'PASS: asset trigger — {len(eval_ids)} SLOs evaluated')
+    print(f'PASS: asset trigger — {len(slo_eval_ids)} SLOs evaluated')
 
 
 def test_pin_baseline(client: TropekClient) -> None:
@@ -123,21 +106,21 @@ def test_pin_baseline(client: TropekClient) -> None:
 
 
 def test_batch_evaluation(client: TropekClient) -> None:
-    """Trigger a batch evaluation for an asset group and wait for all to complete."""
+    """Trigger a batch evaluation across multiple assets and wait for all to complete."""
     step('Step 9: Trigger batch evaluation')
-    result = client.evaluations.trigger_batch(
-        'core-services',
-        'batch-test',
-        '2026-03-15T08:00:00Z',
-        '2026-03-15T08:30:00Z',
+    result = client.evaluations.evaluate_batch(
+        mode='by_asset',
+        eval_name='batch-test',
+        asset_names=['checkout-api', 'product-catalog', 'user-service'],
+        period_start='2026-03-15T08:00:00Z',
+        period_end='2026-03-15T08:30:00Z',
     )
-    batch_id = result['batch_id']
-    eval_ids = result['evaluation_ids']
-    print(f'batch triggered: {batch_id}, {len(eval_ids)} evaluations')
-    assert len(eval_ids) >= 1, f'expected at least 1 evaluation, got {len(eval_ids)}'
+    slo_eval_ids = result['slo_evaluation_ids']
+    print(f'batch triggered: {len(result["evaluation_ids"])} runs, {len(slo_eval_ids)} SLO evaluations')
+    assert len(slo_eval_ids) >= 1, f'expected at least 1 SLO evaluation, got {len(slo_eval_ids)}'
 
     for _ in range(60):
-        statuses = {client.evaluations.get(str(eid)).status for eid in eval_ids}
+        statuses = {client.evaluations.get(str(eid)).status for eid in slo_eval_ids}
         if statuses.issubset(TERMINAL_STATUSES):
             break
         time.sleep(1)
@@ -146,22 +129,18 @@ def test_batch_evaluation(client: TropekClient) -> None:
 
 
 def test_regression_eval(client: TropekClient) -> None:
-    """Trigger a second evaluation to exercise baseline comparison.
-
-    Uses single-SLO endpoint intentionally — needs http-availability-slo
-    specifically to verify that baseline comparison works after a pin.
-    """
-    step('Step 10: Trigger regression eval after pin (single-SLO, intentional)')
-    result = client.evaluations.trigger(
+    """Trigger a second evaluation to exercise baseline comparison after a pin."""
+    step('Step 10: Trigger regression eval after pin')
+    result = client.evaluations.evaluate(
         'checkout-api',
         'regression-test',
-        'http-availability-slo',
         '2026-03-16T12:00:00Z',
         '2026-03-16T12:30:00Z',
     )
-    eval_id = result['id']
-    print(f'triggered regression eval: {eval_id}')
-    ev = poll_eval(client, eval_id)
+    slo_eval_ids = result['slo_evaluation_ids']
+    assert slo_eval_ids, 'expected at least one slo_evaluation_id'
+    print(f'triggered regression eval: {len(slo_eval_ids)} SLO eval(s)')
+    ev = poll_eval(client, str(slo_eval_ids[0]))
     print(f'status={ev.status} result={ev.result} score={ev.score}')
     print('PASS: regression eval completed (check result manually if needed)')
 
@@ -389,23 +368,28 @@ def test_label_autocomplete(client: TropekClient) -> None:
 
 
 def test_aggregated_evaluation(client: TropekClient) -> None:
-    """Trigger an aggregated-mode evaluation and verify method-keyed results with baselines.
-
-    Uses single-SLO endpoint intentionally — needs agg-latency-slo
-    specifically to verify aggregated-mode indicators (mean/p95/p99/max)
-    and baseline comparison with method-keyed metrics.
-    """
-    step('Step 21: Aggregated-mode evaluation (single-SLO, intentional)')
+    """Trigger evaluations for an asset and verify the agg-latency-slo eval has method-keyed results."""
+    step('Step 21: Aggregated-mode evaluation')
 
     # Use a late time window so seeded evaluations (00:00 through 16:00) provide baselines
-    result = client.evaluations.trigger(
+    result = client.evaluations.evaluate(
         'checkout-api',
         'agg-baseline-test',
-        'agg-latency-slo',
         '2026-03-16T14:00:00Z',
         '2026-03-16T14:30:00Z',
     )
-    eval_id = result['id']
+    slo_eval_ids = result['slo_evaluation_ids']
+    assert slo_eval_ids, 'expected at least one slo_evaluation_id'
+
+    # Find the agg-latency-slo evaluation among the triggered ones
+    ev = None
+    for slo_eval_id in slo_eval_ids:
+        candidate = poll_eval(client, str(slo_eval_id))
+        if candidate.slo_name == 'agg-latency-slo':
+            ev = candidate
+            break
+    assert ev is not None, f'agg-latency-slo not found among triggered SLOs: {slo_eval_ids}'
+    eval_id = str(ev.id)
     print(f'triggered aggregated eval: {eval_id}')
 
     ev = poll_eval(client, eval_id)
