@@ -79,6 +79,7 @@ async def test_trend_returns_points_with_baseline(db_session: AsyncSession) -> N
 
     ev = await repo.create_pending(
         EvalCreateParams(
+            evaluation_id=uuid.uuid4(),
             evaluation_name='trend-test',
             period_start=_BASE,
             period_end=_BASE + timedelta(minutes=30),
@@ -113,7 +114,7 @@ async def test_trend_returns_points_with_baseline(db_session: AsyncSession) -> N
     await sli_repo.write_sli_values(
         [
             {
-                'eval_id': ev.id,
+                'slo_evaluation_id': ev.id,
                 'eval_start': _BASE,
                 'metric_name': 'response_time',
                 'aggregation': 'avg',
@@ -142,6 +143,7 @@ async def test_trend_excludes_invalidated(db_session: AsyncSession) -> None:
 
     ev = await repo.create_pending(
         EvalCreateParams(
+            evaluation_id=uuid.uuid4(),
             evaluation_name='trend-inv',
             period_start=_BASE,
             period_end=_BASE + timedelta(minutes=30),
@@ -156,7 +158,7 @@ async def test_trend_excludes_invalidated(db_session: AsyncSession) -> None:
     await sli_repo.write_sli_values(
         [
             {
-                'eval_id': ev.id,
+                'slo_evaluation_id': ev.id,
                 'eval_start': _BASE,
                 'metric_name': 'response_time',
                 'aggregation': 'avg',

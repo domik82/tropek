@@ -25,6 +25,13 @@ export const evaluationHandlers = [
     return HttpResponse.json(getMetricHeatmap(assetName))
   }),
 
+  http.get('/api/evaluate/metric-heatmap', async ({ request }) => {
+    const url = new URL(request.url)
+    const assetName = url.searchParams.get('asset_name') ?? ''
+    const { getGroupedMetricHeatmap } = await gen()
+    return HttpResponse.json(getGroupedMetricHeatmap(assetName))
+  }),
+
   http.get('/api/evaluations/:id', async ({ params }) => {
     const { getEvaluationDetail } = await gen()
     return HttpResponse.json(getEvaluationDetail(params.id as string))

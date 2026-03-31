@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { evaluationKeys } from '@/lib/queryKeys'
-import { fetchEvaluations, fetchMetricHeatmap, fetchEvaluationNames } from '@/features/evaluations/api'
+import { fetchEvaluations, fetchGroupedMetricHeatmap, fetchEvaluationNames } from '@/features/evaluations/api'
 import { useTimeRange } from '@/lib/time-range-context'
 
 export function useAssetEvaluations(assetName: string | undefined, evaluationNames?: string[]) {
@@ -30,7 +30,7 @@ export function useMetricHeatmap(assetName: string | undefined, evaluationNames?
   const fetchFilters = { ...timeFilters, evaluation_name: evaluationNames }
   return useQuery({
     queryKey: evaluationKeys.heatmap(assetName!, timeFilters, evaluationNames),
-    queryFn: () => fetchMetricHeatmap(assetName!, fetchFilters),
+    queryFn: () => fetchGroupedMetricHeatmap(assetName!, fetchFilters),
     enabled: !!assetName,
   })
 }

@@ -101,16 +101,14 @@ class AssetGroupMember(Base):
 
     __tablename__ = 'asset_group_members'
     __table_args__ = (
-        Index('idx_asset_group_members_group', 'group_id'),
+        Index('idx_asset_group_members_group', 'asset_group_id'),
         Index('idx_asset_group_members_asset', 'asset_id'),
     )
 
     # fmt: off
-
-    group_id:  Mapped[uuid.UUID] = mapped_column(UUID, ForeignKey('asset_groups.id', ondelete='CASCADE'), nullable=False, primary_key=True)
-    asset_id:  Mapped[uuid.UUID] = mapped_column(UUID, ForeignKey('assets.id', ondelete='CASCADE'), nullable=False, primary_key=True)
-    weight:    Mapped[float]     = mapped_column(Float, nullable=False, default=1.0)
-
+    asset_group_id: Mapped[uuid.UUID] = mapped_column(UUID, ForeignKey('asset_groups.id', ondelete='CASCADE'), nullable=False, primary_key=True)
+    asset_id:       Mapped[uuid.UUID] = mapped_column(UUID, ForeignKey('assets.id', ondelete='CASCADE'), nullable=False, primary_key=True)
+    weight:         Mapped[float]     = mapped_column(Float, nullable=False, default=1.0)
     # fmt: on
 
 
@@ -118,14 +116,12 @@ class AssetGroupLink(Base):
     """Links a child group inside a parent group (group-of-groups)."""
 
     __tablename__ = 'asset_group_links'
-    __table_args__ = (Index('idx_asset_group_links_parent', 'parent_group_id'),)
+    __table_args__ = (Index('idx_asset_group_links_parent', 'parent_asset_group_id'),)
 
     # fmt: off
-
-    parent_group_id: Mapped[uuid.UUID] = mapped_column(UUID, ForeignKey('asset_groups.id', ondelete='CASCADE'), nullable=False, primary_key=True)
-    child_group_id:  Mapped[uuid.UUID] = mapped_column(UUID, ForeignKey('asset_groups.id', ondelete='CASCADE'), nullable=False, primary_key=True)
-    weight:          Mapped[float]     = mapped_column(Float, nullable=False, default=1.0)
-
+    parent_asset_group_id: Mapped[uuid.UUID] = mapped_column(UUID, ForeignKey('asset_groups.id', ondelete='CASCADE'), nullable=False, primary_key=True)
+    child_asset_group_id:  Mapped[uuid.UUID] = mapped_column(UUID, ForeignKey('asset_groups.id', ondelete='CASCADE'), nullable=False, primary_key=True)
+    weight:                Mapped[float]     = mapped_column(Float, nullable=False, default=1.0)
     # fmt: on
 
 
@@ -217,25 +213,25 @@ class IndicatorResultRow(Base):
 
     __tablename__ = 'indicator_results'
     __table_args__ = (
-        Index('idx_indicator_results_evaluation', 'evaluation_id'),
+        Index('idx_indicator_results_slo_evaluation', 'slo_evaluation_id'),
         Index('idx_indicator_results_objective_status', 'slo_objective_id', 'status'),
         UniqueConstraint(
-            'evaluation_id',
+            'slo_evaluation_id',
             'slo_objective_id',
             name='uq_indicator_results_eval_objective',
         ),
     )
 
     # fmt: off
-    id:               Mapped[uuid.UUID]      = mapped_column(UUID, primary_key=True, default=uuid.uuid4)
-    evaluation_id:    Mapped[uuid.UUID]      = mapped_column(UUID, ForeignKey('evaluations.id', ondelete='CASCADE'), nullable=False)
-    slo_objective_id: Mapped[uuid.UUID]      = mapped_column(UUID, ForeignKey('slo_objectives.id', ondelete='CASCADE'), nullable=False)
-    value:            Mapped[float | None]   = mapped_column(Float, nullable=True)
-    compared_value:   Mapped[float | None]   = mapped_column(Float, nullable=True)
-    change_absolute:  Mapped[float | None]   = mapped_column(Float, nullable=True)
+    id:                 Mapped[uuid.UUID]    = mapped_column(UUID, primary_key=True, default=uuid.uuid4)
+    slo_evaluation_id:  Mapped[uuid.UUID]    = mapped_column(UUID, ForeignKey('slo_evaluations.id', ondelete='CASCADE'), nullable=False)
+    slo_objective_id:   Mapped[uuid.UUID]    = mapped_column(UUID, ForeignKey('slo_objectives.id', ondelete='CASCADE'), nullable=False)
+    value:              Mapped[float | None] = mapped_column(Float, nullable=True)
+    compared_value:     Mapped[float | None] = mapped_column(Float, nullable=True)
+    change_absolute:    Mapped[float | None] = mapped_column(Float, nullable=True)
     change_relative_pct: Mapped[float | None] = mapped_column(Float, nullable=True)
-    status:           Mapped[str]            = mapped_column(Text, nullable=False)
-    score:            Mapped[float]          = mapped_column(Float, nullable=False, server_default=text('0'))
+    status:             Mapped[str]          = mapped_column(Text, nullable=False)
+    score:              Mapped[float]        = mapped_column(Float, nullable=False, server_default=text('0'))
     # fmt: on
 
     # Relationships for eager loading
@@ -284,124 +280,26 @@ class SLODefinition(Base):
     # fmt: on
 
 
-class Evaluation(Base):
-    """One evaluation run — triggered, executed, stored."""
-
-    __tablename__ = 'evaluations'
-    __table_args__ = (
-        Index('idx_evaluations_evaluation_name', 'evaluation_name'),
-        Index('idx_evaluations_asset', 'asset_id'),
-        Index('idx_evaluations_result', 'result'),
-        Index('idx_evaluations_start', 'period_start'),
-        Index('idx_evaluations_status', 'status'),
-        Index('idx_evaluations_slo', 'slo_name', 'slo_version'),
-        Index(
-            'idx_evaluations_baseline_lookup',
-            'asset_id',
-            'slo_name',
-            text('period_start DESC'),
-            postgresql_where=text("status = 'completed' AND invalidated = false"),
-        ),
-        # Partial index for watchdog: find stuck running jobs efficiently
-        Index(
-            'idx_evaluations_stuck',
-            'status',
-            'started_at',
-            postgresql_where=text("status = 'running'"),
-        ),
-        # Duplicate prevention: at most one non-failed evaluation per identity tuple.
-        # Failed evaluations are excluded so retries can create a new row.
-        # Decision tree:
-        #   - No existing non-failed eval → create OK
-        #   - Existing failed eval only → create OK (excluded from constraint)
-        #   - Existing pending/running → 409 "already in progress"
-        #   - Existing completed/partial/invalidated → 409 "use re-evaluate"
-        Index(
-            'uq_evaluations_identity',
-            'asset_id',
-            'slo_name',
-            'evaluation_name',
-            'period_start',
-            'period_end',
-            unique=True,
-            postgresql_where=text("status != 'failed'"),
-        ),
-        CheckConstraint(
-            "status IN ('pending','running','completed','failed','partial')",
-            name='ck_evaluations_status',
-        ),
-        CheckConstraint(
-            "ingestion_mode IN ('pull','push','file')",
-            name='ck_evaluations_ingestion_mode',
-        ),
-        CheckConstraint(
-            "result IN ('pass','warning','fail','error') OR result IS NULL",
-            name='ck_evaluations_result',
-        ),
-    )
-
-    # fmt: off
-
-    id: Mapped[uuid.UUID] = mapped_column(UUID, primary_key=True, default=uuid.uuid4)
-    evaluation_name: Mapped[str] = mapped_column(Text, nullable=False)
-    asset_id: Mapped[uuid.UUID] = mapped_column(UUID, ForeignKey('assets.id', ondelete='RESTRICT'), nullable=False)
-    asset_snapshot: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, server_default=text("'{}'"), default=dict)
-    period_start: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
-    period_end:   Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
-    result: Mapped[str | None] = mapped_column(Text, nullable=True)  # null while pending
-    score: Mapped[float | None] = mapped_column(Float, nullable=True)
-    slo_name: Mapped[str] = mapped_column(Text, nullable=False)
-    slo_version: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    sli_name: Mapped[str | None] = mapped_column(Text, nullable=True)
-    sli_version: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    data_source_name: Mapped[str | None] = mapped_column(Text, nullable=True)
-    variables: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, server_default=text("'{}'"), default=dict)
-    ingestion_mode: Mapped[str] = mapped_column(Text, nullable=False)
-    adapter_used: Mapped[str | None] = mapped_column(Text, nullable=True)
-    invalidated: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=false(), default=False)
-    invalidation_note: Mapped[str | None] = mapped_column(Text, nullable=True)
-    baseline_pinned_at:   Mapped[datetime | None]  = mapped_column(DateTime(timezone=True), nullable=True)
-    baseline_unpinned_at: Mapped[datetime | None]  = mapped_column(DateTime(timezone=True), nullable=True)
-    baseline_pin_reason:  Mapped[str | None]        = mapped_column(Text, nullable=True)
-    baseline_pin_author:  Mapped[str | None]        = mapped_column(Text, nullable=True)
-    original_result:      Mapped[str | None]        = mapped_column(Text, nullable=True)
-    override_reason:      Mapped[str | None]        = mapped_column(Text, nullable=True)
-    override_author:      Mapped[str | None]        = mapped_column(Text, nullable=True)
-    # Job lifecycle
-    status: Mapped[str] = mapped_column(Text, nullable=False, server_default=text("'pending'"), default='pending')
-    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    job_stats: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, server_default=text("'{}'"), default=dict)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
-    annotations: Mapped[list[EvaluationAnnotation]] = relationship('EvaluationAnnotation', back_populates='evaluation', cascade='all, delete-orphan')
-    indicator_rows: Mapped[list[IndicatorResultRow]] = relationship(
-        'IndicatorResultRow', cascade='all, delete-orphan', lazy='selectin',
-    )
-
-    # fmt: on
-
-
 class EvaluationAnnotation(Base):
     """Append-only contextual note on an evaluation."""
 
     __tablename__ = 'evaluation_annotations'
-    __table_args__ = (Index('idx_annotations_evaluation', 'evaluation_id'),)
+    __table_args__ = (Index('idx_annotations_slo_evaluation', 'slo_evaluation_id'),)
 
     # fmt: off
 
-    id: Mapped[uuid.UUID] = mapped_column(UUID, primary_key=True, default=uuid.uuid4)
-    evaluation_id: Mapped[uuid.UUID] = mapped_column(UUID, ForeignKey('evaluations.id', ondelete='CASCADE'), nullable=False, )
-    content: Mapped[str] = mapped_column(Text, nullable=False)
-    author: Mapped[str | None] = mapped_column(Text, nullable=True)
-    category: Mapped[str | None] = mapped_column(Text, nullable=True)
-    tags: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, server_default=text("'{}'"), default=dict)
-    hidden_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    hidden_by: Mapped[str | None] = mapped_column(Text, nullable=True)
-    hidden_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
-    updated_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), onupdate=func.now(), nullable=True
-    )
-    evaluation: Mapped[Evaluation] = relationship('Evaluation', back_populates='annotations')
+    id:                Mapped[uuid.UUID]      = mapped_column(UUID, primary_key=True, default=uuid.uuid4)
+    slo_evaluation_id: Mapped[uuid.UUID]      = mapped_column(UUID, ForeignKey('slo_evaluations.id', ondelete='CASCADE'), nullable=False)
+    content:           Mapped[str]            = mapped_column(Text, nullable=False)
+    author:            Mapped[str | None]     = mapped_column(Text, nullable=True)
+    category:          Mapped[str | None]     = mapped_column(Text, nullable=True)
+    tags:              Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, server_default=text("'{}'"), default=dict)
+    hidden_at:         Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    hidden_by:         Mapped[str | None]     = mapped_column(Text, nullable=True)
+    hidden_reason:     Mapped[str | None]     = mapped_column(Text, nullable=True)
+    created_at:        Mapped[datetime]       = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    updated_at:        Mapped[datetime | None] = mapped_column(DateTime(timezone=True), onupdate=func.now(), nullable=True)
+    slo_evaluation:    Mapped[SLOEvaluation] = relationship('SLOEvaluation', back_populates='annotations')
 
     # fmt: on
 
@@ -412,7 +310,7 @@ class SLIValue(Base):
     Partitioned by eval_start for efficient time-range queries in Grafana.
     Composite PK required: TimescaleDB needs the partition key in the PK.
     Denormalised columns (asset_name, evaluation_name, os_tag) avoid joins in Grafana SQL.
-    No ORM relationship to Evaluation is intentional — prevents accidental lazy-loading
+    No ORM relationship to SLOEvaluation is intentional — prevents accidental lazy-loading
     of potentially thousands of hypertable rows.
     """
 
@@ -422,14 +320,14 @@ class SLIValue(Base):
     # fmt: off
     # TODO : probably to flat stucture - joins should probably be used in Grafana - not convinced this is good
 
-    eval_id: Mapped[uuid.UUID] = mapped_column(UUID, ForeignKey('evaluations.id'), nullable=False, primary_key=True)
-    eval_start: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, primary_key=True)
-    metric_name: Mapped[str] = mapped_column(Text, nullable=False, primary_key=True)
-    aggregation: Mapped[str] = mapped_column(Text, nullable=False, primary_key=True)
-    value: Mapped[float] = mapped_column(Float, nullable=False)
-    asset_name: Mapped[str | None] = mapped_column(Text, nullable=True)
-    evaluation_name: Mapped[str | None] = mapped_column(Text, nullable=True)
-    os_tag: Mapped[str | None] = mapped_column(Text, nullable=True)
+    slo_evaluation_id: Mapped[uuid.UUID] = mapped_column(UUID, ForeignKey('slo_evaluations.id'), nullable=False, primary_key=True)
+    eval_start:        Mapped[datetime]  = mapped_column(DateTime(timezone=True), nullable=False, primary_key=True)
+    metric_name:       Mapped[str]       = mapped_column(Text, nullable=False, primary_key=True)
+    aggregation:       Mapped[str]       = mapped_column(Text, nullable=False, primary_key=True)
+    value:             Mapped[float]     = mapped_column(Float, nullable=False)
+    asset_name:        Mapped[str | None] = mapped_column(Text, nullable=True)
+    evaluation_name:   Mapped[str | None] = mapped_column(Text, nullable=True)
+    os_tag:            Mapped[str | None] = mapped_column(Text, nullable=True)
 
     # fmt: on
 
@@ -514,26 +412,130 @@ class TemplateBinding(Base):
     # fmt: on
 
 
-class EvaluationBatch(Base):
-    """Groups all evaluations spawned by a single trigger call.
+class SLOEvaluation(Base):
+    """One SLO evaluation — one per SLO bound to an asset for a given evaluation run."""
 
-    When a group with N bindings across M assets is triggered, one batch is
-    created containing up to NxM evaluation IDs. Callers poll batch status
-    instead of tracking individual evaluation IDs.
-    """
-
-    __tablename__ = 'evaluation_batches'
-    __table_args__ = (Index('idx_evaluation_batches_status', 'status'),)
+    __tablename__ = 'slo_evaluations'
+    __table_args__ = (
+        Index('idx_slo_evaluations_evaluation_name', 'evaluation_name'),
+        Index('idx_slo_evaluations_asset', 'asset_id'),
+        Index('idx_slo_evaluations_result', 'result'),
+        Index('idx_slo_evaluations_start', 'period_start'),
+        Index('idx_slo_evaluations_status', 'status'),
+        Index('idx_slo_evaluations_slo', 'slo_name', 'slo_version'),
+        Index(
+            'idx_slo_evaluations_baseline_lookup',
+            'asset_id',
+            'slo_name',
+            text('period_start DESC'),
+            postgresql_where=text("status = 'completed' AND invalidated = false"),
+        ),
+        # Partial index for watchdog: find stuck running jobs efficiently
+        Index(
+            'idx_slo_evaluations_stuck',
+            'status',
+            'started_at',
+            postgresql_where=text("status = 'running'"),
+        ),
+        # Duplicate prevention: at most one non-failed evaluation per identity tuple.
+        # Failed evaluations are excluded so retries can create a new row.
+        Index(
+            'uq_slo_evaluations_identity',
+            'asset_id',
+            'slo_name',
+            'evaluation_name',
+            'period_start',
+            'period_end',
+            unique=True,
+            postgresql_where=text("status != 'failed'"),
+        ),
+        CheckConstraint(
+            "status IN ('pending','running','completed','failed','partial')",
+            name='ck_slo_evaluations_status',
+        ),
+        CheckConstraint(
+            "ingestion_mode IN ('pull','push','file')",
+            name='ck_slo_evaluations_ingestion_mode',
+        ),
+        CheckConstraint(
+            "result IN ('pass','warning','fail','error') OR result IS NULL",
+            name='ck_slo_evaluations_result',
+        ),
+    )
 
     # fmt: off
 
-    id:             Mapped[uuid.UUID]        = mapped_column(UUID, primary_key=True, default=uuid.uuid4)
-    status:         Mapped[str]              = mapped_column(Text, nullable=False, server_default=text("'pending'"), default='pending')
-    trigger_params: Mapped[dict[str, Any]]   = mapped_column(JSONB, nullable=False, server_default=text("'{}'"), default=dict)
-    evaluation_ids: Mapped[list[Any]]        = mapped_column(JSONB, nullable=False, server_default=text("'[]'"), default=list)
-    result:         Mapped[str | None]            = mapped_column(Text, nullable=True)
-    score:          Mapped[float | None]          = mapped_column(Float, nullable=True)
-    rollup_details: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
-    created_at:     Mapped[datetime]         = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    id:                   Mapped[uuid.UUID]      = mapped_column(UUID, primary_key=True, default=uuid.uuid4)
+    evaluation_id:        Mapped[uuid.UUID]      = mapped_column(UUID, ForeignKey('evaluations.id', ondelete='CASCADE'), nullable=False)
+    evaluation_name:      Mapped[str]            = mapped_column(Text, nullable=False)
+    asset_id:             Mapped[uuid.UUID]      = mapped_column(UUID, ForeignKey('assets.id', ondelete='RESTRICT'), nullable=False)
+    asset_snapshot:       Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, server_default=text("'{}'"), default=dict)
+    period_start:         Mapped[datetime]       = mapped_column(DateTime(timezone=True), nullable=False)
+    period_end:           Mapped[datetime]       = mapped_column(DateTime(timezone=True), nullable=False)
+    result:               Mapped[str | None]     = mapped_column(Text, nullable=True)
+    score:                Mapped[float | None]   = mapped_column(Float, nullable=True)
+    achieved_points:      Mapped[int | None]     = mapped_column(Integer, nullable=True)
+    total_points:         Mapped[int | None]     = mapped_column(Integer, nullable=True)
+    slo_name:             Mapped[str]            = mapped_column(Text, nullable=False)
+    slo_version:          Mapped[int | None]     = mapped_column(Integer, nullable=True)
+    sli_name:             Mapped[str | None]     = mapped_column(Text, nullable=True)
+    sli_version:          Mapped[int | None]     = mapped_column(Integer, nullable=True)
+    data_source_name:     Mapped[str | None]     = mapped_column(Text, nullable=True)
+    variables:            Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, server_default=text("'{}'"), default=dict)
+    ingestion_mode:       Mapped[str]            = mapped_column(Text, nullable=False)
+    adapter_used:         Mapped[str | None]     = mapped_column(Text, nullable=True)
+    invalidated:          Mapped[bool]           = mapped_column(Boolean, nullable=False, server_default=false(), default=False)
+    invalidation_note:    Mapped[str | None]     = mapped_column(Text, nullable=True)
+    baseline_pinned_at:   Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    baseline_unpinned_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    baseline_pin_reason:  Mapped[str | None]     = mapped_column(Text, nullable=True)
+    baseline_pin_author:  Mapped[str | None]     = mapped_column(Text, nullable=True)
+    original_result:      Mapped[str | None]     = mapped_column(Text, nullable=True)
+    override_reason:      Mapped[str | None]     = mapped_column(Text, nullable=True)
+    override_author:      Mapped[str | None]     = mapped_column(Text, nullable=True)
+    status:               Mapped[str]            = mapped_column(Text, nullable=False, server_default=text("'pending'"), default='pending')
+    started_at:           Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    job_stats:            Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, server_default=text("'{}'"), default=dict)
+    created_at:           Mapped[datetime]       = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    annotations:          Mapped[list[EvaluationAnnotation]] = relationship('EvaluationAnnotation', back_populates='slo_evaluation', cascade='all, delete-orphan')
+    indicator_rows:       Mapped[list[IndicatorResultRow]]   = relationship('IndicatorResultRow', cascade='all, delete-orphan', lazy='selectin')
+    evaluation_run:       Mapped[EvaluationRun]            = relationship('EvaluationRun', back_populates='slo_evaluations')
 
+    # fmt: on
+
+
+class EvaluationRun(Base):
+    """Parent evaluation run — one per asset x eval_name x period.
+
+    Aggregates N child SLOEvaluation rows (one per SLO bound to the asset).
+    result = worst-case of children; achieved/total points = sum of children.
+    """
+
+    __tablename__ = 'evaluations'
+    __table_args__ = (
+        Index('idx_evaluations_asset', 'asset_id'),
+        Index('idx_evaluations_status', 'status'),
+        Index('idx_evaluations_period', 'asset_id', text('period_start DESC')),
+        CheckConstraint(
+            "status IN ('pending','running','completed','failed')",
+            name='ck_evaluations_status',
+        ),
+        CheckConstraint(
+            "result IN ('pass','warning','fail','error') OR result IS NULL",
+            name='ck_evaluations_result',
+        ),
+    )
+
+    # fmt: off
+    id:              Mapped[uuid.UUID]      = mapped_column(UUID, primary_key=True, default=uuid.uuid4)
+    asset_id:        Mapped[uuid.UUID]      = mapped_column(UUID, ForeignKey('assets.id', ondelete='RESTRICT'), nullable=False)
+    eval_name:       Mapped[str]            = mapped_column(Text, nullable=False)
+    period_start:    Mapped[datetime]       = mapped_column(DateTime(timezone=True), nullable=False)
+    period_end:      Mapped[datetime]       = mapped_column(DateTime(timezone=True), nullable=False)
+    status:          Mapped[str]            = mapped_column(Text, nullable=False, server_default=text("'pending'"), default='pending')
+    result:          Mapped[str | None]     = mapped_column(Text, nullable=True)
+    achieved_points: Mapped[int | None]     = mapped_column(Integer, nullable=True)
+    total_points:    Mapped[int | None]     = mapped_column(Integer, nullable=True)
+    created_at:      Mapped[datetime]       = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    slo_evaluations: Mapped[list[SLOEvaluation]] = relationship('SLOEvaluation', back_populates='evaluation_run', cascade='all, delete-orphan')
     # fmt: on

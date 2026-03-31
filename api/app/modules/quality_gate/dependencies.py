@@ -17,6 +17,7 @@ from app.modules.assets.repository import (
 from app.modules.datasource.repository import DataSourceRepository
 from app.modules.quality_gate.annotation_repository import AnnotationRepository
 from app.modules.quality_gate.baseline_repository import BaselineRepository
+from app.modules.quality_gate.evaluation_run_repository import EvaluationRunRepository
 from app.modules.quality_gate.repository import EvaluationRepository
 from app.modules.quality_gate.sli_repository import SLIValueRepository
 from app.modules.quality_gate.trend_repository import TrendRepository
@@ -29,6 +30,7 @@ class QualityGateRepos:
     """Bundle of all repositories needed by quality gate endpoints."""
 
     eval_repo: EvaluationRepository
+    eval_run_repo: EvaluationRunRepository
     annotation_repo: AnnotationRepository
     sli_repo: SLIValueRepository
     trend_repo: TrendRepository
@@ -50,6 +52,7 @@ async def get_qg_repos(
     cache: RedisCache | None = getattr(request.app.state, 'cache', None)
     return QualityGateRepos(
         eval_repo=EvaluationRepository(session),
+        eval_run_repo=EvaluationRunRepository(session),
         annotation_repo=AnnotationRepository(session, cache=cache),
         sli_repo=SLIValueRepository(session),
         trend_repo=TrendRepository(session),

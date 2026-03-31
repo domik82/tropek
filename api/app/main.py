@@ -70,10 +70,11 @@ async def health() -> dict[str, str]:
 
 
 @app.get('/config/ui')
-async def ui_config() -> dict[str, int]:
+async def ui_config() -> dict[str, int | bool]:
     """Return UI-facing configuration limits."""
     settings = get_settings()
     return {
         'maxEvaluations': settings.ui.max_evaluations,
         'pageSize': settings.ui.page_size,
+        'heatmapSloGroupsExpandedByDefault': settings.ui.heatmap_slo_groups_expanded_by_default,
     }

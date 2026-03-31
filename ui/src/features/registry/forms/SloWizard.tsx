@@ -283,7 +283,7 @@ export function SloWizard({ editSlo, defaultKind, onClose }: SloWizardProps) {
             onMethodCriteriaChange={setMethodCriteria}
             blueprintPassCriteria={
               indicatorRows.find(r => r.checked)?.passCriteria.map(c =>
-                `${c.operator}${c.value}${c.suffix}`,
+                `${c.operator}${c.value}${c.percent ? '%' : ''}`,
               ) ?? ['<100']
             }
             blueprintWeight={indicatorRows.find(r => r.checked)?.weight ?? 1}

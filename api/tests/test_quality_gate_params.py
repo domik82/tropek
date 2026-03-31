@@ -10,6 +10,7 @@ from app.modules.quality_gate.params import EvalCreateParams, ReEvalUpdateParams
 
 def test_eval_create_params_required_fields() -> None:
     params = EvalCreateParams(
+        evaluation_id=uuid.uuid4(),
         evaluation_name='nightly',
         period_start=datetime(2026, 3, 15, 10, 0, tzinfo=UTC),
         period_end=datetime(2026, 3, 15, 10, 30, tzinfo=UTC),
@@ -24,6 +25,7 @@ def test_eval_create_params_required_fields() -> None:
 
 def test_eval_create_params_optional_fields() -> None:
     params = EvalCreateParams(
+        evaluation_id=uuid.uuid4(),
         evaluation_name='nightly',
         period_start=datetime(2026, 3, 15, 10, 0, tzinfo=UTC),
         period_end=datetime(2026, 3, 15, 10, 30, tzinfo=UTC),

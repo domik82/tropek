@@ -11,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.cache.redis_cache import RedisCache
 from app.config import get_settings
-from app.db.models import DataSource, Evaluation, SLIDefinition, SLODefinition
+from app.db.models import DataSource, SLIDefinition, SLODefinition, SLOEvaluation
 from app.modules.datasource.repository import DataSourceRepository
 from app.modules.quality_gate.adapter_client import HttpAdapterClient
 from app.modules.quality_gate.baseline_repository import BaselineRepository
@@ -21,6 +21,7 @@ from app.modules.quality_gate.engine.slo_models import SLO
 from app.modules.quality_gate.engine.slo_parser import build_slo
 from app.modules.quality_gate.engine.variables import substitute_variables
 from app.modules.quality_gate.evaluation_helpers import build_eval_variables as _build_eval_variables_shared
+from app.modules.quality_gate.evaluation_run_repository import EvaluationRunRepository
 from app.modules.quality_gate.indicator_repository import IndicatorRepository
 from app.modules.quality_gate.repository import EvaluationRepository
 from app.modules.quality_gate.sli_repository import SLIValueRepository
@@ -36,7 +37,7 @@ class DefinitionLoadError(Exception):
 
 async def _load_definitions(
     session: AsyncSession,
-    ev: Evaluation,
+    ev: SLOEvaluation,
     cache: RedisCache | None = None,
 ) -> tuple[SLODefinition, SLIDefinition]:
     """Load SLO and SLI definitions for the evaluation.
@@ -70,7 +71,7 @@ async def _load_definitions(
 async def _resolve_baselines(
     baseline_repo: BaselineRepository,
     slo: SLO,
-    ev: Evaluation,
+    ev: SLOEvaluation,
     indicator_names: list[str],
 ) -> tuple[dict[str, float | None], list[str]]:
     """Fetch baseline evaluations and aggregate per-metric values.
@@ -112,7 +113,7 @@ async def _resolve_baselines(
 
 
 def _build_eval_variables(
-    ev: Evaluation,
+    ev: SLOEvaluation,
     asset_snapshot: dict[str, Any],
     slo_def: SLODefinition,
 ) -> dict[str, str]:
@@ -193,7 +194,7 @@ async def _query_adapter_safe(
 async def _write_indicator_rows(
     log: structlog.stdlib.BoundLogger,
     session: AsyncSession,
-    eval_id: uuid.UUID,
+    slo_evaluation_id: uuid.UUID,
     slo_def: SLODefinition,
     indicator_results: list[Any],
 ) -> None:
@@ -208,7 +209,7 @@ async def _write_indicator_rows(
             continue
         rows.append(
             {
-                'evaluation_id': eval_id,
+                'evaluation_id': slo_evaluation_id,
                 'slo_objective_id': obj_id,
                 'value': ir.value,
                 'compared_value': ir.compared_value,
@@ -219,13 +220,13 @@ async def _write_indicator_rows(
             }
         )
     if rows:
-        await indicator_repo.bulk_insert(eval_id, rows)
+        await indicator_repo.bulk_insert(slo_evaluation_id, rows)
 
 
 def _build_sli_rows(
     *,
     eval_id: uuid.UUID,
-    ev: Evaluation,
+    ev: SLOEvaluation,
     sli_def: SLIDefinition,
     indicator_results: list[Any],
     asset_snapshot: dict[str, Any],
@@ -238,7 +239,7 @@ def _build_sli_rows(
             aggregation = ir.metric.rsplit('.', 1)[1]
         rows.append(
             {
-                'eval_id': eval_id,
+                'slo_evaluation_id': eval_id,
                 'eval_start': ev.period_start,
                 'metric_name': ir.metric,
                 'aggregation': aggregation,
@@ -300,7 +301,25 @@ def _log_eval_result(
     )
 
 
-async def run_evaluation(
+async def _try_rollup_parent(
+    session: AsyncSession,
+    evaluation_id: uuid.UUID,
+    log: structlog.stdlib.BoundLogger,
+) -> None:
+    """Rollup parent EvaluationRun if all child SLOEvaluations are done."""
+    run_repo = EvaluationRunRepository(session)
+    rolled = await run_repo.rollup_if_all_done(evaluation_id)
+    if rolled is not None:
+        log.info(
+            'parent evaluation run completed',
+            evaluation_id=str(evaluation_id),
+            result=rolled.result,
+            achieved_points=rolled.achieved_points,
+            total_points=rolled.total_points,
+        )
+
+
+async def run_evaluation(  # noqa: PLR0915
     session: AsyncSession,
     eval_id: uuid.UUID,
     *,
@@ -436,6 +455,8 @@ async def run_evaluation(
     _log_eval_result(log, eval_result, metrics_fetched, baselines)
 
     # Write results
+    achieved_points = sum(round(ir.score) for ir in eval_result.indicator_results)
+    total_points = sum(int(obj.weight) for obj in slo.objectives)
     await repo.mark_completed(
         eval_id,
         result=eval_result.result,
@@ -449,14 +470,17 @@ async def run_evaluation(
             **({'sli_metadata': sli_metadata} if sli_metadata else {}),
         },
         compared_evaluation_ids=compared_eval_ids,
+        achieved_points=achieved_points,
+        total_points=total_points,
     )
 
     # Write to normalized indicator_results table
-    await _write_indicator_rows(log, session, eval_id, slo_def, eval_result.indicator_results)
+    slo_eval_id = eval_id
+    await _write_indicator_rows(log, session, slo_eval_id, slo_def, eval_result.indicator_results)
 
     # Write SLI values to TimescaleDB hypertable
     sli_rows = _build_sli_rows(
-        eval_id=eval_id,
+        eval_id=slo_eval_id,
         ev=ev,
         sli_def=sli_def,
         indicator_results=eval_result.indicator_results,
@@ -467,3 +491,4 @@ async def run_evaluation(
         await sli_repo.write_sli_values(sli_rows)
 
     log.info('evaluation completed', result=eval_result.result, score=eval_result.score)
+    await _try_rollup_parent(session, ev.evaluation_id, log)

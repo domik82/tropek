@@ -11,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.cache.redis_cache import RedisCache
-from app.db.models import Evaluation, IndicatorResultRow
+from app.db.models import IndicatorResultRow, SLOEvaluation
 from app.modules.quality_gate.annotation_repository import AnnotationRepository
 from app.modules.quality_gate.engine.constants import EvaluationStatus
 from app.modules.quality_gate.indicator_repository import IndicatorRepository
@@ -32,11 +32,11 @@ class BaselineRepository:
         slo_name: str,
     ) -> tuple[datetime, uuid.UUID] | None:
         """Return (period_start, evaluation_id) of the active baseline pin, or None."""
-        q = select(Evaluation.period_start, Evaluation.id).where(
-            Evaluation.asset_id == asset_id,
-            Evaluation.slo_name == slo_name,
-            Evaluation.baseline_pinned_at.is_not(None),
-            Evaluation.baseline_unpinned_at.is_(None),
+        q = select(SLOEvaluation.period_start, SLOEvaluation.id).where(
+            SLOEvaluation.asset_id == asset_id,
+            SLOEvaluation.slo_name == slo_name,
+            SLOEvaluation.baseline_pinned_at.is_not(None),
+            SLOEvaluation.baseline_unpinned_at.is_(None),
         )
         row = await self._session.execute(q)
         result = row.one_or_none()
@@ -52,7 +52,7 @@ class BaselineRepository:
         period_start_before: datetime,
         include_result_with_score: str,
         limit: int,
-    ) -> list[Evaluation]:
+    ) -> list[SLOEvaluation]:
         """Fetch previous completed evaluations for baseline comparison during scoring.
 
         Used by the worker when evaluating a new run against previous results.
@@ -75,10 +75,10 @@ class BaselineRepository:
             include_result_with_score=include_result_with_score,
         )
         q = q.options(
-            selectinload(Evaluation.indicator_rows).joinedload(IndicatorResultRow.objective),
+            selectinload(SLOEvaluation.indicator_rows).joinedload(IndicatorResultRow.objective),
         )
         q = await self._apply_pin_filter(q, asset_id=asset_id, slo_name=slo_name)
-        q = q.order_by(Evaluation.period_start.desc()).limit(limit)
+        q = q.order_by(SLOEvaluation.period_start.desc()).limit(limit)
         rows = await self._session.execute(q)
         return list(rows.scalars().all())
 
@@ -94,7 +94,7 @@ class BaselineRepository:
         restrict_to_ids: list[uuid.UUID] | None = None,
         tag_filters: dict[str, str] | None = None,
         skip_pin_filter: bool = False,
-    ) -> list[Evaluation]:
+    ) -> list[SLOEvaluation]:
         """Fetch previous completed evaluations for re-evaluation baseline comparison.
 
         Used by the re-evaluator with SLI version filtering and ID restriction
@@ -121,24 +121,24 @@ class BaselineRepository:
             include_result_with_score=include_result_with_score,
         )
         q = q.options(
-            selectinload(Evaluation.indicator_rows).joinedload(IndicatorResultRow.objective),
+            selectinload(SLOEvaluation.indicator_rows).joinedload(IndicatorResultRow.objective),
         )
 
         if sli_version_range:
-            q = q.where(Evaluation.sli_version.is_not(None))
-            q = q.where(Evaluation.sli_version >= sli_version_range[0])
-            q = q.where(Evaluation.sli_version <= sli_version_range[1])
+            q = q.where(SLOEvaluation.sli_version.is_not(None))
+            q = q.where(SLOEvaluation.sli_version >= sli_version_range[0])
+            q = q.where(SLOEvaluation.sli_version <= sli_version_range[1])
 
         if restrict_to_ids is not None:
-            q = q.where(Evaluation.id.in_(restrict_to_ids))
+            q = q.where(SLOEvaluation.id.in_(restrict_to_ids))
 
         if tag_filters:
             for key, value in tag_filters.items():
-                q = q.where(Evaluation.variables[key].astext == value)
+                q = q.where(SLOEvaluation.variables[key].astext == value)
 
         if not skip_pin_filter:
             q = await self._apply_pin_filter(q, asset_id=asset_id, slo_name=slo_name)
-        q = q.order_by(Evaluation.period_start.desc()).limit(limit)
+        q = q.order_by(SLOEvaluation.period_start.desc()).limit(limit)
         rows = await self._session.execute(q)
         return list(rows.scalars().all())
 
@@ -151,17 +151,17 @@ class BaselineRepository:
         include_result_with_score: str,
     ) -> Any:
         """Build the shared base query for baseline lookups."""
-        q = select(Evaluation).where(
-            Evaluation.asset_id == asset_id,
-            Evaluation.slo_name == slo_name,
-            Evaluation.period_start < period_start_before,
-            Evaluation.status == EvaluationStatus.COMPLETED,
-            Evaluation.invalidated == False,  # noqa: E712
+        q = select(SLOEvaluation).where(
+            SLOEvaluation.asset_id == asset_id,
+            SLOEvaluation.slo_name == slo_name,
+            SLOEvaluation.period_start < period_start_before,
+            SLOEvaluation.status == EvaluationStatus.COMPLETED,
+            SLOEvaluation.invalidated == False,  # noqa: E712
         )
         if include_result_with_score == 'pass':
-            q = q.where(Evaluation.result == 'pass')
+            q = q.where(SLOEvaluation.result == 'pass')
         elif include_result_with_score == 'pass_or_warn':
-            q = q.where(Evaluation.result.in_(['pass', 'warning']))
+            q = q.where(SLOEvaluation.result.in_(['pass', 'warning']))
         return q
 
     async def _apply_pin_filter(
@@ -172,16 +172,16 @@ class BaselineRepository:
         slo_name: str,
     ) -> Any:
         """Restrict baseline window to evaluations after the active pin, if any."""
-        pin_q = select(Evaluation.period_start).where(
-            Evaluation.asset_id == asset_id,
-            Evaluation.slo_name == slo_name,
-            Evaluation.baseline_pinned_at.is_not(None),
-            Evaluation.baseline_unpinned_at.is_(None),
+        pin_q = select(SLOEvaluation.period_start).where(
+            SLOEvaluation.asset_id == asset_id,
+            SLOEvaluation.slo_name == slo_name,
+            SLOEvaluation.baseline_pinned_at.is_not(None),
+            SLOEvaluation.baseline_unpinned_at.is_(None),
         )
         pin_row = await self._session.execute(pin_q)
         pin_start = pin_row.scalar_one_or_none()
         if pin_start is not None:
-            q = q.where(Evaluation.period_start >= pin_start)
+            q = q.where(SLOEvaluation.period_start >= pin_start)
         return q
 
     async def load_evaluations_for_reeval(
@@ -190,7 +190,7 @@ class BaselineRepository:
         asset_id: uuid.UUID,
         slo_name: str,
         from_date: datetime,
-    ) -> list[Evaluation]:
+    ) -> list[SLOEvaluation]:
         """Load completed, non-invalidated evaluations for re-evaluation.
 
         Returns evaluations in chronological order (period_start ASC)
@@ -205,18 +205,18 @@ class BaselineRepository:
             Matching completed evaluations ordered by period_start ascending.
         """
         q = (
-            select(Evaluation)
+            select(SLOEvaluation)
             .where(
-                Evaluation.asset_id == asset_id,
-                Evaluation.slo_name == slo_name,
-                Evaluation.period_start >= from_date,
-                Evaluation.status == EvaluationStatus.COMPLETED,
-                Evaluation.invalidated == False,  # noqa: E712
+                SLOEvaluation.asset_id == asset_id,
+                SLOEvaluation.slo_name == slo_name,
+                SLOEvaluation.period_start >= from_date,
+                SLOEvaluation.status == EvaluationStatus.COMPLETED,
+                SLOEvaluation.invalidated == False,  # noqa: E712
             )
             .options(
-                selectinload(Evaluation.indicator_rows).joinedload(IndicatorResultRow.objective),
+                selectinload(SLOEvaluation.indicator_rows).joinedload(IndicatorResultRow.objective),
             )
-            .order_by(Evaluation.period_start)
+            .order_by(SLOEvaluation.period_start)
         )
         rows = await self._session.execute(q)
         return list(rows.scalars().all())
@@ -228,7 +228,7 @@ class BaselineRepository:
             params: ReEvalUpdateParams with all fields needed for the update.
         """
         result = await self._session.execute(
-            select(Evaluation).options(selectinload(Evaluation.annotations)).where(Evaluation.id == params.eval_id)
+            select(SLOEvaluation).options(selectinload(SLOEvaluation.annotations)).where(SLOEvaluation.id == params.eval_id)
         )
         ev = result.scalar_one_or_none()
         if ev is None:
@@ -249,7 +249,7 @@ class BaselineRepository:
         if params.slo_version is not None:
             values['slo_version'] = params.slo_version
 
-        await self._session.execute(update(Evaluation).where(Evaluation.id == params.eval_id).values(**values))
+        await self._session.execute(update(SLOEvaluation).where(SLOEvaluation.id == params.eval_id).values(**values))
 
         annotation_content = (
             f're-evaluated: {params.old_result} -> {params.new_result}, score {params.old_score} -> {params.new_score}'

@@ -151,6 +151,9 @@ class UISettings(BaseSettings):
 
     max_evaluations: int = _yaml.get('ui', {}).get('max_evaluations', 1000)
     page_size: int = _yaml.get('ui', {}).get('page_size', 200)
+    heatmap_slo_groups_expanded_by_default: bool = _yaml.get('ui', {}).get(
+        'heatmap_slo_groups_expanded_by_default', True
+    )
 
 
 class FileIngestionSettings(BaseSettings):

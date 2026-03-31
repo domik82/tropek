@@ -11,7 +11,7 @@ from sqlalchemy import String, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.db.models import Asset, Evaluation, EvaluationAnnotation, IndicatorResultRow
+from app.db.models import Asset, EvaluationAnnotation, EvaluationRun, IndicatorResultRow, SLOEvaluation
 from app.modules.quality_gate.engine.constants import EvaluationStatus
 from app.modules.quality_gate.exceptions import DuplicateEvaluationError
 from app.modules.quality_gate.params import EvalCreateParams
@@ -23,8 +23,12 @@ class EvaluationRepository:
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
 
-    async def create_pending(self, params: EvalCreateParams) -> Evaluation:
+    async def create_pending(self, params: EvalCreateParams) -> SLOEvaluation:
         """Create a new evaluation record in pending status.
+
+        Ensures the parent EvaluationRun row exists, creating it if absent.
+        This supports both the full trigger flow (parent created first) and
+        direct repository usage in tests (parent auto-created on demand).
 
         Args:
             params: Validated parameters for the new evaluation record.
@@ -32,6 +36,20 @@ class EvaluationRepository:
         Returns:
             Newly created Evaluation in pending status.
         """
+        # Ensure parent EvaluationRun exists (auto-create for direct callers / tests)
+        run = await self._session.get(EvaluationRun, params.evaluation_id)
+        if run is None:
+            run = EvaluationRun(
+                id=params.evaluation_id,
+                asset_id=params.asset_id,
+                eval_name=params.evaluation_name,
+                period_start=params.period_start,
+                period_end=params.period_end,
+                status='pending',
+            )
+            self._session.add(run)
+            await self._session.flush()
+
         # Merge asset tags as defaults into variables (caller values take precedence)
         merged_variables = dict(params.variables)
         asset_row = await self._session.get(Asset, params.asset_id)
@@ -39,8 +57,9 @@ class EvaluationRepository:
             for key, value in asset_row.tags.items():
                 merged_variables.setdefault(str(key), str(value))
 
-        ev = Evaluation(
+        ev = SLOEvaluation(
             id=uuid.uuid4(),
+            evaluation_id=params.evaluation_id,
             evaluation_name=params.evaluation_name,
             period_start=params.period_start,
             period_end=params.period_end,
@@ -77,7 +96,7 @@ class EvaluationRepository:
         evaluation_name: str,
         period_start: datetime,
         period_end: datetime,
-    ) -> Evaluation | None:
+    ) -> SLOEvaluation | None:
         """Find an existing non-failed evaluation matching the identity tuple.
 
         Returns the existing evaluation if found, None otherwise.
@@ -92,13 +111,13 @@ class EvaluationRepository:
           - Match with invalidated=True → caller returns 409 "invalidated, use re-evaluate"
           - Failed evaluations are excluded (not matched here, not in the index)
         """
-        q = select(Evaluation).where(
-            Evaluation.asset_id == asset_id,
-            Evaluation.slo_name == slo_name,
-            Evaluation.evaluation_name == evaluation_name,
-            Evaluation.period_start == period_start,
-            Evaluation.period_end == period_end,
-            Evaluation.status != EvaluationStatus.FAILED,
+        q = select(SLOEvaluation).where(
+            SLOEvaluation.asset_id == asset_id,
+            SLOEvaluation.slo_name == slo_name,
+            SLOEvaluation.evaluation_name == evaluation_name,
+            SLOEvaluation.period_start == period_start,
+            SLOEvaluation.period_end == period_end,
+            SLOEvaluation.status != EvaluationStatus.FAILED,
         )
         result = await self._session.execute(q)
         return result.scalar_one_or_none()
@@ -115,11 +134,11 @@ class EvaluationRepository:
         Used by the worker to defer processing until predecessors complete,
         ensuring baselines are available in chronological order.
         """
-        q = select(func.count()).select_from(Evaluation).where(
-            Evaluation.asset_id == asset_id,
-            Evaluation.slo_name == slo_name,
-            Evaluation.period_start < period_start,
-            Evaluation.status.in_([EvaluationStatus.PENDING, EvaluationStatus.RUNNING]),
+        q = select(func.count()).select_from(SLOEvaluation).where(
+            SLOEvaluation.asset_id == asset_id,
+            SLOEvaluation.slo_name == slo_name,
+            SLOEvaluation.period_start < period_start,
+            SLOEvaluation.status.in_([EvaluationStatus.PENDING, EvaluationStatus.RUNNING]),
         )
         result = await self._session.execute(q)
         return (result.scalar() or 0) > 0
@@ -132,8 +151,8 @@ class EvaluationRepository:
             worker_id: Identifier of the worker process claiming this job.
         """
         await self._session.execute(
-            update(Evaluation)
-            .where(Evaluation.id == eval_id)
+            update(SLOEvaluation)
+            .where(SLOEvaluation.id == eval_id)
             .values(
                 status=EvaluationStatus.RUNNING,
                 started_at=datetime.now(tz=UTC),
@@ -141,12 +160,14 @@ class EvaluationRepository:
             )
         )
 
-    async def mark_completed(
+    async def mark_completed(  # noqa: PLR0913
         self,
         eval_id: uuid.UUID,
         *,
         result: str,
         score: float,
+        achieved_points: int | None = None,
+        total_points: int | None = None,
         slo_name: str | None = None,
         slo_version: int | None = None,
         job_stats: dict[str, Any] | None = None,
@@ -158,6 +179,8 @@ class EvaluationRepository:
             eval_id: Evaluation to update.
             result: One of "pass", "warning", "fail", "error".
             score: Weighted score 0.0-100.0.
+            achieved_points: Weighted points achieved by passing/warning objectives.
+            total_points: Total weighted points possible.
             slo_name: Named SLO used, if any.
             slo_version: Version of the named SLO, if any.
             job_stats: Optional dict of job execution stats to merge.
@@ -170,13 +193,15 @@ class EvaluationRepository:
             'status': EvaluationStatus.COMPLETED,
             'result': result,
             'score': score,
+            'achieved_points': achieved_points,
+            'total_points': total_points,
             'job_stats': merged_stats,
         }
         if slo_name is not None:
             values['slo_name'] = slo_name
         if slo_version is not None:
             values['slo_version'] = slo_version
-        await self._session.execute(update(Evaluation).where(Evaluation.id == eval_id).values(**values))
+        await self._session.execute(update(SLOEvaluation).where(SLOEvaluation.id == eval_id).values(**values))
 
     async def mark_failed(self, eval_id: uuid.UUID, job_stats: dict[str, Any] | None = None) -> None:
         """Transition evaluation to failed, recording error info.
@@ -186,8 +211,8 @@ class EvaluationRepository:
             job_stats: Job stats dict may include error, retry_count, etc.
         """
         await self._session.execute(
-            update(Evaluation)
-            .where(Evaluation.id == eval_id)
+            update(SLOEvaluation)
+            .where(SLOEvaluation.id == eval_id)
             .values(
                 status=EvaluationStatus.FAILED,
                 job_stats=job_stats or {},
@@ -202,12 +227,12 @@ class EvaluationRepository:
             job_stats: Partial execution stats (indicators_attempted, _completed, etc.).
         """
         await self._session.execute(
-            update(Evaluation)
-            .where(Evaluation.id == eval_id)
+            update(SLOEvaluation)
+            .where(SLOEvaluation.id == eval_id)
             .values(status=EvaluationStatus.PARTIAL, job_stats=job_stats or {})
         )
 
-    async def get_by_id(self, eval_id: uuid.UUID) -> Evaluation | None:
+    async def get_by_id(self, eval_id: uuid.UUID) -> SLOEvaluation | None:
         """Fetch a single evaluation with annotations eagerly loaded.
 
         Args:
@@ -217,12 +242,12 @@ class EvaluationRepository:
             Evaluation with annotations, or None if not found.
         """
         result = await self._session.execute(
-            select(Evaluation)
+            select(SLOEvaluation)
             .options(
-                selectinload(Evaluation.annotations),
-                selectinload(Evaluation.indicator_rows).joinedload(IndicatorResultRow.objective),
+                selectinload(SLOEvaluation.annotations),
+                selectinload(SLOEvaluation.indicator_rows).joinedload(IndicatorResultRow.objective),
             )
-            .where(Evaluation.id == eval_id)
+            .where(SLOEvaluation.id == eval_id)
         )
         return result.scalar_one_or_none()
 
@@ -236,7 +261,7 @@ class EvaluationRepository:
         to: datetime | None = None,
         limit: int = 50,
         offset: int = 0,
-    ) -> list[Evaluation]:
+    ) -> list[SLOEvaluation]:
         """List evaluations with optional filters.
 
         Args:
@@ -249,24 +274,24 @@ class EvaluationRepository:
             offset: Number of rows to skip (for pagination).
 
         Returns:
-            List of Evaluation rows, newest first.
+            List of SLOEvaluation rows, newest first.
         """
-        q = select(Evaluation)
+        q = select(SLOEvaluation)
         if evaluation_name:
-            q = q.where(Evaluation.evaluation_name == evaluation_name)
+            q = q.where(SLOEvaluation.evaluation_name == evaluation_name)
         if asset_name:
-            q = q.where(Evaluation.asset_snapshot['name'].as_string() == asset_name)
+            q = q.where(SLOEvaluation.asset_snapshot['name'].as_string() == asset_name)
         if result:
-            q = q.where(Evaluation.result == result)
+            q = q.where(SLOEvaluation.result == result)
         if from_:
-            q = q.where(Evaluation.period_start >= from_)
+            q = q.where(SLOEvaluation.period_start >= from_)
         if to:
-            q = q.where(Evaluation.period_start <= to)
-        q = q.order_by(Evaluation.period_start.desc()).limit(limit).offset(offset)
+            q = q.where(SLOEvaluation.period_start <= to)
+        q = q.order_by(SLOEvaluation.period_start.desc()).limit(limit).offset(offset)
         rows = await self._session.execute(q)
         return list(rows.scalars().all())
 
-    async def find_stuck(self, threshold_seconds: int) -> list[Evaluation]:
+    async def find_stuck(self, threshold_seconds: int) -> list[SLOEvaluation]:
         """Find evaluations stuck in running status for longer than the threshold.
 
         Used by the watchdog to detect and reschedule crashed jobs.
@@ -279,9 +304,9 @@ class EvaluationRepository:
         """
         cutoff = datetime.now(tz=UTC) - timedelta(seconds=threshold_seconds)
         result = await self._session.execute(
-            select(Evaluation).where(
-                Evaluation.status == EvaluationStatus.RUNNING,
-                Evaluation.started_at < cutoff,
+            select(SLOEvaluation).where(
+                SLOEvaluation.status == EvaluationStatus.RUNNING,
+                SLOEvaluation.started_at < cutoff,
             )
         )
         return list(result.scalars().all())
@@ -300,7 +325,7 @@ class EvaluationRepository:
         limit: int = 50,
         offset: int = 0,
     ) -> tuple[
-        list[Evaluation],
+        list[SLOEvaluation],
         int,
         dict[uuid.UUID, int],
         dict[uuid.UUID, EvaluationAnnotation],
@@ -311,27 +336,28 @@ class EvaluationRepository:
         count_map: {eval_id -> visible annotation count} for the returned page.
         latest_annotation_map: {eval_id -> most recent visible annotation} for the page.
         """
-        q = select(Evaluation)
+        q = select(SLOEvaluation)
         if asset_id:
-            q = q.where(Evaluation.asset_id == asset_id)
+            q = q.where(SLOEvaluation.asset_id == asset_id)
         if slo_name:
-            q = q.where(Evaluation.slo_name == slo_name)
+            q = q.where(SLOEvaluation.slo_name == slo_name)
         if evaluation_name:
-            q = q.where(Evaluation.evaluation_name.in_(evaluation_name))
+            q = q.where(SLOEvaluation.evaluation_name.in_(evaluation_name))
         if result:
-            q = q.where(Evaluation.result == result)
+            q = q.where(SLOEvaluation.result == result)
         if date_prefix:
-            q = q.where(Evaluation.period_start.cast(String).like(f'{date_prefix}%'))
+            q = q.where(SLOEvaluation.period_start.cast(String).like(f'{date_prefix}%'))
         if asset_ids:
-            q = q.where(Evaluation.asset_id.in_(asset_ids))
+            q = q.where(SLOEvaluation.asset_id.in_(asset_ids))
         if from_ts:
-            q = q.where(Evaluation.period_start >= from_ts)
+            q = q.where(SLOEvaluation.period_start >= from_ts)
         if to_ts:
-            q = q.where(Evaluation.period_start <= to_ts)
-        count_q = select(func.count()).select_from(q.subquery())
+            q = q.where(SLOEvaluation.period_start <= to_ts)
+        sub = q.subquery()
+        count_q = select(func.count(func.distinct(sub.c.evaluation_id)))
         total_result = await self._session.execute(count_q)
         total = total_result.scalar_one()
-        q = q.order_by(Evaluation.period_start.desc()).limit(limit).offset(offset)
+        q = q.order_by(SLOEvaluation.period_start.desc()).limit(limit).offset(offset)
         rows = await self._session.execute(q)
         evals = list(rows.scalars().all())
         count_map: dict[uuid.UUID, int] = {}
@@ -339,42 +365,42 @@ class EvaluationRepository:
         if evals:
             eval_ids = [ev.id for ev in evals]
             cnt_rows = await self._session.execute(
-                select(EvaluationAnnotation.evaluation_id, func.count().label('cnt'))
+                select(EvaluationAnnotation.slo_evaluation_id, func.count().label('cnt'))
                 .where(
-                    EvaluationAnnotation.evaluation_id.in_(eval_ids),
+                    EvaluationAnnotation.slo_evaluation_id.in_(eval_ids),
                     EvaluationAnnotation.hidden_at.is_(None),
                 )
-                .group_by(EvaluationAnnotation.evaluation_id)
+                .group_by(EvaluationAnnotation.slo_evaluation_id)
             )
-            count_map = {row.evaluation_id: row.cnt for row in cnt_rows}
+            count_map = {row.slo_evaluation_id: row.cnt for row in cnt_rows}
             # Fetch latest visible annotation per evaluation using DISTINCT ON.
             latest_q = (
                 select(EvaluationAnnotation)
                 .where(
-                    EvaluationAnnotation.evaluation_id.in_(eval_ids),
+                    EvaluationAnnotation.slo_evaluation_id.in_(eval_ids),
                     EvaluationAnnotation.hidden_at.is_(None),
                 )
                 .order_by(
-                    EvaluationAnnotation.evaluation_id,
+                    EvaluationAnnotation.slo_evaluation_id,
                     EvaluationAnnotation.created_at.desc(),
                 )
-                .distinct(EvaluationAnnotation.evaluation_id)
+                .distinct(EvaluationAnnotation.slo_evaluation_id)
             )
             latest_rows = await self._session.execute(latest_q)
-            latest_map = {a.evaluation_id: a for a in latest_rows.scalars().all()}
+            latest_map = {a.slo_evaluation_id: a for a in latest_rows.scalars().all()}
         return evals, total, count_map, latest_map
 
-    async def invalidate(self, eval_id: uuid.UUID, *, note: str) -> Evaluation | None:
+    async def invalidate(self, eval_id: uuid.UUID, *, note: str) -> SLOEvaluation | None:
         """Mark an evaluation as invalidated."""
         await self._session.execute(
-            update(Evaluation).where(Evaluation.id == eval_id).values(invalidated=True, invalidation_note=note)
+            update(SLOEvaluation).where(SLOEvaluation.id == eval_id).values(invalidated=True, invalidation_note=note)
         )
         return await self.get_by_id(eval_id)
 
-    async def restore(self, eval_id: uuid.UUID) -> Evaluation | None:
+    async def restore(self, eval_id: uuid.UUID) -> SLOEvaluation | None:
         """Clear invalidation flag."""
         await self._session.execute(
-            update(Evaluation).where(Evaluation.id == eval_id).values(invalidated=False, invalidation_note=None)
+            update(SLOEvaluation).where(SLOEvaluation.id == eval_id).values(invalidated=False, invalidation_note=None)
         )
         return await self.get_by_id(eval_id)
 
@@ -384,7 +410,7 @@ class EvaluationRepository:
         *,
         reason: str,
         author: str,
-    ) -> Evaluation | None:
+    ) -> SLOEvaluation | None:
         """Pin an evaluation as the baseline floor for its asset+SLO combination.
 
         Atomically unpins any existing active pin for the same (asset_id, slo_name).
@@ -395,19 +421,19 @@ class EvaluationRepository:
         # Unpin any existing active pin for this asset+SLO
         if ev.asset_id and ev.slo_name:
             await self._session.execute(
-                update(Evaluation)
+                update(SLOEvaluation)
                 .where(
-                    Evaluation.asset_id == ev.asset_id,
-                    Evaluation.slo_name == ev.slo_name,
-                    Evaluation.baseline_pinned_at.is_not(None),
-                    Evaluation.baseline_unpinned_at.is_(None),
+                    SLOEvaluation.asset_id == ev.asset_id,
+                    SLOEvaluation.slo_name == ev.slo_name,
+                    SLOEvaluation.baseline_pinned_at.is_not(None),
+                    SLOEvaluation.baseline_unpinned_at.is_(None),
                 )
                 .values(baseline_unpinned_at=func.now())
             )
         # Pin the target evaluation (reset unpinned_at in case it was previously unpinned)
         await self._session.execute(
-            update(Evaluation)
-            .where(Evaluation.id == eval_id)
+            update(SLOEvaluation)
+            .where(SLOEvaluation.id == eval_id)
             .values(
                 baseline_pinned_at=func.now(),
                 baseline_unpinned_at=None,
@@ -418,10 +444,10 @@ class EvaluationRepository:
         await self._session.flush()
         return await self.get_by_id(eval_id)
 
-    async def unpin_baseline(self, eval_id: uuid.UUID) -> Evaluation | None:
+    async def unpin_baseline(self, eval_id: uuid.UUID) -> SLOEvaluation | None:
         """Remove the baseline pin from an evaluation."""
         await self._session.execute(
-            update(Evaluation).where(Evaluation.id == eval_id).values(baseline_unpinned_at=func.now())
+            update(SLOEvaluation).where(SLOEvaluation.id == eval_id).values(baseline_unpinned_at=func.now())
         )
         await self._session.flush()
         return await self.get_by_id(eval_id)
@@ -433,7 +459,7 @@ class EvaluationRepository:
         new_result: str,
         reason: str,
         author: str,
-    ) -> Evaluation | None:
+    ) -> SLOEvaluation | None:
         """Override the evaluation result, preserving the original."""
         ev = await self.get_by_id(eval_id)
         if ev is None:
@@ -446,18 +472,18 @@ class EvaluationRepository:
         # Only set original on first override — preserve the true original
         if ev.original_result is None:
             values['original_result'] = ev.result
-        await self._session.execute(update(Evaluation).where(Evaluation.id == eval_id).values(**values))
+        await self._session.execute(update(SLOEvaluation).where(SLOEvaluation.id == eval_id).values(**values))
         await self._session.flush()
         return await self.get_by_id(eval_id)
 
-    async def restore_override(self, eval_id: uuid.UUID) -> Evaluation | None:
+    async def restore_override(self, eval_id: uuid.UUID) -> SLOEvaluation | None:
         """Restore the original result, clearing the override."""
         ev = await self.get_by_id(eval_id)
         if ev is None or ev.original_result is None:
             return ev
         await self._session.execute(
-            update(Evaluation)
-            .where(Evaluation.id == eval_id)
+            update(SLOEvaluation)
+            .where(SLOEvaluation.id == eval_id)
             .values(
                 result=ev.original_result,
                 original_result=None,
@@ -480,17 +506,17 @@ class EvaluationRepository:
         """
         stmt = (
             select(
-                Evaluation.evaluation_name,
-                func.count().label('cnt'),
-                func.max(Evaluation.period_start).label('last_run'),
+                SLOEvaluation.evaluation_name,
+                func.count(SLOEvaluation.evaluation_id.distinct()).label('cnt'),
+                func.max(SLOEvaluation.period_start).label('last_run'),
             )
-            .where(Evaluation.status == EvaluationStatus.COMPLETED)
-            .group_by(Evaluation.evaluation_name)
-            .order_by(func.max(Evaluation.period_start).desc())
+            .where(SLOEvaluation.status == EvaluationStatus.COMPLETED)
+            .group_by(SLOEvaluation.evaluation_name)
+            .order_by(func.max(SLOEvaluation.period_start).desc())
         )
         if asset_id is not None:
-            stmt = stmt.where(Evaluation.asset_id == asset_id)
+            stmt = stmt.where(SLOEvaluation.asset_id == asset_id)
         if asset_ids:
-            stmt = stmt.where(Evaluation.asset_id.in_(asset_ids))
+            stmt = stmt.where(SLOEvaluation.asset_id.in_(asset_ids))
         rows = (await self._session.execute(stmt)).all()
         return [(r.evaluation_name, r.cnt, r.last_run) for r in rows]
