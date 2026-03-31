@@ -391,16 +391,26 @@ class EvaluationRepository:
         return evals, total, count_map, latest_map
 
     async def invalidate(self, eval_id: uuid.UUID, *, note: str) -> SLOEvaluation | None:
-        """Mark an evaluation as invalidated."""
+        """Mark an evaluation and all its siblings in the same run as invalidated."""
+        ev = await self.get_by_id(eval_id)
+        if ev is None:
+            return None
         await self._session.execute(
-            update(SLOEvaluation).where(SLOEvaluation.id == eval_id).values(invalidated=True, invalidation_note=note)
+            update(SLOEvaluation)
+            .where(SLOEvaluation.evaluation_id == ev.evaluation_id)
+            .values(invalidated=True, invalidation_note=note)
         )
         return await self.get_by_id(eval_id)
 
     async def restore(self, eval_id: uuid.UUID) -> SLOEvaluation | None:
-        """Clear invalidation flag."""
+        """Clear invalidation flag on an evaluation and all its siblings in the same run."""
+        ev = await self.get_by_id(eval_id)
+        if ev is None:
+            return None
         await self._session.execute(
-            update(SLOEvaluation).where(SLOEvaluation.id == eval_id).values(invalidated=False, invalidation_note=None)
+            update(SLOEvaluation)
+            .where(SLOEvaluation.evaluation_id == ev.evaluation_id)
+            .values(invalidated=False, invalidation_note=None)
         )
         return await self.get_by_id(eval_id)
 
