@@ -14,17 +14,18 @@ export interface TimeSlotSelection {
 
 interface Props {
   data: MetricHeatmapResponse
+  expandState?: Map<string, boolean>
   selectedEvalId?: string
   onEvalSelect?: (evalId: string) => void
   onSlotSelect?: (slot: TimeSlotSelection) => void
   notedSlots?: Map<string, SlotNote>
 }
 
-export function AssetHeatmap({ data, selectedEvalId, onEvalSelect, onSlotSelect, notedSlots }: Props) {
+export function AssetHeatmap({ data, expandState, selectedEvalId, onEvalSelect, onSlotSelect, notedSlots }: Props) {
   const { theme } = useTheme()
   const colours = RESULT_COLOUR[theme]
 
-  const { slots, rows, cells } = buildAssetHeatmapData(data)
+  const { slots, rows, cells } = buildAssetHeatmapData(data, expandState ?? new Map())
 
   const selectedColumn = selectedEvalId
     ? (() => {

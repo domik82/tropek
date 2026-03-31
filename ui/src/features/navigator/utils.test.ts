@@ -82,56 +82,6 @@ describe('buildGroupScoreData', () => {
   })
 })
 
-describe('buildAssetHeatmapData', () => {
-  it('maps metric-heatmap API response to grid data', () => {
-    const resp: MetricHeatmapResponse = {
-      asset_name: 'asset-a',
-      slots: ['2026-01-01T06:00:00Z', '2026-01-02T06:00:00Z'],
-      metrics: [{ name: 'error_rate', display_name: 'Error Rate' }],
-      cells: [
-        { slot: '2026-01-01T06:00:00Z', metric: 'error_rate', display_name: 'Error Rate', result: 'pass', score: 100, eval_id: 'e1', evaluation_name: 'test' },
-        { slot: '2026-01-02T06:00:00Z', metric: 'error_rate', display_name: 'Error Rate', result: 'fail', score: 0, eval_id: 'e2', evaluation_name: 'test' },
-      ],
-    }
-    const { slots, rows, cells } = buildAssetHeatmapData(resp)
-    expect(slots).toHaveLength(2)
-    expect(rows).toHaveLength(1)
-    expect(cells).toHaveLength(2)
-    expect(cells[1].result).toBe('fail')
-    expect(cells[1].evalId).toBe('e2')
-  })
-
-  it('creates separate cells for same metric+slot with different evaluation_name', () => {
-    const resp: MetricHeatmapResponse = {
-      asset_name: 'test-asset',
-      slots: ['2026-03-15T00:00:00Z', '2026-03-15T00:00:00Z'],
-      metrics: [{ name: 'latency_p95', display_name: 'Latency P95' }],
-      cells: [
-        { slot: '2026-03-15T00:00:00Z', metric: 'latency_p95', display_name: 'Latency P95', result: 'pass', score: 90, eval_id: 'eval-1', evaluation_name: 'load-test' },
-        { slot: '2026-03-15T00:00:00Z', metric: 'latency_p95', display_name: 'Latency P95', result: 'fail', score: 40, eval_id: 'eval-2', evaluation_name: 'ad-hoc-run' },
-      ],
-    }
-    const data = buildAssetHeatmapData(resp)
-    const latencyCells = data.cells.filter(c => c.rowLabel === 'Latency P95' && c.result !== 'none')
-    expect(latencyCells).toHaveLength(2)
-    expect(latencyCells.map(c => c.evalId).sort()).toEqual(['eval-1', 'eval-2'])
-  })
-
-  it('stores evaluation_name on each cell', () => {
-    const resp: MetricHeatmapResponse = {
-      asset_name: 'test-asset',
-      slots: ['2026-03-15T00:00:00Z'],
-      metrics: [{ name: 'latency_p95', display_name: 'Latency P95' }],
-      cells: [
-        { slot: '2026-03-15T00:00:00Z', metric: 'latency_p95', display_name: 'Latency P95', result: 'pass', score: 90, eval_id: 'eval-1', evaluation_name: 'load-test' },
-      ],
-    }
-    const data = buildAssetHeatmapData(resp)
-    const cell = data.cells.find(c => c.result !== 'none')!
-    expect(cell.evaluation_name).toBe('load-test')
-  })
-})
-
 describe('buildGroupHeatmapData — collision fix', () => {
   it('creates separate cells for same asset+slot with different evaluation_name', () => {
     const evals: EvaluationSummary[] = [
@@ -141,5 +91,85 @@ describe('buildGroupHeatmapData — collision fix', () => {
     const data = buildGroupHeatmapData(evals)
     const checkoutCells = data.cells.filter(c => c.rowLabel === 'checkout-api' && c.result !== 'none')
     expect(checkoutCells).toHaveLength(2)
+  })
+})
+
+const EVAL_ID_1 = 'aaaaaaaa-0000-0000-0000-000000000001'
+const EVAL_ID_2 = 'aaaaaaaa-0000-0000-0000-000000000002'
+const SLO_EVAL_ID_1 = 'bbbbbbbb-0000-0000-0000-000000000001'
+const SLO_EVAL_ID_2 = 'bbbbbbbb-0000-0000-0000-000000000002'
+
+const RESP: MetricHeatmapResponse = {
+  asset_name: 'test-asset',
+  columns: [
+    { evaluation_id: EVAL_ID_1, period_start: '2026-01-15T00:00:00Z', period_end: '2026-01-15T23:59:59Z', eval_name: 'daily' },
+    { evaluation_id: EVAL_ID_2, period_start: '2026-01-16T00:00:00Z', period_end: '2026-01-16T23:59:59Z', eval_name: 'daily' },
+  ],
+  groups: [
+    {
+      slo_name: 'nginx',
+      metrics: [
+        { name: 'error_rate', display_name: 'Error Rate' },
+        { name: 'p99_latency', display_name: 'P99 Latency' },
+      ],
+      cells: [
+        { evaluation_id: EVAL_ID_1, slo_evaluation_id: SLO_EVAL_ID_1, period_start: '2026-01-15T00:00:00Z', metric: 'error_rate', display_name: 'Error Rate', result: 'pass', score: 100 },
+        { evaluation_id: EVAL_ID_1, slo_evaluation_id: SLO_EVAL_ID_1, period_start: '2026-01-15T00:00:00Z', metric: 'p99_latency', display_name: 'P99 Latency', result: 'warning', score: 50 },
+        { evaluation_id: EVAL_ID_2, slo_evaluation_id: SLO_EVAL_ID_2, period_start: '2026-01-16T00:00:00Z', metric: 'error_rate', display_name: 'Error Rate', result: 'pass', score: 100 },
+        { evaluation_id: EVAL_ID_2, slo_evaluation_id: SLO_EVAL_ID_2, period_start: '2026-01-16T00:00:00Z', metric: 'p99_latency', display_name: 'P99 Latency', result: 'pass', score: 90 },
+      ],
+      summary: [
+        { evaluation_id: EVAL_ID_1, period_start: '2026-01-15T00:00:00Z', result: 'warning', score: 75 },
+        { evaluation_id: EVAL_ID_2, period_start: '2026-01-16T00:00:00Z', result: 'pass', score: 95 },
+      ],
+    },
+  ],
+  composite: [
+    { evaluation_id: EVAL_ID_1, period_start: '2026-01-15T00:00:00Z', result: 'warning', score: 75 },
+    { evaluation_id: EVAL_ID_2, period_start: '2026-01-16T00:00:00Z', result: 'pass', score: 95 },
+  ],
+}
+
+describe('buildAssetHeatmapData', () => {
+  it('returns 2 columns', () => {
+    const d = buildAssetHeatmapData(RESP, new Map())
+    expect(d.slots).toHaveLength(2)
+  })
+
+  it('with all groups collapsed: rows = Overall + 1 header = 2 rows', () => {
+    const d = buildAssetHeatmapData(RESP, new Map([['nginx', false]]))
+    // Overall + nginx header
+    expect(d.rows).toHaveLength(2)
+  })
+
+  it('with nginx expanded: rows = Overall + 1 header + 2 indicators = 4 rows', () => {
+    const d = buildAssetHeatmapData(RESP, new Map([['nginx', true]]))
+    expect(d.rows).toHaveLength(4)
+  })
+
+  it('Overall row cells carry composite result', () => {
+    const d = buildAssetHeatmapData(RESP, new Map())
+    const overallCells = d.cells.filter(c => c.rowLabel === 'Overall Score')
+    expect(overallCells).toHaveLength(2)
+    expect(overallCells[0].result).toBe('warning')
+    expect(overallCells[1].result).toBe('pass')
+  })
+
+  it('SLO header cells carry summary result', () => {
+    const d = buildAssetHeatmapData(RESP, new Map([['nginx', false]]))
+    const headerCells = d.cells.filter(c => c.isSloHeader)
+    expect(headerCells).toHaveLength(2)
+    expect(headerCells[0].result).toBe('warning')
+  })
+
+  it('expanded indicator cells carry slo_evaluation_id in evalId', () => {
+    const d = buildAssetHeatmapData(RESP, new Map([['nginx', true]]))
+    const indCells = d.cells.filter(c => c.evalId)
+    expect(indCells[0].evalId).toBe(SLO_EVAL_ID_1)
+  })
+
+  it('headerRowIndices marks SLO header rows', () => {
+    const d = buildAssetHeatmapData(RESP, new Map([['nginx', true]]))
+    expect(d.headerRowIndices.size).toBe(1)
   })
 })
