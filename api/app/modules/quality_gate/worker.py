@@ -193,7 +193,7 @@ async def _query_adapter_safe(
 async def _write_indicator_rows(
     log: structlog.stdlib.BoundLogger,
     session: AsyncSession,
-    eval_id: uuid.UUID,
+    slo_evaluation_id: uuid.UUID,
     slo_def: SLODefinition,
     indicator_results: list[Any],
 ) -> None:
@@ -208,7 +208,7 @@ async def _write_indicator_rows(
             continue
         rows.append(
             {
-                'evaluation_id': eval_id,
+                'evaluation_id': slo_evaluation_id,
                 'slo_objective_id': obj_id,
                 'value': ir.value,
                 'compared_value': ir.compared_value,
@@ -219,7 +219,7 @@ async def _write_indicator_rows(
             }
         )
     if rows:
-        await indicator_repo.bulk_insert(eval_id, rows)
+        await indicator_repo.bulk_insert(slo_evaluation_id, rows)
 
 
 def _build_sli_rows(
@@ -452,11 +452,12 @@ async def run_evaluation(
     )
 
     # Write to normalized indicator_results table
-    await _write_indicator_rows(log, session, eval_id, slo_def, eval_result.indicator_results)
+    slo_eval_id = eval_id
+    await _write_indicator_rows(log, session, slo_eval_id, slo_def, eval_result.indicator_results)
 
     # Write SLI values to TimescaleDB hypertable
     sli_rows = _build_sli_rows(
-        eval_id=eval_id,
+        eval_id=slo_eval_id,
         ev=ev,
         sli_def=sli_def,
         indicator_results=eval_result.indicator_results,
