@@ -722,6 +722,23 @@ class _SLOBindings:
         resp = self._http.delete(f'/asset-groups/{group_name}/slo-bindings/{slo_name}')
         _raise_for_status(resp)
 
+    def get_comparison_rules(self, asset_name: str, slo_name: str) -> list[dict[str, Any]]:
+        """Get comparison rules for an asset SLO binding."""
+        resp = self._http.get(f'/assets/{asset_name}/slo-bindings/{slo_name}/comparison-rules')
+        _raise_for_status(resp)
+        return resp.json()  # type: ignore[no-any-return]
+
+    def update_comparison_rules(
+        self, asset_name: str, slo_name: str, rules: list[dict[str, Any]]
+    ) -> list[dict[str, Any]]:
+        """Update comparison rules for an asset SLO binding."""
+        resp = self._http.put(
+            f'/assets/{asset_name}/slo-bindings/{slo_name}/comparison-rules',
+            json={'rules': rules},
+        )
+        _raise_for_status(resp)
+        return resp.json()  # type: ignore[no-any-return]
+
 
 class _SLOGroups:
     """SLO group CRUD."""
