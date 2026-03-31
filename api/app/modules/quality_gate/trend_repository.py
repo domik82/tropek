@@ -10,7 +10,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.db.models import IndicatorResultRow, SLIValue, SLOEvaluation, SLOObjective
+from app.db.models import EvaluationRun, IndicatorResultRow, SLIValue, SLOEvaluation, SLOObjective
 from app.modules.quality_gate.engine.constants import EvaluationStatus
 
 
@@ -48,6 +48,42 @@ class TrendRepository:
             q = q.where(SLOEvaluation.period_start >= from_ts)
         if to_ts:
             q = q.where(SLOEvaluation.period_start <= to_ts)
+        result = await self._session.execute(q)
+        return list(result.scalars().all())
+
+    async def get_grouped_metric_heatmap(
+        self,
+        *,
+        asset_id: uuid.UUID,
+        limit: int = 30,
+        eval_name: list[str] | None = None,
+        from_ts: datetime | None = None,
+        to_ts: datetime | None = None,
+    ) -> list[EvaluationRun]:
+        """Fetch completed EvaluationRun rows with all child SLO evaluations and indicator results.
+
+        Returns rows ordered period_start DESC (caller reverses to oldest-first for display).
+        """
+        q = (
+            select(EvaluationRun)
+            .options(
+                selectinload(EvaluationRun.slo_evaluations)
+                .selectinload(SLOEvaluation.indicator_rows)
+                .joinedload(IndicatorResultRow.objective),
+            )
+            .where(
+                EvaluationRun.asset_id == asset_id,
+                EvaluationRun.status == EvaluationStatus.COMPLETED,
+            )
+            .order_by(EvaluationRun.period_start.desc())
+            .limit(limit)
+        )
+        if eval_name:
+            q = q.where(EvaluationRun.eval_name.in_(eval_name))
+        if from_ts:
+            q = q.where(EvaluationRun.period_start >= from_ts)
+        if to_ts:
+            q = q.where(EvaluationRun.period_start <= to_ts)
         result = await self._session.execute(q)
         return list(result.scalars().all())
 
