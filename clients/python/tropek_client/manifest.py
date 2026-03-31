@@ -118,7 +118,7 @@ def _topological_sort(docs: list[ManifestDocument]) -> list[ManifestDocument]:
     return sorted(docs, key=sort_key)
 
 
-def _validate_doc_refs(  # noqa: C901, PLR0912
+def _validate_doc_refs(  # noqa: C901
     doc: ManifestDocument, names_by_kind: dict[str, set[str]], errors: list[str]
 ) -> None:
     """Validate cross-references in a single manifest document (appends warnings to errors)."""
@@ -327,7 +327,7 @@ def _lookup(client: Any, doc: ManifestDocument) -> Any | None:  # noqa: C901, PL
         return None
 
 
-def _has_diff(doc: ManifestDocument, existing: Any) -> bool:  # noqa: C901, PLR0911
+def _has_diff(doc: ManifestDocument, existing: Any) -> bool:  # noqa: PLR0911
     """Check if the manifest differs from the existing entity."""
     match doc.kind:
         case 'AssetType':
@@ -461,7 +461,7 @@ def _create_asset_group(
         client.asset_groups.add_subgroup(name, str(child.id), weight=subgroup.get('weight', 1.0))
 
 
-def _create(client: Any, doc: ManifestDocument) -> None:  # noqa: C901
+def _create(client: Any, doc: ManifestDocument) -> None:
     """Create a new entity via the client."""
     name = doc.metadata['name']
     match doc.kind:
@@ -523,7 +523,7 @@ def _create(client: Any, doc: ManifestDocument) -> None:  # noqa: C901
             _create_template_binding(client, doc.spec)
 
 
-def _update(client: Any, doc: ManifestDocument) -> None:  # noqa: C901
+def _update(client: Any, doc: ManifestDocument) -> None:
     """Update an existing entity via the client."""
     name = doc.metadata['name']
     match doc.kind:
