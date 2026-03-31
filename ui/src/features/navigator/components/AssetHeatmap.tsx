@@ -14,18 +14,27 @@ export interface TimeSlotSelection {
 
 interface Props {
   data: MetricHeatmapResponse
-  expandState?: Map<string, boolean>
   selectedEvalId?: string
   onEvalSelect?: (evalId: string) => void
   onSlotSelect?: (slot: TimeSlotSelection) => void
   notedSlots?: Map<string, SlotNote>
+  expandState: Map<string, boolean>
+  onSloToggle: (sloName: string) => void
 }
 
-export function AssetHeatmap({ data, expandState, selectedEvalId, onEvalSelect, onSlotSelect, notedSlots }: Props) {
+export function AssetHeatmap({
+  data,
+  selectedEvalId,
+  onEvalSelect,
+  onSlotSelect,
+  notedSlots,
+  expandState,
+  onSloToggle,
+}: Props) {
   const { theme } = useTheme()
   const colours = RESULT_COLOUR[theme]
 
-  const { slots, rows, cells } = buildAssetHeatmapData(data, expandState ?? new Map())
+  const { slots, rows, cells, headerRowIndices } = buildAssetHeatmapData(data, expandState)
 
   const selectedColumn = selectedEvalId
     ? (() => {
@@ -39,6 +48,14 @@ export function AssetHeatmap({ data, expandState, selectedEvalId, onEvalSelect, 
       return `${cell.rowLabel}<br/>${fmtDateTime(cell.slot)}<br/><em>no data</em>`
     }
     const rc = colours[cell.result as keyof typeof colours] ?? '#ccc'
+    if (cell.isSloHeader) {
+      return [
+        `<b style="color:#58a6ff">${cell.rowLabel}</b>`,
+        fmtDateTime(cell.slot),
+        `Score: <b style="color:${rc}">${cell.score}</b> · <b style="color:${rc}">${cell.result.toUpperCase()}</b>`,
+        `<span style="color:#888;font-size:10px">Click to expand/collapse</span>`,
+      ].join('<br/>')
+    }
     return [
       cell.evaluation_name ? `<span style="color:#94a3b8">${cell.evaluation_name}</span>` : '',
       `<b>${cell.rowLabel}</b>`,
@@ -51,6 +68,11 @@ export function AssetHeatmap({ data, expandState, selectedEvalId, onEvalSelect, 
   }
 
   function onCellClick(cell: HeatmapCell): void {
+    // SLO header row click → toggle expand/collapse
+    if (cell.isSloHeader && cell.sloName) {
+      onSloToggle(cell.sloName)
+      return
+    }
     if (onSlotSelect) {
       // Collect all eval IDs in the same column (same slot + evaluation_name).
       // Filter by column index, not slot string, because multiple columns can
@@ -74,7 +96,8 @@ export function AssetHeatmap({ data, expandState, selectedEvalId, onEvalSelect, 
       selectedColumn={selectedColumn}
       onCellClick={onCellClick}
       formatTooltip={formatTooltip}
-      instructionText="Click a cell to select that evaluation."
+      headerRowIndices={headerRowIndices}
+      instructionText="Click an indicator cell to select that evaluation. Click an SLO row to expand/collapse."
       aboveChart={
         notedSlots && notedSlots.size > 0 ? (
           <NoteIndicatorRow columns={slots} notedColumns={notedSlots} />
