@@ -38,8 +38,17 @@ export function AssetHeatmap({
 
   const selectedColumn = selectedEvalId
     ? (() => {
+        // Try visible indicator cells first
         const cell = cells.find(c => c.evalId === selectedEvalId)
-        return cell ? cell.value[0] : undefined
+        if (cell) return cell.value[0]
+        // Fallback: groups may be collapsed so indicator cells aren't in `cells`.
+        // Look up which EvaluationRun column owns this slo_evaluation_id.
+        const colIdx = data.columns.findIndex(col =>
+          data.groups.some(g =>
+            g.cells.some(c => c.slo_evaluation_id === selectedEvalId && c.evaluation_id === col.evaluation_id)
+          )
+        )
+        return colIdx >= 0 ? colIdx : undefined
       })()
     : undefined
 
@@ -74,12 +83,22 @@ export function AssetHeatmap({
       return
     }
     if (onSlotSelect) {
-      // Collect all eval IDs in the same column (same slot + evaluation_name).
-      // Filter by column index, not slot string, because multiple columns can
-      // share the same timestamp when evaluation_names differ.
+      // Collect all slo_evaluation_ids in this column from visible indicator cells.
+      // Filter by column index to handle duplicate timestamps across eval names.
       const colIdx = cell.value[0]
       const colCells = cells.filter(c => c.value[0] === colIdx && c.evalId)
-      const evalIds = [...new Set(colCells.map(c => c.evalId!))]
+      let evalIds = [...new Set(colCells.map(c => c.evalId!))]
+      // Fallback: groups may be collapsed so indicator cells aren't in `cells`.
+      // Use raw data to find all slo_evaluation_ids for the clicked column.
+      if (evalIds.length === 0 && cell.columnKey) {
+        evalIds = [...new Set(
+          data.groups.flatMap(g =>
+            g.cells
+              .filter(c => c.evaluation_id === cell.columnKey)
+              .map(c => c.slo_evaluation_id)
+          )
+        )]
+      }
       if (evalIds.length > 0) {
         onSlotSelect({ periodStart: cell.slot, evalIds })
       }
