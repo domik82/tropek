@@ -312,3 +312,52 @@ class EvaluateBatchResponse(BaseModel):
 
     evaluation_ids: list[uuid.UUID]
     slo_evaluation_ids: list[uuid.UUID]
+
+
+class HeatmapSummaryCell(BaseModel):
+    """Per-column aggregate for an SLO group or the Overall composite row."""
+
+    evaluation_id: uuid.UUID
+    period_start: datetime
+    result: str
+    score: float  # 0-100, achieved_points / total_points x 100
+
+
+class HeatmapCellGrouped(BaseModel):
+    """A single indicator x column cell in the grouped heatmap."""
+
+    evaluation_id: uuid.UUID       # parent eval (column key)
+    slo_evaluation_id: uuid.UUID   # FK to slo_evaluations (for trend navigation)
+    period_start: datetime         # display label only
+    metric: str
+    display_name: str
+    result: str
+    score: float
+
+
+class SloGroup(BaseModel):
+    """One SLO's contribution to the grouped heatmap."""
+
+    slo_name: str
+    slo_display_name: str | None = None
+    metrics: list[HeatmapMetric]
+    cells: list[HeatmapCellGrouped]
+    summary: list[HeatmapSummaryCell]  # per-column worst-case aggregate
+
+
+class EvaluationColumn(BaseModel):
+    """One heatmap column — corresponds to one parent EvaluationRun."""
+
+    evaluation_id: uuid.UUID
+    period_start: datetime
+    period_end: datetime
+    eval_name: str
+
+
+class GroupedMetricHeatmapResponse(BaseModel):
+    """Grouped metric heatmap response. Columns are parent EvaluationRun rows."""
+
+    asset_name: str
+    columns: list[EvaluationColumn]      # ordered oldest → newest
+    groups: list[SloGroup]               # SLO groups in appearance order
+    composite: list[HeatmapSummaryCell]  # Overall row (worst-case across all groups)
