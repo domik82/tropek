@@ -434,57 +434,6 @@ class SLIValue(Base):
     # fmt: on
 
 
-class AssetSLOLink(Base):
-    """Permanent named binding of an asset to a SLO + SLI + DataSource triple.
-
-    Callers trigger evaluations by group/asset name — the system resolves which
-    SLO, SLI, and DataSource to use from these bindings at trigger time.
-    SLO, SLI, and DataSource names resolve to their latest active version.
-    """
-
-    __tablename__ = 'asset_slo_links'
-    __table_args__ = (
-        Index('idx_asset_slo_links_asset', 'asset_id'),
-        UniqueConstraint('asset_id', 'link_name', name='uq_asset_slo_link_name'),
-    )
-
-    # fmt: off
-
-    id:               Mapped[uuid.UUID]  = mapped_column(UUID, primary_key=True, default=uuid.uuid4)
-    link_name:        Mapped[str]        = mapped_column(Text, nullable=False)
-    asset_id:         Mapped[uuid.UUID]  = mapped_column(UUID, ForeignKey('assets.id', ondelete='CASCADE'), nullable=False)
-    slo_name:         Mapped[str]        = mapped_column(Text, nullable=False)
-    sli_name:         Mapped[str]        = mapped_column(Text, nullable=False)
-    data_source_name: Mapped[str]        = mapped_column(Text, nullable=False)
-    created_at:       Mapped[datetime]   = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
-    comparison_rules: Mapped[list[dict[str, Any]]] = mapped_column(JSONB, nullable=False, server_default=text("'[]'::jsonb"), default=list)
-
-    # fmt: on
-
-
-class AssetGroupSLOLink(Base):
-    """Same as AssetSLOLink but bound to an asset group instead of a single asset."""
-
-    __tablename__ = 'asset_group_slo_links'
-    __table_args__ = (
-        Index('idx_asset_group_slo_links_group', 'group_id'),
-        UniqueConstraint('group_id', 'link_name', name='uq_asset_group_slo_link_name'),
-        UniqueConstraint('group_id', 'slo_name', name='uq_asset_group_slo_link_group_slo'),
-    )
-
-    # fmt: off
-
-    id:               Mapped[uuid.UUID]  = mapped_column(UUID, primary_key=True, default=uuid.uuid4)
-    link_name:        Mapped[str]        = mapped_column(Text, nullable=False)
-    group_id:         Mapped[uuid.UUID]  = mapped_column(UUID, ForeignKey('asset_groups.id', ondelete='CASCADE'), nullable=False)
-    slo_name:         Mapped[str]        = mapped_column(Text, nullable=False)
-    sli_name:         Mapped[str]        = mapped_column(Text, nullable=False)
-    data_source_name: Mapped[str]        = mapped_column(Text, nullable=False)
-    created_at:       Mapped[datetime]   = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
-
-    # fmt: on
-
-
 class SLOBinding(Base):
     """Polymorphic binding of an SLO to an asset or asset group with a datasource."""
 
