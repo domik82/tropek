@@ -16,11 +16,11 @@ import time
 
 from tropek_client import TropekClient
 
-# Assets from bootstrap_prometheus manifests (asset_name, slo_name)
+# Assets from bootstrap_prometheus manifests
 ASSETS = [
-    ('obs-api', 'obs-http-slo'),
-    ('obs-frontend', 'obs-http-slo'),
-    ('obs-backend', 'obs-http-slo'),
+    'obs-api',
+    'obs-frontend',
+    'obs-backend',
 ]
 
 # 7 daily windows: noon to 12:30 each day across the quick-test timeline.
@@ -48,16 +48,15 @@ def main() -> None:
     print(f'Triggering {total} evaluations ({len(ASSETS)} assets x {len(EVAL_WINDOWS)} days)...')
 
     eval_ids: list[str] = []
-    for asset_name, slo_name in ASSETS:
+    for asset_name in ASSETS:
         for start, end in EVAL_WINDOWS:
-            result = client.evaluations.trigger(
+            result = client.evaluations.evaluate(
                 asset_name,
                 'daily-check',
-                slo_name,
                 start,
                 end,
             )
-            eval_ids.append(result['id'])
+            eval_ids.extend(str(eid) for eid in result['slo_evaluation_ids'])
 
     print(f'Triggered {len(eval_ids)}, waiting for completion...')
     pending = set(eval_ids)
