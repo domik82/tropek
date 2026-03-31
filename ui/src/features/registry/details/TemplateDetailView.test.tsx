@@ -1,5 +1,5 @@
-import { describe, it, expect, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { render, screen, cleanup } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import type { ReactNode } from 'react'
 import { TemplateDetailView } from './TemplateDetailView'
@@ -44,12 +44,22 @@ vi.mock('@/features/slo-groups/hooks', () => ({
   }),
 }))
 
+let queryClient: QueryClient
+
 function wrapper({ children }: { children: ReactNode }) {
-  const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-  return <QueryClientProvider client={qc}>{children}</QueryClientProvider>
+  return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
 }
 
 describe('TemplateDetailView', () => {
+  beforeEach(() => {
+    queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  })
+
+  afterEach(() => {
+    queryClient.cancelQueries()
+    queryClient.clear()
+    cleanup()
+  })
   it('renders template name and template badge', () => {
     render(<TemplateDetailView name="plugin-tpl" onNavigate={vi.fn()} onNewVersion={vi.fn()} />, { wrapper })
     expect(screen.getByText('Plugin Health')).toBeInTheDocument()

@@ -1,15 +1,21 @@
-import { describe, it, expect, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { describe, it, expect, vi, afterEach } from 'vitest'
+import { render, screen, cleanup } from '@testing-library/react'
 import { RegistryDetailPanel } from './RegistryDetailPanel'
 
-function Wrapper({ children }: { children: React.ReactNode }) {
-  return <QueryClientProvider client={new QueryClient()}>{children}</QueryClientProvider>
-}
+vi.mock('@/features/registry/details/SloDetailView', () => ({ SloDetailView: () => <div>slo-detail</div> }))
+vi.mock('@/features/registry/details/SliDetailView', () => ({ SliDetailView: () => <div>sli-detail</div> }))
+vi.mock('@/features/registry/details/DatasourceDetailView', () => ({ DatasourceDetailView: () => <div>ds-detail</div> }))
+vi.mock('@/features/registry/details/AssetBindingView', () => ({ AssetBindingView: () => <div>asset-detail</div> }))
+vi.mock('@/features/registry/details/TemplateDetailView', () => ({ TemplateDetailView: () => <div>template-detail</div> }))
+vi.mock('@/features/registry/details/SloGroupDetailView', () => ({ SloGroupDetailView: () => <div>slo-group-detail</div> }))
 
 describe('RegistryDetailPanel', () => {
+  afterEach(() => {
+    cleanup()
+  })
+
   it('shows empty state when nothing selected', () => {
-    render(<RegistryDetailPanel selected={null} onNavigate={vi.fn()} />, { wrapper: Wrapper })
+    render(<RegistryDetailPanel selected={null} onNavigate={vi.fn()} />)
     expect(screen.getByText(/select an item/i)).toBeInTheDocument()
   })
 
@@ -19,10 +25,8 @@ describe('RegistryDetailPanel', () => {
         selected={{ type: 'template', name: 'plugin-tpl' }}
         onNavigate={vi.fn()}
       />,
-      { wrapper: Wrapper },
     )
-    // TemplateDetailView shows "Loading..." (dots); AssetBindingView fallback shows "Loading…" (ellipsis)
-    expect(screen.getByText('Loading...')).toBeInTheDocument()
+    expect(screen.getByText('template-detail')).toBeInTheDocument()
   })
 
   it('renders SloGroupDetailView when type is slo-group', () => {
@@ -31,9 +35,7 @@ describe('RegistryDetailPanel', () => {
         selected={{ type: 'slo-group', name: 'app-plugins' }}
         onNavigate={vi.fn()}
       />,
-      { wrapper: Wrapper },
     )
-    // SloGroupDetailView shows "Loading..." (dots); AssetBindingView fallback shows "Loading…" (ellipsis)
-    expect(screen.getByText('Loading...')).toBeInTheDocument()
+    expect(screen.getByText('slo-group-detail')).toBeInTheDocument()
   })
 })

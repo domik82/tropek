@@ -1,5 +1,5 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { render, screen, fireEvent, cleanup } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { SliDetailView } from './SliDetailView'
 import type { SliDefinition } from '@/features/slis'
@@ -104,12 +104,15 @@ const mockSlos: SloDefinition[] = [
   },
 ]
 
+let queryClient: QueryClient
+
 function Wrapper({ children }: { children: React.ReactNode }) {
-  return <QueryClientProvider client={new QueryClient()}>{children}</QueryClientProvider>
+  return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
 }
 
 describe('SliDetailView', () => {
   beforeEach(() => {
+    queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
     vi.mocked(useSliDetail).mockReturnValue({
       data: mockSli,
       isLoading: false,
@@ -126,6 +129,12 @@ describe('SliDetailView', () => {
       mutate: vi.fn(),
       isPending: false,
     } as unknown as ReturnType<typeof useDeleteSli>)
+  })
+
+  afterEach(() => {
+    queryClient.cancelQueries()
+    queryClient.clear()
+    cleanup()
   })
 
   it('renders name, version badge, and adapter_type badge', () => {

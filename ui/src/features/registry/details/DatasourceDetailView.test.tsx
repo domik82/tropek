@@ -1,5 +1,5 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { render, screen, fireEvent, cleanup } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { DatasourceDetailView } from './DatasourceDetailView'
 import type { DataSource } from '@/features/datasources'
@@ -60,12 +60,15 @@ const mockSlis: SliDefinition[] = [
   },
 ]
 
+let queryClient: QueryClient
+
 function Wrapper({ children }: { children: React.ReactNode }) {
-  return <QueryClientProvider client={new QueryClient()}>{children}</QueryClientProvider>
+  return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
 }
 
 describe('DatasourceDetailView', () => {
   beforeEach(() => {
+    queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
     vi.mocked(useDatasource).mockReturnValue({
       data: mockDs,
       isLoading: false,
@@ -82,6 +85,12 @@ describe('DatasourceDetailView', () => {
       mutate: vi.fn(),
       isPending: false,
     } as unknown as ReturnType<typeof useDeleteDatasource>)
+  })
+
+  afterEach(() => {
+    queryClient.cancelQueries()
+    queryClient.clear()
+    cleanup()
   })
 
   it('renders display_name, name, and adapter_type badge', () => {

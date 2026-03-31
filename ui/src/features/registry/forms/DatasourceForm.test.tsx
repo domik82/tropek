@@ -1,5 +1,5 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { DatasourceForm } from './DatasourceForm'
 import type { DataSource } from '@/features/datasources'
@@ -26,12 +26,15 @@ const mockDs: DataSource = {
   updated_at: '2024-01-02T00:00:00Z',
 }
 
+let queryClient: QueryClient
+
 function Wrapper({ children }: { children: React.ReactNode }) {
-  return <QueryClientProvider client={new QueryClient()}>{children}</QueryClientProvider>
+  return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
 }
 
 describe('DatasourceForm', () => {
   beforeEach(() => {
+    queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
     mockCreate.mockReset()
     mockUpdate.mockReset()
 
@@ -44,6 +47,12 @@ describe('DatasourceForm', () => {
       mutate: mockUpdate,
       isPending: false,
     } as unknown as ReturnType<typeof useUpdateDatasource>)
+  })
+
+  afterEach(() => {
+    queryClient.cancelQueries()
+    queryClient.clear()
+    cleanup()
   })
 
   it('renders all form fields in create mode', () => {

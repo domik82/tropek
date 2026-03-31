@@ -1,5 +1,5 @@
-import { describe, it, expect, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { render, screen, cleanup } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MemoryRouter } from 'react-router-dom'
 import { SloRegistryPage } from './SloRegistryPage'
@@ -44,10 +44,12 @@ vi.mock('@/features/slos/hooks', () => ({
   useCreateGroup: () => ({ mutateAsync: vi.fn() }),
 }))
 
+let queryClient: QueryClient
+
 function Wrapper({ children }: { children: React.ReactNode }) {
   return (
     <MemoryRouter>
-      <QueryClientProvider client={new QueryClient()}>
+      <QueryClientProvider client={queryClient}>
         {children}
       </QueryClientProvider>
     </MemoryRouter>
@@ -55,6 +57,16 @@ function Wrapper({ children }: { children: React.ReactNode }) {
 }
 
 describe('SloRegistryPage', () => {
+  beforeEach(() => {
+    queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  })
+
+  afterEach(() => {
+    queryClient.cancelQueries()
+    queryClient.clear()
+    cleanup()
+  })
+
   it('renders segmented control with Asset as first/default', () => {
     render(<SloRegistryPage />, { wrapper: Wrapper })
     expect(screen.getByText('Asset')).toBeInTheDocument()
