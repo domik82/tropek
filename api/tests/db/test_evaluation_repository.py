@@ -44,6 +44,7 @@ async def test_create_pending_returns_evaluation(db_session: AsyncSession) -> No
     repo = EvaluationRepository(db_session)
     ev = await repo.create_pending(
         EvalCreateParams(
+            evaluation_id=uuid.uuid4(),
             evaluation_name='compile-test',
             period_start=_START,
             period_end=_END,
@@ -65,6 +66,7 @@ async def test_get_returns_evaluation(db_session: AsyncSession) -> None:
     repo = EvaluationRepository(db_session)
     ev = await repo.create_pending(
         EvalCreateParams(
+            evaluation_id=uuid.uuid4(),
             evaluation_name='get-test',
             period_start=_START,
             period_end=_END,
@@ -86,6 +88,7 @@ async def test_mark_completed_updates_fields(db_session: AsyncSession) -> None:
     repo = EvaluationRepository(db_session)
     ev = await repo.create_pending(
         EvalCreateParams(
+            evaluation_id=uuid.uuid4(),
             evaluation_name='complete-test',
             period_start=_START,
             period_end=_END,
@@ -114,6 +117,7 @@ async def test_mark_running_sets_status(db_session: AsyncSession) -> None:
     repo = EvaluationRepository(db_session)
     ev = await repo.create_pending(
         EvalCreateParams(
+            evaluation_id=uuid.uuid4(),
             evaluation_name='running-test',
             period_start=_START,
             period_end=_END,
@@ -143,6 +147,7 @@ async def test_list_evaluations_filters_by_name(db_session: AsyncSession) -> Non
     for n, s in zip(('alpha', 'alpha', 'beta'), starts, strict=True):
         await repo.create_pending(
             EvalCreateParams(
+                evaluation_id=uuid.uuid4(),
                 evaluation_name=n,
                 period_start=s,
                 period_end=_END,
@@ -167,6 +172,7 @@ async def test_get_baselines_excludes_invalidated(db_session: AsyncSession) -> N
 
     ev1 = await repo.create_pending(
         EvalCreateParams(
+            evaluation_id=uuid.uuid4(),
             evaluation_name='run-1',
             period_start=_START,
             period_end=_END,
@@ -186,6 +192,7 @@ async def test_get_baselines_excludes_invalidated(db_session: AsyncSession) -> N
 
     ev2 = await repo.create_pending(
         EvalCreateParams(
+            evaluation_id=uuid.uuid4(),
             evaluation_name='run-2',
             period_start=_START,
             period_end=_END,
@@ -222,6 +229,7 @@ async def test_add_and_list_annotations(db_session: AsyncSession) -> None:
     ann_repo = AnnotationRepository(db_session)
     ev = await repo.create_pending(
         EvalCreateParams(
+            evaluation_id=uuid.uuid4(),
             evaluation_name='ann-test',
             period_start=_START,
             period_end=_END,
@@ -246,6 +254,7 @@ async def test_hide_annotation(db_session: AsyncSession) -> None:
     ann_repo = AnnotationRepository(db_session)
     ev = await repo.create_pending(
         EvalCreateParams(
+            evaluation_id=uuid.uuid4(),
             evaluation_name='hide-ann-test',
             period_start=_START,
             period_end=_END,
@@ -275,6 +284,7 @@ async def test_write_and_read_sli_values(db_session: AsyncSession) -> None:
     sli_val_repo = SLIValueRepository(db_session)
     ev = await repo.create_pending(
         EvalCreateParams(
+            evaluation_id=uuid.uuid4(),
             evaluation_name='sli-test',
             period_start=_START,
             period_end=_END,
@@ -287,7 +297,7 @@ async def test_write_and_read_sli_values(db_session: AsyncSession) -> None:
     )
     rows = [
         {
-            'eval_id': ev.id,
+            'slo_evaluation_id': ev.id,
             'eval_start': _START,
             'metric_name': 'cpu_usage',
             'aggregation': 'avg',
@@ -315,6 +325,7 @@ async def test_get_baselines_excludes_null_sli_version_with_range(
 
     ev1 = await repo.create_pending(
         EvalCreateParams(
+            evaluation_id=uuid.uuid4(),
             evaluation_name='daily-v2',
             period_start=_START,
             period_end=_END,
@@ -335,6 +346,7 @@ async def test_get_baselines_excludes_null_sli_version_with_range(
 
     ev2 = await repo.create_pending(
         EvalCreateParams(
+            evaluation_id=uuid.uuid4(),
             evaluation_name='daily-null',
             period_start=_START,
             period_end=_END,
@@ -375,6 +387,7 @@ async def test_get_baselines_by_asset_and_slo(db_session: AsyncSession) -> None:
     for i, aid in enumerate((asset_id, asset_id, other_asset_id)):
         ev = await repo.create_pending(
             EvalCreateParams(
+                evaluation_id=uuid.uuid4(),
                 evaluation_name=f'run-{i}',
                 period_start=_START,
                 period_end=_END,
@@ -417,6 +430,7 @@ async def test_get_baselines_excludes_future_period_start(db_session: AsyncSessi
     for s in starts:
         ev = await repo.create_pending(
             EvalCreateParams(
+                evaluation_id=uuid.uuid4(),
                 evaluation_name='daily',
                 period_start=s,
                 period_end=s,
@@ -455,6 +469,7 @@ async def test_get_baselines_with_tag_filters(db_session: AsyncSession) -> None:
     for i, branch in enumerate(('main', 'main', 'feature-x')):
         ev = await repo.create_pending(
             EvalCreateParams(
+                evaluation_id=uuid.uuid4(),
                 evaluation_name=f'ci-run-{i}',
                 period_start=_START,
                 period_end=_END,
@@ -493,6 +508,7 @@ async def test_get_baselines_with_sli_version_range(db_session: AsyncSession) ->
     for v in (1, 2, 3, 4):
         ev = await repo.create_pending(
             EvalCreateParams(
+                evaluation_id=uuid.uuid4(),
                 evaluation_name=f'daily-v{v}',
                 period_start=_START,
                 period_end=_END,
@@ -536,6 +552,7 @@ async def test_get_baselines_restrict_to_ids(db_session: AsyncSession) -> None:
     for i in range(3):
         ev = await repo.create_pending(
             EvalCreateParams(
+                evaluation_id=uuid.uuid4(),
                 evaluation_name=f'daily-{i}',
                 period_start=_START,
                 period_end=_END,
@@ -588,6 +605,7 @@ async def test_create_pending_merges_asset_tags_into_variables(
     repo = EvaluationRepository(db_session)
     ev = await repo.create_pending(
         EvalCreateParams(
+            evaluation_id=uuid.uuid4(),
             evaluation_name='tag-merge-test',
             period_start=_START,
             period_end=_END,
@@ -614,6 +632,7 @@ async def test_override_double_apply_preserves_original(db_session: AsyncSession
     repo = EvaluationRepository(db_session)
     ev = await repo.create_pending(
         EvalCreateParams(
+            evaluation_id=uuid.uuid4(),
             evaluation_name='override-test',
             period_start=_START,
             period_end=_END,

@@ -11,7 +11,6 @@ from tropek_client.manifest import (
     PlanAction,
     dry_run,
     load_manifests,
-    validate_manifests,
 )
 from tropek_client.manifest import (
     apply as do_apply,

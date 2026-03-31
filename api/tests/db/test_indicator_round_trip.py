@@ -125,6 +125,7 @@ async def test_detail_round_trip_all_fields(db_session: AsyncSession) -> None:
     repo = EvaluationRepository(db_session)
     ev = await repo.create_pending(
         EvalCreateParams(
+            evaluation_id=uuid.uuid4(),
             evaluation_name='round-trip-test',
             period_start=_START,
             period_end=_END,
@@ -227,6 +228,7 @@ async def test_summary_top_failures(db_session: AsyncSession) -> None:
     repo = EvaluationRepository(db_session)
     ev = await repo.create_pending(
         EvalCreateParams(
+            evaluation_id=uuid.uuid4(),
             evaluation_name='failures-test',
             period_start=_START,
             period_end=_END,
@@ -281,6 +283,7 @@ async def test_empty_indicator_results(db_session: AsyncSession) -> None:
     repo = EvaluationRepository(db_session)
     ev = await repo.create_pending(
         EvalCreateParams(
+            evaluation_id=uuid.uuid4(),
             evaluation_name='empty-test',
             period_start=_START,
             period_end=_END,

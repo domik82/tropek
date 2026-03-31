@@ -43,6 +43,7 @@ async def _create_completed_eval(
 ) -> uuid.UUID:
     ev = await repo.create_pending(
         EvalCreateParams(
+            evaluation_id=uuid.uuid4(),
             evaluation_name='daily',
             period_start=period_start,
             period_end=period_start + timedelta(minutes=30),
