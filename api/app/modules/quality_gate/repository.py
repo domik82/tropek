@@ -41,6 +41,7 @@ class EvaluationRepository:
 
         ev = SLOEvaluation(
             id=uuid.uuid4(),
+            evaluation_id=params.evaluation_id,
             evaluation_name=params.evaluation_name,
             period_start=params.period_start,
             period_end=params.period_end,
@@ -141,12 +142,14 @@ class EvaluationRepository:
             )
         )
 
-    async def mark_completed(
+    async def mark_completed(  # noqa: PLR0913
         self,
         eval_id: uuid.UUID,
         *,
         result: str,
         score: float,
+        achieved_points: int | None = None,
+        total_points: int | None = None,
         slo_name: str | None = None,
         slo_version: int | None = None,
         job_stats: dict[str, Any] | None = None,
@@ -158,6 +161,8 @@ class EvaluationRepository:
             eval_id: Evaluation to update.
             result: One of "pass", "warning", "fail", "error".
             score: Weighted score 0.0-100.0.
+            achieved_points: Weighted points achieved by passing/warning objectives.
+            total_points: Total weighted points possible.
             slo_name: Named SLO used, if any.
             slo_version: Version of the named SLO, if any.
             job_stats: Optional dict of job execution stats to merge.
@@ -170,6 +175,8 @@ class EvaluationRepository:
             'status': EvaluationStatus.COMPLETED,
             'result': result,
             'score': score,
+            'achieved_points': achieved_points,
+            'total_points': total_points,
             'job_stats': merged_stats,
         }
         if slo_name is not None:
