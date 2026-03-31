@@ -60,6 +60,7 @@ const mockSlo: SloDefinition = {
     include_result_with_score: 'pass_or_warn',
     aggregate_function: 'avg',
   },
+  method_criteria: null,
 }
 
 const mockVersions: SloDefinition[] = [

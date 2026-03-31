@@ -28,6 +28,10 @@ const mockSli: SliDefinition = {
     error_rate: 'sum(rate(http_requests_total{status=~"5..",job="$service"}[5m]))',
     latency: 'histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m]))',
   },
+  mode: 'raw',
+  query_template: null,
+  interval: null,
+  methods: null,
   notes: 'Tracks HTTP error rate and latency',
   author: 'alice',
   tags: { env: 'prod', team: 'platform' },
@@ -49,9 +53,6 @@ const mockSlos: SloDefinition[] = [
     notes: null,
     tags: {},
     variables: {},
-    kind: 'standard',
-    sli_name: null,
-    sli_version: null,
     created_at: '2024-01-01T00:00:00Z',
     active: true,
     objectives: [
@@ -68,6 +69,7 @@ const mockSlos: SloDefinition[] = [
     total_score_pass_threshold: 90,
     total_score_warning_threshold: 75,
     comparison: {},
+    method_criteria: null,
   },
   {
     id: 'slo-2',
@@ -82,9 +84,6 @@ const mockSlos: SloDefinition[] = [
     notes: null,
     tags: {},
     variables: {},
-    kind: 'standard',
-    sli_name: null,
-    sli_version: null,
     created_at: '2024-01-01T00:00:00Z',
     active: true,
     objectives: [
@@ -101,6 +100,7 @@ const mockSlos: SloDefinition[] = [
     total_score_pass_threshold: 90,
     total_score_warning_threshold: 75,
     comparison: {},
+    method_criteria: null,
   },
 ]
 

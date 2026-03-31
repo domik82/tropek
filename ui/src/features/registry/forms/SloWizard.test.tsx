@@ -66,6 +66,7 @@ const mockSlo: SloDefinition = {
   kind: 'standard',
   sli_name: null,
   sli_version: null,
+  method_criteria: null,
 }
 
 let queryClient: QueryClient

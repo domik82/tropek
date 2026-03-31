@@ -12,7 +12,7 @@ import { useSlos } from '@/features/slos/hooks'
 import { EvaluationHeader } from '@/features/evaluations/components/EvaluationHeader'
 import { AnnotationSection, type AnnotationSectionHandle } from '@/features/evaluations/components/AnnotationForm'
 import { EvaluationActionsButton, EvaluationActionForm, NoteIconButton } from '@/features/evaluations/components/EvaluationActions'
-import type { ActionKind, EvaluationDetail, SliMetadata } from '@/features/evaluations/types'
+import type { ActionKind, SliMetadata } from '@/features/evaluations/types'
 import type { TimeSlotSelection } from './AssetHeatmap'
 import type { ViewMode } from '@/components/charts/ViewToggle'
 import { EvaluationNameFilter } from './EvaluationNameFilter'
@@ -178,13 +178,15 @@ export function AssetPanel({ assetName, initialEvalId }: Props) {
         .map(e => [e.id, e] as const),
     )
     const slots = new Map<string, { evalId: string; count: number }>()
-    for (const c of heatmapData.cells) {
-      if (c.eval_id && notedEvals.has(c.eval_id) && !slots.has(c.slot)) {
-        const summary = notedEvals.get(c.eval_id)!
-        slots.set(c.slot, {
-          evalId: c.eval_id,
-          count: summary.annotation_count ?? 0,
-        })
+    for (const group of heatmapData.groups) {
+      for (const c of group.cells) {
+        if (notedEvals.has(c.evaluation_id) && !slots.has(c.period_start)) {
+          const summary = notedEvals.get(c.evaluation_id)!
+          slots.set(c.period_start, {
+            evalId: c.evaluation_id,
+            count: summary.annotation_count ?? 0,
+          })
+        }
       }
     }
     return slots
