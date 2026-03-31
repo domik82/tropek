@@ -9,10 +9,10 @@ import pytest
 from app.db.models import (
     Asset,
     AssetType,
-    Evaluation,
     IndicatorResultRow,
     SLIDefinition,
     SLODefinition,
+    SLOEvaluation,
     SLOObjective,
 )
 from app.modules.quality_gate.indicator_repository import IndicatorRepository
@@ -102,7 +102,7 @@ async def _create_asset(session: AsyncSession) -> uuid.UUID:
 async def _create_eval(session: AsyncSession, asset_id: uuid.UUID) -> uuid.UUID:
     eval_id = uuid.uuid4()
     session.add(
-        Evaluation(
+        SLOEvaluation(
             id=eval_id,
             evaluation_name='test',
             asset_id=asset_id,

@@ -80,6 +80,7 @@ def _make_repos() -> QualityGateRepos:
     """Build a QualityGateRepos with all mock repositories."""
     return QualityGateRepos(
         eval_repo=AsyncMock(),
+        eval_run_repo=AsyncMock(),
         annotation_repo=AsyncMock(),
         sli_repo=AsyncMock(),
         trend_repo=AsyncMock(),
