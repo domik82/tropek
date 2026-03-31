@@ -10,7 +10,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.db.models import Evaluation, IndicatorResultRow, SLIValue, SLOObjective
+from app.db.models import IndicatorResultRow, SLIValue, SLOEvaluation, SLOObjective
 from app.modules.quality_gate.engine.constants import EvaluationStatus
 
 
@@ -28,26 +28,26 @@ class TrendRepository:
         evaluation_name: list[str] | None = None,
         from_ts: datetime | None = None,
         to_ts: datetime | None = None,
-    ) -> list[Evaluation]:
+    ) -> list[SLOEvaluation]:
         """Fetch the last N completed evaluations for an asset, ordered by period_start DESC."""
         q = (
-            select(Evaluation)
+            select(SLOEvaluation)
             .options(
-                selectinload(Evaluation.indicator_rows).joinedload(IndicatorResultRow.objective),
+                selectinload(SLOEvaluation.indicator_rows).joinedload(IndicatorResultRow.objective),
             )
             .where(
-                Evaluation.asset_id == asset_id,
-                Evaluation.status == EvaluationStatus.COMPLETED,
+                SLOEvaluation.asset_id == asset_id,
+                SLOEvaluation.status == EvaluationStatus.COMPLETED,
             )
-            .order_by(Evaluation.period_start.desc())
+            .order_by(SLOEvaluation.period_start.desc())
             .limit(limit)
         )
         if evaluation_name:
-            q = q.where(Evaluation.evaluation_name.in_(evaluation_name))
+            q = q.where(SLOEvaluation.evaluation_name.in_(evaluation_name))
         if from_ts:
-            q = q.where(Evaluation.period_start >= from_ts)
+            q = q.where(SLOEvaluation.period_start >= from_ts)
         if to_ts:
-            q = q.where(Evaluation.period_start <= to_ts)
+            q = q.where(SLOEvaluation.period_start <= to_ts)
         result = await self._session.execute(q)
         return list(result.scalars().all())
 
@@ -70,15 +70,15 @@ class TrendRepository:
         total_weight_sq = (
             select(func.coalesce(func.sum(SLOObjective.weight), 1))
             .join(IndicatorResultRow, IndicatorResultRow.slo_objective_id == SLOObjective.id)
-            .where(IndicatorResultRow.evaluation_id == Evaluation.id)
-            .correlate(Evaluation)
+            .where(IndicatorResultRow.evaluation_id == SLOEvaluation.id)
+            .correlate(SLOEvaluation)
             .scalar_subquery()
             .label('total_weight')
         )
 
         inner = (
             select(
-                Evaluation.period_start,
+                SLOEvaluation.period_start,
                 SLIValue.value,
                 SLIValue.eval_id,
                 IndicatorResultRow.status.label('result'),
@@ -86,24 +86,24 @@ class TrendRepository:
                 IndicatorResultRow.score,
                 total_weight_sq,
             )
-            .join(Evaluation, SLIValue.eval_id == Evaluation.id)
+            .join(SLOEvaluation, SLIValue.eval_id == SLOEvaluation.id)
             .join(
                 IndicatorResultRow,
-                IndicatorResultRow.evaluation_id == Evaluation.id,
+                IndicatorResultRow.evaluation_id == SLOEvaluation.id,
             )
             .join(
                 SLOObjective,
                 IndicatorResultRow.slo_objective_id == SLOObjective.id,
             )
             .where(
-                Evaluation.asset_id == asset_id,
-                Evaluation.slo_name == slo_name,
+                SLOEvaluation.asset_id == asset_id,
+                SLOEvaluation.slo_name == slo_name,
                 SLIValue.metric_name == metric_name,
                 SLOObjective.sli == metric_name,
-                Evaluation.invalidated == False,  # noqa: E712
-                Evaluation.result.is_not(None),
+                SLOEvaluation.invalidated == False,  # noqa: E712
+                SLOEvaluation.result.is_not(None),
             )
-            .order_by(Evaluation.period_start.desc())
+            .order_by(SLOEvaluation.period_start.desc())
             .limit(limit)
             .subquery()
         )
@@ -149,13 +149,13 @@ class TrendRepository:
                 SLIValue.eval_start,
                 SLIValue.value,
                 SLIValue.eval_id,
-                Evaluation.result,
+                SLOEvaluation.result,
             )
-            .join(Evaluation, SLIValue.eval_id == Evaluation.id)
+            .join(SLOEvaluation, SLIValue.eval_id == SLOEvaluation.id)
             .where(
                 SLIValue.evaluation_name == evaluation_name,
                 SLIValue.metric_name == metric_name,
-                Evaluation.invalidated == False,  # noqa: E712
+                SLOEvaluation.invalidated == False,  # noqa: E712
             )
         )
         if asset_name:
@@ -165,7 +165,7 @@ class TrendRepository:
         if to:
             q = q.where(SLIValue.eval_start <= to)
         if result_filter:
-            q = q.where(Evaluation.result.in_(result_filter))
+            q = q.where(SLOEvaluation.result.in_(result_filter))
         q = q.order_by(SLIValue.eval_start)
         rows = await self._session.execute(q)
         return [

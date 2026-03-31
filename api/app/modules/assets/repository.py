@@ -252,7 +252,7 @@ class AssetGroupRepository:
                 Asset.type_name.label('asset_type_name'),
             )
             .join(Asset, AssetGroupMember.asset_id == Asset.id)
-            .where(AssetGroupMember.group_id == group.id)
+            .where(AssetGroupMember.asset_group_id == group.id)
         )
         members = [
             AssetGroupMemberRead(
@@ -268,12 +268,12 @@ class AssetGroupRepository:
         # Subgroups: join with asset_groups to get group_name
         subgroup_rows = await self._session.execute(
             select(AssetGroupLink, AssetGroup.name.label('group_name'))
-            .join(AssetGroup, AssetGroupLink.child_group_id == AssetGroup.id)
-            .where(AssetGroupLink.parent_group_id == group.id)
+            .join(AssetGroup, AssetGroupLink.child_asset_group_id == AssetGroup.id)
+            .where(AssetGroupLink.parent_asset_group_id == group.id)
         )
         subgroups = [
             AssetGroupSubgroupRead(
-                group_id=row.AssetGroupLink.child_group_id,
+                group_id=row.AssetGroupLink.child_asset_group_id,
                 group_name=row.group_name,
                 weight=row.AssetGroupLink.weight,
             )
@@ -326,12 +326,12 @@ class AssetGroupRepository:
         await self._session.flush()  # get group.id
 
         for m in members or []:
-            self._session.add(AssetGroupMember(group_id=group.id, asset_id=m.asset_id, weight=m.weight))
+            self._session.add(AssetGroupMember(asset_group_id=group.id, asset_id=m.asset_id, weight=m.weight))
         for sg in subgroups or []:
             self._session.add(
                 AssetGroupLink(
-                    parent_group_id=group.id,
-                    child_group_id=sg.child_group_id,
+                    parent_asset_group_id=group.id,
+                    child_asset_group_id=sg.child_group_id,
                     weight=sg.weight,
                 )
             )
@@ -367,7 +367,7 @@ class AssetGroupRepository:
     async def _collect_subgroup_ids(self, group_id: uuid.UUID) -> list[uuid.UUID]:
         """Recursively collect all descendant group IDs."""
         result = await self._session.execute(
-            select(AssetGroupLink.child_group_id).where(AssetGroupLink.parent_group_id == group_id)
+            select(AssetGroupLink.child_asset_group_id).where(AssetGroupLink.parent_asset_group_id == group_id)
         )
         child_ids = list(result.scalars().all())
         all_ids: list[uuid.UUID] = []
@@ -410,7 +410,7 @@ class AssetGroupRepository:
     async def list_group_ids_for_asset(self, asset_id: uuid.UUID) -> list[uuid.UUID]:
         """Return IDs of all groups that contain this asset as a direct member."""
         result = await self._session.execute(
-            select(AssetGroupMember.group_id).where(AssetGroupMember.asset_id == asset_id)
+            select(AssetGroupMember.asset_group_id).where(AssetGroupMember.asset_id == asset_id)
         )
         return list(result.scalars().all())
 
@@ -427,7 +427,7 @@ class AssetGroupRepository:
             AssetGroupTreeResponse with top_level (not children of any group) and all_groups.
         """
         # child_ids = groups that appear as a child of some other group
-        child_ids_result = await self._session.execute(select(AssetGroupLink.child_group_id).distinct())
+        child_ids_result = await self._session.execute(select(AssetGroupLink.child_asset_group_id).distinct())
         child_ids = set(child_ids_result.scalars())
 
         all_result = await self._session.execute(select(AssetGroup).order_by(AssetGroup.name))
@@ -451,7 +451,7 @@ class AssetGroupRepository:
         group = result.scalar_one_or_none()
         if group is None:
             raise NotFoundError('asset group', group_name)
-        self._session.add(AssetGroupMember(group_id=group.id, asset_id=asset_id, weight=weight))
+        self._session.add(AssetGroupMember(asset_group_id=group.id, asset_id=asset_id, weight=weight))
         await self._session.flush()
         return await self._build_read(group)
 
@@ -468,7 +468,7 @@ class AssetGroupRepository:
             raise NotFoundError('asset group', group_name)
         await self._session.execute(
             delete(AssetGroupMember).where(
-                AssetGroupMember.group_id == group.id,
+                AssetGroupMember.asset_group_id == group.id,
                 AssetGroupMember.asset_id == asset_id,
             )
         )
@@ -488,7 +488,7 @@ class AssetGroupRepository:
         group = result.scalar_one_or_none()
         if group is None:
             raise NotFoundError('asset group', parent_name)
-        self._session.add(AssetGroupLink(parent_group_id=group.id, child_group_id=child_group_id, weight=weight))
+        self._session.add(AssetGroupLink(parent_asset_group_id=group.id, child_asset_group_id=child_group_id, weight=weight))
         await self._session.flush()
         return await self._build_read(group)
 
@@ -505,8 +505,8 @@ class AssetGroupRepository:
             raise NotFoundError('asset group', parent_name)
         await self._session.execute(
             delete(AssetGroupLink).where(
-                AssetGroupLink.parent_group_id == group.id,
-                AssetGroupLink.child_group_id == child_group_id,
+                AssetGroupLink.parent_asset_group_id == group.id,
+                AssetGroupLink.child_asset_group_id == child_group_id,
             )
         )
 
@@ -612,7 +612,7 @@ class SLOBindingRepository:
 
         # Group-level binding: find groups the asset belongs to, then check bindings
         group_result = await self._session.execute(
-            select(AssetGroupMember.group_id).where(AssetGroupMember.asset_id == asset_id)
+            select(AssetGroupMember.asset_group_id).where(AssetGroupMember.asset_id == asset_id)
         )
         group_ids = [row[0] for row in group_result.all()]
         if not group_ids:
