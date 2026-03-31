@@ -22,6 +22,7 @@ def _make_repos() -> QualityGateRepos:
     session.add = MagicMock()
     return QualityGateRepos(
         eval_repo=AsyncMock(),
+        eval_run_repo=AsyncMock(),
         annotation_repo=AsyncMock(),
         sli_repo=AsyncMock(),
         trend_repo=AsyncMock(),
