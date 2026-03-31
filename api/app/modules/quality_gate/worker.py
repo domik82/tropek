@@ -21,6 +21,7 @@ from app.modules.quality_gate.engine.slo_models import SLO
 from app.modules.quality_gate.engine.slo_parser import build_slo
 from app.modules.quality_gate.engine.variables import substitute_variables
 from app.modules.quality_gate.evaluation_helpers import build_eval_variables as _build_eval_variables_shared
+from app.modules.quality_gate.evaluation_run_repository import EvaluationRunRepository
 from app.modules.quality_gate.indicator_repository import IndicatorRepository
 from app.modules.quality_gate.repository import EvaluationRepository
 from app.modules.quality_gate.sli_repository import SLIValueRepository
@@ -300,7 +301,25 @@ def _log_eval_result(
     )
 
 
-async def run_evaluation(
+async def _try_rollup_parent(
+    session: AsyncSession,
+    evaluation_id: uuid.UUID,
+    log: structlog.stdlib.BoundLogger,
+) -> None:
+    """Rollup parent EvaluationRun if all child SLOEvaluations are done."""
+    run_repo = EvaluationRunRepository(session)
+    rolled = await run_repo.rollup_if_all_done(evaluation_id)
+    if rolled is not None:
+        log.info(
+            'parent evaluation run completed',
+            evaluation_id=str(evaluation_id),
+            result=rolled.result,
+            achieved_points=rolled.achieved_points,
+            total_points=rolled.total_points,
+        )
+
+
+async def run_evaluation(  # noqa: PLR0915
     session: AsyncSession,
     eval_id: uuid.UUID,
     *,
@@ -436,6 +455,8 @@ async def run_evaluation(
     _log_eval_result(log, eval_result, metrics_fetched, baselines)
 
     # Write results
+    achieved_points = sum(int(ir.score) for ir in eval_result.indicator_results)
+    total_points = sum(int(obj.weight) for obj in slo.objectives)
     await repo.mark_completed(
         eval_id,
         result=eval_result.result,
@@ -449,6 +470,8 @@ async def run_evaluation(
             **({'sli_metadata': sli_metadata} if sli_metadata else {}),
         },
         compared_evaluation_ids=compared_eval_ids,
+        achieved_points=achieved_points,
+        total_points=total_points,
     )
 
     # Write to normalized indicator_results table
@@ -468,3 +491,4 @@ async def run_evaluation(
         await sli_repo.write_sli_values(sli_rows)
 
     log.info('evaluation completed', result=eval_result.result, score=eval_result.score)
+    await _try_rollup_parent(session, ev.evaluation_id, log)
