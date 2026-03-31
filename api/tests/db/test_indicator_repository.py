@@ -9,6 +9,7 @@ import pytest
 from app.db.models import (
     Asset,
     AssetType,
+    EvaluationRun,
     IndicatorResultRow,
     SLIDefinition,
     SLODefinition,
@@ -101,9 +102,22 @@ async def _create_asset(session: AsyncSession) -> uuid.UUID:
 
 async def _create_eval(session: AsyncSession, asset_id: uuid.UUID) -> uuid.UUID:
     eval_id = uuid.uuid4()
+    run_id = uuid.uuid4()
+    session.add(
+        EvaluationRun(
+            id=run_id,
+            asset_id=asset_id,
+            eval_name='test',
+            period_start=_START,
+            period_end=_END,
+            status='pending',
+        )
+    )
+    await session.flush()
     session.add(
         SLOEvaluation(
             id=eval_id,
+            evaluation_id=run_id,
             evaluation_name='test',
             asset_id=asset_id,
             period_start=_START,
@@ -153,7 +167,7 @@ async def test_bulk_insert_and_read_back(db_session: AsyncSession) -> None:
     ]
     await repo.bulk_insert(eval_id, rows_to_insert)
 
-    result = await db_session.execute(select(IndicatorResultRow).where(IndicatorResultRow.evaluation_id == eval_id))
+    result = await db_session.execute(select(IndicatorResultRow).where(IndicatorResultRow.slo_evaluation_id == eval_id))
     rows = list(result.scalars().all())
     assert len(rows) == 2
 
@@ -211,7 +225,7 @@ async def test_delete_and_reinsert(db_session: AsyncSession) -> None:
         ],
     )
 
-    result = await db_session.execute(select(IndicatorResultRow).where(IndicatorResultRow.evaluation_id == eval_id))
+    result = await db_session.execute(select(IndicatorResultRow).where(IndicatorResultRow.slo_evaluation_id == eval_id))
     rows = list(result.scalars().all())
     assert len(rows) == 1
     assert rows[0].value == 620.0

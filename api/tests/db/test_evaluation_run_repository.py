@@ -1,12 +1,13 @@
 """Integration tests for EvaluationRunRepository."""
 
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
-
-from app.db.models import Asset, AssetType, EvaluationRun, SLOEvaluation
-from app.modules.quality_gate.evaluation_run_repository import EvaluationRunRepository
+from app.db.models import Asset, AssetType, SLOEvaluation
+from app.modules.quality_gate.evaluation_run_repository import (
+    EvaluationRunRepository,
+)
 
 
 @pytest.fixture
@@ -24,8 +25,8 @@ async def asset(db_session):
 @pytest.mark.integration
 async def test_create_and_get(db_session, asset):
     repo = EvaluationRunRepository(db_session)
-    start = datetime(2026, 1, 15, tzinfo=timezone.utc)
-    end = datetime(2026, 1, 16, tzinfo=timezone.utc)
+    start = datetime(2026, 1, 15, tzinfo=UTC)
+    end = datetime(2026, 1, 16, tzinfo=UTC)
 
     run = await repo.create(
         asset_id=asset.id,
@@ -45,8 +46,8 @@ async def test_create_and_get(db_session, asset):
 @pytest.mark.integration
 async def test_rollup_worst_case_result(db_session, asset):
     repo = EvaluationRunRepository(db_session)
-    start = datetime(2026, 1, 15, tzinfo=timezone.utc)
-    end = datetime(2026, 1, 16, tzinfo=timezone.utc)
+    start = datetime(2026, 1, 15, tzinfo=UTC)
+    end = datetime(2026, 1, 16, tzinfo=UTC)
 
     run = await repo.create(asset_id=asset.id, eval_name='daily', period_start=start, period_end=end)
     await db_session.flush()
@@ -81,8 +82,8 @@ async def test_rollup_worst_case_result(db_session, asset):
 @pytest.mark.integration
 async def test_rollup_skips_when_not_all_done(db_session, asset):
     repo = EvaluationRunRepository(db_session)
-    start = datetime(2026, 1, 15, tzinfo=timezone.utc)
-    end = datetime(2026, 1, 16, tzinfo=timezone.utc)
+    start = datetime(2026, 1, 15, tzinfo=UTC)
+    end = datetime(2026, 1, 16, tzinfo=UTC)
 
     run = await repo.create(asset_id=asset.id, eval_name='daily', period_start=start, period_end=end)
     await db_session.flush()

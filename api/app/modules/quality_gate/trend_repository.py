@@ -70,7 +70,7 @@ class TrendRepository:
         total_weight_sq = (
             select(func.coalesce(func.sum(SLOObjective.weight), 1))
             .join(IndicatorResultRow, IndicatorResultRow.slo_objective_id == SLOObjective.id)
-            .where(IndicatorResultRow.evaluation_id == SLOEvaluation.id)
+            .where(IndicatorResultRow.slo_evaluation_id == SLOEvaluation.id)
             .correlate(SLOEvaluation)
             .scalar_subquery()
             .label('total_weight')
@@ -80,16 +80,16 @@ class TrendRepository:
             select(
                 SLOEvaluation.period_start,
                 SLIValue.value,
-                SLIValue.eval_id,
+                SLIValue.slo_evaluation_id,
                 IndicatorResultRow.status.label('result'),
                 IndicatorResultRow.compared_value,
                 IndicatorResultRow.score,
                 total_weight_sq,
             )
-            .join(SLOEvaluation, SLIValue.eval_id == SLOEvaluation.id)
+            .join(SLOEvaluation, SLIValue.slo_evaluation_id == SLOEvaluation.id)
             .join(
                 IndicatorResultRow,
-                IndicatorResultRow.evaluation_id == SLOEvaluation.id,
+                IndicatorResultRow.slo_evaluation_id == SLOEvaluation.id,
             )
             .join(
                 SLOObjective,
@@ -114,7 +114,7 @@ class TrendRepository:
                 'value': r.value,
                 # Percentage contribution: stacks to 100% when all indicators pass
                 'score': round(r.score / r.total_weight * 100, 2) if r.total_weight else 0,
-                'eval_id': str(r.eval_id),
+                'eval_id': str(r.slo_evaluation_id),
                 'result': r.result,
                 'baseline': r.compared_value,
             }
@@ -148,10 +148,10 @@ class TrendRepository:
             select(
                 SLIValue.eval_start,
                 SLIValue.value,
-                SLIValue.eval_id,
+                SLIValue.slo_evaluation_id,
                 SLOEvaluation.result,
             )
-            .join(SLOEvaluation, SLIValue.eval_id == SLOEvaluation.id)
+            .join(SLOEvaluation, SLIValue.slo_evaluation_id == SLOEvaluation.id)
             .where(
                 SLIValue.evaluation_name == evaluation_name,
                 SLIValue.metric_name == metric_name,
@@ -172,7 +172,7 @@ class TrendRepository:
             {
                 'timestamp': r.eval_start.isoformat(),
                 'value': r.value,
-                'eval_id': str(r.eval_id),
+                'eval_id': str(r.slo_evaluation_id),
                 'result': r.result,
             }
             for r in rows

@@ -11,7 +11,7 @@ from sqlalchemy import String, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.db.models import Asset, EvaluationAnnotation, IndicatorResultRow, SLOEvaluation
+from app.db.models import Asset, EvaluationAnnotation, EvaluationRun, IndicatorResultRow, SLOEvaluation
 from app.modules.quality_gate.engine.constants import EvaluationStatus
 from app.modules.quality_gate.exceptions import DuplicateEvaluationError
 from app.modules.quality_gate.params import EvalCreateParams
@@ -26,12 +26,30 @@ class EvaluationRepository:
     async def create_pending(self, params: EvalCreateParams) -> SLOEvaluation:
         """Create a new evaluation record in pending status.
 
+        Ensures the parent EvaluationRun row exists, creating it if absent.
+        This supports both the full trigger flow (parent created first) and
+        direct repository usage in tests (parent auto-created on demand).
+
         Args:
             params: Validated parameters for the new evaluation record.
 
         Returns:
             Newly created Evaluation in pending status.
         """
+        # Ensure parent EvaluationRun exists (auto-create for direct callers / tests)
+        run = await self._session.get(EvaluationRun, params.evaluation_id)
+        if run is None:
+            run = EvaluationRun(
+                id=params.evaluation_id,
+                asset_id=params.asset_id,
+                eval_name=params.evaluation_name,
+                period_start=params.period_start,
+                period_end=params.period_end,
+                status='pending',
+            )
+            self._session.add(run)
+            await self._session.flush()
+
         # Merge asset tags as defaults into variables (caller values take precedence)
         merged_variables = dict(params.variables)
         asset_row = await self._session.get(Asset, params.asset_id)

@@ -56,6 +56,7 @@ async def _create_completed_eval(
     repo = EvaluationRepository(session)
     ev = await repo.create_pending(
         EvalCreateParams(
+            evaluation_id=uuid.uuid4(),
             evaluation_name=evaluation_name,
             period_start=period_start,
             period_end=period_end,
@@ -122,7 +123,7 @@ async def _seed_indicator_row(
     """Seed a single IndicatorResultRow for an evaluation."""
     session.add(
         IndicatorResultRow(
-            evaluation_id=evaluation_id,
+            slo_evaluation_id=evaluation_id,
             slo_objective_id=objective.id,
             value=value,
             compared_value=None,

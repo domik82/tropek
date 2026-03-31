@@ -35,6 +35,7 @@ async def test_heatmap_returns_completed_evals(db_session: AsyncSession) -> None
         start = _BASE + timedelta(hours=i)
         ev = await eval_repo.create_pending(
             EvalCreateParams(
+                evaluation_id=uuid.uuid4(),
                 evaluation_name='hm-test',
                 period_start=start,
                 period_end=start + timedelta(minutes=30),
@@ -60,6 +61,7 @@ async def test_heatmap_includes_invalidated_completed(db_session: AsyncSession) 
 
     ev = await eval_repo.create_pending(
         EvalCreateParams(
+            evaluation_id=uuid.uuid4(),
             evaluation_name='hm-inv',
             period_start=_BASE,
             period_end=_BASE + timedelta(minutes=30),
