@@ -21,29 +21,29 @@ class SLIValueRepository:
         """Batch insert SLI value rows.
 
         Args:
-            rows: List of dicts matching SLIValue columns (eval_id, eval_start,
+            rows: List of dicts matching SLIValue columns (slo_evaluation_id, eval_start,
                   metric_name, aggregation, value, asset_name, evaluation_name, os_tag).
         """
         if not rows:
             return
         await self._session.execute(insert(SLIValue).values(rows))
 
-    async def delete_sli_values(self, eval_id: uuid.UUID) -> None:
+    async def delete_sli_values(self, slo_evaluation_id: uuid.UUID) -> None:
         """Delete all SLI values for an evaluation (hard rerun).
 
         Args:
-            eval_id: Evaluation whose SLI values should be deleted.
+            slo_evaluation_id: Evaluation whose SLI values should be deleted.
         """
-        await self._session.execute(delete(SLIValue).where(SLIValue.eval_id == eval_id))
+        await self._session.execute(delete(SLIValue).where(SLIValue.slo_evaluation_id == slo_evaluation_id))
 
-    async def get_sli_values_for_eval(self, eval_id: uuid.UUID) -> list[SLIValue]:
+    async def get_sli_values_for_eval(self, slo_evaluation_id: uuid.UUID) -> list[SLIValue]:
         """Fetch all SLI values for a given evaluation.
 
         Args:
-            eval_id: Evaluation UUID.
+            slo_evaluation_id: Evaluation UUID.
 
         Returns:
             All SLIValue rows for this evaluation.
         """
-        result = await self._session.execute(select(SLIValue).where(SLIValue.eval_id == eval_id))
+        result = await self._session.execute(select(SLIValue).where(SLIValue.slo_evaluation_id == slo_evaluation_id))
         return list(result.scalars().all())
