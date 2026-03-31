@@ -486,23 +486,21 @@ class _Evaluations:
         _raise_for_status(resp)
         return EvaluationSummary.model_validate(resp.json())
 
-    def trigger(
+    def evaluate(
         self,
         asset_name: str,
-        evaluation_name: str,
-        slo_name: str,
+        eval_name: str,
         period_start: str,
         period_end: str,
         *,
         variables: dict[str, str] | None = None,
     ) -> dict[str, Any]:
-        """Trigger a single asset evaluation."""
+        """POST /evaluate — trigger all SLOs for an asset."""
         resp = self._http.post(
-            '/evaluations',
+            '/evaluate',
             json={
                 'asset_name': asset_name,
-                'evaluation_name': evaluation_name,
-                'slo_name': slo_name,
+                'eval_name': eval_name,
                 'period_start': period_start,
                 'period_end': period_end,
                 'variables': variables or {},
@@ -511,49 +509,28 @@ class _Evaluations:
         _raise_for_status(resp)
         return resp.json()  # type: ignore[no-any-return]
 
-    def trigger_asset(
+    def evaluate_batch(
         self,
-        asset_name: str,
-        evaluation_name: str,
-        period_start: str,
-        period_end: str,
+        mode: str,
+        eval_name: str,
         *,
+        asset_name: str | None = None,
+        periods: list[dict] | None = None,
+        asset_names: list[str] | None = None,
+        period_start: str | None = None,
+        period_end: str | None = None,
         variables: dict[str, str] | None = None,
     ) -> dict[str, Any]:
-        """Trigger evaluations for all SLOs linked to an asset."""
-        resp = self._http.post(
-            '/evaluations/asset',
-            json={
-                'asset_name': asset_name,
-                'evaluation_name': evaluation_name,
-                'period_start': period_start,
-                'period_end': period_end,
-                'variables': variables or {},
-            },
-        )
-        _raise_for_status(resp)
-        return resp.json()  # type: ignore[no-any-return]
-
-    def trigger_batch(
-        self,
-        group_name: str,
-        evaluation_name: str,
-        period_start: str,
-        period_end: str,
-        *,
-        variables: dict[str, str] | None = None,
-    ) -> dict[str, Any]:
-        """Trigger evaluations for all assets in a group."""
-        resp = self._http.post(
-            '/evaluations/batch',
-            json={
-                'group_name': group_name,
-                'evaluation_name': evaluation_name,
-                'period_start': period_start,
-                'period_end': period_end,
-                'variables': variables or {},
-            },
-        )
+        """POST /evaluate/batch — by_date or by_asset batch trigger."""
+        payload: dict[str, Any] = {'mode': mode, 'eval_name': eval_name, 'variables': variables or {}}
+        if mode == 'by_date':
+            payload['asset_name'] = asset_name
+            payload['periods'] = periods or []
+        elif mode == 'by_asset':
+            payload['asset_names'] = asset_names or []
+            payload['period_start'] = period_start
+            payload['period_end'] = period_end
+        resp = self._http.post('/evaluate/batch', json=payload)
         _raise_for_status(resp)
         return resp.json()  # type: ignore[no-any-return]
 

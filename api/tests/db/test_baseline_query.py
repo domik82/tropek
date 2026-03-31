@@ -37,6 +37,7 @@ async def _create_eval(
     start = _BASE + timedelta(hours=offset_hours)
     ev = await repo.create_pending(
         EvalCreateParams(
+            evaluation_id=uuid.uuid4(),
             evaluation_name='baseline-test',
             period_start=start,
             period_end=start + timedelta(minutes=30),

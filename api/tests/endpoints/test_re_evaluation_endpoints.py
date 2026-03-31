@@ -43,6 +43,7 @@ async def _setup_re_eval(
     repo = EvaluationRepository(session)
     ev = await repo.create_pending(
         EvalCreateParams(
+            evaluation_id=uuid.uuid4(),
             evaluation_name='daily',
             period_start=_START,
             period_end=_START + timedelta(minutes=30),

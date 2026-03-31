@@ -89,6 +89,7 @@ class EvaluationSummary(BaseModel):
     """Compact evaluation row for list views."""
 
     id: uuid.UUID
+    evaluation_id: uuid.UUID
     evaluation_name: str
     status: str
     result: str | None
@@ -264,3 +265,100 @@ class BatchTriggerResponse(BaseModel):
     batch_id: uuid.UUID
     evaluation_ids: list[uuid.UUID]
     status: str
+
+
+class EvaluateSingleRequest(BaseModel):
+    """Request body for POST /evaluate."""
+
+    asset_name: str
+    eval_name: str
+    period_start: datetime
+    period_end: datetime
+    variables: dict[str, str] = {}
+
+
+class EvaluateSingleResponse(BaseModel):
+    """Response from POST /evaluate."""
+
+    evaluation_id: uuid.UUID
+    slo_evaluation_ids: list[uuid.UUID]
+
+
+class BatchPeriod(BaseModel):
+    """A single period window for by_date batch mode."""
+
+    period_start: datetime
+    period_end: datetime
+
+
+class EvaluateBatchRequest(BaseModel):
+    """Request body for POST /evaluate/batch.
+
+    mode='by_date': same asset, multiple time windows (asset_name + periods required)
+    mode='by_asset': same window, multiple assets (asset_names + period_start/end required)
+    """
+
+    mode: str  # 'by_date' | 'by_asset'
+    asset_name: str | None = None
+    periods: list[BatchPeriod] | None = None
+    asset_names: list[str] | None = None
+    period_start: datetime | None = None
+    period_end: datetime | None = None
+    eval_name: str
+    variables: dict[str, str] = {}
+
+
+class EvaluateBatchResponse(BaseModel):
+    """Response from POST /evaluate/batch."""
+
+    evaluation_ids: list[uuid.UUID]
+    slo_evaluation_ids: list[uuid.UUID]
+
+
+class HeatmapSummaryCell(BaseModel):
+    """Per-column aggregate for an SLO group or the Overall composite row."""
+
+    evaluation_id: uuid.UUID
+    period_start: datetime
+    result: str
+    score: float  # 0-100, achieved_points / total_points x 100
+
+
+class HeatmapCellGrouped(BaseModel):
+    """A single indicator x column cell in the grouped heatmap."""
+
+    evaluation_id: uuid.UUID       # parent eval (column key)
+    slo_evaluation_id: uuid.UUID   # FK to slo_evaluations (for trend navigation)
+    period_start: datetime         # display label only
+    metric: str
+    display_name: str
+    result: str
+    score: float
+
+
+class SloGroup(BaseModel):
+    """One SLO's contribution to the grouped heatmap."""
+
+    slo_name: str
+    slo_display_name: str | None = None
+    metrics: list[HeatmapMetric]
+    cells: list[HeatmapCellGrouped]
+    summary: list[HeatmapSummaryCell]  # per-column worst-case aggregate
+
+
+class EvaluationColumn(BaseModel):
+    """One heatmap column — corresponds to one parent EvaluationRun."""
+
+    evaluation_id: uuid.UUID
+    period_start: datetime
+    period_end: datetime
+    eval_name: str
+
+
+class GroupedMetricHeatmapResponse(BaseModel):
+    """Grouped metric heatmap response. Columns are parent EvaluationRun rows."""
+
+    asset_name: str
+    columns: list[EvaluationColumn]      # ordered oldest → newest
+    groups: list[SloGroup]               # SLO groups in appearance order
+    composite: list[HeatmapSummaryCell]  # Overall row (worst-case across all groups)

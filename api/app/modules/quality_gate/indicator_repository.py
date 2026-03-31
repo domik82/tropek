@@ -19,14 +19,14 @@ class IndicatorRepository:
 
     async def bulk_insert(
         self,
-        evaluation_id: uuid.UUID,
+        slo_evaluation_id: uuid.UUID,
         rows: list[dict[str, Any]],
     ) -> None:
-        """Insert indicator result rows for a single evaluation."""
+        """Insert indicator result rows for a single SLO evaluation."""
         for row in rows:
             self._session.add(
                 IndicatorResultRow(
-                    evaluation_id=evaluation_id,
+                    slo_evaluation_id=slo_evaluation_id,
                     slo_objective_id=row['slo_objective_id'],
                     value=row.get('value'),
                     compared_value=row.get('compared_value'),
@@ -38,7 +38,9 @@ class IndicatorRepository:
             )
         await self._session.flush()
 
-    async def delete_for_evaluation(self, evaluation_id: uuid.UUID) -> None:
-        """Delete all indicator rows for an evaluation (used by re-evaluation)."""
-        await self._session.execute(delete(IndicatorResultRow).where(IndicatorResultRow.evaluation_id == evaluation_id))
+    async def delete_for_evaluation(self, slo_evaluation_id: uuid.UUID) -> None:
+        """Delete all indicator rows for a SLO evaluation (used by re-evaluation)."""
+        await self._session.execute(
+            delete(IndicatorResultRow).where(IndicatorResultRow.slo_evaluation_id == slo_evaluation_id)
+        )
         await self._session.flush()

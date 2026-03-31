@@ -5,7 +5,7 @@
 
 import type { EvaluationSummary, EvaluationDetail, IndicatorResult, TrendPoint, FailingIndicator } from '../features/evaluations/types'
 import type { AssetGroup } from '../features/assets/types'
-import type { MetricHeatmapResponse } from '../features/navigator/types'
+import type { MetricHeatmapResponse, EvaluationColumn, HeatmapSloGroup, HeatmapSummaryCell } from '../features/navigator/types'
 import { computeChangePct } from '../utils/metrics'
 
 // ---------------------------------------------------------------------------
@@ -651,43 +651,8 @@ export function getSloDefinitions() {
 }
 
 export function getMetricHeatmap(assetName: string): MetricHeatmapResponse {
-  const assetEvals = allEvals()
-    .filter(e => e.asset_snapshot.name === assetName)
-    .sort((a, b) => a.period_start.localeCompare(b.period_start))
-
-  if (!assetEvals.length) {
-    return { asset_name: assetName, slots: [], metrics: [], cells: [] }
-  }
-
-  const slots = Array.from(new Set(assetEvals.map(e => e.period_start))).sort()
-
-  // Use the first evaluation's detail to get the metric list
-  const sampleDetail = generateEvaluationDetail(assetEvals[0].id, allEvals())
-  const metrics = sampleDetail.indicator_results.map(ind => ({
-    name: ind.metric,
-    display_name: ind.display_name,
-    tab_group: ind.tab_group,
-  }))
-
-  const cells: MetricHeatmapResponse['cells'] = []
-  for (const slot of slots) {
-    const ev = assetEvals.find(e => e.period_start === slot)
-    if (!ev) continue
-    const detail = generateEvaluationDetail(ev.id, allEvals())
-    for (const ind of detail.indicator_results) {
-      cells.push({
-        slot,
-        metric: ind.metric,
-        display_name: ind.display_name,
-        result: ev.invalidated ? 'invalidated' : ind.status,
-        score: ind.score,
-        eval_id: ev.id,
-        evaluation_name: ev.evaluation_name,
-      })
-    }
-  }
-
-  return { asset_name: assetName, slots, metrics, cells }
+  // Delegate to the grouped implementation — old endpoint kept for backward compat
+  return getGroupedMetricHeatmap(assetName)
 }
 
 // SLI definitions — sourced from static fixture in mocks/data/
@@ -727,4 +692,75 @@ export function getGroupSloLinks(groupName: string) {
   }
 
   return links
+}
+
+export function getGroupedMetricHeatmap(assetName: string): MetricHeatmapResponse {
+  const prng = makePrng(assetName.charCodeAt(0) + 42)
+  const RESULTS = ['pass', 'pass', 'pass', 'warning', 'fail'] as const
+
+  const N_COLS = 7
+  const columns: EvaluationColumn[] = Array.from({ length: N_COLS }, (_, i) => {
+    const d = new Date('2026-01-15T00:00:00Z')
+    d.setDate(d.getDate() + i)
+    return {
+      evaluation_id: crypto.randomUUID(),
+      period_start: d.toISOString(),
+      period_end: new Date(d.getTime() + 86_400_000).toISOString(),
+      eval_name: 'daily',
+    }
+  })
+
+  const SLO_GROUPS = ['nginx', 'redis', 'postgres']
+  const SLO_METRICS: Record<string, Array<{ name: string; display_name: string }>> = {
+    nginx: [
+      { name: 'error_rate', display_name: 'Error Rate' },
+      { name: 'p99_latency', display_name: 'P99 Latency' },
+      { name: 'throughput_rps', display_name: 'Throughput' },
+    ],
+    redis: [
+      { name: 'cache_hit_rate', display_name: 'Cache Hit Rate' },
+      { name: 'latency_p99', display_name: 'Latency P99' },
+    ],
+    postgres: [
+      { name: 'query_p95', display_name: 'Query P95' },
+      { name: 'connection_pool', display_name: 'Connection Pool' },
+      { name: 'deadlocks', display_name: 'Deadlocks' },
+    ],
+  }
+
+  const SLO_EVAL_IDS: Record<string, string[]> = {}
+  for (const slo of SLO_GROUPS) {
+    SLO_EVAL_IDS[slo] = columns.map(() => crypto.randomUUID())
+  }
+
+  const groups: HeatmapSloGroup[] = SLO_GROUPS.map(sloName => {
+    const metrics = SLO_METRICS[sloName]
+    const cells = columns.flatMap((col, xi) =>
+      metrics.map(m => ({
+        evaluation_id: col.evaluation_id,
+        slo_evaluation_id: SLO_EVAL_IDS[sloName][xi],
+        period_start: col.period_start,
+        metric: m.name,
+        display_name: m.display_name,
+        result: RESULTS[Math.floor(prng() * RESULTS.length)],
+        score: Math.round(prng() * 100),
+      }))
+    )
+    const summary: HeatmapSummaryCell[] = columns.map(col => ({
+      evaluation_id: col.evaluation_id,
+      period_start: col.period_start,
+      result: RESULTS[Math.floor(prng() * RESULTS.length)],
+      score: Math.round(prng() * 100),
+    }))
+    return { slo_name: sloName, metrics, cells, summary }
+  })
+
+  const composite: HeatmapSummaryCell[] = columns.map(col => ({
+    evaluation_id: col.evaluation_id,
+    period_start: col.period_start,
+    result: RESULTS[Math.floor(prng() * RESULTS.length)],
+    score: Math.round(prng() * 100),
+  }))
+
+  return { asset_name: assetName, columns, groups, composite }
 }

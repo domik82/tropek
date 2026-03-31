@@ -51,6 +51,7 @@ async def test_find_duplicate_returns_existing_completed(db_session: AsyncSessio
     repo = EvaluationRepository(db_session)
     ev = await repo.create_pending(
         EvalCreateParams(
+            evaluation_id=uuid.uuid4(),
             evaluation_name='nightly',
             period_start=_START,
             period_end=_END,
@@ -85,6 +86,7 @@ async def test_find_duplicate_ignores_failed(db_session: AsyncSession) -> None:
     repo = EvaluationRepository(db_session)
     ev = await repo.create_pending(
         EvalCreateParams(
+            evaluation_id=uuid.uuid4(),
             evaluation_name='nightly',
             period_start=_START,
             period_end=_END,
@@ -112,6 +114,7 @@ async def test_find_duplicate_returns_pending(db_session: AsyncSession) -> None:
     repo = EvaluationRepository(db_session)
     await repo.create_pending(
         EvalCreateParams(
+            evaluation_id=uuid.uuid4(),
             evaluation_name='nightly',
             period_start=_START,
             period_end=_END,
@@ -139,6 +142,7 @@ async def test_find_duplicate_different_name_no_conflict(db_session: AsyncSessio
     repo = EvaluationRepository(db_session)
     await repo.create_pending(
         EvalCreateParams(
+            evaluation_id=uuid.uuid4(),
             evaluation_name='nightly-hourly',
             period_start=_START,
             period_end=_END,
@@ -166,6 +170,7 @@ async def test_create_pending_raises_on_constraint_violation(db_session: AsyncSe
     repo = EvaluationRepository(db_session)
     await repo.create_pending(
         EvalCreateParams(
+            evaluation_id=uuid.uuid4(),
             evaluation_name='nightly',
             period_start=_START,
             period_end=_END,
@@ -179,6 +184,7 @@ async def test_create_pending_raises_on_constraint_violation(db_session: AsyncSe
     with pytest.raises(DuplicateEvaluationError):
         await repo.create_pending(
             EvalCreateParams(
+                evaluation_id=uuid.uuid4(),
                 evaluation_name='nightly',
                 period_start=_START,
                 period_end=_END,

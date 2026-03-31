@@ -11,7 +11,7 @@ from app.modules.assets.repository import (
     AssetTypeRepository,
 )
 from app.modules.assets.schemas import AssetGroupMemberCreate
-from fastapi import HTTPException
+from app.modules.common.exceptions import ConflictError
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -73,9 +73,9 @@ async def test_asset_type_delete_in_use_raises(db_session: AsyncSession) -> None
     asset_repo = AssetRepository(db_session)
     await type_repo.create('in-use-type', is_default=False)
     await asset_repo.create('asset-using-type', type_name='in-use-type')
-    with pytest.raises(HTTPException) as exc_info:
+    with pytest.raises(ConflictError) as exc_info:
         await type_repo.delete('in-use-type')
-    assert exc_info.value.status_code == 409
+    assert exc_info.value.name == 'in-use-type'
 
 
 # ---------- AssetRepository ----------
@@ -198,9 +198,9 @@ async def test_asset_type_rename_duplicate(db_session: AsyncSession) -> None:
     repo = AssetTypeRepository(db_session)
     await repo.create('type-a', is_default=False)
     await repo.create('type-b', is_default=False)
-    with pytest.raises(HTTPException) as exc_info:
+    with pytest.raises(ConflictError) as exc_info:
         await repo.rename('type-a', 'type-b')
-    assert exc_info.value.status_code == 409
+    assert exc_info.value.name == 'type-b'
 
 
 # ---------- Task 3: Asset delete ----------

@@ -1,5 +1,6 @@
 // ui/src/features/navigator/components/AssetPanel.tsx
 import { useState, useMemo, useRef, useEffect } from 'react'
+import { getConfig } from '@/lib/config'
 import { useNavigate } from 'react-router-dom'
 import { useQueries } from '@tanstack/react-query'
 import { useAssetEvaluations, useMetricHeatmap, useEvaluationNames } from '../hooks'
@@ -8,11 +9,10 @@ import { fetchEvaluationDetail } from '@/features/evaluations/api'
 import { evaluationKeys } from '@/lib/queryKeys'
 import { useAssets } from '@/features/assets/hooks'
 import { useSlos } from '@/features/slos/hooks'
-import { useTabState } from '@/features/evaluations/hooks/useTabState'
 import { EvaluationHeader } from '@/features/evaluations/components/EvaluationHeader'
 import { AnnotationSection, type AnnotationSectionHandle } from '@/features/evaluations/components/AnnotationForm'
 import { EvaluationActionsButton, EvaluationActionForm, NoteIconButton } from '@/features/evaluations/components/EvaluationActions'
-import type { ActionKind, EvaluationDetail, SliMetadata, IndicatorResult } from '@/features/evaluations/types'
+import type { ActionKind, SliMetadata } from '@/features/evaluations/types'
 import type { TimeSlotSelection } from './AssetHeatmap'
 import type { ViewMode } from '@/components/charts/ViewToggle'
 import { EvaluationNameFilter } from './EvaluationNameFilter'
@@ -32,6 +32,7 @@ export function AssetPanel({ assetName, initialEvalId }: Props) {
   const [selectedSlot, setSelectedSlot] = useState<TimeSlotSelection | undefined>(undefined)
   const [activeAction, setActiveAction] = useState<ActionKind | null>(null)
   const [selectedNames, setSelectedNames] = useState<string[] | undefined>(undefined)
+  const [sloExpandState, setSloExpandState] = useState<Map<string, boolean>>(() => new Map())
 
   // Reset local state when the asset changes (defense in depth alongside key= on parent)
   useEffect(() => {
@@ -39,6 +40,7 @@ export function AssetPanel({ assetName, initialEvalId }: Props) {
     setSelectedSlot(undefined)
     setActiveAction(null)
     setSelectedNames(undefined)
+    setSloExpandState(new Map())
   }, [assetName])
 
   const notesRef = useRef<AnnotationSectionHandle>(null)
@@ -109,19 +111,6 @@ export function AssetPanel({ assetName, initialEvalId }: Props) {
     [slotEvalQueries],
   )
 
-  // Merge indicators from all evals in selected slot.
-  // Use allSlotEvals when a slot is selected (even for single-eval columns)
-  // to avoid showing stale ev data during transitions.
-  const mergedIndicators = useMemo((): IndicatorResult[] => {
-    if (allSlotEvals.length > 1) {
-      return allSlotEvals.flatMap(e => e.indicator_results)
-    }
-    if (allSlotEvals.length === 1) {
-      return allSlotEvals[0].indicator_results
-    }
-    return ev?.indicator_results ?? []
-  }, [allSlotEvals, ev])
-
   // Map each metric to the eval ID that owns it (for multi-SLO trend charts)
   const metricEvalMap = useMemo((): Map<string, string> | undefined => {
     if (allSlotEvals.length <= 1) return undefined
@@ -134,6 +123,13 @@ export function AssetPanel({ assetName, initialEvalId }: Props) {
     return m
   }, [allSlotEvals])
 
+  // Aggregate annotations from all SLO evals in the selected slot so notes are
+  // visible regardless of which SLO the annotation was added to.
+  const displayAnnotations = useMemo(() => {
+    if (allSlotEvals.length > 0) return allSlotEvals.flatMap(e => e.annotations ?? [])
+    return ev?.annotations ?? []
+  }, [allSlotEvals, ev])
+
   const mergedSliMetadata = useMemo((): Record<string, SliMetadata> | undefined => {
     if (allSlotEvals.length > 0) {
       const meta: Record<string, SliMetadata> = {}
@@ -144,6 +140,23 @@ export function AssetPanel({ assetName, initialEvalId }: Props) {
     }
     return ev?.sli_metadata
   }, [allSlotEvals, ev])
+
+  // Initialise SLO expand state from config when heatmap data first arrives
+  useEffect(() => {
+    if (!heatmapData || sloExpandState.size > 0) return
+    const defaultExpanded = getConfig().heatmapSloGroupsExpandedByDefault
+    const m = new Map<string, boolean>()
+    for (const g of heatmapData.groups) m.set(g.slo_name, defaultExpanded)
+    setSloExpandState(m)
+  }, [heatmapData])
+
+  function handleSloToggle(sloName: string) {
+    setSloExpandState(prev => {
+      const next = new Map(prev)
+      next.set(sloName, !prev.get(sloName))
+      return next
+    })
+  }
 
   function handleSlotSelect(slot: TimeSlotSelection) {
     setSelectedSlot(slot)
@@ -162,9 +175,6 @@ export function AssetPanel({ assetName, initialEvalId }: Props) {
     }
   }, [effectiveEvalId])
 
-  const { availableGroups, counts, activeTab, setActiveTab, tabIndicators } =
-    useTabState(mergedIndicators.length > 0 ? mergedIndicators : ev?.indicator_results)
-
   const isLoading = evalsLoading || heatmapLoading
 
   const notedSlots = useMemo(() => {
@@ -175,13 +185,15 @@ export function AssetPanel({ assetName, initialEvalId }: Props) {
         .map(e => [e.id, e] as const),
     )
     const slots = new Map<string, { evalId: string; count: number }>()
-    for (const c of heatmapData.cells) {
-      if (c.eval_id && notedEvals.has(c.eval_id) && !slots.has(c.slot)) {
-        const summary = notedEvals.get(c.eval_id)!
-        slots.set(c.slot, {
-          evalId: c.eval_id,
-          count: summary.annotation_count ?? 0,
-        })
+    for (const group of heatmapData.groups) {
+      for (const c of group.cells) {
+        if (notedEvals.has(c.slo_evaluation_id) && !slots.has(c.period_start)) {
+          const summary = notedEvals.get(c.slo_evaluation_id)!
+          slots.set(c.period_start, {
+            evalId: c.slo_evaluation_id,
+            count: summary.annotation_count ?? 0,
+          })
+        }
       }
     }
     return slots
@@ -225,7 +237,7 @@ export function AssetPanel({ assetName, initialEvalId }: Props) {
           </>
         ) : undefined}
         noteButton={hasEvals && effectiveEvalId && ev && !ev.invalidated ? (
-          <NoteIconButton onClick={handleAddNote} annotationCount={(ev.annotations ?? []).length} />
+          <NoteIconButton onClick={handleAddNote} annotationCount={displayAnnotations.length} />
         ) : undefined}
         actions={hasEvals && effectiveEvalId && ev ? (
           <EvaluationActionsButton
@@ -269,7 +281,7 @@ export function AssetPanel({ assetName, initialEvalId }: Props) {
       {/* Notes */}
       {!isLoading && evals.length > 0 && effectiveEvalId && ev && (
         <div ref={notesSectionRef}>
-          <AnnotationSection ref={notesRef} evalId={effectiveEvalId} annotations={ev.annotations ?? []} />
+          <AnnotationSection ref={notesRef} evalId={effectiveEvalId} annotations={displayAnnotations} />
         </div>
       )}
 
@@ -278,7 +290,7 @@ export function AssetPanel({ assetName, initialEvalId }: Props) {
         <AssetPanelHeatmapView
           assetName={assetName}
           heatmapData={heatmapData}
-          ev={ev}
+          allSlotEvals={allSlotEvals.length > 0 ? allSlotEvals : (ev ? [ev] : [])}
           effectiveEvalId={effectiveEvalId}
           notedSlots={notedSlots}
           onEvalSelect={setSelectedEvalId}
@@ -287,12 +299,9 @@ export function AssetPanel({ assetName, initialEvalId }: Props) {
           mode={mode}
           setMode={setMode}
           explorerButton={explorerButton}
-          availableGroups={availableGroups}
-          counts={counts}
-          activeTab={activeTab}
-          setActiveTab={setActiveTab}
-          tabIndicators={tabIndicators}
           metricEvalMap={metricEvalMap}
+          sloExpandState={sloExpandState}
+          onSloToggle={handleSloToggle}
         />
       )}
 
@@ -303,11 +312,14 @@ export function AssetPanel({ assetName, initialEvalId }: Props) {
           evals={evals}
           heatmapData={heatmapData}
           onEvalSelect={setSelectedEvalId}
+          onSlotSelect={handleSlotSelect}
+          metricEvalMap={metricEvalMap}
           mode={mode}
           setMode={setMode}
           explorerButton={explorerButton}
         />
       )}
+
     </div>
   )
 }

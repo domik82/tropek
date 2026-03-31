@@ -21,7 +21,7 @@ class AnnotationRepository:
 
     async def add_annotation(
         self,
-        eval_id: uuid.UUID,
+        slo_evaluation_id: uuid.UUID,
         *,
         content: str,
         author: str | None = None,
@@ -31,7 +31,7 @@ class AnnotationRepository:
         """Append an annotation to an evaluation.
 
         Args:
-            eval_id: Evaluation to annotate.
+            slo_evaluation_id: Evaluation to annotate.
             content: Note text (required).
             author: Optional identifier of who wrote the annotation.
             category: Optional free label (e.g. "environment", "deployment").
@@ -42,7 +42,7 @@ class AnnotationRepository:
         """
         ann = EvaluationAnnotation(
             id=uuid.uuid4(),
-            evaluation_id=eval_id,
+            slo_evaluation_id=slo_evaluation_id,
             content=content,
             author=author,
             category=category,
@@ -51,8 +51,8 @@ class AnnotationRepository:
         self._session.add(ann)
         await self._session.flush()
         if self._cache:
-            await self._cache.invalidate(f'annot_count:{eval_id}')
-            await self._cache.invalidate(f'annot_latest:{eval_id}')
+            await self._cache.invalidate(f'annot_count:{slo_evaluation_id}')
+            await self._cache.invalidate(f'annot_latest:{slo_evaluation_id}')
         return ann
 
     async def get_annotation_by_id(self, annotation_id: uuid.UUID) -> EvaluationAnnotation | None:
@@ -117,6 +117,6 @@ class AnnotationRepository:
         await self._session.flush()
         ann = await self.get_annotation_by_id(annotation_id)
         if self._cache and ann is not None:
-            await self._cache.invalidate(f'annot_count:{ann.evaluation_id}')
-            await self._cache.invalidate(f'annot_latest:{ann.evaluation_id}')
+            await self._cache.invalidate(f'annot_count:{ann.slo_evaluation_id}')
+            await self._cache.invalidate(f'annot_latest:{ann.slo_evaluation_id}')
         return ann

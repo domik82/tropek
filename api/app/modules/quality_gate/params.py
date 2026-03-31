@@ -14,6 +14,7 @@ from app.modules.quality_gate.engine.result_models import IndicatorResult
 class EvalCreateParams(BaseModel):
     """Parameters for EvaluationRepository.create_pending()."""
 
+    evaluation_id: uuid.UUID
     evaluation_name: str
     period_start: datetime
     period_end: datetime

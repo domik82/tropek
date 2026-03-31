@@ -7,7 +7,7 @@ from datetime import UTC, datetime
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.models import Evaluation, IndicatorResultRow, SLODefinition
+from app.db.models import IndicatorResultRow, SLODefinition, SLOEvaluation
 from app.modules.assets.repository import AssetRepository
 from app.modules.quality_gate.baseline_repository import BaselineRepository
 from app.modules.quality_gate.engine.criteria import aggregate_values
@@ -58,7 +58,7 @@ def _build_slo_model(slo_def: SLODefinition) -> SLO:
 
 
 def _compute_baselines(
-    baseline_evals: list[Evaluation],
+    baseline_evals: list[SLOEvaluation],
     slo_model: SLO,
 ) -> tuple[dict[str, float | None], list[str]]:
     """Aggregate baseline values from a set of baseline evaluations.
@@ -164,7 +164,7 @@ async def _resolve_sli_version_range(
 
 
 async def _rescore_single(  # noqa: PLR0913
-    ev: Evaluation,
+    ev: SLOEvaluation,
     *,
     slo_model: SLO,
     slo_def: SLODefinition,

@@ -7,12 +7,15 @@ import { AssetScoreChart } from './AssetScoreChart'
 import { MetricGroupFilter } from './MetricGroupFilter'
 import type { EvaluationSummary, IndicatorResult } from '@/features/evaluations/types'
 import type { MetricHeatmapResponse } from '../types'
+import type { TimeSlotSelection } from './AssetHeatmap'
 
 interface Props {
   effectiveEvalId: string | undefined
   evals: EvaluationSummary[]
   heatmapData: MetricHeatmapResponse | undefined
   onEvalSelect: (evalId: string) => void
+  onSlotSelect: (slot: TimeSlotSelection) => void
+  metricEvalMap?: Map<string, string>
   mode: ViewMode
   setMode: (m: ViewMode) => void
   explorerButton: React.ReactNode
@@ -20,16 +23,56 @@ interface Props {
 
 export function AssetPanelChartView({
   effectiveEvalId, evals, heatmapData,
-  onEvalSelect, mode, setMode, explorerButton,
+  onEvalSelect, onSlotSelect, metricEvalMap,
+  mode, setMode, explorerButton,
 }: Props) {
   const [metricGroupFilter, setMetricGroupFilter] = useState<string>('all')
 
+  // One point per EvaluationRun using the composite (aggregated) score.
+  // Without this, evals has N entries per run (one per SLO), producing N× too many points.
+  const scoreChartEvals = useMemo((): EvaluationSummary[] => {
+    if (!heatmapData || heatmapData.composite.length === 0) return evals
+    return heatmapData.composite.map(cell => {
+      const rep = evals.find(e => e.period_start === cell.period_start)
+      return {
+        ...(rep ?? {} as EvaluationSummary),
+        id: rep?.id ?? cell.evaluation_id,
+        period_start: cell.period_start,
+        result: (cell.result as EvaluationSummary['result']) ?? 'error',
+        score: cell.score,
+        invalidated: false,
+      }
+    })
+  }, [heatmapData, evals])
+
+  // period_start → all slo_evaluation_ids for that column (across all SLO groups)
+  const slotEvalIds = useMemo((): Map<string, string[]> => {
+    if (!heatmapData) return new Map()
+    const m = new Map<string, string[]>()
+    for (const group of heatmapData.groups) {
+      for (const cell of group.cells) {
+        const ids = m.get(cell.period_start) ?? []
+        if (!ids.includes(cell.slo_evaluation_id)) ids.push(cell.slo_evaluation_id)
+        m.set(cell.period_start, ids)
+      }
+    }
+    return m
+  }, [heatmapData])
+
+  // Score chart click → full slot selection (all SLOs for that column)
+  function handleScoreChartClick(evalId: string) {
+    const entry = scoreChartEvals.find(e => e.id === evalId)
+    if (!entry) { onEvalSelect(evalId); return }
+    const evalIds = slotEvalIds.get(entry.period_start) ?? [evalId]
+    onSlotSelect({ periodStart: entry.period_start, evalIds })
+  }
+
   const allIndicators: IndicatorResult[] = useMemo(() => {
     if (!heatmapData) return []
-    return heatmapData.metrics.filter(m => m.name !== '__score__').map(m => ({
+    const allMetrics = heatmapData.groups.flatMap(g => g.metrics)
+    return allMetrics.filter(m => m.name !== '__score__').map(m => ({
       metric: m.name,
       display_name: m.display_name,
-      tab_group: m.tab_group,
       value: 0,
       compared_value: null,
       change_absolute: null,
@@ -65,7 +108,7 @@ export function AssetPanelChartView({
 
       {/* Score over time */}
       <div className="rounded-lg border border-border bg-surface-sunken p-4">
-        <AssetScoreChart evaluations={evals} selectedEvalId={effectiveEvalId} onEvalSelect={onEvalSelect} />
+        <AssetScoreChart evaluations={scoreChartEvals} selectedEvalId={effectiveEvalId} onEvalSelect={handleScoreChartClick} />
       </div>
 
       {effectiveEvalId && (
@@ -79,7 +122,7 @@ export function AssetPanelChartView({
 
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
             {chartIndicators.map(ind => (
-              <MetricTrendBlock key={ind.metric} evalId={effectiveEvalId} indicator={ind} onEvalSelect={onEvalSelect} />
+              <MetricTrendBlock key={ind.metric} evalId={metricEvalMap?.get(ind.metric) ?? effectiveEvalId ?? ''} indicator={ind} onEvalSelect={onEvalSelect} />
             ))}
           </div>
         </div>
