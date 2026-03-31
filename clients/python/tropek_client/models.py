@@ -320,3 +320,10 @@ class TemplateBinding(BaseModel):
     template_group_name: str
     data_source_name: str
     created_at: str
+
+
+class EvaluationRun(BaseModel):
+    """Parent evaluation run — aggregates N SLO evaluations."""
+
+    evaluation_id: str
+    slo_evaluation_ids: list[str]
