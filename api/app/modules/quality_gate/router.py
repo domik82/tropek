@@ -199,7 +199,7 @@ def _build_grouped_heatmap_response(
                         period_start=run.period_start,
                         metric=mn,
                         display_name=dn,
-                        result=row.status,
+                        result='invalidated' if slo_eval.invalidated else row.status,
                         score=row.score,
                     )
                 )
@@ -209,7 +209,11 @@ def _build_grouped_heatmap_response(
         summary = []
         for xi in range(n):
             slo_ev = sd['per_col'].get(xi)
-            result = slo_ev.result if slo_ev and slo_ev.result else 'none'
+            result = (
+                'invalidated' if slo_ev and slo_ev.invalidated
+                else slo_ev.result if slo_ev and slo_ev.result
+                else 'none'
+            )
             score = (
                 slo_ev.achieved_points / slo_ev.total_points * 100
                 if slo_ev and slo_ev.total_points
@@ -238,11 +242,14 @@ def _build_grouped_heatmap_response(
         tp = run.total_points
         ap = run.achieved_points
         run_score = round(ap / tp * 100, 2) if tp and ap is not None else 0.0
+        all_invalidated = run.slo_evaluations and all(
+            se.invalidated for se in run.slo_evaluations
+        )
         composite.append(
             HeatmapSummaryCell(
                 evaluation_id=run.id,
                 period_start=run.period_start,
-                result=run.result or 'none',
+                result='invalidated' if all_invalidated else (run.result or 'none'),
                 score=run_score,
             )
         )
