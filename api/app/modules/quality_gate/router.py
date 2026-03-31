@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
+from typing import Any
 
 from arq.connections import ArqRedis
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -20,6 +21,7 @@ from app.modules.quality_gate.re_evaluation_schemas import (
     ReEvaluateResponse,
 )
 from app.modules.quality_gate.re_evaluator import re_evaluate
+from app.db.models import EvaluationRun
 from app.modules.quality_gate.schemas import (
     AnnotationCreate,
     AnnotationHide,
@@ -29,15 +31,20 @@ from app.modules.quality_gate.schemas import (
     EvaluateBatchResponse,
     EvaluateSingleRequest,
     EvaluateSingleResponse,
+    EvaluationColumn,
     EvaluationDetail,
     EvaluationNameEntry,
     EvaluationSummary,
+    GroupedMetricHeatmapResponse,
     HeatmapCell,
+    HeatmapCellGrouped,
     HeatmapMetric,
+    HeatmapSummaryCell,
     InvalidateRequest,
     MetricHeatmapResponse,
     OverrideStatusRequest,
     PinBaselineRequest,
+    SloGroup,
     TrendPoint,
 )
 from app.modules.quality_gate.trigger_service import TriggerService
@@ -131,6 +138,123 @@ async def list_evaluations(  # noqa: PLR0913
     return PagedResponse(items=items, total=total)
 
 
+_RESULT_RANK: dict[str, int] = {'pass': 0, 'warning': 1, 'fail': 2, 'error': 3, 'invalidated': 4}
+
+
+def _worst_result(results: list[str]) -> str:
+    """Return the worst result in `results`, defaulting to 'none' if empty."""
+    if not results:
+        return 'none'
+    return max(results, key=lambda r: _RESULT_RANK.get(r, -1))
+
+
+def _build_grouped_heatmap_response(
+    asset_name: str,
+    runs: list[EvaluationRun],
+) -> GroupedMetricHeatmapResponse:
+    """Build GroupedMetricHeatmapResponse from a list of EvaluationRun rows.
+
+    Assumes each run already has slo_evaluations + indicator_rows eager-loaded.
+    Runs must arrive in DESC order (newest first) — this function reverses to ASC.
+    """
+    runs_asc = sorted(runs, key=lambda r: r.period_start)
+    n = len(runs_asc)
+
+    columns = [
+        EvaluationColumn(
+            evaluation_id=run.id,
+            period_start=run.period_start,
+            period_end=run.period_end,
+            eval_name=run.eval_name,
+        )
+        for run in runs_asc
+    ]
+    col_idx: dict[uuid.UUID, int] = {run.id: i for i, run in enumerate(runs_asc)}
+
+    # slo_name → {metrics, cells, per_col_results, per_col: xi → slo_eval}
+    slo_data: dict[str, dict[str, Any]] = {}
+
+    for run in runs_asc:
+        xi = col_idx[run.id]
+        for slo_eval in run.slo_evaluations or []:
+            sn = slo_eval.slo_name
+            if sn not in slo_data:
+                slo_data[sn] = {
+                    'metrics': {},
+                    'cells': [],
+                    'per_col': {},
+                }
+            sd = slo_data[sn]
+            sd['per_col'][xi] = slo_eval
+            for row in slo_eval.indicator_rows or []:
+                obj = row.objective
+                mn = obj.sli
+                dn = obj.display_name or mn
+                if mn not in sd['metrics']:
+                    sd['metrics'][mn] = dn
+                sd['cells'].append(
+                    HeatmapCellGrouped(
+                        evaluation_id=run.id,
+                        slo_evaluation_id=slo_eval.id,
+                        period_start=run.period_start,
+                        metric=mn,
+                        display_name=dn,
+                        result=row.status,
+                        score=row.score,
+                    )
+                )
+
+    groups = []
+    for sn, sd in slo_data.items():
+        summary = []
+        for xi in range(n):
+            slo_ev = sd['per_col'].get(xi)
+            result = slo_ev.result if slo_ev and slo_ev.result else 'none'
+            score = (
+                slo_ev.achieved_points / slo_ev.total_points * 100
+                if slo_ev and slo_ev.total_points
+                else 0.0
+            )
+            summary.append(
+                HeatmapSummaryCell(
+                    evaluation_id=runs_asc[xi].id,
+                    period_start=runs_asc[xi].period_start,
+                    result=result,
+                    score=round(score, 2),
+                )
+            )
+        groups.append(
+            SloGroup(
+                slo_name=sn,
+                metrics=[HeatmapMetric(name=mn, display_name=dn) for mn, dn in sd['metrics'].items()],
+                cells=sd['cells'],
+                summary=summary,
+            )
+        )
+
+    composite = []
+    for xi in range(n):
+        run = runs_asc[xi]
+        tp = run.total_points
+        ap = run.achieved_points
+        run_score = round(ap / tp * 100, 2) if tp and ap is not None else 0.0
+        composite.append(
+            HeatmapSummaryCell(
+                evaluation_id=run.id,
+                period_start=run.period_start,
+                result=run.result or 'none',
+                score=run_score,
+            )
+        )
+
+    return GroupedMetricHeatmapResponse(
+        asset_name=asset_name,
+        columns=columns,
+        groups=groups,
+        composite=composite,
+    )
+
+
 @router.get('/evaluations/metric-heatmap', response_model=MetricHeatmapResponse)
 async def get_metric_heatmap(
     asset_name: str,
@@ -205,6 +329,29 @@ async def get_metric_heatmap(
         ],
         cells=cells,
     )
+
+
+@router.get('/evaluate/metric-heatmap', response_model=GroupedMetricHeatmapResponse)
+async def get_grouped_metric_heatmap(
+    asset_name: str,
+    evaluation_name: list[str] | None = Query(default=None),
+    from_ts: datetime | None = Query(default=None, alias='from'),
+    to_ts: datetime | None = Query(default=None, alias='to'),
+    limit: int = Query(default=30, le=100),
+    repos: QualityGateRepos = Depends(get_qg_repos),
+) -> GroupedMetricHeatmapResponse:
+    """Return a grouped metric heatmap — one column per parent EvaluationRun."""
+    asset = await repos.asset_repo.get_by_name(asset_name)
+    if asset is None:
+        raise HTTPException(status_code=404, detail=f"asset '{asset_name}' not found")
+    runs = await repos.trend_repo.get_grouped_metric_heatmap(
+        asset_id=asset.id,
+        limit=limit,
+        eval_name=evaluation_name,
+        from_ts=from_ts,
+        to_ts=to_ts,
+    )
+    return _build_grouped_heatmap_response(asset_name, runs)
 
 
 @router.post('/evaluations/re-evaluate', response_model=ReEvaluateResponse)
