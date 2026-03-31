@@ -171,16 +171,17 @@ async def _fan_out_slo_bindings(
     binding_repo = SLOBindingRepository(session)
     for slo in generated_slos:
         try:
-            await binding_repo.create(
-                target_type=template_binding.target_type,
-                target_id=template_binding.target_id,
-                slo_name=slo.name,
-                data_source_name=template_binding.data_source_name,
-                source='template',
-                template_binding_id=template_binding.id,
-            )
+            async with session.begin_nested():
+                await binding_repo.create(
+                    target_type=template_binding.target_type,
+                    target_id=template_binding.target_id,
+                    slo_name=slo.name,
+                    data_source_name=template_binding.data_source_name,
+                    source='template',
+                    template_binding_id=template_binding.id,
+                )
         except IntegrityError:
-            await session.rollback()
+            pass  # binding already exists, skip
 
 
 async def _sync_template_bindings_for_group(
@@ -194,20 +195,19 @@ async def _sync_template_bindings_for_group(
     template_bindings = await tb_repo.list_by_group_name(group_name)
     binding_repo = SLOBindingRepository(session)
     for tb in template_bindings:
-        # Add bindings for new SLOs
         for slo_name in new_slo_names:
             try:
-                await binding_repo.create(
-                    target_type=tb.target_type,
-                    target_id=tb.target_id,
-                    slo_name=slo_name,
-                    data_source_name=tb.data_source_name,
-                    source='template',
-                    template_binding_id=tb.id,
-                )
+                async with session.begin_nested():
+                    await binding_repo.create(
+                        target_type=tb.target_type,
+                        target_id=tb.target_id,
+                        slo_name=slo_name,
+                        data_source_name=tb.data_source_name,
+                        source='template',
+                        template_binding_id=tb.id,
+                    )
             except IntegrityError:
-                await session.rollback()
-        # Remove bindings for deactivated SLOs
+                pass
         for slo_name in removed_slo_names:
             await binding_repo.delete_by_target_and_slo(tb.target_type, tb.target_id, slo_name)
 
