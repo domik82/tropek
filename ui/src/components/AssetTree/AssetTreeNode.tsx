@@ -1,6 +1,6 @@
 import { MoreHorizontal } from 'lucide-react'
-import type { AssetGroup, AssetGroupTree } from '@/features/assets/types'
-import { countLeafMembers } from '@/features/navigator/components/treeUtils'
+import type { AssetGroup, AssetGroupTree } from '@/features/assets'
+import { countLeafMembers } from '@/features/navigator'
 import { TreeNode } from '@/components/tree'
 import { getAssetTypeIcon, getEntityIcon } from '@/components/tree'
 import { AssetTreeInlineRename } from './AssetTreeInlineRename'
@@ -97,7 +97,7 @@ export function AssetTreeNode({
       ) : (
         <TreeNode
           icon={getEntityIcon('group')}
-          iconColor={group.color ?? '#8b949e'}
+          iconColor={group.color ?? 'var(--entity-group)'}
           label={group.display_name ?? group.name}
           depth={depth}
           isExpandable={subgroups.length > 0 || filteredMembers.length > 0}
@@ -158,7 +158,7 @@ export function AssetTreeNode({
               <TreeNode
                 key={m.asset_id}
                 icon={getAssetTypeIcon(m.asset_type_name ?? 'vm')}
-                iconColor="#8b949e"
+                iconColor="var(--entity-group)"
                 label={m.asset_display_name ?? m.asset_name}
                 depth={depth + 1}
                 isExpandable={false}

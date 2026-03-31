@@ -1,13 +1,14 @@
 // ui/src/features/evaluations/components/actions/BaselineForm.tsx
-import { useState, useCallback } from 'react'
+import { useCallback } from 'react'
 import { usePinBaseline } from '../../hooks'
-import { Input } from '@/components/ui/input'
 import { ActionFormShell } from './ActionFormShell'
+import { ReasonAuthorFields } from './ReasonAuthorFields'
+import { useReasonAuthor } from './useReasonAuthor'
 
 const ACTION_DEF = {
   label: 'Pin Baseline',
   description: 'Set this evaluation as the new baseline — future comparisons start from here.',
-  accentColor: '#58A6FF',
+  accentColor: 'var(--action-primary)',
   accentBorder: 'border-blue-500/25',
   accentText: 'text-blue-400',
   confirmClasses: 'bg-blue-600 hover:bg-blue-500',
@@ -19,11 +20,8 @@ interface Props {
 }
 
 export function BaselineForm({ evaluationId, onComplete }: Props) {
-  const [reason, setReason] = useState('')
-  const [author, setAuthor] = useState('')
+  const { reason, setReason, author, setAuthor, canConfirm } = useReasonAuthor()
   const baseline = usePinBaseline(evaluationId)
-
-  const canConfirm = !!reason.trim() && !!author.trim()
 
   const handleConfirm = useCallback(() => {
     if (!canConfirm) return
@@ -38,16 +36,11 @@ export function BaselineForm({ evaluationId, onComplete }: Props) {
       canConfirm={canConfirm}
       isPending={baseline.isPending}
     >
-      <Input
-        value={reason}
-        onChange={e => setReason(e.target.value)}
-        placeholder="Reason…"
-      />
-      <Input
-        value={author}
-        onChange={e => setAuthor(e.target.value)}
-        placeholder="Author"
-        autoComplete="name"
+      <ReasonAuthorFields
+        reason={reason}
+        onReasonChange={setReason}
+        author={author}
+        onAuthorChange={setAuthor}
       />
     </ActionFormShell>
   )

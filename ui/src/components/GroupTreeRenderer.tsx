@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from 'react'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
-import type { AssetGroup, AssetGroupTree } from '@/features/assets/types'
+import type { AssetGroup, AssetGroupTree } from '@/features/assets'
 
 interface GroupTreeRendererProps {
   group: AssetGroup

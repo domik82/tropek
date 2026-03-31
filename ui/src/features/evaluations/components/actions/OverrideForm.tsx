@@ -1,8 +1,9 @@
 // ui/src/features/evaluations/components/actions/OverrideForm.tsx
-import { useState, useCallback } from 'react'
+import { useCallback } from 'react'
 import { useOverrideStatus } from '../../hooks'
-import { Input } from '@/components/ui/input'
 import { ActionFormShell } from './ActionFormShell'
+import { ReasonAuthorFields } from './ReasonAuthorFields'
+import { useReasonAuthor } from './useReasonAuthor'
 
 interface Props {
   evaluationId: string
@@ -11,8 +12,7 @@ interface Props {
 }
 
 export function OverrideForm({ evaluationId, currentResult, onComplete }: Props) {
-  const [reason, setReason] = useState('')
-  const [author, setAuthor] = useState('')
+  const { reason, setReason, author, setAuthor, canConfirm } = useReasonAuthor()
   const override = useOverrideStatus(evaluationId)
 
   const isOverrideToFail = currentResult === 'pass'
@@ -20,7 +20,7 @@ export function OverrideForm({ evaluationId, currentResult, onComplete }: Props)
     ? {
         label: 'Mark as Failure',
         description: 'Override the passed result — SLOs missed an issue in this evaluation.',
-        accentColor: '#F85149',
+        accentColor: 'var(--action-destructive)',
         accentBorder: 'border-action-destructive-border/25',
         accentText: 'text-action-destructive',
         confirmClasses: 'bg-action-destructive-confirm hover:bg-action-destructive-confirm/80',
@@ -28,13 +28,11 @@ export function OverrideForm({ evaluationId, currentResult, onComplete }: Props)
     : {
         label: 'Mark as Successful',
         description: 'Override the failed result — SLOs false-flagged this evaluation.',
-        accentColor: '#22C55E',
+        accentColor: 'var(--status-pass)',
         accentBorder: 'border-green-500/25',
         accentText: 'text-green-400',
         confirmClasses: 'bg-green-600 hover:bg-green-500',
       }
-
-  const canConfirm = !!reason.trim() && !!author.trim()
 
   const handleConfirm = useCallback(() => {
     if (!canConfirm) return
@@ -50,16 +48,11 @@ export function OverrideForm({ evaluationId, currentResult, onComplete }: Props)
       canConfirm={canConfirm}
       isPending={override.isPending}
     >
-      <Input
-        value={reason}
-        onChange={e => setReason(e.target.value)}
-        placeholder="Reason…"
-      />
-      <Input
-        value={author}
-        onChange={e => setAuthor(e.target.value)}
-        placeholder="Author"
-        autoComplete="name"
+      <ReasonAuthorFields
+        reason={reason}
+        onReasonChange={setReason}
+        author={author}
+        onAuthorChange={setAuthor}
       />
     </ActionFormShell>
   )

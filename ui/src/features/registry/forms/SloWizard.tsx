@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { SANS_SERIF } from '@/lib/fonts'
-import { useCreateSlo } from '@/features/slos/hooks'
-import { useSliDetail } from '@/features/slis/hooks'
+import { useCreateSlo } from '@/features/slos'
+import { useSliDetail } from '@/features/slis'
 import { serializeCriteria, parseCriteria, DEFAULT_CRITERIA } from './criteriaUtils'
 import { tagsToRows, rowsToTags } from './tagUtils'
 import { WizardStepIdentity } from './WizardStepIdentity'
@@ -12,7 +12,7 @@ import type { IdentityData } from './WizardStepIdentity'
 import type { PickSliData } from './WizardStepPickSli'
 import type { IndicatorRow } from './WizardStepIndicators'
 import type { ComparisonData } from './WizardStepComparison'
-import type { SloDefinition, MethodCriteriaOverride } from '@/features/slos/types'
+import type { SloDefinition, MethodCriteriaOverride } from '@/features/slos'
 
 interface SloWizardProps {
   editSlo?: SloDefinition

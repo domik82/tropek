@@ -110,8 +110,8 @@ export function TreeNode({
               <span
                 className="group-hover:hidden text-[10px] font-semibold min-w-[18px] h-[18px] inline-flex items-center justify-center rounded-full px-1.5"
                 style={{
-                  backgroundColor: isSelected && selectionColor ? `${selectionColor}33` : '#30363d',
-                  color: isSelected && selectionColor ? selectionColor : '#c9d1d9',
+                  backgroundColor: isSelected && selectionColor ? `${selectionColor}33` : 'var(--tree-selected-bg)',
+                  color: isSelected && selectionColor ? selectionColor : 'var(--text-primary)',
                 }}
               >
                 {badge.value}
@@ -131,8 +131,8 @@ export function TreeNode({
               <span
                 className="shrink-0 text-[10px] font-semibold min-w-[18px] h-[18px] inline-flex items-center justify-center rounded-full px-1.5"
                 style={{
-                  backgroundColor: isSelected && selectionColor ? `${selectionColor}33` : '#30363d',
-                  color: isSelected && selectionColor ? selectionColor : '#c9d1d9',
+                  backgroundColor: isSelected && selectionColor ? `${selectionColor}33` : 'var(--tree-selected-bg)',
+                  color: isSelected && selectionColor ? selectionColor : 'var(--text-primary)',
                 }}
               >
                 {badge.value}

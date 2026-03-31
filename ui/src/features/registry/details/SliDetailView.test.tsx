@@ -1,9 +1,9 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { render, screen, fireEvent, cleanup } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { SliDetailView } from './SliDetailView'
-import type { SliDefinition } from '@/features/slis/types'
-import type { SloDefinition } from '@/features/slos/types'
+import type { SliDefinition } from '@/features/slis'
+import type { SloDefinition } from '@/features/slos'
 
 vi.mock('@/features/slis/hooks', () => ({
   useSliDetail: vi.fn(),
@@ -104,12 +104,15 @@ const mockSlos: SloDefinition[] = [
   },
 ]
 
+let queryClient: QueryClient
+
 function Wrapper({ children }: { children: React.ReactNode }) {
-  return <QueryClientProvider client={new QueryClient()}>{children}</QueryClientProvider>
+  return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
 }
 
 describe('SliDetailView', () => {
   beforeEach(() => {
+    queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
     vi.mocked(useSliDetail).mockReturnValue({
       data: mockSli,
       isLoading: false,
@@ -126,6 +129,12 @@ describe('SliDetailView', () => {
       mutate: vi.fn(),
       isPending: false,
     } as unknown as ReturnType<typeof useDeleteSli>)
+  })
+
+  afterEach(() => {
+    queryClient.cancelQueries()
+    queryClient.clear()
+    cleanup()
   })
 
   it('renders name, version badge, and adapter_type badge', () => {
@@ -155,8 +164,8 @@ describe('SliDetailView', () => {
       <SliDetailView name="http-error-rate" onNavigate={vi.fn()} onNewVersion={vi.fn()} />,
       { wrapper: Wrapper }
     )
-    // The $service variable should be highlighted in orange
-    const highlighted = document.querySelectorAll('span[style*="#FFA657"]')
+    // The $service variable should be highlighted with the chip-var-key color
+    const highlighted = document.querySelectorAll('span[style*="--chip-var-key"]')
     expect(highlighted.length).toBeGreaterThan(0)
     const texts = Array.from(highlighted).map(el => el.textContent)
     expect(texts).toContain('$service')

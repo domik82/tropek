@@ -3,14 +3,12 @@ import { useQueries } from '@tanstack/react-query'
 import { GitBranch, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { DeletionConfirmForm } from '@/components/DeletionConfirmForm'
-import { SloObjectiveTable } from '@/features/slos/components/SloObjectiveTable'
-import { useSloDetail, useSloVersions, useDeleteSlo, useGroupTree } from '@/features/slos/hooks'
-import { fetchGroupSloBindings } from '@/features/slos/api'
+import { SloObjectiveTable, useSloDetail, useSloVersions, useDeleteSlo, useGroupTree, fetchGroupSloBindings } from '@/features/slos'
+import type { SloDefinition } from '@/features/slos'
+import type { SelectedNode } from '@/features/registry'
 import { groupKeys } from '@/lib/queryKeys'
 import { ENTITY_COLORS } from '@/lib/entity-colors'
 import { SANS_SERIF } from '@/lib/fonts'
-import type { SloDefinition } from '@/features/slos/types'
-import type { SelectedNode } from '@/features/registry/types'
 
 interface SloDetailViewProps {
   name: string

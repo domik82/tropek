@@ -1,13 +1,10 @@
 import { useState, useEffect } from 'react'
-import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
-} from '@/components/ui/dialog'
 import { FieldLabel } from '@/components/ui/field-label'
 import { Input } from '@/components/ui/input'
+import { FormDialog } from '@/components/ui/form-dialog'
 import { LabelChips } from '@/components/labels/LabelChips'
 import { LabelsEditorDialog } from '@/components/labels/LabelsEditorDialog'
 import { useAsset, useAssetTypes, useUpdateAsset } from '../hooks'
-import { SANS_SERIF } from '@/lib/fonts'
 
 interface Props {
   open: boolean
@@ -35,85 +32,56 @@ export function AssetEditDialog({ open, onOpenChange, assetName }: Props) {
 
   const handleSave = () => {
     if (!assetName) return
-    updateAsset.mutate({
-      name: assetName,
-      display_name: displayName || undefined,
-      type_name: typeName,
-      tags: labels,
-    }, {
-      onSuccess: () => onOpenChange(false),
-    })
+    updateAsset.mutate(
+      { name: assetName, display_name: displayName || undefined, type_name: typeName, tags: labels },
+      { onSuccess: () => onOpenChange(false) },
+    )
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent style={{ fontFamily: SANS_SERIF }}>
-        <DialogHeader>
-          <DialogTitle>Edit Asset — <span className="font-mono text-primary">{assetName}</span></DialogTitle>
-        </DialogHeader>
-
-        <div className="space-y-3 py-2">
-          {/* Display name */}
-          <div>
-            <FieldLabel>Display Name</FieldLabel>
-            <Input
-              value={displayName}
-              onChange={e => setDisplayName(e.target.value)}
-              placeholder={assetName ?? ''}
-            />
-          </div>
-
-          {/* Type */}
-          <div>
-            <FieldLabel>Type</FieldLabel>
-            <select
-              value={typeName}
-              onChange={e => setTypeName(e.target.value)}
-              className="w-full bg-input border border-border rounded px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary/50"
-            >
-              {types.map(t => (
-                <option key={t.name} value={t.name}>
-                  {t.name}{t.is_default ? ' (default)' : ''}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Labels */}
-          <div>
-            <FieldLabel>Labels</FieldLabel>
-            <LabelChips
-              labels={labels}
-              onEdit={() => setLabelsEditorOpen(true)}
-            />
-          </div>
-        </div>
-
-        <DialogFooter>
-          <button
-            onClick={() => onOpenChange(false)}
-            className="px-3 py-1.5 text-sm rounded bg-action-secondary-bg border border-action-secondary-border text-white hover:bg-action-secondary-bg/80 transition-colors"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={handleSave}
-            disabled={updateAsset.isPending}
-            className="px-3 py-1.5 text-sm rounded bg-action-primary-bg border border-action-primary-border text-action-primary hover:bg-action-primary-hover transition-colors disabled:opacity-40"
-          >
-            {updateAsset.isPending ? 'Saving…' : 'Save'}
-          </button>
-        </DialogFooter>
-
-        <LabelsEditorDialog
-          open={labelsEditorOpen}
-          onOpenChange={setLabelsEditorOpen}
-          title="Edit Labels"
-          subtitle={assetName ?? ''}
-          labels={labels}
-          onSave={setLabels}
+    <FormDialog
+      open={open}
+      onOpenChange={onOpenChange}
+      title={<>Edit Asset — <span className="font-mono text-primary">{assetName}</span></>}
+      submitLabel="Save"
+      onSubmit={handleSave}
+      canSubmit={true}
+      isPending={updateAsset.isPending}
+    >
+      <div>
+        <FieldLabel>Display Name</FieldLabel>
+        <Input
+          value={displayName}
+          onChange={e => setDisplayName(e.target.value)}
+          placeholder={assetName ?? ''}
         />
-      </DialogContent>
-    </Dialog>
+      </div>
+      <div>
+        <FieldLabel>Type</FieldLabel>
+        <select
+          value={typeName}
+          onChange={e => setTypeName(e.target.value)}
+          className="w-full bg-input border border-border rounded px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary/50"
+        >
+          {types.map(t => (
+            <option key={t.name} value={t.name}>
+              {t.name}{t.is_default ? ' (default)' : ''}
+            </option>
+          ))}
+        </select>
+      </div>
+      <div>
+        <FieldLabel>Labels</FieldLabel>
+        <LabelChips labels={labels} onEdit={() => setLabelsEditorOpen(true)} />
+      </div>
+      <LabelsEditorDialog
+        open={labelsEditorOpen}
+        onOpenChange={setLabelsEditorOpen}
+        title="Edit Labels"
+        subtitle={assetName ?? ''}
+        labels={labels}
+        onSave={setLabels}
+      />
+    </FormDialog>
   )
 }

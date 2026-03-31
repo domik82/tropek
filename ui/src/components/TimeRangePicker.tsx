@@ -79,7 +79,7 @@ export function TimeRangePicker() {
       <PopoverContent align="end" className="w-auto p-0 z-[100]" style={{ fontFamily: SANS_SERIF }}>
         <div className="flex">
           {/* Left — absolute date range */}
-          <div className="p-4 border-r border-border" style={{ width: 260 }}>
+          <div className="p-4 border-r border-border w-[260px]">
             <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
               Absolute time range
             </h3>

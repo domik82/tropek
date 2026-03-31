@@ -1,13 +1,14 @@
 // ui/src/features/evaluations/components/actions/InvalidateForm.tsx
-import { useState, useCallback } from 'react'
+import { useCallback } from 'react'
 import { useInvalidateEvaluation } from '../../hooks'
-import { Input } from '@/components/ui/input'
 import { ActionFormShell } from './ActionFormShell'
+import { ReasonAuthorFields } from './ReasonAuthorFields'
+import { useReasonAuthor } from './useReasonAuthor'
 
 const ACTION_DEF = {
   label: 'Invalidate',
   description: 'Discard this evaluation — it will not be used for scoring or baselines.',
-  accentColor: '#8B949E',
+  accentColor: 'var(--entity-group)',
   accentBorder: 'border-action-secondary-border/25',
   accentText: 'text-muted-foreground',
   confirmClasses: 'bg-action-secondary-bg hover:bg-action-secondary-bg/80',
@@ -19,11 +20,8 @@ interface Props {
 }
 
 export function InvalidateForm({ evaluationId, onComplete }: Props) {
-  const [reason, setReason] = useState('')
-  const [author, setAuthor] = useState('')
+  const { reason, setReason, author, setAuthor, canConfirm } = useReasonAuthor()
   const invalidate = useInvalidateEvaluation(evaluationId)
-
-  const canConfirm = !!reason.trim() && !!author.trim()
 
   const handleConfirm = useCallback(() => {
     if (!canConfirm) return
@@ -38,16 +36,11 @@ export function InvalidateForm({ evaluationId, onComplete }: Props) {
       canConfirm={canConfirm}
       isPending={invalidate.isPending}
     >
-      <Input
-        value={reason}
-        onChange={e => setReason(e.target.value)}
-        placeholder="Reason…"
-      />
-      <Input
-        value={author}
-        onChange={e => setAuthor(e.target.value)}
-        placeholder="Author"
-        autoComplete="name"
+      <ReasonAuthorFields
+        reason={reason}
+        onReasonChange={setReason}
+        author={author}
+        onAuthorChange={setAuthor}
       />
     </ActionFormShell>
   )

@@ -147,7 +147,7 @@ export function MetricLabelPanel({
             <div className="grid grid-cols-2 gap-1">
               {items.map((ind) => {
                 const isEnabled = enabled.has(ind.metric)
-                const color = colors.get(ind.metric) ?? '#64748b'
+                const color = colors.get(ind.metric) ?? 'var(--state-disabled)'
 
                 return (
                   <button
@@ -172,7 +172,7 @@ export function MetricLabelPanel({
                       style={{
                         width: 8,
                         height: 8,
-                        backgroundColor: isEnabled ? color : '#475569',
+                        backgroundColor: isEnabled ? color : 'var(--state-disabled)',
                       }}
                     />
                     <span className="truncate">{ind.display_name}</span>
