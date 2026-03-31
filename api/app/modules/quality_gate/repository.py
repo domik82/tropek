@@ -371,7 +371,7 @@ class EvaluationRepository:
                 )
                 .group_by(EvaluationAnnotation.slo_evaluation_id)
             )
-            count_map = {row.evaluation_id: row.cnt for row in cnt_rows}
+            count_map = {row.slo_evaluation_id: row.cnt for row in cnt_rows}
             # Fetch latest visible annotation per evaluation using DISTINCT ON.
             latest_q = (
                 select(EvaluationAnnotation)
@@ -386,7 +386,7 @@ class EvaluationRepository:
                 .distinct(EvaluationAnnotation.slo_evaluation_id)
             )
             latest_rows = await self._session.execute(latest_q)
-            latest_map = {a.evaluation_id: a for a in latest_rows.scalars().all()}
+            latest_map = {a.slo_evaluation_id: a for a in latest_rows.scalars().all()}
         return evals, total, count_map, latest_map
 
     async def invalidate(self, eval_id: uuid.UUID, *, note: str) -> SLOEvaluation | None:
