@@ -271,13 +271,6 @@ export function AssetPanel({ assetName, initialEvalId }: Props) {
         <p className="text-sm text-muted-foreground">No evaluations found in this time range.</p>
       )}
 
-      {/* Notes */}
-      {!isLoading && evals.length > 0 && effectiveEvalId && ev && (
-        <div ref={notesSectionRef}>
-          <AnnotationSection ref={notesRef} evalId={effectiveEvalId} annotations={ev.annotations ?? []} />
-        </div>
-      )}
-
       {/* Heatmap mode */}
       {!isLoading && evals.length > 0 && mode === 'heatmap' && (
         <AssetPanelHeatmapView
@@ -311,6 +304,13 @@ export function AssetPanel({ assetName, initialEvalId }: Props) {
           setMode={setMode}
           explorerButton={explorerButton}
         />
+      )}
+
+      {/* Notes — below heatmap/charts so it's visible after scrolling */}
+      {!isLoading && evals.length > 0 && effectiveEvalId && ev && (
+        <div ref={notesSectionRef}>
+          <AnnotationSection ref={notesRef} evalId={effectiveEvalId} annotations={ev.annotations ?? []} />
+        </div>
       )}
     </div>
   )
