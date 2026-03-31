@@ -123,6 +123,13 @@ export function AssetPanel({ assetName, initialEvalId }: Props) {
     return m
   }, [allSlotEvals])
 
+  // Aggregate annotations from all SLO evals in the selected slot so notes are
+  // visible regardless of which SLO the annotation was added to.
+  const displayAnnotations = useMemo(() => {
+    if (allSlotEvals.length > 0) return allSlotEvals.flatMap(e => e.annotations ?? [])
+    return ev?.annotations ?? []
+  }, [allSlotEvals, ev])
+
   const mergedSliMetadata = useMemo((): Record<string, SliMetadata> | undefined => {
     if (allSlotEvals.length > 0) {
       const meta: Record<string, SliMetadata> = {}
@@ -230,7 +237,7 @@ export function AssetPanel({ assetName, initialEvalId }: Props) {
           </>
         ) : undefined}
         noteButton={hasEvals && effectiveEvalId && ev && !ev.invalidated ? (
-          <NoteIconButton onClick={handleAddNote} annotationCount={(ev.annotations ?? []).length} />
+          <NoteIconButton onClick={handleAddNote} annotationCount={displayAnnotations.length} />
         ) : undefined}
         actions={hasEvals && effectiveEvalId && ev ? (
           <EvaluationActionsButton
@@ -271,6 +278,13 @@ export function AssetPanel({ assetName, initialEvalId }: Props) {
         <p className="text-sm text-muted-foreground">No evaluations found in this time range.</p>
       )}
 
+      {/* Notes */}
+      {!isLoading && evals.length > 0 && effectiveEvalId && ev && (
+        <div ref={notesSectionRef}>
+          <AnnotationSection ref={notesRef} evalId={effectiveEvalId} annotations={displayAnnotations} />
+        </div>
+      )}
+
       {/* Heatmap mode */}
       {!isLoading && evals.length > 0 && mode === 'heatmap' && (
         <AssetPanelHeatmapView
@@ -306,12 +320,6 @@ export function AssetPanel({ assetName, initialEvalId }: Props) {
         />
       )}
 
-      {/* Notes — below heatmap/charts so it's visible after scrolling */}
-      {!isLoading && evals.length > 0 && effectiveEvalId && ev && (
-        <div ref={notesSectionRef}>
-          <AnnotationSection ref={notesRef} evalId={effectiveEvalId} annotations={ev.annotations ?? []} />
-        </div>
-      )}
     </div>
   )
 }
