@@ -58,110 +58,146 @@ export function SliDetailView({ name, onNavigate, onNewVersion }: SliDetailViewP
   }
 
   return (
-    <div className="flex flex-col h-full overflow-auto" style={{ fontFamily: SANS_SERIF }}>
+    <div className="overflow-auto h-full" style={{ fontFamily: SANS_SERIF }}>
       {/* Accent strip */}
       <div className="h-[3px]" style={{ backgroundColor: ENTITY_COLORS.sli }} />
 
-      {/* Header */}
-      <div className="p-4 border-b border-border">
-        <div className="flex items-start justify-between gap-2">
-          <div className="min-w-0">
-            <h2 className="text-base font-semibold text-foreground truncate">
-              {sli.display_name ?? sli.name}
-            </h2>
-            <p className="text-xs font-mono text-muted-foreground mt-0.5">{sli.name}</p>
-          </div>
-          <div className="flex shrink-0 gap-1.5 items-center">
-            <span
-              className="px-2 py-0.5 text-xs rounded-full border border-border bg-muted/40 text-muted-foreground"
-            >
-              v{sli.version}
-            </span>
-            <span
-              className="px-2 py-0.5 text-xs rounded-full border border-border bg-muted/40 text-muted-foreground"
-            >
-              {sli.adapter_type}
-            </span>
-            <span
-              className={`px-2 py-0.5 text-xs rounded-full border ${
-                sli.active
-                  ? 'border-green-700/40 bg-green-950/20 text-green-400'
-                  : 'border-border bg-muted/40 text-muted-foreground'
-              }`}
-            >
-              {sli.active ? 'active' : 'inactive'}
-            </span>
-          </div>
-        </div>
-
-        {/* Actions */}
-        <div className="flex gap-2 mt-3">
-          <Button size="xs" variant="outline" onClick={() => onNewVersion(sli)}>
-            <GitBranch className="size-3" />
-            New Version
-          </Button>
-          <Button
-            size="xs"
-            variant="outline"
-            className="text-destructive-form-text border-destructive-form-border hover:bg-destructive-form-bg"
-            onClick={() => setShowDeleteConfirm(true)}
-          >
-            <Trash2 className="size-3" />
-            Deactivate
-          </Button>
-        </div>
-
-        {showDeleteConfirm && (
-          <div className="mt-3">
-            <DeletionConfirmForm
-              title={`Deactivate SLI "${sli.name}"?`}
-              onConfirm={handleDeactivate}
-              onCancel={() => setShowDeleteConfirm(false)}
-              confirmLabel="Deactivate"
-              pendingLabel="Deactivating…"
-              isPending={deleteMutation.isPending}
-              requireReason={false}
-            />
-          </div>
-        )}
-      </div>
-
-      {/* Body */}
-      <div className="p-4 space-y-4">
-        {/* Indicators table */}
+      <div className="p-6 space-y-6">
+        {/* Header */}
         <div>
-          <p className="text-xs text-muted-foreground mb-2">Indicators</p>
-          {Object.keys(sli.indicators).length === 0 ? (
-            <p className="text-xs text-muted-foreground">No indicators defined.</p>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-xs border-collapse">
-                <thead>
-                  <tr className="border-b border-border">
-                    <th className="text-left py-1.5 pr-3 text-muted-foreground font-medium w-1/3">
-                      Name
-                    </th>
-                    <th className="text-left py-1.5 text-muted-foreground font-medium">
-                      Query
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {Object.entries(sli.indicators).map(([metricName, query]) => (
-                    <tr key={metricName} className="border-b border-border/40">
-                      <td className="py-1.5 pr-3 font-mono align-top text-foreground">
-                        {metricName}
-                      </td>
-                      <td className="py-1.5 font-mono text-muted-foreground break-all">
-                        {highlightVariables(query)}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+          <div className="flex items-start justify-between gap-2">
+            <div className="min-w-0">
+              <h2 className="text-xl font-semibold text-foreground truncate">
+                {sli.display_name ?? sli.name}
+              </h2>
+              <p className="text-xs font-mono text-muted-foreground mt-0.5">{sli.name}</p>
+            </div>
+            <div className="flex shrink-0 gap-1.5 items-center">
+              <span
+                className="px-2 py-0.5 text-xs rounded-full border border-border bg-muted/40 text-muted-foreground"
+              >
+                v{sli.version}
+              </span>
+              <span
+                className="px-2 py-0.5 text-xs rounded-full border border-border bg-muted/40 text-muted-foreground"
+              >
+                {sli.adapter_type}
+              </span>
+              {(sli.mode ?? 'raw') === 'aggregated' && (
+                <span
+                  className="px-2 py-0.5 text-xs rounded-full border border-primary/40 bg-primary/10 text-primary"
+                >
+                  aggregated
+                </span>
+              )}
+              <span
+                className={`px-2 py-0.5 text-xs rounded-full border ${
+                  sli.active
+                    ? 'border-green-700/40 bg-green-950/20 text-green-400'
+                    : 'border-border bg-muted/40 text-muted-foreground'
+                }`}
+              >
+                {sli.active ? 'active' : 'inactive'}
+              </span>
+            </div>
+          </div>
+
+          {/* Actions */}
+          <div className="flex gap-2 mt-3">
+            <Button size="sm" variant="outline" onClick={() => onNewVersion(sli)}>
+              <GitBranch className="size-3.5" />
+              New Version
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              className="text-red-400 border-red-700/40 hover:bg-red-950/20"
+              onClick={() => setShowDeleteConfirm(true)}
+            >
+              <Trash2 className="size-3.5" />
+              Deactivate
+            </Button>
+          </div>
+
+          {showDeleteConfirm && (
+            <div className="mt-3">
+              <DeletionConfirmForm
+                title={`Deactivate SLI "${sli.name}"?`}
+                onConfirm={handleDeactivate}
+                onCancel={() => setShowDeleteConfirm(false)}
+                confirmLabel="Deactivate"
+                pendingLabel="Deactivating…"
+                isPending={deleteMutation.isPending}
+                requireReason={false}
+              />
             </div>
           )}
         </div>
+
+        {/* Mode-specific content */}
+        {(sli.mode ?? 'raw') === 'raw' ? (
+          <div>
+            <p className="text-xs text-muted-foreground mb-2">Indicators</p>
+            {Object.keys(sli.indicators).length === 0 ? (
+              <p className="text-xs text-muted-foreground">No indicators defined.</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs border-collapse">
+                  <thead>
+                    <tr className="border-b border-border">
+                      <th className="text-left py-1.5 pr-3 text-muted-foreground font-medium w-1/3">
+                        Name
+                      </th>
+                      <th className="text-left py-1.5 text-muted-foreground font-medium">
+                        Query
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {Object.entries(sli.indicators).map(([metricName, query]) => (
+                      <tr key={metricName} className="border-b border-border/40">
+                        <td className="py-1.5 pr-3 font-mono align-top text-foreground">
+                          {metricName}
+                        </td>
+                        <td className="py-1.5 font-mono text-muted-foreground break-all">
+                          {highlightVariables(query)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <div>
+              <p className="text-xs text-muted-foreground mb-1">Query Template</p>
+              <p className="text-sm font-mono text-foreground break-all">
+                {sli.query_template ? highlightVariables(sli.query_template) : '—'}
+              </p>
+            </div>
+            <div className="flex gap-6">
+              <div>
+                <p className="text-xs text-muted-foreground mb-1">Interval</p>
+                <p className="text-sm font-mono text-foreground">{sli.interval ?? '—'}</p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground mb-1">Methods</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {(sli.methods ?? []).map(m => (
+                    <span
+                      key={m}
+                      className="px-2 py-0.5 text-xs rounded-full bg-primary/10 text-primary border border-primary/20 font-mono"
+                    >
+                      {m}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Tags */}
         {Object.keys(sli.tags).length > 0 && (

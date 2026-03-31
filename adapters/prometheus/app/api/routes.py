@@ -122,6 +122,7 @@ async def sync_query(
         if indicator.get('success'):
             values[name] = indicator.get('value')
         else:
+            values[name] = None
             errors[name] = indicator.get('message', 'unknown error')
 
     logger.info(

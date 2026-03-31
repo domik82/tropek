@@ -86,8 +86,8 @@ class GeneratedSLOSpec:
     sli_version: int
     variables: dict[str, Any]
     objectives: list[dict[str, Any]]
-    total_score_pass_pct: float
-    total_score_warning_pct: float
+    total_score_pass_threshold: float
+    total_score_warning_threshold: float
     comparison: dict[str, Any]
     tags: dict[str, Any]
 ```

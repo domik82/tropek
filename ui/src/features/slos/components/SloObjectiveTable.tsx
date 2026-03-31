@@ -39,10 +39,10 @@ export function SloObjectiveTable({ slo }: Props) {
                 )}
               </td>
               <td className="px-3 py-2 text-center text-xs text-pass">
-                {obj.pass_criteria.join(', ') || '—'}
+                {obj.pass_threshold.join(', ') || '—'}
               </td>
               <td className="px-3 py-2 text-center text-xs text-warning">
-                {obj.warning_criteria.join(', ') || '—'}
+                {obj.warning_threshold.join(', ') || '—'}
               </td>
               <td className="px-3 py-2 text-center text-muted-foreground">{obj.weight}</td>
             </tr>
@@ -51,8 +51,8 @@ export function SloObjectiveTable({ slo }: Props) {
       </DataTable>
 
       <div className="mt-3 flex flex-wrap gap-6 text-sm text-muted-foreground">
-        <span>Total pass: <strong className="text-pass">{slo.total_score_pass_pct}%</strong></span>
-        <span>Total warning: <strong className="text-warning">{slo.total_score_warning_pct}%</strong></span>
+        <span>Total pass: <strong className="text-pass">{slo.total_score_pass_threshold}%</strong></span>
+        <span>Total warning: <strong className="text-warning">{slo.total_score_warning_threshold}%</strong></span>
         {slo.comparable_from_version != null && (
           <span>Comparable from: <strong className="text-link">v{slo.comparable_from_version}</strong></span>
         )}

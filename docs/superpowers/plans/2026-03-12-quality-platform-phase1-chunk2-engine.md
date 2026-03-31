@@ -28,7 +28,6 @@
 import pytest
 from app.modules.quality_gate.engine.slo_parser import parse_slo, SLOParseError
 
-
 MINIMAL_SLO = """
 spec_version: '1.0'
 indicators:
@@ -76,8 +75,8 @@ def test_parse_minimal_slo() -> None:
     assert slo.objectives[0].sli == "response_time_p99"
     assert slo.objectives[0].weight == 1
     assert slo.objectives[0].key_sli is False
-    assert slo.total_score.pass_pct == 90.0
-    assert slo.total_score.warning_pct == 75.0
+    assert slo.total_score.pass_threshold == 90.0
+    assert slo.total_score.warning_threshold == 75.0
 
 
 def test_parse_indicators_block() -> None:
@@ -203,8 +202,8 @@ class SLOCriteria:
 class SLOObjective:
     sli: str
     display_name: str = ""
-    pass_criteria: list[SLOCriteria] = field(default_factory=list)
-    warning_criteria: list[SLOCriteria] = field(default_factory=list)
+    pass_threshold: list[SLOCriteria] = field(default_factory=list)
+    warning_threshold: list[SLOCriteria] = field(default_factory=list)
     weight: int = 1
     key_sli: bool = False
 
@@ -220,8 +219,8 @@ class SLOComparison:
 
 @dataclass
 class SLOTotalScore:
-    pass_pct: float = 90.0
-    warning_pct: float = 75.0
+    pass_threshold: float = 90.0
+    warning_threshold: float = 75.0
 
 
 @dataclass
@@ -261,8 +260,8 @@ def parse_slo(yaml_text: str) -> SLO:
 
     raw_score = data.get("total_score") or {}
     total_score = SLOTotalScore(
-        pass_pct=_parse_pct(str(raw_score.get("pass", "90%"))),
-        warning_pct=_parse_pct(str(raw_score.get("warning", "75%"))),
+        pass_threshold=_parse_pct(str(raw_score.get("pass", "90%"))),
+        warning_threshold=_parse_pct(str(raw_score.get("warning", "75%"))),
     )
 
     objectives: list[SLOObjective] = []
@@ -274,11 +273,11 @@ def parse_slo(yaml_text: str) -> SLO:
                 f"Available: {list(indicators)}"
             )
 
-        pass_criteria = [
+        pass_threshold = [
             SLOCriteria(criteria=list(block.get("criteria", [])))
             for block in (raw_obj.get("pass") or [])
         ]
-        warning_criteria = [
+        warning_threshold = [
             SLOCriteria(criteria=list(block.get("criteria", [])))
             for block in (raw_obj.get("warning") or [])
         ]
@@ -286,8 +285,8 @@ def parse_slo(yaml_text: str) -> SLO:
         objectives.append(SLOObjective(
             sli=sli_name,
             display_name=str(raw_obj.get("displayName", sli_name)),
-            pass_criteria=pass_criteria,
-            warning_criteria=warning_criteria,
+            pass_threshold=pass_threshold,
+            warning_threshold=warning_threshold,
             weight=int(raw_obj.get("weight", 1)),
             key_sli=bool(raw_obj.get("key_sli", False)),
         ))
@@ -662,7 +661,7 @@ def test_objective_missing_metric_fails() -> None:
     assert result.score == 0.0
 
 
-def test_objective_no_pass_criteria_is_informational() -> None:
+def test_objective_no_pass_threshold_is_informational() -> None:
     """m3 has no pass criteria — contributes 0 to maximum_achievable_score."""
     slo = _slo()
     result = score_objective(slo.objectives[2], value=999.0, baseline=None)
@@ -723,7 +722,7 @@ def test_total_score_key_sli_fails_regardless() -> None:
     assert total.result == "fail"
 
 
-def test_total_score_no_pass_criteria_returns_pass() -> None:
+def test_total_score_no_pass_threshold_returns_pass() -> None:
     """If maximum_achievable_score == 0, return pass at 100%."""
     slo = parse_slo("""
 spec_version: '1.0'
@@ -793,14 +792,14 @@ class ObjectiveResult:
 
 @dataclass
 class TotalScore:
-    result: str   # pass | warning | fail
+    result: str  # pass | warning | fail
     score: float  # 0–100
 
 
 def _evaluate_criteria_block(
-    criteria_list: list[str],
-    value: float,
-    baseline: float | None,
+        criteria_list: list[str],
+        value: float,
+        baseline: float | None,
 ) -> bool:
     """AND logic: all criteria in the block must pass."""
     for raw in criteria_list:
@@ -811,9 +810,9 @@ def _evaluate_criteria_block(
 
 
 def _evaluate_pass_or_warning(
-    criteria_blocks: list,  # list of SLOCriteria
-    value: float,
-    baseline: float | None,
+        criteria_blocks: list,  # list of SLOCriteria
+        value: float,
+        baseline: float | None,
 ) -> bool:
     """OR logic across blocks: any block passing means overall pass."""
     if not criteria_blocks:
@@ -825,11 +824,11 @@ def _evaluate_pass_or_warning(
 
 
 def score_objective(
-    objective: SLOObjective,
-    value: float | None,
-    baseline: float | None,
+        objective: SLOObjective,
+        value: float | None,
+        baseline: float | None,
 ) -> ObjectiveResult:
-    has_pass = bool(objective.pass_criteria)
+    has_pass = bool(objective.pass_threshold)
     contributes = has_pass
 
     if not has_pass:
@@ -841,12 +840,12 @@ def score_objective(
             objective.key_sli,
         )
 
-    if _evaluate_pass_or_warning(objective.pass_criteria, value, baseline):
+    if _evaluate_pass_or_warning(objective.pass_threshold, value, baseline):
         return ObjectiveResult(
             objective, IndicatorStatus.PASS, float(objective.weight), contributes, False,
         )
 
-    if _evaluate_pass_or_warning(objective.warning_criteria, value, baseline):
+    if _evaluate_pass_or_warning(objective.warning_threshold, value, baseline):
         return ObjectiveResult(
             objective, IndicatorStatus.WARNING, 0.5 * objective.weight, contributes, False,
         )
@@ -858,8 +857,8 @@ def score_objective(
 
 
 def calculate_total_score(
-    results: list[ObjectiveResult],
-    total_score: SLOTotalScore,
+        results: list[ObjectiveResult],
+        total_score: SLOTotalScore,
 ) -> TotalScore:
     maximum = sum(r.objective.weight for r in results if r.contributes_to_score)
     if maximum == 0:
@@ -871,9 +870,9 @@ def calculate_total_score(
     key_sli_failed = any(r.key_sli_failed for r in results)
     if key_sli_failed:
         return TotalScore(result="fail", score=pct)
-    if pct >= total_score.pass_pct:
+    if pct >= total_score.pass_threshold:
         return TotalScore(result="pass", score=pct)
-    if pct >= total_score.warning_pct:
+    if pct >= total_score.warning_threshold:
         return TotalScore(result="warning", score=pct)
     return TotalScore(result="fail", score=pct)
 ```
@@ -1029,7 +1028,7 @@ def _build_targets(
     baseline: float | None,
     is_pass: bool,
 ) -> list[dict[str, Any]]:
-    blocks = objective.pass_criteria if is_pass else objective.warning_criteria
+    blocks = objective.pass_threshold if is_pass else objective.warning_threshold
     targets = []
     for block in blocks:
         for raw in block.criteria:
@@ -1073,7 +1072,7 @@ def evaluate(
             "weight": obj.weight,
             "key_sli": obj.key_sli,
             "pass_targets": pass_targets,
-            "warning_targets": warning_targets if obj.warning_criteria else None,
+            "warning_targets": warning_targets if obj.warning_threshold else None,
         }
         if value is not None and baseline is not None:
             ir["change_absolute"] = value - baseline

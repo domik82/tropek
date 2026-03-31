@@ -45,8 +45,8 @@ async def _seed_slo_with_objectives(session: AsyncSession) -> tuple[str, int, li
         version=1,
         display_name='Test SLO',
         comparison={'compare_with': 'single_result', 'number_of_comparison_results': 3},
-        total_score_pass_pct=90.0,
-        total_score_warning_pct=75.0,
+        total_score_pass_threshold=90.0,
+        total_score_warning_threshold=75.0,
         tags={},
         variables={},
     )
@@ -60,8 +60,8 @@ async def _seed_slo_with_objectives(session: AsyncSession) -> tuple[str, int, li
         weight=1,
         key_sli=True,
         sort_order=0,
-        pass_criteria=['<600'],
-        warning_criteria=['<800'],
+        pass_threshold=['<600'],
+        warning_threshold=['<800'],
         tab_group='latency',
     )
     obj2 = SLOObjective(
@@ -72,8 +72,8 @@ async def _seed_slo_with_objectives(session: AsyncSession) -> tuple[str, int, li
         weight=2,
         key_sli=False,
         sort_order=1,
-        pass_criteria=['<2'],
-        warning_criteria=['<5'],
+        pass_threshold=['<2'],
+        warning_threshold=['<5'],
         tab_group=None,
     )
     session.add_all([obj1, obj2])

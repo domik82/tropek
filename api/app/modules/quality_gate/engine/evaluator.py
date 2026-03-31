@@ -22,7 +22,7 @@ def _build_targets(
     is_pass: bool,
 ) -> list[CriteriaTarget]:
     """Build the pass or warning target list for a single objective."""
-    criteria_list = objective.pass_criteria if is_pass else objective.warning_criteria
+    criteria_list = objective.pass_threshold if is_pass else objective.warning_threshold
     targets: list[CriteriaTarget] = []
     for raw in criteria_list:
         c = parse_criteria_string(raw)
@@ -79,7 +79,7 @@ def evaluate(
             weight=obj.weight,
             key_sli=obj.key_sli,
             pass_targets=pass_targets,
-            warning_targets=warning_targets if obj.warning_criteria else None,
+            warning_targets=warning_targets if obj.warning_threshold else None,
             change_absolute=((value - baseline) if value is not None and baseline is not None else None),
             change_relative_pct=(
                 ((value / baseline) - 1) * 100 if value is not None and baseline is not None and baseline != 0 else None

@@ -9,9 +9,9 @@ from tropek_client.exceptions import (
 )
 
 __all__ = [
-    "TropekAPIError",
-    "TropekClient",
-    "TropekConflictError",
-    "TropekNotFoundError",
-    "TropekValidationError",
+    'TropekAPIError',
+    'TropekClient',
+    'TropekConflictError',
+    'TropekNotFoundError',
+    'TropekValidationError',
 ]

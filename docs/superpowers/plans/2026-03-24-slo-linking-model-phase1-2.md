@@ -370,7 +370,7 @@ async def test_create_slo_with_sli_reference(async_client):
         "name": "test-slo",
         "sli_name": "test-sli",
         "sli_version": 1,
-        "objectives": [{"sli": "cpu", "pass_criteria": ["<80"]}],
+        "objectives": [{"sli": "cpu", "pass_threshold": ["<80"]}],
     })
     assert slo_resp.status_code == 201
     data = slo_resp.json()
@@ -397,7 +397,7 @@ async def test_create_slo_rejects_invalid_indicator(async_client):
         "name": "val-slo",
         "sli_name": "val-sli",
         "sli_version": 1,
-        "objectives": [{"sli": "disk", "pass_criteria": ["<80"]}],
+        "objectives": [{"sli": "disk", "pass_threshold": ["<80"]}],
     })
     assert resp.status_code == 422
     assert "disk" in resp.json()["detail"]
@@ -412,12 +412,12 @@ async def test_list_slos_filter_by_kind(async_client):
     await async_client.post("/slo-definitions", json={
         "name": "std-slo",
         "kind": "standard",
-        "objectives": [{"sli": "x", "pass_criteria": ["<1"]}],
+        "objectives": [{"sli": "x", "pass_threshold": ["<1"]}],
     })
     await async_client.post("/slo-definitions", json={
         "name": "tpl-slo",
         "kind": "template",
-        "objectives": [{"sli": "x", "pass_criteria": ["<1"]}],
+        "objectives": [{"sli": "x", "pass_threshold": ["<1"]}],
     })
 
     std_resp = await async_client.get("/slo-definitions?kind=standard")
@@ -1371,8 +1371,8 @@ case "SLO":
     client.slo_definitions.create(
         name,
         objectives=doc.spec["objectives"],
-        total_score_pass_pct=total.get("pass_pct", 90.0),
-        total_score_warning_pct=total.get("warning_pct", 75.0),
+        total_score_pass_threshold=total.get("pass_threshold", 90.0),
+        total_score_warning_threshold=total.get("warning_threshold", 75.0),
         comparison=doc.spec.get("comparison", {}),
         display_name=doc.metadata.get("display_name"),
         notes=doc.metadata.get("notes"),
@@ -1478,29 +1478,29 @@ spec:
   sli_version: 1
   kind: standard
   total_score:
-    pass_pct: 90.0
-    warning_pct: 75.0
+    pass_threshold: 90.0
+    warning_threshold: 75.0
   objectives:
     - sli: cpu_usage_pct
       display_name: "CPU Usage %"
-      pass_criteria: ["<80"]
-      warning_criteria: ["<90"]
+      pass_threshold: ["<80"]
+      warning_threshold: ["<90"]
       weight: 2
       key_sli: true
     - sli: memory_usage_pct
       display_name: "Memory Usage %"
-      pass_criteria: ["<85"]
-      warning_criteria: ["<95"]
+      pass_threshold: ["<85"]
+      warning_threshold: ["<95"]
       weight: 2
     - sli: disk_usage_pct
       display_name: "Disk Usage %"
-      pass_criteria: ["<80"]
-      warning_criteria: ["<90"]
+      pass_threshold: ["<80"]
+      warning_threshold: ["<90"]
       weight: 1
     - sli: disk_io_rate
       display_name: "Disk I/O Saturation"
-      pass_criteria: ["<0.7"]
-      warning_criteria: ["<0.85"]
+      pass_threshold: ["<0.7"]
+      warning_threshold: ["<0.85"]
       weight: 1
 ```
 
@@ -1522,24 +1522,24 @@ spec:
   sli_version: 1
   kind: standard
   total_score:
-    pass_pct: 90.0
-    warning_pct: 75.0
+    pass_threshold: 90.0
+    warning_threshold: 75.0
   objectives:
     - sli: process_cpu_pct
       display_name: "Process CPU %"
-      pass_criteria: ["<30"]
-      warning_criteria: ["<50"]
+      pass_threshold: ["<30"]
+      warning_threshold: ["<50"]
       weight: 2
       key_sli: true
     - sli: process_memory_mb
       display_name: "Process Memory (MB)"
-      pass_criteria: ["<500"]
-      warning_criteria: ["<800"]
+      pass_threshold: ["<500"]
+      warning_threshold: ["<800"]
       weight: 2
     - sli: process_handles
       display_name: "Handle Count"
-      pass_criteria: ["<1000"]
-      warning_criteria: ["<2000"]
+      pass_threshold: ["<1000"]
+      warning_threshold: ["<2000"]
       weight: 1
 ```
 
@@ -1870,24 +1870,24 @@ spec:
   variables:
     process_name: "WINWORD"
   total_score:
-    pass_pct: 90.0
-    warning_pct: 75.0
+    pass_threshold: 90.0
+    warning_threshold: 75.0
   objectives:
     - sli: process_cpu_pct
       display_name: "CPU %"
-      pass_criteria: ["<30"]
-      warning_criteria: ["<50"]
+      pass_threshold: ["<30"]
+      warning_threshold: ["<50"]
       weight: 2
       key_sli: true
     - sli: process_memory_mb
       display_name: "Memory (MB)"
-      pass_criteria: ["<500"]
-      warning_criteria: ["<800"]
+      pass_threshold: ["<500"]
+      warning_threshold: ["<800"]
       weight: 2
     - sli: process_handles
       display_name: "Handles"
-      pass_criteria: ["<1000"]
-      warning_criteria: ["<2000"]
+      pass_threshold: ["<1000"]
+      warning_threshold: ["<2000"]
       weight: 1
 ---
 api_version: tropek/v1
@@ -1904,24 +1904,24 @@ spec:
   variables:
     process_name: "EXCEL"
   total_score:
-    pass_pct: 90.0
-    warning_pct: 75.0
+    pass_threshold: 90.0
+    warning_threshold: 75.0
   objectives:
     - sli: process_cpu_pct
       display_name: "CPU %"
-      pass_criteria: ["<30"]
-      warning_criteria: ["<50"]
+      pass_threshold: ["<30"]
+      warning_threshold: ["<50"]
       weight: 2
       key_sli: true
     - sli: process_memory_mb
       display_name: "Memory (MB)"
-      pass_criteria: ["<400"]
-      warning_criteria: ["<700"]
+      pass_threshold: ["<400"]
+      warning_threshold: ["<700"]
       weight: 2
     - sli: process_handles
       display_name: "Handles"
-      pass_criteria: ["<800"]
-      warning_criteria: ["<1500"]
+      pass_threshold: ["<800"]
+      warning_threshold: ["<1500"]
       weight: 1
 ---
 api_version: tropek/v1
@@ -1938,24 +1938,24 @@ spec:
   variables:
     process_name: "POWERPNT"
   total_score:
-    pass_pct: 90.0
-    warning_pct: 75.0
+    pass_threshold: 90.0
+    warning_threshold: 75.0
   objectives:
     - sli: process_cpu_pct
       display_name: "CPU %"
-      pass_criteria: ["<25"]
-      warning_criteria: ["<40"]
+      pass_threshold: ["<25"]
+      warning_threshold: ["<40"]
       weight: 2
       key_sli: true
     - sli: process_memory_mb
       display_name: "Memory (MB)"
-      pass_criteria: ["<400"]
-      warning_criteria: ["<600"]
+      pass_threshold: ["<400"]
+      warning_threshold: ["<600"]
       weight: 2
     - sli: process_handles
       display_name: "Handles"
-      pass_criteria: ["<600"]
-      warning_criteria: ["<1000"]
+      pass_threshold: ["<600"]
+      warning_threshold: ["<1000"]
       weight: 1
 ---
 api_version: tropek/v1
@@ -1972,24 +1972,24 @@ spec:
   variables:
     process_name: "OUTLOOK"
   total_score:
-    pass_pct: 90.0
-    warning_pct: 75.0
+    pass_threshold: 90.0
+    warning_threshold: 75.0
   objectives:
     - sli: process_cpu_pct
       display_name: "CPU %"
-      pass_criteria: ["<20"]
-      warning_criteria: ["<35"]
+      pass_threshold: ["<20"]
+      warning_threshold: ["<35"]
       weight: 2
       key_sli: true
     - sli: process_memory_mb
       display_name: "Memory (MB)"
-      pass_criteria: ["<600"]
-      warning_criteria: ["<900"]
+      pass_threshold: ["<600"]
+      warning_threshold: ["<900"]
       weight: 2
     - sli: process_handles
       display_name: "Handles"
-      pass_criteria: ["<1200"]
-      warning_criteria: ["<2000"]
+      pass_threshold: ["<1200"]
+      warning_threshold: ["<2000"]
       weight: 1
 ```
 

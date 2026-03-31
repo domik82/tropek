@@ -11,8 +11,8 @@ def client():
     return TestClient(app)
 
 
-VALID_OBJECTIVES = [{'sli': 'response_time_p99', 'pass_criteria': ['<600'], 'weight': 1}]
-INVALID_CRITERIA_OBJECTIVES = [{'sli': 'cpu', 'pass_criteria': ['>>5']}]
+VALID_OBJECTIVES = [{'sli': 'response_time_p99', 'pass_threshold': ['<600'], 'weight': 1}]
+INVALID_CRITERIA_OBJECTIVES = [{'sli': 'cpu', 'pass_threshold': ['>>5']}]
 
 
 def test_validate_valid_slo(client):
@@ -54,7 +54,7 @@ def test_validate_invalid_criteria_string(client):
 def test_validate_missing_objectives_field(client):
     resp = client.post(
         '/slo-definitions/validate',
-        json={'total_score_pass_pct': 90.0},
+        json={'total_score_pass_threshold': 90.0},
     )
     assert resp.status_code == 422
 
@@ -64,8 +64,8 @@ def test_validate_custom_score_thresholds(client):
         '/slo-definitions/validate',
         json={
             'objectives': VALID_OBJECTIVES,
-            'total_score_pass_pct': 80.0,
-            'total_score_warning_pct': 60.0,
+            'total_score_pass_threshold': 80.0,
+            'total_score_warning_threshold': 60.0,
         },
     )
     assert resp.status_code == 200

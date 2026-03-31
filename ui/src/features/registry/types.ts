@@ -1,6 +1,6 @@
 export type RegistryMode = 'asset' | 'slo' | 'datasource'
 
-export type NodeType = 'group' | 'asset' | 'slo' | 'sli' | 'datasource' | 'binding'
+export type NodeType = 'group' | 'asset' | 'slo' | 'sli' | 'datasource' | 'binding' | 'template' | 'slo-group'
 
 export interface TreeNode {
   id: string
@@ -8,6 +8,7 @@ export interface TreeNode {
   displayName?: string
   type: NodeType
   badge?: string
+  subtitle?: string
   children?: TreeNode[]
   bindingChain?: { sloName: string; sliName: string; dsName: string }
   groupName?: string

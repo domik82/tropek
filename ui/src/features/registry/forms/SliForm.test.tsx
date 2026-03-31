@@ -23,6 +23,10 @@ const mockSli: SliDefinition = {
     error_rate: 'sum(rate(http_requests_total[5m]))',
     latency: 'histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m]))',
   },
+  mode: 'raw',
+  query_template: null,
+  interval: null,
+  methods: null,
   notes: 'Error rate SLI',
   author: 'alice',
   tags: { env: 'prod' },
@@ -154,5 +158,87 @@ describe('SliForm', () => {
       { wrapper: Wrapper },
     )
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  })
+
+  it('shows mode toggle with Raw selected by default', () => {
+    render(
+      <SliForm open={true} onOpenChange={vi.fn()} />,
+      { wrapper: Wrapper },
+    )
+    expect(screen.getByRole('radio', { name: 'Raw' })).toBeChecked()
+    expect(screen.getByRole('radio', { name: 'Aggregated' })).not.toBeChecked()
+  })
+
+  it('shows indicator fields in raw mode', () => {
+    render(
+      <SliForm open={true} onOpenChange={vi.fn()} />,
+      { wrapper: Wrapper },
+    )
+    expect(screen.getByText('Indicators')).toBeInTheDocument()
+    expect(screen.queryByLabelText('Query Template')).not.toBeInTheDocument()
+  })
+
+  it('shows aggregated fields when Aggregated mode is selected', () => {
+    render(
+      <SliForm open={true} onOpenChange={vi.fn()} />,
+      { wrapper: Wrapper },
+    )
+    fireEvent.click(screen.getByRole('radio', { name: 'Aggregated' }))
+    expect(screen.getByLabelText('Query Template')).toBeInTheDocument()
+    expect(screen.getByLabelText('Interval')).toBeInTheDocument()
+    expect(screen.getByLabelText('Mean')).toBeInTheDocument()
+    expect(screen.queryByText('Indicators')).not.toBeInTheDocument()
+  })
+
+  it('edit mode pre-fills aggregated fields', () => {
+    const aggSli: SliDefinition = {
+      ...mockSli,
+      mode: 'aggregated',
+      indicators: {},
+      query_template: 'rate(cpu[$interval])',
+      interval: '5m',
+      methods: ['mean', 'p99'],
+    }
+    render(
+      <SliForm open={true} onOpenChange={vi.fn()} editFrom={aggSli} />,
+      { wrapper: Wrapper },
+    )
+    expect(screen.getByRole('radio', { name: 'Aggregated' })).toBeChecked()
+    expect(screen.getByLabelText('Query Template')).toHaveValue('rate(cpu[$interval])')
+    expect(screen.getByLabelText('Interval')).toHaveValue('5m')
+    expect(screen.getByLabelText('Mean')).toBeChecked()
+    expect(screen.getByLabelText('P99')).toBeChecked()
+    expect(screen.getByLabelText('Max')).not.toBeChecked()
+  })
+
+  it('submits aggregated-mode SLI with correct payload', async () => {
+    render(
+      <SliForm open={true} onOpenChange={vi.fn()} />,
+      { wrapper: Wrapper },
+    )
+    fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'agg-sli' } })
+    fireEvent.change(screen.getByLabelText('Adapter Type'), { target: { value: 'prometheus' } })
+    fireEvent.click(screen.getByRole('radio', { name: 'Aggregated' }))
+    fireEvent.change(screen.getByLabelText('Query Template'), {
+      target: { value: 'rate(cpu[$interval])' },
+    })
+    fireEvent.click(screen.getByLabelText('Mean'))
+    fireEvent.click(screen.getByLabelText('P99'))
+
+    fireEvent.click(screen.getByRole('button', { name: /create/i }))
+
+    await waitFor(() => {
+      expect(mockCreate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: 'agg-sli',
+          adapter_type: 'prometheus',
+          mode: 'aggregated',
+          query_template: 'rate(cpu[$interval])',
+          interval: '1m',
+          methods: ['mean', 'p99'],
+        }),
+        expect.anything(),
+      )
+    })
   })
 })

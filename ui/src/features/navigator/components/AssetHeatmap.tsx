@@ -7,14 +7,20 @@ import { NoteIndicatorRow, type SlotNote } from '@/components/charts/NoteIndicat
 import { buildAssetHeatmapData } from '../utils'
 import type { MetricHeatmapResponse, HeatmapCell } from '../types'
 
+export interface TimeSlotSelection {
+  periodStart: string
+  evalIds: string[]
+}
+
 interface Props {
   data: MetricHeatmapResponse
   selectedEvalId?: string
   onEvalSelect?: (evalId: string) => void
+  onSlotSelect?: (slot: TimeSlotSelection) => void
   notedSlots?: Map<string, SlotNote>
 }
 
-export function AssetHeatmap({ data, selectedEvalId, onEvalSelect, notedSlots }: Props) {
+export function AssetHeatmap({ data, selectedEvalId, onEvalSelect, onSlotSelect, notedSlots }: Props) {
   const { theme } = useTheme()
   const colours = RESULT_COLOUR[theme]
 
@@ -44,7 +50,17 @@ export function AssetHeatmap({ data, selectedEvalId, onEvalSelect, notedSlots }:
   }
 
   function onCellClick(cell: HeatmapCell): void {
-    if (cell.evalId && onEvalSelect) {
+    if (onSlotSelect) {
+      // Collect all eval IDs in the same column (same slot + evaluation_name).
+      // Filter by column index, not slot string, because multiple columns can
+      // share the same timestamp when evaluation_names differ.
+      const colIdx = cell.value[0]
+      const colCells = cells.filter(c => c.value[0] === colIdx && c.evalId)
+      const evalIds = [...new Set(colCells.map(c => c.evalId!))]
+      if (evalIds.length > 0) {
+        onSlotSelect({ periodStart: cell.slot, evalIds })
+      }
+    } else if (cell.evalId && onEvalSelect) {
       onEvalSelect(cell.evalId)
     }
   }

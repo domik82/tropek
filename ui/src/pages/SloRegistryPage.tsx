@@ -10,6 +10,7 @@ import type { RegistryMode, SelectedNode } from '@/features/registry'
 import { SloWizard } from '@/features/registry/forms/SloWizard'
 import { DatasourceForm } from '@/features/registry/forms/DatasourceForm'
 import { SliForm } from '@/features/registry/forms/SliForm'
+import { SloGroupForm } from '@/features/registry/forms/SloGroupForm'
 import { SloLinkDialogRevised } from '@/features/registry/forms/SloLinkDialogRevised'
 import { useCreateGroup } from '@/features/slos'
 import { useDatasource } from '@/features/datasources'
@@ -46,6 +47,10 @@ export function SloRegistryPage() {
   // SloWizard state (replaces detail panel, not a dialog)
   const [wizardOpen, setWizardOpen] = useState(false)
   const [wizardEditSlo, setWizardEditSlo] = useState<SloDefinition | undefined>()
+  const [wizardDefaultKind, setWizardDefaultKind] = useState<'standard' | 'template'>('standard')
+
+  // SloGroupForm state
+  const [sloGroupFormOpen, setSloGroupFormOpen] = useState(false)
 
   // Fetch datasource for edit mode
   const { data: dsEditFrom } = useDatasource(dsEditName ?? '')
@@ -85,6 +90,7 @@ export function SloRegistryPage() {
         updateParams({ selected: null, type: null, group: null })
       }
       setWizardOpen(false)
+      setSloGroupFormOpen(false)
     },
     [updateParams],
   )
@@ -109,11 +115,23 @@ export function SloRegistryPage() {
   )
 
   const handleCreateAction = useCallback(
-    (type: 'datasource' | 'sli' | 'slo' | 'group', context?: { adapterType?: string }) => {
+    (type: 'datasource' | 'sli' | 'slo' | 'group' | 'slo-template' | 'slo-group', context?: { adapterType?: string }) => {
       switch (type) {
         case 'slo':
           setWizardEditSlo(undefined)
+          setWizardDefaultKind('standard')
           setWizardOpen(true)
+          setSloGroupFormOpen(false)
+          break
+        case 'slo-template':
+          setWizardEditSlo(undefined)
+          setWizardDefaultKind('template')
+          setWizardOpen(true)
+          setSloGroupFormOpen(false)
+          break
+        case 'slo-group':
+          setSloGroupFormOpen(true)
+          setWizardOpen(false)
           break
         case 'sli':
           setSliDefaultAdapter(context?.adapterType)
@@ -178,7 +196,9 @@ export function SloRegistryPage() {
 
       <div className="flex-1 overflow-y-auto">
         {wizardOpen ? (
-          <SloWizard editSlo={wizardEditSlo} onClose={handleWizardClose} />
+          <SloWizard editSlo={wizardEditSlo} defaultKind={wizardDefaultKind} onClose={handleWizardClose} />
+        ) : sloGroupFormOpen ? (
+          <SloGroupForm onClose={() => setSloGroupFormOpen(false)} />
         ) : (
           <RegistryDetailPanel
             selected={selected}

@@ -1,3 +1,4 @@
+import type { SloGroup } from '@/features/slo-groups/types'
 import type { TreeNode } from './types'
 
 export interface MinSlo {
@@ -7,6 +8,7 @@ export interface MinSlo {
   active: boolean
   sli_name?: string | null
   sli_version?: number | null
+  kind?: string
 }
 
 export interface MinSli {
@@ -233,6 +235,79 @@ export function buildAssetTree(
   }
 
   return topLevelGroups.map(buildGroupNode)
+}
+
+export function buildSloSections(
+  slos: MinSlo[],
+  slis: MinSli[],
+  datasources: MinDs[],
+  bindings: MinBinding[],
+  groups: SloGroup[],
+): { standard: TreeNode[]; templates: TreeNode[]; groupNodes: TreeNode[] } {
+  const sliByName = new Map(slis.map(s => [s.name, s]))
+  const dsByName = new Map(datasources.map(d => [d.name, d]))
+
+  const activeSlos = slos.filter(s => s.active)
+  const standardSlos = activeSlos.filter(s => (s.kind ?? 'standard') === 'standard')
+  const templateSlos = activeSlos.filter(s => s.kind === 'template')
+
+  // Build standard SLO nodes (same logic as buildSloTree)
+  const standard: TreeNode[] = standardSlos.map(slo => {
+    const sloBindings = bindings.filter(b => b.slo_name === slo.name)
+    const dsNames = [...new Set(sloBindings.map(b => b.data_source_name))]
+    const dsChildren: TreeNode[] = dsNames.map(dsName => ({
+      id: `ds:${dsName}`,
+      name: dsName,
+      displayName: dsByName.get(dsName)?.display_name ?? undefined,
+      type: 'datasource' as const,
+    }))
+    const sliChildren: TreeNode[] = []
+    if (slo.sli_name) {
+      const sli = sliByName.get(slo.sli_name)
+      const indicatorCount = sli?.indicators ? Object.keys(sli.indicators).length : 0
+      sliChildren.push({
+        id: `sli:${slo.sli_name}`,
+        name: slo.sli_name,
+        displayName: sli?.display_name ?? undefined,
+        type: 'sli' as const,
+        badge: `${indicatorCount} indicators`,
+        children: dsChildren,
+      })
+    }
+    return {
+      id: `slo:${slo.name}`,
+      name: slo.name,
+      displayName: slo.display_name ?? undefined,
+      type: 'slo' as const,
+      badge: `v${slo.version}`,
+      children: sliChildren.length > 0 ? sliChildren : dsChildren,
+    }
+  })
+
+  // Build template nodes
+  const templates: TreeNode[] = templateSlos.map(slo => {
+    const refGroups = groups.filter(g => g.template_slo_name === slo.name)
+    return {
+      id: `template:${slo.name}`,
+      name: slo.name,
+      displayName: slo.display_name ?? undefined,
+      type: 'template' as const,
+      badge: `v${slo.version}`,
+      subtitle: `${refGroups.length} group${refGroups.length !== 1 ? 's' : ''}`,
+    }
+  })
+
+  // Build group nodes
+  const groupNodes: TreeNode[] = groups.filter(g => g.active).map(g => ({
+    id: `slo-group:${g.name}`,
+    name: g.name,
+    displayName: g.display_name ?? undefined,
+    type: 'slo-group' as const,
+    badge: `${g.generated_slo_count} SLOs`,
+    subtitle: `via ${g.template_slo_name}`,
+  }))
+
+  return { standard, templates, groupNodes }
 }
 
 export function filterTree(nodes: TreeNode[], search: string): TreeNode[] {

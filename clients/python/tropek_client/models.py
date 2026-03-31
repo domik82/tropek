@@ -115,9 +115,9 @@ class SLOObjective(BaseModel):
     """SLO objective in client responses."""
 
     sli: str
-    display_name: str = ""
-    pass_criteria: list[str] = []
-    warning_criteria: list[str] = []
+    display_name: str = ''
+    pass_threshold: list[str] = []
+    warning_threshold: list[str] = []
     weight: int = 1
     key_sli: bool = False
     sort_order: int = 0
@@ -132,8 +132,8 @@ class SLODefinition(BaseModel):
     version: int
     active: bool
     objectives: list[SLOObjective]
-    total_score_pass_pct: float
-    total_score_warning_pct: float
+    total_score_pass_threshold: float
+    total_score_warning_threshold: float
     comparison: dict[str, Any]
     notes: str | None
     author: str | None
@@ -162,7 +162,7 @@ class SLOValidationResult(BaseModel):
 class BaselineConfig(BaseModel):
     """Baseline configuration for SLO testing."""
 
-    mode: Literal["none", "asset_history", "manual"]
+    mode: Literal['none', 'asset_history', 'manual']
     values: dict[str, float] | None = None
 
 
@@ -281,29 +281,6 @@ class TrendPoint(BaseModel):
     baseline: float | None
 
 
-class AssetSLOLink(BaseModel):
-    """Asset-SLO binding."""
-
-    id: uuid.UUID
-    link_name: str
-    asset_id: uuid.UUID
-    slo_name: str
-    sli_name: str
-    data_source_name: str
-    comparison_rules: list[dict[str, Any]] = []
-
-
-class AssetGroupSLOLink(BaseModel):
-    """Asset group-SLO binding."""
-
-    id: uuid.UUID
-    link_name: str
-    group_id: uuid.UUID
-    slo_name: str
-    sli_name: str
-    data_source_name: str
-
-
 class SLOBinding(BaseModel):
     """SLO binding (new model — links an SLO to an asset or group via a data source)."""
 
@@ -313,4 +290,33 @@ class SLOBinding(BaseModel):
     slo_name: str
     data_source_name: str
     comparison_rules: list[dict[str, Any]] | None = None
+    source: str = 'direct'
+    template_binding_id: str | None = None
+    created_at: str
+
+
+class SLOGroup(BaseModel):
+    """SLO group response model."""
+
+    id: str
+    name: str
+    display_name: str | None
+    template_slo_name: str
+    template_slo_version: int
+    gen_variables: dict[str, list[str]]
+    tags: dict[str, Any]
+    author: str | None
+    version: int
+    active: bool
+    generated_slo_count: int
+
+
+class TemplateBinding(BaseModel):
+    """Template binding response model."""
+
+    id: str
+    target_type: str
+    target_id: str
+    template_group_name: str
+    data_source_name: str
     created_at: str

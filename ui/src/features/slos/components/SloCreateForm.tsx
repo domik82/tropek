@@ -9,8 +9,8 @@ import { useCreateSlo } from '../hooks'
 const objSchema = z.object({
   sli: z.string().min(1),
   display_name: z.string(),
-  pass_criteria: z.string(),
-  warning_criteria: z.string(),
+  pass_threshold: z.string(),
+  warning_threshold: z.string(),
   weight: z.coerce.number().min(0),
   key_sli: z.boolean(),
 })
@@ -29,8 +29,8 @@ const formSchema = z.object({
   number_of_comparison_results: z.coerce.number().min(1),
   include_result_with_score: z.string(),
   aggregate_function: z.string(),
-  total_score_pass_pct: z.coerce.number().min(0).max(100),
-  total_score_warning_pct: z.coerce.number().min(0).max(100),
+  total_score_pass_threshold: z.coerce.number().min(0).max(100),
+  total_score_warning_threshold: z.coerce.number().min(0).max(100),
   comparable_from_version: z.coerce.number().min(1).optional(),
   objectives: z.array(objSchema),
   labels: z.array(labelSchema),
@@ -44,8 +44,8 @@ const DEFAULTS: FormValues = {
   number_of_comparison_results: 3,
   include_result_with_score: 'pass_or_warn',
   aggregate_function: 'avg',
-  total_score_pass_pct: 90,
-  total_score_warning_pct: 75,
+  total_score_pass_threshold: 90,
+  total_score_warning_threshold: 75,
   objectives: [],
   labels: [],
 }
@@ -87,14 +87,14 @@ export function SloCreateForm({ onCancel, onSaved }: Props) {
         objectives: values.objectives.map((obj, i) => ({
           sli: obj.sli,
           display_name: obj.display_name || obj.sli,
-          pass_criteria: obj.pass_criteria ? obj.pass_criteria.split(',').map(s => s.trim()).filter(Boolean) : [],
-          warning_criteria: obj.warning_criteria ? obj.warning_criteria.split(',').map(s => s.trim()).filter(Boolean) : [],
+          pass_threshold: obj.pass_threshold ? obj.pass_threshold.split(',').map(s => s.trim()).filter(Boolean) : [],
+          warning_threshold: obj.warning_threshold ? obj.warning_threshold.split(',').map(s => s.trim()).filter(Boolean) : [],
           weight: obj.weight,
           key_sli: obj.key_sli,
           sort_order: i,
         })),
-        total_score_pass_pct: values.total_score_pass_pct,
-        total_score_warning_pct: values.total_score_warning_pct,
+        total_score_pass_threshold: values.total_score_pass_threshold,
+        total_score_warning_threshold: values.total_score_warning_threshold,
         comparison: {
           compare_with: values.compare_with,
           number_of_comparison_results: values.number_of_comparison_results,
@@ -179,11 +179,11 @@ export function SloCreateForm({ onCancel, onSaved }: Props) {
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="block text-xs text-muted-foreground mb-1">Total Pass %</label>
-            <input {...register('total_score_pass_pct')} type="number" min={0} max={100} className={inp} />
+            <input {...register('total_score_pass_threshold')} type="number" min={0} max={100} className={inp} />
           </div>
           <div>
             <label className="block text-xs text-muted-foreground mb-1">Total Warning %</label>
-            <input {...register('total_score_warning_pct')} type="number" min={0} max={100} className={inp} />
+            <input {...register('total_score_warning_threshold')} type="number" min={0} max={100} className={inp} />
           </div>
         </div>
         <div>
@@ -245,7 +245,7 @@ export function SloCreateForm({ onCancel, onSaved }: Props) {
           <button
             type="button"
             onClick={() => objectives.append({
-              sli: '', display_name: '', pass_criteria: '', warning_criteria: '',
+              sli: '', display_name: '', pass_threshold: '', warning_threshold: '',
               weight: 1, key_sli: false,
             })}
             className="px-3 py-1.5 text-xs font-medium rounded border bg-primary border-primary text-primary-foreground hover:bg-primary/80 transition-colors"
@@ -280,10 +280,10 @@ export function SloCreateForm({ onCancel, onSaved }: Props) {
                       <input {...register(`objectives.${i}.display_name`)} className={inp} placeholder="Human name" />
                     </td>
                     <td className="px-2 py-1.5">
-                      <input {...register(`objectives.${i}.pass_criteria`)} className={inp} placeholder="<=+10%" />
+                      <input {...register(`objectives.${i}.pass_threshold`)} className={inp} placeholder="<=+10%" />
                     </td>
                     <td className="px-2 py-1.5">
-                      <input {...register(`objectives.${i}.warning_criteria`)} className={inp} placeholder="optional" />
+                      <input {...register(`objectives.${i}.warning_threshold`)} className={inp} placeholder="optional" />
                     </td>
                     <td className="px-2 py-1.5">
                       <input {...register(`objectives.${i}.weight`)} type="number" className={inp + ' text-center'} />

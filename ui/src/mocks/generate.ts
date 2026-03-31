@@ -30,47 +30,47 @@ export type MetricDef = {
   weight: number
   unit: string
   base: number             // realistic baseline value
-  pass_criteria: string    // e.g. "=0", "<600", "<=+10%"
+  pass_threshold: string    // e.g. "=0", "<600", "<=+10%"
   warn_criteria: string | null
   higher_is_worse: boolean // true for latency/errors; false for throughput
 }
 
 export const METRICS: MetricDef[] = [
   // ---- Summary (key indicators) ----------------------------------------
-  { name: 'compilation_errors',    display_name: 'Compilation Errors',    tab_group: 'summary',   key_sli: true,  weight: 3, unit: '',    base: 0,    pass_criteria: '=0',      warn_criteria: null,       higher_is_worse: true  },
-  { name: 'compilation_duration_s',display_name: 'Compilation Duration',  tab_group: 'summary',   key_sli: false, weight: 2, unit: 's',   base: 42,   pass_criteria: '<=+10%',  warn_criteria: '<=+20%',   higher_is_worse: true  },
-  { name: 'error_rate',            display_name: 'Error Rate',            tab_group: 'summary',   key_sli: true,  weight: 3, unit: '%',   base: 0.5,  pass_criteria: '<1.0',    warn_criteria: '<2.0',     higher_is_worse: true  },
-  { name: 'throughput_rps',        display_name: 'Throughput',            tab_group: 'summary',   key_sli: false, weight: 2, unit: 'rps', base: 1520, pass_criteria: '>1200',   warn_criteria: '>1000',    higher_is_worse: false },
+  { name: 'compilation_errors',    display_name: 'Compilation Errors',    tab_group: 'summary',   key_sli: true,  weight: 3, unit: '',    base: 0,    pass_threshold: '=0',      warn_criteria: null,       higher_is_worse: true  },
+  { name: 'compilation_duration_s',display_name: 'Compilation Duration',  tab_group: 'summary',   key_sli: false, weight: 2, unit: 's',   base: 42,   pass_threshold: '<=+10%',  warn_criteria: '<=+20%',   higher_is_worse: true  },
+  { name: 'error_rate',            display_name: 'Error Rate',            tab_group: 'summary',   key_sli: true,  weight: 3, unit: '%',   base: 0.5,  pass_threshold: '<1.0',    warn_criteria: '<2.0',     higher_is_worse: true  },
+  { name: 'throughput_rps',        display_name: 'Throughput',            tab_group: 'summary',   key_sli: false, weight: 2, unit: 'rps', base: 1520, pass_threshold: '>1200',   warn_criteria: '>1000',    higher_is_worse: false },
   // ---- Timing --------------------------------------------------------------
-  { name: 'response_time_p50',     display_name: 'Response Time P50',     tab_group: 'timing',    key_sli: false, weight: 1, unit: 'ms',  base: 120,  pass_criteria: '<200',    warn_criteria: '<350',     higher_is_worse: true  },
-  { name: 'response_time_p75',     display_name: 'Response Time P75',     tab_group: 'timing',    key_sli: false, weight: 1, unit: 'ms',  base: 200,  pass_criteria: '<300',    warn_criteria: '<450',     higher_is_worse: true  },
-  { name: 'response_time_p90',     display_name: 'Response Time P90',     tab_group: 'timing',    key_sli: false, weight: 1, unit: 'ms',  base: 320,  pass_criteria: '<450',    warn_criteria: '<600',     higher_is_worse: true  },
-  { name: 'response_time_p95',     display_name: 'Response Time P95',     tab_group: 'timing',    key_sli: false, weight: 1, unit: 'ms',  base: 420,  pass_criteria: '<550',    warn_criteria: '<700',     higher_is_worse: true  },
-  { name: 'response_time_p99',     display_name: 'Response Time P99',     tab_group: 'timing',    key_sli: true,  weight: 2, unit: 'ms',  base: 580,  pass_criteria: '<=+10%',  warn_criteria: '<900',     higher_is_worse: true  },
-  { name: 'compilation_phase1_s',  display_name: 'Compile Phase 1',       tab_group: 'timing',    key_sli: false, weight: 1, unit: 's',   base: 18,   pass_criteria: '<=+10%',  warn_criteria: '<=+20%',   higher_is_worse: true  },
-  { name: 'compilation_phase2_s',  display_name: 'Compile Phase 2',       tab_group: 'timing',    key_sli: false, weight: 1, unit: 's',   base: 15,   pass_criteria: '<=+10%',  warn_criteria: '<=+20%',   higher_is_worse: true  },
-  { name: 'link_duration_s',       display_name: 'Link Duration',         tab_group: 'timing',    key_sli: false, weight: 1, unit: 's',   base: 8,    pass_criteria: '<=+10%',  warn_criteria: '<=+20%',   higher_is_worse: true  },
+  { name: 'response_time_p50',     display_name: 'Response Time P50',     tab_group: 'timing',    key_sli: false, weight: 1, unit: 'ms',  base: 120,  pass_threshold: '<200',    warn_criteria: '<350',     higher_is_worse: true  },
+  { name: 'response_time_p75',     display_name: 'Response Time P75',     tab_group: 'timing',    key_sli: false, weight: 1, unit: 'ms',  base: 200,  pass_threshold: '<300',    warn_criteria: '<450',     higher_is_worse: true  },
+  { name: 'response_time_p90',     display_name: 'Response Time P90',     tab_group: 'timing',    key_sli: false, weight: 1, unit: 'ms',  base: 320,  pass_threshold: '<450',    warn_criteria: '<600',     higher_is_worse: true  },
+  { name: 'response_time_p95',     display_name: 'Response Time P95',     tab_group: 'timing',    key_sli: false, weight: 1, unit: 'ms',  base: 420,  pass_threshold: '<550',    warn_criteria: '<700',     higher_is_worse: true  },
+  { name: 'response_time_p99',     display_name: 'Response Time P99',     tab_group: 'timing',    key_sli: true,  weight: 2, unit: 'ms',  base: 580,  pass_threshold: '<=+10%',  warn_criteria: '<900',     higher_is_worse: true  },
+  { name: 'compilation_phase1_s',  display_name: 'Compile Phase 1',       tab_group: 'timing',    key_sli: false, weight: 1, unit: 's',   base: 18,   pass_threshold: '<=+10%',  warn_criteria: '<=+20%',   higher_is_worse: true  },
+  { name: 'compilation_phase2_s',  display_name: 'Compile Phase 2',       tab_group: 'timing',    key_sli: false, weight: 1, unit: 's',   base: 15,   pass_threshold: '<=+10%',  warn_criteria: '<=+20%',   higher_is_worse: true  },
+  { name: 'link_duration_s',       display_name: 'Link Duration',         tab_group: 'timing',    key_sli: false, weight: 1, unit: 's',   base: 8,    pass_threshold: '<=+10%',  warn_criteria: '<=+20%',   higher_is_worse: true  },
   // ---- Resources -----------------------------------------------------------
-  { name: 'cpu_usage_avg',         display_name: 'CPU Usage Avg',         tab_group: 'resources', key_sli: false, weight: 2, unit: '%',   base: 68,   pass_criteria: '<80',     warn_criteria: '<90',      higher_is_worse: true  },
-  { name: 'cpu_usage_max',         display_name: 'CPU Usage Max',         tab_group: 'resources', key_sli: false, weight: 1, unit: '%',   base: 85,   pass_criteria: '<95',     warn_criteria: null,       higher_is_worse: true  },
-  { name: 'memory_peak_mb',        display_name: 'Peak Memory',           tab_group: 'resources', key_sli: false, weight: 2, unit: 'MB',  base: 1024, pass_criteria: '<2048',   warn_criteria: null,       higher_is_worse: true  },
-  { name: 'memory_avg_mb',         display_name: 'Avg Memory',            tab_group: 'resources', key_sli: false, weight: 1, unit: 'MB',  base: 820,  pass_criteria: '<1536',   warn_criteria: null,       higher_is_worse: true  },
-  { name: 'disk_io_read_mbps',     display_name: 'Disk Read',             tab_group: 'resources', key_sli: false, weight: 1, unit: 'MB/s',base: 145,  pass_criteria: '<200',    warn_criteria: null,       higher_is_worse: true  },
-  { name: 'disk_io_write_mbps',    display_name: 'Disk Write',            tab_group: 'resources', key_sli: false, weight: 1, unit: 'MB/s',base: 68,   pass_criteria: '<100',    warn_criteria: null,       higher_is_worse: true  },
-  { name: 'swap_usage_mb',         display_name: 'Swap Usage',            tab_group: 'resources', key_sli: false, weight: 1, unit: 'MB',  base: 32,   pass_criteria: '<256',    warn_criteria: null,       higher_is_worse: true  },
+  { name: 'cpu_usage_avg',         display_name: 'CPU Usage Avg',         tab_group: 'resources', key_sli: false, weight: 2, unit: '%',   base: 68,   pass_threshold: '<80',     warn_criteria: '<90',      higher_is_worse: true  },
+  { name: 'cpu_usage_max',         display_name: 'CPU Usage Max',         tab_group: 'resources', key_sli: false, weight: 1, unit: '%',   base: 85,   pass_threshold: '<95',     warn_criteria: null,       higher_is_worse: true  },
+  { name: 'memory_peak_mb',        display_name: 'Peak Memory',           tab_group: 'resources', key_sli: false, weight: 2, unit: 'MB',  base: 1024, pass_threshold: '<2048',   warn_criteria: null,       higher_is_worse: true  },
+  { name: 'memory_avg_mb',         display_name: 'Avg Memory',            tab_group: 'resources', key_sli: false, weight: 1, unit: 'MB',  base: 820,  pass_threshold: '<1536',   warn_criteria: null,       higher_is_worse: true  },
+  { name: 'disk_io_read_mbps',     display_name: 'Disk Read',             tab_group: 'resources', key_sli: false, weight: 1, unit: 'MB/s',base: 145,  pass_threshold: '<200',    warn_criteria: null,       higher_is_worse: true  },
+  { name: 'disk_io_write_mbps',    display_name: 'Disk Write',            tab_group: 'resources', key_sli: false, weight: 1, unit: 'MB/s',base: 68,   pass_threshold: '<100',    warn_criteria: null,       higher_is_worse: true  },
+  { name: 'swap_usage_mb',         display_name: 'Swap Usage',            tab_group: 'resources', key_sli: false, weight: 1, unit: 'MB',  base: 32,   pass_threshold: '<256',    warn_criteria: null,       higher_is_worse: true  },
   // ---- Network -------------------------------------------------------------
-  { name: 'network_rx_mbps',       display_name: 'Network RX',            tab_group: 'network',   key_sli: false, weight: 1, unit: 'Mbps',base: 220,  pass_criteria: '>180',    warn_criteria: '>150',     higher_is_worse: false },
-  { name: 'network_tx_mbps',       display_name: 'Network TX',            tab_group: 'network',   key_sli: false, weight: 1, unit: 'Mbps',base: 85,   pass_criteria: '>70',     warn_criteria: '>55',      higher_is_worse: false },
-  { name: 'packet_loss_pct',       display_name: 'Packet Loss',           tab_group: 'network',   key_sli: true,  weight: 2, unit: '%',   base: 0.01, pass_criteria: '<0.1',    warn_criteria: '<0.5',     higher_is_worse: true  },
-  { name: 'tcp_retransmit_rate',   display_name: 'TCP Retransmit Rate',   tab_group: 'network',   key_sli: false, weight: 1, unit: '%',   base: 0.3,  pass_criteria: '<1.0',    warn_criteria: null,       higher_is_worse: true  },
-  { name: 'dns_lookup_ms',         display_name: 'DNS Lookup',            tab_group: 'network',   key_sli: false, weight: 1, unit: 'ms',  base: 8,    pass_criteria: '<50',     warn_criteria: null,       higher_is_worse: true  },
-  { name: 'connection_errors',     display_name: 'Connection Errors',     tab_group: 'network',   key_sli: true,  weight: 2, unit: '',    base: 0,    pass_criteria: '=0',      warn_criteria: null,       higher_is_worse: true  },
+  { name: 'network_rx_mbps',       display_name: 'Network RX',            tab_group: 'network',   key_sli: false, weight: 1, unit: 'Mbps',base: 220,  pass_threshold: '>180',    warn_criteria: '>150',     higher_is_worse: false },
+  { name: 'network_tx_mbps',       display_name: 'Network TX',            tab_group: 'network',   key_sli: false, weight: 1, unit: 'Mbps',base: 85,   pass_threshold: '>70',     warn_criteria: '>55',      higher_is_worse: false },
+  { name: 'packet_loss_pct',       display_name: 'Packet Loss',           tab_group: 'network',   key_sli: true,  weight: 2, unit: '%',   base: 0.01, pass_threshold: '<0.1',    warn_criteria: '<0.5',     higher_is_worse: true  },
+  { name: 'tcp_retransmit_rate',   display_name: 'TCP Retransmit Rate',   tab_group: 'network',   key_sli: false, weight: 1, unit: '%',   base: 0.3,  pass_threshold: '<1.0',    warn_criteria: null,       higher_is_worse: true  },
+  { name: 'dns_lookup_ms',         display_name: 'DNS Lookup',            tab_group: 'network',   key_sli: false, weight: 1, unit: 'ms',  base: 8,    pass_threshold: '<50',     warn_criteria: null,       higher_is_worse: true  },
+  { name: 'connection_errors',     display_name: 'Connection Errors',     tab_group: 'network',   key_sli: true,  weight: 2, unit: '',    base: 0,    pass_threshold: '=0',      warn_criteria: null,       higher_is_worse: true  },
   // ---- Errors --------------------------------------------------------------
-  { name: 'link_errors',           display_name: 'Link Errors',           tab_group: 'errors',    key_sli: true,  weight: 3, unit: '',    base: 0,    pass_criteria: '=0',      warn_criteria: null,       higher_is_worse: true  },
-  { name: 'test_failures',         display_name: 'Test Failures',         tab_group: 'errors',    key_sli: true,  weight: 3, unit: '',    base: 0,    pass_criteria: '=0',      warn_criteria: null,       higher_is_worse: true  },
-  { name: 'warnings_count',        display_name: 'Compiler Warnings',     tab_group: 'errors',    key_sli: false, weight: 1, unit: '',    base: 3,    pass_criteria: '<10',     warn_criteria: '<20',      higher_is_worse: true  },
-  { name: 'crash_count',           display_name: 'Crashes',               tab_group: 'errors',    key_sli: true,  weight: 3, unit: '',    base: 0,    pass_criteria: '=0',      warn_criteria: null,       higher_is_worse: true  },
-  { name: 'assert_failures',       display_name: 'Assert Failures',       tab_group: 'errors',    key_sli: true,  weight: 2, unit: '',    base: 0,    pass_criteria: '=0',      warn_criteria: null,       higher_is_worse: true  },
+  { name: 'link_errors',           display_name: 'Link Errors',           tab_group: 'errors',    key_sli: true,  weight: 3, unit: '',    base: 0,    pass_threshold: '=0',      warn_criteria: null,       higher_is_worse: true  },
+  { name: 'test_failures',         display_name: 'Test Failures',         tab_group: 'errors',    key_sli: true,  weight: 3, unit: '',    base: 0,    pass_threshold: '=0',      warn_criteria: null,       higher_is_worse: true  },
+  { name: 'warnings_count',        display_name: 'Compiler Warnings',     tab_group: 'errors',    key_sli: false, weight: 1, unit: '',    base: 3,    pass_threshold: '<10',     warn_criteria: '<20',      higher_is_worse: true  },
+  { name: 'crash_count',           display_name: 'Crashes',               tab_group: 'errors',    key_sli: true,  weight: 3, unit: '',    base: 0,    pass_threshold: '=0',      warn_criteria: null,       higher_is_worse: true  },
+  { name: 'assert_failures',       display_name: 'Assert Failures',       tab_group: 'errors',    key_sli: true,  weight: 2, unit: '',    base: 0,    pass_threshold: '=0',      warn_criteria: null,       higher_is_worse: true  },
 ]
 
 // ---------------------------------------------------------------------------
@@ -176,8 +176,8 @@ function scoreIndicator(
   value: number,
   baseline: number | null
 ): { status: 'pass' | 'warning' | 'fail'; score: number } {
-  const isRelative = metric.pass_criteria.startsWith('<=+') || metric.pass_criteria.startsWith('>=-')
-  const passCrit = metric.pass_criteria
+  const isRelative = metric.pass_threshold.startsWith('<=+') || metric.pass_threshold.startsWith('>=-')
+  const passCrit = metric.pass_threshold
   const warnCrit = metric.warn_criteria
 
   let passOk: boolean
@@ -257,9 +257,9 @@ export function generateAllEvaluations(): EvaluationSummary[] {
             } else {
               value = +(m.base / (regFactor * noiseF)).toFixed(2)
             }
-            const thresholdStr = m.pass_criteria.startsWith('<=+')
-              ? `baseline ${m.pass_criteria}`
-              : `${m.pass_criteria}${m.unit ? ' ' + m.unit : ''}`
+            const thresholdStr = m.pass_threshold.startsWith('<=+')
+              ? `baseline ${m.pass_threshold}`
+              : `${m.pass_threshold}${m.unit ? ' ' + m.unit : ''}`
             return {
               metric: m.name,
               display_name: m.display_name,
@@ -390,14 +390,14 @@ export function generateEvaluationDetail(
     const baseline = day >= 3 ? getBaselineValue(m) : null
     const { status, score } = scoreIndicator(m, value, baseline)
 
-    const isRelativePass = m.pass_criteria.startsWith('<=+')
+    const isRelativePass = m.pass_threshold.startsWith('<=+')
     const isRelativeWarn = m.warn_criteria?.startsWith('<=+') ?? false
-    const passRelPct = isRelativePass ? parseFloat(m.pass_criteria.slice(3, -1)) : null
+    const passRelPct = isRelativePass ? parseFloat(m.pass_threshold.slice(3, -1)) : null
     const warnRelPct = isRelativeWarn && m.warn_criteria ? parseFloat(m.warn_criteria.slice(3, -1)) : null
     const passTarget = isRelativePass && baseline != null && passRelPct != null
-      ? [{ criteria: m.pass_criteria, target_value: +(baseline * (1 + passRelPct / 100)).toFixed(2), violated: status !== 'pass' }]
-      : m.pass_criteria !== null
-      ? [{ criteria: m.pass_criteria, target_value: parseFloat(m.pass_criteria.replace(/[^0-9.]/g, '')), violated: status !== 'pass' }]
+      ? [{ criteria: m.pass_threshold, target_value: +(baseline * (1 + passRelPct / 100)).toFixed(2), violated: status !== 'pass' }]
+      : m.pass_threshold !== null
+      ? [{ criteria: m.pass_threshold, target_value: parseFloat(m.pass_threshold.replace(/[^0-9.]/g, '')), violated: status !== 'pass' }]
       : null
 
     return {
@@ -477,8 +477,8 @@ export function generateEvaluationDetail(
       return []
     })(),
     indicator_results: indicators,
-    total_score_pass_pct: 90,
-    total_score_warning_pct: 75,
+    total_score_pass_threshold: 90,
+    total_score_warning_threshold: 75,
   }
 }
 

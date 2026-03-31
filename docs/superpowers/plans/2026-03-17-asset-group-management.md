@@ -474,8 +474,8 @@ async def test_group_delete_deactivates_slos(db_session: AsyncSession) -> None:
     await slo_repo.create(
         name="deact-slo",
         objectives=[],
-        total_score_pass_pct=90.0,
-        total_score_warning_pct=75.0,
+        total_score_pass_threshold=90.0,
+        total_score_warning_threshold=75.0,
     )
     group_repo = AssetGroupRepository(db_session)
     group = await group_repo.create("deact-grp")

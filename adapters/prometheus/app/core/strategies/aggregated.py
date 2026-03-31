@@ -68,13 +68,13 @@ class AggregatedQueryStrategy:
         except UnresolvedVariableError as exc:
             logger.warning('variable substitution failed: sli=%s error=%s', sli_name, exc)
             error_msg = str(exc)
-            values = {f'{sli_name}.{m}': None for m in methods}
-            errors = {f'{sli_name}.{m}': error_msg for m in methods}
-            return values, errors, None
+            early_values: dict[str, float | None] = {f'{sli_name}.{m}': None for m in methods}
+            early_errors: dict[str, str] = {f'{sli_name}.{m}': error_msg for m in methods}
+            return early_values, early_errors, None
 
         # Fetch data (with chunking for long time ranges)
         all_values, chunks_failed = await self._fetch_range(
-            query=query, start=start, end=end, step=interval
+            sli_name=sli_name, query=query, start=start, end=end, step=interval,
         )
 
         # Compute expected sample count
@@ -101,11 +101,7 @@ class AggregatedQueryStrategy:
                 errors[key] = 'no valid data points'
 
         # Build metadata
-        missing_pct = (
-            round((1 - actual_samples / expected_samples) * 100, 1)
-            if expected_samples > 0
-            else 0.0
-        )
+        missing_pct = round((1 - actual_samples / expected_samples) * 100, 1) if expected_samples > 0 else 0.0
         metadata: dict[str, Any] = {
             'mode': 'aggregated',
             'expected_samples': expected_samples,
@@ -116,12 +112,16 @@ class AggregatedQueryStrategy:
 
         logger.info(
             'aggregated result: sli=%s methods=%s actual=%d/%d chunks_failed=%d',
-            sli_name, methods, actual_samples, expected_samples, chunks_failed,
+            sli_name,
+            methods,
+            actual_samples,
+            expected_samples,
+            chunks_failed,
         )
         return values, errors, metadata
 
     async def _fetch_range(
-        self, *, query: str, start: str, end: str, step: str
+        self, *, sli_name: str, query: str, start: str, end: str, step: str,
     ) -> tuple[list[float], int]:
         """Fetch range data, chunking if the window exceeds chunk_size.
 
@@ -133,12 +133,13 @@ class AggregatedQueryStrategy:
 
         if window_seconds <= self._chunk_size_seconds:
             try:
-                values = await self._client.range_query(
-                    query, start=start, end=end, step=step
-                )
+                values = await self._client.range_query(query, start=start, end=end, step=step)
                 return values, 0
-            except PrometheusQueryError:
-                logger.exception('range query failed: query=%s', query)
+            except PrometheusQueryError as exc:
+                logger.warning(
+                    'range query returned no data: sli=%s query=%s start=%s end=%s error=%s',
+                    sli_name, query, start, end, exc,
+                )
                 return [], 1
 
         # Split into chunks
@@ -158,12 +159,11 @@ class AggregatedQueryStrategy:
         async def _fetch_chunk(c_start: str, c_end: str) -> list[float] | None:
             async with sem:
                 try:
-                    return await self._client.range_query(
-                        query, start=c_start, end=c_end, step=step
-                    )
-                except PrometheusQueryError:
-                    logger.exception(
-                        'chunk failed: query=%s start=%s end=%s', query, c_start, c_end
+                    return await self._client.range_query(query, start=c_start, end=c_end, step=step)
+                except PrometheusQueryError as exc:
+                    logger.warning(
+                        'chunk returned no data: sli=%s query=%s start=%s end=%s error=%s',
+                        sli_name, query, c_start, c_end, exc,
                     )
                     return None
 

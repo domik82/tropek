@@ -17,7 +17,7 @@ def _make_slo(objectives: list[SLOObjective]) -> SLO:
     return SLO(
         objectives=objectives,
         comparison=SLOComparison(),
-        total_score=SLOTotalScore(pass_pct=90.0, warning_pct=75.0),
+        total_score=SLOTotalScore(pass_threshold=90.0, warning_threshold=75.0),
     )
 
 
@@ -36,16 +36,16 @@ def _status(ir: object) -> str:
     return ir.status if hasattr(ir, 'status') else ir['status']  # type: ignore[union-attr]
 
 
-# --- score_objective with no pass_criteria ---
+# --- score_objective with no pass_threshold ---
 
 
-def test_objective_with_only_warning_criteria_returns_info() -> None:
-    """Objective with warning_criteria but no pass_criteria returns INFO status."""
+def test_objective_with_only_warning_threshold_returns_info() -> None:
+    """Objective with warning_threshold but no pass_threshold returns INFO status."""
     obj = SLOObjective(
         sli='cpu',
         display_name='CPU',
-        pass_criteria=[],
-        warning_criteria=['<90'],
+        pass_threshold=[],
+        warning_threshold=['<90'],
         weight=1,
     )
     result = score_objective(obj, value=50.0, baseline=None)
@@ -59,8 +59,8 @@ def test_objective_with_no_criteria_returns_info() -> None:
     obj = SLOObjective(
         sli='cpu',
         display_name='CPU',
-        pass_criteria=[],
-        warning_criteria=[],
+        pass_threshold=[],
+        warning_threshold=[],
         weight=1,
     )
     result = score_objective(obj, value=50.0, baseline=None)
@@ -73,8 +73,8 @@ def test_objective_with_no_criteria_none_value() -> None:
     obj = SLOObjective(
         sli='cpu',
         display_name='CPU',
-        pass_criteria=[],
-        warning_criteria=[],
+        pass_threshold=[],
+        warning_threshold=[],
         weight=1,
     )
     result = score_objective(obj, value=None, baseline=None)
@@ -86,14 +86,14 @@ def test_objective_with_no_criteria_none_value() -> None:
 
 def test_all_info_objectives_result_is_pass() -> None:
     """When all objectives are INFO, maximum is 0 and result is PASS with 100% score."""
-    obj1 = SLOObjective(sli='a', pass_criteria=[], weight=1)
-    obj2 = SLOObjective(sli='b', pass_criteria=[], weight=2)
+    obj1 = SLOObjective(sli='a', pass_threshold=[], weight=1)
+    obj2 = SLOObjective(sli='b', pass_threshold=[], weight=2)
 
     results = [
         score_objective(obj1, value=10.0, baseline=None),
         score_objective(obj2, value=20.0, baseline=None),
     ]
-    total = calculate_total_score(results, SLOTotalScore(pass_pct=90.0, warning_pct=75.0))
+    total = calculate_total_score(results, SLOTotalScore(pass_threshold=90.0, warning_threshold=75.0))
     assert total.result == EvaluationOutcome.PASS
     assert total.score == 100.0
 
@@ -105,8 +105,8 @@ def test_evaluate_mixed_info_and_scored() -> None:
     """Mix of info-only and scored objectives: only scored contribute to final score."""
     slo = _make_slo(
         [
-            SLOObjective(sli='cpu', display_name='CPU', pass_criteria=['<90'], weight=1),
-            SLOObjective(sli='mem', display_name='Memory', pass_criteria=[], weight=1),
+            SLOObjective(sli='cpu', display_name='CPU', pass_threshold=['<90'], weight=1),
+            SLOObjective(sli='mem', display_name='Memory', pass_threshold=[], weight=1),
         ]
     )
     metrics = {'cpu': 50.0, 'mem': 80.0}
@@ -128,8 +128,8 @@ def test_evaluate_all_info_objectives() -> None:
     """All objectives are info-only: result should be pass."""
     slo = _make_slo(
         [
-            SLOObjective(sli='a', display_name='A', pass_criteria=[], weight=1),
-            SLOObjective(sli='b', display_name='B', pass_criteria=[], weight=2),
+            SLOObjective(sli='a', display_name='A', pass_threshold=[], weight=1),
+            SLOObjective(sli='b', display_name='B', pass_threshold=[], weight=2),
         ]
     )
     metrics = {'a': 10.0, 'b': 20.0}

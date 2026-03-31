@@ -27,7 +27,7 @@ def score_objective(
     baseline: float | None,
 ) -> ObjectiveResult:
     """Score a single SLO objective against a metric value and optional baseline."""
-    has_pass = bool(objective.pass_criteria)
+    has_pass = bool(objective.pass_threshold)
 
     if not has_pass:
         return ObjectiveResult(
@@ -41,13 +41,13 @@ def score_objective(
     if value is None:
         return ObjectiveResult(
             objective=objective,
-            status=IndicatorStatus.FAIL,
+            status=IndicatorStatus.ERROR,
             score=0.0,
             contributes_to_score=True,
             key_sli_failed=objective.key_sli,
         )
 
-    if _evaluate_criteria_block(objective.pass_criteria, value, baseline):
+    if _evaluate_criteria_block(objective.pass_threshold, value, baseline):
         return ObjectiveResult(
             objective=objective,
             status=IndicatorStatus.PASS,
@@ -56,7 +56,7 @@ def score_objective(
             key_sli_failed=False,
         )
 
-    if objective.warning_criteria and _evaluate_criteria_block(objective.warning_criteria, value, baseline):
+    if objective.warning_threshold and _evaluate_criteria_block(objective.warning_threshold, value, baseline):
         return ObjectiveResult(
             objective=objective,
             status=IndicatorStatus.WARNING,
@@ -90,8 +90,8 @@ def calculate_total_score(
     key_sli_failed = any(r.key_sli_failed for r in results)
     if key_sli_failed:
         return TotalScore(result=EvaluationOutcome.FAIL, score=pct)
-    if pct >= total_score.pass_pct:
+    if pct >= total_score.pass_threshold:
         return TotalScore(result=EvaluationOutcome.PASS, score=pct)
-    if pct >= total_score.warning_pct:
+    if pct >= total_score.warning_threshold:
         return TotalScore(result=EvaluationOutcome.WARNING, score=pct)
     return TotalScore(result=EvaluationOutcome.FAIL, score=pct)

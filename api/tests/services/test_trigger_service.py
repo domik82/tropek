@@ -4,16 +4,17 @@ from __future__ import annotations
 
 import uuid
 from datetime import UTC, datetime
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from app.modules.quality_gate.dependencies import QualityGateRepos
 from app.modules.quality_gate.exceptions import (
     AssetNotFoundError,
     DuplicateEvaluationError,
+    EvaluationError,
     SLONotConfiguredError,
 )
-from app.modules.quality_gate.schemas import BatchTriggerRequest, TriggerRequest
+from app.modules.quality_gate.schemas import AssetTriggerRequest, BatchTriggerRequest, TriggerRequest
 from app.modules.quality_gate.trigger_service import TriggerService
 
 _START = datetime(2026, 3, 15, 10, 0, 0, tzinfo=UTC)
@@ -43,14 +44,6 @@ def _make_asset(name: str = 'vm-01') -> MagicMock:
     return asset
 
 
-def _make_link(slo_name: str = 'perf-slo') -> MagicMock:
-    link = MagicMock()
-    link.slo_name = slo_name
-    link.sli_name = 'system-sli'
-    link.data_source_name = 'prom-1'
-    return link
-
-
 def _make_sli_def() -> MagicMock:
     sli = MagicMock()
     sli.name = 'system-sli'
@@ -63,7 +56,7 @@ def _make_slo_def() -> MagicMock:
     slo = MagicMock()
     slo.name = 'perf-slo'
     slo.version = 1
-    slo.sli_name = None
+    slo.sli_name = 'system-sli'
     slo.sli_version = None
     return slo
 
@@ -93,8 +86,6 @@ def _make_repos() -> QualityGateRepos:
         baseline_repo=AsyncMock(),
         asset_repo=AsyncMock(),
         asset_group_repo=AsyncMock(),
-        slo_link_repo=AsyncMock(),
-        group_link_repo=AsyncMock(),
         binding_repo=AsyncMock(),
         sli_def_repo=AsyncMock(),
         slo_repo=AsyncMock(),
@@ -107,7 +98,11 @@ def _configure_happy_path(repos: QualityGateRepos) -> None:
     """Set up mocks for a successful single trigger resolution."""
     asset = _make_asset()
     repos.asset_repo.get_by_name.return_value = asset
-    repos.slo_link_repo.list_by_asset.return_value = [_make_link()]
+    # Binding replaces legacy link
+    binding = MagicMock()
+    binding.slo_name = 'perf-slo'
+    binding.data_source_name = 'prom-1'
+    repos.binding_repo.find_for_asset.return_value = binding
     repos.sli_def_repo.get_latest.return_value = _make_sli_def()
     repos.slo_repo.get_latest.return_value = _make_slo_def()
     repos.ds_repo.get_by_name.return_value = _make_ds()
@@ -143,8 +138,7 @@ async def test_trigger_single_slo_not_configured() -> None:
     repos = _make_repos()
     asset = _make_asset()
     repos.asset_repo.get_by_name.return_value = asset
-    repos.slo_link_repo.list_by_asset.return_value = []  # no links
-    repos.binding_repo.find_for_asset.return_value = None  # no bindings either
+    repos.binding_repo.find_for_asset.return_value = None
     pool = AsyncMock()
 
     service = TriggerService(repos, pool)
@@ -174,6 +168,152 @@ async def test_trigger_single_duplicate_completed() -> None:
     service = TriggerService(repos, pool)
     with pytest.raises(DuplicateEvaluationError, match='already exists'):
         await service.trigger_single(_make_request())
+
+
+def _make_asset_trigger_request(
+    asset_name: str = 'vm-01',
+    evaluation_name: str = 'nightly',
+) -> AssetTriggerRequest:
+    return AssetTriggerRequest(
+        asset_name=asset_name,
+        evaluation_name=evaluation_name,
+        period_start=_START,
+        period_end=_END,
+        variables={},
+    )
+
+
+async def test_trigger_asset_happy_path() -> None:
+    """Asset trigger resolves all SLOs and creates one evaluation per SLO."""
+    repos = _make_repos()
+    _configure_happy_path(repos)
+    repos.asset_group_repo.list_group_ids_for_asset.return_value = []
+    pool = AsyncMock()
+
+    asset = repos.asset_repo.get_by_name.return_value
+
+    async def resolve_side_effect(**kwargs):
+        return MagicMock(
+            asset_id=asset.id,
+            asset_name=asset.name,
+            asset_display_name=None,
+            asset_tags={},
+            asset_variables={},
+            slo_name=kwargs['slo_name'],
+            slo_version=1,
+            sli_name='sys-sli',
+            sli_version=1,
+            data_source_name='prom-1',
+            adapter_type='prometheus',
+        )
+
+    service = TriggerService(repos, pool)
+    with (
+        patch(
+            'app.modules.quality_gate.trigger_service.resolve_all_slos_for_asset',
+            new_callable=AsyncMock, return_value=['perf-slo', 'latency-slo'],
+        ),
+        patch(
+            'app.modules.quality_gate.trigger_service.resolve_single_trigger',
+            side_effect=resolve_side_effect,
+        ),
+    ):
+        result = await service.trigger_asset(_make_asset_trigger_request())
+
+    assert result.status == 'pending'
+    assert len(result.evaluation_ids) == 2
+    assert result.slo_names == ['perf-slo', 'latency-slo']
+    assert pool.enqueue_job.await_count == 2
+
+
+async def test_trigger_asset_not_found() -> None:
+    repos = _make_repos()
+    repos.asset_repo.get_by_name.return_value = None
+    pool = AsyncMock()
+
+    service = TriggerService(repos, pool)
+    with pytest.raises(AssetNotFoundError, match='asset'):
+        await service.trigger_asset(_make_asset_trigger_request())
+
+
+async def test_trigger_asset_no_slos() -> None:
+    """Asset with no SLO links/bindings raises EvaluationError."""
+    repos = _make_repos()
+    asset = _make_asset()
+    repos.asset_repo.get_by_name.return_value = asset
+    repos.asset_group_repo.list_group_ids_for_asset.return_value = []
+    pool = AsyncMock()
+
+    service = TriggerService(repos, pool)
+    with (
+        patch(
+            'app.modules.quality_gate.trigger_service.resolve_all_slos_for_asset',
+            return_value=[],
+        ),
+        pytest.raises(EvaluationError, match='no slo links'),
+    ):
+        await service.trigger_asset(_make_asset_trigger_request())
+
+
+async def test_trigger_asset_skips_duplicates() -> None:
+    """Existing evaluations are silently skipped, not raised."""
+    repos = _make_repos()
+    _configure_happy_path(repos)
+    repos.asset_group_repo.list_group_ids_for_asset.return_value = []
+    existing = _make_evaluation(status='completed')
+    repos.eval_repo.find_duplicate.return_value = existing
+    pool = AsyncMock()
+
+    service = TriggerService(repos, pool)
+    with patch(
+        'app.modules.quality_gate.trigger_service.resolve_all_slos_for_asset',
+        new_callable=AsyncMock, return_value=['perf-slo'],
+    ):
+        result = await service.trigger_asset(_make_asset_trigger_request())
+
+    assert result.evaluation_ids == []
+    assert result.slo_names == []
+    pool.enqueue_job.assert_not_awaited()
+
+
+async def test_trigger_asset_skips_unresolvable_slos() -> None:
+    """SLOs that fail resolution are silently skipped."""
+    repos = _make_repos()
+    _configure_happy_path(repos)
+    repos.asset_group_repo.list_group_ids_for_asset.return_value = []
+    pool = AsyncMock()
+
+    async def resolve_side_effect(**kwargs):
+        if kwargs['slo_name'] == 'bad-slo':
+            raise EvaluationError('slo not found')
+        # Return a valid context for other SLOs
+        asset = repos.asset_repo.get_by_name.return_value
+        return MagicMock(
+            asset_id=asset.id,
+            asset_name=asset.name,
+            asset_display_name=None,
+            asset_tags={},
+            asset_variables={},
+            slo_name=kwargs['slo_name'],
+            slo_version=1,
+            sli_name='sys-sli',
+            sli_version=1,
+            data_source_name='prom-1',
+            adapter_type='prometheus',
+        )
+
+    service = TriggerService(repos, pool)
+    with patch(
+        'app.modules.quality_gate.trigger_service.resolve_all_slos_for_asset',
+        new_callable=AsyncMock, return_value=['bad-slo', 'good-slo'],
+    ), patch(
+        'app.modules.quality_gate.trigger_service.resolve_single_trigger',
+        side_effect=resolve_side_effect,
+    ):
+        result = await service.trigger_asset(_make_asset_trigger_request())
+
+    assert len(result.evaluation_ids) == 1
+    assert result.slo_names == ['good-slo']
 
 
 async def test_trigger_batch_group_not_found() -> None:
