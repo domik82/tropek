@@ -2,21 +2,24 @@
 
 // Grid cell for both group and asset heatmaps
 export interface HeatmapCell {
-  value: [number, number]       // [xIndex (slot), yIndex (row)]
+  value: [number, number]       // [xIndex (col), yIndex (row)]
   result: string                // pass | warning | fail | error | invalidated | none
   score: number
-  slot: string                  // ISO timestamp for column
-  rowLabel: string              // asset name (group view) or metric display name (asset view)
-  evalId?: string               // defined in asset view — for click navigation
-  evaluation_name?: string      // for tooltip and cell keying
-  hasNote?: boolean             // triggers annotation triangle in HeatmapChart
+  slot: string                  // ISO timestamp for column label (period_start)
+  rowLabel: string              // asset name (group view) or metric display name / SLO name (asset view)
+  evalId?: string               // slo_evaluation_id — defined for indicator cells
+  columnKey?: string            // evaluation_id (parent run UUID) — for column identity
+  evaluation_name?: string      // kept for backward compat / tooltip
+  hasNote?: boolean             // triggers annotation triangle
   noteContent?: string          // shown in tooltip
+  isSloHeader?: boolean         // true for SLO group header rows
+  sloName?: string              // for isSloHeader rows — used for toggle callback
 }
 
 // Pre-computed group heatmap: rows=assets, cols=slots
 export interface GroupHeatmapData {
-  slots: string[]               // unique ISO timestamps, sorted
-  rows: string[]                // unique asset names
+  slots: string[]
+  rows: string[]
   cells: HeatmapCell[]
 }
 
@@ -24,9 +27,9 @@ export interface GroupHeatmapData {
 export interface AssetScorePoint {
   slot: string
   assetName: string
-  score: number                 // 0–100
+  score: number
   result: string
-  maxScore: number              // always 100 (per asset)
+  maxScore: number
 }
 
 // Grouped by slot for stacked bar rendering
@@ -37,27 +40,54 @@ export interface SlotScoreData {
   totalMax: number
 }
 
-// API response for GET /api/evaluations/metric-heatmap?asset_name=X
+// One column in the grouped heatmap — corresponds to one EvaluationRun
+export interface EvaluationColumn {
+  evaluation_id: string
+  period_start: string
+  period_end: string
+  eval_name: string
+}
+
+// Summary cell for an SLO group header row or the Overall composite row
+export interface HeatmapSummaryCell {
+  evaluation_id: string
+  period_start: string
+  result: string
+  score: number
+}
+
+// One SLO group in the grouped heatmap response
+export interface HeatmapSloGroup {
+  slo_name: string
+  slo_display_name?: string
+  metrics: Array<{ name: string; display_name: string }>
+  cells: MetricHeatmapCell[]
+  summary: HeatmapSummaryCell[]
+}
+
+// An individual indicator cell in the grouped heatmap
 export interface MetricHeatmapCell {
-  slot: string
+  evaluation_id: string         // parent eval (column key)
+  slo_evaluation_id: string     // FK to slo_evaluations (for trend nav)
+  period_start: string          // display only
   metric: string
   display_name: string
   result: string
   score: number
-  eval_id: string
-  evaluation_name: string
 }
 
+// API response for GET /api/evaluate/metric-heatmap?asset_name=X
 export interface MetricHeatmapResponse {
   asset_name: string
-  slots: string[]
-  metrics: Array<{ name: string; display_name: string; tab_group?: string }>
-  cells: MetricHeatmapCell[]
+  columns: EvaluationColumn[]
+  groups: HeatmapSloGroup[]
+  composite: HeatmapSummaryCell[]
 }
 
-// Pre-computed asset heatmap: rows=metrics, cols=evaluations
+// Pre-computed asset heatmap: rows=metrics/headers, cols=evaluations
 export interface AssetHeatmapData {
-  slots: string[]
-  rows: string[]                // display_names in metric order
+  slots: string[]           // ISO period_start per column (display labels)
+  rows: string[]            // ECharts bottom-to-top row labels
   cells: HeatmapCell[]
+  headerRowIndices: Set<number>  // ECharts y-indices of SLO header rows
 }
