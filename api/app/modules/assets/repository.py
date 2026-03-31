@@ -15,8 +15,6 @@ from app.db.models import (
     AssetGroup,
     AssetGroupLink,
     AssetGroupMember,
-    AssetGroupSLOLink,
-    AssetSLOLink,
     AssetType,
     SLOBinding,
     SLODefinition,
@@ -216,17 +214,19 @@ class AssetRepository(TagQueryMixin):
         return asset
 
     async def delete(self, name: str) -> bool:
-        """Delete an asset by name, removing all group memberships and SLO links.
-
-        Returns False if asset not found.
-        """
+        """Delete an asset by name, removing all group memberships and SLO bindings."""
         asset = await self.get_by_name(name)
         if asset is None:
             return False
         # Remove group memberships
         await self._session.execute(delete(AssetGroupMember).where(AssetGroupMember.asset_id == asset.id))
-        # Remove SLO links
-        await self._session.execute(delete(AssetSLOLink).where(AssetSLOLink.asset_id == asset.id))
+        # Remove SLO bindings (direct asset bindings only — group bindings belong to the group)
+        await self._session.execute(
+            delete(SLOBinding).where(
+                SLOBinding.target_type == 'asset',
+                SLOBinding.target_id == asset.id,
+            )
+        )
         # Delete the asset itself
         await self._session.execute(delete(Asset).where(Asset.id == asset.id))
         if self._cache:
@@ -393,7 +393,9 @@ class AssetGroupRepository:
         all_group_ids = [group.id, *await self._collect_subgroup_ids(group.id)]
         if deactivate_slos:
             slo_names_result = await self._session.execute(
-                select(AssetGroupSLOLink.slo_name).where(AssetGroupSLOLink.group_id.in_(all_group_ids)).distinct()
+                select(SLOBinding.slo_name)
+                .where(SLOBinding.target_type == 'asset_group', SLOBinding.target_id.in_(all_group_ids))
+                .distinct()
             )
             slo_names = list(slo_names_result.scalars().all())
             if slo_names:
@@ -505,162 +507,6 @@ class AssetGroupRepository:
             delete(AssetGroupLink).where(
                 AssetGroupLink.parent_group_id == group.id,
                 AssetGroupLink.child_group_id == child_group_id,
-            )
-        )
-
-
-class AssetSLOLinkRepository:
-    """CRUD for asset_slo_links."""
-
-    def __init__(self, session: AsyncSession) -> None:
-        self._session = session
-
-    async def create(
-        self,
-        *,
-        asset_id: uuid.UUID,
-        link_name: str,
-        slo_name: str,
-        sli_name: str,
-        data_source_name: str,
-    ) -> AssetSLOLink:
-        """Create an SLO link for an asset.
-
-        Args:
-            asset_id: UUID of the asset.
-            link_name: Unique name for this link within the asset.
-            slo_name: Name of the referenced SLO.
-            sli_name: Name of the referenced SLI.
-            data_source_name: Name of the referenced data source.
-
-        Returns:
-            The newly created AssetSLOLink record.
-        """
-        link = AssetSLOLink(
-            id=uuid.uuid4(),
-            link_name=link_name,
-            asset_id=asset_id,
-            slo_name=slo_name,
-            sli_name=sli_name,
-            data_source_name=data_source_name,
-        )
-        self._session.add(link)
-        await self._session.flush()
-        return link
-
-    async def list_by_asset(self, asset_id: uuid.UUID) -> list[AssetSLOLink]:
-        """Return all SLO links for an asset ordered by link name."""
-        result = await self._session.execute(
-            select(AssetSLOLink).where(AssetSLOLink.asset_id == asset_id).order_by(AssetSLOLink.link_name)
-        )
-        return list(result.scalars().all())
-
-    async def delete(self, asset_id: uuid.UUID, link_name: str) -> None:
-        """Hard-delete an SLO link by asset id and link name."""
-        await self._session.execute(
-            delete(AssetSLOLink).where(
-                AssetSLOLink.asset_id == asset_id,
-                AssetSLOLink.link_name == link_name,
-            )
-        )
-
-    async def get_by_link_name(
-        self,
-        asset_id: uuid.UUID,
-        link_name: str,
-    ) -> AssetSLOLink | None:
-        """Return the SLO link for a specific asset + link name, or None."""
-        result = await self._session.execute(
-            select(AssetSLOLink).where(
-                AssetSLOLink.asset_id == asset_id,
-                AssetSLOLink.link_name == link_name,
-            )
-        )
-        return result.scalars().first()
-
-    async def get_by_asset_and_slo(
-        self,
-        asset_id: uuid.UUID,
-        slo_name: str,
-    ) -> AssetSLOLink | None:
-        """Return the SLO link for a specific asset + SLO name, or None.
-
-        Used by the evaluation flow (P2b) to resolve comparison rules
-        when the worker has asset_id + slo_name from the evaluation row.
-        """
-        result = await self._session.execute(
-            select(AssetSLOLink).where(
-                AssetSLOLink.asset_id == asset_id,
-                AssetSLOLink.slo_name == slo_name,
-            )
-        )
-        return result.scalars().first()
-
-    async def update_comparison_rules(
-        self,
-        link_id: uuid.UUID,
-        rules: list[dict[str, Any]],
-    ) -> None:
-        """Replace comparison_rules on an SLO link."""
-        await self._session.execute(
-            update(AssetSLOLink).where(AssetSLOLink.id == link_id).values(comparison_rules=rules)
-        )
-
-
-class AssetGroupSLOLinkRepository:
-    """CRUD for asset_group_slo_links — mirrors AssetSLOLinkRepository."""
-
-    def __init__(self, session: AsyncSession) -> None:
-        self._session = session
-
-    async def create(
-        self,
-        *,
-        group_id: uuid.UUID,
-        slo_name: str,
-        sli_name: str,
-        data_source_name: str,
-    ) -> AssetGroupSLOLink:
-        """Create an SLO link for an asset group.
-
-        The link_name is auto-generated as ``{slo_name}--{sli_name}``.
-
-        Args:
-            group_id: UUID of the asset group.
-            slo_name: Name of the referenced SLO.
-            sli_name: Name of the referenced SLI.
-            data_source_name: Name of the referenced data source.
-
-        Returns:
-            The newly created AssetGroupSLOLink record.
-        """
-        link = AssetGroupSLOLink(
-            id=uuid.uuid4(),
-            link_name=f'{slo_name}--{sli_name}',
-            group_id=group_id,
-            slo_name=slo_name,
-            sli_name=sli_name,
-            data_source_name=data_source_name,
-        )
-        self._session.add(link)
-        await self._session.flush()
-        return link
-
-    async def list_by_group(self, group_id: uuid.UUID) -> list[AssetGroupSLOLink]:
-        """Return all SLO links for an asset group ordered by link name."""
-        result = await self._session.execute(
-            select(AssetGroupSLOLink)
-            .where(AssetGroupSLOLink.group_id == group_id)
-            .order_by(AssetGroupSLOLink.link_name)
-        )
-        return list(result.scalars().all())
-
-    async def delete(self, group_id: uuid.UUID, link_name: str) -> None:
-        """Hard-delete an SLO link by group id and link name."""
-        await self._session.execute(
-            delete(AssetGroupSLOLink).where(
-                AssetGroupSLOLink.group_id == group_id,
-                AssetGroupSLOLink.link_name == link_name,
             )
         )
 
@@ -780,6 +626,24 @@ class SLOBindingRepository:
             )
         )
         return result.scalars().first()
+
+    async def update_comparison_rules(
+        self,
+        target_type: str,
+        target_id: uuid.UUID,
+        slo_name: str,
+        rules: list[dict[str, Any]],
+    ) -> None:
+        """Replace comparison_rules on an SLO binding."""
+        await self._session.execute(
+            update(SLOBinding)
+            .where(
+                SLOBinding.target_type == target_type,
+                SLOBinding.target_id == target_id,
+                SLOBinding.slo_name == slo_name,
+            )
+            .values(comparison_rules=rules)
+        )
 
     async def list_by_datasource(self, data_source_name: str) -> list[SLOBinding]:
         """Check if any bindings reference this datasource (for deletion guard)."""

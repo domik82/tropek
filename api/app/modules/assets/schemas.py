@@ -186,57 +186,10 @@ class AddSubgroupRequest(BaseModel):
 # ---- Bindings ----
 
 
-class AssetSLOLinkCreate(BaseModel):
-    """Request body for creating an asset SLO link."""
-
-    link_name: str
-    slo_name: str
-    sli_name: str
-    data_source_name: str
-
-
-class AssetSLOLinkRead(BaseModel):
-    """Response schema for an asset SLO link."""
-
-    id: uuid.UUID
-    link_name: str
-    asset_id: uuid.UUID
-    slo_name: str
-    sli_name: str
-    data_source_name: str
-    created_at: datetime
-    comparison_rules: list[dict[str, Any]] = []
-
-    model_config = ConfigDict(from_attributes=True)
-
-
 class ComparisonRulesUpdate(BaseModel):
-    """Request body for PUT /assets/{name}/slo-links/{link_name}/comparison-rules."""
+    """Request body for comparison-rules PUT endpoints."""
 
     rules: list[dict[str, Any]]
-
-
-class AssetGroupSLOLinkCreate(BaseModel):
-    """Request body for creating an asset group SLO link."""
-
-    link_name: str | None = None
-    slo_name: str
-    sli_name: str
-    data_source_name: str
-
-
-class AssetGroupSLOLinkRead(BaseModel):
-    """Response schema for an asset group SLO link."""
-
-    id: uuid.UUID
-    link_name: str
-    group_id: uuid.UUID
-    slo_name: str
-    sli_name: str
-    data_source_name: str
-    created_at: datetime
-
-    model_config = ConfigDict(from_attributes=True)
 
 
 # ---- SLO Bindings (new polymorphic model) ----

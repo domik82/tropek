@@ -281,29 +281,6 @@ class TrendPoint(BaseModel):
     baseline: float | None
 
 
-class AssetSLOLink(BaseModel):
-    """Asset-SLO binding."""
-
-    id: uuid.UUID
-    link_name: str
-    asset_id: uuid.UUID
-    slo_name: str
-    sli_name: str
-    data_source_name: str
-    comparison_rules: list[dict[str, Any]] = []
-
-
-class AssetGroupSLOLink(BaseModel):
-    """Asset group-SLO binding."""
-
-    id: uuid.UUID
-    link_name: str
-    group_id: uuid.UUID
-    slo_name: str
-    sli_name: str
-    data_source_name: str
-
-
 class SLOBinding(BaseModel):
     """SLO binding (new model — links an SLO to an asset or group via a data source)."""
 
