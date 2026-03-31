@@ -299,7 +299,7 @@ class EvaluationAnnotation(Base):
     hidden_reason:     Mapped[str | None]     = mapped_column(Text, nullable=True)
     created_at:        Mapped[datetime]       = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at:        Mapped[datetime | None] = mapped_column(DateTime(timezone=True), onupdate=func.now(), nullable=True)
-    slo_evaluation:    Mapped['SLOEvaluation'] = relationship('SLOEvaluation', back_populates='annotations')
+    slo_evaluation:    Mapped[SLOEvaluation] = relationship('SLOEvaluation', back_populates='annotations')
 
     # fmt: on
 
@@ -499,13 +499,13 @@ class SLOEvaluation(Base):
     created_at:           Mapped[datetime]       = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     annotations:          Mapped[list[EvaluationAnnotation]] = relationship('EvaluationAnnotation', back_populates='slo_evaluation', cascade='all, delete-orphan')
     indicator_rows:       Mapped[list[IndicatorResultRow]]   = relationship('IndicatorResultRow', cascade='all, delete-orphan', lazy='selectin')
-    evaluation_run:       Mapped['EvaluationRun']            = relationship('EvaluationRun', back_populates='slo_evaluations')
+    evaluation_run:       Mapped[EvaluationRun]            = relationship('EvaluationRun', back_populates='slo_evaluations')
 
     # fmt: on
 
 
 class EvaluationRun(Base):
-    """Parent evaluation run — one per asset × eval_name × period.
+    """Parent evaluation run — one per asset x eval_name x period.
 
     Aggregates N child SLOEvaluation rows (one per SLO bound to the asset).
     result = worst-case of children; achieved/total points = sum of children.
