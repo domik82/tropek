@@ -2,11 +2,8 @@ import { useState, useEffect } from 'react'
 import { X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { SearchableComboBox } from '@/components/shared/SearchableComboBox'
-import { useDatasources } from '@/features/datasources/hooks'
-import {
-  useGroupTree, useSlos,
-  useCreateGroupSloBinding, useGroupSloBindings,
-} from '@/features/slos/hooks'
+import { useDatasources } from '@/features/datasources'
+import { useGroupTree, useSlos, useCreateGroupSloBinding, useGroupSloBindings } from '@/features/slos'
 import { ENTITY_COLORS } from '@/lib/entity-colors'
 import { SANS_SERIF } from '@/lib/fonts'
 

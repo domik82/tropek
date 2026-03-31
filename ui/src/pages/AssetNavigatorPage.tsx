@@ -1,8 +1,7 @@
 // ui/src/pages/AssetNavigatorPage.tsx
 import { useSearchParams } from 'react-router-dom'
 import { AssetTree } from '@/components/AssetTree'
-import { GroupPanel } from '@/features/navigator/components/GroupPanel'
-import { AssetPanel } from '@/features/navigator/components/AssetPanel'
+import { GroupPanel, AssetPanel } from '@/features/navigator'
 import { AllEvaluationsPanel } from '@/features/navigator/components/AllEvaluationsPanel'
 
 export function AssetNavigatorPage() {

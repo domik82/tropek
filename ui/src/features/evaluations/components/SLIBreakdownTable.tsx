@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { ChevronDown, ChevronRight } from 'lucide-react'
 import { fmt } from '@/lib/format'
 import { STATUS_TEXT } from '@/lib/status'
+import { DataTable, DataTableHeader } from '@/components/ui/data-table'
 import type { IndicatorResult, SliMetadata } from '../types'
 
 function fmtPct(v: number | null | undefined): string {
@@ -97,56 +98,54 @@ export function SLIBreakdownTable({ indicators, sliMetadata, onIndicatorClick }:
   }
 
   return (
-    <div className="overflow-hidden rounded-lg border border-border bg-table-row-bg">
-      <table className="w-full text-sm text-left">
-        <thead className="text-xs uppercase text-muted-foreground bg-table-header-bg border-b border-border">
-          <tr>
-            <th className="px-2 py-3 text-center w-6 text-indicator-key-sli" title="Key SLI">◆</th>
-            <th className="px-4 py-3">Indicator</th>
-            <th className="px-4 py-3 text-right">Value</th>
-            <th className="px-4 py-3 text-right">Baseline</th>
-            <th className="px-4 py-3 text-right">Δ</th>
-            <th className="px-4 py-3 text-right">Weight</th>
-            <th className="px-4 py-3 text-right">Score</th>
-            <th className="px-4 py-3">Status</th>
-            <th className="px-4 py-3">Pass criteria</th>
-            <th className="px-4 py-3">Warn criteria</th>
-          </tr>
-        </thead>
-        <tbody>
-          {items.map((item, idx) => {
-            if (isGroup(item)) {
-              const collapsed = collapsedGroups.has(item.prefix)
-              const meta = item.metadata
-              const lowConfidence = meta && meta.missing_pct > LOW_CONFIDENCE_THRESHOLD
-              return (
-                <GroupRows
-                  key={item.prefix}
-                  group={item}
-                  collapsed={collapsed}
-                  lowConfidence={!!lowConfidence}
-                  onToggle={() => toggleGroup(item.prefix)}
-                  selectedMetric={selectedMetric}
-                  onRowClick={handleRowClick}
-                  onIndicatorClick={onIndicatorClick}
-                  startIdx={idx}
-                />
-              )
-            }
+    <DataTable>
+      <DataTableHeader>
+        <tr>
+          <th className="px-2 py-3 text-center w-6 text-indicator-key-sli" title="Key SLI">◆</th>
+          <th className="px-4 py-3">Indicator</th>
+          <th className="px-4 py-3 text-right">Value</th>
+          <th className="px-4 py-3 text-right">Baseline</th>
+          <th className="px-4 py-3 text-right">Δ</th>
+          <th className="px-4 py-3 text-right">Weight</th>
+          <th className="px-4 py-3 text-right">Score</th>
+          <th className="px-4 py-3">Status</th>
+          <th className="px-4 py-3">Pass criteria</th>
+          <th className="px-4 py-3">Warn criteria</th>
+        </tr>
+      </DataTableHeader>
+      <tbody>
+        {items.map((item, idx) => {
+          if (isGroup(item)) {
+            const collapsed = collapsedGroups.has(item.prefix)
+            const meta = item.metadata
+            const lowConfidence = meta && meta.missing_pct > LOW_CONFIDENCE_THRESHOLD
             return (
-              <IndicatorRow
-                key={item.metric}
-                ind={item}
-                idx={idx}
-                isSelected={item.metric === selectedMetric}
-                onClick={handleRowClick}
+              <GroupRows
+                key={item.prefix}
+                group={item}
+                collapsed={collapsed}
+                lowConfidence={!!lowConfidence}
+                onToggle={() => toggleGroup(item.prefix)}
+                selectedMetric={selectedMetric}
+                onRowClick={handleRowClick}
                 onIndicatorClick={onIndicatorClick}
+                startIdx={idx}
               />
             )
-          })}
-        </tbody>
-      </table>
-    </div>
+          }
+          return (
+            <IndicatorRow
+              key={item.metric}
+              ind={item}
+              idx={idx}
+              isSelected={item.metric === selectedMetric}
+              onClick={handleRowClick}
+              onIndicatorClick={onIndicatorClick}
+            />
+          )
+        })}
+      </tbody>
+    </DataTable>
   )
 }
 

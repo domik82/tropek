@@ -2,11 +2,11 @@ import { useState } from 'react'
 import { Pencil, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { DeletionConfirmForm } from '@/components/DeletionConfirmForm'
-import { useDatasource, useDeleteDatasource } from '@/features/datasources/hooks'
-import { useSliDefinitions } from '@/features/slis/hooks'
+import { useDatasource, useDeleteDatasource } from '@/features/datasources'
+import { useSliDefinitions } from '@/features/slis'
+import type { SelectedNode } from '@/features/registry'
 import { ENTITY_COLORS } from '@/lib/entity-colors'
 import { SANS_SERIF } from '@/lib/fonts'
-import type { SelectedNode } from '@/features/registry/types'
 
 interface DatasourceDetailViewProps {
   name: string

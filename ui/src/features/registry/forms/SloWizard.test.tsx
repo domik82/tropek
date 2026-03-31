@@ -1,8 +1,8 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { render, screen, fireEvent, cleanup } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { SloWizard } from './SloWizard'
-import type { SloDefinition } from '@/features/slos/types'
+import type { SloDefinition } from '@/features/slos'
 
 vi.mock('@/features/slos/hooks', () => ({
   useCreateSlo: vi.fn(),
@@ -68,17 +68,26 @@ const mockSlo: SloDefinition = {
   sli_version: null,
 }
 
+let queryClient: QueryClient
+
 function Wrapper({ children }: { children: React.ReactNode }) {
-  return <QueryClientProvider client={new QueryClient()}>{children}</QueryClientProvider>
+  return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
 }
 
 describe('SloWizard', () => {
   beforeEach(() => {
+    queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
     mockMutate.mockReset()
     vi.mocked(useCreateSlo).mockReturnValue({
       mutate: mockMutate,
       isPending: false,
     } as unknown as ReturnType<typeof useCreateSlo>)
+  })
+
+  afterEach(() => {
+    queryClient.cancelQueries()
+    queryClient.clear()
+    cleanup()
   })
 
   it('initial render shows only Step 1', () => {

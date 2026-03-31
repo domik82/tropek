@@ -1,8 +1,8 @@
 import { useState, useMemo, useCallback } from 'react'
 import { Plus, MoreHorizontal, Settings } from 'lucide-react'
 import { TreeFilter, TreeNode, getEntityIcon } from '@/components/tree'
-import { useAssetGroups } from '@/features/assets/hooks'
-import { countLeafMembers } from '@/features/navigator/components/treeUtils'
+import { useAssetGroups } from '@/features/assets'
+import { countLeafMembers } from '@/features/navigator'
 import { AssetTreeNode } from './AssetTreeNode'
 import { AssetTreeContextMenu } from './AssetTreeContextMenu'
 import { AssetTreeFooter } from './AssetTreeFooter'
@@ -207,7 +207,7 @@ export function AssetTree({
             {/* "All" item */}
             <TreeNode
               icon={getEntityIcon('all')}
-              iconColor={selectedGroup === null ? 'var(--primary)' : '#8b949e'}
+              iconColor={selectedGroup === null ? 'var(--primary)' : 'var(--entity-group)'}
               label="All"
               depth={0}
               isExpandable={false}
@@ -250,7 +250,7 @@ export function AssetTree({
             {/* Ungrouped */}
             <TreeNode
               icon={getEntityIcon('group')}
-              iconColor="#8b949e80"
+              iconColor="var(--entity-group)"
               label="Ungrouped"
               depth={0}
               isExpandable={false}

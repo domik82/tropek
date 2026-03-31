@@ -1,8 +1,6 @@
 import { useState, useEffect } from 'react'
-import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose,
-} from '@/components/ui/dialog'
 import { FieldLabel } from '@/components/ui/field-label'
+import { FormDialog } from '@/components/ui/form-dialog'
 import { useDatasources } from '@/features/datasources/hooks'
 import { useSliDefinitions } from '@/features/slis/hooks'
 import {
@@ -36,10 +34,8 @@ export function SloLinkDialog({ open, onOpenChange, lockedSloName, lockedGroupNa
     if (lockedSloName) setSloName(lockedSloName)
   }, [lockedGroupName, lockedSloName])
 
-  // Reset SLI when datasource changes
   useEffect(() => { setSliName('') }, [datasource])
 
-  // Reset all when dialog opens
   useEffect(() => {
     if (open) {
       setDatasource('')
@@ -50,7 +46,7 @@ export function SloLinkDialog({ open, onOpenChange, lockedSloName, lockedGroupNa
   }, [open, lockedGroupName, lockedSloName])
 
   const isDuplicate = existingBindings?.some(b => b.slo_name === sloName) ?? false
-  const isValid = datasource && sliName && groupName && sloName && !isDuplicate
+  const isValid = !!(datasource && sliName && groupName && sloName && !isDuplicate)
 
   const handleLink = async () => {
     const targetGroup = lockedGroupName ?? groupName
@@ -63,115 +59,97 @@ export function SloLinkDialog({ open, onOpenChange, lockedSloName, lockedGroupNa
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Link SLO to Asset Group</DialogTitle>
-        </DialogHeader>
-        <div className="space-y-3 py-2">
-          {/* Datasource */}
-          <div>
-            <FieldLabel>Datasource</FieldLabel>
-            <select
-              value={datasource}
-              onChange={e => setDatasource(e.target.value)}
-              className="w-full bg-input border border-border rounded px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary/50"
-            >
-              <option value="">Select datasource...</option>
-              {datasources?.map(ds => (
-                <option key={ds.id} value={ds.name}>
-                  {ds.display_name ?? ds.name} ({ds.adapter_type})
-                </option>
-              ))}
-            </select>
+    <FormDialog
+      open={open}
+      onOpenChange={onOpenChange}
+      title="Link SLO to Asset Group"
+      submitLabel="Link"
+      pendingLabel="Linking..."
+      onSubmit={() => void handleLink()}
+      canSubmit={isValid}
+      isPending={createBinding.isPending}
+    >
+      <div>
+        <FieldLabel>Datasource</FieldLabel>
+        <select
+          value={datasource}
+          onChange={e => setDatasource(e.target.value)}
+          className="w-full bg-input border border-border rounded px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary/50"
+        >
+          <option value="">Select datasource...</option>
+          {datasources?.map(ds => (
+            <option key={ds.id} value={ds.name}>
+              {ds.display_name ?? ds.name} ({ds.adapter_type})
+            </option>
+          ))}
+        </select>
+      </div>
+      <div>
+        <FieldLabel>
+          SLI {selectedDs && <span className="text-[10px] opacity-60 normal-case">— filtered to {selectedDs.adapter_type}</span>}
+        </FieldLabel>
+        <select
+          value={sliName}
+          onChange={e => setSliName(e.target.value)}
+          disabled={!datasource}
+          className="w-full bg-input border border-border rounded px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary/50 disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          {!datasource
+            ? <option value="">Select datasource first...</option>
+            : <option value="">Select SLI...</option>
+          }
+          {slis?.filter(s => s.active).map(s => (
+            <option key={s.id} value={s.name}>{s.display_name ?? s.name}</option>
+          ))}
+        </select>
+      </div>
+      {lockedSloName ? (
+        <div>
+          <FieldLabel>SLO</FieldLabel>
+          <div className="bg-muted/30 border border-border rounded px-3 py-2 text-sm text-muted-foreground">
+            {lockedSloName} <span className="text-xs opacity-50">(locked)</span>
           </div>
-
-          {/* SLI (filtered by datasource adapter_type) */}
-          <div>
-            <FieldLabel>
-              SLI {selectedDs && <span className="text-[10px] opacity-60 normal-case">— filtered to {selectedDs.adapter_type}</span>}
-            </FieldLabel>
-            <select
-              value={sliName}
-              onChange={e => setSliName(e.target.value)}
-              disabled={!datasource}
-              className="w-full bg-input border border-border rounded px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary/50 disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              {!datasource
-                ? <option value="">Select datasource first...</option>
-                : <option value="">Select SLI...</option>
-              }
-              {slis?.filter(s => s.active).map(s => (
-                <option key={s.id} value={s.name}>{s.display_name ?? s.name}</option>
-              ))}
-            </select>
-          </div>
-
-          {/* SLO (locked or selectable) */}
-          {lockedSloName ? (
-            <div>
-              <FieldLabel>SLO</FieldLabel>
-              <div className="bg-muted/30 border border-border rounded px-3 py-2 text-sm text-muted-foreground">
-                {lockedSloName} <span className="text-xs opacity-50">(locked)</span>
-              </div>
-            </div>
-          ) : (
-            <div>
-              <FieldLabel>SLO</FieldLabel>
-              <select
-                value={sloName}
-                onChange={e => setSloName(e.target.value)}
-                className="w-full bg-input border border-border rounded px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary/50"
-              >
-                <option value="">Select SLO...</option>
-                {slos?.filter(s => s.active).map(s => (
-                  <option key={s.name} value={s.name}>{s.display_name ?? s.name}</option>
-                ))}
-              </select>
-            </div>
-          )}
-
-          {/* Group (locked or selectable) */}
-          {lockedGroupName ? (
-            <div>
-              <FieldLabel>Asset Group</FieldLabel>
-              <div className="bg-muted/30 border border-border rounded px-3 py-2 text-sm text-muted-foreground">
-                {lockedGroupName} <span className="text-xs opacity-50">(locked)</span>
-              </div>
-            </div>
-          ) : (
-            <div>
-              <FieldLabel>Asset Group</FieldLabel>
-              <select
-                value={groupName}
-                onChange={e => setGroupName(e.target.value)}
-                className="w-full bg-input border border-border rounded px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary/50"
-              >
-                <option value="">Select group...</option>
-                {tree?.all_groups.map(g => (
-                  <option key={g.id} value={g.name}>{g.display_name ?? g.name}</option>
-                ))}
-              </select>
-            </div>
-          )}
-
-          {isDuplicate && (
-            <p className="text-xs text-destructive">This SLO is already linked to this group</p>
-          )}
         </div>
-        <DialogFooter>
-          <DialogClose className="px-3 py-1.5 text-sm border border-border rounded text-muted-foreground hover:text-foreground transition-colors">
-            Cancel
-          </DialogClose>
-          <button
-            onClick={handleLink}
-            disabled={!isValid || createBinding.isPending}
-            className="px-3 py-1.5 text-sm bg-primary/30 border border-primary/50 rounded text-primary hover:bg-primary/40 transition-colors disabled:opacity-40"
+      ) : (
+        <div>
+          <FieldLabel>SLO</FieldLabel>
+          <select
+            value={sloName}
+            onChange={e => setSloName(e.target.value)}
+            className="w-full bg-input border border-border rounded px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary/50"
           >
-            {createBinding.isPending ? 'Linking...' : 'Link'}
-          </button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+            <option value="">Select SLO...</option>
+            {slos?.filter(s => s.active).map(s => (
+              <option key={s.name} value={s.name}>{s.display_name ?? s.name}</option>
+            ))}
+          </select>
+        </div>
+      )}
+      {lockedGroupName ? (
+        <div>
+          <FieldLabel>Asset Group</FieldLabel>
+          <div className="bg-muted/30 border border-border rounded px-3 py-2 text-sm text-muted-foreground">
+            {lockedGroupName} <span className="text-xs opacity-50">(locked)</span>
+          </div>
+        </div>
+      ) : (
+        <div>
+          <FieldLabel>Asset Group</FieldLabel>
+          <select
+            value={groupName}
+            onChange={e => setGroupName(e.target.value)}
+            className="w-full bg-input border border-border rounded px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary/50"
+          >
+            <option value="">Select group...</option>
+            {tree?.all_groups.map(g => (
+              <option key={g.id} value={g.name}>{g.display_name ?? g.name}</option>
+            ))}
+          </select>
+        </div>
+      )}
+      {isDuplicate && (
+        <p className="text-xs text-destructive">This SLO is already linked to this group</p>
+      )}
+    </FormDialog>
   )
 }

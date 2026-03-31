@@ -1,17 +1,21 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { render, screen, fireEvent, cleanup } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { SloDetailView } from './SloDetailView'
-import type { SloDefinition } from '@/features/slos/types'
+import type { SloDefinition } from '@/features/slos'
 
-vi.mock('@/features/slos/hooks', () => ({
-  useSloDetail: vi.fn(),
-  useSloVersions: vi.fn(),
-  useDeleteSlo: vi.fn(),
-  useGroupTree: vi.fn(),
-}))
+vi.mock('@/features/slos', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/features/slos')>()
+  return {
+    ...actual,
+    useSloDetail: vi.fn(),
+    useSloVersions: vi.fn(),
+    useDeleteSlo: vi.fn(),
+    useGroupTree: vi.fn(),
+  }
+})
 
-import { useSloDetail, useSloVersions, useDeleteSlo, useGroupTree } from '@/features/slos/hooks'
+import { useSloDetail, useSloVersions, useDeleteSlo, useGroupTree } from '@/features/slos'
 
 const mockSlo: SloDefinition = {
   id: 'slo-1',
@@ -63,12 +67,15 @@ const mockVersions: SloDefinition[] = [
   { ...mockSlo, version: 2, created_at: '2024-01-01T00:00:00Z' },
 ]
 
+let queryClient: QueryClient
+
 function Wrapper({ children }: { children: React.ReactNode }) {
-  return <QueryClientProvider client={new QueryClient()}>{children}</QueryClientProvider>
+  return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
 }
 
 describe('SloDetailView', () => {
   beforeEach(() => {
+    queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
     vi.mocked(useSloDetail).mockReturnValue({
       data: mockSlo,
       isLoading: false,
@@ -91,6 +98,12 @@ describe('SloDetailView', () => {
       isLoading: false,
       isError: false,
     } as unknown as ReturnType<typeof useGroupTree>)
+  })
+
+  afterEach(() => {
+    queryClient.cancelQueries()
+    queryClient.clear()
+    cleanup()
   })
 
   it('renders name, version badge, and active badge', () => {

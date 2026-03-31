@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import type { AssetGroup, AssetGroupTree } from '@/features/assets/types'
+import type { AssetGroup, AssetGroupTree } from '@/features/assets'
 import { AssetTreeNode } from './AssetTreeNode'
 
 vi.mock('@/features/navigator/components/treeUtils', () => ({

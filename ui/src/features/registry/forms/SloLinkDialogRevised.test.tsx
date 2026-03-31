@@ -1,5 +1,5 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { SloLinkDialogRevised } from './SloLinkDialogRevised'
 
@@ -35,16 +35,25 @@ vi.mock('@/features/slos/hooks', () => ({
   useCreateGroupSloBinding: () => ({ mutateAsync: mockMutateAsync, isPending: false }),
 }))
 
+let queryClient: QueryClient
+
 function Wrapper({ children }: { children: React.ReactNode }) {
-  return <QueryClientProvider client={new QueryClient()}>{children}</QueryClientProvider>
+  return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
 }
 
 describe('SloLinkDialogRevised', () => {
   const onOpenChange = vi.fn()
 
   beforeEach(() => {
+    queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
     vi.clearAllMocks()
     mockExistingBindings = []
+  })
+
+  afterEach(() => {
+    queryClient.cancelQueries()
+    queryClient.clear()
+    cleanup()
   })
 
   it('renders 3-step cascade (SLO, Datasource, Group)', () => {

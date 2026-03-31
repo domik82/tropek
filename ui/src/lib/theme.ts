@@ -14,11 +14,12 @@ export interface ResultColours {
 }
 
 export interface ChartTheme {
-  bg:        string
-  border:    string
-  line:      string
-  axisLabel: string
-  grid:      string
+  bg:           string
+  border:       string
+  line:         string
+  axisLabel:    string
+  grid:         string
+  selectionRing: string
 }
 
 // Status colours per theme — ONLY for ECharts (JS hex strings).
@@ -51,25 +52,28 @@ export const RESULT_COLOUR: Record<Theme, ResultColours> = {
 // ONLY for ECharts JS context. For CSS, use chart-bg / chart-border / etc.
 export const CHART_THEME: Record<Theme, ChartTheme> = {
   current: {
-    bg:        '#1a2030',
-    border:    '#374151',
-    line:      '#374151',
-    axisLabel: '#c0c8d0',
-    grid:      '#2a3040',
+    bg:           '#1a2030',
+    border:       '#374151',
+    line:         '#374151',
+    axisLabel:    '#c0c8d0',
+    grid:         '#2a3040',
+    selectionRing: '#ffffff',
   },
   dark: {
-    bg:        '#18191b',   // Radix slate-2
-    border:    '#363a3f',   // Radix slate-6
-    line:      '#363a3f',   // Radix slate-6
-    axisLabel: '#b0b4ba',   // Radix slate-11
-    grid:      '#212225',   // Radix slate-3
+    bg:           '#18191b',   // Radix slate-2
+    border:       '#363a3f',   // Radix slate-6
+    line:         '#363a3f',   // Radix slate-6
+    axisLabel:    '#b0b4ba',   // Radix slate-11
+    grid:         '#212225',   // Radix slate-3
+    selectionRing: '#ffffff',
   },
   light: {
-    bg:        '#ffffff',   // TODO: Radix light scales
-    border:    '#e0e0e0',
-    line:      '#e0e0e0',
-    axisLabel: '#595959',
-    grid:      '#f5f5f5',
+    bg:           '#ffffff',   // TODO: Radix light scales
+    border:       '#e0e0e0',
+    line:         '#e0e0e0',
+    axisLabel:    '#595959',
+    grid:         '#f5f5f5',
+    selectionRing: '#ffffff',
   },
 }
 

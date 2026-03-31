@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { EvaluationDetailPage } from './EvaluationDetailPage'
-import type { EvaluationDetail } from '@/features/evaluations/types'
+import type { EvaluationDetail } from '@/features/evaluations'
 
 vi.mock('@/lib/theme-context', () => ({
   useTheme: () => ({ theme: 'current' as const, fontSize: 14 }),

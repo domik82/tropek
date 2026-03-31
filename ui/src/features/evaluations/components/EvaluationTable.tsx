@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom'
 import { ResultBadge } from './ResultBadge'
 import { fmtDateTime } from '@/lib/format'
 import { AnnotationCell } from './AnnotationCell'
+import { DataTable, DataTableHeader, dataTableRowClass } from '@/components/ui/data-table'
 import type { EvaluationSummary, ColumnDef } from '../types'
 
 interface Props {
@@ -114,60 +115,53 @@ export function EvaluationTable({
   const visibleCols = allCols.filter(c => visibleKeys.has(c.key))
 
   return (
-    <div className="relative overflow-hidden rounded-lg border border-border bg-table-row-bg">
-      <table className="w-full text-sm text-left">
-        <thead className="text-xs uppercase text-muted-foreground bg-table-header-bg border-b border-border">
-          <tr>
-            {visibleCols.map(col => (
-              <th key={col.key} className="text-left px-4 py-3">{col.label}</th>
-            ))}
-            <th className="px-2 py-2 text-right sticky right-0 bg-table-header-bg w-px" ref={pickerRef}>
-              <button
-                onClick={() => setOpen(!open)}
-                className="text-xs normal-case text-muted-foreground hover:text-foreground transition-colors"
-              >
-                Columns ▾
-              </button>
-              {open && (
-                <div className="absolute right-2 top-10 z-10 bg-table-header-bg border border-border rounded p-3 min-w-48 text-left normal-case shadow-lg">
-                  {allCols.map(col => (
-                    <label key={col.key} className="flex items-center gap-2 py-1 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={visibleKeys.has(col.key)}
-                        disabled={col.required}
-                        onChange={() => toggle(col.key)}
-                      />
-                      <span className="text-sm text-foreground">{col.label}</span>
-                    </label>
-                  ))}
-                </div>
-              )}
-            </th>
+    <DataTable className="relative bg-table-row-bg">
+      <DataTableHeader>
+        <tr>
+          {visibleCols.map(col => (
+            <th key={col.key} className="text-left px-4 py-3">{col.label}</th>
+          ))}
+          <th className="px-2 py-2 text-right sticky right-0 bg-table-header-bg w-px" ref={pickerRef}>
+            <button
+              onClick={() => setOpen(!open)}
+              className="text-xs normal-case text-muted-foreground hover:text-foreground transition-colors"
+            >
+              Columns ▾
+            </button>
+            {open && (
+              <div className="absolute right-2 top-10 z-10 bg-table-header-bg border border-border rounded p-3 min-w-48 text-left normal-case shadow-lg">
+                {allCols.map(col => (
+                  <label key={col.key} className="flex items-center gap-2 py-1 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={visibleKeys.has(col.key)}
+                      disabled={col.required}
+                      onChange={() => toggle(col.key)}
+                    />
+                    <span className="text-sm text-foreground">{col.label}</span>
+                  </label>
+                ))}
+              </div>
+            )}
+          </th>
+        </tr>
+      </DataTableHeader>
+      <tbody>
+        {evaluations.map((ev, idx) => (
+          <tr key={ev.id} className={dataTableRowClass(idx)}>
+            {visibleCols.map(col =>
+              STATIC_KEYS.has(col.key)
+                ? cell(ev, col.key, onAssetSelect, onEvalClick, assetDisplayNames, sloDisplayNames)
+                : (
+                  <td key={col.key} className="px-4 py-3 text-sm text-muted-foreground">
+                    {ev.asset_snapshot.tags?.[col.key] ?? ev.evaluation_metadata?.[col.key] ?? '—'}
+                  </td>
+                )
+            )}
+            <td />
           </tr>
-        </thead>
-          <tbody>
-            {evaluations.map((ev, idx) => (
-              <tr
-                key={ev.id}
-                className={`border-b border-border/60 last:border-0 transition-colors hover:bg-table-row-hover ${
-                  idx % 2 === 0 ? 'bg-table-row-bg' : 'bg-table-row-alt'
-                }`}
-              >
-                {visibleCols.map(col =>
-                  STATIC_KEYS.has(col.key)
-                    ? cell(ev, col.key, onAssetSelect, onEvalClick, assetDisplayNames, sloDisplayNames)
-                    : (
-                      <td key={col.key} className="px-4 py-3 text-sm text-muted-foreground">
-                        {ev.asset_snapshot.tags?.[col.key] ?? ev.evaluation_metadata?.[col.key] ?? '—'}
-                      </td>
-                    )
-                )}
-                <td />
-              </tr>
-            ))}
-          </tbody>
-        </table>
-    </div>
+        ))}
+      </tbody>
+    </DataTable>
   )
 }

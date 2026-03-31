@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { SearchableComboBox } from '@/components/shared/SearchableComboBox'
-import { useSliDefinitions, useSliTagKeys, useSliTagValues } from '@/features/slis/hooks'
+import { useSliDefinitions, useSliTagKeys, useSliTagValues } from '@/features/slis'
 
 export interface PickSliData {
   sliName: string

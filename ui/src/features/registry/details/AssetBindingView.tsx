@@ -1,14 +1,13 @@
 import { Link, Unlink, Pencil } from 'lucide-react'
 import { BindingChainBreadcrumb } from '@/components/shared/BindingChainBreadcrumb'
 import { VariableResolutionPanel } from '@/components/shared/VariableResolutionPanel'
-import { SloObjectiveTable } from '@/features/slos/components/SloObjectiveTable'
-import { useAsset } from '@/features/assets/hooks'
-import { useGroupSloBindings, useDeleteGroupSloBinding, useSloDetail } from '@/features/slos/hooks'
+import { SloObjectiveTable, useGroupSloBindings, useDeleteGroupSloBinding, useSloDetail } from '@/features/slos'
+import type { SloBinding } from '@/features/slos'
+import { useAsset } from '@/features/assets'
+import type { Asset } from '@/features/assets'
+import type { SelectedNode } from '@/features/registry'
 import { ENTITY_COLORS } from '@/lib/entity-colors'
 import { SANS_SERIF } from '@/lib/fonts'
-import type { SloBinding } from '@/features/slos/types'
-import type { Asset } from '@/features/assets/types'
-import type { SelectedNode } from '@/features/registry/types'
 
 interface AssetBindingViewProps {
   assetName: string
