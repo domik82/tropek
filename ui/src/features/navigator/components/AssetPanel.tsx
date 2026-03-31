@@ -1,5 +1,6 @@
 // ui/src/features/navigator/components/AssetPanel.tsx
 import { useState, useMemo, useRef, useEffect } from 'react'
+import { getConfig } from '@/lib/config'
 import { useNavigate } from 'react-router-dom'
 import { useQueries } from '@tanstack/react-query'
 import { useAssetEvaluations, useMetricHeatmap, useEvaluationNames } from '../hooks'
@@ -32,6 +33,7 @@ export function AssetPanel({ assetName, initialEvalId }: Props) {
   const [selectedSlot, setSelectedSlot] = useState<TimeSlotSelection | undefined>(undefined)
   const [activeAction, setActiveAction] = useState<ActionKind | null>(null)
   const [selectedNames, setSelectedNames] = useState<string[] | undefined>(undefined)
+  const [sloExpandState, setSloExpandState] = useState<Map<string, boolean>>(() => new Map())
 
   // Reset local state when the asset changes (defense in depth alongside key= on parent)
   useEffect(() => {
@@ -39,6 +41,7 @@ export function AssetPanel({ assetName, initialEvalId }: Props) {
     setSelectedSlot(undefined)
     setActiveAction(null)
     setSelectedNames(undefined)
+    setSloExpandState(new Map())
   }, [assetName])
 
   const notesRef = useRef<AnnotationSectionHandle>(null)
@@ -144,6 +147,23 @@ export function AssetPanel({ assetName, initialEvalId }: Props) {
     }
     return ev?.sli_metadata
   }, [allSlotEvals, ev])
+
+  // Initialise SLO expand state from config when heatmap data first arrives
+  useEffect(() => {
+    if (!heatmapData || sloExpandState.size > 0) return
+    const defaultExpanded = getConfig().heatmapSloGroupsExpandedByDefault
+    const m = new Map<string, boolean>()
+    for (const g of heatmapData.groups) m.set(g.slo_name, defaultExpanded)
+    setSloExpandState(m)
+  }, [heatmapData])
+
+  function handleSloToggle(sloName: string) {
+    setSloExpandState(prev => {
+      const next = new Map(prev)
+      next.set(sloName, !prev.get(sloName))
+      return next
+    })
+  }
 
   function handleSlotSelect(slot: TimeSlotSelection) {
     setSelectedSlot(slot)
@@ -275,6 +295,7 @@ export function AssetPanel({ assetName, initialEvalId }: Props) {
 
       {/* Heatmap mode */}
       {!isLoading && evals.length > 0 && mode === 'heatmap' && (
+        // @ts-expect-error TODO: Task 11 adds sloExpandState + onSloToggle to AssetPanelHeatmapView
         <AssetPanelHeatmapView
           assetName={assetName}
           heatmapData={heatmapData}
@@ -293,6 +314,8 @@ export function AssetPanel({ assetName, initialEvalId }: Props) {
           setActiveTab={setActiveTab}
           tabIndicators={tabIndicators}
           metricEvalMap={metricEvalMap}
+          sloExpandState={sloExpandState}
+          onSloToggle={handleSloToggle}
         />
       )}
 
