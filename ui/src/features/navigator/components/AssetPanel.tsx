@@ -9,11 +9,10 @@ import { fetchEvaluationDetail } from '@/features/evaluations/api'
 import { evaluationKeys } from '@/lib/queryKeys'
 import { useAssets } from '@/features/assets/hooks'
 import { useSlos } from '@/features/slos/hooks'
-import { useTabState } from '@/features/evaluations/hooks/useTabState'
 import { EvaluationHeader } from '@/features/evaluations/components/EvaluationHeader'
 import { AnnotationSection, type AnnotationSectionHandle } from '@/features/evaluations/components/AnnotationForm'
 import { EvaluationActionsButton, EvaluationActionForm, NoteIconButton } from '@/features/evaluations/components/EvaluationActions'
-import type { ActionKind, EvaluationDetail, SliMetadata, IndicatorResult } from '@/features/evaluations/types'
+import type { ActionKind, EvaluationDetail, SliMetadata } from '@/features/evaluations/types'
 import type { TimeSlotSelection } from './AssetHeatmap'
 import type { ViewMode } from '@/components/charts/ViewToggle'
 import { EvaluationNameFilter } from './EvaluationNameFilter'
@@ -112,19 +111,6 @@ export function AssetPanel({ assetName, initialEvalId }: Props) {
     [slotEvalQueries],
   )
 
-  // Merge indicators from all evals in selected slot.
-  // Use allSlotEvals when a slot is selected (even for single-eval columns)
-  // to avoid showing stale ev data during transitions.
-  const mergedIndicators = useMemo((): IndicatorResult[] => {
-    if (allSlotEvals.length > 1) {
-      return allSlotEvals.flatMap(e => e.indicator_results)
-    }
-    if (allSlotEvals.length === 1) {
-      return allSlotEvals[0].indicator_results
-    }
-    return ev?.indicator_results ?? []
-  }, [allSlotEvals, ev])
-
   // Map each metric to the eval ID that owns it (for multi-SLO trend charts)
   const metricEvalMap = useMemo((): Map<string, string> | undefined => {
     if (allSlotEvals.length <= 1) return undefined
@@ -181,9 +167,6 @@ export function AssetPanel({ assetName, initialEvalId }: Props) {
       prevEvalId.current = effectiveEvalId
     }
   }, [effectiveEvalId])
-
-  const { availableGroups, counts, activeTab, setActiveTab, tabIndicators } =
-    useTabState(mergedIndicators.length > 0 ? mergedIndicators : ev?.indicator_results)
 
   const isLoading = evalsLoading || heatmapLoading
 
@@ -295,11 +278,10 @@ export function AssetPanel({ assetName, initialEvalId }: Props) {
 
       {/* Heatmap mode */}
       {!isLoading && evals.length > 0 && mode === 'heatmap' && (
-        // @ts-expect-error TODO: Task 11 adds sloExpandState + onSloToggle to AssetPanelHeatmapView
         <AssetPanelHeatmapView
           assetName={assetName}
           heatmapData={heatmapData}
-          ev={ev}
+          allSlotEvals={allSlotEvals}
           effectiveEvalId={effectiveEvalId}
           notedSlots={notedSlots}
           onEvalSelect={setSelectedEvalId}
@@ -308,11 +290,6 @@ export function AssetPanel({ assetName, initialEvalId }: Props) {
           mode={mode}
           setMode={setMode}
           explorerButton={explorerButton}
-          availableGroups={availableGroups}
-          counts={counts}
-          activeTab={activeTab}
-          setActiveTab={setActiveTab}
-          tabIndicators={tabIndicators}
           metricEvalMap={metricEvalMap}
           sloExpandState={sloExpandState}
           onSloToggle={handleSloToggle}
