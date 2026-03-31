@@ -254,15 +254,24 @@ export function MetricExplorerPage() {
   )
 
   // Build indicator list
+  const hasDuplicateMetrics = useMemo(() => {
+    if (!heatmapData) return false
+    const all = heatmapData.groups.flatMap(g => g.metrics.map(m => m.name))
+    return new Set(all).size < all.length
+  }, [heatmapData])
+
   const allIndicators = useMemo(() => {
     if (heatmapData) {
-      return heatmapData.groups
-        .flatMap(g => g.metrics)
-        .filter(m => m.name !== '__score__')
-        .map(m => ({
-          metric: m.name,
-          display_name: m.display_name,
-        }))
+      return heatmapData.groups.flatMap(g => {
+        const sloLabel = g.slo_display_name ?? g.slo_name
+        return g.metrics
+          .filter(m => m.name !== '__score__')
+          .map(m => ({
+            metric: m.name,
+            display_name: hasDuplicateMetrics ? `${sloLabel} / ${m.display_name}` : m.display_name,
+            tab_group: sloLabel,
+          }))
+      })
     }
     if (latestDetail) {
       return latestDetail.indicator_results.map(r => ({
