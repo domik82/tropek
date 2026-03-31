@@ -207,7 +207,7 @@ async def _sync_template_bindings_for_group(
                         template_binding_id=tb.id,
                     )
             except IntegrityError:
-                pass
+                pass  # binding already exists, skip
         for slo_name in removed_slo_names:
             await binding_repo.delete_by_target_and_slo(tb.target_type, tb.target_id, slo_name)
 
