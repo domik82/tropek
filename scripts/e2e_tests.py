@@ -259,7 +259,7 @@ def test_comparison_rules(client: TropekClient) -> None:
     step('Step 17: Comparison rules CRUD')
 
     # GET — default empty
-    rules = client.asset_slo_links.get_comparison_rules('checkout-api', 'checkout-api-http')
+    rules = client.slo_bindings.get_comparison_rules('checkout-api', 'http-availability-slo')
     assert rules == [], f'expected empty rules, got {rules}'
     print('default rules: []')
 
@@ -269,28 +269,28 @@ def test_comparison_rules(client: TropekClient) -> None:
         {'match': {'branch': '!main'}, 'compare_to': {'branch': 'main'}},
         {'match': {}, 'compare_to': {}},
     ]
-    updated = client.asset_slo_links.update_comparison_rules('checkout-api', 'checkout-api-http', new_rules)
+    updated = client.slo_bindings.update_comparison_rules('checkout-api', 'http-availability-slo', new_rules)
     assert len(updated) == 3, f'expected 3 rules, got {len(updated)}'  # noqa: PLR2004
     assert updated[0]['match'] == {'branch': 'main'}
     assert updated[2]['match'] == {}
     print(f'set {len(updated)} rules')
 
     # GET — verify persisted
-    fetched = client.asset_slo_links.get_comparison_rules('checkout-api', 'checkout-api-http')
+    fetched = client.slo_bindings.get_comparison_rules('checkout-api', 'http-availability-slo')
     assert len(fetched) == 3  # noqa: PLR2004
     print('fetched persisted rules')
 
     # PUT — clear rules
-    cleared = client.asset_slo_links.update_comparison_rules('checkout-api', 'checkout-api-http', [])
+    cleared = client.slo_bindings.update_comparison_rules('checkout-api', 'http-availability-slo', [])
     assert cleared == []
     print('cleared rules')
 
     # Verify 422 on invalid rules (catch-all not last)
     got_validation_error = False
     try:
-        client.asset_slo_links.update_comparison_rules(
+        client.slo_bindings.update_comparison_rules(
             'checkout-api',
-            'checkout-api-http',
+            'http-availability-slo',
             [
                 {'match': {}, 'compare_to': {}},
                 {'match': {'branch': 'main'}, 'compare_to': {'branch': 'main'}},

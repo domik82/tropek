@@ -6,11 +6,11 @@ import uuid
 from datetime import UTC, datetime
 
 import pytest
-
 from app.modules.quality_gate.re_evaluation_schemas import (
     BaselinePinConflictError,
     ReEvaluateRequest,
 )
+from pydantic import ValidationError
 
 
 class TestBaselinePinConflictError:
@@ -56,7 +56,7 @@ class TestReEvaluateRequestPinStrategy:
         assert req.pin_strategy == 'ignore_pin'
 
     def test_pin_strategy_invalid_value_rejected(self) -> None:
-        with pytest.raises(Exception):
+        with pytest.raises(ValidationError):
             ReEvaluateRequest(
                 asset_name='checkout-api',
                 slo_name='http-slo',

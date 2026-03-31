@@ -134,3 +134,16 @@ spec:
   target_name: office-laptops
   slo_name: office-outlook-health-slo
   data_source_name: prometheus-local
+
+# ---- Aggregation SLOs ----
+
+---
+api_version: tropek/v1
+kind: SLOBinding
+metadata:
+  name: checkout-api-agg-latency-binding
+spec:
+  target_type: asset
+  target_name: checkout-api
+  slo_name: agg-latency-slo
+  data_source_name: prometheus-local

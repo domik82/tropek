@@ -44,14 +44,6 @@ def _make_asset(name: str = 'vm-01') -> MagicMock:
     return asset
 
 
-def _make_link(slo_name: str = 'perf-slo') -> MagicMock:
-    link = MagicMock()
-    link.slo_name = slo_name
-    link.sli_name = 'system-sli'
-    link.data_source_name = 'prom-1'
-    return link
-
-
 def _make_sli_def() -> MagicMock:
     sli = MagicMock()
     sli.name = 'system-sli'
@@ -64,7 +56,7 @@ def _make_slo_def() -> MagicMock:
     slo = MagicMock()
     slo.name = 'perf-slo'
     slo.version = 1
-    slo.sli_name = None
+    slo.sli_name = 'system-sli'
     slo.sli_version = None
     return slo
 
@@ -94,8 +86,6 @@ def _make_repos() -> QualityGateRepos:
         baseline_repo=AsyncMock(),
         asset_repo=AsyncMock(),
         asset_group_repo=AsyncMock(),
-        slo_link_repo=AsyncMock(),
-        group_link_repo=AsyncMock(),
         binding_repo=AsyncMock(),
         sli_def_repo=AsyncMock(),
         slo_repo=AsyncMock(),
@@ -108,7 +98,11 @@ def _configure_happy_path(repos: QualityGateRepos) -> None:
     """Set up mocks for a successful single trigger resolution."""
     asset = _make_asset()
     repos.asset_repo.get_by_name.return_value = asset
-    repos.slo_link_repo.list_by_asset.return_value = [_make_link()]
+    # Binding replaces legacy link
+    binding = MagicMock()
+    binding.slo_name = 'perf-slo'
+    binding.data_source_name = 'prom-1'
+    repos.binding_repo.find_for_asset.return_value = binding
     repos.sli_def_repo.get_latest.return_value = _make_sli_def()
     repos.slo_repo.get_latest.return_value = _make_slo_def()
     repos.ds_repo.get_by_name.return_value = _make_ds()
@@ -144,8 +138,7 @@ async def test_trigger_single_slo_not_configured() -> None:
     repos = _make_repos()
     asset = _make_asset()
     repos.asset_repo.get_by_name.return_value = asset
-    repos.slo_link_repo.list_by_asset.return_value = []  # no links
-    repos.binding_repo.find_for_asset.return_value = None  # no bindings either
+    repos.binding_repo.find_for_asset.return_value = None
     pool = AsyncMock()
 
     service = TriggerService(repos, pool)
