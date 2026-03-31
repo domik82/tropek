@@ -645,7 +645,7 @@ async def update_binding_comparison_rules(
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     rules_dicts = [r.model_dump() for r in validated]
-    await binding_repo.update_comparison_rules('asset', asset.id, slo_name, rules_dicts)
+    await binding_repo.update_comparison_rules(binding.target_type, binding.target_id, slo_name, rules_dicts)
     await session.commit()
     return rules_dicts
 
