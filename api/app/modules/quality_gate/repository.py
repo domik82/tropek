@@ -506,7 +506,7 @@ class EvaluationRepository:
         stmt = (
             select(
                 SLOEvaluation.evaluation_name,
-                func.count().label('cnt'),
+                func.count(SLOEvaluation.evaluation_id.distinct()).label('cnt'),
                 func.max(SLOEvaluation.period_start).label('last_run'),
             )
             .where(SLOEvaluation.status == EvaluationStatus.COMPLETED)
