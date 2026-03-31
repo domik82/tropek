@@ -239,7 +239,7 @@ def _build_sli_rows(
             aggregation = ir.metric.rsplit('.', 1)[1]
         rows.append(
             {
-                'eval_id': eval_id,
+                'slo_evaluation_id': eval_id,
                 'eval_start': ev.period_start,
                 'metric_name': ir.metric,
                 'aggregation': aggregation,
