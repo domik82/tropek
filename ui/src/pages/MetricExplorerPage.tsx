@@ -17,15 +17,17 @@ import { Button } from '@/components/ui/button'
 
 function useEnabledTrends(
   evalId: string | undefined,
-  enabledMetrics: string[],
+  enabledKeys: string[],
   metricEvalMap?: Map<string, string>,
+  apiMetricMap?: Map<string, string>,
 ): Map<string, TrendPoint[]> {
   const results = useQueries({
-    queries: enabledMetrics.map(metric => {
-      const id = metricEvalMap?.get(metric) ?? evalId
+    queries: enabledKeys.map(key => {
+      const id = metricEvalMap?.get(key) ?? evalId
+      const apiMetric = apiMetricMap?.get(key) ?? key
       return {
-        queryKey: evaluationKeys.trend(id ?? '', metric),
-        queryFn: () => fetchTrend(id!, metric),
+        queryKey: evaluationKeys.trend(id ?? '', apiMetric),
+        queryFn: () => fetchTrend(id!, apiMetric),
         enabled: !!id,
         staleTime: Infinity,
       }
@@ -33,9 +35,9 @@ function useEnabledTrends(
   })
 
   const map = new Map<string, TrendPoint[]>()
-  for (let i = 0; i < enabledMetrics.length; i++) {
+  for (let i = 0; i < enabledKeys.length; i++) {
     const data = results[i]?.data
-    if (data) map.set(enabledMetrics[i], data)
+    if (data) map.set(enabledKeys[i], data)
   }
   return map
 }
@@ -51,6 +53,7 @@ interface ChartSectionProps {
   setEnabled: React.Dispatch<React.SetStateAction<Set<string>>>
   evalId: string | undefined
   metricEvalMap?: Map<string, string>
+  apiMetricMap?: Map<string, string>
   dataKey: 'value' | 'score'
   yAxisMax?: number
   stacked?: boolean
@@ -67,6 +70,7 @@ function ChartSection({
   setEnabled,
   evalId,
   metricEvalMap,
+  apiMetricMap,
   dataKey,
   yAxisMax: yAxisMaxProp,
   stacked: stackedProp = false,
@@ -75,7 +79,7 @@ function ChartSection({
   const [yMax, setYMax] = useState('')
   const [chartType, setChartType] = useState<ChartType>('line')
 
-  const trendData = useEnabledTrends(evalId, [...enabled], metricEvalMap)
+  const trendData = useEnabledTrends(evalId, [...enabled], metricEvalMap, apiMetricMap)
 
   const chartSeries = useMemo(() => {
     const result: MultiSeriesChartProps['series'] = []
@@ -253,12 +257,8 @@ export function MetricExplorerPage() {
     !assetName && latestEval ? latestEval.id : undefined,
   )
 
-  // Build indicator list
-  const hasDuplicateMetrics = useMemo(() => {
-    if (!heatmapData) return false
-    const all = heatmapData.groups.flatMap(g => g.metrics.map(m => m.name))
-    return new Set(all).size < all.length
-  }, [heatmapData])
+  // Build indicator list — use composite key (slo\0metric) when multiple SLOs
+  const multiSlo = (heatmapData?.groups.length ?? 0) > 1
 
   const allIndicators = useMemo(() => {
     if (heatmapData) {
@@ -267,9 +267,9 @@ export function MetricExplorerPage() {
         return g.metrics
           .filter(m => m.name !== '__score__')
           .map(m => ({
-            metric: m.name,
-            display_name: hasDuplicateMetrics ? `${sloLabel} / ${m.display_name}` : m.display_name,
-            tab_group: sloLabel,
+            metric: multiSlo ? `${g.slo_name}\0${m.name}` : m.name,
+            display_name: multiSlo ? `${sloLabel} / ${m.display_name}` : m.display_name,
+            tab_group: multiSlo ? sloLabel : undefined,
           }))
       })
     }
@@ -281,10 +281,19 @@ export function MetricExplorerPage() {
       }))
     }
     return []
-  }, [heatmapData, latestDetail])
+  }, [heatmapData, latestDetail, multiSlo])
 
-  // Map each metric to the correct SLO's latest eval ID so trend queries
-  // hit the right SLO domain (multi-SLO assets have metrics across SLOs).
+  // Map composite key → API metric name (strips the slo prefix)
+  const apiMetricMap = useMemo((): Map<string, string> | undefined => {
+    if (!multiSlo || !heatmapData) return undefined
+    const m = new Map<string, string>()
+    for (const g of heatmapData.groups) {
+      for (const metric of g.metrics) m.set(`${g.slo_name}\0${metric.name}`, metric.name)
+    }
+    return m
+  }, [heatmapData, multiSlo])
+
+  // Map composite key → correct SLO's latest eval ID for trend queries
   const metricEvalMap = useMemo((): Map<string, string> | undefined => {
     if (!heatmapData || !evals.length) return undefined
     const sloLatest = new Map<string, string>()
@@ -295,11 +304,12 @@ export function MetricExplorerPage() {
     for (const g of heatmapData.groups) {
       const evalId = sloLatest.get(g.slo_name)
       if (evalId) {
-        for (const metric of g.metrics) m.set(metric.name, evalId)
+        const prefix = multiSlo ? `${g.slo_name}\0` : ''
+        for (const metric of g.metrics) m.set(`${prefix}${metric.name}`, evalId)
       }
     }
     return m.size > 0 ? m : undefined
-  }, [heatmapData, evals])
+  }, [heatmapData, evals, multiSlo])
 
   const colorMap = useMemo(() => buildColorMap(allIndicators), [allIndicators])
 
@@ -336,6 +346,7 @@ export function MetricExplorerPage() {
           setEnabled={setValuesEnabled}
           evalId={latestEval?.id}
           metricEvalMap={metricEvalMap}
+          apiMetricMap={apiMetricMap}
           dataKey="value"
         />
         <ChartSection
@@ -347,6 +358,7 @@ export function MetricExplorerPage() {
           setEnabled={setScoresEnabled}
           evalId={latestEval?.id}
           metricEvalMap={metricEvalMap}
+          apiMetricMap={apiMetricMap}
           dataKey="score"
           yAxisMax={100}
           stacked
