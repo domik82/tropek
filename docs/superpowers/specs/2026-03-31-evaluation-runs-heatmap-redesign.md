@@ -1,4 +1,4 @@
-# Evaluation Runs & Composite Heatmap Redesign
+# Evaluations & Composite Heatmap Redesign
 
 **Date:** 2026-03-31
 **Status:** Draft
@@ -16,11 +16,11 @@ Root cause: there is no first-class concept of "evaluate this asset for this tim
 
 ## Goals
 
-1. Introduce `evaluation_runs` as the authoritative parent — one run per (asset, eval_name, period). Heatmap columns are always runs.
-2. Rename `evaluations` → `slo_evaluations` — they become children of a run, not top-level entities. Triggering is always asset-level; the user never targets a single SLO directly.
+1. Introduce `evaluations` as the authoritative parent — one evaluation per (asset, eval_name, period). Heatmap columns are always parent evaluations.
+2. Rename old `evaluations` → `slo_evaluations` — they become children, not top-level entities. Triggering is always asset-level; the user never targets a single SLO directly.
 3. Drop `evaluation_batches` — replaced by the proper FK model.
-4. Fix the heatmap API to return a grouped response (runs → SLO groups → indicators).
-5. Fix the heatmap UI: one column per run, accordion SLO groups with expand/collapse.
+4. Fix the heatmap API to return a grouped response (evaluations → SLO groups → indicators).
+5. Fix the heatmap UI: one column per evaluation, accordion SLO groups with expand/collapse.
 6. Fix the SLI breakdown table: SLO section headers replacing the tab bar.
 7. Fix trend charts: SLO-grouped sections.
 8. Enforce `{table}_id` naming on all FK columns throughout.
@@ -29,13 +29,13 @@ Root cause: there is no first-class concept of "evaluate this asset for this tim
 
 ## Breaking Changes
 
-- `POST /evaluations/trigger` → `POST /evaluation-runs`
-- `POST /evaluations/trigger-batch` → `POST /evaluation-runs/batch`
-- `GET /evaluations/metric-heatmap` → `GET /evaluation-runs/metric-heatmap`
-- `GET /evaluations/metric-heatmap` response shape changes completely (grouped schema).
+- `POST /evaluations/trigger` → `POST /evaluate`
+- `POST /evaluations/trigger-batch` → `POST /evaluate/batch`
+- `GET /evaluations/metric-heatmap` → `GET /evaluate/metric-heatmap`
+- `GET /evaluate/metric-heatmap` response shape changes completely (grouped schema).
 - Python SDK client (`TropekClient`) must be updated to reflect the new endpoints.
 - All existing `evaluation_batches` data is dropped (hard cut, no migration).
-- All existing `evaluations` rows require backfill of `evaluation_run_id` — not feasible without original trigger context. Existing data is dropped and re-evaluated if needed.
+- All existing `evaluations` (old flat table) rows are dropped — backfill not feasible without original trigger context. Re-evaluate from source if historical data is needed.
 
 ---
 
@@ -64,10 +64,10 @@ Every FK column must be named `{referenced_table_singular}_id`. No exceptions wi
 | `target_id` | `slo_bindings`, `template_bindings` | Polymorphic target — follow-on split into concrete tables. |
 | `asset_name`, `evaluation_name` | `sli_values` | Intentional denormalisation for Grafana queries (no joins in Grafana SQL). |
 
-### New table: `evaluation_runs`
+### New table: `evaluations` (parent)
 
 ```sql
-CREATE TABLE evaluation_runs (
+CREATE TABLE evaluations (
     id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     asset_id        UUID NOT NULL REFERENCES assets(id) ON DELETE RESTRICT,
     eval_name       TEXT NOT NULL,
@@ -81,45 +81,41 @@ CREATE TABLE evaluation_runs (
     created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE INDEX idx_evaluation_runs_asset      ON evaluation_runs (asset_id);
-CREATE INDEX idx_evaluation_runs_status     ON evaluation_runs (status);
-CREATE INDEX idx_evaluation_runs_period     ON evaluation_runs (asset_id, period_start DESC);
+CREATE INDEX idx_evaluations_asset   ON evaluations (asset_id);
+CREATE INDEX idx_evaluations_status  ON evaluations (status);
+CREATE INDEX idx_evaluations_period  ON evaluations (asset_id, period_start DESC);
 ```
 
 **`result`** — worst-case across all child `slo_evaluations` results.
-**`achieved_points` / `total_points`** — raw sum of `score × weight` points across all child evaluations' indicator results. Informational only — not used as a pass/fail criterion at the run level. Displayed as a fraction or percentage in the UI.
+**`achieved_points` / `total_points`** — raw sum of indicator score points across all children. Informational only — not a pass/fail criterion at the evaluation level. Displayed as a fraction or percentage in the UI.
 
 ### Renamed table: `slo_evaluations` (was `evaluations`)
 
-Add column:
 ```sql
-ALTER TABLE evaluations
-    RENAME TO slo_evaluations;
+-- Step 1: rename old flat table
+ALTER TABLE evaluations RENAME TO slo_evaluations;
 
+-- Step 2: add FK to new parent + point columns
 ALTER TABLE slo_evaluations
-    ADD COLUMN evaluation_run_id UUID NOT NULL REFERENCES evaluation_runs(id) ON DELETE CASCADE,
+    ADD COLUMN evaluation_id   UUID NOT NULL REFERENCES evaluations(id) ON DELETE CASCADE,
     ADD COLUMN achieved_points INTEGER,
-    ADD COLUMN total_points INTEGER;
-```
+    ADD COLUMN total_points    INTEGER;
 
-Rename FK columns to comply with naming convention:
-```sql
--- No column renames needed on slo_evaluations itself —
--- asset_id is already correct. Child tables need updating (see below).
+CREATE INDEX idx_slo_evaluations_evaluation ON slo_evaluations (evaluation_id);
 ```
 
 ### Renamed FK columns in child tables
 
 ```sql
--- indicator_results
+-- indicator_results: evaluation_id → slo_evaluation_id
 ALTER TABLE indicator_results
     RENAME COLUMN evaluation_id TO slo_evaluation_id;
 
--- sli_values
+-- sli_values: eval_id → slo_evaluation_id
 ALTER TABLE sli_values
     RENAME COLUMN eval_id TO slo_evaluation_id;
 
--- evaluation_annotations
+-- evaluation_annotations: evaluation_id → slo_evaluation_id
 ALTER TABLE evaluation_annotations
     RENAME COLUMN evaluation_id TO slo_evaluation_id;
 ```
@@ -141,7 +137,37 @@ ALTER TABLE asset_group_links
 DROP TABLE evaluation_batches;
 ```
 
-Replaced entirely by `evaluation_runs`. The JSONB `evaluation_ids[]` list is replaced by the `slo_evaluations.evaluation_run_id` FK.
+Replaced by `evaluations` (parent) + the `slo_evaluations.evaluation_id` FK. The old JSONB `evaluation_ids[]` list is gone.
+
+### Table relationship overview
+
+```
+evaluations  (parent — one per asset × period × eval_name)
+  id PK
+  asset_id FK → assets.id
+  eval_name, period_start, period_end
+  status, result, achieved_points, total_points
+      │
+      │ 1:N  evaluation_id FK
+      ▼
+slo_evaluations  (one per SLO bound to the asset)
+  id PK
+  evaluation_id FK → evaluations.id
+  asset_id FK → assets.id
+  slo_name (text snapshot), slo_version
+  result, score, achieved_points, total_points
+  status, invalidated, baseline_pin_*, override_*
+      │                    │                   │
+      │ 1:N                │ 1:N               │ 1:N
+      ▼                    ▼                   ▼
+indicator_results      sli_values         evaluation_annotations
+  slo_evaluation_id FK   slo_evaluation_id FK   slo_evaluation_id FK
+  slo_objective_id FK    metric_name, value     content, author
+  value, status, score   (TimescaleDB hyper)
+      │
+      ▼
+slo_objectives FK → slo_definitions
+```
 
 ---
 
@@ -149,53 +175,74 @@ Replaced entirely by `evaluation_runs`. The JSONB `evaluation_ids[]` list is rep
 
 ### Principle
 
-Triggering is always **asset-level**. The user provides an asset + eval name + time window. The system discovers all SLOs bound to the asset (via `slo_bindings`) and evaluates all of them. There is no user-facing trigger that targets a single SLO.
+Triggering is always **asset-level**. The user provides an asset + eval name + time window. The system resolves all SLOs bound to that asset via `slo_bindings` and evaluates all of them. There is no user-facing trigger that targets a single SLO.
 
 ### Endpoints
 
-**Single trigger:**
+**Single evaluation:**
 ```
-POST /evaluation-runs
+POST /evaluate
 {
   "asset_name": "checkout-api",
-  "eval_name": "daily-evaluation",
+  "eval_name":  "daily-evaluation",
   "period_start": "2026-01-15T00:00:00Z",
-  "period_end": "2026-01-15T23:59:59Z"
+  "period_end":   "2026-01-15T23:59:59Z"
 }
-→ 201 { "evaluation_run_id": "uuid", "slo_evaluation_ids": ["uuid", ...] }
+→ 201 {
+    "evaluation_id":     "uuid",
+    "slo_evaluation_ids": ["uuid", ...]
+  }
 ```
 
-**Batch trigger** (multiple periods for one asset, or multiple asset+period entries):
+**Batch evaluation** — two modes, one endpoint:
+
+`by_date` — same asset, multiple time windows:
 ```
-POST /evaluation-runs/batch
+POST /evaluate/batch
 {
+  "mode":      "by_date",
   "asset_name": "checkout-api",
-  "eval_name": "daily-evaluation",
+  "eval_name":  "daily-evaluation",
   "periods": [
-    { "start": "2026-01-15T00:00:00Z", "end": "2026-01-15T23:59:59Z" },
-    { "start": "2026-01-16T00:00:00Z", "end": "2026-01-16T23:59:59Z" }
+    { "period_start": "2026-01-15T00:00:00Z", "period_end": "2026-01-15T23:59:59Z" },
+    { "period_start": "2026-01-16T00:00:00Z", "period_end": "2026-01-16T23:59:59Z" },
+    { "period_start": "2026-01-17T00:00:00Z", "period_end": "2026-01-17T23:59:59Z" }
   ]
 }
-→ 201 { "evaluation_run_ids": ["uuid", "uuid"], "slo_evaluation_ids": ["uuid", ...] }
+→ 201 {
+    "evaluation_ids":     ["uuid", "uuid", "uuid"],
+    "slo_evaluation_ids": ["uuid", ...]
+  }
 ```
 
-Or heterogeneous list:
+`by_asset` — same time window, multiple assets (e.g. a deployment rollout across a fleet):
 ```
-POST /evaluation-runs/batch
+POST /evaluate/batch
 {
-  "evals": [
-    { "asset_name": "...", "eval_name": "...", "period_start": "...", "period_end": "..." },
-    ...
-  ]
+  "mode":       "by_asset",
+  "asset_names": ["vm-01", "vm-02", "vm-03"],
+  "eval_name":   "post-deploy-check",
+  "period_start": "2026-01-15T14:00:00Z",
+  "period_end":   "2026-01-15T15:00:00Z"
 }
+→ 201 {
+    "evaluation_ids":     ["uuid", "uuid", "uuid"],
+    "slo_evaluation_ids": ["uuid", ...]
+  }
 ```
+
+Both modes create one `evaluations` row per (asset, period) pair.
 
 ### Worker flow
 
-1. Run is created with `status=pending`.
+1. Parent `evaluations` row created with `status=pending`.
 2. N worker jobs enqueued — one per SLO binding resolved for the asset.
-3. Each worker: evaluates its SLO, writes `slo_evaluations` row with `achieved_points` + `total_points`, updates `status`.
-4. On each child completion: check if all siblings for `evaluation_run_id` are done → if so, aggregate `result` (worst-case) and `achieved_points`/`total_points` (sum), set run `status=completed`.
+3. Each worker: evaluates its SLO, writes `slo_evaluations` row with `achieved_points` + `total_points`, marks its status.
+4. On each child completion: check if all siblings with the same `evaluation_id` are done. If so:
+   - `result` = worst-case of child results
+   - `achieved_points` = sum of child `achieved_points`
+   - `total_points` = sum of child `total_points`
+   - `status` = `completed` (or `failed` if any child failed without result)
 
 ---
 
@@ -205,48 +252,46 @@ POST /evaluation-runs/batch
 
 ```python
 class HeatmapSummaryCell(BaseModel):
-    """Per-slot aggregate for a SLO group or the composite row."""
-    slot: datetime                 # period_start of the evaluation_run
-    result: str                    # worst-case across indicators in this group/run
-    score: float                   # achieved_points / total_points × 100
-    evaluation_run_id: uuid.UUID   # for click navigation
+    """Per-column aggregate for a SLO group or the composite Overall row."""
+    evaluation_id: uuid.UUID   # column identity — maps to evaluations.id
+    period_start:  datetime    # display label for x-axis
+    result:        str         # worst-case across indicators in this group
+    score:         float       # achieved_points / total_points × 100
 
 class SloGroup(BaseModel):
-    """One SLO's indicators within a run."""
-    slo_name: str
+    """One SLO's contribution to the heatmap."""
+    slo_name:         str
     slo_display_name: str | None = None
-    metrics: list[HeatmapMetric]           # indicator definitions
-    cells: list[HeatmapCell]               # indicator × slot cells
-    summary: list[HeatmapSummaryCell]      # per-slot aggregate (collapsed header row)
+    metrics:  list[HeatmapMetric]       # indicator definitions (name, display_name)
+    cells:    list[HeatmapCell]         # individual indicator × column cells
+    summary:  list[HeatmapSummaryCell]  # per-column aggregate (for collapsed header row)
 
-class EvaluationRunColumn(BaseModel):
-    """Metadata for one heatmap column."""
-    evaluation_run_id: uuid.UUID
-    period_start: datetime         # column label
-    period_end: datetime
-    eval_name: str
+class EvaluationColumn(BaseModel):
+    """One heatmap column = one parent evaluation."""
+    evaluation_id: uuid.UUID
+    period_start:  datetime
+    period_end:    datetime
+    eval_name:     str
 
 class MetricHeatmapResponse(BaseModel):
     asset_name: str
-    columns: list[EvaluationRunColumn]   # ordered oldest→newest
-    groups: list[SloGroup]               # SLO groups in order
-    composite: list[HeatmapSummaryCell]  # Overall row spanning all groups
+    columns:    list[EvaluationColumn]      # ordered oldest → newest
+    groups:     list[SloGroup]             # SLO groups in SLO-name order
+    composite:  list[HeatmapSummaryCell]   # Overall row spanning all groups
 ```
 
-`HeatmapCell` changes:
-- `eval_id` → `slo_evaluation_id` (renamed per FK convention)
-- `slot: datetime` → `evaluation_run_id: UUID` (column identity is the run, not the timestamp)
-- Add `period_start: datetime` (display only — tooltip and x-axis label)
-
-The frontend uses `evaluation_run_id` to map cells to columns and `period_start` for display. This removes the timestamp-as-column-key ambiguity that caused the original N-columns bug.
+`HeatmapCell` updated fields:
+- `eval_id` → `slo_evaluation_id` (FK naming convention)
+- `slot: datetime` → `evaluation_id: UUID` (column identity)
+- Add `period_start: datetime` (display only — tooltip and axis label)
 
 ### Endpoint
 
 ```
-GET /evaluation-runs/metric-heatmap?asset_name=X&eval_name=Y&from=T&to=T&limit=N
+GET /evaluate/metric-heatmap?asset_name=X&eval_name=Y&from=T&to=T&limit=N
 ```
 
-Column key = `evaluation_run_id` (UUID, guaranteed unique). `period_start` is the display label only.
+Column key = `evaluation_id` (UUID, guaranteed unique). `period_start` is the axis label only — two evaluations with the same `period_start` get separate columns because they have different `evaluation_id` values.
 
 ---
 
@@ -260,69 +305,113 @@ ui:
   heatmap_slo_groups_expanded_by_default: true
 ```
 
-Loaded at startup, exposed via a `/config` API endpoint the UI reads on mount. No user-level preference yet — app-level only.
+Exposed via `GET /config` endpoint the UI reads on mount. App-level only — no per-user preference yet.
 
 ### Types (`ui/src/features/navigator/types.ts`)
 
 ```typescript
-export interface EvaluationRunColumn {
-  evaluation_run_id: string
-  period_start: string
-  period_end: string
-  eval_name: string
+export interface EvaluationColumn {
+  evaluation_id: string
+  period_start:  string
+  period_end:    string
+  eval_name:     string
 }
 
 export interface HeatmapSloGroup {
-  slo_name: string
+  slo_name:         string
   slo_display_name?: string
-  metrics: Array<{ name: string; display_name: string }>
-  cells: MetricHeatmapCell[]
-  summary: Array<{ slot: string; result: string; score: number; evaluation_run_id: string }>
+  metrics:  Array<{ name: string; display_name: string }>
+  cells:    MetricHeatmapCell[]
+  summary:  Array<{ evaluation_id: string; period_start: string; result: string; score: number }>
 }
 
 export interface MetricHeatmapResponse {
   asset_name: string
-  columns: EvaluationRunColumn[]
-  groups: HeatmapSloGroup[]
-  composite: Array<{ slot: string; result: string; score: number; evaluation_run_id: string }>
+  columns:    EvaluationColumn[]
+  groups:     HeatmapSloGroup[]
+  composite:  Array<{ evaluation_id: string; period_start: string; result: string; score: number }>
 }
 ```
 
-### Heatmap: accordion rows
+### Heatmap accordion — wireframe
 
-`buildAssetHeatmapData()` in `utils.ts` is rewritten:
+The heatmap Y-axis is a flat list of rows built dynamically from expand state. The chart renderer (`HeatmapChart`) receives the flattened rows unchanged — no changes to ECharts logic.
 
-- Columns = `response.columns` (one per `evaluation_run_id`).
-- Rows = flat array built from expand state: for each group, if expanded → emit SLO header row + indicator rows; if collapsed → emit SLO header row only.
-- SLO header row uses `group.summary` cells for collapsed status display.
-- Overall Score row is always visible at the top, built from `response.composite`.
+```
+X-axis:  Jan 15   Jan 16   Jan 17       ← one column per evaluation_id
+         (10:00)  (10:00)  (10:00)         period_start shown as label
 
-Expand/collapse state lives in `AssetPanel` as `Map<slo_name, boolean>`, initialised from the config flag.
+─────────────────────────────────────────────────────────────────
+ Overall Score  [pass]   [warn]   [pass]   ← always visible, composite row
+                                              click → expand all + scroll to table
+─────────────────────────────────────────────────────────────────
+ ▾ nginx        [pass]   [fail]   [warn]   ← SLO header row, expanded
+                                              cells = group.summary (worst-case per col)
+                                              click header → toggle collapse
+   request_rate [pass]   [pass]   [warn]   ← indicator rows, visible when expanded
+   error_rate   [pass]   [pass]   [pass]     click cell → scroll to this row in table
+   p99_latency  [pass]   [fail]   [pass]
+─────────────────────────────────────────────────────────────────
+ ▸ redis        [pass]   [pass]   [pass]   ← SLO header row, collapsed
+                                              shows aggregate status per column
+                                              click → expand, reveals 3 indicator rows
+─────────────────────────────────────────────────────────────────
+ ▸ postgres     [pass]   [warn]   [pass]   ← collapsed, postgres had a warn Jan 16
+─────────────────────────────────────────────────────────────────
+```
 
-**Collapse/expand interactions:**
-- Click SLO header row → toggle that group's expand state.
-- Click indicator cell → expand that group if collapsed, scroll to SLI table section.
-- Click Overall Score cell → expand all groups, scroll to SLI table.
+**Visual conventions:**
+- SLO header rows: blue label (`#58a6ff`), slightly darker background (`bg-surface-sunken`), expand chevron left of name
+- Collapsed header: shows status cells (worst-case colour fill) per column — same colour scale as indicator cells
+- Expanded header: shows chevron-down, no status cells in the header row itself (indicators below carry that)
+- Overall Score: always pinned at top, full-width, slightly bolder text
+- Row height: same as existing indicator rows (28px)
+- Expand/collapse state: `Map<slo_name, boolean>` in `AssetPanel`, initialised from config flag
 
-`HeatmapChart` receives the already-flattened rows — no changes to the chart renderer itself.
+### SLI breakdown table — wireframe
 
-### SLI breakdown table
+`EvaluationTabs` removed. `SLIBreakdownTable` replaced by `SLIBreakdownGrouped`.
 
-`EvaluationTabs` component is removed. `SLIBreakdownTable` is replaced by `SLIBreakdownGrouped`:
+```
+┌─────────────────────────────────────────────────────────────┐
+│ SLI BREAKDOWN                                               │
+├─────────────────────────────────────────────────────────────┤
+│ ▾  nginx  ──────────────────────────────── 98pts  [PASS]   │  ← SLO section header
+├──────────┬──────────┬──────────┬───────┬────────────────────┤
+│ Indicator│ Value    │ Baseline │ Δ     │ Status             │
+├──────────┼──────────┼──────────┼───────┼────────────────────┤
+│ request_ │ 1250     │ 1200     │ +4.2% │ PASS               │
+│ error_r  │ 0.02     │ 0.03     │ -33%  │ PASS               │
+│ p99_lat  │ 450ms    │ 420ms    │ +7.1% │ WARN               │
+├─────────────────────────────────────────────────────────────┤
+│ ▸  redis  ──────────────────────────────── 100pts  [PASS]  │  ← collapsed, click to expand
+├─────────────────────────────────────────────────────────────┤
+│ ▸  postgres  ───────────────────────────── 88pts   [WARN]  │  ← collapsed
+└─────────────────────────────────────────────────────────────┘
+```
 
-- Renders a section header row per SLO group (SLO name + score badge + expand/collapse chevron).
-- Under each header: the indicator rows for that SLO (same columns as today).
-- Expand/collapse state shared with the heatmap accordion (same `Map` from `AssetPanel`).
-- `mergedIndicators` in `AssetPanel` changes from `flatMap` to a structured `Array<{ slo_name, slo_display_name, indicators }>` built from `allSlotEvals`.
+- Section header: SLO name (blue) + raw score `Xpts` + result badge
+- Expand/collapse shared with heatmap accordion (same `Map` from `AssetPanel`)
+- Clicking an indicator row scrolls the chart section to that metric's trend block
 
-### Trend charts
+### Trend charts — wireframe
 
-`AssetPanelHeatmapView` renders trend charts grouped by SLO:
+```
+30-day trend for checkout-api
 
-- One collapsible section per SLO group.
-- Section header shows SLO name + indicator count.
-- Chart grid inside each section (same `MetricTrendBlock` components as today).
-- Expand/collapse state shared with the same `Map`.
+▾ nginx ─────────────────────────────────────────  [click to collapse]
+  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐
+  │ request_rate │  │ error_rate   │  │ p99_latency  │
+  │ [trend graph]│  │ [trend graph]│  │ [trend graph]│
+  └──────────────┘  └──────────────┘  └──────────────┘
+
+▸ redis ──────────────────────────────────────────  [click to expand]
+
+▸ postgres ───────────────────────────────────────  [click to expand]
+```
+
+- Same `Map` expand state — heatmap, table, and charts all collapse/expand together
+- Each section header mirrors the SLO section pattern from the table (name + score + result badge)
 
 ---
 
@@ -330,30 +419,28 @@ Expand/collapse state lives in `AssetPanel` as `Map<slo_name, boolean>`, initial
 
 ### Backend
 
-- New integration tests: `test_evaluation_run_repository.py` — CRUD, status rollup, result aggregation.
-- Update `test_trigger_service.py`: trigger creates run + N children.
-- Update `test_heatmap_endpoints.py`: grouped response shape, correct column keys.
-- Update `test_heatmap_query.py`: multi-SLO asset produces one column per run, not per SLO.
-- Migration test: drop `evaluation_batches`, rename `evaluations`, add `evaluation_run_id NOT NULL`.
+- New integration tests: `test_evaluations_repository.py` — CRUD, status rollup, worst-case result aggregation.
+- Update `test_trigger_service.py`: `POST /evaluate` creates parent + N children; `POST /evaluate/batch` with `by_date` and `by_asset` modes.
+- Update `test_heatmap_endpoints.py`: grouped response shape, one column per `evaluation_id`.
+- Update `test_heatmap_query.py`: multi-SLO asset produces one column per parent evaluation.
+- Migration test: drop `evaluation_batches`, rename old `evaluations` → `slo_evaluations`, create new `evaluations`, add `evaluation_id NOT NULL`.
 
 ### Frontend
 
-- Update `AssetHeatmap.test.tsx`: multi-SLO response renders correct column count.
-- Update `utils.test.ts`: `buildAssetHeatmapData` with grouped response.
-- New `SLIBreakdownGrouped.test.tsx`: section headers, expand/collapse.
+- Update `AssetHeatmap.test.tsx`: multi-SLO grouped response renders correct column count.
+- Update `utils.test.ts`: `buildAssetHeatmapData` with grouped response, expand/collapse row counts.
+- New `SLIBreakdownGrouped.test.tsx`: section headers render, expand/collapse toggles rows.
 - Mock handlers updated to return new grouped `MetricHeatmapResponse` shape.
 
 ---
 
 ## Phasing
 
-This spec is large. Recommended implementation order:
-
-1. **DB + migration** — create `evaluation_runs`, rename `evaluations` → `slo_evaluations`, rename FK columns, drop `evaluation_batches`.
-2. **Trigger layer** — update `POST /evaluation-runs`, `POST /evaluation-runs/batch`, worker rollup logic.
-3. **Heatmap API** — new grouped endpoint response.
-4. **Frontend types + data layer** — update types, `buildAssetHeatmapData`, mock handlers.
-5. **Heatmap accordion UI** — expand/collapse state, SLO header rows.
-6. **SLI table** — `SLIBreakdownGrouped` replacing `EvaluationTabs` + flat table.
-7. **Trend charts** — SLO-grouped sections.
+1. **DB + migration** — create new `evaluations` parent, rename old `evaluations` → `slo_evaluations`, add `evaluation_id NOT NULL FK`, rename child FK columns, drop `evaluation_batches`.
+2. **Trigger layer** — `POST /evaluate`, `POST /evaluate/batch` (by_date + by_asset), worker rollup logic.
+3. **Heatmap API** — new grouped endpoint at `GET /evaluate/metric-heatmap`.
+4. **Frontend types + data layer** — update `MetricHeatmapResponse` types, rewrite `buildAssetHeatmapData`, update mock handlers.
+5. **Heatmap accordion UI** — expand/collapse state wired from config, SLO header rows, Overall row.
+6. **SLI table** — `SLIBreakdownGrouped` replacing `EvaluationTabs` + `SLIBreakdownTable`.
+7. **Trend charts** — SLO-grouped collapsible sections.
 8. **Config** — `heatmap_slo_groups_expanded_by_default` flag wired end-to-end.
