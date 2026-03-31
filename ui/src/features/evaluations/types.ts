@@ -25,6 +25,7 @@ export interface Annotation {
 
 export interface EvaluationSummary {
   id: string
+  evaluation_id: string
   evaluation_name: string
   status: string
   result: 'pass' | 'warning' | 'fail' | 'error'

@@ -455,7 +455,7 @@ async def run_evaluation(  # noqa: PLR0915
     _log_eval_result(log, eval_result, metrics_fetched, baselines)
 
     # Write results
-    achieved_points = sum(int(ir.score) for ir in eval_result.indicator_results)
+    achieved_points = sum(round(ir.score) for ir in eval_result.indicator_results)
     total_points = sum(int(obj.weight) for obj in slo.objectives)
     await repo.mark_completed(
         eval_id,
