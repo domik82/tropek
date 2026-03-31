@@ -346,26 +346,26 @@ class EvaluationRepository:
         if evals:
             eval_ids = [ev.id for ev in evals]
             cnt_rows = await self._session.execute(
-                select(EvaluationAnnotation.evaluation_id, func.count().label('cnt'))
+                select(EvaluationAnnotation.slo_evaluation_id, func.count().label('cnt'))
                 .where(
-                    EvaluationAnnotation.evaluation_id.in_(eval_ids),
+                    EvaluationAnnotation.slo_evaluation_id.in_(eval_ids),
                     EvaluationAnnotation.hidden_at.is_(None),
                 )
-                .group_by(EvaluationAnnotation.evaluation_id)
+                .group_by(EvaluationAnnotation.slo_evaluation_id)
             )
             count_map = {row.evaluation_id: row.cnt for row in cnt_rows}
             # Fetch latest visible annotation per evaluation using DISTINCT ON.
             latest_q = (
                 select(EvaluationAnnotation)
                 .where(
-                    EvaluationAnnotation.evaluation_id.in_(eval_ids),
+                    EvaluationAnnotation.slo_evaluation_id.in_(eval_ids),
                     EvaluationAnnotation.hidden_at.is_(None),
                 )
                 .order_by(
-                    EvaluationAnnotation.evaluation_id,
+                    EvaluationAnnotation.slo_evaluation_id,
                     EvaluationAnnotation.created_at.desc(),
                 )
-                .distinct(EvaluationAnnotation.evaluation_id)
+                .distinct(EvaluationAnnotation.slo_evaluation_id)
             )
             latest_rows = await self._session.execute(latest_q)
             latest_map = {a.evaluation_id: a for a in latest_rows.scalars().all()}

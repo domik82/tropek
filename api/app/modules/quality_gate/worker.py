@@ -11,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.cache.redis_cache import RedisCache
 from app.config import get_settings
-from app.db.models import DataSource, Evaluation, SLIDefinition, SLODefinition
+from app.db.models import DataSource, SLIDefinition, SLODefinition, SLOEvaluation
 from app.modules.datasource.repository import DataSourceRepository
 from app.modules.quality_gate.adapter_client import HttpAdapterClient
 from app.modules.quality_gate.baseline_repository import BaselineRepository
@@ -36,7 +36,7 @@ class DefinitionLoadError(Exception):
 
 async def _load_definitions(
     session: AsyncSession,
-    ev: Evaluation,
+    ev: SLOEvaluation,
     cache: RedisCache | None = None,
 ) -> tuple[SLODefinition, SLIDefinition]:
     """Load SLO and SLI definitions for the evaluation.
@@ -70,7 +70,7 @@ async def _load_definitions(
 async def _resolve_baselines(
     baseline_repo: BaselineRepository,
     slo: SLO,
-    ev: Evaluation,
+    ev: SLOEvaluation,
     indicator_names: list[str],
 ) -> tuple[dict[str, float | None], list[str]]:
     """Fetch baseline evaluations and aggregate per-metric values.
@@ -112,7 +112,7 @@ async def _resolve_baselines(
 
 
 def _build_eval_variables(
-    ev: Evaluation,
+    ev: SLOEvaluation,
     asset_snapshot: dict[str, Any],
     slo_def: SLODefinition,
 ) -> dict[str, str]:
@@ -225,7 +225,7 @@ async def _write_indicator_rows(
 def _build_sli_rows(
     *,
     eval_id: uuid.UUID,
-    ev: Evaluation,
+    ev: SLOEvaluation,
     sli_def: SLIDefinition,
     indicator_results: list[Any],
     asset_snapshot: dict[str, Any],
