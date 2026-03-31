@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from pathlib import Path
 from unittest.mock import MagicMock
 
 import pytest
@@ -113,23 +114,22 @@ spec:
         load_manifests(str(f))
 
 
-def test_validate_cross_references(tmp_path):
-    """Cross-reference warnings are returned for missing refs within manifest."""
-    f = tmp_path / 'test.yaml'
+def test_unknown_kind_raises(tmp_path: Path) -> None:
+    """AssetSLOLink and AssetGroupSLOLink are no longer valid kinds."""
+    f = tmp_path / 'bad.yaml'
     f.write_text("""
 api_version: tropek/v1
 kind: AssetSLOLink
 metadata:
   name: my-link
 spec:
-  asset_name: vm-01
-  slo_name: missing-slo
-  sli_name: missing-sli
-  data_source_name: missing-ds
+  asset_name: my-asset
+  slo_name: my-slo
+  sli_name: my-sli
+  data_source_name: my-ds
 """)
-    errors = validate_manifests(str(f))
-    assert len(errors) == 3
-    assert all('WARNING' in e for e in errors)
+    with pytest.raises(ValueError, match='unknown kind'):
+        load_manifests(str(tmp_path))
 
 
 def test_dry_run_creates_plan():
