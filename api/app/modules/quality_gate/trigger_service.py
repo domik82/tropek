@@ -7,7 +7,6 @@ from datetime import datetime
 
 from arq.connections import ArqRedis
 
-from app.db.models import EvaluationBatch
 from app.modules.quality_gate.dependencies import QualityGateRepos
 from app.modules.quality_gate.exceptions import (
     AssetNotFoundError,
@@ -254,8 +253,11 @@ class TriggerService:
         # Phase 2: create all evaluations (single transaction)
         evaluation_ids: list[uuid.UUID] = []
         for ctx, _asset_name in resolved:
+            # TODO: remove with old trigger endpoints
+            run_id = uuid.uuid4()
             ev = await self._repos.eval_repo.create_pending(
                 EvalCreateParams(
+                    evaluation_id=run_id,
                     evaluation_name=request.evaluation_name,
                     period_start=request.period_start,
                     period_end=request.period_end,
@@ -278,24 +280,15 @@ class TriggerService:
             )
             evaluation_ids.append(ev.id)
 
-        batch = EvaluationBatch(
-            id=uuid.uuid4(),
-            evaluation_ids=[str(eid) for eid in evaluation_ids],
-            trigger_params={
-                'group_name': request.group_name,
-                'evaluation_name': request.evaluation_name,
-                'period_start': request.period_start.isoformat(),
-                'period_end': request.period_end.isoformat(),
-            },
-        )
-        self._repos.session.add(batch)
         await self._repos.session.commit()
 
         for eid in evaluation_ids:
             await self._pool.enqueue_job('run_evaluation_job', str(eid))
 
+        # TODO: remove with old trigger endpoints
+        batch_id = uuid.uuid4()
         return BatchTriggerResponse(
-            batch_id=batch.id,
+            batch_id=batch_id,
             evaluation_ids=evaluation_ids,
             status='pending',
         )
