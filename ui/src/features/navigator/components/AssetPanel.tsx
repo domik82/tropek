@@ -283,7 +283,7 @@ export function AssetPanel({ assetName, initialEvalId }: Props) {
         <AssetPanelHeatmapView
           assetName={assetName}
           heatmapData={heatmapData}
-          allSlotEvals={allSlotEvals}
+          allSlotEvals={allSlotEvals.length > 0 ? allSlotEvals : (ev ? [ev] : [])}
           effectiveEvalId={effectiveEvalId}
           notedSlots={notedSlots}
           onEvalSelect={setSelectedEvalId}
