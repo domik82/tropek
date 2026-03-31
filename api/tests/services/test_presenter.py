@@ -25,6 +25,7 @@ def _make_evaluation(
     """Build a fake ORM Evaluation object for presenter tests."""
     return SimpleNamespace(
         id=uuid.uuid4(),
+        evaluation_id=uuid.uuid4(),
         evaluation_name='nightly',
         period_start=_NOW,
         period_end=_NOW,
