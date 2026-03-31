@@ -781,6 +781,24 @@ class SLOBindingRepository:
         )
         return result.scalars().first()
 
+    async def update_comparison_rules(
+        self,
+        target_type: str,
+        target_id: uuid.UUID,
+        slo_name: str,
+        rules: list[dict[str, Any]],
+    ) -> None:
+        """Replace comparison_rules on an SLO binding."""
+        await self._session.execute(
+            update(SLOBinding)
+            .where(
+                SLOBinding.target_type == target_type,
+                SLOBinding.target_id == target_id,
+                SLOBinding.slo_name == slo_name,
+            )
+            .values(comparison_rules=rules)
+        )
+
     async def list_by_datasource(self, data_source_name: str) -> list[SLOBinding]:
         """Check if any bindings reference this datasource (for deletion guard)."""
         result = await self._session.execute(
