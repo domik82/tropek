@@ -2,7 +2,7 @@
 
 Revision ID: 001
 Revises: 
-Create Date: 2026-03-31 18:57:46.385159
+Create Date: 2026-03-31 20:09:10.636119
 
 """
 from collections.abc import Sequence
@@ -55,18 +55,6 @@ def upgrade() -> None:
     sa.UniqueConstraint('name')
     )
     op.create_index('idx_data_sources_name', 'data_sources', ['name'], unique=False)
-    op.create_table('evaluation_batches',
-    sa.Column('id', sa.UUID(), nullable=False),
-    sa.Column('status', sa.Text(), server_default=sa.text("'pending'"), nullable=False),
-    sa.Column('trigger_params', postgresql.JSONB(astext_type=sa.Text()), server_default=sa.text("'{}'"), nullable=False),
-    sa.Column('evaluation_ids', postgresql.JSONB(astext_type=sa.Text()), server_default=sa.text("'[]'"), nullable=False),
-    sa.Column('result', sa.Text(), nullable=True),
-    sa.Column('score', sa.Float(), nullable=True),
-    sa.Column('rollup_details', postgresql.JSONB(astext_type=sa.Text()), nullable=True),
-    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
-    sa.PrimaryKeyConstraint('id')
-    )
-    op.create_index('idx_evaluation_batches_status', 'evaluation_batches', ['status'], unique=False)
     op.create_table('sli_definitions',
     sa.Column('id', sa.UUID(), nullable=False),
     sa.Column('name', sa.Text(), nullable=False),
@@ -119,14 +107,14 @@ def upgrade() -> None:
     )
     op.create_index('idx_template_bindings_target', 'template_bindings', ['target_type', 'target_id'], unique=False)
     op.create_table('asset_group_links',
-    sa.Column('parent_group_id', sa.UUID(), nullable=False),
-    sa.Column('child_group_id', sa.UUID(), nullable=False),
+    sa.Column('parent_asset_group_id', sa.UUID(), nullable=False),
+    sa.Column('child_asset_group_id', sa.UUID(), nullable=False),
     sa.Column('weight', sa.Float(), nullable=False),
-    sa.ForeignKeyConstraint(['child_group_id'], ['asset_groups.id'], ondelete='CASCADE'),
-    sa.ForeignKeyConstraint(['parent_group_id'], ['asset_groups.id'], ondelete='CASCADE'),
-    sa.PrimaryKeyConstraint('parent_group_id', 'child_group_id')
+    sa.ForeignKeyConstraint(['child_asset_group_id'], ['asset_groups.id'], ondelete='CASCADE'),
+    sa.ForeignKeyConstraint(['parent_asset_group_id'], ['asset_groups.id'], ondelete='CASCADE'),
+    sa.PrimaryKeyConstraint('parent_asset_group_id', 'child_asset_group_id')
     )
-    op.create_index('idx_asset_group_links_parent', 'asset_group_links', ['parent_group_id'], unique=False)
+    op.create_index('idx_asset_group_links_parent', 'asset_group_links', ['parent_asset_group_id'], unique=False)
     op.create_table('assets',
     sa.Column('id', sa.UUID(), nullable=False),
     sa.Column('name', sa.Text(), nullable=False),
@@ -185,17 +173,52 @@ def upgrade() -> None:
     op.create_index('idx_slo_definitions_latest', 'slo_definitions', ['name', sa.literal_column('version DESC')], unique=False)
     op.create_index('idx_slo_definitions_name', 'slo_definitions', ['name'], unique=False)
     op.create_table('asset_group_members',
-    sa.Column('group_id', sa.UUID(), nullable=False),
+    sa.Column('asset_group_id', sa.UUID(), nullable=False),
     sa.Column('asset_id', sa.UUID(), nullable=False),
     sa.Column('weight', sa.Float(), nullable=False),
+    sa.ForeignKeyConstraint(['asset_group_id'], ['asset_groups.id'], ondelete='CASCADE'),
     sa.ForeignKeyConstraint(['asset_id'], ['assets.id'], ondelete='CASCADE'),
-    sa.ForeignKeyConstraint(['group_id'], ['asset_groups.id'], ondelete='CASCADE'),
-    sa.PrimaryKeyConstraint('group_id', 'asset_id')
+    sa.PrimaryKeyConstraint('asset_group_id', 'asset_id')
     )
     op.create_index('idx_asset_group_members_asset', 'asset_group_members', ['asset_id'], unique=False)
-    op.create_index('idx_asset_group_members_group', 'asset_group_members', ['group_id'], unique=False)
+    op.create_index('idx_asset_group_members_group', 'asset_group_members', ['asset_group_id'], unique=False)
     op.create_table('evaluations',
     sa.Column('id', sa.UUID(), nullable=False),
+    sa.Column('asset_id', sa.UUID(), nullable=False),
+    sa.Column('eval_name', sa.Text(), nullable=False),
+    sa.Column('period_start', sa.DateTime(timezone=True), nullable=False),
+    sa.Column('period_end', sa.DateTime(timezone=True), nullable=False),
+    sa.Column('status', sa.Text(), server_default=sa.text("'pending'"), nullable=False),
+    sa.Column('result', sa.Text(), nullable=True),
+    sa.Column('achieved_points', sa.Integer(), nullable=True),
+    sa.Column('total_points', sa.Integer(), nullable=True),
+    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.CheckConstraint("result IN ('pass','warning','fail','error') OR result IS NULL", name='ck_evaluations_result'),
+    sa.CheckConstraint("status IN ('pending','running','completed','failed')", name='ck_evaluations_status'),
+    sa.ForeignKeyConstraint(['asset_id'], ['assets.id'], ondelete='RESTRICT'),
+    sa.PrimaryKeyConstraint('id')
+    )
+    op.create_index('idx_evaluations_asset', 'evaluations', ['asset_id'], unique=False)
+    op.create_index('idx_evaluations_period', 'evaluations', ['asset_id', sa.literal_column('period_start DESC')], unique=False)
+    op.create_index('idx_evaluations_status', 'evaluations', ['status'], unique=False)
+    op.create_table('slo_objectives',
+    sa.Column('id', sa.UUID(), nullable=False),
+    sa.Column('slo_definition_id', sa.UUID(), nullable=False),
+    sa.Column('sli', sa.Text(), nullable=False),
+    sa.Column('display_name', sa.Text(), server_default='', nullable=False),
+    sa.Column('weight', sa.Integer(), server_default=sa.text('1'), nullable=False),
+    sa.Column('key_sli', sa.Boolean(), server_default=sa.text('false'), nullable=False),
+    sa.Column('sort_order', sa.Integer(), nullable=False),
+    sa.Column('pass_threshold', sa.ARRAY(sa.Text()), server_default=sa.text("'{}'"), nullable=False),
+    sa.Column('warning_threshold', sa.ARRAY(sa.Text()), server_default=sa.text("'{}'"), nullable=False),
+    sa.Column('tab_group', sa.Text(), nullable=True),
+    sa.ForeignKeyConstraint(['slo_definition_id'], ['slo_definitions.id'], ondelete='CASCADE'),
+    sa.PrimaryKeyConstraint('id')
+    )
+    op.create_index('idx_slo_objectives_definition', 'slo_objectives', ['slo_definition_id'], unique=False)
+    op.create_table('slo_evaluations',
+    sa.Column('id', sa.UUID(), nullable=False),
+    sa.Column('evaluation_id', sa.UUID(), nullable=False),
     sa.Column('evaluation_name', sa.Text(), nullable=False),
     sa.Column('asset_id', sa.UUID(), nullable=False),
     sa.Column('asset_snapshot', postgresql.JSONB(astext_type=sa.Text()), server_default=sa.text("'{}'"), nullable=False),
@@ -203,6 +226,8 @@ def upgrade() -> None:
     sa.Column('period_end', sa.DateTime(timezone=True), nullable=False),
     sa.Column('result', sa.Text(), nullable=True),
     sa.Column('score', sa.Float(), nullable=True),
+    sa.Column('achieved_points', sa.Integer(), nullable=True),
+    sa.Column('total_points', sa.Integer(), nullable=True),
     sa.Column('slo_name', sa.Text(), nullable=False),
     sa.Column('slo_version', sa.Integer(), nullable=True),
     sa.Column('sli_name', sa.Text(), nullable=True),
@@ -224,39 +249,25 @@ def upgrade() -> None:
     sa.Column('started_at', sa.DateTime(timezone=True), nullable=True),
     sa.Column('job_stats', postgresql.JSONB(astext_type=sa.Text()), server_default=sa.text("'{}'"), nullable=False),
     sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
-    sa.CheckConstraint("ingestion_mode IN ('pull','push','file')", name='ck_evaluations_ingestion_mode'),
-    sa.CheckConstraint("result IN ('pass','warning','fail','error') OR result IS NULL", name='ck_evaluations_result'),
-    sa.CheckConstraint("status IN ('pending','running','completed','failed','partial')", name='ck_evaluations_status'),
+    sa.CheckConstraint("ingestion_mode IN ('pull','push','file')", name='ck_slo_evaluations_ingestion_mode'),
+    sa.CheckConstraint("result IN ('pass','warning','fail','error') OR result IS NULL", name='ck_slo_evaluations_result'),
+    sa.CheckConstraint("status IN ('pending','running','completed','failed','partial')", name='ck_slo_evaluations_status'),
     sa.ForeignKeyConstraint(['asset_id'], ['assets.id'], ondelete='RESTRICT'),
+    sa.ForeignKeyConstraint(['evaluation_id'], ['evaluations.id'], ondelete='CASCADE'),
     sa.PrimaryKeyConstraint('id')
     )
-    op.create_index('idx_evaluations_asset', 'evaluations', ['asset_id'], unique=False)
-    op.create_index('idx_evaluations_baseline_lookup', 'evaluations', ['asset_id', 'slo_name', sa.literal_column('period_start DESC')], unique=False, postgresql_where=sa.text("status = 'completed' AND invalidated = false"))
-    op.create_index('idx_evaluations_evaluation_name', 'evaluations', ['evaluation_name'], unique=False)
-    op.create_index('idx_evaluations_result', 'evaluations', ['result'], unique=False)
-    op.create_index('idx_evaluations_slo', 'evaluations', ['slo_name', 'slo_version'], unique=False)
-    op.create_index('idx_evaluations_start', 'evaluations', ['period_start'], unique=False)
-    op.create_index('idx_evaluations_status', 'evaluations', ['status'], unique=False)
-    op.create_index('idx_evaluations_stuck', 'evaluations', ['status', 'started_at'], unique=False, postgresql_where=sa.text("status = 'running'"))
-    op.create_index('uq_evaluations_identity', 'evaluations', ['asset_id', 'slo_name', 'evaluation_name', 'period_start', 'period_end'], unique=True, postgresql_where=sa.text("status != 'failed'"))
-    op.create_table('slo_objectives',
-    sa.Column('id', sa.UUID(), nullable=False),
-    sa.Column('slo_definition_id', sa.UUID(), nullable=False),
-    sa.Column('sli', sa.Text(), nullable=False),
-    sa.Column('display_name', sa.Text(), server_default='', nullable=False),
-    sa.Column('weight', sa.Integer(), server_default=sa.text('1'), nullable=False),
-    sa.Column('key_sli', sa.Boolean(), server_default=sa.text('false'), nullable=False),
-    sa.Column('sort_order', sa.Integer(), nullable=False),
-    sa.Column('pass_threshold', sa.ARRAY(sa.Text()), server_default=sa.text("'{}'"), nullable=False),
-    sa.Column('warning_threshold', sa.ARRAY(sa.Text()), server_default=sa.text("'{}'"), nullable=False),
-    sa.Column('tab_group', sa.Text(), nullable=True),
-    sa.ForeignKeyConstraint(['slo_definition_id'], ['slo_definitions.id'], ondelete='CASCADE'),
-    sa.PrimaryKeyConstraint('id')
-    )
-    op.create_index('idx_slo_objectives_definition', 'slo_objectives', ['slo_definition_id'], unique=False)
+    op.create_index('idx_slo_evaluations_asset', 'slo_evaluations', ['asset_id'], unique=False)
+    op.create_index('idx_slo_evaluations_baseline_lookup', 'slo_evaluations', ['asset_id', 'slo_name', sa.literal_column('period_start DESC')], unique=False, postgresql_where=sa.text("status = 'completed' AND invalidated = false"))
+    op.create_index('idx_slo_evaluations_evaluation_name', 'slo_evaluations', ['evaluation_name'], unique=False)
+    op.create_index('idx_slo_evaluations_result', 'slo_evaluations', ['result'], unique=False)
+    op.create_index('idx_slo_evaluations_slo', 'slo_evaluations', ['slo_name', 'slo_version'], unique=False)
+    op.create_index('idx_slo_evaluations_start', 'slo_evaluations', ['period_start'], unique=False)
+    op.create_index('idx_slo_evaluations_status', 'slo_evaluations', ['status'], unique=False)
+    op.create_index('idx_slo_evaluations_stuck', 'slo_evaluations', ['status', 'started_at'], unique=False, postgresql_where=sa.text("status = 'running'"))
+    op.create_index('uq_slo_evaluations_identity', 'slo_evaluations', ['asset_id', 'slo_name', 'evaluation_name', 'period_start', 'period_end'], unique=True, postgresql_where=sa.text("status != 'failed'"))
     op.create_table('evaluation_annotations',
     sa.Column('id', sa.UUID(), nullable=False),
-    sa.Column('evaluation_id', sa.UUID(), nullable=False),
+    sa.Column('slo_evaluation_id', sa.UUID(), nullable=False),
     sa.Column('content', sa.Text(), nullable=False),
     sa.Column('author', sa.Text(), nullable=True),
     sa.Column('category', sa.Text(), nullable=True),
@@ -266,13 +277,13 @@ def upgrade() -> None:
     sa.Column('hidden_reason', sa.Text(), nullable=True),
     sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
     sa.Column('updated_at', sa.DateTime(timezone=True), nullable=True),
-    sa.ForeignKeyConstraint(['evaluation_id'], ['evaluations.id'], ondelete='CASCADE'),
+    sa.ForeignKeyConstraint(['slo_evaluation_id'], ['slo_evaluations.id'], ondelete='CASCADE'),
     sa.PrimaryKeyConstraint('id')
     )
-    op.create_index('idx_annotations_evaluation', 'evaluation_annotations', ['evaluation_id'], unique=False)
+    op.create_index('idx_annotations_slo_evaluation', 'evaluation_annotations', ['slo_evaluation_id'], unique=False)
     op.create_table('indicator_results',
     sa.Column('id', sa.UUID(), nullable=False),
-    sa.Column('evaluation_id', sa.UUID(), nullable=False),
+    sa.Column('slo_evaluation_id', sa.UUID(), nullable=False),
     sa.Column('slo_objective_id', sa.UUID(), nullable=False),
     sa.Column('value', sa.Float(), nullable=True),
     sa.Column('compared_value', sa.Float(), nullable=True),
@@ -280,15 +291,15 @@ def upgrade() -> None:
     sa.Column('change_relative_pct', sa.Float(), nullable=True),
     sa.Column('status', sa.Text(), nullable=False),
     sa.Column('score', sa.Float(), server_default=sa.text('0'), nullable=False),
-    sa.ForeignKeyConstraint(['evaluation_id'], ['evaluations.id'], ondelete='CASCADE'),
+    sa.ForeignKeyConstraint(['slo_evaluation_id'], ['slo_evaluations.id'], ondelete='CASCADE'),
     sa.ForeignKeyConstraint(['slo_objective_id'], ['slo_objectives.id'], ondelete='CASCADE'),
     sa.PrimaryKeyConstraint('id'),
-    sa.UniqueConstraint('evaluation_id', 'slo_objective_id', name='uq_indicator_results_eval_objective')
+    sa.UniqueConstraint('slo_evaluation_id', 'slo_objective_id', name='uq_indicator_results_eval_objective')
     )
-    op.create_index('idx_indicator_results_evaluation', 'indicator_results', ['evaluation_id'], unique=False)
     op.create_index('idx_indicator_results_objective_status', 'indicator_results', ['slo_objective_id', 'status'], unique=False)
+    op.create_index('idx_indicator_results_slo_evaluation', 'indicator_results', ['slo_evaluation_id'], unique=False)
     op.create_table('sli_values',
-    sa.Column('eval_id', sa.UUID(), nullable=False),
+    sa.Column('slo_evaluation_id', sa.UUID(), nullable=False),
     sa.Column('eval_start', sa.DateTime(timezone=True), nullable=False),
     sa.Column('metric_name', sa.Text(), nullable=False),
     sa.Column('aggregation', sa.Text(), nullable=False),
@@ -296,8 +307,8 @@ def upgrade() -> None:
     sa.Column('asset_name', sa.Text(), nullable=True),
     sa.Column('evaluation_name', sa.Text(), nullable=True),
     sa.Column('os_tag', sa.Text(), nullable=True),
-    sa.ForeignKeyConstraint(['eval_id'], ['evaluations.id'], ),
-    sa.PrimaryKeyConstraint('eval_id', 'eval_start', 'metric_name', 'aggregation')
+    sa.ForeignKeyConstraint(['slo_evaluation_id'], ['slo_evaluations.id'], ),
+    sa.PrimaryKeyConstraint('slo_evaluation_id', 'eval_start', 'metric_name', 'aggregation')
     )
     op.create_index('idx_sli_values_lookup', 'sli_values', ['evaluation_name', 'metric_name', 'eval_start'], unique=False)
     # ### end Alembic commands ###
@@ -308,21 +319,25 @@ def downgrade() -> None:
     # ### commands auto generated by Alembic - please adjust! ###
     op.drop_index('idx_sli_values_lookup', table_name='sli_values')
     op.drop_table('sli_values')
+    op.drop_index('idx_indicator_results_slo_evaluation', table_name='indicator_results')
     op.drop_index('idx_indicator_results_objective_status', table_name='indicator_results')
-    op.drop_index('idx_indicator_results_evaluation', table_name='indicator_results')
     op.drop_table('indicator_results')
-    op.drop_index('idx_annotations_evaluation', table_name='evaluation_annotations')
+    op.drop_index('idx_annotations_slo_evaluation', table_name='evaluation_annotations')
     op.drop_table('evaluation_annotations')
+    op.drop_index('uq_slo_evaluations_identity', table_name='slo_evaluations', postgresql_where=sa.text("status != 'failed'"))
+    op.drop_index('idx_slo_evaluations_stuck', table_name='slo_evaluations', postgresql_where=sa.text("status = 'running'"))
+    op.drop_index('idx_slo_evaluations_status', table_name='slo_evaluations')
+    op.drop_index('idx_slo_evaluations_start', table_name='slo_evaluations')
+    op.drop_index('idx_slo_evaluations_slo', table_name='slo_evaluations')
+    op.drop_index('idx_slo_evaluations_result', table_name='slo_evaluations')
+    op.drop_index('idx_slo_evaluations_evaluation_name', table_name='slo_evaluations')
+    op.drop_index('idx_slo_evaluations_baseline_lookup', table_name='slo_evaluations', postgresql_where=sa.text("status = 'completed' AND invalidated = false"))
+    op.drop_index('idx_slo_evaluations_asset', table_name='slo_evaluations')
+    op.drop_table('slo_evaluations')
     op.drop_index('idx_slo_objectives_definition', table_name='slo_objectives')
     op.drop_table('slo_objectives')
-    op.drop_index('uq_evaluations_identity', table_name='evaluations', postgresql_where=sa.text("status != 'failed'"))
-    op.drop_index('idx_evaluations_stuck', table_name='evaluations', postgresql_where=sa.text("status = 'running'"))
     op.drop_index('idx_evaluations_status', table_name='evaluations')
-    op.drop_index('idx_evaluations_start', table_name='evaluations')
-    op.drop_index('idx_evaluations_slo', table_name='evaluations')
-    op.drop_index('idx_evaluations_result', table_name='evaluations')
-    op.drop_index('idx_evaluations_evaluation_name', table_name='evaluations')
-    op.drop_index('idx_evaluations_baseline_lookup', table_name='evaluations', postgresql_where=sa.text("status = 'completed' AND invalidated = false"))
+    op.drop_index('idx_evaluations_period', table_name='evaluations')
     op.drop_index('idx_evaluations_asset', table_name='evaluations')
     op.drop_table('evaluations')
     op.drop_index('idx_asset_group_members_group', table_name='asset_group_members')
@@ -344,8 +359,6 @@ def downgrade() -> None:
     op.drop_index('idx_sli_definitions_name', table_name='sli_definitions')
     op.drop_index('idx_sli_definitions_latest', table_name='sli_definitions')
     op.drop_table('sli_definitions')
-    op.drop_index('idx_evaluation_batches_status', table_name='evaluation_batches')
-    op.drop_table('evaluation_batches')
     op.drop_index('idx_data_sources_name', table_name='data_sources')
     op.drop_table('data_sources')
     op.drop_index('uq_asset_types_default', table_name='asset_types', postgresql_where=sa.text('is_default = true'))
