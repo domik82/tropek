@@ -24,6 +24,23 @@ export function AssetPanelChartView({
 }: Props) {
   const [metricGroupFilter, setMetricGroupFilter] = useState<string>('all')
 
+  // One point per EvaluationRun using the composite (aggregated) score.
+  // Without this, evals has N entries per run (one per SLO), producing N× too many points.
+  const scoreChartEvals = useMemo((): EvaluationSummary[] => {
+    if (!heatmapData || heatmapData.composite.length === 0) return evals
+    return heatmapData.composite.map(cell => {
+      const rep = evals.find(e => e.period_start === cell.period_start)
+      return {
+        ...(rep ?? {} as EvaluationSummary),
+        id: rep?.id ?? cell.evaluation_id,
+        period_start: cell.period_start,
+        result: (cell.result as EvaluationSummary['result']) ?? 'error',
+        score: cell.score,
+        invalidated: false,
+      }
+    })
+  }, [heatmapData, evals])
+
   const allIndicators: IndicatorResult[] = useMemo(() => {
     if (!heatmapData) return []
     const allMetrics = heatmapData.groups.flatMap(g => g.metrics)
@@ -65,7 +82,7 @@ export function AssetPanelChartView({
 
       {/* Score over time */}
       <div className="rounded-lg border border-border bg-surface-sunken p-4">
-        <AssetScoreChart evaluations={evals} selectedEvalId={effectiveEvalId} onEvalSelect={onEvalSelect} />
+        <AssetScoreChart evaluations={scoreChartEvals} selectedEvalId={effectiveEvalId} onEvalSelect={onEvalSelect} />
       </div>
 
       {effectiveEvalId && (
