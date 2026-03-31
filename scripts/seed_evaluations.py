@@ -116,7 +116,7 @@ def main() -> None:
 
         window_slo_ids: list[str] = []
         for asset_name, eval_name in jobs:
-            result = client.evaluate(asset_name, eval_name, start, end)
+            result = client.evaluations.evaluate(asset_name, eval_name, start, end)
             window_slo_ids.extend(result['slo_evaluation_ids'])
 
         _wait_for_ids(client, window_slo_ids, f'window {wi + 1}')
