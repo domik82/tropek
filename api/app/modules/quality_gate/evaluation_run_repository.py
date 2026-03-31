@@ -44,6 +44,26 @@ class EvaluationRunRepository:
         """Fetch an EvaluationRun by primary key."""
         return await self._session.get(EvaluationRun, run_id)
 
+    async def mark_completed(
+        self,
+        run_id: uuid.UUID,
+        *,
+        result: str,
+        achieved_points: int | None = None,
+        total_points: int | None = None,
+    ) -> None:
+        """Directly mark an EvaluationRun as completed with a given result."""
+        await self._session.execute(
+            update(EvaluationRun)
+            .where(EvaluationRun.id == run_id)
+            .values(
+                status='completed',
+                result=result,
+                achieved_points=achieved_points,
+                total_points=total_points,
+            )
+        )
+
     async def mark_running(self, run_id: uuid.UUID) -> None:
         """Transition status to running (first child started)."""
         await self._session.execute(
