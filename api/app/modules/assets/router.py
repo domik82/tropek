@@ -12,9 +12,7 @@ from app.db.session import get_session
 from app.modules.assets.comparison_rules import validate_comparison_rules
 from app.modules.assets.repository import (
     AssetGroupRepository,
-    AssetGroupSLOLinkRepository,
     AssetRepository,
-    AssetSLOLinkRepository,
     AssetTypeRepository,
     SLOBindingRepository,
 )
@@ -24,13 +22,9 @@ from app.modules.assets.schemas import (
     AssetCreate,
     AssetGroupCreate,
     AssetGroupRead,
-    AssetGroupSLOLinkCreate,
-    AssetGroupSLOLinkRead,
     AssetGroupTreeResponse,
     AssetGroupUpdate,
     AssetRead,
-    AssetSLOLinkCreate,
-    AssetSLOLinkRead,
     AssetTypeCreate,
     AssetTypeRead,
     AssetTypeUpdate,
@@ -241,117 +235,6 @@ async def delete_asset(
         raise NotFoundError('asset', name)
 
 
-# ---- Asset SLO Links ----
-
-
-@router.get('/assets/{name}/slo-links', response_model=list[AssetSLOLinkRead])
-async def list_asset_slo_links(
-    name: str,
-    session: AsyncSession = Depends(get_session),
-) -> list[AssetSLOLinkRead]:
-    """List all SLO links for an asset."""
-    asset_repo = AssetRepository(session)
-    asset = await asset_repo.get_by_name(name)
-    if asset is None:
-        raise NotFoundError('asset', name)
-    link_repo = AssetSLOLinkRepository(session)
-    links = await link_repo.list_by_asset(asset.id)
-    return [AssetSLOLinkRead.model_validate(lnk) for lnk in links]
-
-
-@router.post('/assets/{name}/slo-links', response_model=AssetSLOLinkRead, status_code=201)
-async def create_asset_slo_link(
-    name: str,
-    body: AssetSLOLinkCreate,
-    session: AsyncSession = Depends(get_session),
-) -> AssetSLOLinkRead:
-    """Create an SLO link for an asset."""
-    asset_repo = AssetRepository(session)
-    asset = await asset_repo.get_by_name(name)
-    if asset is None:
-        raise NotFoundError('asset', name)
-    link_repo = AssetSLOLinkRepository(session)
-    link = await link_repo.create(
-        asset_id=asset.id,
-        link_name=body.link_name,
-        slo_name=body.slo_name,
-        sli_name=body.sli_name,
-        data_source_name=body.data_source_name,
-    )
-    return AssetSLOLinkRead.model_validate(link)
-
-
-@router.delete('/assets/{name}/slo-links/{link_name}', status_code=204)
-async def delete_asset_slo_link(
-    name: str,
-    link_name: str,
-    session: AsyncSession = Depends(get_session),
-) -> None:
-    """Delete an SLO link from an asset."""
-    asset_repo = AssetRepository(session)
-    asset = await asset_repo.get_by_name(name)
-    if asset is None:
-        raise NotFoundError('asset', name)
-    link_repo = AssetSLOLinkRepository(session)
-    await link_repo.delete(asset.id, link_name)
-
-
-@router.get(
-    '/assets/{name}/slo-links/{link_name}/comparison-rules',
-    response_model=list[dict[str, Any]],
-)
-async def get_comparison_rules(
-    name: str,
-    link_name: str,
-    session: AsyncSession = Depends(get_session),
-) -> list[dict[str, Any]]:
-    """Return comparison rules for an asset SLO link."""
-    asset_repo = AssetRepository(session)
-    asset = await asset_repo.get_by_name(name)
-    if asset is None:
-        raise NotFoundError('asset', name)
-    link_repo = AssetSLOLinkRepository(session)
-    link = await link_repo.get_by_link_name(asset.id, link_name)
-    if link is None:
-        raise NotFoundError('slo link', link_name)
-    return link.comparison_rules
-
-
-@router.put(
-    '/assets/{name}/slo-links/{link_name}/comparison-rules',
-    response_model=list[dict[str, Any]],
-)
-async def update_comparison_rules_endpoint(
-    name: str,
-    link_name: str,
-    body: ComparisonRulesUpdate,
-    session: AsyncSession = Depends(get_session),
-) -> list[dict[str, Any]]:
-    """Replace comparison rules for an asset SLO link.
-
-    Validates rule structure:
-    - At most one catch-all rule (match: {})
-    - Catch-all must be last
-    - match must be dict[str, str]
-    - compare_to must be dict[str, str | bool]
-    """
-    asset_repo = AssetRepository(session)
-    asset = await asset_repo.get_by_name(name)
-    if asset is None:
-        raise NotFoundError('asset', name)
-    link_repo = AssetSLOLinkRepository(session)
-    link = await link_repo.get_by_link_name(asset.id, link_name)
-    if link is None:
-        raise NotFoundError('slo link', link_name)
-    try:
-        validated = validate_comparison_rules(body.rules)
-    except ValueError as exc:
-        raise HTTPException(status_code=422, detail=str(exc)) from exc
-    rules_dicts = [r.model_dump() for r in validated]
-    await link_repo.update_comparison_rules(link.id, rules_dicts)
-    return rules_dicts
-
-
 # ---- Asset Groups ----
 # NOTE: /asset-groups/tree MUST be registered before /asset-groups/{name}
 
@@ -486,60 +369,6 @@ async def remove_group_subgroup(
     if group is None:
         raise NotFoundError('asset group', name)
     await repo.remove_subgroup(name, child_group_id)
-
-
-# ---- Asset Group SLO Links ----
-
-
-@router.get('/asset-groups/{name}/slo-links', response_model=list[AssetGroupSLOLinkRead])
-async def list_group_slo_links(
-    name: str,
-    session: AsyncSession = Depends(get_session),
-) -> list[AssetGroupSLOLinkRead]:
-    """List all SLO links for an asset group."""
-    group_repo = AssetGroupRepository(session)
-    group = await group_repo.get_by_name(name)
-    if group is None:
-        raise NotFoundError('asset group', name)
-    link_repo = AssetGroupSLOLinkRepository(session)
-    links = await link_repo.list_by_group(group.id)
-    return [AssetGroupSLOLinkRead.model_validate(lnk) for lnk in links]
-
-
-@router.post('/asset-groups/{name}/slo-links', response_model=AssetGroupSLOLinkRead, status_code=201)
-async def create_group_slo_link(
-    name: str,
-    body: AssetGroupSLOLinkCreate,
-    session: AsyncSession = Depends(get_session),
-) -> AssetGroupSLOLinkRead:
-    """Create an SLO link for an asset group."""
-    group_repo = AssetGroupRepository(session)
-    group = await group_repo.get_by_name(name)
-    if group is None:
-        raise NotFoundError('asset group', name)
-    link_repo = AssetGroupSLOLinkRepository(session)
-    link = await link_repo.create(
-        group_id=group.id,
-        slo_name=body.slo_name,
-        sli_name=body.sli_name,
-        data_source_name=body.data_source_name,
-    )
-    return AssetGroupSLOLinkRead.model_validate(link)
-
-
-@router.delete('/asset-groups/{name}/slo-links/{link_name}', status_code=204)
-async def delete_group_slo_link(
-    name: str,
-    link_name: str,
-    session: AsyncSession = Depends(get_session),
-) -> None:
-    """Delete an SLO link from an asset group."""
-    group_repo = AssetGroupRepository(session)
-    group = await group_repo.get_by_name(name)
-    if group is None:
-        raise NotFoundError('asset group', name)
-    link_repo = AssetGroupSLOLinkRepository(session)
-    await link_repo.delete(group.id, link_name)
 
 
 # ---- SLO Bindings (new model) ----
