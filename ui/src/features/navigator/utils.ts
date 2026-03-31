@@ -170,6 +170,7 @@ export function buildAssetHeatmapData(
           slot: col.period_start,
           rowLabel: row.label,
           columnKey: col.evaluation_id,
+          evaluation_name: col.eval_name,
         })
       }
     } else if (row.type === 'slo-header') {
@@ -184,6 +185,7 @@ export function buildAssetHeatmapData(
           slot: col.period_start,
           rowLabel: row.label,
           columnKey: col.evaluation_id,
+          evaluation_name: col.eval_name,
           isSloHeader: true,
           sloName: row.sloName,
         })
@@ -201,6 +203,7 @@ export function buildAssetHeatmapData(
           slot: col.period_start,
           rowLabel: row.label,
           columnKey: col.evaluation_id,
+          evaluation_name: col.eval_name,
           evalId: cell?.slo_evaluation_id,
         })
       }
