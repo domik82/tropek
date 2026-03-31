@@ -1,11 +1,13 @@
 interface UIConfig {
   maxEvaluations: number
   pageSize: number
+  heatmapSloGroupsExpandedByDefault: boolean
 }
 
 const DEFAULTS: UIConfig = {
   maxEvaluations: 1000,
   pageSize: 200,
+  heatmapSloGroupsExpandedByDefault: true,
 }
 
 let config: UIConfig = DEFAULTS

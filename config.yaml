@@ -55,6 +55,7 @@ file_ingestion:
 ui:
   max_evaluations: 1000
   page_size: 200
+  heatmap_slo_groups_expanded_by_default: true
 
 logging:
   level: "INFO"
