@@ -597,6 +597,59 @@ async def delete_asset_slo_binding(
     await binding_repo.delete_by_target_and_slo('asset', asset.id, slo_name)
 
 
+@router.get(
+    '/assets/{name}/slo-bindings/{slo_name}/comparison-rules',
+    response_model=list[dict[str, Any]],
+)
+async def get_binding_comparison_rules(
+    name: str,
+    slo_name: str,
+    session: AsyncSession = Depends(get_session),
+) -> list[dict[str, Any]]:
+    """Return comparison rules for an asset SLO binding."""
+    asset_repo = AssetRepository(session)
+    asset = await asset_repo.get_by_name(name)
+    if asset is None:
+        raise NotFoundError('asset', name)
+    binding_repo = SLOBindingRepository(session)
+    binding = await binding_repo.find_for_asset(asset.id, slo_name)
+    if binding is None:
+        raise NotFoundError('slo binding', slo_name)
+    return binding.comparison_rules or []
+
+
+@router.put(
+    '/assets/{name}/slo-bindings/{slo_name}/comparison-rules',
+    response_model=list[dict[str, Any]],
+)
+async def update_binding_comparison_rules(
+    name: str,
+    slo_name: str,
+    body: ComparisonRulesUpdate,
+    session: AsyncSession = Depends(get_session),
+) -> list[dict[str, Any]]:
+    """Replace comparison rules for an asset SLO binding.
+
+    Validates rule structure: each rule must have 'match' and 'compare_to' dicts.
+    """
+    asset_repo = AssetRepository(session)
+    asset = await asset_repo.get_by_name(name)
+    if asset is None:
+        raise NotFoundError('asset', name)
+    binding_repo = SLOBindingRepository(session)
+    binding = await binding_repo.find_for_asset(asset.id, slo_name)
+    if binding is None:
+        raise NotFoundError('slo binding', slo_name)
+    try:
+        validated = validate_comparison_rules(body.rules)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    rules_dicts = [r.model_dump() for r in validated]
+    await binding_repo.update_comparison_rules('asset', asset.id, slo_name, rules_dicts)
+    await session.commit()
+    return rules_dicts
+
+
 @router.get('/asset-groups/{name}/slo-bindings', response_model=list[SLOBindingRead])
 async def list_group_slo_bindings(
     name: str,
