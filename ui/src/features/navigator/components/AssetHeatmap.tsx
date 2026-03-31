@@ -77,10 +77,10 @@ export function AssetHeatmap({
   }
 
   function onCellClick(cell: HeatmapCell): void {
-    // SLO header row click → toggle expand/collapse
+    // SLO header row click → toggle expand/collapse AND select the column
     if (cell.isSloHeader && cell.sloName) {
       onSloToggle(cell.sloName)
-      return
+      // fall through to also select this column
     }
     if (onSlotSelect) {
       // Collect all slo_evaluation_ids in this column from visible indicator cells.
