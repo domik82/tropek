@@ -16,9 +16,7 @@ from tropek_client.models import (
     Annotation,
     Asset,
     AssetGroup,
-    AssetGroupSLOLink,
     AssetGroupTree,
-    AssetSLOLink,
     AssetType,
     DataSource,
     EvaluationDetail,
@@ -240,65 +238,6 @@ class _AssetGroups:
         """Remove a subgroup from an asset group."""
         resp = self._http.delete(f'/asset-groups/{group_name}/subgroups/{child_group_id}')
         _raise_for_status(resp)
-
-
-class _SLOLinks[T: Any]:
-    def __init__(self, http: httpx.Client, prefix: str, model: type[T]) -> None:
-        self._http = http
-        self._prefix = prefix
-        self._model = model
-
-    def list(self, parent_name: str) -> list[T]:
-        """List SLO links for a parent entity."""
-        resp = self._http.get(f'/{self._prefix}/{parent_name}/slo-links')
-        _raise_for_status(resp)
-        return [self._model.model_validate(i) for i in resp.json()]
-
-    def create(
-        self,
-        parent_name: str,
-        link_name: str,
-        slo_name: str,
-        sli_name: str,
-        data_source_name: str,
-    ) -> T:
-        """Create an SLO link."""
-        resp = self._http.post(
-            f'/{self._prefix}/{parent_name}/slo-links',
-            json={
-                'link_name': link_name,
-                'slo_name': slo_name,
-                'sli_name': sli_name,
-                'data_source_name': data_source_name,
-            },
-        )
-        _raise_for_status(resp)
-        return self._model.model_validate(resp.json())
-
-    def delete(self, parent_name: str, link_name: str) -> None:
-        """Delete an SLO link."""
-        resp = self._http.delete(f'/{self._prefix}/{parent_name}/slo-links/{link_name}')
-        _raise_for_status(resp)
-
-    def get_comparison_rules(self, parent_name: str, link_name: str) -> list[dict[str, Any]]:
-        """Get comparison rules for an SLO link."""
-        resp = self._http.get(f'/{self._prefix}/{parent_name}/slo-links/{link_name}/comparison-rules')
-        _raise_for_status(resp)
-        return resp.json()  # type: ignore[no-any-return]
-
-    def update_comparison_rules(
-        self,
-        parent_name: str,
-        link_name: str,
-        rules: list[dict[str, Any]],
-    ) -> list[dict[str, Any]]:
-        """Replace comparison rules for an SLO link."""
-        resp = self._http.put(
-            f'/{self._prefix}/{parent_name}/slo-links/{link_name}/comparison-rules',
-            json={'rules': rules},
-        )
-        _raise_for_status(resp)
-        return resp.json()  # type: ignore[no-any-return]
 
 
 class _DataSources:
@@ -934,8 +873,6 @@ class TropekClient:
         self.asset_types = _AssetTypes(self._http)
         self.assets = _Assets(self._http)
         self.asset_groups = _AssetGroups(self._http)
-        self.asset_slo_links: _SLOLinks[AssetSLOLink] = _SLOLinks(self._http, 'assets', AssetSLOLink)
-        self.group_slo_links: _SLOLinks[AssetGroupSLOLink] = _SLOLinks(self._http, 'asset-groups', AssetGroupSLOLink)
         self.datasources = _DataSources(self._http)
         self.sli_definitions = _SLIDefinitions(self._http)
         self.slo_definitions = _SLODefinitions(self._http)
