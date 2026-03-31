@@ -25,10 +25,10 @@ from app.modules.quality_gate.schemas import (
     AnnotationHide,
     AnnotationRead,
     AnnotationUpdate,
-    AssetTriggerRequest,
-    AssetTriggerResponse,
-    BatchTriggerRequest,
-    BatchTriggerResponse,
+    EvaluateBatchRequest,
+    EvaluateBatchResponse,
+    EvaluateSingleRequest,
+    EvaluateSingleResponse,
     EvaluationDetail,
     EvaluationNameEntry,
     EvaluationSummary,
@@ -39,8 +39,6 @@ from app.modules.quality_gate.schemas import (
     OverrideStatusRequest,
     PinBaselineRequest,
     TrendPoint,
-    TriggerRequest,
-    TriggerResponse,
 )
 from app.modules.quality_gate.trigger_service import TriggerService
 from app.queue import get_arq_pool
@@ -48,40 +46,32 @@ from app.queue import get_arq_pool
 router = APIRouter()
 
 
+# ---- Trigger ----
+
+
+@router.post('/evaluate', response_model=EvaluateSingleResponse, status_code=201)
+async def evaluate_asset(
+    body: EvaluateSingleRequest,
+    repos: QualityGateRepos = Depends(get_qg_repos),
+    arq_pool: ArqRedis = Depends(get_arq_pool),
+) -> EvaluateSingleResponse:
+    """Trigger evaluation for all SLOs bound to an asset."""
+    service = TriggerService(repos, arq_pool)
+    return await service.trigger_evaluate(body)
+
+
+@router.post('/evaluate/batch', response_model=EvaluateBatchResponse, status_code=201)
+async def evaluate_batch(
+    body: EvaluateBatchRequest,
+    repos: QualityGateRepos = Depends(get_qg_repos),
+    arq_pool: ArqRedis = Depends(get_arq_pool),
+) -> EvaluateBatchResponse:
+    """Trigger batch evaluations (by_date or by_asset mode)."""
+    service = TriggerService(repos, arq_pool)
+    return await service.trigger_evaluate_batch(body)
+
+
 # ---- Evaluations ----
-
-
-@router.post('/evaluations', response_model=TriggerResponse, status_code=202)
-async def trigger_evaluation(
-    body: TriggerRequest,
-    repos: QualityGateRepos = Depends(get_qg_repos),
-    arq_pool: ArqRedis = Depends(get_arq_pool),
-) -> TriggerResponse:
-    """Trigger a single asset evaluation."""
-    service = TriggerService(repos, arq_pool)
-    return await service.trigger_single(body)
-
-
-@router.post('/evaluations/asset', response_model=AssetTriggerResponse, status_code=202)
-async def trigger_asset(
-    body: AssetTriggerRequest,
-    repos: QualityGateRepos = Depends(get_qg_repos),
-    arq_pool: ArqRedis = Depends(get_arq_pool),
-) -> AssetTriggerResponse:
-    """Trigger evaluations for all SLOs linked to an asset."""
-    service = TriggerService(repos, arq_pool)
-    return await service.trigger_asset(body)
-
-
-@router.post('/evaluations/batch', response_model=BatchTriggerResponse, status_code=202)
-async def trigger_batch(
-    body: BatchTriggerRequest,
-    repos: QualityGateRepos = Depends(get_qg_repos),
-    arq_pool: ArqRedis = Depends(get_arq_pool),
-) -> BatchTriggerResponse:
-    """Trigger evaluations for all assets in a group."""
-    service = TriggerService(repos, arq_pool)
-    return await service.trigger_batch(body)
 
 
 @router.get('/evaluations', response_model=PagedResponse[EvaluationSummary])
