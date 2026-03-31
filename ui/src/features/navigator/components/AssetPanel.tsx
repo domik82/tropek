@@ -305,6 +305,8 @@ export function AssetPanel({ assetName, initialEvalId }: Props) {
           evals={evals}
           heatmapData={heatmapData}
           onEvalSelect={setSelectedEvalId}
+          onSlotSelect={handleSlotSelect}
+          metricEvalMap={metricEvalMap}
           mode={mode}
           setMode={setMode}
           explorerButton={explorerButton}
