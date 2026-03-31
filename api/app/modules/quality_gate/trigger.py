@@ -14,10 +14,8 @@ from app.modules.quality_gate.exceptions import (
 from app.modules.quality_gate.protocols import (
     AssetReader,
     DataSourceReader,
-    GroupSLOLinkReader,
     SLIReader,
     SLOBindingReader,
-    SLOLinkReader,
     SLOReader,
 )
 
@@ -62,17 +60,12 @@ async def resolve_single_trigger(
     asset_name: str,
     slo_name: str,
     asset_repo: AssetReader,
-    slo_link_repo: SLOLinkReader,
     sli_repo: SLIReader,
     slo_repo: SLOReader,
     ds_repo: DataSourceReader,
-    binding_repo: SLOBindingReader | None = None,
+    binding_repo: SLOBindingReader,
 ) -> TriggerContext:
     """Resolve all references for a single asset evaluation.
-
-    Resolution order:
-      1. Legacy asset_slo_links table (backward compat)
-      2. New slo_bindings table (direct asset or via group membership)
 
     Raises domain exceptions if any reference is missing.
     """
@@ -81,17 +74,9 @@ async def resolve_single_trigger(
         msg = f"asset '{asset_name}' not found"
         raise AssetNotFoundError(msg)
 
-    # Try legacy SLO link first
-    links = await slo_link_repo.list_by_asset(asset.id)
-    link = next((lnk for lnk in links if lnk.slo_name == slo_name), None)
-
-    # Fall back to new SLO binding (direct or via group membership)
-    binding = None
-    if link is None and binding_repo is not None:
-        binding = await binding_repo.find_for_asset(asset.id, slo_name)
-
-    if link is None and binding is None:
-        msg = f"no slo link or binding for asset '{asset_name}' with slo '{slo_name}'"
+    binding = await binding_repo.find_for_asset(asset.id, slo_name)
+    if binding is None:
+        msg = f"no slo binding for asset '{asset_name}' with slo '{slo_name}'"
         raise SLONotConfiguredError(msg)
 
     slo_def = await slo_repo.get_latest(slo_name)
@@ -99,10 +84,9 @@ async def resolve_single_trigger(
         msg = f"slo definition '{slo_name}' not found"
         raise SLONotConfiguredError(msg)
 
-    # Resolve SLI: SLO definition first, then legacy link fallback
-    sli_name = slo_def.sli_name or (link.sli_name if link else None)
+    sli_name = slo_def.sli_name
     if sli_name is None:
-        msg = f"no sli_name on slo '{slo_name}' and no legacy link with sli reference"
+        msg = f"no sli_name on slo '{slo_name}'"
         raise SLONotConfiguredError(msg)
 
     sli_version = slo_def.sli_version
@@ -115,15 +99,9 @@ async def resolve_single_trigger(
         msg = f"sli definition '{sli_name}' not found"
         raise SLONotConfiguredError(msg)
 
-    # Resolve datasource: from binding or legacy link (one is always non-None here)
-    if binding is not None:
-        ds_name = binding.data_source_name
-    else:
-        assert link is not None  # guarded by SLONotConfiguredError above
-        ds_name = link.data_source_name
-    ds = await ds_repo.get_by_name(ds_name)
+    ds = await ds_repo.get_by_name(binding.data_source_name)
     if ds is None:
-        msg = f"datasource '{ds_name}' not found"
+        msg = f"datasource '{binding.data_source_name}' not found"
         raise DataSourceNotFoundError(msg)
 
     return TriggerContext(
@@ -146,37 +124,12 @@ async def resolve_single_trigger(
 async def resolve_all_slos_for_asset(
     *,
     asset_id: uuid.UUID,
-    slo_link_repo: SLOLinkReader,
-    group_link_repo: GroupSLOLinkReader,
     binding_repo: SLOBindingReader,
     group_ids: list[uuid.UUID],
 ) -> list[str]:
-    """Collect all SLO names linked to an asset from all binding sources.
-
-    Sources:
-      1. AssetSLOLink — direct asset-level links
-      2. AssetGroupSLOLink — group-level links (from groups the asset belongs to)
-      3. SLOBinding — polymorphic bindings (direct asset + via group membership)
-    """
-    slo_names: set[str] = set()
-
-    # Source 1: Direct AssetSLOLinks
-    asset_links = await slo_link_repo.list_by_asset(asset_id)
-    for lnk in asset_links:
-        slo_names.add(lnk.slo_name)
-
-    # Source 2: AssetGroupSLOLinks (from groups the asset belongs to)
-    for gid in group_ids:
-        group_links = await group_link_repo.list_by_group(gid)
-        for gl in group_links:
-            slo_names.add(gl.slo_name)
-
-    # Source 3: SLOBindings (direct asset + via group membership)
+    """Collect all SLO names bound to an asset via slo_bindings (direct + via groups)."""
     bindings = await binding_repo.list_for_asset_evaluation(asset_id, group_ids)
-    for b in bindings:
-        slo_names.add(b.slo_name)
-
-    return sorted(slo_names)
+    return sorted({b.slo_name for b in bindings})
 
 
 async def resolve_all_bindings_for_asset(

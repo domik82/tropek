@@ -43,7 +43,6 @@ class TriggerService:
             asset_name=request.asset_name,
             slo_name=request.slo_name,
             asset_repo=self._repos.asset_repo,
-            slo_link_repo=self._repos.slo_link_repo,
             sli_repo=self._repos.sli_def_repo,
             slo_repo=self._repos.slo_repo,
             ds_repo=self._repos.ds_repo,
@@ -104,8 +103,6 @@ class TriggerService:
 
         slo_names = await resolve_all_slos_for_asset(
             asset_id=asset.id,
-            slo_link_repo=self._repos.slo_link_repo,
-            group_link_repo=self._repos.group_link_repo,
             binding_repo=self._repos.binding_repo,
             group_ids=group_ids,
         )
@@ -123,7 +120,6 @@ class TriggerService:
                     asset_name=request.asset_name,
                     slo_name=slo_name,
                     asset_repo=self._repos.asset_repo,
-                    slo_link_repo=self._repos.slo_link_repo,
                     sli_repo=self._repos.sli_def_repo,
                     slo_repo=self._repos.slo_repo,
                     ds_repo=self._repos.ds_repo,
@@ -199,8 +195,6 @@ class TriggerService:
             )
             slo_names = await resolve_all_slos_for_asset(
                 asset_id=asset.id,
-                slo_link_repo=self._repos.slo_link_repo,
-                group_link_repo=self._repos.group_link_repo,
                 binding_repo=self._repos.binding_repo,
                 group_ids=member_group_ids,
             )
@@ -211,7 +205,6 @@ class TriggerService:
                         asset_name=asset.name,
                         slo_name=slo_name,
                         asset_repo=self._repos.asset_repo,
-                        slo_link_repo=self._repos.slo_link_repo,
                         sli_repo=self._repos.sli_def_repo,
                         slo_repo=self._repos.slo_repo,
                         ds_repo=self._repos.ds_repo,

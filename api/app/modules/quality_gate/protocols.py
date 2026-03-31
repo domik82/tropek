@@ -11,8 +11,6 @@ from typing import Protocol
 
 from app.db.models import (
     Asset,
-    AssetGroupSLOLink,
-    AssetSLOLink,
     DataSource,
     SLIDefinition,
     SLOBinding,
@@ -25,22 +23,6 @@ class AssetReader(Protocol):
 
     async def get_by_name(self, name: str) -> Asset | None:
         """Return asset by unique name, or None."""
-        ...
-
-
-class SLOLinkReader(Protocol):
-    """Read-only protocol for listing SLO links bound to an asset."""
-
-    async def list_by_asset(self, asset_id: uuid.UUID) -> list[AssetSLOLink]:
-        """Return all SLO links for an asset."""
-        ...
-
-
-class GroupSLOLinkReader(Protocol):
-    """Read-only protocol for listing SLO links bound to an asset group."""
-
-    async def list_by_group(self, group_id: uuid.UUID) -> list[AssetGroupSLOLink]:
-        """Return all SLO links for an asset group."""
         ...
 
 
