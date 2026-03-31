@@ -1,5 +1,5 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { SliForm } from './SliForm'
 import type { SliDefinition } from '@/features/slis'
@@ -34,17 +34,26 @@ const mockSli: SliDefinition = {
   created_at: '2024-01-01T00:00:00Z',
 }
 
+let queryClient: QueryClient
+
 function Wrapper({ children }: { children: React.ReactNode }) {
-  return <QueryClientProvider client={new QueryClient()}>{children}</QueryClientProvider>
+  return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
 }
 
 describe('SliForm', () => {
   beforeEach(() => {
+    queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
     mockCreate.mockReset()
     vi.mocked(useCreateSli).mockReturnValue({
       mutate: mockCreate,
       isPending: false,
     } as unknown as ReturnType<typeof useCreateSli>)
+  })
+
+  afterEach(() => {
+    queryClient.cancelQueries()
+    queryClient.clear()
+    cleanup()
   })
 
   it('renders all form fields in create mode', () => {

@@ -1,5 +1,5 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { render, screen, fireEvent, cleanup } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { SloDetailView } from './SloDetailView'
 import type { SloDefinition } from '@/features/slos'
@@ -67,12 +67,15 @@ const mockVersions: SloDefinition[] = [
   { ...mockSlo, version: 2, created_at: '2024-01-01T00:00:00Z' },
 ]
 
+let queryClient: QueryClient
+
 function Wrapper({ children }: { children: React.ReactNode }) {
-  return <QueryClientProvider client={new QueryClient()}>{children}</QueryClientProvider>
+  return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
 }
 
 describe('SloDetailView', () => {
   beforeEach(() => {
+    queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
     vi.mocked(useSloDetail).mockReturnValue({
       data: mockSlo,
       isLoading: false,
@@ -95,6 +98,12 @@ describe('SloDetailView', () => {
       isLoading: false,
       isError: false,
     } as unknown as ReturnType<typeof useGroupTree>)
+  })
+
+  afterEach(() => {
+    queryClient.cancelQueries()
+    queryClient.clear()
+    cleanup()
   })
 
   it('renders name, version badge, and active badge', () => {

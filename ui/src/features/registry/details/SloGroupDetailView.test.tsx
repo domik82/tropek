@@ -1,5 +1,5 @@
-import { describe, it, expect, vi } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { render, screen, fireEvent, cleanup } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import type { ReactNode } from 'react'
 import { SloGroupDetailView } from './SloGroupDetailView'
@@ -31,12 +31,22 @@ vi.mock('@/features/slos/hooks', () => ({
   useSloVersions: () => ({ data: [] }),
 }))
 
+let queryClient: QueryClient
+
 function wrapper({ children }: { children: ReactNode }) {
-  const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-  return <QueryClientProvider client={qc}>{children}</QueryClientProvider>
+  return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
 }
 
 describe('SloGroupDetailView', () => {
+  beforeEach(() => {
+    queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  })
+
+  afterEach(() => {
+    queryClient.cancelQueries()
+    queryClient.clear()
+    cleanup()
+  })
   it('renders group name and template link', () => {
     render(<SloGroupDetailView name="app-x-plugins" onNavigate={vi.fn()} />, { wrapper })
     expect(screen.getByText('App-X Plugins')).toBeInTheDocument()
