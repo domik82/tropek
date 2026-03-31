@@ -16,14 +16,14 @@ def test_orm_models_importable() -> None:
         AssetType,
         Base,
         DataSource,
-        Evaluation,
         EvaluationAnnotation,
-        EvaluationBatch,
+        EvaluationRun,
         IndicatorResultRow,
         SLIDefinition,
         SLIValue,
         SLOBinding,
         SLODefinition,
+        SLOEvaluation,
         SLOGroup,
         SLOObjective,
         TemplateBinding,
@@ -43,9 +43,83 @@ def test_orm_models_importable() -> None:
         'slo_groups',
         'slo_objectives',
         'evaluations',
+        'slo_evaluations',
         'evaluation_annotations',
-        'evaluation_batches',
         'indicator_results',
         'sli_values',
         'template_bindings',
     }
+
+
+def test_slo_evaluation_model_exists() -> None:
+    from app.db.models import SLOEvaluation  # noqa: PLC0415
+
+    col_names = {c.name for c in SLOEvaluation.__table__.columns}
+    assert 'evaluation_id' in col_names
+    assert 'evaluation_name' in col_names
+    assert 'slo_name' in col_names
+    assert 'achieved_points' in col_names
+    assert 'total_points' in col_names
+    assert SLOEvaluation.__tablename__ == 'slo_evaluations'
+
+
+def test_evaluation_run_model_exists() -> None:
+    from app.db.models import EvaluationRun  # noqa: PLC0415
+
+    col_names = {c.name for c in EvaluationRun.__table__.columns}
+    assert 'id' in col_names
+    assert 'asset_id' in col_names
+    assert 'eval_name' in col_names
+    assert 'status' in col_names
+    assert 'result' in col_names
+    assert 'achieved_points' in col_names
+    assert 'total_points' in col_names
+    assert EvaluationRun.__tablename__ == 'evaluations'
+
+
+def test_evaluation_batch_removed() -> None:
+    from app.db import models  # noqa: PLC0415
+
+    assert not hasattr(models, 'EvaluationBatch')
+
+
+def test_indicator_result_uses_slo_evaluation_id() -> None:
+    from app.db.models import IndicatorResultRow  # noqa: PLC0415
+
+    col_names = {c.name for c in IndicatorResultRow.__table__.columns}
+    assert 'slo_evaluation_id' in col_names
+    assert 'evaluation_id' not in col_names
+
+
+def test_sli_value_uses_slo_evaluation_id() -> None:
+    from app.db.models import SLIValue  # noqa: PLC0415
+
+    col_names = {c.name for c in SLIValue.__table__.columns}
+    assert 'slo_evaluation_id' in col_names
+    assert 'eval_id' not in col_names
+
+
+def test_annotation_uses_slo_evaluation_id() -> None:
+    from app.db.models import EvaluationAnnotation  # noqa: PLC0415
+
+    col_names = {c.name for c in EvaluationAnnotation.__table__.columns}
+    assert 'slo_evaluation_id' in col_names
+    assert 'evaluation_id' not in col_names
+
+
+def test_asset_group_member_uses_asset_group_id() -> None:
+    from app.db.models import AssetGroupMember  # noqa: PLC0415
+
+    col_names = {c.name for c in AssetGroupMember.__table__.columns}
+    assert 'asset_group_id' in col_names
+    assert 'group_id' not in col_names
+
+
+def test_asset_group_link_uses_renamed_fk_cols() -> None:
+    from app.db.models import AssetGroupLink  # noqa: PLC0415
+
+    col_names = {c.name for c in AssetGroupLink.__table__.columns}
+    assert 'parent_asset_group_id' in col_names
+    assert 'child_asset_group_id' in col_names
+    assert 'parent_group_id' not in col_names
+    assert 'child_group_id' not in col_names
