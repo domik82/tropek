@@ -180,10 +180,10 @@ export function AssetPanel({ assetName, initialEvalId }: Props) {
     const slots = new Map<string, { evalId: string; count: number }>()
     for (const group of heatmapData.groups) {
       for (const c of group.cells) {
-        if (notedEvals.has(c.evaluation_id) && !slots.has(c.period_start)) {
-          const summary = notedEvals.get(c.evaluation_id)!
+        if (notedEvals.has(c.slo_evaluation_id) && !slots.has(c.period_start)) {
+          const summary = notedEvals.get(c.slo_evaluation_id)!
           slots.set(c.period_start, {
-            evalId: c.evaluation_id,
+            evalId: c.slo_evaluation_id,
             count: summary.annotation_count ?? 0,
           })
         }
