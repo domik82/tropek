@@ -76,6 +76,10 @@ export interface HeatmapChartProps {
   instructionText?: string
   /** Content rendered between the legend bar and the chart canvas. */
   aboveChart?: ReactNode
+  /**
+   * Set of row indices that should render with blue bold text (SLO group headers).
+   */
+  headerRowIndices?: Set<number>
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -92,6 +96,7 @@ export function HeatmapChart({
   formatColumnLabel = fmtSlot,
   instructionText,
   aboveChart,
+  headerRowIndices = new Set<number>(),
 }: HeatmapChartProps) {
   const { theme } = useTheme()
   const colours = RESULT_COLOUR[theme]
@@ -154,6 +159,21 @@ export function HeatmapChart({
           color: ct.axisLabel,
           width: 210,
           overflow: 'truncate' as const,
+          ...(headerRowIndices && headerRowIndices.size > 0
+            ? {
+                formatter: (value: string, index: number) =>
+                  headerRowIndices.has(index) ? `{sloHeader|${value}}` : value,
+                rich: {
+                  sloHeader: {
+                    color: '#58a6ff',
+                    fontSize: 14,
+                    fontWeight: 'bold',
+                    width: 210,
+                    overflow: 'truncate',
+                  },
+                },
+              }
+            : {}),
         },
         axisLine: { lineStyle: { color: ct.grid } },
         splitLine: { lineStyle: { color: ct.bg } },
@@ -223,7 +243,7 @@ export function HeatmapChart({
       ],
       grid: { top: 10, bottom: 80, left: 210, right: 20 },
     }),
-    [columns, rows, renderCells, ct, pad, annotations, formatTooltip, formatColumnLabel],
+    [columns, rows, renderCells, ct, pad, annotations, formatTooltip, formatColumnLabel, headerRowIndices],
   )
 
   const chartHeight =
