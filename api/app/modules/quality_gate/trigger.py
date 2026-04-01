@@ -13,9 +13,9 @@ from app.modules.quality_gate.exceptions import (
 )
 from app.modules.quality_gate.protocols import (
     AssetReader,
+    AssignmentReader,
     DataSourceReader,
     SLIReader,
-    SLOBindingReader,
     SLOReader,
 )
 
@@ -31,28 +31,14 @@ class TriggerContext:
     asset_variables: dict[str, Any]
     slo_name: str
     slo_version: int
+    slo_definition_id: uuid.UUID
     sli_name: str
     sli_version: int
+    sli_definition_id: uuid.UUID | None
     data_source_name: str
     adapter_url: str
     adapter_type: str
     indicators: dict[str, str]
-
-
-@dataclass
-class ResolvedBinding:
-    """One resolved (slo_name, data_source_name) pair for evaluation."""
-
-    slo_name: str
-    data_source_name: str
-    source: str  # "direct_asset", "direct_group", "template_asset", "template_group"
-
-
-_PRECEDENCE = {'direct_asset': 4, 'direct_group': 3, 'template_asset': 2, 'template_group': 1}
-
-
-def _precedence(source: str) -> int:
-    return _PRECEDENCE.get(source, 0)
 
 
 async def resolve_single_trigger(
@@ -63,9 +49,10 @@ async def resolve_single_trigger(
     sli_repo: SLIReader,
     slo_repo: SLOReader,
     ds_repo: DataSourceReader,
-    binding_repo: SLOBindingReader,
+    assignment_repo: AssignmentReader,
+    group_ids: list[uuid.UUID],
 ) -> TriggerContext:
-    """Resolve all references for a single asset evaluation.
+    """Resolve all references for a single asset+SLO pair.
 
     Raises domain exceptions if any reference is missing.
     """
@@ -74,34 +61,36 @@ async def resolve_single_trigger(
         msg = f"asset '{asset_name}' not found"
         raise AssetNotFoundError(msg)
 
-    binding = await binding_repo.find_for_asset(asset.id, slo_name)
-    if binding is None:
-        msg = f"no slo binding for asset '{asset_name}' with slo '{slo_name}'"
+    resolved = await assignment_repo.find_for_asset(asset.id, group_ids, slo_name)
+    if resolved is None:
+        msg = f"no assignment for asset '{asset_name}' with slo '{slo_name}'"
         raise SLONotConfiguredError(msg)
 
-    slo_def = await slo_repo.get_latest(slo_name)
+    slo_def = await slo_repo.get_by_id(resolved.slo_definition_id)
     if slo_def is None:
-        msg = f"slo definition '{slo_name}' not found"
+        msg = f"slo definition '{resolved.slo_definition_id}' not found"
         raise SLONotConfiguredError(msg)
 
-    sli_name = slo_def.sli_name
-    if sli_name is None:
-        msg = f"no sli_name on slo '{slo_name}'"
-        raise SLONotConfiguredError(msg)
-
-    sli_version = slo_def.sli_version
-    if sli_version is not None:
-        sli_def = await sli_repo.get_version(sli_name, sli_version)
+    # Load SLI by FK if available, fall back to name-based lookup
+    if slo_def.sli_definition_id is not None:
+        sli_def = await sli_repo.get_by_id(slo_def.sli_definition_id)
+    elif slo_def.sli_name is not None:
+        sli_def = (
+            await sli_repo.get_version(slo_def.sli_name, slo_def.sli_version)
+            if slo_def.sli_version is not None
+            else await sli_repo.get_latest(slo_def.sli_name)
+        )
     else:
-        sli_def = await sli_repo.get_latest(sli_name)
+        msg = f"no sli linked to slo '{slo_def.name}'"
+        raise SLONotConfiguredError(msg)
 
     if sli_def is None:
-        msg = f"sli definition '{sli_name}' not found"
+        msg = f"sli definition for slo '{slo_def.name}' not found"
         raise SLONotConfiguredError(msg)
 
-    ds = await ds_repo.get_by_name(binding.data_source_name)
+    ds = await ds_repo.get_by_id(resolved.data_source_id)
     if ds is None:
-        msg = f"datasource '{binding.data_source_name}' not found"
+        msg = f"datasource '{resolved.data_source_id}' not found"
         raise DataSourceNotFoundError(msg)
 
     return TriggerContext(
@@ -112,8 +101,10 @@ async def resolve_single_trigger(
         asset_variables=getattr(asset, 'variables', {}),
         slo_name=slo_def.name,
         slo_version=slo_def.version,
+        slo_definition_id=slo_def.id,
         sli_name=sli_def.name,
         sli_version=sli_def.version,
+        sli_definition_id=slo_def.sli_definition_id,
         data_source_name=ds.name,
         adapter_url=ds.adapter_url,
         adapter_type=ds.adapter_type,
@@ -124,34 +115,9 @@ async def resolve_single_trigger(
 async def resolve_all_slos_for_asset(
     *,
     asset_id: uuid.UUID,
-    binding_repo: SLOBindingReader,
+    assignment_repo: AssignmentReader,
     group_ids: list[uuid.UUID],
 ) -> list[str]:
-    """Collect all SLO names bound to an asset via slo_bindings (direct + via groups)."""
-    bindings = await binding_repo.list_for_asset_evaluation(asset_id, group_ids)
-    return sorted({b.slo_name for b in bindings})
-
-
-async def resolve_all_bindings_for_asset(
-    *,
-    asset_id: uuid.UUID,
-    group_ids: list[uuid.UUID],
-    binding_repo: SLOBindingReader,
-) -> list[ResolvedBinding]:
-    """Resolve all SLO bindings for an asset (direct + template-sourced).
-
-    Template bindings fan out into real slo_bindings with source='template',
-    so this just queries the slo_bindings table and deduplicates by precedence:
-    direct_asset > direct_group > template_asset > template_group.
-    """
-    all_bindings = await binding_repo.list_for_asset_evaluation(asset_id, group_ids)
-    seen: dict[str, ResolvedBinding] = {}
-    for b in all_bindings:
-        if b.source == 'template':
-            source = 'template_asset' if str(b.target_type) == 'asset' else 'template_group'
-        else:
-            source = 'direct_asset' if str(b.target_type) == 'asset' else 'direct_group'
-        rb = ResolvedBinding(slo_name=b.slo_name, data_source_name=b.data_source_name, source=source)
-        if b.slo_name not in seen or _precedence(source) > _precedence(seen[b.slo_name].source):
-            seen[b.slo_name] = rb
-    return sorted(seen.values(), key=lambda r: r.slo_name)
+    """Collect all SLO names assigned to an asset (direct + via groups)."""
+    resolved = await assignment_repo.resolve_for_asset(asset_id, group_ids)
+    return sorted(r.slo_name for r in resolved)

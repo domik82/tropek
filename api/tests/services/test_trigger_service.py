@@ -7,6 +7,7 @@ from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from app.modules.assignments.repository import ResolvedAssignment
 from app.modules.quality_gate.dependencies import QualityGateRepos
 from app.modules.quality_gate.exceptions import (
     AssetNotFoundError,
@@ -54,10 +55,12 @@ def _make_sli_def() -> MagicMock:
 
 def _make_slo_def() -> MagicMock:
     slo = MagicMock()
+    slo.id = uuid.uuid4()
     slo.name = 'perf-slo'
     slo.version = 1
     slo.sli_name = 'system-sli'
     slo.sli_version = None
+    slo.sli_definition_id = None
     return slo
 
 
@@ -87,7 +90,7 @@ def _make_repos() -> QualityGateRepos:
         baseline_repo=AsyncMock(),
         asset_repo=AsyncMock(),
         asset_group_repo=AsyncMock(),
-        binding_repo=AsyncMock(),
+        assignment_repo=AsyncMock(),
         sli_def_repo=AsyncMock(),
         slo_repo=AsyncMock(),
         ds_repo=AsyncMock(),
@@ -98,15 +101,20 @@ def _make_repos() -> QualityGateRepos:
 def _configure_happy_path(repos: QualityGateRepos) -> None:
     """Set up mocks for a successful single trigger resolution."""
     asset = _make_asset()
+    slo_def = _make_slo_def()
+    ds_id = uuid.uuid4()
     repos.asset_repo.get_by_name.return_value = asset
-    # Binding replaces legacy link
-    binding = MagicMock()
-    binding.slo_name = 'perf-slo'
-    binding.data_source_name = 'prom-1'
-    repos.binding_repo.find_for_asset.return_value = binding
+    repos.asset_group_repo.list_group_ids_for_asset.return_value = []
+    repos.assignment_repo.find_for_asset.return_value = ResolvedAssignment(
+        slo_name='perf-slo',
+        slo_definition_id=slo_def.id,
+        data_source_id=ds_id,
+        comparison_rules=None,
+        source='direct_asset',
+    )
     repos.sli_def_repo.get_latest.return_value = _make_sli_def()
-    repos.slo_repo.get_latest.return_value = _make_slo_def()
-    repos.ds_repo.get_by_name.return_value = _make_ds()
+    repos.slo_repo.get_by_id.return_value = slo_def
+    repos.ds_repo.get_by_id.return_value = _make_ds()
     repos.eval_repo.find_duplicate.return_value = None
     ev = _make_evaluation()
     repos.eval_repo.create_pending.return_value = ev
@@ -139,7 +147,8 @@ async def test_trigger_single_slo_not_configured() -> None:
     repos = _make_repos()
     asset = _make_asset()
     repos.asset_repo.get_by_name.return_value = asset
-    repos.binding_repo.find_for_asset.return_value = None
+    repos.asset_group_repo.list_group_ids_for_asset.return_value = []
+    repos.assignment_repo.find_for_asset.return_value = None
     pool = AsyncMock()
 
     service = TriggerService(repos, pool)
@@ -202,8 +211,10 @@ async def test_trigger_asset_happy_path() -> None:
             asset_variables={},
             slo_name=kwargs['slo_name'],
             slo_version=1,
+            slo_definition_id=uuid.uuid4(),
             sli_name='sys-sli',
             sli_version=1,
+            sli_definition_id=None,
             data_source_name='prom-1',
             adapter_type='prometheus',
         )
@@ -297,8 +308,10 @@ async def test_trigger_asset_skips_unresolvable_slos() -> None:
             asset_variables={},
             slo_name=kwargs['slo_name'],
             slo_version=1,
+            slo_definition_id=uuid.uuid4(),
             sli_name='sys-sli',
             sli_version=1,
+            sli_definition_id=None,
             data_source_name='prom-1',
             adapter_type='prometheus',
         )

@@ -43,6 +43,12 @@ class TriggerService:
 
     async def trigger_single(self, request: TriggerRequest) -> TriggerResponse:
         """Resolve references, create pending evaluation, enqueue job."""
+        asset = await self._repos.asset_repo.get_by_name(request.asset_name)
+        if asset is None:
+            msg = f"asset '{request.asset_name}' not found"
+            raise AssetNotFoundError(msg)
+        group_ids = await self._repos.asset_group_repo.list_group_ids_for_asset(asset.id)
+
         ctx = await resolve_single_trigger(
             asset_name=request.asset_name,
             slo_name=request.slo_name,
@@ -50,7 +56,8 @@ class TriggerService:
             sli_repo=self._repos.sli_def_repo,
             slo_repo=self._repos.slo_repo,
             ds_repo=self._repos.ds_repo,
-            binding_repo=self._repos.binding_repo,
+            assignment_repo=self._repos.assignment_repo,
+            group_ids=group_ids,
         )
 
         # Duplicate prevention: app-level check for clean error messages.
@@ -89,8 +96,10 @@ class TriggerService:
                 asset_id=ctx.asset_id,
                 slo_name=ctx.slo_name,
                 slo_version=ctx.slo_version,
+                slo_definition_id=ctx.slo_definition_id,
                 sli_name=ctx.sli_name,
                 sli_version=ctx.sli_version,
+                sli_definition_id=ctx.sli_definition_id,
                 data_source_name=ctx.data_source_name,
                 adapter_used=ctx.adapter_type,
             )
@@ -111,7 +120,7 @@ class TriggerService:
 
         slo_names = await resolve_all_slos_for_asset(
             asset_id=asset.id,
-            binding_repo=self._repos.binding_repo,
+            assignment_repo=self._repos.assignment_repo,
             group_ids=group_ids,
         )
 
@@ -131,7 +140,8 @@ class TriggerService:
                     sli_repo=self._repos.sli_def_repo,
                     slo_repo=self._repos.slo_repo,
                     ds_repo=self._repos.ds_repo,
-                    binding_repo=self._repos.binding_repo,
+                    assignment_repo=self._repos.assignment_repo,
+                    group_ids=group_ids,
                 )
             except EvaluationError:
                 continue
@@ -166,8 +176,10 @@ class TriggerService:
                     asset_id=ctx.asset_id,
                     slo_name=ctx.slo_name,
                     slo_version=ctx.slo_version,
+                    slo_definition_id=ctx.slo_definition_id,
                     sli_name=ctx.sli_name,
                     sli_version=ctx.sli_version,
+                    sli_definition_id=ctx.sli_definition_id,
                     data_source_name=ctx.data_source_name,
                     adapter_used=ctx.adapter_type,
                 )
@@ -207,7 +219,7 @@ class TriggerService:
             )
             slo_names = await resolve_all_slos_for_asset(
                 asset_id=asset.id,
-                binding_repo=self._repos.binding_repo,
+                assignment_repo=self._repos.assignment_repo,
                 group_ids=member_group_ids,
             )
 
@@ -220,7 +232,8 @@ class TriggerService:
                         sli_repo=self._repos.sli_def_repo,
                         slo_repo=self._repos.slo_repo,
                         ds_repo=self._repos.ds_repo,
-                        binding_repo=self._repos.binding_repo,
+                        assignment_repo=self._repos.assignment_repo,
+                        group_ids=member_group_ids,
                     )
                 except EvaluationError:
                     continue
@@ -272,8 +285,10 @@ class TriggerService:
                     asset_id=ctx.asset_id,
                     slo_name=ctx.slo_name,
                     slo_version=ctx.slo_version,
+                    slo_definition_id=ctx.slo_definition_id,
                     sli_name=ctx.sli_name,
                     sli_version=ctx.sli_version,
+                    sli_definition_id=ctx.sli_definition_id,
                     data_source_name=ctx.data_source_name,
                     adapter_used=ctx.adapter_type,
                 )
@@ -294,7 +309,7 @@ class TriggerService:
         )
 
     async def trigger_evaluate(self, request: EvaluateSingleRequest) -> EvaluateSingleResponse:
-        """Create parent EvaluationRun + one SLOEvaluation per SLO binding. Enqueue all."""
+        """Create parent EvaluationRun + one SLOEvaluation per SLO assignment. Enqueue all."""
         asset = await self._repos.asset_repo.get_by_name(request.asset_name)
         if asset is None:
             msg = f"asset '{request.asset_name}' not found"
@@ -303,7 +318,7 @@ class TriggerService:
         group_ids = await self._repos.asset_group_repo.list_group_ids_for_asset(asset.id)
         slo_names = await resolve_all_slos_for_asset(
             asset_id=asset.id,
-            binding_repo=self._repos.binding_repo,
+            assignment_repo=self._repos.assignment_repo,
             group_ids=group_ids,
         )
         if not slo_names:
@@ -327,7 +342,8 @@ class TriggerService:
                     sli_repo=self._repos.sli_def_repo,
                     slo_repo=self._repos.slo_repo,
                     ds_repo=self._repos.ds_repo,
-                    binding_repo=self._repos.binding_repo,
+                    assignment_repo=self._repos.assignment_repo,
+                    group_ids=group_ids,
                 )
             except EvaluationError:
                 continue
@@ -349,8 +365,10 @@ class TriggerService:
                     asset_id=ctx.asset_id,
                     slo_name=ctx.slo_name,
                     slo_version=ctx.slo_version,
+                    slo_definition_id=ctx.slo_definition_id,
                     sli_name=ctx.sli_name,
                     sli_version=ctx.sli_version,
+                    sli_definition_id=ctx.sli_definition_id,
                     data_source_name=ctx.data_source_name,
                     adapter_used=ctx.adapter_type,
                 )
