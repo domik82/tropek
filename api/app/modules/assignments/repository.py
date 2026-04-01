@@ -66,7 +66,9 @@ class AssignmentRepository:
         )
         return list(result.scalars().all())
 
-    async def list_slo_assignments_for_group(self, asset_group_id: uuid.UUID) -> list[SLOAssignment]:
+    async def list_slo_assignments_for_group(
+        self, asset_group_id: uuid.UUID
+    ) -> list[SLOAssignment]:
         """Return all direct-group SLO assignments ordered by slo_name."""
         result = await self._session.execute(
             select(SLOAssignment)
@@ -125,7 +127,9 @@ class AssignmentRepository:
         await self._session.flush()
         return row
 
-    async def list_group_assignments_for_asset(self, asset_id: uuid.UUID) -> list[SLOGroupAssignment]:
+    async def list_group_assignments_for_asset(
+        self, asset_id: uuid.UUID
+    ) -> list[SLOGroupAssignment]:
         """Return all group assignments for an asset."""
         result = await self._session.execute(
             select(SLOGroupAssignment).where(SLOGroupAssignment.asset_id == asset_id)
@@ -140,6 +144,13 @@ class AssignmentRepository:
             select(SLOGroupAssignment).where(SLOGroupAssignment.asset_group_id == asset_group_id)
         )
         return list(result.scalars().all())
+
+    async def get_group_assignment(self, assignment_id: uuid.UUID) -> SLOGroupAssignment | None:
+        """Return a group assignment by ID, or None."""
+        result = await self._session.execute(
+            select(SLOGroupAssignment).where(SLOGroupAssignment.id == assignment_id)
+        )
+        return result.scalar_one_or_none()
 
     async def delete_group_assignment(self, assignment_id: uuid.UUID) -> None:
         """Hard-delete a group assignment by ID."""
