@@ -58,6 +58,7 @@ export const CHART_THEME: Record<Theme, ChartTheme> = {
     axisLabel:    '#c0c8d0',
     grid:         '#2a3040',
     selectionRing: '#ffffff',
+
   },
   dark: {
     bg:           '#18191b',   // Radix slate-2
@@ -66,6 +67,7 @@ export const CHART_THEME: Record<Theme, ChartTheme> = {
     axisLabel:    '#b0b4ba',   // Radix slate-11
     grid:         '#212225',   // Radix slate-3
     selectionRing: '#ffffff',
+
   },
   light: {
     bg:           '#ffffff',   // TODO: Radix light scales
@@ -74,6 +76,7 @@ export const CHART_THEME: Record<Theme, ChartTheme> = {
     axisLabel:    '#595959',
     grid:         '#f5f5f5',
     selectionRing: '#ffffff',
+
   },
 }
 

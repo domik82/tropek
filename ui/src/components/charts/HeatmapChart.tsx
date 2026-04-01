@@ -114,10 +114,12 @@ export function HeatmapChart({
       cells.map(cell => {
         const isSelected =
           selectedColumn !== undefined && cell.value[0] === selectedColumn
-        const colour =
+        const isHeader = headerRowIndices.has(cell.value[1])
+        const baseColour =
           cell.result === 'none'
             ? ct.bg
             : (colours[cell.result as keyof ResultColours] ?? ct.bg)
+        const colour = isHeader ? brighten(baseColour, 0.7) : baseColour
         return {
           ...cell,
           hoverColor: brighten(colour, 1.4),
@@ -128,7 +130,7 @@ export function HeatmapChart({
           },
         }
       }),
-    [cells, colours, ct, selectedColumn],
+    [cells, colours, ct, selectedColumn, headerRowIndices],
   )
 
   const option = useMemo(
@@ -203,24 +205,24 @@ export function HeatmapChart({
             const cellData = renderCells[params.dataIndex]
             const is = cellData?.itemStyle
 
-            const children: object[] = [
-              {
-                type: 'rect',
-                shape: { x: rx, y: ry, width: rw, height: rh, r: 3 },
+            const children: object[] = []
+
+            children.push({
+              type: 'rect',
+              shape: { x: rx, y: ry, width: rw, height: rh, r: 3 },
+              style: {
+                fill: is?.color,
+                stroke: is?.borderColor,
+                lineWidth: is?.borderWidth ?? 0,
+              },
+              emphasis: {
                 style: {
-                  fill: is?.color,
-                  stroke: is?.borderColor,
-                  lineWidth: is?.borderWidth ?? 0,
-                },
-                emphasis: {
-                  style: {
-                    fill: cellData?.hoverColor,
-                    stroke: ct.selectionRing,
-                    lineWidth: 2,
-                  },
+                  fill: cellData?.hoverColor,
+                  stroke: ct.selectionRing,
+                  lineWidth: 2,
                 },
               },
-            ]
+            })
 
             if (annotations && cellData?.hasNote) {
               const s = Math.min(10, rw / 3, rh / 3)
