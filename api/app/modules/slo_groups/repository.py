@@ -31,6 +31,7 @@ class SLOGroupRepository:
         display_name: str | None = None,
         template_slo_name: str,
         template_slo_version: int,
+        template_slo_definition_id: uuid.UUID | None = None,
         gen_variables: dict[str, list[str]],
         tags: dict[str, Any] | None = None,
         author: str | None = None,
@@ -42,6 +43,7 @@ class SLOGroupRepository:
             display_name=display_name,
             template_slo_name=template_slo_name,
             template_slo_version=template_slo_version,
+            template_slo_definition_id=template_slo_definition_id,
             gen_variables=gen_variables,
             tags=tags or {},
             author=author,
@@ -80,6 +82,7 @@ class SLOGroupRepository:
         *,
         template_slo_name: str | None = None,
         template_slo_version: int | None = None,
+        template_slo_definition_id: uuid.UUID | None = None,
         gen_variables: dict[str, list[str]] | None = None,
         display_name: Any = _UNSET,
         tags: dict[str, Any] | None = None,
@@ -92,6 +95,8 @@ class SLOGroupRepository:
             group.template_slo_name = template_slo_name
         if template_slo_version is not None:
             group.template_slo_version = template_slo_version
+        if template_slo_definition_id is not None:
+            group.template_slo_definition_id = template_slo_definition_id
         if gen_variables is not None:
             group.gen_variables = gen_variables
         if display_name is not _UNSET:
