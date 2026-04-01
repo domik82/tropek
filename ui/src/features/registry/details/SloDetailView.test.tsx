@@ -15,6 +15,10 @@ vi.mock('@/features/slos', async (importOriginal) => {
   }
 })
 
+vi.mock('@/features/slis', () => ({
+  useSliDetail: vi.fn(() => ({ data: undefined, isLoading: false })),
+}))
+
 import { useSloDetail, useSloVersions, useDeleteSlo, useGroupTree } from '@/features/slos'
 
 const mockSlo: SloDefinition = {
