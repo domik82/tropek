@@ -73,6 +73,8 @@ class EvaluationRepository:
             sli_name=params.sli_name,
             sli_version=params.sli_version,
             data_source_name=params.data_source_name,
+            slo_definition_id=params.slo_definition_id,
+            sli_definition_id=params.sli_definition_id,
             status=EvaluationStatus.PENDING,
         )
         self._session.add(ev)

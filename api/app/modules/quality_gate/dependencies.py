@@ -12,8 +12,8 @@ from app.db.session import get_session
 from app.modules.assets.repository import (
     AssetGroupRepository,
     AssetRepository,
-    SLOBindingRepository,
 )
+from app.modules.assignments.repository import AssignmentRepository
 from app.modules.datasource.repository import DataSourceRepository
 from app.modules.quality_gate.annotation_repository import AnnotationRepository
 from app.modules.quality_gate.baseline_repository import BaselineRepository
@@ -37,7 +37,7 @@ class QualityGateRepos:
     baseline_repo: BaselineRepository
     asset_repo: AssetRepository
     asset_group_repo: AssetGroupRepository
-    binding_repo: SLOBindingRepository
+    assignment_repo: AssignmentRepository
     sli_def_repo: SLIRepository
     slo_repo: SLORepository
     ds_repo: DataSourceRepository
@@ -59,7 +59,7 @@ async def get_qg_repos(
         baseline_repo=BaselineRepository(session, cache=cache),
         asset_repo=AssetRepository(session, cache=cache),
         asset_group_repo=AssetGroupRepository(session),
-        binding_repo=SLOBindingRepository(session),
+        assignment_repo=AssignmentRepository(session),
         sli_def_repo=SLIRepository(session, cache=cache),
         slo_repo=SLORepository(session, cache=cache),
         ds_repo=DataSourceRepository(session),
