@@ -95,9 +95,19 @@ async def upgrade_asset_slo_assignment(
     session: AsyncSession = Depends(get_session),
 ) -> SLOAssignmentRead:
     """Upgrade an SLO assignment to a new definition version."""
-    row = await AssignmentRepository(session).upgrade_slo_assignment(
-        assignment_id, body.new_slo_definition_id
-    )
+    asset = await AssetRepository(session).get_by_name(name)
+    if asset is None:
+        raise_not_found('asset', name)
+    slo_def = await SLORepository(session).get_by_id(body.new_slo_definition_id)
+    if slo_def is None:
+        raise HTTPException(
+            status_code=422, detail=f"slo definition '{body.new_slo_definition_id}' not found"
+        )
+    repo = AssignmentRepository(session)
+    existing = await repo.get_slo_assignment(assignment_id)
+    if existing is None or existing.asset_id != asset.id:
+        raise HTTPException(status_code=404, detail='assignment not found')
+    row = await repo.upgrade_slo_assignment(assignment_id, body.new_slo_definition_id)
     if row is None:
         raise HTTPException(status_code=404, detail='assignment not found')
     return SLOAssignmentRead.model_validate(row)
@@ -110,7 +120,14 @@ async def delete_asset_slo_assignment(
     session: AsyncSession = Depends(get_session),
 ) -> None:
     """Remove an SLO assignment from an asset."""
-    await AssignmentRepository(session).delete_slo_assignment(assignment_id)
+    asset = await AssetRepository(session).get_by_name(name)
+    if asset is None:
+        raise_not_found('asset', name)
+    repo = AssignmentRepository(session)
+    row = await repo.get_slo_assignment(assignment_id)
+    if row is None or row.asset_id != asset.id:
+        raise HTTPException(status_code=404, detail='assignment not found')
+    await repo.delete_slo_assignment(assignment_id)
 
 
 # ---------------------------------------------------------------------------
@@ -180,7 +197,14 @@ async def delete_group_slo_assignment(
     session: AsyncSession = Depends(get_session),
 ) -> None:
     """Remove an SLO assignment from an asset group."""
-    await AssignmentRepository(session).delete_slo_assignment(assignment_id)
+    ag = await AssetGroupRepository(session).get_by_name(name)
+    if ag is None:
+        raise_not_found('asset group', name)
+    repo = AssignmentRepository(session)
+    row = await repo.get_slo_assignment(assignment_id)
+    if row is None or row.asset_group_id != ag.id:
+        raise HTTPException(status_code=404, detail='assignment not found')
+    await repo.delete_slo_assignment(assignment_id)
 
 
 # ---------------------------------------------------------------------------
@@ -247,7 +271,14 @@ async def delete_asset_group_assignment(
     session: AsyncSession = Depends(get_session),
 ) -> None:
     """Remove an SLO group assignment from an asset."""
-    await AssignmentRepository(session).delete_group_assignment(assignment_id)
+    asset = await AssetRepository(session).get_by_name(name)
+    if asset is None:
+        raise_not_found('asset', name)
+    repo = AssignmentRepository(session)
+    row = await repo.get_group_assignment(assignment_id)
+    if row is None or row.asset_id != asset.id:
+        raise HTTPException(status_code=404, detail='assignment not found')
+    await repo.delete_group_assignment(assignment_id)
 
 
 # ---------------------------------------------------------------------------
@@ -316,4 +347,11 @@ async def delete_group_group_assignment(
     session: AsyncSession = Depends(get_session),
 ) -> None:
     """Remove an SLO group assignment from an asset group."""
-    await AssignmentRepository(session).delete_group_assignment(assignment_id)
+    ag = await AssetGroupRepository(session).get_by_name(name)
+    if ag is None:
+        raise_not_found('asset group', name)
+    repo = AssignmentRepository(session)
+    row = await repo.get_group_assignment(assignment_id)
+    if row is None or row.asset_group_id != ag.id:
+        raise HTTPException(status_code=404, detail='assignment not found')
+    await repo.delete_group_assignment(assignment_id)
