@@ -116,6 +116,13 @@ class SLORepository(TagQueryMixin):
         )
         return result.scalar_one_or_none()
 
+    async def get_by_id(self, slo_id: uuid.UUID) -> SLODefinition | None:
+        """Return a specific SLO definition by primary key, or None."""
+        result = await self._session.execute(
+            select(SLODefinition).where(SLODefinition.id == slo_id)
+        )
+        return result.scalar_one_or_none()
+
     async def get_version(self, name: str, version: int) -> SLODefinition | None:
         """Return a specific version of a named SLO.
 
