@@ -7,6 +7,7 @@ import type { MetricHeatmapResponse } from './types'
 function mkEval(asset: string, slot: string, result: 'pass' | 'warning' | 'fail', score: number, evalName = 'test'): EvaluationSummary {
   return {
     id: `${asset}-${slot}-${evalName}`,
+    evaluation_id: `run-${asset}-${slot}`,
     evaluation_name: evalName,
     status: 'completed',
     result,

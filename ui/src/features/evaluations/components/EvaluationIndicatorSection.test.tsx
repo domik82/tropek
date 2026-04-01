@@ -35,6 +35,7 @@ function makeIndicator(overrides: Partial<IndicatorResult> = {}): IndicatorResul
 function makeEval(indicators: IndicatorResult[]): EvaluationDetail {
   return {
     id: 'eval-1',
+    evaluation_id: 'run-1',
     evaluation_name: 'nightly-perf',
     status: 'completed',
     result: 'pass',
