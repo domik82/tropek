@@ -104,7 +104,7 @@ async def resolve_single_trigger(
         slo_definition_id=slo_def.id,
         sli_name=sli_def.name,
         sli_version=sli_def.version,
-        sli_definition_id=slo_def.sli_definition_id,
+        sli_definition_id=sli_def.id,
         data_source_name=ds.name,
         adapter_url=ds.adapter_url,
         adapter_type=ds.adapter_type,
