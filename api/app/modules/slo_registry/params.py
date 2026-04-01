@@ -35,5 +35,6 @@ class SLOCreateParams(BaseModel):
     kind: str = 'standard'
     sli_name: str | None = None
     sli_version: int | None = None
+    sli_definition_id: uuid.UUID | None = None
     method_criteria: dict[str, object] | None = None
     generated_by_group_id: uuid.UUID | None = None
