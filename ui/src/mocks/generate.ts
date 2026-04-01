@@ -313,6 +313,7 @@ export function generateAllEvaluations(): EvaluationSummary[] {
 
         all.push({
           id: evalId,
+          evaluation_id: `run-${evalId}`,
           evaluation_name: scenario.test,
           status: 'completed',
           result: evalResult,

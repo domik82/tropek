@@ -10,6 +10,7 @@ vi.mock('@/lib/theme-context', () => ({
 function makeEvaluation(overrides: Partial<EvaluationDetail> = {}): EvaluationDetail {
   return {
     id: 'eval-1',
+    evaluation_id: 'run-1',
     evaluation_name: 'nightly-perf',
     status: 'completed',
     result: 'pass',

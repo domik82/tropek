@@ -78,6 +78,7 @@ vi.mock('@/features/slos/hooks', () => ({
 function makeSummary(overrides: Partial<EvaluationSummary> = {}): EvaluationSummary {
   return {
     id: 'eval-1',
+    evaluation_id: 'run-1',
     evaluation_name: 'nightly',
     status: 'completed',
     result: 'pass',
