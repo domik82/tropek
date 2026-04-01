@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { DeletionConfirmForm } from '@/components/DeletionConfirmForm'
 import { SloObjectiveTable, useSloDetail, useSloVersions, useDeleteSlo, useGroupTree, fetchGroupSloBindings } from '@/features/slos'
 import type { SloDefinition } from '@/features/slos'
+import { useSliDetail } from '@/features/slis'
 import type { SelectedNode } from '@/features/registry'
 import { groupKeys } from '@/lib/queryKeys'
 import { ENTITY_COLORS } from '@/lib/entity-colors'
@@ -20,6 +21,7 @@ export function SloDetailView({ name, onNavigate, onNewVersion }: SloDetailViewP
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
 
   const { data: slo, isLoading } = useSloDetail(name)
+  const { data: sli } = useSliDetail(slo?.sli_name ?? '')
   const { data: versions } = useSloVersions(name, true)
   const deleteMutation = useDeleteSlo()
 
@@ -122,7 +124,7 @@ export function SloDetailView({ name, onNavigate, onNewVersion }: SloDetailViewP
 
         {/* Objectives table — reuse Navigator's shared component */}
         <div>
-          <SloObjectiveTable slo={slo} />
+          <SloObjectiveTable slo={slo} indicators={sli?.indicators} />
         </div>
 
         {/* Method criteria overrides (aggregated-mode SLO templates) */}
