@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import uuid
 from dataclasses import dataclass
 from typing import Any
 
@@ -254,6 +255,18 @@ async def create_slo_group(
         author=body.author,
     )
 
+    # Resolve SLI FK for generated SLOs — use template's FK if available, else resolve by name
+    resolved_sli_def_id: uuid.UUID | None = template.sli_definition_id
+    if resolved_sli_def_id is None and template.sli_name is not None:
+        sli_repo = SLIRepository(session)
+        sli_resolved = (
+            await sli_repo.get_version(template.sli_name, template.sli_version)
+            if template.sli_version is not None
+            else await sli_repo.get_latest(template.sli_name)
+        )
+        if sli_resolved is not None:
+            resolved_sli_def_id = sli_resolved.id
+
     # Create generated SLO definitions
     for spec in gen_result.specs:
         await slo_repo.create(
@@ -268,6 +281,7 @@ async def create_slo_group(
                 kind='standard',
                 sli_name=spec.sli_name,
                 sli_version=spec.sli_version,
+                sli_definition_id=resolved_sli_def_id,
                 generated_by_group_id=group.id,
             )
         )
@@ -357,6 +371,18 @@ async def update_slo_group(
         template_variables_changed=template_variables_changed,
     )
 
+    # Resolve SLI FK for generated SLOs — use template's FK if available, else resolve by name
+    resolved_sli_def_id: uuid.UUID | None = template.sli_definition_id
+    if resolved_sli_def_id is None and template.sli_name is not None:
+        sli_repo = SLIRepository(session)
+        sli_resolved = (
+            await sli_repo.get_version(template.sli_name, template.sli_version)
+            if template.sli_version is not None
+            else await sli_repo.get_latest(template.sli_name)
+        )
+        if sli_resolved is not None:
+            resolved_sli_def_id = sli_resolved.id
+
     # Apply plan: create new SLOs
     for spec in regen_plan.to_create:
         await slo_repo.create(
@@ -371,6 +397,7 @@ async def update_slo_group(
                 kind='standard',
                 sli_name=spec.sli_name,
                 sli_version=spec.sli_version,
+                sli_definition_id=resolved_sli_def_id,
                 generated_by_group_id=group.id,
             )
         )
@@ -390,6 +417,7 @@ async def update_slo_group(
                 kind='standard',
                 sli_name=spec.sli_name,
                 sli_version=spec.sli_version,
+                sli_definition_id=resolved_sli_def_id,
                 generated_by_group_id=group.id,
                 comparable_from_version=action.comparable_from_version,
             )
