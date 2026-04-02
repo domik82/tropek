@@ -3,6 +3,7 @@ import { BindingChainBreadcrumb } from '@/components/shared/BindingChainBreadcru
 import { VariableResolutionPanel } from '@/components/shared/VariableResolutionPanel'
 import { SloObjectiveTable, useGroupSloBindings, useDeleteGroupSloBinding, useSloDetail } from '@/features/slos'
 import type { SloBinding } from '@/features/slos'
+import { useSliDetail } from '@/features/slis'
 import { useAsset } from '@/features/assets'
 import type { Asset } from '@/features/assets'
 import type { SelectedNode } from '@/features/registry'
@@ -139,9 +140,9 @@ function BindingCard({
   onNavigate: (node: SelectedNode) => void
 }) {
   const { data: slo } = useSloDetail(link.slo_name)
-  const deleteMutation = useDeleteGroupSloBinding()
-
   const sliName = slo?.sli_name ?? null
+  const { data: sli } = useSliDetail(sliName ?? '')
+  const deleteMutation = useDeleteGroupSloBinding()
   const assetVars = asset?.variables ?? {}
   const sloVars = slo?.variables ?? {}
   const reserved: Record<string, string> = {}
@@ -191,7 +192,7 @@ function BindingCard({
       {/* Objectives — REUSE SloObjectiveTable */}
       {slo && slo.objectives.length > 0 && (
         <div className="p-3">
-          <SloObjectiveTable slo={slo} />
+          <SloObjectiveTable slo={slo} indicators={sli?.indicators} />
         </div>
       )}
 
