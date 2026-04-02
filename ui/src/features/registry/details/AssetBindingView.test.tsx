@@ -14,8 +14,13 @@ vi.mock('@/features/assets/hooks', () => ({
   useAsset: vi.fn(),
 }))
 
+vi.mock('@/features/slis/hooks', () => ({
+  useSliDetail: vi.fn(),
+}))
+
 import { useGroupSloBindings, useSloDetail } from '@/features/slos/hooks'
 import { useAsset } from '@/features/assets/hooks'
+import { useSliDetail } from '@/features/slis/hooks'
 
 const MOCK_ASSET = {
   id: '1',
@@ -73,6 +78,16 @@ describe('AssetBindingView', () => {
     vi.mocked(useAsset).mockReturnValue({ data: MOCK_ASSET, isLoading: false } as any)
     vi.mocked(useGroupSloBindings).mockReturnValue({ data: MOCK_BINDINGS, isLoading: false } as any)
     vi.mocked(useSloDetail).mockReturnValue({ data: MOCK_SLO, isLoading: false } as any)
+    vi.mocked(useSliDetail).mockReturnValue({ data: {
+      id: 'sli1', name: 'http-service-sli', display_name: null, adapter_type: 'prometheus',
+      version: 1, comparable_from_version: 1, mode: 'raw' as const, query_template: null,
+      interval: null, methods: null, notes: null, author: null, tags: {}, active: true,
+      created_at: '2026-03-15T00:00:00Z',
+      indicators: {
+        response_time_p99: 'histogram_quantile(0.99, rate(http_duration_bucket{job="$job"}[5m]))',
+        error_rate: 'sum(rate(http_requests_total{status=~"5..",job="$job"}[5m]))',
+      },
+    }, isLoading: false } as any)
   })
 
   it('renders asset name and type', () => {
