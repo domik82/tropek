@@ -217,7 +217,7 @@ async def test_batch_skips_unresolvable_trigger() -> None:
 
 
 async def test_batch_uses_unified_resolution() -> None:
-    """Batch trigger now uses resolve_all_slos_for_asset which includes SLOBindings."""
+    """Batch trigger now uses resolve_all_slos_for_asset which includes SLO assignments."""
     repos = _make_repos()
     asset = _make_asset('vm-01')
     group = _make_group([_make_member('vm-01')])

@@ -71,15 +71,9 @@ async def resolve_single_trigger(
         msg = f"slo definition '{resolved.slo_definition_id}' not found"
         raise SLONotConfiguredError(msg)
 
-    # Load SLI by FK if available, fall back to name-based lookup
+    # Load SLI by FK
     if slo_def.sli_definition_id is not None:
         sli_def = await sli_repo.get_by_id(slo_def.sli_definition_id)
-    elif slo_def.sli_name is not None:
-        sli_def = (
-            await sli_repo.get_version(slo_def.sli_name, slo_def.sli_version)
-            if slo_def.sli_version is not None
-            else await sli_repo.get_latest(slo_def.sli_name)
-        )
     else:
         msg = f"no sli linked to slo '{slo_def.name}'"
         raise SLONotConfiguredError(msg)

@@ -322,7 +322,7 @@ class TriggerService:
             group_ids=group_ids,
         )
         if not slo_names:
-            msg = f"no slo bindings found for asset '{request.asset_name}'"
+            msg = f"no slo assignments found for asset '{request.asset_name}'"
             raise EvaluationError(msg)
 
         run = await self._repos.eval_run_repo.create(

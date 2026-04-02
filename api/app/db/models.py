@@ -264,8 +264,6 @@ class SLODefinition(Base):
     tags:                    Mapped[dict[str, Any]]         = mapped_column(JSONB, nullable=False, server_default=text("'{}'"), default=dict)
     variables:               Mapped[dict[str, Any]]         = mapped_column(JSONB, nullable=False, server_default=text("'{}'"), default=dict)
     kind:                    Mapped[str]                    = mapped_column(Text, nullable=False, server_default=text("'standard'"), default='standard')
-    sli_name:                Mapped[str | None]             = mapped_column(Text, nullable=True)
-    sli_version:             Mapped[int | None]             = mapped_column(Integer, nullable=True)
     sli_definition_id:       Mapped[uuid.UUID | None]       = mapped_column(UUID, ForeignKey('sli_definitions.id'), nullable=True)
     method_criteria:         Mapped[dict[str, Any] | None]  = mapped_column(JSONB, nullable=True)
     generated_by_group_id:   Mapped[uuid.UUID | None]       = mapped_column(UUID, ForeignKey("slo_groups.id"), nullable=True)
@@ -333,33 +331,6 @@ class SLIValue(Base):
     # fmt: on
 
 
-class SLOBinding(Base):
-    """Polymorphic binding of an SLO to an asset or asset group with a datasource."""
-
-    __tablename__ = 'slo_bindings'
-    __table_args__ = (
-        UniqueConstraint('target_type', 'target_id', 'slo_name', name='uq_slo_binding'),
-        Index('idx_slo_bindings_target', 'target_type', 'target_id'),
-        CheckConstraint(
-            "target_type IN ('asset', 'asset_group')",
-            name='ck_slo_bindings_target_type',
-        ),
-    )
-
-    # fmt: off
-
-    id:                   Mapped[uuid.UUID]                    = mapped_column(UUID, primary_key=True, default=uuid.uuid4)
-    target_type:          Mapped[str]                          = mapped_column(Text, nullable=False)
-    target_id:            Mapped[uuid.UUID]                    = mapped_column(UUID, nullable=False)
-    slo_name:             Mapped[str]                          = mapped_column(Text, nullable=False)
-    data_source_name:     Mapped[str]                          = mapped_column(Text, nullable=False)
-    comparison_rules:     Mapped[list[dict[str, Any]] | None]  = mapped_column(JSONB, nullable=True)
-    source:               Mapped[str]                          = mapped_column(Text, nullable=False, server_default=text("'direct'"))
-    template_binding_id:  Mapped[uuid.UUID | None]             = mapped_column(UUID, ForeignKey("template_bindings.id", ondelete="CASCADE"), nullable=True)
-    created_at:           Mapped[datetime]                     = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
-
-    # fmt: on
-
 
 class SLOGroup(Base):
     """SLO group — generates SLO instances from a template via variable expansion."""
@@ -372,12 +343,10 @@ class SLOGroup(Base):
 
     # fmt: off
 
-    id:                   Mapped[uuid.UUID]      = mapped_column(UUID, primary_key=True, default=uuid.uuid4)
-    name:                 Mapped[str]            = mapped_column(Text, nullable=False)
-    display_name:         Mapped[str | None]     = mapped_column(Text, nullable=True)
-    template_slo_name:    Mapped[str]            = mapped_column(Text, nullable=False)
-    template_slo_version: Mapped[int]            = mapped_column(Integer, nullable=False)
-    template_slo_definition_id: Mapped[uuid.UUID | None] = mapped_column(UUID, ForeignKey('slo_definitions.id', use_alter=True, name='fk_slo_groups_template_slo_definition_id'), nullable=True)
+    id:                   Mapped[uuid.UUID]  = mapped_column(UUID, primary_key=True, default=uuid.uuid4)
+    name:                 Mapped[str]        = mapped_column(Text, nullable=False)
+    display_name:         Mapped[str | None] = mapped_column(Text, nullable=True)
+    template_slo_definition_id: Mapped[uuid.UUID] = mapped_column(UUID, ForeignKey('slo_definitions.id', use_alter=True, name='fk_slo_groups_template_slo_definition_id'), nullable=False)
     gen_variables:        Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, server_default=text("'{}'::jsonb"), default=dict)
     tags:                 Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, server_default=text("'{}'"), default=dict)
     author:               Mapped[str | None]     = mapped_column(Text, nullable=True)
@@ -388,30 +357,6 @@ class SLOGroup(Base):
 
     # fmt: on
 
-
-class TemplateBinding(Base):
-    """Polymorphic binding of a template group to an asset or asset group with a datasource."""
-
-    __tablename__ = 'template_bindings'
-    __table_args__ = (
-        UniqueConstraint('target_type', 'target_id', 'template_group_name', name='uq_template_binding'),
-        Index('idx_template_bindings_target', 'target_type', 'target_id'),
-        CheckConstraint(
-            "target_type IN ('asset', 'asset_group')",
-            name='ck_template_bindings_target_type',
-        ),
-    )
-
-    # fmt: off
-
-    id:                   Mapped[uuid.UUID] = mapped_column(UUID, primary_key=True, default=uuid.uuid4)
-    target_type:          Mapped[str]       = mapped_column(Text, nullable=False)
-    target_id:            Mapped[uuid.UUID] = mapped_column(UUID, nullable=False)
-    template_group_name:  Mapped[str]       = mapped_column(Text, nullable=False)
-    data_source_name:     Mapped[str]       = mapped_column(Text, nullable=False)
-    created_at:           Mapped[datetime]  = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
-
-    # fmt: on
 
 
 class SLOAssignment(Base):
