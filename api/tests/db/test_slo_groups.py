@@ -1,4 +1,4 @@
-"""Integration tests for SLO group CRUD and template bindings via HTTP API.
+"""Integration tests for SLO group CRUD via HTTP API.
 
 Requires TEST_DATABASE_URL and a running TimescaleDB instance.
 Run: uv run pytest api/tests/db/test_slo_groups.py -m integration -v
@@ -10,19 +10,9 @@ from collections.abc import AsyncGenerator
 
 import pytest
 import pytest_asyncio
-from app.db.models import AssetType
 from app.db.session import get_session
 from app.main import app
-from app.modules.assets.repository import AssetRepository, SLOBindingRepository
-from app.modules.sli_registry.params import SLICreateParams
-from app.modules.sli_registry.repository import SLIRepository
-from app.modules.slo_groups.generator import generate_slo_specs
-from app.modules.slo_groups.repository import SLOGroupRepository, TemplateBindingRepository
-from app.modules.slo_groups.router import _fan_out_slo_bindings
-from app.modules.slo_registry.params import SLOCreateParams, SLOObjectiveParams
-from app.modules.slo_registry.repository import SLORepository
 from httpx import ASGITransport, AsyncClient
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 
@@ -290,159 +280,3 @@ async def test_list_groups_tag_filter(async_client: AsyncClient) -> None:
     assert 'grp8b-group' not in names
 
 
-@pytest.mark.integration
-async def test_template_binding_crud(async_client: AsyncClient) -> None:
-    """Template binding CRUD: create, list, delete for an asset."""
-    await _create_fixtures(async_client, 'grp9')
-    await _create_group(async_client, 'grp9', ['auth'])
-
-    # Create asset
-    await async_client.post('/asset-types', json={'name': 'grp9-type'})
-    await async_client.post('/assets', json={'name': 'grp9-asset', 'type_name': 'grp9-type'})
-
-    # Create template binding
-    resp = await async_client.post(
-        '/assets/grp9-asset/template-bindings',
-        json={'template_group_name': 'grp9-group', 'data_source_name': 'grp9-ds'},
-    )
-    assert resp.status_code == 201
-    assert resp.json()['template_group_name'] == 'grp9-group'
-
-    # List
-    resp = await async_client.get('/assets/grp9-asset/template-bindings')
-    assert resp.status_code == 200
-    assert len(resp.json()) == 1
-
-    # Delete
-    resp = await async_client.delete('/assets/grp9-asset/template-bindings/grp9-group')
-    assert resp.status_code == 204
-
-    # List again — empty
-    resp = await async_client.get('/assets/grp9-asset/template-bindings')
-    assert resp.status_code == 200
-    assert len(resp.json()) == 0
-
-
-@pytest.mark.integration
-async def test_template_binding_adapter_type_validation(async_client: AsyncClient) -> None:
-    """Template binding rejects mismatched adapter_type between SLI and datasource."""
-    await _create_fixtures(async_client, 'grp10')
-    await _create_group(async_client, 'grp10', ['auth'])
-
-    # Create a datasource with a different adapter_type
-    await async_client.post(
-        '/datasources',
-        json={
-            'name': 'grp10-ds-dd',
-            'adapter_type': 'datadog',
-            'adapter_url': 'http://localhost:8080',
-        },
-    )
-
-    await async_client.post('/asset-types', json={'name': 'grp10-type'})
-    await async_client.post('/assets', json={'name': 'grp10-asset', 'type_name': 'grp10-type'})
-
-    resp = await async_client.post(
-        '/assets/grp10-asset/template-bindings',
-        json={'template_group_name': 'grp10-group', 'data_source_name': 'grp10-ds-dd'},
-    )
-    assert resp.status_code == 422
-
-
-@pytest.mark.integration
-async def test_template_binding_duplicate_rejected(async_client: AsyncClient) -> None:
-    """Creating the same template binding twice fails with an error status."""
-    await _create_fixtures(async_client, 'grp11')
-    await _create_group(async_client, 'grp11', ['auth'])
-
-    await async_client.post('/asset-types', json={'name': 'grp11-type'})
-    await async_client.post('/assets', json={'name': 'grp11-asset', 'type_name': 'grp11-type'})
-
-    resp = await async_client.post(
-        '/assets/grp11-asset/template-bindings',
-        json={'template_group_name': 'grp11-group', 'data_source_name': 'grp11-ds'},
-    )
-    assert resp.status_code == 201
-
-    # Second identical binding should fail with 409
-    resp = await async_client.post(
-        '/assets/grp11-asset/template-bindings',
-        json={'template_group_name': 'grp11-group', 'data_source_name': 'grp11-ds'},
-    )
-    assert resp.status_code == 409
-
-
-@pytest.mark.integration
-async def test_fan_out_skips_duplicates_without_rolling_back(db_session: AsyncSession) -> None:
-    """Re-running fan-out when bindings already exist must not wipe existing bindings."""
-    # Seed required asset type
-    result = await db_session.execute(select(AssetType).where(AssetType.name == 'vm'))
-    if result.scalar_one_or_none() is None:
-        db_session.add(AssetType(name='vm', is_default=False))
-    await db_session.flush()
-
-    # Create SLI + template SLO
-    sli_repo = SLIRepository(db_session)
-    sli = await sli_repo.create(SLICreateParams(
-        name='fanout-sli',
-        indicators={'cpu': 'rate(cpu[5m])'},
-        adapter_type='prometheus',
-    ))
-
-    slo_repo = SLORepository(db_session)
-    tpl_slo = await slo_repo.create(SLOCreateParams(
-        name='fanout-template-slo-$__gen_process_name',
-        objectives=[SLOObjectiveParams(sli='cpu', pass_threshold=['<80'])],
-        sli_name='fanout-sli',
-        sli_version=sli.version,
-        kind='template',
-        variables={'process_name': '$__gen_process_name'},
-    ))
-
-    # Create SLO group that generates 2 SLOs
-    group_repo = SLOGroupRepository(db_session)
-    group = await group_repo.create(
-        name='fanout-test-group',
-        template_slo_name='fanout-template-slo-$__gen_process_name',
-        template_slo_version=tpl_slo.version,
-        gen_variables={'process_name': ['alpha', 'beta']},
-    )
-
-    # Generate the 2 SLO definitions from the group
-    gen_result = generate_slo_specs(tpl_slo, group.gen_variables, group.name)
-    for spec in gen_result.specs:
-        await slo_repo.create(SLOCreateParams(
-            name=spec.name,
-            objectives=[SLOObjectiveParams.model_validate(o) for o in spec.objectives],
-            sli_name=spec.sli_name,
-            sli_version=spec.sli_version,
-            kind='standard',
-            variables=spec.variables,
-            generated_by_group_id=group.id,
-        ))
-
-    # Create asset + template binding
-    asset_repo = AssetRepository(db_session)
-    asset = await asset_repo.create('fanout-asset', type_name='vm')
-
-    tb_repo = TemplateBindingRepository(db_session)
-    tb = await tb_repo.create(
-        target_type='asset',
-        target_id=asset.id,
-        template_group_name='fanout-test-group',
-        data_source_name='prom-test',
-    )
-
-    binding_repo = SLOBindingRepository(db_session)
-
-    # First fan-out: should create 2 bindings
-    await _fan_out_slo_bindings(db_session, tb)
-    bindings_first = await binding_repo.list_by_target('asset', asset.id)
-    assert len(bindings_first) == 2, f'expected 2 after first fan-out, got {len(bindings_first)}'
-
-    # Second fan-out: both bindings already exist — should skip, not wipe
-    await _fan_out_slo_bindings(db_session, tb)
-    bindings_second = await binding_repo.list_by_target('asset', asset.id)
-    assert len(bindings_second) == 2, (
-        f'expected 2 after second fan-out (duplicates skipped), got {len(bindings_second)}'
-    )

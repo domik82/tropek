@@ -14,6 +14,8 @@ from app.db.middleware import SessionMiddleware
 from app.db.session import get_session_factory
 from app.logging_config import configure_logging
 from app.modules.assets.router import router as assets_router
+from app.modules.assignments.router import router as assignments_router
+from app.modules.display_groups.router import router as display_groups_router
 from app.modules.common.exceptions import (
     ConflictError,
     DomainValidationError,
@@ -61,6 +63,8 @@ app.include_router(sli_router)
 app.include_router(slo_router)
 app.include_router(slo_groups_router)
 app.include_router(quality_gate_router)
+app.include_router(assignments_router)
+app.include_router(display_groups_router)
 
 
 @app.get('/health')

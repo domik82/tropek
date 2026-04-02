@@ -6,11 +6,64 @@ import uuid
 from unittest.mock import AsyncMock
 
 import pytest
+from app.modules.assignments.repository import ResolvedAssignment
 from app.modules.quality_gate.exceptions import AssetNotFoundError, SLONotConfiguredError
 from app.modules.quality_gate.trigger import (
-    resolve_all_bindings_for_asset,
+    resolve_all_slos_for_asset,
     resolve_single_trigger,
 )
+
+
+def _make_asset(name: str = 'vm-01') -> object:
+    return type(
+        'Asset',
+        (),
+        {
+            'id': uuid.uuid4(),
+            'name': name,
+            'display_name': 'Production VM 01',
+            'tags': {'os': 'linux'},
+            'variables': {},
+        },
+    )()
+
+
+def _make_slo(
+    name: str = 'perf-slo',
+    *,
+    slo_id: uuid.UUID | None = None,
+    sli_name: str | None = 'system-sli',
+    sli_version: int | None = None,
+    sli_definition_id: uuid.UUID | None = None,
+) -> object:
+    return type(
+        'SLO',
+        (),
+        {
+            'id': slo_id or uuid.uuid4(),
+            'name': name,
+            'version': 1,
+            'sli_name': sli_name,
+            'sli_version': sli_version,
+            'sli_definition_id': sli_definition_id,
+        },
+    )()
+
+
+def _make_sli(name: str = 'system-sli') -> object:
+    return type(
+        'SLI',
+        (),
+        {'id': uuid.uuid4(), 'name': name, 'version': 1, 'indicators': {'cpu': 'query'}},
+    )()
+
+
+def _make_ds(name: str = 'prom-1') -> object:
+    return type(
+        'DS',
+        (),
+        {'name': name, 'adapter_url': 'http://prom:8081', 'adapter_type': 'prometheus'},
+    )()
 
 
 @pytest.fixture
@@ -19,44 +72,38 @@ def mock_repos() -> dict:
     sli_repo = AsyncMock()
     slo_repo = AsyncMock()
     ds_repo = AsyncMock()
-    binding_repo = AsyncMock()
+    assignment_repo = AsyncMock()
 
-    asset_repo.get_by_name.return_value = type(
-        'Asset',
-        (),
-        {'id': uuid.uuid4(), 'name': 'vm-01', 'display_name': 'Production VM 01', 'tags': {'os': 'linux'}, 'variables': {}},
-    )()
+    asset = _make_asset()
+    slo_def = _make_slo(slo_id=uuid.uuid4())
+    sli_def = _make_sli()
+    ds = _make_ds()
+    ds_id = uuid.uuid4()
 
-    binding_repo.find_for_asset.return_value = type(
-        'Binding',
-        (),
-        {'slo_name': 'perf-slo', 'data_source_name': 'prom-1'},
-    )()
+    asset_repo.get_by_name.return_value = asset
 
-    sli_repo.get_latest.return_value = type(
-        'SLI',
-        (),
-        {'name': 'system-sli', 'version': 1, 'indicators': {'cpu': 'query'}},
-    )()
+    assignment_repo.find_for_asset.return_value = ResolvedAssignment(
+        slo_name='perf-slo',
+        slo_definition_id=slo_def.id,
+        data_source_id=ds_id,
+        comparison_rules=None,
+        source='direct_asset',
+    )
 
-    slo_repo.get_latest.return_value = type(
-        'SLO',
-        (),
-        {'name': 'perf-slo', 'version': 1, 'sli_name': 'system-sli', 'sli_version': None},
-    )()
+    # slo_def.sli_definition_id must be set so trigger.py can look up SLI by FK
+    slo_def.sli_definition_id = sli_def.id
 
-    ds_repo.get_by_name.return_value = type(
-        'DS',
-        (),
-        {'name': 'prom-1', 'adapter_url': 'http://prom:8081', 'adapter_type': 'prometheus'},
-    )()
+    slo_repo.get_by_id.return_value = slo_def
+    sli_repo.get_by_id.return_value = sli_def
+    ds_repo.get_by_id.return_value = ds
 
     return {
         'asset_repo': asset_repo,
         'sli_repo': sli_repo,
         'slo_repo': slo_repo,
         'ds_repo': ds_repo,
-        'binding_repo': binding_repo,
+        'assignment_repo': assignment_repo,
+        'group_ids': [],
     }
 
 
@@ -76,10 +123,10 @@ async def test_resolve_single_trigger_asset_not_found(mock_repos: dict) -> None:
         await resolve_single_trigger(asset_name='nonexistent', slo_name='perf-slo', **mock_repos)
 
 
-async def test_resolve_no_binding_raises(mock_repos: dict) -> None:
-    """When no binding exists, raise SLONotConfiguredError."""
-    mock_repos['binding_repo'].find_for_asset.return_value = None
-    with pytest.raises(SLONotConfiguredError, match='no slo binding'):
+async def test_resolve_no_assignment_raises(mock_repos: dict) -> None:
+    """When no assignment exists, raise SLONotConfiguredError."""
+    mock_repos['assignment_repo'].find_for_asset.return_value = None
+    with pytest.raises(SLONotConfiguredError, match='no assignment'):
         await resolve_single_trigger(asset_name='vm-01', slo_name='unknown-slo', **mock_repos)
 
 
@@ -88,79 +135,72 @@ async def test_trigger_context_includes_display_name(mock_repos: dict) -> None:
     assert ctx.asset_display_name == 'Production VM 01'
 
 
-async def test_resolve_direct_and_template_bindings() -> None:
-    """Asset with both direct and template-sourced bindings resolves all SLO names."""
+async def test_trigger_context_includes_slo_definition_id(mock_repos: dict) -> None:
+    """TriggerContext carries the slo_definition_id FK."""
+    ctx = await resolve_single_trigger(asset_name='vm-01', slo_name='perf-slo', **mock_repos)
+    assert ctx.slo_definition_id is not None
+
+
+async def test_resolve_all_slos_for_asset() -> None:
+    """resolve_all_slos_for_asset returns sorted SLO names from assignment_repo."""
     asset_id = uuid.uuid4()
+    ds_id = uuid.uuid4()
 
-    def _binding(slo_name: str, ds: str, target_type: str, source: str) -> object:
-        return type(
-            'B',
-            (),
-            {
-                'slo_name': slo_name,
-                'data_source_name': ds,
-                'target_type': target_type,
-                'source': source,
-            },
-        )()
-
-    binding_repo = AsyncMock()
-    binding_repo.list_for_asset_evaluation.return_value = [
-        _binding('direct-slo', 'prom-1', 'asset', 'direct'),
-        _binding('gen-slo-a', 'prom-2', 'asset', 'template'),
-        _binding('gen-slo-b', 'prom-2', 'asset', 'template'),
+    assignment_repo = AsyncMock()
+    assignment_repo.resolve_for_asset.return_value = [
+        ResolvedAssignment(
+            slo_name='direct-slo',
+            slo_definition_id=uuid.uuid4(),
+            data_source_id=ds_id,
+            comparison_rules=None,
+            source='direct_asset',
+        ),
+        ResolvedAssignment(
+            slo_name='gen-slo-a',
+            slo_definition_id=uuid.uuid4(),
+            data_source_id=ds_id,
+            comparison_rules=None,
+            source='template_asset',
+        ),
+        ResolvedAssignment(
+            slo_name='gen-slo-b',
+            slo_definition_id=uuid.uuid4(),
+            data_source_id=ds_id,
+            comparison_rules=None,
+            source='template_asset',
+        ),
     ]
 
-    result = await resolve_all_bindings_for_asset(
+    result = await resolve_all_slos_for_asset(
         asset_id=asset_id,
         group_ids=[],
-        binding_repo=binding_repo,
+        assignment_repo=assignment_repo,
     )
 
-    slo_names = [r.slo_name for r in result]
-    assert 'direct-slo' in slo_names
-    assert 'gen-slo-a' in slo_names
-    assert 'gen-slo-b' in slo_names
-    assert len(result) == 3
-
-    direct = next(r for r in result if r.slo_name == 'direct-slo')
-    assert direct.source == 'direct_asset'
-    assert direct.data_source_name == 'prom-1'
-
-    gen_a = next(r for r in result if r.slo_name == 'gen-slo-a')
-    assert gen_a.source == 'template_asset'
-    assert gen_a.data_source_name == 'prom-2'
+    assert result == ['direct-slo', 'gen-slo-a', 'gen-slo-b']
 
 
-async def test_resolve_direct_wins_over_template() -> None:
-    """When both direct and template bindings exist for the same SLO name, direct wins."""
+async def test_resolve_all_slos_dedup_by_assignment_repo() -> None:
+    """resolve_all_slos_for_asset trusts the assignment_repo's dedup — each name appears once."""
     asset_id = uuid.uuid4()
+    ds_id = uuid.uuid4()
 
-    def _binding(slo_name: str, ds: str, target_type: str, source: str) -> object:
-        return type(
-            'B',
-            (),
-            {
-                'slo_name': slo_name,
-                'data_source_name': ds,
-                'target_type': target_type,
-                'source': source,
-            },
-        )()
-
-    binding_repo = AsyncMock()
-    binding_repo.list_for_asset_evaluation.return_value = [
-        _binding('shared-slo', 'prom-direct', 'asset', 'direct'),
-        _binding('shared-slo', 'prom-template', 'asset', 'template'),
+    assignment_repo = AsyncMock()
+    # assignment_repo already performs dedup (DISTINCT ON slo_name with precedence)
+    assignment_repo.resolve_for_asset.return_value = [
+        ResolvedAssignment(
+            slo_name='shared-slo',
+            slo_definition_id=uuid.uuid4(),
+            data_source_id=ds_id,
+            comparison_rules=None,
+            source='direct_asset',
+        ),
     ]
 
-    result = await resolve_all_bindings_for_asset(
+    result = await resolve_all_slos_for_asset(
         asset_id=asset_id,
         group_ids=[],
-        binding_repo=binding_repo,
+        assignment_repo=assignment_repo,
     )
 
-    assert len(result) == 1
-    assert result[0].slo_name == 'shared-slo'
-    assert result[0].source == 'direct_asset'
-    assert result[0].data_source_name == 'prom-direct'
+    assert result == ['shared-slo']

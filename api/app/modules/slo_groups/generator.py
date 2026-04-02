@@ -14,8 +14,6 @@ class TemplateInput(Protocol):
     """Structural protocol for the template SLO fields needed by the generator."""
 
     name: str
-    sli_name: str | None
-    sli_version: int | None
     variables: dict[str, Any]
     objectives: list[dict[str, Any]]
     total_score_pass_threshold: float
@@ -29,8 +27,6 @@ class GeneratedSLOSpec:
     """One generated SLO ready to persist."""
 
     name: str
-    sli_name: str | None
-    sli_version: int | None
     variables: dict[str, Any]
     objectives: list[dict[str, Any]]
     total_score_pass_threshold: float
@@ -140,8 +136,6 @@ def generate_slo_specs(
         specs.append(
             GeneratedSLOSpec(
                 name=gen_name,
-                sli_name=template.sli_name,
-                sli_version=template.sli_version,
                 variables=gen_vars,
                 objectives=[_obj_to_dict(obj) for obj in template.objectives],
                 total_score_pass_threshold=template.total_score_pass_threshold,

@@ -281,17 +281,31 @@ class TrendPoint(BaseModel):
     baseline: float | None
 
 
-class SLOBinding(BaseModel):
-    """SLO binding (new model — links an SLO to an asset or group via a data source)."""
+class SLOAssignment(BaseModel):
+    """SLO assignment — pins asset/group to a specific SLO definition version + datasource."""
 
     id: str
-    target_type: str
-    target_id: str
+    asset_id: str | None = None
+    asset_group_id: str | None = None
+    slo_definition_id: str
     slo_name: str
+    slo_version: int
+    data_source_id: str
     data_source_name: str
     comparison_rules: list[dict[str, Any]] | None = None
-    source: str = 'direct'
-    template_binding_id: str | None = None
+    created_at: str
+
+
+class SLOGroupAssignment(BaseModel):
+    """SLO group assignment — asset/group to SLO group (always-latest semantics)."""
+
+    id: str
+    asset_id: str | None = None
+    asset_group_id: str | None = None
+    slo_group_id: str
+    slo_group_name: str
+    data_source_id: str
+    data_source_name: str
     created_at: str
 
 
@@ -311,15 +325,6 @@ class SLOGroup(BaseModel):
     generated_slo_count: int
 
 
-class TemplateBinding(BaseModel):
-    """Template binding response model."""
-
-    id: str
-    target_type: str
-    target_id: str
-    template_group_name: str
-    data_source_name: str
-    created_at: str
 
 
 class EvaluationRun(BaseModel):

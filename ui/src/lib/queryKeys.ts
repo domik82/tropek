@@ -64,13 +64,13 @@ export const groupKeys = {
   tree: () => [...groupKeys.all, 'tree'] as const,
   detail: (name: string) => [...groupKeys.all, name] as const,
   links: (name: string) => [...groupKeys.detail(name), 'links'] as const,
-  bindings: (name: string) => [...groupKeys.detail(name), 'bindings'] as const,
+  assignments: (name: string) => [...groupKeys.detail(name), 'assignments'] as const,
 }
 
-export const bindingKeys = {
-  all: ['slo-bindings'] as const,
-  asset: (assetName: string) => [...bindingKeys.all, 'asset', assetName] as const,
-  group: (groupName: string) => [...bindingKeys.all, 'group', groupName] as const,
+export const assignmentKeys = {
+  all: ['slo-assignments'] as const,
+  asset: (assetName: string) => [...assignmentKeys.all, 'asset', assetName] as const,
+  group: (groupName: string) => [...assignmentKeys.all, 'group', groupName] as const,
 }
 
 export const datasourceKeys = {

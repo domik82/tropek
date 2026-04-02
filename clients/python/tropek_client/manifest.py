@@ -16,9 +16,9 @@ _KIND_ORDER = [
     'SLI',
     'SLO',
     'AssetGroup',
-    'SLOBinding',
     'SLOGroup',
-    'TemplateBinding',
+    'SLOAssignment',
+    'SLOGroupAssignment',
 ]
 
 
@@ -130,12 +130,12 @@ def _validate_doc_refs(  # noqa: C901
                 f"WARNING: Asset '{doc_name}' references AssetType "
                 f"'{type_name}' not found in manifest (may exist in API)"
             )
-    elif doc.kind == 'SLOBinding':
+    elif doc.kind == 'SLOAssignment':
         for ref_field, ref_kind in [('slo_name', 'SLO'), ('data_source_name', 'DataSource')]:
             ref_val = doc.spec.get(ref_field)
             if ref_val and ref_val not in names_by_kind.get(ref_kind, set()):
                 errors.append(
-                    f"WARNING: SLOBinding '{doc_name}' references {ref_kind} "
+                    f"WARNING: SLOAssignment '{doc_name}' references {ref_kind} "
                     f"'{ref_val}' not found in manifest (may exist in API)"
                 )
     elif doc.kind == 'SLOGroup':
@@ -144,15 +144,15 @@ def _validate_doc_refs(  # noqa: C901
             errors.append(
                 f"WARNING: SLOGroup '{doc_name}' references SLO '{tpl_name}' not found in manifest (may exist in API)"
             )
-    elif doc.kind == 'TemplateBinding':
+    elif doc.kind == 'SLOGroupAssignment':
         for ref_field, ref_kind in [
-            ('template_group_name', 'SLOGroup'),
+            ('slo_group_name', 'SLOGroup'),
             ('data_source_name', 'DataSource'),
         ]:
             ref_val = doc.spec.get(ref_field)
             if ref_val and ref_val not in names_by_kind.get(ref_kind, set()):
                 errors.append(
-                    f"WARNING: TemplateBinding '{doc_name}' references {ref_kind} "
+                    f"WARNING: SLOGroupAssignment '{doc_name}' references {ref_kind} "
                     f"'{ref_val}' not found in manifest (may exist in API)"
                 )
 
@@ -244,11 +244,11 @@ def apply(client: Any, manifests: list[ManifestDocument]) -> ApplyResult:
 
 _KIND_DEPS: dict[str, set[str]] = {
     'AssetType': {'Asset'},
-    'DataSource': {'SLOBinding', 'TemplateBinding'},
-    'Asset': {'AssetGroup', 'SLOBinding', 'TemplateBinding'},
-    'SLO': {'SLOBinding', 'SLOGroup'},
-    'AssetGroup': {'SLOBinding', 'TemplateBinding'},
-    'SLOGroup': {'TemplateBinding'},
+    'DataSource': {'SLOAssignment', 'SLOGroupAssignment'},
+    'Asset': {'AssetGroup', 'SLOAssignment', 'SLOGroupAssignment'},
+    'SLO': {'SLOAssignment', 'SLOGroup'},
+    'AssetGroup': {'SLOAssignment', 'SLOGroupAssignment'},
+    'SLOGroup': {'SLOGroupAssignment'},
 }
 
 
@@ -274,27 +274,28 @@ def _lookup_slo_group(client: Any, doc: ManifestDocument) -> Any | None:
         return None
 
 
-def _lookup_template_binding(client: Any, doc: ManifestDocument) -> Any | None:
-    """Look up an existing template binding."""
+def _lookup_slo_assignment(client: Any, doc: ManifestDocument) -> Any | None:
+    """Look up an existing SLO assignment by target + slo_name."""
     target_type = doc.spec.get('target_type', '')
     target_name = doc.spec.get('target_name', '')
-    group_name = doc.spec.get('template_group_name', '')
+    slo_name = doc.spec.get('slo_name', '')
     if target_type == 'asset':
-        bindings = client.template_bindings.list_for_asset(target_name)
+        assignments = client.slo_assignments.list_for_asset(target_name)
     else:
-        bindings = client.template_bindings.list_for_group(target_name)
-    return next((b for b in bindings if b.template_group_name == group_name), None)
+        assignments = client.slo_assignments.list_for_group(target_name)
+    return next((a for a in assignments if a.slo_name == slo_name), None)
 
 
-def _lookup_slo_binding(client: Any, doc: ManifestDocument) -> Any | None:
-    """Look up an existing SLOBinding via the client."""
+def _lookup_slo_group_assignment(client: Any, doc: ManifestDocument) -> Any | None:
+    """Look up an existing SLO group assignment by target + slo_group_name."""
     target_type = doc.spec.get('target_type', '')
     target_name = doc.spec.get('target_name', '')
+    slo_group_name = doc.spec.get('slo_group_name', '')
     if target_type == 'asset':
-        bindings = client.slo_bindings.list_for_asset(target_name)
+        assignments = client.slo_group_assignments.list_for_asset(target_name)
     else:
-        bindings = client.slo_bindings.list_for_group(target_name)
-    return next((b for b in bindings if b.slo_name == doc.spec.get('slo_name')), None)
+        assignments = client.slo_group_assignments.list_for_group(target_name)
+    return next((a for a in assignments if a.slo_group_name == slo_group_name), None)
 
 
 def _lookup(client: Any, doc: ManifestDocument) -> Any | None:  # noqa: C901, PLR0911
@@ -315,12 +316,12 @@ def _lookup(client: Any, doc: ManifestDocument) -> Any | None:  # noqa: C901, PL
                 return client.sli_definitions.get(name)
             case 'SLO':
                 return client.slo_definitions.get(name)
-            case 'SLOBinding':
-                return _lookup_slo_binding(client, doc)
+            case 'SLOAssignment':
+                return _lookup_slo_assignment(client, doc)
             case 'SLOGroup':
                 return _lookup_slo_group(client, doc)
-            case 'TemplateBinding':
-                return _lookup_template_binding(client, doc)
+            case 'SLOGroupAssignment':
+                return _lookup_slo_group_assignment(client, doc)
             case _:
                 return None
     except Exception:  # noqa: BLE001
@@ -368,14 +369,14 @@ def _has_diff(doc: ManifestDocument, existing: Any) -> bool:  # noqa: PLR0911
                 != getattr(existing, 'total_score_warning_threshold', None)
                 or doc.spec.get('comparison', {}) != getattr(existing, 'comparison', {})
             )
-        case 'SLOBinding':
-            return doc.spec.get('data_source_name') != getattr(existing, 'data_source_name', None)
+        case 'SLOAssignment':
+            return False  # assignments are immutable — delete + recreate
         case 'SLOGroup':
             return doc.spec.get('gen_variables') != getattr(existing, 'gen_variables', None) or doc.spec.get(
                 'template_slo_version'
             ) != getattr(existing, 'template_slo_version', None)
-        case 'TemplateBinding':
-            return doc.spec.get('data_source_name') != getattr(existing, 'data_source_name', None)
+        case 'SLOGroupAssignment':
+            return False  # group assignments are immutable — delete + recreate
         case _:
             return False
 
@@ -391,24 +392,31 @@ def _diff_reason(doc: ManifestDocument, existing: Any) -> str:
             return 'fields differ'
 
 
-def _create_slo_binding(client: Any, spec: dict[str, Any]) -> None:
-    """Create an SLO binding for an asset or group."""
+def _resolve_slo_definition_id(client: Any, slo_name: str) -> str:
+    """Resolve an SLO name to its latest definition ID."""
+    slo = client.slo_definitions.get(slo_name)
+    return str(slo.id)
+
+
+def _create_slo_assignment(client: Any, spec: dict[str, Any]) -> None:
+    """Create an SLO assignment for an asset or group."""
+    target_type = spec['target_type']
+    target_name = spec['target_name']
+    slo_definition_id = _resolve_slo_definition_id(client, spec['slo_name'])
+    if target_type == 'asset':
+        client.slo_assignments.create_for_asset(target_name, slo_definition_id, spec['data_source_name'])
+    else:
+        client.slo_assignments.create_for_group(target_name, slo_definition_id, spec['data_source_name'])
+
+
+def _delete_slo_assignment(client: Any, spec: dict[str, Any], existing: Any) -> None:
+    """Delete an SLO assignment for an asset or group."""
     target_type = spec['target_type']
     target_name = spec['target_name']
     if target_type == 'asset':
-        client.slo_bindings.create_for_asset(target_name, spec['slo_name'], spec['data_source_name'])
+        client.slo_assignments.delete_for_asset(target_name, existing.id)
     else:
-        client.slo_bindings.create_for_group(target_name, spec['slo_name'], spec['data_source_name'])
-
-
-def _delete_slo_binding(client: Any, spec: dict[str, Any]) -> None:
-    """Delete an SLO binding for an asset or group."""
-    target_type = spec['target_type']
-    target_name = spec['target_name']
-    if target_type == 'asset':
-        client.slo_bindings.delete_for_asset(target_name, spec['slo_name'])
-    else:
-        client.slo_bindings.delete_for_group(target_name, spec['slo_name'])
+        client.slo_assignments.delete_for_group(target_name, existing.id)
 
 
 def _create_slo_group(client: Any, name: str, spec: dict[str, Any]) -> None:
@@ -424,24 +432,28 @@ def _create_slo_group(client: Any, name: str, spec: dict[str, Any]) -> None:
     )
 
 
-def _create_template_binding(client: Any, spec: dict[str, Any]) -> None:
-    """Create a template binding."""
+def _create_slo_group_assignment(client: Any, spec: dict[str, Any]) -> None:
+    """Create an SLO group assignment."""
     target_type = spec['target_type']
     target_name = spec['target_name']
     if target_type == 'asset':
-        client.template_bindings.create_for_asset(target_name, spec['template_group_name'], spec['data_source_name'])
+        client.slo_group_assignments.create_for_asset(
+            target_name, spec['slo_group_name'], spec['data_source_name'],
+        )
     else:
-        client.template_bindings.create_for_group(target_name, spec['template_group_name'], spec['data_source_name'])
+        client.slo_group_assignments.create_for_group(
+            target_name, spec['slo_group_name'], spec['data_source_name'],
+        )
 
 
-def _delete_template_binding(client: Any, spec: dict[str, Any]) -> None:
-    """Delete a template binding."""
+def _delete_slo_group_assignment(client: Any, spec: dict[str, Any], existing: Any) -> None:
+    """Delete an SLO group assignment."""
     target_type = spec['target_type']
     target_name = spec['target_name']
     if target_type == 'asset':
-        client.template_bindings.delete_for_asset(target_name, spec['template_group_name'])
+        client.slo_group_assignments.delete_for_asset(target_name, existing.id)
     else:
-        client.template_bindings.delete_for_group(target_name, spec['template_group_name'])
+        client.slo_group_assignments.delete_for_group(target_name, existing.id)
 
 
 def _create_asset_group(
@@ -515,12 +527,12 @@ def _create(client: Any, doc: ManifestDocument) -> None:
                 variables=doc.spec.get('variables', {}),
                 method_criteria=doc.spec.get('method_criteria'),
             )
-        case 'SLOBinding':
-            _create_slo_binding(client, doc.spec)
+        case 'SLOAssignment':
+            _create_slo_assignment(client, doc.spec)
         case 'SLOGroup':
             _create_slo_group(client, name, doc.spec)
-        case 'TemplateBinding':
-            _create_template_binding(client, doc.spec)
+        case 'SLOGroupAssignment':
+            _create_slo_group_assignment(client, doc.spec)
 
 
 def _update(client: Any, doc: ManifestDocument) -> None:
@@ -537,8 +549,6 @@ def _update(client: Any, doc: ManifestDocument) -> None:
                 variables=doc.metadata.get('variables'),
             )
         case 'AssetGroup':
-            # TODO: sync members/subgroups — requires add/remove member API calls
-            # For v1, log that group exists but member sync is not yet implemented
             pass
         case 'DataSource':
             client.datasources.update(
@@ -579,10 +589,6 @@ def _update(client: Any, doc: ManifestDocument) -> None:
                 variables=doc.spec.get('variables', {}),
                 method_criteria=doc.spec.get('method_criteria'),
             )
-        case 'SLOBinding':
-            # Delete + recreate
-            _delete_slo_binding(client, doc.spec)
-            _create_slo_binding(client, doc.spec)
         case 'SLOGroup':
             client.slo_groups.update(
                 name,
@@ -592,6 +598,3 @@ def _update(client: Any, doc: ManifestDocument) -> None:
                 display_name=doc.spec.get('display_name'),
                 tags=doc.spec.get('tags'),
             )
-        case 'TemplateBinding':
-            _delete_template_binding(client, doc.spec)
-            _create_template_binding(client, doc.spec)

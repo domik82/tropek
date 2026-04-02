@@ -108,6 +108,13 @@ class SLIRepository(TagQueryMixin):
         )
         return result.scalar_one_or_none()
 
+    async def get_by_id(self, sli_id: uuid.UUID) -> SLIDefinition | None:
+        """Return a specific SLI definition by primary key, or None."""
+        result = await self._session.execute(
+            select(SLIDefinition).where(SLIDefinition.id == sli_id)
+        )
+        return result.scalar_one_or_none()
+
     async def list_versions(self, name: str) -> list[SLIDefinition]:
         """Return all versions newest-first.
 

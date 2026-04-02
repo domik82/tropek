@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import uuid
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -50,6 +52,7 @@ async def create_slo_definition(
     session: AsyncSession = Depends(get_session),
 ) -> SLODefinitionRead:
     """Create a new SLO definition (or a new version if name already exists)."""
+    resolved_sli_id: uuid.UUID | None = None
     if body.sli_name is not None:
         sli_repo = SLIRepository(session)
         if body.sli_version is not None:
@@ -71,6 +74,7 @@ async def create_slo_definition(
                     status_code=422,
                     detail=f"objective sli '{obj.sli}' not found in SLI definition '{body.sli_name}' indicators",
                 )
+        resolved_sli_id = sli_def.id
     repo = SLORepository(session)
     params = SLOCreateParams(
         name=body.name,
@@ -85,8 +89,7 @@ async def create_slo_definition(
         variables=body.variables,
         comparable_from_version=body.comparable_from_version,
         kind=body.kind,
-        sli_name=body.sli_name,
-        sli_version=body.sli_version,
+        sli_definition_id=resolved_sli_id,
         method_criteria=body.method_criteria,
     )
     slo = await repo.create(params)

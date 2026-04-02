@@ -29,7 +29,7 @@ def _make_repos() -> QualityGateRepos:
         baseline_repo=AsyncMock(),
         asset_repo=AsyncMock(),
         asset_group_repo=AsyncMock(),
-        binding_repo=AsyncMock(),
+        assignment_repo=AsyncMock(),
         sli_def_repo=AsyncMock(),
         slo_repo=AsyncMock(),
         ds_repo=AsyncMock(),
@@ -75,8 +75,10 @@ def _make_trigger_context(asset_name: str, slo_name: str) -> TriggerContext:
         asset_variables={},
         slo_name=slo_name,
         slo_version=1,
+        slo_definition_id=uuid.uuid4(),
         sli_name='system-sli',
         sli_version=1,
+        sli_definition_id=None,
         data_source_name='prom-1',
         adapter_url='http://prom:8081',
         adapter_type='prometheus',
@@ -215,7 +217,7 @@ async def test_batch_skips_unresolvable_trigger() -> None:
 
 
 async def test_batch_uses_unified_resolution() -> None:
-    """Batch trigger now uses resolve_all_slos_for_asset which includes SLOBindings."""
+    """Batch trigger now uses resolve_all_slos_for_asset which includes SLO assignments."""
     repos = _make_repos()
     asset = _make_asset('vm-01')
     group = _make_group([_make_member('vm-01')])

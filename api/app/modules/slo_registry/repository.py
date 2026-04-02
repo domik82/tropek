@@ -68,8 +68,7 @@ class SLORepository(TagQueryMixin):
             tags=params.tags,
             variables=params.variables,
             kind=params.kind,
-            sli_name=params.sli_name,
-            sli_version=params.sli_version,
+            sli_definition_id=params.sli_definition_id,
             method_criteria=params.method_criteria,
             generated_by_group_id=params.generated_by_group_id,
             active=True,
@@ -112,6 +111,13 @@ class SLORepository(TagQueryMixin):
             .where(SLODefinition.name == name, SLODefinition.active == True)  # noqa: E712
             .order_by(SLODefinition.version.desc())
             .limit(1)
+        )
+        return result.scalar_one_or_none()
+
+    async def get_by_id(self, slo_id: uuid.UUID) -> SLODefinition | None:
+        """Return a specific SLO definition by primary key, or None."""
+        result = await self._session.execute(
+            select(SLODefinition).where(SLODefinition.id == slo_id)
         )
         return result.scalar_one_or_none()
 

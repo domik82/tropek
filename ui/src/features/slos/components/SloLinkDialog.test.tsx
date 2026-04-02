@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { SloLinkDialog } from './SloLinkDialog'
 
-const mockCreateBinding = vi.fn().mockResolvedValue({})
+const mockCreateAssignment = vi.fn().mockResolvedValue({})
 
 vi.mock('@/features/datasources/hooks', () => ({
   useDatasources: () => ({
@@ -29,11 +29,11 @@ vi.mock('../hooks', () => ({
   }),
   useSlos: () => ({
     data: [
-      { name: 'latency-slo', display_name: 'Latency SLO', active: true },
+      { id: 'slo-def-1', name: 'latency-slo', display_name: 'Latency SLO', active: true },
     ],
   }),
-  useGroupSloBindings: () => ({ data: [] }),
-  useCreateGroupSloBinding: () => ({ mutateAsync: mockCreateBinding, isPending: false }),
+  useGroupSloAssignments: () => ({ data: [] }),
+  useCreateGroupSloAssignment: () => ({ mutateAsync: mockCreateAssignment, isPending: false }),
 }))
 
 describe('SloLinkDialog', () => {
@@ -93,7 +93,7 @@ describe('SloLinkDialog', () => {
     expect(screen.queryByText('Link SLO to Asset Group')).not.toBeInTheDocument()
   })
 
-  it('calls createLink when all fields filled and link clicked', async () => {
+  it('calls createAssignment when all fields filled and link clicked', async () => {
     render(
       <SloLinkDialog
         open={true}
@@ -115,9 +115,9 @@ describe('SloLinkDialog', () => {
     fireEvent.click(screen.getByText('Link'))
 
     await waitFor(() => {
-      expect(mockCreateBinding).toHaveBeenCalledWith({
+      expect(mockCreateAssignment).toHaveBeenCalledWith({
         groupName: 'production',
-        slo_name: 'latency-slo',
+        slo_definition_id: 'slo-def-1',
         data_source_name: 'prom-prod',
       })
     })

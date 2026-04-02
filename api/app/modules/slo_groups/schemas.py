@@ -1,4 +1,4 @@
-"""Pydantic schemas for SLO groups and template bindings."""
+"""Pydantic schemas for SLO groups."""
 
 from __future__ import annotations
 
@@ -39,6 +39,7 @@ class SLOGroupRead(BaseModel):
     display_name: str | None
     template_slo_name: str
     template_slo_version: int
+    template_slo_definition_id: uuid.UUID
     gen_variables: dict[str, list[str]]
     tags: dict[str, Any]
     author: str | None
@@ -56,23 +57,3 @@ class ExtractRequest(BaseModel):
 
     slo_name: str
     new_name: str
-
-
-class TemplateBindingCreate(BaseModel):
-    """Request body for creating a template binding."""
-
-    template_group_name: str
-    data_source_name: str
-
-
-class TemplateBindingRead(BaseModel):
-    """Response schema for a template binding."""
-
-    id: uuid.UUID
-    target_type: str
-    target_id: uuid.UUID
-    template_group_name: str
-    data_source_name: str
-    created_at: datetime
-
-    model_config = ConfigDict(from_attributes=True)

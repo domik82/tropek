@@ -35,7 +35,7 @@ import sys
 import time
 
 from tropek_client import TropekClient
-from tropek_client.exceptions import TropekAPIError, TropekValidationError
+from tropek_client.exceptions import TropekAPIError
 
 TERMINAL_STATUSES = {'completed', 'failed', 'partial'}
 
@@ -233,54 +233,20 @@ def test_reeval_dry_run(client: TropekClient) -> None:
     print('PASS: re-evaluate dry run')
 
 
-def test_comparison_rules(client: TropekClient) -> None:
-    """CRUD lifecycle for comparison rules on an SLO link."""
-    step('Step 17: Comparison rules CRUD')
+def test_slo_assignments(client: TropekClient) -> None:
+    """Verify SLO assignments were created by bootstrap."""
+    step('Step 17: SLO assignments')
 
-    # GET — default empty
-    rules = client.slo_bindings.get_comparison_rules('checkout-api', 'http-availability-slo')
-    assert rules == [], f'expected empty rules, got {rules}'
-    print('default rules: []')
+    assignments = client.slo_assignments.list_for_asset('checkout-api')
+    slo_names = [a.slo_name for a in assignments]
+    assert 'http-availability-slo' in slo_names, f'expected http-availability-slo, got {slo_names}'
+    print(f'checkout-api assignments: {slo_names}')
 
-    # PUT — set rules
-    new_rules = [
-        {'match': {'branch': 'main'}, 'compare_to': {'branch': 'main'}},
-        {'match': {'branch': '!main'}, 'compare_to': {'branch': 'main'}},
-        {'match': {}, 'compare_to': {}},
-    ]
-    updated = client.slo_bindings.update_comparison_rules('checkout-api', 'http-availability-slo', new_rules)
-    assert len(updated) == 3, f'expected 3 rules, got {len(updated)}'  # noqa: PLR2004
-    assert updated[0]['match'] == {'branch': 'main'}
-    assert updated[2]['match'] == {}
-    print(f'set {len(updated)} rules')
+    group_assignments = client.slo_group_assignments.list_for_group('core-services')
+    assert len(group_assignments) >= 1, f'expected at least 1 group assignment, got {len(group_assignments)}'
+    print(f'core-services group assignments: {len(group_assignments)}')
 
-    # GET — verify persisted
-    fetched = client.slo_bindings.get_comparison_rules('checkout-api', 'http-availability-slo')
-    assert len(fetched) == 3  # noqa: PLR2004
-    print('fetched persisted rules')
-
-    # PUT — clear rules
-    cleared = client.slo_bindings.update_comparison_rules('checkout-api', 'http-availability-slo', [])
-    assert cleared == []
-    print('cleared rules')
-
-    # Verify 422 on invalid rules (catch-all not last)
-    got_validation_error = False
-    try:
-        client.slo_bindings.update_comparison_rules(
-            'checkout-api',
-            'http-availability-slo',
-            [
-                {'match': {}, 'compare_to': {}},
-                {'match': {'branch': 'main'}, 'compare_to': {'branch': 'main'}},
-            ],
-        )
-    except TropekValidationError:
-        got_validation_error = True
-    assert got_validation_error, 'expected 422 for catch-all not last'
-    print('422 rejected invalid rules')
-
-    print('PASS: comparison rules CRUD')
+    print('PASS: SLO assignments')
 
 
 def test_annotations(client: TropekClient) -> None:
@@ -451,7 +417,7 @@ def main() -> None:
     test_reeval_from_pinned_baseline(client)
     test_reeval_from_date(client)
     test_reeval_dry_run(client)
-    test_comparison_rules(client)
+    test_slo_assignments(client)
     test_annotations(client)
     test_asset_type_rename(client)
     test_asset_delete(client)

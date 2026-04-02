@@ -4,7 +4,7 @@ import { Input } from '@/components/ui/input'
 import { FormDialog } from '@/components/ui/form-dialog'
 import { GroupTreeSelector } from '@/features/assets/components/GroupTreeSelector'
 import {
-  useUpdateGroup, useGroupSloBindings, useDeleteGroupSloBinding, useGroupTree,
+  useUpdateGroup, useGroupSloAssignments, useDeleteGroupSloAssignment, useGroupTree,
   useAddSubgroup,
 } from '../hooks'
 
@@ -17,9 +17,9 @@ interface Props {
 export function GroupEditDialog({ open, onOpenChange, groupName }: Props) {
   const { data: tree } = useGroupTree()
   const group = tree?.all_groups.find(g => g.name === groupName)
-  const { data: bindings } = useGroupSloBindings(groupName ?? '')
+  const { data: assignments } = useGroupSloAssignments(groupName ?? '')
   const updateGroup = useUpdateGroup()
-  const unlinkSlo = useDeleteGroupSloBinding()
+  const unlinkSlo = useDeleteGroupSloAssignment()
   const addSubgroup = useAddSubgroup()
 
   const [displayName, setDisplayName] = useState('')
@@ -96,20 +96,20 @@ export function GroupEditDialog({ open, onOpenChange, groupName }: Props) {
           />
         )}
       </div>
-      {bindings && bindings.length > 0 && (
+      {assignments && assignments.length > 0 && (
         <div>
-          <FieldLabel>Linked SLOs ({bindings.length})</FieldLabel>
+          <FieldLabel>Linked SLOs ({assignments.length})</FieldLabel>
           <div className="space-y-1">
-            {bindings.map(binding => (
+            {assignments.map(assignment => (
               <div
-                key={binding.id}
+                key={assignment.id}
                 className="flex items-center justify-between text-xs py-1 border-b border-border/50"
               >
                 <span className="text-foreground">
-                  {binding.slo_name} → {binding.data_source_name}
+                  {assignment.slo_name} → {assignment.data_source_name}
                 </span>
                 <button
-                  onClick={() => unlinkSlo.mutate({ groupName: groupName!, sloName: binding.slo_name })}
+                  onClick={() => unlinkSlo.mutate({ groupName: groupName!, assignmentId: assignment.id })}
                   className="text-muted-foreground hover:text-destructive transition-colors"
                   title="Unlink"
                 >

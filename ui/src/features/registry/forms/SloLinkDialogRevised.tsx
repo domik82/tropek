@@ -3,7 +3,7 @@ import { X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { SearchableComboBox } from '@/components/shared/SearchableComboBox'
 import { useDatasources } from '@/features/datasources'
-import { useGroupTree, useSlos, useCreateGroupSloBinding, useGroupSloBindings } from '@/features/slos'
+import { useGroupTree, useSlos, useCreateGroupSloAssignment, useGroupSloAssignments } from '@/features/slos'
 import { ENTITY_COLORS } from '@/lib/entity-colors'
 import { SANS_SERIF } from '@/lib/fonts'
 
@@ -24,8 +24,8 @@ export function SloLinkDialogRevised({
   const { data: datasources } = useDatasources()
   const { data: tree } = useGroupTree()
   const { data: slos } = useSlos()
-  const { data: existingBindings } = useGroupSloBindings(groupName || lockedGroupName || '')
-  const createBinding = useCreateGroupSloBinding()
+  const { data: existingAssignments } = useGroupSloAssignments(groupName || lockedGroupName || '')
+  const createAssignment = useCreateGroupSloAssignment()
 
   const selectedSlo = slos?.find((s) => s.name === sloName)
 
@@ -49,14 +49,15 @@ export function SloLinkDialogRevised({
     }
   }, [open, lockedGroupName, lockedSloName])
 
-  const isDuplicate = existingBindings?.some((b) => b.slo_name === sloName) ?? false
-  const isValid = datasource && groupName && sloName && !isDuplicate
+  const isDuplicate = existingAssignments?.some((a) => a.slo_name === sloName) ?? false
+  const isValid = datasource && groupName && sloName && selectedSlo && !isDuplicate
 
   const handleLink = async () => {
+    if (!selectedSlo) return
     const targetGroup = lockedGroupName ?? groupName
-    await createBinding.mutateAsync({
+    await createAssignment.mutateAsync({
       groupName: targetGroup,
-      slo_name: sloName,
+      slo_definition_id: selectedSlo.id,
       data_source_name: datasource,
     })
     onOpenChange(false)
@@ -93,7 +94,7 @@ export function SloLinkDialogRevised({
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-border">
           <h2 className="text-sm font-semibold text-foreground">
-            Bind SLO to Asset Group
+            Assign SLO to Asset Group
           </h2>
           <button
             type="button"
@@ -161,7 +162,7 @@ export function SloLinkDialogRevised({
           </div>
 
           {isDuplicate && (
-            <p className="text-xs text-destructive">This SLO is already bound to this group</p>
+            <p className="text-xs text-destructive">This SLO is already assigned to this group</p>
           )}
         </div>
 
@@ -173,10 +174,10 @@ export function SloLinkDialogRevised({
           <Button
             size="xs"
             type="button"
-            disabled={!isValid || createBinding.isPending}
+            disabled={!isValid || createAssignment.isPending}
             onClick={handleLink}
           >
-            {createBinding.isPending ? 'Binding...' : 'Bind'}
+            {createAssignment.isPending ? 'Assigning...' : 'Assign'}
           </Button>
         </div>
       </div>

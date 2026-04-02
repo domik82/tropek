@@ -4,7 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { SloLinkDialogRevised } from './SloLinkDialogRevised'
 
 const mockMutateAsync = vi.fn().mockResolvedValue({})
-let mockExistingBindings: { slo_name: string }[] = []
+let mockExistingAssignments: { slo_name: string }[] = []
 
 vi.mock('@/features/datasources/hooks', () => ({
   useDatasources: () => ({
@@ -27,12 +27,12 @@ vi.mock('@/features/slos/hooks', () => ({
   }),
   useSlos: () => ({
     data: [
-      { name: 'latency-slo', display_name: 'Latency SLO', active: true, sli_name: 'response-time', sli_version: 1 },
-      { name: 'error-slo', display_name: 'Error SLO', active: true, sli_name: null, sli_version: null },
+      { id: 'slo-def-1', name: 'latency-slo', display_name: 'Latency SLO', active: true, sli_name: 'response-time', sli_version: 1 },
+      { id: 'slo-def-2', name: 'error-slo', display_name: 'Error SLO', active: true, sli_name: null, sli_version: null },
     ],
   }),
-  useGroupSloBindings: () => ({ data: mockExistingBindings }),
-  useCreateGroupSloBinding: () => ({ mutateAsync: mockMutateAsync, isPending: false }),
+  useGroupSloAssignments: () => ({ data: mockExistingAssignments }),
+  useCreateGroupSloAssignment: () => ({ mutateAsync: mockMutateAsync, isPending: false }),
 }))
 
 let queryClient: QueryClient
@@ -47,7 +47,7 @@ describe('SloLinkDialogRevised', () => {
   beforeEach(() => {
     queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
     vi.clearAllMocks()
-    mockExistingBindings = []
+    mockExistingAssignments = []
   })
 
   afterEach(() => {
@@ -67,8 +67,8 @@ describe('SloLinkDialogRevised', () => {
     expect(screen.getByText('Asset Group')).toBeInTheDocument()
   })
 
-  it('shows duplicate binding detection message', () => {
-    mockExistingBindings = [{ slo_name: 'latency-slo' }]
+  it('shows duplicate assignment detection message', () => {
+    mockExistingAssignments = [{ slo_name: 'latency-slo' }]
 
     render(
       <SloLinkDialogRevised
@@ -80,10 +80,10 @@ describe('SloLinkDialogRevised', () => {
       { wrapper: Wrapper },
     )
 
-    expect(screen.getByText('This SLO is already bound to this group')).toBeInTheDocument()
+    expect(screen.getByText('This SLO is already assigned to this group')).toBeInTheDocument()
   })
 
-  it('calls createGroupSloBinding on submit', async () => {
+  it('calls createGroupSloAssignment on submit', async () => {
     render(
       <SloLinkDialogRevised
         open={true}
@@ -100,13 +100,13 @@ describe('SloLinkDialogRevised', () => {
     const dsOption = dsItems.find(el => el.textContent?.includes('Prometheus Prod'))!
     fireEvent.click(dsOption)
 
-    // Click Bind button
-    fireEvent.click(screen.getByRole('button', { name: /^bind$/i }))
+    // Click Assign button
+    fireEvent.click(screen.getByRole('button', { name: /^assign$/i }))
 
     await waitFor(() => {
       expect(mockMutateAsync).toHaveBeenCalledWith({
         groupName: 'production',
-        slo_name: 'latency-slo',
+        slo_definition_id: 'slo-def-1',
         data_source_name: 'prom-prod',
       })
     })
@@ -134,17 +134,17 @@ describe('SloLinkDialogRevised', () => {
       { wrapper: Wrapper },
     )
 
-    expect(screen.queryByText('Bind SLO to Asset Group')).not.toBeInTheDocument()
+    expect(screen.queryByText('Assign SLO to Asset Group')).not.toBeInTheDocument()
   })
 
-  it('disables Bind button when form is incomplete', () => {
+  it('disables Assign button when form is incomplete', () => {
     render(
       <SloLinkDialogRevised open={true} onOpenChange={onOpenChange} />,
       { wrapper: Wrapper },
     )
 
-    const bindButton = screen.getByRole('button', { name: /^bind$/i })
-    expect(bindButton).toBeDisabled()
+    const assignButton = screen.getByRole('button', { name: /^assign$/i })
+    expect(assignButton).toBeDisabled()
   })
 
   it('shows SLI context when SLO with sli_name is selected', async () => {
