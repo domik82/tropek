@@ -89,8 +89,6 @@ async def create_slo_definition(
         variables=body.variables,
         comparable_from_version=body.comparable_from_version,
         kind=body.kind,
-        sli_name=body.sli_name,
-        sli_version=body.sli_version,
         sli_definition_id=resolved_sli_id,
         method_criteria=body.method_criteria,
     )

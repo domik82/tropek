@@ -68,8 +68,6 @@ class SLORepository(TagQueryMixin):
             tags=params.tags,
             variables=params.variables,
             kind=params.kind,
-            sli_name=params.sli_name,
-            sli_version=params.sli_version,
             sli_definition_id=params.sli_definition_id,
             method_criteria=params.method_criteria,
             generated_by_group_id=params.generated_by_group_id,

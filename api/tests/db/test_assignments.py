@@ -165,8 +165,7 @@ async def test_create_group_assignment(db_session: AsyncSession) -> None:
     )
     sg = await SLOGroupRepository(db_session).create(
         name='assign-sg-1',
-        template_slo_name=slo_tpl.name,
-        template_slo_version=slo_tpl.version,
+        template_slo_definition_id=slo_tpl.id,
         gen_variables={'proc': ['web']},
     )
 

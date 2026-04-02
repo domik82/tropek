@@ -209,8 +209,7 @@ async def test_create_slo_with_sli_reference(async_client: AsyncClient) -> None:
     )
     assert slo_resp.status_code == 201
     data = slo_resp.json()
-    assert data['sli_name'] == 'test-sli-ref'
-    assert data['sli_version'] == 1
+    assert data['sli_definition_id'] is not None
     assert data['kind'] == 'standard'
 
 

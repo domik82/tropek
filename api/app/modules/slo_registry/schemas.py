@@ -68,8 +68,6 @@ class SLODefinitionRead(BaseModel):
     tags: dict[str, Any]
     variables: dict[str, Any]
     kind: str
-    sli_name: str | None
-    sli_version: int | None
     method_criteria: dict[str, Any] | None
     created_at: datetime
 

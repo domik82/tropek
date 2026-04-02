@@ -183,36 +183,3 @@ class AddSubgroupRequest(BaseModel):
     weight: float = 1.0
 
 
-# ---- Bindings ----
-
-
-class ComparisonRulesUpdate(BaseModel):
-    """Request body for comparison-rules PUT endpoints."""
-
-    rules: list[dict[str, Any]]
-
-
-# ---- SLO Bindings (new polymorphic model) ----
-
-
-class SLOBindingCreate(BaseModel):
-    """Request body for creating an SLO binding."""
-
-    slo_name: str
-    data_source_name: str
-
-
-class SLOBindingRead(BaseModel):
-    """Response schema for an SLO binding."""
-
-    id: uuid.UUID
-    target_type: str
-    target_id: uuid.UUID
-    slo_name: str
-    data_source_name: str
-    comparison_rules: list[dict[str, Any]] | None
-    source: str = 'direct'
-    template_binding_id: uuid.UUID | None = None
-    created_at: datetime
-
-    model_config = ConfigDict(from_attributes=True)

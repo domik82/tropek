@@ -1,4 +1,4 @@
-"""FastAPI router for SLO groups, regeneration, extraction, and template bindings."""
+"""FastAPI router for SLO groups, regeneration, and extraction."""
 
 from __future__ import annotations
 
@@ -7,32 +7,20 @@ from dataclasses import dataclass
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_session
-from app.modules.assets.repository import (
-    AssetGroupRepository,
-    AssetRepository,
-    SLOBindingRepository,
-)
 from app.modules.common.errors import raise_not_found
 from app.modules.common.schemas import PagedResponse
-from app.modules.datasource.repository import DataSourceRepository
 from app.modules.sli_registry.repository import SLIRepository
 from app.modules.slo_groups.generator import generate_slo_specs
 from app.modules.slo_groups.regeneration import plan_regeneration
-from app.modules.slo_groups.repository import (
-    SLOGroupRepository,
-    TemplateBindingRepository,
-)
+from app.modules.slo_groups.repository import SLOGroupRepository
 from app.modules.slo_groups.schemas import (
     ExtractRequest,
     SLOGroupCreate,
     SLOGroupRead,
     SLOGroupUpdate,
-    TemplateBindingCreate,
-    TemplateBindingRead,
 )
 from app.modules.slo_registry.params import SLOCreateParams, SLOObjectiveParams
 from app.modules.slo_registry.repository import SLORepository
@@ -56,15 +44,18 @@ class _OldSLOState:
 async def _build_group_read(
     group_repo: SLOGroupRepository,
     group: Any,
+    slo_repo: SLORepository,
 ) -> SLOGroupRead:
-    """Build an SLOGroupRead with computed generated_slo_count."""
+    """Build an SLOGroupRead with computed fields from FK join."""
     count = await group_repo.count_generated_slos(group.id)
+    template_slo = await slo_repo.get_by_id(group.template_slo_definition_id)
     return SLOGroupRead(
         id=group.id,
         name=group.name,
         display_name=group.display_name,
-        template_slo_name=group.template_slo_name,
-        template_slo_version=group.template_slo_version,
+        template_slo_name=template_slo.name if template_slo else '',
+        template_slo_version=template_slo.version if template_slo else 0,
+        template_slo_definition_id=group.template_slo_definition_id,
         gen_variables=group.gen_variables,
         tags=group.tags,
         author=group.author,
@@ -101,116 +92,17 @@ async def _load_template_slo(
 
 async def _resolve_sli_indicators(
     session: AsyncSession,
-    sli_name: str | None,
-    sli_version: int | None,
+    sli_definition_id: uuid.UUID | None,
 ) -> dict[str, Any]:
-    """Resolve an SLI definition's indicators dict, or empty dict if unlinked."""
-    if sli_name is None:
+    """Resolve an SLI definition's indicators dict by FK, or empty dict if unlinked."""
+    if sli_definition_id is None:
         return {}
     sli_repo = SLIRepository(session)
-    if sli_version is not None:
-        sli_def = await sli_repo.get_version(sli_name, sli_version)
-    else:
-        sli_def = await sli_repo.get_latest(sli_name)
+    sli_def = await sli_repo.get_by_id(sli_definition_id)
     if sli_def is None:
         return {}
     return dict(sli_def.indicators)
 
-
-async def _validate_template_binding_adapter_type(
-    session: AsyncSession,
-    template_group_name: str,
-    data_source_name: str,
-) -> None:
-    """Validate datasource adapter_type matches the template group's SLI adapter_type."""
-    group_repo = SLOGroupRepository(session)
-    group = await group_repo.get_by_name(template_group_name)
-    if group is None:
-        raise HTTPException(
-            status_code=422,
-            detail=f"slo group '{template_group_name}' not found",
-        )
-    slo_repo = SLORepository(session)
-    template_slo = await slo_repo.get_latest(group.template_slo_name)
-    if template_slo is None or not template_slo.sli_name:
-        return  # can't validate without SLI link
-    sli_repo = SLIRepository(session)
-    sli_def = (
-        await sli_repo.get_version(template_slo.sli_name, template_slo.sli_version)
-        if template_slo.sli_version
-        else await sli_repo.get_latest(template_slo.sli_name)
-    )
-    if sli_def is None:
-        return
-    ds_repo = DataSourceRepository(session)
-    ds = await ds_repo.get_by_name(data_source_name)
-    if ds is None:
-        raise HTTPException(
-            status_code=422,
-            detail=f"datasource '{data_source_name}' not found",
-        )
-    if sli_def.adapter_type != ds.adapter_type:
-        raise HTTPException(
-            status_code=422,
-            detail=(
-                f"datasource adapter_type '{ds.adapter_type}' does not match sli adapter_type '{sli_def.adapter_type}'"
-            ),
-        )
-
-
-async def _fan_out_slo_bindings(
-    session: AsyncSession,
-    template_binding: Any,
-) -> None:
-    """Create slo_bindings for each generated SLO in the template binding's group."""
-    group_repo = SLOGroupRepository(session)
-    group = await group_repo.get_by_name(template_binding.template_group_name)
-    if group is None:
-        return
-    slo_repo = SLORepository(session)
-    generated_slos = await slo_repo.list_by_group_id(group.id)
-    binding_repo = SLOBindingRepository(session)
-    for slo in generated_slos:
-        try:
-            async with session.begin_nested():
-                await binding_repo.create(
-                    target_type=template_binding.target_type,
-                    target_id=template_binding.target_id,
-                    slo_name=slo.name,
-                    data_source_name=template_binding.data_source_name,
-                    source='template',
-                    template_binding_id=template_binding.id,
-                )
-        except IntegrityError:
-            pass  # binding already exists, skip
-
-
-async def _sync_template_bindings_for_group(
-    session: AsyncSession,
-    group_name: str,
-    new_slo_names: set[str],
-    removed_slo_names: set[str],
-) -> None:
-    """Sync fanned-out slo_bindings when a group's generated SLOs change."""
-    tb_repo = TemplateBindingRepository(session)
-    template_bindings = await tb_repo.list_by_group_name(group_name)
-    binding_repo = SLOBindingRepository(session)
-    for tb in template_bindings:
-        for slo_name in new_slo_names:
-            try:
-                async with session.begin_nested():
-                    await binding_repo.create(
-                        target_type=tb.target_type,
-                        target_id=tb.target_id,
-                        slo_name=slo_name,
-                        data_source_name=tb.data_source_name,
-                        source='template',
-                        template_binding_id=tb.id,
-                    )
-            except IntegrityError:
-                pass  # binding already exists, skip
-        for slo_name in removed_slo_names:
-            await binding_repo.delete_by_target_and_slo(tb.target_type, tb.target_id, slo_name)
 
 
 # ---------------------------------------------------------------------------
@@ -247,25 +139,14 @@ async def create_slo_group(
     group = await group_repo.create(
         name=body.name,
         display_name=body.display_name,
-        template_slo_name=body.template_slo_name,
-        template_slo_version=body.template_slo_version,
         template_slo_definition_id=template.id,
         gen_variables=body.gen_variables,
         tags=body.tags,
         author=body.author,
     )
 
-    # Resolve SLI FK for generated SLOs — use template's FK if available, else resolve by name
+    # Resolve SLI FK for generated SLOs from template
     resolved_sli_def_id: uuid.UUID | None = template.sli_definition_id
-    if resolved_sli_def_id is None and template.sli_name is not None:
-        sli_repo = SLIRepository(session)
-        sli_resolved = (
-            await sli_repo.get_version(template.sli_name, template.sli_version)
-            if template.sli_version is not None
-            else await sli_repo.get_latest(template.sli_name)
-        )
-        if sli_resolved is not None:
-            resolved_sli_def_id = sli_resolved.id
 
     # Create generated SLO definitions
     for spec in gen_result.specs:
@@ -279,14 +160,12 @@ async def create_slo_group(
                 variables=spec.variables,
                 tags=spec.tags,
                 kind='standard',
-                sli_name=spec.sli_name,
-                sli_version=spec.sli_version,
                 sli_definition_id=resolved_sli_def_id,
                 generated_by_group_id=group.id,
             )
         )
 
-    return await _build_group_read(group_repo, group)
+    return await _build_group_read(group_repo, group, slo_repo)
 
 
 @router.get('/slo-groups', response_model=PagedResponse[SLOGroupRead])
@@ -297,8 +176,9 @@ async def list_slo_groups(
 ) -> PagedResponse[SLOGroupRead]:
     """List all active SLO groups with optional tag filter."""
     group_repo = SLOGroupRepository(session)
+    slo_repo = SLORepository(session)
     groups = await group_repo.list_all(tag_key=tag_key, tag_val=tag_val)
-    reads = [await _build_group_read(group_repo, g) for g in groups]
+    reads = [await _build_group_read(group_repo, g, slo_repo) for g in groups]
     return PagedResponse(items=reads, total=len(reads))
 
 
@@ -312,7 +192,8 @@ async def get_slo_group(
     group = await group_repo.get_by_name(name)
     if group is None:
         raise_not_found('slo group', name)
-    return await _build_group_read(group_repo, group)
+    slo_repo = SLORepository(session)
+    return await _build_group_read(group_repo, group, slo_repo)
 
 
 @router.put('/slo-groups/{name}', response_model=SLOGroupRead)
@@ -329,10 +210,16 @@ async def update_slo_group(
 
     slo_repo = SLORepository(session)
 
-    # Determine effective template
-    eff_template_name = body.template_slo_name or group.template_slo_name
-    eff_template_version = body.template_slo_version or group.template_slo_version
-    template = await _load_template_slo(slo_repo, eff_template_name, eff_template_version)
+    # Load current (old) template via FK
+    old_template = await slo_repo.get_by_id(group.template_slo_definition_id)
+    if old_template is None:
+        raise HTTPException(status_code=422, detail='current template slo definition not found')
+
+    # Determine effective (new) template — by name/version if provided, else keep current
+    if body.template_slo_name is not None:
+        template = await _load_template_slo(slo_repo, body.template_slo_name, body.template_slo_version)
+    else:
+        template = old_template
 
     # Effective gen_variables
     eff_gen_vars = body.gen_variables or group.gen_variables
@@ -351,13 +238,12 @@ async def update_slo_group(
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
-    # Resolve SLI indicators for old and new
+    # Resolve SLI indicators for old and new via FK
     old_sli_indicators = await _resolve_sli_indicators(
         session,
-        group.template_slo_name,
-        group.template_slo_version if not body.template_slo_name else None,
+        old_template.sli_definition_id if not body.template_slo_name else None,
     )
-    new_sli_indicators = await _resolve_sli_indicators(session, template.sli_name, template.sli_version)
+    new_sli_indicators = await _resolve_sli_indicators(session, template.sli_definition_id)
 
     # Detect template variables change
     template_variables_changed = body.gen_variables is not None and body.gen_variables != group.gen_variables
@@ -371,17 +257,8 @@ async def update_slo_group(
         template_variables_changed=template_variables_changed,
     )
 
-    # Resolve SLI FK for generated SLOs — use template's FK if available, else resolve by name
+    # Resolve SLI FK for generated SLOs from template
     resolved_sli_def_id: uuid.UUID | None = template.sli_definition_id
-    if resolved_sli_def_id is None and template.sli_name is not None:
-        sli_repo = SLIRepository(session)
-        sli_resolved = (
-            await sli_repo.get_version(template.sli_name, template.sli_version)
-            if template.sli_version is not None
-            else await sli_repo.get_latest(template.sli_name)
-        )
-        if sli_resolved is not None:
-            resolved_sli_def_id = sli_resolved.id
 
     # Apply plan: create new SLOs
     for spec in regen_plan.to_create:
@@ -395,8 +272,6 @@ async def update_slo_group(
                 variables=spec.variables,
                 tags=spec.tags,
                 kind='standard',
-                sli_name=spec.sli_name,
-                sli_version=spec.sli_version,
                 sli_definition_id=resolved_sli_def_id,
                 generated_by_group_id=group.id,
             )
@@ -415,8 +290,6 @@ async def update_slo_group(
                 variables=spec.variables,
                 tags=spec.tags,
                 kind='standard',
-                sli_name=spec.sli_name,
-                sli_version=spec.sli_version,
                 sli_definition_id=resolved_sli_def_id,
                 generated_by_group_id=group.id,
                 comparable_from_version=action.comparable_from_version,
@@ -427,17 +300,9 @@ async def update_slo_group(
     for slo_name in regen_plan.to_deactivate:
         await slo_repo.deactivate(slo_name)
 
-    # Sync fanned-out slo_bindings for added/removed SLOs
-    new_slo_names = {s.name for s in regen_plan.to_create}
-    removed_slo_names = set(regen_plan.to_deactivate)
-    if new_slo_names or removed_slo_names:
-        await _sync_template_bindings_for_group(session, name, new_slo_names, removed_slo_names)
-
     # Update group row
     updated_group = await group_repo.update(
         name,
-        template_slo_name=eff_template_name,
-        template_slo_version=eff_template_version,
         template_slo_definition_id=template.id,
         gen_variables=eff_gen_vars,
         display_name=body.display_name if body.display_name is not None else group.display_name,
@@ -446,7 +311,7 @@ async def update_slo_group(
     if updated_group is None:
         raise_not_found('slo group', name)
 
-    return await _build_group_read(group_repo, updated_group)
+    return await _build_group_read(group_repo, updated_group, slo_repo)
 
 
 @router.delete('/slo-groups/{name}', status_code=204)
@@ -454,7 +319,7 @@ async def delete_slo_group(
     name: str,
     session: AsyncSession = Depends(get_session),
 ) -> None:
-    """Deactivate an SLO group, its generated SLOs, and template bindings."""
+    """Deactivate an SLO group and its generated SLOs."""
     group_repo = SLOGroupRepository(session)
     group = await group_repo.get_by_name(name)
     if group is None:
@@ -464,9 +329,6 @@ async def delete_slo_group(
     generated_slos = await slo_repo.list_by_group_id(group.id)
     for slo in generated_slos:
         await slo_repo.deactivate(slo.name)
-
-    binding_repo = TemplateBindingRepository(session)
-    await binding_repo.delete_all_by_group(name)
 
     await group_repo.deactivate(name)
 
@@ -500,7 +362,7 @@ async def extract_slo(  # noqa: C901
         )
 
     # Create standalone copy
-    standalone = await slo_repo.create(
+    _ = await slo_repo.create(
         SLOCreateParams(
             name=body.new_name,
             objectives=[
@@ -520,13 +382,14 @@ async def extract_slo(  # noqa: C901
             variables=dict(gen_slo.variables),
             tags={k: v for k, v in gen_slo.tags.items() if k != 'slo_group'},
             kind='standard',
-            sli_name=gen_slo.sli_name,
-            sli_version=gen_slo.sli_version,
+            sli_definition_id=gen_slo.sli_definition_id,
         )
     )
 
     # Re-run generator to find the row index of the extracted SLO
-    template = await _load_template_slo(slo_repo, group.template_slo_name, group.template_slo_version)
+    template = await slo_repo.get_by_id(group.template_slo_definition_id)
+    if template is None:
+        raise HTTPException(status_code=422, detail='template slo definition not found')
     gen_result = generate_slo_specs(template, group.gen_variables, name)
     extracted_idx: int | None = None
     for i, spec in enumerate(gen_result.specs):
@@ -541,18 +404,6 @@ async def extract_slo(  # noqa: C901
             new_gen_vars[key] = [v for j, v in enumerate(vals) if j != extracted_idx]
     else:
         new_gen_vars = dict(group.gen_variables)
-
-    # Copy template bindings to slo_bindings for the extracted SLO
-    tb_repo = TemplateBindingRepository(session)
-    bindings = await tb_repo.list_by_group_name(name)
-    binding_repo = SLOBindingRepository(session)
-    for tb in bindings:
-        await binding_repo.create(
-            target_type=tb.target_type,
-            target_id=tb.target_id,
-            slo_name=standalone.name,
-            data_source_name=tb.data_source_name,
-        )
 
     # Deactivate the generated SLO
     await slo_repo.deactivate(body.slo_name)
@@ -569,12 +420,14 @@ async def extract_slo(  # noqa: C901
     updated_group = await group_repo.get_by_name(name)
     if updated_group is None:
         # Group was deactivated — return minimal response from original
+        template_slo = await slo_repo.get_by_id(group.template_slo_definition_id)
         return SLOGroupRead(
             id=group.id,
             name=group.name,
             display_name=group.display_name,
-            template_slo_name=group.template_slo_name,
-            template_slo_version=group.template_slo_version,
+            template_slo_name=template_slo.name if template_slo else '',
+            template_slo_version=template_slo.version if template_slo else 0,
+            template_slo_definition_id=group.template_slo_definition_id,
             gen_variables=new_gen_vars,
             tags=group.tags,
             author=group.author,
@@ -584,149 +437,4 @@ async def extract_slo(  # noqa: C901
             updated_at=group.updated_at,
             generated_slo_count=0,
         )
-    return await _build_group_read(group_repo, updated_group)
-
-
-# ---------------------------------------------------------------------------
-# Template Binding CRUD — assets
-# ---------------------------------------------------------------------------
-
-
-@router.get(
-    '/assets/{name}/template-bindings',
-    response_model=list[TemplateBindingRead],
-)
-async def list_asset_template_bindings(
-    name: str,
-    session: AsyncSession = Depends(get_session),
-) -> list[TemplateBindingRead]:
-    """List all template bindings for an asset."""
-    asset_repo = AssetRepository(session)
-    asset = await asset_repo.get_by_name(name)
-    if asset is None:
-        raise_not_found('asset', name)
-    tb_repo = TemplateBindingRepository(session)
-    bindings = await tb_repo.list_by_target('asset', asset.id)
-    return [TemplateBindingRead.model_validate(b) for b in bindings]
-
-
-@router.post(
-    '/assets/{name}/template-bindings',
-    response_model=TemplateBindingRead,
-    status_code=201,
-)
-async def create_asset_template_binding(
-    name: str,
-    body: TemplateBindingCreate,
-    session: AsyncSession = Depends(get_session),
-) -> TemplateBindingRead:
-    """Create a template binding for an asset."""
-    asset_repo = AssetRepository(session)
-    asset = await asset_repo.get_by_name(name)
-    if asset is None:
-        raise_not_found('asset', name)
-    await _validate_template_binding_adapter_type(session, body.template_group_name, body.data_source_name)
-    tb_repo = TemplateBindingRepository(session)
-    try:
-        binding = await tb_repo.create(
-            target_type='asset',
-            target_id=asset.id,
-            template_group_name=body.template_group_name,
-            data_source_name=body.data_source_name,
-        )
-    except IntegrityError as exc:
-        raise HTTPException(
-            status_code=409,
-            detail='template binding already exists for this target and group',
-        ) from exc
-    await _fan_out_slo_bindings(session, binding)
-    return TemplateBindingRead.model_validate(binding)
-
-
-@router.delete('/assets/{name}/template-bindings/{group_name}', status_code=204)
-async def delete_asset_template_binding(
-    name: str,
-    group_name: str,
-    session: AsyncSession = Depends(get_session),
-) -> None:
-    """Delete a template binding from an asset (cascade deletes fanned-out slo_bindings)."""
-    asset_repo = AssetRepository(session)
-    asset = await asset_repo.get_by_name(name)
-    if asset is None:
-        raise_not_found('asset', name)
-    tb_repo = TemplateBindingRepository(session)
-    await tb_repo.delete_by_target_and_group('asset', asset.id, group_name)
-
-
-# ---------------------------------------------------------------------------
-# Template Binding CRUD — asset groups
-# ---------------------------------------------------------------------------
-
-
-@router.get(
-    '/asset-groups/{name}/template-bindings',
-    response_model=list[TemplateBindingRead],
-)
-async def list_group_template_bindings(
-    name: str,
-    session: AsyncSession = Depends(get_session),
-) -> list[TemplateBindingRead]:
-    """List all template bindings for an asset group."""
-    ag_repo = AssetGroupRepository(session)
-    ag = await ag_repo.get_by_name(name)
-    if ag is None:
-        raise_not_found('asset group', name)
-    tb_repo = TemplateBindingRepository(session)
-    bindings = await tb_repo.list_by_target('asset_group', ag.id)
-    return [TemplateBindingRead.model_validate(b) for b in bindings]
-
-
-@router.post(
-    '/asset-groups/{name}/template-bindings',
-    response_model=TemplateBindingRead,
-    status_code=201,
-)
-async def create_group_template_binding(
-    name: str,
-    body: TemplateBindingCreate,
-    session: AsyncSession = Depends(get_session),
-) -> TemplateBindingRead:
-    """Create a template binding for an asset group."""
-    ag_repo = AssetGroupRepository(session)
-    ag = await ag_repo.get_by_name(name)
-    if ag is None:
-        raise_not_found('asset group', name)
-    await _validate_template_binding_adapter_type(session, body.template_group_name, body.data_source_name)
-    tb_repo = TemplateBindingRepository(session)
-    try:
-        binding = await tb_repo.create(
-            target_type='asset_group',
-            target_id=ag.id,
-            template_group_name=body.template_group_name,
-            data_source_name=body.data_source_name,
-        )
-    except IntegrityError as exc:
-        raise HTTPException(
-            status_code=409,
-            detail='template binding already exists for this target and group',
-        ) from exc
-    await _fan_out_slo_bindings(session, binding)
-    return TemplateBindingRead.model_validate(binding)
-
-
-@router.delete(
-    '/asset-groups/{name}/template-bindings/{group_name}',
-    status_code=204,
-)
-async def delete_group_template_binding(
-    name: str,
-    group_name: str,
-    session: AsyncSession = Depends(get_session),
-) -> None:
-    """Delete a template binding from an asset group (cascade deletes fanned-out slo_bindings)."""
-    ag_repo = AssetGroupRepository(session)
-    ag = await ag_repo.get_by_name(name)
-    if ag is None:
-        raise_not_found('asset group', name)
-    tb_repo = TemplateBindingRepository(session)
-    await tb_repo.delete_by_target_and_group('asset_group', ag.id, group_name)
+    return await _build_group_read(group_repo, updated_group, slo_repo)

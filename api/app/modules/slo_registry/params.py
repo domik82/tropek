@@ -33,8 +33,6 @@ class SLOCreateParams(BaseModel):
     variables: dict[str, object] = Field(default_factory=dict)
     comparable_from_version: int | None = None
     kind: str = 'standard'
-    sli_name: str | None = None
-    sli_version: int | None = None
     sli_definition_id: uuid.UUID | None = None
     method_criteria: dict[str, object] | None = None
     generated_by_group_id: uuid.UUID | None = None
