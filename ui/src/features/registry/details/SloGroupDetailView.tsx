@@ -122,7 +122,6 @@ export function SloGroupDetailView({ name, onNavigate }: Props) {
 
             const varsChanged = JSON.stringify(editVars) !== JSON.stringify(group.gen_variables)
             const versionChanged = selectedVersion !== null && selectedVersion !== group.template_slo_version
-            const hasChanges = varsChanged || versionChanged
             const hasEmptyCells = editKeys.some(k => editVars[k].some(v => v.trim() === ''))
 
             return (
@@ -207,7 +206,7 @@ export function SloGroupDetailView({ name, onNavigate }: Props) {
                 <div className="flex items-center gap-2">
                   <Button
                     size="xs"
-                    disabled={!hasChanges || hasEmptyCells || updateMutation.isPending}
+                    disabled={hasEmptyCells || updateMutation.isPending}
                     onClick={() => {
                       const body: Record<string, unknown> = {}
                       if (versionChanged && selectedVersion) body.template_slo_version = selectedVersion
