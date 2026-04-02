@@ -1,7 +1,7 @@
 // src/features/slos/api.ts
 import type { SloDefinition, SloObjective, SloValidationResult, SloComparisonConfig } from './types'
 import type { AssetGroupUpdate } from './types'
-import type { SloBinding, SloBindingCreate } from './types'
+import type { SloAssignment, SloAssignmentCreate } from './types'
 import type { AssetGroup, AssetGroupTree } from '@/features/assets/types'
 
 const BASE = '/api'
@@ -134,44 +134,44 @@ export async function fetchSloTagValues(key: string): Promise<{ value: string; c
   return res.json()
 }
 
-// ---- SLO Bindings ----
+// ---- SLO Assignments ----
 
-export async function fetchAssetSloBindings(assetName: string): Promise<SloBinding[]> {
-  const res = await fetch(`${BASE}/assets/${encodeURIComponent(assetName)}/slo-bindings`)
-  if (!res.ok) throw new Error(`fetchAssetSloBindings: ${res.status}`)
+export async function fetchAssetSloAssignments(assetName: string): Promise<SloAssignment[]> {
+  const res = await fetch(`${BASE}/assets/${encodeURIComponent(assetName)}/slo-assignments`)
+  if (!res.ok) throw new Error(`fetchAssetSloAssignments: ${res.status}`)
   return res.json()
 }
 
-export async function createAssetSloBinding(assetName: string, body: SloBindingCreate): Promise<SloBinding> {
-  const res = await fetch(`${BASE}/assets/${encodeURIComponent(assetName)}/slo-bindings`, {
+export async function createAssetSloAssignment(assetName: string, body: SloAssignmentCreate): Promise<SloAssignment> {
+  const res = await fetch(`${BASE}/assets/${encodeURIComponent(assetName)}/slo-assignments`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   })
-  if (!res.ok) throw new Error(`createAssetSloBinding: ${res.status}`)
+  if (!res.ok) throw new Error(`createAssetSloAssignment: ${res.status}`)
   return res.json()
 }
 
-export async function fetchGroupSloBindings(groupName: string): Promise<SloBinding[]> {
-  const res = await fetch(`${BASE}/asset-groups/${encodeURIComponent(groupName)}/slo-bindings`)
-  if (!res.ok) throw new Error(`fetchGroupSloBindings: ${res.status}`)
+export async function fetchGroupSloAssignments(groupName: string): Promise<SloAssignment[]> {
+  const res = await fetch(`${BASE}/asset-groups/${encodeURIComponent(groupName)}/slo-assignments`)
+  if (!res.ok) throw new Error(`fetchGroupSloAssignments: ${res.status}`)
   return res.json()
 }
 
-export async function createGroupSloBinding(groupName: string, body: SloBindingCreate): Promise<SloBinding> {
-  const res = await fetch(`${BASE}/asset-groups/${encodeURIComponent(groupName)}/slo-bindings`, {
+export async function createGroupSloAssignment(groupName: string, body: SloAssignmentCreate): Promise<SloAssignment> {
+  const res = await fetch(`${BASE}/asset-groups/${encodeURIComponent(groupName)}/slo-assignments`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   })
-  if (!res.ok) throw new Error(`createGroupSloBinding: ${res.status}`)
+  if (!res.ok) throw new Error(`createGroupSloAssignment: ${res.status}`)
   return res.json()
 }
 
-export async function deleteGroupSloBinding(groupName: string, sloName: string): Promise<void> {
+export async function deleteGroupSloAssignment(groupName: string, assignmentId: string): Promise<void> {
   const res = await fetch(
-    `${BASE}/asset-groups/${encodeURIComponent(groupName)}/slo-bindings/${encodeURIComponent(sloName)}`,
+    `${BASE}/asset-groups/${encodeURIComponent(groupName)}/slo-assignments/${encodeURIComponent(assignmentId)}`,
     { method: 'DELETE' },
   )
-  if (!res.ok) throw new Error(`deleteGroupSloBinding: ${res.status}`)
+  if (!res.ok) throw new Error(`deleteGroupSloAssignment: ${res.status}`)
 }

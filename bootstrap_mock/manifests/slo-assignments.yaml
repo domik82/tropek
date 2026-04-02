@@ -1,13 +1,14 @@
-# SLO Bindings — new polymorphic model (replaces AssetSLOLink / AssetGroupSLOLink).
+# SLO Assignments — pin asset/group to a specific SLO + datasource.
 # target_type: "asset" or "asset_group"
 # target_name: the asset or group name (resolved to ID by bootstrap)
+# slo_name: resolved to slo_definition_id at apply time (latest version)
 
 # ---- E-Commerce: existing services ----
 
 api_version: tropek/v1
-kind: SLOBinding
+kind: SLOAssignment
 metadata:
-  name: checkout-api-http-binding
+  name: checkout-api-http-assignment
 spec:
   target_type: asset
   target_name: checkout-api
@@ -15,9 +16,9 @@ spec:
   data_source_name: prometheus-local
 ---
 api_version: tropek/v1
-kind: SLOBinding
+kind: SLOAssignment
 metadata:
-  name: product-catalog-http-binding
+  name: product-catalog-http-assignment
 spec:
   target_type: asset
   target_name: product-catalog
@@ -25,9 +26,9 @@ spec:
   data_source_name: prometheus-local
 ---
 api_version: tropek/v1
-kind: SLOBinding
+kind: SLOAssignment
 metadata:
-  name: user-service-http-binding
+  name: user-service-http-assignment
 spec:
   target_type: asset
   target_name: user-service
@@ -35,22 +36,22 @@ spec:
   data_source_name: prometheus-local
 ---
 api_version: tropek/v1
-kind: SLOBinding
+kind: SLOAssignment
 metadata:
-  name: orders-db-perf-binding
+  name: orders-db-perf-assignment
 spec:
   target_type: asset
   target_name: orders-db
   slo_name: db-performance-slo
   data_source_name: prometheus-local
 
-# ---- E-Commerce: group bindings ----
+# ---- E-Commerce: group assignments ----
 
 ---
 api_version: tropek/v1
-kind: SLOBinding
+kind: SLOAssignment
 metadata:
-  name: core-services-http-binding
+  name: core-services-http-assignment
 spec:
   target_type: asset_group
   target_name: core-services
@@ -58,9 +59,9 @@ spec:
   data_source_name: prometheus-local
 ---
 api_version: tropek/v1
-kind: SLOBinding
+kind: SLOAssignment
 metadata:
-  name: data-tier-db-binding
+  name: data-tier-db-assignment
 spec:
   target_type: asset_group
   target_name: data-tier
@@ -71,9 +72,9 @@ spec:
 
 ---
 api_version: tropek/v1
-kind: SLOBinding
+kind: SLOAssignment
 metadata:
-  name: vm-prod-web-health-binding
+  name: vm-prod-web-health-assignment
 spec:
   target_type: asset_group
   target_name: vm-prod-web
@@ -81,24 +82,22 @@ spec:
   data_source_name: prometheus-local
 ---
 api_version: tropek/v1
-kind: SLOBinding
+kind: SLOAssignment
 metadata:
-  name: vm-stg-web-health-binding
+  name: vm-stg-web-health-assignment
 spec:
   target_type: asset_group
   target_name: vm-stg-web
   slo_name: vm-health-slo
   data_source_name: prometheus-local
 
-# ---- Office Laptops: one binding per app SLO ----
-# In Phase 3 these would be generated from a template.
-# For now, 4 explicit SLOs x 1 group = 4 bindings.
+# ---- Office Laptops: one assignment per app SLO ----
 
 ---
 api_version: tropek/v1
-kind: SLOBinding
+kind: SLOAssignment
 metadata:
-  name: office-laptops-word-binding
+  name: office-laptops-word-assignment
 spec:
   target_type: asset_group
   target_name: office-laptops
@@ -106,9 +105,9 @@ spec:
   data_source_name: prometheus-local
 ---
 api_version: tropek/v1
-kind: SLOBinding
+kind: SLOAssignment
 metadata:
-  name: office-laptops-excel-binding
+  name: office-laptops-excel-assignment
 spec:
   target_type: asset_group
   target_name: office-laptops
@@ -116,9 +115,9 @@ spec:
   data_source_name: prometheus-local
 ---
 api_version: tropek/v1
-kind: SLOBinding
+kind: SLOAssignment
 metadata:
-  name: office-laptops-powerpoint-binding
+  name: office-laptops-powerpoint-assignment
 spec:
   target_type: asset_group
   target_name: office-laptops
@@ -126,9 +125,9 @@ spec:
   data_source_name: prometheus-local
 ---
 api_version: tropek/v1
-kind: SLOBinding
+kind: SLOAssignment
 metadata:
-  name: office-laptops-outlook-binding
+  name: office-laptops-outlook-assignment
 spec:
   target_type: asset_group
   target_name: office-laptops
@@ -139,9 +138,9 @@ spec:
 
 ---
 api_version: tropek/v1
-kind: SLOBinding
+kind: SLOAssignment
 metadata:
-  name: checkout-api-agg-latency-binding
+  name: checkout-api-agg-latency-assignment
 spec:
   target_type: asset
   target_name: checkout-api

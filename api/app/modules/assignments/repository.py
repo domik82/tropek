@@ -8,6 +8,7 @@ from typing import Any
 
 from sqlalchemy import delete, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.db.models import SLOAssignment, SLOGroupAssignment
 
@@ -61,6 +62,7 @@ class AssignmentRepository:
         """Return all direct-asset SLO assignments ordered by slo_name."""
         result = await self._session.execute(
             select(SLOAssignment)
+            .options(selectinload(SLOAssignment.slo_definition), selectinload(SLOAssignment.data_source))
             .where(SLOAssignment.asset_id == asset_id)
             .order_by(SLOAssignment.slo_name)
         )
@@ -72,6 +74,7 @@ class AssignmentRepository:
         """Return all direct-group SLO assignments ordered by slo_name."""
         result = await self._session.execute(
             select(SLOAssignment)
+            .options(selectinload(SLOAssignment.slo_definition), selectinload(SLOAssignment.data_source))
             .where(SLOAssignment.asset_group_id == asset_group_id)
             .order_by(SLOAssignment.slo_name)
         )
@@ -132,7 +135,9 @@ class AssignmentRepository:
     ) -> list[SLOGroupAssignment]:
         """Return all group assignments for an asset."""
         result = await self._session.execute(
-            select(SLOGroupAssignment).where(SLOGroupAssignment.asset_id == asset_id)
+            select(SLOGroupAssignment)
+            .options(selectinload(SLOGroupAssignment.slo_group), selectinload(SLOGroupAssignment.data_source))
+            .where(SLOGroupAssignment.asset_id == asset_id)
         )
         return list(result.scalars().all())
 
@@ -141,7 +146,9 @@ class AssignmentRepository:
     ) -> list[SLOGroupAssignment]:
         """Return all group assignments for an asset group."""
         result = await self._session.execute(
-            select(SLOGroupAssignment).where(SLOGroupAssignment.asset_group_id == asset_group_id)
+            select(SLOGroupAssignment)
+            .options(selectinload(SLOGroupAssignment.slo_group), selectinload(SLOGroupAssignment.data_source))
+            .where(SLOGroupAssignment.asset_group_id == asset_group_id)
         )
         return list(result.scalars().all())
 

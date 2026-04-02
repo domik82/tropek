@@ -3,7 +3,7 @@ import { useQueries } from '@tanstack/react-query'
 import { GitBranch, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { DeletionConfirmForm } from '@/components/DeletionConfirmForm'
-import { SloObjectiveTable, useSloDetail, useSloVersions, useDeleteSlo, useGroupTree, fetchGroupSloBindings } from '@/features/slos'
+import { SloObjectiveTable, useSloDetail, useSloVersions, useDeleteSlo, useGroupTree, fetchGroupSloAssignments } from '@/features/slos'
 import type { SloDefinition } from '@/features/slos'
 import { useSliDetail } from '@/features/slis'
 import type { SelectedNode } from '@/features/registry'
@@ -31,15 +31,15 @@ export function SloDetailView({ name, onNavigate, onNewVersion }: SloDetailViewP
     () => (tree?.all_groups ?? []).map(g => g.name).filter(n => n !== '__ungrouped__'),
     [tree],
   )
-  const bindingQueries = useQueries({
+  const assignmentQueries = useQueries({
     queries: groupNames.map(gn => ({
-      queryKey: groupKeys.bindings(gn),
-      queryFn: () => fetchGroupSloBindings(gn),
+      queryKey: groupKeys.assignments(gn),
+      queryFn: () => fetchGroupSloAssignments(gn),
     })),
   })
   const linkedGroups = useMemo(
-    () => groupNames.filter((_, i) => (bindingQueries[i]?.data ?? []).some(b => b.slo_name === name)),
-    [groupNames, bindingQueries, name],
+    () => groupNames.filter((_, i) => (assignmentQueries[i]?.data ?? []).some(a => a.slo_name === name)),
+    [groupNames, assignmentQueries, name],
   )
 
   if (isLoading || !slo) {

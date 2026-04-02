@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
 import { useQueries } from '@tanstack/react-query'
 import { groupKeys } from '@/lib/queryKeys'
-import { fetchGroupSloBindings } from '@/features/slos'
+import { fetchGroupSloAssignments } from '@/features/slos'
 import type { MinBinding } from './useRegistryTree'
 
 export function useAllGroupLinks(groupNames: string[]) {
@@ -10,10 +10,10 @@ export function useAllGroupLinks(groupNames: string[]) {
     [groupNames],
   )
 
-  const bindingQueries = useQueries({
+  const assignmentQueries = useQueries({
     queries: filtered.map(name => ({
-      queryKey: groupKeys.bindings(name),
-      queryFn: () => fetchGroupSloBindings(name),
+      queryKey: groupKeys.assignments(name),
+      queryFn: () => fetchGroupSloAssignments(name),
     })),
   })
 
@@ -21,10 +21,10 @@ export function useAllGroupLinks(groupNames: string[]) {
     const flat: MinBinding[] = []
     const byGroup: Record<string, MinBinding[]> = {}
     for (let i = 0; i < filtered.length; i++) {
-      const data = bindingQueries[i]?.data ?? []
-      const bindings: MinBinding[] = data.map(b => ({
-        slo_name: b.slo_name,
-        data_source_name: b.data_source_name,
+      const data = assignmentQueries[i]?.data ?? []
+      const bindings: MinBinding[] = data.map(a => ({
+        slo_name: a.slo_name,
+        data_source_name: a.data_source_name,
       }))
       byGroup[filtered[i]] = bindings
       flat.push(...bindings)
@@ -37,5 +37,5 @@ export function useAllGroupLinks(groupNames: string[]) {
       return true
     })
     return { allBindings: unique, groupBindingsMap: byGroup }
-  }, [filtered, bindingQueries])
+  }, [filtered, assignmentQueries])
 }
