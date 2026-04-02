@@ -19,8 +19,6 @@ class FakeOldSLO:
 def _spec(name: str) -> GeneratedSLOSpec:
     return GeneratedSLOSpec(
         name=name,
-        sli_name='sli',
-        sli_version=1,
         variables={},
         objectives=[],
         total_score_pass_threshold=90.0,

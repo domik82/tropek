@@ -90,8 +90,11 @@ def mock_repos() -> dict:
         source='direct_asset',
     )
 
+    # slo_def.sli_definition_id must be set so trigger.py can look up SLI by FK
+    slo_def.sli_definition_id = sli_def.id
+
     slo_repo.get_by_id.return_value = slo_def
-    sli_repo.get_latest.return_value = sli_def
+    sli_repo.get_by_id.return_value = sli_def
     ds_repo.get_by_id.return_value = ds
 
     return {
