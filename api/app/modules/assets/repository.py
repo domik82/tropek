@@ -1,4 +1,4 @@
-"""Asset-family repositories: types, assets, groups, and SLO bindings."""
+"""Asset-family repositories: types, assets, groups."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ import random
 import uuid
 from typing import Any
 
-from sqlalchemy import delete, func, or_, select, update
+from sqlalchemy import delete, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.cache.redis_cache import RedisCache
@@ -16,8 +16,6 @@ from app.db.models import (
     AssetGroupLink,
     AssetGroupMember,
     AssetType,
-    SLOBinding,
-    SLODefinition,
 )
 from app.modules.assets.schemas import (
     AssetGroupMemberCreate,
@@ -214,19 +212,12 @@ class AssetRepository(TagQueryMixin):
         return asset
 
     async def delete(self, name: str) -> bool:
-        """Delete an asset by name, removing all group memberships and SLO bindings."""
+        """Delete an asset by name, removing all group memberships."""
         asset = await self.get_by_name(name)
         if asset is None:
             return False
         # Remove group memberships
         await self._session.execute(delete(AssetGroupMember).where(AssetGroupMember.asset_id == asset.id))
-        # Remove SLO bindings (direct asset bindings only — group bindings belong to the group)
-        await self._session.execute(
-            delete(SLOBinding).where(
-                SLOBinding.target_type == 'asset',
-                SLOBinding.target_id == asset.id,
-            )
-        )
         # Delete the asset itself
         await self._session.execute(delete(Asset).where(Asset.id == asset.id))
         if self._cache:
@@ -381,7 +372,8 @@ class AssetGroupRepository:
 
         Args:
             name: Unique group name to delete.
-            deactivate_slos: When True, soft-delete SLOs linked to the group tree.
+            deactivate_slos: Ignored — kept for API compatibility. SLO deactivation is
+                now handled via the assignment layer.
 
         Returns:
             True if the group was found and deleted, False if not found.
@@ -391,17 +383,6 @@ class AssetGroupRepository:
         if group is None:
             return False
         all_group_ids = [group.id, *await self._collect_subgroup_ids(group.id)]
-        if deactivate_slos:
-            slo_names_result = await self._session.execute(
-                select(SLOBinding.slo_name)
-                .where(SLOBinding.target_type == 'asset_group', SLOBinding.target_id.in_(all_group_ids))
-                .distinct()
-            )
-            slo_names = list(slo_names_result.scalars().all())
-            if slo_names:
-                await self._session.execute(
-                    update(SLODefinition).where(SLODefinition.name.in_(slo_names)).values(active=False)
-                )
         for gid in reversed(all_group_ids):
             await self._session.execute(delete(AssetGroup).where(AssetGroup.id == gid))
         await self._session.flush()
@@ -511,143 +492,3 @@ class AssetGroupRepository:
         )
 
 
-class SLOBindingRepository:
-    """CRUD for slo_bindings polymorphic table."""
-
-    def __init__(self, session: AsyncSession) -> None:
-        self._session = session
-
-    async def create(
-        self,
-        *,
-        target_type: str,
-        target_id: uuid.UUID,
-        slo_name: str,
-        data_source_name: str,
-        comparison_rules: list[dict[str, Any]] | None = None,
-        source: str = 'direct',
-        template_binding_id: uuid.UUID | None = None,
-    ) -> SLOBinding:
-        """Create a new SLO binding for a target (asset or asset group)."""
-        binding = SLOBinding(
-            id=uuid.uuid4(),
-            target_type=target_type,
-            target_id=target_id,
-            slo_name=slo_name,
-            data_source_name=data_source_name,
-            comparison_rules=comparison_rules,
-            source=source,
-            template_binding_id=template_binding_id,
-        )
-        self._session.add(binding)
-        await self._session.flush()
-        return binding
-
-    async def list_by_target(
-        self,
-        target_type: str,
-        target_id: uuid.UUID,
-    ) -> list[SLOBinding]:
-        """Return all SLO bindings for a specific target, ordered by slo_name."""
-        result = await self._session.execute(
-            select(SLOBinding)
-            .where(SLOBinding.target_type == target_type, SLOBinding.target_id == target_id)
-            .order_by(SLOBinding.slo_name)
-        )
-        return list(result.scalars().all())
-
-    async def list_for_asset_evaluation(
-        self,
-        asset_id: uuid.UUID,
-        group_ids: list[uuid.UUID],
-    ) -> list[SLOBinding]:
-        """Collect all bindings relevant to an asset: direct + via groups."""
-        conditions = [
-            (SLOBinding.target_type == 'asset') & (SLOBinding.target_id == asset_id),
-        ]
-        if group_ids:
-            conditions.append((SLOBinding.target_type == 'asset_group') & (SLOBinding.target_id.in_(group_ids)))
-        result = await self._session.execute(select(SLOBinding).where(or_(*conditions)).order_by(SLOBinding.slo_name))
-        return list(result.scalars().all())
-
-    async def delete_by_target_and_slo(
-        self,
-        target_type: str,
-        target_id: uuid.UUID,
-        slo_name: str,
-    ) -> None:
-        """Hard-delete a binding by target and SLO name."""
-        await self._session.execute(
-            delete(SLOBinding).where(
-                SLOBinding.target_type == target_type,
-                SLOBinding.target_id == target_id,
-                SLOBinding.slo_name == slo_name,
-            )
-        )
-
-    async def delete_by_template_binding_id(
-        self,
-        template_binding_id: uuid.UUID,
-    ) -> None:
-        """Hard-delete all SLO bindings created by a specific template binding."""
-        await self._session.execute(delete(SLOBinding).where(SLOBinding.template_binding_id == template_binding_id))
-
-    async def find_for_asset(
-        self,
-        asset_id: uuid.UUID,
-        slo_name: str,
-    ) -> SLOBinding | None:
-        """Find a binding for an asset+SLO pair (direct or via group membership)."""
-        # Direct asset binding
-        result = await self._session.execute(
-            select(SLOBinding).where(
-                SLOBinding.target_type == 'asset',
-                SLOBinding.target_id == asset_id,
-                SLOBinding.slo_name == slo_name,
-            )
-        )
-        direct = result.scalar_one_or_none()
-        if direct is not None:
-            return direct
-
-        # Group-level binding: find groups the asset belongs to, then check bindings
-        group_result = await self._session.execute(
-            select(AssetGroupMember.asset_group_id).where(AssetGroupMember.asset_id == asset_id)
-        )
-        group_ids = [row[0] for row in group_result.all()]
-        if not group_ids:
-            return None
-
-        result = await self._session.execute(
-            select(SLOBinding).where(
-                SLOBinding.target_type == 'asset_group',
-                SLOBinding.target_id.in_(group_ids),
-                SLOBinding.slo_name == slo_name,
-            )
-        )
-        return result.scalars().first()
-
-    async def update_comparison_rules(
-        self,
-        target_type: str,
-        target_id: uuid.UUID,
-        slo_name: str,
-        rules: list[dict[str, Any]],
-    ) -> None:
-        """Replace comparison_rules on an SLO binding."""
-        await self._session.execute(
-            update(SLOBinding)
-            .where(
-                SLOBinding.target_type == target_type,
-                SLOBinding.target_id == target_id,
-                SLOBinding.slo_name == slo_name,
-            )
-            .values(comparison_rules=rules)
-        )
-
-    async def list_by_datasource(self, data_source_name: str) -> list[SLOBinding]:
-        """Check if any bindings reference this datasource (for deletion guard)."""
-        result = await self._session.execute(
-            select(SLOBinding).where(SLOBinding.data_source_name == data_source_name).limit(5)
-        )
-        return list(result.scalars().all())

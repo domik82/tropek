@@ -14,12 +14,10 @@ from app.db.models import (
     IndicatorResultRow,
     SLIDefinition,  # noqa: F401
     SLIValue,
-    SLOBinding,  # noqa: F401
     SLODefinition,  # noqa: F401
     SLOEvaluation,
     SLOGroup,  # noqa: F401
     SLOObjective,  # noqa: F401
-    TemplateBinding,  # noqa: F401
 )
 from app.db.session import get_session, get_session_factory
 
@@ -41,8 +39,11 @@ def test_orm_models_importable() -> None:
         'asset_group_links',
         'data_sources',
         'sli_definitions',
-        'slo_bindings',
+        'slo_assignments',
         'slo_definitions',
+        'slo_display_group_members',
+        'slo_display_groups',
+        'slo_group_assignments',
         'slo_groups',
         'slo_objectives',
         'evaluations',
@@ -50,7 +51,6 @@ def test_orm_models_importable() -> None:
         'evaluation_annotations',
         'indicator_results',
         'sli_values',
-        'template_bindings',
     }
 
 

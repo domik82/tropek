@@ -1,8 +1,8 @@
 """initial schema.
 
 Revision ID: 001
-Revises: 
-Create Date: 2026-03-31 20:09:10.636119
+Revises:
+Create Date: 2026-04-02 08:39:30.329763
 
 """
 from collections.abc import Sequence
@@ -12,7 +12,7 @@ from alembic import op
 from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
-revision: str = "001"
+revision: str = '001'
 down_revision: str | Sequence[str] | None = None
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
@@ -77,12 +77,22 @@ def upgrade() -> None:
     )
     op.create_index('idx_sli_definitions_latest', 'sli_definitions', ['name', sa.literal_column('version DESC')], unique=False)
     op.create_index('idx_sli_definitions_name', 'sli_definitions', ['name'], unique=False)
+    op.create_table('slo_display_groups',
+    sa.Column('id', sa.UUID(), nullable=False),
+    sa.Column('name', sa.Text(), nullable=False),
+    sa.Column('display_name', sa.Text(), nullable=True),
+    sa.Column('parent_id', sa.UUID(), nullable=True),
+    sa.Column('sort_order', sa.Integer(), server_default=sa.text('0'), nullable=False),
+    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.ForeignKeyConstraint(['parent_id'], ['slo_display_groups.id'], ),
+    sa.PrimaryKeyConstraint('id'),
+    sa.UniqueConstraint('name')
+    )
     op.create_table('slo_groups',
     sa.Column('id', sa.UUID(), nullable=False),
     sa.Column('name', sa.Text(), nullable=False),
     sa.Column('display_name', sa.Text(), nullable=True),
-    sa.Column('template_slo_name', sa.Text(), nullable=False),
-    sa.Column('template_slo_version', sa.Integer(), nullable=False),
+    sa.Column('template_slo_definition_id', sa.UUID(), nullable=False),
     sa.Column('gen_variables', postgresql.JSONB(astext_type=sa.Text()), server_default=sa.text("'{}'::jsonb"), nullable=False),
     sa.Column('tags', postgresql.JSONB(astext_type=sa.Text()), server_default=sa.text("'{}'"), nullable=False),
     sa.Column('author', sa.Text(), nullable=True),
@@ -94,18 +104,6 @@ def upgrade() -> None:
     )
     op.create_index('idx_slo_groups_name', 'slo_groups', ['name'], unique=False)
     op.create_index('uq_slo_groups_name_active', 'slo_groups', ['name'], unique=True, postgresql_where=sa.text('active = true'))
-    op.create_table('template_bindings',
-    sa.Column('id', sa.UUID(), nullable=False),
-    sa.Column('target_type', sa.Text(), nullable=False),
-    sa.Column('target_id', sa.UUID(), nullable=False),
-    sa.Column('template_group_name', sa.Text(), nullable=False),
-    sa.Column('data_source_name', sa.Text(), nullable=False),
-    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
-    sa.CheckConstraint("target_type IN ('asset', 'asset_group')", name='ck_template_bindings_target_type'),
-    sa.PrimaryKeyConstraint('id'),
-    sa.UniqueConstraint('target_type', 'target_id', 'template_group_name', name='uq_template_binding')
-    )
-    op.create_index('idx_template_bindings_target', 'template_bindings', ['target_type', 'target_id'], unique=False)
     op.create_table('asset_group_links',
     sa.Column('parent_asset_group_id', sa.UUID(), nullable=False),
     sa.Column('child_asset_group_id', sa.UUID(), nullable=False),
@@ -130,22 +128,6 @@ def upgrade() -> None:
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('name')
     )
-    op.create_table('slo_bindings',
-    sa.Column('id', sa.UUID(), nullable=False),
-    sa.Column('target_type', sa.Text(), nullable=False),
-    sa.Column('target_id', sa.UUID(), nullable=False),
-    sa.Column('slo_name', sa.Text(), nullable=False),
-    sa.Column('data_source_name', sa.Text(), nullable=False),
-    sa.Column('comparison_rules', postgresql.JSONB(astext_type=sa.Text()), nullable=True),
-    sa.Column('source', sa.Text(), server_default=sa.text("'direct'"), nullable=False),
-    sa.Column('template_binding_id', sa.UUID(), nullable=True),
-    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
-    sa.CheckConstraint("target_type IN ('asset', 'asset_group')", name='ck_slo_bindings_target_type'),
-    sa.ForeignKeyConstraint(['template_binding_id'], ['template_bindings.id'], ondelete='CASCADE'),
-    sa.PrimaryKeyConstraint('id'),
-    sa.UniqueConstraint('target_type', 'target_id', 'slo_name', name='uq_slo_binding')
-    )
-    op.create_index('idx_slo_bindings_target', 'slo_bindings', ['target_type', 'target_id'], unique=False)
     op.create_table('slo_definitions',
     sa.Column('id', sa.UUID(), nullable=False),
     sa.Column('name', sa.Text(), nullable=False),
@@ -160,18 +142,31 @@ def upgrade() -> None:
     sa.Column('tags', postgresql.JSONB(astext_type=sa.Text()), server_default=sa.text("'{}'"), nullable=False),
     sa.Column('variables', postgresql.JSONB(astext_type=sa.Text()), server_default=sa.text("'{}'"), nullable=False),
     sa.Column('kind', sa.Text(), server_default=sa.text("'standard'"), nullable=False),
-    sa.Column('sli_name', sa.Text(), nullable=True),
-    sa.Column('sli_version', sa.Integer(), nullable=True),
+    sa.Column('sli_definition_id', sa.UUID(), nullable=True),
     sa.Column('method_criteria', postgresql.JSONB(astext_type=sa.Text()), nullable=True),
     sa.Column('generated_by_group_id', sa.UUID(), nullable=True),
     sa.Column('active', sa.Boolean(), server_default=sa.text('true'), nullable=False),
     sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
     sa.ForeignKeyConstraint(['generated_by_group_id'], ['slo_groups.id'], ),
+    sa.ForeignKeyConstraint(['sli_definition_id'], ['sli_definitions.id'], ),
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('name', 'version', name='uq_slo_name_version')
     )
     op.create_index('idx_slo_definitions_latest', 'slo_definitions', ['name', sa.literal_column('version DESC')], unique=False)
     op.create_index('idx_slo_definitions_name', 'slo_definitions', ['name'], unique=False)
+    # Deferred FK: slo_groups -> slo_definitions (use_alter=True, circular dep)
+    op.create_foreign_key(
+        'fk_slo_groups_template_slo_definition_id',
+        'slo_groups', 'slo_definitions',
+        ['template_slo_definition_id'], ['id'],
+    )
+    op.create_table('slo_display_group_members',
+    sa.Column('group_id', sa.UUID(), nullable=False),
+    sa.Column('slo_name', sa.Text(), nullable=False),
+    sa.ForeignKeyConstraint(['group_id'], ['slo_display_groups.id'], ondelete='CASCADE'),
+    sa.PrimaryKeyConstraint('group_id', 'slo_name')
+    )
+    op.create_index('idx_slo_display_group_members_slo', 'slo_display_group_members', ['slo_name'], unique=False)
     op.create_table('asset_group_members',
     sa.Column('asset_group_id', sa.UUID(), nullable=False),
     sa.Column('asset_id', sa.UUID(), nullable=False),
@@ -201,6 +196,44 @@ def upgrade() -> None:
     op.create_index('idx_evaluations_asset', 'evaluations', ['asset_id'], unique=False)
     op.create_index('idx_evaluations_period', 'evaluations', ['asset_id', sa.literal_column('period_start DESC')], unique=False)
     op.create_index('idx_evaluations_status', 'evaluations', ['status'], unique=False)
+    op.create_table('slo_assignments',
+    sa.Column('id', sa.UUID(), nullable=False),
+    sa.Column('asset_id', sa.UUID(), nullable=True),
+    sa.Column('asset_group_id', sa.UUID(), nullable=True),
+    sa.Column('slo_definition_id', sa.UUID(), nullable=False),
+    sa.Column('slo_name', sa.Text(), nullable=False),
+    sa.Column('data_source_id', sa.UUID(), nullable=False),
+    sa.Column('comparison_rules', postgresql.JSONB(astext_type=sa.Text()), nullable=True),
+    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.CheckConstraint('(asset_id IS NULL) != (asset_group_id IS NULL)', name='ck_slo_assignments_target'),
+    sa.ForeignKeyConstraint(['asset_group_id'], ['asset_groups.id'], ondelete='CASCADE'),
+    sa.ForeignKeyConstraint(['asset_id'], ['assets.id'], ondelete='CASCADE'),
+    sa.ForeignKeyConstraint(['data_source_id'], ['data_sources.id'], ),
+    sa.ForeignKeyConstraint(['slo_definition_id'], ['slo_definitions.id'], ),
+    sa.PrimaryKeyConstraint('id')
+    )
+    op.create_index('idx_slo_assignments_asset', 'slo_assignments', ['asset_id'], unique=False)
+    op.create_index('idx_slo_assignments_group', 'slo_assignments', ['asset_group_id'], unique=False)
+    op.create_index('uq_slo_assignments_asset_slo', 'slo_assignments', ['asset_id', 'slo_name'], unique=True, postgresql_where=sa.text('asset_id IS NOT NULL'))
+    op.create_index('uq_slo_assignments_group_slo', 'slo_assignments', ['asset_group_id', 'slo_name'], unique=True, postgresql_where=sa.text('asset_group_id IS NOT NULL'))
+    op.create_table('slo_group_assignments',
+    sa.Column('id', sa.UUID(), nullable=False),
+    sa.Column('asset_id', sa.UUID(), nullable=True),
+    sa.Column('asset_group_id', sa.UUID(), nullable=True),
+    sa.Column('slo_group_id', sa.UUID(), nullable=False),
+    sa.Column('data_source_id', sa.UUID(), nullable=False),
+    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.CheckConstraint('(asset_id IS NULL) != (asset_group_id IS NULL)', name='ck_slo_group_assignments_target'),
+    sa.ForeignKeyConstraint(['asset_group_id'], ['asset_groups.id'], ondelete='CASCADE'),
+    sa.ForeignKeyConstraint(['asset_id'], ['assets.id'], ondelete='CASCADE'),
+    sa.ForeignKeyConstraint(['data_source_id'], ['data_sources.id'], ),
+    sa.ForeignKeyConstraint(['slo_group_id'], ['slo_groups.id'], ),
+    sa.PrimaryKeyConstraint('id')
+    )
+    op.create_index('idx_slo_group_assignments_asset', 'slo_group_assignments', ['asset_id'], unique=False)
+    op.create_index('idx_slo_group_assignments_asset_group', 'slo_group_assignments', ['asset_group_id'], unique=False)
+    op.create_index('uq_slo_group_assignments_asset', 'slo_group_assignments', ['asset_id', 'slo_group_id'], unique=True, postgresql_where=sa.text('asset_id IS NOT NULL'))
+    op.create_index('uq_slo_group_assignments_group', 'slo_group_assignments', ['asset_group_id', 'slo_group_id'], unique=True, postgresql_where=sa.text('asset_group_id IS NOT NULL'))
     op.create_table('slo_objectives',
     sa.Column('id', sa.UUID(), nullable=False),
     sa.Column('slo_definition_id', sa.UUID(), nullable=False),
@@ -233,6 +266,8 @@ def upgrade() -> None:
     sa.Column('sli_name', sa.Text(), nullable=True),
     sa.Column('sli_version', sa.Integer(), nullable=True),
     sa.Column('data_source_name', sa.Text(), nullable=True),
+    sa.Column('slo_definition_id', sa.UUID(), nullable=True),
+    sa.Column('sli_definition_id', sa.UUID(), nullable=True),
     sa.Column('variables', postgresql.JSONB(astext_type=sa.Text()), server_default=sa.text("'{}'"), nullable=False),
     sa.Column('ingestion_mode', sa.Text(), nullable=False),
     sa.Column('adapter_used', sa.Text(), nullable=True),
@@ -254,6 +289,8 @@ def upgrade() -> None:
     sa.CheckConstraint("status IN ('pending','running','completed','failed','partial')", name='ck_slo_evaluations_status'),
     sa.ForeignKeyConstraint(['asset_id'], ['assets.id'], ondelete='RESTRICT'),
     sa.ForeignKeyConstraint(['evaluation_id'], ['evaluations.id'], ondelete='CASCADE'),
+    sa.ForeignKeyConstraint(['sli_definition_id'], ['sli_definitions.id'], ),
+    sa.ForeignKeyConstraint(['slo_definition_id'], ['slo_definitions.id'], ),
     sa.PrimaryKeyConstraint('id')
     )
     op.create_index('idx_slo_evaluations_asset', 'slo_evaluations', ['asset_id'], unique=False)
@@ -336,6 +373,16 @@ def downgrade() -> None:
     op.drop_table('slo_evaluations')
     op.drop_index('idx_slo_objectives_definition', table_name='slo_objectives')
     op.drop_table('slo_objectives')
+    op.drop_index('uq_slo_group_assignments_group', table_name='slo_group_assignments', postgresql_where=sa.text('asset_group_id IS NOT NULL'))
+    op.drop_index('uq_slo_group_assignments_asset', table_name='slo_group_assignments', postgresql_where=sa.text('asset_id IS NOT NULL'))
+    op.drop_index('idx_slo_group_assignments_asset_group', table_name='slo_group_assignments')
+    op.drop_index('idx_slo_group_assignments_asset', table_name='slo_group_assignments')
+    op.drop_table('slo_group_assignments')
+    op.drop_index('uq_slo_assignments_group_slo', table_name='slo_assignments', postgresql_where=sa.text('asset_group_id IS NOT NULL'))
+    op.drop_index('uq_slo_assignments_asset_slo', table_name='slo_assignments', postgresql_where=sa.text('asset_id IS NOT NULL'))
+    op.drop_index('idx_slo_assignments_group', table_name='slo_assignments')
+    op.drop_index('idx_slo_assignments_asset', table_name='slo_assignments')
+    op.drop_table('slo_assignments')
     op.drop_index('idx_evaluations_status', table_name='evaluations')
     op.drop_index('idx_evaluations_period', table_name='evaluations')
     op.drop_index('idx_evaluations_asset', table_name='evaluations')
@@ -343,19 +390,19 @@ def downgrade() -> None:
     op.drop_index('idx_asset_group_members_group', table_name='asset_group_members')
     op.drop_index('idx_asset_group_members_asset', table_name='asset_group_members')
     op.drop_table('asset_group_members')
+    op.drop_index('idx_slo_display_group_members_slo', table_name='slo_display_group_members')
+    op.drop_table('slo_display_group_members')
     op.drop_index('idx_slo_definitions_name', table_name='slo_definitions')
     op.drop_index('idx_slo_definitions_latest', table_name='slo_definitions')
+    op.drop_constraint('fk_slo_groups_template_slo_definition_id', 'slo_groups', type_='foreignkey')
     op.drop_table('slo_definitions')
-    op.drop_index('idx_slo_bindings_target', table_name='slo_bindings')
-    op.drop_table('slo_bindings')
     op.drop_table('assets')
     op.drop_index('idx_asset_group_links_parent', table_name='asset_group_links')
     op.drop_table('asset_group_links')
-    op.drop_index('idx_template_bindings_target', table_name='template_bindings')
-    op.drop_table('template_bindings')
     op.drop_index('uq_slo_groups_name_active', table_name='slo_groups', postgresql_where=sa.text('active = true'))
     op.drop_index('idx_slo_groups_name', table_name='slo_groups')
     op.drop_table('slo_groups')
+    op.drop_table('slo_display_groups')
     op.drop_index('idx_sli_definitions_name', table_name='sli_definitions')
     op.drop_index('idx_sli_definitions_latest', table_name='sli_definitions')
     op.drop_table('sli_definitions')

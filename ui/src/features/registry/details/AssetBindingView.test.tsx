@@ -5,8 +5,8 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { AssetBindingView } from './AssetBindingView'
 
 vi.mock('@/features/slos/hooks', () => ({
-  useGroupSloBindings: vi.fn(),
-  useDeleteGroupSloBinding: vi.fn(() => ({ mutate: vi.fn() })),
+  useGroupSloAssignments: vi.fn(),
+  useDeleteGroupSloAssignment: vi.fn(() => ({ mutate: vi.fn() })),
   useSloDetail: vi.fn(),
 }))
 
@@ -18,7 +18,7 @@ vi.mock('@/features/slis/hooks', () => ({
   useSliDetail: vi.fn(),
 }))
 
-import { useGroupSloBindings, useSloDetail } from '@/features/slos/hooks'
+import { useGroupSloAssignments, useSloDetail } from '@/features/slos/hooks'
 import { useAsset } from '@/features/assets/hooks'
 import { useSliDetail } from '@/features/slis/hooks'
 
@@ -56,12 +56,15 @@ const MOCK_SLO = {
   sli_version: 1,
 }
 
-const MOCK_BINDINGS = [
+const MOCK_ASSIGNMENTS = [
   {
     id: '1',
-    target_type: 'asset_group',
-    target_id: 'g1',
+    asset_id: null,
+    asset_group_id: 'g1',
+    slo_definition_id: 's1',
     slo_name: 'http-availability-slo',
+    slo_version: 1,
+    data_source_id: 'ds1',
     data_source_name: 'prometheus-local',
     comparison_rules: null,
     created_at: '2026-03-15T00:00:00Z',
@@ -76,7 +79,7 @@ function wrapper({ children }: { children: React.ReactNode }) {
 describe('AssetBindingView', () => {
   beforeEach(() => {
     vi.mocked(useAsset).mockReturnValue({ data: MOCK_ASSET, isLoading: false } as any)
-    vi.mocked(useGroupSloBindings).mockReturnValue({ data: MOCK_BINDINGS, isLoading: false } as any)
+    vi.mocked(useGroupSloAssignments).mockReturnValue({ data: MOCK_ASSIGNMENTS, isLoading: false } as any)
     vi.mocked(useSloDetail).mockReturnValue({ data: MOCK_SLO, isLoading: false } as any)
     vi.mocked(useSliDetail).mockReturnValue({ data: {
       id: 'sli1', name: 'http-service-sli', display_name: null, adapter_type: 'prometheus',
@@ -120,16 +123,16 @@ describe('AssetBindingView', () => {
     expect(screen.getAllByText('$namespace').length).toBeGreaterThan(0)
   })
 
-  it('renders binding count in section header', () => {
+  it('renders assignment count in section header', () => {
     render(
       <AssetBindingView assetName="checkout-api" groupName="core-services"
         onNavigate={vi.fn()} onLinkSlo={vi.fn()} />,
       { wrapper },
     )
-    expect(screen.getByText(/SLO Bindings \(1\)/)).toBeInTheDocument()
+    expect(screen.getByText(/SLO Assignments \(1\)/)).toBeInTheDocument()
   })
 
-  it('renders binding chain breadcrumb', () => {
+  it('renders assignment chain breadcrumb', () => {
     render(
       <AssetBindingView assetName="checkout-api" groupName="core-services"
         onNavigate={vi.fn()} onLinkSlo={vi.fn()} />,
@@ -152,13 +155,13 @@ describe('AssetBindingView', () => {
     expect(screen.getByText('error_rate')).toBeInTheDocument()
   })
 
-  it('renders empty state with Link SLO button', () => {
-    vi.mocked(useGroupSloBindings).mockReturnValue({ data: [], isLoading: false } as any)
+  it('renders empty state with Assign SLO button', () => {
+    vi.mocked(useGroupSloAssignments).mockReturnValue({ data: [], isLoading: false } as any)
     render(
       <AssetBindingView assetName="checkout-api" groupName="core-services"
         onNavigate={vi.fn()} onLinkSlo={vi.fn()} />,
       { wrapper },
     )
-    expect(screen.getByText(/No SLO bindings/)).toBeInTheDocument()
+    expect(screen.getByText(/No SLO assignments/)).toBeInTheDocument()
   })
 })

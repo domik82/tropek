@@ -67,6 +67,11 @@ class DataSourceRepository(TagQueryMixin):
         result = await self._session.execute(select(DataSource).where(DataSource.name == name))
         return result.scalar_one_or_none()
 
+    async def get_by_id(self, ds_id: uuid.UUID) -> DataSource | None:
+        """Return datasource by primary key, or None."""
+        result = await self._session.execute(select(DataSource).where(DataSource.id == ds_id))
+        return result.scalar_one_or_none()
+
     async def list_all(
         self,
         *,

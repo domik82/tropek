@@ -10,7 +10,7 @@ import { TagFilterBar } from '@/components/shared/TagFilterBar'
 import { RegistryTree, SectionHeader } from './RegistryTree'
 import { buildSloTree, buildSloSections, buildDatasourceTree, buildAssetTree, filterTree } from './useRegistryTree'
 import type { MinBinding } from './useRegistryTree'
-import { useSlos, useGroupTree, useSloTagKeys, useSloTagValues, fetchGroupSloBindings } from '@/features/slos'
+import { useSlos, useGroupTree, useSloTagKeys, useSloTagValues, fetchGroupSloAssignments } from '@/features/slos'
 import { useSliDefinitions } from '@/features/slis'
 import { useDatasources, useDatasourceTagKeys, useDatasourceTagValues } from '@/features/datasources'
 import { useTagKeys, useTagValues } from '@/features/assets'
@@ -72,10 +72,10 @@ export function RegistrySidebar({ mode, onModeChange, selected, onSelect, onCrea
     () => (tree?.all_groups ?? []).map(g => g.name).filter(n => n !== '__ungrouped__'),
     [tree],
   )
-  const bindingQueries = useQueries({
+  const assignmentQueries = useQueries({
     queries: groupNames.map(name => ({
-      queryKey: groupKeys.bindings(name),
-      queryFn: () => fetchGroupSloBindings(name),
+      queryKey: groupKeys.assignments(name),
+      queryFn: () => fetchGroupSloAssignments(name),
     })),
   })
 
@@ -83,10 +83,10 @@ export function RegistrySidebar({ mode, onModeChange, selected, onSelect, onCrea
     const flat: MinBinding[] = []
     const byGroup: Record<string, MinBinding[]> = {}
     for (let i = 0; i < groupNames.length; i++) {
-      const data = bindingQueries[i]?.data ?? []
-      const bindings: MinBinding[] = data.map(b => ({
-        slo_name: b.slo_name,
-        data_source_name: b.data_source_name,
+      const data = assignmentQueries[i]?.data ?? []
+      const bindings: MinBinding[] = data.map(a => ({
+        slo_name: a.slo_name,
+        data_source_name: a.data_source_name,
       }))
       byGroup[groupNames[i]] = bindings
       flat.push(...bindings)
@@ -100,7 +100,7 @@ export function RegistrySidebar({ mode, onModeChange, selected, onSelect, onCrea
       return true
     })
     return { allBindings: unique, groupBindingsMap: byGroup }
-  }, [groupNames, bindingQueries])
+  }, [groupNames, assignmentQueries])
 
   const treeNodes = useMemo(() => {
     if (mode === 'slo') return buildSloTree(slos ?? [], slis ?? [], datasources ?? [], allBindings)

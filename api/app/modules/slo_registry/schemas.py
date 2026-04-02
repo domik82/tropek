@@ -68,9 +68,8 @@ class SLODefinitionRead(BaseModel):
     tags: dict[str, Any]
     variables: dict[str, Any]
     kind: str
-    sli_name: str | None
-    sli_version: int | None
     method_criteria: dict[str, Any] | None
+    sli_definition_id: uuid.UUID | None
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)

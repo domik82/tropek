@@ -59,17 +59,21 @@ export interface AssetGroupUpdate {
   description?: string
 }
 
-export interface SloBinding {
+export interface SloAssignment {
   id: string
-  target_type: 'asset' | 'asset_group'
-  target_id: string
+  asset_id: string | null
+  asset_group_id: string | null
+  slo_definition_id: string
   slo_name: string
+  slo_version: number
+  data_source_id: string
   data_source_name: string
   comparison_rules: Record<string, unknown>[] | null
   created_at: string
 }
 
-export interface SloBindingCreate {
-  slo_name: string
+export interface SloAssignmentCreate {
+  slo_definition_id: string
   data_source_name: string
+  comparison_rules?: Record<string, unknown>[] | null
 }

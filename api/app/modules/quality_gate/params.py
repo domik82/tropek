@@ -28,6 +28,8 @@ class EvalCreateParams(BaseModel):
     sli_name: str | None = None
     sli_version: int | None = None
     data_source_name: str | None = None
+    slo_definition_id: uuid.UUID | None = None
+    sli_definition_id: uuid.UUID | None = None
 
 
 class ReEvalUpdateParams(BaseModel):

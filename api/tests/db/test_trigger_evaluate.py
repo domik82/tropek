@@ -83,10 +83,11 @@ async def seeded_asset_with_slo_binding(async_client: AsyncClient) -> tuple[str,
         },
     )
     assert resp.status_code == 201
+    slo_def_id = resp.json()['id']
 
     resp = await async_client.post(
-        f'/assets/{asset_name}/slo-bindings',
-        json={'slo_name': slo_name, 'data_source_name': ds_name},
+        f'/assets/{asset_name}/slo-assignments',
+        json={'slo_definition_id': slo_def_id, 'data_source_name': ds_name},
     )
     assert resp.status_code == 201
 

@@ -1,0 +1,12 @@
+# SLO Group Assignments — attach SLO groups to assets/groups with a datasource.
+# Always-latest semantics: evaluations use the current group state.
+
+api_version: tropek/v1
+kind: SLOGroupAssignment
+metadata:
+  name: core-services-plugins-assignment
+spec:
+  target_type: asset_group
+  target_name: core-services
+  slo_group_name: app-x-plugins
+  data_source_name: prometheus-local

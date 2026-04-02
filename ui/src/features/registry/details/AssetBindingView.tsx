@@ -1,8 +1,8 @@
 import { Link, Unlink, Pencil } from 'lucide-react'
 import { BindingChainBreadcrumb } from '@/components/shared/BindingChainBreadcrumb'
 import { VariableResolutionPanel } from '@/components/shared/VariableResolutionPanel'
-import { SloObjectiveTable, useGroupSloBindings, useDeleteGroupSloBinding, useSloDetail } from '@/features/slos'
-import type { SloBinding } from '@/features/slos'
+import { SloObjectiveTable, useGroupSloAssignments, useDeleteGroupSloAssignment, useSloDetail } from '@/features/slos'
+import type { SloAssignment } from '@/features/slos'
 import { useSliDetail } from '@/features/slis'
 import { useAsset } from '@/features/assets'
 import type { Asset } from '@/features/assets'
@@ -28,9 +28,9 @@ export function AssetBindingView({
 }: AssetBindingViewProps) {
   // Only fetch asset details for actual asset nodes, not group nodes
   const { data: asset, isLoading: assetLoading } = useAsset(isGroup ? null : assetName)
-  const { data: links, isLoading: linksLoading } = useGroupSloBindings(groupName)
+  const { data: assignments, isLoading: assignmentsLoading } = useGroupSloAssignments(groupName)
 
-  if ((!isGroup && assetLoading) || linksLoading) {
+  if ((!isGroup && assetLoading) || assignmentsLoading) {
     return (
       <div className="p-6 text-sm text-muted-foreground" style={{ fontFamily: SANS_SERIF }}>
         Loading…
@@ -38,11 +38,11 @@ export function AssetBindingView({
     )
   }
 
-  const bindings = links ?? []
+  const items = assignments ?? []
   const varCount = Object.keys(asset?.variables ?? {}).length
   const tagCount = Object.keys(asset?.tags ?? {}).length
   const statsLine = isGroup
-    ? `group · ${bindings.length} bindings`
+    ? `group · ${items.length} assignments`
     : [
         asset?.type_name ?? 'asset',
         varCount > 0 ? `${varCount} variables` : null,
@@ -70,7 +70,7 @@ export function AssetBindingView({
               className="px-3 py-1.5 text-xs rounded bg-action-primary-bg border border-action-primary-border text-action-primary hover:bg-action-primary-hover transition-colors flex items-center gap-1.5"
             >
               <Link className="w-3.5 h-3.5" />
-              Link SLO
+              Assign SLO
             </button>
           </div>
         </div>
@@ -101,20 +101,20 @@ export function AssetBindingView({
         )}
       </div>
 
-      {/* SLO Bindings section */}
+      {/* SLO Assignments section */}
       <div>
         <h3 className="text-sm font-semibold text-foreground mb-3">
-          SLO Bindings ({bindings.length})
+          SLO Assignments ({items.length})
         </h3>
 
-        {bindings.length === 0 ? (
-          <p className="text-sm text-muted-foreground italic">No SLO bindings</p>
+        {items.length === 0 ? (
+          <p className="text-sm text-muted-foreground italic">No SLO assignments</p>
         ) : (
           <div className="space-y-4">
-            {bindings.map(link => (
-              <BindingCard
-                key={link.id}
-                link={link}
+            {items.map(assignment => (
+              <AssignmentCard
+                key={assignment.id}
+                assignment={assignment}
                 asset={asset ?? null}
                 groupName={groupName}
                 onNavigate={onNavigate}
@@ -128,48 +128,48 @@ export function AssetBindingView({
   )
 }
 
-function BindingCard({
-  link,
+function AssignmentCard({
+  assignment,
   asset,
   groupName,
   onNavigate,
 }: {
-  link: SloBinding
+  assignment: SloAssignment
   asset: Asset | null
   groupName: string
   onNavigate: (node: SelectedNode) => void
 }) {
-  const { data: slo } = useSloDetail(link.slo_name)
+  const { data: slo } = useSloDetail(assignment.slo_name)
   const sliName = slo?.sli_name ?? null
   const { data: sli } = useSliDetail(sliName ?? '')
-  const deleteMutation = useDeleteGroupSloBinding()
+  const deleteMutation = useDeleteGroupSloAssignment()
   const assetVars = asset?.variables ?? {}
   const sloVars = slo?.variables ?? {}
   const reserved: Record<string, string> = {}
 
   return (
     <div className="border border-border rounded-lg overflow-hidden">
-      {/* Binding header — dark bg like table headers */}
+      {/* Assignment header — dark bg like table headers */}
       <div className="flex items-center justify-between gap-2 px-3 py-2.5 bg-table-header-bg border-b border-border">
         <BindingChainBreadcrumb
-          sloName={link.slo_name}
-          sloVersion={slo ? String(slo.version) : undefined}
+          sloName={assignment.slo_name}
+          sloVersion={String(assignment.slo_version)}
           sliName={sliName ?? undefined}
-          dsName={link.data_source_name}
-          onClickSlo={() => onNavigate({ type: 'slo', name: link.slo_name })}
+          dsName={assignment.data_source_name}
+          onClickSlo={() => onNavigate({ type: 'slo', name: assignment.slo_name })}
           onClickSli={sliName ? () => onNavigate({ type: 'sli', name: sliName }) : undefined}
-          onClickDs={() => onNavigate({ type: 'datasource', name: link.data_source_name })}
+          onClickDs={() => onNavigate({ type: 'datasource', name: assignment.data_source_name })}
         />
         <div className="flex shrink-0 gap-2">
           <button
-            onClick={() => onNavigate({ type: 'slo', name: link.slo_name })}
+            onClick={() => onNavigate({ type: 'slo', name: assignment.slo_name })}
             className="px-3 py-1.5 text-xs rounded border border-border text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1.5"
           >
             <Pencil className="w-3.5 h-3.5" />
             Edit
           </button>
           <button
-            onClick={() => deleteMutation.mutate({ groupName, sloName: link.slo_name })}
+            onClick={() => deleteMutation.mutate({ groupName, assignmentId: assignment.id })}
             className="px-3 py-1.5 text-xs rounded bg-action-destructive-bg border border-action-destructive-border text-action-destructive hover:bg-action-destructive-bg transition-colors flex items-center gap-1.5"
           >
             <Unlink className="w-3.5 h-3.5" />
