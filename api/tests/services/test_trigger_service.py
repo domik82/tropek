@@ -47,20 +47,19 @@ def _make_asset(name: str = 'vm-01') -> MagicMock:
 
 def _make_sli_def() -> MagicMock:
     sli = MagicMock()
+    sli.id = uuid.uuid4()
     sli.name = 'system-sli'
     sli.version = 1
     sli.indicators = {'cpu': 'query'}
     return sli
 
 
-def _make_slo_def() -> MagicMock:
+def _make_slo_def(sli_definition_id: uuid.UUID | None = None) -> MagicMock:
     slo = MagicMock()
     slo.id = uuid.uuid4()
     slo.name = 'perf-slo'
     slo.version = 1
-    slo.sli_name = 'system-sli'
-    slo.sli_version = None
-    slo.sli_definition_id = None
+    slo.sli_definition_id = sli_definition_id
     return slo
 
 
@@ -101,7 +100,8 @@ def _make_repos() -> QualityGateRepos:
 def _configure_happy_path(repos: QualityGateRepos) -> None:
     """Set up mocks for a successful single trigger resolution."""
     asset = _make_asset()
-    slo_def = _make_slo_def()
+    sli_def = _make_sli_def()
+    slo_def = _make_slo_def(sli_definition_id=sli_def.id)
     ds_id = uuid.uuid4()
     repos.asset_repo.get_by_name.return_value = asset
     repos.asset_group_repo.list_group_ids_for_asset.return_value = []
@@ -112,7 +112,7 @@ def _configure_happy_path(repos: QualityGateRepos) -> None:
         comparison_rules=None,
         source='direct_asset',
     )
-    repos.sli_def_repo.get_latest.return_value = _make_sli_def()
+    repos.sli_def_repo.get_by_id.return_value = sli_def
     repos.slo_repo.get_by_id.return_value = slo_def
     repos.ds_repo.get_by_id.return_value = _make_ds()
     repos.eval_repo.find_duplicate.return_value = None

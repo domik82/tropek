@@ -17,8 +17,6 @@ class FakeTemplate:
     """Minimal template matching TemplateInput protocol."""
 
     name: str = 'app/$__gen_process_name'
-    sli_name: str | None = 'test-sli'
-    sli_version: int | None = 1
     variables: dict[str, Any] = field(
         default_factory=lambda: {
             'process_name': '$__gen_process_name',
@@ -44,8 +42,6 @@ def test_generate_happy_path() -> None:
     assert result.specs[2].name == 'app/db'
     assert result.specs[0].variables['process_name'] == 'auth'
     assert result.specs[0].variables['AGGREGATION_WINDOW'] == '5m'
-    assert result.specs[0].sli_name == 'test-sli'
-    assert result.specs[0].sli_version == 1
     assert result.specs[0].tags['slo_group'] == 'my-group'
     assert result.specs[0].tags['generated'] == 'true'
     assert result.specs[0].tags['env'] == 'prod'
