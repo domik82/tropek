@@ -18,7 +18,9 @@ router = APIRouter()
 
 
 @router.get('/slo-display-groups', response_model=list[DisplayGroupRead])
-async def list_display_groups(session: AsyncSession = Depends(get_session)) -> list[DisplayGroupRead]:
+async def list_display_groups(
+    session: AsyncSession = Depends(get_session),
+) -> list[DisplayGroupRead]:
     """List all SLO display groups."""
     groups = await DisplayGroupRepository(session).list_all()
     return [DisplayGroupRead.model_validate(g) for g in groups]

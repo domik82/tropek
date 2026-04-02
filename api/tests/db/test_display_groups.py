@@ -27,7 +27,9 @@ async def test_create_display_group(db_session: AsyncSession) -> None:
 async def test_create_nested_display_group(db_session: AsyncSession) -> None:
     repo = DisplayGroupRepository(db_session)
     parent = await repo.create(name='platform', display_name='Platform')
-    child = await repo.create(name='platform-networking', display_name='Networking', parent_id=parent.id)
+    child = await repo.create(
+        name='platform-networking', display_name='Networking', parent_id=parent.id
+    )
     assert child.parent_id == parent.id
 
 
