@@ -16,7 +16,7 @@ vi.mock('@/features/slos/hooks', () => ({
 }))
 
 vi.mock('@/features/slos/api', () => ({
-  fetchGroupSloBindings: () => Promise.resolve([]),
+  fetchGroupSloAssignments: () => Promise.resolve([]),
 }))
 
 vi.mock('@/features/slis/hooks', () => ({

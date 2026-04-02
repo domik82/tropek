@@ -23,12 +23,12 @@ from tropek_client.models import (
     EvaluationSummary,
     PagedResponse,
     SLIDefinition,
-    SLOBinding,
+    SLOAssignment,
     SLODefinition,
     SLOGroup,
+    SLOGroupAssignment,
     SLOTestResult,
     SLOValidationResult,
-    TemplateBinding,
     TrendPoint,
 )
 
@@ -653,68 +653,63 @@ class _Trend:
         return [TrendPoint.model_validate(p) for p in resp.json()]
 
 
-class _SLOBindings:
-    """SLO binding CRUD (new binding model — asset or group linked to SLO via data source)."""
+class _SLOAssignments:
+    """SLO assignment CRUD — pins asset/group to a specific SLO definition version."""
 
     def __init__(self, http: httpx.Client) -> None:
         self._http = http
 
-    def create_for_asset(self, asset_name: str, slo_name: str, data_source_name: str) -> SLOBinding:
-        """Create an SLO binding for an asset."""
-        resp = self._http.post(
-            f'/assets/{asset_name}/slo-bindings',
-            json={'slo_name': slo_name, 'data_source_name': data_source_name},
-        )
+    def create_for_asset(
+        self, asset_name: str, slo_definition_id: str, data_source_name: str,
+        *, comparison_rules: list[dict[str, Any]] | None = None,
+    ) -> SLOAssignment:
+        """Create an SLO assignment for an asset."""
+        body: dict[str, Any] = {
+            'slo_definition_id': slo_definition_id,
+            'data_source_name': data_source_name,
+        }
+        if comparison_rules is not None:
+            body['comparison_rules'] = comparison_rules
+        resp = self._http.post(f'/assets/{asset_name}/slo-assignments', json=body)
         _raise_for_status(resp)
-        return SLOBinding.model_validate(resp.json())
+        return SLOAssignment.model_validate(resp.json())
 
-    def create_for_group(self, group_name: str, slo_name: str, data_source_name: str) -> SLOBinding:
-        """Create an SLO binding for an asset group."""
-        resp = self._http.post(
-            f'/asset-groups/{group_name}/slo-bindings',
-            json={'slo_name': slo_name, 'data_source_name': data_source_name},
-        )
+    def create_for_group(
+        self, group_name: str, slo_definition_id: str, data_source_name: str,
+        *, comparison_rules: list[dict[str, Any]] | None = None,
+    ) -> SLOAssignment:
+        """Create an SLO assignment for an asset group."""
+        body: dict[str, Any] = {
+            'slo_definition_id': slo_definition_id,
+            'data_source_name': data_source_name,
+        }
+        if comparison_rules is not None:
+            body['comparison_rules'] = comparison_rules
+        resp = self._http.post(f'/asset-groups/{group_name}/slo-assignments', json=body)
         _raise_for_status(resp)
-        return SLOBinding.model_validate(resp.json())
+        return SLOAssignment.model_validate(resp.json())
 
-    def list_for_asset(self, asset_name: str) -> list[SLOBinding]:
-        """List SLO bindings for an asset."""
-        resp = self._http.get(f'/assets/{asset_name}/slo-bindings')
+    def list_for_asset(self, asset_name: str) -> list[SLOAssignment]:
+        """List SLO assignments for an asset."""
+        resp = self._http.get(f'/assets/{asset_name}/slo-assignments')
         _raise_for_status(resp)
-        return [SLOBinding.model_validate(b) for b in resp.json()]
+        return [SLOAssignment.model_validate(a) for a in resp.json()]
 
-    def list_for_group(self, group_name: str) -> list[SLOBinding]:
-        """List SLO bindings for an asset group."""
-        resp = self._http.get(f'/asset-groups/{group_name}/slo-bindings')
+    def list_for_group(self, group_name: str) -> list[SLOAssignment]:
+        """List SLO assignments for an asset group."""
+        resp = self._http.get(f'/asset-groups/{group_name}/slo-assignments')
         _raise_for_status(resp)
-        return [SLOBinding.model_validate(b) for b in resp.json()]
+        return [SLOAssignment.model_validate(a) for a in resp.json()]
 
-    def delete_for_asset(self, asset_name: str, slo_name: str) -> None:
-        """Delete an SLO binding for an asset."""
-        resp = self._http.delete(f'/assets/{asset_name}/slo-bindings/{slo_name}')
-        _raise_for_status(resp)
-
-    def delete_for_group(self, group_name: str, slo_name: str) -> None:
-        """Delete an SLO binding for an asset group."""
-        resp = self._http.delete(f'/asset-groups/{group_name}/slo-bindings/{slo_name}')
+    def delete_for_asset(self, asset_name: str, assignment_id: str) -> None:
+        """Delete an SLO assignment for an asset."""
+        resp = self._http.delete(f'/assets/{asset_name}/slo-assignments/{assignment_id}')
         _raise_for_status(resp)
 
-    def get_comparison_rules(self, asset_name: str, slo_name: str) -> list[dict[str, Any]]:
-        """Get comparison rules for an asset SLO binding."""
-        resp = self._http.get(f'/assets/{asset_name}/slo-bindings/{slo_name}/comparison-rules')
+    def delete_for_group(self, group_name: str, assignment_id: str) -> None:
+        """Delete an SLO assignment for an asset group."""
+        resp = self._http.delete(f'/asset-groups/{group_name}/slo-assignments/{assignment_id}')
         _raise_for_status(resp)
-        return resp.json()  # type: ignore[no-any-return]
-
-    def update_comparison_rules(
-        self, asset_name: str, slo_name: str, rules: list[dict[str, Any]]
-    ) -> list[dict[str, Any]]:
-        """Update comparison rules for an asset SLO binding."""
-        resp = self._http.put(
-            f'/assets/{asset_name}/slo-bindings/{slo_name}/comparison-rules',
-            json={'rules': rules},
-        )
-        _raise_for_status(resp)
-        return resp.json()  # type: ignore[no-any-return]
 
 
 class _SLOGroups:
@@ -810,50 +805,56 @@ class _SLOGroups:
         _raise_for_status(resp)
 
 
-class _TemplateBindings:
-    """Template binding CRUD."""
+class _SLOGroupAssignments:
+    """SLO group assignment CRUD — asset/group to SLO group (always-latest semantics)."""
 
     def __init__(self, http: httpx.Client) -> None:
         self._http = http
 
-    def create_for_asset(self, asset_name: str, template_group_name: str, data_source_name: str) -> TemplateBinding:
-        """Create a template binding for an asset."""
+    def create_for_asset(
+        self, asset_name: str, slo_group_name: str, data_source_name: str,
+    ) -> SLOGroupAssignment:
+        """Create an SLO group assignment for an asset."""
         resp = self._http.post(
-            f'/assets/{asset_name}/template-bindings',
-            json={'template_group_name': template_group_name, 'data_source_name': data_source_name},
+            f'/assets/{asset_name}/slo-group-assignments',
+            json={'slo_group_name': slo_group_name, 'data_source_name': data_source_name},
         )
         _raise_for_status(resp)
-        return TemplateBinding.model_validate(resp.json())
+        return SLOGroupAssignment.model_validate(resp.json())
 
-    def create_for_group(self, group_name: str, template_group_name: str, data_source_name: str) -> TemplateBinding:
-        """Create a template binding for an asset group."""
+    def create_for_group(
+        self, group_name: str, slo_group_name: str, data_source_name: str,
+    ) -> SLOGroupAssignment:
+        """Create an SLO group assignment for an asset group."""
         resp = self._http.post(
-            f'/asset-groups/{group_name}/template-bindings',
-            json={'template_group_name': template_group_name, 'data_source_name': data_source_name},
+            f'/asset-groups/{group_name}/slo-group-assignments',
+            json={'slo_group_name': slo_group_name, 'data_source_name': data_source_name},
         )
         _raise_for_status(resp)
-        return TemplateBinding.model_validate(resp.json())
+        return SLOGroupAssignment.model_validate(resp.json())
 
-    def list_for_asset(self, asset_name: str) -> list[TemplateBinding]:
-        """List template bindings for an asset."""
-        resp = self._http.get(f'/assets/{asset_name}/template-bindings')
+    def list_for_asset(self, asset_name: str) -> list[SLOGroupAssignment]:
+        """List SLO group assignments for an asset."""
+        resp = self._http.get(f'/assets/{asset_name}/slo-group-assignments')
         _raise_for_status(resp)
-        return [TemplateBinding.model_validate(b) for b in resp.json()]
+        return [SLOGroupAssignment.model_validate(a) for a in resp.json()]
 
-    def list_for_group(self, group_name: str) -> list[TemplateBinding]:
-        """List template bindings for an asset group."""
-        resp = self._http.get(f'/asset-groups/{group_name}/template-bindings')
+    def list_for_group(self, group_name: str) -> list[SLOGroupAssignment]:
+        """List SLO group assignments for an asset group."""
+        resp = self._http.get(f'/asset-groups/{group_name}/slo-group-assignments')
         _raise_for_status(resp)
-        return [TemplateBinding.model_validate(b) for b in resp.json()]
+        return [SLOGroupAssignment.model_validate(a) for a in resp.json()]
 
-    def delete_for_asset(self, asset_name: str, template_group_name: str) -> None:
-        """Delete a template binding for an asset."""
-        resp = self._http.delete(f'/assets/{asset_name}/template-bindings/{template_group_name}')
+    def delete_for_asset(self, asset_name: str, assignment_id: str) -> None:
+        """Delete an SLO group assignment for an asset."""
+        resp = self._http.delete(f'/assets/{asset_name}/slo-group-assignments/{assignment_id}')
         _raise_for_status(resp)
 
-    def delete_for_group(self, group_name: str, template_group_name: str) -> None:
-        """Delete a template binding for an asset group."""
-        resp = self._http.delete(f'/asset-groups/{group_name}/template-bindings/{template_group_name}')
+    def delete_for_group(self, group_name: str, assignment_id: str) -> None:
+        """Delete an SLO group assignment for an asset group."""
+        resp = self._http.delete(
+            f'/asset-groups/{group_name}/slo-group-assignments/{assignment_id}',
+        )
         _raise_for_status(resp)
 
 
@@ -870,9 +871,9 @@ class TropekClient:
         self.datasources = _DataSources(self._http)
         self.sli_definitions = _SLIDefinitions(self._http)
         self.slo_definitions = _SLODefinitions(self._http)
-        self.slo_bindings = _SLOBindings(self._http)
+        self.slo_assignments = _SLOAssignments(self._http)
         self.slo_groups = _SLOGroups(self._http)
-        self.template_bindings = _TemplateBindings(self._http)
+        self.slo_group_assignments = _SLOGroupAssignments(self._http)
         self.evaluations = _Evaluations(self._http)
         self.annotations = _Annotations(self._http)
         self.trend = _Trend(self._http)

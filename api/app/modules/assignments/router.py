@@ -8,6 +8,8 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.db.models import SLOAssignment as SLOAssignmentModel
+from app.db.models import SLOGroupAssignment as SLOGroupAssignmentModel
 from app.db.session import get_session
 from app.modules.assets.repository import AssetGroupRepository, AssetRepository
 from app.modules.assignments.repository import AssignmentRepository
@@ -26,6 +28,36 @@ from app.modules.slo_registry.repository import SLORepository
 router = APIRouter()
 
 
+def _slo_assignment_read(row: SLOAssignmentModel) -> SLOAssignmentRead:
+    """Build enriched SLOAssignmentRead from ORM row with eager-loaded relations."""
+    return SLOAssignmentRead(
+        id=row.id,
+        asset_id=row.asset_id,
+        asset_group_id=row.asset_group_id,
+        slo_definition_id=row.slo_definition_id,
+        slo_name=row.slo_name,
+        slo_version=row.slo_definition.version,
+        data_source_id=row.data_source_id,
+        data_source_name=row.data_source.name,
+        comparison_rules=row.comparison_rules,
+        created_at=row.created_at,
+    )
+
+
+def _slo_group_assignment_read(row: SLOGroupAssignmentModel) -> SLOGroupAssignmentRead:
+    """Build enriched SLOGroupAssignmentRead from ORM row with eager-loaded relations."""
+    return SLOGroupAssignmentRead(
+        id=row.id,
+        asset_id=row.asset_id,
+        asset_group_id=row.asset_group_id,
+        slo_group_id=row.slo_group_id,
+        slo_group_name=row.slo_group.name,
+        data_source_id=row.data_source_id,
+        data_source_name=row.data_source.name,
+        created_at=row.created_at,
+    )
+
+
 # ---------------------------------------------------------------------------
 # SLO Assignments — assets
 # ---------------------------------------------------------------------------
@@ -41,7 +73,7 @@ async def list_asset_slo_assignments(
     if asset is None:
         raise_not_found('asset', name)
     rows = await AssignmentRepository(session).list_slo_assignments_for_asset(asset.id)
-    return [SLOAssignmentRead.model_validate(r) for r in rows]
+    return [_slo_assignment_read(r) for r in rows]
 
 
 @router.post('/assets/{name}/slo-assignments', response_model=SLOAssignmentRead, status_code=201)
@@ -81,7 +113,10 @@ async def create_asset_slo_assignment(
             status_code=409,
             detail='slo assignment already exists for this asset and slo name',
         ) from exc
-    return SLOAssignmentRead.model_validate(row)
+    # Attach loaded relations for enriched response
+    row.slo_definition = slo_def
+    row.data_source = ds
+    return _slo_assignment_read(row)
 
 
 @router.patch(
@@ -110,7 +145,9 @@ async def upgrade_asset_slo_assignment(
     row = await repo.upgrade_slo_assignment(assignment_id, body.new_slo_definition_id)
     if row is None:
         raise HTTPException(status_code=404, detail='assignment not found')
-    return SLOAssignmentRead.model_validate(row)
+    row.slo_definition = slo_def
+    row.data_source = existing.data_source if hasattr(existing, 'data_source') else await DataSourceRepository(session).get_by_id(row.data_source_id)
+    return _slo_assignment_read(row)
 
 
 @router.delete('/assets/{name}/slo-assignments/{assignment_id}', status_code=204)
@@ -145,7 +182,7 @@ async def list_group_slo_assignments(
     if ag is None:
         raise_not_found('asset group', name)
     rows = await AssignmentRepository(session).list_slo_assignments_for_group(ag.id)
-    return [SLOAssignmentRead.model_validate(r) for r in rows]
+    return [_slo_assignment_read(r) for r in rows]
 
 
 @router.post(
@@ -187,7 +224,9 @@ async def create_group_slo_assignment(
             status_code=409,
             detail='slo assignment already exists for this group and slo name',
         ) from exc
-    return SLOAssignmentRead.model_validate(row)
+    row.slo_definition = slo_def
+    row.data_source = ds
+    return _slo_assignment_read(row)
 
 
 @router.delete('/asset-groups/{name}/slo-assignments/{assignment_id}', status_code=204)
@@ -222,7 +261,7 @@ async def list_asset_group_assignments(
     if asset is None:
         raise_not_found('asset', name)
     rows = await AssignmentRepository(session).list_group_assignments_for_asset(asset.id)
-    return [SLOGroupAssignmentRead.model_validate(r) for r in rows]
+    return [_slo_group_assignment_read(r) for r in rows]
 
 
 @router.post(
@@ -261,7 +300,9 @@ async def create_asset_group_assignment(
         )
     except IntegrityError as exc:
         raise HTTPException(status_code=409, detail='group assignment already exists') from exc
-    return SLOGroupAssignmentRead.model_validate(row)
+    row.slo_group = sg
+    row.data_source = ds
+    return _slo_group_assignment_read(row)
 
 
 @router.delete('/assets/{name}/slo-group-assignments/{assignment_id}', status_code=204)
@@ -298,7 +339,7 @@ async def list_group_group_assignments(
     if ag is None:
         raise_not_found('asset group', name)
     rows = await AssignmentRepository(session).list_group_assignments_for_group(ag.id)
-    return [SLOGroupAssignmentRead.model_validate(r) for r in rows]
+    return [_slo_group_assignment_read(r) for r in rows]
 
 
 @router.post(
@@ -337,7 +378,9 @@ async def create_group_group_assignment(
         )
     except IntegrityError as exc:
         raise HTTPException(status_code=409, detail='group assignment already exists') from exc
-    return SLOGroupAssignmentRead.model_validate(row)
+    row.slo_group = sg
+    row.data_source = ds
+    return _slo_group_assignment_read(row)
 
 
 @router.delete('/asset-groups/{name}/slo-group-assignments/{assignment_id}', status_code=204)

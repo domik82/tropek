@@ -143,34 +143,32 @@ def _collect_documents(client: TropekClient) -> list[dict[str, Any]]:
     documents.extend(
         {
             'api_version': 'tropek/v1',
-            'kind': 'SLOBinding',
-            'metadata': {'name': f'{asset.name}-{binding.slo_name}-binding'},
+            'kind': 'SLOAssignment',
+            'metadata': {'name': f'{asset.name}-{assignment.slo_name}-assignment'},
             'spec': {
                 'target_type': 'asset',
                 'target_name': asset.name,
-                'slo_name': binding.slo_name,
-                'data_source_name': binding.data_source_name,
+                'slo_name': assignment.slo_name,
+                'data_source_name': assignment.data_source_name,
             },
         }
         for asset in client.assets.list().items
-        for binding in client.slo_bindings.list_for_asset(asset.name)
-        if binding.source == 'direct'
+        for assignment in client.slo_assignments.list_for_asset(asset.name)
     )
     documents.extend(
         {
             'api_version': 'tropek/v1',
-            'kind': 'SLOBinding',
-            'metadata': {'name': f'{group.name}-{binding.slo_name}-binding'},
+            'kind': 'SLOAssignment',
+            'metadata': {'name': f'{group.name}-{assignment.slo_name}-assignment'},
             'spec': {
                 'target_type': 'asset_group',
                 'target_name': group.name,
-                'slo_name': binding.slo_name,
-                'data_source_name': binding.data_source_name,
+                'slo_name': assignment.slo_name,
+                'data_source_name': assignment.data_source_name,
             },
         }
         for group in client.asset_groups.list().items
-        for binding in client.slo_bindings.list_for_group(group.name)
-        if binding.source == 'direct'
+        for assignment in client.slo_assignments.list_for_group(group.name)
     )
     return documents
 

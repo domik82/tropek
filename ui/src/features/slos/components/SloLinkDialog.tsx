@@ -5,7 +5,7 @@ import { useDatasources } from '@/features/datasources/hooks'
 import { useSliDefinitions } from '@/features/slis/hooks'
 import {
   useGroupTree, useSlos,
-  useCreateGroupSloBinding, useGroupSloBindings,
+  useCreateGroupSloAssignment, useGroupSloAssignments,
 } from '../hooks'
 
 interface Props {
@@ -26,8 +26,8 @@ export function SloLinkDialog({ open, onOpenChange, lockedSloName, lockedGroupNa
   const { data: slis } = useSliDefinitions(selectedDs?.adapter_type)
   const { data: tree } = useGroupTree()
   const { data: slos } = useSlos()
-  const { data: existingBindings } = useGroupSloBindings(groupName || lockedGroupName || '')
-  const createBinding = useCreateGroupSloBinding()
+  const { data: existingAssignments } = useGroupSloAssignments(groupName || lockedGroupName || '')
+  const createAssignment = useCreateGroupSloAssignment()
 
   useEffect(() => {
     if (lockedGroupName) setGroupName(lockedGroupName)
@@ -45,14 +45,16 @@ export function SloLinkDialog({ open, onOpenChange, lockedSloName, lockedGroupNa
     }
   }, [open, lockedGroupName, lockedSloName])
 
-  const isDuplicate = existingBindings?.some(b => b.slo_name === sloName) ?? false
-  const isValid = !!(datasource && sliName && groupName && sloName && !isDuplicate)
+  const selectedSlo = slos?.find(s => s.name === sloName)
+  const isDuplicate = existingAssignments?.some(a => a.slo_name === sloName) ?? false
+  const isValid = !!(datasource && sliName && groupName && sloName && selectedSlo && !isDuplicate)
 
   const handleLink = async () => {
+    if (!selectedSlo) return
     const targetGroup = lockedGroupName ?? groupName
-    await createBinding.mutateAsync({
+    await createAssignment.mutateAsync({
       groupName: targetGroup,
-      slo_name: sloName,
+      slo_definition_id: selectedSlo.id,
       data_source_name: datasource,
     })
     onOpenChange(false)
@@ -67,7 +69,7 @@ export function SloLinkDialog({ open, onOpenChange, lockedSloName, lockedGroupNa
       pendingLabel="Linking..."
       onSubmit={() => void handleLink()}
       canSubmit={isValid}
-      isPending={createBinding.isPending}
+      isPending={createAssignment.isPending}
     >
       <div>
         <FieldLabel>Datasource</FieldLabel>

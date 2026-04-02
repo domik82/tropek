@@ -395,6 +395,9 @@ class SLOAssignment(Base):
     created_at:        Mapped[datetime]                     = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     # fmt: on
 
+    slo_definition: Mapped[SLODefinition] = relationship(lazy='raise')
+    data_source: Mapped[DataSource] = relationship(lazy='raise')
+
 
 class SLOGroupAssignment(Base):
     """Always-latest assignment of an SLO group to an asset or asset group."""
@@ -429,6 +432,9 @@ class SLOGroupAssignment(Base):
     data_source_id: Mapped[uuid.UUID]        = mapped_column(UUID, ForeignKey('data_sources.id'), nullable=False)
     created_at:     Mapped[datetime]         = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     # fmt: on
+
+    slo_group: Mapped[SLOGroup] = relationship(lazy='raise')
+    data_source: Mapped[DataSource] = relationship(lazy='raise')
 
 
 class SLODisplayGroup(Base):

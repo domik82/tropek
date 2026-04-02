@@ -25,7 +25,9 @@ class SLOAssignmentRead(BaseModel):
     asset_group_id: uuid.UUID | None
     slo_definition_id: uuid.UUID
     slo_name: str
+    slo_version: int
     data_source_id: uuid.UUID
+    data_source_name: str
     comparison_rules: list[dict[str, Any]] | None
     created_at: datetime
 
@@ -52,7 +54,9 @@ class SLOGroupAssignmentRead(BaseModel):
     asset_id: uuid.UUID | None
     asset_group_id: uuid.UUID | None
     slo_group_id: uuid.UUID
+    slo_group_name: str
     data_source_id: uuid.UUID
+    data_source_name: str
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)

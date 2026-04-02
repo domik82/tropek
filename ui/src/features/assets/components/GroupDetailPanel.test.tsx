@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event'
 import { TestWrapper } from '@/test-wrapper'
 import { GroupDetailPanel } from './GroupDetailPanel'
 import { useAssetGroup, useRemoveGroupMember } from '@/features/assets/hooks'
-import { useDeleteGroupSloBinding } from '@/features/slos/hooks'
+import { useDeleteGroupSloAssignment } from '@/features/slos/hooks'
 
 vi.mock('@/features/assets/hooks', () => ({
   useAssetGroup: vi.fn(() => ({
@@ -85,20 +85,23 @@ vi.mock('@/features/assets/hooks', () => ({
 }))
 
 vi.mock('@/features/slos/hooks', () => ({
-  useGroupSloBindings: vi.fn(() => ({
+  useGroupSloAssignments: vi.fn(() => ({
     data: [
       {
         id: 'l1',
-        target_type: 'asset_group',
-        target_id: 'g1',
+        asset_id: null,
+        asset_group_id: 'g1',
+        slo_definition_id: 'sd1',
         slo_name: 'availability',
+        slo_version: 1,
+        data_source_id: 'ds1',
         data_source_name: 'prometheus-prod',
         comparison_rules: null,
         created_at: '2026-03-15T00:00:00Z',
       },
     ],
   })),
-  useDeleteGroupSloBinding: vi.fn(() => ({ mutate: vi.fn(), isPending: false })),
+  useDeleteGroupSloAssignment: vi.fn(() => ({ mutate: vi.fn(), isPending: false })),
 }))
 
 vi.mock('@/features/slos/components/GroupEditDialog', () => ({
@@ -205,7 +208,7 @@ describe('GroupDetailPanel', () => {
 
   it('calls unlinkSlo when X clicked on SLO row', async () => {
     const mockMutate = vi.fn()
-    vi.mocked(useDeleteGroupSloBinding).mockReturnValue({ mutate: mockMutate } as any)
+    vi.mocked(useDeleteGroupSloAssignment).mockReturnValue({ mutate: mockMutate } as any)
 
     const user = userEvent.setup()
     render(
@@ -214,7 +217,7 @@ describe('GroupDetailPanel', () => {
     )
     const unlinkButton = screen.getByTitle('Unlink')
     await user.click(unlinkButton)
-    expect(mockMutate).toHaveBeenCalledWith({ groupName: 'payments', sloName: 'availability' })
+    expect(mockMutate).toHaveBeenCalledWith({ groupName: 'payments', assignmentId: 'l1' })
   })
 
   it('highlights the selected asset row when selectedAsset matches a member', () => {

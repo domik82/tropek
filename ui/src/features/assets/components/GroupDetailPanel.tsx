@@ -4,7 +4,7 @@ import { Pencil, Link, Trash2, X, FolderPlus, Plus } from 'lucide-react'
 import { LabelChips } from '@/components/labels/LabelChips'
 import { LabelsEditorDialog } from '@/components/labels/LabelsEditorDialog'
 import { useAssetGroup, useAssets, useRemoveGroupMember, useAssetGroups, useUpdateAsset } from '../hooks'
-import { useGroupSloBindings, useDeleteGroupSloBinding } from '@/features/slos/hooks'
+import { useGroupSloAssignments, useDeleteGroupSloAssignment } from '@/features/slos/hooks'
 import { GroupEditDialog } from '@/features/slos/components/GroupEditDialog'
 import { GroupDeleteDialog } from '@/features/slos/components/GroupDeleteDialog'
 import { GroupCreateDialog } from '@/features/slos/components/GroupCreateDialog'
@@ -24,9 +24,9 @@ export function GroupDetailPanel({ groupName, onSelectGroup, selectedAsset }: Pr
   const { data: group } = useAssetGroup(groupName)
   const { data: tree } = useAssetGroups()
   const { data: assets = [] } = useAssets()
-  const { data: bindings = [] } = useGroupSloBindings(groupName)
+  const { data: assignments = [] } = useGroupSloAssignments(groupName)
   const removeMember = useRemoveGroupMember()
-  const unlinkSlo = useDeleteGroupSloBinding()
+  const unlinkSlo = useDeleteGroupSloAssignment()
   const updateAsset = useUpdateAsset()
 
   const [editDialogOpen, setEditDialogOpen] = useState(false)
@@ -57,7 +57,7 @@ export function GroupDetailPanel({ groupName, onSelectGroup, selectedAsset }: Pr
   const statsLine = [
     `${group.members.length} assets`,
     `${subgroups.length} subgroups`,
-    `${bindings.length} linked SLOs`,
+    `${assignments.length} linked SLOs`,
   ].join(' · ')
 
   return (
@@ -221,7 +221,7 @@ export function GroupDetailPanel({ groupName, onSelectGroup, selectedAsset }: Pr
       <div>
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-sm font-semibold text-foreground">
-            Linked SLOs ({bindings.length})
+            Linked SLOs ({assignments.length})
           </h3>
           <button
             onClick={() => setLinkSloOpen(true)}
@@ -231,10 +231,10 @@ export function GroupDetailPanel({ groupName, onSelectGroup, selectedAsset }: Pr
             Link SLO
           </button>
         </div>
-        {bindings.length === 0 && (
+        {assignments.length === 0 && (
           <p className="text-sm text-muted-foreground italic">No linked SLOs</p>
         )}
-        {bindings.length > 0 && (
+        {assignments.length > 0 && (
           <div className="border border-border rounded-lg overflow-hidden">
             <table className="w-full text-sm">
               <thead>
@@ -245,13 +245,13 @@ export function GroupDetailPanel({ groupName, onSelectGroup, selectedAsset }: Pr
                 </tr>
               </thead>
               <tbody>
-                {bindings.map((binding, idx) => (
-                  <tr key={binding.id} className={`border-b border-border/60 last:border-0 hover:bg-table-row-hover transition-colors ${idx % 2 === 0 ? 'bg-table-row-bg' : 'bg-table-row-alt'}`}>
-                    <td className="px-3 py-2 font-medium text-foreground">{binding.slo_name}</td>
-                    <td className="px-3 py-2 text-muted-foreground/60">{binding.data_source_name}</td>
+                {assignments.map((assignment, idx) => (
+                  <tr key={assignment.id} className={`border-b border-border/60 last:border-0 hover:bg-table-row-hover transition-colors ${idx % 2 === 0 ? 'bg-table-row-bg' : 'bg-table-row-alt'}`}>
+                    <td className="px-3 py-2 font-medium text-foreground">{assignment.slo_name}</td>
+                    <td className="px-3 py-2 text-muted-foreground/60">{assignment.data_source_name}</td>
                     <td className="px-3 py-2 text-center">
                       <button
-                        onClick={() => unlinkSlo.mutate({ groupName, sloName: binding.slo_name })}
+                        onClick={() => unlinkSlo.mutate({ groupName, assignmentId: assignment.id })}
                         className="p-1 text-muted-foreground hover:text-action-destructive transition-colors"
                         title="Unlink"
                       >
