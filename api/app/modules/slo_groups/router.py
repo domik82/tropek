@@ -49,12 +49,14 @@ async def _build_group_read(
     """Build an SLOGroupRead with computed fields from FK join."""
     count = await group_repo.count_generated_slos(group.id)
     template_slo = await slo_repo.get_by_id(group.template_slo_definition_id)
+    if template_slo is None:
+        raise HTTPException(status_code=500, detail='template slo definition not found')
     return SLOGroupRead(
         id=group.id,
         name=group.name,
         display_name=group.display_name,
-        template_slo_name=template_slo.name if template_slo else '',
-        template_slo_version=template_slo.version if template_slo else 0,
+        template_slo_name=template_slo.name,
+        template_slo_version=template_slo.version,
         template_slo_definition_id=group.template_slo_definition_id,
         gen_variables=group.gen_variables,
         tags=group.tags,
@@ -421,12 +423,14 @@ async def extract_slo(  # noqa: C901
     if updated_group is None:
         # Group was deactivated — return minimal response from original
         template_slo = await slo_repo.get_by_id(group.template_slo_definition_id)
+        if template_slo is None:
+            raise HTTPException(status_code=500, detail='template slo definition not found')
         return SLOGroupRead(
             id=group.id,
             name=group.name,
             display_name=group.display_name,
-            template_slo_name=template_slo.name if template_slo else '',
-            template_slo_version=template_slo.version if template_slo else 0,
+            template_slo_name=template_slo.name,
+            template_slo_version=template_slo.version,
             template_slo_definition_id=group.template_slo_definition_id,
             gen_variables=new_gen_vars,
             tags=group.tags,
