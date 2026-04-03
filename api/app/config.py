@@ -154,6 +154,7 @@ class UISettings(BaseSettings):
     heatmap_slo_groups_expanded_by_default: bool = _yaml.get('ui', {}).get(
         'heatmap_slo_groups_expanded_by_default', True
     )
+    data_start_date: str = _yaml.get('ui', {}).get('data_start_date', '2024-01-01')
 
 
 class FileIngestionSettings(BaseSettings):
