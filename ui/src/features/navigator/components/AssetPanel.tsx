@@ -200,8 +200,8 @@ export function AssetPanel({ assetName, initialEvalId }: Props) {
   }, [evals, heatmapData])
 
   const hasEvals = evals.length > 0
-  const displayResult = hasEvals && ev ? (ev.invalidated ? 'invalidated' : ev.result) : undefined
-  const score = hasEvals && ev ? Math.round(ev.score) : undefined
+  const displayResult = hasEvals && ev ? (ev.invalidated ? 'invalidated' : (ev.result ?? 'error')) : undefined
+  const score = hasEvals && ev && ev.score != null ? Math.round(ev.score) : undefined
 
   return (
     <div className="p-6 space-y-4">
@@ -241,7 +241,7 @@ export function AssetPanel({ assetName, initialEvalId }: Props) {
         ) : undefined}
         actions={hasEvals && effectiveEvalId && ev ? (
           <EvaluationActionsButton
-            currentResult={ev.result}
+            currentResult={ev.result ?? 'error'}
             invalidated={ev.invalidated}
             activeAction={activeAction}
             onSelectAction={setActiveAction}
@@ -254,7 +254,7 @@ export function AssetPanel({ assetName, initialEvalId }: Props) {
       {evals.length > 0 && activeAction && effectiveEvalId && ev && (activeAction === 'restore' || !ev.invalidated) && (
         <EvaluationActionForm
           evalId={effectiveEvalId}
-          currentResult={ev.result}
+          currentResult={ev.result ?? 'error'}
           activeAction={activeAction}
           onClose={() => setActiveAction(null)}
           assetName={assetName}

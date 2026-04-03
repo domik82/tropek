@@ -48,7 +48,7 @@ async def test_heatmap_returns_completed_evals(db_session: AsyncSession) -> None
         )
         await eval_repo.mark_completed(ev.id, result='pass', score=90.0, slo_name='test-slo')
 
-    evals = await trend_repo.get_metric_heatmap(asset_id=asset_id, limit=10)
+    evals = await trend_repo.get_metric_heatmap(asset_id=asset_id)
     assert len(evals) == 3
 
 
@@ -75,6 +75,6 @@ async def test_heatmap_includes_invalidated_completed(db_session: AsyncSession) 
     await eval_repo.mark_completed(ev.id, result='pass', score=90.0, slo_name='test-slo')
     await eval_repo.invalidate(ev.id, note='bad data')
 
-    evals = await trend_repo.get_metric_heatmap(asset_id=asset_id, limit=10)
+    evals = await trend_repo.get_metric_heatmap(asset_id=asset_id)
     # Repository returns it — router transforms result to "invalidated"
     assert len(evals) == 1

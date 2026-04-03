@@ -64,7 +64,7 @@ async def test_grouped_heatmap_returns_completed_runs(db_session: AsyncSession) 
             total_points=10,
         )
 
-    runs = await trend_repo.get_grouped_metric_heatmap(asset_id=asset_id, limit=10)
+    runs = await trend_repo.get_grouped_metric_heatmap(asset_id=asset_id)
     assert len(runs) == 3
 
 
@@ -82,7 +82,7 @@ async def test_grouped_heatmap_excludes_pending_runs(db_session: AsyncSession) -
         period_end=_BASE + timedelta(hours=1),
     )
 
-    runs = await trend_repo.get_grouped_metric_heatmap(asset_id=asset_id, limit=10)
+    runs = await trend_repo.get_grouped_metric_heatmap(asset_id=asset_id)
     assert len(runs) == 0
 
 

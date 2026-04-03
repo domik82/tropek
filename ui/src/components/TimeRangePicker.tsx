@@ -1,11 +1,12 @@
 // ui/src/components/TimeRangePicker.tsx
 import { useState } from 'react'
-import { Calendar as CalendarIcon, ChevronDown } from 'lucide-react'
+import { Calendar as CalendarIcon, ChevronDown, TriangleAlert } from 'lucide-react'
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover'
 import { Button } from '@/components/ui/button'
 import { Calendar } from '@/components/ui/calendar'
 import { useTimeRange, PRESETS, toDateInputValue } from '@/lib/time-range-context'
 import { SANS_SERIF } from '@/lib/fonts'
+import { getConfig } from '@/lib/config'
 
 function presetFromDate(days: number): Date {
   const d = new Date()
@@ -14,9 +15,14 @@ function presetFromDate(days: number): Date {
   return d
 }
 
+function daysBetween(a: Date, b: Date): number {
+  return Math.round(Math.abs(b.getTime() - a.getTime()) / (1000 * 60 * 60 * 24))
+}
+
 export function TimeRangePicker() {
   const { label, mode, preset, setDays, setAbsoluteRange } = useTimeRange()
   const [open, setOpen] = useState(false)
+  const slowThreshold = getConfig().heatmapSlowThresholdDays
 
   // Which date field is being edited: null = collapsed, 'from'/'to' = show calendar
   const [editing, setEditing] = useState<'from' | 'to' | null>(null)
@@ -34,6 +40,14 @@ export function TimeRangePicker() {
   }
 
   const rangeInvalid = !!(fromDate && toDate && fromDate > toDate)
+
+  // Warn when the active time range exceeds the configured threshold
+  const activeDays = mode === 'preset'
+    ? preset.days
+    : fromDate
+      ? daysBetween(fromDate, toDate ?? new Date())
+      : 0
+  const showSlowWarning = activeDays > slowThreshold
 
   function handleApply() {
     if (!fromDate || rangeInvalid) return
@@ -69,10 +83,15 @@ export function TimeRangePicker() {
   return (
     <Popover open={open} onOpenChange={(next) => { setOpen(next); if (!next) setEditing(null) }}>
       <PopoverTrigger
-        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg border border-border bg-popover text-foreground hover:bg-muted transition-colors"
+        className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg border bg-popover text-foreground hover:bg-muted transition-colors ${
+          showSlowWarning ? 'border-yellow-600/50' : 'border-border'
+        }`}
         style={{ fontFamily: SANS_SERIF }}
+        title={showSlowWarning ? `Range exceeds ${slowThreshold} days — heatmap rendering may be slow` : undefined}
       >
-        <CalendarIcon size={15} className="text-muted-foreground" />
+        {showSlowWarning
+          ? <TriangleAlert size={15} className="text-yellow-500 shrink-0" />
+          : <CalendarIcon size={15} className="text-muted-foreground" />}
         {label}
         <ChevronDown size={13} className="text-muted-foreground" />
       </PopoverTrigger>
@@ -132,6 +151,12 @@ export function TimeRangePicker() {
               </div>
             )}
 
+            {fromDate && daysBetween(fromDate, toDate ?? new Date()) > slowThreshold && (
+              <p className="flex items-center gap-1 text-xs text-yellow-500 mt-2">
+                <TriangleAlert size={11} className="shrink-0" />
+                Wide range — heatmap may be slow
+              </p>
+            )}
             <Button
               variant="default"
               size="sm"
@@ -149,13 +174,16 @@ export function TimeRangePicker() {
               <button
                 key={p.days}
                 onClick={() => handlePreset(p.days)}
-                className={`w-full text-left px-3 py-1.5 text-xs rounded transition-colors ${
+                className={`w-full text-left px-3 py-1.5 text-xs rounded transition-colors flex items-center gap-1.5 ${
                   mode === 'preset' && p.days === preset.days
                     ? 'bg-primary/15 text-primary'
                     : 'text-foreground hover:bg-muted'
                 }`}
               >
                 {p.label}
+                {p.days > slowThreshold && (
+                  <TriangleAlert size={11} className="text-yellow-500 shrink-0" />
+                )}
               </button>
             ))}
           </div>

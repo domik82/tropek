@@ -32,7 +32,6 @@ function toParams(filters: EvaluationFilters): string {
 
 import { getConfig } from '@/lib/config'
 
-
 export interface EvaluationResult {
   items: EvaluationSummary[]
   total: number
@@ -73,8 +72,15 @@ export async function fetchEvaluationDetail(id: string): Promise<EvaluationDetai
   return res.json()
 }
 
-export async function fetchTrend(evalId: string, metric: string): Promise<TrendPoint[]> {
-  const res = await fetch(`${BASE}/trend?eval_id=${evalId}&metric=${encodeURIComponent(metric)}`)
+export async function fetchTrend(
+  evalId: string,
+  metric: string,
+  dateRange?: { from?: string; to?: string },
+): Promise<TrendPoint[]> {
+  const params = new URLSearchParams({ eval_id: evalId, metric })
+  if (dateRange?.from) params.set('from', dateRange.from)
+  if (dateRange?.to) params.set('to', dateRange.to)
+  const res = await fetch(`${BASE}/trend?${params}`)
   if (!res.ok) throw new Error(`fetchTrend: ${res.status}`)
   return res.json()
 }

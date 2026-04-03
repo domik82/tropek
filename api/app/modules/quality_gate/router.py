@@ -268,7 +268,6 @@ async def get_metric_heatmap(
     evaluation_name: list[str] | None = Query(default=None),
     from_ts: datetime | None = Query(default=None, alias='from'),
     to_ts: datetime | None = Query(default=None, alias='to'),
-    limit: int = 500,
     repos: QualityGateRepos = Depends(get_qg_repos),
 ) -> MetricHeatmapResponse:
     """Return a metric x evaluation heatmap grid for an asset."""
@@ -277,7 +276,6 @@ async def get_metric_heatmap(
         raise HTTPException(status_code=404, detail=f"asset '{asset_name}' not found")
     evals = await repos.trend_repo.get_metric_heatmap(
         asset_id=asset.id,
-        limit=limit,
         evaluation_name=evaluation_name,
         from_ts=from_ts,
         to_ts=to_ts,
@@ -344,7 +342,6 @@ async def get_grouped_metric_heatmap(
     evaluation_name: list[str] | None = Query(default=None),
     from_ts: datetime | None = Query(default=None, alias='from'),
     to_ts: datetime | None = Query(default=None, alias='to'),
-    limit: int = Query(default=100, le=500),
     repos: QualityGateRepos = Depends(get_qg_repos),
 ) -> GroupedMetricHeatmapResponse:
     """Return a grouped metric heatmap — one column per parent EvaluationRun."""
@@ -353,7 +350,6 @@ async def get_grouped_metric_heatmap(
         raise HTTPException(status_code=404, detail=f"asset '{asset_name}' not found")
     runs = await repos.trend_repo.get_grouped_metric_heatmap(
         asset_id=asset.id,
-        limit=limit,
         eval_name=evaluation_name,
         from_ts=from_ts,
         to_ts=to_ts,
@@ -587,12 +583,14 @@ async def get_trend(
     eval_id: uuid.UUID | None = None,
     asset_name: str | None = None,
     slo_name: str | None = None,
-    limit: int = Query(default=200, le=500),
+    from_ts: datetime = Query(alias='from'),
+    to_ts: datetime | None = Query(default=None, alias='to'),
     repos: QualityGateRepos = Depends(get_qg_repos),
 ) -> list[TrendPoint]:
     """Return time-series trend data for a specific metric.
 
     Exactly one of eval_id or (asset_name + slo_name) must be provided.
+    The ``from`` parameter is required; ``to`` defaults to now.
     """
     has_eval = eval_id is not None
     has_any_asset_param = asset_name is not None or slo_name is not None
@@ -636,6 +634,7 @@ async def get_trend(
         asset_id=resolved_asset_id,
         slo_name=resolved_slo_name,
         metric_name=metric,
-        limit=limit,
+        from_ts=from_ts,
+        to_ts=to_ts,
     )
     return [TrendPoint(**p) for p in points]

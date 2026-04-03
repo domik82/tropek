@@ -2,12 +2,15 @@ interface UIConfig {
   maxEvaluations: number
   pageSize: number
   heatmapSloGroupsExpandedByDefault: boolean
+  /** Day count above which the date picker shows a performance warning. */
+  heatmapSlowThresholdDays: number
 }
 
 const DEFAULTS: UIConfig = {
-  maxEvaluations: 1000,
+  maxEvaluations: 5000,
   pageSize: 200,
   heatmapSloGroupsExpandedByDefault: true,
+  heatmapSlowThresholdDays: 30,
 }
 
 let config: UIConfig = DEFAULTS

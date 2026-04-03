@@ -16,9 +16,10 @@ describe('evaluationKeys', () => {
   it('detail includes id', () => {
     expect(evaluationKeys.detail('abc-123')).toEqual(['evaluations', 'abc-123'])
   })
-  it('trend includes id and metric', () => {
-    expect(evaluationKeys.trend('abc-123', 'response_time_p95')).toEqual([
-      'evaluations', 'abc-123', 'response_time_p95',
+  it('trend includes id, metric and date range', () => {
+    const range = { from: '2026-01-01T00:00:00Z' }
+    expect(evaluationKeys.trend('abc-123', 'response_time_p95', range)).toEqual([
+      'evaluations', 'abc-123', 'response_time_p95', range,
     ])
   })
 })
