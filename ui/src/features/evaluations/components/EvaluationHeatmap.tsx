@@ -48,17 +48,17 @@ function buildData(evals: EvaluationSummary[], fallbackNames?: Map<string, strin
   for (const e of evals) {
     const key = `${e.asset_snapshot.name}\0${e.period_start}\0${e.evaluation_name}`
     const existing = cellMap.get(key)
-    const effectiveResult = e.invalidated ? 'invalidated' : e.result
+    const effectiveResult = e.invalidated ? 'invalidated' : (e.result ?? 'error')
     const hasNote = (e.annotation_count ?? 0) > 0
     const note = e.latest_annotation?.content ?? ''
     if (!existing) {
-      cellMap.set(key, { result: effectiveResult, score: e.score, count: 1, hasNote, noteContent: note, evalName: e.evaluation_name })
+      cellMap.set(key, { result: effectiveResult, score: e.score ?? 0, count: 1, hasNote, noteContent: note, evalName: e.evaluation_name })
     } else {
       const rank = (r: string) => RESULT_RANK[r] ?? 0
       const newIsWorse = rank(effectiveResult) > rank(existing.result)
       cellMap.set(key, {
         result: newIsWorse ? effectiveResult : existing.result,
-        score: (existing.score * existing.count + e.score) / (existing.count + 1),
+        score: (existing.score * existing.count + (e.score ?? 0)) / (existing.count + 1),
         count: existing.count + 1,
         hasNote: existing.hasNote || hasNote,
         noteContent: existing.noteContent || note,

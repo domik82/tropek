@@ -57,7 +57,7 @@ export function EvaluationDetailPage() {
         sloDisplayName={sloDisplayName}
         actions={
           <EvaluationActionsButton
-            currentResult={ev.result}
+            currentResult={ev.result ?? 'error'}
             invalidated={ev.invalidated}
             activeAction={activeAction}
             onSelectAction={setActiveAction}
@@ -70,7 +70,7 @@ export function EvaluationDetailPage() {
       {activeAction && (activeAction === 'restore' || !ev.invalidated) && (
         <EvaluationActionForm
           evalId={id!}
-          currentResult={ev.result}
+          currentResult={ev.result ?? 'error'}
           activeAction={activeAction}
           onClose={() => setActiveAction(null)}
           assetName={ev.asset_snapshot.name}

@@ -22,15 +22,15 @@ export function buildGroupHeatmapData(evals: EvaluationSummary[], fallbackNames?
   const cellMap = new Map<string, { result: string; score: number; count: number; evalName: string }>()
   for (const e of evals) {
     const key = `${e.asset_snapshot.name}\0${e.period_start}\0${e.evaluation_name}`
-    const effectiveResult = e.invalidated ? 'invalidated' : e.result
+    const effectiveResult = e.invalidated ? 'invalidated' : (e.result ?? 'error')
     const existing = cellMap.get(key)
     if (!existing) {
-      cellMap.set(key, { result: effectiveResult, score: e.score, count: 1, evalName: e.evaluation_name })
+      cellMap.set(key, { result: effectiveResult, score: e.score ?? 0, count: 1, evalName: e.evaluation_name })
     } else {
       cellMap.set(key, {
         result: (RESULT_RANK[effectiveResult] ?? 0) > (RESULT_RANK[existing.result] ?? 0)
           ? effectiveResult : existing.result,
-        score: (existing.score * existing.count + e.score) / (existing.count + 1),
+        score: (existing.score * existing.count + (e.score ?? 0)) / (existing.count + 1),
         count: existing.count + 1,
         evalName: existing.evalName,
       })
@@ -77,8 +77,8 @@ export function buildGroupScoreData(evals: EvaluationSummary[]): SlotScoreData[]
     const assets = slotEvals.map(e => ({
       slot,
       assetName: e.asset_snapshot.name,
-      score: e.score,
-      result: e.invalidated ? 'invalidated' : e.result,
+      score: e.score ?? 0,
+      result: e.invalidated ? 'invalidated' : (e.result ?? 'error'),
       maxScore: 100,
     }))
     return {

@@ -38,11 +38,11 @@ export function AssetScoreChart({ evaluations, selectedEvalId, onEvalSelect }: P
 
   const data = useMemo(
     () => sorted.map(e => {
-      const effectiveResult = e.invalidated ? 'invalidated' : e.result
+      const effectiveResult = e.invalidated ? 'invalidated' : (e.result ?? 'error')
       const color = colours[effectiveResult] ?? colours.error
       const isSelected = e.id === selectedEvalId
       return {
-        value: Math.round(e.score),
+        value: e.score != null ? Math.round(e.score) : 0,
         symbol: e.invalidated ? 'diamond' : 'circle',
         symbolSize: isSelected ? 10 : 6,
         itemStyle: {
@@ -73,7 +73,7 @@ export function AssetScoreChart({ evaluations, selectedEvalId, onEvalSelect }: P
         const e = sorted[p.dataIndex]
         if (!e) return ''
         const score = p.data.value
-        const effectiveResult = e.invalidated ? 'invalidated' : e.result
+        const effectiveResult = e.invalidated ? 'invalidated' : (e.result ?? 'error')
         const rc = colours[effectiveResult] ?? colours.error
         return [
           `<b>${fmtDateTime(e.period_start)}</b>`,
