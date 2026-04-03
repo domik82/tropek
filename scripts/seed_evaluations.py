@@ -32,11 +32,9 @@ ASSETS = [
     # Office Laptops
     'laptop-user-01',
     'laptop-user-02',
-    # Binding Tests
-    'direct-slo',
-    'group-slo',
-    'group-template',
-    'direct-template',
+    # Binding test assets (direct-slo, group-slo, etc.) are NOT seeded here —
+    # they use binding-test-sli which has no mock scenario data.
+    # They exist for integration tests only (mocked arq pool, no real adapter).
     # Scale Test — seeded separately by _seed_lab_monitor
 ]
 
