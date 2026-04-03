@@ -4,12 +4,13 @@ import { cn } from '@/lib/utils'
 interface DataTableProps {
   children: ReactNode
   className?: string
+  fixed?: boolean
 }
 
-export function DataTable({ children, className }: DataTableProps) {
+export function DataTable({ children, className, fixed }: DataTableProps) {
   return (
     <div className={cn('overflow-hidden rounded-lg border border-border', className)}>
-      <table className="w-full text-sm text-left">{children}</table>
+      <table className={cn('w-full text-sm text-left', fixed && 'table-fixed')}>{children}</table>
     </div>
   )
 }
