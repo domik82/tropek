@@ -6,6 +6,7 @@ import {
   fetchGroupTree, createGroup, updateGroup, deleteGroup,
   addSubgroup, fetchSloTagKeys, fetchSloTagValues,
   fetchAssetSloAssignments, fetchGroupSloAssignments,
+  fetchAssetSloGroupAssignments,
   createGroupSloAssignment, deleteGroupSloAssignment,
 } from './api'
 
@@ -130,6 +131,14 @@ export function useAssetSloAssignments(assetName: string) {
   return useQuery({
     queryKey: assignmentKeys.asset(assetName),
     queryFn: () => fetchAssetSloAssignments(assetName),
+    enabled: !!assetName,
+  })
+}
+
+export function useAssetSloGroupAssignments(assetName: string) {
+  return useQuery({
+    queryKey: ['slo-group-assignments', 'asset', assetName],
+    queryFn: () => fetchAssetSloGroupAssignments(assetName),
     enabled: !!assetName,
   })
 }

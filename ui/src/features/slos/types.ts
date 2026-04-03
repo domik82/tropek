@@ -77,3 +77,14 @@ export interface SloAssignmentCreate {
   data_source_name: string
   comparison_rules?: Record<string, unknown>[] | null
 }
+
+export interface SloGroupAssignment {
+  id: string
+  asset_id: string | null
+  asset_group_id: string | null
+  slo_group_id: string
+  slo_group_name: string
+  data_source_id: string
+  data_source_name: string
+  created_at: string
+}
