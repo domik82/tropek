@@ -21,6 +21,7 @@ class CsvStore:
 
     def __init__(self, data_dir: Path) -> None:
         self._data_dir = data_dir
+        self._cache: dict[str, list[dict[str, str]]] = {}
 
     def query(
         self,
@@ -41,8 +42,12 @@ class CsvStore:
                 errors=dict.fromkeys(queries, f"namespace '{namespace}' not found"),
             )
 
-        # Load all CSV rows from the namespace
-        rows = self._load_namespace(ns_dir)
+        # Load all CSV rows from the namespace (cached after first read)
+        rows = self._cache.get(namespace)
+        if rows is None:
+            rows = self._load_namespace(ns_dir)
+            rows.sort(key=lambda r: r['timestamp'])
+            self._cache[namespace] = rows
 
         result = QueryResult()
         for metric_name in queries:
@@ -50,8 +55,7 @@ class CsvStore:
                 r for r in rows if r['metric_name'] == metric_name and start <= _parse_ts(r['timestamp']) <= end
             ]
             if matching:
-                # Take the last value in the range (sorted by timestamp)
-                matching.sort(key=lambda r: r['timestamp'])
+                # Take the last value in the range (rows already sorted by timestamp)
                 result.values[metric_name] = float(matching[-1]['value'])
             else:
                 result.errors[metric_name] = f"no data for '{metric_name}' in range"
