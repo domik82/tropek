@@ -35,6 +35,7 @@ export function AssetPanel({ assetName, initialEvalId }: Props) {
   const [sloExpandState, setSloExpandState] = useState<Map<string, boolean>>(() => new Map())
 
   // Reset local state when the asset changes (defense in depth alongside key= on parent)
+  /* eslint-disable react-hooks/set-state-in-effect -- intentional reset on asset change */
   useEffect(() => {
     setSelectedEvalId(undefined)
     setSelectedSlot(undefined)
@@ -42,6 +43,7 @@ export function AssetPanel({ assetName, initialEvalId }: Props) {
     setSelectedNames(undefined)
     setSloExpandState(new Map())
   }, [assetName])
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const notesRef = useRef<AnnotationSectionHandle>(null)
   const notesSectionRef = useRef<HTMLDivElement>(null)
@@ -142,6 +144,7 @@ export function AssetPanel({ assetName, initialEvalId }: Props) {
   }, [allSlotEvals, ev])
 
   // Initialise SLO expand state from config when heatmap data first arrives
+  /* eslint-disable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps -- intentional init from async data */
   useEffect(() => {
     if (!heatmapData || sloExpandState.size > 0) return
     const defaultExpanded = getConfig().heatmapSloGroupsExpandedByDefault
@@ -149,6 +152,7 @@ export function AssetPanel({ assetName, initialEvalId }: Props) {
     for (const g of heatmapData.groups) m.set(g.slo_name, defaultExpanded)
     setSloExpandState(m)
   }, [heatmapData])
+  /* eslint-enable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
 
   function handleSloToggle(sloName: string) {
     setSloExpandState(prev => {
@@ -168,12 +172,14 @@ export function AssetPanel({ assetName, initialEvalId }: Props) {
 
   // Close any open action form when the user selects a different evaluation
   const prevEvalId = useRef(effectiveEvalId)
+  /* eslint-disable react-hooks/set-state-in-effect -- intentional reset on eval change */
   useEffect(() => {
     if (prevEvalId.current !== effectiveEvalId) {
       setActiveAction(null)
       prevEvalId.current = effectiveEvalId
     }
   }, [effectiveEvalId])
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const isLoading = evalsLoading || heatmapLoading
 

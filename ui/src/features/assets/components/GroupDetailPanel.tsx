@@ -104,8 +104,7 @@ export function GroupDetailPanel({ groupName, onSelectGroup, selectedAsset }: Pr
       </div>
 
       {/* Subgroups */}
-      {(subgroups.length > 0 || true) && (
-        <div>
+      <div>
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-sm font-semibold text-foreground">
               Subgroups ({subgroups.length})
@@ -134,7 +133,6 @@ export function GroupDetailPanel({ groupName, onSelectGroup, selectedAsset }: Pr
             ))}
           </div>
         </div>
-      )}
 
       {/* Direct Members */}
       <div>

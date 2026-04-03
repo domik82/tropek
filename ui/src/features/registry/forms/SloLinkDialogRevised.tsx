@@ -35,6 +35,7 @@ export function SloLinkDialogRevised({
     badge: ds.adapter_type,
   }))
 
+  /* eslint-disable react-hooks/set-state-in-effect -- intentional sync from props */
   useEffect(() => {
     if (lockedGroupName) setGroupName(lockedGroupName)
     if (lockedSloName) setSloName(lockedSloName)
@@ -48,6 +49,7 @@ export function SloLinkDialogRevised({
       if (!lockedSloName) setSloName('')
     }
   }, [open, lockedGroupName, lockedSloName])
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const isDuplicate = existingAssignments?.some((a) => a.slo_name === sloName) ?? false
   const isValid = datasource && groupName && sloName && selectedSlo && !isDuplicate

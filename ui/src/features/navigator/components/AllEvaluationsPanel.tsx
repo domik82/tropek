@@ -95,7 +95,6 @@ export function AllEvaluationsPanel({ onSelectAsset }: Props) {
           </div>
           <EvaluationTable
             evaluations={tableEvals}
-            dynamicCols={dynamicCols}
             {...colVis}
             onAssetSelect={onSelectAsset}
             onEvalClick={ev => onSelectAsset(ev.asset_snapshot.name, ev.id)}

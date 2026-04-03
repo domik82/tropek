@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { buildSloTree, buildDatasourceTree, buildAssetTree, filterTree, buildSloSections, buildSloGroupMap, mergeBindings } from './useRegistryTree'
+import type { MinSlo } from './useRegistryTree'
 import type { TreeNode } from './types'
 import type { SloGroup } from '@/features/slo-groups/types'
 
@@ -194,14 +195,14 @@ describe('buildSloGroupMap', () => {
       { name: 'gen-slo-1', version: 1, active: true, tags: { slo_group: 'perf-group' } },
       { name: 'gen-slo-2', version: 1, active: true, tags: { slo_group: 'perf-group' } },
       { name: 'standalone', version: 1, active: true, tags: {} },
-    ] as any
+    ] as MinSlo[]
     const map = buildSloGroupMap(slos)
     expect(map.get('perf-group')).toEqual(['gen-slo-1', 'gen-slo-2'])
     expect(map.has('standalone')).toBe(false)
   })
 
   it('returns empty map when no SLOs have slo_group tag', () => {
-    const slos = [{ name: 'plain', version: 1, active: true, tags: {} }] as any
+    const slos: MinSlo[] = [{ name: 'plain', version: 1, active: true, tags: {} }]
     expect(buildSloGroupMap(slos).size).toBe(0)
   })
 })

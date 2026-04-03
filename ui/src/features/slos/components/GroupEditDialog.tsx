@@ -30,6 +30,7 @@ export function GroupEditDialog({ open, onOpenChange, groupName }: Props) {
     g.subgroups.some(sg => sg.group_id === group?.id)
   )
 
+  /* eslint-disable react-hooks/set-state-in-effect -- intentional reset on prop change */
   useEffect(() => {
     if (group) {
       setDisplayName(group.display_name ?? '')
@@ -37,6 +38,7 @@ export function GroupEditDialog({ open, onOpenChange, groupName }: Props) {
       setParentGroup(currentParent?.name ?? '')
     }
   }, [group, currentParent])
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   if (!groupName || !group) return null
 

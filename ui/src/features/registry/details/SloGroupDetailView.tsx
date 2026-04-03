@@ -31,7 +31,7 @@ export function SloGroupDetailView({ name, onNavigate }: Props) {
     )
   }
 
-  function handleDelete(_reason: string, _author: string) {
+  function handleDelete() {
     deleteMutation.mutate(group!.name)
     setShowDelete(false)
   }

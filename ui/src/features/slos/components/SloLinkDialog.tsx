@@ -29,6 +29,7 @@ export function SloLinkDialog({ open, onOpenChange, lockedSloName, lockedGroupNa
   const { data: existingAssignments } = useGroupSloAssignments(groupName || lockedGroupName || '')
   const createAssignment = useCreateGroupSloAssignment()
 
+  /* eslint-disable react-hooks/set-state-in-effect -- intentional sync from props */
   useEffect(() => {
     if (lockedGroupName) setGroupName(lockedGroupName)
     if (lockedSloName) setSloName(lockedSloName)
@@ -44,6 +45,7 @@ export function SloLinkDialog({ open, onOpenChange, lockedSloName, lockedGroupNa
       if (!lockedSloName) setSloName('')
     }
   }, [open, lockedGroupName, lockedSloName])
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const selectedSlo = slos?.find(s => s.name === sloName)
   const isDuplicate = existingAssignments?.some(a => a.slo_name === sloName) ?? false

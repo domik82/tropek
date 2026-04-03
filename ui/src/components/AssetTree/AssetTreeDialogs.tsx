@@ -14,6 +14,7 @@ export interface DialogState {
   editingAssetName: string | null
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useDialogState() {
   const [state, setState] = useState<DialogState>({
     createDialogOpen: false,

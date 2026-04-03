@@ -52,7 +52,7 @@ export function SliDetailView({ name, onNavigate, onNewVersion }: SliDetailViewP
     s.objectives.some(obj => obj.sli === sli.name)
   )
 
-  function handleDeactivate(_reason: string, _author: string) {
+  function handleDeactivate() {
     deleteMutation.mutate(sli!.name)
     setShowDeleteConfirm(false)
   }

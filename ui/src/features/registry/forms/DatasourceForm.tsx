@@ -52,6 +52,8 @@ export function DatasourceForm({ open, onOpenChange, editFrom }: DatasourceFormP
     },
   })
 
+  const [tagRows, setTagRows] = useTagRows(editFrom?.tags ? tagsToRows(editFrom.tags) : [])
+
   // Reset form when editFrom changes
   useEffect(() => {
     if (editFrom) {
@@ -63,8 +65,6 @@ export function DatasourceForm({ open, onOpenChange, editFrom }: DatasourceFormP
       setTagRows(tagsToRows(editFrom.tags))
     }
   }, [editFrom]) // eslint-disable-line react-hooks/exhaustive-deps
-
-  const [tagRows, setTagRows] = useTagRows(editFrom?.tags ? tagsToRows(editFrom.tags) : [])
 
   const createMutation = useCreateDatasource()
   const updateMutation = useUpdateDatasource()

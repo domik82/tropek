@@ -6,6 +6,7 @@ export interface TimePreset {
   days: number
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const PRESETS: TimePreset[] = [
   { label: 'Last 7 days', days: 7 },
   { label: 'Last 14 days', days: 14 },
@@ -20,6 +21,7 @@ const DEFAULT_DAYS = 30
 const STORAGE_KEY = 'tropek-time-range'
 
 /** Compute an ISO date string for midnight N days ago. */
+// eslint-disable-next-line react-refresh/only-export-components
 export function computeFromDate(days: number): string {
   const d = new Date()
   d.setDate(d.getDate() - days)
@@ -28,6 +30,7 @@ export function computeFromDate(days: number): string {
 }
 
 /** Format a Date to YYYY-MM-DD for date inputs. */
+// eslint-disable-next-line react-refresh/only-export-components
 export function toDateInputValue(d: Date): string {
   const y = d.getFullYear()
   const m = String(d.getMonth() + 1).padStart(2, '0')
@@ -114,6 +117,7 @@ export function TimeRangeProvider({ children }: { children: ReactNode }) {
   )
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useTimeRange(): TimeRangeCtx {
   const ctx = useContext(Ctx)
   if (!ctx) throw new Error('useTimeRange must be used inside TimeRangeProvider')

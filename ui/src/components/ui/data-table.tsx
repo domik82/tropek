@@ -22,6 +22,7 @@ export function DataTableHeader({ children }: { children: ReactNode }) {
   )
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function dataTableRowClass(idx: number, isSelected?: boolean): string {
   const zebra = idx % 2 === 0 ? 'bg-table-row-bg' : 'bg-table-row-alt'
   const bg = isSelected ? 'bg-table-row-selected' : zebra

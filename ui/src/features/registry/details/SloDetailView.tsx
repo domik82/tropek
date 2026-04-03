@@ -52,7 +52,7 @@ export function SloDetailView({ name, onNavigate, onNewVersion }: SloDetailViewP
 
   const comparison = slo.comparison
 
-  function handleDeactivate(_reason: string, _author: string) {
+  function handleDeactivate() {
     deleteMutation.mutate(slo!.name)
     setShowDeleteConfirm(false)
   }
