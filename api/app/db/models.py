@@ -265,6 +265,7 @@ class SLODefinition(Base):
     variables:               Mapped[dict[str, Any]]         = mapped_column(JSONB, nullable=False, server_default=text("'{}'"), default=dict)
     kind:                    Mapped[str]                    = mapped_column(Text, nullable=False, server_default=text("'standard'"), default='standard')
     sli_definition_id:       Mapped[uuid.UUID | None]       = mapped_column(UUID, ForeignKey('sli_definitions.id'), nullable=True)
+    sli_definition:          Mapped['SLIDefinition | None'] = relationship('SLIDefinition', lazy='joined', foreign_keys=[sli_definition_id])
     method_criteria:         Mapped[dict[str, Any] | None]  = mapped_column(JSONB, nullable=True)
     generated_by_group_id:   Mapped[uuid.UUID | None]       = mapped_column(UUID, ForeignKey("slo_groups.id"), nullable=True)
     active:                  Mapped[bool]                   = mapped_column(Boolean, nullable=False, server_default=true(), default=True)
