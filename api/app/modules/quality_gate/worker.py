@@ -21,7 +21,6 @@ from app.modules.quality_gate.engine.slo_models import SLO
 from app.modules.quality_gate.engine.slo_parser import build_slo
 from app.modules.quality_gate.engine.variables import substitute_variables
 from app.modules.quality_gate.evaluation_helpers import build_eval_variables as _build_eval_variables_shared
-from app.modules.quality_gate.evaluation_run_repository import EvaluationRunRepository
 from app.modules.quality_gate.indicator_repository import IndicatorRepository
 from app.modules.quality_gate.repository import EvaluationRepository
 from app.modules.quality_gate.sli_repository import SLIValueRepository
@@ -301,31 +300,13 @@ def _log_eval_result(
     )
 
 
-async def _try_rollup_parent(
-    session: AsyncSession,
-    evaluation_id: uuid.UUID,
-    log: structlog.stdlib.BoundLogger,
-) -> None:
-    """Rollup parent EvaluationRun if all child SLOEvaluations are done."""
-    run_repo = EvaluationRunRepository(session)
-    rolled = await run_repo.rollup_if_all_done(evaluation_id)
-    if rolled is not None:
-        log.info(
-            'parent evaluation run completed',
-            evaluation_id=str(evaluation_id),
-            result=rolled.result,
-            achieved_points=rolled.achieved_points,
-            total_points=rolled.total_points,
-        )
-
-
 async def run_evaluation(  # noqa: PLR0915
     session: AsyncSession,
     eval_id: uuid.UUID,
     *,
     worker_id: str | None = None,
     cache: RedisCache | None = None,
-) -> None:
+) -> uuid.UUID | None:
     """Execute a single evaluation job.
 
     1. Mark running
@@ -335,6 +316,9 @@ async def run_evaluation(  # noqa: PLR0915
     5. Resolve baselines (pin-aware)
     6. Evaluate
     7. Write results
+
+    Returns the parent EvaluationRun ID so the caller can attempt finalization
+    after committing (in a fresh session where all sibling changes are visible).
 
     Args:
         session: Async SQLAlchemy session (injected by arq worker context).
@@ -355,7 +339,7 @@ async def run_evaluation(  # noqa: PLR0915
     ev = await repo.get_by_id(eval_id)
     if ev is None:
         log.error('evaluation not found, cannot proceed')
-        return
+        return None
 
     # Deduplication guard — skip if already processed
     if ev.status not in ('pending', 'running'):
@@ -363,7 +347,7 @@ async def run_evaluation(  # noqa: PLR0915
             'evaluation already processed, skipping',
             status=ev.status,
         )
-        return
+        return None
 
     # Load SLO + SLI definitions
     try:
@@ -371,7 +355,7 @@ async def run_evaluation(  # noqa: PLR0915
     except DefinitionLoadError as exc:
         log.warning('definitions not found', reason=str(exc))
         await repo.mark_failed(eval_id, job_stats={'error': str(exc)})
-        return
+        return None
 
     slo = build_slo(
         objectives=[
@@ -420,12 +404,12 @@ async def run_evaluation(  # noqa: PLR0915
     if ev.data_source_name is None:
         log.error('evaluation has no data_source_name')
         await repo.mark_failed(eval_id, job_stats={'error': 'evaluation has no data_source_name'})
-        return
+        return None
     ds = await DataSourceRepository(session).get_by_name(ev.data_source_name)
     if ds is None:
         log.error('datasource not found', datasource_name=ev.data_source_name)
         await repo.mark_failed(eval_id, job_stats={'error': f"datasource '{ev.data_source_name}' not found"})
-        return
+        return None
 
     log.info('querying adapter', adapter_url=ds.adapter_url, metric_count=len(query_specs))
     adapter_result = await _query_adapter_safe(
@@ -439,7 +423,7 @@ async def run_evaluation(  # noqa: PLR0915
         end=ev.period_end.isoformat(),
     )
     if adapter_result is None:
-        return
+        return None
     metrics_fetched, fetch_errors, sli_metadata = adapter_result
 
     _log_adapter_response(log, metrics_fetched, fetch_errors, sli_metadata)
@@ -491,4 +475,4 @@ async def run_evaluation(  # noqa: PLR0915
         await sli_repo.write_sli_values(sli_rows)
 
     log.info('evaluation completed', result=eval_result.result, score=eval_result.score)
-    await _try_rollup_parent(session, ev.evaluation_id, log)
+    return ev.evaluation_id

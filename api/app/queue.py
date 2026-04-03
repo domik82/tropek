@@ -19,6 +19,7 @@ from app.cache.redis_cache import RedisCache
 from app.config import get_settings
 from app.db.session import get_session_factory
 from app.logging_config import configure_logging
+from app.modules.quality_gate.evaluation_run_repository import EvaluationRunRepository
 from app.modules.quality_gate.repository import EvaluationRepository
 from app.modules.quality_gate.worker import run_evaluation
 
@@ -125,12 +126,16 @@ async def run_evaluation_job(ctx: dict[str, Any], eval_id_str: str, defer_count:
             )
             return
 
+    parent_run_id: uuid.UUID | None = None
+
     for attempt in range(_MAX_DEADLOCK_RETRIES):
         async with session_factory() as session:
             try:
-                await run_evaluation(session, eval_id, worker_id=ctx.get('job_id'), cache=cache)
+                parent_run_id = await run_evaluation(
+                    session, eval_id, worker_id=ctx.get('job_id'), cache=cache,
+                )
                 await session.commit()
-                return
+                break
             except DBAPIError as exc:
                 await session.rollback()
                 if _is_deadlock(exc) and attempt < _MAX_DEADLOCK_RETRIES - 1:
@@ -154,6 +159,53 @@ async def run_evaluation_job(ctx: dict[str, Any], eval_id_str: str, defer_count:
             except Exception:
                 await session.rollback()
                 raise
+
+    # Finalize parent EvaluationRun AFTER commit, in a fresh session.
+    # This ensures all sibling SLO evaluations' committed states are visible,
+    # avoiding a race where two workers finish their last children concurrently
+    # and neither sees the other's uncommitted changes during finalization.
+    if parent_run_id is not None:
+        await _finalize_parent_run(session_factory, parent_run_id)
+
+
+_MAX_FINALIZE_RETRIES = 3
+
+
+async def _finalize_parent_run(
+    session_factory: Any,
+    parent_run_id: uuid.UUID,
+) -> None:
+    """Finalize parent run with retries — child data is already committed."""
+    for attempt in range(_MAX_FINALIZE_RETRIES):
+        try:
+            async with session_factory() as session:
+                run_repo = EvaluationRunRepository(session)
+                finalized = await run_repo.finalize_if_all_done(parent_run_id)
+                await session.commit()
+                if finalized is not None:
+                    logger.info(
+                        'parent evaluation run completed',
+                        evaluation_id=str(parent_run_id),
+                        result=finalized.result,
+                    )
+                return
+        except Exception:
+            if attempt < _MAX_FINALIZE_RETRIES - 1:
+                backoff = 0.5 * 2**attempt
+                logger.warning(
+                    'finalize parent run failed, retrying',
+                    evaluation_id=str(parent_run_id),
+                    attempt=attempt + 1,
+                    max_attempts=_MAX_FINALIZE_RETRIES,
+                    backoff_seconds=backoff,
+                )
+                await asyncio.sleep(backoff)
+            else:
+                logger.exception(
+                    'finalize parent run failed after all retries',
+                    evaluation_id=str(parent_run_id),
+                    attempts=_MAX_FINALIZE_RETRIES,
+                )
 
 
 class WorkerSettings:
