@@ -8,11 +8,16 @@
 // and the legend bar above the chart.
 
 import ReactECharts from 'echarts-for-react'
-import { useMemo, type ReactNode } from 'react'
+import { useMemo, useRef, useState, useCallback, useEffect, type ReactNode } from 'react'
 import { useTheme } from '@/lib/theme-context'
 import { RESULT_COLOUR, CHART_THEME } from '@/lib/theme'
 import type { ResultColours } from '@/lib/theme'
 import { fmtSlot } from '@/lib/format'
+import { NoteIndicatorRow, type SlotNote, type ColumnPosition } from './NoteIndicatorRow'
+
+/** Grid padding shared between HeatmapChart and NoteIndicatorRow for alignment. */
+export const HEATMAP_GRID_LEFT = 210
+export const HEATMAP_GRID_RIGHT = 20
 import type { HeatmapCell } from '@/features/navigator'
 
 // ── brighten ─────────────────────────────────────────────────────────────────
@@ -80,6 +85,10 @@ export interface HeatmapChartProps {
    * Set of row indices that should render with blue bold text (SLO group headers).
    */
   headerRowIndices?: Set<number>
+  /** Map of column key → note info for columns that have notes. Renders indicators above the chart grid. */
+  notedColumns?: Map<string, SlotNote>
+  /** Called when user clicks a note indicator */
+  onNoteIndicatorClick?: (slot: string) => void
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -99,13 +108,60 @@ export function HeatmapChart({
   instructionText,
   aboveChart,
   headerRowIndices = EMPTY_HEADER_INDICES,
+  notedColumns,
+  onNoteIndicatorClick,
 }: HeatmapChartProps) {
   const { theme } = useTheme()
   const colours = RESULT_COLOUR[theme]
   const ct = CHART_THEME[theme]
+  const chartRef = useRef<ReactECharts>(null)
+  const containerRef = useRef<HTMLDivElement>(null)
+  const [columnPositions, setColumnPositions] = useState<ColumnPosition[]>([])
 
   // Dynamic padding: tighter when many columns to avoid crushed cells
   const pad = columns.length > 40 ? 1 : 2
+
+  // Compute column pixel positions from the ECharts grid coordinate system
+  const computeColumnPositions = useCallback(() => {
+    const instance = chartRef.current?.getEchartsInstance()
+    if (!instance || columns.length === 0) {
+      setColumnPositions([])
+      return
+    }
+
+    const positions: ColumnPosition[] = []
+    const toPixel = (idx: number) =>
+      (instance.convertToPixel('grid', [idx, 0]) as unknown as number[])[0]
+
+    // Get the pixel width of one cell
+    const cellSize = columns.length > 1 ? Math.abs(toPixel(1) - toPixel(0)) : 50
+
+    for (let i = 0; i < columns.length; i++) {
+      const cx = toPixel(i)
+      // convertToPixel returns the center of the cell
+      positions.push({ x: cx - cellSize / 2, width: cellSize })
+    }
+
+    setColumnPositions(positions)
+  }, [columns])
+
+  // Recompute positions when chart finishes rendering or window resizes
+  useEffect(() => {
+    if (!notedColumns || notedColumns.size === 0) return
+
+    // Compute after a short delay to let ECharts finish rendering
+    const timer = setTimeout(computeColumnPositions, 100)
+
+    const handleResize = () => {
+      computeColumnPositions()
+    }
+
+    window.addEventListener('resize', handleResize)
+    return () => {
+      clearTimeout(timer)
+      window.removeEventListener('resize', handleResize)
+    }
+  }, [notedColumns, computeColumnPositions])
 
   // Map each incoming HeatmapCell to a RenderCell with visual properties baked in.
   // Recomputes when selection, colours, or underlying data changes.
@@ -245,7 +301,7 @@ export function HeatmapChart({
           encode: { x: 0, y: 1 },
         },
       ],
-      grid: { top: 10, bottom: 80, left: 210, right: 20 },
+      grid: { top: 10, bottom: 80, left: HEATMAP_GRID_LEFT, right: HEATMAP_GRID_RIGHT },
     }),
     [columns, rows, renderCells, ct, pad, annotations, formatTooltip, formatColumnLabel, headerRowIndices],
   )
@@ -253,8 +309,10 @@ export function HeatmapChart({
   const chartHeight =
     height === 'auto' ? Math.max(200, rows.length * 28 + 100) : height
 
+  const hasNotes = notedColumns && notedColumns.size > 0
+
   return (
-    <div className="w-full" role="img" aria-label="Heatmap chart showing evaluation results by metric and time">
+    <div className="w-full" ref={containerRef} role="img" aria-label="Heatmap chart showing evaluation results by metric and time">
       {/* Instruction text above the chart */}
       {instructionText && (
         <div className="mb-1 px-1">
@@ -262,16 +320,30 @@ export function HeatmapChart({
         </div>
       )}
       {aboveChart}
-      <ReactECharts
-        option={option}
-        style={{ height: chartHeight }}
-        opts={{ renderer: 'svg' }}
-        onEvents={{
-          click: (p: { data?: RenderCell }) => {
-            if (p?.data) onCellClick(p.data)
-          },
-        }}
-      />
+      <div className="relative">
+        {hasNotes && columnPositions.length > 0 && (
+          <NoteIndicatorRow
+            columns={columns}
+            notedColumns={notedColumns}
+            columnPositions={columnPositions}
+            onIndicatorClick={onNoteIndicatorClick}
+          />
+        )}
+        <ReactECharts
+          ref={chartRef}
+          option={option}
+          style={{ height: chartHeight }}
+          opts={{ renderer: 'svg' }}
+          onEvents={{
+            click: (p: { data?: RenderCell }) => {
+              if (p?.data) onCellClick(p.data)
+            },
+            finished: () => {
+              if (hasNotes) computeColumnPositions()
+            },
+          }}
+        />
+      </div>
       {/* Colour legend below the chart */}
       <div className="flex items-center justify-end gap-3 text-xs text-muted-foreground mt-1 px-1" role="legend" aria-label="Status colour legend">
         {(['pass', 'warning', 'fail', 'error', 'invalidated'] as const).map(r => (

@@ -3,7 +3,7 @@ import { useTheme } from '@/lib/theme-context'
 import { RESULT_COLOUR } from '@/lib/theme'
 import { fmtDateTime } from '@/lib/format'
 import { HeatmapChart } from '@/components/charts/HeatmapChart'
-import { NoteIndicatorRow, type SlotNote } from '@/components/charts/NoteIndicatorRow'
+import type { SlotNote } from '@/components/charts/NoteIndicatorRow'
 import { buildAssetHeatmapData } from '../utils'
 import type { MetricHeatmapResponse, HeatmapCell } from '../types'
 
@@ -117,11 +117,7 @@ export function AssetHeatmap({
       formatTooltip={formatTooltip}
       headerRowIndices={headerRowIndices}
       instructionText="Click an indicator cell to select that evaluation. Click an SLO row to expand/collapse."
-      aboveChart={
-        notedSlots && notedSlots.size > 0 ? (
-          <NoteIndicatorRow columns={slots} notedColumns={notedSlots} />
-        ) : undefined
-      }
+      notedColumns={notedSlots}
     />
   )
 }
