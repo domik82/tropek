@@ -18,7 +18,8 @@ just test-int     # API integration tests (requires just test-env first)
 just test-ui      # UI component tests
 just test-all     # all tests
 just test-one engine/test_evaluator.py  # run a specific test file
-just lint         # ruff linter
+just lint         # ruff linter (Python)
+just lint-ui      # eslint (UI — React hooks, compiler)
 just typecheck    # mypy
 just check        # lint + format check + typecheck
 just dev          # start full dev environment (Ctrl+C to stop)
@@ -139,7 +140,7 @@ SQLAlchemy async ORM (asyncpg driver) with Alembic migrations. Repositories in `
 - Line length: 100 chars
 - Pytest: `asyncio_mode = auto`, mark infra-requiring tests with `@pytest.mark.integration`
 - Error messages: lowercase, no trailing period, prefer `"could not ..."` phrasing
-- Pre-commit runs ruff (lint + format) and mypy automatically
+- Pre-commit runs ruff (lint + format), mypy, and eslint (UI) automatically
 
 ### File naming: schemas vs models
 
@@ -303,6 +304,12 @@ with `--tail` to get summary-only output as a single auto-approvable command:
 
 # Specific UI test file
 ./scripts/ui-test.sh --tail 10 src/features/.../Foo.test.tsx
+
+# UI lint (ESLint — React hooks, compiler) — summary only
+./scripts/ui-lint.sh --tail 10
+
+# Specific UI file lint
+./scripts/ui-lint.sh --tail 10 src/features/.../Foo.tsx
 ```
 
 Never use `cmd 2>&1 | tail -N` directly — that's a compound command requiring approval.

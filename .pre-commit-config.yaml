@@ -1,4 +1,12 @@
 repos:
+  - repo: local
+    hooks:
+      - id: eslint
+        name: eslint (UI — React hooks, compiler)
+        entry: ./scripts/pre-commit-eslint.sh
+        language: script
+        files: ^ui/src/.*\.(ts|tsx)$
+
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.15.5
     hooks:
