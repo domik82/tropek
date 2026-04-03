@@ -80,16 +80,6 @@ spec:
   target_name: vm-prod-web
   slo_name: vm-health-slo
   data_source_name: prometheus-local
----
-api_version: tropek/v1
-kind: SLOAssignment
-metadata:
-  name: vm-stg-web-health-assignment
-spec:
-  target_type: asset_group
-  target_name: vm-stg-web
-  slo_name: vm-health-slo
-  data_source_name: prometheus-local
 
 # ---- Office Laptops: one assignment per app SLO ----
 

@@ -4,51 +4,6 @@
 api_version: tropek/v1
 kind: AssetGroup
 metadata:
-  name: infra-production
-  display_name: Production
-spec:
-  members:
-    - asset_name: checkout-api
-      weight: 1.0
-    - asset_name: product-catalog
-      weight: 1.0
-    - asset_name: user-service
-      weight: 1.0
-    - asset_name: orders-db
-      weight: 1.0
-    - asset_name: catalog-db
-      weight: 1.0
-    - asset_name: payment-gateway
-      weight: 1.0
-    - asset_name: bastion-host
-      weight: 1.0
----
-api_version: tropek/v1
-kind: AssetGroup
-metadata:
-  name: infra-staging
-spec:
-  members:
-    - asset_name: log-aggregator
-      weight: 1.0
-    - asset_name: build-runner
-      weight: 1.0
----
-api_version: tropek/v1
-kind: AssetGroup
-metadata:
-  name: infra-monitoring
-  display_name: Monitoring
-spec:
-  members:
-    - asset_name: metrics-collector
-      weight: 1.0
-    - asset_name: log-aggregator
-      weight: 1.0
----
-api_version: tropek/v1
-kind: AssetGroup
-metadata:
   name: core-services
   display_name: Core Services
 spec:
@@ -68,10 +23,6 @@ spec:
   members:
     - asset_name: orders-db
       weight: 1.0
-    - asset_name: catalog-db
-      weight: 1.0
-    - asset_name: session-cache
-      weight: 1.0
 ---
 api_version: tropek/v1
 kind: AssetGroup
@@ -84,30 +35,6 @@ spec:
       weight: 1.0
     - asset_name: vm-prod-web-02
       weight: 1.0
-    - asset_name: vm-prod-web-03
-      weight: 1.0
-    - asset_name: vm-prod-web-04
-      weight: 1.0
-    - asset_name: vm-prod-web-05
-      weight: 1.0
----
-api_version: tropek/v1
-kind: AssetGroup
-metadata:
-  name: vm-stg-web
-  display_name: Staging Web VMs
-spec:
-  members:
-    - asset_name: vm-stg-web-01
-      weight: 1.0
-    - asset_name: vm-stg-web-02
-      weight: 1.0
-    - asset_name: vm-stg-web-03
-      weight: 1.0
-    - asset_name: vm-stg-web-04
-      weight: 1.0
-    - asset_name: vm-stg-web-05
-      weight: 1.0
 ---
 api_version: tropek/v1
 kind: AssetGroup
@@ -119,30 +46,6 @@ spec:
     - asset_name: laptop-user-01
       weight: 1.0
     - asset_name: laptop-user-02
-      weight: 1.0
-    - asset_name: laptop-user-03
-      weight: 1.0
-    - asset_name: laptop-user-04
-      weight: 1.0
-    - asset_name: laptop-user-05
-      weight: 1.0
----
-api_version: tropek/v1
-kind: AssetGroup
-metadata:
-  name: infrastructure
-  display_name: Infrastructure
-spec:
-  subgroups:
-    - group_name: infra-production
-      weight: 1.0
-    - group_name: infra-staging
-      weight: 1.0
-    - group_name: infra-monitoring
-      weight: 1.0
-    - group_name: vm-prod-web
-      weight: 1.0
-    - group_name: vm-stg-web
       weight: 1.0
 ---
 api_version: tropek/v1

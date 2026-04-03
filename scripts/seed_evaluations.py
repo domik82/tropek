@@ -28,15 +28,9 @@ ASSETS = [
     # VM Infrastructure
     'vm-prod-web-01',
     'vm-prod-web-02',
-    'vm-prod-web-03',
-    'vm-prod-web-04',
-    'vm-prod-web-05',
     # Office Laptops
     'laptop-user-01',
     'laptop-user-02',
-    'laptop-user-03',
-    'laptop-user-04',
-    'laptop-user-05',
 ]
 
 # 30-minute windows spread across 48h of mock data.
