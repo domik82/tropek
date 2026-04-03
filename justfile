@@ -38,9 +38,13 @@ test-env-down:
 
 # ─── Linting & Type Checking ──────────────────────────────────────────
 
-# Run ruff linter
+# Run ruff linter (Python)
 lint:
     uv run ruff check api/ adapters/
+
+# Run eslint (UI — React hooks, compiler)
+lint-ui:
+    cd ui && pnpm exec eslint src/
 
 # Run ruff formatter (check only)
 fmt-check:
