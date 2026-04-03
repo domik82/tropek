@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import sys
 import time
+from datetime import datetime, timedelta
 
 from tropek_client import TropekClient
 
@@ -31,6 +32,12 @@ ASSETS = [
     # Office Laptops
     'laptop-user-01',
     'laptop-user-02',
+    # Binding Tests
+    'direct-slo',
+    'group-slo',
+    'group-template',
+    'direct-template',
+    # Scale Test — seeded separately by _seed_lab_monitor
 ]
 
 # 30-minute windows spread across 48h of mock data.
@@ -53,6 +60,8 @@ TERMINAL_STATUSES = {'completed', 'failed', 'partial'}
 
 def get_eval_runs(asset_name: str) -> list[tuple[str, list[int]]]:
     """Return (evaluation_name, window_indices) pairs for this asset."""
+    if asset_name == 'lab-monitor-01':
+        return []  # handled separately in _seed_lab_monitor
     if 'laptop' in asset_name:
         return [('load-test', list(range(10)))]
     if 'vm-' in asset_name:
@@ -60,7 +69,7 @@ def get_eval_runs(asset_name: str) -> list[tuple[str, list[int]]]:
             ('user-experience', list(range(10))),
             ('optimization-testing', [0, 3, 6, 9]),
         ]
-    # E-commerce
+    # E-commerce + binding test assets
     return [
         ('load-test', list(range(10))),
         ('prod-validation', [0, 2, 4, 6, 8]),
@@ -83,6 +92,30 @@ def _wait_for_ids(client: TropekClient, eval_ids: list[str], label: str) -> None
             break
         time.sleep(1)
     print()
+
+
+LAB_START = datetime.fromisoformat('2025-12-16T12:00:00+00:00')
+LAB_DAYS = 90
+LAB_WINDOW_MINUTES = 30
+
+
+def _seed_lab_monitor(client: TropekClient) -> list[str]:
+    """Seed 90 daily evaluations for lab-monitor-01."""
+    all_ids: list[str] = []
+    for day in range(LAB_DAYS):
+        start = LAB_START + timedelta(days=day)
+        end = start + timedelta(minutes=LAB_WINDOW_MINUTES)
+        start_str = start.strftime('%Y-%m-%dT%H:%M:%SZ')
+        end_str = end.strftime('%Y-%m-%dT%H:%M:%SZ')
+
+        print(f'  lab-monitor day {day + 1}/{LAB_DAYS} ({start_str})', end='\r', flush=True)
+        result = client.evaluations.evaluate('lab-monitor-01', 'daily-lab', start_str, end_str)
+        slo_ids = result['slo_evaluation_ids']
+        _wait_for_ids(client, slo_ids, f'lab day {day + 1}')
+        all_ids.extend(slo_ids)
+
+    print()
+    return all_ids
 
 
 def main() -> None:
@@ -115,6 +148,11 @@ def main() -> None:
 
         _wait_for_ids(client, window_slo_ids, f'window {wi + 1}')
         all_slo_eval_ids.extend(window_slo_ids)
+
+    # Seed lab-monitor-01 with 90 daily evaluations
+    print('Seeding lab-monitor-01 (90 days)...')
+    lab_ids = _seed_lab_monitor(client)
+    all_slo_eval_ids.extend(lab_ids)
 
     # Final summary (on individual SLO evaluations)
     results = [client.evaluations.get(str(eid)) for eid in all_slo_eval_ids]
