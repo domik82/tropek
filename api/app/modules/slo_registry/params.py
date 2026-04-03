@@ -4,10 +4,12 @@ from __future__ import annotations
 
 import uuid
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
+
+from app.modules.common.schemas import StrictInput
 
 
-class SLOObjectiveParams(BaseModel):
+class SLOObjectiveParams(StrictInput):
     """Single objective within an SLO definition."""
 
     sli: str
@@ -18,7 +20,7 @@ class SLOObjectiveParams(BaseModel):
     warning_threshold: list[str] = Field(default_factory=list)
 
 
-class SLOCreateParams(BaseModel):
+class SLOCreateParams(StrictInput):
     """Parameters for SLORepository.create()."""
 
     name: str

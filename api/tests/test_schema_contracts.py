@@ -5,7 +5,14 @@ Pydantic schemas.  If a field rename happens in the backend but the UI is not
 updated, these tests document the expected contract.
 """
 
+import inspect
+
+from fastapi.routing import APIRoute
+from pydantic import BaseModel
+
+from app.main import app
 from app.modules.assets.schemas import AssetCreate, AssetRead
+from app.modules.common.schemas import StrictInput
 from app.modules.datasource.schemas import DataSourceRead
 from app.modules.quality_gate.schemas import (
     AnnotationRead,
@@ -14,7 +21,6 @@ from app.modules.quality_gate.schemas import (
 )
 from app.modules.sli_registry.schemas import SLIDefinitionRead
 from app.modules.slo_registry.schemas import SLODefinitionRead
-from pydantic import BaseModel
 
 
 def _field_names(model: type[BaseModel]) -> set[str]:
@@ -114,3 +120,50 @@ class TestAnnotationSchemaContract:
         fields = _field_names(AnnotationRead)
         assert 'tags' in fields
         assert 'meta' not in fields
+
+
+# -- StrictInput enforcement ---------------------------------------------------
+
+
+def _collect_body_models() -> list[tuple[str, type[BaseModel]]]:
+    """Walk all API routes and collect Pydantic models used as request bodies."""
+    models: list[tuple[str, type[BaseModel]]] = []
+    for route in app.routes:
+        if not isinstance(route, APIRoute):
+            continue
+        sig = inspect.signature(route.endpoint)
+        for name, param in sig.parameters.items():
+            annotation = param.annotation
+            if isinstance(annotation, type) and issubclass(annotation, BaseModel):
+                models.append((f'{route.path} param={name}', annotation))
+    return models
+
+
+def _collect_nested_models(model: type[BaseModel]) -> list[type[BaseModel]]:
+    """Recursively collect nested Pydantic models from field annotations."""
+    nested: list[type[BaseModel]] = []
+    for field_info in model.model_fields.values():
+        annotation = field_info.annotation
+        # Unwrap generic types (list[X], X | None, etc.)
+        args = getattr(annotation, '__args__', None)
+        candidates = list(args) if args else [annotation]
+        for candidate in candidates:
+            if isinstance(candidate, type) and issubclass(candidate, BaseModel):
+                nested.append(candidate)
+                nested.extend(_collect_nested_models(candidate))
+    return nested
+
+
+class TestStrictInputEnforcement:
+    """Every Pydantic model used as a request body must inherit StrictInput."""
+
+    def test_all_body_models_inherit_strict_input(self) -> None:
+        violations: list[str] = []
+        for route_label, model in _collect_body_models():
+            all_models = [model, *_collect_nested_models(model)]
+            for m in all_models:
+                if not issubclass(m, StrictInput):
+                    violations.append(f'{m.__name__} (used in {route_label})')
+        assert not violations, (
+            f'body models must inherit StrictInput: {", ".join(sorted(set(violations)))}'
+        )

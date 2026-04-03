@@ -16,7 +16,7 @@ from app.modules.common.exceptions import NotFoundError
 from app.modules.common.schemas import PagedResponse
 from app.modules.quality_gate.dependencies import QualityGateRepos, get_qg_repos
 from app.modules.quality_gate.presenter import build_detail, build_summary
-from app.modules.quality_gate.re_evaluation_schemas import (
+from app.modules.quality_gate.schemas.re_evaluation import (
     BaselinePinConflictError,
     ReEvaluateRequest,
     ReEvaluateResponse,
@@ -91,7 +91,7 @@ async def list_evaluations(  # noqa: PLR0913
     group_name: str | None = None,
     from_ts: datetime | None = Query(default=None, alias='from'),
     to_ts: datetime | None = Query(default=None, alias='to'),
-    limit: int = Query(default=50, le=200),
+    limit: int = Query(default=200, le=500),
     offset: int = 0,
     repos: QualityGateRepos = Depends(get_qg_repos),
 ) -> PagedResponse[EvaluationSummary]:
@@ -344,7 +344,7 @@ async def get_grouped_metric_heatmap(
     evaluation_name: list[str] | None = Query(default=None),
     from_ts: datetime | None = Query(default=None, alias='from'),
     to_ts: datetime | None = Query(default=None, alias='to'),
-    limit: int = Query(default=30, le=100),
+    limit: int = Query(default=100, le=500),
     repos: QualityGateRepos = Depends(get_qg_repos),
 ) -> GroupedMetricHeatmapResponse:
     """Return a grouped metric heatmap — one column per parent EvaluationRun."""
@@ -587,7 +587,7 @@ async def get_trend(
     eval_id: uuid.UUID | None = None,
     asset_name: str | None = None,
     slo_name: str | None = None,
-    limit: int = Query(default=50, le=200),
+    limit: int = Query(default=200, le=500),
     repos: QualityGateRepos = Depends(get_qg_repos),
 ) -> list[TrendPoint]:
     """Return time-series trend data for a specific metric.

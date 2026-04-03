@@ -8,8 +8,10 @@ from typing import Literal
 
 from pydantic import BaseModel, model_validator
 
+from app.modules.common.schemas import StrictInput
 
-class ReEvaluateRequest(BaseModel):
+
+class ReEvaluateRequest(StrictInput):
     """Request body for POST /evaluations/re-evaluate."""
 
     asset_name: str

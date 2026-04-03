@@ -6,7 +6,7 @@ import uuid
 from datetime import UTC, datetime
 
 import pytest
-from app.modules.quality_gate.re_evaluation_schemas import ReEvaluateRequest
+from app.modules.quality_gate.schemas.re_evaluation import ReEvaluateRequest
 from pydantic import ValidationError
 
 

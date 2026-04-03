@@ -41,8 +41,7 @@ def test_slo_create_params_full() -> None:
         tags={'env': 'prod'},
         variables={'region': 'us-east'},
         kind='standard',
-        sli_name='system-sli',
-        sli_version=2,
+        sli_definition_id=None,
     )
     assert params.objectives[0].weight == 2
     assert params.objectives[0].key_sli is True

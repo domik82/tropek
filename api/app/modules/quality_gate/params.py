@@ -7,11 +7,13 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.modules.common.schemas import StrictInput
+
 from app.db.models import SLOObjective
 from app.modules.quality_gate.engine.result_models import IndicatorResult
 
 
-class EvalCreateParams(BaseModel):
+class EvalCreateParams(StrictInput):
     """Parameters for EvaluationRepository.create_pending()."""
 
     evaluation_id: uuid.UUID
@@ -32,7 +34,7 @@ class EvalCreateParams(BaseModel):
     sli_definition_id: uuid.UUID | None = None
 
 
-class ReEvalUpdateParams(BaseModel):
+class ReEvalUpdateParams(StrictInput):
     """Parameters for BaselineRepository.update_reeval_result()."""
 
     model_config = ConfigDict(arbitrary_types_allowed=True)

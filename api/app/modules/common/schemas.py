@@ -2,7 +2,13 @@
 
 from __future__ import annotations
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
+
+
+class StrictInput(BaseModel):
+    """Base for all API request body models — rejects unknown fields."""
+
+    model_config = ConfigDict(extra='forbid')
 
 
 class PagedResponse[T](BaseModel):
