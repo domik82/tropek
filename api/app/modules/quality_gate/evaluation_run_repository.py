@@ -1,4 +1,4 @@
-"""Repository for parent EvaluationRun CRUD and child result rollup."""
+"""Repository for parent EvaluationRun CRUD and child result finalization."""
 
 from __future__ import annotations
 
@@ -72,10 +72,10 @@ class EvaluationRunRepository:
             .values(status='running')
         )
 
-    async def rollup_if_all_done(self, run_id: uuid.UUID) -> EvaluationRun | None:
-        """Aggregate child results if all SLO evaluations are completed or failed.
+    async def finalize_if_all_done(self, run_id: uuid.UUID) -> EvaluationRun | None:
+        """Finalize parent run by aggregating child results.
 
-        Returns the updated EvaluationRun if rollup happened, None if children
+        Returns the updated EvaluationRun if finalized, None if children
         are still in progress.
         """
         q = select(SLOEvaluation).where(SLOEvaluation.evaluation_id == run_id)

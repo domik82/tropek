@@ -44,7 +44,7 @@ async def test_create_and_get(db_session, asset):
 
 
 @pytest.mark.integration
-async def test_rollup_worst_case_result(db_session, asset):
+async def test_finalize_worst_case_result(db_session, asset):
     repo = EvaluationRunRepository(db_session)
     start = datetime(2026, 1, 15, tzinfo=UTC)
     end = datetime(2026, 1, 16, tzinfo=UTC)
@@ -71,7 +71,7 @@ async def test_rollup_worst_case_result(db_session, asset):
         db_session.add(slo_ev)
     await db_session.flush()
 
-    rolled_up = await repo.rollup_if_all_done(run.id)
+    rolled_up = await repo.finalize_if_all_done(run.id)
     assert rolled_up is not None
     assert rolled_up.status == 'completed'
     assert rolled_up.result == 'warning'
@@ -80,7 +80,7 @@ async def test_rollup_worst_case_result(db_session, asset):
 
 
 @pytest.mark.integration
-async def test_rollup_skips_when_not_all_done(db_session, asset):
+async def test_finalize_skips_when_not_all_done(db_session, asset):
     repo = EvaluationRunRepository(db_session)
     start = datetime(2026, 1, 15, tzinfo=UTC)
     end = datetime(2026, 1, 16, tzinfo=UTC)
@@ -104,5 +104,5 @@ async def test_rollup_skips_when_not_all_done(db_session, asset):
         db_session.add(slo_ev)
     await db_session.flush()
 
-    result = await repo.rollup_if_all_done(run.id)
+    result = await repo.finalize_if_all_done(run.id)
     assert result is None
