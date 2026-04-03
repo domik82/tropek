@@ -9,6 +9,8 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, model_validator
 
+from app.modules.common.schemas import StrictInput
+
 ALLOWED_MODES = frozenset(['raw', 'aggregated'])
 
 
@@ -57,7 +59,7 @@ def _validate_aggregated_mode(sli: SLIDefinitionCreate) -> None:
         raise ValueError(msg)
 
 
-class SLIDefinitionCreate(BaseModel):
+class SLIDefinitionCreate(StrictInput):
     """Request body for creating an SLI definition."""
 
     name: str

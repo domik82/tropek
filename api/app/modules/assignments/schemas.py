@@ -8,8 +8,10 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict
 
+from app.modules.common.schemas import StrictInput
 
-class SLOAssignmentCreate(BaseModel):
+
+class SLOAssignmentCreate(StrictInput):
     """Request body for creating an SLO assignment."""
 
     slo_definition_id: uuid.UUID
@@ -34,13 +36,13 @@ class SLOAssignmentRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
-class SLOAssignmentUpgrade(BaseModel):
+class SLOAssignmentUpgrade(StrictInput):
     """Request body for upgrading an SLO assignment to a new definition version."""
 
     new_slo_definition_id: uuid.UUID
 
 
-class SLOGroupAssignmentCreate(BaseModel):
+class SLOGroupAssignmentCreate(StrictInput):
     """Request body for creating an SLO group assignment."""
 
     slo_group_name: str

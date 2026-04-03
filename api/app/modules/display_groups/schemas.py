@@ -7,8 +7,10 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict
 
+from app.modules.common.schemas import StrictInput
 
-class DisplayGroupCreate(BaseModel):
+
+class DisplayGroupCreate(StrictInput):
     name: str
     display_name: str | None = None
     parent_id: uuid.UUID | None = None
@@ -26,5 +28,5 @@ class DisplayGroupRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
-class DisplayGroupMemberAdd(BaseModel):
+class DisplayGroupMemberAdd(StrictInput):
     slo_name: str

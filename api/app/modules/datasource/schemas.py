@@ -8,8 +8,10 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict
 
+from app.modules.common.schemas import StrictInput
 
-class DataSourceCreate(BaseModel):
+
+class DataSourceCreate(StrictInput):
     """Request body for creating a datasource."""
 
     name: str
@@ -20,7 +22,7 @@ class DataSourceCreate(BaseModel):
     token: str | None = None
 
 
-class DataSourceUpdate(BaseModel):
+class DataSourceUpdate(StrictInput):
     """Request body for updating a datasource."""
 
     display_name: str | None = None

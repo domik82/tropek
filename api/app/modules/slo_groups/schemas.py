@@ -8,8 +8,10 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict
 
+from app.modules.common.schemas import StrictInput
 
-class SLOGroupCreate(BaseModel):
+
+class SLOGroupCreate(StrictInput):
     """Request body for creating an SLO group."""
 
     name: str
@@ -21,7 +23,7 @@ class SLOGroupCreate(BaseModel):
     author: str | None = None
 
 
-class SLOGroupUpdate(BaseModel):
+class SLOGroupUpdate(StrictInput):
     """Request body for updating an SLO group (triggers regeneration)."""
 
     template_slo_name: str | None = None
@@ -52,7 +54,7 @@ class SLOGroupRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
-class ExtractRequest(BaseModel):
+class ExtractRequest(StrictInput):
     """Request body for extracting a generated SLO to standalone."""
 
     slo_name: str

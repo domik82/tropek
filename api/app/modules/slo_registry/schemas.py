@@ -8,10 +8,12 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.modules.common.schemas import StrictInput
+
 from app.modules.quality_gate.schemas import IndicatorResult
 
 
-class SLOObjectiveIn(BaseModel):
+class SLOObjectiveIn(StrictInput):
     """SLO objective for create/validate requests."""
 
     sli: str
@@ -30,7 +32,7 @@ class SLOObjectiveRead(SLOObjectiveIn):
     model_config = ConfigDict(from_attributes=True)
 
 
-class SLODefinitionCreate(BaseModel):
+class SLODefinitionCreate(StrictInput):
     """Request body for creating an SLO definition."""
 
     name: str
@@ -70,12 +72,24 @@ class SLODefinitionRead(BaseModel):
     kind: str
     method_criteria: dict[str, Any] | None
     sli_definition_id: uuid.UUID | None
+    sli_name: str | None = None
+    sli_version: int | None = None
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
 
+    @classmethod
+    def from_orm(cls, obj: Any) -> 'SLODefinitionRead':
+        """Build from ORM object, resolving sli_name from the joined relationship."""
+        instance = cls.model_validate(obj)
+        sli = getattr(obj, 'sli_definition', None)
+        if sli is not None:
+            instance.sli_name = sli.name
+            instance.sli_version = sli.version
+        return instance
 
-class SLOValidateRequest(BaseModel):
+
+class SLOValidateRequest(StrictInput):
     """Request body for SLO validation (no save)."""
 
     objectives: list[SLOObjectiveIn]
@@ -107,7 +121,7 @@ class BaselineConfig(BaseModel):
     values: dict[str, float] | None = None
 
 
-class SLOTestRequest(BaseModel):
+class SLOTestRequest(StrictInput):
     """Request body for SLO test (dry-run evaluation)."""
 
     # SLO content — replaces slo_yaml

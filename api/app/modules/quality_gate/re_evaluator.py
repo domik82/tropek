@@ -15,7 +15,7 @@ from app.modules.quality_gate.engine.evaluator import evaluate
 from app.modules.quality_gate.engine.slo_models import SLO
 from app.modules.quality_gate.engine.slo_parser import build_slo
 from app.modules.quality_gate.params import ReEvalUpdateParams
-from app.modules.quality_gate.re_evaluation_schemas import (
+from app.modules.quality_gate.schemas.re_evaluation import (
     BaselinePinConflictError,
     ReEvalResultItem,
     ReEvaluateRequest,

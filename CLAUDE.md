@@ -74,7 +74,7 @@ Never use `set -a && source .env.test && set +a` or any bash chaining for this p
 | Service | Port | Role |
 |---|---|---|
 | `api` | 8080 | FastAPI REST API |
-| `worker` | — | arq job workers (×2) for async evaluation |
+| `worker` | — | arq job workers (×4) for async evaluation |
 | `adapter-prometheus` | 8081 | Prometheus query adapter |
 | `timescaledb` | 5432 | PostgreSQL + TimescaleDB (metrics, evaluations, SLOs) |
 | `redis` | 6379 | Job queue + response cache |
@@ -140,6 +140,16 @@ SQLAlchemy async ORM (asyncpg driver) with Alembic migrations. Repositories in `
 - Pytest: `asyncio_mode = auto`, mark infra-requiring tests with `@pytest.mark.integration`
 - Error messages: lowercase, no trailing period, prefer `"could not ..."` phrasing
 - Pre-commit runs ruff (lint + format) and mypy automatically
+
+### File naming: schemas vs models
+
+- `schemas.py` = Pydantic classes (API serialization layer). Request/response shapes.
+- `models.py` = SQLAlchemy ORM classes (DB persistence layer). Lives in `api/app/db/models.py`.
+- `params.py` = Pydantic parameter objects passed between service layers (not exposed in API).
+
+Never name a file containing Pydantic classes `models.py` — that collides with the ORM layer.
+All request body models must inherit `StrictInput` (from `app.modules.common.schemas`)
+to reject unknown fields. Response and internal models stay on `BaseModel`.
 
 ### Python imports
 

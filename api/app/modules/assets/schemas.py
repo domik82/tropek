@@ -8,17 +8,19 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict
 
+from app.modules.common.schemas import StrictInput
+
 # ---- Asset Types ----
 
 
-class AssetTypeCreate(BaseModel):
+class AssetTypeCreate(StrictInput):
     """Request body for creating an asset type."""
 
     name: str
     is_default: bool = False
 
 
-class AssetTypeUpdate(BaseModel):
+class AssetTypeUpdate(StrictInput):
     """Request body for renaming an asset type."""
 
     name: str | None = None
@@ -38,7 +40,7 @@ class AssetTypeRead(BaseModel):
 # ---- Assets ----
 
 
-class AssetCreate(BaseModel):
+class AssetCreate(StrictInput):
     """Request body for creating an asset."""
 
     name: str
@@ -49,7 +51,7 @@ class AssetCreate(BaseModel):
     color: str | None = None
 
 
-class AssetUpdate(BaseModel):
+class AssetUpdate(StrictInput):
     """Request body for updating an asset."""
 
     display_name: str | None = None
@@ -108,7 +110,7 @@ class AssetGroupSubgroupCreate(BaseModel):
     weight: float = 1.0
 
 
-class AssetGroupCreate(BaseModel):
+class AssetGroupCreate(StrictInput):
     """Request body for creating an asset group."""
 
     name: str
@@ -119,7 +121,7 @@ class AssetGroupCreate(BaseModel):
     subgroups: list[AssetGroupSubgroupCreate] = []
 
 
-class AssetGroupUpdate(BaseModel):
+class AssetGroupUpdate(StrictInput):
     """Request body for updating an asset group."""
 
     display_name: str | None = None
@@ -169,14 +171,14 @@ class AssetGroupTreeResponse(BaseModel):
     all_groups: list[AssetGroupRead]
 
 
-class AddMemberRequest(BaseModel):
+class AddMemberRequest(StrictInput):
     """Request body for POST /asset-groups/{name}/members."""
 
     asset_id: uuid.UUID
     weight: float = 1.0
 
 
-class AddSubgroupRequest(BaseModel):
+class AddSubgroupRequest(StrictInput):
     """Request body for POST /asset-groups/{name}/subgroups."""
 
     child_group_id: uuid.UUID
