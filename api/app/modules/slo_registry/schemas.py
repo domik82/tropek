@@ -6,7 +6,7 @@ import uuid
 from datetime import datetime
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from app.modules.common.schemas import StrictInput
 
@@ -78,15 +78,19 @@ class SLODefinitionRead(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
+    @model_validator(mode='before')
     @classmethod
-    def from_orm(cls, obj: Any) -> 'SLODefinitionRead':
-        """Build from ORM object, resolving sli_name from the joined relationship."""
-        instance = cls.model_validate(obj)
-        sli = getattr(obj, 'sli_definition', None)
-        if sli is not None:
-            instance.sli_name = sli.name
-            instance.sli_version = sli.version
-        return instance
+    def resolve_sli(cls, data: Any) -> Any:
+        """Flatten sli_definition relationship into top-level fields."""
+        if not isinstance(data, dict):
+            sli = getattr(data, 'sli_definition', None)
+            if sli is not None:
+                return {
+                    **{f: getattr(data, f) for f in cls.model_fields if hasattr(data, f)},
+                    'sli_name': sli.name,
+                    'sli_version': sli.version,
+                }
+        return data
 
 
 class SLOValidateRequest(StrictInput):
