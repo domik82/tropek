@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { buildSloTree, buildDatasourceTree, buildAssetTree, filterTree, buildSloSections } from './useRegistryTree'
+import { buildSloTree, buildDatasourceTree, buildAssetTree, filterTree, buildSloSections, buildSloGroupMap, mergeBindings } from './useRegistryTree'
 import type { TreeNode } from './types'
 import type { SloGroup } from '@/features/slo-groups/types'
 
@@ -70,7 +70,7 @@ describe('buildAssetTree', () => {
     const slos = [{ name: 'http-slo', display_name: 'HTTP SLO', version: 2, active: true, sli_name: 'http-sli', sli_version: 1 }]
     const slis = [{ name: 'http-sli', display_name: null, adapter_type: 'prometheus', active: true, indicators: { rt: 'q1', err: 'q2' } }]
 
-    const tree = buildAssetTree(groups, groups, groupBindingsMap, slos, slis)
+    const tree = buildAssetTree(groups, groups, groupBindingsMap, {}, slos, slis)
     expect(tree).toHaveLength(1)
     expect(tree[0]).toMatchObject({ type: 'group', name: 'core' })
     expect(tree[0].children).toHaveLength(1)
@@ -92,7 +92,7 @@ describe('buildAssetTree', () => {
     const groupBindingsMap = { core: [{ slo_name: 'bare-slo', data_source_name: 'prom' }] }
     const slos = [{ name: 'bare-slo', version: 1, active: true }]
 
-    const tree = buildAssetTree(groups, groups, groupBindingsMap, slos, [])
+    const tree = buildAssetTree(groups, groups, groupBindingsMap, {}, slos, [])
     const sloNode = tree[0].children![0].children![0]
     expect(sloNode).toMatchObject({ type: 'slo', name: 'bare-slo' })
     expect(sloNode.children).toHaveLength(1)
@@ -101,8 +101,19 @@ describe('buildAssetTree', () => {
 
   it('shows asset with no bindings as leaf', () => {
     const groups = [{ name: 'core', members: [{ asset_name: 'lonely-svc' }] }]
-    const tree = buildAssetTree(groups, groups, {})
+    const tree = buildAssetTree(groups, groups, {}, {})
     expect(tree[0].children![0].children).toBeUndefined()
+  })
+
+  it('shows asset-level assignments when no group-level bindings exist', () => {
+    const groups = [{ name: 'core', display_name: null, members: [{ asset_name: 'checkout-api' }] }]
+    const assetBindingsMap = { 'checkout-api': [{ slo_name: 'asset-slo', data_source_name: 'prom' }] }
+    const slos = [{ name: 'asset-slo', display_name: 'Asset SLO', version: 1, active: true, sli_name: 'http-sli' }]
+    const slis = [{ name: 'http-sli', display_name: null, adapter_type: 'prometheus', active: true, indicators: { rt: 'q1' } }]
+
+    const tree = buildAssetTree(groups, groups, {}, assetBindingsMap, slos, slis)
+    expect(tree[0].children![0].children).toHaveLength(1)
+    expect(tree[0].children![0].children![0]).toMatchObject({ type: 'slo', name: 'asset-slo' })
   })
 })
 
@@ -174,5 +185,104 @@ describe('filterTree', () => {
       { id: '2', name: 'b', type: 'slo' },
     ]
     expect(filterTree(tree, '')).toHaveLength(2)
+  })
+})
+
+describe('buildSloGroupMap', () => {
+  it('maps slo_group tag to SLO names', () => {
+    const slos = [
+      { name: 'gen-slo-1', version: 1, active: true, tags: { slo_group: 'perf-group' } },
+      { name: 'gen-slo-2', version: 1, active: true, tags: { slo_group: 'perf-group' } },
+      { name: 'standalone', version: 1, active: true, tags: {} },
+    ] as any
+    const map = buildSloGroupMap(slos)
+    expect(map.get('perf-group')).toEqual(['gen-slo-1', 'gen-slo-2'])
+    expect(map.has('standalone')).toBe(false)
+  })
+
+  it('returns empty map when no SLOs have slo_group tag', () => {
+    const slos = [{ name: 'plain', version: 1, active: true, tags: {} }] as any
+    expect(buildSloGroupMap(slos).size).toBe(0)
+  })
+})
+
+describe('mergeBindings', () => {
+  it('includes group-level bindings for assets', () => {
+    const result = mergeBindings(
+      ['core'],
+      ['checkout-api'],
+      [[{ slo_name: 'http-slo', data_source_name: 'prom' }]],
+      [[]],
+      [[]],
+      new Map(),
+    )
+    expect(result.groupBindingsMap['core']).toHaveLength(1)
+    expect(result.allBindings).toHaveLength(1)
+  })
+
+  it('includes direct asset assignments', () => {
+    const result = mergeBindings(
+      [],
+      ['checkout-api'],
+      [],
+      [[{ slo_name: 'asset-slo', data_source_name: 'prom' }]],
+      [[]],
+      new Map(),
+    )
+    expect(result.assetBindingsMap['checkout-api']).toHaveLength(1)
+    expect(result.assetBindingsMap['checkout-api'][0].slo_name).toBe('asset-slo')
+  })
+
+  it('resolves SLO group assignments to individual SLO names', () => {
+    const sloGroupMap = new Map([['perf-group', ['gen-slo-1', 'gen-slo-2']]])
+    const result = mergeBindings(
+      [],
+      ['checkout-api'],
+      [],
+      [[]],
+      [[{ slo_group_name: 'perf-group', data_source_name: 'prom' }]],
+      sloGroupMap,
+    )
+    expect(result.assetBindingsMap['checkout-api']).toHaveLength(2)
+    expect(result.assetBindingsMap['checkout-api'].map(b => b.slo_name)).toEqual(['gen-slo-1', 'gen-slo-2'])
+  })
+
+  it('falls back to group name when sloGroupMap has no entry', () => {
+    const result = mergeBindings(
+      [],
+      ['checkout-api'],
+      [],
+      [[]],
+      [[{ slo_group_name: 'unknown-group', data_source_name: 'prom' }]],
+      new Map(),
+    )
+    expect(result.assetBindingsMap['checkout-api']).toHaveLength(1)
+    expect(result.assetBindingsMap['checkout-api'][0].slo_name).toBe('unknown-group')
+  })
+
+  it('combines direct and group assignments for same asset', () => {
+    const sloGroupMap = new Map([['perf-group', ['gen-slo']]])
+    const result = mergeBindings(
+      [],
+      ['checkout-api'],
+      [],
+      [[{ slo_name: 'direct-slo', data_source_name: 'prom' }]],
+      [[{ slo_group_name: 'perf-group', data_source_name: 'prom' }]],
+      sloGroupMap,
+    )
+    expect(result.assetBindingsMap['checkout-api']).toHaveLength(2)
+    expect(result.assetBindingsMap['checkout-api'].map(b => b.slo_name)).toEqual(['direct-slo', 'gen-slo'])
+  })
+
+  it('deduplicates allBindings across groups and assets', () => {
+    const result = mergeBindings(
+      ['core'],
+      ['checkout-api'],
+      [[{ slo_name: 'http-slo', data_source_name: 'prom' }]],
+      [[{ slo_name: 'http-slo', data_source_name: 'prom' }]],
+      [[]],
+      new Map(),
+    )
+    expect(result.allBindings).toHaveLength(1)
   })
 })

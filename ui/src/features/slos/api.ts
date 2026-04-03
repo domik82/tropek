@@ -1,7 +1,7 @@
 // src/features/slos/api.ts
 import type { SloDefinition, SloObjective, SloValidationResult, SloComparisonConfig } from './types'
 import type { AssetGroupUpdate } from './types'
-import type { SloAssignment, SloAssignmentCreate } from './types'
+import type { SloAssignment, SloAssignmentCreate, SloGroupAssignment } from './types'
 import type { AssetGroup, AssetGroupTree } from '@/features/assets/types'
 
 const BASE = '/api'
@@ -139,6 +139,12 @@ export async function fetchSloTagValues(key: string): Promise<{ value: string; c
 export async function fetchAssetSloAssignments(assetName: string): Promise<SloAssignment[]> {
   const res = await fetch(`${BASE}/assets/${encodeURIComponent(assetName)}/slo-assignments`)
   if (!res.ok) throw new Error(`fetchAssetSloAssignments: ${res.status}`)
+  return res.json()
+}
+
+export async function fetchAssetSloGroupAssignments(assetName: string): Promise<SloGroupAssignment[]> {
+  const res = await fetch(`${BASE}/assets/${encodeURIComponent(assetName)}/slo-group-assignments`)
+  if (!res.ok) throw new Error(`fetchAssetSloGroupAssignments: ${res.status}`)
   return res.json()
 }
 

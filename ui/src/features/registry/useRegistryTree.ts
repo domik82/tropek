@@ -9,6 +9,7 @@ export interface MinSlo {
   sli_name?: string | null
   sli_version?: number | null
   kind?: string
+  tags?: Record<string, string>
 }
 
 export interface MinSli {
@@ -159,6 +160,7 @@ export function buildAssetTree(
   topLevelGroups: MinGroup[],
   allGroups: MinGroup[],
   groupBindingsMap: Record<string, MinBinding[]>,
+  assetBindingsMap: Record<string, MinBinding[]>,
   slos?: MinSlo[],
   slis?: MinSli[],
 ): TreeNode[] {
@@ -175,9 +177,16 @@ export function buildAssetTree(
       .filter((g): g is MinGroup => g != null)
       .map(buildGroupNode)
 
-    // Asset member children
+    // Asset member children — merge group-level and asset-level bindings
     const memberChildren: TreeNode[] = (group.members ?? []).map(member => {
-      const sloChildren: TreeNode[] = groupBindings.map(binding => {
+      const assetBindings = assetBindingsMap[member.asset_name] ?? []
+      // Deduplicate: asset-level bindings take precedence, then add group-level ones
+      const seen = new Set(assetBindings.map(b => `${b.slo_name}|${b.data_source_name}`))
+      const mergedBindings = [
+        ...assetBindings,
+        ...groupBindings.filter(b => !seen.has(`${b.slo_name}|${b.data_source_name}`)),
+      ]
+      const sloChildren: TreeNode[] = mergedBindings.map(binding => {
         const slo = sloByName.get(binding.slo_name)
         const dsNode: TreeNode = {
           id: `binding-ds:${member.asset_name}:${binding.data_source_name}`,
@@ -308,6 +317,75 @@ export function buildSloSections(
   }))
 
   return { standard, templates, groupNodes }
+}
+
+export interface MinGroupAssignment {
+  slo_group_name: string
+  data_source_name: string
+}
+
+export function buildSloGroupMap(slos: MinSlo[]): Map<string, string[]> {
+  const m = new Map<string, string[]>()
+  for (const slo of slos) {
+    const groupName = slo.tags?.slo_group
+    if (groupName) {
+      const list = m.get(groupName) ?? []
+      list.push(slo.name)
+      m.set(groupName, list)
+    }
+  }
+  return m
+}
+
+export function mergeBindings(
+  groupNames: string[],
+  assetNames: string[],
+  groupAssignments: MinBinding[][],
+  directAssetAssignments: MinBinding[][],
+  assetGroupAssignments: MinGroupAssignment[][],
+  sloGroupMap: Map<string, string[]>,
+): { allBindings: MinBinding[]; groupBindingsMap: Record<string, MinBinding[]>; assetBindingsMap: Record<string, MinBinding[]> } {
+  const flat: MinBinding[] = []
+  const byGroup: Record<string, MinBinding[]> = {}
+  const byAsset: Record<string, MinBinding[]> = {}
+
+  for (let i = 0; i < groupNames.length; i++) {
+    const bindings: MinBinding[] = (groupAssignments[i] ?? []).map(a => ({
+      slo_name: a.slo_name,
+      data_source_name: a.data_source_name,
+    }))
+    byGroup[groupNames[i]] = bindings
+    flat.push(...bindings)
+  }
+
+  for (let i = 0; i < assetNames.length; i++) {
+    const directBindings: MinBinding[] = (directAssetAssignments[i] ?? []).map(a => ({
+      slo_name: a.slo_name,
+      data_source_name: a.data_source_name,
+    }))
+
+    const groupBindings: MinBinding[] = (assetGroupAssignments[i] ?? []).flatMap(ga => {
+      const sloNames = sloGroupMap.get(ga.slo_group_name) ?? [ga.slo_group_name]
+      return sloNames.map(sloName => ({
+        slo_name: sloName,
+        data_source_name: ga.data_source_name,
+      }))
+    })
+
+    const combined = [...directBindings, ...groupBindings]
+    byAsset[assetNames[i]] = combined
+    flat.push(...combined)
+  }
+
+  const seen = new Set<string>()
+  const unique = flat.filter(b => {
+    const key = `${b.slo_name}|${b.data_source_name}`
+    if (seen.has(key)) return false
+    seen.add(key)
+    return true
+  })
+
+  return { allBindings: unique, groupBindingsMap: byGroup, assetBindingsMap: byAsset }
 }
 
 export function filterTree(nodes: TreeNode[], search: string): TreeNode[] {

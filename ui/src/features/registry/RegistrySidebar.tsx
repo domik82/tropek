@@ -8,9 +8,9 @@ import { SANS_SERIF } from '@/lib/fonts'
 import { groupKeys } from '@/lib/queryKeys'
 import { TagFilterBar } from '@/components/shared/TagFilterBar'
 import { RegistryTree, SectionHeader } from './RegistryTree'
-import { buildSloTree, buildSloSections, buildDatasourceTree, buildAssetTree, filterTree } from './useRegistryTree'
-import type { MinBinding } from './useRegistryTree'
-import { useSlos, useGroupTree, useSloTagKeys, useSloTagValues, fetchGroupSloAssignments } from '@/features/slos'
+import { buildSloTree, buildSloSections, buildDatasourceTree, buildAssetTree, filterTree, buildSloGroupMap, mergeBindings } from './useRegistryTree'
+import { useSlos, useGroupTree, useSloTagKeys, useSloTagValues, fetchGroupSloAssignments, fetchAssetSloAssignments, fetchAssetSloGroupAssignments } from '@/features/slos'
+import { assignmentKeys } from '@/lib/queryKeys'
 import { useSliDefinitions } from '@/features/slis'
 import { useDatasources, useDatasourceTagKeys, useDatasourceTagValues } from '@/features/datasources'
 import { useTagKeys, useTagValues } from '@/features/assets'
@@ -67,46 +67,55 @@ export function RegistrySidebar({ mode, onModeChange, selected, onSelect, onCrea
   const isLoadingValues =
     mode === 'slo' ? sloValsLoading : mode === 'datasource' ? dsValsLoading : assetValsLoading
 
-  // Fetch SLO bindings for all groups to build hierarchical trees
+  // Fetch SLO assignments for all groups and assets to build hierarchical trees
   const groupNames = useMemo(
     () => (tree?.all_groups ?? []).map(g => g.name).filter(n => n !== '__ungrouped__'),
     [tree],
   )
-  const assignmentQueries = useQueries({
+  const assetNames = useMemo(
+    () => [...new Set((tree?.all_groups ?? []).flatMap(g => (g.members ?? []).map(m => m.asset_name)))],
+    [tree],
+  )
+
+  const groupAssignmentQueries = useQueries({
     queries: groupNames.map(name => ({
       queryKey: groupKeys.assignments(name),
       queryFn: () => fetchGroupSloAssignments(name),
     })),
   })
+  const assetAssignmentQueries = useQueries({
+    queries: assetNames.map(name => ({
+      queryKey: assignmentKeys.asset(name),
+      queryFn: () => fetchAssetSloAssignments(name),
+    })),
+  })
+  // Also fetch SLO group assignments per asset — these are the primary
+  // assignment mechanism (always-latest, no fan-out to direct assignments)
+  const assetGroupAssignmentQueries = useQueries({
+    queries: assetNames.map(name => ({
+      queryKey: ['slo-group-assignments', 'asset', name],
+      queryFn: () => fetchAssetSloGroupAssignments(name),
+    })),
+  })
 
-  const { allBindings, groupBindingsMap } = useMemo(() => {
-    const flat: MinBinding[] = []
-    const byGroup: Record<string, MinBinding[]> = {}
-    for (let i = 0; i < groupNames.length; i++) {
-      const data = assignmentQueries[i]?.data ?? []
-      const bindings: MinBinding[] = data.map(a => ({
-        slo_name: a.slo_name,
-        data_source_name: a.data_source_name,
-      }))
-      byGroup[groupNames[i]] = bindings
-      flat.push(...bindings)
-    }
-    // Deduplicate flat bindings for SLO/DS trees
-    const seen = new Set<string>()
-    const unique = flat.filter(b => {
-      const key = `${b.slo_name}|${b.data_source_name}`
-      if (seen.has(key)) return false
-      seen.add(key)
-      return true
-    })
-    return { allBindings: unique, groupBindingsMap: byGroup }
-  }, [groupNames, assignmentQueries])
+  const sloGroupMap = useMemo(() => buildSloGroupMap(slos ?? []), [slos])
+
+  const { allBindings, groupBindingsMap, assetBindingsMap } = useMemo(() => {
+    return mergeBindings(
+      groupNames,
+      assetNames,
+      groupAssignmentQueries.map(q => q.data ?? []),
+      assetAssignmentQueries.map(q => q.data ?? []),
+      assetGroupAssignmentQueries.map(q => q.data ?? []),
+      sloGroupMap,
+    )
+  }, [groupNames, assetNames, groupAssignmentQueries, assetAssignmentQueries, assetGroupAssignmentQueries, sloGroupMap])
 
   const treeNodes = useMemo(() => {
     if (mode === 'slo') return buildSloTree(slos ?? [], slis ?? [], datasources ?? [], allBindings)
     if (mode === 'datasource') return buildDatasourceTree(datasources ?? [], slis ?? [], slos ?? [], allBindings)
-    return buildAssetTree(tree?.top_level ?? [], tree?.all_groups ?? [], groupBindingsMap, slos ?? [], slis ?? [])
-  }, [mode, slos, slis, datasources, tree, allBindings, groupBindingsMap])
+    return buildAssetTree(tree?.top_level ?? [], tree?.all_groups ?? [], groupBindingsMap, assetBindingsMap, slos ?? [], slis ?? [])
+  }, [mode, slos, slis, datasources, tree, allBindings, groupBindingsMap, assetBindingsMap])
 
   const filteredNodes = useMemo(() => filterTree(treeNodes, search), [treeNodes, search])
 

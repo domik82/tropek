@@ -5,6 +5,8 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { AssetBindingView } from './AssetBindingView'
 
 vi.mock('@/features/slos/hooks', () => ({
+  useAssetSloAssignments: vi.fn(),
+  useAssetSloGroupAssignments: vi.fn(),
   useGroupSloAssignments: vi.fn(),
   useDeleteGroupSloAssignment: vi.fn(() => ({ mutate: vi.fn() })),
   useSloDetail: vi.fn(),
@@ -18,7 +20,7 @@ vi.mock('@/features/slis/hooks', () => ({
   useSliDetail: vi.fn(),
 }))
 
-import { useGroupSloAssignments, useSloDetail } from '@/features/slos/hooks'
+import { useAssetSloAssignments, useAssetSloGroupAssignments, useGroupSloAssignments, useSloDetail } from '@/features/slos/hooks'
 import { useAsset } from '@/features/assets/hooks'
 import { useSliDetail } from '@/features/slis/hooks'
 
@@ -79,7 +81,9 @@ function wrapper({ children }: { children: React.ReactNode }) {
 describe('AssetBindingView', () => {
   beforeEach(() => {
     vi.mocked(useAsset).mockReturnValue({ data: MOCK_ASSET, isLoading: false } as any)
-    vi.mocked(useGroupSloAssignments).mockReturnValue({ data: MOCK_ASSIGNMENTS, isLoading: false } as any)
+    vi.mocked(useAssetSloAssignments).mockReturnValue({ data: MOCK_ASSIGNMENTS, isLoading: false } as any)
+    vi.mocked(useAssetSloGroupAssignments).mockReturnValue({ data: [], isLoading: false } as any)
+    vi.mocked(useGroupSloAssignments).mockReturnValue({ data: [], isLoading: false } as any)
     vi.mocked(useSloDetail).mockReturnValue({ data: MOCK_SLO, isLoading: false } as any)
     vi.mocked(useSliDetail).mockReturnValue({ data: {
       id: 'sli1', name: 'http-service-sli', display_name: null, adapter_type: 'prometheus',
@@ -156,6 +160,7 @@ describe('AssetBindingView', () => {
   })
 
   it('renders empty state with Assign SLO button', () => {
+    vi.mocked(useAssetSloAssignments).mockReturnValue({ data: [], isLoading: false } as any)
     vi.mocked(useGroupSloAssignments).mockReturnValue({ data: [], isLoading: false } as any)
     render(
       <AssetBindingView assetName="checkout-api" groupName="core-services"

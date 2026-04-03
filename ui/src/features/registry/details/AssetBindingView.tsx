@@ -1,8 +1,8 @@
 import { Link, Unlink, Pencil } from 'lucide-react'
 import { BindingChainBreadcrumb } from '@/components/shared/BindingChainBreadcrumb'
 import { VariableResolutionPanel } from '@/components/shared/VariableResolutionPanel'
-import { SloObjectiveTable, useGroupSloAssignments, useDeleteGroupSloAssignment, useSloDetail } from '@/features/slos'
-import type { SloAssignment } from '@/features/slos'
+import { SloObjectiveTable, useAssetSloAssignments, useAssetSloGroupAssignments, useGroupSloAssignments, useDeleteGroupSloAssignment, useSloDetail } from '@/features/slos'
+import type { SloAssignment, SloGroupAssignment } from '@/features/slos'
 import { useSliDetail } from '@/features/slis'
 import { useAsset } from '@/features/assets'
 import type { Asset } from '@/features/assets'
@@ -28,7 +28,13 @@ export function AssetBindingView({
 }: AssetBindingViewProps) {
   // Only fetch asset details for actual asset nodes, not group nodes
   const { data: asset, isLoading: assetLoading } = useAsset(isGroup ? null : assetName)
-  const { data: assignments, isLoading: assignmentsLoading } = useGroupSloAssignments(groupName)
+  const { data: assetAssignments, isLoading: assetAssignmentsLoading } = useAssetSloAssignments(isGroup ? '' : assetName)
+  const { data: assetGroupAssignments, isLoading: assetGroupAssignmentsLoading } = useAssetSloGroupAssignments(isGroup ? '' : assetName)
+  const { data: groupAssignments, isLoading: groupAssignmentsLoading } = useGroupSloAssignments(isGroup ? groupName : '')
+  const assignments = isGroup ? groupAssignments : assetAssignments
+  const assignmentsLoading = isGroup
+    ? groupAssignmentsLoading
+    : (assetAssignmentsLoading || assetGroupAssignmentsLoading)
 
   if ((!isGroup && assetLoading) || assignmentsLoading) {
     return (
@@ -123,6 +129,25 @@ export function AssetBindingView({
           </div>
         )}
       </div>
+
+      {/* SLO Group Assignments section (for assets — shows which SLO groups are assigned) */}
+      {!isGroup && (assetGroupAssignments ?? []).length > 0 && (
+        <div>
+          <h3 className="text-sm font-semibold text-foreground mb-3">
+            SLO Group Assignments ({(assetGroupAssignments ?? []).length})
+          </h3>
+          <div className="space-y-2">
+            {(assetGroupAssignments ?? []).map((ga: SloGroupAssignment) => (
+              <div key={ga.id} className="flex items-center justify-between px-3 py-2 border border-border rounded-lg bg-table-header-bg">
+                <div>
+                  <span className="text-sm font-medium text-foreground">{ga.slo_group_name}</span>
+                  <span className="text-xs text-muted-foreground ml-2">via {ga.data_source_name}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>{/* close p-6 wrapper */}
     </div>
   )
