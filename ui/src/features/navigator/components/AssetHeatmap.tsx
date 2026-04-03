@@ -17,6 +17,7 @@ interface Props {
   selectedEvalId?: string
   onEvalSelect?: (evalId: string) => void
   onSlotSelect?: (slot: TimeSlotSelection) => void
+  onMetricClick?: (metricName: string, sloName: string) => void
   notedSlots?: Map<string, SlotNote>
   expandState: Map<string, boolean>
   onSloToggle: (sloName: string) => void
@@ -27,6 +28,7 @@ export function AssetHeatmap({
   selectedEvalId,
   onEvalSelect,
   onSlotSelect,
+  onMetricClick,
   notedSlots,
   expandState,
   onSloToggle,
@@ -82,19 +84,24 @@ export function AssetHeatmap({
       onSloToggle(cell.sloName)
       // fall through to also select this column
     }
+    // Indicator cell re-click (column already selected) → scroll to SLI table
+    if (!cell.isSloHeader && cell.metricName && cell.sloName && onMetricClick
+        && selectedColumn === cell.value[0]) {
+      onMetricClick(cell.metricName, cell.sloName)
+    }
     if (onSlotSelect) {
-      // Collect all slo_evaluation_ids in this column from visible indicator cells.
-      // Filter by column index to handle duplicate timestamps across eval names.
-      const colIdx = cell.value[0]
-      const colCells = cells.filter(c => c.value[0] === colIdx && c.evalId)
-      let evalIds = [...new Set(colCells.map(c => c.evalId!))]
-      // Fallback: groups may be collapsed so indicator cells aren't in `cells`.
-      // Use raw data to find all slo_evaluation_ids for the clicked column.
-      if (evalIds.length === 0 && cell.columnKey) {
+      // Always collect eval IDs from raw data so collapsed groups are included.
+      const columnKey = cell.columnKey ?? (() => {
+        const colIdx = cell.value[0]
+        const c = cells.find(cc => cc.value[0] === colIdx && cc.columnKey)
+        return c?.columnKey
+      })()
+      let evalIds: string[] = []
+      if (columnKey) {
         evalIds = [...new Set(
           data.groups.flatMap(g =>
             g.cells
-              .filter(c => c.evaluation_id === cell.columnKey)
+              .filter(c => c.evaluation_id === columnKey)
               .map(c => c.slo_evaluation_id)
           )
         )]

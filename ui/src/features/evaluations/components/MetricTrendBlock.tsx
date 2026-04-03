@@ -1,6 +1,7 @@
 // src/features/evaluations/components/MetricTrendBlock.tsx
 import ReactECharts from 'echarts-for-react'
 import { useCallback } from 'react'
+import { Sheet } from 'lucide-react'
 import { useTrend } from '../hooks'
 import { STATUS_TEXT } from '@/lib/status'
 import { useChartAreaClick } from '@/lib/useChartAreaClick'
@@ -49,11 +50,11 @@ export function MetricTrendBlock({ evalId, indicator, onEvalSelect, onScrollToTa
         </span>
         <button
           onClick={onScrollToTable ?? defaultScrollToTable}
-          className="text-sm font-medium text-foreground hover:text-link-hover transition-colors"
-          title="Back to SLI table"
-          aria-label="Back to SLI table"
+          className="text-[#58a6ff]/60 hover:text-[#58a6ff] transition-colors"
+          title="Go to SLI table"
+          aria-label="Go to SLI table"
         >
-          ↑ top
+          <Sheet className="size-5" />
         </button>
       </div>
 

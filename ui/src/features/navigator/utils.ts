@@ -205,6 +205,8 @@ export function buildAssetHeatmapData(
           columnKey: col.evaluation_id,
           evaluation_name: col.eval_name,
           evalId: cell?.slo_evaluation_id,
+          sloName: row.sloName,
+          metricName: row.metricName,
         })
       }
     }

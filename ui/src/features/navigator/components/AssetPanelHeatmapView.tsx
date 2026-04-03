@@ -1,6 +1,6 @@
 // ui/src/features/navigator/components/AssetPanelHeatmapView.tsx
 import { useRef, useCallback, useMemo } from 'react'
-import { ChevronDown, ChevronRight } from 'lucide-react'
+import { ChevronDown, ChevronRight, Grid3X3 } from 'lucide-react'
 import { AssetHeatmap } from './AssetHeatmap'
 import { MetricTrendBlock } from '@/features/evaluations/components/MetricTrendBlock'
 import { SLIBreakdownGrouped } from '@/features/evaluations/components/SLIBreakdownGrouped'
@@ -34,25 +34,40 @@ export function AssetPanelHeatmapView({
   sliMetadata, metricEvalMap, sloExpandState, onSloToggle,
 }: Props) {
   const sliTableRef = useRef<HTMLDivElement>(null)
+  const heatmapRef = useRef<HTMLDivElement>(null)
 
   const handleScrollToTable = useCallback(() => {
     sliTableRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }, [])
 
-  // Build SloBreakdownGroup[] from heatmap groups joined with slot evals
+  const handleScrollToHeatmap = useCallback(() => {
+    heatmapRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }, [])
+
+  const handleHeatmapMetricClick = useCallback((metricName: string, sloName: string) => {
+    // Ensure the SLO group is expanded so the indicator row is visible
+    const expanded = sloExpandState.get(sloName) ?? false
+    if (!expanded) onSloToggle(sloName)
+    // Scroll to the SLI table after the DOM updates
+    requestAnimationFrame(() => {
+      sliTableRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    })
+  }, [sloExpandState, onSloToggle])
+
+  // Build SloBreakdownGroup[] from heatmap groups joined with slot evals.
+  // Always include all groups so headers are visible even without eval data.
   const breakdownGroups = useMemo((): SloBreakdownGroup[] => {
     if (!heatmapData) return []
-    return heatmapData.groups.flatMap(g => {
+    return heatmapData.groups.map(g => {
       const sloEval = allSlotEvals.find(e => e.slo_name === g.slo_name)
       const indicators = sloEval?.indicator_results ?? []
-      if (indicators.length === 0) return []
       const result = sloEval
         ? (sloEval.invalidated ? 'invalidated' : sloEval.result ?? 'none')
         : 'none'
       const score = Math.round(sloEval?.score ?? 0)
       const achieved_points = indicators.reduce((sum, ind) => sum + ind.score, 0)
       const total_points = indicators.reduce((sum, ind) => sum + ind.weight, 0)
-      return [{
+      return {
         slo_name: g.slo_name,
         slo_display_name: g.slo_display_name,
         indicators,
@@ -60,14 +75,12 @@ export function AssetPanelHeatmapView({
         result,
         achieved_points,
         total_points,
-      }]
+      }
     })
   }, [heatmapData, allSlotEvals])
 
-  // Build groups for trend chart sections
-  const trendGroups = useMemo((): SloBreakdownGroup[] => {
-    return breakdownGroups.filter(g => g.indicators.length > 0)
-  }, [breakdownGroups])
+  // Trend chart sections use all breakdown groups — headers always visible
+  const trendGroups = breakdownGroups
 
   const resultColour = (result: string) =>
     result === 'pass' ? 'text-pass' :
@@ -79,7 +92,7 @@ export function AssetPanelHeatmapView({
     <>
       {/* Metric Heatmap with view toggle */}
       {heatmapData && (
-        <div className="rounded-lg border border-border bg-surface-sunken p-4">
+        <div ref={heatmapRef} className="rounded-lg border border-border bg-surface-sunken p-4 scroll-mt-4">
           <div className="flex items-center justify-between mb-2">
             <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Metric Heatmap</h2>
             <div className="flex items-center gap-3">
@@ -92,6 +105,7 @@ export function AssetPanelHeatmapView({
             selectedEvalId={effectiveEvalId}
             onEvalSelect={onEvalSelect}
             onSlotSelect={onSlotSelect}
+            onMetricClick={handleHeatmapMetricClick}
             notedSlots={notedSlots}
             expandState={sloExpandState}
             onSloToggle={onSloToggle}
@@ -110,9 +124,14 @@ export function AssetPanelHeatmapView({
             expandState={sloExpandState}
             onToggle={onSloToggle}
             sliMetadata={sliMetadata}
-            onIndicatorClick={(metric) => {
-              const el = document.getElementById(`trend-${metric}`)
-              if (el) setTimeout(() => el.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50)
+            onScrollToHeatmap={handleScrollToHeatmap}
+            onIndicatorClick={(metric, sloName) => {
+              const expanded = sloExpandState.get(sloName) ?? false
+              if (!expanded) onSloToggle(sloName)
+              requestAnimationFrame(() => {
+                const el = document.getElementById(`trend-${metric}`)
+                if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+              })
             }}
           />
         </div>
@@ -132,7 +151,7 @@ export function AssetPanelHeatmapView({
                 <button
                   type="button"
                   onClick={() => onSloToggle(g.slo_name)}
-                  className="w-full flex items-center gap-2 px-3 py-2 rounded-t border border-border bg-surface-sunken hover:bg-state-hover-bg transition-colors text-left"
+                  className="relative w-full flex items-center gap-2 px-3 py-2 rounded-t border border-border bg-surface-sunken hover:bg-state-hover-bg transition-colors text-left"
                 >
                   {expanded ? (
                     <ChevronDown size={14} className="shrink-0 text-muted-foreground" />
@@ -140,19 +159,31 @@ export function AssetPanelHeatmapView({
                     <ChevronRight size={14} className="shrink-0 text-muted-foreground" />
                   )}
                   <span
-                    className="text-sm font-semibold flex-1 truncate"
+                    className="text-sm font-semibold truncate"
                     style={{ color: '#58a6ff' }}
                   >
                     {label}
                   </span>
+                  <span
+                    role="button"
+                    tabIndex={0}
+                    onClick={e => { e.stopPropagation(); handleScrollToHeatmap() }}
+                    onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.stopPropagation(); handleScrollToHeatmap() } }}
+                    className="absolute left-1/2 -translate-x-1/2 inset-y-0 flex items-center px-6 text-pass/60 hover:text-pass transition-colors"
+                    title="Go to heatmap"
+                    aria-label="Go to heatmap"
+                  >
+                    <Grid3X3 className="size-5" />
+                  </span>
+                  <span className="flex-1" />
                   {g.result !== 'none' && (
                     <span className={`text-xs font-bold uppercase ${resultColour(g.result)}`}>
                       {g.result}
                     </span>
                   )}
                 </button>
-                {expanded && g.indicators.length > 0 && (
-                  <div className="border border-t-0 border-border rounded-b p-4">
+                {g.indicators.length > 0 && (
+                  <div className={`border border-t-0 border-border rounded-b p-4 ${expanded ? '' : 'hidden'}`}>
                     <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
                       {g.indicators.map(ind => (
                         <MetricTrendBlock
