@@ -64,7 +64,8 @@ trap cleanup EXIT
 
 echo "=== Generating mock scenario data ==="
 uv run --directory adapters/mock python generate.py
-uv run python scripts/generate_lab_data.py
+# Lab scale-test data is pre-generated and committed (adapters/mock/data/prometheus-local/lab-metrics.csv).
+# To regenerate: uv run python scripts/generate_lab_data.py
 
 echo "=== Starting DB + Redis (ports $DB_PORT, $REDIS_PORT) ==="
 docker compose --profile e2e up timescaledb-e2e redis-e2e -d --wait
