@@ -103,8 +103,10 @@ echo "=== Starting API on :$API_PORT (log: $LOG_DIR_LOCAL/api.log) ==="
 uv run --directory api uvicorn app.main:app --host 127.0.0.1 --port $API_PORT &
 PIDS+=($!)
 
-echo "=== Starting arq worker (log: $LOG_DIR_LOCAL/worker.log) ==="
+echo "=== Starting arq workers x2 (log: $LOG_DIR_LOCAL/worker.log) ==="
 # PYTHONPATH=. resolves to api/ (the uv --directory target), making app.queue importable
+PYTHONPATH=. uv run --directory api arq app.queue.WorkerSettings &
+PIDS+=($!)
 PYTHONPATH=. uv run --directory api arq app.queue.WorkerSettings &
 PIDS+=($!)
 
