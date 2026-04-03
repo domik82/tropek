@@ -89,6 +89,7 @@ export function SliForm({ open, onOpenChange, editFrom, defaultAdapterType }: Sl
     editFrom?.tags ? tagsToRows(editFrom.tags) : [],
   )
 
+  /* eslint-disable react-hooks/set-state-in-effect -- intentional reset on prop change */
   useEffect(() => {
     if (editFrom) {
       reset({
@@ -106,6 +107,7 @@ export function SliForm({ open, onOpenChange, editFrom, defaultAdapterType }: Sl
       setTagRows(tagsToRows(editFrom.tags))
     }
   }, [editFrom, reset])
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const createMutation = useCreateSli()
   const isPending = createMutation.isPending

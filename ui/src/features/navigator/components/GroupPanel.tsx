@@ -104,7 +104,7 @@ export function GroupPanel({ groupName, onSelectAsset }: Props) {
               }}
             />
           </div>
-          <EvaluationTable evaluations={tableEvals} dynamicCols={dynamicCols} {...colVis} onAssetSelect={onSelectAsset} onEvalClick={ev => onSelectAsset(ev.asset_snapshot.name, ev.id)} assetDisplayNames={assetDisplayNames} sloDisplayNames={sloDisplayNames} />
+          <EvaluationTable evaluations={tableEvals} {...colVis} onAssetSelect={onSelectAsset} onEvalClick={ev => onSelectAsset(ev.asset_snapshot.name, ev.id)} assetDisplayNames={assetDisplayNames} sloDisplayNames={sloDisplayNames} />
         </>
       )}
 

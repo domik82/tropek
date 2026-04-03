@@ -23,6 +23,7 @@ export function LabelsEditorDialog({ open, onOpenChange, title, subtitle, labels
   const [newValue, setNewValue] = useState('')
 
   // Sync internal state when dialog opens (useState ignores prop changes after mount)
+  /* eslint-disable react-hooks/set-state-in-effect -- intentional reset on dialog open */
   useEffect(() => {
     if (open) {
       setLabels(initialLabels)
@@ -30,6 +31,7 @@ export function LabelsEditorDialog({ open, onOpenChange, title, subtitle, labels
       setNewValue('')
     }
   }, [open, initialLabels])
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const { data: keysSuggestions = [], isLoading: keysLoading } = useTagKeys()
   const { data: valueSuggestions = [], isLoading: valuesLoading } = useTagValues(newKey || null)

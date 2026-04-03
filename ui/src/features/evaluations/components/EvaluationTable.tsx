@@ -9,7 +9,6 @@ import type { EvaluationSummary, ColumnDef } from '../types'
 
 interface Props {
   evaluations: EvaluationSummary[]
-  dynamicCols: ColumnDef[]
   visibleKeys: Set<string>
   allCols: ColumnDef[]
   open: boolean
@@ -108,7 +107,7 @@ function cell(
 }
 
 export function EvaluationTable({
-  evaluations, dynamicCols: _dynamicCols,
+  evaluations,
   visibleKeys, allCols, open, setOpen, toggle, pickerRef,
   onAssetSelect, onEvalClick, assetDisplayNames, sloDisplayNames,
 }: Props) {

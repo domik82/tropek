@@ -59,7 +59,7 @@ typecheck:
     uv run mypy api/app adapters/prometheus/app
 
 # Run all checks (lint + format check + typecheck)
-check: lint fmt-check typecheck
+check: lint lint-ui fmt-check typecheck
 
 # ─── Development ──────────────────────────────────────────────────────
 

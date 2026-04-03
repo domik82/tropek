@@ -102,7 +102,7 @@ function ChartSection({
   function handleToggle(metric: string) {
     setEnabled(prev => {
       const next = new Set(prev)
-      next.has(metric) ? next.delete(metric) : next.add(metric)
+      if (next.has(metric)) next.delete(metric); else next.add(metric)
       return next
     })
   }

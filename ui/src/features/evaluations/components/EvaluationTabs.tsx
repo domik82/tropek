@@ -1,5 +1,6 @@
 // src/features/evaluations/components/EvaluationTabs.tsx
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function tabLabel(group: string): string {
   if (group === 'all') return 'All'
   return group.charAt(0).toUpperCase() + group.slice(1).replace(/_/g, ' ')

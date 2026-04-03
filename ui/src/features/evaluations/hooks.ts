@@ -203,7 +203,7 @@ export function toggleColumnKey(
   const col = allCols.find(c => c.key === key)
   if (!col || col.required) return prev
   const next = new Set(prev)
-  next.has(key) ? next.delete(key) : next.add(key)
+  if (next.has(key)) next.delete(key); else next.add(key)
   return next
 }
 
@@ -216,6 +216,7 @@ export function useColumnVisibility(dynamicCols: ColumnDef[]) {
   const pickerRef = useRef<HTMLTableCellElement>(null)
 
   // Auto-add newly discovered dynamic columns to visible set
+  /* eslint-disable react-hooks/set-state-in-effect -- sync derived state from prop change */
   useEffect(() => {
     setVisibleKeys(prev => {
       const newKeys = dynamicCols.filter(c => !prev.has(c.key))
@@ -225,6 +226,7 @@ export function useColumnVisibility(dynamicCols: ColumnDef[]) {
       return next
     })
   }, [dynamicCols])
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   useEffect(() => {
     function handleClick(e: MouseEvent) {

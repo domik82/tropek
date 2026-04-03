@@ -31,7 +31,7 @@ export function DatasourceDetailView({ name, onNavigate, onEdit }: DatasourceDet
 
   const usedBySlis = (slis ?? []).filter(s => s.adapter_type === ds.adapter_type)
 
-  function handleDelete(_reason: string, _author: string) {
+  function handleDelete() {
     deleteMutation.mutate(ds!.name)
     setShowDeleteConfirm(false)
   }

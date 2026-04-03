@@ -22,6 +22,7 @@ export function AssetEditDialog({ open, onOpenChange, assetName }: Props) {
   const [labels, setLabels] = useState<Record<string, string>>({})
   const [labelsEditorOpen, setLabelsEditorOpen] = useState(false)
 
+  /* eslint-disable react-hooks/set-state-in-effect -- intentional reset on prop change */
   useEffect(() => {
     if (asset) {
       setDisplayName(asset.display_name ?? '')
@@ -29,6 +30,7 @@ export function AssetEditDialog({ open, onOpenChange, assetName }: Props) {
       setLabels(asset.tags ?? {})
     }
   }, [asset])
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const handleSave = () => {
     if (!assetName) return

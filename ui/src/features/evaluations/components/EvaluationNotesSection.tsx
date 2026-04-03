@@ -36,6 +36,7 @@ export const EvaluationNotesSection = forwardRef<EvaluationNotesSectionHandle, P
  * Returns a ref to attach to EvaluationNotesSection and a handler
  * that opens the form + scrolls into view.
  */
+// eslint-disable-next-line react-refresh/only-export-components
 export function useNotesActions() {
   const notesSectionRef = useRef<EvaluationNotesSectionHandle>(null)
 
