@@ -81,3 +81,15 @@ spec:
   members:
     - asset_name: group-template
       weight: 1.0
+---
+# ---- Scale Test Group ----
+
+api_version: tropek/v1
+kind: AssetGroup
+metadata:
+  name: lab-monitors
+  display_name: Lab Monitors
+spec:
+  members:
+    - asset_name: lab-monitor-01
+      weight: 1.0

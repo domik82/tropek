@@ -55,3 +55,45 @@ spec:
     process_name: ["gamma", "delta"]
   tags:
     purpose: binding-test
+---
+# ---- Scale Test SLO Groups ----
+# 3 groups x 8 processes = 24 generated SLOs.
+
+api_version: tropek/v1
+kind: SLOGroup
+metadata:
+  name: lab-health-group
+spec:
+  display_name: Lab Health Monitoring
+  template_slo_name: "lab-health/$__gen_process_name"
+  template_slo_version: 1
+  gen_variables:
+    process_name: ["nginx", "postgres", "redis", "kafka", "etcd", "vault", "consul", "grafana"]
+  tags:
+    purpose: scale-test
+---
+api_version: tropek/v1
+kind: SLOGroup
+metadata:
+  name: lab-perf-group
+spec:
+  display_name: Lab Performance Monitoring
+  template_slo_name: "lab-perf/$__gen_process_name"
+  template_slo_version: 1
+  gen_variables:
+    process_name: ["nginx", "postgres", "redis", "kafka", "etcd", "vault", "consul", "grafana"]
+  tags:
+    purpose: scale-test
+---
+api_version: tropek/v1
+kind: SLOGroup
+metadata:
+  name: lab-resource-group
+spec:
+  display_name: Lab Resource Monitoring
+  template_slo_name: "lab-resource/$__gen_process_name"
+  template_slo_version: 1
+  gen_variables:
+    process_name: ["nginx", "postgres", "redis", "kafka", "etcd", "vault", "consul", "grafana"]
+  tags:
+    purpose: scale-test

@@ -178,3 +178,20 @@ metadata:
     namespace: binding-test
 spec:
   type_name: service
+---
+# ---- Scale Test Asset ----
+# Reproduces beta tester's template explosion: 24 SLOs x 8 SLIs.
+
+api_version: tropek/v1
+kind: Asset
+metadata:
+  name: lab-monitor-01
+  display_name: "Lab Monitor 01"
+  tags:
+    purpose: scale-test
+    env: lab
+  variables:
+    job: lab-monitor
+    namespace: lab
+spec:
+  type_name: service

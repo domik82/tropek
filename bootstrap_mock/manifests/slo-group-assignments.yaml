@@ -32,3 +32,36 @@ spec:
   target_name: direct-template
   slo_group_name: dtmpl-health-group
   data_source_name: prometheus-local
+---
+# ---- Scale Test SLO Group Assignments ----
+# All 3 groups assigned directly to lab-monitor-01.
+
+api_version: tropek/v1
+kind: SLOGroupAssignment
+metadata:
+  name: lab-monitor-health-assignment
+spec:
+  target_type: asset
+  target_name: lab-monitor-01
+  slo_group_name: lab-health-group
+  data_source_name: prometheus-local
+---
+api_version: tropek/v1
+kind: SLOGroupAssignment
+metadata:
+  name: lab-monitor-perf-assignment
+spec:
+  target_type: asset
+  target_name: lab-monitor-01
+  slo_group_name: lab-perf-group
+  data_source_name: prometheus-local
+---
+api_version: tropek/v1
+kind: SLOGroupAssignment
+metadata:
+  name: lab-monitor-resource-assignment
+spec:
+  target_type: asset
+  target_name: lab-monitor-01
+  slo_group_name: lab-resource-group
+  data_source_name: prometheus-local
