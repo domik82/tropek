@@ -212,6 +212,7 @@ class WorkerSettings:
     """arq worker configuration — discovered by `arq app.queue.WorkerSettings`."""
 
     functions: ClassVar[list[Any]] = [run_evaluation_job]
+    max_jobs: ClassVar[int] = 12
     on_startup = _worker_startup
     on_shutdown = _worker_shutdown
     redis_settings = _redis_settings()
