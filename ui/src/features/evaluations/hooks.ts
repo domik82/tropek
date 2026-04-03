@@ -52,9 +52,11 @@ export function useEvaluationDetail(id: string | undefined) {
 // ── Trend ─────────────────────────────────────────────────────────────────────
 
 export function useTrend(evalId: string, metric: string) {
+  const { from, to } = useTimeRange()
+  const dateRange = { from, ...(to ? { to } : {}) }
   return useQuery({
-    queryKey: evaluationKeys.trend(evalId, metric),
-    queryFn: () => fetchTrend(evalId, metric),
+    queryKey: evaluationKeys.trend(evalId, metric, dateRange),
+    queryFn: () => fetchTrend(evalId, metric, dateRange),
     enabled: !!evalId && !!metric,
     staleTime: Infinity,
   })

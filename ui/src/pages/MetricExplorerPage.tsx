@@ -11,6 +11,7 @@ import { MultiSeriesChart } from '@/components/charts/MultiSeriesChart'
 import type { MultiSeriesChartProps } from '@/components/charts/MultiSeriesChart'
 import { buildColorMap } from '@/components/charts/colors'
 import { TimeRangePicker } from '@/components/TimeRangePicker'
+import { useTimeRange } from '@/lib/time-range-context'
 import { Button } from '@/components/ui/button'
 
 // ── useEnabledTrends ──────────────────────────────────────────────────────────
@@ -21,13 +22,15 @@ function useEnabledTrends(
   metricEvalMap?: Map<string, string>,
   apiMetricMap?: Map<string, string>,
 ): Map<string, TrendPoint[]> {
+  const { from, to } = useTimeRange()
+  const dateRange = { from, ...(to ? { to } : {}) }
   const results = useQueries({
     queries: enabledKeys.map(key => {
       const id = metricEvalMap?.get(key) ?? evalId
       const apiMetric = apiMetricMap?.get(key) ?? key
       return {
-        queryKey: evaluationKeys.trend(id ?? '', apiMetric),
-        queryFn: () => fetchTrend(id!, apiMetric),
+        queryKey: evaluationKeys.trend(id ?? '', apiMetric, dateRange),
+        queryFn: () => fetchTrend(id!, apiMetric, dateRange),
         enabled: !!id,
         staleTime: Infinity,
       }
