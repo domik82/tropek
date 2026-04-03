@@ -1,6 +1,6 @@
 // src/features/evaluations/components/SLIBreakdownTable.tsx
 import { useState } from 'react'
-import { ChevronDown, ChevronRight } from 'lucide-react'
+import { ChevronDown, ChevronRight, ChartLine } from 'lucide-react'
 import { fmt } from '@/lib/format'
 import { STATUS_TEXT } from '@/lib/status'
 import { DataTable, DataTableHeader } from '@/components/ui/data-table'
@@ -13,6 +13,7 @@ function fmtPct(v: number | null | undefined): string {
 }
 
 const LOW_CONFIDENCE_THRESHOLD = 20
+
 
 interface SliGroup {
   prefix: string
@@ -83,9 +84,8 @@ export function SLIBreakdownTable({ indicators, sliMetadata, onIndicatorClick }:
 
   const items = groupIndicators(indicators, sliMetadata)
 
-  function handleRowClick(metric: string, tabGroup: string) {
-    setSelectedMetric(metric)
-    onIndicatorClick?.(metric, tabGroup)
+  function handleRowClick(metric: string) {
+    setSelectedMetric(prev => prev === metric ? null : metric)
   }
 
   function toggleGroup(prefix: string) {
@@ -155,7 +155,7 @@ interface GroupRowsProps {
   lowConfidence: boolean
   onToggle: () => void
   selectedMetric: string | null
-  onRowClick: (metric: string, tabGroup: string) => void
+  onRowClick: (metric: string) => void
   onIndicatorClick?: (metric: string, tabGroup: string) => void
   startIdx: number
 }
@@ -214,7 +214,7 @@ interface IndicatorRowProps {
   ind: IndicatorResult
   idx: number
   isSelected: boolean
-  onClick: (metric: string, tabGroup: string) => void
+  onClick: (metric: string) => void
   onIndicatorClick?: (metric: string, tabGroup: string) => void
   displayName?: string
   indented?: boolean
@@ -229,8 +229,8 @@ function IndicatorRow({ ind, idx, isSelected, onClick, onIndicatorClick, display
 
   return (
     <tr
-      onClick={() => onClick(ind.metric, ind.tab_group ?? 'summary')}
-      className={`transition-colors group border-b border-border/60 last:border-0 cursor-pointer ${rowBg} ${rowHover} ${rowRing}`}
+      onClick={() => onClick(ind.metric)}
+      className={`transition-colors group border-b border-border/60 last:border-0 ${rowBg} ${rowHover} ${rowRing}`}
     >
       <td className="px-2 py-3 text-center">
         {ind.key_sli && (
@@ -238,23 +238,24 @@ function IndicatorRow({ ind, idx, isSelected, onClick, onIndicatorClick, display
         )}
       </td>
       <td className={`px-4 py-3 font-medium whitespace-nowrap ${indented ? 'pl-10' : ''}`}>
-        {onIndicatorClick ? (
-          <button
-            className="text-left group/name"
-            title={`${ind.metric} — click to go to trend chart`}
-          >
-            <span className="flex items-center gap-1">
-              <span className="text-foreground group-hover/name:text-link-hover transition-colors underline decoration-dotted underline-offset-2 decoration-muted-foreground/60 group-hover/name:decoration-link-hover">
-                {label}
-              </span>
-              <span className="text-muted-foreground/60 group-hover/name:text-link-hover text-xs">↓</span>
-            </span>
-          </button>
-        ) : (
+        <span className="flex items-center gap-2">
           <span className="text-foreground" title={ind.metric}>
             {label}
           </span>
-        )}
+          {onIndicatorClick && (
+            <button
+              onClick={e => {
+                e.stopPropagation()
+                onIndicatorClick(ind.metric, ind.tab_group ?? 'summary')
+              }}
+              className="text-muted-foreground/60 hover:text-link-hover transition-colors"
+              title="Go to trend chart"
+              aria-label={`Go to trend chart for ${label}`}
+            >
+              <ChartLine className="size-5" />
+            </button>
+          )}
+        </span>
       </td>
       <td className="px-4 py-3 text-right font-mono">{fmt(ind.value)}</td>
       <td className="px-4 py-3 text-right font-mono text-muted-foreground">{fmt(ind.compared_value)}</td>

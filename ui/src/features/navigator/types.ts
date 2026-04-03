@@ -13,7 +13,8 @@ export interface HeatmapCell {
   hasNote?: boolean             // triggers annotation triangle
   noteContent?: string          // shown in tooltip
   isSloHeader?: boolean         // true for SLO group header rows
-  sloName?: string              // for isSloHeader rows — used for toggle callback
+  sloName?: string              // SLO name — set on header and indicator rows
+  metricName?: string           // metric key — set on indicator rows only
 }
 
 // Pre-computed group heatmap: rows=assets, cols=slots

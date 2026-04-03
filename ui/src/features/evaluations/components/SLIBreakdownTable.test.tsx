@@ -68,22 +68,22 @@ describe('SLIBreakdownTable', () => {
     expect(criteriaElements.length).toBe(2) // both indicators have <=+10%
   })
 
-  it('calls onIndicatorClick when a row is clicked', () => {
+  it('calls onIndicatorClick when trend button is clicked', () => {
     const onClick = vi.fn()
     render(<SLIBreakdownTable indicators={indicators} onIndicatorClick={onClick} />)
-    fireEvent.click(screen.getByText('Response Time P95'))
+    fireEvent.click(screen.getAllByTitle('Go to trend chart')[0])
     expect(onClick).toHaveBeenCalledWith('response_time_p95', 'summary')
   })
 
-  it('renders metric name as clickable button when onIndicatorClick is provided', () => {
+  it('renders trend button when onIndicatorClick is provided', () => {
     render(<SLIBreakdownTable indicators={indicators} onIndicatorClick={vi.fn()} />)
-    const button = screen.getByTitle('response_time_p95 — click to go to trend chart')
-    expect(button).toBeInTheDocument()
+    const button = screen.getAllByTitle('Go to trend chart')
+    expect(button.length).toBeGreaterThan(0)
   })
 
-  it('renders metric name as plain text when onIndicatorClick is not provided', () => {
+  it('renders metric name as plain text without trend button when onIndicatorClick is not provided', () => {
     render(<SLIBreakdownTable indicators={indicators} />)
-    expect(screen.queryByTitle('response_time_p95 — click to go to trend chart')).not.toBeInTheDocument()
+    expect(screen.queryByTitle('Go to trend chart')).not.toBeInTheDocument()
     expect(screen.getByText('Response Time P95')).toBeInTheDocument()
   })
 

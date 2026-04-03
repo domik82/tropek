@@ -1,5 +1,6 @@
 // ui/src/features/evaluations/components/SLIBreakdownGrouped.tsx
-import { ChevronDown, ChevronRight } from 'lucide-react'
+import { useState, useCallback } from 'react'
+import { ChevronDown, ChevronRight, Copy, Check, Grid3X3 } from 'lucide-react'
 import { SLIBreakdownTable } from './SLIBreakdownTable'
 import type { IndicatorResult, SliMetadata } from '../types'
 
@@ -13,12 +14,41 @@ export interface SloBreakdownGroup {
   total_points: number
 }
 
+function CopySloButton({ text }: { text: string }) {
+  const [copied, setCopied] = useState(false)
+
+  const handleCopy = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation()
+    navigator.clipboard.writeText(text)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 1500)
+  }, [text])
+
+  return (
+    <span
+      role="button"
+      tabIndex={0}
+      onClick={handleCopy}
+      onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') handleCopy(e as unknown as React.MouseEvent) }}
+      className="text-muted-foreground/60 hover:text-link-hover transition-colors shrink-0"
+      title="Copy SLO name"
+      aria-label={`Copy ${text}`}
+    >
+      {copied
+        ? <Check className="size-5 text-pass" />
+        : <Copy className="size-5" />
+      }
+    </span>
+  )
+}
+
 interface Props {
   groups: SloBreakdownGroup[]
   expandState: Map<string, boolean>
   onToggle: (sloName: string) => void
   sliMetadata?: Record<string, SliMetadata>
   onIndicatorClick?: (metric: string, sloName: string) => void
+  onScrollToHeatmap?: () => void
 }
 
 export function SLIBreakdownGrouped({
@@ -27,6 +57,7 @@ export function SLIBreakdownGrouped({
   onToggle,
   sliMetadata,
   onIndicatorClick,
+  onScrollToHeatmap,
 }: Props) {
   return (
     <div className="space-y-1">
@@ -45,7 +76,7 @@ export function SLIBreakdownGrouped({
             <button
               type="button"
               onClick={() => onToggle(g.slo_name)}
-              className="w-full flex items-center gap-2 px-3 py-2 rounded-t border border-border bg-surface-sunken hover:bg-state-hover-bg transition-colors text-left"
+              className="relative w-full flex items-center gap-2 px-3 py-2 rounded-t border border-border bg-surface-sunken hover:bg-state-hover-bg transition-colors text-left"
             >
               {expanded ? (
                 <ChevronDown size={14} className="shrink-0 text-muted-foreground" />
@@ -53,11 +84,26 @@ export function SLIBreakdownGrouped({
                 <ChevronRight size={14} className="shrink-0 text-muted-foreground" />
               )}
               <span
-                className="text-sm font-semibold flex-1 truncate"
+                className="text-sm font-semibold truncate"
                 style={{ color: '#58a6ff' }}
               >
                 {label}
               </span>
+              <CopySloButton text={g.slo_name} />
+              {onScrollToHeatmap && (
+                <span
+                  role="button"
+                  tabIndex={0}
+                  onClick={e => { e.stopPropagation(); onScrollToHeatmap() }}
+                  onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.stopPropagation(); onScrollToHeatmap() } }}
+                  className="absolute left-1/2 -translate-x-1/2 inset-y-0 flex items-center px-6 text-pass/60 hover:text-pass transition-colors"
+                  title="Go to heatmap"
+                  aria-label="Go to heatmap"
+                >
+                  <Grid3X3 className="size-5" />
+                </span>
+              )}
+              <span className="flex-1" />
               {g.total_points > 0 && (
                 <span className="text-xs text-muted-foreground tabular-nums">
                   {g.achieved_points}/{g.total_points}pts
@@ -70,9 +116,9 @@ export function SLIBreakdownGrouped({
               )}
             </button>
 
-            {/* Indicator rows — only when expanded and there are indicators */}
-            {expanded && g.indicators.length > 0 && (
-              <div className="border border-t-0 border-border rounded-b mb-2">
+            {/* Indicator rows — hidden when collapsed to preserve DOM */}
+            {g.indicators.length > 0 && (
+              <div className={`border border-t-0 border-border rounded-b mb-2 ${expanded ? '' : 'hidden'}`}>
                 <SLIBreakdownTable
                   indicators={g.indicators}
                   sliMetadata={sliMetadata}

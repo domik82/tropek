@@ -93,7 +93,7 @@ describe('SLIBreakdownGrouped', () => {
         />
       </Wrapper>
     )
-    expect(screen.queryByText('Error Rate')).not.toBeInTheDocument()
+    expect(screen.getByText('Error Rate').closest('.hidden')).toBeTruthy()
   })
 
   it('calls onToggle when section header is clicked', () => {

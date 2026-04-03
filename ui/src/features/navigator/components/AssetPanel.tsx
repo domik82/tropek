@@ -152,6 +152,28 @@ export function AssetPanel({ assetName, initialEvalId }: Props) {
     for (const g of heatmapData.groups) m.set(g.slo_name, defaultExpanded)
     setSloExpandState(m)
   }, [heatmapData])
+
+  // Auto-populate slot selection on initial load so all SLOs are fetched
+  useEffect(() => {
+    if (selectedSlot || !heatmapData || !ev) return
+    // Find the column matching the default eval
+    const col = heatmapData.columns.find(c =>
+      heatmapData.groups.some(g =>
+        g.cells.some(cell => cell.slo_evaluation_id === ev.id && cell.evaluation_id === c.evaluation_id)
+      )
+    )
+    if (!col) return
+    const evalIds = [...new Set(
+      heatmapData.groups.flatMap(g =>
+        g.cells
+          .filter(c => c.evaluation_id === col.evaluation_id)
+          .map(c => c.slo_evaluation_id)
+      )
+    )]
+    if (evalIds.length > 1) {
+      setSelectedSlot({ periodStart: col.period_start, evalIds })
+    }
+  }, [heatmapData, ev, selectedSlot])
   /* eslint-enable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
 
   function handleSloToggle(sloName: string) {
