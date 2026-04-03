@@ -98,10 +98,22 @@ export function SLIBreakdownTable({ indicators, sliMetadata, onIndicatorClick }:
   }
 
   return (
-    <DataTable>
+    <DataTable fixed>
+      <colgroup>
+        <col style={{ width: '2%' }} />
+        <col style={{ width: '20%' }} />
+        <col style={{ width: '10%' }} />
+        <col style={{ width: '10%' }} />
+        <col style={{ width: '8%' }} />
+        <col style={{ width: '6%' }} />
+        <col style={{ width: '6%' }} />
+        <col style={{ width: '10%' }} />
+        <col style={{ width: '14%' }} />
+        <col style={{ width: '14%' }} />
+      </colgroup>
       <DataTableHeader>
         <tr>
-          <th className="px-2 py-3 text-center w-6 text-indicator-key-sli" title="Key SLI">◆</th>
+          <th className="px-2 py-3 text-center text-indicator-key-sli" title="Key SLI">◆</th>
           <th className="px-4 py-3">Indicator</th>
           <th className="px-4 py-3 text-right">Value</th>
           <th className="px-4 py-3 text-right">Baseline</th>
@@ -237,9 +249,9 @@ function IndicatorRow({ ind, idx, isSelected, onClick, onIndicatorClick, display
           <span className="text-indicator-key-sli text-xs leading-none" title="Key SLI">◆</span>
         )}
       </td>
-      <td className={`px-4 py-3 font-medium whitespace-nowrap ${indented ? 'pl-10' : ''}`}>
-        <span className="flex items-center gap-2">
-          <span className="text-foreground" title={ind.metric}>
+      <td className={`px-4 py-3 font-medium ${indented ? 'pl-10' : ''}`}>
+        <span className="flex items-center gap-2 min-w-0">
+          <span className="text-foreground truncate" title={ind.metric}>
             {label}
           </span>
           {onIndicatorClick && (
@@ -257,8 +269,8 @@ function IndicatorRow({ ind, idx, isSelected, onClick, onIndicatorClick, display
           )}
         </span>
       </td>
-      <td className="px-4 py-3 text-right font-mono">{fmt(ind.value)}</td>
-      <td className="px-4 py-3 text-right font-mono text-muted-foreground">{fmt(ind.compared_value)}</td>
+      <td className="px-4 py-3 text-right font-mono truncate" title={String(ind.value ?? '')}>{fmt(ind.value)}</td>
+      <td className="px-4 py-3 text-right font-mono text-muted-foreground truncate" title={String(ind.compared_value ?? '')}>{fmt(ind.compared_value)}</td>
       <td className="px-4 py-3 text-right font-mono">
         {ind.change_relative_pct != null ? (
           <span className={STATUS_TEXT[ind.status] ?? 'text-foreground'}>
