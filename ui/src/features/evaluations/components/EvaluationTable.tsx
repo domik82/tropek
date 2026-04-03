@@ -81,11 +81,11 @@ function cell(
     case 'start':
       return <td key="start" className="px-4 py-3 text-sm text-muted-foreground tabular-nums whitespace-nowrap">{fmtDateTime(ev.period_start)}</td>
     case 'score':
-      return <td key="score" className="px-4 py-3 tabular-nums font-medium font-mono">{ev.score.toFixed(1)}%</td>
+      return <td key="score" className="px-4 py-3 tabular-nums font-medium font-mono">{ev.score != null ? `${ev.score.toFixed(1)}%` : '—'}</td>
     case 'result':
       return (
         <td key="result" className="px-4 py-3">
-          <ResultBadge result={ev.result} />
+          <ResultBadge result={ev.result ?? 'error'} />
         </td>
       )
     case 'slo': {
