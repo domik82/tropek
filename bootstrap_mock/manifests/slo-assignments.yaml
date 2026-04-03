@@ -136,3 +136,26 @@ spec:
   target_name: checkout-api
   slo_name: agg-latency-slo
   data_source_name: prometheus-local
+
+# ---- Binding Test Assignments ----
+
+---
+api_version: tropek/v1
+kind: SLOAssignment
+metadata:
+  name: direct-slo-health-assignment
+spec:
+  target_type: asset
+  target_name: direct-slo
+  slo_name: direct-health-slo
+  data_source_name: prometheus-local
+---
+api_version: tropek/v1
+kind: SLOAssignment
+metadata:
+  name: binding-test-group-health-assignment
+spec:
+  target_type: asset_group
+  target_name: binding-test-group
+  slo_name: group-health-slo
+  data_source_name: prometheus-local

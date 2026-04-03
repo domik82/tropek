@@ -399,3 +399,106 @@ spec:
     warning_threshold: 75.0
   tags:
     category: cpu-aggregated
+---
+# ---- Binding Test SLOs ----
+# One standard SLO per direct binding path, two templates for group paths.
+
+api_version: tropek/v1
+kind: SLO
+metadata:
+  name: direct-health-slo
+  display_name: "Direct Health SLO"
+  author: bootstrap
+  notes: Tests direct asset-to-SLO assignment path.
+spec:
+  sli_name: binding-test-sli
+  sli_version: 1
+  kind: standard
+  total_score:
+    pass_threshold: 90.0
+    warning_threshold: 75.0
+  objectives:
+    - sli: response_time_ms
+      display_name: "Response Time (ms)"
+      pass_threshold: ["<500"]
+      weight: 1
+    - sli: error_count
+      display_name: "Error Count"
+      pass_threshold: ["<10"]
+      weight: 1
+---
+api_version: tropek/v1
+kind: SLO
+metadata:
+  name: group-health-slo
+  display_name: "Group Health SLO"
+  author: bootstrap
+  notes: Tests group-inherited SLO assignment path.
+spec:
+  sli_name: binding-test-sli
+  sli_version: 1
+  kind: standard
+  total_score:
+    pass_threshold: 90.0
+    warning_threshold: 75.0
+  objectives:
+    - sli: response_time_ms
+      display_name: "Response Time (ms)"
+      pass_threshold: ["<500"]
+      weight: 1
+    - sli: error_count
+      display_name: "Error Count"
+      pass_threshold: ["<10"]
+      weight: 1
+---
+api_version: tropek/v1
+kind: SLO
+metadata:
+  name: "tmpl-health/$__gen_process_name"
+  display_name: "Template Health — $__gen_process_name"
+  author: bootstrap
+  notes: Tests template SLO via group assignment path.
+spec:
+  sli_name: binding-test-sli
+  sli_version: 1
+  kind: template
+  variables:
+    process_name: "$__gen_process_name"
+  total_score:
+    pass_threshold: 90.0
+    warning_threshold: 75.0
+  objectives:
+    - sli: response_time_ms
+      display_name: "Response Time (ms)"
+      pass_threshold: ["<500"]
+      weight: 1
+    - sli: error_count
+      display_name: "Error Count"
+      pass_threshold: ["<10"]
+      weight: 1
+---
+api_version: tropek/v1
+kind: SLO
+metadata:
+  name: "dtmpl-health/$__gen_process_name"
+  display_name: "Direct Template Health — $__gen_process_name"
+  author: bootstrap
+  notes: Tests template SLO via direct asset assignment path.
+spec:
+  sli_name: binding-test-sli
+  sli_version: 1
+  kind: template
+  variables:
+    process_name: "$__gen_process_name"
+  total_score:
+    pass_threshold: 90.0
+    warning_threshold: 75.0
+  objectives:
+    - sli: response_time_ms
+      display_name: "Response Time (ms)"
+      pass_threshold: ["<500"]
+      weight: 1
+    - sli: error_count
+      display_name: "Error Count"
+      pass_threshold: ["<10"]
+      weight: 1

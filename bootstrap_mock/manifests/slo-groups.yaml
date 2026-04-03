@@ -27,3 +27,31 @@ spec:
     process_name: ["auth", "cache", "db", "worker"]
   tags:
     category: cpu-aggregated
+---
+# ---- Binding Test SLO Groups ----
+
+api_version: tropek/v1
+kind: SLOGroup
+metadata:
+  name: tmpl-health-group
+spec:
+  display_name: Template Health Group
+  template_slo_name: "tmpl-health/$__gen_process_name"
+  template_slo_version: 1
+  gen_variables:
+    process_name: ["alpha", "beta"]
+  tags:
+    purpose: binding-test
+---
+api_version: tropek/v1
+kind: SLOGroup
+metadata:
+  name: dtmpl-health-group
+spec:
+  display_name: Direct Template Health Group
+  template_slo_name: "dtmpl-health/$__gen_process_name"
+  template_slo_version: 1
+  gen_variables:
+    process_name: ["gamma", "delta"]
+  tags:
+    purpose: binding-test
