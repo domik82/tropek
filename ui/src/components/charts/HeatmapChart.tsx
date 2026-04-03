@@ -124,7 +124,7 @@ export function HeatmapChart({
   // Compute column pixel positions from the ECharts grid coordinate system
   const computeColumnPositions = useCallback(() => {
     const instance = chartRef.current?.getEchartsInstance()
-    if (!instance || columns.length === 0) {
+    if (!instance || instance.isDisposed() || columns.length === 0) {
       setColumnPositions([])
       return
     }
@@ -133,13 +133,18 @@ export function HeatmapChart({
     const toPixel = (idx: number) =>
       (instance.convertToPixel('grid', [idx, 0]) as unknown as number[])[0]
 
-    // Get the pixel width of one cell
-    const cellSize = columns.length > 1 ? Math.abs(toPixel(1) - toPixel(0)) : 50
+    try {
+      // Get the pixel width of one cell
+      const cellSize = columns.length > 1 ? Math.abs(toPixel(1) - toPixel(0)) : 50
 
-    for (let i = 0; i < columns.length; i++) {
-      const cx = toPixel(i)
-      // convertToPixel returns the center of the cell
-      positions.push({ x: cx - cellSize / 2, width: cellSize })
+      for (let i = 0; i < columns.length; i++) {
+        const cx = toPixel(i)
+        // convertToPixel returns the center of the cell
+        positions.push({ x: cx - cellSize / 2, width: cellSize })
+      }
+    } catch {
+      // ECharts coordinate system not ready yet — will retry on next render/resize
+      return
     }
 
     setColumnPositions(positions)
