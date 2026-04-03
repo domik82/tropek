@@ -177,6 +177,4 @@ node_modules/
 ui/dist/
 ui/.vite/
 
-# External spec repos cloned under docs/ (not submodules)
-docs/keptn_specification/spec/
-docs/open_SLO_specification/OpenSLO/
+.tmp
