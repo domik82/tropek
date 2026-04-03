@@ -110,15 +110,15 @@ def test_mixed_scenario() -> None:
     assert plan.to_deactivate == ['b']
 
 
-def test_indicator_key_added_breaks_baseline() -> None:
-    """Adding an indicator key counts as query change."""
+def test_indicator_key_added_preserves_baseline() -> None:
+    """Adding a new indicator preserves baselines for existing indicators."""
     old = [FakeOldSLO('a', 1)]
     new = [_spec('a')]
     old_ind = {'cpu': 'rate(cpu[5m])'}
     new_ind = {'cpu': 'rate(cpu[5m])', 'mem': 'node_memory_bytes'}
 
     plan = plan_regeneration(old, new, old_ind, new_ind, template_variables_changed=False)
-    assert plan.to_update[0].comparable_from_version is None
+    assert plan.to_update[0].comparable_from_version == 1  # preserved, not reset
 
 
 def test_indicator_key_removed_breaks_baseline() -> None:

@@ -40,13 +40,21 @@ def _indicators_changed(
     old_indicators: dict[str, Any],
     new_indicators: dict[str, Any],
 ) -> bool:
-    """Strict textual comparison of SLI indicators dicts.
+    """Check if existing SLI indicators were modified or removed.
 
-    Conservative: if ANY key or value differs (even whitespace), returns True.
+    Adding NEW indicators does NOT count as a change — baselines for
+    existing indicators remain valid. Only modifications to existing
+    indicator queries or removals break baseline comparability.
     """
-    if set(old_indicators.keys()) != set(new_indicators.keys()):
+    # Existing indicators removed → breaking change
+    if not set(old_indicators.keys()).issubset(set(new_indicators.keys())):
         return True
-    return any(str(old_indicators[k]) != str(new_indicators[k]) for k in old_indicators)
+    # Existing indicator queries modified → breaking change
+    return any(
+        str(old_indicators[k]) != str(new_indicators[k])
+        for k in old_indicators
+        if k in new_indicators
+    )
 
 
 def plan_regeneration(
