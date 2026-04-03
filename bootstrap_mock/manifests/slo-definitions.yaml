@@ -502,3 +502,183 @@ spec:
       display_name: "Error Count"
       pass_threshold: ["<10"]
       weight: 1
+---
+# ---- Scale Test SLOs ----
+# 3 templates x 8 objectives each. Combined with 8 gen_variables = 24 generated SLOs.
+
+api_version: tropek/v1
+kind: SLO
+metadata:
+  name: "lab-health/$__gen_process_name"
+  display_name: "Lab Health — $__gen_process_name"
+  author: bootstrap
+  notes: Relaxed health thresholds for lab process monitoring (scale test).
+spec:
+  sli_name: lab-process-sli
+  sli_version: 1
+  kind: template
+  variables:
+    process_name: "$__gen_process_name"
+  total_score:
+    pass_threshold: 90.0
+    warning_threshold: 75.0
+  objectives:
+    - sli: cpu_pct
+      display_name: "CPU %"
+      pass_threshold: ["<60"]
+      warning_threshold: ["<80"]
+      weight: 2
+      key_sli: true
+    - sli: memory_mb
+      display_name: "Memory (MB)"
+      pass_threshold: ["<512"]
+      warning_threshold: ["<768"]
+      weight: 2
+    - sli: handles
+      display_name: "Handles"
+      pass_threshold: ["<500"]
+      warning_threshold: ["<750"]
+      weight: 1
+    - sli: io_bytes_sec
+      display_name: "I/O Bytes/sec"
+      pass_threshold: ["<1000000"]
+      warning_threshold: ["<1500000"]
+      weight: 1
+    - sli: threads
+      display_name: "Threads"
+      pass_threshold: ["<200"]
+      warning_threshold: ["<300"]
+      weight: 1
+    - sli: gc_pause_ms
+      display_name: "GC Pause (ms)"
+      pass_threshold: ["<50"]
+      warning_threshold: ["<75"]
+      weight: 1
+    - sli: heap_mb
+      display_name: "Heap (MB)"
+      pass_threshold: ["<256"]
+      warning_threshold: ["<384"]
+      weight: 1
+    - sli: open_files
+      display_name: "Open Files"
+      pass_threshold: ["<100"]
+      warning_threshold: ["<150"]
+      weight: 1
+---
+api_version: tropek/v1
+kind: SLO
+metadata:
+  name: "lab-perf/$__gen_process_name"
+  display_name: "Lab Performance — $__gen_process_name"
+  author: bootstrap
+  notes: Stricter performance thresholds for lab process monitoring (scale test).
+spec:
+  sli_name: lab-process-sli
+  sli_version: 1
+  kind: template
+  variables:
+    process_name: "$__gen_process_name"
+  total_score:
+    pass_threshold: 90.0
+    warning_threshold: 75.0
+  objectives:
+    - sli: cpu_pct
+      display_name: "CPU %"
+      pass_threshold: ["<50"]
+      warning_threshold: ["<70"]
+      weight: 2
+      key_sli: true
+    - sli: memory_mb
+      display_name: "Memory (MB)"
+      pass_threshold: ["<400"]
+      warning_threshold: ["<600"]
+      weight: 2
+    - sli: handles
+      display_name: "Handles"
+      pass_threshold: ["<400"]
+      warning_threshold: ["<600"]
+      weight: 1
+    - sli: io_bytes_sec
+      display_name: "I/O Bytes/sec"
+      pass_threshold: ["<800000"]
+      warning_threshold: ["<1200000"]
+      weight: 1
+    - sli: threads
+      display_name: "Threads"
+      pass_threshold: ["<150"]
+      warning_threshold: ["<250"]
+      weight: 1
+    - sli: gc_pause_ms
+      display_name: "GC Pause (ms)"
+      pass_threshold: ["<40"]
+      warning_threshold: ["<60"]
+      weight: 1
+    - sli: heap_mb
+      display_name: "Heap (MB)"
+      pass_threshold: ["<200"]
+      warning_threshold: ["<320"]
+      weight: 1
+    - sli: open_files
+      display_name: "Open Files"
+      pass_threshold: ["<80"]
+      warning_threshold: ["<120"]
+      weight: 1
+---
+api_version: tropek/v1
+kind: SLO
+metadata:
+  name: "lab-resource/$__gen_process_name"
+  display_name: "Lab Resource — $__gen_process_name"
+  author: bootstrap
+  notes: Most relaxed resource thresholds for lab process monitoring (scale test).
+spec:
+  sli_name: lab-process-sli
+  sli_version: 1
+  kind: template
+  variables:
+    process_name: "$__gen_process_name"
+  total_score:
+    pass_threshold: 90.0
+    warning_threshold: 75.0
+  objectives:
+    - sli: cpu_pct
+      display_name: "CPU %"
+      pass_threshold: ["<70"]
+      warning_threshold: ["<85"]
+      weight: 2
+      key_sli: true
+    - sli: memory_mb
+      display_name: "Memory (MB)"
+      pass_threshold: ["<600"]
+      warning_threshold: ["<850"]
+      weight: 2
+    - sli: handles
+      display_name: "Handles"
+      pass_threshold: ["<600"]
+      warning_threshold: ["<900"]
+      weight: 1
+    - sli: io_bytes_sec
+      display_name: "I/O Bytes/sec"
+      pass_threshold: ["<1200000"]
+      warning_threshold: ["<1800000"]
+      weight: 1
+    - sli: threads
+      display_name: "Threads"
+      pass_threshold: ["<250"]
+      warning_threshold: ["<350"]
+      weight: 1
+    - sli: gc_pause_ms
+      display_name: "GC Pause (ms)"
+      pass_threshold: ["<60"]
+      warning_threshold: ["<90"]
+      weight: 1
+    - sli: heap_mb
+      display_name: "Heap (MB)"
+      pass_threshold: ["<300"]
+      warning_threshold: ["<450"]
+      weight: 1
+    - sli: open_files
+      display_name: "Open Files"
+      pass_threshold: ["<120"]
+      warning_threshold: ["<180"]
+      weight: 1

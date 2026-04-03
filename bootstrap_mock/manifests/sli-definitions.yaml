@@ -136,3 +136,24 @@ spec:
   indicators:
     response_time_ms: 'histogram_quantile(0.99, rate(http_request_duration_seconds_bucket{job="$job",namespace="$namespace"}[5m]))'
     error_count: 'increase(http_requests_total{job="$job",namespace="$namespace",status=~"5.."}[5m])'
+---
+# ---- Scale Test SLI ----
+
+api_version: tropek/v1
+kind: SLI
+metadata:
+  name: lab-process-sli
+  display_name: Lab Process Indicators
+  author: bootstrap
+  notes: 8-indicator SLI for scale testing template explosion scenarios.
+spec:
+  adapter_type: prometheus
+  indicators:
+    cpu_pct: 'rate(process_cpu_seconds_total{job="$job",process="$process_name"}[5m]) * 100'
+    memory_mb: 'process_resident_memory_bytes{job="$job",process="$process_name"} / 1048576'
+    handles: 'process_open_fds{job="$job",process="$process_name"}'
+    io_bytes_sec: 'rate(process_io_bytes_total{job="$job",process="$process_name"}[5m])'
+    threads: 'process_threads{job="$job",process="$process_name"}'
+    gc_pause_ms: 'process_gc_pause_seconds_total{job="$job",process="$process_name"} * 1000'
+    heap_mb: 'process_heap_bytes{job="$job",process="$process_name"} / 1048576'
+    open_files: 'process_open_fds{job="$job",process="$process_name"}'
