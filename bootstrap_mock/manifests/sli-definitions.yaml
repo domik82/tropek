@@ -121,3 +121,18 @@ spec:
   tags:
     category: resources
     platform: linux
+---
+# ---- Binding Test SLI ----
+
+api_version: tropek/v1
+kind: SLI
+metadata:
+  name: binding-test-sli
+  display_name: Binding Test Indicators
+  author: bootstrap
+  notes: Minimal SLI for binding resolution tests.
+spec:
+  adapter_type: prometheus
+  indicators:
+    response_time_ms: 'histogram_quantile(0.99, rate(http_request_duration_seconds_bucket{job="$job",namespace="$namespace"}[5m]))'
+    error_count: 'increase(http_requests_total{job="$job",namespace="$namespace",status=~"5.."}[5m])'

@@ -123,3 +123,58 @@ metadata:
     os: windows-11
 spec:
   type_name: endpoint
+---
+# ---- Binding Test Assets ----
+# Each tests a specific SLO assignment path.
+
+api_version: tropek/v1
+kind: Asset
+metadata:
+  name: direct-slo
+  display_name: "Binding Test: Direct SLO"
+  tags:
+    purpose: binding-test
+  variables:
+    job: direct-slo
+    namespace: binding-test
+spec:
+  type_name: service
+---
+api_version: tropek/v1
+kind: Asset
+metadata:
+  name: group-slo
+  display_name: "Binding Test: Group SLO"
+  tags:
+    purpose: binding-test
+  variables:
+    job: group-slo
+    namespace: binding-test
+spec:
+  type_name: service
+---
+api_version: tropek/v1
+kind: Asset
+metadata:
+  name: group-template
+  display_name: "Binding Test: Group Template"
+  tags:
+    purpose: binding-test
+  variables:
+    job: group-template
+    namespace: binding-test
+spec:
+  type_name: service
+---
+api_version: tropek/v1
+kind: Asset
+metadata:
+  name: direct-template
+  display_name: "Binding Test: Direct Template"
+  tags:
+    purpose: binding-test
+  variables:
+    job: direct-template
+    namespace: binding-test
+spec:
+  type_name: service

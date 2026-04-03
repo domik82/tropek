@@ -59,3 +59,25 @@ spec:
       weight: 1.0
     - group_name: data-tier
       weight: 1.0
+---
+# ---- Binding Test Groups ----
+
+api_version: tropek/v1
+kind: AssetGroup
+metadata:
+  name: binding-test-group
+  display_name: Binding Test Group
+spec:
+  members:
+    - asset_name: group-slo
+      weight: 1.0
+---
+api_version: tropek/v1
+kind: AssetGroup
+metadata:
+  name: template-test-group
+  display_name: Template Test Group
+spec:
+  members:
+    - asset_name: group-template
+      weight: 1.0

@@ -10,3 +10,25 @@ spec:
   target_name: core-services
   slo_group_name: app-x-plugins
   data_source_name: prometheus-local
+---
+# ---- Binding Test SLO Group Assignments ----
+
+api_version: tropek/v1
+kind: SLOGroupAssignment
+metadata:
+  name: template-test-group-tmpl-assignment
+spec:
+  target_type: asset_group
+  target_name: template-test-group
+  slo_group_name: tmpl-health-group
+  data_source_name: prometheus-local
+---
+api_version: tropek/v1
+kind: SLOGroupAssignment
+metadata:
+  name: direct-template-dtmpl-assignment
+spec:
+  target_type: asset
+  target_name: direct-template
+  slo_group_name: dtmpl-health-group
+  data_source_name: prometheus-local
