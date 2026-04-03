@@ -14,13 +14,13 @@ interface Props {
 }
 
 export function EvaluationSummaryCard({ evaluation: ev, onAddNote, actions, assetDisplayName, sloDisplayName }: Props) {
-  const displayResult = ev.invalidated ? 'invalidated' : ev.result
+  const displayResult = ev.invalidated ? 'invalidated' : (ev.result ?? 'error')
 
   return (
     <EvaluationHeader
       title={ev.evaluation_name}
       result={displayResult}
-      score={ev.score}
+      score={ev.score ?? undefined}
       passPct={ev.total_score_pass_threshold}
       warningPct={ev.total_score_warning_threshold}
       noteButton={
@@ -76,7 +76,7 @@ export function EvaluationSummaryCard({ evaluation: ev, onAddNote, actions, asse
                 </span>
                 {ev.original_score != null && (
                   <span className="text-entity-sli/80">
-                    ({ev.original_score.toFixed(1)} → {ev.score.toFixed(1)})
+                    ({ev.original_score.toFixed(1)} → {ev.score?.toFixed(1) ?? '—'})
                   </span>
                 )}
               </span>

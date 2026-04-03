@@ -28,8 +28,8 @@ export interface EvaluationSummary {
   evaluation_id: string
   evaluation_name: string
   status: string
-  result: 'pass' | 'warning' | 'fail' | 'error'
-  score: number
+  result: 'pass' | 'warning' | 'fail' | 'error' | null
+  score: number | null
   period_start: string
   period_end: string
   slo_name: string | null
