@@ -56,6 +56,7 @@ ui:
   max_evaluations: 1000
   page_size: 200
   heatmap_slo_groups_expanded_by_default: true
+  data_start_date: "2024-01-01"
 
 logging:
   level: "INFO"

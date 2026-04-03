@@ -4,6 +4,8 @@ interface UIConfig {
   heatmapSloGroupsExpandedByDefault: boolean
   /** Day count above which the date picker shows a performance warning. */
   heatmapSlowThresholdDays: number
+  /** Earliest date with data in the DB (ISO date string, e.g. "2024-01-01"). */
+  dataStartDate: string
 }
 
 const DEFAULTS: UIConfig = {
@@ -11,6 +13,7 @@ const DEFAULTS: UIConfig = {
   pageSize: 200,
   heatmapSloGroupsExpandedByDefault: true,
   heatmapSlowThresholdDays: 30,
+  dataStartDate: '2024-01-01',
 }
 
 let config: UIConfig = DEFAULTS

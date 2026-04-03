@@ -528,3 +528,26 @@ option {
   background: var(--state-hover-bg);
   color: var(--text-primary);
 }
+.tropek-calendar .rdp-dropdowns {
+  display: flex;
+  gap: 0.25rem;
+  align-items: center;
+}
+.tropek-calendar .rdp-dropdowns select {
+  appearance: auto;
+  background: var(--surface-raised);
+  color: var(--text-primary);
+  border: 1px solid var(--border-subtle);
+  border-radius: 0.25rem;
+  padding: 0.125rem 0.25rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.tropek-calendar .rdp-dropdowns select:hover {
+  border-color: var(--border-strong);
+}
+.tropek-calendar .rdp-dropdowns select:focus {
+  outline: none;
+  border-color: var(--primary);
+}

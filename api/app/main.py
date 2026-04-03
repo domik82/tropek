@@ -81,4 +81,5 @@ async def ui_config() -> dict[str, int | bool]:
         'maxEvaluations': settings.ui.max_evaluations,
         'pageSize': settings.ui.page_size,
         'heatmapSloGroupsExpandedByDefault': settings.ui.heatmap_slo_groups_expanded_by_default,
+        'dataStartDate': settings.ui.data_start_date,
     }
