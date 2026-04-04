@@ -19,8 +19,8 @@ export const evaluationKeys = {
   all: ['evaluations'] as const,
   list: (filters: EvalFilters) => [...evaluationKeys.all, filters] as const,
   detail: (id: string) => [...evaluationKeys.all, id] as const,
-  trend: (id: string, metric: string, dateRange?: Record<string, string | undefined>) =>
-    [...evaluationKeys.detail(id), metric, dateRange] as const,
+  trend: (assetName: string, sloName: string, metric: string, dateRange?: Record<string, string | undefined>) =>
+    ['trend', assetName, sloName, metric, dateRange] as const,
   allHeatmaps: ['metric-heatmap'] as const,
   heatmap: (assetName: string, filters?: Record<string, string | undefined>, evalNames?: string[]) =>
     evalNames?.length
@@ -29,6 +29,8 @@ export const evaluationKeys = {
   allNames: ['evaluation-names'] as const,
   names: (scope: { asset_name?: string; group_name?: string }) =>
     ['evaluation-names', scope] as const,
+  columnAnnotations: (evaluationId: string) =>
+    [...evaluationKeys.all, 'column-annotations', evaluationId] as const,
 }
 
 export const assetKeys = {
