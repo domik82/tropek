@@ -1,5 +1,7 @@
 // ui/src/features/navigator/types.ts
 
+import type { PassTarget } from '@/features/evaluations/types'
+
 // Grid cell for both group and asset heatmaps
 export interface HeatmapCell {
   value: [number, number]       // [xIndex (col), yIndex (row)]
@@ -55,6 +57,11 @@ export interface HeatmapSummaryCell {
   period_start: string
   result: string
   score: number
+  total_score_pass_threshold?: number | null
+  total_score_warning_threshold?: number | null
+  sli_metadata?: Record<string, unknown> | null
+  invalidated?: boolean
+  invalidation_note?: string | null
 }
 
 // One SLO group in the grouped heatmap response
@@ -75,6 +82,15 @@ export interface MetricHeatmapCell {
   display_name: string
   result: string
   score: number
+  value?: number | null
+  compared_value?: number | null
+  change_relative_pct?: number | null
+  weight?: number
+  key_sli?: boolean
+  pass_targets?: PassTarget[] | null
+  warning_targets?: PassTarget[] | null
+  tab_group?: string | null
+  aggregation?: string | null
 }
 
 // API response for GET /api/evaluate/metric-heatmap?asset_name=X
