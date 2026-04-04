@@ -73,7 +73,7 @@ export function AssetPanelHeatmapView({
           key_sli: c.key_sli ?? false,
           pass_targets: c.pass_targets ?? null,
           warning_targets: c.warning_targets ?? null,
-          tab_group: c.tab_group,
+          tab_group: c.tab_group ?? undefined,
         }))
       const result = summary?.invalidated
         ? 'invalidated'
