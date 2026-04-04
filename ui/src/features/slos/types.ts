@@ -36,6 +36,7 @@ export interface SloDefinition {
   tags: Record<string, string>
   variables: Record<string, string>
   kind: 'standard' | 'template'
+  sli_definition_id: string | null
   sli_name: string | null
   sli_version: number | null
   created_at: string
