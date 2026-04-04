@@ -24,11 +24,11 @@ from app.modules.quality_gate.evaluation_run_repository import EvaluationRunRepo
 from app.modules.quality_gate.repository import EvaluationRepository
 from app.modules.quality_gate.worker import (
     DefinitionLoadError,
+    _load_definitions,
     fetch_and_evaluate,
     load_evaluation_snapshot,
     write_results,
 )
-from app.modules.quality_gate.worker import _load_definitions
 
 logger = structlog.get_logger()
 
@@ -140,22 +140,37 @@ async def run_evaluation_job(ctx: dict[str, Any], eval_id_str: str, defer_count:
         return
 
     # Phase 2a: Load definitions (short read session)
+    if snapshot.data_source_name is None:
+        log.warning('definitions not found', reason='evaluation has no data_source_name')
+        async with session_factory() as session:
+            await EvaluationRepository(session).mark_failed(
+                eval_id, job_stats={'error': 'evaluation has no data_source_name'}
+            )
+            await session.commit()
+        return
+
     try:
         async with session_factory() as session:
             slo_def, sli_def = await _load_definitions(session, snapshot, cache=cache)
             datasource = await DataSourceRepository(session).get_by_name(
                 snapshot.data_source_name
             )
-            if datasource is None:
-                raise DefinitionLoadError(
-                    f"datasource '{snapshot.data_source_name}' not found"
-                )
             await session.commit()
     except DefinitionLoadError as exc:
         log.warning('definitions not found', reason=str(exc))
         async with session_factory() as session:
             await EvaluationRepository(session).mark_failed(
                 eval_id, job_stats={'error': str(exc)}
+            )
+            await session.commit()
+        return
+
+    if datasource is None:
+        error_msg = f"datasource '{snapshot.data_source_name}' not found"
+        log.warning('definitions not found', reason=error_msg)
+        async with session_factory() as session:
+            await EvaluationRepository(session).mark_failed(
+                eval_id, job_stats={'error': error_msg}
             )
             await session.commit()
         return
