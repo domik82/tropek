@@ -105,6 +105,7 @@ class QueueSettings(BaseSettings):
     """arq job queue configuration (uses Redis db_index separate from cache)."""
 
     db_index: int = _yaml.get('queue', {}).get('db_index', 1)
+    max_jobs: int = _yaml.get('queue', {}).get('max_jobs', 10)
     max_retries: int = _yaml.get('queue', {}).get('max_retries', 3)
     retry_delay_seconds: int = _yaml.get('queue', {}).get('retry_delay_seconds', 10)
     job_timeout_seconds: int = _yaml.get('queue', {}).get('job_timeout_seconds', 120)
