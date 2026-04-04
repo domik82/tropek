@@ -2,17 +2,14 @@
 import { useState, useMemo, useRef, useEffect } from 'react'
 import { getConfig } from '@/lib/config'
 import { useNavigate } from 'react-router-dom'
-import { useQueries } from '@tanstack/react-query'
 import { useAssetEvaluations, useMetricHeatmap, useEvaluationNames } from '../hooks'
-import { useEvaluationDetail } from '@/features/evaluations/hooks'
-import { fetchEvaluationDetail } from '@/features/evaluations/api'
-import { evaluationKeys } from '@/lib/queryKeys'
+import { useColumnAnnotations } from '@/features/evaluations/hooks'
 import { useAssets } from '@/features/assets/hooks'
 import { useSlos } from '@/features/slos/hooks'
 import { EvaluationHeader } from '@/features/evaluations/components/EvaluationHeader'
 import { AnnotationSection, type AnnotationSectionHandle } from '@/features/evaluations/components/AnnotationForm'
 import { EvaluationActionsButton, EvaluationActionForm, NoteIconButton } from '@/features/evaluations/components/EvaluationActions'
-import type { ActionKind, SliMetadata } from '@/features/evaluations/types'
+import type { ActionKind } from '@/features/evaluations/types'
 import type { TimeSlotSelection } from './AssetHeatmap'
 import type { ViewMode } from '@/components/charts/ViewToggle'
 import { EvaluationNameFilter } from './EvaluationNameFilter'
@@ -98,50 +95,43 @@ export function AssetPanel({ assetName, initialEvalId }: Props) {
   }, [evals])
 
   const effectiveEvalId = selectedEvalId ?? defaultEvalId
-  const { data: ev } = useEvaluationDetail(effectiveEvalId)
 
-  // Multi-eval fetching for time slot selection (shows all SLOs together)
-  const slotEvalQueries = useQueries({
-    queries: (selectedSlot?.evalIds ?? []).map(id => ({
-      queryKey: evaluationKeys.detail(id),
-      queryFn: () => fetchEvaluationDetail(id),
-      enabled: !!id,
-    })),
-  })
-  const allSlotEvals = useMemo(
-    () => slotEvalQueries.filter(q => q.data != null).map(q => q.data!),
-    [slotEvalQueries],
-  )
+  // Derive ev from the evaluation list (no detail fetch needed)
+  const ev = useMemo(() => {
+    if (!effectiveEvalId) return undefined
+    return evals.find(e => e.id === effectiveEvalId)
+  }, [evals, effectiveEvalId])
 
-  // Map each metric to the eval ID that owns it (for multi-SLO trend charts)
-  const metricEvalMap = useMemo((): Map<string, string> | undefined => {
-    if (allSlotEvals.length <= 1) return undefined
-    const m = new Map<string, string>()
-    for (const e of allSlotEvals) {
-      for (const ind of e.indicator_results) {
-        m.set(ind.metric, e.id)
+  // Find the parent evaluation_id (column key) for the selected slo_evaluation_id
+  const selectedColumnEvalId = useMemo(() => {
+    if (!heatmapData || !effectiveEvalId) return undefined
+    for (const g of heatmapData.groups) {
+      for (const c of g.cells) {
+        if (c.slo_evaluation_id === effectiveEvalId) return c.evaluation_id
       }
     }
-    return m
-  }, [allSlotEvals])
+    return undefined
+  }, [heatmapData, effectiveEvalId])
 
-  // Aggregate annotations from all SLO evals in the selected slot so notes are
-  // visible regardless of which SLO the annotation was added to.
-  const displayAnnotations = useMemo(() => {
-    if (allSlotEvals.length > 0) return allSlotEvals.flatMap(e => e.annotations ?? [])
-    return ev?.annotations ?? []
-  }, [allSlotEvals, ev])
+  // Column annotations — fetched once per column, cached with staleTime: Infinity
+  const { data: displayAnnotations = [] } = useColumnAnnotations(selectedColumnEvalId)
 
-  const mergedSliMetadata = useMemo((): Record<string, SliMetadata> | undefined => {
-    if (allSlotEvals.length > 0) {
-      const meta: Record<string, SliMetadata> = {}
-      for (const e of allSlotEvals) {
-        if (e.sli_metadata) Object.assign(meta, e.sli_metadata)
+  // Get thresholds from heatmap summary for the selected column
+  const columnThresholds = useMemo(() => {
+    let passPct: number | undefined
+    let warningPct: number | undefined
+    if (heatmapData && selectedColumnEvalId) {
+      for (const g of heatmapData.groups) {
+        const summary = g.summary.find(s => s.evaluation_id === selectedColumnEvalId)
+        if (summary?.total_score_pass_threshold != null) {
+          passPct = summary.total_score_pass_threshold
+          warningPct = summary.total_score_warning_threshold ?? undefined
+          break
+        }
       }
-      return Object.keys(meta).length > 0 ? meta : undefined
     }
-    return ev?.sli_metadata
-  }, [allSlotEvals, ev])
+    return { passPct, warningPct }
+  }, [heatmapData, selectedColumnEvalId])
 
   // Initialise SLO expand state from config when heatmap data first arrives
   /* eslint-disable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps -- intentional init from async data */
@@ -153,27 +143,28 @@ export function AssetPanel({ assetName, initialEvalId }: Props) {
     setSloExpandState(m)
   }, [heatmapData])
 
-  // Auto-populate slot selection on initial load so all SLOs are fetched
+  // Auto-populate slot selection on initial load so the column is selected
   useEffect(() => {
-    if (selectedSlot || !heatmapData || !ev) return
+    if (selectedSlot || !heatmapData || !effectiveEvalId) return
     // Find the column matching the default eval
-    const col = heatmapData.columns.find(c =>
-      heatmapData.groups.some(g =>
-        g.cells.some(cell => cell.slo_evaluation_id === ev.id && cell.evaluation_id === c.evaluation_id)
-      )
-    )
-    if (!col) return
-    const evalIds = [...new Set(
-      heatmapData.groups.flatMap(g =>
-        g.cells
-          .filter(c => c.evaluation_id === col.evaluation_id)
-          .map(c => c.slo_evaluation_id)
-      )
-    )]
-    if (evalIds.length > 1) {
-      setSelectedSlot({ periodStart: col.period_start, evalIds })
+    for (const g of heatmapData.groups) {
+      for (const c of g.cells) {
+        if (c.slo_evaluation_id === effectiveEvalId) {
+          const evalIds = [...new Set(
+            heatmapData.groups.flatMap(gr =>
+              gr.cells
+                .filter(cell => cell.evaluation_id === c.evaluation_id)
+                .map(cell => cell.slo_evaluation_id)
+            )
+          )]
+          if (evalIds.length > 1) {
+            setSelectedSlot({ periodStart: c.period_start, evalIds })
+          }
+          return
+        }
+      }
     }
-  }, [heatmapData, ev, selectedSlot])
+  }, [heatmapData, effectiveEvalId, selectedSlot])
   /* eslint-enable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
 
   function handleSloToggle(sloName: string) {
@@ -239,8 +230,8 @@ export function AssetPanel({ assetName, initialEvalId }: Props) {
         titleMono
         result={displayResult}
         score={score}
-        passPct={ev?.total_score_pass_threshold}
-        warningPct={ev?.total_score_warning_threshold}
+        passPct={columnThresholds.passPct}
+        warningPct={columnThresholds.warningPct}
         toolbar={<TimeRangePicker />}
         metadata={hasEvals && ev ? (
           <>
@@ -254,8 +245,10 @@ export function AssetPanel({ assetName, initialEvalId }: Props) {
               </span>
             </div>
             <div className="mt-1 text-xs text-muted-foreground">
-              {allSlotEvals.length > 1 ? (
-                <>SLOs: {allSlotEvals.map(e => (e.slo_name && sloDisplayNames.get(e.slo_name)) ?? e.slo_name ?? '—').join(', ')}</>
+              {heatmapData && heatmapData.groups.length > 3 ? (
+                <>SLOs: {heatmapData.groups.length} evaluated</>
+              ) : heatmapData && heatmapData.groups.length > 1 ? (
+                <>SLOs: {heatmapData.groups.map(g => g.slo_display_name ?? g.slo_name).join(', ')}</>
               ) : (
                 <>SLO: {(ev.slo_name && sloDisplayNames.get(ev.slo_name)) ?? ev.slo_name ?? '—'}{ev.slo_version != null && ` v${ev.slo_version}`}</>
               )}
@@ -318,16 +311,14 @@ export function AssetPanel({ assetName, initialEvalId }: Props) {
         <AssetPanelHeatmapView
           assetName={assetName}
           heatmapData={heatmapData}
-          allSlotEvals={allSlotEvals.length > 0 ? allSlotEvals : (ev ? [ev] : [])}
+          selectedColumnEvalId={selectedColumnEvalId}
           effectiveEvalId={effectiveEvalId}
           notedSlots={notedSlots}
           onEvalSelect={setSelectedEvalId}
           onSlotSelect={handleSlotSelect}
-          sliMetadata={mergedSliMetadata}
           mode={mode}
           setMode={setMode}
           explorerButton={explorerButton}
-          metricEvalMap={metricEvalMap}
           sloExpandState={sloExpandState}
           onSloToggle={handleSloToggle}
         />
@@ -336,12 +327,12 @@ export function AssetPanel({ assetName, initialEvalId }: Props) {
       {/* Charts mode */}
       {!isLoading && evals.length > 0 && mode === 'chart' && (
         <AssetPanelChartView
+          assetName={assetName}
           effectiveEvalId={effectiveEvalId}
           evals={evals}
           heatmapData={heatmapData}
           onEvalSelect={setSelectedEvalId}
           onSlotSelect={handleSlotSelect}
-          metricEvalMap={metricEvalMap}
           mode={mode}
           setMode={setMode}
           explorerButton={explorerButton}
