@@ -71,14 +71,14 @@ class DefinitionLoadError(Exception):
 
 async def _load_definitions(
     session: AsyncSession,
-    ev: SLOEvaluation,
+    ev: SLOEvaluation | EvaluationSnapshot,
     cache: RedisCache | None = None,
 ) -> tuple[SLODefinition, SLIDefinition]:
     """Load SLO and SLI definitions for the evaluation.
 
     Args:
         session: Active async DB session.
-        ev: Evaluation row providing slo_name/version and sli_name/version.
+        ev: Evaluation row or snapshot providing slo_name/version and sli_name/version.
         cache: Optional Redis cache for definition lookups.
 
     Returns:
