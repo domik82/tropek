@@ -4,13 +4,13 @@ import { render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { TestWrapper } from '@/test-wrapper'
 import { AssetPanel } from './AssetPanel'
-import type { EvaluationSummary, EvaluationDetail } from '@/features/evaluations/types'
+import type { EvaluationSummary } from '@/features/evaluations/types'
 
 // ── Hook mocks ─────────────────────────────────────────────────────────────────
 
 const mockUseAssetEvaluations = vi.fn()
 const mockUseMetricHeatmap = vi.fn()
-const mockUseEvaluationDetail = vi.fn()
+const mockUseColumnAnnotations = vi.fn()
 
 vi.mock('../hooks', () => ({
   useAssetEvaluations: (...args: unknown[]) => mockUseAssetEvaluations(...args),
@@ -19,7 +19,7 @@ vi.mock('../hooks', () => ({
 }))
 
 vi.mock('@/features/evaluations/hooks', () => ({
-  useEvaluationDetail: (...args: unknown[]) => mockUseEvaluationDetail(...args),
+  useColumnAnnotations: (...args: unknown[]) => mockUseColumnAnnotations(...args),
 }))
 
 vi.mock('@/features/evaluations/hooks/useTabState', () => ({
@@ -105,19 +105,6 @@ function makeSummary(overrides: Partial<EvaluationSummary> = {}): EvaluationSumm
   }
 }
 
-function makeDetail(overrides: Partial<EvaluationDetail> = {}): EvaluationDetail {
-  return {
-    ...makeSummary(overrides),
-    invalidation_note: null,
-    compared_evaluation_ids: [],
-    annotations: [],
-    indicator_results: [],
-    total_score_pass_threshold: 90,
-    total_score_warning_threshold: 75,
-    ...overrides,
-  }
-}
-
 function renderPanel(assetName: string, initialEvalId?: string) {
   return render(
     <MemoryRouter>
@@ -133,9 +120,10 @@ function renderPanel(assetName: string, initialEvalId?: string) {
 beforeEach(() => {
   mockUseAssetEvaluations.mockReset()
   mockUseMetricHeatmap.mockReset()
-  mockUseEvaluationDetail.mockReset()
+  mockUseColumnAnnotations.mockReset()
 
   mockUseMetricHeatmap.mockReturnValue({ data: undefined, isLoading: false })
+  mockUseColumnAnnotations.mockReturnValue({ data: [] })
 })
 
 // ── Tests ──────────────────────────────────────────────────────────────────────
@@ -143,7 +131,6 @@ beforeEach(() => {
 describe('AssetPanel', () => {
   it('renders header with asset name', () => {
     mockUseAssetEvaluations.mockReturnValue({ data: [], isLoading: false })
-    mockUseEvaluationDetail.mockReturnValue({ data: undefined })
     renderPanel('catalog-db')
 
     expect(screen.getByTestId('eval-header')).toHaveAttribute('data-title', 'catalog-db')
@@ -151,7 +138,6 @@ describe('AssetPanel', () => {
 
   it('fetches evaluations for the given asset', () => {
     mockUseAssetEvaluations.mockReturnValue({ data: [], isLoading: false })
-    mockUseEvaluationDetail.mockReturnValue({ data: undefined })
     renderPanel('catalog-db')
 
     expect(mockUseAssetEvaluations).toHaveBeenCalledWith('catalog-db', undefined)
@@ -164,23 +150,17 @@ describe('AssetPanel', () => {
       makeSummary({ id: 'newest-valid', period_start: '2026-03-15T10:00:00Z' }),
     ]
     mockUseAssetEvaluations.mockReturnValue({ data: evals, isLoading: false })
-    mockUseEvaluationDetail.mockReturnValue({ data: makeDetail({ id: 'newest-valid' }) })
 
     renderPanel('catalog-db')
 
-    // Should have called useEvaluationDetail with the newest non-invalidated eval
-    expect(mockUseEvaluationDetail).toHaveBeenCalledWith('newest-valid')
+    // The heatmap view should receive the newest non-invalidated eval
+    expect(screen.getByTestId('heatmap-eval-id')).toHaveTextContent('newest-valid')
   })
 
-  // ── BUG: stale selectedEvalId when asset changes ───────────────────────────
-  // When the user manually selects an eval on asset A, then switches to asset B,
-  // the selectedEvalId from asset A persists because AssetPanel is not remounted.
-  // This test verifies the eval ID resets when assetName changes.
   it('resets selectedEvalId when assetName prop changes', () => {
     // Asset A: user had selected eval-A
     const evalsA = [makeSummary({ id: 'eval-A', asset_snapshot: { name: 'api-gateway', tags: {} } })]
     mockUseAssetEvaluations.mockReturnValue({ data: evalsA, isLoading: false })
-    mockUseEvaluationDetail.mockReturnValue({ data: makeDetail({ id: 'eval-A' }) })
 
     const { rerender } = renderPanel('api-gateway', 'eval-A')
 
@@ -190,7 +170,6 @@ describe('AssetPanel', () => {
     // Switch to asset B
     const evalsB = [makeSummary({ id: 'eval-B', asset_snapshot: { name: 'catalog-db', tags: {} } })]
     mockUseAssetEvaluations.mockReturnValue({ data: evalsB, isLoading: false })
-    mockUseEvaluationDetail.mockReturnValue({ data: makeDetail({ id: 'eval-B' }) })
 
     rerender(
       <MemoryRouter>
@@ -200,16 +179,13 @@ describe('AssetPanel', () => {
       </MemoryRouter>,
     )
 
-    // The effective eval ID should now be eval-B (the default for catalog-db),
-    // NOT eval-A (stale from the previous asset)
-    expect(mockUseEvaluationDetail).toHaveBeenLastCalledWith('eval-B')
+    // The effective eval ID should now be eval-B (the default for catalog-db)
     expect(screen.getByTestId('heatmap-eval-id')).toHaveTextContent('eval-B')
   })
 
   it('shows loading state while evaluations and heatmap load', () => {
     mockUseAssetEvaluations.mockReturnValue({ data: [], isLoading: true })
     mockUseMetricHeatmap.mockReturnValue({ data: undefined, isLoading: true })
-    mockUseEvaluationDetail.mockReturnValue({ data: undefined })
 
     renderPanel('catalog-db')
 
@@ -220,7 +196,6 @@ describe('AssetPanel', () => {
   it('passes correct asset name to heatmap view', () => {
     const evals = [makeSummary()]
     mockUseAssetEvaluations.mockReturnValue({ data: evals, isLoading: false })
-    mockUseEvaluationDetail.mockReturnValue({ data: makeDetail() })
 
     renderPanel('catalog-db')
 
