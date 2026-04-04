@@ -73,11 +73,12 @@ export async function fetchEvaluationDetail(id: string): Promise<EvaluationDetai
 }
 
 export async function fetchTrend(
-  evalId: string,
+  assetName: string,
+  sloName: string,
   metric: string,
   dateRange?: { from?: string; to?: string },
 ): Promise<TrendPoint[]> {
-  const params = new URLSearchParams({ eval_id: evalId, metric })
+  const params = new URLSearchParams({ asset_name: assetName, slo_name: sloName, metric })
   if (dateRange?.from) params.set('from', dateRange.from)
   if (dateRange?.to) params.set('to', dateRange.to)
   const res = await fetch(`${BASE}/trend?${params}`)
@@ -200,6 +201,15 @@ export async function fetchGroupedMetricHeatmap(
   if (filters.to) p.set('to', filters.to)
   const res = await fetch(`${BASE}/evaluate/metric-heatmap?${p}`)
   if (!res.ok) throw new Error(`fetchGroupedMetricHeatmap: ${res.status}`)
+  return res.json()
+}
+
+export async function fetchColumnAnnotations(
+  evaluationId: string,
+): Promise<Annotation[]> {
+  const params = new URLSearchParams({ evaluation_id: evaluationId })
+  const res = await fetch(`${BASE}/evaluations/column-annotations?${params}`)
+  if (!res.ok) throw new Error(`fetchColumnAnnotations: ${res.status}`)
   return res.json()
 }
 

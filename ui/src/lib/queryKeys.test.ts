@@ -16,10 +16,17 @@ describe('evaluationKeys', () => {
   it('detail includes id', () => {
     expect(evaluationKeys.detail('abc-123')).toEqual(['evaluations', 'abc-123'])
   })
-  it('trend includes id, metric and date range', () => {
+  it('trend includes asset, slo, metric and date range', () => {
     const range = { from: '2026-01-01T00:00:00Z' }
-    expect(evaluationKeys.trend('abc-123', 'response_time_p95', range)).toEqual([
-      'evaluations', 'abc-123', 'response_time_p95', range,
+    expect(evaluationKeys.trend('checkout-api', 'web-health', 'response_time_p95', range)).toEqual([
+      'trend', 'checkout-api', 'web-health', 'response_time_p95', range,
+    ])
+  })
+  it('builds column annotations key', () => {
+    expect(evaluationKeys.columnAnnotations('run-1')).toEqual([
+      'evaluations',
+      'column-annotations',
+      'run-1',
     ])
   })
 })

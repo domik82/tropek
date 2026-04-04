@@ -8,6 +8,7 @@ import {
   fetchEvaluations,
   fetchEvaluationDetail,
   fetchTrend,
+  fetchColumnAnnotations,
   addAnnotation,
   hideAnnotation,
   invalidateEvaluation,
@@ -49,15 +50,26 @@ export function useEvaluationDetail(id: string | undefined) {
   })
 }
 
+// ── Column Annotations ───────────────────────────────────────────────────────
+
+export function useColumnAnnotations(evaluationId: string | undefined) {
+  return useQuery({
+    queryKey: evaluationKeys.columnAnnotations(evaluationId ?? ''),
+    queryFn: () => fetchColumnAnnotations(evaluationId!),
+    enabled: !!evaluationId,
+    staleTime: Infinity,
+  })
+}
+
 // ── Trend ─────────────────────────────────────────────────────────────────────
 
-export function useTrend(evalId: string, metric: string) {
+export function useTrend(assetName: string, sloName: string, metric: string) {
   const { from, to } = useTimeRange()
   const dateRange = { from, ...(to ? { to } : {}) }
   return useQuery({
-    queryKey: evaluationKeys.trend(evalId, metric, dateRange),
-    queryFn: () => fetchTrend(evalId, metric, dateRange),
-    enabled: !!evalId && !!metric,
+    queryKey: evaluationKeys.trend(assetName, sloName, metric, dateRange),
+    queryFn: () => fetchTrend(assetName, sloName, metric, dateRange),
+    enabled: !!assetName && !!sloName && !!metric,
     staleTime: Infinity,
   })
 }
@@ -71,6 +83,7 @@ export function useAddAnnotation(evalId: string) {
       addAnnotation(evalId, payload),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: evaluationKeys.detail(evalId) })
+      qc.invalidateQueries({ queryKey: [...evaluationKeys.all, 'column-annotations'] })
     },
   })
 }
@@ -86,6 +99,7 @@ export function useHideAnnotation(evalId: string) {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: evaluationKeys.detail(evalId) })
       qc.invalidateQueries({ queryKey: evaluationKeys.all })
+      qc.invalidateQueries({ queryKey: [...evaluationKeys.all, 'column-annotations'] })
     },
   })
 }
