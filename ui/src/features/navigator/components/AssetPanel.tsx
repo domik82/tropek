@@ -97,11 +97,6 @@ export function AssetPanel({ assetName, initialEvalId }: Props) {
   const effectiveEvalId = selectedEvalId ?? defaultEvalId
 
   // Derive ev from the evaluation list (no detail fetch needed)
-  const ev = useMemo(() => {
-    if (!effectiveEvalId) return undefined
-    return evals.find(e => e.id === effectiveEvalId)
-  }, [evals, effectiveEvalId])
-
   // Find the parent evaluation_id (column key) for the selected slo_evaluation_id
   const selectedColumnEvalId = useMemo(() => {
     if (!heatmapData || !effectiveEvalId) return undefined
@@ -112,6 +107,18 @@ export function AssetPanel({ assetName, initialEvalId }: Props) {
     }
     return undefined
   }, [heatmapData, effectiveEvalId])
+
+  // Derive ev from evaluation list. Direct lookup by slo_evaluation_id first,
+  // then fallback to any eval in the same column (parent run).
+  const ev = useMemo(() => {
+    if (!effectiveEvalId) return undefined
+    const direct = evals.find(e => e.id === effectiveEvalId)
+    if (direct) return direct
+    if (selectedColumnEvalId) {
+      return evals.find(e => e.evaluation_id === selectedColumnEvalId)
+    }
+    return undefined
+  }, [evals, effectiveEvalId, selectedColumnEvalId])
 
   // Column annotations — fetched once per column, cached with staleTime: Infinity
   const { data: displayAnnotations = [] } = useColumnAnnotations(selectedColumnEvalId)
