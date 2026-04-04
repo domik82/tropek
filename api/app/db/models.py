@@ -276,8 +276,23 @@ class SLODefinition(Base):
         cascade='all, delete-orphan',
         lazy='selectin',
     )
+    sli_definition:          Mapped[SLIDefinition | None]   = relationship(lazy='raise')
 
     # fmt: on
+
+    @property
+    def sli_name(self) -> str | None:
+        """Denormalized SLI name from the linked definition."""
+        if self.sli_definition is None:
+            return None
+        return self.sli_definition.name
+
+    @property
+    def sli_version(self) -> int | None:
+        """Denormalized SLI version from the linked definition."""
+        if self.sli_definition is None:
+            return None
+        return self.sli_definition.version
 
 
 class EvaluationAnnotation(Base):
