@@ -96,9 +96,12 @@ export function AssetPanel({ assetName, initialEvalId }: Props) {
 
   const effectiveEvalId = selectedEvalId ?? defaultEvalId
 
-  // Derive ev from the evaluation list (no detail fetch needed)
-  // Find the parent evaluation_id (column key) for the selected slo_evaluation_id
+  // Parent evaluation_id (column key) — set directly from slot click,
+  // or derived from heatmap cells for the default/initial selection.
   const selectedColumnEvalId = useMemo(() => {
+    // Prefer explicitly set column from slot click
+    if (selectedSlot?.columnEvalId) return selectedSlot.columnEvalId
+    // Fallback: derive from heatmap cells for the default eval
     if (!heatmapData || !effectiveEvalId) return undefined
     for (const g of heatmapData.groups) {
       for (const c of g.cells) {
@@ -106,7 +109,7 @@ export function AssetPanel({ assetName, initialEvalId }: Props) {
       }
     }
     return undefined
-  }, [heatmapData, effectiveEvalId])
+  }, [selectedSlot, heatmapData, effectiveEvalId])
 
   // Derive ev from evaluation list. Direct lookup by slo_evaluation_id first,
   // then fallback to any eval in the same column (parent run).
@@ -123,21 +126,34 @@ export function AssetPanel({ assetName, initialEvalId }: Props) {
   // Column annotations — fetched once per column, cached with staleTime: Infinity
   const { data: displayAnnotations = [] } = useColumnAnnotations(selectedColumnEvalId)
 
-  // Get thresholds from heatmap summary for the selected column
-  const columnThresholds = useMemo(() => {
+  // Derive column-level header data entirely from the enriched heatmap response.
+  // This is the primary data source for the header — independent of the evals list.
+  const columnInfo = useMemo(() => {
+    if (!heatmapData || !selectedColumnEvalId) return undefined
+    // Composite row gives column-level result/score
+    const composite = heatmapData.composite.find(c => c.evaluation_id === selectedColumnEvalId)
+    // First summary with thresholds
     let passPct: number | undefined
     let warningPct: number | undefined
-    if (heatmapData && selectedColumnEvalId) {
-      for (const g of heatmapData.groups) {
-        const summary = g.summary.find(s => s.evaluation_id === selectedColumnEvalId)
-        if (summary?.total_score_pass_threshold != null) {
-          passPct = summary.total_score_pass_threshold
-          warningPct = summary.total_score_warning_threshold ?? undefined
-          break
-        }
+    let invalidated = false
+    for (const g of heatmapData.groups) {
+      const summary = g.summary.find(s => s.evaluation_id === selectedColumnEvalId)
+      if (summary?.invalidated) invalidated = true
+      if (passPct == null && summary?.total_score_pass_threshold != null) {
+        passPct = summary.total_score_pass_threshold
+        warningPct = summary.total_score_warning_threshold ?? undefined
       }
     }
-    return { passPct, warningPct }
+    // period_start from any cell in this column
+    const firstCell = heatmapData.groups[0]?.cells.find(c => c.evaluation_id === selectedColumnEvalId)
+    return {
+      result: invalidated ? 'invalidated' as const : (composite?.result ?? 'error'),
+      score: composite ? Math.round(composite.score) : undefined,
+      invalidated,
+      periodStart: firstCell?.period_start ?? composite?.period_start,
+      passPct,
+      warningPct,
+    }
   }, [heatmapData, selectedColumnEvalId])
 
   // Initialise SLO expand state from config when heatmap data first arrives
@@ -165,7 +181,7 @@ export function AssetPanel({ assetName, initialEvalId }: Props) {
             )
           )]
           if (evalIds.length > 1) {
-            setSelectedSlot({ periodStart: c.period_start, evalIds })
+            setSelectedSlot({ periodStart: c.period_start, evalIds, columnEvalId: c.evaluation_id })
           }
           return
         }
@@ -225,9 +241,7 @@ export function AssetPanel({ assetName, initialEvalId }: Props) {
     return slots
   }, [evals, heatmapData])
 
-  const hasEvals = evals.length > 0
-  const displayResult = hasEvals && ev ? (ev.invalidated ? 'invalidated' : (ev.result ?? 'error')) : undefined
-  const score = hasEvals && ev && ev.score != null ? Math.round(ev.score) : undefined
+  const hasColumn = columnInfo != null
 
   return (
     <div className="p-6 space-y-4">
@@ -235,42 +249,46 @@ export function AssetPanel({ assetName, initialEvalId }: Props) {
       <EvaluationHeader
         title={assetName}
         titleMono
-        result={displayResult}
-        score={score}
-        passPct={columnThresholds.passPct}
-        warningPct={columnThresholds.warningPct}
+        result={hasColumn ? columnInfo.result : undefined}
+        score={hasColumn ? columnInfo.score : undefined}
+        passPct={columnInfo?.passPct}
+        warningPct={columnInfo?.warningPct}
         toolbar={<TimeRangePicker />}
-        metadata={hasEvals && ev ? (
+        metadata={hasColumn ? (
           <>
             <div className="flex flex-wrap gap-x-6 gap-y-1 text-sm text-muted-foreground">
-              <span>Asset: <span className="text-foreground">{ev.asset_snapshot.display_name ?? assetDisplayName ?? ev.asset_snapshot.name}</span></span>
-              {Object.entries(ev.asset_snapshot.tags ?? {}).map(([k, v]) => (
+              <span>Asset: <span className="text-foreground">{ev?.asset_snapshot.display_name ?? assetDisplayName ?? ev?.asset_snapshot.name ?? assetName}</span></span>
+              {ev && Object.entries(ev.asset_snapshot.tags ?? {}).map(([k, v]) => (
                 <span key={k} className="text-muted-foreground text-xs">{k}: {v as string}</span>
               ))}
-              <span className="text-xs">
-                {ev.period_start.slice(0, 16).replace('T', ' ')} → {ev.period_end.slice(11, 16)}
-              </span>
+              {columnInfo.periodStart && (
+                <span className="text-xs">
+                  {columnInfo.periodStart.slice(0, 16).replace('T', ' ')}{ev ? ` → ${ev.period_end.slice(11, 16)}` : ''}
+                </span>
+              )}
             </div>
             <div className="mt-1 text-xs text-muted-foreground">
               {heatmapData && heatmapData.groups.length > 3 ? (
                 <>SLOs: {heatmapData.groups.length} evaluated</>
               ) : heatmapData && heatmapData.groups.length > 1 ? (
                 <>SLOs: {heatmapData.groups.map(g => g.slo_display_name ?? g.slo_name).join(', ')}</>
-              ) : (
+              ) : ev ? (
                 <>SLO: {(ev.slo_name && sloDisplayNames.get(ev.slo_name)) ?? ev.slo_name ?? '—'}{ev.slo_version != null && ` v${ev.slo_version}`}</>
-              )}
-              {ev.adapter_used && ` · adapter: ${ev.adapter_used}`}
-              {ev.asset_snapshot.build_ref && ` · build: ${ev.asset_snapshot.build_ref}`}
+              ) : heatmapData && heatmapData.groups.length === 1 ? (
+                <>SLO: {heatmapData.groups[0].slo_display_name ?? heatmapData.groups[0].slo_name}</>
+              ) : null}
+              {ev?.adapter_used && ` · adapter: ${ev.adapter_used}`}
+              {ev?.asset_snapshot.build_ref && ` · build: ${ev.asset_snapshot.build_ref}`}
             </div>
           </>
         ) : undefined}
-        noteButton={hasEvals && effectiveEvalId && ev && !ev.invalidated ? (
+        noteButton={hasColumn && effectiveEvalId && !columnInfo.invalidated ? (
           <NoteIconButton onClick={handleAddNote} annotationCount={displayAnnotations.length} />
         ) : undefined}
-        actions={hasEvals && effectiveEvalId && ev ? (
+        actions={hasColumn && effectiveEvalId ? (
           <EvaluationActionsButton
-            currentResult={ev.result ?? 'error'}
-            invalidated={ev.invalidated}
+            currentResult={columnInfo.result === 'invalidated' ? (ev?.result ?? 'error') : columnInfo.result}
+            invalidated={columnInfo.invalidated}
             activeAction={activeAction}
             onSelectAction={setActiveAction}
             onAddNote={handleAddNote}
@@ -278,15 +296,15 @@ export function AssetPanel({ assetName, initialEvalId }: Props) {
         ) : undefined}
       />
 
-      {/* Action form */}
-      {evals.length > 0 && activeAction && effectiveEvalId && ev && (activeAction === 'restore' || !ev.invalidated) && (
+      {/* Action form — requires ev for sloName, falls back gracefully */}
+      {hasColumn && activeAction && effectiveEvalId && (activeAction === 'restore' || !columnInfo.invalidated) && (
         <EvaluationActionForm
           evalId={effectiveEvalId}
-          currentResult={ev.result ?? 'error'}
+          currentResult={ev?.result ?? 'error'}
           activeAction={activeAction}
           onClose={() => setActiveAction(null)}
           assetName={assetName}
-          sloName={ev.slo_name ?? ''}
+          sloName={ev?.slo_name ?? heatmapData?.groups[0]?.slo_name ?? ''}
           defaultFromDate={earliestPeriodStart?.slice(0, 16)}
         />
       )}
@@ -307,7 +325,7 @@ export function AssetPanel({ assetName, initialEvalId }: Props) {
       )}
 
       {/* Notes */}
-      {!isLoading && evals.length > 0 && effectiveEvalId && ev && (
+      {!isLoading && hasColumn && effectiveEvalId && (
         <div ref={notesSectionRef}>
           <AnnotationSection ref={notesRef} evalId={effectiveEvalId} annotations={displayAnnotations} />
         </div>

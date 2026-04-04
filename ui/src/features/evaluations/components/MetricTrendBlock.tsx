@@ -9,7 +9,10 @@ import { useMetricTrendState, isRelativeCriteria } from '../hooks/useMetricTrend
 import type { IndicatorResult } from '../types'
 
 interface Props {
-  evalId: string
+  assetName: string
+  sloName: string
+  /** Eval ID to highlight on the trend line (white ring + larger dot). */
+  selectedEvalId?: string
   indicator: IndicatorResult
   onEvalSelect?: (evalId: string) => void
   onScrollToTable?: () => void
@@ -19,8 +22,8 @@ function defaultScrollToTable() {
   document.getElementById('sli-table')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
 }
 
-export function MetricTrendBlock({ evalId, indicator, onEvalSelect, onScrollToTable }: Props) {
-  const { data: trend, isLoading } = useTrend(evalId, indicator.metric)
+export function MetricTrendBlock({ assetName, sloName, selectedEvalId, indicator, onEvalSelect, onScrollToTable }: Props) {
+  const { data: trend, isLoading } = useTrend(assetName, sloName, indicator.metric)
 
   const handleClickIndex = useCallback(
     (idx: number) => {
@@ -40,7 +43,7 @@ export function MetricTrendBlock({ evalId, indicator, onEvalSelect, onScrollToTa
     showPass, showWarn, togglePass, toggleWarn,
     chartOption,
     passTarget, warnTarget, passCriteria, warnCriteria,
-  } = useMetricTrendState(trend, evalId, indicator, onEvalSelect)
+  } = useMetricTrendState(trend, selectedEvalId ?? '', indicator, onEvalSelect)
 
   return (
     <div id={`trend-${indicator.metric}`} className="bg-card border border-border rounded-xl p-4 scroll-mt-4">

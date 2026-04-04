@@ -76,7 +76,9 @@ export function EvaluationIndicatorSection({ evaluation: ev, onMetricClick, asse
           {tabIndicators.map(ind => (
             <MetricTrendBlock
               key={ind.metric}
-              evalId={ev.id}
+              assetName={ev.asset_snapshot.name}
+              sloName={ev.slo_name ?? ''}
+              selectedEvalId={ev.id}
               indicator={ind}
               onScrollToTable={handleScrollToTable}
             />

@@ -17,21 +17,21 @@ import { Button } from '@/components/ui/button'
 // ── useEnabledTrends ──────────────────────────────────────────────────────────
 
 function useEnabledTrends(
-  evalId: string | undefined,
+  assetName: string | undefined,
   enabledKeys: string[],
-  metricEvalMap?: Map<string, string>,
+  metricSloMap?: Map<string, string>,
   apiMetricMap?: Map<string, string>,
 ): Map<string, TrendPoint[]> {
   const { from, to } = useTimeRange()
   const dateRange = { from, ...(to ? { to } : {}) }
   const results = useQueries({
     queries: enabledKeys.map(key => {
-      const id = metricEvalMap?.get(key) ?? evalId
+      const sloName = metricSloMap?.get(key) ?? ''
       const apiMetric = apiMetricMap?.get(key) ?? key
       return {
-        queryKey: evaluationKeys.trend(id ?? '', apiMetric, dateRange),
-        queryFn: () => fetchTrend(id!, apiMetric, dateRange),
-        enabled: !!id,
+        queryKey: evaluationKeys.trend(assetName ?? '', sloName, apiMetric, dateRange),
+        queryFn: () => fetchTrend(assetName!, sloName, apiMetric, dateRange),
+        enabled: !!assetName && !!sloName,
         staleTime: Infinity,
       }
     }),
@@ -54,8 +54,8 @@ interface ChartSectionProps {
   colors: Map<string, string>
   enabled: Set<string>
   setEnabled: React.Dispatch<React.SetStateAction<Set<string>>>
-  evalId: string | undefined
-  metricEvalMap?: Map<string, string>
+  assetName: string | undefined
+  metricSloMap?: Map<string, string>
   apiMetricMap?: Map<string, string>
   dataKey: 'value' | 'score'
   yAxisMax?: number
@@ -71,8 +71,8 @@ function ChartSection({
   colors,
   enabled,
   setEnabled,
-  evalId,
-  metricEvalMap,
+  assetName,
+  metricSloMap,
   apiMetricMap,
   dataKey,
   yAxisMax: yAxisMaxProp,
@@ -82,7 +82,7 @@ function ChartSection({
   const [yMax, setYMax] = useState('')
   const [chartType, setChartType] = useState<ChartType>('line')
 
-  const trendData = useEnabledTrends(evalId, [...enabled], metricEvalMap, apiMetricMap)
+  const trendData = useEnabledTrends(assetName, [...enabled], metricSloMap, apiMetricMap)
 
   const chartSeries = useMemo(() => {
     const result: MultiSeriesChartProps['series'] = []
@@ -296,23 +296,16 @@ export function MetricExplorerPage() {
     return m
   }, [heatmapData, multiSlo])
 
-  // Map composite key → correct SLO's latest eval ID for trend queries
-  const metricEvalMap = useMemo((): Map<string, string> | undefined => {
-    if (!heatmapData || !evals.length) return undefined
-    const sloLatest = new Map<string, string>()
-    for (const ev of [...evals].sort((a, b) => b.period_start.localeCompare(a.period_start))) {
-      if (ev.slo_name && !sloLatest.has(ev.slo_name)) sloLatest.set(ev.slo_name, ev.id)
-    }
+  // Map composite key → SLO name for trend queries
+  const metricSloMap = useMemo((): Map<string, string> | undefined => {
+    if (!heatmapData) return undefined
     const m = new Map<string, string>()
     for (const g of heatmapData.groups) {
-      const evalId = sloLatest.get(g.slo_name)
-      if (evalId) {
-        const prefix = multiSlo ? `${g.slo_name}\0` : ''
-        for (const metric of g.metrics) m.set(`${prefix}${metric.name}`, evalId)
-      }
+      const prefix = multiSlo ? `${g.slo_name}\0` : ''
+      for (const metric of g.metrics) m.set(`${prefix}${metric.name}`, g.slo_name)
     }
     return m.size > 0 ? m : undefined
-  }, [heatmapData, evals, multiSlo])
+  }, [heatmapData, multiSlo])
 
   const colorMap = useMemo(() => buildColorMap(allIndicators), [allIndicators])
 
@@ -347,8 +340,8 @@ export function MetricExplorerPage() {
           colors={colorMap}
           enabled={valuesEnabled}
           setEnabled={setValuesEnabled}
-          evalId={latestEval?.id}
-          metricEvalMap={metricEvalMap}
+          assetName={assetName}
+          metricSloMap={metricSloMap}
           apiMetricMap={apiMetricMap}
           dataKey="value"
         />
@@ -359,8 +352,8 @@ export function MetricExplorerPage() {
           colors={colorMap}
           enabled={scoresEnabled}
           setEnabled={setScoresEnabled}
-          evalId={latestEval?.id}
-          metricEvalMap={metricEvalMap}
+          assetName={assetName}
+          metricSloMap={metricSloMap}
           apiMetricMap={apiMetricMap}
           dataKey="score"
           yAxisMax={100}

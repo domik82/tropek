@@ -1,4 +1,5 @@
 // ui/src/features/navigator/components/AssetHeatmap.tsx
+import { useMemo, useCallback } from 'react'
 import { useTheme } from '@/lib/theme-context'
 import { RESULT_COLOUR } from '@/lib/theme'
 import { fmtDateTime } from '@/lib/format'
@@ -10,6 +11,7 @@ import type { MetricHeatmapResponse, HeatmapCell } from '../types'
 export interface TimeSlotSelection {
   periodStart: string
   evalIds: string[]
+  columnEvalId?: string
 }
 
 interface Props {
@@ -36,25 +38,26 @@ export function AssetHeatmap({
   const { theme } = useTheme()
   const colours = RESULT_COLOUR[theme]
 
-  const { slots, rows, cells, headerRowIndices } = buildAssetHeatmapData(data, expandState)
+  const { slots, rows, cells, headerRowIndices } = useMemo(
+    () => buildAssetHeatmapData(data, expandState),
+    [data, expandState],
+  )
 
-  const selectedColumn = selectedEvalId
-    ? (() => {
-        // Try visible indicator cells first
-        const cell = cells.find(c => c.evalId === selectedEvalId)
-        if (cell) return cell.value[0]
-        // Fallback: groups may be collapsed so indicator cells aren't in `cells`.
-        // Look up which EvaluationRun column owns this slo_evaluation_id.
-        const colIdx = data.columns.findIndex(col =>
-          data.groups.some(g =>
-            g.cells.some(c => c.slo_evaluation_id === selectedEvalId && c.evaluation_id === col.evaluation_id)
-          )
-        )
-        return colIdx >= 0 ? colIdx : undefined
-      })()
-    : undefined
+  const selectedColumn = useMemo(() => {
+    if (!selectedEvalId) return undefined
+    // Try visible indicator cells first
+    const cell = cells.find(c => c.evalId === selectedEvalId)
+    if (cell) return cell.value[0]
+    // Fallback: groups may be collapsed so indicator cells aren't in `cells`.
+    const colIdx = data.columns.findIndex(col =>
+      data.groups.some(g =>
+        g.cells.some(c => c.slo_evaluation_id === selectedEvalId && c.evaluation_id === col.evaluation_id)
+      )
+    )
+    return colIdx >= 0 ? colIdx : undefined
+  }, [selectedEvalId, cells, data])
 
-  function formatTooltip(cell: HeatmapCell): string {
+  const formatTooltip = useCallback((cell: HeatmapCell): string => {
     if (cell.result === 'none') {
       return `${cell.rowLabel}<br/>${fmtDateTime(cell.slot)}<br/><em>no data</em>`
     }
@@ -76,9 +79,9 @@ export function AssetHeatmap({
         ? `<span style="color:#888;font-size:10px">Click to select this evaluation</span>`
         : '',
     ].filter(Boolean).join('<br/>')
-  }
+  }, [colours])
 
-  function onCellClick(cell: HeatmapCell): void {
+  const onCellClick = useCallback((cell: HeatmapCell): void => {
     // SLO header row click → toggle expand/collapse AND select the column
     if (cell.isSloHeader && cell.sloName) {
       onSloToggle(cell.sloName)
@@ -107,12 +110,12 @@ export function AssetHeatmap({
         )]
       }
       if (evalIds.length > 0) {
-        onSlotSelect({ periodStart: cell.slot, evalIds })
+        onSlotSelect({ periodStart: cell.slot, evalIds, columnEvalId: columnKey })
       }
     } else if (cell.evalId && onEvalSelect) {
       onEvalSelect(cell.evalId)
     }
-  }
+  }, [onSloToggle, onMetricClick, onSlotSelect, onEvalSelect, selectedColumn, cells, data])
 
   return (
     <HeatmapChart

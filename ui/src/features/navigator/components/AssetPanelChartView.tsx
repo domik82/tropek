@@ -10,20 +10,20 @@ import type { MetricHeatmapResponse } from '../types'
 import type { TimeSlotSelection } from './AssetHeatmap'
 
 interface Props {
+  assetName: string
   effectiveEvalId: string | undefined
   evals: EvaluationSummary[]
   heatmapData: MetricHeatmapResponse | undefined
   onEvalSelect: (evalId: string) => void
   onSlotSelect: (slot: TimeSlotSelection) => void
-  metricEvalMap?: Map<string, string>
   mode: ViewMode
   setMode: (m: ViewMode) => void
   explorerButton: React.ReactNode
 }
 
 export function AssetPanelChartView({
-  effectiveEvalId, evals, heatmapData,
-  onEvalSelect, onSlotSelect, metricEvalMap,
+  assetName, effectiveEvalId, evals, heatmapData,
+  onEvalSelect, onSlotSelect,
   mode, setMode, explorerButton,
 }: Props) {
   const [metricGroupFilter, setMetricGroupFilter] = useState<string>('all')
@@ -59,13 +59,35 @@ export function AssetPanelChartView({
     return m
   }, [heatmapData])
 
+  // period_start → parent evaluation_id (column key) for the first cell in that column
+  const slotColumnEvalId = useMemo((): Map<string, string> => {
+    if (!heatmapData) return new Map()
+    const m = new Map<string, string>()
+    for (const group of heatmapData.groups) {
+      for (const cell of group.cells) {
+        if (!m.has(cell.period_start)) m.set(cell.period_start, cell.evaluation_id)
+      }
+    }
+    return m
+  }, [heatmapData])
+
   // Score chart click → full slot selection (all SLOs for that column)
   function handleScoreChartClick(evalId: string) {
     const entry = scoreChartEvals.find(e => e.id === evalId)
     if (!entry) { onEvalSelect(evalId); return }
     const evalIds = slotEvalIds.get(entry.period_start) ?? [evalId]
-    onSlotSelect({ periodStart: entry.period_start, evalIds })
+    const columnEvalId = slotColumnEvalId.get(entry.period_start)
+    onSlotSelect({ periodStart: entry.period_start, evalIds, columnEvalId })
   }
+
+  const metricSloMap = useMemo((): Map<string, string> => {
+    if (!heatmapData) return new Map()
+    const m = new Map<string, string>()
+    for (const g of heatmapData.groups) {
+      for (const metric of g.metrics) m.set(metric.name, g.slo_name)
+    }
+    return m
+  }, [heatmapData])
 
   const allIndicators: IndicatorResult[] = useMemo(() => {
     if (!heatmapData) return []
@@ -122,7 +144,7 @@ export function AssetPanelChartView({
 
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
             {chartIndicators.map(ind => (
-              <MetricTrendBlock key={ind.metric} evalId={metricEvalMap?.get(ind.metric) ?? effectiveEvalId ?? ''} indicator={ind} onEvalSelect={onEvalSelect} />
+              <MetricTrendBlock key={ind.metric} assetName={assetName} sloName={metricSloMap.get(ind.metric) ?? ''} selectedEvalId={effectiveEvalId} indicator={ind} onEvalSelect={onEvalSelect} />
             ))}
           </div>
         </div>
