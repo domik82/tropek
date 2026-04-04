@@ -433,6 +433,29 @@ async def list_evaluation_names(
     return [EvaluationNameEntry(name=name, count=count, last_run=last_run) for name, count, last_run in rows]
 
 
+@router.get(
+    '/evaluations/column-annotations',
+    response_model=list[AnnotationRead],
+)
+async def get_column_annotations(
+    evaluation_id: uuid.UUID = Query(...),
+    repos: QualityGateRepos = Depends(get_qg_repos),
+) -> list[AnnotationRead]:
+    """Return all non-hidden annotations across all SLOs for one evaluation run."""
+    run = await repos.eval_run_repo.get_by_id(evaluation_id)
+    if run is None:
+        raise NotFoundError('evaluation run', str(evaluation_id))
+    slo_evals = await repos.eval_repo.get_by_run_id(evaluation_id)
+    annotations: list[AnnotationRead] = []
+    annotations.extend(
+        AnnotationRead.model_validate(ann)
+        for slo_eval in slo_evals
+        for ann in slo_eval.annotations
+        if ann.hidden_at is None
+    )
+    return annotations
+
+
 @router.get('/evaluations/{eval_id}', response_model=EvaluationDetail)
 async def get_evaluation(
     eval_id: uuid.UUID,
@@ -536,27 +559,6 @@ async def restore_override(
     return build_detail(updated)
 
 
-@router.get(
-    '/evaluations/column-annotations',
-    response_model=list[AnnotationRead],
-)
-async def get_column_annotations(
-    evaluation_id: uuid.UUID = Query(...),
-    repos: QualityGateRepos = Depends(get_qg_repos),
-) -> list[AnnotationRead]:
-    """Return all non-hidden annotations across all SLOs for one evaluation run."""
-    run = await repos.eval_run_repo.get_by_id(evaluation_id)
-    if run is None:
-        raise NotFoundError('evaluation run', str(evaluation_id))
-    slo_evals = await repos.eval_repo.get_by_run_id(evaluation_id)
-    annotations: list[AnnotationRead] = []
-    annotations.extend(
-        AnnotationRead.model_validate(ann)
-        for slo_eval in slo_evals
-        for ann in slo_eval.annotations
-        if ann.hidden_at is None
-    )
-    return annotations
 
 
 # ---- Annotations ----
