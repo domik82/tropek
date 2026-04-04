@@ -506,6 +506,16 @@ class EvaluationRepository:
         await self._session.flush()
         return await self.get_by_id(eval_id)
 
+    async def get_by_run_id(self, run_id: uuid.UUID) -> list[SLOEvaluation]:
+        """Fetch all SLO evaluations for a parent run, with annotations eagerly loaded."""
+        q = (
+            select(SLOEvaluation)
+            .options(selectinload(SLOEvaluation.annotations))
+            .where(SLOEvaluation.evaluation_id == run_id)
+        )
+        result = await self._session.execute(q)
+        return list(result.scalars().all())
+
     async def list_evaluation_names(
         self,
         *,
