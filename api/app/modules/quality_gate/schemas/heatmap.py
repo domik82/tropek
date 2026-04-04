@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
+from typing import Any
 
 from pydantic import BaseModel
 
@@ -43,6 +44,11 @@ class HeatmapSummaryCell(BaseModel):
     period_start: datetime
     result: str
     score: float  # 0-100, achieved_points / total_points x 100
+    total_score_pass_threshold: float | None = None
+    total_score_warning_threshold: float | None = None
+    sli_metadata: dict[str, Any] | None = None
+    invalidated: bool = False
+    invalidation_note: str | None = None
 
 
 class HeatmapCellGrouped(BaseModel):
@@ -55,6 +61,15 @@ class HeatmapCellGrouped(BaseModel):
     display_name: str
     result: str
     score: float
+    value: float | None = None
+    compared_value: float | None = None
+    change_relative_pct: float | None = None
+    weight: float = 1
+    key_sli: bool = False
+    pass_targets: list[dict[str, Any]] | None = None
+    warning_targets: list[dict[str, Any]] | None = None
+    tab_group: str | None = None
+    aggregation: str | None = None
 
 
 class SloGroup(BaseModel):
