@@ -4,7 +4,7 @@
 // Rows are keyed by asset name only; eval name appears in the tooltip only.
 // All rendering logic lives in HeatmapChart.
 
-import { useMemo } from 'react'
+import { useMemo, useCallback } from 'react'
 import { useTheme } from '@/lib/theme-context'
 import { RESULT_COLOUR } from '@/lib/theme'
 import type { ResultColours } from '@/lib/theme'
@@ -136,7 +136,7 @@ export function EvaluationHeatmap({ evaluations, selectedDate, onDateSelect, onA
     [colours, evalNameMap],
   )
 
-  function onCellClick(cell: HeatmapCell) {
+  const onCellClick = useCallback((cell: HeatmapCell) => {
     if (cell.slot !== selectedDate) {
       onDateSelect(cell.slot)
     } else if (onAssetSelect) {
@@ -146,7 +146,7 @@ export function EvaluationHeatmap({ evaluations, selectedDate, onDateSelect, onA
     } else {
       onDateSelect(null)
     }
-  }
+  }, [selectedDate, onDateSelect, onAssetSelect, rows, assetNames])
 
   return (
     <HeatmapChart

@@ -8,7 +8,7 @@
 // and the legend bar above the chart.
 
 import ReactECharts from 'echarts-for-react'
-import { useMemo, useRef, useState, useCallback, useEffect, type ReactNode } from 'react'
+import { useMemo, useRef, useState, useCallback, useEffect, useLayoutEffect, type ReactNode } from 'react'
 import { useTheme } from '@/lib/theme-context'
 import { RESULT_COLOUR, CHART_THEME } from '@/lib/theme'
 import type { ResultColours } from '@/lib/theme'
@@ -117,6 +117,22 @@ export function HeatmapChart({
   const chartRef = useRef<ReactECharts>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const [columnPositions, setColumnPositions] = useState<ColumnPosition[]>([])
+  const [containerReady, setContainerReady] = useState(false)
+
+  // Defer chart mount until the container has non-zero dimensions.
+  // Prevents ECharts "Can't get DOM width or height" and visible flicker.
+  useLayoutEffect(() => {
+    const el = containerRef.current
+    if (!el) return
+    const ro = new ResizeObserver(([entry]) => {
+      if (entry.contentRect.width > 0) {
+        setContainerReady(true)
+        ro.disconnect()
+      }
+    })
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
 
   // Dynamic padding: tighter when many columns to avoid crushed cells
   const pad = columns.length > 40 ? 1 : 2
@@ -316,6 +332,15 @@ export function HeatmapChart({
 
   const hasNotes = notedColumns && notedColumns.size > 0
 
+  const chartEvents = useMemo(() => ({
+    click: (p: { data?: RenderCell }) => {
+      if (p?.data) onCellClick(p.data)
+    },
+    finished: () => {
+      if (hasNotes) computeColumnPositions()
+    },
+  }), [onCellClick, hasNotes, computeColumnPositions])
+
   return (
     <div className="w-full" ref={containerRef} role="img" aria-label="Heatmap chart showing evaluation results by metric and time">
       {/* Instruction text above the chart */}
@@ -325,7 +350,7 @@ export function HeatmapChart({
         </div>
       )}
       {aboveChart}
-      <div className="relative">
+      <div className="relative" style={{ minHeight: containerReady ? undefined : chartHeight }}>
         {hasNotes && columnPositions.length > 0 && (
           <NoteIndicatorRow
             columns={columns}
@@ -334,20 +359,15 @@ export function HeatmapChart({
             onIndicatorClick={onNoteIndicatorClick}
           />
         )}
-        <ReactECharts
-          ref={chartRef}
-          option={option}
-          style={{ height: chartHeight }}
-          opts={{ renderer: 'svg' }}
-          onEvents={{
-            click: (p: { data?: RenderCell }) => {
-              if (p?.data) onCellClick(p.data)
-            },
-            finished: () => {
-              if (hasNotes) computeColumnPositions()
-            },
-          }}
-        />
+        {containerReady && (
+          <ReactECharts
+            ref={chartRef}
+            option={option}
+            style={{ height: chartHeight }}
+            opts={{ renderer: 'svg' }}
+            onEvents={chartEvents}
+          />
+        )}
       </div>
       {/* Colour legend below the chart */}
       <div className="flex items-center justify-end gap-3 text-xs text-muted-foreground mt-1 px-1" role="legend" aria-label="Status colour legend">
