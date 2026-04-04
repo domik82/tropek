@@ -1,372 +1,316 @@
-"""Tests for deadlock retry and post-commit finalization logic in run_evaluation_job."""
+"""Tests for phased evaluation job and finalize job in queue.py."""
 
 from __future__ import annotations
 
 import uuid
-from unittest.mock import AsyncMock, MagicMock, call, patch
+from datetime import datetime
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from app.queue import _is_deadlock, run_evaluation_job
-from sqlalchemy.exc import DBAPIError
+
+from app.modules.quality_gate.worker import DefinitionLoadError, EvaluationSnapshot
+from app.queue import finalize_run_job, run_evaluation_job
 
 
-def _make_deadlock_error() -> DBAPIError:
-    """Create a DBAPIError that looks like a PostgreSQL deadlock."""
-    orig = Exception('deadlock detected')
-    return DBAPIError(
-        statement='UPDATE evaluations SET ...',
-        params={},
-        orig=orig,
+def _make_snapshot(
+    eval_id: uuid.UUID | None = None,
+    parent_run_id: uuid.UUID | None = None,
+) -> EvaluationSnapshot:
+    """Build a minimal EvaluationSnapshot for testing."""
+    return EvaluationSnapshot(
+        eval_id=eval_id or uuid.uuid4(),
+        parent_run_id=parent_run_id or uuid.uuid4(),
+        slo_name='response-time',
+        slo_version=1,
+        sli_name='prometheus-sli',
+        sli_version=1,
+        data_source_name='prometheus',
+        evaluation_name='test-eval',
+        period_start=datetime(2026, 1, 1),
+        period_end=datetime(2026, 1, 2),
+        asset_snapshot={'service': 'api'},
+        asset_id=uuid.uuid4(),
+        variables={},
     )
 
 
-def _make_non_deadlock_error() -> DBAPIError:
-    """Create a DBAPIError that is not a deadlock."""
-    orig = Exception('connection refused')
-    return DBAPIError(
-        statement='SELECT ...',
-        params={},
-        orig=orig,
-    )
-
-
-# --- _is_deadlock detection ---
-
-
-def test_is_deadlock_with_deadlock_message() -> None:
-    """Detect deadlock from exception message containing 'deadlock'."""
-    exc = _make_deadlock_error()
-    assert _is_deadlock(exc) is True
-
-
-def test_is_deadlock_with_non_deadlock_message() -> None:
-    """Non-deadlock errors return False."""
-    exc = _make_non_deadlock_error()
-    assert _is_deadlock(exc) is False
-
-
-# --- run_evaluation_job retry behavior ---
-
-
-@pytest.fixture
-def mock_session_factory():
-    """Create a mock session factory that returns an async context manager session."""
+def _mock_session() -> AsyncMock:
+    """Create a mock async session with commit/rollback."""
     session = AsyncMock()
-    ctx_manager = AsyncMock()
-    ctx_manager.__aenter__ = AsyncMock(return_value=session)
-    ctx_manager.__aexit__ = AsyncMock(return_value=False)
-    factory = MagicMock(return_value=ctx_manager)
-    return factory, session
+    session.commit = AsyncMock()
+    session.rollback = AsyncMock()
+    return session
+
+
+def _session_factory_from_list(sessions: list[AsyncMock]):
+    """Build a factory that yields sessions from a list in order."""
+    idx = {'i': 0}
+
+    def factory():
+        s = sessions[idx['i']]
+        idx['i'] += 1
+        ctx = AsyncMock()
+        ctx.__aenter__ = AsyncMock(return_value=s)
+        ctx.__aexit__ = AsyncMock(return_value=False)
+        return ctx
+
+    return factory
 
 
 def _no_predecessor():
-    """Patch context that disables the predecessor check."""
-    return patch('app.queue._has_pending_predecessor', new_callable=AsyncMock, return_value=False)
+    """Patch that disables the predecessor check."""
+    return patch(
+        'app.queue._has_pending_predecessor', new_callable=AsyncMock, return_value=False
+    )
 
 
-async def test_deadlock_retry_succeeds_on_second_attempt(mock_session_factory: tuple) -> None:
-    """Job retries after deadlock and succeeds on the second attempt."""
-    factory, session = mock_session_factory
-    call_count = 0
-
-    async def fake_run_evaluation(sess, eval_id, **_kwargs):
-        nonlocal call_count
-        call_count += 1
-        if call_count == 1:
-            raise _make_deadlock_error()
-        return None  # no parent run — skip finalization
-
-    with (
-        patch('app.queue.get_session_factory', return_value=factory),
-        patch('app.queue.run_evaluation', side_effect=fake_run_evaluation),
-        patch('asyncio.sleep', new_callable=AsyncMock),
-        _no_predecessor(),
-    ):
-        await run_evaluation_job({}, '00000000-0000-0000-0000-000000000001')
-
-    assert call_count == 2
-    assert session.commit.await_count == 1
+def _make_ctx(pool: AsyncMock | None = None) -> dict:
+    """Build a minimal worker context dict."""
+    return {
+        'cache': None,
+        'redis': pool or AsyncMock(),
+        'job_id': 'test-job-1',
+        'http_client': None,
+    }
 
 
-async def test_deadlock_retry_exhausted(mock_session_factory: tuple) -> None:
-    """Job fails after all retries exhausted."""
-    factory, _session = mock_session_factory
-
-    with (
-        patch('app.queue.get_session_factory', return_value=factory),
-        patch('app.queue.run_evaluation', side_effect=_make_deadlock_error()),
-        patch('asyncio.sleep', new_callable=AsyncMock),
-        _no_predecessor(),
-        pytest.raises(DBAPIError),
-    ):
-        await run_evaluation_job({}, '00000000-0000-0000-0000-000000000001')
+# --- Happy path ---
 
 
-async def test_non_deadlock_error_not_retried(mock_session_factory: tuple) -> None:
-    """Non-deadlock DBAPIError should not be retried."""
-    factory, session = mock_session_factory
+async def test_happy_path_three_phases() -> None:
+    """Verify 3+ sessions created, each committed, finalize job enqueued."""
+    eval_id = uuid.uuid4()
+    parent_run_id = uuid.uuid4()
+    snapshot = _make_snapshot(eval_id=eval_id, parent_run_id=parent_run_id)
 
-    with (
-        patch('app.queue.get_session_factory', return_value=factory),
-        patch('app.queue.run_evaluation', side_effect=_make_non_deadlock_error()),
-        patch('asyncio.sleep', new_callable=AsyncMock) as mock_sleep,
-        _no_predecessor(),
-        pytest.raises(DBAPIError),
-    ):
-        await run_evaluation_job({}, '00000000-0000-0000-0000-000000000001')
-
-    # No sleep called because no retry happened
-    mock_sleep.assert_not_awaited()
-    # rollback called once (for the single failed attempt)
-    session.rollback.assert_awaited_once()
-
-
-async def test_non_dbapi_error_not_retried(mock_session_factory: tuple) -> None:
-    """Non-DBAPIError exceptions should not be retried."""
-    factory, session = mock_session_factory
-
-    with (
-        patch('app.queue.get_session_factory', return_value=factory),
-        patch('app.queue.run_evaluation', side_effect=RuntimeError('unexpected')),
-        patch('asyncio.sleep', new_callable=AsyncMock) as mock_sleep,
-        _no_predecessor(),
-        pytest.raises(RuntimeError, match='unexpected'),
-    ):
-        await run_evaluation_job({}, '00000000-0000-0000-0000-000000000001')
-
-    mock_sleep.assert_not_awaited()
-    session.rollback.assert_awaited_once()
-
-
-async def test_successful_job_no_retry(mock_session_factory: tuple) -> None:
-    """Successful job runs once with no retries."""
-    factory, session = mock_session_factory
-
-    with (
-        patch('app.queue.get_session_factory', return_value=factory),
-        patch('app.queue.run_evaluation', new_callable=AsyncMock, return_value=None),
-        patch('asyncio.sleep', new_callable=AsyncMock) as mock_sleep,
-        _no_predecessor(),
-    ):
-        await run_evaluation_job({}, '00000000-0000-0000-0000-000000000001')
-
-    mock_sleep.assert_not_awaited()
-    session.commit.assert_awaited_once()
-
-
-async def test_predecessor_defers_job(mock_session_factory: tuple) -> None:
-    """Job is deferred when a predecessor evaluation is still pending."""
-    factory, _session = mock_session_factory
+    # Sessions: phase1, phase2a, phase2b, phase3
+    sessions = [_mock_session() for _ in range(4)]
+    factory = _session_factory_from_list(sessions)
     mock_pool = AsyncMock()
 
+    mock_fetch_result = MagicMock()
+    mock_fetch_result.eval_result.result = 'pass'
+
+    mock_datasource = MagicMock()
+
     with (
         patch('app.queue.get_session_factory', return_value=factory),
-        patch('app.queue._has_pending_predecessor', new_callable=AsyncMock, return_value=True),
-        patch('app.queue.run_evaluation', new_callable=AsyncMock) as mock_run,
+        patch(
+            'app.queue.load_evaluation_snapshot',
+            new_callable=AsyncMock,
+            return_value=snapshot,
+        ),
+        patch(
+            'app.queue._load_definitions',
+            new_callable=AsyncMock,
+            return_value=(MagicMock(), MagicMock()),
+        ),
+        patch('app.queue.DataSourceRepository') as mock_ds_repo_cls,
+        patch(
+            'app.queue.fetch_and_evaluate',
+            new_callable=AsyncMock,
+            return_value=mock_fetch_result,
+        ),
+        patch('app.queue.write_results', new_callable=AsyncMock),
+        patch('app.queue.BaselineRepository'),
+        patch('app.queue.HttpAdapterClient'),
+        _no_predecessor(),
+    ):
+        mock_ds_repo_cls.return_value.get_by_name = AsyncMock(return_value=mock_datasource)
+
+        await run_evaluation_job(_make_ctx(mock_pool), str(eval_id))
+
+    # All 4 sessions committed
+    for i, s in enumerate(sessions):
+        s.commit.assert_awaited_once(), f'session {i} not committed'
+
+    # Finalize job enqueued with dedup key
+    mock_pool.enqueue_job.assert_awaited_once_with(
+        'finalize_run_job',
+        str(parent_run_id),
+        _job_id=f'finalize:{parent_run_id}',
+    )
+
+
+# --- Snapshot None early exit ---
+
+
+async def test_snapshot_none_skips_remaining_phases() -> None:
+    """load_evaluation_snapshot returns None -> no further phases."""
+    sessions = [_mock_session()]
+    factory = _session_factory_from_list(sessions)
+
+    with (
+        patch('app.queue.get_session_factory', return_value=factory),
+        patch(
+            'app.queue.load_evaluation_snapshot',
+            new_callable=AsyncMock,
+            return_value=None,
+        ),
+        patch('app.queue._load_definitions', new_callable=AsyncMock) as mock_load,
+        patch('app.queue.fetch_and_evaluate', new_callable=AsyncMock) as mock_fetch,
+        patch('app.queue.write_results', new_callable=AsyncMock) as mock_write,
+        _no_predecessor(),
+    ):
+        await run_evaluation_job(_make_ctx(), str(uuid.uuid4()))
+
+    sessions[0].commit.assert_awaited_once()
+    mock_load.assert_not_awaited()
+    mock_fetch.assert_not_awaited()
+    mock_write.assert_not_awaited()
+
+
+# --- Adapter failure ---
+
+
+async def test_adapter_failure_marks_failed() -> None:
+    """fetch_and_evaluate returns None -> mark_failed called."""
+    eval_id = uuid.uuid4()
+    snapshot = _make_snapshot(eval_id=eval_id)
+
+    # Sessions: phase1, phase2a, phase2b, mark_failed
+    sessions = [_mock_session() for _ in range(4)]
+    factory = _session_factory_from_list(sessions)
+
+    mock_eval_repo = AsyncMock()
+
+    with (
+        patch('app.queue.get_session_factory', return_value=factory),
+        patch(
+            'app.queue.load_evaluation_snapshot',
+            new_callable=AsyncMock,
+            return_value=snapshot,
+        ),
+        patch(
+            'app.queue._load_definitions',
+            new_callable=AsyncMock,
+            return_value=(MagicMock(), MagicMock()),
+        ),
+        patch('app.queue.DataSourceRepository') as mock_ds_repo_cls,
+        patch(
+            'app.queue.fetch_and_evaluate',
+            new_callable=AsyncMock,
+            return_value=None,
+        ),
+        patch('app.queue.EvaluationRepository', return_value=mock_eval_repo),
+        patch('app.queue.BaselineRepository'),
+        patch('app.queue.HttpAdapterClient'),
+        _no_predecessor(),
+    ):
+        mock_ds_repo_cls.return_value.get_by_name = AsyncMock(return_value=MagicMock())
+
+        await run_evaluation_job(_make_ctx(), str(eval_id))
+
+    mock_eval_repo.mark_failed.assert_awaited_once_with(
+        eval_id, job_stats={'error': 'adapter query failed'}
+    )
+
+
+# --- Definition load error ---
+
+
+async def test_definition_load_error_marks_failed() -> None:
+    """_load_definitions raises DefinitionLoadError -> mark_failed called."""
+    eval_id = uuid.uuid4()
+    snapshot = _make_snapshot(eval_id=eval_id)
+
+    # Sessions: phase1, phase2a (fails), mark_failed
+    sessions = [_mock_session() for _ in range(3)]
+    factory = _session_factory_from_list(sessions)
+
+    mock_eval_repo = AsyncMock()
+
+    with (
+        patch('app.queue.get_session_factory', return_value=factory),
+        patch(
+            'app.queue.load_evaluation_snapshot',
+            new_callable=AsyncMock,
+            return_value=snapshot,
+        ),
+        patch(
+            'app.queue._load_definitions',
+            new_callable=AsyncMock,
+            side_effect=DefinitionLoadError("slo 'x' v1 not found"),
+        ),
+        patch('app.queue.EvaluationRepository', return_value=mock_eval_repo),
+        _no_predecessor(),
+    ):
+        await run_evaluation_job(_make_ctx(), str(eval_id))
+
+    mock_eval_repo.mark_failed.assert_awaited_once_with(
+        eval_id, job_stats={'error': "slo 'x' v1 not found"}
+    )
+
+
+# --- Finalize run job ---
+
+
+async def test_finalize_run_job_completes_parent() -> None:
+    """finalize_if_all_done returns finalized run -> logged."""
+    run_id = uuid.uuid4()
+    sessions = [_mock_session()]
+    factory = _session_factory_from_list(sessions)
+
+    mock_run_repo = AsyncMock()
+    mock_finalized = MagicMock()
+    mock_finalized.result = 'pass'
+    mock_run_repo.finalize_if_all_done.return_value = mock_finalized
+
+    with (
+        patch('app.queue.get_session_factory', return_value=factory),
+        patch('app.queue.EvaluationRunRepository', return_value=mock_run_repo),
+    ):
+        await finalize_run_job({}, str(run_id))
+
+    mock_run_repo.finalize_if_all_done.assert_awaited_once_with(run_id)
+    sessions[0].commit.assert_awaited_once()
+
+
+async def test_finalize_run_job_noop_when_children_pending() -> None:
+    """finalize_if_all_done returns None -> no logging, still commits."""
+    run_id = uuid.uuid4()
+    sessions = [_mock_session()]
+    factory = _session_factory_from_list(sessions)
+
+    mock_run_repo = AsyncMock()
+    mock_run_repo.finalize_if_all_done.return_value = None
+
+    with (
+        patch('app.queue.get_session_factory', return_value=factory),
+        patch('app.queue.EvaluationRunRepository', return_value=mock_run_repo),
+    ):
+        await finalize_run_job({}, str(run_id))
+
+    mock_run_repo.finalize_if_all_done.assert_awaited_once_with(run_id)
+    sessions[0].commit.assert_awaited_once()
+
+
+# --- Predecessor deferral ---
+
+
+async def test_predecessor_defers_job() -> None:
+    """Predecessor check returns True -> job re-enqueued, no phases run."""
+    mock_pool = AsyncMock()
+    eval_id_str = '00000000-0000-0000-0000-000000000001'
+
+    sessions = [_mock_session()]
+    factory = _session_factory_from_list(sessions)
+
+    with (
+        patch('app.queue.get_session_factory', return_value=factory),
+        patch(
+            'app.queue._has_pending_predecessor',
+            new_callable=AsyncMock,
+            return_value=True,
+        ),
+        patch(
+            'app.queue.load_evaluation_snapshot', new_callable=AsyncMock
+        ) as mock_snapshot,
     ):
         await run_evaluation_job(
-            {'redis': mock_pool},
-            '00000000-0000-0000-0000-000000000001',
+            _make_ctx(mock_pool),
+            eval_id_str,
         )
 
-    mock_run.assert_not_awaited()
+    mock_snapshot.assert_not_awaited()
     mock_pool.enqueue_job.assert_awaited_once()
-
-
-async def test_predecessor_max_defers_exceeded(mock_session_factory: tuple) -> None:
-    """Job proceeds when max defer count is exceeded, even with pending predecessor."""
-    factory, session = mock_session_factory
-
-    with (
-        patch('app.queue.get_session_factory', return_value=factory),
-        patch('app.queue._has_pending_predecessor', new_callable=AsyncMock, return_value=True) as mock_check,
-        patch('app.queue.run_evaluation', new_callable=AsyncMock, return_value=None) as mock_run,
-        patch('asyncio.sleep', new_callable=AsyncMock),
-    ):
-        await run_evaluation_job(
-            {},
-            '00000000-0000-0000-0000-000000000001',
-            defer_count=999,
-        )
-
-    mock_check.assert_not_awaited()
-    mock_run.assert_awaited_once()
-    session.commit.assert_awaited_once()
-
-
-# --- Post-commit finalization tests ---
-
-
-@pytest.fixture
-def finalize_session_factory():
-    """Session factory that tracks separate sessions for eval and finalization.
-
-    Returns (factory_func, eval_session, finalize_session, call_order) where
-    call_order records 'eval_commit' and 'finalize_commit' in invocation order.
-    """
-    call_order: list[str] = []
-
-    eval_session = AsyncMock()
-    eval_session.commit = AsyncMock(side_effect=lambda: call_order.append('eval_commit'))
-    eval_session.rollback = AsyncMock()
-
-    finalize_session = AsyncMock()
-    finalize_session.commit = AsyncMock(side_effect=lambda: call_order.append('finalize_commit'))
-
-    sessions = iter([eval_session, finalize_session])
-
-    def factory():
-        s = next(sessions)
-        ctx = AsyncMock()
-        ctx.__aenter__ = AsyncMock(return_value=s)
-        ctx.__aexit__ = AsyncMock(return_value=False)
-        return ctx
-
-    return factory, eval_session, finalize_session, call_order
-
-
-async def test_finalize_skipped_when_no_parent_run(mock_session_factory: tuple) -> None:
-    """No finalization session created when run_evaluation returns None (early exit)."""
-    factory, session = mock_session_factory
-
-    with (
-        patch('app.queue.get_session_factory', return_value=factory),
-        patch('app.queue.run_evaluation', new_callable=AsyncMock, return_value=None),
-        patch('app.queue.EvaluationRunRepository') as mock_repo_cls,
-        _no_predecessor(),
-    ):
-        await run_evaluation_job({}, '00000000-0000-0000-0000-000000000001')
-
-    session.commit.assert_awaited_once()
-    mock_repo_cls.assert_not_called()
-
-
-async def test_finalize_happens_after_eval_commit(finalize_session_factory: tuple) -> None:
-    """Finalization session opens only after eval session commits — never inside it."""
-    factory, eval_session, finalize_session, call_order = finalize_session_factory
-    parent_run_id = uuid.uuid4()
-    mock_repo = AsyncMock()
-    mock_repo.finalize_if_all_done.return_value = None
-
-    with (
-        patch('app.queue.get_session_factory', return_value=factory),
-        patch('app.queue.run_evaluation', new_callable=AsyncMock, return_value=parent_run_id),
-        patch('app.queue.EvaluationRunRepository', return_value=mock_repo),
-        _no_predecessor(),
-    ):
-        await run_evaluation_job({}, str(uuid.uuid4()))
-
-    assert call_order == ['eval_commit', 'finalize_commit']
-    mock_repo.finalize_if_all_done.assert_awaited_once_with(parent_run_id)
-
-
-async def test_finalize_error_preserves_child_commit() -> None:
-    """If finalization fails after all retries, the child evaluation commit is preserved."""
-    parent_run_id = uuid.uuid4()
-    call_order: list[str] = []
-    sessions_created = 0
-
-    mock_repo = AsyncMock()
-    mock_repo.finalize_if_all_done.side_effect = OSError('connection lost')
-
-    def session_factory():
-        nonlocal sessions_created
-        sessions_created += 1
-        s = AsyncMock()
-        if sessions_created == 1:
-            s.commit = AsyncMock(side_effect=lambda: call_order.append('eval_commit'))
-        else:
-            s.commit = AsyncMock(side_effect=lambda: call_order.append('finalize_commit'))
-        ctx = AsyncMock()
-        ctx.__aenter__ = AsyncMock(return_value=s)
-        ctx.__aexit__ = AsyncMock(return_value=False)
-        return ctx
-
-    with (
-        patch('app.queue.get_session_factory', return_value=session_factory),
-        patch('app.queue.run_evaluation', new_callable=AsyncMock, return_value=parent_run_id),
-        patch('app.queue.EvaluationRunRepository', return_value=mock_repo),
-        patch('asyncio.sleep', new_callable=AsyncMock),
-        _no_predecessor(),
-    ):
-        await run_evaluation_job({}, str(uuid.uuid4()))
-
-    # Child committed, finalization retried 3 times and gave up (no raise — just logs)
-    assert call_order[0] == 'eval_commit'
-    assert mock_repo.finalize_if_all_done.await_count == 3
-
-
-async def test_finalize_retries_then_succeeds() -> None:
-    """Finalization succeeds on second attempt after transient failure."""
-    parent_run_id = uuid.uuid4()
-    finalize_call_count = 0
-
-    mock_repo = AsyncMock()
-
-    async def flaky_finalize(run_id):
-        nonlocal finalize_call_count
-        finalize_call_count += 1
-        if finalize_call_count == 1:
-            raise OSError('connection reset')
-        return None
-
-    mock_repo.finalize_if_all_done.side_effect = flaky_finalize
-
-    def session_factory():
-        s = AsyncMock()
-        ctx = AsyncMock()
-        ctx.__aenter__ = AsyncMock(return_value=s)
-        ctx.__aexit__ = AsyncMock(return_value=False)
-        return ctx
-
-    with (
-        patch('app.queue.get_session_factory', return_value=session_factory),
-        patch('app.queue.run_evaluation', new_callable=AsyncMock, return_value=parent_run_id),
-        patch('app.queue.EvaluationRunRepository', return_value=mock_repo),
-        patch('asyncio.sleep', new_callable=AsyncMock) as mock_sleep,
-        _no_predecessor(),
-    ):
-        await run_evaluation_job({}, str(uuid.uuid4()))
-
-    assert finalize_call_count == 2
-    mock_sleep.assert_awaited_once()  # one backoff sleep between attempts
-
-
-async def test_deadlock_retry_then_finalize() -> None:
-    """After deadlock retry succeeds, finalization still runs in a fresh session."""
-    parent_run_id = uuid.uuid4()
-    call_count = 0
-    sessions_created = 0
-
-    async def fake_run_evaluation(sess, eval_id, **_kw):
-        nonlocal call_count
-        call_count += 1
-        if call_count == 1:
-            raise _make_deadlock_error()
-        return parent_run_id
-
-    mock_repo = AsyncMock()
-    mock_repo.finalize_if_all_done.return_value = None
-
-    def session_factory():
-        nonlocal sessions_created
-        sessions_created += 1
-        s = AsyncMock()
-        ctx = AsyncMock()
-        ctx.__aenter__ = AsyncMock(return_value=s)
-        ctx.__aexit__ = AsyncMock(return_value=False)
-        return ctx
-
-    with (
-        patch('app.queue.get_session_factory', return_value=session_factory),
-        patch('app.queue.run_evaluation', side_effect=fake_run_evaluation),
-        patch('app.queue.EvaluationRunRepository', return_value=mock_repo),
-        patch('asyncio.sleep', new_callable=AsyncMock),
-        _no_predecessor(),
-    ):
-        await run_evaluation_job({}, str(uuid.uuid4()))
-
-    assert call_count == 2
-    # 3 sessions: attempt 1 (deadlock), attempt 2 (success), finalization
-    assert sessions_created == 3
-    mock_repo.finalize_if_all_done.assert_awaited_once_with(parent_run_id)
