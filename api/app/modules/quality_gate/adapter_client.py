@@ -13,8 +13,9 @@ logger = structlog.get_logger()
 class HttpAdapterClient:
     """Concrete adapter client that queries adapters over HTTP."""
 
-    def __init__(self, timeout: float) -> None:
+    def __init__(self, timeout: float, http_client: httpx.AsyncClient | None = None) -> None:
         self._timeout = timeout
+        self._http_client = http_client
 
     async def query(
         self,
@@ -54,8 +55,8 @@ class HttpAdapterClient:
             end=end,
             timeout=self._timeout,
         )
-        async with httpx.AsyncClient(timeout=self._timeout) as http_client:
-            resp = await http_client.post(
+        if self._http_client is not None:
+            resp = await self._http_client.post(
                 url,
                 headers={'X-Datasource-Name': datasource_name},
                 json={
@@ -67,6 +68,20 @@ class HttpAdapterClient:
             )
             resp.raise_for_status()
             data = resp.json()
+        else:
+            async with httpx.AsyncClient(timeout=self._timeout) as http_client:
+                resp = await http_client.post(
+                    url,
+                    headers={'X-Datasource-Name': datasource_name},
+                    json={
+                        'queries': queries,
+                        'variables': variables,
+                        'start': start,
+                        'end': end,
+                    },
+                )
+                resp.raise_for_status()
+                data = resp.json()
 
         metrics_fetched: dict[str, float | None] = {
             name: float(val) if val is not None else None for name, val in data.get('values', {}).items()
