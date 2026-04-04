@@ -16,11 +16,6 @@ from app.modules.common.exceptions import NotFoundError
 from app.modules.common.schemas import PagedResponse
 from app.modules.quality_gate.dependencies import QualityGateRepos, get_qg_repos
 from app.modules.quality_gate.presenter import build_detail, build_summary
-from app.modules.quality_gate.schemas.re_evaluation import (
-    BaselinePinConflictError,
-    ReEvaluateRequest,
-    ReEvaluateResponse,
-)
 from app.modules.quality_gate.re_evaluator import re_evaluate
 from app.modules.quality_gate.schemas import (
     AnnotationCreate,
@@ -47,6 +42,12 @@ from app.modules.quality_gate.schemas import (
     SloGroup,
     TrendPoint,
 )
+from app.modules.quality_gate.schemas.re_evaluation import (
+    BaselinePinConflictError,
+    ReEvaluateRequest,
+    ReEvaluateResponse,
+)
+from app.modules.quality_gate.target_resolver import resolve_targets
 from app.modules.quality_gate.trigger_service import TriggerService
 from app.queue import get_arq_pool
 
@@ -192,6 +193,7 @@ def _build_grouped_heatmap_response(
                 dn = obj.display_name or mn
                 if mn not in sd['metrics']:
                     sd['metrics'][mn] = dn
+                sli_meta = slo_eval.job_stats.get('sli_metadata', {})
                 sd['cells'].append(
                     HeatmapCellGrouped(
                         evaluation_id=run.id,
@@ -201,6 +203,23 @@ def _build_grouped_heatmap_response(
                         display_name=dn,
                         result='invalidated' if slo_eval.invalidated else row.status,
                         score=row.score,
+                        value=row.value,
+                        compared_value=row.compared_value,
+                        change_relative_pct=row.change_relative_pct,
+                        weight=obj.weight,
+                        key_sli=obj.key_sli,
+                        pass_targets=resolve_targets(
+                            list(obj.pass_threshold) if obj.pass_threshold else None,
+                            value=row.value,
+                            compared_value=row.compared_value,
+                        ),
+                        warning_targets=resolve_targets(
+                            list(obj.warning_threshold) if obj.warning_threshold else None,
+                            value=row.value,
+                            compared_value=row.compared_value,
+                        ),
+                        tab_group=obj.tab_group,
+                        aggregation=sli_meta.get(mn, {}).get('mode'),
                     )
                 )
 
@@ -225,6 +244,15 @@ def _build_grouped_heatmap_response(
                     period_start=runs_asc[xi].period_start,
                     result=result,
                     score=round(score, 2),
+                    total_score_pass_threshold=(
+                        slo_ev.job_stats.get('total_score_pass_threshold') if slo_ev else None
+                    ),
+                    total_score_warning_threshold=(
+                        slo_ev.job_stats.get('total_score_warning_threshold') if slo_ev else None
+                    ),
+                    sli_metadata=slo_ev.job_stats.get('sli_metadata') if slo_ev else None,
+                    invalidated=slo_ev.invalidated if slo_ev else False,
+                    invalidation_note=slo_ev.invalidation_note if slo_ev else None,
                 )
             )
         groups.append(
