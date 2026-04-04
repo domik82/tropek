@@ -9,29 +9,27 @@ import { ViewToggle } from '@/components/charts/ViewToggle'
 import type { ViewMode } from '@/components/charts/ViewToggle'
 import type { TimeSlotSelection } from './AssetHeatmap'
 import type { MetricHeatmapResponse } from '../types'
-import type { EvaluationDetail, SliMetadata } from '@/features/evaluations/types'
+import type { SliMetadata } from '@/features/evaluations/types'
 
 interface Props {
   assetName: string
   heatmapData: MetricHeatmapResponse | undefined
-  allSlotEvals: EvaluationDetail[]
+  selectedColumnEvalId: string | undefined
   effectiveEvalId: string | undefined
   notedSlots: Map<string, { evalId: string; count: number }>
   onEvalSelect: (evalId: string) => void
   onSlotSelect?: (slot: TimeSlotSelection) => void
-  sliMetadata?: Record<string, SliMetadata>
   mode: ViewMode
   setMode: (m: ViewMode) => void
   explorerButton: React.ReactNode
   sloExpandState: Map<string, boolean>
   onSloToggle: (sloName: string) => void
-  metricEvalMap?: Map<string, string>
 }
 
 export function AssetPanelHeatmapView({
-  assetName, heatmapData, allSlotEvals, effectiveEvalId, notedSlots,
+  assetName, heatmapData, selectedColumnEvalId, effectiveEvalId, notedSlots,
   onEvalSelect, onSlotSelect, mode, setMode, explorerButton,
-  sliMetadata, metricEvalMap, sloExpandState, onSloToggle,
+  sloExpandState, onSloToggle,
 }: Props) {
   const sliTableRef = useRef<HTMLDivElement>(null)
   const heatmapRef = useRef<HTMLDivElement>(null)
@@ -44,7 +42,7 @@ export function AssetPanelHeatmapView({
     heatmapRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }, [])
 
-  const handleHeatmapMetricClick = useCallback((metricName: string, sloName: string) => {
+  const handleHeatmapMetricClick = useCallback((_metricName: string, sloName: string) => {
     // Ensure the SLO group is expanded so the indicator row is visible
     const expanded = sloExpandState.get(sloName) ?? false
     if (!expanded) onSloToggle(sloName)
@@ -54,30 +52,54 @@ export function AssetPanelHeatmapView({
     })
   }, [sloExpandState, onSloToggle])
 
-  // Build SloBreakdownGroup[] from heatmap groups joined with slot evals.
-  // Always include all groups so headers are visible even without eval data.
+  // Build SloBreakdownGroup[] directly from enriched heatmap cells — no detail fetch needed.
   const breakdownGroups = useMemo((): SloBreakdownGroup[] => {
-    if (!heatmapData) return []
+    if (!heatmapData || !selectedColumnEvalId) return []
     return heatmapData.groups.map(g => {
-      const sloEval = allSlotEvals.find(e => e.slo_name === g.slo_name)
-      const indicators = sloEval?.indicator_results ?? []
-      const result = sloEval
-        ? (sloEval.invalidated ? 'invalidated' : sloEval.result ?? 'none')
-        : 'none'
-      const score = Math.round(sloEval?.score ?? 0)
-      const achieved_points = indicators.reduce((sum, ind) => sum + ind.score, 0)
-      const total_points = indicators.reduce((sum, ind) => sum + ind.weight, 0)
+      const summary = g.summary.find(s => s.evaluation_id === selectedColumnEvalId)
+      const indicators = g.cells
+        .filter(c => c.evaluation_id === selectedColumnEvalId)
+        .map(c => ({
+          metric: c.metric,
+          display_name: c.display_name,
+          value: c.value ?? 0,
+          compared_value: c.compared_value ?? null,
+          change_absolute: null,
+          change_relative_pct: c.change_relative_pct ?? null,
+          aggregation: c.aggregation ?? '',
+          status: c.result as 'pass' | 'warning' | 'fail',
+          score: c.score,
+          weight: c.weight ?? 1,
+          key_sli: c.key_sli ?? false,
+          pass_targets: c.pass_targets ?? null,
+          warning_targets: c.warning_targets ?? null,
+          tab_group: c.tab_group,
+        }))
+      const result = summary?.invalidated
+        ? 'invalidated'
+        : (summary?.result ?? 'none')
       return {
         slo_name: g.slo_name,
         slo_display_name: g.slo_display_name,
         indicators,
-        score,
+        score: Math.round(summary?.score ?? 0),
         result,
-        achieved_points,
-        total_points,
+        achieved_points: indicators.reduce((sum, ind) => sum + ind.score, 0),
+        total_points: indicators.reduce((sum, ind) => sum + ind.weight, 0),
       }
     })
-  }, [heatmapData, allSlotEvals])
+  }, [heatmapData, selectedColumnEvalId])
+
+  // Build sliMetadata from heatmap summary cells
+  const sliMetadata = useMemo((): Record<string, SliMetadata> | undefined => {
+    if (!heatmapData || !selectedColumnEvalId) return undefined
+    const meta: Record<string, SliMetadata> = {}
+    for (const g of heatmapData.groups) {
+      const summary = g.summary.find(s => s.evaluation_id === selectedColumnEvalId)
+      if (summary?.sli_metadata) Object.assign(meta, summary.sli_metadata)
+    }
+    return Object.keys(meta).length > 0 ? meta : undefined
+  }, [heatmapData, selectedColumnEvalId])
 
   // Trend chart sections use all breakdown groups — headers always visible
   const trendGroups = breakdownGroups
@@ -182,13 +204,15 @@ export function AssetPanelHeatmapView({
                     </span>
                   )}
                 </button>
-                {g.indicators.length > 0 && (
-                  <div className={`border border-t-0 border-border rounded-b p-4 ${expanded ? '' : 'hidden'}`}>
+                {g.indicators.length > 0 && expanded && (
+                  <div className="border border-t-0 border-border rounded-b p-4">
                     <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
                       {g.indicators.map(ind => (
                         <MetricTrendBlock
                           key={ind.metric}
-                          evalId={metricEvalMap?.get(ind.metric) ?? effectiveEvalId ?? ''}
+                          assetName={assetName}
+                          sloName={g.slo_name}
+                          selectedEvalId={effectiveEvalId}
                           indicator={ind}
                           onEvalSelect={onEvalSelect}
                           onScrollToTable={handleScrollToTable}
