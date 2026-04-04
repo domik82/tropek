@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 import uuid
+from datetime import datetime
 from typing import Any
 
 import httpx
 import structlog
+from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.cache.redis_cache import RedisCache
@@ -28,6 +30,39 @@ from app.modules.sli_registry.repository import SLIRepository
 from app.modules.slo_registry.repository import SLORepository
 
 logger = structlog.get_logger()
+
+
+class EvaluationSnapshot(BaseModel):
+    """Detached snapshot of everything needed to run an evaluation without a DB session."""
+
+    model_config = {'arbitrary_types_allowed': True}
+
+    eval_id: uuid.UUID
+    parent_run_id: uuid.UUID
+    slo_name: str
+    slo_version: int
+    sli_name: str | None
+    sli_version: int | None
+    data_source_name: str | None
+    evaluation_name: str
+    period_start: datetime
+    period_end: datetime
+    asset_snapshot: dict[str, Any]
+    asset_id: uuid.UUID
+    variables: dict[str, Any]
+
+
+class FetchAndEvaluateResult(BaseModel):
+    """Output of phase 2, everything needed to write results."""
+
+    model_config = {'arbitrary_types_allowed': True}
+
+    eval_result: Any
+    metrics_fetched: dict[str, float | None]
+    fetch_errors: dict[str, str]
+    sli_metadata: dict[str, Any]
+    baselines: dict[str, float | None]
+    compared_eval_ids: list[str]
 
 
 class DefinitionLoadError(Exception):
@@ -300,38 +335,28 @@ def _log_eval_result(
     )
 
 
-async def run_evaluation(  # noqa: PLR0915
+async def load_evaluation_snapshot(
     session: AsyncSession,
     eval_id: uuid.UUID,
     *,
     worker_id: str | None = None,
-    cache: RedisCache | None = None,
-) -> uuid.UUID | None:
-    """Execute a single evaluation job.
+) -> EvaluationSnapshot | None:
+    """Phase 1: mark running and build a detached snapshot.
 
-    1. Mark running
-    2. Load SLO + SLI definitions and build the SLO model
-    3. Build variables and substitute into SLI queries
-    4. Query adapter
-    5. Resolve baselines (pin-aware)
-    6. Evaluate
-    7. Write results
+    Marks the evaluation as running, loads the ORM row, and returns
+    an ``EvaluationSnapshot`` that contains everything needed for
+    phases 2 and 3 without a DB session.
 
-    Returns the parent EvaluationRun ID so the caller can attempt finalization
-    after committing (in a fresh session where all sibling changes are visible).
+    Returns None if the evaluation is not found or already processed.
+    The caller should commit after this returns.
 
     Args:
-        session: Async SQLAlchemy session (injected by arq worker context).
+        session: Active async DB session.
         eval_id: UUID of the Evaluation row to execute.
         worker_id: Optional identifier of the worker process for observability.
-        cache: Optional Redis cache for repository lookups.
     """
     log = logger.bind(evaluation_id=str(eval_id), worker_id=worker_id)
-    log.info(
-        'evaluation started',
-        eval_id=str(eval_id),
-        worker_id=worker_id,
-    )
+    log.info('phase 1: loading evaluation snapshot', eval_id=str(eval_id))
 
     repo = EvaluationRepository(session)
     await repo.mark_running(eval_id, worker_id)
@@ -349,13 +374,46 @@ async def run_evaluation(  # noqa: PLR0915
         )
         return None
 
-    # Load SLO + SLI definitions
-    try:
-        slo_def, sli_def = await _load_definitions(session, ev, cache=cache)
-    except DefinitionLoadError as exc:
-        log.warning('definitions not found', reason=str(exc))
-        await repo.mark_failed(eval_id, job_stats={'error': str(exc)})
-        return None
+    return EvaluationSnapshot(
+        eval_id=ev.id,
+        parent_run_id=ev.evaluation_id,
+        slo_name=ev.slo_name,
+        slo_version=ev.slo_version,
+        sli_name=ev.sli_name,
+        sli_version=ev.sli_version,
+        data_source_name=ev.data_source_name,
+        evaluation_name=ev.evaluation_name,
+        period_start=ev.period_start,
+        period_end=ev.period_end,
+        asset_snapshot=ev.asset_snapshot or {},
+        asset_id=ev.asset_id,
+        variables=ev.variables or {},
+    )
+
+
+async def fetch_and_evaluate(
+    *,
+    snapshot: EvaluationSnapshot,
+    slo_def: SLODefinition,
+    sli_def: SLIDefinition,
+    datasource: DataSource,
+    adapter_client: HttpAdapterClient,
+    baseline_repo: BaselineRepository,
+) -> FetchAndEvaluateResult | None:
+    """Phase 2: query adapter, resolve baselines, and evaluate.
+
+    Pure computation plus HTTP — no DB session needed.
+    Returns None if the adapter query fails.
+
+    Args:
+        snapshot: Detached evaluation snapshot from phase 1.
+        slo_def: SLO definition ORM object.
+        sli_def: SLI definition ORM object.
+        datasource: DataSource ORM object with adapter_url.
+        adapter_client: HTTP adapter client for querying metrics.
+        baseline_repo: Baseline repository for comparison queries.
+    """
+    log = logger.bind(evaluation_id=str(snapshot.eval_id))
 
     slo = build_slo(
         objectives=[
@@ -375,104 +433,129 @@ async def run_evaluation(  # noqa: PLR0915
     )
 
     # Build variables and query specs
-    asset_snapshot: dict[str, Any] = ev.asset_snapshot or {}
-    variables = _build_eval_variables(ev, asset_snapshot, slo_def)
+    variables = _build_eval_variables(snapshot, snapshot.asset_snapshot, slo_def)
 
     # For raw mode, substitute variables into indicator queries locally
     resolved_queries: dict[str, str] = {}
     if sli_def.mode == 'raw':
-        resolved_queries = {name: substitute_variables(tmpl, variables) for name, tmpl in sli_def.indicators.items()}
+        resolved_queries = {
+            name: substitute_variables(tmpl, variables)
+            for name, tmpl in sli_def.indicators.items()
+        }
 
     query_specs = _build_query_specs(sli_def, resolved_queries)
 
     log.info(
-        'evaluation context',
-        asset_name=asset_snapshot.get('name'),
-        evaluation_name=ev.evaluation_name,
-        slo_name=ev.slo_name,
-        slo_version=ev.slo_version,
-        sli_name=ev.sli_name,
-        sli_version=ev.sli_version,
+        'phase 2: evaluation context',
+        asset_name=snapshot.asset_snapshot.get('name'),
+        evaluation_name=snapshot.evaluation_name,
+        slo_name=snapshot.slo_name,
+        slo_version=snapshot.slo_version,
+        sli_name=snapshot.sli_name,
+        sli_version=snapshot.sli_version,
         sli_mode=sli_def.mode,
-        period_start=ev.period_start.isoformat(),
-        period_end=ev.period_end.isoformat(),
-        datasource=ev.data_source_name,
+        period_start=snapshot.period_start.isoformat(),
+        period_end=snapshot.period_end.isoformat(),
+        datasource=snapshot.data_source_name,
         query_specs=query_specs,
     )
 
     # Query adapter
-    if ev.data_source_name is None:
-        log.error('evaluation has no data_source_name')
-        await repo.mark_failed(eval_id, job_stats={'error': 'evaluation has no data_source_name'})
+    try:
+        metrics_fetched, fetch_errors, sli_metadata = await adapter_client.query(
+            adapter_url=datasource.adapter_url,
+            datasource_name=datasource.name,
+            queries=query_specs,
+            variables=variables,
+            start=snapshot.period_start.isoformat(),
+            end=snapshot.period_end.isoformat(),
+        )
+    except (httpx.ConnectError, httpx.TimeoutException, httpx.HTTPStatusError):
+        log.exception('adapter query failed', adapter_url=datasource.adapter_url)
         return None
-    ds = await DataSourceRepository(session).get_by_name(ev.data_source_name)
-    if ds is None:
-        log.error('datasource not found', datasource_name=ev.data_source_name)
-        await repo.mark_failed(eval_id, job_stats={'error': f"datasource '{ev.data_source_name}' not found"})
-        return None
-
-    log.info('querying adapter', adapter_url=ds.adapter_url, metric_count=len(query_specs))
-    adapter_result = await _query_adapter_safe(
-        log=log,
-        repo=repo,
-        eval_id=eval_id,
-        ds=ds,
-        query_specs=query_specs,
-        variables=variables,
-        start=ev.period_start.isoformat(),
-        end=ev.period_end.isoformat(),
-    )
-    if adapter_result is None:
-        return None
-    metrics_fetched, fetch_errors, sli_metadata = adapter_result
 
     _log_adapter_response(log, metrics_fetched, fetch_errors, sli_metadata)
 
     # Resolve baselines (pin-aware) and evaluate
-    baseline_repo = BaselineRepository(session, cache=cache)
-    indicator_names = list(sli_def.indicators) if sli_def.mode == 'raw' else [obj.sli for obj in slo.objectives]
+    indicator_names = (
+        list(sli_def.indicators) if sli_def.mode == 'raw'
+        else [obj.sli for obj in slo.objectives]
+    )
     baselines, compared_eval_ids = await _resolve_baselines(
-        baseline_repo=baseline_repo, slo=slo, ev=ev, indicator_names=indicator_names
+        baseline_repo=baseline_repo, slo=slo, ev=snapshot, indicator_names=indicator_names,
     )
     eval_result = evaluate(slo, metrics_fetched, baselines, compared_eval_ids)
 
     _log_eval_result(log, eval_result, metrics_fetched, baselines)
 
-    # Write results
+    return FetchAndEvaluateResult(
+        eval_result=eval_result,
+        metrics_fetched=metrics_fetched,
+        fetch_errors=fetch_errors,
+        sli_metadata=sli_metadata,
+        baselines=baselines,
+        compared_eval_ids=compared_eval_ids,
+    )
+
+
+async def write_results(
+    *,
+    session: AsyncSession,
+    snapshot: EvaluationSnapshot,
+    slo_def: SLODefinition,
+    sli_def: SLIDefinition,
+    fetch_result: FetchAndEvaluateResult,
+) -> None:
+    """Phase 3: write evaluation results to the database.
+
+    The caller should commit after this returns.
+
+    Args:
+        session: Active async DB session.
+        snapshot: Detached evaluation snapshot from phase 1.
+        slo_def: SLO definition ORM object.
+        sli_def: SLI definition ORM object.
+        fetch_result: Output of phase 2 with eval results and metrics.
+    """
+    log = logger.bind(evaluation_id=str(snapshot.eval_id))
+    eval_result = fetch_result.eval_result
+
+    # Write main evaluation result
     achieved_points = sum(round(ir.score) for ir in eval_result.indicator_results)
-    total_points = sum(int(obj.weight) for obj in slo.objectives)
+    total_points = sum(int(obj.weight) for obj in slo_def.objectives)
+    repo = EvaluationRepository(session)
     await repo.mark_completed(
-        eval_id,
+        snapshot.eval_id,
         result=eval_result.result,
         score=eval_result.score,
-        slo_name=ev.slo_name,
-        slo_version=ev.slo_version,
+        slo_name=snapshot.slo_name,
+        slo_version=snapshot.slo_version,
         job_stats={
-            'fetch_errors': fetch_errors,
+            'fetch_errors': fetch_result.fetch_errors,
             'total_score_pass_threshold': slo_def.total_score_pass_threshold,
             'total_score_warning_threshold': slo_def.total_score_warning_threshold,
-            **({'sli_metadata': sli_metadata} if sli_metadata else {}),
+            **({'sli_metadata': fetch_result.sli_metadata} if fetch_result.sli_metadata else {}),
         },
-        compared_evaluation_ids=compared_eval_ids,
+        compared_evaluation_ids=fetch_result.compared_eval_ids,
         achieved_points=achieved_points,
         total_points=total_points,
     )
 
     # Write to normalized indicator_results table
-    slo_eval_id = eval_id
-    await _write_indicator_rows(log, session, slo_eval_id, slo_def, eval_result.indicator_results)
+    await _write_indicator_rows(
+        log, session, snapshot.eval_id, slo_def, eval_result.indicator_results,
+    )
 
     # Write SLI values to TimescaleDB hypertable
     sli_rows = _build_sli_rows(
-        eval_id=slo_eval_id,
-        ev=ev,
+        eval_id=snapshot.eval_id,
+        ev=snapshot,
         sli_def=sli_def,
         indicator_results=eval_result.indicator_results,
-        asset_snapshot=asset_snapshot,
+        asset_snapshot=snapshot.asset_snapshot,
     )
     if sli_rows:
         sli_repo = SLIValueRepository(session)
         await sli_repo.write_sli_values(sli_rows)
 
-    log.info('evaluation completed', result=eval_result.result, score=eval_result.score)
-    return ev.evaluation_id
+    log.info('phase 3: results written', result=eval_result.result, score=eval_result.score)
