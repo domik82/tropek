@@ -28,6 +28,7 @@ from app.modules.quality_gate.worker import (
     fetch_and_evaluate,
     load_evaluation_snapshot,
     write_results,
+    write_sli_values_phase,
 )
 
 logger = structlog.get_logger()
@@ -103,6 +104,13 @@ async def _worker_shutdown(ctx: dict[str, Any]) -> None:
         await http_client.aclose()
 
 
+async def _mark_failed(session_factory: Any, eval_id: uuid.UUID, error: str) -> None:
+    """Open a fresh session, mark the evaluation as failed, and commit."""
+    async with session_factory() as session:
+        await EvaluationRepository(session).mark_failed(eval_id, job_stats={'error': error})
+        await session.commit()
+
+
 async def run_evaluation_job(ctx: dict[str, Any], eval_id_str: str, defer_count: int = 0) -> None:
     """Arq job — run evaluation in three phases with separate DB sessions.
 
@@ -142,11 +150,7 @@ async def run_evaluation_job(ctx: dict[str, Any], eval_id_str: str, defer_count:
     # Phase 2a: Load definitions (short read session)
     if snapshot.data_source_name is None:
         log.warning('definitions not found', reason='evaluation has no data_source_name')
-        async with session_factory() as session:
-            await EvaluationRepository(session).mark_failed(
-                eval_id, job_stats={'error': 'evaluation has no data_source_name'}
-            )
-            await session.commit()
+        await _mark_failed(session_factory, eval_id, 'evaluation has no data_source_name')
         return
 
     try:
@@ -158,21 +162,13 @@ async def run_evaluation_job(ctx: dict[str, Any], eval_id_str: str, defer_count:
             await session.commit()
     except DefinitionLoadError as exc:
         log.warning('definitions not found', reason=str(exc))
-        async with session_factory() as session:
-            await EvaluationRepository(session).mark_failed(
-                eval_id, job_stats={'error': str(exc)}
-            )
-            await session.commit()
+        await _mark_failed(session_factory, eval_id, str(exc))
         return
 
     if datasource is None:
         error_msg = f"datasource '{snapshot.data_source_name}' not found"
         log.warning('definitions not found', reason=error_msg)
-        async with session_factory() as session:
-            await EvaluationRepository(session).mark_failed(
-                eval_id, job_stats={'error': error_msg}
-            )
-            await session.commit()
+        await _mark_failed(session_factory, eval_id, error_msg)
         return
 
     # Phase 2b: HTTP query + evaluate (baselines need a read session)
@@ -195,19 +191,24 @@ async def run_evaluation_job(ctx: dict[str, Any], eval_id_str: str, defer_count:
         await session.commit()
 
     if fetch_result is None:
-        async with session_factory() as session:
-            await EvaluationRepository(session).mark_failed(
-                eval_id, job_stats={'error': 'adapter query failed'}
-            )
-            await session.commit()
+        await _mark_failed(session_factory, eval_id, 'adapter query failed')
         return
 
-    # Phase 3: Write results (COMMIT immediately)
+    # Phase 3a: Write evaluation result + indicator rows (COMMIT immediately)
     async with session_factory() as session:
         await write_results(
             session=session,
             snapshot=snapshot,
             slo_def=slo_def,
+            fetch_result=fetch_result,
+        )
+        await session.commit()
+
+    # Phase 3b: Write SLI values to hypertable (separate txn to avoid chunk lock deadlocks)
+    async with session_factory() as session:
+        await write_sli_values_phase(
+            session=session,
+            snapshot=snapshot,
             sli_def=sli_def,
             fetch_result=fetch_result,
         )

@@ -502,24 +502,19 @@ async def write_results(
     session: AsyncSession,
     snapshot: EvaluationSnapshot,
     slo_def: SLODefinition,
-    sli_def: SLIDefinition,
     fetch_result: FetchAndEvaluateResult,
 ) -> None:
-    """Phase 3: write evaluation results to the database.
+    """Phase 3a: write evaluation result and indicator rows.
 
-    The caller should commit after this returns.
+    Writes mark_completed + indicator_results in one transaction.
+    The sli_values hypertable write is split into write_sli_values_phase
+    (separate transaction) to avoid deadlocks with TimescaleDB chunk locks.
 
-    Args:
-        session: Active async DB session.
-        snapshot: Detached evaluation snapshot from phase 1.
-        slo_def: SLO definition ORM object.
-        sli_def: SLI definition ORM object.
-        fetch_result: Output of phase 2 with eval results and metrics.
+    Caller should COMMIT after this returns.
     """
     log = logger.bind(evaluation_id=str(snapshot.eval_id))
     eval_result = fetch_result.eval_result
 
-    # Write main evaluation result
     achieved_points = sum(round(ir.score) for ir in eval_result.indicator_results)
     total_points = sum(int(obj.weight) for obj in slo_def.objectives)
     repo = EvaluationRepository(session)
@@ -540,21 +535,35 @@ async def write_results(
         total_points=total_points,
     )
 
-    # Write to normalized indicator_results table
     await _write_indicator_rows(
         log, session, snapshot.eval_id, slo_def, eval_result.indicator_results,
     )
 
-    # Write SLI values to TimescaleDB hypertable
+    log.info('phase 3a: results written', result=eval_result.result, score=eval_result.score)
+
+
+async def write_sli_values_phase(
+    *,
+    session: AsyncSession,
+    snapshot: EvaluationSnapshot,
+    sli_def: SLIDefinition,
+    fetch_result: FetchAndEvaluateResult,
+) -> None:
+    """Phase 3b: write SLI values to TimescaleDB hypertable.
+
+    Separate transaction from write_results to avoid deadlocks caused by
+    TimescaleDB chunk-level ShareUpdateExclusiveLock conflicting with FK
+    locks from mark_completed on slo_evaluations.
+
+    Caller should COMMIT after this returns.
+    """
     sli_rows = _build_sli_rows(
         eval_id=snapshot.eval_id,
         ev=snapshot,
         sli_def=sli_def,
-        indicator_results=eval_result.indicator_results,
+        indicator_results=fetch_result.eval_result.indicator_results,
         asset_snapshot=snapshot.asset_snapshot,
     )
     if sli_rows:
         sli_repo = SLIValueRepository(session)
         await sli_repo.write_sli_values(sli_rows)
-
-    log.info('phase 3: results written', result=eval_result.result, score=eval_result.score)
