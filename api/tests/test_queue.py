@@ -3,10 +3,8 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime
+from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock, patch
-
-import pytest
 
 from app.modules.quality_gate.worker import DefinitionLoadError, EvaluationSnapshot
 from app.queue import finalize_run_job, run_evaluation_job
@@ -26,8 +24,8 @@ def _make_snapshot(
         sli_version=1,
         data_source_name='prometheus',
         evaluation_name='test-eval',
-        period_start=datetime(2026, 1, 1),
-        period_end=datetime(2026, 1, 2),
+        period_start=datetime(2026, 1, 1, tzinfo=UTC),
+        period_end=datetime(2026, 1, 2, tzinfo=UTC),
         asset_snapshot={'service': 'api'},
         asset_id=uuid.uuid4(),
         variables={},
@@ -83,8 +81,8 @@ async def test_happy_path_three_phases() -> None:
     parent_run_id = uuid.uuid4()
     snapshot = _make_snapshot(eval_id=eval_id, parent_run_id=parent_run_id)
 
-    # Sessions: phase1, phase2a, phase2b, phase3
-    sessions = [_mock_session() for _ in range(4)]
+    # Sessions: phase1, phase2a, phase2b, phase3a, phase3b
+    sessions = [_mock_session() for _ in range(5)]
     factory = _session_factory_from_list(sessions)
     mock_pool = AsyncMock()
 
@@ -111,7 +109,8 @@ async def test_happy_path_three_phases() -> None:
             new_callable=AsyncMock,
             return_value=mock_fetch_result,
         ),
-        patch('app.queue.write_results', new_callable=AsyncMock),
+        patch('app.queue.write_results', new_callable=AsyncMock) as mock_write,
+        patch('app.queue.write_sli_values_phase', new_callable=AsyncMock) as mock_sli,
         patch('app.queue.BaselineRepository'),
         patch('app.queue.HttpAdapterClient'),
         _no_predecessor(),
@@ -120,9 +119,13 @@ async def test_happy_path_three_phases() -> None:
 
         await run_evaluation_job(_make_ctx(mock_pool), str(eval_id))
 
-    # All 4 sessions committed
+    # All 5 sessions committed
     for i, s in enumerate(sessions):
         s.commit.assert_awaited_once(), f'session {i} not committed'
+
+    # Both write phases called
+    mock_write.assert_awaited_once()
+    mock_sli.assert_awaited_once()
 
     # Finalize job enqueued with dedup key
     mock_pool.enqueue_job.assert_awaited_once_with(
