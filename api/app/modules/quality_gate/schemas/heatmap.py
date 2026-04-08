@@ -89,6 +89,7 @@ class EvaluationColumn(BaseModel):
     period_start: datetime
     period_end: datetime
     eval_name: str
+    has_notes: bool = False
 
 
 class GroupedMetricHeatmapResponse(BaseModel):
