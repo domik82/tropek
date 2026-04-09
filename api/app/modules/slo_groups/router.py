@@ -14,7 +14,7 @@ from app.modules.common.errors import raise_not_found
 from app.modules.common.schemas import PagedResponse
 from app.modules.sli_registry.repository import SLIRepository
 from app.modules.slo_groups.generator import generate_slo_specs
-from app.modules.slo_groups.regeneration import plan_regeneration
+from app.modules.slo_groups.regeneration import RegenerationPlan, plan_regeneration
 from app.modules.slo_groups.repository import SLOGroupRepository
 from app.modules.slo_groups.schemas import (
     ExtractRequest,
@@ -106,6 +106,56 @@ async def _resolve_sli_indicators(
     return dict(sli_def.indicators)
 
 
+def _build_generated_slo_params(
+    spec: Any,
+    *,
+    sli_definition_id: uuid.UUID | None,
+    group_id: uuid.UUID,
+    comparable_from_version: int | None = None,
+) -> SLOCreateParams:
+    """Build SLOCreateParams for an SLO generated from a template spec."""
+    return SLOCreateParams(
+        name=spec.name,
+        objectives=[SLOObjectiveParams.model_validate(o) for o in spec.objectives],
+        total_score_pass_threshold=spec.total_score_pass_threshold,
+        total_score_warning_threshold=spec.total_score_warning_threshold,
+        comparison=spec.comparison,
+        variables=spec.variables,
+        tags=spec.tags,
+        kind='standard',
+        sli_definition_id=sli_definition_id,
+        generated_by_group_id=group_id,
+        comparable_from_version=comparable_from_version,
+    )
+
+
+async def _apply_regeneration_plan(
+    slo_repo: SLORepository,
+    plan: RegenerationPlan,
+    *,
+    sli_definition_id: uuid.UUID | None,
+    group_id: uuid.UUID,
+) -> None:
+    """Execute a regeneration plan: create new SLOs, version existing ones, deactivate removed."""
+    for spec in plan.to_create:
+        await slo_repo.create(
+            _build_generated_slo_params(
+                spec, sli_definition_id=sli_definition_id, group_id=group_id,
+            )
+        )
+    for action in plan.to_update:
+        await slo_repo.create(
+            _build_generated_slo_params(
+                action.spec,
+                sli_definition_id=sli_definition_id,
+                group_id=group_id,
+                comparable_from_version=action.comparable_from_version,
+            )
+        )
+    for slo_name in plan.to_deactivate:
+        await slo_repo.deactivate(slo_name)
+
+
 
 # ---------------------------------------------------------------------------
 # SLO Group CRUD
@@ -147,23 +197,13 @@ async def create_slo_group(
         author=body.author,
     )
 
-    # Resolve SLI FK for generated SLOs from template
-    resolved_sli_def_id: uuid.UUID | None = template.sli_definition_id
-
     # Create generated SLO definitions
     for spec in gen_result.specs:
         await slo_repo.create(
-            SLOCreateParams(
-                name=spec.name,
-                objectives=[SLOObjectiveParams.model_validate(o) for o in spec.objectives],
-                total_score_pass_threshold=spec.total_score_pass_threshold,
-                total_score_warning_threshold=spec.total_score_warning_threshold,
-                comparison=spec.comparison,
-                variables=spec.variables,
-                tags=spec.tags,
-                kind='standard',
-                sli_definition_id=resolved_sli_def_id,
-                generated_by_group_id=group.id,
+            _build_generated_slo_params(
+                spec,
+                sli_definition_id=template.sli_definition_id,
+                group_id=group.id,
             )
         )
 
@@ -259,48 +299,13 @@ async def update_slo_group(
         template_variables_changed=template_variables_changed,
     )
 
-    # Resolve SLI FK for generated SLOs from template
-    resolved_sli_def_id: uuid.UUID | None = template.sli_definition_id
-
-    # Apply plan: create new SLOs
-    for spec in regen_plan.to_create:
-        await slo_repo.create(
-            SLOCreateParams(
-                name=spec.name,
-                objectives=[SLOObjectiveParams.model_validate(o) for o in spec.objectives],
-                total_score_pass_threshold=spec.total_score_pass_threshold,
-                total_score_warning_threshold=spec.total_score_warning_threshold,
-                comparison=spec.comparison,
-                variables=spec.variables,
-                tags=spec.tags,
-                kind='standard',
-                sli_definition_id=resolved_sli_def_id,
-                generated_by_group_id=group.id,
-            )
-        )
-
-    # Apply plan: update existing SLOs (create new version)
-    for action in regen_plan.to_update:
-        spec = action.spec
-        await slo_repo.create(
-            SLOCreateParams(
-                name=spec.name,
-                objectives=[SLOObjectiveParams.model_validate(o) for o in spec.objectives],
-                total_score_pass_threshold=spec.total_score_pass_threshold,
-                total_score_warning_threshold=spec.total_score_warning_threshold,
-                comparison=spec.comparison,
-                variables=spec.variables,
-                tags=spec.tags,
-                kind='standard',
-                sli_definition_id=resolved_sli_def_id,
-                generated_by_group_id=group.id,
-                comparable_from_version=action.comparable_from_version,
-            )
-        )
-
-    # Apply plan: deactivate removed SLOs
-    for slo_name in regen_plan.to_deactivate:
-        await slo_repo.deactivate(slo_name)
+    # Apply plan: create, re-version, and deactivate generated SLOs
+    await _apply_regeneration_plan(
+        slo_repo,
+        regen_plan,
+        sli_definition_id=template.sli_definition_id,
+        group_id=group.id,
+    )
 
     # Update group row
     updated_group = await group_repo.update(
