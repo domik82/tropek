@@ -49,6 +49,7 @@ export interface EvaluationColumn {
   period_start: string
   period_end: string
   eval_name: string
+  has_notes?: boolean
 }
 
 // Summary cell for an SLO group header row or the Overall composite row

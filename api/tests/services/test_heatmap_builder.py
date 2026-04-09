@@ -211,3 +211,37 @@ def test_composite_row_defaults() -> None:
     assert composite.total_score_pass_threshold is None
     assert composite.sli_metadata is None
     assert composite.invalidated is False
+
+
+def test_has_notes_marks_columns_present_in_noted_set() -> None:
+    """Columns whose run id is in noted_run_ids get has_notes=True; others False."""
+    run_a = _make_run(
+        period_start=datetime(2026, 4, 1, 10, 0, tzinfo=UTC),
+        slo_evaluations=[_make_slo_eval()],
+    )
+    run_b = _make_run(
+        period_start=datetime(2026, 4, 1, 11, 0, tzinfo=UTC),
+        slo_evaluations=[_make_slo_eval()],
+    )
+    run_c = _make_run(
+        period_start=datetime(2026, 4, 1, 12, 0, tzinfo=UTC),
+        slo_evaluations=[_make_slo_eval()],
+    )
+
+    resp = _build_grouped_heatmap_response(
+        'test-asset', [run_a, run_b, run_c], noted_run_ids={run_a.id, run_c.id}
+    )
+
+    by_id = {col.evaluation_id: col for col in resp.columns}
+    assert by_id[run_a.id].has_notes is True
+    assert by_id[run_b.id].has_notes is False
+    assert by_id[run_c.id].has_notes is True
+
+
+def test_has_notes_defaults_to_false_when_noted_run_ids_omitted() -> None:
+    """When noted_run_ids is not provided, every column has has_notes=False."""
+    run = _make_run(slo_evaluations=[_make_slo_eval()])
+
+    resp = _build_grouped_heatmap_response('test-asset', [run])
+
+    assert all(col.has_notes is False for col in resp.columns)

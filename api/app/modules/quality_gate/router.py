@@ -152,6 +152,7 @@ def _worst_result(results: list[str]) -> str:
 def _build_grouped_heatmap_response(
     asset_name: str,
     runs: list[EvaluationRun],
+    noted_run_ids: set[uuid.UUID] | None = None,
 ) -> GroupedMetricHeatmapResponse:
     """Build GroupedMetricHeatmapResponse from a list of EvaluationRun rows.
 
@@ -161,12 +162,14 @@ def _build_grouped_heatmap_response(
     runs_asc = sorted(runs, key=lambda r: r.period_start)
     n = len(runs_asc)
 
+    noted = noted_run_ids or set()
     columns = [
         EvaluationColumn(
             evaluation_id=run.id,
             period_start=run.period_start,
             period_end=run.period_end,
             eval_name=run.eval_name,
+            has_notes=run.id in noted,
         )
         for run in runs_asc
     ]
@@ -382,7 +385,8 @@ async def get_grouped_metric_heatmap(
         from_ts=from_ts,
         to_ts=to_ts,
     )
-    return _build_grouped_heatmap_response(asset_name, runs)
+    noted_run_ids = await repos.trend_repo.get_run_ids_with_notes([run.id for run in runs])
+    return _build_grouped_heatmap_response(asset_name, runs, noted_run_ids=noted_run_ids)
 
 
 @router.post('/evaluations/re-evaluate', response_model=ReEvaluateResponse)

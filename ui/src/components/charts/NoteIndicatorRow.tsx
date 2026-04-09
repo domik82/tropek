@@ -2,7 +2,7 @@
 import { useState, useRef, useCallback } from 'react'
 import { MessageSquareWarning, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { useEvaluationDetail } from '@/features/evaluations'
+import { useColumnAnnotations } from '@/features/evaluations/hooks'
 
 export interface SlotNote {
   evalId: string
@@ -34,9 +34,12 @@ function NoteIcon({ slot, info, x, width, onIndicatorClick }: {
 }) {
   const [open, setOpen] = useState(false)
   const hideTimer = useRef<ReturnType<typeof setTimeout>>(null)
-  const { data: ev, isFetching } = useEvaluationDetail(open ? info.evalId : undefined)
+  const { data: annotations, isFetching } = useColumnAnnotations(
+    open ? info.evalId : undefined,
+  )
 
-  const latest = ev?.annotations?.[ev.annotations.length - 1]
+  const latest = annotations?.[annotations.length - 1]
+  const count = annotations?.length ?? 0
 
   const show = useCallback(() => {
     if (hideTimer.current) clearTimeout(hideTimer.current)
@@ -74,7 +77,7 @@ function NoteIcon({ slot, info, x, width, onIndicatorClick }: {
           <div className="flex items-center gap-1.5 mb-1">
             <span className="text-amber-400 text-xs">⚑</span>
             <span className="text-[10px] text-muted-foreground">
-              {info.count} note{info.count !== 1 ? 's' : ''}
+              {annotations ? `${count} note${count !== 1 ? 's' : ''}` : 'Notes'}
             </span>
           </div>
           {latest ? (
