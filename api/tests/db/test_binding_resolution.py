@@ -110,9 +110,12 @@ async def _create_group_with_member(
     """Create an asset group and add one member."""
     resp = await client.post('/asset-groups', json={'name': group_name})
     assert resp.status_code == 201
+    resp = await client.get(f'/assets/{asset_name}')
+    assert resp.status_code == 200
+    asset_id = resp.json()['id']
     resp = await client.post(
         f'/asset-groups/{group_name}/members',
-        json={'asset_name': asset_name, 'weight': 1.0},
+        json={'asset_id': asset_id, 'weight': 1.0},
     )
     assert resp.status_code == 201
 
