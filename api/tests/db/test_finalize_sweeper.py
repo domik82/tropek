@@ -171,7 +171,7 @@ async def test_sweeper_rescues_when_fast_path_never_ran(db_session, asset, sweep
     # Sweeper runs — no arq involvement, just the cron function called directly.
     await finalize_sweeper_job(_make_ctx())
 
-    # Post-state: parent finalized to 'completed' with worst-case result.
+    # Post-state: parent finalized to 'completed'; result inherits from the single child (pass).
     after = await db_session.get(EvaluationRun, run_id)
     await db_session.refresh(after)
     assert after.status == 'completed'
