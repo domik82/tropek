@@ -111,3 +111,74 @@ def test_missing_config_file_uses_defaults(tmp_path: Path) -> None:
     settings = config_module.get_settings()
     assert settings.database.host == 'localhost'
     assert settings.queue.job_timeout_seconds == 120
+
+
+def test_queue_sweeper_defaults(tmp_path: Path) -> None:
+    """Sweeper config has sane defaults when not present in YAML."""
+    cfg_file = tmp_path / 'config.yaml'
+    cfg_file.write_text('database:\n  host: h\n  port: 5432\n  name: n\n')
+
+    os.environ['QG_CONFIG_PATH'] = str(cfg_file)
+    os.environ['QG_DB_USER'] = 'u'
+    os.environ['QG_DB_PASSWORD'] = 'p'
+    os.environ['QG_REDIS_PASSWORD'] = 'r'
+    os.environ['QG_SECRET_KEY'] = 's'
+
+    importlib.reload(config_module)
+    settings = config_module.get_settings()
+
+    assert settings.queue.finalize_sweeper_interval_seconds == 30
+    assert settings.queue.finalize_sweeper_batch_limit == 100
+
+
+def test_queue_sweeper_accepts_valid_interval(tmp_path: Path) -> None:
+    """Interval=5 (a divisor of 60) is accepted."""
+    cfg_file = tmp_path / 'config.yaml'
+    cfg_file.write_text(
+        'database:\n  host: h\n  port: 5432\n  name: n\n'
+        'queue:\n  finalize_sweeper_interval_seconds: 5\n'
+    )
+    os.environ['QG_CONFIG_PATH'] = str(cfg_file)
+    os.environ['QG_DB_USER'] = 'u'
+    os.environ['QG_DB_PASSWORD'] = 'p'
+    os.environ['QG_REDIS_PASSWORD'] = 'r'
+    os.environ['QG_SECRET_KEY'] = 's'
+
+    importlib.reload(config_module)
+    settings = config_module.get_settings()
+
+    assert settings.queue.finalize_sweeper_interval_seconds == 5
+
+
+def test_queue_sweeper_rejects_invalid_interval(tmp_path: Path) -> None:
+    """Interval=45 (not a divisor of 60) raises at settings construction."""
+    cfg_file = tmp_path / 'config.yaml'
+    cfg_file.write_text(
+        'database:\n  host: h\n  port: 5432\n  name: n\n'
+        'queue:\n  finalize_sweeper_interval_seconds: 45\n'
+    )
+    os.environ['QG_CONFIG_PATH'] = str(cfg_file)
+    os.environ['QG_DB_USER'] = 'u'
+    os.environ['QG_DB_PASSWORD'] = 'p'
+    os.environ['QG_REDIS_PASSWORD'] = 'r'
+    os.environ['QG_SECRET_KEY'] = 's'
+
+    with pytest.raises(ValueError, match='finalize_sweeper_interval_seconds'):
+        importlib.reload(config_module)
+
+
+def test_queue_sweeper_rejects_zero_batch_limit(tmp_path: Path) -> None:
+    """batch_limit=0 raises."""
+    cfg_file = tmp_path / 'config.yaml'
+    cfg_file.write_text(
+        'database:\n  host: h\n  port: 5432\n  name: n\n'
+        'queue:\n  finalize_sweeper_batch_limit: 0\n'
+    )
+    os.environ['QG_CONFIG_PATH'] = str(cfg_file)
+    os.environ['QG_DB_USER'] = 'u'
+    os.environ['QG_DB_PASSWORD'] = 'p'
+    os.environ['QG_REDIS_PASSWORD'] = 'r'
+    os.environ['QG_SECRET_KEY'] = 's'
+
+    with pytest.raises(ValueError, match='finalize_sweeper_batch_limit'):
+        importlib.reload(config_module)

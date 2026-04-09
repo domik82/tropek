@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import time
 import uuid
 from datetime import timedelta
 from typing import Any, ClassVar, cast
@@ -9,7 +10,7 @@ from typing import Any, ClassVar, cast
 import httpx
 import redis.asyncio as aioredis
 import structlog
-from arq import create_pool
+from arq import create_pool, cron
 from arq.connections import ArqRedis, RedisSettings
 from fastapi import Request
 
@@ -248,10 +249,79 @@ async def finalize_run_job(ctx: dict[str, Any], run_id_str: str) -> None:
         )
 
 
+def _sweeper_cron_seconds(interval_seconds: int) -> set[int]:
+    """Translate sweeper interval (must divide 60) into arq cron second-of-minute set."""
+    if 60 % interval_seconds != 0:
+        msg = (
+            f'finalize_sweeper_interval_seconds must divide 60; got {interval_seconds}'
+        )
+        raise ValueError(msg)
+    return set(range(0, 60, interval_seconds))
+
+
+async def finalize_sweeper_job(ctx: dict[str, Any]) -> None:
+    """Periodic reconciler — finalize parent runs that the fast-path missed.
+
+    Scans for parent runs whose children are all terminal but whose own
+    status is still 'pending' or 'running', then calls the idempotent
+    finalize_if_all_done in a fresh session per run.
+
+    Deadlock-safe: this job never updates a child row, so it never holds
+    FOR KEY SHARE on the parent and never needs a lock upgrade. Its parent
+    UPDATE takes FOR NO KEY UPDATE, which does not conflict with live
+    child transactions' FOR KEY SHARE locks.
+    """
+    settings = get_settings()
+    batch_limit = settings.queue.finalize_sweeper_batch_limit
+    session_factory = get_session_factory()
+    log = logger.bind(job='finalize_sweeper')
+
+    started = time.monotonic()
+    rescued = 0
+
+    async with session_factory() as session:
+        run_repo = EvaluationRunRepository(session)
+        candidate_ids = await run_repo.find_finalizable_pending_ids(limit=batch_limit)
+
+    for run_id in candidate_ids:
+        async with session_factory() as session:
+            run_repo = EvaluationRunRepository(session)
+            finalized = await run_repo.finalize_if_all_done(run_id)
+            await session.commit()
+        if finalized is not None:
+            rescued += 1
+            log.info(
+                'sweeper_rescued_run',
+                evaluation_id=str(run_id),
+                result=finalized.result,
+            )
+
+    duration_ms = int((time.monotonic() - started) * 1000)
+    log.info(
+        'sweeper_tick',
+        scanned=len(candidate_ids),
+        rescued=rescued,
+        duration_ms=duration_ms,
+    )
+
+
 class WorkerSettings:
     """arq worker configuration — discovered by `arq app.queue.WorkerSettings`."""
 
-    functions: ClassVar[list[Any]] = [run_evaluation_job, finalize_run_job]
+    functions: ClassVar[list[Any]] = [
+        run_evaluation_job,
+        finalize_run_job,
+        finalize_sweeper_job,
+    ]
+    cron_jobs: ClassVar[list[Any]] = [
+        cron(
+            finalize_sweeper_job,
+            second=_sweeper_cron_seconds(
+                get_settings().queue.finalize_sweeper_interval_seconds
+            ),
+            run_at_startup=False,
+        ),
+    ]
     on_startup = _worker_startup
     on_shutdown = _worker_shutdown
     max_jobs = get_settings().queue.max_jobs

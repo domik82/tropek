@@ -17,7 +17,7 @@ from pathlib import Path
 from typing import Any
 
 import yaml
-from pydantic import SecretStr
+from pydantic import SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 logger = logging.getLogger(__name__)
@@ -110,6 +110,35 @@ class QueueSettings(BaseSettings):
     retry_delay_seconds: int = _yaml.get('queue', {}).get('retry_delay_seconds', 10)
     job_timeout_seconds: int = _yaml.get('queue', {}).get('job_timeout_seconds', 120)
     keep_result_seconds: int = _yaml.get('queue', {}).get('keep_result_seconds', 3600)
+    finalize_sweeper_interval_seconds: int = _yaml.get('queue', {}).get(
+        'finalize_sweeper_interval_seconds', 30
+    )
+    finalize_sweeper_batch_limit: int = _yaml.get('queue', {}).get(
+        'finalize_sweeper_batch_limit', 100
+    )
+
+    @field_validator('finalize_sweeper_interval_seconds')
+    @classmethod
+    def _validate_sweeper_interval(cls, v: int) -> int:
+        allowed = {5, 10, 15, 20, 30, 60}
+        if v not in allowed:
+            msg = (
+                f'finalize_sweeper_interval_seconds must be one of '
+                f'{sorted(allowed)} (divisors of 60), got {v}'
+            )
+            raise ValueError(msg)
+        return v
+
+    @field_validator('finalize_sweeper_batch_limit')
+    @classmethod
+    def _validate_sweeper_batch_limit(cls, v: int) -> int:
+        if v < 1:
+            msg = f'finalize_sweeper_batch_limit must be >= 1, got {v}'
+            raise ValueError(msg)
+        return v
+
+
+_queue_settings: QueueSettings = QueueSettings()
 
 
 class ReliabilitySettings(BaseSettings):
@@ -200,7 +229,7 @@ class Settings(BaseSettings):
     @property
     def queue(self) -> QueueSettings:
         """Job queue settings."""
-        return QueueSettings()
+        return _queue_settings
 
     @property
     def reliability(self) -> ReliabilitySettings:
