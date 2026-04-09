@@ -7,9 +7,6 @@ updated, these tests document the expected contract.
 
 import inspect
 
-from fastapi.routing import APIRoute
-from pydantic import BaseModel
-
 from app.main import app
 from app.modules.assets.schemas import AssetCreate, AssetRead
 from app.modules.common.schemas import StrictInput
@@ -21,6 +18,8 @@ from app.modules.quality_gate.schemas import (
 )
 from app.modules.sli_registry.schemas import SLIDefinitionRead
 from app.modules.slo_registry.schemas import SLODefinitionRead
+from fastapi.routing import APIRoute
+from pydantic import BaseModel
 
 
 def _field_names(model: type[BaseModel]) -> set[str]:
@@ -161,9 +160,11 @@ class TestStrictInputEnforcement:
         violations: list[str] = []
         for route_label, model in _collect_body_models():
             all_models = [model, *_collect_nested_models(model)]
-            for m in all_models:
-                if not issubclass(m, StrictInput):
-                    violations.append(f'{m.__name__} (used in {route_label})')
+            violations.extend(
+                f'{m.__name__} (used in {route_label})'
+                for m in all_models
+                if not issubclass(m, StrictInput)
+            )
         assert not violations, (
             f'body models must inherit StrictInput: {", ".join(sorted(set(violations)))}'
         )

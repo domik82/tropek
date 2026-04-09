@@ -8,7 +8,6 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, model_validator
 
-from app.modules.common.schemas import StrictInput
 from app.modules.quality_gate.schemas.annotations import AnnotationRead
 
 
