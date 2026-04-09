@@ -6,8 +6,15 @@ import uuid
 from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import pytest
 from app.modules.quality_gate.worker import DefinitionLoadError, EvaluationSnapshot
-from app.queue import finalize_run_job, run_evaluation_job
+from app.queue import (
+    WorkerSettings,
+    _sweeper_cron_seconds,
+    finalize_run_job,
+    finalize_sweeper_job,
+    run_evaluation_job,
+)
 
 
 def _make_snapshot(
@@ -316,3 +323,35 @@ async def test_predecessor_defers_job() -> None:
 
     mock_snapshot.assert_not_awaited()
     mock_pool.enqueue_job.assert_awaited_once()
+
+
+# --- Sweeper cron helper ---
+
+
+def test_sweeper_cron_seconds_30() -> None:
+    assert _sweeper_cron_seconds(30) == {0, 30}
+
+
+def test_sweeper_cron_seconds_15() -> None:
+    assert _sweeper_cron_seconds(15) == {0, 15, 30, 45}
+
+
+def test_sweeper_cron_seconds_60() -> None:
+    assert _sweeper_cron_seconds(60) == {0}
+
+
+def test_sweeper_cron_seconds_5() -> None:
+    assert _sweeper_cron_seconds(5) == {0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55}
+
+
+def test_sweeper_cron_seconds_rejects_non_divisor() -> None:
+    with pytest.raises(ValueError, match='must divide 60'):
+        _sweeper_cron_seconds(45)
+
+
+def test_worker_settings_registers_sweeper_job() -> None:
+    assert finalize_sweeper_job in WorkerSettings.functions
+    assert any(
+        getattr(cj, 'coroutine', None) is finalize_sweeper_job
+        for cj in WorkerSettings.cron_jobs
+    )

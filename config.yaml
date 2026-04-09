@@ -28,6 +28,11 @@ queue:
   retry_delay_seconds: 10
   job_timeout_seconds: 120
   keep_result_seconds: 3600
+  # Periodic reconciler that rescues parent runs the fast-path finalize missed.
+  # Interval must be a divisor of 60: 5, 10, 15, 20, 30, or 60.
+  finalize_sweeper_interval_seconds: 30
+  # Max parent runs scanned+rescued per sweeper tick.
+  finalize_sweeper_batch_limit: 100
 
 reliability:
   adapter_timeout_seconds: 30
