@@ -147,12 +147,13 @@ async with session_factory() as session:
 ### Finalize — deduped arq job
 
 ```python
-await pool.enqueue_job('finalize_run_job', str(parent_run_id),
-                       _job_id=f'finalize:{parent_run_id}')
+await pool.enqueue_job('finalize_run_job', str(parent_run_id))
 ```
 
-Separate arq job, deduplicated by `_job_id`. Only one finalize runs per parent
-`EvaluationRun` regardless of how many children enqueue it.
+Separate arq job, one per completing child. Each child enqueues its own finalize
+attempt without deduplication — `finalize_if_all_done` is idempotent, so
+multiple executions are safe and only the last one (when all children are done)
+actually marks the parent as completed.
 
 ```python
 async with session_factory() as session:

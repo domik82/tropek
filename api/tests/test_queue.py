@@ -127,11 +127,10 @@ async def test_happy_path_three_phases() -> None:
     mock_write.assert_awaited_once()
     mock_sli.assert_awaited_once()
 
-    # Finalize job enqueued with dedup key
+    # Finalize job enqueued (no dedup key — each child enqueues its own attempt)
     mock_pool.enqueue_job.assert_awaited_once_with(
         'finalize_run_job',
         str(parent_run_id),
-        _job_id=f'finalize:{parent_run_id}',
     )
 
 

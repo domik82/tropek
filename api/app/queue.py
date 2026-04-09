@@ -216,12 +216,17 @@ async def run_evaluation_job(ctx: dict[str, Any], eval_id_str: str, defer_count:
 
     log.info('evaluation completed', result=fetch_result.eval_result.result)
 
-    # Enqueue deduped finalize for parent run
+    # Enqueue finalize for parent run.
+    # Each child enqueues its own finalize attempt — finalize_if_all_done is
+    # idempotent, so multiple executions are safe.  We intentionally do NOT
+    # use a fixed _job_id because arq's deduplication persists a result key
+    # after the first execution; if the first finalize runs before all
+    # children complete (returns None), later children cannot re-enqueue it,
+    # leaving the parent run stuck in 'pending' forever.
     pool = ctx['redis']
     await pool.enqueue_job(
         'finalize_run_job',
         str(snapshot.parent_run_id),
-        _job_id=f'finalize:{snapshot.parent_run_id}',
     )
 
 

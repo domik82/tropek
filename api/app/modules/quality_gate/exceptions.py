@@ -12,8 +12,11 @@ from app.modules.common.exceptions import (
 )
 
 
-class EvaluationError(Exception):
-    """Base for all quality gate domain errors."""
+class EvaluationError(DomainValidationError):
+    """Precondition not met for evaluation (e.g. no SLO assignments)."""
+
+    def __init__(self, msg: str = '') -> None:
+        super().__init__(msg or 'evaluation precondition not met')
 
 
 class AssetNotFoundError(NotFoundError):
