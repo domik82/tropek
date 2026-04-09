@@ -6,6 +6,7 @@ import uuid
 from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import pytest
 from app.modules.quality_gate.worker import DefinitionLoadError, EvaluationSnapshot
 from app.queue import (
     WorkerSettings,
@@ -341,6 +342,11 @@ def test_sweeper_cron_seconds_60() -> None:
 
 def test_sweeper_cron_seconds_5() -> None:
     assert _sweeper_cron_seconds(5) == {0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55}
+
+
+def test_sweeper_cron_seconds_rejects_non_divisor() -> None:
+    with pytest.raises(ValueError, match='must divide 60'):
+        _sweeper_cron_seconds(45)
 
 
 def test_worker_settings_registers_sweeper_job() -> None:
