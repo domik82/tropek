@@ -84,6 +84,9 @@ export function useAddAnnotation(evalId: string) {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: evaluationKeys.detail(evalId) })
       qc.invalidateQueries({ queryKey: [...evaluationKeys.all, 'column-annotations'] })
+      // Metric-heatmap carries has_notes per column — refetch so a newly added
+      // note makes its indicator appear immediately.
+      qc.invalidateQueries({ queryKey: evaluationKeys.allHeatmaps })
     },
   })
 }
@@ -100,6 +103,9 @@ export function useHideAnnotation(evalId: string) {
       qc.invalidateQueries({ queryKey: evaluationKeys.detail(evalId) })
       qc.invalidateQueries({ queryKey: evaluationKeys.all })
       qc.invalidateQueries({ queryKey: [...evaluationKeys.all, 'column-annotations'] })
+      // Hiding the last non-hidden annotation on a column flips has_notes back
+      // to false — refetch the heatmap so the indicator disappears immediately.
+      qc.invalidateQueries({ queryKey: evaluationKeys.allHeatmaps })
     },
   })
 }
