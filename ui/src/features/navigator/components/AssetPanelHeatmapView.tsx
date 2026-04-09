@@ -34,23 +34,47 @@ export function AssetPanelHeatmapView({
   const sliTableRef = useRef<HTMLDivElement>(null)
   const heatmapRef = useRef<HTMLDivElement>(null)
 
-  const handleScrollToTable = useCallback(() => {
-    sliTableRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-  }, [])
+  // Scope-qualified id builders. Same metric may appear in multiple SLOs
+  // (e.g. "http.response_time" under a latency SLO and a throughput SLO),
+  // so DOM ids must include the SLO name to avoid getElementById collisions
+  // that silently scroll to the first match (= top of the section).
+  const rowIdPrefixFor = useCallback((sloName: string) => `row-${sloName}::`, [])
+  const trendIdFor = useCallback(
+    (sloName: string, metric: string) => `trend-${sloName}::${metric}`,
+    [],
+  )
 
   const handleScrollToHeatmap = useCallback(() => {
     heatmapRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }, [])
 
-  const handleHeatmapMetricClick = useCallback((_metricName: string, sloName: string) => {
-    // Ensure the SLO group is expanded so the indicator row is visible
+  // Scroll to a specific SLI row, expanding the owning SLO group first.
+  // Falls back to the section root when the row id is missing (shouldn't
+  // happen in practice — defensive only).
+  const scrollToRow = useCallback((sloName: string, metric: string) => {
     const expanded = sloExpandState.get(sloName) ?? false
     if (!expanded) onSloToggle(sloName)
-    // Scroll to the SLI table after the DOM updates
     requestAnimationFrame(() => {
-      sliTableRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      const el = document.getElementById(`${rowIdPrefixFor(sloName)}${metric}`)
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      else sliTableRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
     })
-  }, [sloExpandState, onSloToggle])
+  }, [sloExpandState, onSloToggle, rowIdPrefixFor])
+
+  // Scroll to a specific trend chart, expanding the owning SLO group first.
+  const scrollToTrend = useCallback((sloName: string, metric: string) => {
+    const expanded = sloExpandState.get(sloName) ?? false
+    if (!expanded) onSloToggle(sloName)
+    requestAnimationFrame(() => {
+      const el = document.getElementById(trendIdFor(sloName, metric))
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    })
+  }, [sloExpandState, onSloToggle, trendIdFor])
+
+  const handleHeatmapMetricClick = useCallback(
+    (metricName: string, sloName: string) => scrollToRow(sloName, metricName),
+    [scrollToRow],
+  )
 
   // Build SloBreakdownGroup[] directly from enriched heatmap cells — no detail fetch needed.
   const breakdownGroups = useMemo((): SloBreakdownGroup[] => {
@@ -147,14 +171,8 @@ export function AssetPanelHeatmapView({
             onToggle={onSloToggle}
             sliMetadata={sliMetadata}
             onScrollToHeatmap={handleScrollToHeatmap}
-            onIndicatorClick={(metric, sloName) => {
-              const expanded = sloExpandState.get(sloName) ?? false
-              if (!expanded) onSloToggle(sloName)
-              requestAnimationFrame(() => {
-                const el = document.getElementById(`trend-${metric}`)
-                if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
-              })
-            }}
+            onIndicatorClick={(metric, sloName) => scrollToTrend(sloName, metric)}
+            rowIdPrefixBuilder={rowIdPrefixFor}
           />
         </div>
       )}
@@ -215,7 +233,8 @@ export function AssetPanelHeatmapView({
                           selectedEvalId={effectiveEvalId}
                           indicator={ind}
                           onEvalSelect={onEvalSelect}
-                          onScrollToTable={handleScrollToTable}
+                          blockId={trendIdFor(g.slo_name, ind.metric)}
+                          onScrollToTable={() => scrollToRow(g.slo_name, ind.metric)}
                         />
                       ))}
                     </div>
