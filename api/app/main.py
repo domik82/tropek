@@ -74,7 +74,7 @@ async def health() -> dict[str, str]:
 
 
 @app.get('/config/ui')
-async def ui_config() -> dict[str, int | bool]:
+async def ui_config() -> dict[str, int | bool | str]:
     """Return UI-facing configuration limits."""
     settings = get_settings()
     return {
