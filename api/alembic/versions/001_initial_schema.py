@@ -1,8 +1,8 @@
 """initial schema.
 
 Revision ID: 001
-Revises:
-Create Date: 2026-04-02 08:39:30.329763
+Revises: 
+Create Date: 2026-04-09 22:45:01.182847
 
 """
 from collections.abc import Sequence
@@ -12,7 +12,7 @@ from alembic import op
 from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
-revision: str = '001'
+revision: str = "001"
 down_revision: str | Sequence[str] | None = None
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
@@ -100,6 +100,7 @@ def upgrade() -> None:
     sa.Column('active', sa.Boolean(), server_default=sa.text('true'), nullable=False),
     sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
     sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.ForeignKeyConstraint(['template_slo_definition_id'], ['slo_definitions.id'], name='fk_slo_groups_template_slo_definition_id', use_alter=True),
     sa.PrimaryKeyConstraint('id')
     )
     op.create_index('idx_slo_groups_name', 'slo_groups', ['name'], unique=False)
@@ -154,12 +155,6 @@ def upgrade() -> None:
     )
     op.create_index('idx_slo_definitions_latest', 'slo_definitions', ['name', sa.literal_column('version DESC')], unique=False)
     op.create_index('idx_slo_definitions_name', 'slo_definitions', ['name'], unique=False)
-    # Deferred FK: slo_groups -> slo_definitions (use_alter=True, circular dep)
-    op.create_foreign_key(
-        'fk_slo_groups_template_slo_definition_id',
-        'slo_groups', 'slo_definitions',
-        ['template_slo_definition_id'], ['id'],
-    )
     op.create_table('slo_display_group_members',
     sa.Column('group_id', sa.UUID(), nullable=False),
     sa.Column('slo_name', sa.Text(), nullable=False),
@@ -194,6 +189,7 @@ def upgrade() -> None:
     sa.PrimaryKeyConstraint('id')
     )
     op.create_index('idx_evaluations_asset', 'evaluations', ['asset_id'], unique=False)
+    op.create_index('idx_evaluations_incomplete_period_end', 'evaluations', ['period_end'], unique=False, postgresql_where=sa.text("status != 'completed'"))
     op.create_index('idx_evaluations_period', 'evaluations', ['asset_id', sa.literal_column('period_start DESC')], unique=False)
     op.create_index('idx_evaluations_status', 'evaluations', ['status'], unique=False)
     op.create_table('slo_assignments',
@@ -385,6 +381,7 @@ def downgrade() -> None:
     op.drop_table('slo_assignments')
     op.drop_index('idx_evaluations_status', table_name='evaluations')
     op.drop_index('idx_evaluations_period', table_name='evaluations')
+    op.drop_index('idx_evaluations_incomplete_period_end', table_name='evaluations', postgresql_where=sa.text("status != 'completed'"))
     op.drop_index('idx_evaluations_asset', table_name='evaluations')
     op.drop_table('evaluations')
     op.drop_index('idx_asset_group_members_group', table_name='asset_group_members')
@@ -394,7 +391,6 @@ def downgrade() -> None:
     op.drop_table('slo_display_group_members')
     op.drop_index('idx_slo_definitions_name', table_name='slo_definitions')
     op.drop_index('idx_slo_definitions_latest', table_name='slo_definitions')
-    op.drop_constraint('fk_slo_groups_template_slo_definition_id', 'slo_groups', type_='foreignkey')
     op.drop_table('slo_definitions')
     op.drop_table('assets')
     op.drop_index('idx_asset_group_links_parent', table_name='asset_group_links')

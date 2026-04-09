@@ -587,6 +587,11 @@ class EvaluationRun(Base):
         Index('idx_evaluations_asset', 'asset_id'),
         Index('idx_evaluations_status', 'status'),
         Index('idx_evaluations_period', 'asset_id', text('period_start DESC')),
+        Index(
+            'idx_evaluations_incomplete_period_end',
+            'period_end',
+            postgresql_where=text("status != 'completed'"),
+        ),
         CheckConstraint(
             "status IN ('pending','running','completed','failed')",
             name='ck_evaluations_status',
