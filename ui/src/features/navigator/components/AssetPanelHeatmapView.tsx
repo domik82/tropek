@@ -230,6 +230,7 @@ export function AssetPanelHeatmapView({
                           key={ind.metric}
                           assetName={assetName}
                           sloName={g.slo_name}
+                          sloDisplayName={g.slo_display_name}
                           selectedEvalId={effectiveEvalId}
                           indicator={ind}
                           onEvalSelect={onEvalSelect}
