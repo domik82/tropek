@@ -159,7 +159,9 @@ def _build_grouped_heatmap_response(
     Assumes each run already has slo_evaluations + indicator_rows eager-loaded.
     Runs must arrive in DESC order (newest first) — this function reverses to ASC.
     """
-    runs_asc = sorted(runs, key=lambda r: r.period_start)
+    # Secondary sort on eval_name so columns sharing a period_start appear in
+    # a deterministic order that matches the trend query's tie-breaker.
+    runs_asc = sorted(runs, key=lambda r: (r.period_start, r.eval_name or ''))
     n = len(runs_asc)
 
     noted = noted_run_ids or set()

@@ -157,6 +157,7 @@ class TrendRepository:
         inner = (
             select(
                 SLOEvaluation.period_start,
+                SLOEvaluation.evaluation_name,
                 SLIValue.value,
                 SLIValue.slo_evaluation_id,
                 IndicatorResultRow.status.label('result'),
@@ -187,7 +188,14 @@ class TrendRepository:
         if to_ts:
             inner = inner.where(SLOEvaluation.period_start <= to_ts)
         inner_sq = inner.subquery()
-        rows = await self._session.execute(select(inner_sq).order_by(inner_sq.c.period_start))
+        # Secondary sort on evaluation_name so points sharing a period_start
+        # arrive in a deterministic order — must match the heatmap column
+        # tie-breaker so x-indices align across every chart.
+        rows = await self._session.execute(
+            select(inner_sq).order_by(
+                inner_sq.c.period_start, inner_sq.c.evaluation_name
+            )
+        )
         return [
             {
                 'timestamp': r.period_start.isoformat(),
@@ -197,6 +205,7 @@ class TrendRepository:
                 'eval_id': str(r.slo_evaluation_id),
                 'result': r.result,
                 'baseline': r.compared_value,
+                'evaluation_name': r.evaluation_name,
             }
             for r in rows
         ]

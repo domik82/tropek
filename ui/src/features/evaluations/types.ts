@@ -107,6 +107,7 @@ export interface TrendPoint {
   eval_id: string
   result: 'pass' | 'warning' | 'fail'
   baseline?: number | null
+  evaluation_name?: string | null
 }
 
 export interface EvaluationFilters {

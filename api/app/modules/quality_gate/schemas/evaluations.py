@@ -111,3 +111,4 @@ class TrendPoint(BaseModel):
     eval_id: uuid.UUID
     result: str
     baseline: float | None
+    evaluation_name: str | None = None

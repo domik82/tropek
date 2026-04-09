@@ -111,6 +111,42 @@ export function AssetPanel({ assetName, initialEvalId }: Props) {
     return undefined
   }, [selectedSlot, heatmapData, effectiveEvalId])
 
+  // period_start of the currently selected column — either set explicitly via a
+  // slot click or derived by looking up the effective eval in heatmap cells.
+  const selectedPeriodStart = useMemo((): string | undefined => {
+    if (selectedSlot?.periodStart) return selectedSlot.periodStart
+    if (!heatmapData || !effectiveEvalId) return undefined
+    for (const g of heatmapData.groups) {
+      for (const c of g.cells) {
+        if (c.slo_evaluation_id === effectiveEvalId) return c.period_start
+      }
+    }
+    return undefined
+  }, [selectedSlot, heatmapData, effectiveEvalId])
+
+  // Exactly one slo_evaluation_id per SLO group for the selected column. The
+  // preferred match is the cell whose parent evaluation_id equals the clicked
+  // column (so SLOs evaluated under multiple evaluation_names still only light
+  // up the dot for the clicked eval_name). If a group has no cell under the
+  // clicked parent run — e.g. its SLO is bound to a different evaluation_name —
+  // fall back to any cell at the same period_start so the trend chart for that
+  // SLO still highlights its own timestamp-aligned point.
+  const selectedColumnSloEvalIds = useMemo((): ReadonlySet<string> => {
+    if (!heatmapData || !selectedPeriodStart) {
+      return effectiveEvalId ? new Set([effectiveEvalId]) : new Set()
+    }
+    const ids = new Set<string>()
+    for (const g of heatmapData.groups) {
+      const byColumn = selectedColumnEvalId
+        ? g.cells.find(c => c.evaluation_id === selectedColumnEvalId)
+        : undefined
+      const cell = byColumn ?? g.cells.find(c => c.period_start === selectedPeriodStart)
+      if (cell) ids.add(cell.slo_evaluation_id)
+    }
+    if (effectiveEvalId) ids.add(effectiveEvalId)
+    return ids
+  }, [heatmapData, selectedColumnEvalId, selectedPeriodStart, effectiveEvalId])
+
   // Derive ev from evaluation list. Direct lookup by slo_evaluation_id first,
   // then fallback to any eval in the same column (parent run).
   const ev = useMemo(() => {
@@ -330,6 +366,8 @@ export function AssetPanel({ assetName, initialEvalId }: Props) {
           heatmapData={heatmapData}
           selectedColumnEvalId={selectedColumnEvalId}
           effectiveEvalId={effectiveEvalId}
+          selectedColumnSloEvalIds={selectedColumnSloEvalIds}
+          selectedPeriodStart={selectedPeriodStart}
           notedSlots={notedSlots}
           onEvalSelect={setSelectedEvalId}
           onSlotSelect={handleSlotSelect}
@@ -346,6 +384,8 @@ export function AssetPanel({ assetName, initialEvalId }: Props) {
         <AssetPanelChartView
           assetName={assetName}
           effectiveEvalId={effectiveEvalId}
+          selectedColumnSloEvalIds={selectedColumnSloEvalIds}
+          selectedPeriodStart={selectedPeriodStart}
           evals={evals}
           heatmapData={heatmapData}
           onEvalSelect={setSelectedEvalId}

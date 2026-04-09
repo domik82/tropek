@@ -14,6 +14,12 @@ interface Props {
   effectiveEvalId: string | undefined
   /** All slo_evaluation_ids in the currently selected column, one per SLO. */
   selectedColumnSloEvalIds: ReadonlySet<string>
+  /**
+   * period_start of the currently selected column — passed to trend charts so
+   * SLOs without a cell in the clicked parent run can still fall back to
+   * highlighting the matching timestamp.
+   */
+  selectedPeriodStart: string | undefined
   evals: EvaluationSummary[]
   heatmapData: MetricHeatmapResponse | undefined
   onEvalSelect: (evalId: string) => void
@@ -24,7 +30,8 @@ interface Props {
 }
 
 export function AssetPanelChartView({
-  assetName, effectiveEvalId, selectedColumnSloEvalIds, evals, heatmapData,
+  assetName, effectiveEvalId, selectedColumnSloEvalIds, selectedPeriodStart,
+  evals, heatmapData,
   onEvalSelect, onSlotSelect,
   mode, setMode, explorerButton,
 }: Props) {
@@ -183,7 +190,7 @@ export function AssetPanelChartView({
 
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
             {chartIndicators.map(ind => (
-              <MetricTrendBlock key={ind.metric} assetName={assetName} sloName={metricSloMap.get(ind.metric) ?? ''} sloDisplayName={metricSloDisplayMap.get(ind.metric)} selectedEvalId={effectiveEvalId} selectedEvalIds={selectedColumnSloEvalIds} indicator={ind} onEvalSelect={handleTrendClick} />
+              <MetricTrendBlock key={ind.metric} assetName={assetName} sloName={metricSloMap.get(ind.metric) ?? ''} sloDisplayName={metricSloDisplayMap.get(ind.metric)} selectedEvalId={effectiveEvalId} selectedEvalIds={selectedColumnSloEvalIds} selectedPeriodStart={selectedPeriodStart} indicator={ind} onEvalSelect={handleTrendClick} />
             ))}
           </div>
         </div>

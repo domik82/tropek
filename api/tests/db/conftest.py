@@ -13,6 +13,7 @@ Usage:
 from __future__ import annotations
 
 import os
+import uuid
 from collections.abc import AsyncGenerator
 from pathlib import Path
 
@@ -20,6 +21,7 @@ import pytest
 import pytest_asyncio
 from app.db.models import Base
 from dotenv import load_dotenv
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
     AsyncSession,
@@ -44,14 +46,42 @@ def db_url() -> str:
 
 @pytest_asyncio.fixture(scope='session')
 async def db_engine(db_url: str) -> AsyncGenerator[AsyncEngine, None]:  # noqa: UP043
-    """Create engine and tables once per test session, drop on teardown."""
-    engine = create_async_engine(db_url, echo=False)
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-    yield engine
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all)
-    await engine.dispose()
+    """Create a throwaway database inside the shared test container.
+
+    Each pytest session gets its own freshly-created database
+    (``tropek_test_<uuid>``) on the shared TimescaleDB container, so parallel
+    sessions on different branches/worktrees never collide and every run
+    starts from a clean schema — no drift between ``create_all`` and a
+    pre-existing ``alembic``-migrated layout. The database is dropped on
+    teardown, so nothing accumulates across runs.
+    """
+    base_url, _, _ = db_url.rpartition('/')
+    admin_url = f'{base_url}/postgres'
+    ephemeral_name = f'tropek_test_{uuid.uuid4().hex[:12]}'
+    ephemeral_url = f'{base_url}/{ephemeral_name}'
+
+    admin = create_async_engine(admin_url, isolation_level='AUTOCOMMIT')
+    try:
+        async with admin.connect() as conn:
+            await conn.execute(text(f'CREATE DATABASE "{ephemeral_name}"'))
+    finally:
+        await admin.dispose()
+
+    engine = create_async_engine(ephemeral_url, echo=False)
+    try:
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+        yield engine
+    finally:
+        await engine.dispose()
+        admin = create_async_engine(admin_url, isolation_level='AUTOCOMMIT')
+        try:
+            async with admin.connect() as conn:
+                await conn.execute(
+                    text(f'DROP DATABASE IF EXISTS "{ephemeral_name}" WITH (FORCE)')
+                )
+        finally:
+            await admin.dispose()
 
 
 @pytest_asyncio.fixture()
