@@ -21,6 +21,12 @@ interface Props {
    * slo_evaluation_id) so every SLO's chart highlights the same column.
    */
   selectedEvalIds?: ReadonlySet<string>
+  /**
+   * Fallback highlight by timestamp — used when this chart's SLO wasn't
+   * evaluated under the clicked parent run (different evaluation_name) so no
+   * id in `selectedEvalIds` maps to any of its trend points.
+   */
+  selectedPeriodStart?: string
   indicator: IndicatorResult
   onEvalSelect?: (evalId: string) => void
   onScrollToTable?: () => void
@@ -37,7 +43,7 @@ function defaultScrollToTable() {
   document.getElementById('sli-table')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
 }
 
-export function MetricTrendBlock({ assetName, sloName, sloDisplayName, selectedEvalId, selectedEvalIds, indicator, onEvalSelect, onScrollToTable, blockId }: Props) {
+export function MetricTrendBlock({ assetName, sloName, sloDisplayName, selectedEvalId, selectedEvalIds, selectedPeriodStart, indicator, onEvalSelect, onScrollToTable, blockId }: Props) {
   const sloLabel = sloDisplayName ?? (sloName || null)
   const { data: trend, isLoading } = useTrend(assetName, sloName, indicator.metric)
 
@@ -59,7 +65,7 @@ export function MetricTrendBlock({ assetName, sloName, sloDisplayName, selectedE
     showPass, showWarn, togglePass, toggleWarn,
     chartOption,
     passTarget, warnTarget, passCriteria, warnCriteria,
-  } = useMetricTrendState(trend, selectedEvalId ?? '', indicator, onEvalSelect, selectedEvalIds)
+  } = useMetricTrendState(trend, selectedEvalId ?? '', indicator, onEvalSelect, selectedEvalIds, selectedPeriodStart)
 
   return (
     <div id={blockId ?? `trend-${indicator.metric}`} className="bg-card border border-border rounded-xl p-4 scroll-mt-4">

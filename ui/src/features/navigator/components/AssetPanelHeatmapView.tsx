@@ -18,6 +18,12 @@ interface Props {
   effectiveEvalId: string | undefined
   /** All slo_evaluation_ids in the currently selected column, one per SLO. */
   selectedColumnSloEvalIds: ReadonlySet<string>
+  /**
+   * period_start of the currently selected column — passed to trend charts so
+   * SLOs that weren't evaluated under the clicked parent run can still fall
+   * back to highlighting the matching timestamp.
+   */
+  selectedPeriodStart: string | undefined
   notedSlots: Map<string, { evalId: string; count: number }>
   onEvalSelect: (evalId: string) => void
   onSlotSelect?: (slot: TimeSlotSelection) => void
@@ -30,7 +36,7 @@ interface Props {
 
 export function AssetPanelHeatmapView({
   assetName, heatmapData, selectedColumnEvalId, effectiveEvalId,
-  selectedColumnSloEvalIds, notedSlots,
+  selectedColumnSloEvalIds, selectedPeriodStart, notedSlots,
   onEvalSelect, onSlotSelect, mode, setMode, explorerButton,
   sloExpandState, onSloToggle,
 }: Props) {
@@ -275,6 +281,7 @@ export function AssetPanelHeatmapView({
                           sloDisplayName={g.slo_display_name}
                           selectedEvalId={effectiveEvalId}
                           selectedEvalIds={selectedColumnSloEvalIds}
+                          selectedPeriodStart={selectedPeriodStart}
                           indicator={ind}
                           onEvalSelect={handleTrendClick}
                           blockId={trendIdFor(g.slo_name, ind.metric)}
