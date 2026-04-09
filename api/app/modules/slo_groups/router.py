@@ -364,46 +364,14 @@ def _build_standalone_slo_params(gen_slo: Any, new_name: str) -> SLOCreateParams
     )
 
 
-def _find_generated_slo_index(specs: list[Any], slo_name: str) -> int | None:
-    """Return the row index of the spec matching slo_name, or None if absent."""
-    return next((i for i, spec in enumerate(specs) if spec.name == slo_name), None)
-
-
 def _shrink_gen_variables(
-    gen_variables: dict[str, list[str]], extracted_idx: int | None,
+    gen_variables: dict[str, list[str]], row_idx: int,
 ) -> dict[str, list[str]]:
-    """Return a copy of gen_variables with the row at extracted_idx removed.
-
-    If extracted_idx is None, returns a shallow copy unchanged.
-    """
-    if extracted_idx is None:
-        return dict(gen_variables)
+    """Return a copy of gen_variables with row ``row_idx`` removed from each column."""
     return {
-        key: [v for j, v in enumerate(vals) if j != extracted_idx]
+        key: [v for j, v in enumerate(vals) if j != row_idx]
         for key, vals in gen_variables.items()
     }
-
-
-def _build_deactivated_group_read(
-    group: Any, template_slo: Any, new_gen_vars: dict[str, list[str]],
-) -> SLOGroupRead:
-    """Build the response for a deactivated group with empty gen_variables."""
-    return SLOGroupRead(
-        id=group.id,
-        name=group.name,
-        display_name=group.display_name,
-        template_slo_name=template_slo.name,
-        template_slo_version=template_slo.version,
-        template_slo_definition_id=group.template_slo_definition_id,
-        gen_variables=new_gen_vars,
-        tags=group.tags,
-        author=group.author,
-        version=group.version,
-        active=False,
-        created_at=group.created_at,
-        updated_at=group.updated_at,
-        generated_slo_count=0,
-    )
 
 
 @router.post(
@@ -437,20 +405,26 @@ async def extract_slo(
     if template is None:
         raise HTTPException(status_code=422, detail='template slo definition not found')
 
-    # Create the standalone copy and take the extracted row out of gen_variables
+    # Create the standalone copy and deactivate the original generated SLO
     await slo_repo.create(_build_standalone_slo_params(gen_slo, body.new_name))
-    gen_result = generate_slo_specs(template, group.gen_variables, name)
-    extracted_idx = _find_generated_slo_index(gen_result.specs, body.slo_name)
-    new_gen_vars = _shrink_gen_variables(group.gen_variables, extracted_idx)
     await slo_repo.deactivate(body.slo_name)
 
-    # Update group, or deactivate it if no rows remain
-    first_vals = next(iter(new_gen_vars.values())) if new_gen_vars else []
-    if new_gen_vars and first_vals:
-        await group_repo.update(name, gen_variables=new_gen_vars)
-        updated_group = await group_repo.get_by_name(name)
-        assert updated_group is not None  # just updated
-        return await _build_group_read(group_repo, updated_group, slo_repo)
+    # Find which gen_variables row produced this SLO and remove it
+    gen_specs = generate_slo_specs(template, group.gen_variables, name).specs
+    row_idx = next((i for i, s in enumerate(gen_specs) if s.name == body.slo_name), None)
+    new_gen_vars = (
+        _shrink_gen_variables(group.gen_variables, row_idx)
+        if row_idx is not None
+        else dict(group.gen_variables)
+    )
 
-    await group_repo.deactivate(name)
-    return _build_deactivated_group_read(group, template, new_gen_vars)
+    # Update the group, or deactivate it if no rows remain.
+    # Both repo calls mutate `group` in place via SQLAlchemy's identity map,
+    # so a single call to _build_group_read handles both outcomes.
+    if new_gen_vars and all(new_gen_vars.values()):
+        await group_repo.update(name, gen_variables=new_gen_vars)
+    else:
+        await group_repo.deactivate(name)
+        group.gen_variables = new_gen_vars  # reflect shrink in the response
+
+    return await _build_group_read(group_repo, group, slo_repo)
