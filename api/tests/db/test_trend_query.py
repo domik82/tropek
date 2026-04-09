@@ -127,7 +127,10 @@ async def test_trend_returns_points_with_baseline(db_session: AsyncSession) -> N
     )
 
     points = await trend_repo.get_trend_by_domain(
-        asset_id=asset_id, slo_name='test-slo', metric_name='response_time', limit=50
+        asset_id=asset_id,
+        slo_name='test-slo',
+        metric_name='response_time',
+        from_ts=_BASE - timedelta(hours=1),
     )
     assert len(points) == 1
     assert points[0]['value'] == 250.0
@@ -173,6 +176,9 @@ async def test_trend_excludes_invalidated(db_session: AsyncSession) -> None:
     await repo.invalidate(ev.id, note='bad')
 
     points = await trend_repo.get_trend_by_domain(
-        asset_id=asset_id, slo_name='test-slo', metric_name='response_time', limit=50
+        asset_id=asset_id,
+        slo_name='test-slo',
+        metric_name='response_time',
+        from_ts=_BASE - timedelta(hours=1),
     )
     assert len(points) == 0
