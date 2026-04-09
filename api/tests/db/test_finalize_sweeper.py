@@ -35,7 +35,7 @@ async def sweeper_session_factory(db_session: AsyncSession):
     return _ctx
 
 
-@pytest.fixture
+@pytest_asyncio.fixture()
 async def asset(db_session):
     type_name = f'vm-{uuid.uuid4().hex[:8]}'
     db_session.add(AssetType(name=type_name, is_default=False))
