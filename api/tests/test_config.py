@@ -165,7 +165,6 @@ def test_queue_sweeper_rejects_invalid_interval(tmp_path: Path) -> None:
 
     with pytest.raises(ValueError, match='finalize_sweeper_interval_seconds'):
         importlib.reload(config_module)
-        config_module.get_settings()
 
 
 def test_queue_sweeper_rejects_zero_batch_limit(tmp_path: Path) -> None:
@@ -183,4 +182,3 @@ def test_queue_sweeper_rejects_zero_batch_limit(tmp_path: Path) -> None:
 
     with pytest.raises(ValueError, match='finalize_sweeper_batch_limit'):
         importlib.reload(config_module)
-        config_module.get_settings()
