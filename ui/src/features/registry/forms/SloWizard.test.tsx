@@ -64,6 +64,7 @@ const mockSlo: SloDefinition = {
     include_result_with_score: 'pass_or_warn',
   },
   kind: 'standard',
+  sli_definition_id: null,
   sli_name: null,
   sli_version: null,
   method_criteria: null,

@@ -32,6 +32,7 @@ const mockSlo: SloDefinition = {
   tags: { env: 'prod', team: 'platform' },
   variables: { service: 'api-service', region: 'us-east-1' },
   kind: 'standard',
+  sli_definition_id: null,
   sli_name: null,
   sli_version: null,
   created_at: '2024-01-01T00:00:00Z',

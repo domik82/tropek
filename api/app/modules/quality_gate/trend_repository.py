@@ -186,8 +186,8 @@ class TrendRepository:
         inner = inner.where(SLOEvaluation.period_start >= from_ts)
         if to_ts:
             inner = inner.where(SLOEvaluation.period_start <= to_ts)
-        inner = inner.subquery()
-        rows = await self._session.execute(select(inner).order_by(inner.c.period_start))
+        inner_sq = inner.subquery()
+        rows = await self._session.execute(select(inner_sq).order_by(inner_sq.c.period_start))
         return [
             {
                 'timestamp': r.period_start.isoformat(),
