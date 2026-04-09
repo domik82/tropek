@@ -1,5 +1,5 @@
 // ui/src/features/navigator/components/AssetPanelChartView.tsx
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useCallback } from 'react'
 import { MetricTrendBlock } from '@/features/evaluations/components/MetricTrendBlock'
 import { ViewToggle } from '@/components/charts/ViewToggle'
 import type { ViewMode } from '@/components/charts/ViewToggle'
@@ -12,6 +12,8 @@ import type { TimeSlotSelection } from './AssetHeatmap'
 interface Props {
   assetName: string
   effectiveEvalId: string | undefined
+  /** All slo_evaluation_ids in the currently selected column, one per SLO. */
+  selectedColumnSloEvalIds: ReadonlySet<string>
   evals: EvaluationSummary[]
   heatmapData: MetricHeatmapResponse | undefined
   onEvalSelect: (evalId: string) => void
@@ -22,7 +24,7 @@ interface Props {
 }
 
 export function AssetPanelChartView({
-  assetName, effectiveEvalId, evals, heatmapData,
+  assetName, effectiveEvalId, selectedColumnSloEvalIds, evals, heatmapData,
   onEvalSelect, onSlotSelect,
   mode, setMode, explorerButton,
 }: Props) {
@@ -71,6 +73,24 @@ export function AssetPanelChartView({
     return m
   }, [heatmapData])
 
+  // Reverse lookup: slo_evaluation_id → parent evaluation_id + period_start.
+  // Lets a trend-chart click select the whole heatmap column (all sibling SLOs).
+  const sloEvalIdToColumn = useMemo((): Map<string, { columnEvalId: string; periodStart: string }> => {
+    if (!heatmapData) return new Map()
+    const m = new Map<string, { columnEvalId: string; periodStart: string }>()
+    for (const group of heatmapData.groups) {
+      for (const cell of group.cells) {
+        if (!m.has(cell.slo_evaluation_id)) {
+          m.set(cell.slo_evaluation_id, {
+            columnEvalId: cell.evaluation_id,
+            periodStart: cell.period_start,
+          })
+        }
+      }
+    }
+    return m
+  }, [heatmapData])
+
   // Score chart click → full slot selection (all SLOs for that column)
   function handleScoreChartClick(evalId: string) {
     const entry = scoreChartEvals.find(e => e.id === evalId)
@@ -79,6 +99,15 @@ export function AssetPanelChartView({
     const columnEvalId = slotColumnEvalId.get(entry.period_start)
     onSlotSelect({ periodStart: entry.period_start, evalIds, columnEvalId })
   }
+
+  // Trend chart click → same full-slot selection so every SLO's chart and
+  // the heatmap column all light up together, not just the clicked SLO.
+  const handleTrendClick = useCallback((evalId: string) => {
+    const col = sloEvalIdToColumn.get(evalId)
+    if (!col) { onEvalSelect(evalId); return }
+    const evalIds = slotEvalIds.get(col.periodStart) ?? [evalId]
+    onSlotSelect({ periodStart: col.periodStart, evalIds, columnEvalId: col.columnEvalId })
+  }, [sloEvalIdToColumn, slotEvalIds, onEvalSelect, onSlotSelect])
 
   const metricSloMap = useMemo((): Map<string, string> => {
     if (!heatmapData) return new Map()
@@ -154,7 +183,7 @@ export function AssetPanelChartView({
 
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
             {chartIndicators.map(ind => (
-              <MetricTrendBlock key={ind.metric} assetName={assetName} sloName={metricSloMap.get(ind.metric) ?? ''} sloDisplayName={metricSloDisplayMap.get(ind.metric)} selectedEvalId={effectiveEvalId} indicator={ind} onEvalSelect={onEvalSelect} />
+              <MetricTrendBlock key={ind.metric} assetName={assetName} sloName={metricSloMap.get(ind.metric) ?? ''} sloDisplayName={metricSloDisplayMap.get(ind.metric)} selectedEvalId={effectiveEvalId} selectedEvalIds={selectedColumnSloEvalIds} indicator={ind} onEvalSelect={handleTrendClick} />
             ))}
           </div>
         </div>

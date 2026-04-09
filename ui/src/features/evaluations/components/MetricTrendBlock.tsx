@@ -15,6 +15,12 @@ interface Props {
   sloDisplayName?: string
   /** Eval ID to highlight on the trend line (white ring + larger dot). */
   selectedEvalId?: string
+  /**
+   * Additional eval ids considered "selected" when highlighting trend dots.
+   * Use this when the same column spans multiple SLOs (each with its own
+   * slo_evaluation_id) so every SLO's chart highlights the same column.
+   */
+  selectedEvalIds?: ReadonlySet<string>
   indicator: IndicatorResult
   onEvalSelect?: (evalId: string) => void
   onScrollToTable?: () => void
@@ -31,7 +37,7 @@ function defaultScrollToTable() {
   document.getElementById('sli-table')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
 }
 
-export function MetricTrendBlock({ assetName, sloName, sloDisplayName, selectedEvalId, indicator, onEvalSelect, onScrollToTable, blockId }: Props) {
+export function MetricTrendBlock({ assetName, sloName, sloDisplayName, selectedEvalId, selectedEvalIds, indicator, onEvalSelect, onScrollToTable, blockId }: Props) {
   const sloLabel = sloDisplayName ?? (sloName || null)
   const { data: trend, isLoading } = useTrend(assetName, sloName, indicator.metric)
 
@@ -53,7 +59,7 @@ export function MetricTrendBlock({ assetName, sloName, sloDisplayName, selectedE
     showPass, showWarn, togglePass, toggleWarn,
     chartOption,
     passTarget, warnTarget, passCriteria, warnCriteria,
-  } = useMetricTrendState(trend, selectedEvalId ?? '', indicator, onEvalSelect)
+  } = useMetricTrendState(trend, selectedEvalId ?? '', indicator, onEvalSelect, selectedEvalIds)
 
   return (
     <div id={blockId ?? `trend-${indicator.metric}`} className="bg-card border border-border rounded-xl p-4 scroll-mt-4">
