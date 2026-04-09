@@ -146,3 +146,35 @@ async def test_sweeper_idempotent_on_already_finalized(db_session, asset, sweepe
     await db_session.refresh(refreshed)
     assert refreshed.status == 'completed'
     assert refreshed.result == 'pass'
+
+
+@pytest.mark.integration
+async def test_sweeper_rescues_when_fast_path_never_ran(db_session, asset, sweeper_session_factory, monkeypatch):
+    """Simulate a worker that committed a child but never enqueued finalize.
+
+    This mirrors a worker SIGKILL between commit and enqueue, or Redis losing
+    the queued finalize job. The sweeper must make the parent reach
+    'completed' on its own.
+    """
+    monkeypatch.setattr('app.queue.get_session_factory', lambda: sweeper_session_factory)
+
+    # Create a parent and a single committed child — deliberately do NOT
+    # call finalize_run_job or enqueue_job. This is the exact state left
+    # behind by a crashed worker.
+    run_id = await _create_stuck_run(db_session, asset, day=5)
+
+    # Confirm pre-state: parent is pending, child is completed.
+    before = await db_session.get(EvaluationRun, run_id)
+    await db_session.refresh(before)
+    assert before.status == 'pending'
+
+    # Sweeper runs — no arq involvement, just the cron function called directly.
+    await finalize_sweeper_job(_make_ctx())
+
+    # Post-state: parent finalized to 'completed' with worst-case result.
+    after = await db_session.get(EvaluationRun, run_id)
+    await db_session.refresh(after)
+    assert after.status == 'completed'
+    assert after.result == 'pass'
+    assert after.achieved_points == 10
+    assert after.total_points == 10
