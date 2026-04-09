@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import time
 import uuid
 from datetime import timedelta
 from typing import Any, ClassVar, cast
@@ -246,6 +247,52 @@ async def finalize_run_job(ctx: dict[str, Any], run_id_str: str) -> None:
             evaluation_id=run_id_str,
             result=finalized.result,
         )
+
+
+async def finalize_sweeper_job(ctx: dict[str, Any]) -> None:
+    """Periodic reconciler — finalize parent runs that the fast-path missed.
+
+    Scans for parent runs whose children are all terminal but whose own
+    status is still 'pending' or 'running', then calls the idempotent
+    finalize_if_all_done in a fresh session per run.
+
+    Deadlock-safe: this job never updates a child row, so it never holds
+    FOR KEY SHARE on the parent and never needs a lock upgrade. Its parent
+    UPDATE takes FOR NO KEY UPDATE, which does not conflict with live
+    child transactions' FOR KEY SHARE locks.
+    """
+    settings = get_settings()
+    batch_limit = settings.queue.finalize_sweeper_batch_limit
+    session_factory = get_session_factory()
+    log = logger.bind(job='finalize_sweeper')
+
+    started = time.monotonic()
+    rescued = 0
+
+    async with session_factory() as session:
+        run_repo = EvaluationRunRepository(session)
+        candidate_ids = await run_repo.find_finalizable_pending_ids(limit=batch_limit)
+
+    for run_id in candidate_ids:
+        async with session_factory() as session:
+            run_repo = EvaluationRunRepository(session)
+            finalized = await run_repo.finalize_if_all_done(run_id)
+            await session.commit()
+        if finalized is not None:
+            rescued += 1
+            log.info(
+                'sweeper_rescued_run',
+                evaluation_id=str(run_id),
+                result=finalized.result,
+            )
+
+    duration_ms = int((time.monotonic() - started) * 1000)
+    log.info(
+        'sweeper_tick',
+        scanned=len(candidate_ids),
+        rescued=rescued,
+        duration_ms=duration_ms,
+    )
 
 
 class WorkerSettings:
