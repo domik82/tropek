@@ -11,7 +11,7 @@ import pytest
 import pytest_asyncio
 from app.config import get_settings
 from app.db.models import Asset, AssetType, EvaluationRun, SLOEvaluation
-from app.queue import finalize_sweeper_job
+from app.queue import finalize_run_job, finalize_sweeper_job
 from sqlalchemy.ext.asyncio import AsyncSession
 
 
@@ -172,6 +172,32 @@ async def test_sweeper_rescues_when_fast_path_never_ran(db_session, asset, sweep
     await finalize_sweeper_job(_make_ctx())
 
     # Post-state: parent finalized to 'completed'; result inherits from the single child (pass).
+    after = await db_session.get(EvaluationRun, run_id)
+    await db_session.refresh(after)
+    assert after.status == 'completed'
+    assert after.result == 'pass'
+    assert after.achieved_points == 10
+    assert after.total_points == 10
+
+
+@pytest.mark.integration
+async def test_sweeper_and_finalize_run_job_converge(
+    db_session, asset, sweeper_session_factory, monkeypatch
+):
+    """Both the fast-path finalize_run_job and the sweeper target the same parent.
+
+    Spec-required scenario: both code paths complete without error and the parent
+    ends up 'completed' with consistent aggregated values. Either path may win
+    the race; the loser must no-op idempotently.
+    """
+    monkeypatch.setattr('app.queue.get_session_factory', lambda: sweeper_session_factory)
+
+    run_id = await _create_stuck_run(db_session, asset, day=25)
+
+    # Fast-path finalize runs first (typical happy path), then sweeper runs after.
+    await finalize_run_job(_make_ctx(), str(run_id))
+    await finalize_sweeper_job(_make_ctx())
+
     after = await db_session.get(EvaluationRun, run_id)
     await db_session.refresh(after)
     assert after.status == 'completed'
