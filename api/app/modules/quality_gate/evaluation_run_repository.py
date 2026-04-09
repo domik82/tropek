@@ -5,7 +5,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 
-from sqlalchemy import select, update
+from sqlalchemy import exists, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import EvaluationRun, SLOEvaluation
@@ -116,3 +116,27 @@ class EvaluationRunRepository:
         if existing is not None:
             await self._session.refresh(existing)
         return existing
+
+    async def find_finalizable_pending_ids(self, *, limit: int) -> list[uuid.UUID]:
+        """Return IDs of parent runs whose children are all terminal but status is not 'completed'.
+
+        Ordered by period_end ASC so the oldest stuck runs are rescued first.
+        Takes no row locks — safe to call concurrently with live child updates.
+        """
+        pending_statuses = ('pending', 'running', 'partial')
+        has_any_child = exists().where(SLOEvaluation.evaluation_id == EvaluationRun.id)
+        has_pending_child = (
+            exists()
+            .where(SLOEvaluation.evaluation_id == EvaluationRun.id)
+            .where(SLOEvaluation.status.in_(pending_statuses))
+        )
+        q = (
+            select(EvaluationRun.id)
+            .where(EvaluationRun.status != 'completed')
+            .where(has_any_child)
+            .where(~has_pending_child)
+            .order_by(EvaluationRun.period_end.asc())
+            .limit(limit)
+        )
+        result = await self._session.execute(q)
+        return list(result.scalars().all())
