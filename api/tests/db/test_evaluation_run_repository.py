@@ -106,3 +106,146 @@ async def test_finalize_skips_when_not_all_done(db_session, asset):
 
     result = await repo.finalize_if_all_done(run.id)
     assert result is None
+
+
+@pytest.mark.integration
+async def test_find_finalizable_pending_ids_returns_all_terminal(db_session, asset):
+    """Parent whose children are all completed/failed is returned."""
+    repo = EvaluationRunRepository(db_session)
+    start = datetime(2026, 1, 15, tzinfo=UTC)
+    end = datetime(2026, 1, 16, tzinfo=UTC)
+
+    run = await repo.create(asset_id=asset.id, eval_name='daily', period_start=start, period_end=end)
+    await db_session.flush()
+
+    for status, result in [('completed', 'pass'), ('failed', None)]:
+        db_session.add(
+            SLOEvaluation(
+                evaluation_id=run.id,
+                evaluation_name='daily',
+                asset_id=asset.id,
+                asset_snapshot={},
+                period_start=start,
+                period_end=end,
+                slo_name=f'slo-{status}',
+                ingestion_mode='pull',
+                status=status,
+                result=result,
+            )
+        )
+    await db_session.flush()
+
+    ids = await repo.find_finalizable_pending_ids(limit=10)
+    assert run.id in ids
+
+
+@pytest.mark.integration
+async def test_find_finalizable_pending_ids_skips_pending_child(db_session, asset):
+    """Parent with at least one pending/running/partial child is skipped."""
+    repo = EvaluationRunRepository(db_session)
+    start = datetime(2026, 1, 15, tzinfo=UTC)
+    end = datetime(2026, 1, 16, tzinfo=UTC)
+
+    run = await repo.create(asset_id=asset.id, eval_name='daily', period_start=start, period_end=end)
+    await db_session.flush()
+
+    for status in ['completed', 'running']:
+        db_session.add(
+            SLOEvaluation(
+                evaluation_id=run.id,
+                evaluation_name='daily',
+                asset_id=asset.id,
+                asset_snapshot={},
+                period_start=start,
+                period_end=end,
+                slo_name=f'slo-{status}',
+                ingestion_mode='pull',
+                status=status,
+                result='pass' if status == 'completed' else None,
+            )
+        )
+    await db_session.flush()
+
+    ids = await repo.find_finalizable_pending_ids(limit=10)
+    assert run.id not in ids
+
+
+@pytest.mark.integration
+async def test_find_finalizable_pending_ids_skips_zero_children(db_session, asset):
+    """Parent with no children at all is skipped."""
+    repo = EvaluationRunRepository(db_session)
+    run = await repo.create(
+        asset_id=asset.id,
+        eval_name='daily',
+        period_start=datetime(2026, 1, 15, tzinfo=UTC),
+        period_end=datetime(2026, 1, 16, tzinfo=UTC),
+    )
+    await db_session.flush()
+
+    ids = await repo.find_finalizable_pending_ids(limit=10)
+    assert run.id not in ids
+
+
+@pytest.mark.integration
+async def test_find_finalizable_pending_ids_skips_completed_parent(db_session, asset):
+    """Parent already in 'completed' status is skipped."""
+    repo = EvaluationRunRepository(db_session)
+    start = datetime(2026, 1, 15, tzinfo=UTC)
+    end = datetime(2026, 1, 16, tzinfo=UTC)
+
+    run = await repo.create(asset_id=asset.id, eval_name='daily', period_start=start, period_end=end)
+    await db_session.flush()
+    db_session.add(
+        SLOEvaluation(
+            evaluation_id=run.id,
+            evaluation_name='daily',
+            asset_id=asset.id,
+            asset_snapshot={},
+            period_start=start,
+            period_end=end,
+            slo_name='slo-1',
+            ingestion_mode='pull',
+            status='completed',
+            result='pass',
+        )
+    )
+    await repo.mark_completed(run.id, result='pass')
+    await db_session.flush()
+
+    ids = await repo.find_finalizable_pending_ids(limit=10)
+    assert run.id not in ids
+
+
+@pytest.mark.integration
+async def test_find_finalizable_pending_ids_respects_limit_and_order(db_session, asset):
+    """limit caps the result count, oldest period_end comes first."""
+    repo = EvaluationRunRepository(db_session)
+
+    run_ids = []
+    for day in [10, 11, 12]:
+        start = datetime(2026, 1, day, tzinfo=UTC)
+        end = datetime(2026, 1, day + 1, tzinfo=UTC)
+        run = await repo.create(asset_id=asset.id, eval_name='daily', period_start=start, period_end=end)
+        await db_session.flush()
+        db_session.add(
+            SLOEvaluation(
+                evaluation_id=run.id,
+                evaluation_name='daily',
+                asset_id=asset.id,
+                asset_snapshot={},
+                period_start=start,
+                period_end=end,
+                slo_name='slo-1',
+                ingestion_mode='pull',
+                status='completed',
+                result='pass',
+            )
+        )
+        await db_session.flush()
+        run_ids.append(run.id)
+
+    ids = await repo.find_finalizable_pending_ids(limit=2)
+    assert len(ids) == 2
+    # Oldest period_end (day 10 -> end day 11) comes first.
+    assert ids[0] == run_ids[0]
+    assert ids[1] == run_ids[1]
