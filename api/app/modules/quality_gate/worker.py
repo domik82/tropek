@@ -469,7 +469,7 @@ async def fetch_and_evaluate(
             start=snapshot.period_start.isoformat(),
             end=snapshot.period_end.isoformat(),
         )
-    except (httpx.ConnectError, httpx.TimeoutException, httpx.HTTPStatusError):
+    except (httpx.ConnectError, httpx.ReadError, httpx.TimeoutException, httpx.HTTPStatusError):
         log.exception('adapter query failed', adapter_url=datasource.adapter_url)
         return None
 
