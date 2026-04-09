@@ -89,6 +89,16 @@ export function AssetPanelChartView({
     return m
   }, [heatmapData])
 
+  const metricSloDisplayMap = useMemo((): Map<string, string> => {
+    if (!heatmapData) return new Map()
+    const m = new Map<string, string>()
+    for (const g of heatmapData.groups) {
+      const label = g.slo_display_name ?? g.slo_name
+      for (const metric of g.metrics) m.set(metric.name, label)
+    }
+    return m
+  }, [heatmapData])
+
   const allIndicators: IndicatorResult[] = useMemo(() => {
     if (!heatmapData) return []
     const allMetrics = heatmapData.groups.flatMap(g => g.metrics)
@@ -144,7 +154,7 @@ export function AssetPanelChartView({
 
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
             {chartIndicators.map(ind => (
-              <MetricTrendBlock key={ind.metric} assetName={assetName} sloName={metricSloMap.get(ind.metric) ?? ''} selectedEvalId={effectiveEvalId} indicator={ind} onEvalSelect={onEvalSelect} />
+              <MetricTrendBlock key={ind.metric} assetName={assetName} sloName={metricSloMap.get(ind.metric) ?? ''} sloDisplayName={metricSloDisplayMap.get(ind.metric)} selectedEvalId={effectiveEvalId} indicator={ind} onEvalSelect={onEvalSelect} />
             ))}
           </div>
         </div>
