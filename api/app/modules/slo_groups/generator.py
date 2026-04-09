@@ -15,7 +15,9 @@ class TemplateInput(Protocol):
 
     name: str
     variables: dict[str, Any]
-    objectives: list[dict[str, Any]]
+    # Generator accepts either plain dicts or ORM objects (e.g., SLOObjective);
+    # _obj_to_dict() below normalizes per-row.
+    objectives: list[Any]
     total_score_pass_threshold: float
     total_score_warning_threshold: float
     comparison: dict[str, Any]

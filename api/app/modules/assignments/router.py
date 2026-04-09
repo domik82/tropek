@@ -146,7 +146,9 @@ async def upgrade_asset_slo_assignment(
     if row is None:
         raise HTTPException(status_code=404, detail='assignment not found')
     row.slo_definition = slo_def
-    row.data_source = existing.data_source if hasattr(existing, 'data_source') else await DataSourceRepository(session).get_by_id(row.data_source_id)
+    data_source = await DataSourceRepository(session).get_by_id(row.data_source_id)
+    assert data_source is not None  # FK constraint guarantees referent exists
+    row.data_source = data_source
     return _slo_assignment_read(row)
 
 
