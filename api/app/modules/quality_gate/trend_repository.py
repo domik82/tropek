@@ -10,7 +10,14 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.db.models import EvaluationRun, IndicatorResultRow, SLIValue, SLOEvaluation, SLOObjective
+from app.db.models import (
+    EvaluationAnnotation,
+    EvaluationRun,
+    IndicatorResultRow,
+    SLIValue,
+    SLOEvaluation,
+    SLOObjective,
+)
 from app.modules.quality_gate.engine.constants import EvaluationStatus
 
 
@@ -91,6 +98,34 @@ class TrendRepository:
             q = q.limit(100)
         result = await self._session.execute(q)
         return list(result.scalars().all())
+
+    async def get_run_ids_with_notes(
+        self, run_ids: list[uuid.UUID]
+    ) -> set[uuid.UUID]:
+        """Return the subset of `run_ids` with at least one non-hidden annotation.
+
+        Returns a set of run IDs that have at least one non-hidden annotation
+        on any of their child SLO evaluations.
+
+        Single roundtrip; uses `idx_annotations_slo_evaluation` for the inner join
+        and `slo_evaluations.evaluation_id` (FK) for the run-id filter.
+        """
+        if not run_ids:
+            return set()
+        q = (
+            select(SLOEvaluation.evaluation_id)
+            .join(
+                EvaluationAnnotation,
+                EvaluationAnnotation.slo_evaluation_id == SLOEvaluation.id,
+            )
+            .where(
+                SLOEvaluation.evaluation_id.in_(run_ids),
+                EvaluationAnnotation.hidden_at.is_(None),
+            )
+            .distinct()
+        )
+        result = await self._session.execute(q)
+        return {row[0] for row in result.all()}
 
     async def get_trend_by_domain(
         self,

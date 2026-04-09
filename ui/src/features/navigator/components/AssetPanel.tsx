@@ -220,26 +220,18 @@ export function AssetPanel({ assetName, initialEvalId }: Props) {
   const isLoading = evalsLoading || heatmapLoading
 
   const notedSlots = useMemo(() => {
-    if (!heatmapData) return new Map<string, { evalId: string; count: number }>()
-    const notedEvals = new Map(
-      evals
-        .filter(e => (e.annotation_count ?? 0) > 0)
-        .map(e => [e.id, e] as const),
-    )
     const slots = new Map<string, { evalId: string; count: number }>()
-    for (const group of heatmapData.groups) {
-      for (const c of group.cells) {
-        if (notedEvals.has(c.slo_evaluation_id) && !slots.has(c.period_start)) {
-          const summary = notedEvals.get(c.slo_evaluation_id)!
-          slots.set(c.period_start, {
-            evalId: c.slo_evaluation_id,
-            count: summary.annotation_count ?? 0,
-          })
-        }
+    if (!heatmapData) return slots
+    for (const col of heatmapData.columns) {
+      if (col.has_notes) {
+        // Use period_start as the slot key (matches HeatmapChart column key) and
+        // store the parent evaluation_id for hover-time annotation fetches.
+        // count=0 because the actual number is loaded lazily on hover.
+        slots.set(col.period_start, { evalId: col.evaluation_id, count: 0 })
       }
     }
     return slots
-  }, [evals, heatmapData])
+  }, [heatmapData])
 
   const hasColumn = columnInfo != null
 
