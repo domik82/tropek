@@ -10,7 +10,7 @@ from typing import Any, ClassVar, cast
 import httpx
 import redis.asyncio as aioredis
 import structlog
-from arq import create_pool
+from arq import create_pool, cron
 from arq.connections import ArqRedis, RedisSettings
 from fastapi import Request
 
@@ -249,6 +249,16 @@ async def finalize_run_job(ctx: dict[str, Any], run_id_str: str) -> None:
         )
 
 
+def _sweeper_cron_seconds(interval_seconds: int) -> set[int]:
+    """Translate sweeper interval (must divide 60) into arq cron second-of-minute set."""
+    if 60 % interval_seconds != 0:
+        msg = (
+            f'finalize_sweeper_interval_seconds must divide 60; got {interval_seconds}'
+        )
+        raise ValueError(msg)
+    return set(range(0, 60, interval_seconds))
+
+
 async def finalize_sweeper_job(ctx: dict[str, Any]) -> None:
     """Periodic reconciler — finalize parent runs that the fast-path missed.
 
@@ -298,7 +308,20 @@ async def finalize_sweeper_job(ctx: dict[str, Any]) -> None:
 class WorkerSettings:
     """arq worker configuration — discovered by `arq app.queue.WorkerSettings`."""
 
-    functions: ClassVar[list[Any]] = [run_evaluation_job, finalize_run_job]
+    functions: ClassVar[list[Any]] = [
+        run_evaluation_job,
+        finalize_run_job,
+        finalize_sweeper_job,
+    ]
+    cron_jobs: ClassVar[list[Any]] = [
+        cron(
+            finalize_sweeper_job,
+            second=_sweeper_cron_seconds(
+                get_settings().queue.finalize_sweeper_interval_seconds
+            ),
+            run_at_startup=False,
+        ),
+    ]
     on_startup = _worker_startup
     on_shutdown = _worker_shutdown
     max_jobs = get_settings().queue.max_jobs
