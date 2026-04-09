@@ -7,14 +7,14 @@ for querying metric values from data source adapters.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Protocol
+from typing import Any, Protocol
 
 
 @dataclass
 class AdapterQueryRequest:
     """Request payload for an adapter metric query."""
 
-    queries: dict[str, dict]  # metric_name → {"mode": "raw", "query": "..."} or aggregated spec
+    queries: dict[str, dict[str, Any]]  # metric_name → {"mode": "raw", "query": "..."} or aggregated spec
     variables: dict[str, str] = field(default_factory=dict)
     start: str = ''
     end: str = ''
@@ -26,7 +26,7 @@ class AdapterQueryResponse:
 
     values: dict[str, float | None] = field(default_factory=dict)
     errors: dict[str, str] = field(default_factory=dict)
-    metadata: dict[str, dict] = field(default_factory=dict)
+    metadata: dict[str, dict[str, Any]] = field(default_factory=dict)
 
 
 class AdapterClient(Protocol):
@@ -37,7 +37,7 @@ class AdapterClient(Protocol):
         *,
         adapter_url: str,
         datasource_name: str,
-        queries: dict[str, dict],
+        queries: dict[str, dict[str, Any]],
         variables: dict[str, str],
         start: str,
         end: str,

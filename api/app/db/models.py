@@ -276,7 +276,6 @@ class SLODefinition(Base):
         cascade='all, delete-orphan',
         lazy='selectin',
     )
-    sli_definition:          Mapped[SLIDefinition | None]   = relationship(lazy='raise')
 
     # fmt: on
 

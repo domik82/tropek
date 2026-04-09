@@ -49,7 +49,7 @@ def _make_indicator_row(
     )
 
 
-def _make_slo_eval(
+def _make_slo_eval(  # noqa: PLR0913 - test factory intentionally exposes many kwargs
     *,
     slo_name: str = 'latency-slo',
     run_id: uuid.UUID | None = None,
