@@ -11,6 +11,8 @@ from app.modules.common.schemas import StrictInput
 
 
 class DisplayGroupCreate(StrictInput):
+    """Request body for creating a display group."""
+
     name: str
     display_name: str | None = None
     parent_id: uuid.UUID | None = None
@@ -18,6 +20,8 @@ class DisplayGroupCreate(StrictInput):
 
 
 class DisplayGroupRead(BaseModel):
+    """Response schema for a display group."""
+
     id: uuid.UUID
     name: str
     display_name: str | None
@@ -29,4 +33,6 @@ class DisplayGroupRead(BaseModel):
 
 
 class DisplayGroupMemberAdd(StrictInput):
+    """Request body for adding an SLO to a display group."""
+
     slo_name: str

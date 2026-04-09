@@ -6,7 +6,7 @@ import uuid
 from datetime import UTC, datetime, timedelta
 
 import pytest
-from app.db.models import Asset, AssetType, EvaluationRun, SLOEvaluation
+from app.db.models import Asset, AssetType
 from app.modules.quality_gate.evaluation_run_repository import EvaluationRunRepository
 from app.modules.quality_gate.params import EvalCreateParams
 from app.modules.quality_gate.repository import EvaluationRepository

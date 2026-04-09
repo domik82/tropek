@@ -5,11 +5,10 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict, Field
-
-from app.modules.common.schemas import StrictInput
+from pydantic import ConfigDict, Field
 
 from app.db.models import SLOObjective
+from app.modules.common.schemas import StrictInput
 from app.modules.quality_gate.engine.result_models import IndicatorResult
 
 

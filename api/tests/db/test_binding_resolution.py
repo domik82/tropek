@@ -38,7 +38,7 @@ async def async_client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient]:
     app.dependency_overrides.clear()
 
 
-@pytest.fixture()
+@pytest.fixture
 def prefix() -> str:
     """Short random prefix for test entity names to avoid cross-test collisions."""
     return uuid.uuid4().hex[:6]
