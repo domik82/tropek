@@ -80,8 +80,8 @@ export function AssetPanelHeatmapView({
   )
 
   // Reverse lookup: slo_evaluation_id → parent column + period_start. Used to
-  // promote a trend-dot click into a full-column selection so every SLO's
-  // trend chart and the heatmap column light up together.
+  // promote a trend-dot click into a full-slot selection so every SLO's trend
+  // chart and the heatmap column light up together.
   const sloEvalIdToColumn = useMemo((): Map<string, { columnEvalId: string; periodStart: string }> => {
     if (!heatmapData) return new Map()
     const m = new Map<string, { columnEvalId: string; periodStart: string }>()
