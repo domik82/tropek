@@ -16,6 +16,8 @@ interface Props {
   heatmapData: MetricHeatmapResponse | undefined
   selectedColumnEvalId: string | undefined
   effectiveEvalId: string | undefined
+  /** All slo_evaluation_ids in the currently selected column, one per SLO. */
+  selectedColumnSloEvalIds: ReadonlySet<string>
   notedSlots: Map<string, { evalId: string; count: number }>
   onEvalSelect: (evalId: string) => void
   onSlotSelect?: (slot: TimeSlotSelection) => void
@@ -27,7 +29,8 @@ interface Props {
 }
 
 export function AssetPanelHeatmapView({
-  assetName, heatmapData, selectedColumnEvalId, effectiveEvalId, notedSlots,
+  assetName, heatmapData, selectedColumnEvalId, effectiveEvalId,
+  selectedColumnSloEvalIds, notedSlots,
   onEvalSelect, onSlotSelect, mode, setMode, explorerButton,
   sloExpandState, onSloToggle,
 }: Props) {
@@ -75,6 +78,45 @@ export function AssetPanelHeatmapView({
     (metricName: string, sloName: string) => scrollToRow(sloName, metricName),
     [scrollToRow],
   )
+
+  // Reverse lookup: slo_evaluation_id → parent column + period_start. Used to
+  // promote a trend-dot click into a full-slot selection so every SLO's trend
+  // chart and the heatmap column light up together.
+  const sloEvalIdToColumn = useMemo((): Map<string, { columnEvalId: string; periodStart: string }> => {
+    if (!heatmapData) return new Map()
+    const m = new Map<string, { columnEvalId: string; periodStart: string }>()
+    for (const group of heatmapData.groups) {
+      for (const cell of group.cells) {
+        if (!m.has(cell.slo_evaluation_id)) {
+          m.set(cell.slo_evaluation_id, {
+            columnEvalId: cell.evaluation_id,
+            periodStart: cell.period_start,
+          })
+        }
+      }
+    }
+    return m
+  }, [heatmapData])
+
+  const columnSloEvalIdsByColumn = useMemo((): Map<string, string[]> => {
+    if (!heatmapData) return new Map()
+    const m = new Map<string, string[]>()
+    for (const group of heatmapData.groups) {
+      for (const cell of group.cells) {
+        const ids = m.get(cell.evaluation_id) ?? []
+        if (!ids.includes(cell.slo_evaluation_id)) ids.push(cell.slo_evaluation_id)
+        m.set(cell.evaluation_id, ids)
+      }
+    }
+    return m
+  }, [heatmapData])
+
+  const handleTrendClick = useCallback((evalId: string) => {
+    const col = sloEvalIdToColumn.get(evalId)
+    if (!col || !onSlotSelect) { onEvalSelect(evalId); return }
+    const evalIds = columnSloEvalIdsByColumn.get(col.columnEvalId) ?? [evalId]
+    onSlotSelect({ periodStart: col.periodStart, evalIds, columnEvalId: col.columnEvalId })
+  }, [sloEvalIdToColumn, columnSloEvalIdsByColumn, onEvalSelect, onSlotSelect])
 
   // Build SloBreakdownGroup[] directly from enriched heatmap cells — no detail fetch needed.
   const breakdownGroups = useMemo((): SloBreakdownGroup[] => {
@@ -230,9 +272,11 @@ export function AssetPanelHeatmapView({
                           key={ind.metric}
                           assetName={assetName}
                           sloName={g.slo_name}
+                          sloDisplayName={g.slo_display_name}
                           selectedEvalId={effectiveEvalId}
+                          selectedEvalIds={selectedColumnSloEvalIds}
                           indicator={ind}
-                          onEvalSelect={onEvalSelect}
+                          onEvalSelect={handleTrendClick}
                           blockId={trendIdFor(g.slo_name, ind.metric)}
                           onScrollToTable={() => scrollToRow(g.slo_name, ind.metric)}
                         />
