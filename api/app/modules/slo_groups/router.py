@@ -340,7 +340,7 @@ async def delete_slo_group(
     response_model=SLOGroupRead,
     status_code=201,
 )
-async def extract_slo(  # noqa: C901
+async def extract_slo(  # noqa: C901, PLR0912
     name: str,
     body: ExtractRequest,
     session: AsyncSession = Depends(get_session),

@@ -9,7 +9,6 @@ from typing import Any, Literal
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from app.modules.common.schemas import StrictInput
-
 from app.modules.quality_gate.schemas import IndicatorResult
 
 

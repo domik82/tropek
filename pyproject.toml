@@ -93,7 +93,11 @@ max-args = 8
 "**/tests/**" = ["D", "S101", "S106", "ARG", "PLR2004"]
 "**/test_*.py" = ["D", "S101", "S106", "ARG", "PLR2004"]
 # Alembic auto-generated migrations: formatting is Alembic's job, not ours
-"**/alembic/versions/*.py" = ["D", "W291", "E501"]
+"**/alembic/versions/*.py" = ["D", "W291", "E501", "PLR0915"]
+# Pydantic schemas: RUF012 (mutable defaults) is a false positive — Pydantic v2
+# deep-copies field defaults per-instance, so {}/[] on BaseModel fields is safe.
+"**/schemas.py" = ["RUF012"]
+"**/schemas/*.py" = ["RUF012"]
 # Observability stack is third-party-adjacent config — don't enforce our style on it
 "observability_stack/**" = ["D", "S", "C901", "SIM115", "RUF002", "RUF003", "RUF005"]
 # FastAPI uses Depends() as a default argument — B008 (mutable default) is a false positive here
