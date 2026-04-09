@@ -10,9 +10,9 @@ from app.db.models import Asset, AssetType, SLOObjective
 from app.modules.quality_gate.baseline_repository import BaselineRepository
 from app.modules.quality_gate.indicator_repository import IndicatorRepository
 from app.modules.quality_gate.params import EvalCreateParams, ReEvalUpdateParams
-from app.modules.quality_gate.schemas.re_evaluation import ReEvaluateRequest
 from app.modules.quality_gate.re_evaluator import re_evaluate
 from app.modules.quality_gate.repository import EvaluationRepository
+from app.modules.quality_gate.schemas.re_evaluation import ReEvaluateRequest
 from app.modules.slo_registry.params import SLOCreateParams, SLOObjectiveParams
 from app.modules.slo_registry.repository import SLORepository
 from sqlalchemy import select

@@ -15,13 +15,13 @@ from app.db.session import get_session_factory
 from app.logging_config import configure_logging
 from app.modules.assets.router import router as assets_router
 from app.modules.assignments.router import router as assignments_router
-from app.modules.display_groups.router import router as display_groups_router
 from app.modules.common.exceptions import (
     ConflictError,
     DomainValidationError,
     NotFoundError,
 )
 from app.modules.datasource.router import router as datasource_router
+from app.modules.display_groups.router import router as display_groups_router
 from app.modules.quality_gate.exception_handlers import (
     conflict_handler,
     domain_validation_handler,
