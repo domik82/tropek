@@ -11,9 +11,11 @@ interface Props {
   onMetricClick?: (metric: string) => void
   /** Fallback display name for the asset (when snapshot lacks display_name). */
   assetDisplayName?: string
+  /** Human-readable SLO name passed through to each trend block. */
+  sloDisplayName?: string
 }
 
-export function EvaluationIndicatorSection({ evaluation: ev, onMetricClick, assetDisplayName }: Props) {
+export function EvaluationIndicatorSection({ evaluation: ev, onMetricClick, assetDisplayName, sloDisplayName }: Props) {
   const { availableGroups, counts, activeTab, setActiveTab, tabIndicators } =
     useTabState(ev.indicator_results)
 
@@ -78,6 +80,7 @@ export function EvaluationIndicatorSection({ evaluation: ev, onMetricClick, asse
               key={ind.metric}
               assetName={ev.asset_snapshot.name}
               sloName={ev.slo_name ?? ''}
+              sloDisplayName={sloDisplayName}
               selectedEvalId={ev.id}
               indicator={ind}
               onScrollToTable={handleScrollToTable}
