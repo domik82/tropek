@@ -16,13 +16,20 @@ interface Props {
   indicator: IndicatorResult
   onEvalSelect?: (evalId: string) => void
   onScrollToTable?: () => void
+  /**
+   * DOM id for the trend block wrapper. Defaults to `trend-${indicator.metric}`.
+   * Callers that render multiple trend blocks for the same metric (e.g. the
+   * navigator, which groups by SLO) must pass a scope-qualified id to avoid
+   * `getElementById` collisions that land scroll targets on the wrong block.
+   */
+  blockId?: string
 }
 
 function defaultScrollToTable() {
   document.getElementById('sli-table')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
 }
 
-export function MetricTrendBlock({ assetName, sloName, selectedEvalId, indicator, onEvalSelect, onScrollToTable }: Props) {
+export function MetricTrendBlock({ assetName, sloName, selectedEvalId, indicator, onEvalSelect, onScrollToTable, blockId }: Props) {
   const { data: trend, isLoading } = useTrend(assetName, sloName, indicator.metric)
 
   const handleClickIndex = useCallback(
@@ -46,7 +53,7 @@ export function MetricTrendBlock({ assetName, sloName, selectedEvalId, indicator
   } = useMetricTrendState(trend, selectedEvalId ?? '', indicator, onEvalSelect)
 
   return (
-    <div id={`trend-${indicator.metric}`} className="bg-card border border-border rounded-xl p-4 scroll-mt-4">
+    <div id={blockId ?? `trend-${indicator.metric}`} className="bg-card border border-border rounded-xl p-4 scroll-mt-4">
       <div className="flex items-center justify-between mb-1">
         <span className={`text-xs font-semibold uppercase ${STATUS_TEXT[indicator.status] ?? 'text-muted-foreground'}`}>
           {indicator.status}

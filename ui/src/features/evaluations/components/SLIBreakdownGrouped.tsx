@@ -49,6 +49,13 @@ interface Props {
   sliMetadata?: Record<string, SliMetadata>
   onIndicatorClick?: (metric: string, sloName: string) => void
   onScrollToHeatmap?: () => void
+  /**
+   * Builder for the DOM id prefix applied to each SLO group's rows.
+   * Receives the SLO name and must return a string suffixed so that the
+   * full row id is `${builder(sloName)}${metric}`. When omitted, rows get
+   * no id (used by the eval detail page, which has a single flat trend list).
+   */
+  rowIdPrefixBuilder?: (sloName: string) => string
 }
 
 export function SLIBreakdownGrouped({
@@ -58,6 +65,7 @@ export function SLIBreakdownGrouped({
   sliMetadata,
   onIndicatorClick,
   onScrollToHeatmap,
+  rowIdPrefixBuilder,
 }: Props) {
   return (
     <div className="space-y-1">
@@ -127,6 +135,7 @@ export function SLIBreakdownGrouped({
                       ? (metric) => onIndicatorClick(metric, g.slo_name)
                       : undefined
                   }
+                  rowIdPrefix={rowIdPrefixBuilder?.(g.slo_name)}
                 />
               </div>
             )}

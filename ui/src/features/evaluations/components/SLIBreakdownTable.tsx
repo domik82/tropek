@@ -76,9 +76,16 @@ interface Props {
   indicators: IndicatorResult[]
   sliMetadata?: Record<string, SliMetadata>
   onIndicatorClick?: (metric: string, tabGroup: string) => void
+  /**
+   * When set, each indicator row receives a DOM id of
+   * `${rowIdPrefix}${metric}` so callers can `scrollIntoView` to the row.
+   * Required when the same metric appears in multiple tables on a page
+   * (e.g. navigator's SLO-grouped view) to keep ids unique.
+   */
+  rowIdPrefix?: string
 }
 
-export function SLIBreakdownTable({ indicators, sliMetadata, onIndicatorClick }: Props) {
+export function SLIBreakdownTable({ indicators, sliMetadata, onIndicatorClick, rowIdPrefix }: Props) {
   const [selectedMetric, setSelectedMetric] = useState<string | null>(null)
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set())
 
@@ -142,6 +149,7 @@ export function SLIBreakdownTable({ indicators, sliMetadata, onIndicatorClick }:
                 onRowClick={handleRowClick}
                 onIndicatorClick={onIndicatorClick}
                 startIdx={idx}
+                rowIdPrefix={rowIdPrefix}
               />
             )
           }
@@ -153,6 +161,7 @@ export function SLIBreakdownTable({ indicators, sliMetadata, onIndicatorClick }:
               isSelected={item.metric === selectedMetric}
               onClick={handleRowClick}
               onIndicatorClick={onIndicatorClick}
+              rowId={rowIdPrefix ? `${rowIdPrefix}${item.metric}` : undefined}
             />
           )
         })}
@@ -170,9 +179,10 @@ interface GroupRowsProps {
   onRowClick: (metric: string) => void
   onIndicatorClick?: (metric: string, tabGroup: string) => void
   startIdx: number
+  rowIdPrefix?: string
 }
 
-function GroupRows({ group, collapsed, lowConfidence, onToggle, selectedMetric, onRowClick, onIndicatorClick, startIdx }: GroupRowsProps) {
+function GroupRows({ group, collapsed, lowConfidence, onToggle, selectedMetric, onRowClick, onIndicatorClick, startIdx, rowIdPrefix }: GroupRowsProps) {
   const meta = group.metadata
   return (
     <>
@@ -215,6 +225,7 @@ function GroupRows({ group, collapsed, lowConfidence, onToggle, selectedMetric, 
             onIndicatorClick={onIndicatorClick}
             displayName={methodSuffix}
             indented
+            rowId={rowIdPrefix ? `${rowIdPrefix}${ind.metric}` : undefined}
           />
         )
       })}
@@ -230,9 +241,10 @@ interface IndicatorRowProps {
   onIndicatorClick?: (metric: string, tabGroup: string) => void
   displayName?: string
   indented?: boolean
+  rowId?: string
 }
 
-function IndicatorRow({ ind, idx, isSelected, onClick, onIndicatorClick, displayName, indented }: IndicatorRowProps) {
+function IndicatorRow({ ind, idx, isSelected, onClick, onIndicatorClick, displayName, indented, rowId }: IndicatorRowProps) {
   const zebraBase = idx % 2 === 0 ? 'bg-table-row-bg' : 'bg-table-row-alt'
   const rowBg = isSelected ? 'bg-table-row-selected' : zebraBase
   const rowHover = isSelected ? 'hover:bg-table-row-selected' : 'hover:bg-table-row-hover'
@@ -241,8 +253,9 @@ function IndicatorRow({ ind, idx, isSelected, onClick, onIndicatorClick, display
 
   return (
     <tr
+      id={rowId}
       onClick={() => onClick(ind.metric)}
-      className={`transition-colors group border-b border-border/60 last:border-0 ${rowBg} ${rowHover} ${rowRing}`}
+      className={`transition-colors group border-b border-border/60 last:border-0 scroll-mt-24 ${rowBg} ${rowHover} ${rowRing}`}
     >
       <td className="px-2 py-3 text-center">
         {ind.key_sli && (
