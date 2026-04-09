@@ -372,9 +372,26 @@ def _build_standalone_slo_params(gen_slo: Any, new_name: str) -> SLOCreateParams
 def _shrink_gen_variables(
     gen_variables: dict[str, list[str]], row_idx: int,
 ) -> dict[str, list[str]]:
-    """Return a copy of gen_variables with row ``row_idx`` removed from each column."""
+    """Return a copy of gen_variables with row ``row_idx`` removed from each column.
+
+    ``gen_variables`` is a column-oriented table: each key is a column name and
+    each value is a list whose positions are rows. All columns have equal length,
+    and each row (one value picked from every column at the same index) produces
+    one generated SLO.
+
+    Example — removing row 1 (``cache`` / ``prod``)::
+
+        >>> _shrink_gen_variables(
+        ...     {
+        ...         'service': ['auth', 'cache', 'db'],
+        ...         'env':     ['prod', 'prod',  'prod'],
+        ...     },
+        ...     row_idx=1,
+        ... )
+        {'service': ['auth', 'db'], 'env': ['prod', 'prod']}
+    """
     return {
-        key: [v for j, v in enumerate(vals) if j != row_idx]
+        key: vals[:row_idx] + vals[row_idx + 1 :]
         for key, vals in gen_variables.items()
     }
 
