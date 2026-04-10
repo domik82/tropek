@@ -1,25 +1,22 @@
-"""Baseline repository — DB access for baselines and re-evaluation."""
+"""Baseline repository — DB access for baseline queries."""
 
 from __future__ import annotations
 
 import uuid
-from datetime import UTC, datetime
+from datetime import datetime
 from typing import Any
 
-from sqlalchemy import select, update
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.cache.redis_cache import RedisCache
 from app.db.models import IndicatorResultRow, SLOEvaluation
-from app.modules.quality_gate.annotation_repository import AnnotationRepository
 from app.modules.quality_gate.engine.constants import EvaluationStatus
-from app.modules.quality_gate.indicator_repository import IndicatorRepository, build_indicator_row_dicts
-from app.modules.quality_gate.params import ReEvalUpdateParams
 
 
 class BaselineRepository:
-    """Data access layer for baselines and re-evaluation results."""
+    """Data access layer for baseline queries."""
 
     def __init__(self, session: AsyncSession, cache: RedisCache | None = None) -> None:
         self._session = session
@@ -221,58 +218,3 @@ class BaselineRepository:
         rows = await self._session.execute(q)
         return list(rows.scalars().all())
 
-    async def update_reeval_result(self, params: ReEvalUpdateParams) -> None:
-        """Overwrite evaluation result from re-evaluation, preserving original on first call.
-
-        Args:
-            params: ReEvalUpdateParams with all fields needed for the update.
-        """
-        result = await self._session.execute(
-            select(SLOEvaluation).options(selectinload(SLOEvaluation.annotations)).where(SLOEvaluation.id == params.eval_id)
-        )
-        ev = result.scalar_one_or_none()
-        if ev is None:
-            return
-
-        stats = dict(ev.job_stats)
-        if 'original_result' not in stats:
-            stats['original_result'] = params.old_result
-            stats['original_score'] = params.old_score
-        stats['re_evaluated_at'] = datetime.now(tz=UTC).isoformat()
-        stats['re_eval_slo_version'] = params.slo_version
-
-        values: dict[str, Any] = {
-            'result': params.new_result,
-            'score': params.new_score,
-            'job_stats': stats,
-        }
-        if params.slo_version is not None:
-            values['slo_version'] = params.slo_version
-
-        await self._session.execute(update(SLOEvaluation).where(SLOEvaluation.id == params.eval_id).values(**values))
-
-        annotation_content = (
-            f're-evaluated: {params.old_result} -> {params.new_result}, score {params.old_score} -> {params.new_score}'
-        )
-        if self._cache:
-            await self._cache.invalidate(f'baseline:{ev.asset_id}:{ev.slo_name}')
-        ann_repo = AnnotationRepository(self._session, cache=self._cache)
-        await ann_repo.add_annotation(
-            params.eval_id,
-            content=annotation_content,
-            author='system',
-            category='re-evaluation',
-        )
-
-        # Write to normalized table
-        if params.new_engine_results and params.slo_objectives:
-            indicator_repo = IndicatorRepository(self._session)
-            await indicator_repo.delete_for_evaluation(params.eval_id)
-            obj_lookup = {obj.sli: obj.id for obj in params.slo_objectives}
-            rows = build_indicator_row_dicts(
-                evaluation_id=params.eval_id,
-                indicator_results=params.new_engine_results,
-                obj_lookup=obj_lookup,
-            )
-            if rows:
-                await indicator_repo.bulk_insert(params.eval_id, rows)

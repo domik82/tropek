@@ -5,11 +5,9 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 
-from pydantic import ConfigDict, Field
+from pydantic import Field
 
-from app.db.models import SLOObjective
 from app.modules.common.schemas import StrictInput
-from app.modules.quality_gate.engine.result_models import IndicatorResult
 
 
 class EvalCreateParams(StrictInput):
@@ -31,18 +29,3 @@ class EvalCreateParams(StrictInput):
     data_source_name: str | None = None
     slo_definition_id: uuid.UUID | None = None
     sli_definition_id: uuid.UUID | None = None
-
-
-class ReEvalUpdateParams(StrictInput):
-    """Parameters for BaselineRepository.update_reeval_result()."""
-
-    model_config = ConfigDict(arbitrary_types_allowed=True)
-
-    eval_id: uuid.UUID
-    new_result: str
-    new_score: float
-    new_engine_results: list[IndicatorResult] | None = None
-    slo_objectives: list[SLOObjective] | None = None
-    old_result: str
-    old_score: float
-    slo_version: int | None = None
