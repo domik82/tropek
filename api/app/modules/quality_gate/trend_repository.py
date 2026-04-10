@@ -163,6 +163,7 @@ class TrendRepository:
                 IndicatorResultRow.status.label('result'),
                 IndicatorResultRow.compared_value,
                 IndicatorResultRow.score,
+                IndicatorResultRow.targets.label('targets'),
                 total_weight_sq,
             )
             .join(SLOEvaluation, SLIValue.slo_evaluation_id == SLOEvaluation.id)
@@ -206,6 +207,7 @@ class TrendRepository:
                 'result': r.result,
                 'baseline': r.compared_value,
                 'evaluation_name': r.evaluation_name,
+                'targets': r.targets,
             }
             for r in rows
         ]
