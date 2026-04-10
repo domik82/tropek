@@ -5,7 +5,7 @@ from __future__ import annotations
 import uuid
 from typing import Any
 
-from app.db.models import EvaluationRun
+from app.db.models import EvaluationRun, IndicatorResultRow, SLOEvaluation
 from app.modules.quality_gate.engine.constants import RESULT_RANK
 from app.modules.quality_gate.schemas import (
     AnnotationRead,
@@ -45,7 +45,7 @@ def _read_stored_targets(
     )
 
 
-def _indicators_from_orm_rows(rows: list) -> list[IndicatorResult]:  # type: ignore[type-arg]
+def _indicators_from_orm_rows(rows: list[IndicatorResultRow]) -> list[IndicatorResult]:
     """Build IndicatorResult schema objects from ORM IndicatorResultRow with joined objectives."""
     results: list[IndicatorResult] = []
     for row in rows:
@@ -71,7 +71,7 @@ def _indicators_from_orm_rows(rows: list) -> list[IndicatorResult]:  # type: ign
     return results
 
 
-def _get_indicator_results(ev: object) -> list[IndicatorResult]:
+def _get_indicator_results(ev: SLOEvaluation) -> list[IndicatorResult]:
     """Get indicator results from ORM rows."""
     orm_rows = getattr(ev, 'indicator_rows', None)
     if orm_rows:
@@ -93,7 +93,7 @@ def _top_failures(indicators: list[IndicatorResult]) -> list[FailingIndicator]:
     ]
 
 
-def build_summary(ev: object, annotation_count: int, latest_ann: object | None) -> EvaluationSummary:
+def build_summary(ev: SLOEvaluation, annotation_count: int, latest_ann: object | None) -> EvaluationSummary:
     """Transform ORM Evaluation into API summary schema."""
     indicators = _get_indicator_results(ev)
     job_stats = getattr(ev, 'job_stats', None) or {}
@@ -258,7 +258,7 @@ def build_grouped_heatmap_response(
     )
 
 
-def build_detail(ev: Any) -> EvaluationDetail:
+def build_detail(ev: SLOEvaluation) -> EvaluationDetail:
     """Transform ORM Evaluation with annotations into API detail schema."""
     annotations = [AnnotationRead.model_validate(a) for a in (ev.annotations or []) if a.hidden_at is None]
     indicators = _get_indicator_results(ev)
