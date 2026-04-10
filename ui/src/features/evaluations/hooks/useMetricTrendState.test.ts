@@ -246,6 +246,7 @@ describe('useMetricTrendState', () => {
   it('builds targets from trend data', () => {
     const trend: TrendPoint[] = [
       makeTrendPoint({
+        baseline: 90,
         targets: {
           pass: [
             { criteria: '<=600', target_value: 600, violated: false },
@@ -282,10 +283,9 @@ describe('useMetricTrendState', () => {
     const { result } = renderHook(() =>
       useMetricTrendState(trend, 'eval-1', makeIndicator()),
     )
-    // Only <=600 + baseline
-    expect(result.current.targets).toHaveLength(2)
+    // Only <=600 (no baseline since trend point has no baseline field)
+    expect(result.current.targets).toHaveLength(1)
     expect(result.current.targets[0].key).toBe('pass:<=600')
-    expect(result.current.targets[1].key).toBe('baseline')
   })
 
   it('toggling a target flips its visibility', () => {
