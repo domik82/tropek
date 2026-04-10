@@ -25,7 +25,8 @@ def _read_stored_targets(
     stored = getattr(row, 'targets', None)
     if stored is not None:
         key = 'pass' if is_pass else 'warn'
-        return stored.get(key)
+        result: list[dict[str, Any]] | None = stored.get(key)
+        return result
     criteria = list(obj.pass_threshold) if is_pass else list(obj.warning_threshold)
     if not criteria:
         return None

@@ -126,7 +126,7 @@ export function useMetricTrendState(
   const colours = RESULT_COLOUR[theme]
   const ct = CHART_THEME[theme]
 
-  const trendData = trend ?? []
+  const trendData = useMemo(() => trend ?? [], [trend])
 
   const discovered = useMemo(() => discoverTargets(trendData), [trendData])
 
@@ -323,8 +323,9 @@ export function buildChartOption(input: ChartOptionInput): object {
     const lineType = isRelative(t.criteria)
       ? ('dashed' as const)
       : ('solid' as const)
+    const level = t.level as 'pass' | 'warn'
     const data = trend.map(p =>
-      getTargetValue(p, t.level, t.criteria),
+      getTargetValue(p, level, t.criteria),
     )
 
     targetSeries.push({
