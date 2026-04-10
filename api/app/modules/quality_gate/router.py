@@ -146,7 +146,7 @@ async def get_metric_heatmap(
     """Return a metric x evaluation heatmap grid for an asset."""
     asset = await repos.asset_repo.get_by_name(asset_name)
     if asset is None:
-        raise HTTPException(status_code=404, detail=f"asset '{asset_name}' not found")
+        raise NotFoundError('asset', asset_name)
     evals = await repos.trend_repo.get_metric_heatmap(
         asset_id=asset.id,
         evaluation_name=evaluation_name,
@@ -220,7 +220,7 @@ async def get_grouped_metric_heatmap(
     """Return a grouped metric heatmap — one column per parent EvaluationRun."""
     asset = await repos.asset_repo.get_by_name(asset_name)
     if asset is None:
-        raise HTTPException(status_code=404, detail=f"asset '{asset_name}' not found")
+        raise NotFoundError('asset', asset_name)
     runs = await repos.trend_repo.get_grouped_metric_heatmap(
         asset_id=asset.id,
         eval_name=evaluation_name,
@@ -348,7 +348,7 @@ async def pin_baseline(
     """Pin an evaluation as the new baseline for future comparisons."""
     ev = await repos.eval_repo.get_by_id(eval_id)
     if ev is None:
-        raise HTTPException(status_code=404, detail='evaluation not found')
+        raise NotFoundError('evaluation', str(eval_id))
     if ev.status != 'completed':
         raise HTTPException(status_code=409, detail='only completed evaluations can be pinned')
     if ev.invalidated:
@@ -365,7 +365,7 @@ async def unpin_baseline(
     """Remove baseline pin from an evaluation."""
     ev = await repos.eval_repo.get_by_id(eval_id)
     if ev is None:
-        raise HTTPException(status_code=404, detail='evaluation not found')
+        raise NotFoundError('evaluation', str(eval_id))
     updated = await repos.eval_repo.unpin_baseline(eval_id)
     return build_detail(updated)
 
@@ -379,7 +379,7 @@ async def override_status(
     """Override the evaluation result."""
     ev = await repos.eval_repo.get_by_id(eval_id)
     if ev is None:
-        raise HTTPException(status_code=404, detail='evaluation not found')
+        raise NotFoundError('evaluation', str(eval_id))
     if ev.status != 'completed':
         raise HTTPException(status_code=409, detail='only completed evaluations can be overridden')
     if body.new_result not in ('pass', 'warning', 'fail'):
@@ -398,7 +398,7 @@ async def restore_override(
     """Restore the original evaluation result."""
     ev = await repos.eval_repo.get_by_id(eval_id)
     if ev is None:
-        raise HTTPException(status_code=404, detail='evaluation not found')
+        raise NotFoundError('evaluation', str(eval_id))
     if ev.original_result is None:
         raise HTTPException(status_code=409, detail='evaluation has no override to restore')
     updated = await repos.eval_repo.restore_override(eval_id)
