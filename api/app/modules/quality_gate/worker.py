@@ -18,9 +18,11 @@ from app.modules.quality_gate.baseline_repository import BaselineRepository
 from app.modules.quality_gate.engine.criteria import aggregate_values
 from app.modules.quality_gate.engine.evaluator import evaluate
 from app.modules.quality_gate.engine.slo_models import SLO
-from app.modules.quality_gate.engine.slo_parser import build_slo
 from app.modules.quality_gate.engine.variables import substitute_variables
-from app.modules.quality_gate.evaluation_helpers import build_eval_variables as _build_eval_variables_shared
+from app.modules.quality_gate.evaluation_helpers import (
+    build_eval_variables as _build_eval_variables_shared,
+    build_slo_model,
+)
 from app.modules.quality_gate.indicator_repository import IndicatorRepository, build_indicator_row_dicts
 from app.modules.quality_gate.repository import EvaluationRepository
 from app.modules.quality_gate.sli_repository import SLIValueRepository
@@ -363,22 +365,7 @@ async def fetch_and_evaluate(
     """
     log = logger.bind(evaluation_id=str(snapshot.eval_id))
 
-    slo = build_slo(
-        objectives=[
-            {
-                'sli': obj.sli,
-                'display_name': obj.display_name,
-                'pass_threshold': obj.pass_threshold,
-                'warning_threshold': obj.warning_threshold,
-                'weight': obj.weight,
-                'key_sli': obj.key_sli,
-            }
-            for obj in slo_def.objectives
-        ],
-        total_score_pass_threshold=slo_def.total_score_pass_threshold,
-        total_score_warning_threshold=slo_def.total_score_warning_threshold,
-        comparison=slo_def.comparison,
-    )
+    slo = build_slo_model(slo_def)
 
     # Build variables and query specs
     variables = _build_eval_variables(snapshot, snapshot.asset_snapshot, slo_def)

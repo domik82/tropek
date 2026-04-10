@@ -4,8 +4,7 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock
 
-from app.modules.quality_gate.evaluation_helpers import build_eval_variables
-from app.modules.quality_gate.re_evaluator import _build_slo_model
+from app.modules.quality_gate.evaluation_helpers import build_eval_variables, build_slo_model
 
 
 def test_build_eval_variables_merge_priority() -> None:
@@ -62,11 +61,11 @@ def test_build_eval_variables_none_inputs() -> None:
     assert 'TROPEK_ASSET' in result
 
 
-# -- _build_slo_model (pre-extraction regression test) -------------------------
+# -- build_slo_model (pre-extraction regression test) -------------------------
 
 
-def test_build_slo_model_creates_slo_from_definition() -> None:
-    """_build_slo_model converts an SLODefinition-like object to an engine SLO."""
+def testbuild_slo_model_creates_slo_from_definition() -> None:
+    """build_slo_model converts an SLODefinition-like object to an engine SLO."""
     obj = MagicMock()
     obj.sli = 'response_time'
     obj.display_name = 'Response Time'
@@ -84,7 +83,7 @@ def test_build_slo_model_creates_slo_from_definition() -> None:
         'number_of_comparison_results': 1,
     }
 
-    slo = _build_slo_model(slo_def)
+    slo = build_slo_model(slo_def)
     assert slo is not None
     assert len(slo.objectives) == 1
     assert slo.objectives[0].sli == 'response_time'
@@ -93,7 +92,7 @@ def test_build_slo_model_creates_slo_from_definition() -> None:
     assert slo.total_score.warning_threshold == 75.0
 
 
-def test_build_slo_model_copies_thresholds_as_lists() -> None:
+def testbuild_slo_model_copies_thresholds_as_lists() -> None:
     """Thresholds are copied via list() — no mutable reference sharing."""
     original_pass = ['<600']
     original_warn = ['<800']
@@ -112,7 +111,7 @@ def test_build_slo_model_copies_thresholds_as_lists() -> None:
     slo_def.total_score_warning_threshold = 75.0
     slo_def.comparison = {}
 
-    slo = _build_slo_model(slo_def)
+    slo = build_slo_model(slo_def)
     # Mutating the original should not affect the built SLO
     original_pass.append('<999')
     assert '<999' not in slo.objectives[0].pass_threshold

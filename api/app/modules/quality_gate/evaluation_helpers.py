@@ -5,6 +5,8 @@ Used by both the async worker and the SLO test-run service.
 
 from __future__ import annotations
 
+from app.modules.quality_gate.engine.slo_models import SLO
+from app.modules.quality_gate.engine.slo_parser import build_slo
 from app.modules.quality_gate.engine.variables import build_variables
 
 
@@ -46,3 +48,29 @@ def build_eval_variables(
     for k, v in (eval_variables or {}).items():
         variables[k] = str(v)
     return variables
+
+
+def build_slo_model(slo_def: object) -> SLO:
+    """Build the engine SLO model from a database SLO definition.
+
+    Shared by the worker (first evaluation) and re-evaluator (re-scoring).
+    Accepts any object with .objectives, .total_score_pass_threshold,
+    .total_score_warning_threshold, and .comparison attributes.
+    """
+    objectives_dicts = [
+        {
+            'sli': obj.sli,
+            'display_name': obj.display_name,
+            'weight': obj.weight,
+            'key_sli': obj.key_sli,
+            'pass_threshold': list(obj.pass_threshold),
+            'warning_threshold': list(obj.warning_threshold),
+        }
+        for obj in slo_def.objectives  # type: ignore[attr-defined]
+    ]
+    return build_slo(
+        objectives=objectives_dicts,
+        total_score_pass_threshold=slo_def.total_score_pass_threshold,  # type: ignore[attr-defined]
+        total_score_warning_threshold=slo_def.total_score_warning_threshold,  # type: ignore[attr-defined]
+        comparison=slo_def.comparison,  # type: ignore[attr-defined]
+    )
