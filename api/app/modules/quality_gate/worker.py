@@ -240,6 +240,11 @@ async def _write_indicator_rows(
         if obj_id is None:
             log.warning('no objective match for metric', metric=ir.metric)
             continue
+        targets_dict = {
+            'pass': [t.model_dump() for t in ir.pass_targets],
+        }
+        if ir.warning_targets is not None:
+            targets_dict['warn'] = [t.model_dump() for t in ir.warning_targets]
         rows.append(
             {
                 'evaluation_id': slo_evaluation_id,
@@ -250,6 +255,7 @@ async def _write_indicator_rows(
                 'change_relative_pct': ir.change_relative_pct,
                 'status': ir.status,
                 'score': ir.score,
+                'targets': targets_dict,
             }
         )
     if rows:
