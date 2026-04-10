@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest'
 import { renderHook, act } from '@testing-library/react'
-import { buildChartOption, isRelativeCriteria, useMetricTrendState } from './useMetricTrendState'
+import { buildChartOption, useMetricTrendState } from './useMetricTrendState'
+import type { ChartTarget } from './useMetricTrendState'
 import { RESULT_COLOUR, CHART_THEME } from '@/lib/theme'
 import type { TrendPoint, IndicatorResult } from '../types'
 
@@ -18,12 +19,7 @@ function baseInput(overrides: Record<string, unknown> = {}) {
     fontSize: 14,
     yMin: '',
     yMax: '',
-    showPass: false,
-    showWarn: false,
-    passTarget: null,
-    warnTarget: null,
-    passCriteria: null,
-    warnCriteria: null,
+    targets: [] as ChartTarget[],
     ...overrides,
   }
 }
@@ -58,25 +54,6 @@ function makeIndicator(overrides: Partial<IndicatorResult> = {}): IndicatorResul
   }
 }
 
-// ── isRelativeCriteria ────────────────────────────────────────────────────────
-
-describe('isRelativeCriteria', () => {
-  it('returns true for <=+N% format', () => {
-    expect(isRelativeCriteria('<=+10%')).toBe(true)
-    expect(isRelativeCriteria('<=+0.5%')).toBe(true)
-  })
-
-  it('returns false for fixed thresholds', () => {
-    expect(isRelativeCriteria('<600')).toBe(false)
-    expect(isRelativeCriteria('<=100')).toBe(false)
-  })
-
-  it('returns false for null/undefined', () => {
-    expect(isRelativeCriteria(null)).toBe(false)
-    expect(isRelativeCriteria(undefined)).toBe(false)
-  })
-})
-
 // ── buildChartOption ──────────────────────────────────────────────────────────
 
 describe('buildChartOption', () => {
@@ -94,45 +71,116 @@ describe('buildChartOption', () => {
     expect(data[1].value).toBe(200)
   })
 
-  it('adds pass threshold markLine when showPass is true and target exists', () => {
-    const passTarget = { criteria: '<600', target_value: 600, violated: false }
+  it('adds static pass target as solid line series', () => {
+    const trend = [makeTrendPoint({ value: 100 })]
     const option = buildChartOption(baseInput({
-      showPass: true,
-      passTarget,
-      passCriteria: '<600',
+      trend,
+      targets: [
+        { key: 'pass:<=600', level: 'pass', criteria: '<=600', visible: true },
+      ],
     })) as Record<string, unknown>
     const series = option.series as Array<Record<string, unknown>>
-    const mainSeries = series[0]
-    const markLine = mainSeries.markLine as { data: Array<{ yAxis: number }> }
-    expect(markLine).toBeDefined()
-    expect(markLine.data).toHaveLength(1)
-    expect(markLine.data[0].yAxis).toBe(600)
+    expect(series).toHaveLength(2)
+    expect((series[1].lineStyle as { type: string }).type).toBe('solid')
   })
 
-  it('adds warning threshold markLine when showWarn is true and target exists', () => {
-    const warnTarget = { criteria: '<800', target_value: 800, violated: false }
+  it('adds relative warn target as dashed line series', () => {
+    const trend = [
+      makeTrendPoint({ value: 100, targets: { warn: [{ criteria: '<=+15%', target_value: 230, violated: false }] } }),
+    ]
     const option = buildChartOption(baseInput({
-      showWarn: true,
-      warnTarget,
-      warnCriteria: '<800',
+      trend,
+      targets: [
+        { key: 'warn:<=+15%', level: 'warn', criteria: '<=+15%', visible: true },
+      ],
     })) as Record<string, unknown>
     const series = option.series as Array<Record<string, unknown>>
-    const mainSeries = series[0]
-    const markLine = mainSeries.markLine as { data: Array<{ yAxis: number }> }
-    expect(markLine).toBeDefined()
-    expect(markLine.data).toHaveLength(1)
-    expect(markLine.data[0].yAxis).toBe(800)
+    expect(series).toHaveLength(2)
+    expect((series[1].lineStyle as { type: string }).type).toBe('dashed')
   })
 
-  it('does not add markLine when showPass is false', () => {
-    const passTarget = { criteria: '<600', target_value: 600, violated: false }
+  it('does not add series for hidden targets', () => {
+    const trend = [makeTrendPoint({ value: 100 })]
     const option = buildChartOption(baseInput({
-      showPass: false,
-      passTarget,
-      passCriteria: '<600',
+      trend,
+      targets: [
+        { key: 'pass:<=600', level: 'pass', criteria: '<=600', visible: false },
+      ],
     })) as Record<string, unknown>
     const series = option.series as Array<Record<string, unknown>>
-    expect(series[0].markLine).toBeUndefined()
+    expect(series).toHaveLength(1)
+  })
+
+  it('adds baseline series when visible', () => {
+    const trend = [
+      makeTrendPoint({ value: 100, baseline: 90 }),
+      makeTrendPoint({ value: 110, baseline: 100, timestamp: '2026-03-16T10:30:00Z' }),
+    ]
+    const option = buildChartOption(baseInput({
+      trend,
+      targets: [
+        { key: 'baseline', level: 'baseline', criteria: 'baseline', visible: true },
+      ],
+    })) as Record<string, unknown>
+    const series = option.series as Array<Record<string, unknown>>
+    expect(series).toHaveLength(2)
+    expect((series[1].lineStyle as { type: string }).type).toBe('dotted')
+    const data = series[1].data as Array<number | null>
+    expect(data).toEqual([90, 100])
+  })
+
+  it('renders static and relative targets simultaneously', () => {
+    const trend = [
+      makeTrendPoint({
+        value: 100,
+        baseline: 90,
+        targets: {
+          pass: [
+            { criteria: '<=600', target_value: 600, violated: false },
+            { criteria: '<=+10%', target_value: 99, violated: false },
+          ],
+        },
+      }),
+    ]
+    const option = buildChartOption(baseInput({
+      trend,
+      targets: [
+        { key: 'pass:<=600', level: 'pass', criteria: '<=600', visible: true },
+        { key: 'pass:<=+10%', level: 'pass', criteria: '<=+10%', visible: true },
+      ],
+    })) as Record<string, unknown>
+    const series = option.series as Array<Record<string, unknown>>
+    expect(series).toHaveLength(3)
+  })
+
+  it('renders all four targets when all visible', () => {
+    const trend = [
+      makeTrendPoint({
+        value: 100,
+        baseline: 90,
+        targets: {
+          pass: [
+            { criteria: '<=600', target_value: 600, violated: false },
+            { criteria: '<=+10%', target_value: 99, violated: false },
+          ],
+          warn: [
+            { criteria: '<=800', target_value: 800, violated: false },
+            { criteria: '<=+15%', target_value: 103, violated: false },
+          ],
+        },
+      }),
+    ]
+    const option = buildChartOption(baseInput({
+      trend,
+      targets: [
+        { key: 'pass:<=600', level: 'pass', criteria: '<=600', visible: true },
+        { key: 'pass:<=+10%', level: 'pass', criteria: '<=+10%', visible: true },
+        { key: 'warn:<=800', level: 'warn', criteria: '<=800', visible: true },
+        { key: 'warn:<=+15%', level: 'warn', criteria: '<=+15%', visible: true },
+      ],
+    })) as Record<string, unknown>
+    const series = option.series as Array<Record<string, unknown>>
+    expect(series).toHaveLength(5)
   })
 
   it('sets yAxis min/max from state', () => {
@@ -167,22 +215,6 @@ describe('buildChartOption', () => {
     expect(data[1].itemStyle.borderColor).toBe('transparent')
   })
 
-  it('adds relative threshold series for pass when criteria is relative', () => {
-    const trend = [
-      makeTrendPoint({ value: 100, baseline: 90 }),
-      makeTrendPoint({ value: 110, baseline: 100 }),
-    ]
-    const option = buildChartOption(baseInput({
-      trend,
-      showPass: true,
-      passTarget: { criteria: '<=+10%', target_value: 99, violated: false },
-      passCriteria: '<=+10%',
-    })) as Record<string, unknown>
-    const series = option.series as Array<Record<string, unknown>>
-    // Main series + relative threshold series
-    expect(series.length).toBeGreaterThanOrEqual(2)
-  })
-
   it('sets cursor to pointer when onEvalSelect is provided', () => {
     const option = buildChartOption(baseInput({ onEvalSelect: () => {} })) as Record<string, unknown>
     const series = option.series as Array<Record<string, unknown>>
@@ -211,45 +243,77 @@ describe('useMetricTrendState', () => {
     expect(result.current.yMax).toBe('')
   })
 
-  it('initializes with showPass and showWarn true', () => {
+  it('builds targets from trend data', () => {
+    const trend: TrendPoint[] = [
+      makeTrendPoint({
+        targets: {
+          pass: [
+            { criteria: '<=600', target_value: 600, violated: false },
+            { criteria: '<=+10%', target_value: 99, violated: false },
+          ],
+          warn: [
+            { criteria: '<=+15%', target_value: 103, violated: false },
+          ],
+        },
+      }),
+    ]
     const { result } = renderHook(() =>
-      useMetricTrendState([], 'eval-1', makeIndicator()),
+      useMetricTrendState(trend, 'eval-1', makeIndicator()),
     )
-    expect(result.current.showPass).toBe(true)
-    expect(result.current.showWarn).toBe(true)
+    // 3 criteria targets + baseline = 4 toggles
+    expect(result.current.targets).toHaveLength(4)
+    expect(result.current.targets[0]).toMatchObject({ key: 'pass:<=600', level: 'pass' })
+    expect(result.current.targets[1]).toMatchObject({ key: 'pass:<=+10%', level: 'pass' })
+    expect(result.current.targets[2]).toMatchObject({ key: 'warn:<=+15%', level: 'warn' })
+    expect(result.current.targets[3]).toMatchObject({ key: 'baseline', level: 'baseline' })
   })
 
-  it('togglePass flips showPass state', () => {
+  it('filters out >0 targets where target_value is always 0', () => {
+    const trend: TrendPoint[] = [
+      makeTrendPoint({
+        targets: {
+          pass: [
+            { criteria: '>0', target_value: 0, violated: false },
+            { criteria: '<=600', target_value: 600, violated: false },
+          ],
+        },
+      }),
+    ]
     const { result } = renderHook(() =>
-      useMetricTrendState([], 'eval-1', makeIndicator()),
+      useMetricTrendState(trend, 'eval-1', makeIndicator()),
     )
-    expect(result.current.showPass).toBe(true)
-    act(() => result.current.togglePass())
-    expect(result.current.showPass).toBe(false)
-    act(() => result.current.togglePass())
-    expect(result.current.showPass).toBe(true)
+    // Only <=600 + baseline
+    expect(result.current.targets).toHaveLength(2)
+    expect(result.current.targets[0].key).toBe('pass:<=600')
+    expect(result.current.targets[1].key).toBe('baseline')
   })
 
-  it('toggleWarn flips showWarn state', () => {
+  it('toggling a target flips its visibility', () => {
+    const trend: TrendPoint[] = [
+      makeTrendPoint({
+        targets: { pass: [{ criteria: '<=600', target_value: 600, violated: false }] },
+      }),
+    ]
     const { result } = renderHook(() =>
-      useMetricTrendState([], 'eval-1', makeIndicator()),
+      useMetricTrendState(trend, 'eval-1', makeIndicator()),
     )
-    expect(result.current.showWarn).toBe(true)
-    act(() => result.current.toggleWarn())
-    expect(result.current.showWarn).toBe(false)
+    expect(result.current.targets[0].visible).toBe(true)
+    act(() => result.current.targets[0].toggle())
+    expect(result.current.targets[0].visible).toBe(false)
+    act(() => result.current.targets[0].toggle())
+    expect(result.current.targets[0].visible).toBe(true)
   })
 
-  it('exposes passTarget and warnTarget from indicator', () => {
-    const passTargets = [{ criteria: '<600', target_value: 600, violated: false }]
-    const warnTargets = [{ criteria: '<800', target_value: 800, violated: false }]
+  it('baseline defaults to hidden', () => {
+    const trend: TrendPoint[] = [
+      makeTrendPoint({ baseline: 90, targets: {} }),
+    ]
     const { result } = renderHook(() =>
-      useMetricTrendState([], 'eval-1', makeIndicator({
-        pass_targets: passTargets,
-        warning_targets: warnTargets,
-      })),
+      useMetricTrendState(trend, 'eval-1', makeIndicator()),
     )
-    expect(result.current.passTarget).toEqual(passTargets[0])
-    expect(result.current.warnTarget).toEqual(warnTargets[0])
+    const baseline = result.current.targets.find(t => t.key === 'baseline')
+    expect(baseline).toBeDefined()
+    expect(baseline!.visible).toBe(false)
   })
 
   it('returns chartOption object', () => {
