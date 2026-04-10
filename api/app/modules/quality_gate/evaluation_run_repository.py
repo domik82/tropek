@@ -9,7 +9,7 @@ from sqlalchemy import exists, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import EvaluationRun, SLOEvaluation
-from app.modules.quality_gate.engine.constants import RESULT_RANK
+from app.modules.quality_gate.engine.constants import RESULT_RANK, EvaluationStatus
 
 
 class EvaluationRunRepository:
@@ -33,7 +33,7 @@ class EvaluationRunRepository:
             eval_name=eval_name,
             period_start=period_start,
             period_end=period_end,
-            status='pending',
+            status=EvaluationStatus.PENDING,
         )
         self._session.add(run)
         await self._session.flush()
@@ -56,7 +56,7 @@ class EvaluationRunRepository:
             update(EvaluationRun)
             .where(EvaluationRun.id == run_id)
             .values(
-                status='completed',
+                status=EvaluationStatus.COMPLETED,
                 result=result,
                 achieved_points=achieved_points,
                 total_points=total_points,
@@ -68,7 +68,7 @@ class EvaluationRunRepository:
         await self._session.execute(
             update(EvaluationRun)
             .where(EvaluationRun.id == run_id)
-            .values(status='running')
+            .values(status=EvaluationStatus.RUNNING)
         )
 
     async def finalize_if_all_done(self, run_id: uuid.UUID) -> EvaluationRun | None:
@@ -84,7 +84,7 @@ class EvaluationRunRepository:
         if not children:
             return None
 
-        pending_statuses = {'pending', 'running', 'partial'}
+        pending_statuses = {EvaluationStatus.PENDING, EvaluationStatus.RUNNING, EvaluationStatus.PARTIAL}
         if any(c.status in pending_statuses for c in children):
             return None
 
@@ -104,7 +104,7 @@ class EvaluationRunRepository:
             update(EvaluationRun)
             .where(EvaluationRun.id == run_id)
             .values(
-                status='completed',
+                status=EvaluationStatus.COMPLETED,
                 result=worst_result,
                 achieved_points=achieved or None,
                 total_points=total or None,
@@ -122,7 +122,7 @@ class EvaluationRunRepository:
         Ordered by period_end ASC so the oldest stuck runs are rescued first.
         Takes no row locks — safe to call concurrently with live child updates.
         """
-        pending_statuses = ('pending', 'running', 'partial')
+        pending_statuses = (EvaluationStatus.PENDING, EvaluationStatus.RUNNING, EvaluationStatus.PARTIAL)
         has_any_child = exists().where(SLOEvaluation.evaluation_id == EvaluationRun.id)
         has_pending_child = (
             exists()
@@ -131,7 +131,7 @@ class EvaluationRunRepository:
         )
         q = (
             select(EvaluationRun.id)
-            .where(EvaluationRun.status != 'completed')
+            .where(EvaluationRun.status != EvaluationStatus.COMPLETED)
             .where(has_any_child)
             .where(~has_pending_child)
             .order_by(EvaluationRun.period_end.asc())
