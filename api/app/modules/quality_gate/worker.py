@@ -15,13 +15,13 @@ from app.cache.redis_cache import RedisCache
 from app.db.models import DataSource, SLIDefinition, SLODefinition, SLOEvaluation
 from app.modules.quality_gate.adapter_client import HttpAdapterClient
 from app.modules.quality_gate.baseline_repository import BaselineRepository
-from app.modules.quality_gate.engine.criteria import aggregate_values
 from app.modules.quality_gate.engine.evaluator import evaluate
 from app.modules.quality_gate.engine.slo_models import SLO
 from app.modules.quality_gate.engine.variables import substitute_variables
 from app.modules.quality_gate.evaluation_helpers import (
     build_eval_variables as _build_eval_variables_shared,
     build_slo_model,
+    compute_baselines,
 )
 from app.modules.quality_gate.indicator_repository import IndicatorRepository, build_indicator_row_dicts
 from app.modules.quality_gate.repository import EvaluationRepository
@@ -108,22 +108,9 @@ async def _resolve_baselines(
     ev: SLOEvaluation | EvaluationSnapshot,
     indicator_names: list[str],
 ) -> tuple[dict[str, float | None], list[str]]:
-    """Fetch baseline evaluations and aggregate per-metric values.
-
-    Args:
-        baseline_repo: Baseline repository for baseline queries.
-        slo: Validated SLO model providing comparison config.
-        ev: Current Evaluation ORM row (used for scoping).
-        indicator_names: Metric names to collect baselines for.
-
-    Returns:
-        Tuple of (baselines dict, compared_eval_ids list).
-    """
-    baselines: dict[str, float | None] = {}
-    compared_eval_ids: list[str] = []
-
+    """Fetch baseline evaluations and aggregate per-metric values."""
     if slo.comparison.number_of_comparison_results <= 0:
-        return baselines, compared_eval_ids
+        return {}, []
 
     baseline_evals = await baseline_repo.get_evaluation_baselines(
         asset_id=ev.asset_id,
@@ -132,18 +119,7 @@ async def _resolve_baselines(
         include_result_with_score=slo.comparison.include_result_with_score.value,
         limit=slo.comparison.number_of_comparison_results,
     )
-    compared_eval_ids = [str(bev.id) for bev in baseline_evals]
-    for metric_name in indicator_names:
-        vals: list[float] = [
-            float(row.value)
-            for bev in baseline_evals
-            for row in (bev.indicator_rows or [])
-            if row.objective.sli == metric_name and row.value is not None
-        ]
-        if vals:
-            baselines[metric_name] = aggregate_values(vals, slo.comparison.aggregate_function)
-
-    return baselines, compared_eval_ids
+    return compute_baselines(baseline_evals, slo.comparison.aggregate_function)
 
 
 def _build_eval_variables(

@@ -10,10 +10,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.models import IndicatorResultRow, SLODefinition, SLOEvaluation
 from app.modules.assets.repository import AssetRepository
 from app.modules.quality_gate.baseline_repository import BaselineRepository
-from app.modules.quality_gate.engine.criteria import aggregate_values
 from app.modules.quality_gate.engine.evaluator import evaluate
 from app.modules.quality_gate.engine.slo_models import SLO
-from app.modules.quality_gate.evaluation_helpers import build_slo_model
+from app.modules.quality_gate.evaluation_helpers import build_slo_model, compute_baselines
 from app.modules.quality_gate.params import ReEvalUpdateParams
 from app.modules.quality_gate.repository import EvaluationRepository
 from app.modules.quality_gate.exceptions import BaselinePinConflictError
@@ -35,36 +34,6 @@ def _metrics_from_indicator_rows(
     """Extract metric name -> value mapping from normalized indicator rows."""
     return {row.objective.sli: row.value for row in indicator_rows}
 
-
-
-def _compute_baselines(
-    baseline_evals: list[SLOEvaluation],
-    slo_model: SLO,
-) -> tuple[dict[str, float | None], list[str]]:
-    """Aggregate baseline values from a set of baseline evaluations.
-
-    Returns:
-        Tuple of (metric -> aggregated baseline value, list of compared eval IDs).
-    """
-    if not baseline_evals:
-        return {}, []
-
-    compared_ids = [str(ev.id) for ev in baseline_evals]
-
-    # Collect per-metric values from all baseline evaluations
-    metric_values: dict[str, list[float]] = {}
-    for ev in baseline_evals:
-        for row in ev.indicator_rows or []:
-            metric = row.objective.sli
-            if metric is not None and row.value is not None:
-                metric_values.setdefault(metric, []).append(float(row.value))
-
-    # Aggregate each metric using the SLO's aggregate function
-    baselines: dict[str, float | None] = {}
-    for metric, values in metric_values.items():
-        baselines[metric] = aggregate_values(values, slo_model.comparison.aggregate_function)
-
-    return baselines, compared_ids
 
 
 async def _resolve_from_date(
@@ -175,7 +144,7 @@ async def _rescore_single(  # noqa: PLR0913
         skip_pin_filter=skip_pin_filter,
     )
 
-    baselines, compared_ids = _compute_baselines(baseline_evals, slo_model)
+    baselines, compared_ids = compute_baselines(baseline_evals, slo_model.comparison.aggregate_function)
     eval_result = evaluate(slo_model, metrics, baselines, compared_ids)
 
     old_result = ev.result or 'error'

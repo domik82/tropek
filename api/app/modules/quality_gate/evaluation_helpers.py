@@ -5,6 +5,7 @@ Used by both the async worker and the SLO test-run service.
 
 from __future__ import annotations
 
+from app.modules.quality_gate.engine.criteria import aggregate_values
 from app.modules.quality_gate.engine.slo_models import SLO
 from app.modules.quality_gate.engine.slo_parser import build_slo
 from app.modules.quality_gate.engine.variables import build_variables
@@ -74,3 +75,37 @@ def build_slo_model(slo_def: object) -> SLO:
         total_score_warning_threshold=slo_def.total_score_warning_threshold,  # type: ignore[attr-defined]
         comparison=slo_def.comparison,  # type: ignore[attr-defined]
     )
+
+
+def compute_baselines(
+    baseline_evals: list[object],
+    aggregate_function: str,
+) -> tuple[dict[str, float | None], list[str]]:
+    """Aggregate baseline values from previous evaluations.
+
+    Shared by the worker (first evaluation) and re-evaluator (re-scoring).
+
+    Args:
+        baseline_evals: List of SLOEvaluation-like objects with .id and .indicator_rows.
+        aggregate_function: Aggregation function name (e.g. 'avg', 'p90').
+
+    Returns:
+        Tuple of (metric -> aggregated baseline value, list of compared eval ID strings).
+    """
+    if not baseline_evals:
+        return {}, []
+
+    compared_ids = [str(ev.id) for ev in baseline_evals]  # type: ignore[attr-defined]
+
+    metric_values: dict[str, list[float]] = {}
+    for ev in baseline_evals:
+        for row in ev.indicator_rows or []:  # type: ignore[attr-defined]
+            metric = row.objective.sli
+            if metric is not None and row.value is not None:
+                metric_values.setdefault(metric, []).append(float(row.value))
+
+    baselines: dict[str, float | None] = {}
+    for metric, values in metric_values.items():
+        baselines[metric] = aggregate_values(values, aggregate_function)
+
+    return baselines, compared_ids
