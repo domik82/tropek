@@ -1,41 +1,23 @@
 // src/features/evaluations/components/MetricTrendBlock.tsx
 import ReactECharts from 'echarts-for-react'
-import { useCallback } from 'react'
-import { Sheet } from 'lucide-react'
+import { useCallback, useState, useRef, useEffect } from 'react'
+import { Sheet, Tags } from 'lucide-react'
 import { useTrend } from '../hooks'
 import { STATUS_TEXT } from '@/lib/status'
 import { useChartAreaClick } from '@/lib/useChartAreaClick'
-import { useMetricTrendState, isRelativeCriteria } from '../hooks/useMetricTrendState'
+import { useMetricTrendState } from '../hooks/useMetricTrendState'
 import type { IndicatorResult } from '../types'
 
 interface Props {
   assetName: string
   sloName: string
-  /** Human-readable SLO label shown next to the metric title. Falls back to sloName. */
   sloDisplayName?: string
-  /** Eval ID to highlight on the trend line (white ring + larger dot). */
   selectedEvalId?: string
-  /**
-   * Additional eval ids considered "selected" when highlighting trend dots.
-   * Use this when the same column spans multiple SLOs (each with its own
-   * slo_evaluation_id) so every SLO's chart highlights the same column.
-   */
   selectedEvalIds?: ReadonlySet<string>
-  /**
-   * Fallback highlight by timestamp — used when this chart's SLO wasn't
-   * evaluated under the clicked parent run (different evaluation_name) so no
-   * id in `selectedEvalIds` maps to any of its trend points.
-   */
   selectedPeriodStart?: string
   indicator: IndicatorResult
   onEvalSelect?: (evalId: string) => void
   onScrollToTable?: () => void
-  /**
-   * DOM id for the trend block wrapper. Defaults to `trend-${indicator.metric}`.
-   * Callers that render multiple trend blocks for the same metric (e.g. the
-   * navigator, which groups by SLO) must pass a scope-qualified id to avoid
-   * `getElementById` collisions that land scroll targets on the wrong block.
-   */
   blockId?: string
 }
 
@@ -43,7 +25,78 @@ function defaultScrollToTable() {
   document.getElementById('sli-table')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
 }
 
-export function MetricTrendBlock({ assetName, sloName, sloDisplayName, selectedEvalId, selectedEvalIds, selectedPeriodStart, indicator, onEvalSelect, onScrollToTable, blockId }: Props) {
+function TargetDropdown({ targets }: { targets: ReturnType<typeof useMetricTrendState>['targets'] }) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+    function handleClick(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [open])
+
+  if (targets.length === 0) return null
+
+  const activeCount = targets.filter(t => t.visible).length
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        onClick={() => setOpen(v => !v)}
+        className={`p-1 rounded border transition-colors ${
+          activeCount > 0
+            ? 'border-primary/40 text-primary'
+            : 'border-border text-muted-foreground/60'
+        }`}
+        title="Toggle threshold lines"
+      >
+        <Tags className="size-3.5" />
+      </button>
+      {open && (
+        <div className="absolute right-0 top-full mt-1 z-50 bg-popover border border-border rounded-lg shadow-lg py-1 min-w-[180px]">
+          {targets.map(t => {
+            const dotColor = t.level === 'pass'
+              ? 'bg-pass'
+              : t.level === 'warn'
+                ? 'bg-warning'
+                : 'bg-[#58a6ff]'
+            return (
+              <label
+                key={t.key}
+                className="flex items-center gap-2 px-3 py-1.5 hover:bg-muted/50 cursor-pointer text-xs"
+              >
+                <input
+                  type="checkbox"
+                  checked={t.visible}
+                  onChange={t.toggle}
+                  className="rounded border-border"
+                />
+                <span className={`size-2 rounded-full ${dotColor} shrink-0`} />
+                <span className="text-foreground font-mono">{t.criteria}</span>
+              </label>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
+}
+
+export function MetricTrendBlock({
+  assetName,
+  sloName,
+  sloDisplayName,
+  selectedEvalId,
+  selectedEvalIds,
+  selectedPeriodStart,
+  indicator,
+  onEvalSelect,
+  onScrollToTable,
+  blockId,
+}: Props) {
   const sloLabel = sloDisplayName ?? (sloName || null)
   const { data: trend, isLoading } = useTrend(assetName, sloName, indicator.metric)
 
@@ -62,9 +115,8 @@ export function MetricTrendBlock({ assetName, sloName, sloDisplayName, selectedE
 
   const {
     yMin, yMax, setYMin, setYMax,
-    showPass, showWarn, togglePass, toggleWarn,
+    targets,
     chartOption,
-    passTarget, warnTarget, passCriteria, warnCriteria,
   } = useMetricTrendState(trend, selectedEvalId ?? '', indicator, onEvalSelect, selectedEvalIds, selectedPeriodStart)
 
   return (
@@ -104,30 +156,7 @@ export function MetricTrendBlock({ assetName, sloName, sloDisplayName, selectedE
               {indicator.display_name || indicator.metric}
             </span>
             <div className="flex items-center gap-1 ml-auto text-xs">
-              {(passTarget?.target_value != null || isRelativeCriteria(passCriteria)) && (
-                <button
-                  onClick={togglePass}
-                  className={`px-2 py-0.5 rounded border text-[10px] font-medium transition-colors ${
-                    showPass
-                      ? 'border-pass/50 text-pass bg-pass/10'
-                      : 'border-border text-muted-foreground/60 bg-transparent'
-                  }`}
-                >
-                  pass {passCriteria ?? passTarget?.target_value}
-                </button>
-              )}
-              {(warnTarget?.target_value != null || isRelativeCriteria(warnCriteria)) && (
-                <button
-                  onClick={toggleWarn}
-                  className={`px-2 py-0.5 rounded border text-[10px] font-medium transition-colors ${
-                    showWarn
-                      ? 'border-warning/50 text-warning bg-warning/10'
-                      : 'border-border text-muted-foreground/60 bg-transparent'
-                  }`}
-                >
-                  warn {warnCriteria ?? warnTarget?.target_value}
-                </button>
-              )}
+              <TargetDropdown targets={targets} />
             </div>
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
               <label className="flex items-center gap-1">
