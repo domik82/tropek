@@ -5,6 +5,7 @@ requires-python = ">=3.13"
 [manifest]
 members = [
     "tropek-adapter-prometheus",
+    "tropek-adapter-protocol",
     "tropek-api",
     "tropek-client",
 ]
@@ -1128,6 +1129,29 @@ dev = [
 ]
 
 [[package]]
+name = "tropek-adapter-protocol"
+version = "0.1.0"
+source = { editable = "adapters/protocol" }
+dependencies = [
+    { name = "pydantic" },
+]
+
+[package.dev-dependencies]
+dev = [
+    { name = "pytest" },
+    { name = "pytest-asyncio" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "pydantic", specifier = ">=2.7" }]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "pytest", specifier = ">=8.0" },
+    { name = "pytest-asyncio", specifier = ">=0.23" },
+]
+
+[[package]]
 name = "tropek-api"
 version = "0.1.0"
 source = { editable = "api" }
@@ -1144,6 +1168,7 @@ dependencies = [
     { name = "redis" },
     { name = "sqlalchemy", extra = ["asyncio"] },
     { name = "structlog" },
+    { name = "tropek-adapter-protocol" },
     { name = "uvicorn", extra = ["standard"] },
 ]
 
@@ -1173,6 +1198,7 @@ requires-dist = [
     { name = "redis", specifier = ">=5.0" },
     { name = "sqlalchemy", extras = ["asyncio"], specifier = ">=2.0" },
     { name = "structlog", specifier = ">=24.0" },
+    { name = "tropek-adapter-protocol", editable = "adapters/protocol" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.30" },
 ]
 
