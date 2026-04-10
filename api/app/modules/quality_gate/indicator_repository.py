@@ -34,6 +34,7 @@ class IndicatorRepository:
                     change_relative_pct=row.get('change_relative_pct'),
                     status=row['status'],
                     score=row.get('score', 0.0),
+                    targets=row.get('targets'),
                 )
             )
         await self._session.flush()
