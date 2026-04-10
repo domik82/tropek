@@ -277,6 +277,7 @@ def _make_indicator_row(  # noqa: PLR0913
     key_sli: bool = False,
     pass_threshold: list[str] | None = None,
     warning_threshold: list[str] | None = None,
+    targets: dict | None = None,
 ) -> SimpleNamespace:
     """Build a fake ORM IndicatorResultRow with joined objective."""
     objective = SimpleNamespace(
@@ -296,6 +297,7 @@ def _make_indicator_row(  # noqa: PLR0913
         status=status,
         score=score,
         objective=objective,
+        targets=targets,
     )
 
 
@@ -363,3 +365,26 @@ def test_build_summary_from_orm_rows() -> None:
     summary = build_summary(ev, annotation_count=0, latest_ann=None)
     assert len(summary.top_failures) == 1
     assert summary.top_failures[0].threshold == '<2'
+
+
+def test_build_detail_uses_stored_targets() -> None:
+    """When row has stored targets JSONB, presenter uses them instead of resolve_targets."""
+    stored = {
+        'pass': [
+            {'criteria': '>0', 'target_value': 0.0, 'violated': False},
+            {'criteria': '<=600', 'target_value': 600.0, 'violated': False},
+        ],
+        'warn': [
+            {'criteria': '<=+15%', 'target_value': 575.0, 'violated': True},
+        ],
+    }
+    row = _make_indicator_row(
+        status='pass',
+        value=580.0,
+        targets=stored,
+    )
+    ev = _make_evaluation(indicator_rows=[row])
+    detail = build_detail(ev)
+    ind = detail.indicator_results[0]
+    assert ind.pass_targets == stored['pass']
+    assert ind.warning_targets == stored['warn']

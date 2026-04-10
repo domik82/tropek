@@ -15,6 +15,27 @@ from app.modules.quality_gate.schemas import (
 from app.modules.quality_gate.target_resolver import resolve_targets
 
 
+def _read_stored_targets(
+    row: Any,
+    obj: Any,
+    *,
+    is_pass: bool,
+) -> list[dict[str, Any]] | None:
+    """Read targets from stored JSONB, falling back to resolve_targets for old rows."""
+    stored = getattr(row, 'targets', None)
+    if stored is not None:
+        key = 'pass' if is_pass else 'warn'
+        return stored.get(key)
+    criteria = list(obj.pass_threshold) if is_pass else list(obj.warning_threshold)
+    if not criteria:
+        return None
+    return resolve_targets(
+        criteria,
+        value=row.value,
+        compared_value=row.compared_value,
+    )
+
+
 def _indicators_from_orm_rows(rows: list) -> list[IndicatorResult]:  # type: ignore[type-arg]
     """Build IndicatorResult schema objects from ORM IndicatorResultRow with joined objectives."""
     results: list[IndicatorResult] = []
@@ -34,16 +55,8 @@ def _indicators_from_orm_rows(rows: list) -> list[IndicatorResult]:  # type: ign
                 score=row.score,
                 weight=obj.weight,
                 key_sli=obj.key_sli,
-                pass_targets=resolve_targets(
-                    list(obj.pass_threshold) if obj.pass_threshold else None,
-                    value=row.value,
-                    compared_value=row.compared_value,
-                ),
-                warning_targets=resolve_targets(
-                    list(obj.warning_threshold) if obj.warning_threshold else None,
-                    value=row.value,
-                    compared_value=row.compared_value,
-                ),
+                pass_targets=_read_stored_targets(row, obj, is_pass=True),
+                warning_targets=_read_stored_targets(row, obj, is_pass=False),
             )
         )
     return results
