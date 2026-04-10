@@ -130,9 +130,7 @@ export function useMetricTrendState(
 
   const discovered = useMemo(() => discoverTargets(trendData), [trendData])
 
-  const hasBaseline =
-    trendData.some(p => p.baseline != null) ||
-    discovered.length > 0
+  const hasBaseline = trendData.some(p => p.baseline != null)
 
   const targets: TargetToggle[] = useMemo(() => {
     const result: TargetToggle[] = []
