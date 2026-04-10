@@ -13,7 +13,7 @@ from app.modules.quality_gate.baseline_repository import BaselineRepository
 from app.modules.quality_gate.engine.criteria import aggregate_values
 from app.modules.quality_gate.engine.evaluator import evaluate
 from app.modules.quality_gate.engine.slo_models import SLO
-from app.modules.quality_gate.engine.slo_parser import build_slo
+from app.modules.quality_gate.evaluation_helpers import build_slo_model
 from app.modules.quality_gate.params import ReEvalUpdateParams
 from app.modules.quality_gate.repository import EvaluationRepository
 from app.modules.quality_gate.exceptions import BaselinePinConflictError
@@ -35,26 +35,6 @@ def _metrics_from_indicator_rows(
     """Extract metric name -> value mapping from normalized indicator rows."""
     return {row.objective.sli: row.value for row in indicator_rows}
 
-
-def _build_slo_model(slo_def: SLODefinition) -> SLO:
-    """Build the engine SLO model from a database SLO definition."""
-    objectives_dicts = [
-        {
-            'sli': obj.sli,
-            'display_name': obj.display_name,
-            'weight': obj.weight,
-            'key_sli': obj.key_sli,
-            'pass_threshold': list(obj.pass_threshold),
-            'warning_threshold': list(obj.warning_threshold),
-        }
-        for obj in slo_def.objectives
-    ]
-    return build_slo(
-        objectives=objectives_dicts,
-        total_score_pass_threshold=slo_def.total_score_pass_threshold,
-        total_score_warning_threshold=slo_def.total_score_warning_threshold,
-        comparison=slo_def.comparison,
-    )
 
 
 def _compute_baselines(
@@ -262,7 +242,7 @@ async def re_evaluate(
     if slo_def is None:
         raise ValueError(f"slo '{request.slo_name}' not found")
 
-    slo_model = _build_slo_model(slo_def)
+    slo_model = build_slo_model(slo_def)
 
     # Determine window start
     from_date = await _resolve_from_date(request, asset.id, eval_repo, baseline_repo)
