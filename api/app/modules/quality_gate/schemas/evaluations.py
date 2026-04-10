@@ -6,7 +6,7 @@ import uuid
 from datetime import datetime
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from app.modules.quality_gate.schemas.annotations import AnnotationRead
 
@@ -102,6 +102,23 @@ class EvaluationNameEntry(BaseModel):
     last_run: datetime
 
 
+class TrendTargetEntry(BaseModel):
+    """A single resolved criteria target within a trend point."""
+
+    criteria: str
+    target_value: float
+    violated: bool
+
+
+class TrendTargets(BaseModel):
+    """Pass and warn target lists for a trend point."""
+
+    pass_targets: list[TrendTargetEntry] | None = Field(default=None, alias='pass')
+    warn: list[TrendTargetEntry] | None = None
+
+    model_config = {'populate_by_name': True}
+
+
 class TrendPoint(BaseModel):
     """A single point in a metric trend time series."""
 
@@ -112,3 +129,4 @@ class TrendPoint(BaseModel):
     result: str
     baseline: float | None
     evaluation_name: str | None = None
+    targets: TrendTargets | None = None
