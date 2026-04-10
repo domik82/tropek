@@ -1,4 +1,4 @@
-"""Unit tests for _build_grouped_heatmap_response enriched fields."""
+"""Unit tests for build_grouped_heatmap_response enriched fields."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ import uuid
 from datetime import UTC, datetime
 from types import SimpleNamespace
 
-from app.modules.quality_gate.router import _build_grouped_heatmap_response
+from app.modules.quality_gate.presenter import build_grouped_heatmap_response
 
 
 def _make_objective(
@@ -117,7 +117,7 @@ def test_cell_carries_indicator_detail() -> None:
     slo_eval = _make_slo_eval(indicator_rows=[row])
     run = _make_run(slo_evaluations=[slo_eval])
 
-    resp = _build_grouped_heatmap_response('test-asset', [run])
+    resp = build_grouped_heatmap_response('test-asset', [run])
 
     assert len(resp.groups) == 1
     cell = resp.groups[0].cells[0]
@@ -149,7 +149,7 @@ def test_cell_aggregation_from_job_stats() -> None:
     )
     run = _make_run(slo_evaluations=[slo_eval])
 
-    resp = _build_grouped_heatmap_response('test-asset', [run])
+    resp = build_grouped_heatmap_response('test-asset', [run])
 
     assert resp.groups[0].cells[0].aggregation == 'aggregated'
 
@@ -159,7 +159,7 @@ def test_cell_aggregation_none_when_no_metadata() -> None:
     slo_eval = _make_slo_eval(job_stats={})
     run = _make_run(slo_evaluations=[slo_eval])
 
-    resp = _build_grouped_heatmap_response('test-asset', [run])
+    resp = build_grouped_heatmap_response('test-asset', [run])
 
     assert resp.groups[0].cells[0].aggregation is None
 
@@ -175,7 +175,7 @@ def test_summary_carries_thresholds_and_metadata() -> None:
     )
     run = _make_run(slo_evaluations=[slo_eval])
 
-    resp = _build_grouped_heatmap_response('test-asset', [run])
+    resp = build_grouped_heatmap_response('test-asset', [run])
 
     summary = resp.groups[0].summary[0]
     assert summary.total_score_pass_threshold == 90.0
@@ -193,7 +193,7 @@ def test_summary_invalidated_flag() -> None:
     )
     run = _make_run(slo_evaluations=[slo_eval])
 
-    resp = _build_grouped_heatmap_response('test-asset', [run])
+    resp = build_grouped_heatmap_response('test-asset', [run])
 
     summary = resp.groups[0].summary[0]
     assert summary.invalidated is True
@@ -205,7 +205,7 @@ def test_composite_row_defaults() -> None:
     slo_eval = _make_slo_eval()
     run = _make_run(slo_evaluations=[slo_eval])
 
-    resp = _build_grouped_heatmap_response('test-asset', [run])
+    resp = build_grouped_heatmap_response('test-asset', [run])
 
     composite = resp.composite[0]
     assert composite.total_score_pass_threshold is None
@@ -228,7 +228,7 @@ def test_has_notes_marks_columns_present_in_noted_set() -> None:
         slo_evaluations=[_make_slo_eval()],
     )
 
-    resp = _build_grouped_heatmap_response(
+    resp = build_grouped_heatmap_response(
         'test-asset', [run_a, run_b, run_c], noted_run_ids={run_a.id, run_c.id}
     )
 
@@ -242,6 +242,6 @@ def test_has_notes_defaults_to_false_when_noted_run_ids_omitted() -> None:
     """When noted_run_ids is not provided, every column has has_notes=False."""
     run = _make_run(slo_evaluations=[_make_slo_eval()])
 
-    resp = _build_grouped_heatmap_response('test-asset', [run])
+    resp = build_grouped_heatmap_response('test-asset', [run])
 
     assert all(col.has_notes is False for col in resp.columns)
