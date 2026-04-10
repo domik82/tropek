@@ -230,3 +230,52 @@ async def test_delete_and_reinsert(db_session: AsyncSession) -> None:
     assert len(rows) == 1
     assert rows[0].value == 620.0
     assert rows[0].status == 'fail'
+
+
+@pytest.mark.integration
+async def test_bulk_insert_persists_targets_jsonb(db_session: AsyncSession) -> None:
+    """Targets JSONB is stored and readable."""
+    _slo_name, _slo_version, objectives = await _seed_slo_with_objectives(db_session)
+    asset_id = await _create_asset(db_session)
+    eval_id = await _create_eval(db_session, asset_id)
+
+    repo = IndicatorRepository(db_session)
+
+    targets = {
+        'pass': [
+            {'criteria': '>0', 'target_value': 0.0, 'violated': False},
+            {'criteria': '<=600', 'target_value': 600.0, 'violated': False},
+            {'criteria': '<=+10%', 'target_value': 550.0, 'violated': False},
+        ],
+        'warn': [
+            {'criteria': '>0', 'target_value': 0.0, 'violated': False},
+            {'criteria': '<=+15%', 'target_value': 575.0, 'violated': True},
+        ],
+    }
+    await repo.bulk_insert(
+        eval_id,
+        [
+            {
+                'evaluation_id': eval_id,
+                'slo_objective_id': objectives[0].id,
+                'value': 580.0,
+                'compared_value': 500.0,
+                'change_absolute': 80.0,
+                'change_relative_pct': 16.0,
+                'status': 'pass',
+                'score': 1.0,
+                'targets': targets,
+            },
+        ],
+    )
+
+    result = await db_session.execute(
+        select(IndicatorResultRow).where(IndicatorResultRow.slo_evaluation_id == eval_id)
+    )
+    row = result.scalars().first()
+    assert row is not None
+    assert row.targets is not None
+    assert len(row.targets['pass']) == 3
+    assert row.targets['pass'][1]['criteria'] == '<=600'
+    assert row.targets['pass'][1]['target_value'] == 600.0
+    assert row.targets['warn'][1]['violated'] is True
