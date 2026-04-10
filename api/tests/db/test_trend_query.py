@@ -182,3 +182,82 @@ async def test_trend_excludes_invalidated(db_session: AsyncSession) -> None:
         from_ts=_BASE - timedelta(hours=1),
     )
     assert len(points) == 0
+
+
+@pytest.mark.integration
+async def test_trend_returns_targets_from_indicator_row(db_session: AsyncSession) -> None:
+    """Trend points include the stored targets JSONB from indicator_results."""
+    asset_id = await _create_asset(db_session, 'trend-targets-asset')
+    obj = await _seed_slo_objective(db_session)
+    repo = EvaluationRepository(db_session)
+    sli_repo = SLIValueRepository(db_session)
+    indicator_repo = IndicatorRepository(db_session)
+    trend_repo = TrendRepository(db_session)
+
+    ev = await repo.create_pending(
+        EvalCreateParams(
+            evaluation_id=uuid.uuid4(),
+            evaluation_name='trend-targets',
+            period_start=_BASE,
+            period_end=_BASE + timedelta(minutes=30),
+            ingestion_mode='push',
+            asset_snapshot={'name': 'trend-targets-asset', 'tags': {}},
+            variables={},
+            asset_id=asset_id,
+            slo_name='test-slo',
+        )
+    )
+    await repo.mark_completed(ev.id, result='pass', score=90.0, slo_name='test-slo')
+
+    targets = {
+        'pass': [
+            {'criteria': '>0', 'target_value': 0.0, 'violated': False},
+            {'criteria': '<=600', 'target_value': 600.0, 'violated': False},
+        ],
+        'warn': [
+            {'criteria': '<=+15%', 'target_value': 230.0, 'violated': False},
+        ],
+    }
+    await indicator_repo.bulk_insert(
+        ev.id,
+        [
+            {
+                'evaluation_id': ev.id,
+                'slo_objective_id': obj.id,
+                'value': 250.0,
+                'compared_value': 200.0,
+                'change_absolute': 50.0,
+                'change_relative_pct': 25.0,
+                'status': 'pass',
+                'score': 1.0,
+                'targets': targets,
+            },
+        ],
+    )
+
+    await sli_repo.write_sli_values(
+        [
+            {
+                'slo_evaluation_id': ev.id,
+                'eval_start': _BASE,
+                'metric_name': 'response_time',
+                'aggregation': 'avg',
+                'value': 250.0,
+                'asset_name': 'trend-targets-asset',
+                'evaluation_name': 'trend-targets',
+                'os_tag': None,
+            }
+        ]
+    )
+
+    points = await trend_repo.get_trend_by_domain(
+        asset_id=asset_id,
+        slo_name='test-slo',
+        metric_name='response_time',
+        from_ts=_BASE - timedelta(hours=1),
+    )
+    assert len(points) == 1
+    assert points[0]['targets'] is not None
+    assert len(points[0]['targets']['pass']) == 2
+    assert points[0]['targets']['pass'][1]['criteria'] == '<=600'
+    assert points[0]['targets']['warn'][0]['violated'] is False
