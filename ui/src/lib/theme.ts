@@ -20,6 +20,7 @@ export interface ChartTheme {
   axisLabel:    string
   grid:         string
   selectionRing: string
+  baseline:     string
 }
 
 // Status colours per theme — ONLY for ECharts (JS hex strings).
@@ -58,6 +59,7 @@ export const CHART_THEME: Record<Theme, ChartTheme> = {
     axisLabel:    '#c0c8d0',
     grid:         '#2a3040',
     selectionRing: '#ffffff',
+    baseline:     '#58a6ff',
 
   },
   dark: {
@@ -67,6 +69,7 @@ export const CHART_THEME: Record<Theme, ChartTheme> = {
     axisLabel:    '#b0b4ba',   // Radix slate-11
     grid:         '#212225',   // Radix slate-3
     selectionRing: '#ffffff',
+    baseline:     '#70b8ff',   // Radix sky-9
 
   },
   light: {
@@ -76,6 +79,7 @@ export const CHART_THEME: Record<Theme, ChartTheme> = {
     axisLabel:    '#595959',
     grid:         '#f5f5f5',
     selectionRing: '#ffffff',
+    baseline:     '#3b82f6',
 
   },
 }
