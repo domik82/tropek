@@ -232,6 +232,7 @@ class IndicatorResultRow(Base):
     change_relative_pct: Mapped[float | None] = mapped_column(Float, nullable=True)
     status:             Mapped[str]          = mapped_column(Text, nullable=False)
     score:              Mapped[float]        = mapped_column(Float, nullable=False, server_default=text('0'))
+    targets:            Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
     # fmt: on
 
     # Relationships for eager loading
