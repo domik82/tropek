@@ -2,7 +2,7 @@
 
 Revision ID: 001
 Revises: 
-Create Date: 2026-04-09 22:45:01.182847
+Create Date: 2026-04-10 22:04:32.383480
 
 """
 from collections.abc import Sequence
@@ -324,6 +324,7 @@ def upgrade() -> None:
     sa.Column('change_relative_pct', sa.Float(), nullable=True),
     sa.Column('status', sa.Text(), nullable=False),
     sa.Column('score', sa.Float(), server_default=sa.text('0'), nullable=False),
+    sa.Column('targets', postgresql.JSONB(astext_type=sa.Text()), nullable=True),
     sa.ForeignKeyConstraint(['slo_evaluation_id'], ['slo_evaluations.id'], ondelete='CASCADE'),
     sa.ForeignKeyConstraint(['slo_objective_id'], ['slo_objectives.id'], ondelete='CASCADE'),
     sa.PrimaryKeyConstraint('id'),
