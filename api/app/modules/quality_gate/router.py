@@ -13,6 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.models import EvaluationRun
 from app.db.session import get_session
 from app.modules.common.exceptions import NotFoundError
+from app.modules.quality_gate.engine.constants import RESULT_RANK
 from app.modules.common.schemas import PagedResponse
 from app.modules.quality_gate.dependencies import QualityGateRepos, get_qg_repos
 from app.modules.quality_gate.presenter import build_detail, build_summary
@@ -139,14 +140,11 @@ async def list_evaluations(  # noqa: PLR0913
     return PagedResponse(items=items, total=total)
 
 
-_RESULT_RANK: dict[str, int] = {'pass': 0, 'warning': 1, 'fail': 2, 'error': 3, 'invalidated': 4}
-
-
 def _worst_result(results: list[str]) -> str:
     """Return the worst result in `results`, defaulting to 'none' if empty."""
     if not results:
         return 'none'
-    return max(results, key=lambda r: _RESULT_RANK.get(r, -1))
+    return max(results, key=lambda r: RESULT_RANK.get(r, -1))
 
 
 def _build_grouped_heatmap_response(

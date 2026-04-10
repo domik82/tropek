@@ -77,3 +77,6 @@ class EvaluationStatus(StrEnum):
     COMPLETED = 'completed'
     FAILED = 'failed'
     PARTIAL = 'partial'
+
+
+RESULT_RANK: dict[str, int] = {'pass': 0, 'warning': 1, 'fail': 2, 'error': 3, 'invalidated': 4}
