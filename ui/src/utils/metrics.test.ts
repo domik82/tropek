@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { computeChangePct, computeRelativeThresholdSeries } from './metrics'
+import { computeChangePct } from './metrics'
 
 describe('computeChangePct', () => {
   it('returns null when baseline is null', () => {
@@ -41,32 +41,5 @@ describe('computeChangePct', () => {
 
   it('rounds to 2 decimal places', () => {
     expect(computeChangePct(1, 3)).toBe(-66.67)
-  })
-})
-
-describe('computeRelativeThresholdSeries', () => {
-  it('returns empty array for non-relative criteria', () => {
-    expect(computeRelativeThresholdSeries([{ baseline: 100 }], '<200')).toEqual([])
-    expect(computeRelativeThresholdSeries([{ baseline: 100 }], '=0')).toEqual([])
-  })
-
-  it('computes threshold as baseline × (1 + pct/100)', () => {
-    const data = [{ baseline: 100 }, { baseline: 200 }]
-    expect(computeRelativeThresholdSeries(data, '<=+10%')).toEqual([110, 220])
-  })
-
-  it('returns null for points without a baseline', () => {
-    const data = [{ baseline: null }, { baseline: 100 }, { baseline: undefined }]
-    expect(computeRelativeThresholdSeries(data, '<=+20%')).toEqual([null, 120, null])
-  })
-
-  it('handles decimal percentages', () => {
-    const data = [{ baseline: 100 }]
-    expect(computeRelativeThresholdSeries(data, '<=+5.5%')).toEqual([105.5])
-  })
-
-  it('rounds to 3 decimal places', () => {
-    const data = [{ baseline: 3 }]
-    expect(computeRelativeThresholdSeries(data, '<=+10%')).toEqual([3.3])
   })
 })
