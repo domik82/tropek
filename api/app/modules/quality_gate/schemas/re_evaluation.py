@@ -43,15 +43,6 @@ class ReEvaluateRequest(StrictInput):
         return self
 
 
-class BaselinePinConflictError(Exception):
-    """Raised when re-evaluation from_date is before the active baseline pin."""
-
-    def __init__(self, pin_date: datetime, pin_evaluation_id: uuid.UUID) -> None:
-        self.pin_date = pin_date
-        self.pin_evaluation_id = pin_evaluation_id
-        super().__init__('re-evaluation start date is before the active baseline pin')
-
-
 class ReEvalResultItem(BaseModel):
     """One re-evaluated evaluation in the response."""
 

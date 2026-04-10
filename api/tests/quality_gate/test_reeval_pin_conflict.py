@@ -6,10 +6,8 @@ import uuid
 from datetime import UTC, datetime
 
 import pytest
-from app.modules.quality_gate.schemas.re_evaluation import (
-    BaselinePinConflictError,
-    ReEvaluateRequest,
-)
+from app.modules.quality_gate.exceptions import BaselinePinConflictError
+from app.modules.quality_gate.schemas.re_evaluation import ReEvaluateRequest
 from pydantic import ValidationError
 
 

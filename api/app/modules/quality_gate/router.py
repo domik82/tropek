@@ -42,8 +42,8 @@ from app.modules.quality_gate.schemas import (
     SloGroup,
     TrendPoint,
 )
+from app.modules.quality_gate.exceptions import BaselinePinConflictError
 from app.modules.quality_gate.schemas.re_evaluation import (
-    BaselinePinConflictError,
     ReEvaluateRequest,
     ReEvaluateResponse,
 )
