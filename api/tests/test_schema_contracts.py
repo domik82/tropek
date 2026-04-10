@@ -13,8 +13,8 @@ from app.modules.common.schemas import StrictInput
 from app.modules.datasource.schemas import DataSourceRead
 from app.modules.quality_gate.schemas import (
     AnnotationRead,
+    EvaluateSingleRequest,
     EvaluationSummary,
-    TriggerRequest,
 )
 from app.modules.sli_registry.schemas import SLIDefinitionRead
 from app.modules.slo_registry.schemas import SLODefinitionRead
@@ -103,8 +103,8 @@ class TestEvaluationSchemaContract:
         assert 'variables' in fields
         assert 'evaluation_metadata' not in fields
 
-    def test_trigger_request_has_variables(self) -> None:
-        fields = _field_names(TriggerRequest)
+    def test_evaluate_request_has_variables(self) -> None:
+        fields = _field_names(EvaluateSingleRequest)
         assert 'variables' in fields
         assert 'metadata' not in fields
 
