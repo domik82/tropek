@@ -4,18 +4,23 @@ from __future__ import annotations
 
 import uuid
 from datetime import UTC, datetime
+from typing import Any
 
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
+from app.cache.redis_cache import RedisCache
 from app.db.models import IndicatorResultRow, SLODefinition, SLOEvaluation
 from app.modules.assets.repository import AssetRepository
+from app.modules.quality_gate.annotation_repository import AnnotationRepository
 from app.modules.quality_gate.baseline_repository import BaselineRepository
 from app.modules.quality_gate.engine.evaluator import evaluate
 from app.modules.quality_gate.engine.slo_models import SLO
 from app.modules.quality_gate.evaluation_helpers import build_slo_model, compute_baselines
-from app.modules.quality_gate.params import ReEvalUpdateParams
-from app.modules.quality_gate.repository import EvaluationRepository
 from app.modules.quality_gate.exceptions import BaselinePinConflictError
+from app.modules.quality_gate.indicator_repository import IndicatorRepository, build_indicator_row_dicts
+from app.modules.quality_gate.repository import EvaluationRepository
 from app.modules.quality_gate.schemas.re_evaluation import (
     ReEvalResultItem,
     ReEvaluateRequest,
@@ -112,6 +117,74 @@ async def _resolve_sli_version_range(
     return (sli_def.comparable_from_version, sli_def.version)
 
 
+async def _persist_reeval_result(  # noqa: PLR0913
+    session: AsyncSession,
+    *,
+    ev: SLOEvaluation,
+    new_result: str,
+    new_score: float,
+    old_result: str,
+    old_score: float,
+    slo_version: int,
+    new_engine_results: list[Any] | None,
+    slo_objectives: list[Any] | None,
+    cache: RedisCache | None,
+) -> None:
+    """Overwrite evaluation result from re-evaluation, preserving original on first call."""
+    result = await session.execute(
+        select(SLOEvaluation)
+        .options(selectinload(SLOEvaluation.annotations))
+        .where(SLOEvaluation.id == ev.id)
+    )
+    fresh_ev = result.scalar_one_or_none()
+    if fresh_ev is None:
+        return
+
+    stats = dict(fresh_ev.job_stats)
+    if 'original_result' not in stats:
+        stats['original_result'] = old_result
+        stats['original_score'] = old_score
+    stats['re_evaluated_at'] = datetime.now(tz=UTC).isoformat()
+    stats['re_eval_slo_version'] = slo_version
+
+    values: dict[str, Any] = {
+        'result': new_result,
+        'score': new_score,
+        'job_stats': stats,
+    }
+    if slo_version is not None:
+        values['slo_version'] = slo_version
+
+    await session.execute(
+        update(SLOEvaluation).where(SLOEvaluation.id == ev.id).values(**values)
+    )
+
+    annotation_content = (
+        f're-evaluated: {old_result} -> {new_result}, score {old_score} -> {new_score}'
+    )
+    if cache:
+        await cache.invalidate(f'baseline:{fresh_ev.asset_id}:{fresh_ev.slo_name}')
+    ann_repo = AnnotationRepository(session, cache=cache)
+    await ann_repo.add_annotation(
+        ev.id,
+        content=annotation_content,
+        author='system',
+        category='re-evaluation',
+    )
+
+    if new_engine_results and slo_objectives:
+        indicator_repo = IndicatorRepository(session)
+        await indicator_repo.delete_for_evaluation(ev.id)
+        obj_lookup = {obj.sli: obj.id for obj in slo_objectives}
+        rows = build_indicator_row_dicts(
+            evaluation_id=ev.id,
+            indicator_results=new_engine_results,
+            obj_lookup=obj_lookup,
+        )
+        if rows:
+            await indicator_repo.bulk_insert(ev.id, rows)
+
+
 async def _rescore_single(  # noqa: PLR0913
     ev: SLOEvaluation,
     *,
@@ -124,6 +197,8 @@ async def _rescore_single(  # noqa: PLR0913
     default_sli_version_range: tuple[int, int] | None,
     baseline_repo: BaselineRepository,
     sli_repo: SLIRepository,
+    session: AsyncSession,
+    cache: RedisCache | None,
     dry_run: bool,
     skip_pin_filter: bool = False,
 ) -> ReEvalResultItem:
@@ -151,17 +226,17 @@ async def _rescore_single(  # noqa: PLR0913
     old_score = ev.score if ev.score is not None else 0.0
 
     if not dry_run:
-        await baseline_repo.update_reeval_result(
-            ReEvalUpdateParams(
-                eval_id=ev.id,
-                new_result=eval_result.result,
-                new_score=eval_result.score,
-                new_engine_results=eval_result.indicator_results,
-                slo_objectives=slo_def.objectives,
-                old_result=old_result,
-                old_score=old_score,
-                slo_version=slo_version,
-            )
+        await _persist_reeval_result(
+            session,
+            ev=ev,
+            new_result=eval_result.result,
+            new_score=eval_result.score,
+            old_result=old_result,
+            old_score=old_score,
+            slo_version=slo_version,
+            new_engine_results=eval_result.indicator_results,
+            slo_objectives=slo_def.objectives,
+            cache=cache,
         )
 
     return ReEvalResultItem(
@@ -258,6 +333,8 @@ async def re_evaluate(
             default_sli_version_range=default_sli_range,
             baseline_repo=baseline_repo,
             sli_repo=sli_repo,
+            session=session,
+            cache=None,
             dry_run=request.dry_run,
             skip_pin_filter=skip_pin,
         )

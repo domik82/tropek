@@ -5,7 +5,7 @@ from __future__ import annotations
 import uuid
 from datetime import UTC, datetime
 
-from app.modules.quality_gate.params import EvalCreateParams, ReEvalUpdateParams
+from app.modules.quality_gate.params import EvalCreateParams
 
 
 def test_eval_create_params_requires_evaluation_id():
@@ -55,16 +55,3 @@ def test_eval_create_params_optional_fields() -> None:
     )
     assert params.slo_version == 2
     assert params.adapter_used == 'prometheus'
-
-
-def test_reeval_update_params_required_fields() -> None:
-    params = ReEvalUpdateParams(
-        eval_id=uuid.uuid4(),
-        new_result='pass',
-        new_score=95.0,
-        old_result='fail',
-        old_score=40.0,
-    )
-    assert params.new_result == 'pass'
-    assert params.new_engine_results is None
-    assert params.slo_objectives is None

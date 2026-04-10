@@ -6,11 +6,11 @@ import uuid
 from datetime import UTC, datetime, timedelta
 
 import pytest
-from app.db.models import Asset, AssetType, SLOObjective
+from app.db.models import Asset, AssetType, SLOEvaluation, SLOObjective
 from app.modules.quality_gate.baseline_repository import BaselineRepository
 from app.modules.quality_gate.indicator_repository import IndicatorRepository
-from app.modules.quality_gate.params import EvalCreateParams, ReEvalUpdateParams
-from app.modules.quality_gate.re_evaluator import re_evaluate
+from app.modules.quality_gate.params import EvalCreateParams
+from app.modules.quality_gate.re_evaluator import _persist_reeval_result, re_evaluate
 from app.modules.quality_gate.repository import EvaluationRepository
 from app.modules.quality_gate.schemas.re_evaluation import ReEvaluateRequest
 from app.modules.slo_registry.params import SLOCreateParams, SLOObjectiveParams
@@ -140,10 +140,9 @@ async def test_load_evaluations_for_reeval_excludes_invalidated(
 
 
 @pytest.mark.integration
-async def test_update_reeval_result_preserves_original(db_session: AsyncSession) -> None:
+async def test_persist_reeval_result_preserves_original(db_session: AsyncSession) -> None:
     """First re-eval sets original_result in job_stats; second re-eval does not overwrite."""
     repo = EvaluationRepository(db_session)
-    baseline_repo = BaselineRepository(db_session)
     asset_id = await _create_asset(db_session)
 
     eid = await _create_completed_eval(
@@ -154,16 +153,21 @@ async def test_update_reeval_result_preserves_original(db_session: AsyncSession)
         score=45.0,
     )
 
+    ev_row = await db_session.get(SLOEvaluation, eid)
+    assert ev_row is not None
+
     # First re-eval
-    await baseline_repo.update_reeval_result(
-        ReEvalUpdateParams(
-            eval_id=eid,
-            new_result='pass',
-            new_score=92.0,
-            old_result='fail',
-            old_score=45.0,
-            slo_version=2,
-        )
+    await _persist_reeval_result(
+        db_session,
+        ev=ev_row,
+        new_result='pass',
+        new_score=92.0,
+        old_result='fail',
+        old_score=45.0,
+        slo_version=2,
+        new_engine_results=None,
+        slo_objectives=None,
+        cache=None,
     )
     ev = await repo.get_by_id(eid)
     assert ev is not None
@@ -174,15 +178,17 @@ async def test_update_reeval_result_preserves_original(db_session: AsyncSession)
     assert ev.job_stats['re_evaluated_at'] is not None
 
     # Second re-eval should NOT overwrite original
-    await baseline_repo.update_reeval_result(
-        ReEvalUpdateParams(
-            eval_id=eid,
-            new_result='warning',
-            new_score=78.0,
-            old_result='pass',
-            old_score=92.0,
-            slo_version=3,
-        )
+    await _persist_reeval_result(
+        db_session,
+        ev=ev_row,
+        new_result='warning',
+        new_score=78.0,
+        old_result='pass',
+        old_score=92.0,
+        slo_version=3,
+        new_engine_results=None,
+        slo_objectives=None,
+        cache=None,
     )
     ev2 = await repo.get_by_id(eid)
     assert ev2 is not None
