@@ -64,6 +64,17 @@ export interface PassTarget {
   violated: boolean
 }
 
+export interface TrendTargetEntry {
+  criteria: string
+  target_value: number
+  violated: boolean
+}
+
+export interface TrendTargets {
+  pass?: TrendTargetEntry[]
+  warn?: TrendTargetEntry[]
+}
+
 export interface IndicatorResult {
   metric: string
   display_name: string
@@ -108,6 +119,7 @@ export interface TrendPoint {
   result: 'pass' | 'warning' | 'fail'
   baseline?: number | null
   evaluation_name?: string | null
+  targets?: TrendTargets | null
 }
 
 export interface EvaluationFilters {
