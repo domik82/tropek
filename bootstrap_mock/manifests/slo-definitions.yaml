@@ -9,19 +9,24 @@ spec:
   sli_name: http-service-sli
   sli_version: 1
   kind: standard
+  comparison:
+    compare_with: several_results
+    number_of_comparison_results: 3
+    include_result_with_score: pass_or_warn
+    aggregate_function: avg
   total_score:
     pass_threshold: 90.0
     warning_threshold: 75.0
   objectives:
     - sli: response_time_p99
       display_name: "Response Time P99 (ms)"
-      pass_threshold: ["<500"]
-      warning_threshold: ["<800"]
+      pass_threshold: [">0", "<500", "<=+10%"]
+      warning_threshold: [">0", "<800", "<=+15%"]
       weight: 2
     - sli: error_rate
       display_name: "Error Rate"
-      pass_threshold: ["<0.01"]
-      warning_threshold: ["<0.05"]
+      pass_threshold: [">0", "<0.01", "<=+10%"]
+      warning_threshold: [">0", "<0.05", "<=+15%"]
       weight: 3
       key_sli: true
     - sli: availability
