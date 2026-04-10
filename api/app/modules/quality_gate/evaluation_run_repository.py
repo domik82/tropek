@@ -9,8 +9,7 @@ from sqlalchemy import exists, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import EvaluationRun, SLOEvaluation
-
-_RESULT_RANK: dict[str, int] = {'pass': 0, 'warning': 1, 'fail': 2, 'error': 3}
+from app.modules.quality_gate.engine.constants import RESULT_RANK
 
 
 class EvaluationRunRepository:
@@ -95,7 +94,7 @@ class EvaluationRunRepository:
         for child in children:
             if child.result and (
                 worst_result is None
-                or _RESULT_RANK.get(child.result, 0) > _RESULT_RANK.get(worst_result, 0)
+                or RESULT_RANK.get(child.result, 0) > RESULT_RANK.get(worst_result, 0)
             ):
                 worst_result = child.result
             achieved += child.achieved_points or 0
