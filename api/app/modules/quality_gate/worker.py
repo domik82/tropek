@@ -12,7 +12,6 @@ from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.cache.redis_cache import RedisCache
-from app.config import get_settings
 from app.db.models import DataSource, SLIDefinition, SLODefinition, SLOEvaluation
 from app.modules.quality_gate.adapter_client import HttpAdapterClient
 from app.modules.quality_gate.baseline_repository import BaselineRepository
@@ -185,43 +184,6 @@ def _build_query_specs(
             }
         }
     return {name: {'mode': 'raw', 'query': query} for name, query in resolved_queries.items()}
-
-
-async def _query_adapter_safe(
-    log: structlog.stdlib.BoundLogger,
-    repo: EvaluationRepository,
-    eval_id: uuid.UUID,
-    ds: DataSource,
-    query_specs: dict[str, dict[str, Any]],
-    variables: dict[str, str],
-    start: str,
-    end: str,
-) -> tuple[dict[str, float | None], dict[str, str], dict[str, Any]] | None:
-    """Query adapter, mark failed on error. Returns None if query failed."""
-    try:
-        adapter_client = HttpAdapterClient(
-            timeout=get_settings().reliability.adapter_timeout_seconds,
-        )
-        return await adapter_client.query(
-            adapter_url=ds.adapter_url,
-            datasource_name=ds.name,
-            queries=query_specs,
-            variables=variables,
-            start=start,
-            end=end,
-        )
-    except httpx.ConnectError:
-        log.exception('adapter unreachable', adapter_url=ds.adapter_url)
-        await repo.mark_failed(eval_id, job_stats={'error': f'could not reach adapter at {ds.adapter_url}'})
-        return None
-    except httpx.TimeoutException:
-        log.exception('adapter timeout', adapter_url=ds.adapter_url)
-        await repo.mark_failed(eval_id, job_stats={'error': 'adapter query timed out'})
-        return None
-    except httpx.HTTPStatusError as exc:
-        log.exception('adapter error', status=exc.response.status_code)
-        await repo.mark_failed(eval_id, job_stats={'error': f'adapter returned {exc.response.status_code}'})
-        return None
 
 
 async def _write_indicator_rows(
