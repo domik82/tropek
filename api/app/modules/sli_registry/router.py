@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_session
-from app.modules.assets.schemas import TagKeyCount, TagValueCount
+from app.modules.common.schemas import TagKeyCount, TagValueCount
 from app.modules.common.exceptions import NotFoundError
 from app.modules.common.schemas import PagedResponse
 from app.modules.sli_registry.params import SLICreateParams

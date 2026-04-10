@@ -26,11 +26,9 @@ from app.modules.assets.schemas import (
     AssetTypeRead,
     AssetTypeUpdate,
     AssetUpdate,
-    TagKeyCount,
-    TagValueCount,
 )
 from app.modules.common.exceptions import NotFoundError
-from app.modules.common.schemas import PagedResponse
+from app.modules.common.schemas import PagedResponse, TagKeyCount, TagValueCount
 
 router = APIRouter()
 
