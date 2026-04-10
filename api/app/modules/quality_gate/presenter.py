@@ -5,12 +5,20 @@ from __future__ import annotations
 import uuid
 from typing import Any
 
+from app.db.models import EvaluationRun
+from app.modules.quality_gate.engine.constants import RESULT_RANK
 from app.modules.quality_gate.schemas import (
     AnnotationRead,
+    EvaluationColumn,
     EvaluationDetail,
     EvaluationSummary,
     FailingIndicator,
+    GroupedMetricHeatmapResponse,
+    HeatmapCellGrouped,
+    HeatmapMetric,
+    HeatmapSummaryCell,
     IndicatorResult,
+    SloGroup,
 )
 from app.modules.quality_gate.target_resolver import resolve_targets
 
@@ -97,6 +105,156 @@ def build_summary(ev: object, annotation_count: int, latest_ann: object | None) 
             'latest_annotation': latest_ann,
             'top_failures': _top_failures(indicators),
         }
+    )
+
+
+def worst_result(results: list[str]) -> str:
+    """Return the worst result in `results`, defaulting to 'none' if empty."""
+    if not results:
+        return 'none'
+    return max(results, key=lambda r: RESULT_RANK.get(r, -1))
+
+
+def build_grouped_heatmap_response(
+    asset_name: str,
+    runs: list[EvaluationRun],
+    noted_run_ids: set[uuid.UUID] | None = None,
+) -> GroupedMetricHeatmapResponse:
+    """Build GroupedMetricHeatmapResponse from a list of EvaluationRun rows.
+
+    Assumes each run already has slo_evaluations + indicator_rows eager-loaded.
+    Runs must arrive in DESC order (newest first) — this function reverses to ASC.
+    """
+    runs_asc = sorted(runs, key=lambda r: (r.period_start, r.eval_name or ''))
+    n = len(runs_asc)
+
+    noted = noted_run_ids or set()
+    columns = [
+        EvaluationColumn(
+            evaluation_id=run.id,
+            period_start=run.period_start,
+            period_end=run.period_end,
+            eval_name=run.eval_name,
+            has_notes=run.id in noted,
+        )
+        for run in runs_asc
+    ]
+    col_idx: dict[uuid.UUID, int] = {run.id: i for i, run in enumerate(runs_asc)}
+
+    slo_data: dict[str, dict[str, Any]] = {}
+
+    for run in runs_asc:
+        xi = col_idx[run.id]
+        for slo_eval in run.slo_evaluations or []:
+            sn = slo_eval.slo_name
+            if sn not in slo_data:
+                slo_data[sn] = {
+                    'metrics': {},
+                    'cells': [],
+                    'per_col': {},
+                }
+            sd = slo_data[sn]
+            sd['per_col'][xi] = slo_eval
+            for row in slo_eval.indicator_rows or []:
+                obj = row.objective
+                mn = obj.sli
+                dn = obj.display_name or mn
+                if mn not in sd['metrics']:
+                    sd['metrics'][mn] = dn
+                sli_meta = slo_eval.job_stats.get('sli_metadata', {})
+                sd['cells'].append(
+                    HeatmapCellGrouped(
+                        evaluation_id=run.id,
+                        slo_evaluation_id=slo_eval.id,
+                        period_start=run.period_start,
+                        metric=mn,
+                        display_name=dn,
+                        result='invalidated' if slo_eval.invalidated else row.status,
+                        score=row.score,
+                        value=row.value,
+                        compared_value=row.compared_value,
+                        change_relative_pct=row.change_relative_pct,
+                        weight=obj.weight,
+                        key_sli=obj.key_sli,
+                        pass_targets=resolve_targets(
+                            list(obj.pass_threshold) if obj.pass_threshold else None,
+                            value=row.value,
+                            compared_value=row.compared_value,
+                        ),
+                        warning_targets=resolve_targets(
+                            list(obj.warning_threshold) if obj.warning_threshold else None,
+                            value=row.value,
+                            compared_value=row.compared_value,
+                        ),
+                        tab_group=obj.tab_group,
+                        aggregation=sli_meta.get(mn, {}).get('mode'),
+                    )
+                )
+
+    groups = []
+    for sn, sd in sorted(slo_data.items()):
+        summary = []
+        for xi in range(n):
+            slo_ev = sd['per_col'].get(xi)
+            result = (
+                'invalidated' if slo_ev and slo_ev.invalidated
+                else slo_ev.result if slo_ev and slo_ev.result
+                else 'none'
+            )
+            score = (
+                slo_ev.achieved_points / slo_ev.total_points * 100
+                if slo_ev and slo_ev.total_points
+                else 0.0
+            )
+            summary.append(
+                HeatmapSummaryCell(
+                    evaluation_id=runs_asc[xi].id,
+                    period_start=runs_asc[xi].period_start,
+                    result=result,
+                    score=round(score, 2),
+                    total_score_pass_threshold=(
+                        slo_ev.job_stats.get('total_score_pass_threshold') if slo_ev else None
+                    ),
+                    total_score_warning_threshold=(
+                        slo_ev.job_stats.get('total_score_warning_threshold') if slo_ev else None
+                    ),
+                    sli_metadata=slo_ev.job_stats.get('sli_metadata') if slo_ev else None,
+                    invalidated=slo_ev.invalidated if slo_ev else False,
+                    invalidation_note=slo_ev.invalidation_note if slo_ev else None,
+                )
+            )
+        groups.append(
+            SloGroup(
+                slo_name=sn,
+                metrics=[HeatmapMetric(name=mn, display_name=dn) for mn, dn in sd['metrics'].items()],
+                cells=sd['cells'],
+                summary=summary,
+            )
+        )
+
+    composite = []
+    for xi in range(n):
+        run = runs_asc[xi]
+        tp = run.total_points
+        ap = run.achieved_points
+        run_score = round(ap / tp * 100, 2) if tp and ap is not None else 0.0
+        all_invalidated = run.slo_evaluations and all(
+            se.invalidated for se in run.slo_evaluations
+        )
+        composite.append(
+            HeatmapSummaryCell(
+                evaluation_id=run.id,
+                period_start=run.period_start,
+                result='invalidated' if all_invalidated else (run.result or 'none'),
+                score=run_score,
+            )
+        )
+
+    return GroupedMetricHeatmapResponse(
+        asset_name=asset_name,
+        columns=columns,
+        groups=groups,
+        composite=composite,
     )
 
 
