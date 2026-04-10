@@ -127,7 +127,7 @@ export function AssetPanelHeatmapView({
   // Build SloBreakdownGroup[] directly from enriched heatmap cells — no detail fetch needed.
   const breakdownGroups = useMemo((): SloBreakdownGroup[] => {
     if (!heatmapData || !selectedColumnEvalId) return []
-    return heatmapData.groups.map(g => {
+    return [...heatmapData.groups].sort((a, b) => a.slo_name.localeCompare(b.slo_name)).map(g => {
       const summary = g.summary.find(s => s.evaluation_id === selectedColumnEvalId)
       const indicators = g.cells
         .filter(c => c.evaluation_id === selectedColumnEvalId)

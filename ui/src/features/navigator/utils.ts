@@ -96,6 +96,7 @@ export function buildAssetHeatmapData(
 ): AssetHeatmapData {
   const columns = resp.columns
   const n = columns.length
+  const sortedGroups = [...resp.groups].sort((a, b) => a.slo_name.localeCompare(b.slo_name))
 
   // Build column index map: evaluation_id → xi
   const colIdx = new Map<string, number>()
@@ -113,7 +114,7 @@ export function buildAssetHeatmapData(
     metricName?: string
   }> = [{ label: 'Overall Score', type: 'overall' }]
 
-  for (const group of resp.groups) {
+  for (const group of sortedGroups) {
     const label = group.slo_display_name ?? group.slo_name
     const isExpanded = expandState.get(group.slo_name) ?? false
     displayRows.push({ label, type: 'slo-header', sloName: group.slo_name })
@@ -135,7 +136,7 @@ export function buildAssetHeatmapData(
 
   // Build indicator cell lookup: `${sloName}\0${evaluationId}\0${metricName}` → MetricHeatmapCell
   const indicatorMap = new Map<string, MetricHeatmapCell>()
-  for (const group of resp.groups) {
+  for (const group of sortedGroups) {
     for (const cell of group.cells) {
       indicatorMap.set(`${group.slo_name}\0${cell.evaluation_id}\0${cell.metric}`, cell)
     }
@@ -146,7 +147,7 @@ export function buildAssetHeatmapData(
   for (const s of resp.composite) compositeByCol.set(s.evaluation_id, s)
 
   const summaryByGroupCol = new Map<string, HeatmapSummaryCell>()
-  for (const group of resp.groups) {
+  for (const group of sortedGroups) {
     for (const s of group.summary) {
       summaryByGroupCol.set(`${group.slo_name}\0${s.evaluation_id}`, s)
     }
