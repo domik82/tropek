@@ -22,7 +22,7 @@ from app.modules.common.exceptions import (
 )
 from app.modules.datasource.router import router as datasource_router
 from app.modules.display_groups.router import router as display_groups_router
-from app.modules.quality_gate.exception_handlers import (
+from app.modules.common.exception_handlers import (
     conflict_handler,
     domain_validation_handler,
     not_found_handler,
