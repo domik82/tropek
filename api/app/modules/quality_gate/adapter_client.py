@@ -6,6 +6,7 @@ from typing import Any
 
 import httpx
 import structlog
+from tropek_adapter_protocol import AdapterQueryResponse
 
 logger = structlog.get_logger()
 
@@ -83,11 +84,10 @@ class HttpAdapterClient:
                 resp.raise_for_status()
                 data = resp.json()
 
-        metrics_fetched: dict[str, float | None] = {
-            name: float(val) if val is not None else None for name, val in data.get('values', {}).items()
-        }
-        fetch_errors: dict[str, str] = {name: str(err) for name, err in data.get('errors', {}).items()}
-        metadata: dict[str, Any] = data.get('metadata', {})
+        parsed = AdapterQueryResponse.model_validate(data)
+        metrics_fetched: dict[str, float | None] = dict(parsed.values)
+        fetch_errors: dict[str, str] = dict(parsed.errors)
+        metadata: dict[str, Any] = dict(parsed.metadata)
         logger.info(
             'adapter response',
             url=url,
