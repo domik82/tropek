@@ -56,35 +56,22 @@ class HttpAdapterClient:
             end=end,
             timeout=self._timeout,
         )
-        if self._http_client is not None:
-            resp = await self._http_client.post(
-                url,
-                headers={'X-Datasource-Name': datasource_name},
-                json={
-                    'queries': queries,
-                    'variables': variables,
-                    'start': start,
-                    'end': end,
-                },
-            )
-            resp.raise_for_status()
-            data = resp.json()
-        else:
-            async with httpx.AsyncClient(timeout=self._timeout) as http_client:
-                resp = await http_client.post(
-                    url,
-                    headers={'X-Datasource-Name': datasource_name},
-                    json={
-                        'queries': queries,
-                        'variables': variables,
-                        'start': start,
-                        'end': end,
-                    },
-                )
-                resp.raise_for_status()
-                data = resp.json()
+        payload = {
+            'queries': queries,
+            'variables': variables,
+            'start': start,
+            'end': end,
+        }
+        headers = {'X-Datasource-Name': datasource_name}
 
-        parsed = AdapterQueryResponse.model_validate(data)
+        if self._http_client is not None:
+            resp = await self._http_client.post(url, headers=headers, json=payload)
+        else:
+            async with httpx.AsyncClient(timeout=self._timeout) as client:
+                resp = await client.post(url, headers=headers, json=payload)
+
+        resp.raise_for_status()
+        parsed = AdapterQueryResponse.model_validate(resp.json())
         metrics_fetched: dict[str, float | None] = dict(parsed.values)
         fetch_errors: dict[str, str] = dict(parsed.errors)
         metadata: dict[str, Any] = dict(parsed.metadata)
