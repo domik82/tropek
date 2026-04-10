@@ -229,7 +229,7 @@ def _build_grouped_heatmap_response(
                 )
 
     groups = []
-    for sn, sd in slo_data.items():
+    for sn, sd in sorted(slo_data.items()):
         summary = []
         for xi in range(n):
             slo_ev = sd['per_col'].get(xi)
