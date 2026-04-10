@@ -22,7 +22,7 @@ from app.modules.quality_gate.engine.slo_models import SLO
 from app.modules.quality_gate.engine.slo_parser import build_slo
 from app.modules.quality_gate.engine.variables import substitute_variables
 from app.modules.quality_gate.evaluation_helpers import build_eval_variables as _build_eval_variables_shared
-from app.modules.quality_gate.indicator_repository import IndicatorRepository
+from app.modules.quality_gate.indicator_repository import IndicatorRepository, build_indicator_row_dicts
 from app.modules.quality_gate.repository import EvaluationRepository
 from app.modules.quality_gate.sli_repository import SLIValueRepository
 from app.modules.sli_registry.repository import SLIRepository
@@ -234,30 +234,11 @@ async def _write_indicator_rows(
     """Write indicator results to the normalized indicator_results table."""
     indicator_repo = IndicatorRepository(session)
     obj_lookup = {obj.sli: obj.id for obj in slo_def.objectives}
-    rows = []
-    for ir in indicator_results:
-        obj_id = obj_lookup.get(ir.metric)
-        if obj_id is None:
-            log.warning('no objective match for metric', metric=ir.metric)
-            continue
-        targets_dict = {
-            'pass': [t.model_dump() for t in ir.pass_targets],
-        }
-        if ir.warning_targets is not None:
-            targets_dict['warn'] = [t.model_dump() for t in ir.warning_targets]
-        rows.append(
-            {
-                'evaluation_id': slo_evaluation_id,
-                'slo_objective_id': obj_id,
-                'value': ir.value,
-                'compared_value': ir.compared_value,
-                'change_absolute': ir.change_absolute,
-                'change_relative_pct': ir.change_relative_pct,
-                'status': ir.status,
-                'score': ir.score,
-                'targets': targets_dict,
-            }
-        )
+    rows = build_indicator_row_dicts(
+        evaluation_id=slo_evaluation_id,
+        indicator_results=indicator_results,
+        obj_lookup=obj_lookup,
+    )
     if rows:
         await indicator_repo.bulk_insert(slo_evaluation_id, rows)
 

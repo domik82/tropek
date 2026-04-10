@@ -14,7 +14,7 @@ from app.cache.redis_cache import RedisCache
 from app.db.models import IndicatorResultRow, SLOEvaluation
 from app.modules.quality_gate.annotation_repository import AnnotationRepository
 from app.modules.quality_gate.engine.constants import EvaluationStatus
-from app.modules.quality_gate.indicator_repository import IndicatorRepository
+from app.modules.quality_gate.indicator_repository import IndicatorRepository, build_indicator_row_dicts
 from app.modules.quality_gate.params import ReEvalUpdateParams
 
 
@@ -265,28 +265,14 @@ class BaselineRepository:
         )
 
         # Write to normalized table
-        new_engine_results = params.new_engine_results
-        slo_objectives = params.slo_objectives
-        if new_engine_results and slo_objectives:
+        if params.new_engine_results and params.slo_objectives:
             indicator_repo = IndicatorRepository(self._session)
             await indicator_repo.delete_for_evaluation(params.eval_id)
-            obj_lookup = {obj.sli: obj.id for obj in slo_objectives}
-            rows: list[dict[str, Any]] = []
-            for ir in new_engine_results:
-                obj_id = obj_lookup.get(ir.metric)
-                if obj_id is None:
-                    continue
-                rows.append(
-                    {
-                        'evaluation_id': params.eval_id,
-                        'slo_objective_id': obj_id,
-                        'value': ir.value,
-                        'compared_value': ir.compared_value,
-                        'change_absolute': ir.change_absolute,
-                        'change_relative_pct': ir.change_relative_pct,
-                        'status': ir.status,
-                        'score': ir.score,
-                    }
-                )
+            obj_lookup = {obj.sli: obj.id for obj in params.slo_objectives}
+            rows = build_indicator_row_dicts(
+                evaluation_id=params.eval_id,
+                indicator_results=params.new_engine_results,
+                obj_lookup=obj_lookup,
+            )
             if rows:
                 await indicator_repo.bulk_insert(params.eval_id, rows)
