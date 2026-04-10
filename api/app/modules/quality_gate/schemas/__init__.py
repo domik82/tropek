@@ -40,18 +40,11 @@ from app.modules.quality_gate.schemas.re_evaluation import (
     ReEvaluateResponse,
 )
 from app.modules.quality_gate.schemas.trigger import (
-    AssetTriggerRequest,
-    AssetTriggerResponse,
-    BatchConflict,
     BatchPeriod,
-    BatchTriggerRequest,
-    BatchTriggerResponse,
     EvaluateBatchRequest,
     EvaluateBatchResponse,
     EvaluateSingleRequest,
     EvaluateSingleResponse,
-    TriggerRequest,
-    TriggerResponse,
 )
 
 __all__ = [
@@ -59,13 +52,8 @@ __all__ = [
     'AnnotationHide',
     'AnnotationRead',
     'AnnotationUpdate',
-    'AssetTriggerRequest',
-    'AssetTriggerResponse',
     'BaselinePinConflictError',
-    'BatchConflict',
     'BatchPeriod',
-    'BatchTriggerRequest',
-    'BatchTriggerResponse',
     'EvaluateBatchRequest',
     'EvaluateBatchResponse',
     'EvaluateSingleRequest',
@@ -90,6 +78,4 @@ __all__ = [
     'ReEvaluateResponse',
     'SloGroup',
     'TrendPoint',
-    'TriggerRequest',
-    'TriggerResponse',
 ]
