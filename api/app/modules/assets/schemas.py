@@ -62,20 +62,6 @@ class AssetUpdate(StrictInput):
     color: str | None = None
 
 
-class TagKeyCount(BaseModel):
-    """A tag key with its usage count across assets."""
-
-    key: str
-    count: int
-
-
-class TagValueCount(BaseModel):
-    """A tag value with its usage count for a specific key."""
-
-    value: str
-    count: int
-
-
 class AssetRead(BaseModel):
     """Response schema for an asset."""
 

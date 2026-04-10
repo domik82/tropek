@@ -16,3 +16,17 @@ class PagedResponse[T](BaseModel):
 
     items: list[T]
     total: int
+
+
+class TagKeyCount(BaseModel):
+    """A tag key with its usage count."""
+
+    key: str
+    count: int
+
+
+class TagValueCount(BaseModel):
+    """A tag value with its usage count for a specific key."""
+
+    value: str
+    count: int
