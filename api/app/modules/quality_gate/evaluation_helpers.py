@@ -5,10 +5,10 @@ Used by both the async worker and the SLO test-run service.
 
 from __future__ import annotations
 
-from app.modules.quality_gate.engine.criteria import aggregate_values
-from app.modules.quality_gate.engine.slo_models import SLO
-from app.modules.quality_gate.engine.slo_parser import build_slo
-from app.modules.quality_gate.engine.variables import build_variables
+from app.modules.quality_gate.evaluation_engine.criteria import aggregate_values
+from app.modules.quality_gate.evaluation_engine.slo_models import SLO
+from app.modules.quality_gate.evaluation_engine.slo_parser import build_slo
+from app.modules.quality_gate.evaluation_engine.variables import build_variables
 
 
 def build_eval_variables(

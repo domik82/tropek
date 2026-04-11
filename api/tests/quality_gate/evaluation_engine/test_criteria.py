@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import pytest
-from app.modules.quality_gate.engine.criteria import (
+from app.modules.quality_gate.evaluation_engine.criteria import (
     CriteriaType,
     aggregate_values,
     evaluate_criteria,

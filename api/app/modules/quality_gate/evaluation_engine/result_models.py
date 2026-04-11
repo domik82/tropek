@@ -9,8 +9,8 @@ from __future__ import annotations
 
 from pydantic import BaseModel, Field
 
-from app.modules.quality_gate.engine.constants import EvaluationOutcome, IndicatorStatus
-from app.modules.quality_gate.engine.slo_models import SLOObjective
+from app.modules.quality_gate.evaluation_engine.constants import EvaluationOutcome, IndicatorStatus
+from app.modules.quality_gate.evaluation_engine.slo_models import SLOObjective
 
 
 class ObjectiveResult(BaseModel):

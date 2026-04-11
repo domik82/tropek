@@ -2,16 +2,16 @@
 
 from __future__ import annotations
 
-from app.modules.quality_gate.engine.criteria import evaluate_criteria, parse_criteria_string
-from app.modules.quality_gate.engine.result_models import (
+from app.modules.quality_gate.evaluation_engine.criteria import evaluate_criteria, parse_criteria_string
+from app.modules.quality_gate.evaluation_engine.result_models import (
     CriteriaTarget,
     EvaluationResult,
     IndicatorResult,
     ObjectiveResult,
     TotalScore,
 )
-from app.modules.quality_gate.engine.scoring import calculate_total_score, score_objective
-from app.modules.quality_gate.engine.slo_models import SLO, SLOObjective
+from app.modules.quality_gate.evaluation_engine.scoring import calculate_total_score, score_objective
+from app.modules.quality_gate.evaluation_engine.slo_models import SLO, SLOObjective
 
 
 def _build_targets(

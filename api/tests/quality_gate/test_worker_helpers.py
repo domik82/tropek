@@ -5,7 +5,7 @@ from __future__ import annotations
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from app.modules.quality_gate.engine.variables import build_variables
+from app.modules.quality_gate.evaluation_engine.variables import build_variables
 from app.modules.quality_gate.worker import DefinitionLoadError, _load_definitions
 
 

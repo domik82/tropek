@@ -6,7 +6,7 @@ import uuid
 from typing import Any
 
 from app.db.models import EvaluationRun, IndicatorResultRow, SLOEvaluation
-from app.modules.quality_gate.engine.constants import RESULT_RANK
+from app.modules.quality_gate.evaluation_engine.constants import RESULT_RANK
 from app.modules.quality_gate.schemas import (
     AnnotationRead,
     EvaluationColumn,

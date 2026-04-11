@@ -6,7 +6,7 @@ from typing import Any
 
 from pydantic import ValidationError
 
-from app.modules.quality_gate.engine.slo_models import (
+from app.modules.quality_gate.evaluation_engine.slo_models import (
     SLO,
     SLOComparison,
     SLOObjective,

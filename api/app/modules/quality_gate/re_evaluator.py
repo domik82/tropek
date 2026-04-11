@@ -15,8 +15,8 @@ from app.db.models import IndicatorResultRow, SLODefinition, SLOEvaluation
 from app.modules.assets.repository import AssetRepository
 from app.modules.quality_gate.annotation_repository import AnnotationRepository
 from app.modules.quality_gate.baseline_repository import BaselineRepository
-from app.modules.quality_gate.engine.evaluator import evaluate
-from app.modules.quality_gate.engine.slo_models import SLO
+from app.modules.quality_gate.evaluation_engine.evaluator import evaluate
+from app.modules.quality_gate.evaluation_engine.slo_models import SLO
 from app.modules.quality_gate.evaluation_helpers import build_slo_model, compute_baselines
 from app.modules.quality_gate.exceptions import BaselinePinConflictError
 from app.modules.quality_gate.indicator_repository import IndicatorRepository, build_indicator_row_dicts

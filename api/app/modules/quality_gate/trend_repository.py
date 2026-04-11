@@ -18,7 +18,7 @@ from app.db.models import (
     SLOEvaluation,
     SLOObjective,
 )
-from app.modules.quality_gate.engine.constants import EvaluationStatus
+from app.modules.quality_gate.evaluation_engine.constants import EvaluationStatus
 
 
 class TrendRepository:
