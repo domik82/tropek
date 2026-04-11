@@ -46,7 +46,7 @@ evaluation:
 
 adapters:
   prometheus:
-    url: "http://adapter-prometheus:8081"
+    url: "http://adapter-prometheus:8080"
     timeout_seconds: 30
   max_concurrent_queries_per_adapter: 10
 
