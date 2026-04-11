@@ -7,8 +7,8 @@ from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from app.modules.quality_gate.dependencies import QualityGateRepos
-from app.modules.quality_gate.exceptions import (
+from app.modules.quality_gate.shared.dependencies import QualityGateRepos
+from app.modules.quality_gate.shared.exceptions import (
     AssetNotFoundError,
     EvaluationError,
 )

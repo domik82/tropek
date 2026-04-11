@@ -7,12 +7,12 @@ from datetime import datetime
 
 from arq.connections import ArqRedis
 
-from app.modules.quality_gate.dependencies import QualityGateRepos
-from app.modules.quality_gate.exceptions import (
+from app.modules.quality_gate.shared.dependencies import QualityGateRepos
+from app.modules.quality_gate.shared.exceptions import (
     AssetNotFoundError,
     EvaluationError,
 )
-from app.modules.quality_gate.params import EvalCreateParams
+from app.modules.quality_gate.shared.params import EvalCreateParams
 from app.modules.quality_gate.schemas import (
     EvaluateBatchRequest,
     EvaluateBatchResponse,

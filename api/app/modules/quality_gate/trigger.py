@@ -6,12 +6,12 @@ import uuid
 from dataclasses import dataclass
 from typing import Any
 
-from app.modules.quality_gate.exceptions import (
+from app.modules.quality_gate.shared.exceptions import (
     AssetNotFoundError,
     DataSourceNotFoundError,
     SLONotConfiguredError,
 )
-from app.modules.quality_gate.protocols import (
+from app.modules.quality_gate.shared.protocols import (
     AssetReader,
     AssignmentReader,
     DataSourceReader,

@@ -8,7 +8,7 @@ from datetime import UTC, datetime, timedelta
 import pytest
 from app.db.models import Asset, AssetType, SLOObjective
 from app.modules.quality_gate.indicator_repository import IndicatorRepository
-from app.modules.quality_gate.params import EvalCreateParams
+from app.modules.quality_gate.shared.params import EvalCreateParams
 from app.modules.quality_gate.repository import EvaluationRepository
 from app.modules.slo_registry.params import SLOCreateParams, SLOObjectiveParams
 from app.modules.slo_registry.repository import SLORepository

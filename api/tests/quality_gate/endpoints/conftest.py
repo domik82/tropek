@@ -15,7 +15,7 @@ import pytest_asyncio
 from app.db.models import Asset, AssetType, IndicatorResultRow, SLODefinition, SLOObjective
 from app.db.session import get_session
 from app.main import app
-from app.modules.quality_gate.params import EvalCreateParams
+from app.modules.quality_gate.shared.params import EvalCreateParams
 from app.modules.quality_gate.repository import EvaluationRepository
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
