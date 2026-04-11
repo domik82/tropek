@@ -20,7 +20,7 @@ from tropek.modules.slo_registry.params import SLOCreateParams
 class SLORepository(TagQueryMixin):
     """Data access layer for versioned SLO definitions."""
 
-    _tag_table = 'slo_definitions'
+    _tag_model = SLODefinition
 
     def __init__(self, session: AsyncSession, cache: RedisCache | None = None) -> None:
         self._session = session

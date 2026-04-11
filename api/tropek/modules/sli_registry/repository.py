@@ -16,7 +16,7 @@ from tropek.modules.sli_registry.params import SLICreateParams
 class SLIRepository(TagQueryMixin):
     """Data access layer for versioned SLI definitions."""
 
-    _tag_table = 'sli_definitions'
+    _tag_model = SLIDefinition
 
     def __init__(self, session: AsyncSession, cache: RedisCache | None = None) -> None:
         self._session = session

@@ -2,39 +2,49 @@
 
 from __future__ import annotations
 
-from sqlalchemy import text
+from typing import Any, ClassVar
+
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import MappedColumn
 
 
 class TagQueryMixin:
     """Provides get_tag_keys() and get_tag_values() for any table with a JSONB `tags` column.
 
-    Subclasses must set `_tag_table` to the SQL table name and have a `_session` attribute.
+    Subclasses must set `_tag_model` to an ORM class with a JSONB ``tags`` column
+    and have a ``_session`` attribute.
     """
 
-    _tag_table: str
+    _tag_model: ClassVar[type]
     _session: AsyncSession
+
+    def _tags_col(self) -> MappedColumn[dict[str, Any]]:
+        col: MappedColumn[dict[str, Any]] = self._tag_model.tags  # type: ignore[attr-defined]
+        return col
 
     async def get_tag_keys(self) -> dict[str, int]:
         """Return all distinct tag keys with count of records using each."""
-        result = await self._session.execute(
-            text(
-                f'SELECT key, COUNT(*) as cnt '  # noqa: S608
-                f'FROM {self._tag_table}, jsonb_object_keys(tags) AS key '
-                f'GROUP BY key ORDER BY cnt DESC'
-            )
+        tags = self._tags_col()
+        key_col = func.jsonb_object_keys(tags).label('key')
+        subq = select(key_col).subquery()
+        stmt = (
+            select(subq.c.key, func.count())
+            .group_by(subq.c.key)
+            .order_by(func.count().desc())
         )
+        result = await self._session.execute(stmt)
         return {row[0]: row[1] for row in result}
 
     async def get_tag_values(self, key: str) -> dict[str, int]:
         """Return all distinct values for a tag key with usage counts."""
-        result = await self._session.execute(
-            text(
-                f'SELECT tags->>:key AS val, COUNT(*) as cnt '  # noqa: S608
-                f'FROM {self._tag_table} '
-                f'WHERE tags ? :key '
-                f'GROUP BY val ORDER BY cnt DESC'
-            ),
-            {'key': key},
+        tags = self._tags_col()
+        val = tags[key].astext.label('val')
+        stmt = (
+            select(val, func.count())
+            .where(tags.has_key(key))  # type: ignore[attr-defined]
+            .group_by(val)
+            .order_by(func.count().desc())
         )
+        result = await self._session.execute(stmt)
         return {row[0]: row[1] for row in result}
