@@ -4,8 +4,8 @@ import importlib
 import os
 from pathlib import Path
 
-import app.config as config_module
 import pytest
+import tropek.config as config_module
 
 
 @pytest.fixture(autouse=True)
@@ -135,8 +135,7 @@ def test_queue_sweeper_accepts_valid_interval(tmp_path: Path) -> None:
     """Interval=5 (a divisor of 60) is accepted."""
     cfg_file = tmp_path / 'config.yaml'
     cfg_file.write_text(
-        'database:\n  host: h\n  port: 5432\n  name: n\n'
-        'queue:\n  finalize_sweeper_interval_seconds: 5\n'
+        'database:\n  host: h\n  port: 5432\n  name: n\nqueue:\n  finalize_sweeper_interval_seconds: 5\n'
     )
     os.environ['QG_CONFIG_PATH'] = str(cfg_file)
     os.environ['QG_DB_USER'] = 'u'
@@ -154,8 +153,7 @@ def test_queue_sweeper_rejects_invalid_interval(tmp_path: Path) -> None:
     """Interval=45 (not a divisor of 60) raises at settings construction."""
     cfg_file = tmp_path / 'config.yaml'
     cfg_file.write_text(
-        'database:\n  host: h\n  port: 5432\n  name: n\n'
-        'queue:\n  finalize_sweeper_interval_seconds: 45\n'
+        'database:\n  host: h\n  port: 5432\n  name: n\nqueue:\n  finalize_sweeper_interval_seconds: 45\n'
     )
     os.environ['QG_CONFIG_PATH'] = str(cfg_file)
     os.environ['QG_DB_USER'] = 'u'
@@ -170,10 +168,7 @@ def test_queue_sweeper_rejects_invalid_interval(tmp_path: Path) -> None:
 def test_queue_sweeper_rejects_zero_batch_limit(tmp_path: Path) -> None:
     """batch_limit=0 raises."""
     cfg_file = tmp_path / 'config.yaml'
-    cfg_file.write_text(
-        'database:\n  host: h\n  port: 5432\n  name: n\n'
-        'queue:\n  finalize_sweeper_batch_limit: 0\n'
-    )
+    cfg_file.write_text('database:\n  host: h\n  port: 5432\n  name: n\nqueue:\n  finalize_sweeper_batch_limit: 0\n')
     os.environ['QG_CONFIG_PATH'] = str(cfg_file)
     os.environ['QG_DB_USER'] = 'u'
     os.environ['QG_DB_PASSWORD'] = 'p'

@@ -4,9 +4,9 @@ from urllib.parse import parse_qs, unquote, urlparse
 
 import pytest
 import respx
-from app.core.prometheus_client import PrometheusClient
-from app.core.strategies.aggregated import AggregatedQueryStrategy
 from httpx import Response
+from tropek_prometheus.core.prometheus_client import PrometheusClient
+from tropek_prometheus.core.strategies.aggregated import AggregatedQueryStrategy
 
 
 def _matrix_response(values: list[list]) -> Response:

@@ -8,17 +8,17 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 import pytest_asyncio
-from app.db.models import (
+from httpx import ASGITransport, AsyncClient
+from sqlalchemy.ext.asyncio import AsyncSession
+from tropek.db.models import (
     Asset,
     AssetType,
     EvaluationAnnotation,
     EvaluationRun,
     SLOEvaluation,
 )
-from app.db.session import get_session
-from app.main import app
-from httpx import ASGITransport, AsyncClient
-from sqlalchemy.ext.asyncio import AsyncSession
+from tropek.db.session import get_session
+from tropek.main import app
 
 _BASE = datetime(2026, 4, 1, 10, 0, 0, tzinfo=UTC)
 
@@ -102,12 +102,8 @@ async def test_grouped_heatmap_has_notes_true_for_annotated_column(
     asset_name = 'hm-has-notes-asset'
     asset_id = await _setup_asset(db_session, asset_name)
 
-    annotated_run_id, annotated_slo_id = await _create_run_with_slo(
-        db_session, asset_id, asset_name, hour_offset=0
-    )
-    plain_run_id, _ = await _create_run_with_slo(
-        db_session, asset_id, asset_name, hour_offset=1
-    )
+    annotated_run_id, annotated_slo_id = await _create_run_with_slo(db_session, asset_id, asset_name, hour_offset=0)
+    plain_run_id, _ = await _create_run_with_slo(db_session, asset_id, asset_name, hour_offset=1)
 
     db_session.add(
         EvaluationAnnotation(
@@ -143,9 +139,7 @@ async def test_grouped_heatmap_has_notes_false_when_annotation_hidden(
     asset_name = 'hm-hidden-notes-asset'
     asset_id = await _setup_asset(db_session, asset_name)
 
-    run_id, slo_eval_id = await _create_run_with_slo(
-        db_session, asset_id, asset_name, hour_offset=0
-    )
+    run_id, slo_eval_id = await _create_run_with_slo(db_session, asset_id, asset_name, hour_offset=0)
 
     db_session.add(
         EvaluationAnnotation(

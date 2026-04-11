@@ -4,8 +4,8 @@ import uuid
 from datetime import UTC, datetime
 
 import pytest
-from app.db.models import Asset, AssetType, SLOEvaluation
-from app.modules.quality_gate.repositories.evaluation_run import (
+from tropek.db.models import Asset, AssetType, SLOEvaluation
+from tropek.modules.quality_gate.repositories.evaluation_run import (
     EvaluationRunRepository,
 )
 

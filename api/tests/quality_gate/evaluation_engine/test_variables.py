@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import pytest
-from app.modules.quality_gate.evaluation_engine.variables import (
+from tropek.modules.quality_gate.evaluation_engine.variables import (
     UnresolvedVariableError,
     build_variables,
     substitute_slo_variables,

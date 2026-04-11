@@ -9,18 +9,18 @@ import uuid
 from datetime import UTC, datetime
 
 import pytest
-from app.db.models import (
+from sqlalchemy.ext.asyncio import AsyncSession
+from tropek.db.models import (
     Asset,
     AssetType,
     SLIDefinition,
     SLODefinition,
     SLOObjective,
 )
-from app.modules.quality_gate.repositories.evaluation import EvaluationRepository
-from app.modules.quality_gate.repositories.indicator import IndicatorRepository
-from app.modules.quality_gate.shared.params import EvalCreateParams
-from app.modules.quality_gate.workflows.presentation.presenter import build_detail, build_summary
-from sqlalchemy.ext.asyncio import AsyncSession
+from tropek.modules.quality_gate.repositories.evaluation import EvaluationRepository
+from tropek.modules.quality_gate.repositories.indicator import IndicatorRepository
+from tropek.modules.quality_gate.shared.params import EvalCreateParams
+from tropek.modules.quality_gate.workflows.presentation.presenter import build_detail, build_summary
 
 _START = datetime(2026, 3, 15, 10, 0, 0, tzinfo=UTC)
 _END = datetime(2026, 3, 15, 10, 30, 0, tzinfo=UTC)

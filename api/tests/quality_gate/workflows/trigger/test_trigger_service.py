@@ -7,13 +7,13 @@ from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from app.modules.quality_gate.schemas import EvaluateSingleRequest
-from app.modules.quality_gate.shared.dependencies import QualityGateRepos
-from app.modules.quality_gate.shared.exceptions import (
+from tropek.modules.quality_gate.schemas import EvaluateSingleRequest
+from tropek.modules.quality_gate.shared.dependencies import QualityGateRepos
+from tropek.modules.quality_gate.shared.exceptions import (
     AssetNotFoundError,
     EvaluationError,
 )
-from app.modules.quality_gate.workflows.trigger.trigger_service import TriggerService
+from tropek.modules.quality_gate.workflows.trigger.trigger_service import TriggerService
 
 _START = datetime(2026, 3, 15, 10, 0, 0, tzinfo=UTC)
 _END = datetime(2026, 3, 15, 10, 30, 0, tzinfo=UTC)
@@ -103,11 +103,12 @@ async def test_trigger_evaluate_happy_path() -> None:
     service = TriggerService(repos, pool)
     with (
         patch(
-            'app.modules.quality_gate.workflows.trigger.trigger_service.resolve_all_slos_for_asset',
-            new_callable=AsyncMock, return_value=['perf-slo', 'latency-slo'],
+            'tropek.modules.quality_gate.workflows.trigger.trigger_service.resolve_all_slos_for_asset',
+            new_callable=AsyncMock,
+            return_value=['perf-slo', 'latency-slo'],
         ),
         patch(
-            'app.modules.quality_gate.workflows.trigger.trigger_service.resolve_single_trigger',
+            'tropek.modules.quality_gate.workflows.trigger.trigger_service.resolve_single_trigger',
             side_effect=resolve_side_effect,
         ),
     ):
@@ -140,8 +141,9 @@ async def test_trigger_evaluate_no_slos() -> None:
     service = TriggerService(repos, pool)
     with (
         patch(
-            'app.modules.quality_gate.workflows.trigger.trigger_service.resolve_all_slos_for_asset',
-            new_callable=AsyncMock, return_value=[],
+            'tropek.modules.quality_gate.workflows.trigger.trigger_service.resolve_all_slos_for_asset',
+            new_callable=AsyncMock,
+            return_value=[],
         ),
         pytest.raises(EvaluationError, match='no slo assignments'),
     ):
@@ -185,11 +187,12 @@ async def test_trigger_evaluate_skips_unresolvable_slos() -> None:
     service = TriggerService(repos, pool)
     with (
         patch(
-            'app.modules.quality_gate.workflows.trigger.trigger_service.resolve_all_slos_for_asset',
-            new_callable=AsyncMock, return_value=['bad-slo', 'good-slo'],
+            'tropek.modules.quality_gate.workflows.trigger.trigger_service.resolve_all_slos_for_asset',
+            new_callable=AsyncMock,
+            return_value=['bad-slo', 'good-slo'],
         ),
         patch(
-            'app.modules.quality_gate.workflows.trigger.trigger_service.resolve_single_trigger',
+            'tropek.modules.quality_gate.workflows.trigger.trigger_service.resolve_single_trigger',
             side_effect=resolve_side_effect,
         ),
     ):
@@ -243,11 +246,12 @@ async def test_trigger_evaluate_enqueues_per_child() -> None:
     service = TriggerService(repos, pool)
     with (
         patch(
-            'app.modules.quality_gate.workflows.trigger.trigger_service.resolve_all_slos_for_asset',
-            new_callable=AsyncMock, return_value=['slo-a', 'slo-b', 'slo-c'],
+            'tropek.modules.quality_gate.workflows.trigger.trigger_service.resolve_all_slos_for_asset',
+            new_callable=AsyncMock,
+            return_value=['slo-a', 'slo-b', 'slo-c'],
         ),
         patch(
-            'app.modules.quality_gate.workflows.trigger.trigger_service.resolve_single_trigger',
+            'tropek.modules.quality_gate.workflows.trigger.trigger_service.resolve_single_trigger',
             side_effect=resolve_side_effect,
         ),
     ):

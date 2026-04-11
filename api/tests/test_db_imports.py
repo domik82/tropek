@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from app.db import models
-from app.db.models import (
+from tropek.db import models
+from tropek.db.models import (
     Asset,  # noqa: F401
     AssetGroup,  # noqa: F401
     AssetGroupLink,
@@ -19,7 +19,7 @@ from app.db.models import (
     SLOGroup,  # noqa: F401
     SLOObjective,  # noqa: F401
 )
-from app.db.session import get_session, get_session_factory
+from tropek.db.session import get_session, get_session_factory
 
 
 def test_db_session_imports() -> None:

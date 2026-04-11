@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 import pytest
-from app.modules.display_groups.repository import DisplayGroupRepository
-from app.modules.slo_registry.params import SLOCreateParams, SLOObjectiveParams
-from app.modules.slo_registry.repository import SLORepository
 from sqlalchemy.ext.asyncio import AsyncSession
+from tropek.modules.display_groups.repository import DisplayGroupRepository
+from tropek.modules.slo_registry.params import SLOCreateParams, SLOObjectiveParams
+from tropek.modules.slo_registry.repository import SLORepository
 
 _OBJECTIVES = [SLOObjectiveParams(sli='cpu', pass_threshold=['<80'])]
 
@@ -27,9 +27,7 @@ async def test_create_display_group(db_session: AsyncSession) -> None:
 async def test_create_nested_display_group(db_session: AsyncSession) -> None:
     repo = DisplayGroupRepository(db_session)
     parent = await repo.create(name='platform', display_name='Platform')
-    child = await repo.create(
-        name='platform-networking', display_name='Networking', parent_id=parent.id
-    )
+    child = await repo.create(name='platform-networking', display_name='Networking', parent_id=parent.id)
     assert child.parent_id == parent.id
 
 

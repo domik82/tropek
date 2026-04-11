@@ -36,7 +36,7 @@ PROMETHEUS_URL="${PROMETHEUS_URL}" \
 REDIS_URL="${REDIS_URL}" \
 PORT="${ADAPTER_PORT}" \
 uv run --directory "${ADAPTER_DIR}" \
-    uvicorn app.main:app --host 0.0.0.0 --port "${ADAPTER_PORT}" \
+    uvicorn tropek_prometheus.main:app --host 0.0.0.0 --port "${ADAPTER_PORT}" \
     --log-level warning &
 ADAPTER_PID=$!
 

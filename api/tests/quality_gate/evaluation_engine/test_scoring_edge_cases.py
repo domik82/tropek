@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-from app.modules.quality_gate.evaluation_engine.constants import EvaluationOutcome, IndicatorStatus
-from app.modules.quality_gate.evaluation_engine.evaluator import evaluate
-from app.modules.quality_gate.evaluation_engine.scoring import calculate_total_score, score_objective
-from app.modules.quality_gate.evaluation_engine.slo_models import (
+from tropek.modules.quality_gate.evaluation_engine.constants import EvaluationOutcome, IndicatorStatus
+from tropek.modules.quality_gate.evaluation_engine.evaluator import evaluate
+from tropek.modules.quality_gate.evaluation_engine.scoring import calculate_total_score, score_objective
+from tropek.modules.quality_gate.evaluation_engine.slo_models import (
     SLO,
     SLOComparison,
     SLOObjective,

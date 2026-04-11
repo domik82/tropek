@@ -1,8 +1,8 @@
 """Route integration tests using fakeredis."""
 
 import pytest
-from app.main import create_app
 from httpx import ASGITransport, AsyncClient
+from tropek_prometheus.main import create_app
 
 
 @pytest.fixture

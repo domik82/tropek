@@ -4,16 +4,16 @@ from __future__ import annotations
 
 import pytest
 import pytest_asyncio
-from app.db.models import AssetType
-from app.modules.assets.repository import AssetGroupRepository, AssetRepository
-from app.modules.assignments.repository import AssignmentRepository
-from app.modules.datasource.repository import DataSourceRepository
-from app.modules.slo_groups.repository import SLOGroupRepository
-from app.modules.slo_registry.params import SLOCreateParams, SLOObjectiveParams
-from app.modules.slo_registry.repository import SLORepository
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
+from tropek.db.models import AssetType
+from tropek.modules.assets.repository import AssetGroupRepository, AssetRepository
+from tropek.modules.assignments.repository import AssignmentRepository
+from tropek.modules.datasource.repository import DataSourceRepository
+from tropek.modules.slo_groups.repository import SLOGroupRepository
+from tropek.modules.slo_registry.params import SLOCreateParams, SLOObjectiveParams
+from tropek.modules.slo_registry.repository import SLORepository
 
 _OBJECTIVES = [SLOObjectiveParams(sli='cpu', pass_threshold=['<80'])]
 
@@ -45,9 +45,7 @@ async def _make_datasource(session: AsyncSession, name: str) -> object:
 
 
 async def _make_slo(session: AsyncSession, name: str) -> object:
-    return await SLORepository(session).create(
-        SLOCreateParams(name=name, objectives=_OBJECTIVES)
-    )
+    return await SLORepository(session).create(SLOCreateParams(name=name, objectives=_OBJECTIVES))
 
 
 # ---------------------------------------------------------------------------
@@ -102,9 +100,7 @@ async def test_slo_assignment_unique_per_slo_name(db_session: AsyncSession) -> N
     asset = await _make_asset(db_session, 'assign-asset-uniq')
     ds = await _make_datasource(db_session, 'assign-ds-uniq')
     slo_v1 = await _make_slo(db_session, 'assign-slo-uniq')
-    slo_v2 = await SLORepository(db_session).create(
-        SLOCreateParams(name='assign-slo-uniq', objectives=_OBJECTIVES)
-    )
+    slo_v2 = await SLORepository(db_session).create(SLOCreateParams(name='assign-slo-uniq', objectives=_OBJECTIVES))
 
     repo = AssignmentRepository(db_session)
     await repo.create_slo_assignment(
@@ -130,9 +126,7 @@ async def test_upgrade_slo_assignment(db_session: AsyncSession) -> None:
     asset = await _make_asset(db_session, 'assign-asset-upg')
     ds = await _make_datasource(db_session, 'assign-ds-upg')
     slo_v1 = await _make_slo(db_session, 'assign-slo-upg')
-    slo_v2 = await SLORepository(db_session).create(
-        SLOCreateParams(name='assign-slo-upg', objectives=_OBJECTIVES)
-    )
+    slo_v2 = await SLORepository(db_session).create(SLOCreateParams(name='assign-slo-upg', objectives=_OBJECTIVES))
 
     repo = AssignmentRepository(db_session)
     row = await repo.create_slo_assignment(
@@ -212,9 +206,7 @@ async def test_resolve_direct_asset_wins_over_group(db_session: AsyncSession) ->
     ds = await _make_datasource(db_session, 'resolve-ds-2')
 
     slo_v1 = await _make_slo(db_session, 'resolve-slo-2')
-    slo_v2 = await SLORepository(db_session).create(
-        SLOCreateParams(name='resolve-slo-2', objectives=_OBJECTIVES)
-    )
+    slo_v2 = await SLORepository(db_session).create(SLOCreateParams(name='resolve-slo-2', objectives=_OBJECTIVES))
 
     repo = AssignmentRepository(db_session)
     # Assign v1 to the group

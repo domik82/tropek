@@ -7,7 +7,7 @@ from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
-from app.modules.quality_gate.workflows.execution.evaluation_executor import (
+from tropek.modules.quality_gate.workflows.execution.evaluation_executor import (
     EvaluationSnapshot,
     FetchAndEvaluateResult,
     fetch_and_evaluate,
@@ -74,7 +74,7 @@ async def test_load_snapshot_marks_running_and_returns_snapshot() -> None:
     repo.get_by_id.return_value = _make_orm_evaluation()
 
     with patch(
-        'app.modules.quality_gate.workflows.execution.evaluation_executor.EvaluationRepository',
+        'tropek.modules.quality_gate.workflows.execution.evaluation_executor.EvaluationRepository',
         return_value=repo,
     ):
         result = await load_evaluation_snapshot(session, EVAL_ID, worker_id='w-1')
@@ -99,7 +99,7 @@ async def test_load_snapshot_returns_none_for_missing_eval() -> None:
     repo.get_by_id.return_value = None
 
     with patch(
-        'app.modules.quality_gate.workflows.execution.evaluation_executor.EvaluationRepository',
+        'tropek.modules.quality_gate.workflows.execution.evaluation_executor.EvaluationRepository',
         return_value=repo,
     ):
         result = await load_evaluation_snapshot(session, EVAL_ID)
@@ -114,7 +114,7 @@ async def test_load_snapshot_returns_none_for_already_completed() -> None:
     repo.get_by_id.return_value = _make_orm_evaluation(status='completed')
 
     with patch(
-        'app.modules.quality_gate.workflows.execution.evaluation_executor.EvaluationRepository',
+        'tropek.modules.quality_gate.workflows.execution.evaluation_executor.EvaluationRepository',
         return_value=repo,
     ):
         result = await load_evaluation_snapshot(session, EVAL_ID)
@@ -131,8 +131,14 @@ async def test_fetch_and_evaluate_returns_result() -> None:
 
     slo_def = MagicMock()
     slo_def.objectives = [
-        MagicMock(sli='response_time', display_name='RT', pass_threshold=['<600'],
-                  warning_threshold=[], weight=1, key_sli=False),
+        MagicMock(
+            sli='response_time',
+            display_name='RT',
+            pass_threshold=['<600'],
+            warning_threshold=[],
+            weight=1,
+            key_sli=False,
+        ),
     ]
     slo_def.total_score_pass_threshold = 90.0
     slo_def.total_score_warning_threshold = 75.0
@@ -180,8 +186,14 @@ async def test_fetch_and_evaluate_returns_none_on_adapter_failure() -> None:
 
     slo_def = MagicMock()
     slo_def.objectives = [
-        MagicMock(sli='response_time', display_name='RT', pass_threshold=['<600'],
-                  warning_threshold=[], weight=1, key_sli=False),
+        MagicMock(
+            sli='response_time',
+            display_name='RT',
+            pass_threshold=['<600'],
+            warning_threshold=[],
+            weight=1,
+            key_sli=False,
+        ),
     ]
     slo_def.total_score_pass_threshold = 90.0
     slo_def.total_score_warning_threshold = 75.0
@@ -259,11 +271,11 @@ async def test_write_results_commits_eval_and_indicators() -> None:
 
     with (
         patch(
-            'app.modules.quality_gate.workflows.execution.evaluation_executor.EvaluationRepository',
+            'tropek.modules.quality_gate.workflows.execution.evaluation_executor.EvaluationRepository',
             return_value=mock_repo,
         ),
         patch(
-            'app.modules.quality_gate.workflows.execution.evaluation_executor.IndicatorRepository',
+            'tropek.modules.quality_gate.workflows.execution.evaluation_executor.IndicatorRepository',
             return_value=mock_indicator_repo,
         ),
     ):
@@ -311,7 +323,7 @@ async def test_write_sli_values_phase_writes_to_hypertable() -> None:
     mock_sli_repo = AsyncMock()
 
     with patch(
-        'app.modules.quality_gate.workflows.execution.evaluation_executor.SLIValueRepository',
+        'tropek.modules.quality_gate.workflows.execution.evaluation_executor.SLIValueRepository',
         return_value=mock_sli_repo,
     ):
         await write_sli_values_phase(

@@ -58,7 +58,7 @@ services:
     build:
       context: ./api
       dockerfile: Dockerfile
-    command: ["uv", "run", "arq", "app.worker.WorkerSettings"]
+    command: ["uv", "run", "arq", "tropek.worker.WorkerSettings"]
     environment:
       QG_DB_USER: ${QG_DB_USER}
       QG_DB_PASSWORD: ${QG_DB_PASSWORD}

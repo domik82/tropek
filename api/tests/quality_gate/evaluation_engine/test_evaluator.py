@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import pytest
-from app.modules.quality_gate.evaluation_engine.evaluator import evaluate
+from tropek.modules.quality_gate.evaluation_engine.evaluator import evaluate
 
 
 def test_all_pass_no_baseline(slo_fixture) -> None:

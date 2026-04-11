@@ -7,7 +7,7 @@ import tempfile
 from datetime import UTC, datetime
 from pathlib import Path
 
-from app.csv_store import CsvStore
+from tropek_mock.csv_store import CsvStore
 
 
 def _write_csv(directory: Path, namespace: str, rows: list[dict[str, str]]) -> None:

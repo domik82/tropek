@@ -6,11 +6,11 @@ import uuid
 from datetime import UTC, datetime, timedelta
 
 import pytest
-from app.db.models import Asset, AssetType
-from app.modules.quality_gate.repositories.baseline import BaselineRepository
-from app.modules.quality_gate.repositories.evaluation import EvaluationRepository
-from app.modules.quality_gate.shared.params import EvalCreateParams
 from sqlalchemy.ext.asyncio import AsyncSession
+from tropek.db.models import Asset, AssetType
+from tropek.modules.quality_gate.repositories.baseline import BaselineRepository
+from tropek.modules.quality_gate.repositories.evaluation import EvaluationRepository
+from tropek.modules.quality_gate.shared.params import EvalCreateParams
 
 _BASE = datetime(2026, 3, 15, 10, 0, 0, tzinfo=UTC)
 

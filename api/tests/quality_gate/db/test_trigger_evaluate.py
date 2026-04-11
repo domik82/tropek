@@ -12,11 +12,11 @@ from unittest.mock import AsyncMock
 
 import pytest
 import pytest_asyncio
-from app.db.session import get_session
-from app.main import app
-from app.queue import get_arq_pool
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
+from tropek.db.session import get_session
+from tropek.main import app
+from tropek.queue import get_arq_pool
 
 
 @pytest_asyncio.fixture()

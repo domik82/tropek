@@ -7,7 +7,7 @@ from datetime import UTC, datetime
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
-from app.modules.quality_gate.workflows.presentation.presenter import build_detail, build_summary
+from tropek.modules.quality_gate.workflows.presentation.presenter import build_detail, build_summary
 
 _NOW = datetime(2026, 3, 15, 12, 0, 0, tzinfo=UTC)
 

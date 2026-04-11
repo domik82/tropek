@@ -7,8 +7,8 @@ from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from app.modules.quality_gate.workflows.execution.evaluation_executor import DefinitionLoadError, EvaluationSnapshot
-from app.queue import (
+from tropek.modules.quality_gate.workflows.execution.evaluation_executor import DefinitionLoadError, EvaluationSnapshot
+from tropek.queue import (
     WorkerSettings,
     _sweeper_cron_seconds,
     finalize_run_job,
@@ -64,9 +64,7 @@ def _session_factory_from_list(sessions: list[AsyncMock]):
 
 def _no_predecessor():
     """Patch that disables the predecessor check."""
-    return patch(
-        'app.queue._has_pending_predecessor', new_callable=AsyncMock, return_value=False
-    )
+    return patch('tropek.queue._has_pending_predecessor', new_callable=AsyncMock, return_value=False)
 
 
 def _make_ctx(pool: AsyncMock | None = None) -> dict:
@@ -99,27 +97,27 @@ async def test_happy_path_three_phases() -> None:
     mock_datasource = MagicMock()
 
     with (
-        patch('app.queue.get_session_factory', return_value=factory),
+        patch('tropek.queue.get_session_factory', return_value=factory),
         patch(
-            'app.queue.load_evaluation_snapshot',
+            'tropek.queue.load_evaluation_snapshot',
             new_callable=AsyncMock,
             return_value=snapshot,
         ),
         patch(
-            'app.queue._load_definitions',
+            'tropek.queue._load_definitions',
             new_callable=AsyncMock,
             return_value=(MagicMock(), MagicMock()),
         ),
-        patch('app.queue.DataSourceRepository') as mock_ds_repo_cls,
+        patch('tropek.queue.DataSourceRepository') as mock_ds_repo_cls,
         patch(
-            'app.queue.fetch_and_evaluate',
+            'tropek.queue.fetch_and_evaluate',
             new_callable=AsyncMock,
             return_value=mock_fetch_result,
         ),
-        patch('app.queue.write_results', new_callable=AsyncMock) as mock_write,
-        patch('app.queue.write_sli_values_phase', new_callable=AsyncMock) as mock_sli,
-        patch('app.queue.BaselineRepository'),
-        patch('app.queue.HttpAdapterClient'),
+        patch('tropek.queue.write_results', new_callable=AsyncMock) as mock_write,
+        patch('tropek.queue.write_sli_values_phase', new_callable=AsyncMock) as mock_sli,
+        patch('tropek.queue.BaselineRepository'),
+        patch('tropek.queue.HttpAdapterClient'),
         _no_predecessor(),
     ):
         mock_ds_repo_cls.return_value.get_by_name = AsyncMock(return_value=mock_datasource)
@@ -150,15 +148,15 @@ async def test_snapshot_none_skips_remaining_phases() -> None:
     factory = _session_factory_from_list(sessions)
 
     with (
-        patch('app.queue.get_session_factory', return_value=factory),
+        patch('tropek.queue.get_session_factory', return_value=factory),
         patch(
-            'app.queue.load_evaluation_snapshot',
+            'tropek.queue.load_evaluation_snapshot',
             new_callable=AsyncMock,
             return_value=None,
         ),
-        patch('app.queue._load_definitions', new_callable=AsyncMock) as mock_load,
-        patch('app.queue.fetch_and_evaluate', new_callable=AsyncMock) as mock_fetch,
-        patch('app.queue.write_results', new_callable=AsyncMock) as mock_write,
+        patch('tropek.queue._load_definitions', new_callable=AsyncMock) as mock_load,
+        patch('tropek.queue.fetch_and_evaluate', new_callable=AsyncMock) as mock_fetch,
+        patch('tropek.queue.write_results', new_callable=AsyncMock) as mock_write,
         _no_predecessor(),
     ):
         await run_evaluation_job(_make_ctx(), str(uuid.uuid4()))
@@ -184,35 +182,33 @@ async def test_adapter_failure_marks_failed() -> None:
     mock_eval_repo = AsyncMock()
 
     with (
-        patch('app.queue.get_session_factory', return_value=factory),
+        patch('tropek.queue.get_session_factory', return_value=factory),
         patch(
-            'app.queue.load_evaluation_snapshot',
+            'tropek.queue.load_evaluation_snapshot',
             new_callable=AsyncMock,
             return_value=snapshot,
         ),
         patch(
-            'app.queue._load_definitions',
+            'tropek.queue._load_definitions',
             new_callable=AsyncMock,
             return_value=(MagicMock(), MagicMock()),
         ),
-        patch('app.queue.DataSourceRepository') as mock_ds_repo_cls,
+        patch('tropek.queue.DataSourceRepository') as mock_ds_repo_cls,
         patch(
-            'app.queue.fetch_and_evaluate',
+            'tropek.queue.fetch_and_evaluate',
             new_callable=AsyncMock,
             return_value=None,
         ),
-        patch('app.queue.EvaluationRepository', return_value=mock_eval_repo),
-        patch('app.queue.BaselineRepository'),
-        patch('app.queue.HttpAdapterClient'),
+        patch('tropek.queue.EvaluationRepository', return_value=mock_eval_repo),
+        patch('tropek.queue.BaselineRepository'),
+        patch('tropek.queue.HttpAdapterClient'),
         _no_predecessor(),
     ):
         mock_ds_repo_cls.return_value.get_by_name = AsyncMock(return_value=MagicMock())
 
         await run_evaluation_job(_make_ctx(), str(eval_id))
 
-    mock_eval_repo.mark_failed.assert_awaited_once_with(
-        eval_id, job_stats={'error': 'adapter query failed'}
-    )
+    mock_eval_repo.mark_failed.assert_awaited_once_with(eval_id, job_stats={'error': 'adapter query failed'})
 
 
 # --- Definition load error ---
@@ -230,25 +226,23 @@ async def test_definition_load_error_marks_failed() -> None:
     mock_eval_repo = AsyncMock()
 
     with (
-        patch('app.queue.get_session_factory', return_value=factory),
+        patch('tropek.queue.get_session_factory', return_value=factory),
         patch(
-            'app.queue.load_evaluation_snapshot',
+            'tropek.queue.load_evaluation_snapshot',
             new_callable=AsyncMock,
             return_value=snapshot,
         ),
         patch(
-            'app.queue._load_definitions',
+            'tropek.queue._load_definitions',
             new_callable=AsyncMock,
             side_effect=DefinitionLoadError("slo 'x' v1 not found"),
         ),
-        patch('app.queue.EvaluationRepository', return_value=mock_eval_repo),
+        patch('tropek.queue.EvaluationRepository', return_value=mock_eval_repo),
         _no_predecessor(),
     ):
         await run_evaluation_job(_make_ctx(), str(eval_id))
 
-    mock_eval_repo.mark_failed.assert_awaited_once_with(
-        eval_id, job_stats={'error': "slo 'x' v1 not found"}
-    )
+    mock_eval_repo.mark_failed.assert_awaited_once_with(eval_id, job_stats={'error': "slo 'x' v1 not found"})
 
 
 # --- Finalize run job ---
@@ -266,8 +260,8 @@ async def test_finalize_run_job_completes_parent() -> None:
     mock_run_repo.finalize_if_all_done.return_value = mock_finalized
 
     with (
-        patch('app.queue.get_session_factory', return_value=factory),
-        patch('app.queue.EvaluationRunRepository', return_value=mock_run_repo),
+        patch('tropek.queue.get_session_factory', return_value=factory),
+        patch('tropek.queue.EvaluationRunRepository', return_value=mock_run_repo),
     ):
         await finalize_run_job({}, str(run_id))
 
@@ -285,8 +279,8 @@ async def test_finalize_run_job_noop_when_children_pending() -> None:
     mock_run_repo.finalize_if_all_done.return_value = None
 
     with (
-        patch('app.queue.get_session_factory', return_value=factory),
-        patch('app.queue.EvaluationRunRepository', return_value=mock_run_repo),
+        patch('tropek.queue.get_session_factory', return_value=factory),
+        patch('tropek.queue.EvaluationRunRepository', return_value=mock_run_repo),
     ):
         await finalize_run_job({}, str(run_id))
 
@@ -306,15 +300,13 @@ async def test_predecessor_defers_job() -> None:
     factory = _session_factory_from_list(sessions)
 
     with (
-        patch('app.queue.get_session_factory', return_value=factory),
+        patch('tropek.queue.get_session_factory', return_value=factory),
         patch(
-            'app.queue._has_pending_predecessor',
+            'tropek.queue._has_pending_predecessor',
             new_callable=AsyncMock,
             return_value=True,
         ),
-        patch(
-            'app.queue.load_evaluation_snapshot', new_callable=AsyncMock
-        ) as mock_snapshot,
+        patch('tropek.queue.load_evaluation_snapshot', new_callable=AsyncMock) as mock_snapshot,
     ):
         await run_evaluation_job(
             _make_ctx(mock_pool),
@@ -351,7 +343,4 @@ def test_sweeper_cron_seconds_rejects_non_divisor() -> None:
 
 def test_worker_settings_registers_sweeper_job() -> None:
     assert finalize_sweeper_job in WorkerSettings.functions
-    assert any(
-        getattr(cj, 'coroutine', None) is finalize_sweeper_job
-        for cj in WorkerSettings.cron_jobs
-    )
+    assert any(getattr(cj, 'coroutine', None) is finalize_sweeper_job for cj in WorkerSettings.cron_jobs)

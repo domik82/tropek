@@ -6,10 +6,10 @@ from collections.abc import AsyncGenerator
 
 import pytest
 import pytest_asyncio
-from app.db.session import get_session
-from app.main import app
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
+from tropek.db.session import get_session
+from tropek.main import app
 
 pytestmark = pytest.mark.integration
 

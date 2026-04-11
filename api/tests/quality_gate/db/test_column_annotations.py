@@ -8,18 +8,18 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 import pytest_asyncio
-from app.db.models import (
+from httpx import ASGITransport, AsyncClient
+from sqlalchemy import update
+from sqlalchemy.ext.asyncio import AsyncSession
+from tropek.db.models import (
     Asset,
     AssetType,
     EvaluationAnnotation,
     EvaluationRun,
     SLOEvaluation,
 )
-from app.db.session import get_session
-from app.main import app
-from httpx import ASGITransport, AsyncClient
-from sqlalchemy import update
-from sqlalchemy.ext.asyncio import AsyncSession
+from tropek.db.session import get_session
+from tropek.main import app
 
 _BASE = datetime(2026, 4, 1, 10, 0, 0, tzinfo=UTC)
 

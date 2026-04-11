@@ -5,7 +5,7 @@ from __future__ import annotations
 import uuid
 from datetime import UTC, datetime
 
-from app.modules.quality_gate.shared.params import EvalCreateParams
+from tropek.modules.quality_gate.shared.params import EvalCreateParams
 
 
 def test_eval_create_params_requires_evaluation_id():

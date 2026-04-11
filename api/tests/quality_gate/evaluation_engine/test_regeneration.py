@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from app.modules.slo_groups.generator import GeneratedSLOSpec
-from app.modules.slo_groups.regeneration import plan_regeneration
+from tropek.modules.slo_groups.generator import GeneratedSLOSpec
+from tropek.modules.slo_groups.regeneration import plan_regeneration
 
 
 @dataclass

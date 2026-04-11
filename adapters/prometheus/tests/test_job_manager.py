@@ -2,9 +2,9 @@
 
 import fakeredis.aioredis
 import pytest
-from app.config import Settings
-from app.core.job_manager import JobManager
-from app.redis.repository import JobRepository
+from tropek_prometheus.config import Settings
+from tropek_prometheus.core.job_manager import JobManager
+from tropek_prometheus.redis.repository import JobRepository
 
 
 @pytest.fixture

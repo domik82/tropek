@@ -56,7 +56,7 @@ fmt:
 
 # Run mypy type checker
 typecheck:
-    uv run mypy api/app adapters/prometheus/app
+    uv run mypy api/tropek adapters/prometheus/tropek_prometheus
 
 # Run all checks (lint + format check + typecheck)
 check: lint lint-ui fmt-check typecheck

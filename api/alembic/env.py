@@ -8,11 +8,11 @@ from logging.config import fileConfig
 from pathlib import Path
 
 from alembic import context
-from app.config import get_settings
-from app.db.models import Base
 from dotenv import load_dotenv
 from sqlalchemy import pool
 from sqlalchemy.ext.asyncio import async_engine_from_config
+from tropek.config import get_settings
+from tropek.db.models import Base
 
 # Load the env file specified by ENV_FILE (default: .env).
 # This lets `uv run alembic upgrade head` work without shell sourcing tricks —

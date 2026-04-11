@@ -10,13 +10,13 @@ import uuid
 from datetime import UTC, datetime
 
 import pytest
-from app.db.models import Asset, AssetType
-from app.modules.quality_gate.repositories.annotation import AnnotationRepository
-from app.modules.quality_gate.repositories.baseline import BaselineRepository
-from app.modules.quality_gate.repositories.evaluation import EvaluationRepository
-from app.modules.quality_gate.repositories.sli_value import SLIValueRepository
-from app.modules.quality_gate.shared.params import EvalCreateParams
 from sqlalchemy.ext.asyncio import AsyncSession
+from tropek.db.models import Asset, AssetType
+from tropek.modules.quality_gate.repositories.annotation import AnnotationRepository
+from tropek.modules.quality_gate.repositories.baseline import BaselineRepository
+from tropek.modules.quality_gate.repositories.evaluation import EvaluationRepository
+from tropek.modules.quality_gate.repositories.sli_value import SLIValueRepository
+from tropek.modules.quality_gate.shared.params import EvalCreateParams
 
 _START = datetime(2026, 3, 12, 10, 0, 0, tzinfo=UTC)
 _END = datetime(2026, 3, 12, 10, 30, 0, tzinfo=UTC)

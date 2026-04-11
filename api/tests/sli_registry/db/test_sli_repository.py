@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 import pytest
-from app.modules.sli_registry.params import SLICreateParams
-from app.modules.sli_registry.repository import SLIRepository
 from sqlalchemy.ext.asyncio import AsyncSession
+from tropek.modules.sli_registry.params import SLICreateParams
+from tropek.modules.sli_registry.repository import SLIRepository
 
 _INDICATORS = {
     'response_time_p95': 'histogram_quantile(0.95, rate(http_request_duration_seconds_bucket{instance="$vm_ip"}[5m]))',

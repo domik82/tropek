@@ -6,7 +6,7 @@ import uuid
 from datetime import UTC, datetime
 from types import SimpleNamespace
 
-from app.modules.quality_gate.workflows.presentation.presenter import build_grouped_heatmap_response
+from tropek.modules.quality_gate.workflows.presentation.presenter import build_grouped_heatmap_response
 
 
 def _make_objective(
@@ -228,9 +228,7 @@ def test_has_notes_marks_columns_present_in_noted_set() -> None:
         slo_evaluations=[_make_slo_eval()],
     )
 
-    resp = build_grouped_heatmap_response(
-        'test-asset', [run_a, run_b, run_c], noted_run_ids={run_a.id, run_c.id}
-    )
+    resp = build_grouped_heatmap_response('test-asset', [run_a, run_b, run_c], noted_run_ids={run_a.id, run_c.id})
 
     by_id = {col.evaluation_id: col for col in resp.columns}
     assert by_id[run_a.id].has_notes is True

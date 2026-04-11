@@ -1,6 +1,6 @@
 import pytest
-from app.api.schemas import AggregatedQuerySpec, JobSubmitRequest, RawQuerySpec
 from pydantic import ValidationError
+from tropek_prometheus.api.schemas import AggregatedQuerySpec, JobSubmitRequest, RawQuerySpec
 
 
 def test_raw_query_spec_valid():

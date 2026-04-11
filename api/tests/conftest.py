@@ -7,8 +7,8 @@ from typing import Any
 
 import pytest
 import yaml
-from app.modules.quality_gate.evaluation_engine.slo_models import SLO
-from app.modules.quality_gate.evaluation_engine.slo_parser import build_slo
+from tropek.modules.quality_gate.evaluation_engine.slo_models import SLO
+from tropek.modules.quality_gate.evaluation_engine.slo_parser import build_slo
 
 _DATA_DIR = Path(__file__).parent / 'data'
 

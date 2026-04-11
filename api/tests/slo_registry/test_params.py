@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from app.modules.slo_registry.params import SLOCreateParams, SLOObjectiveParams
+from tropek.modules.slo_registry.params import SLOCreateParams, SLOObjectiveParams
 
 
 def test_slo_create_params_minimal() -> None:

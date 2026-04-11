@@ -10,10 +10,10 @@ from collections.abc import AsyncGenerator
 
 import pytest
 import pytest_asyncio
-from app.db.session import get_session
-from app.main import app
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
+from tropek.db.session import get_session
+from tropek.main import app
 
 
 @pytest_asyncio.fixture()
@@ -278,5 +278,3 @@ async def test_list_groups_tag_filter(async_client: AsyncClient) -> None:
     names = [g['name'] for g in data['items']]
     assert 'grp8a-group' in names
     assert 'grp8b-group' not in names
-
-

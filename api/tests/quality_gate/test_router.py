@@ -5,10 +5,10 @@ import uuid
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from app.db.session import get_session
-from app.main import app
-from app.queue import get_arq_pool
 from fastapi.testclient import TestClient
+from tropek.db.session import get_session
+from tropek.main import app
+from tropek.queue import get_arq_pool
 
 
 def _make_mock_session():
@@ -49,7 +49,7 @@ def client():
     app.dependency_overrides[get_session] = _mock_session
     app.dependency_overrides[get_arq_pool] = lambda: mock_pool
     try:
-        with patch('app.main.create_arq_pool', return_value=mock_pool), TestClient(app) as c:
+        with patch('tropek.main.create_arq_pool', return_value=mock_pool), TestClient(app) as c:
             yield c
     finally:
         app.dependency_overrides.clear()

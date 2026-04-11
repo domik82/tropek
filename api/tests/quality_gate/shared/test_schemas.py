@@ -1,7 +1,7 @@
 import uuid
 from datetime import UTC, datetime
 
-from app.modules.quality_gate.schemas import (
+from tropek.modules.quality_gate.schemas import (
     BatchPeriod,
     EvaluateBatchRequest,
     EvaluateBatchResponse,

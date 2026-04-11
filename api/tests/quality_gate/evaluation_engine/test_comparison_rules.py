@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import pytest
-from app.modules.assets.comparison_rules import validate_comparison_rules
 from pydantic import ValidationError
+from tropek.modules.assets.comparison_rules import validate_comparison_rules
 
 
 def test_valid_single_rule() -> None:

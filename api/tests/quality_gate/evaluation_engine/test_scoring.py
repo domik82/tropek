@@ -3,14 +3,14 @@ from __future__ import annotations
 from collections.abc import Callable
 
 import pytest
-from app.modules.quality_gate.evaluation_engine.scoring import (
+from tropek.modules.quality_gate.evaluation_engine.scoring import (
     IndicatorStatus,
     ObjectiveResult,
     calculate_total_score,
     score_objective,
 )
-from app.modules.quality_gate.evaluation_engine.slo_models import SLO
-from app.modules.quality_gate.evaluation_engine.slo_parser import build_slo
+from tropek.modules.quality_gate.evaluation_engine.slo_models import SLO
+from tropek.modules.quality_gate.evaluation_engine.slo_parser import build_slo
 
 
 # All criteria use AND logic — OR-block semantics were deliberately removed

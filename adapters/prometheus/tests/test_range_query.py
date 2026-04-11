@@ -5,8 +5,8 @@ from urllib.parse import parse_qs, urlparse
 
 import pytest
 import respx
-from app.core.prometheus_client import PrometheusClient, PrometheusQueryError
 from httpx import Response
+from tropek_prometheus.core.prometheus_client import PrometheusClient, PrometheusQueryError
 
 
 @pytest.fixture

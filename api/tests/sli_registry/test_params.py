@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from app.modules.sli_registry.params import SLICreateParams
+from tropek.modules.sli_registry.params import SLICreateParams
 
 
 def test_sli_create_params_minimal() -> None:
