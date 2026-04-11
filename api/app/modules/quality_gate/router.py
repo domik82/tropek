@@ -44,7 +44,7 @@ from app.modules.quality_gate.schemas.re_evaluation import (
     ReEvaluateResponse,
 )
 from app.modules.quality_gate.target_resolver import resolve_targets
-from app.modules.quality_gate.trigger_service import TriggerService
+from app.modules.quality_gate.workflows.trigger.trigger_service import TriggerService
 from app.queue import get_arq_pool
 
 router = APIRouter()
