@@ -8,14 +8,14 @@ from datetime import UTC, datetime, timedelta
 import pytest
 from app.db.models import Asset, AssetType, SLOEvaluation, SLOObjective
 from app.modules.quality_gate.repositories.baseline import BaselineRepository
+from app.modules.quality_gate.repositories.evaluation import EvaluationRepository
 from app.modules.quality_gate.repositories.indicator import IndicatorRepository
+from app.modules.quality_gate.schemas.re_evaluation import ReEvaluateRequest
 from app.modules.quality_gate.shared.params import EvalCreateParams
 from app.modules.quality_gate.workflows.re_evaluation.re_evaluation_service import (
     _persist_reeval_result,
     re_evaluate,
 )
-from app.modules.quality_gate.repositories.evaluation import EvaluationRepository
-from app.modules.quality_gate.schemas.re_evaluation import ReEvaluateRequest
 from app.modules.slo_registry.params import SLOCreateParams, SLOObjectiveParams
 from app.modules.slo_registry.repository import SLORepository
 from sqlalchemy import select

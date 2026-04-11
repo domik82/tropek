@@ -13,19 +13,21 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.cache.redis_cache import RedisCache
 from app.db.models import DataSource, SLIDefinition, SLODefinition, SLOEvaluation
-from app.modules.quality_gate.workflows.execution.adapter_client import HttpAdapterClient
-from app.modules.quality_gate.repositories.baseline import BaselineRepository
 from app.modules.quality_gate.evaluation_engine.evaluator import evaluate
 from app.modules.quality_gate.evaluation_engine.slo_models import SLO
 from app.modules.quality_gate.evaluation_engine.variables import substitute_variables
+from app.modules.quality_gate.repositories.baseline import BaselineRepository
+from app.modules.quality_gate.repositories.evaluation import EvaluationRepository
+from app.modules.quality_gate.repositories.indicator import IndicatorRepository, build_indicator_row_dicts
+from app.modules.quality_gate.repositories.sli_value import SLIValueRepository
+from app.modules.quality_gate.workflows.execution.adapter_client import HttpAdapterClient
 from app.modules.quality_gate.workflows.execution.evaluation_helpers import (
     build_eval_variables as _build_eval_variables_shared,
+)
+from app.modules.quality_gate.workflows.execution.evaluation_helpers import (
     build_slo_model,
     compute_baselines,
 )
-from app.modules.quality_gate.repositories.indicator import IndicatorRepository, build_indicator_row_dicts
-from app.modules.quality_gate.repositories.evaluation import EvaluationRepository
-from app.modules.quality_gate.repositories.sli_value import SLIValueRepository
 from app.modules.sli_registry.repository import SLIRepository
 from app.modules.slo_registry.repository import SLORepository
 
