@@ -12,7 +12,6 @@ from sqlalchemy.orm import selectinload
 
 from tropek.cache.redis_cache import RedisCache
 from tropek.db.models import IndicatorResultRow, SLODefinition, SLOEvaluation
-from tropek.modules.assets.repository import AssetRepository
 from tropek.modules.quality_gate.evaluation_engine.evaluator import evaluate
 from tropek.modules.quality_gate.evaluation_engine.slo_models import SLO
 from tropek.modules.quality_gate.repositories.annotation import AnnotationRepository
@@ -24,10 +23,10 @@ from tropek.modules.quality_gate.schemas.re_evaluation import (
     ReEvaluateRequest,
     ReEvaluateResponse,
 )
+from tropek.modules.quality_gate.shared.dependencies import QualityGateRepos
 from tropek.modules.quality_gate.shared.exceptions import BaselinePinConflictError
 from tropek.modules.quality_gate.workflows.execution.evaluation_helpers import build_slo_model, compute_baselines
 from tropek.modules.sli_registry.repository import SLIRepository
-from tropek.modules.slo_registry.repository import SLORepository
 
 # Earliest possible timezone-aware datetime for "no lower bound" queries
 _DATETIME_MIN = datetime.min.replace(tzinfo=UTC)
@@ -246,13 +245,13 @@ async def _rescore_single(  # noqa: PLR0913
 
 async def re_evaluate(
     request: ReEvaluateRequest,
-    session: AsyncSession,
+    repos: QualityGateRepos,
 ) -> ReEvaluateResponse:
     """Re-evaluate historical evaluations against a (possibly new) SLO version.
 
     Args:
         request: Validated re-evaluation request parameters.
-        session: Active async database session.
+        repos: Repository bundle with cache-aware instances.
 
     Returns:
         ReEvaluateResponse with per-evaluation before/after results.
@@ -260,11 +259,13 @@ async def re_evaluate(
     Raises:
         ValueError: If asset, SLO, or baseline anchor cannot be found.
     """
-    asset_repo = AssetRepository(session)
-    slo_repo = SLORepository(session)
-    sli_repo = SLIRepository(session)
-    eval_repo = EvaluationRepository(session)
-    baseline_repo = BaselineRepository(session)
+    session = repos.session
+    asset_repo = repos.asset_repo
+    slo_repo = repos.slo_repo
+    sli_repo = repos.sli_def_repo
+    eval_repo = repos.eval_repo
+    baseline_repo = repos.baseline_repo
+    cache = repos.cache
 
     # Resolve asset
     asset = await asset_repo.get_by_name(request.asset_name)
@@ -327,7 +328,7 @@ async def re_evaluate(
             baseline_repo=baseline_repo,
             sli_repo=sli_repo,
             session=session,
-            cache=None,
+            cache=cache,
             dry_run=request.dry_run,
             skip_pin_filter=skip_pin,
         )

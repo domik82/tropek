@@ -7,9 +7,7 @@ from datetime import datetime
 
 from arq.connections import ArqRedis
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy.ext.asyncio import AsyncSession
 
-from tropek.db.session import get_session
 from tropek.modules.common.exceptions import NotFoundError
 from tropek.modules.common.schemas import PagedResponse
 from tropek.modules.quality_gate.schemas import (
@@ -235,11 +233,11 @@ async def get_grouped_metric_heatmap(
 @router.post('/evaluations/re-evaluate', response_model=ReEvaluateResponse)
 async def re_evaluate_evaluations(
     body: ReEvaluateRequest,
-    session: AsyncSession = Depends(get_session),
+    repos: QualityGateRepos = Depends(get_qg_repos),
 ) -> ReEvaluateResponse:
     """Re-evaluate completed evaluations from stored SLI values."""
     try:
-        return await re_evaluate(body, session)
+        return await re_evaluate(body, repos)
     except BaselinePinConflictError as e:
         raise HTTPException(
             status_code=409,

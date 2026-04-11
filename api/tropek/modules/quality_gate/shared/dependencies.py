@@ -42,6 +42,7 @@ class QualityGateRepos:
     slo_repo: SLORepository
     ds_repo: DataSourceRepository
     session: AsyncSession
+    cache: RedisCache | None = None
 
 
 async def get_qg_repos(
@@ -64,4 +65,5 @@ async def get_qg_repos(
         slo_repo=SLORepository(session, cache=cache),
         ds_repo=DataSourceRepository(session),
         session=session,
+        cache=cache,
     )

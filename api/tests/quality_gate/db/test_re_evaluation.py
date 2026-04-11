@@ -9,17 +9,45 @@ import pytest
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from tropek.db.models import Asset, AssetType, SLOEvaluation, SLOObjective
+from tropek.modules.assets.repository import AssetGroupRepository, AssetRepository
+from tropek.modules.assignments.repository import AssignmentRepository
+from tropek.modules.datasource.repository import DataSourceRepository
+from tropek.modules.quality_gate.repositories.annotation import AnnotationRepository
 from tropek.modules.quality_gate.repositories.baseline import BaselineRepository
 from tropek.modules.quality_gate.repositories.evaluation import EvaluationRepository
+from tropek.modules.quality_gate.repositories.evaluation_run import EvaluationRunRepository
 from tropek.modules.quality_gate.repositories.indicator import IndicatorRepository
+from tropek.modules.quality_gate.repositories.sli_value import SLIValueRepository
+from tropek.modules.quality_gate.repositories.trend import TrendRepository
 from tropek.modules.quality_gate.schemas.re_evaluation import ReEvaluateRequest
+from tropek.modules.quality_gate.shared.dependencies import QualityGateRepos
 from tropek.modules.quality_gate.shared.params import EvalCreateParams
 from tropek.modules.quality_gate.workflows.re_evaluation.re_evaluation_service import (
     _persist_reeval_result,
     re_evaluate,
 )
+from tropek.modules.sli_registry.repository import SLIRepository
 from tropek.modules.slo_registry.params import SLOCreateParams, SLOObjectiveParams
 from tropek.modules.slo_registry.repository import SLORepository
+
+
+def _build_repos(session: AsyncSession) -> QualityGateRepos:
+    """Build a QualityGateRepos bundle without cache (tests don't have Redis)."""
+    return QualityGateRepos(
+        eval_repo=EvaluationRepository(session),
+        eval_run_repo=EvaluationRunRepository(session),
+        annotation_repo=AnnotationRepository(session),
+        sli_repo=SLIValueRepository(session),
+        trend_repo=TrendRepository(session),
+        baseline_repo=BaselineRepository(session),
+        asset_repo=AssetRepository(session),
+        asset_group_repo=AssetGroupRepository(session),
+        assignment_repo=AssignmentRepository(session),
+        sli_def_repo=SLIRepository(session),
+        slo_repo=SLORepository(session),
+        ds_repo=DataSourceRepository(session),
+        session=session,
+    )
 
 _START = datetime(2026, 3, 10, 10, 0, 0, tzinfo=UTC)
 _END = datetime(2026, 3, 10, 10, 30, 0, tzinfo=UTC)
@@ -249,7 +277,7 @@ async def test_re_evaluate_updates_results_and_adds_annotation(
             slo_name='re-eval-slo',
             from_date=datetime(2026, 3, 9, tzinfo=UTC),
         ),
-        db_session,
+        _build_repos(db_session),
     )
 
     assert response.affected_evaluations == 1
@@ -304,7 +332,7 @@ async def test_re_evaluate_dry_run_does_not_write(db_session: AsyncSession) -> N
             from_date=datetime(2026, 3, 9, tzinfo=UTC),
             dry_run=True,
         ),
-        db_session,
+        _build_repos(db_session),
     )
 
     assert response.affected_evaluations == 1
@@ -355,7 +383,7 @@ async def test_re_evaluate_cascading_baselines(db_session: AsyncSession) -> None
             slo_name='cascade-slo',
             from_date=datetime(2026, 3, 9, tzinfo=UTC),
         ),
-        db_session,
+        _build_repos(db_session),
     )
 
     assert response.affected_evaluations == 3
