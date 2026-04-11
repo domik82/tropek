@@ -17,7 +17,7 @@ from app.modules.quality_gate.repositories.annotation import AnnotationRepositor
 from app.modules.quality_gate.repositories.baseline import BaselineRepository
 from app.modules.quality_gate.evaluation_engine.evaluator import evaluate
 from app.modules.quality_gate.evaluation_engine.slo_models import SLO
-from app.modules.quality_gate.evaluation_helpers import build_slo_model, compute_baselines
+from app.modules.quality_gate.workflows.execution.evaluation_helpers import build_slo_model, compute_baselines
 from app.modules.quality_gate.shared.exceptions import BaselinePinConflictError
 from app.modules.quality_gate.repositories.indicator import IndicatorRepository, build_indicator_row_dicts
 from app.modules.quality_gate.repositories.evaluation import EvaluationRepository

@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import httpx
 import pytest
-from app.modules.quality_gate.adapter_client import HttpAdapterClient
+from app.modules.quality_gate.workflows.execution.adapter_client import HttpAdapterClient
 
 
 @pytest.mark.asyncio

@@ -7,7 +7,7 @@ from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from app.modules.quality_gate.worker import DefinitionLoadError, EvaluationSnapshot
+from app.modules.quality_gate.workflows.execution.evaluation_executor import DefinitionLoadError, EvaluationSnapshot
 from app.queue import (
     WorkerSettings,
     _sweeper_cron_seconds,

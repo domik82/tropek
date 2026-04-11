@@ -7,7 +7,7 @@ from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
-from app.modules.quality_gate.worker import (
+from app.modules.quality_gate.workflows.execution.evaluation_executor import (
     EvaluationSnapshot,
     FetchAndEvaluateResult,
     fetch_and_evaluate,
@@ -74,7 +74,7 @@ async def test_load_snapshot_marks_running_and_returns_snapshot() -> None:
     repo.get_by_id.return_value = _make_orm_evaluation()
 
     with patch(
-        'app.modules.quality_gate.worker.EvaluationRepository',
+        'app.modules.quality_gate.workflows.execution.evaluation_executor.EvaluationRepository',
         return_value=repo,
     ):
         result = await load_evaluation_snapshot(session, EVAL_ID, worker_id='w-1')
@@ -99,7 +99,7 @@ async def test_load_snapshot_returns_none_for_missing_eval() -> None:
     repo.get_by_id.return_value = None
 
     with patch(
-        'app.modules.quality_gate.worker.EvaluationRepository',
+        'app.modules.quality_gate.workflows.execution.evaluation_executor.EvaluationRepository',
         return_value=repo,
     ):
         result = await load_evaluation_snapshot(session, EVAL_ID)
@@ -114,7 +114,7 @@ async def test_load_snapshot_returns_none_for_already_completed() -> None:
     repo.get_by_id.return_value = _make_orm_evaluation(status='completed')
 
     with patch(
-        'app.modules.quality_gate.worker.EvaluationRepository',
+        'app.modules.quality_gate.workflows.execution.evaluation_executor.EvaluationRepository',
         return_value=repo,
     ):
         result = await load_evaluation_snapshot(session, EVAL_ID)
@@ -259,11 +259,11 @@ async def test_write_results_commits_eval_and_indicators() -> None:
 
     with (
         patch(
-            'app.modules.quality_gate.worker.EvaluationRepository',
+            'app.modules.quality_gate.workflows.execution.evaluation_executor.EvaluationRepository',
             return_value=mock_repo,
         ),
         patch(
-            'app.modules.quality_gate.worker.IndicatorRepository',
+            'app.modules.quality_gate.workflows.execution.evaluation_executor.IndicatorRepository',
             return_value=mock_indicator_repo,
         ),
     ):
@@ -311,7 +311,7 @@ async def test_write_sli_values_phase_writes_to_hypertable() -> None:
     mock_sli_repo = AsyncMock()
 
     with patch(
-        'app.modules.quality_gate.worker.SLIValueRepository',
+        'app.modules.quality_gate.workflows.execution.evaluation_executor.SLIValueRepository',
         return_value=mock_sli_repo,
     ):
         await write_sli_values_phase(
