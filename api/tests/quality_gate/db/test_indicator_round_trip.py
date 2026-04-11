@@ -16,10 +16,10 @@ from app.db.models import (
     SLODefinition,
     SLOObjective,
 )
-from app.modules.quality_gate.indicator_repository import IndicatorRepository
+from app.modules.quality_gate.repositories.indicator import IndicatorRepository
 from app.modules.quality_gate.shared.params import EvalCreateParams
 from app.modules.quality_gate.presenter import build_detail, build_summary
-from app.modules.quality_gate.repository import EvaluationRepository
+from app.modules.quality_gate.repositories.evaluation import EvaluationRepository
 from sqlalchemy.ext.asyncio import AsyncSession
 
 _START = datetime(2026, 3, 15, 10, 0, 0, tzinfo=UTC)

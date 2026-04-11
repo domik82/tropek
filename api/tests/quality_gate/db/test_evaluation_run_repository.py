@@ -5,7 +5,7 @@ from datetime import UTC, datetime
 
 import pytest
 from app.db.models import Asset, AssetType, SLOEvaluation
-from app.modules.quality_gate.evaluation_run_repository import (
+from app.modules.quality_gate.repositories.evaluation_run import (
     EvaluationRunRepository,
 )
 

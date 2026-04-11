@@ -13,14 +13,14 @@ from sqlalchemy.orm import selectinload
 from app.cache.redis_cache import RedisCache
 from app.db.models import IndicatorResultRow, SLODefinition, SLOEvaluation
 from app.modules.assets.repository import AssetRepository
-from app.modules.quality_gate.annotation_repository import AnnotationRepository
-from app.modules.quality_gate.baseline_repository import BaselineRepository
+from app.modules.quality_gate.repositories.annotation import AnnotationRepository
+from app.modules.quality_gate.repositories.baseline import BaselineRepository
 from app.modules.quality_gate.evaluation_engine.evaluator import evaluate
 from app.modules.quality_gate.evaluation_engine.slo_models import SLO
 from app.modules.quality_gate.evaluation_helpers import build_slo_model, compute_baselines
 from app.modules.quality_gate.shared.exceptions import BaselinePinConflictError
-from app.modules.quality_gate.indicator_repository import IndicatorRepository, build_indicator_row_dicts
-from app.modules.quality_gate.repository import EvaluationRepository
+from app.modules.quality_gate.repositories.indicator import IndicatorRepository, build_indicator_row_dicts
+from app.modules.quality_gate.repositories.evaluation import EvaluationRepository
 from app.modules.quality_gate.schemas.re_evaluation import (
     ReEvalResultItem,
     ReEvaluateRequest,

@@ -16,7 +16,7 @@ from app.db.models import (
     SLOEvaluation,
     SLOObjective,
 )
-from app.modules.quality_gate.indicator_repository import IndicatorRepository
+from app.modules.quality_gate.repositories.indicator import IndicatorRepository
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 

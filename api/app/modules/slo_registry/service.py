@@ -11,7 +11,7 @@ from app.db.models import Asset, DataSource, SLIDefinition
 from app.modules.assets.repository import AssetRepository
 from app.modules.common.exceptions import DomainValidationError, NotFoundError
 from app.modules.datasource.repository import DataSourceRepository
-from app.modules.quality_gate.baseline_repository import BaselineRepository
+from app.modules.quality_gate.repositories.baseline import BaselineRepository
 from app.modules.quality_gate.evaluation_engine.criteria import aggregate_values
 from app.modules.quality_gate.evaluation_engine.evaluator import evaluate
 from app.modules.quality_gate.evaluation_engine.slo_models import SLO, SLOParseError
