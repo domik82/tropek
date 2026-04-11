@@ -11,7 +11,6 @@ from logging.handlers import RotatingFileHandler
 from pathlib import Path
 from typing import Any
 
-import fakeredis.aioredis
 import httpx
 import redis.asyncio as aioredis
 from fastapi import FastAPI
@@ -98,6 +97,8 @@ def create_app(use_fakeredis: bool = False) -> FastAPI:
 
         redis_client: aioredis.Redis[Any]
         if use_fakeredis:
+            import fakeredis.aioredis
+
             redis_client = fakeredis.aioredis.FakeRedis()
         else:
             redis_client = aioredis.from_url(settings.redis_url, decode_responses=True)

@@ -6,9 +6,17 @@ from typing import Any
 
 import httpx
 import structlog
-from tropek_adapter_protocol import AdapterQueryResponse
+from pydantic import BaseModel, Field
 
 logger = structlog.get_logger()
+
+
+class AdapterQueryResponse(BaseModel):
+    """Expected JSON shape returned by any TROPEK-compatible adapter's POST /query."""
+
+    values: dict[str, float | None] = Field(default_factory=dict)
+    errors: dict[str, str] = Field(default_factory=dict)
+    metadata: dict[str, dict[str, Any]] = Field(default_factory=dict)
 
 
 class HttpAdapterClient:

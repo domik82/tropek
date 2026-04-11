@@ -28,6 +28,29 @@ services:
       timeout: 5s
       retries: 5
 
+  api-migrate:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    command: ["uv", "run", "alembic", "upgrade", "head"]
+    environment:
+      QG_DB_HOST: timescaledb
+      QG_DB_PORT: "5432"
+      QG_DB_NAME: tropek
+      QG_DB_USER: ${QG_DB_USER}
+      QG_DB_PASSWORD: ${QG_DB_PASSWORD}
+      QG_REDIS_HOST: redis
+      QG_REDIS_PORT: "6379"
+      QG_REDIS_PASSWORD: ${QG_REDIS_PASSWORD}
+      QG_SECRET_KEY: ${QG_SECRET_KEY}
+      QG_CONFIG_PATH: /app/config.yaml
+    volumes:
+      - ./config.yaml:/app/config.yaml:ro
+    depends_on:
+      timescaledb:
+        condition: service_healthy
+    restart: "no"
+
   api:
     build:
       context: ./api
@@ -35,8 +58,13 @@ services:
     ports:
       - "8080:8080"
     environment:
+      QG_DB_HOST: timescaledb
+      QG_DB_PORT: "5432"
+      QG_DB_NAME: tropek
       QG_DB_USER: ${QG_DB_USER}
       QG_DB_PASSWORD: ${QG_DB_PASSWORD}
+      QG_REDIS_HOST: redis
+      QG_REDIS_PORT: "6379"
       QG_REDIS_PASSWORD: ${QG_REDIS_PASSWORD}
       QG_SECRET_KEY: ${QG_SECRET_KEY}
       QG_CONFIG_PATH: /app/config.yaml
@@ -44,12 +72,14 @@ services:
       - ./config.yaml:/app/config.yaml:ro
       - results_data:/data/results
     depends_on:
+      api-migrate:
+        condition: service_completed_successfully
       timescaledb:
         condition: service_healthy
       redis:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8080/health')"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -58,10 +88,15 @@ services:
     build:
       context: ./api
       dockerfile: Dockerfile
-    command: ["uv", "run", "arq", "tropek.worker.WorkerSettings"]
+    command: ["uv", "run", "arq", "tropek.queue.WorkerSettings"]
     environment:
+      QG_DB_HOST: timescaledb
+      QG_DB_PORT: "5432"
+      QG_DB_NAME: tropek
       QG_DB_USER: ${QG_DB_USER}
       QG_DB_PASSWORD: ${QG_DB_PASSWORD}
+      QG_REDIS_HOST: redis
+      QG_REDIS_PORT: "6379"
       QG_REDIS_PASSWORD: ${QG_REDIS_PASSWORD}
       QG_SECRET_KEY: ${QG_SECRET_KEY}
       QG_CONFIG_PATH: /app/config.yaml
@@ -69,19 +104,19 @@ services:
       - ./config.yaml:/app/config.yaml:ro
       - results_data:/data/results
     depends_on:
+      api-migrate:
+        condition: service_completed_successfully
       timescaledb:
         condition: service_healthy
       redis:
         condition: service_healthy
-    deploy:
-      replicas: 4
 
   adapter-prometheus:
     build:
       context: ./adapters/prometheus
       dockerfile: Dockerfile
     ports:
-      - "8081:8081"
+      - "8081:8080"
     environment:
       PROMETHEUS_URL: ${PROMETHEUS_URL:-http://prometheus:9090}
       REDIS_URL: redis://:${QG_REDIS_PASSWORD}@redis:6379/1
@@ -110,6 +145,7 @@ services:
       api:
         condition: service_healthy
 
+  # --- Test infrastructure (separate ports, no dev conflicts) ---
   timescaledb-test:
     image: timescale/timescaledb:latest-pg16
     environment:
