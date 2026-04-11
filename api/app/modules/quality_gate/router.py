@@ -16,7 +16,7 @@ from app.modules.common.exceptions import NotFoundError
 from app.modules.common.schemas import PagedResponse
 from app.modules.quality_gate.shared.dependencies import QualityGateRepos, get_qg_repos
 from app.modules.quality_gate.shared.exceptions import BaselinePinConflictError
-from app.modules.quality_gate.presenter import build_detail, build_grouped_heatmap_response, build_summary
+from app.modules.quality_gate.workflows.presentation.presenter import build_detail, build_grouped_heatmap_response, build_summary
 from app.modules.quality_gate.workflows.re_evaluation.re_evaluation_service import re_evaluate
 from app.modules.quality_gate.schemas import (
     AnnotationCreate,
@@ -43,7 +43,7 @@ from app.modules.quality_gate.schemas.re_evaluation import (
     ReEvaluateRequest,
     ReEvaluateResponse,
 )
-from app.modules.quality_gate.target_resolver import resolve_targets
+from app.modules.quality_gate.workflows.presentation.target_resolver import resolve_targets
 from app.modules.quality_gate.workflows.trigger.trigger_service import TriggerService
 from app.queue import get_arq_pool
 

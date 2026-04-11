@@ -6,7 +6,7 @@ import uuid
 from datetime import UTC, datetime
 from types import SimpleNamespace
 
-from app.modules.quality_gate.presenter import build_grouped_heatmap_response
+from app.modules.quality_gate.workflows.presentation.presenter import build_grouped_heatmap_response
 
 
 def _make_objective(

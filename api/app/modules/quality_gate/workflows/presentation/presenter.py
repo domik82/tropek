@@ -20,7 +20,7 @@ from app.modules.quality_gate.schemas import (
     IndicatorResult,
     SloGroup,
 )
-from app.modules.quality_gate.target_resolver import resolve_targets
+from app.modules.quality_gate.workflows.presentation.target_resolver import resolve_targets
 
 
 def _read_stored_targets(
