@@ -7,11 +7,11 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 from app.db.models import Asset, AssetType, SLIDefinition, SLODefinition, SLOObjective
-from app.modules.quality_gate.indicator_repository import IndicatorRepository
+from app.modules.quality_gate.repositories.indicator import IndicatorRepository
 from app.modules.quality_gate.shared.params import EvalCreateParams
-from app.modules.quality_gate.repository import EvaluationRepository
-from app.modules.quality_gate.sli_repository import SLIValueRepository
-from app.modules.quality_gate.trend_repository import TrendRepository
+from app.modules.quality_gate.repositories.evaluation import EvaluationRepository
+from app.modules.quality_gate.repositories.sli_value import SLIValueRepository
+from app.modules.quality_gate.repositories.trend import TrendRepository
 from sqlalchemy.ext.asyncio import AsyncSession
 
 _BASE = datetime(2026, 3, 15, 10, 0, 0, tzinfo=UTC)

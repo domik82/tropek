@@ -13,7 +13,7 @@ import pytest
 from app.db.models import Asset, AssetType
 from app.modules.quality_gate.shared.exceptions import DuplicateEvaluationError
 from app.modules.quality_gate.shared.params import EvalCreateParams
-from app.modules.quality_gate.repository import EvaluationRepository
+from app.modules.quality_gate.repositories.evaluation import EvaluationRepository
 from sqlalchemy.ext.asyncio import AsyncSession
 
 _START = datetime(2026, 3, 15, 10, 0, 0, tzinfo=UTC)

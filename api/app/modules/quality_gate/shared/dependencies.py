@@ -15,12 +15,12 @@ from app.modules.assets.repository import (
 )
 from app.modules.assignments.repository import AssignmentRepository
 from app.modules.datasource.repository import DataSourceRepository
-from app.modules.quality_gate.annotation_repository import AnnotationRepository
-from app.modules.quality_gate.baseline_repository import BaselineRepository
-from app.modules.quality_gate.evaluation_run_repository import EvaluationRunRepository
-from app.modules.quality_gate.repository import EvaluationRepository
-from app.modules.quality_gate.sli_repository import SLIValueRepository
-from app.modules.quality_gate.trend_repository import TrendRepository
+from app.modules.quality_gate.repositories.annotation import AnnotationRepository
+from app.modules.quality_gate.repositories.baseline import BaselineRepository
+from app.modules.quality_gate.repositories.evaluation_run import EvaluationRunRepository
+from app.modules.quality_gate.repositories.evaluation import EvaluationRepository
+from app.modules.quality_gate.repositories.sli_value import SLIValueRepository
+from app.modules.quality_gate.repositories.trend import TrendRepository
 from app.modules.sli_registry.repository import SLIRepository
 from app.modules.slo_registry.repository import SLORepository
 
