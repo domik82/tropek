@@ -150,6 +150,10 @@ Research the codebase before editing. Never change code you haven't read.
 - Pytest: `asyncio_mode = auto`, mark infra-requiring tests with `@pytest.mark.integration`
 - Error messages: lowercase, no trailing period, prefer `"could not ..."` phrasing
 - Pre-commit runs ruff (lint + format), mypy, and eslint (UI) automatically
+- **Variable names must be human-readable.** No cryptic abbreviations like `stmt`, `val`, `subq`,
+  `col`, `res`, `tmp`, `cb`. Name variables after what they represent: `key_counts` not `stmt`,
+  `tag_value` not `val`, `keys_subquery` not `subq`. Single-letter names are only acceptable for
+  trivial loop counters (`i`, `x`) or well-known conventions (`db`, `id`).
 
 ### File naming: schemas vs models
 
