@@ -15,7 +15,7 @@ from tropek.modules.common.tag_mixin import TagQueryMixin
 class DataSourceRepository(TagQueryMixin):
     """Data access layer for datasource registrations."""
 
-    _tag_table = 'data_sources'
+    _tag_model = DataSource
 
     def __init__(self, session: AsyncSession) -> None:
         self._session = session

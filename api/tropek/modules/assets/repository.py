@@ -118,7 +118,7 @@ class AssetTypeRepository:
 class AssetRepository(TagQueryMixin):
     """CRUD for assets table."""
 
-    _tag_table = 'assets'
+    _tag_model = Asset
 
     def __init__(self, session: AsyncSession, cache: RedisCache | None = None) -> None:
         self._session = session
