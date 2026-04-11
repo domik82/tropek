@@ -18,7 +18,7 @@ from app.db.models import (
 )
 from app.modules.quality_gate.repositories.indicator import IndicatorRepository
 from app.modules.quality_gate.shared.params import EvalCreateParams
-from app.modules.quality_gate.presenter import build_detail, build_summary
+from app.modules.quality_gate.workflows.presentation.presenter import build_detail, build_summary
 from app.modules.quality_gate.repositories.evaluation import EvaluationRepository
 from sqlalchemy.ext.asyncio import AsyncSession
 
