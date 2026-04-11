@@ -14,8 +14,8 @@ from app.db.models import EvaluationRun
 from app.db.session import get_session
 from app.modules.common.exceptions import NotFoundError
 from app.modules.common.schemas import PagedResponse
-from app.modules.quality_gate.dependencies import QualityGateRepos, get_qg_repos
-from app.modules.quality_gate.exceptions import BaselinePinConflictError
+from app.modules.quality_gate.shared.dependencies import QualityGateRepos, get_qg_repos
+from app.modules.quality_gate.shared.exceptions import BaselinePinConflictError
 from app.modules.quality_gate.presenter import build_detail, build_grouped_heatmap_response, build_summary
 from app.modules.quality_gate.re_evaluator import re_evaluate
 from app.modules.quality_gate.schemas import (

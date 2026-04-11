@@ -8,7 +8,7 @@ from datetime import UTC, datetime, timedelta
 import pytest
 from app.db.models import Asset, AssetType
 from app.modules.quality_gate.evaluation_run_repository import EvaluationRunRepository
-from app.modules.quality_gate.params import EvalCreateParams
+from app.modules.quality_gate.shared.params import EvalCreateParams
 from app.modules.quality_gate.repository import EvaluationRepository
 from app.modules.quality_gate.trend_repository import TrendRepository
 from sqlalchemy.ext.asyncio import AsyncSession

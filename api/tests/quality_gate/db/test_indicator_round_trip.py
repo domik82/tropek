@@ -17,7 +17,7 @@ from app.db.models import (
     SLOObjective,
 )
 from app.modules.quality_gate.indicator_repository import IndicatorRepository
-from app.modules.quality_gate.params import EvalCreateParams
+from app.modules.quality_gate.shared.params import EvalCreateParams
 from app.modules.quality_gate.presenter import build_detail, build_summary
 from app.modules.quality_gate.repository import EvaluationRepository
 from sqlalchemy.ext.asyncio import AsyncSession

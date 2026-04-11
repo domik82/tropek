@@ -9,7 +9,7 @@ import pytest
 from app.db.models import Asset, AssetType, SLOEvaluation, SLOObjective
 from app.modules.quality_gate.baseline_repository import BaselineRepository
 from app.modules.quality_gate.indicator_repository import IndicatorRepository
-from app.modules.quality_gate.params import EvalCreateParams
+from app.modules.quality_gate.shared.params import EvalCreateParams
 from app.modules.quality_gate.re_evaluator import _persist_reeval_result, re_evaluate
 from app.modules.quality_gate.repository import EvaluationRepository
 from app.modules.quality_gate.schemas.re_evaluation import ReEvaluateRequest
