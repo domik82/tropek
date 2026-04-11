@@ -15,6 +15,11 @@ from app.db.session import get_session_factory
 from app.logging_config import configure_logging
 from app.modules.assets.router import router as assets_router
 from app.modules.assignments.router import router as assignments_router
+from app.modules.common.exception_handlers import (
+    conflict_handler,
+    domain_validation_handler,
+    not_found_handler,
+)
 from app.modules.common.exceptions import (
     ConflictError,
     DomainValidationError,
@@ -22,11 +27,6 @@ from app.modules.common.exceptions import (
 )
 from app.modules.datasource.router import router as datasource_router
 from app.modules.display_groups.router import router as display_groups_router
-from app.modules.common.exception_handlers import (
-    conflict_handler,
-    domain_validation_handler,
-    not_found_handler,
-)
 from app.modules.quality_gate.router import router as quality_gate_router
 from app.modules.sli_registry.router import router as sli_router
 from app.modules.slo_groups.router import router as slo_groups_router

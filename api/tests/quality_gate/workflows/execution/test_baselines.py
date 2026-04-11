@@ -88,7 +88,7 @@ async def test_resolve_baselines_skips_none_values() -> None:
         _make_baseline_eval('ev1', [('rt', 100.0), ('err', None)]),
     ]
 
-    baselines, ids = await _resolve_baselines(
+    baselines, _ids = await _resolve_baselines(
         baseline_repo, slo, ev, ['rt', 'err'],
     )
 

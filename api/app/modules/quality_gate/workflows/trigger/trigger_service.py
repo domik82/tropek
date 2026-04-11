@@ -7,18 +7,18 @@ from datetime import datetime
 
 from arq.connections import ArqRedis
 
-from app.modules.quality_gate.shared.dependencies import QualityGateRepos
-from app.modules.quality_gate.shared.exceptions import (
-    AssetNotFoundError,
-    EvaluationError,
-)
-from app.modules.quality_gate.shared.params import EvalCreateParams
 from app.modules.quality_gate.schemas import (
     EvaluateBatchRequest,
     EvaluateBatchResponse,
     EvaluateSingleRequest,
     EvaluateSingleResponse,
 )
+from app.modules.quality_gate.shared.dependencies import QualityGateRepos
+from app.modules.quality_gate.shared.exceptions import (
+    AssetNotFoundError,
+    EvaluationError,
+)
+from app.modules.quality_gate.shared.params import EvalCreateParams
 from app.modules.quality_gate.workflows.trigger.trigger_resolver import (
     resolve_all_slos_for_asset,
     resolve_single_trigger,

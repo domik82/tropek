@@ -5,6 +5,9 @@ Used by both the async worker and the SLO test-run service.
 
 from __future__ import annotations
 
+from collections.abc import Sequence
+
+from app.modules.quality_gate.evaluation_engine.constants import AggregateFunction
 from app.modules.quality_gate.evaluation_engine.criteria import aggregate_values
 from app.modules.quality_gate.evaluation_engine.slo_models import SLO
 from app.modules.quality_gate.evaluation_engine.slo_parser import build_slo
@@ -78,8 +81,8 @@ def build_slo_model(slo_def: object) -> SLO:
 
 
 def compute_baselines(
-    baseline_evals: list[object],
-    aggregate_function: str,
+    baseline_evals: Sequence[object],
+    aggregate_function: AggregateFunction,
 ) -> tuple[dict[str, float | None], list[str]]:
     """Aggregate baseline values from previous evaluations.
 

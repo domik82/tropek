@@ -109,7 +109,12 @@ tropek/
 │   │   ├── modules/
 │   │   │   ├── assets/           # Asset (project/service) group CRUD
 │   │   │   ├── datasource/       # Datasource (adapter) registry
-│   │   │   ├── quality_gate/     # Evaluation router + engine
+│   │   │   ├── quality_gate/     # Evaluation router + layered architecture
+│   │   │   │   ├── evaluation_engine/  # Pure scoring logic (zero I/O)
+│   │   │   │   ├── repositories/       # Data access layer
+│   │   │   │   ├── workflows/          # Orchestration (trigger, execution, re-eval, presentation)
+│   │   │   │   ├── schemas/            # API contracts
+│   │   │   │   └── shared/             # Cross-cutting (exceptions, params, DI)
 │   │   │   ├── sli_registry/     # SLI definition CRUD
 │   │   │   └── slo_registry/     # Versioned SLO CRUD
 │   │   └── ...
@@ -133,6 +138,10 @@ TROPEK's SLO format is a superset of Keptn 1.0: **SLI queries are embedded** in 
 ### Repository/Database Layer
 
 SQLAlchemy async ORM (asyncpg driver) with Alembic migrations. Repositories in `api/app/modules/*/repositories.py` wrap DB access. Integration tests hit a real database — no mocks for DB layer.
+
+## Working Practices
+
+Research the codebase before editing. Never change code you haven't read.
 
 ## Code Conventions
 

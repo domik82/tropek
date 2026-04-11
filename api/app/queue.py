@@ -19,10 +19,10 @@ from app.config import get_settings
 from app.db.session import get_session_factory
 from app.logging_config import configure_logging
 from app.modules.datasource.repository import DataSourceRepository
-from app.modules.quality_gate.workflows.execution.adapter_client import HttpAdapterClient
 from app.modules.quality_gate.repositories.baseline import BaselineRepository
-from app.modules.quality_gate.repositories.evaluation_run import EvaluationRunRepository
 from app.modules.quality_gate.repositories.evaluation import EvaluationRepository
+from app.modules.quality_gate.repositories.evaluation_run import EvaluationRunRepository
+from app.modules.quality_gate.workflows.execution.adapter_client import HttpAdapterClient
 from app.modules.quality_gate.workflows.execution.evaluation_executor import (
     DefinitionLoadError,
     _load_definitions,

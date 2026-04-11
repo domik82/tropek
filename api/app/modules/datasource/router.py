@@ -7,9 +7,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import DataSource
 from app.db.session import get_session
-from app.modules.common.schemas import TagKeyCount, TagValueCount
 from app.modules.common.exceptions import NotFoundError
-from app.modules.common.schemas import PagedResponse
+from app.modules.common.schemas import PagedResponse, TagKeyCount, TagValueCount
 from app.modules.datasource.repository import DataSourceRepository
 from app.modules.datasource.schemas import DataSourceCreate, DataSourceRead, DataSourceUpdate
 

@@ -13,9 +13,9 @@ import pytest
 from app.db.models import Asset, AssetType
 from app.modules.quality_gate.repositories.annotation import AnnotationRepository
 from app.modules.quality_gate.repositories.baseline import BaselineRepository
-from app.modules.quality_gate.shared.params import EvalCreateParams
 from app.modules.quality_gate.repositories.evaluation import EvaluationRepository
 from app.modules.quality_gate.repositories.sli_value import SLIValueRepository
+from app.modules.quality_gate.shared.params import EvalCreateParams
 from sqlalchemy.ext.asyncio import AsyncSession
 
 _START = datetime(2026, 3, 12, 10, 0, 0, tzinfo=UTC)

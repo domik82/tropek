@@ -33,7 +33,6 @@ from app.modules.quality_gate.schemas.heatmap import (
     MetricHeatmapResponse,
     SloGroup,
 )
-from app.modules.quality_gate.shared.exceptions import BaselinePinConflictError
 from app.modules.quality_gate.schemas.re_evaluation import (
     ReEvalResultItem,
     ReEvaluateRequest,
@@ -46,6 +45,7 @@ from app.modules.quality_gate.schemas.trigger import (
     EvaluateSingleRequest,
     EvaluateSingleResponse,
 )
+from app.modules.quality_gate.shared.exceptions import BaselinePinConflictError
 
 __all__ = [
     'AnnotationCreate',

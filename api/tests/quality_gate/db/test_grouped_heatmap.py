@@ -7,10 +7,10 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 from app.db.models import Asset, AssetType
-from app.modules.quality_gate.repositories.evaluation_run import EvaluationRunRepository
-from app.modules.quality_gate.shared.params import EvalCreateParams
 from app.modules.quality_gate.repositories.evaluation import EvaluationRepository
+from app.modules.quality_gate.repositories.evaluation_run import EvaluationRunRepository
 from app.modules.quality_gate.repositories.trend import TrendRepository
+from app.modules.quality_gate.shared.params import EvalCreateParams
 from sqlalchemy.ext.asyncio import AsyncSession
 
 _BASE = datetime(2026, 3, 15, 10, 0, 0, tzinfo=UTC)

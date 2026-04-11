@@ -17,8 +17,8 @@ from app.modules.assignments.repository import AssignmentRepository
 from app.modules.datasource.repository import DataSourceRepository
 from app.modules.quality_gate.repositories.annotation import AnnotationRepository
 from app.modules.quality_gate.repositories.baseline import BaselineRepository
-from app.modules.quality_gate.repositories.evaluation_run import EvaluationRunRepository
 from app.modules.quality_gate.repositories.evaluation import EvaluationRepository
+from app.modules.quality_gate.repositories.evaluation_run import EvaluationRunRepository
 from app.modules.quality_gate.repositories.sli_value import SLIValueRepository
 from app.modules.quality_gate.repositories.trend import TrendRepository
 from app.modules.sli_registry.repository import SLIRepository

@@ -4,20 +4,14 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
-from typing import Any
 
 from arq.connections import ArqRedis
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.models import EvaluationRun
 from app.db.session import get_session
 from app.modules.common.exceptions import NotFoundError
 from app.modules.common.schemas import PagedResponse
-from app.modules.quality_gate.shared.dependencies import QualityGateRepos, get_qg_repos
-from app.modules.quality_gate.shared.exceptions import BaselinePinConflictError
-from app.modules.quality_gate.workflows.presentation.presenter import build_detail, build_grouped_heatmap_response, build_summary
-from app.modules.quality_gate.workflows.re_evaluation.re_evaluation_service import re_evaluate
 from app.modules.quality_gate.schemas import (
     AnnotationCreate,
     AnnotationHide,
@@ -43,7 +37,14 @@ from app.modules.quality_gate.schemas.re_evaluation import (
     ReEvaluateRequest,
     ReEvaluateResponse,
 )
-from app.modules.quality_gate.workflows.presentation.target_resolver import resolve_targets
+from app.modules.quality_gate.shared.dependencies import QualityGateRepos, get_qg_repos
+from app.modules.quality_gate.shared.exceptions import BaselinePinConflictError
+from app.modules.quality_gate.workflows.presentation.presenter import (
+    build_detail,
+    build_grouped_heatmap_response,
+    build_summary,
+)
+from app.modules.quality_gate.workflows.re_evaluation.re_evaluation_service import re_evaluate
 from app.modules.quality_gate.workflows.trigger.trigger_service import TriggerService
 from app.queue import get_arq_pool
 
@@ -354,6 +355,8 @@ async def pin_baseline(
     if ev.invalidated:
         raise HTTPException(status_code=409, detail='cannot pin an invalidated evaluation')
     updated = await repos.eval_repo.pin_baseline(eval_id, reason=body.reason, author=body.author)
+    if updated is None:
+        raise NotFoundError('evaluation', str(eval_id))
     return build_detail(updated)
 
 
@@ -367,6 +370,8 @@ async def unpin_baseline(
     if ev is None:
         raise NotFoundError('evaluation', str(eval_id))
     updated = await repos.eval_repo.unpin_baseline(eval_id)
+    if updated is None:
+        raise NotFoundError('evaluation', str(eval_id))
     return build_detail(updated)
 
 
@@ -387,6 +392,8 @@ async def override_status(
     updated = await repos.eval_repo.override_status(
         eval_id, new_result=body.new_result, reason=body.reason, author=body.author
     )
+    if updated is None:
+        raise NotFoundError('evaluation', str(eval_id))
     return build_detail(updated)
 
 
@@ -402,6 +409,8 @@ async def restore_override(
     if ev.original_result is None:
         raise HTTPException(status_code=409, detail='evaluation has no override to restore')
     updated = await repos.eval_repo.restore_override(eval_id)
+    if updated is None:
+        raise NotFoundError('evaluation', str(eval_id))
     return build_detail(updated)
 
 
