@@ -6,7 +6,7 @@ import re
 
 from pydantic import BaseModel
 
-from app.modules.quality_gate.engine.constants import AggregateFunction, CriteriaType
+from app.modules.quality_gate.evaluation_engine.constants import AggregateFunction, CriteriaType
 
 
 class ParsedCriteria(BaseModel):

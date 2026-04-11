@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pydantic import BaseModel, Field
 
-from app.modules.quality_gate.engine.constants import (
+from app.modules.quality_gate.evaluation_engine.constants import (
     AggregateFunction,
     CompareWith,
     IncludeResultWithScore,

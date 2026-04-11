@@ -12,7 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.db.models import Asset, EvaluationAnnotation, EvaluationRun, IndicatorResultRow, SLOEvaluation
-from app.modules.quality_gate.engine.constants import EvaluationStatus
+from app.modules.quality_gate.evaluation_engine.constants import EvaluationStatus
 from app.modules.quality_gate.exceptions import DuplicateEvaluationError
 from app.modules.quality_gate.params import EvalCreateParams
 

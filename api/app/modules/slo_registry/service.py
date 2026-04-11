@@ -12,11 +12,11 @@ from app.modules.assets.repository import AssetRepository
 from app.modules.common.exceptions import DomainValidationError, NotFoundError
 from app.modules.datasource.repository import DataSourceRepository
 from app.modules.quality_gate.baseline_repository import BaselineRepository
-from app.modules.quality_gate.engine.criteria import aggregate_values
-from app.modules.quality_gate.engine.evaluator import evaluate
-from app.modules.quality_gate.engine.slo_models import SLO, SLOParseError
-from app.modules.quality_gate.engine.slo_parser import build_slo
-from app.modules.quality_gate.engine.variables import build_variables, substitute_variables
+from app.modules.quality_gate.evaluation_engine.criteria import aggregate_values
+from app.modules.quality_gate.evaluation_engine.evaluator import evaluate
+from app.modules.quality_gate.evaluation_engine.slo_models import SLO, SLOParseError
+from app.modules.quality_gate.evaluation_engine.slo_parser import build_slo
+from app.modules.quality_gate.evaluation_engine.variables import build_variables, substitute_variables
 from app.modules.quality_gate.schemas import IndicatorResult
 from app.modules.sli_registry.repository import SLIRepository
 from app.modules.slo_registry.schemas import (

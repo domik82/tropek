@@ -9,7 +9,7 @@ from sqlalchemy import delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import IndicatorResultRow
-from app.modules.quality_gate.engine.result_models import IndicatorResult
+from app.modules.quality_gate.evaluation_engine.result_models import IndicatorResult
 
 
 def build_indicator_row_dicts(

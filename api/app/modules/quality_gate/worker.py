@@ -15,9 +15,9 @@ from app.cache.redis_cache import RedisCache
 from app.db.models import DataSource, SLIDefinition, SLODefinition, SLOEvaluation
 from app.modules.quality_gate.adapter_client import HttpAdapterClient
 from app.modules.quality_gate.baseline_repository import BaselineRepository
-from app.modules.quality_gate.engine.evaluator import evaluate
-from app.modules.quality_gate.engine.slo_models import SLO
-from app.modules.quality_gate.engine.variables import substitute_variables
+from app.modules.quality_gate.evaluation_engine.evaluator import evaluate
+from app.modules.quality_gate.evaluation_engine.slo_models import SLO
+from app.modules.quality_gate.evaluation_engine.variables import substitute_variables
 from app.modules.quality_gate.evaluation_helpers import (
     build_eval_variables as _build_eval_variables_shared,
     build_slo_model,

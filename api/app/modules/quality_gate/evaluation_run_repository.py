@@ -9,7 +9,7 @@ from sqlalchemy import exists, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import EvaluationRun, SLOEvaluation
-from app.modules.quality_gate.engine.constants import RESULT_RANK, EvaluationStatus
+from app.modules.quality_gate.evaluation_engine.constants import RESULT_RANK, EvaluationStatus
 
 
 class EvaluationRunRepository:

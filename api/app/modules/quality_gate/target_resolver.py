@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from app.modules.quality_gate.engine.criteria import evaluate_criteria, parse_criteria_string
+from app.modules.quality_gate.evaluation_engine.criteria import evaluate_criteria, parse_criteria_string
 
 
 def resolve_targets(

@@ -12,7 +12,7 @@ from sqlalchemy.orm import selectinload
 
 from app.cache.redis_cache import RedisCache
 from app.db.models import IndicatorResultRow, SLOEvaluation
-from app.modules.quality_gate.engine.constants import EvaluationStatus
+from app.modules.quality_gate.evaluation_engine.constants import EvaluationStatus
 
 
 class BaselineRepository:
