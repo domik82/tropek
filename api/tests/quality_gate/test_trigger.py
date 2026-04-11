@@ -8,7 +8,7 @@ from unittest.mock import AsyncMock
 import pytest
 from app.modules.assignments.repository import ResolvedAssignment
 from app.modules.quality_gate.shared.exceptions import AssetNotFoundError, SLONotConfiguredError
-from app.modules.quality_gate.trigger import (
+from app.modules.quality_gate.workflows.trigger.trigger_resolver import (
     resolve_all_slos_for_asset,
     resolve_single_trigger,
 )

@@ -19,7 +19,7 @@ from app.modules.quality_gate.schemas import (
     EvaluateSingleRequest,
     EvaluateSingleResponse,
 )
-from app.modules.quality_gate.trigger import (
+from app.modules.quality_gate.workflows.trigger.trigger_resolver import (
     resolve_all_slos_for_asset,
     resolve_single_trigger,
 )
