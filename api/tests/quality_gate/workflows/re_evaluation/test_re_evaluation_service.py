@@ -6,8 +6,8 @@ import uuid
 from datetime import UTC, datetime
 
 import pytest
-from app.modules.quality_gate.schemas.re_evaluation import ReEvaluateRequest
 from pydantic import ValidationError
+from tropek.modules.quality_gate.schemas.re_evaluation import ReEvaluateRequest
 
 
 def test_request_requires_exactly_one_scope() -> None:

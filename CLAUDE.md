@@ -34,7 +34,7 @@ uv sync                                               # install workspace deps
 uv run --directory api pytest tests/ -m "not integration" -q  # unit tests
 uv run --directory api pytest tests/ -m integration -v        # integration tests
 uv run ruff check api/ adapters/                              # lint
-uv run mypy api/app adapters/prometheus/app                   # typecheck
+uv run mypy api/tropek adapters/prometheus/tropek_prometheus   # typecheck
 ```
 
 ## Integration Tests — REQUIRED STEPS
@@ -90,7 +90,7 @@ Never use `set -a && source .env.test && set +a` or any bash chaining for this p
 5. Results written to TimescaleDB, cached in Redis
 6. Client fetches result via GET
 
-### Core Evaluation Engine (`api/app/modules/quality_gate/engine/`)
+### Core Evaluation Engine (`api/tropek/modules/quality_gate/evaluation_engine/`)
 
 Zero-I/O pure Python logic ported from Keptn's Go lighthouse-service. All unit-testable without database or network:
 
@@ -105,7 +105,7 @@ Zero-I/O pure Python logic ported from Keptn's Go lighthouse-service. All unit-t
 ```
 tropek/
 ├── api/                          # FastAPI app, worker, DB models, repositories
-│   ├── app/
+│   ├── tropek/
 │   │   ├── modules/
 │   │   │   ├── assets/           # Asset (project/service) group CRUD
 │   │   │   ├── datasource/       # Datasource (adapter) registry
@@ -137,7 +137,7 @@ TROPEK's SLO format is a superset of Keptn 1.0: **SLI queries are embedded** in 
 
 ### Repository/Database Layer
 
-SQLAlchemy async ORM (asyncpg driver) with Alembic migrations. Repositories in `api/app/modules/*/repositories.py` wrap DB access. Integration tests hit a real database — no mocks for DB layer.
+SQLAlchemy async ORM (asyncpg driver) with Alembic migrations. Repositories in `api/tropek/modules/*/repositories.py` wrap DB access. Integration tests hit a real database — no mocks for DB layer.
 
 ## Working Practices
 
@@ -154,11 +154,11 @@ Research the codebase before editing. Never change code you haven't read.
 ### File naming: schemas vs models
 
 - `schemas.py` = Pydantic classes (API serialization layer). Request/response shapes.
-- `models.py` = SQLAlchemy ORM classes (DB persistence layer). Lives in `api/app/db/models.py`.
+- `models.py` = SQLAlchemy ORM classes (DB persistence layer). Lives in `api/tropek/db/models.py`.
 - `params.py` = Pydantic parameter objects passed between service layers (not exposed in API).
 
 Never name a file containing Pydantic classes `models.py` — that collides with the ORM layer.
-All request body models must inherit `StrictInput` (from `app.modules.common.schemas`)
+All request body models must inherit `StrictInput` (from `tropek.modules.common.schemas`)
 to reject unknown fields. Response and internal models stay on `BaseModel`.
 
 ### Python imports

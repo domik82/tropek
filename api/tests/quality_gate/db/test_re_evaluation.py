@@ -6,20 +6,20 @@ import uuid
 from datetime import UTC, datetime, timedelta
 
 import pytest
-from app.db.models import Asset, AssetType, SLOEvaluation, SLOObjective
-from app.modules.quality_gate.repositories.baseline import BaselineRepository
-from app.modules.quality_gate.repositories.evaluation import EvaluationRepository
-from app.modules.quality_gate.repositories.indicator import IndicatorRepository
-from app.modules.quality_gate.schemas.re_evaluation import ReEvaluateRequest
-from app.modules.quality_gate.shared.params import EvalCreateParams
-from app.modules.quality_gate.workflows.re_evaluation.re_evaluation_service import (
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+from tropek.db.models import Asset, AssetType, SLOEvaluation, SLOObjective
+from tropek.modules.quality_gate.repositories.baseline import BaselineRepository
+from tropek.modules.quality_gate.repositories.evaluation import EvaluationRepository
+from tropek.modules.quality_gate.repositories.indicator import IndicatorRepository
+from tropek.modules.quality_gate.schemas.re_evaluation import ReEvaluateRequest
+from tropek.modules.quality_gate.shared.params import EvalCreateParams
+from tropek.modules.quality_gate.workflows.re_evaluation.re_evaluation_service import (
     _persist_reeval_result,
     re_evaluate,
 )
-from app.modules.slo_registry.params import SLOCreateParams, SLOObjectiveParams
-from app.modules.slo_registry.repository import SLORepository
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
+from tropek.modules.slo_registry.params import SLOCreateParams, SLOObjectiveParams
+from tropek.modules.slo_registry.repository import SLORepository
 
 _START = datetime(2026, 3, 10, 10, 0, 0, tzinfo=UTC)
 _END = datetime(2026, 3, 10, 10, 30, 0, tzinfo=UTC)

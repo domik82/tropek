@@ -10,12 +10,12 @@ from collections.abc import AsyncGenerator
 
 import pytest
 import pytest_asyncio
-from app.db.session import get_session
-from app.main import app
-from app.modules.slo_registry.params import SLOCreateParams, SLOObjectiveParams
-from app.modules.slo_registry.repository import SLORepository
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
+from tropek.db.session import get_session
+from tropek.main import app
+from tropek.modules.slo_registry.params import SLOCreateParams, SLOObjectiveParams
+from tropek.modules.slo_registry.repository import SLORepository
 
 OBJECTIVES_V1 = [SLOObjectiveParams(sli='m', pass_threshold=['<100'])]
 OBJECTIVES_V2 = [SLOObjectiveParams(sli='m', pass_threshold=['<80'])]

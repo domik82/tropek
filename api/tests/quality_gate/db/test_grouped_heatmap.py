@@ -6,12 +6,12 @@ import uuid
 from datetime import UTC, datetime, timedelta
 
 import pytest
-from app.db.models import Asset, AssetType
-from app.modules.quality_gate.repositories.evaluation import EvaluationRepository
-from app.modules.quality_gate.repositories.evaluation_run import EvaluationRunRepository
-from app.modules.quality_gate.repositories.trend import TrendRepository
-from app.modules.quality_gate.shared.params import EvalCreateParams
 from sqlalchemy.ext.asyncio import AsyncSession
+from tropek.db.models import Asset, AssetType
+from tropek.modules.quality_gate.repositories.evaluation import EvaluationRepository
+from tropek.modules.quality_gate.repositories.evaluation_run import EvaluationRunRepository
+from tropek.modules.quality_gate.repositories.trend import TrendRepository
+from tropek.modules.quality_gate.shared.params import EvalCreateParams
 
 _BASE = datetime(2026, 3, 15, 10, 0, 0, tzinfo=UTC)
 
@@ -100,12 +100,8 @@ async def test_grouped_heatmap_eval_name_filter(db_session: AsyncSession) -> Non
             period_start=_BASE,
             period_end=_BASE + timedelta(hours=1),
         )
-        await run_repo.mark_completed(
-            run.id, result='pass', achieved_points=10, total_points=10
-        )
+        await run_repo.mark_completed(run.id, result='pass', achieved_points=10, total_points=10)
 
-    runs = await trend_repo.get_grouped_metric_heatmap(
-        asset_id=asset_id, eval_name=['daily']
-    )
+    runs = await trend_repo.get_grouped_metric_heatmap(asset_id=asset_id, eval_name=['daily'])
     assert len(runs) == 1
     assert runs[0].eval_name == 'daily'

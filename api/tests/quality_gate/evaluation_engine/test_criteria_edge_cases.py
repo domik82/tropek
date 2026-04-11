@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import pytest
-from app.modules.quality_gate.evaluation_engine.criteria import (
+from tropek.modules.quality_gate.evaluation_engine.criteria import (
     aggregate_values,
     evaluate_criteria,
     parse_criteria_string,

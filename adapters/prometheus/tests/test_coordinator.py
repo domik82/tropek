@@ -2,10 +2,10 @@
 
 import fakeredis.aioredis
 import pytest
-from app.config import Settings
-from app.core.coordinator import Coordinator
-from app.core.strategies.raw import RawQueryStrategy
-from app.redis.repository import JobRepository
+from tropek_prometheus.config import Settings
+from tropek_prometheus.core.coordinator import Coordinator
+from tropek_prometheus.core.strategies.raw import RawQueryStrategy
+from tropek_prometheus.redis.repository import JobRepository
 
 
 class FakePrometheusClient:

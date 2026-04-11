@@ -88,7 +88,7 @@ uv run --directory api alembic upgrade head
 
 echo "=== Starting mock adapter on :$MOCK_PORT (log: $LOG_DIR_LOCAL/mock-adapter.log) ==="
 uv run --directory adapters/mock \
-    uvicorn app.main:app --host 127.0.0.1 --port $MOCK_PORT --log-level info &
+    uvicorn tropek_mock.main:app --host 127.0.0.1 --port $MOCK_PORT --log-level info &
 PIDS+=($!)
 
 echo "=== Starting Prometheus adapter on :$ADAPTER_PORT (log: $LOG_DIR_LOCAL/prometheus-adapter.log) ==="
@@ -96,18 +96,18 @@ PROMETHEUS_URL="$PROMETHEUS_URL" \
 REDIS_URL="$ADAPTER_REDIS_URL" \
 PORT="$ADAPTER_PORT" \
 uv run --directory adapters/prometheus \
-    uvicorn app.main:app --host 127.0.0.1 --port $ADAPTER_PORT --log-level info &
+    uvicorn tropek_prometheus.main:app --host 127.0.0.1 --port $ADAPTER_PORT --log-level info &
 PIDS+=($!)
 
 echo "=== Starting API on :$API_PORT (log: $LOG_DIR_LOCAL/api.log) ==="
-uv run --directory api uvicorn app.main:app --host 127.0.0.1 --port $API_PORT &
+uv run --directory api uvicorn tropek.main:app --host 127.0.0.1 --port $API_PORT &
 PIDS+=($!)
 
 echo "=== Starting arq workers x2 (log: $LOG_DIR_LOCAL/worker.log) ==="
-# PYTHONPATH=. resolves to api/ (the uv --directory target), making app.queue importable
-PYTHONPATH=. uv run --directory api arq app.queue.WorkerSettings &
+# PYTHONPATH=. resolves to api/ (the uv --directory target), making tropek.queue importable
+PYTHONPATH=. uv run --directory api arq tropek.queue.WorkerSettings &
 PIDS+=($!)
-PYTHONPATH=. uv run --directory api arq app.queue.WorkerSettings &
+PYTHONPATH=. uv run --directory api arq tropek.queue.WorkerSettings &
 PIDS+=($!)
 
 echo "    waiting for API..."

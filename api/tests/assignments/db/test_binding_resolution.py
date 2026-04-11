@@ -15,11 +15,11 @@ from unittest.mock import AsyncMock
 
 import pytest
 import pytest_asyncio
-from app.db.session import get_session
-from app.main import app
-from app.queue import get_arq_pool
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
+from tropek.db.session import get_session
+from tropek.main import app
+from tropek.queue import get_arq_pool
 
 
 @pytest_asyncio.fixture()
@@ -45,7 +45,8 @@ def prefix() -> str:
 
 
 async def _create_base_entities(
-    client: AsyncClient, prefix: str,
+    client: AsyncClient,
+    prefix: str,
 ) -> tuple[str, str, str]:
     """Create asset type, datasource, and SLI shared across binding tests.
 
@@ -77,7 +78,10 @@ async def _create_base_entities(
 
 
 async def _create_slo(
-    client: AsyncClient, slo_name: str, sli_name: str, kind: str = 'standard',
+    client: AsyncClient,
+    slo_name: str,
+    sli_name: str,
+    kind: str = 'standard',
     variables: dict | None = None,
 ) -> str:
     """Create an SLO definition and return its ID."""
@@ -105,7 +109,9 @@ async def _create_asset(client: AsyncClient, name: str, type_name: str) -> None:
 
 
 async def _create_group_with_member(
-    client: AsyncClient, group_name: str, asset_name: str,
+    client: AsyncClient,
+    group_name: str,
+    asset_name: str,
 ) -> None:
     """Create an asset group and add one member."""
     resp = await client.post('/asset-groups', json={'name': group_name})
@@ -141,7 +147,8 @@ async def _evaluate(client: AsyncClient, asset_name: str) -> tuple[int, dict]:
 
 @pytest.mark.integration
 async def test_evaluate_direct_slo_assignment(
-    async_client: AsyncClient, prefix: str,
+    async_client: AsyncClient,
+    prefix: str,
 ) -> None:
     """Asset with direct SLO assignment — evaluation discovers the SLO."""
     type_name, ds_name, sli_name = await _create_base_entities(async_client, prefix)
@@ -171,7 +178,8 @@ async def test_evaluate_direct_slo_assignment(
 
 @pytest.mark.integration
 async def test_evaluate_group_slo_assignment(
-    async_client: AsyncClient, prefix: str,
+    async_client: AsyncClient,
+    prefix: str,
 ) -> None:
     """Asset in group — SLO assigned to group is discovered for the asset."""
     type_name, ds_name, sli_name = await _create_base_entities(async_client, prefix)
@@ -204,7 +212,8 @@ async def test_evaluate_group_slo_assignment(
 
 @pytest.mark.integration
 async def test_evaluate_group_template_assignment(
-    async_client: AsyncClient, prefix: str,
+    async_client: AsyncClient,
+    prefix: str,
 ) -> None:
     """SLO group assigned to asset group — template-generated SLOs discovered."""
     type_name, ds_name, sli_name = await _create_base_entities(async_client, prefix)
@@ -218,8 +227,11 @@ async def test_evaluate_group_template_assignment(
     # Create template SLO + SLO group that generates 2 SLOs
     tpl_slo_name = f'{prefix}-tpl/$__gen_proc'
     await _create_slo(
-        async_client, tpl_slo_name, sli_name,
-        kind='template', variables={'proc': '$__gen_proc'},
+        async_client,
+        tpl_slo_name,
+        sli_name,
+        kind='template',
+        variables={'proc': '$__gen_proc'},
     )
 
     resp = await async_client.post(
@@ -252,7 +264,8 @@ async def test_evaluate_group_template_assignment(
 
 @pytest.mark.integration
 async def test_evaluate_direct_template_assignment(
-    async_client: AsyncClient, prefix: str,
+    async_client: AsyncClient,
+    prefix: str,
 ) -> None:
     """SLO group assigned directly to asset — template-generated SLOs discovered."""
     type_name, ds_name, sli_name = await _create_base_entities(async_client, prefix)
@@ -262,8 +275,11 @@ async def test_evaluate_direct_template_assignment(
 
     tpl_slo_name = f'{prefix}-dtpl/$__gen_proc'
     await _create_slo(
-        async_client, tpl_slo_name, sli_name,
-        kind='template', variables={'proc': '$__gen_proc'},
+        async_client,
+        tpl_slo_name,
+        sli_name,
+        kind='template',
+        variables={'proc': '$__gen_proc'},
     )
 
     resp = await async_client.post(
@@ -296,7 +312,8 @@ async def test_evaluate_direct_template_assignment(
 
 @pytest.mark.integration
 async def test_direct_assignment_overrides_group(
-    async_client: AsyncClient, prefix: str,
+    async_client: AsyncClient,
+    prefix: str,
 ) -> None:
     """Same SLO name assigned both directly and via group — direct wins."""
     type_name, ds_name, sli_name = await _create_base_entities(async_client, prefix)
@@ -346,7 +363,8 @@ async def test_direct_assignment_overrides_group(
 
 @pytest.mark.integration
 async def test_direct_assignment_overrides_template(
-    async_client: AsyncClient, prefix: str,
+    async_client: AsyncClient,
+    prefix: str,
 ) -> None:
     """Direct SLO assignment overrides template-generated SLO with same name."""
     type_name, ds_name, sli_name = await _create_base_entities(async_client, prefix)
@@ -364,8 +382,11 @@ async def test_direct_assignment_overrides_template(
     # Create template that generates SLO named "<prefix>-ot/alpha"
     tpl_slo_name = f'{prefix}-ot/$__gen_proc'
     await _create_slo(
-        async_client, tpl_slo_name, sli_name,
-        kind='template', variables={'proc': '$__gen_proc'},
+        async_client,
+        tpl_slo_name,
+        sli_name,
+        kind='template',
+        variables={'proc': '$__gen_proc'},
     )
 
     resp = await async_client.post(
@@ -410,7 +431,8 @@ async def test_direct_assignment_overrides_template(
 
 @pytest.mark.integration
 async def test_mixed_binding_types_all_discovered(
-    async_client: AsyncClient, prefix: str,
+    async_client: AsyncClient,
+    prefix: str,
 ) -> None:
     """Asset with direct SLO + group SLO + template SLOs — all discovered."""
     type_name, ds_name, sli_name = await _create_base_entities(async_client, prefix)
@@ -442,8 +464,11 @@ async def test_mixed_binding_types_all_discovered(
     # 3) Template via group — generates 2 SLOs
     tpl_name = f'{prefix}-mix-tpl/$__gen_proc'
     await _create_slo(
-        async_client, tpl_name, sli_name,
-        kind='template', variables={'proc': '$__gen_proc'},
+        async_client,
+        tpl_name,
+        sli_name,
+        kind='template',
+        variables={'proc': '$__gen_proc'},
     )
     resp = await async_client.post(
         '/slo-groups',

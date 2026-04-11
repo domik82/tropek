@@ -5,8 +5,8 @@ from __future__ import annotations
 import uuid
 from unittest.mock import AsyncMock
 
-from app.modules.assignments.repository import ResolvedAssignment
-from app.modules.quality_gate.workflows.trigger.trigger_resolver import resolve_all_slos_for_asset
+from tropek.modules.assignments.repository import ResolvedAssignment
+from tropek.modules.quality_gate.workflows.trigger.trigger_resolver import resolve_all_slos_for_asset
 
 
 def _make_resolved(slo_name: str, source: str = 'direct_asset') -> ResolvedAssignment:

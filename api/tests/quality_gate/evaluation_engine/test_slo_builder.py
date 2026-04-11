@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import pytest
-from app.modules.quality_gate.evaluation_engine.slo_models import SLOParseError
-from app.modules.quality_gate.evaluation_engine.slo_parser import build_slo
+from tropek.modules.quality_gate.evaluation_engine.slo_models import SLOParseError
+from tropek.modules.quality_gate.evaluation_engine.slo_parser import build_slo
 
 
 def test_build_minimal_slo() -> None:

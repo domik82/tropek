@@ -1,5 +1,5 @@
 import pytest
-from app.core.variable_substitutor import UnresolvedVariableError, substitute
+from tropek_prometheus.core.variable_substitutor import UnresolvedVariableError, substitute
 
 
 def test_simple_substitution():

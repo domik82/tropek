@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import pytest
-from app.modules.datasource.repository import DataSourceRepository
 from sqlalchemy.ext.asyncio import AsyncSession
+from tropek.modules.datasource.repository import DataSourceRepository
 
 
 def _ds_kwargs(**overrides: object) -> dict:

@@ -4,9 +4,9 @@ from urllib.parse import unquote
 
 import pytest
 import respx
-from app.core.prometheus_client import PrometheusClient
-from app.core.strategies.raw import RawQueryStrategy
 from httpx import Response
+from tropek_prometheus.core.prometheus_client import PrometheusClient
+from tropek_prometheus.core.strategies.raw import RawQueryStrategy
 
 
 @pytest.fixture

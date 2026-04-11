@@ -4,9 +4,9 @@ from __future__ import annotations
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from app.db.session import get_session
-from app.main import app
 from fastapi.testclient import TestClient
+from tropek.db.session import get_session
+from tropek.main import app
 
 VALID_OBJECTIVES = [{'sli': 'response_time_p99', 'pass_threshold': ['<600'], 'weight': 1}]
 

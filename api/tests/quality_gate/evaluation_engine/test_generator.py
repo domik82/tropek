@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 import pytest
-from app.modules.slo_groups.generator import (
+from tropek.modules.slo_groups.generator import (
     generate_slo_specs,
     validate_gen_variables,
 )

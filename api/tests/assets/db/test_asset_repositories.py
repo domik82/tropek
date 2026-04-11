@@ -4,16 +4,16 @@ from __future__ import annotations
 
 import pytest
 import pytest_asyncio
-from app.db.models import AssetType
-from app.modules.assets.repository import (
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+from tropek.db.models import AssetType
+from tropek.modules.assets.repository import (
     AssetGroupRepository,
     AssetRepository,
     AssetTypeRepository,
 )
-from app.modules.assets.schemas import AssetGroupMemberCreate
-from app.modules.common.exceptions import ConflictError
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
+from tropek.modules.assets.schemas import AssetGroupMemberCreate
+from tropek.modules.common.exceptions import ConflictError
 
 
 @pytest_asyncio.fixture(autouse=True)

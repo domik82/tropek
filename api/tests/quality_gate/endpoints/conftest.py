@@ -12,13 +12,13 @@ from collections.abc import AsyncGenerator
 from datetime import UTC, datetime
 
 import pytest_asyncio
-from app.db.models import Asset, AssetType, IndicatorResultRow, SLODefinition, SLOObjective
-from app.db.session import get_session
-from app.main import app
-from app.modules.quality_gate.repositories.evaluation import EvaluationRepository
-from app.modules.quality_gate.shared.params import EvalCreateParams
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
+from tropek.db.models import Asset, AssetType, IndicatorResultRow, SLODefinition, SLOObjective
+from tropek.db.session import get_session
+from tropek.main import app
+from tropek.modules.quality_gate.repositories.evaluation import EvaluationRepository
+from tropek.modules.quality_gate.shared.params import EvalCreateParams
 
 # Re-export db fixtures so pytest discovers them in this directory.
 from tests.db.conftest import db_engine, db_session, db_url  # noqa: F401

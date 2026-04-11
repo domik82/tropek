@@ -1,8 +1,8 @@
 """Tests for SLI definition mode-dependent validation."""
 
 import pytest
-from app.modules.sli_registry.schemas import AggregationMethod, SLIDefinitionCreate
 from pydantic import ValidationError
+from tropek.modules.sli_registry.schemas import AggregationMethod, SLIDefinitionCreate
 
 
 class TestRawModeValidation:

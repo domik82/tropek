@@ -51,16 +51,16 @@ export MOCK_DATA_DIR=data  # relative to adapters/mock/ (the adapter's --directo
 uv run --directory api alembic upgrade head
 
 echo "=== Step 4: Start mock adapter on :$E2E_MOCK_PORT (background) ==="
-uv run --directory adapters/mock uvicorn app.main:app --host 127.0.0.1 --port $E2E_MOCK_PORT &
+uv run --directory adapters/mock uvicorn tropek_mock.main:app --host 127.0.0.1 --port $E2E_MOCK_PORT &
 PIDS+=($!)
 
 echo "=== Step 5: Start API on :$E2E_API_PORT (background) ==="
-uv run --directory api uvicorn app.main:app --host 127.0.0.1 --port $E2E_API_PORT &
+uv run --directory api uvicorn tropek.main:app --host 127.0.0.1 --port $E2E_API_PORT &
 PIDS+=($!)
 
 echo "=== Step 5b: Start arq worker (background) ==="
-# PYTHONPATH=. resolves to api/ (the uv --directory target), making app.queue importable
-PYTHONPATH=. uv run --directory api arq app.queue.WorkerSettings &
+# PYTHONPATH=. resolves to api/ (the uv --directory target), making tropek.queue importable
+PYTHONPATH=. uv run --directory api arq tropek.queue.WorkerSettings &
 PIDS+=($!)
 
 # Wait for services to be ready

@@ -6,7 +6,9 @@ import uuid
 from datetime import UTC, datetime
 
 import pytest
-from app.db.models import (
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+from tropek.db.models import (
     Asset,
     AssetType,
     EvaluationRun,
@@ -16,9 +18,7 @@ from app.db.models import (
     SLOEvaluation,
     SLOObjective,
 )
-from app.modules.quality_gate.repositories.indicator import IndicatorRepository
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
+from tropek.modules.quality_gate.repositories.indicator import IndicatorRepository
 
 _START = datetime(2026, 3, 15, 10, 0, 0, tzinfo=UTC)
 _END = datetime(2026, 3, 15, 10, 30, 0, tzinfo=UTC)
@@ -269,9 +269,7 @@ async def test_bulk_insert_persists_targets_jsonb(db_session: AsyncSession) -> N
         ],
     )
 
-    result = await db_session.execute(
-        select(IndicatorResultRow).where(IndicatorResultRow.slo_evaluation_id == eval_id)
-    )
+    result = await db_session.execute(select(IndicatorResultRow).where(IndicatorResultRow.slo_evaluation_id == eval_id))
     row = result.scalars().first()
     assert row is not None
     assert row.targets is not None

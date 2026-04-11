@@ -7,19 +7,19 @@ updated, these tests document the expected contract.
 
 import inspect
 
-from app.main import app
-from app.modules.assets.schemas import AssetCreate, AssetRead
-from app.modules.common.schemas import StrictInput
-from app.modules.datasource.schemas import DataSourceRead
-from app.modules.quality_gate.schemas import (
+from fastapi.routing import APIRoute
+from pydantic import BaseModel
+from tropek.main import app
+from tropek.modules.assets.schemas import AssetCreate, AssetRead
+from tropek.modules.common.schemas import StrictInput
+from tropek.modules.datasource.schemas import DataSourceRead
+from tropek.modules.quality_gate.schemas import (
     AnnotationRead,
     EvaluateSingleRequest,
     EvaluationSummary,
 )
-from app.modules.sli_registry.schemas import SLIDefinitionRead
-from app.modules.slo_registry.schemas import SLODefinitionRead
-from fastapi.routing import APIRoute
-from pydantic import BaseModel
+from tropek.modules.sli_registry.schemas import SLIDefinitionRead
+from tropek.modules.slo_registry.schemas import SLODefinitionRead
 
 
 def _field_names(model: type[BaseModel]) -> set[str]:
@@ -161,10 +161,6 @@ class TestStrictInputEnforcement:
         for route_label, model in _collect_body_models():
             all_models = [model, *_collect_nested_models(model)]
             violations.extend(
-                f'{m.__name__} (used in {route_label})'
-                for m in all_models
-                if not issubclass(m, StrictInput)
+                f'{m.__name__} (used in {route_label})' for m in all_models if not issubclass(m, StrictInput)
             )
-        assert not violations, (
-            f'body models must inherit StrictInput: {", ".join(sorted(set(violations)))}'
-        )
+        assert not violations, f'body models must inherit StrictInput: {", ".join(sorted(set(violations)))}'

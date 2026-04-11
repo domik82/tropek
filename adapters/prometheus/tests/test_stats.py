@@ -1,8 +1,8 @@
 """Tests for statistical computation module."""
 
 import pytest
-from app.core.methods import AggregationMethod
-from app.core.stats import compute_statistics
+from tropek_prometheus.core.methods import AggregationMethod
+from tropek_prometheus.core.stats import compute_statistics
 
 
 class TestComputeStatistics:

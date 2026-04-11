@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from app.modules.common.exceptions import (
+from tropek.modules.common.exceptions import (
     ConflictError,
     DomainError,
     DomainValidationError,

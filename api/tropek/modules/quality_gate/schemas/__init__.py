@@ -1,0 +1,81 @@
+"""Quality gate schemas — re-exports from domain submodules.
+
+Existing imports like ``from tropek.modules.quality_gate.schemas import X``
+continue to work unchanged.
+"""
+
+from tropek.modules.quality_gate.schemas.annotations import (
+    AnnotationCreate,
+    AnnotationHide,
+    AnnotationRead,
+    AnnotationUpdate,
+)
+from tropek.modules.quality_gate.schemas.baseline import (
+    InvalidateRequest,
+    OverrideStatusRequest,
+    PinBaselineRequest,
+)
+from tropek.modules.quality_gate.schemas.evaluations import (
+    EvaluationDetail,
+    EvaluationNameEntry,
+    EvaluationSummary,
+    FailingIndicator,
+    IndicatorResult,
+    TrendPoint,
+)
+from tropek.modules.quality_gate.schemas.heatmap import (
+    EvaluationColumn,
+    GroupedMetricHeatmapResponse,
+    HeatmapCell,
+    HeatmapCellGrouped,
+    HeatmapMetric,
+    HeatmapSummaryCell,
+    MetricHeatmapResponse,
+    SloGroup,
+)
+from tropek.modules.quality_gate.schemas.re_evaluation import (
+    ReEvalResultItem,
+    ReEvaluateRequest,
+    ReEvaluateResponse,
+)
+from tropek.modules.quality_gate.schemas.trigger import (
+    BatchPeriod,
+    EvaluateBatchRequest,
+    EvaluateBatchResponse,
+    EvaluateSingleRequest,
+    EvaluateSingleResponse,
+)
+from tropek.modules.quality_gate.shared.exceptions import BaselinePinConflictError
+
+__all__ = [
+    'AnnotationCreate',
+    'AnnotationHide',
+    'AnnotationRead',
+    'AnnotationUpdate',
+    'BaselinePinConflictError',
+    'BatchPeriod',
+    'EvaluateBatchRequest',
+    'EvaluateBatchResponse',
+    'EvaluateSingleRequest',
+    'EvaluateSingleResponse',
+    'EvaluationColumn',
+    'EvaluationDetail',
+    'EvaluationNameEntry',
+    'EvaluationSummary',
+    'FailingIndicator',
+    'GroupedMetricHeatmapResponse',
+    'HeatmapCell',
+    'HeatmapCellGrouped',
+    'HeatmapMetric',
+    'HeatmapSummaryCell',
+    'IndicatorResult',
+    'InvalidateRequest',
+    'MetricHeatmapResponse',
+    'OverrideStatusRequest',
+    'PinBaselineRequest',
+    'ReEvalResultItem',
+    'ReEvaluateRequest',
+    'ReEvaluateResponse',
+    'SloGroup',
+    'TrendPoint',
+]

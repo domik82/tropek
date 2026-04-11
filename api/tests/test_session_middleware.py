@@ -5,7 +5,7 @@ from __future__ import annotations
 from unittest.mock import AsyncMock
 
 import pytest
-from app.db.middleware import SessionMiddleware
+from tropek.db.middleware import SessionMiddleware
 
 
 def _make_mock_session():

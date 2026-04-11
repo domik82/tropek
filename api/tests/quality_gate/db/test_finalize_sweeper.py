@@ -9,17 +9,17 @@ from typing import Any
 
 import pytest
 import pytest_asyncio
-from app.config import get_settings
-from app.db.models import Asset, AssetType, EvaluationRun, SLOEvaluation
-from app.queue import finalize_run_job, finalize_sweeper_job
 from sqlalchemy.ext.asyncio import AsyncSession
+from tropek.config import get_settings
+from tropek.db.models import Asset, AssetType, EvaluationRun, SLOEvaluation
+from tropek.queue import finalize_run_job, finalize_sweeper_job
 
 
 @pytest_asyncio.fixture()
 async def sweeper_session_factory(db_session: AsyncSession):
     """Return a context-manager factory that reuses the test DB session.
 
-    Patched into app.queue.get_session_factory so finalize_sweeper_job sees the
+    Patched into tropek.queue.get_session_factory so finalize_sweeper_job sees the
     same connection (and therefore the same flushed data) as the test's db_session.
 
     The sweeper calls session.commit() on each session it opens — under the test
@@ -88,14 +88,14 @@ async def _create_stuck_run(db_session, asset, day: int = 15) -> uuid.UUID:
 @pytest.mark.integration
 async def test_sweeper_tick_no_stuck_runs_is_noop(db_session, sweeper_session_factory, monkeypatch):
     """Empty DB: sweeper tick runs cleanly, no exceptions."""
-    monkeypatch.setattr('app.queue.get_session_factory', lambda: sweeper_session_factory)
+    monkeypatch.setattr('tropek.queue.get_session_factory', lambda: sweeper_session_factory)
     await finalize_sweeper_job(_make_ctx())
 
 
 @pytest.mark.integration
 async def test_sweeper_rescues_single_stuck_run(db_session, asset, sweeper_session_factory, monkeypatch):
     """One stuck run gets finalized by the sweeper."""
-    monkeypatch.setattr('app.queue.get_session_factory', lambda: sweeper_session_factory)
+    monkeypatch.setattr('tropek.queue.get_session_factory', lambda: sweeper_session_factory)
     run_id = await _create_stuck_run(db_session, asset)
 
     await finalize_sweeper_job(_make_ctx())
@@ -112,7 +112,7 @@ async def test_sweeper_rescues_single_stuck_run(db_session, asset, sweeper_sessi
 async def test_sweeper_respects_batch_limit(db_session, asset, sweeper_session_factory, monkeypatch):
     """More stuck runs than batch_limit: sweeper rescues only batch_limit of them."""
     settings = get_settings()
-    monkeypatch.setattr('app.queue.get_session_factory', lambda: sweeper_session_factory)
+    monkeypatch.setattr('tropek.queue.get_session_factory', lambda: sweeper_session_factory)
     monkeypatch.setattr(settings.queue, 'finalize_sweeper_batch_limit', 1)
 
     id_old = await _create_stuck_run(db_session, asset, day=10)
@@ -136,7 +136,7 @@ async def test_sweeper_respects_batch_limit(db_session, asset, sweeper_session_f
 @pytest.mark.integration
 async def test_sweeper_idempotent_on_already_finalized(db_session, asset, sweeper_session_factory, monkeypatch):
     """Calling sweeper twice on the same stuck run leaves state consistent."""
-    monkeypatch.setattr('app.queue.get_session_factory', lambda: sweeper_session_factory)
+    monkeypatch.setattr('tropek.queue.get_session_factory', lambda: sweeper_session_factory)
     run_id = await _create_stuck_run(db_session, asset)
 
     await finalize_sweeper_job(_make_ctx())
@@ -156,7 +156,7 @@ async def test_sweeper_rescues_when_fast_path_never_ran(db_session, asset, sweep
     the queued finalize job. The sweeper must make the parent reach
     'completed' on its own.
     """
-    monkeypatch.setattr('app.queue.get_session_factory', lambda: sweeper_session_factory)
+    monkeypatch.setattr('tropek.queue.get_session_factory', lambda: sweeper_session_factory)
 
     # Create a parent and a single committed child — deliberately do NOT
     # call finalize_run_job or enqueue_job. This is the exact state left
@@ -181,16 +181,14 @@ async def test_sweeper_rescues_when_fast_path_never_ran(db_session, asset, sweep
 
 
 @pytest.mark.integration
-async def test_sweeper_and_finalize_run_job_converge(
-    db_session, asset, sweeper_session_factory, monkeypatch
-):
+async def test_sweeper_and_finalize_run_job_converge(db_session, asset, sweeper_session_factory, monkeypatch):
     """Both the fast-path finalize_run_job and the sweeper target the same parent.
 
     Spec-required scenario: both code paths complete without error and the parent
     ends up 'completed' with consistent aggregated values. Either path may win
     the race; the loser must no-op idempotently.
     """
-    monkeypatch.setattr('app.queue.get_session_factory', lambda: sweeper_session_factory)
+    monkeypatch.setattr('tropek.queue.get_session_factory', lambda: sweeper_session_factory)
 
     run_id = await _create_stuck_run(db_session, asset, day=25)
 

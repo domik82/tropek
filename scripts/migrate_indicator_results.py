@@ -9,8 +9,8 @@ import asyncio
 import logging
 import uuid
 
-from app.config import get_settings
-from app.db.models import Evaluation, IndicatorResultRow, SLODefinition, SLOObjective
+from tropek.config import get_settings
+from tropek.db.models import Evaluation, IndicatorResultRow, SLODefinition, SLOObjective
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker

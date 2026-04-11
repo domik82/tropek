@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import pytest
-from app.modules.assets.repository import AssetRepository
 from sqlalchemy.ext.asyncio import AsyncSession
+from tropek.modules.assets.repository import AssetRepository
 
 
 @pytest.mark.integration

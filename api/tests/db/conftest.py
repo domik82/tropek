@@ -19,7 +19,6 @@ from pathlib import Path
 
 import pytest
 import pytest_asyncio
-from app.db.models import Base
 from dotenv import load_dotenv
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import (
@@ -27,6 +26,7 @@ from sqlalchemy.ext.asyncio import (
     AsyncSession,
     create_async_engine,
 )
+from tropek.db.models import Base
 
 # Load .env.test (repo root) so TEST_DATABASE_URL and QG_DB_* are available.
 # override=False: shell env vars take precedence if already set.
@@ -77,9 +77,7 @@ async def db_engine(db_url: str) -> AsyncGenerator[AsyncEngine, None]:  # noqa: 
         admin = create_async_engine(admin_url, isolation_level='AUTOCOMMIT')
         try:
             async with admin.connect() as conn:
-                await conn.execute(
-                    text(f'DROP DATABASE IF EXISTS "{ephemeral_name}" WITH (FORCE)')
-                )
+                await conn.execute(text(f'DROP DATABASE IF EXISTS "{ephemeral_name}" WITH (FORCE)'))
         finally:
             await admin.dispose()
 

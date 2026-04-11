@@ -5,7 +5,7 @@ from __future__ import annotations
 from unittest.mock import AsyncMock
 
 import pytest
-from app.cache.redis_cache import RedisCache
+from tropek.cache.redis_cache import RedisCache
 
 
 @pytest.fixture

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock
 
-from app.modules.quality_gate.workflows.execution.evaluation_helpers import build_eval_variables, build_slo_model
+from tropek.modules.quality_gate.workflows.execution.evaluation_helpers import build_eval_variables, build_slo_model
 
 
 def test_build_eval_variables_merge_priority() -> None:

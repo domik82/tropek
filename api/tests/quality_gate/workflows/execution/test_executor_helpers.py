@@ -5,8 +5,8 @@ from __future__ import annotations
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from app.modules.quality_gate.evaluation_engine.variables import build_variables
-from app.modules.quality_gate.workflows.execution.evaluation_executor import DefinitionLoadError, _load_definitions
+from tropek.modules.quality_gate.evaluation_engine.variables import build_variables
+from tropek.modules.quality_gate.workflows.execution.evaluation_executor import DefinitionLoadError, _load_definitions
 
 
 def _make_evaluation(
@@ -50,7 +50,7 @@ async def test_load_definitions_slo_not_found() -> None:
 
     with (
         patch(
-            'app.modules.quality_gate.workflows.execution.evaluation_executor.SLORepository',
+            'tropek.modules.quality_gate.workflows.execution.evaluation_executor.SLORepository',
             return_value=mock_slo_repo,
         ),
         pytest.raises(DefinitionLoadError, match=r'perf-slo.*not found'),
@@ -67,7 +67,7 @@ async def test_load_definitions_sli_name_missing() -> None:
 
     with (
         patch(
-            'app.modules.quality_gate.workflows.execution.evaluation_executor.SLORepository',
+            'tropek.modules.quality_gate.workflows.execution.evaluation_executor.SLORepository',
             return_value=mock_slo_repo,
         ),
         pytest.raises(DefinitionLoadError, match='no sli_name'),
@@ -84,7 +84,7 @@ async def test_load_definitions_sli_version_missing() -> None:
 
     with (
         patch(
-            'app.modules.quality_gate.workflows.execution.evaluation_executor.SLORepository',
+            'tropek.modules.quality_gate.workflows.execution.evaluation_executor.SLORepository',
             return_value=mock_slo_repo,
         ),
         pytest.raises(DefinitionLoadError, match='no sli_name'),
@@ -103,11 +103,11 @@ async def test_load_definitions_sli_not_found() -> None:
 
     with (
         patch(
-            'app.modules.quality_gate.workflows.execution.evaluation_executor.SLORepository',
+            'tropek.modules.quality_gate.workflows.execution.evaluation_executor.SLORepository',
             return_value=mock_slo_repo,
         ),
         patch(
-            'app.modules.quality_gate.workflows.execution.evaluation_executor.SLIRepository',
+            'tropek.modules.quality_gate.workflows.execution.evaluation_executor.SLIRepository',
             return_value=mock_sli_repo,
         ),
         pytest.raises(DefinitionLoadError, match=r'system-sli.*not found'),
@@ -128,11 +128,11 @@ async def test_load_definitions_success() -> None:
 
     with (
         patch(
-            'app.modules.quality_gate.workflows.execution.evaluation_executor.SLORepository',
+            'tropek.modules.quality_gate.workflows.execution.evaluation_executor.SLORepository',
             return_value=mock_slo_repo,
         ),
         patch(
-            'app.modules.quality_gate.workflows.execution.evaluation_executor.SLIRepository',
+            'tropek.modules.quality_gate.workflows.execution.evaluation_executor.SLIRepository',
             return_value=mock_sli_repo,
         ),
     ):

@@ -9,7 +9,7 @@ from __future__ import annotations
 import uuid
 from unittest.mock import AsyncMock, MagicMock
 
-from app.modules.quality_gate.workflows.execution.evaluation_executor import _resolve_baselines
+from tropek.modules.quality_gate.workflows.execution.evaluation_executor import _resolve_baselines
 
 
 def _make_slo(*, num_comparisons: int = 1, aggregate_function: str = 'avg') -> MagicMock:
@@ -70,7 +70,10 @@ async def test_resolve_baselines_aggregates_per_metric() -> None:
     ]
 
     baselines, ids = await _resolve_baselines(
-        baseline_repo, slo, ev, ['rt', 'err'],
+        baseline_repo,
+        slo,
+        ev,
+        ['rt', 'err'],
     )
 
     assert ids == ['ev1', 'ev2']
@@ -89,7 +92,10 @@ async def test_resolve_baselines_skips_none_values() -> None:
     ]
 
     baselines, _ids = await _resolve_baselines(
-        baseline_repo, slo, ev, ['rt', 'err'],
+        baseline_repo,
+        slo,
+        ev,
+        ['rt', 'err'],
     )
 
     assert baselines['rt'] == 100.0
@@ -108,7 +114,10 @@ async def test_resolve_baselines_returns_compared_ids() -> None:
     ]
 
     _, ids = await _resolve_baselines(
-        baseline_repo, slo, ev, ['rt'],
+        baseline_repo,
+        slo,
+        ev,
+        ['rt'],
     )
 
     assert ids == ['aaa', 'bbb']

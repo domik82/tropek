@@ -1,6 +1,6 @@
 import fakeredis.aioredis
 import pytest
-from app.redis.repository import JobRepository
+from tropek_prometheus.redis.repository import JobRepository
 
 
 @pytest.fixture

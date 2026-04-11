@@ -6,9 +6,9 @@ import uuid
 from datetime import UTC, datetime
 
 import pytest
-from app.modules.quality_gate.schemas.re_evaluation import ReEvaluateRequest
-from app.modules.quality_gate.shared.exceptions import BaselinePinConflictError
 from pydantic import ValidationError
+from tropek.modules.quality_gate.schemas.re_evaluation import ReEvaluateRequest
+from tropek.modules.quality_gate.shared.exceptions import BaselinePinConflictError
 
 
 class TestBaselinePinConflictError:
