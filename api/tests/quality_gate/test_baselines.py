@@ -9,7 +9,7 @@ from __future__ import annotations
 import uuid
 from unittest.mock import AsyncMock, MagicMock
 
-from app.modules.quality_gate.worker import _resolve_baselines
+from app.modules.quality_gate.workflows.execution.evaluation_executor import _resolve_baselines
 
 
 def _make_slo(*, num_comparisons: int = 1, aggregate_function: str = 'avg') -> MagicMock:
