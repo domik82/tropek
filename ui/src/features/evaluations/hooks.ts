@@ -186,7 +186,7 @@ function prettyLabel(key: string): string {
 
 /**
  * Discover dynamic columns from evaluation data.
- * Scans asset_snapshot.tags and evaluation_metadata across all evals,
+ * Scans asset_snapshot.tags and variables across all evals,
  * deduplicates, and returns ColumnDef[] for keys not already in FIXED_COLS.
  */
 export function useDynamicColumns(evals: EvaluationSummary[]): ColumnDef[] {
@@ -200,7 +200,7 @@ export function useDynamicColumns(evals: EvaluationSummary[]): ColumnDef[] {
           cols.push({ key, label: prettyLabel(key), required: false })
         }
       }
-      for (const key of Object.keys(ev.evaluation_metadata ?? {})) {
+      for (const key of Object.keys(ev.variables ?? {})) {
         if (!FIXED_KEYS.has(key) && !seen.has(key)) {
           seen.add(key)
           cols.push({ key, label: prettyLabel(key), required: false })

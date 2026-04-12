@@ -20,7 +20,7 @@ function mkEval(asset: string, slot: string, result: 'pass' | 'warning' | 'fail'
     original_result: null, original_score: null,
     override_reason: null, override_author: null,
     asset_snapshot: { name: asset, tags: {} },
-    evaluation_metadata: {},
+    variables: {},
     created_at: slot,
   }
 }

@@ -99,7 +99,7 @@ function makeSummary(overrides: Partial<EvaluationSummary> = {}): EvaluationSumm
     override_reason: null,
     override_author: null,
     asset_snapshot: { name: 'catalog-db', tags: {} },
-    evaluation_metadata: {},
+    variables: {},
     created_at: '2026-03-15T10:30:00Z',
     ...overrides,
   }

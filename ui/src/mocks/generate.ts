@@ -333,7 +333,7 @@ export function generateAllEvaluations(): EvaluationSummary[] {
           override_reason: null,
           override_author: null,
           asset_snapshot: { name: scenario.asset, tags: { os: scenario.os, arch: scenario.arch, lab: scenario.group } },
-          evaluation_metadata: { branch: 'main', build: `ci-${7800 + day}`, triggered_by: triggeredBy },
+          variables: { branch: 'main', build: `ci-${7800 + day}`, triggered_by: triggeredBy },
           latest_annotation: mockAnnotation ?? undefined,
           annotation_count: mockAnnotation ? (scenario.seed === 1001 && day === 18 ? 2 : 1) : 0,
           created_at: created,
@@ -444,7 +444,7 @@ export function generateEvaluationDetail(
       primary_version: '7.6',
       build_ref: `ci-${7800 + day}`,
     },
-    evaluation_metadata: { branch: '7.6', build: `ci-${7800 + day}`, triggered_by: 'github-actions' },
+    variables: { branch: '7.6', build: `ci-${7800 + day}`, triggered_by: 'github-actions' },
     compared_evaluation_ids: day >= 3 ? [
       `${scenario.asset}-${scenario.test}-day${day - 1}`,
       `${scenario.asset}-${scenario.test}-day${day - 2}`,

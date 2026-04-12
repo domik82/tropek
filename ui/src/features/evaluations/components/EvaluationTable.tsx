@@ -153,7 +153,7 @@ export function EvaluationTable({
                 ? cell(ev, col.key, onAssetSelect, onEvalClick, assetDisplayNames, sloDisplayNames)
                 : (
                   <td key={col.key} className="px-4 py-3 text-sm text-muted-foreground">
-                    {ev.asset_snapshot.tags?.[col.key] ?? ev.evaluation_metadata?.[col.key] ?? '—'}
+                    {ev.asset_snapshot.tags?.[col.key] ?? ev.variables?.[col.key] ?? '—'}
                   </td>
                 )
             )}
