@@ -72,7 +72,7 @@ class SLOTestService:
                 objectives=[o.model_dump() for o in body.objectives],
                 total_score_pass_threshold=body.total_score_pass_threshold,
                 total_score_warning_threshold=body.total_score_warning_threshold,
-                comparison=body.comparison,
+                comparison=body.comparison.model_dump(exclude_none=True),
             )
         except SLOParseError as e:
             raise DomainValidationError(f'invalid slo: {e}') from e

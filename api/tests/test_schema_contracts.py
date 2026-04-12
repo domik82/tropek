@@ -32,7 +32,12 @@ from tropek.modules.quality_gate.schemas.heatmap import (
     HeatmapSummaryCell,
 )
 from tropek.modules.sli_registry.schemas import SLIDefinitionRead
-from tropek.modules.slo_registry.schemas import SLODefinitionRead
+from tropek.modules.slo_registry.schemas import (
+    ComparisonConfig,
+    MethodCriteriaOverride,
+    SLODefinitionCreate,
+    SLODefinitionRead,
+)
 
 
 def _field_names(model: type[BaseModel]) -> set[str]:
@@ -168,6 +173,45 @@ class TestHeatmapNestedTypes:
     def test_sloshim_renamed_to_avoid_collision(self) -> None:
         assert not hasattr(heatmap_module, 'SloGroup')
         assert hasattr(heatmap_module, 'HeatmapSloGroupSection')
+
+
+# -- SLO registry tightened types (bugs #8, #9 + 2 bonus) --------------------
+
+
+class TestSloRegistryNestedTypes:
+    """SLO registry fields must be typed, not dict[str, Any]."""
+
+    def test_read_variables_is_str_map(self) -> None:
+        field = SLODefinitionRead.model_fields['variables']
+        assert field.annotation == dict[str, str]
+
+    def test_create_variables_is_str_map(self) -> None:
+        field = SLODefinitionCreate.model_fields['variables']
+        assert field.annotation == dict[str, str]
+
+    def test_read_tags_is_str_map(self) -> None:
+        field = SLODefinitionRead.model_fields['tags']
+        assert field.annotation == dict[str, str]
+
+    def test_create_tags_is_str_map(self) -> None:
+        field = SLODefinitionCreate.model_fields['tags']
+        assert field.annotation == dict[str, str]
+
+    def test_read_comparison_is_typed(self) -> None:
+        field = SLODefinitionRead.model_fields['comparison']
+        assert field.annotation is ComparisonConfig
+
+    def test_create_comparison_is_typed(self) -> None:
+        field = SLODefinitionCreate.model_fields['comparison']
+        assert field.annotation is ComparisonConfig
+
+    def test_read_method_criteria_is_typed(self) -> None:
+        field = SLODefinitionRead.model_fields['method_criteria']
+        assert field.annotation == dict[str, MethodCriteriaOverride] | None
+
+    def test_create_method_criteria_is_typed(self) -> None:
+        field = SLODefinitionCreate.model_fields['method_criteria']
+        assert field.annotation == dict[str, MethodCriteriaOverride] | None
 
 
 # -- Annotations --------------------------------------------------------------

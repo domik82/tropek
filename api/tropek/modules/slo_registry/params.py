@@ -31,8 +31,8 @@ class SLOCreateParams(StrictInput):
     display_name: str | None = None
     notes: str | None = None
     author: str | None = None
-    tags: dict[str, object] = Field(default_factory=dict)
-    variables: dict[str, object] = Field(default_factory=dict)
+    tags: dict[str, str] = Field(default_factory=dict)
+    variables: dict[str, str] = Field(default_factory=dict)
     comparable_from_version: int | None = None
     kind: str = 'standard'
     sli_definition_id: uuid.UUID | None = None
