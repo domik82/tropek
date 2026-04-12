@@ -8,7 +8,19 @@
 
 **Tech Stack:** `@pact-foundation/pact` (Node/TypeScript), `pact-python` (Python), Vitest, pytest, FastAPI test client, existing test DB on port 5433.
 
-**Recommended subagent model:** **Sonnet**. Pact has a learning curve — the consumer DSL, matcher semantics (`like`, `eachLike`, `regex`), provider-state orchestration, and the two-sided verification loop all require reasoning about non-trivial interactions. Haiku is too shallow for this; Opus is overkill for file-by-file implementation of well-specified contracts. Sonnet is the right tradeoff.
+**Recommended subagent model (per task group):**
+
+| Tasks | Model | Why |
+|---|---|---|
+| 1 (install dep), 5 (install provider dep) | **Haiku** | Pure `pnpm add` / `uv sync` + a smoke-test import. No judgment. |
+| 2 (scaffold contracts dir + vitest exclude) | **Haiku** | File scaffolding with a clear template. |
+| 3, 4 (write consumer contracts) | **Sonnet** | Each contract requires reading the real Pydantic schema, picking the right Pact matchers (`like` vs `eachLike` vs `regex` vs `integer`), and making accurate shape declarations. This is the core intellectual work of the phase. Haiku would produce superficially-correct matchers that fail provider verification. |
+| 6 (provider verification test + provider states) | **Sonnet** | Orchestrating DB fixtures, uvicorn-in-thread lifecycle, and the `pact-python` Verifier API requires reasoning about several moving pieces. The pact-python API surface also varies by version — needs an agent that reads docs and adapts. |
+| 7 (coverage gap doc) | **Sonnet** | Requires reading the real backend pin-baseline handler and making a judgment call about what the gap actually is. This is the task where the spec's "reveal coverage gaps" goal pays off — a weaker model would write a generic placeholder. |
+| 8 (CI workflow) | **Haiku** | GitHub Actions YAML is templated and mechanical. |
+| **Phase 2 verification gate** | **Opus** | This is the first phase where contract correctness is load-bearing. The reviewer needs to: (a) read every generated pact file and confirm the matchers actually reflect the backend, (b) verify the provider states seed the right data, (c) spot subtle mismatches that pact-python's error messages may obscure. Opus earns its cost on this one — a missed mismatch here would cost more than the model tokens. |
+
+Default for this phase: **Sonnet**, with Haiku for the mechanical install/scaffold/CI steps and Opus for the final verification gate.
 
 **Prerequisite:** Phase 1 complete. `api/openapi.json` and `ui/src/generated/api.ts` exist and are fresh.
 

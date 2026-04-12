@@ -8,7 +8,19 @@
 
 **Tech Stack:** OWASP ZAP (Docker image `zaproxy/zap-stable`), Docker Compose, Python script for report parsing, existing test DB + Redis, GitHub Actions.
 
-**Recommended subagent model:** **Sonnet**. ZAP integration is ops-heavy — Docker networking between the scanner and the test app, context file authoring, false-positive suppression tuning. Not a reasoning-heavy task but not mechanical either (auth contexts have a lot of moving pieces and ZAP error messages can be oblique). Sonnet is the right choice. Haiku would struggle with the ZAP context XML and the report parsing nuances.
+**Recommended subagent model (per task group):**
+
+| Tasks | Model | Why |
+|---|---|---|
+| 1 (scan script) | **Sonnet** | Docker networking (`host.docker.internal`, `--add-host`), uvicorn lifecycle in a shell script, ZAP CLI flag choice. Error-prone if you don't understand the host/container boundary. |
+| 2 (ZAP context XML) | **Sonnet** | Requires reading the real auth mechanism and choosing between replacer rules, scripted auth, or cookie-based session handling. The task template shows one approach; the agent must verify it's the right one for this codebase. |
+| 3 (suppressions file), 5 (just recipe + gitignore), 8 (docs) | **Haiku** | Pure templates — the task body contains the exact content. |
+| 4 (report parser) | **Sonnet** | Python script with argparse, YAML loading, severity classification, and exit-code semantics. Not hard but easy to get wrong in ways that make CI silently pass. |
+| 6 (local test + triage) | **Sonnet** + **Opus** for triage | Running the scan is mechanical; deciding whether each finding is a real vuln, false positive, or accepted risk is a judgment call that benefits from Opus's careful reading. A misclassified finding here is either a wasted fix or a silent vulnerability. |
+| 7 (scheduled workflow) | **Sonnet** | GitHub Actions with service containers, environment variables, artifact upload, and `github-script` issue creation. More moving parts than a typical CI YAML. |
+| **Phase 4 verification gate** | **Opus** | The reviewer confirms the scan actually runs end-to-end, the suppressions file contains only justified entries, and the auto-issue workflow is wired correctly. Security-adjacent work where review mistakes have the largest downside — worth spending Opus tokens to avoid a false sense of coverage. |
+
+Default for this phase: **Sonnet**, with Haiku for templated sub-tasks and Opus for triage (Task 6) and the final verification gate.
 
 **Prerequisite:** Phase 1 complete (`api/openapi.json` exists). Phases 2 and 3 are not strictly required but strongly recommended — if the API already has a Schemathesis-clean baseline, ZAP findings will be signal rather than noise.
 
