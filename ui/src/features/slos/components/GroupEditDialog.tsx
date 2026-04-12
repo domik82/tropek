@@ -16,7 +16,7 @@ interface Props {
 
 export function GroupEditDialog({ open, onOpenChange, groupName }: Props) {
   const { data: tree } = useGroupTree()
-  const group = tree?.all_groups.find(g => g.name === groupName)
+  const group = tree?.allGroups.find(g => g.name === groupName)
   const { data: assignments } = useGroupSloAssignments(groupName ?? '')
   const updateGroup = useUpdateGroup()
   const unlinkSlo = useDeleteGroupSloAssignment()
@@ -26,14 +26,14 @@ export function GroupEditDialog({ open, onOpenChange, groupName }: Props) {
   const [description, setDescription] = useState('')
   const [parentGroup, setParentGroup] = useState('')
 
-  const currentParent = tree?.all_groups.find(g =>
-    g.subgroups.some(sg => sg.group_id === group?.id)
+  const currentParent = tree?.allGroups.find(g =>
+    g.subgroups.some(sg => sg.groupId === group?.id)
   )
 
   /* eslint-disable react-hooks/set-state-in-effect -- intentional reset on prop change */
   useEffect(() => {
     if (group) {
-      setDisplayName(group.display_name ?? '')
+      setDisplayName(group.displayName ?? '')
       setDescription(group.description ?? '')
       setParentGroup(currentParent?.name ?? '')
     }

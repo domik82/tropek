@@ -1,26 +1,26 @@
 import { describe, it, expect } from 'vitest'
-import type { Asset } from './types'
+import { dtoToAsset, type AssetDto } from './mappers'
 
-/**
- * Contract tests — verify TypeScript types match the API response shape.
- * If these fail after a backend rename, the UI types need updating too.
- */
-describe('Asset type contract', () => {
-  it('Asset type has tags field (not labels)', () => {
-    // This is a compile-time + runtime check.
-    // If Asset.tags doesn't exist, TypeScript will error AND this test fails.
-    const asset: Asset = {
-      id: 'test',
-      name: 'test',
-      display_name: null,
+describe('dtoToAsset', () => {
+  it('maps a minimal DTO into a domain Asset', () => {
+    const dto: AssetDto = {
+      id: 'id-1',
+      name: 'svc',
+      display_name: 'Service One',
       type_name: 'service',
       tags: { env: 'prod' },
       variables: {},
-      created_at: '2025-01-01',
-      updated_at: '2025-01-01',
+      created_at: '2026-01-01T00:00:00Z',
+      updated_at: '2026-01-02T00:00:00Z',
     }
-    expect(asset.tags).toBeDefined()
-    expect(asset.variables).toBeDefined()
-    expect((asset as unknown as Record<string, unknown>).labels).toBeUndefined()
+    const asset = dtoToAsset(dto)
+    expect(asset.id).toBe('id-1')
+    expect(asset.name).toBe('svc')
+    expect(asset.displayName).toBe('Service One')
+    expect(asset.typeName).toBe('service')
+    expect(asset.tags).toEqual({ env: 'prod' })
+    expect(asset.createdAt).toBeInstanceOf(Date)
+    expect(asset.updatedAt).toBeInstanceOf(Date)
+    expect(asset.heatmapConfig).toBeNull()
   })
 })

@@ -4,19 +4,23 @@ import userEvent from '@testing-library/user-event'
 import { TestWrapper } from '@/test-wrapper'
 import { AddAssetToGroupDialog } from './AddAssetToGroupDialog'
 
+const TS = new Date(0)
+
 const ALL_ASSETS = [
-  { id: 'a1', name: 'cart-service', display_name: 'Cart', type_name: 'service', tags: {}, created_at: '', updated_at: '' },
-  { id: 'a2', name: 'checkout-api', display_name: null, type_name: 'api', tags: {}, created_at: '', updated_at: '' },
-  { id: 'a3', name: 'order-worker', display_name: null, type_name: 'worker', tags: {}, created_at: '', updated_at: '' },
+  { id: 'a1', name: 'cart-service', displayName: 'Cart', typeName: 'service', color: null, tags: {}, variables: {}, heatmapConfig: null, createdAt: TS, updatedAt: TS },
+  { id: 'a2', name: 'checkout-api', displayName: null, typeName: 'api', color: null, tags: {}, variables: {}, heatmapConfig: null, createdAt: TS, updatedAt: TS },
+  { id: 'a3', name: 'order-worker', displayName: null, typeName: 'worker', color: null, tags: {}, variables: {}, heatmapConfig: null, createdAt: TS, updatedAt: TS },
 ]
 
 const MOCK_GROUP = {
-  id: 'g1', name: 'payments', display_name: 'Payments', description: '',
-  members: [{ asset_id: 'a1', asset_name: 'cart-service', weight: 1.0 }],
+  id: 'g1', name: 'payments', displayName: 'Payments', description: '', color: null,
+  members: [{ assetId: 'a1', assetName: 'cart-service', assetDisplayName: null, assetTypeName: 'service', weight: 1.0 }],
   subgroups: [],
+  createdAt: TS,
+  updatedAt: TS,
 }
 
-const MOCK_TREE = { top_level: [MOCK_GROUP], all_groups: [MOCK_GROUP] }
+const MOCK_TREE = { topLevel: [MOCK_GROUP], allGroups: [MOCK_GROUP] }
 
 const mockMutate = vi.fn()
 

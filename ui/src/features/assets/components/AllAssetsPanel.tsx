@@ -47,13 +47,13 @@ export function AllAssetsPanel() {
               {assets.map((asset, idx) => (
                 <tr key={asset.id} className={`border-b border-border/60 last:border-0 hover:bg-table-row-hover transition-colors ${idx % 2 === 0 ? 'bg-table-row-bg' : 'bg-table-row-alt'}`}>
                   <td className="px-3 py-2">
-                    <span className="font-mono text-foreground">{asset.display_name ?? asset.name}</span>
-                    {asset.display_name && (
+                    <span className="font-mono text-foreground">{asset.displayName ?? asset.name}</span>
+                    {asset.displayName && (
                       <span className="text-xs text-muted-foreground ml-1.5">{asset.name}</span>
                     )}
                   </td>
                   <td className="px-3 py-2 font-mono text-muted-foreground">
-                    {asset.type_name}
+                    {asset.typeName}
                   </td>
                   <td className="px-3 py-2">
                     <LabelChips labels={asset.tags} maxVisible={3} size="small" />

@@ -13,7 +13,7 @@ interface Props {
 
 export function GroupDeleteDialog({ open, onOpenChange, groupName, onDeleted }: Props) {
   const { data: tree } = useGroupTree()
-  const group = tree?.all_groups.find(g => g.name === groupName)
+  const group = tree?.allGroups.find(g => g.name === groupName)
   const { data: assignments } = useGroupSloAssignments(groupName ?? '')
   const deleteGroup = useDeleteGroup()
   const [choice, setChoice] = useState<'keep' | 'deactivate' | null>(null)
@@ -36,15 +36,15 @@ export function GroupDeleteDialog({ open, onOpenChange, groupName, onDeleted }: 
   }
 
   const confirmMessage = choice === 'keep'
-    ? `Delete "${group.display_name ?? groupName}" and keep ${linkCount} SLO(s) active?`
-    : `Delete "${group.display_name ?? groupName}" and deactivate ${linkCount} SLO(s)?`
+    ? `Delete "${group.displayName ?? groupName}" and keep ${linkCount} SLO(s) active?`
+    : `Delete "${group.displayName ?? groupName}" and deactivate ${linkCount} SLO(s)?`
 
   return (
     <>
       <Dialog open={open && !confirmOpen} onOpenChange={onOpenChange}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Delete "{group.display_name ?? groupName}"?</DialogTitle>
+            <DialogTitle>Delete "{group.displayName ?? groupName}"?</DialogTitle>
           </DialogHeader>
           <p className="text-sm text-muted-foreground leading-relaxed">
             This group has <strong>{linkCount} linked SLO(s)</strong>

@@ -27,7 +27,7 @@ export function AssetCreateDialog({ open, onOpenChange }: Props) {
   const [weight, setWeight] = useState('1.0')
   const [labelsEditorOpen, setLabelsEditorOpen] = useState(false)
 
-  const effectiveType = typeName || types.find(t => t.is_default)?.name || types[0]?.name || ''
+  const effectiveType = typeName || types.find(t => t.isDefault)?.name || types[0]?.name || ''
   const isValid = isValidEntityName(name) && !!effectiveType
 
   const handleCreate = async () => {
@@ -83,7 +83,7 @@ export function AssetCreateDialog({ open, onOpenChange }: Props) {
         >
           {types.map(t => (
             <option key={t.name} value={t.name}>
-              {t.name}{t.is_default ? ' (default)' : ''}
+              {t.name}{t.isDefault ? ' (default)' : ''}
             </option>
           ))}
         </select>

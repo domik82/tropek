@@ -7,9 +7,9 @@ import { AssetTypesDialog } from './AssetTypesDialog'
 vi.mock('@/features/assets/hooks', () => ({
   useAssetTypes: vi.fn(() => ({
     data: [
-      { name: 'service', is_default: true, asset_count: 5 },
-      { name: 'database', is_default: false, asset_count: 2 },
-      { name: 'vm', is_default: false, asset_count: 0 },
+      { id: 't1', name: 'service', isDefault: true, assetCount: 5 },
+      { id: 't2', name: 'database', isDefault: false, assetCount: 2 },
+      { id: 't3', name: 'vm', isDefault: false, assetCount: 0 },
     ],
     isLoading: false,
   })),

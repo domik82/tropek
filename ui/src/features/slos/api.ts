@@ -16,7 +16,13 @@ import {
   type SloGroupAssignmentDto,
   type SloValidationResultDto,
 } from './mappers'
-import type { AssetGroup, AssetGroupTree } from '@/features/assets/types'
+import type { AssetGroup, AssetGroupTree } from '@/features/assets'
+import {
+  dtoToAssetGroup,
+  dtoToAssetGroupTree,
+  type AssetGroupDto,
+  type AssetGroupTreeDto,
+} from '@/features/assets/mappers'
 
 export type SloCreateInput = components['schemas']['SLODefinitionCreate']
 export type SloAssignmentCreateInput = components['schemas']['SLOAssignmentCreate']
@@ -81,7 +87,8 @@ export async function fetchSloVersions(name: string): Promise<Slo[]> {
 export async function fetchGroupTree(): Promise<AssetGroupTree> {
   const res = await fetch(`${BASE}/asset-groups/tree`)
   if (!res.ok) throw new Error(`fetchGroupTree: ${res.status}`)
-  return res.json()
+  const body: AssetGroupTreeDto = await res.json()
+  return dtoToAssetGroupTree(body)
 }
 
 export async function createGroup(body: {
@@ -93,7 +100,8 @@ export async function createGroup(body: {
     body: JSON.stringify(body),
   })
   if (!res.ok) throw new Error(`createGroup: ${res.status}`)
-  return res.json()
+  const response: AssetGroupDto = await res.json()
+  return dtoToAssetGroup(response)
 }
 
 export async function updateGroup(name: string, body: AssetGroupUpdateInput): Promise<AssetGroup> {
@@ -103,7 +111,8 @@ export async function updateGroup(name: string, body: AssetGroupUpdateInput): Pr
     body: JSON.stringify(body),
   })
   if (!res.ok) throw new Error(`updateGroup: ${res.status}`)
-  return res.json()
+  const response: AssetGroupDto = await res.json()
+  return dtoToAssetGroup(response)
 }
 
 export async function deleteGroup(name: string, deactivateSlos: boolean): Promise<void> {
@@ -121,7 +130,8 @@ export async function addSubgroup(parentName: string, childGroupId: string): Pro
     body: JSON.stringify({ child_group_id: childGroupId, weight: 1.0 }),
   })
   if (!res.ok) throw new Error(`addSubgroup: ${res.status}`)
-  return res.json()
+  const body: AssetGroupDto = await res.json()
+  return dtoToAssetGroup(body)
 }
 
 

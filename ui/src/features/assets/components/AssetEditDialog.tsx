@@ -25,8 +25,8 @@ export function AssetEditDialog({ open, onOpenChange, assetName }: Props) {
   /* eslint-disable react-hooks/set-state-in-effect -- intentional reset on prop change */
   useEffect(() => {
     if (asset) {
-      setDisplayName(asset.display_name ?? '')
-      setTypeName(asset.type_name)
+      setDisplayName(asset.displayName ?? '')
+      setTypeName(asset.typeName)
       setLabels(asset.tags ?? {})
     }
   }, [asset])
@@ -67,7 +67,7 @@ export function AssetEditDialog({ open, onOpenChange, assetName }: Props) {
         >
           {types.map(t => (
             <option key={t.name} value={t.name}>
-              {t.name}{t.is_default ? ' (default)' : ''}
+              {t.name}{t.isDefault ? ' (default)' : ''}
             </option>
           ))}
         </select>

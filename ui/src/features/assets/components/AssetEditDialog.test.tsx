@@ -7,16 +7,19 @@ import { AssetEditDialog } from './AssetEditDialog'
 const MOCK_ASSET = {
   id: 'a1',
   name: 'cart-service',
-  display_name: 'Cart',
-  type_name: 'service',
+  displayName: 'Cart',
+  typeName: 'service',
+  color: null,
   tags: { env: 'prod' },
-  created_at: '',
-  updated_at: '',
+  variables: {},
+  heatmapConfig: null,
+  createdAt: new Date(0),
+  updatedAt: new Date(0),
 }
 
 const TYPES = [
-  { name: 'service', is_default: true, asset_count: 5 },
-  { name: 'api', is_default: false, asset_count: 2 },
+  { id: 't1', name: 'service', isDefault: true, assetCount: 5 },
+  { id: 't2', name: 'api', isDefault: false, assetCount: 2 },
 ]
 
 const mockMutate = vi.fn()

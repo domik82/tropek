@@ -1,4 +1,19 @@
-export type { Asset, AssetType, AssetGroup, AssetGroupTree, AssetGroupMember } from './types'
+export type {
+  Asset,
+  AssetType,
+  AssetGroup,
+  AssetGroupTree,
+  AssetGroupMember,
+  AssetGroupSubgroup,
+  TagKeyCount,
+  TagValueCount,
+} from './domain'
+export type {
+  AssetCreateInput,
+  AssetUpdateInput,
+  AssetTypeCreateInput,
+  AssetTypeUpdateInput,
+} from './api'
 export {
   useAssets, useAsset,
   useCreateAsset, useUpdateAsset, useDeleteAsset,

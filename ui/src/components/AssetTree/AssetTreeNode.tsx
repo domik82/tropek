@@ -29,18 +29,18 @@ interface AssetTreeNodeProps {
 function matchesFilter(group: AssetGroup, tree: AssetGroupTree, filter: string, mode: TreeMode): boolean {
   if (!filter) return true
   const q = filter.toLowerCase()
-  const label = (group.display_name ?? group.name).toLowerCase()
+  const label = (group.displayName ?? group.name).toLowerCase()
   if (label.includes(q)) return true
 
   if (mode === 'navigator' || mode === 'assets') {
     if (group.members.some(m =>
-      m.asset_name.toLowerCase().includes(q) ||
-      (m.asset_display_name?.toLowerCase().includes(q) ?? false)
+      m.assetName.toLowerCase().includes(q) ||
+      (m.assetDisplayName?.toLowerCase().includes(q) ?? false)
     )) return true
   }
 
   const subgroups = group.subgroups
-    .map(sg => tree.all_groups.find(g => g.id === sg.group_id))
+    .map(sg => tree.allGroups.find(g => g.id === sg.groupId))
     .filter(Boolean) as AssetGroup[]
 
   return subgroups.some(sg => matchesFilter(sg, tree, filter, mode))
@@ -55,7 +55,7 @@ export function AssetTreeNode({
   if (!matchesFilter(group, tree, filter, mode)) return null
 
   const subgroups = group.subgroups
-    .map(sg => tree.all_groups.find(g => g.id === sg.group_id))
+    .map(sg => tree.allGroups.find(g => g.id === sg.groupId))
     .filter(Boolean) as AssetGroup[]
 
   const isExpanded = expandedGroups.has(group.name) || (!!filter && matchesFilter(group, tree, filter, mode))
@@ -65,8 +65,8 @@ export function AssetTreeNode({
   const filteredMembers = (mode === 'navigator' || mode === 'assets')
     ? (filter
         ? group.members.filter(m =>
-            m.asset_name.toLowerCase().includes(filter.toLowerCase()) ||
-            (m.asset_display_name?.toLowerCase().includes(filter.toLowerCase()) ?? false)
+            m.assetName.toLowerCase().includes(filter.toLowerCase()) ||
+            (m.assetDisplayName?.toLowerCase().includes(filter.toLowerCase()) ?? false)
           )
         : group.members)
     : []
@@ -89,7 +89,7 @@ export function AssetTreeNode({
       {isRenaming ? (
         <div className="flex items-center h-8" style={{ paddingLeft: depth * 24 + 20 }}>
           <AssetTreeInlineRename
-            currentName={group.display_name ?? group.name}
+            currentName={group.displayName ?? group.name}
             onSave={newName => onFinishRename(group.name, newName)}
             onCancel={onCancelRename}
           />
@@ -98,7 +98,7 @@ export function AssetTreeNode({
         <TreeNode
           icon={getEntityIcon('group')}
           iconColor={group.color ?? 'var(--entity-group)'}
-          label={group.display_name ?? group.name}
+          label={group.displayName ?? group.name}
           depth={depth}
           isExpandable={subgroups.length > 0 || filteredMembers.length > 0}
           isExpanded={isExpanded}
@@ -113,7 +113,7 @@ export function AssetTreeNode({
           trailingAction={
             <button
               className="p-1 rounded hover:bg-muted/80 shrink-0"
-              aria-label={`Actions for ${group.display_name ?? group.name}`}
+              aria-label={`Actions for ${group.displayName ?? group.name}`}
               onClick={e => {
                 e.stopPropagation()
                 const rect = e.currentTarget.getBoundingClientRect()
@@ -153,31 +153,31 @@ export function AssetTreeNode({
           ))}
 
           {(mode === 'navigator' || mode === 'assets') && filteredMembers.map(m => {
-            const isAssetSelected = selectedAsset === m.asset_name && selectedGroup === group.name
+            const isAssetSelected = selectedAsset === m.assetName && selectedGroup === group.name
             return (
               <TreeNode
-                key={m.asset_id}
-                icon={getAssetTypeIcon(m.asset_type_name ?? 'vm')}
+                key={m.assetId}
+                icon={getAssetTypeIcon(m.assetTypeName ?? 'vm')}
                 iconColor="var(--entity-group)"
-                label={m.asset_display_name ?? m.asset_name}
+                label={m.assetDisplayName ?? m.assetName}
                 depth={depth + 1}
                 isExpandable={false}
                 isExpanded={false}
                 isSelected={isAssetSelected}
                 selectionColor="var(--primary)"
-                onClick={() => onSelectAsset?.(m.asset_name, group.name)}
+                onClick={() => onSelectAsset?.(m.assetName, group.name)}
                 onContextMenu={e => {
                   e.preventDefault()
-                  openAssetMenu(e.clientX, e.clientY, m.asset_name, m.asset_id)
+                  openAssetMenu(e.clientX, e.clientY, m.assetName, m.assetId)
                 }}
                 trailingAction={
                   <button
                     className="p-1 rounded hover:bg-muted/80 shrink-0"
-                    aria-label={`Actions for ${m.asset_display_name ?? m.asset_name}`}
+                    aria-label={`Actions for ${m.assetDisplayName ?? m.assetName}`}
                     onClick={e => {
                       e.stopPropagation()
                       const rect = e.currentTarget.getBoundingClientRect()
-                      openAssetMenu(rect.left, rect.bottom + 2, m.asset_name, m.asset_id)
+                      openAssetMenu(rect.left, rect.bottom + 2, m.assetName, m.assetId)
                     }}
                   >
                     <MoreHorizontal className="w-4 h-4 text-muted-foreground" />

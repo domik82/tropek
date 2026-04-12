@@ -145,8 +145,8 @@ export function SloLinkDialog({ open, onOpenChange, lockedSloName, lockedGroupNa
             className="w-full bg-input border border-border rounded px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary/50"
           >
             <option value="">Select group...</option>
-            {tree?.all_groups.map(g => (
-              <option key={g.id} value={g.name}>{g.display_name ?? g.name}</option>
+            {tree?.allGroups.map(g => (
+              <option key={g.id} value={g.name}>{g.displayName ?? g.name}</option>
             ))}
           </select>
         </div>

@@ -29,7 +29,7 @@ export function EvaluationDetailPage() {
   const { data: slos } = useSlos()
   const assetDisplayName = useMemo(() => {
     if (!ev || ev.asset_snapshot.display_name) return undefined
-    return assets?.find(a => a.name === ev.asset_snapshot.name)?.display_name ?? undefined
+    return assets?.find(a => a.name === ev.asset_snapshot.name)?.displayName ?? undefined
   }, [assets, ev])
   const sloDisplayName = useMemo(() => {
     if (!ev?.slo_name) return undefined

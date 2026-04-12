@@ -12,35 +12,43 @@ vi.mock('./AssetTreeInlineRename', () => ({
   AssetTreeInlineRename: () => <div data-testid="inline-rename" />,
 }))
 
-const TS = '2026-01-01T00:00:00Z'
+const TS = new Date('2026-01-01T00:00:00Z')
 
 const ROOT_GROUP: AssetGroup = {
   id: 'g1',
   name: 'infra',
-  display_name: 'Infrastructure',
+  displayName: 'Infrastructure',
   description: null,
+  color: null,
   members: [
-    { asset_id: 'a1', asset_name: 'db-primary', asset_type_name: 'service', weight: 1.0 },
+    {
+      assetId: 'a1',
+      assetName: 'db-primary',
+      assetDisplayName: null,
+      assetTypeName: 'service',
+      weight: 1.0,
+    },
   ],
-  subgroups: [{ group_id: 'g2', group_name: 'infra-eu', weight: 1.0 }],
-  created_at: TS,
-  updated_at: TS,
+  subgroups: [{ groupId: 'g2', groupName: 'infra-eu', weight: 1.0 }],
+  createdAt: TS,
+  updatedAt: TS,
 }
 
 const CHILD_GROUP: AssetGroup = {
   id: 'g2',
   name: 'infra-eu',
-  display_name: 'Infra EU',
+  displayName: 'Infra EU',
   description: null,
+  color: null,
   members: [],
   subgroups: [],
-  created_at: TS,
-  updated_at: TS,
+  createdAt: TS,
+  updatedAt: TS,
 }
 
 const TREE: AssetGroupTree = {
-  top_level: [ROOT_GROUP],
-  all_groups: [ROOT_GROUP, CHILD_GROUP],
+  topLevel: [ROOT_GROUP],
+  allGroups: [ROOT_GROUP, CHILD_GROUP],
 }
 
 const defaultProps = {
@@ -75,7 +83,7 @@ describe('AssetTreeNode', () => {
         {...defaultProps}
         expandedGroups={new Set(['infra'])}
         mode="navigator"
-      />
+      />,
     )
     expect(screen.getByText('db-primary')).toBeInTheDocument()
   })
@@ -87,7 +95,7 @@ describe('AssetTreeNode', () => {
         {...defaultProps}
         expandedGroups={new Set(['infra'])}
         mode="slo"
-      />
+      />,
     )
     expect(screen.queryByText('db-primary')).not.toBeInTheDocument()
   })
@@ -99,7 +107,7 @@ describe('AssetTreeNode', () => {
 
   it('returns null when filter does not match group or children', () => {
     const { container } = render(
-      <AssetTreeNode group={CHILD_GROUP} {...defaultProps} filter="zzz-no-match" />
+      <AssetTreeNode group={CHILD_GROUP} {...defaultProps} filter="zzz-no-match" />,
     )
     expect(container.innerHTML).toBe('')
   })
@@ -114,14 +122,12 @@ describe('AssetTreeNode', () => {
         {...defaultProps}
         onToggleExpand={onToggleExpand}
         onSelectGroup={onSelectGroup}
-      />
+      />,
     )
     await user.click(screen.getByText('Infrastructure'))
     expect(onToggleExpand).toHaveBeenCalledWith('infra')
     expect(onSelectGroup).toHaveBeenCalledWith('infra')
   })
-
-  // --- Bug fix: leaf asset click should pass parent group name ---
 
   it('clicking a leaf asset calls onSelectAsset with asset name AND parent group name', async () => {
     const user = userEvent.setup()
@@ -132,44 +138,54 @@ describe('AssetTreeNode', () => {
         {...defaultProps}
         expandedGroups={new Set(['infra'])}
         onSelectAsset={onSelectAsset}
-      />
+      />,
     )
     await user.click(screen.getByText('db-primary'))
     expect(onSelectAsset).toHaveBeenCalledWith('db-primary', 'infra')
   })
 
-  // --- Bug fix: asset highlight must be scoped to correct group ---
-
   it('highlights asset only when both selectedAsset and selectedGroup match', () => {
-    // Same asset name in two groups — only the one whose parent group matches
-    // selectedGroup should be highlighted
     const GROUP_A: AssetGroup = {
       id: 'ga',
       name: 'data-tier',
-      display_name: null,
+      displayName: null,
       description: null,
+      color: null,
       members: [
-        { asset_id: 'a1', asset_name: 'orders-db', asset_type_name: 'service', weight: 1.0 },
+        {
+          assetId: 'a1',
+          assetName: 'orders-db',
+          assetDisplayName: null,
+          assetTypeName: 'service',
+          weight: 1.0,
+        },
       ],
       subgroups: [],
-      created_at: TS,
-      updated_at: TS,
+      createdAt: TS,
+      updatedAt: TS,
     }
     const GROUP_B: AssetGroup = {
       id: 'gb',
       name: 'infra-prod',
-      display_name: null,
+      displayName: null,
       description: null,
+      color: null,
       members: [
-        { asset_id: 'a2', asset_name: 'orders-db', asset_type_name: 'service', weight: 1.0 },
+        {
+          assetId: 'a2',
+          assetName: 'orders-db',
+          assetDisplayName: null,
+          assetTypeName: 'service',
+          weight: 1.0,
+        },
       ],
       subgroups: [],
-      created_at: TS,
-      updated_at: TS,
+      createdAt: TS,
+      updatedAt: TS,
     }
     const tree: AssetGroupTree = {
-      top_level: [GROUP_A, GROUP_B],
-      all_groups: [GROUP_A, GROUP_B],
+      topLevel: [GROUP_A, GROUP_B],
+      allGroups: [GROUP_A, GROUP_B],
     }
 
     const { container } = render(
@@ -190,21 +206,18 @@ describe('AssetTreeNode', () => {
           selectedGroup="data-tier"
           selectedAsset="orders-db"
         />
-      </>
+      </>,
     )
 
-    // Both render "orders-db" text, but only the one under data-tier should have
-    // the selected styling (data-selected="true" with inline border style)
     const assetLeaves = container.querySelectorAll('[role="button"]')
-    // Filter to just the leaf asset rows (not the group header rows)
-    const leafRows = Array.from(assetLeaves).filter(el =>
-      el.textContent?.includes('orders-db') && !el.textContent?.includes('data-tier') && !el.textContent?.includes('infra-prod')
+    const leafRows = Array.from(assetLeaves).filter(
+      (el) =>
+        el.textContent?.includes('orders-db') &&
+        !el.textContent?.includes('data-tier') &&
+        !el.textContent?.includes('infra-prod'),
     )
     expect(leafRows).toHaveLength(2)
-
-    // First one (under data-tier) should be highlighted
     expect(leafRows[0].getAttribute('data-selected')).toBe('true')
-    // Second one (under infra-prod) should NOT be highlighted
     expect(leafRows[1].getAttribute('data-selected')).toBe('false')
   })
 })

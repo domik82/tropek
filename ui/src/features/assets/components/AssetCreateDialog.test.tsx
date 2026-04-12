@@ -5,13 +5,25 @@ import { TestWrapper } from '@/test-wrapper'
 import { AssetCreateDialog } from './AssetCreateDialog'
 
 const TYPES = [
-  { name: 'service', is_default: true, asset_count: 5 },
-  { name: 'endpoint', is_default: false, asset_count: 2 },
+  { id: 't1', name: 'service', isDefault: true, assetCount: 5 },
+  { id: 't2', name: 'endpoint', isDefault: false, assetCount: 2 },
 ]
 
 const TREE = {
-  top_level: [],
-  all_groups: [{ id: 'g1', name: 'payments', display_name: 'Payments', members: [], subgroups: [] }],
+  topLevel: [],
+  allGroups: [
+    {
+      id: 'g1',
+      name: 'payments',
+      displayName: 'Payments',
+      description: null,
+      color: null,
+      members: [],
+      subgroups: [],
+      createdAt: new Date(0),
+      updatedAt: new Date(0),
+    },
+  ],
 }
 
 const mockCreateAsset = vi.fn().mockResolvedValue({ id: 'new-id' })

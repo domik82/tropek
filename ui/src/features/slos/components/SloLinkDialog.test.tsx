@@ -23,8 +23,8 @@ vi.mock('@/features/slis/hooks', () => ({
 vi.mock('../hooks', () => ({
   useGroupTree: () => ({
     data: {
-      all_groups: [{ id: 'g-1', name: 'production', display_name: 'Production' }],
-      root_groups: [],
+      allGroups: [{ id: 'g-1', name: 'production', displayName: 'Production' }],
+      topLevel: [],
     },
   }),
   useSlos: () => ({
