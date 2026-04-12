@@ -29,9 +29,9 @@ from tropek.modules.quality_gate.schemas.heatmap import (
     HeatmapCell,
     HeatmapCellGrouped,
     HeatmapMetric,
+    HeatmapSloGroupSection,
     HeatmapSummaryCell,
     MetricHeatmapResponse,
-    SloGroup,
 )
 from tropek.modules.quality_gate.schemas.re_evaluation import (
     ReEvalResultItem,
@@ -67,6 +67,7 @@ __all__ = [
     'HeatmapCell',
     'HeatmapCellGrouped',
     'HeatmapMetric',
+    'HeatmapSloGroupSection',
     'HeatmapSummaryCell',
     'IndicatorResult',
     'InvalidateRequest',
@@ -76,6 +77,5 @@ __all__ = [
     'ReEvalResultItem',
     'ReEvaluateRequest',
     'ReEvaluateResponse',
-    'SloGroup',
     'TrendPoint',
 ]

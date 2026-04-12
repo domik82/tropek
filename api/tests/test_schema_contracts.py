@@ -25,6 +25,12 @@ from tropek.modules.quality_gate.schemas.evaluations import (
     PassTarget,
     SliMetadata,
 )
+from tropek.modules.quality_gate.schemas import heatmap as heatmap_module
+from tropek.modules.quality_gate.schemas.heatmap import (
+    HeatmapCellGrouped,
+    HeatmapSloGroupSection,
+    HeatmapSummaryCell,
+)
 from tropek.modules.sli_registry.schemas import SLIDefinitionRead
 from tropek.modules.slo_registry.schemas import SLODefinitionRead
 
@@ -141,6 +147,27 @@ class TestEvaluationNestedTypes:
     def test_warning_targets_is_typed_list(self) -> None:
         field = IndicatorResult.model_fields['warning_targets']
         assert field.annotation == list[PassTarget] | None
+
+
+# -- Heatmap nested model types (bugs #5, #7) ---------------------------------
+
+
+class TestHeatmapNestedTypes:
+    def test_heatmap_cell_pass_targets_is_typed(self) -> None:
+        field = HeatmapCellGrouped.model_fields['pass_targets']
+        assert field.annotation == list[PassTarget] | None
+
+    def test_heatmap_cell_warning_targets_is_typed(self) -> None:
+        field = HeatmapCellGrouped.model_fields['warning_targets']
+        assert field.annotation == list[PassTarget] | None
+
+    def test_heatmap_summary_sli_metadata_is_typed(self) -> None:
+        field = HeatmapSummaryCell.model_fields['sli_metadata']
+        assert field.annotation == dict[str, SliMetadata] | None
+
+    def test_sloshim_renamed_to_avoid_collision(self) -> None:
+        assert not hasattr(heatmap_module, 'SloGroup')
+        assert hasattr(heatmap_module, 'HeatmapSloGroupSection')
 
 
 # -- Annotations --------------------------------------------------------------

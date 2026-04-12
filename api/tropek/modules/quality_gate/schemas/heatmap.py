@@ -4,9 +4,10 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
-from typing import Any
 
 from pydantic import BaseModel
+
+from tropek.modules.quality_gate.schemas.evaluations import PassTarget, SliMetadata
 
 
 class HeatmapMetric(BaseModel):
@@ -46,7 +47,7 @@ class HeatmapSummaryCell(BaseModel):
     score: float  # 0-100, achieved_points / total_points x 100
     total_score_pass_threshold: float | None = None
     total_score_warning_threshold: float | None = None
-    sli_metadata: dict[str, Any] | None = None
+    sli_metadata: dict[str, SliMetadata] | None = None
     invalidated: bool = False
     invalidation_note: str | None = None
 
@@ -66,13 +67,13 @@ class HeatmapCellGrouped(BaseModel):
     change_relative_pct: float | None = None
     weight: float = 1
     key_sli: bool = False
-    pass_targets: list[dict[str, Any]] | None = None
-    warning_targets: list[dict[str, Any]] | None = None
+    pass_targets: list[PassTarget] | None = None
+    warning_targets: list[PassTarget] | None = None
     tab_group: str | None = None
     aggregation: str | None = None
 
 
-class SloGroup(BaseModel):
+class HeatmapSloGroupSection(BaseModel):
     """One SLO's contribution to the grouped heatmap."""
 
     slo_name: str
@@ -97,5 +98,5 @@ class GroupedMetricHeatmapResponse(BaseModel):
 
     asset_name: str
     columns: list[EvaluationColumn]  # ordered oldest → newest
-    groups: list[SloGroup]  # SLO groups in appearance order
+    groups: list[HeatmapSloGroupSection]  # SLO groups in appearance order
     composite: list[HeatmapSummaryCell]  # Overall row (worst-case across all groups)
