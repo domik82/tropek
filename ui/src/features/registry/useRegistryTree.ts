@@ -22,8 +22,8 @@ export interface MinSli {
 
 export interface MinDs {
   name: string
-  display_name?: string | null
-  adapter_type: string
+  displayName?: string | null
+  adapterType: string
 }
 
 export interface MinBinding {
@@ -54,7 +54,7 @@ export function buildSloTree(
     const dsChildren: TreeNode[] = dsNames.map(dsName => ({
       id: `ds:${dsName}`,
       name: dsName,
-      displayName: dsByName.get(dsName)?.display_name ?? undefined,
+      displayName: dsByName.get(dsName)?.displayName ?? undefined,
       type: 'datasource' as const,
     }))
 
@@ -148,9 +148,9 @@ export function buildDatasourceTree(
     return {
       id: `ds:${ds.name}`,
       name: ds.name,
-      displayName: ds.display_name ?? undefined,
+      displayName: ds.displayName ?? undefined,
       type: 'datasource' as const,
-      badge: `[${ds.adapter_type}]`,
+      badge: `[${ds.adapterType}]`,
       children: [...sliChildren, ...orphanChildren],
     }
   })
@@ -267,7 +267,7 @@ export function buildSloSections(
     const dsChildren: TreeNode[] = dsNames.map(dsName => ({
       id: `ds:${dsName}`,
       name: dsName,
-      displayName: dsByName.get(dsName)?.display_name ?? undefined,
+      displayName: dsByName.get(dsName)?.displayName ?? undefined,
       type: 'datasource' as const,
     }))
     const sliChildren: TreeNode[] = []

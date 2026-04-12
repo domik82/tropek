@@ -5,7 +5,7 @@ import {
   updateDatasource, deleteDatasource,
   fetchDatasourceTagKeys, fetchDatasourceTagValues,
 } from './api'
-import type { DataSourceCreate, DataSourceUpdate } from './types'
+import type { DatasourceCreateInput, DatasourceUpdateInput } from './domain'
 
 export function useDatasources(tagKey?: string, tagVal?: string) {
   return useQuery({
@@ -25,7 +25,7 @@ export function useDatasource(name: string) {
 export function useCreateDatasource() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (payload: DataSourceCreate) => createDatasource(payload),
+    mutationFn: (payload: DatasourceCreateInput) => createDatasource(payload),
     onSuccess: () => { void qc.invalidateQueries({ queryKey: datasourceKeys.all }) },
   })
 }
@@ -33,7 +33,7 @@ export function useCreateDatasource() {
 export function useUpdateDatasource() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: ({ name, ...body }: DataSourceUpdate & { name: string }) =>
+    mutationFn: ({ name, ...body }: DatasourceUpdateInput & { name: string }) =>
       updateDatasource(name, body),
     onSuccess: () => { void qc.invalidateQueries({ queryKey: datasourceKeys.all }) },
   })

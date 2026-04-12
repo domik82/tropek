@@ -10,7 +10,7 @@ import { ENTITY_COLORS } from '@/lib/entity-colors'
 import { SANS_SERIF } from '@/lib/fonts'
 import { tagsToRows, rowsToTags } from './tagUtils'
 import type { TagRow } from './tagUtils'
-import type { DataSource } from '@/features/datasources'
+import type { Datasource } from '@/features/datasources'
 
 const createSchema = z.object({
   name: z.string().min(1, 'Name is required'),
@@ -32,7 +32,7 @@ type EditValues = z.infer<typeof editSchema>
 interface DatasourceFormProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  editFrom?: DataSource
+  editFrom?: Datasource
 }
 
 export function DatasourceForm({ open, onOpenChange, editFrom }: DatasourceFormProps) {
@@ -46,8 +46,8 @@ export function DatasourceForm({ open, onOpenChange, editFrom }: DatasourceFormP
   const editForm = useForm<EditValues>({
     resolver: zodResolver(editSchema),
     defaultValues: {
-      display_name: editFrom?.display_name ?? '',
-      adapter_url: editFrom?.adapter_url ?? '',
+      display_name: editFrom?.displayName ?? '',
+      adapter_url: editFrom?.adapterUrl ?? '',
       token: '',
     },
   })
@@ -58,8 +58,8 @@ export function DatasourceForm({ open, onOpenChange, editFrom }: DatasourceFormP
   useEffect(() => {
     if (editFrom) {
       editForm.reset({
-        display_name: editFrom.display_name ?? '',
-        adapter_url: editFrom.adapter_url,
+        display_name: editFrom.displayName ?? '',
+        adapter_url: editFrom.adapterUrl,
         token: '',
       })
       setTagRows(tagsToRows(editFrom.tags))
@@ -182,7 +182,7 @@ export function DatasourceForm({ open, onOpenChange, editFrom }: DatasourceFormP
                 <label htmlFor="ds-adapter-type" className="block text-xs text-muted-foreground mb-1">
                   Adapter Type
                 </label>
-                <Input id="ds-adapter-type" value={editFrom!.adapter_type} disabled />
+                <Input id="ds-adapter-type" value={editFrom!.adapterType} disabled />
               </div>
             )}
 

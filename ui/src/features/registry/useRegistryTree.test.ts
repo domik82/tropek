@@ -8,7 +8,7 @@ describe('buildSloTree', () => {
   it('builds SLO → SLI → DS hierarchy from bindings and SLO sli_name', () => {
     const slos = [{ name: 'http-slo', display_name: 'HTTP SLO', version: 3, active: true, sli_name: 'http-sli', sli_version: 1 }]
     const slis = [{ name: 'http-sli', display_name: null, adapter_type: 'prometheus', active: true, indicators: { rt: 'q1', err: 'q2' } }]
-    const datasources = [{ name: 'prom', display_name: null, adapter_type: 'prometheus' }]
+    const datasources = [{ name: 'prom', displayName: null, adapterType: 'prometheus' }]
     const bindings = [{ slo_name: 'http-slo', data_source_name: 'prom' }]
 
     const tree = buildSloTree(slos, slis, datasources, bindings)
@@ -23,7 +23,7 @@ describe('buildSloTree', () => {
   it('shows DS directly under SLO when no sli_name on SLO', () => {
     const slos = [{ name: 'http-slo', version: 1, active: true }]
     const bindings = [{ slo_name: 'http-slo', data_source_name: 'prom' }]
-    const datasources = [{ name: 'prom', display_name: null, adapter_type: 'prometheus' }]
+    const datasources = [{ name: 'prom', displayName: null, adapterType: 'prometheus' }]
     const tree = buildSloTree(slos, [], datasources, bindings)
     expect(tree).toHaveLength(1)
     expect(tree[0].children).toHaveLength(1)
@@ -40,7 +40,7 @@ describe('buildSloTree', () => {
 
 describe('buildDatasourceTree', () => {
   it('builds DS → SLI → SLO hierarchy using sli_name from SLO definition', () => {
-    const datasources = [{ name: 'prom', display_name: null, adapter_type: 'prometheus' }]
+    const datasources = [{ name: 'prom', displayName: null, adapterType: 'prometheus' }]
     const slis = [{ name: 'http-sli', display_name: null, adapter_type: 'prometheus', active: true, indicators: { rt: 'q' } }]
     const slos = [{ name: 'http-slo', display_name: null, version: 2, active: true, sli_name: 'http-sli', sli_version: 1 }]
     const bindings = [{ slo_name: 'http-slo', data_source_name: 'prom' }]
@@ -53,7 +53,7 @@ describe('buildDatasourceTree', () => {
   })
 
   it('shows SLOs without sli_name directly under datasource', () => {
-    const datasources = [{ name: 'prom', display_name: null, adapter_type: 'prometheus' }]
+    const datasources = [{ name: 'prom', displayName: null, adapterType: 'prometheus' }]
     const slos = [{ name: 'bare-slo', display_name: null, version: 1, active: true }]
     const bindings = [{ slo_name: 'bare-slo', data_source_name: 'prom' }]
 
@@ -122,7 +122,7 @@ describe('buildSloSections', () => {
   const slis = [
     { name: 'http-sli', display_name: null, adapter_type: 'prometheus', active: true, indicators: { latency: 'q' } },
   ]
-  const datasources = [{ name: 'prom', display_name: null, adapter_type: 'prometheus' }]
+  const datasources = [{ name: 'prom', displayName: null, adapterType: 'prometheus' }]
   const bindings = [{ slo_name: 'web-perf', data_source_name: 'prom' }]
 
   it('separates standard SLOs from templates', () => {
