@@ -128,10 +128,10 @@ def test_cell_carries_indicator_detail() -> None:
     assert cell.key_sli is True
     assert cell.pass_targets is not None
     assert len(cell.pass_targets) == 1
-    assert cell.pass_targets[0]['criteria'] == '<600'
+    assert cell.pass_targets[0].criteria == '<600'
     assert cell.warning_targets is not None
     assert len(cell.warning_targets) == 1
-    assert cell.warning_targets[0]['criteria'] == '<800'
+    assert cell.warning_targets[0].criteria == '<800'
     assert cell.tab_group == 'latency'
 
 
@@ -143,7 +143,13 @@ def test_cell_aggregation_from_job_stats() -> None:
         indicator_rows=[row],
         job_stats={
             'sli_metadata': {
-                'cpu_usage': {'mode': 'aggregated', 'expected_samples': 100},
+                'cpu_usage': {
+                    'mode': 'aggregated',
+                    'expected_samples': 100,
+                    'actual_samples': 100,
+                    'missing_pct': 0.0,
+                    'chunks_failed': 0,
+                },
             },
         },
     )
@@ -170,7 +176,15 @@ def test_summary_carries_thresholds_and_metadata() -> None:
         job_stats={
             'total_score_pass_threshold': 90.0,
             'total_score_warning_threshold': 75.0,
-            'sli_metadata': {'cpu_usage': {'mode': 'aggregated'}},
+            'sli_metadata': {
+                'cpu_usage': {
+                    'mode': 'aggregated',
+                    'expected_samples': 100,
+                    'actual_samples': 100,
+                    'missing_pct': 0.0,
+                    'chunks_failed': 0,
+                },
+            },
         },
     )
     run = _make_run(slo_evaluations=[slo_eval])
@@ -180,7 +194,9 @@ def test_summary_carries_thresholds_and_metadata() -> None:
     summary = resp.groups[0].summary[0]
     assert summary.total_score_pass_threshold == 90.0
     assert summary.total_score_warning_threshold == 75.0
-    assert summary.sli_metadata == {'cpu_usage': {'mode': 'aggregated'}}
+    assert summary.sli_metadata is not None
+    assert summary.sli_metadata['cpu_usage'].mode == 'aggregated'
+    assert summary.sli_metadata['cpu_usage'].expected_samples == 100
     assert summary.invalidated is False
     assert summary.invalidation_note is None
 

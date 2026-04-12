@@ -16,9 +16,9 @@ from tropek.modules.quality_gate.schemas import (
     GroupedMetricHeatmapResponse,
     HeatmapCellGrouped,
     HeatmapMetric,
+    HeatmapSloGroupSection,
     HeatmapSummaryCell,
     IndicatorResult,
-    SloGroup,
 )
 from tropek.modules.quality_gate.schemas.evaluations import PassTarget
 from tropek.modules.quality_gate.workflows.presentation.target_resolver import resolve_targets
@@ -41,14 +41,11 @@ def _read_stored_targets(
     criteria = list(objective.pass_threshold) if is_pass else list(objective.warning_threshold)
     if not criteria:
         return None
-    resolved = resolve_targets(
+    return resolve_targets(
         criteria,
         value=row.value,
         compared_value=row.compared_value,
     )
-    if resolved is None:
-        return None
-    return [PassTarget.model_validate(entry) for entry in resolved]
 
 
 def _indicators_from_orm_rows(rows: list[IndicatorResultRow]) -> list[IndicatorResult]:
@@ -193,8 +190,8 @@ def _slo_summary_result(slo_eval: SLOEvaluation | None) -> str:
 def _build_slo_groups(
     slo_data: dict[str, dict[str, Any]],
     runs_asc: list[EvaluationRun],
-) -> list[SloGroup]:
-    """Build SloGroup list with per-column summary cells from collected SLO data."""
+) -> list[HeatmapSloGroupSection]:
+    """Build HeatmapSloGroupSection list with per-column summary cells from collected SLO data."""
     column_count = len(runs_asc)
     groups = []
 
@@ -228,7 +225,7 @@ def _build_slo_groups(
                 )
             )
         groups.append(
-            SloGroup(
+            HeatmapSloGroupSection(
                 slo_name=slo_name,
                 metrics=[
                     HeatmapMetric(name=metric_name, display_name=display_name)
