@@ -603,13 +603,22 @@ export function getAssetGroupTree() {
     'performance-lab-2': 'Performance load test mirror environment (2 runs/day)',
   }
 
+  const MOCK_TS = '2026-01-01T00:00:00Z'
+
   const allGroups: AssetGroup[] = Array.from(labMap.entries()).map(([lab, members], i) => ({
     id: `group-${i}`,
     name: lab,
     display_name: lab.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase()),
-    description: LAB_DESCRIPTIONS[lab],
-    members: members.map(a => ({ asset_id: a.id, asset_name: a.name, weight: 1 })),
+    description: LAB_DESCRIPTIONS[lab] ?? null,
+    members: members.map(a => ({
+      asset_id: a.id,
+      asset_name: a.name,
+      asset_type_name: 'service',
+      weight: 1,
+    })),
     subgroups: [],
+    created_at: MOCK_TS,
+    updated_at: MOCK_TS,
   }))
 
   // Add Linux/Windows subgroups under Performance Lab 1
@@ -625,6 +634,8 @@ export function getAssetGroupTree() {
       description: 'Linux assets in Performance Lab 1',
       members: linuxMembers,
       subgroups: [],
+      created_at: MOCK_TS,
+      updated_at: MOCK_TS,
     }
     const winGroup: AssetGroup = {
       id: 'group-pl1-windows',
@@ -633,6 +644,8 @@ export function getAssetGroupTree() {
       description: 'Windows assets in Performance Lab 1',
       members: winMembers,
       subgroups: [],
+      created_at: MOCK_TS,
+      updated_at: MOCK_TS,
     }
 
     pl1.members = []

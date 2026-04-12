@@ -2,6 +2,8 @@ import { describe, it, expect } from 'vitest'
 import { countLeafMembers } from './treeUtils'
 import type { AssetGroup, AssetGroupTree } from '@/features/assets/types'
 
+const TS = '2026-01-01T00:00:00Z'
+
 function mkGroup(
   id: string,
   members: number,
@@ -10,12 +12,17 @@ function mkGroup(
   return {
     id,
     name: id,
+    display_name: null,
+    description: null,
     members: Array.from({ length: members }, (_, i) => ({
       asset_id: `${id}-asset-${i}`,
       asset_name: `${id}-asset-${i}`,
+      asset_type_name: 'service',
       weight: 1,
     })),
     subgroups: subgroupIds.map(gid => ({ group_id: gid, group_name: gid, weight: 1 })),
+    created_at: TS,
+    updated_at: TS,
   }
 }
 

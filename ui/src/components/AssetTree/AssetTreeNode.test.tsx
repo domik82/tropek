@@ -12,20 +12,30 @@ vi.mock('./AssetTreeInlineRename', () => ({
   AssetTreeInlineRename: () => <div data-testid="inline-rename" />,
 }))
 
+const TS = '2026-01-01T00:00:00Z'
+
 const ROOT_GROUP: AssetGroup = {
   id: 'g1',
   name: 'infra',
   display_name: 'Infrastructure',
-  members: [{ asset_id: 'a1', asset_name: 'db-primary', weight: 1.0 }],
+  description: null,
+  members: [
+    { asset_id: 'a1', asset_name: 'db-primary', asset_type_name: 'service', weight: 1.0 },
+  ],
   subgroups: [{ group_id: 'g2', group_name: 'infra-eu', weight: 1.0 }],
+  created_at: TS,
+  updated_at: TS,
 }
 
 const CHILD_GROUP: AssetGroup = {
   id: 'g2',
   name: 'infra-eu',
   display_name: 'Infra EU',
+  description: null,
   members: [],
   subgroups: [],
+  created_at: TS,
+  updated_at: TS,
 }
 
 const TREE: AssetGroupTree = {
@@ -136,14 +146,26 @@ describe('AssetTreeNode', () => {
     const GROUP_A: AssetGroup = {
       id: 'ga',
       name: 'data-tier',
-      members: [{ asset_id: 'a1', asset_name: 'orders-db', weight: 1.0 }],
+      display_name: null,
+      description: null,
+      members: [
+        { asset_id: 'a1', asset_name: 'orders-db', asset_type_name: 'service', weight: 1.0 },
+      ],
       subgroups: [],
+      created_at: TS,
+      updated_at: TS,
     }
     const GROUP_B: AssetGroup = {
       id: 'gb',
       name: 'infra-prod',
-      members: [{ asset_id: 'a2', asset_name: 'orders-db', weight: 1.0 }],
+      display_name: null,
+      description: null,
+      members: [
+        { asset_id: 'a2', asset_name: 'orders-db', asset_type_name: 'service', weight: 1.0 },
+      ],
       subgroups: [],
+      created_at: TS,
+      updated_at: TS,
     }
     const tree: AssetGroupTree = {
       top_level: [GROUP_A, GROUP_B],

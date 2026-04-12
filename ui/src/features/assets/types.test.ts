@@ -12,6 +12,7 @@ describe('Asset type contract', () => {
     const asset: Asset = {
       id: 'test',
       name: 'test',
+      display_name: null,
       type_name: 'service',
       tags: { env: 'prod' },
       variables: {},
