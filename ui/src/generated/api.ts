@@ -1767,6 +1767,24 @@ export interface components {
             };
         };
         /**
+         * AssetSnapshot
+         * @description Snapshot of asset identity/version at evaluation time.
+         */
+        AssetSnapshot: {
+            /** Build Ref */
+            build_ref?: string | null;
+            /** Display Name */
+            display_name?: string | null;
+            /** Name */
+            name: string;
+            /** Primary Version */
+            primary_version?: string | null;
+            /** Tags */
+            tags?: {
+                [key: string]: string;
+            };
+        };
+        /**
          * AssetTypeCreate
          * @description Request body for creating an asset type.
          */
@@ -1867,6 +1885,22 @@ export interface components {
              * Format: date-time
              */
             period_start: string;
+        };
+        /**
+         * ComparisonConfig
+         * @description Per-SLO comparison configuration. All fields optional.
+         */
+        ComparisonConfig: {
+            /** Aggregate Function */
+            aggregate_function?: string | null;
+            /** Compare With */
+            compare_with?: string | null;
+            /** Include Result With Score */
+            include_result_with_score?: string | null;
+            /** Number Of Comparison Results */
+            number_of_comparison_results?: number | null;
+        } & {
+            [key: string]: unknown;
         };
         /**
          * DataSourceCreate
@@ -2116,10 +2150,7 @@ export interface components {
             annotation_count: number;
             /** Annotations */
             annotations: components["schemas"]["AnnotationRead"][];
-            /** Asset Snapshot */
-            asset_snapshot: {
-                [key: string]: unknown;
-            };
+            asset_snapshot: components["schemas"]["AssetSnapshot"];
             /** Baseline Pin Author */
             baseline_pin_author?: string | null;
             /** Baseline Pin Reason */
@@ -2185,7 +2216,7 @@ export interface components {
             score: number | null;
             /** Sli Metadata */
             sli_metadata?: {
-                [key: string]: unknown;
+                [key: string]: components["schemas"]["SliMetadata"];
             } | null;
             /** Sli Name */
             sli_name: string | null;
@@ -2208,7 +2239,7 @@ export interface components {
             total_score_warning_threshold?: number | null;
             /** Variables */
             variables: {
-                [key: string]: unknown;
+                [key: string]: string;
             };
         };
         /**
@@ -2238,10 +2269,7 @@ export interface components {
              * @default 0
              */
             annotation_count: number;
-            /** Asset Snapshot */
-            asset_snapshot: {
-                [key: string]: unknown;
-            };
+            asset_snapshot: components["schemas"]["AssetSnapshot"];
             /** Baseline Pin Author */
             baseline_pin_author?: string | null;
             /** Baseline Pin Reason */
@@ -2313,7 +2341,7 @@ export interface components {
             top_failures: components["schemas"]["FailingIndicator"][];
             /** Variables */
             variables: {
-                [key: string]: unknown;
+                [key: string]: string;
             };
         };
         /**
@@ -2352,7 +2380,7 @@ export interface components {
             /** Composite */
             composite: components["schemas"]["HeatmapSummaryCell"][];
             /** Groups */
-            groups: components["schemas"]["SloGroup"][];
+            groups: components["schemas"]["HeatmapSloGroupSection"][];
         };
         /** HTTPValidationError */
         HTTPValidationError: {
@@ -2411,9 +2439,7 @@ export interface components {
             /** Metric */
             metric: string;
             /** Pass Targets */
-            pass_targets?: {
-                [key: string]: unknown;
-            }[] | null;
+            pass_targets?: components["schemas"]["PassTarget"][] | null;
             /**
              * Period Start
              * Format: date-time
@@ -2433,9 +2459,7 @@ export interface components {
             /** Value */
             value?: number | null;
             /** Warning Targets */
-            warning_targets?: {
-                [key: string]: unknown;
-            }[] | null;
+            warning_targets?: components["schemas"]["PassTarget"][] | null;
             /**
              * Weight
              * @default 1
@@ -2451,6 +2475,22 @@ export interface components {
             display_name: string;
             /** Name */
             name: string;
+        };
+        /**
+         * HeatmapSloGroupSection
+         * @description One SLO's contribution to the grouped heatmap.
+         */
+        HeatmapSloGroupSection: {
+            /** Cells */
+            cells: components["schemas"]["HeatmapCellGrouped"][];
+            /** Metrics */
+            metrics: components["schemas"]["HeatmapMetric"][];
+            /** Slo Display Name */
+            slo_display_name?: string | null;
+            /** Slo Name */
+            slo_name: string;
+            /** Summary */
+            summary: components["schemas"]["HeatmapSummaryCell"][];
         };
         /**
          * HeatmapSummaryCell
@@ -2480,7 +2520,7 @@ export interface components {
             score: number;
             /** Sli Metadata */
             sli_metadata?: {
-                [key: string]: unknown;
+                [key: string]: components["schemas"]["SliMetadata"];
             } | null;
             /** Total Score Pass Threshold */
             total_score_pass_threshold?: number | null;
@@ -2507,9 +2547,7 @@ export interface components {
             /** Metric */
             metric: string;
             /** Pass Targets */
-            pass_targets: {
-                [key: string]: unknown;
-            }[] | null;
+            pass_targets: components["schemas"]["PassTarget"][] | null;
             /** Score */
             score: number;
             /** Status */
@@ -2519,9 +2557,7 @@ export interface components {
             /** Value */
             value: number | null;
             /** Warning Targets */
-            warning_targets: {
-                [key: string]: unknown;
-            }[] | null;
+            warning_targets: components["schemas"]["PassTarget"][] | null;
             /** Weight */
             weight: number;
         };
@@ -2532,6 +2568,20 @@ export interface components {
         InvalidateRequest: {
             /** Invalidation Note */
             invalidation_note: string;
+        };
+        /**
+         * MethodCriteriaOverride
+         * @description Per-indicator method-criteria override. All four fields optional.
+         */
+        MethodCriteriaOverride: {
+            /** Aggregation */
+            aggregation?: string | null;
+            /** Method */
+            method?: string | null;
+            /** Pass Criteria */
+            pass_criteria?: string[] | null;
+            /** Warning Criteria */
+            warning_criteria?: string[] | null;
         };
         /**
          * MetricHeatmapResponse
@@ -2614,6 +2664,18 @@ export interface components {
             items: components["schemas"]["SLOGroupRead"][];
             /** Total */
             total: number;
+        };
+        /**
+         * PassTarget
+         * @description A single resolved pass/warning target on an indicator result.
+         */
+        PassTarget: {
+            /** Criteria */
+            criteria: string;
+            /** Target Value */
+            target_value: number;
+            /** Violated */
+            violated: boolean;
         };
         /**
          * PinBaselineRequest
@@ -2864,10 +2926,7 @@ export interface components {
             author?: string | null;
             /** Comparable From Version */
             comparable_from_version?: number | null;
-            /** Comparison */
-            comparison?: {
-                [key: string]: unknown;
-            };
+            comparison?: components["schemas"]["ComparisonConfig"];
             /** Display Name */
             display_name?: string | null;
             /**
@@ -2877,7 +2936,7 @@ export interface components {
             kind: string;
             /** Method Criteria */
             method_criteria?: {
-                [key: string]: unknown;
+                [key: string]: components["schemas"]["MethodCriteriaOverride"];
             } | null;
             /** Name */
             name: string;
@@ -2891,7 +2950,7 @@ export interface components {
             sli_version?: number | null;
             /** Tags */
             tags?: {
-                [key: string]: unknown;
+                [key: string]: string;
             };
             /**
              * Total Score Pass Threshold
@@ -2905,7 +2964,7 @@ export interface components {
             total_score_warning_threshold: number;
             /** Variables */
             variables?: {
-                [key: string]: unknown;
+                [key: string]: string;
             };
         };
         /**
@@ -2919,10 +2978,7 @@ export interface components {
             author: string | null;
             /** Comparable From Version */
             comparable_from_version: number;
-            /** Comparison */
-            comparison: {
-                [key: string]: unknown;
-            };
+            comparison: components["schemas"]["ComparisonConfig"];
             /**
              * Created At
              * Format: date-time
@@ -2939,7 +2995,7 @@ export interface components {
             kind: string;
             /** Method Criteria */
             method_criteria: {
-                [key: string]: unknown;
+                [key: string]: components["schemas"]["MethodCriteriaOverride"];
             } | null;
             /** Name */
             name: string;
@@ -2955,7 +3011,7 @@ export interface components {
             sli_version?: number | null;
             /** Tags */
             tags: {
-                [key: string]: unknown;
+                [key: string]: string;
             };
             /** Total Score Pass Threshold */
             total_score_pass_threshold: number;
@@ -2963,7 +3019,7 @@ export interface components {
             total_score_warning_threshold: number;
             /** Variables */
             variables: {
-                [key: string]: unknown;
+                [key: string]: string;
             };
             /** Version */
             version: number;
@@ -3173,10 +3229,7 @@ export interface components {
             /** Asset Name */
             asset_name: string;
             baseline?: components["schemas"]["BaselineConfig"] | null;
-            /** Comparison */
-            comparison?: {
-                [key: string]: unknown;
-            };
+            comparison?: components["schemas"]["ComparisonConfig"];
             /** Data Source Name */
             data_source_name: string;
             /**
@@ -3244,10 +3297,7 @@ export interface components {
          * @description Request body for SLO validation (no save).
          */
         SLOValidateRequest: {
-            /** Comparison */
-            comparison?: {
-                [key: string]: unknown;
-            };
+            comparison?: components["schemas"]["ComparisonConfig"];
             /** Objectives */
             objectives: components["schemas"]["SLOObjectiveIn"][];
             /**
@@ -3284,20 +3334,23 @@ export interface components {
             valid: boolean;
         };
         /**
-         * SloGroup
-         * @description One SLO's contribution to the grouped heatmap.
+         * SliMetadata
+         * @description Per-metric aggregation fidelity info for a single indicator.
          */
-        SloGroup: {
-            /** Cells */
-            cells: components["schemas"]["HeatmapCellGrouped"][];
-            /** Metrics */
-            metrics: components["schemas"]["HeatmapMetric"][];
-            /** Slo Display Name */
-            slo_display_name?: string | null;
-            /** Slo Name */
-            slo_name: string;
-            /** Summary */
-            summary: components["schemas"]["HeatmapSummaryCell"][];
+        SliMetadata: {
+            /** Actual Samples */
+            actual_samples: number;
+            /** Chunks Failed */
+            chunks_failed: number;
+            /** Expected Samples */
+            expected_samples: number;
+            /** Missing Pct */
+            missing_pct: number;
+            /**
+             * Mode
+             * @constant
+             */
+            mode: "aggregated";
         };
         /**
          * TagKeyCount
