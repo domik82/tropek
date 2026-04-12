@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button'
 import { DeletionConfirmForm } from '@/components/DeletionConfirmForm'
 import { ENTITY_COLORS } from '@/lib/entity-colors'
 import { SANS_SERIF } from '@/lib/fonts'
-import { useSloGroupDetail, useDeleteSloGroup, useUpdateSloGroup } from '@/features/slo-groups/hooks'
+import { useSloGroupDetail, useDeleteSloGroup, useUpdateSloGroup, type SloGroupUpdateInput } from '@/features/slo-groups'
 import { useSloVersions } from '@/features/slos/hooks'
 import type { SelectedNode } from '@/features/registry/ui-types'
 
@@ -21,7 +21,7 @@ export function SloGroupDetailView({ name, onNavigate }: Props) {
   const { data: group, isLoading } = useSloGroupDetail(name)
   const deleteMutation = useDeleteSloGroup()
   const updateMutation = useUpdateSloGroup()
-  const { data: versions } = useSloVersions(group?.template_slo_name ?? '', showRegenerate && !!group)
+  const { data: versions } = useSloVersions(group?.templateSloName ?? '', showRegenerate && !!group)
 
   if (isLoading || !group) {
     return (
@@ -36,11 +36,11 @@ export function SloGroupDetailView({ name, onNavigate }: Props) {
     setShowDelete(false)
   }
 
-  // Compute variable rows: transpose gen_variables map into row-oriented data
-  const varKeys = Object.keys(group.gen_variables)
-  const rowCount = Math.max(0, ...varKeys.map(k => group.gen_variables[k].length))
+  // Compute variable rows: transpose genVariables map into row-oriented data
+  const varKeys = Object.keys(group.genVariables)
+  const rowCount = Math.max(0, ...varKeys.map(k => group.genVariables[k].length))
   const rows = Array.from({ length: rowCount }, (_, i) =>
-    varKeys.map(k => group.gen_variables[k][i] ?? ''),
+    varKeys.map(k => group.genVariables[k][i] ?? ''),
   )
 
   return (
@@ -52,7 +52,7 @@ export function SloGroupDetailView({ name, onNavigate }: Props) {
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0">
               <h2 className="text-xl font-semibold text-foreground truncate">
-                {group.display_name ?? group.name}
+                {group.displayName ?? group.name}
               </h2>
               <p className="text-xs font-mono text-muted-foreground mt-0.5">{group.name}</p>
             </div>
@@ -68,7 +68,7 @@ export function SloGroupDetailView({ name, onNavigate }: Props) {
               onClick={() => {
                 setShowRegenerate(true)
                 setShowDelete(false)
-                setEditVars(JSON.parse(JSON.stringify(group.gen_variables)))
+                setEditVars(JSON.parse(JSON.stringify(group.genVariables)))
               }}
             >
               <RefreshCw className="size-3.5" />
@@ -120,8 +120,8 @@ export function SloGroupDetailView({ name, onNavigate }: Props) {
               })
             }
 
-            const varsChanged = JSON.stringify(editVars) !== JSON.stringify(group.gen_variables)
-            const versionChanged = selectedVersion !== null && selectedVersion !== group.template_slo_version
+            const varsChanged = JSON.stringify(editVars) !== JSON.stringify(group.genVariables)
+            const versionChanged = selectedVersion !== null && selectedVersion !== group.templateSloVersion
             const hasEmptyCells = editKeys.some(k => editVars[k].some(v => v.trim() === ''))
 
             return (
@@ -136,17 +136,17 @@ export function SloGroupDetailView({ name, onNavigate }: Props) {
                   {versions && versions.length > 0 ? (
                     <select
                       className="text-xs bg-background border border-border rounded px-2 py-1 text-foreground"
-                      value={selectedVersion ?? group.template_slo_version}
+                      value={selectedVersion ?? group.templateSloVersion}
                       onChange={e => setSelectedVersion(Number(e.target.value))}
                     >
                       {versions.map(v => (
                         <option key={v.version} value={v.version}>
-                          v{v.version}{v.version === group.template_slo_version ? ' (current)' : ''}
+                          v{v.version}{v.version === group.templateSloVersion ? ' (current)' : ''}
                         </option>
                       ))}
                     </select>
                   ) : (
-                    <span className="text-xs text-muted-foreground">v{group.template_slo_version} (loading…)</span>
+                    <span className="text-xs text-muted-foreground">v{group.templateSloVersion} (loading…)</span>
                   )}
                 </div>
 
@@ -208,7 +208,7 @@ export function SloGroupDetailView({ name, onNavigate }: Props) {
                     size="xs"
                     disabled={hasEmptyCells || updateMutation.isPending}
                     onClick={() => {
-                      const body: Record<string, unknown> = {}
+                      const body: SloGroupUpdateInput = {}
                       if (versionChanged && selectedVersion) body.template_slo_version = selectedVersion
                       if (varsChanged) body.gen_variables = editVars
                       updateMutation.mutate(
@@ -264,15 +264,15 @@ export function SloGroupDetailView({ name, onNavigate }: Props) {
           <p className="text-xs text-muted-foreground mb-1">Template SLO</p>
           <button
             className="text-sm text-primary hover:underline"
-            onClick={() => onNavigate({ type: 'template', name: group.template_slo_name })}
+            onClick={() => onNavigate({ type: 'template', name: group.templateSloName })}
           >
-            {group.template_slo_name} v{group.template_slo_version}
+            {group.templateSloName} v{group.templateSloVersion}
           </button>
         </div>
 
         {/* Generated count */}
         <div>
-          <p className="text-sm text-foreground">{group.generated_slo_count} SLOs generated</p>
+          <p className="text-sm text-foreground">{group.generatedSloCount} SLOs generated</p>
         </div>
 
         {/* Gen variables table */}

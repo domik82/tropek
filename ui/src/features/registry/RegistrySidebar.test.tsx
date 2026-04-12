@@ -4,7 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { RegistrySidebar } from './RegistrySidebar'
 import type { RegistryMode, SelectedNode } from './ui-types'
 
-vi.mock('@/features/slo-groups/hooks', () => ({
+vi.mock('@/features/slo-groups', () => ({
   useSloGroups: () => ({ data: [] }),
 }))
 

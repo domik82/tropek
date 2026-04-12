@@ -3,7 +3,7 @@ import { ENTITY_COLORS } from '@/lib/entity-colors'
 import { SANS_SERIF } from '@/lib/fonts'
 import { SloObjectiveTable } from '@/features/slos/components/SloObjectiveTable'
 import { useSloDetail } from '@/features/slos/hooks'
-import { useSloGroups } from '@/features/slo-groups/hooks'
+import { useSloGroups } from '@/features/slo-groups'
 import { Button } from '@/components/ui/button'
 import type { SloDefinition } from '@/features/slos/types'
 import type { SelectedNode } from '@/features/registry/ui-types'
@@ -27,7 +27,7 @@ export function TemplateDetailView({ name, onNavigate, onNewVersion }: Props) {
   }
 
   const referencingGroups = (groups ?? []).filter(
-    g => g.template_slo_name === slo.name && g.active,
+    g => g.templateSloName === slo.name && g.active,
   )
 
   return (
@@ -129,10 +129,10 @@ export function TemplateDetailView({ name, onNavigate, onNewVersion }: Props) {
                     className="text-sm text-primary hover:underline cursor-pointer"
                     onClick={() => onNavigate({ type: 'slo-group', name: g.name })}
                   >
-                    {g.display_name ?? g.name}
+                    {g.displayName ?? g.name}
                   </button>
                   <span className="text-xs text-muted-foreground ml-2">
-                    {g.generated_slo_count} SLOs
+                    {g.generatedSloCount} SLOs
                   </span>
                 </li>
               ))}

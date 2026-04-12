@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { buildSloTree, buildDatasourceTree, buildAssetTree, filterTree, buildSloSections, buildSloGroupMap, mergeBindings } from './useRegistryTree'
 import type { MinSlo } from './useRegistryTree'
 import type { TreeNode } from './ui-types'
-import type { SloGroup } from '@/features/slo-groups/types'
+import type { SloGroup } from '@/features/slo-groups'
 
 describe('buildSloTree', () => {
   it('builds SLO → SLI → DS hierarchy from bindings and SLO sli_name', () => {
@@ -145,9 +145,9 @@ describe('buildSloSections', () => {
       { name: 'web-perf', display_name: null, version: 1, active: true, sli_name: null, sli_version: null, kind: 'standard' },
     ]
     const groups: SloGroup[] = [
-      { id: '1', name: 'app-plugins', display_name: 'App Plugins', template_slo_name: 'plugin-tpl',
-        template_slo_version: 1, gen_variables: {}, tags: {}, author: null, version: 1,
-        active: true, created_at: '', updated_at: '', generated_slo_count: 30 },
+      { id: '1', name: 'app-plugins', displayName: 'App Plugins', templateSloName: 'plugin-tpl',
+        templateSloVersion: 1, genVariables: {}, tags: {}, author: null, version: 1,
+        active: true, createdAt: new Date(0), updatedAt: new Date(0), generatedSloCount: 30 },
     ]
     const { groupNodes } = buildSloSections(slos, slis, datasources, bindings, groups)
     expect(groupNodes).toHaveLength(1)

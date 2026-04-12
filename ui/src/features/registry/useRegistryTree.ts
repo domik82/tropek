@@ -1,4 +1,4 @@
-import type { SloGroup } from '@/features/slo-groups/types'
+import type { SloGroup } from '@/features/slo-groups'
 import type { TreeNode } from './ui-types'
 
 export interface MinSlo {
@@ -295,7 +295,7 @@ export function buildSloSections(
 
   // Build template nodes
   const templates: TreeNode[] = templateSlos.map(slo => {
-    const refGroups = groups.filter(g => g.template_slo_name === slo.name)
+    const refGroups = groups.filter(g => g.templateSloName === slo.name)
     return {
       id: `template:${slo.name}`,
       name: slo.name,
@@ -310,10 +310,10 @@ export function buildSloSections(
   const groupNodes: TreeNode[] = groups.filter(g => g.active).map(g => ({
     id: `slo-group:${g.name}`,
     name: g.name,
-    displayName: g.display_name ?? undefined,
+    displayName: g.displayName ?? undefined,
     type: 'slo-group' as const,
-    badge: `${g.generated_slo_count} SLOs`,
-    subtitle: `via ${g.template_slo_name}`,
+    badge: `${g.generatedSloCount} SLOs`,
+    subtitle: `via ${g.templateSloName}`,
   }))
 
   return { standard, templates, groupNodes }

@@ -30,14 +30,14 @@ vi.mock('@/features/slos/hooks', () => ({
   }),
 }))
 
-vi.mock('@/features/slo-groups/hooks', () => ({
+vi.mock('@/features/slo-groups', () => ({
   useSloGroups: () => ({
     data: [
       {
         name: 'app-x-plugins',
-        display_name: null,
-        template_slo_name: 'plugin-tpl',
-        generated_slo_count: 3,
+        displayName: null,
+        templateSloName: 'plugin-tpl',
+        generatedSloCount: 3,
         active: true,
       },
     ],
