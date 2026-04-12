@@ -4,7 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { SloLinkDialogRevised } from './SloLinkDialogRevised'
 
 const mockMutateAsync = vi.fn().mockResolvedValue({})
-let mockExistingAssignments: { slo_name: string }[] = []
+let mockExistingAssignments: { sloName: string }[] = []
 
 vi.mock('@/features/datasources/hooks', () => ({
   useDatasources: () => ({
@@ -27,8 +27,8 @@ vi.mock('@/features/slos/hooks', () => ({
   }),
   useSlos: () => ({
     data: [
-      { id: 'slo-def-1', name: 'latency-slo', display_name: 'Latency SLO', active: true, sli_name: 'response-time', sli_version: 1 },
-      { id: 'slo-def-2', name: 'error-slo', display_name: 'Error SLO', active: true, sli_name: null, sli_version: null },
+      { id: 'slo-def-1', name: 'latency-slo', displayName: 'Latency SLO', active: true, sliName: 'response-time', sliVersion: 1 },
+      { id: 'slo-def-2', name: 'error-slo', displayName: 'Error SLO', active: true, sliName: null, sliVersion: null },
     ],
   }),
   useGroupSloAssignments: () => ({ data: mockExistingAssignments }),
@@ -68,7 +68,7 @@ describe('SloLinkDialogRevised', () => {
   })
 
   it('shows duplicate assignment detection message', () => {
-    mockExistingAssignments = [{ slo_name: 'latency-slo' }]
+    mockExistingAssignments = [{ sloName: 'latency-slo' }]
 
     render(
       <SloLinkDialogRevised

@@ -3,7 +3,7 @@ import { StructuredCriteriaInput } from '@/components/shared/StructuredCriteriaI
 import { MethodCriteriaTable } from './MethodCriteriaTable'
 import { DEFAULT_CRITERIA } from './criteriaUtils'
 import type { CriteriaParts } from './criteriaUtils'
-import type { MethodCriteriaOverride } from '@/features/slos/types'
+import type { MethodCriteriaOverride } from '@/features/slos'
 
 export interface IndicatorRow {
   sli: string

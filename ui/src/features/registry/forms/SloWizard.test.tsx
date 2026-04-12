@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, fireEvent, cleanup } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { SloWizard } from './SloWizard'
-import type { SloDefinition } from '@/features/slos'
+import type { Slo } from '@/features/slos'
 
 vi.mock('@/features/slos/hooks', () => ({
   useCreateSlo: vi.fn(),
@@ -23,51 +23,50 @@ import { useCreateSlo } from '@/features/slos/hooks'
 
 const mockMutate = vi.fn()
 
-const mockSlo: SloDefinition = {
+const mockSlo: Slo = {
   id: 'slo-1',
   name: 'perf-slo',
   version: 2,
-  comparable_from_version: 1,
-  display_name: 'Performance SLO',
+  comparableFromVersion: 1,
+  displayName: 'Performance SLO',
   author: 'alice',
   notes: 'Performance evaluation',
   tags: { env: 'prod' },
   variables: { stage: 'production' },
-  created_at: '2024-01-01T00:00:00Z',
+  createdAt: new Date('2024-01-01T00:00:00Z'),
   active: true,
   objectives: [
     {
       sli: 'response_time',
-      display_name: 'Response Time',
-      pass_threshold: ['<600'],
-      warning_threshold: ['<800'],
+      displayName: 'Response Time',
+      passThreshold: ['<600'],
+      warningThreshold: ['<800'],
       weight: 1,
-      key_sli: true,
-      sort_order: 0,
+      keySli: true,
+      sortOrder: 0,
     },
     {
       sli: 'error_rate',
-      display_name: 'Error Rate',
-      pass_threshold: ['<5%'],
-      warning_threshold: ['<10%'],
+      displayName: 'Error Rate',
+      passThreshold: ['<5%'],
+      warningThreshold: ['<10%'],
       weight: 2,
-      key_sli: false,
-      sort_order: 1,
+      keySli: false,
+      sortOrder: 1,
     },
   ],
-  total_score_pass_threshold: 90,
-  total_score_warning_threshold: 75,
+  totalScorePassThreshold: 90,
+  totalScoreWarningThreshold: 75,
   comparison: {
-    baseline_mode: 'previous',
-    number_of_comparison_results: 3,
-    aggregate_function: 'avg',
-    include_result_with_score: 'pass_or_warn',
+    numberOfComparisonResults: 3,
+    aggregateFunction: 'avg',
+    includeResultWithScore: 'pass_or_warn',
   },
   kind: 'standard',
-  sli_definition_id: null,
-  sli_name: null,
-  sli_version: null,
-  method_criteria: null,
+  sliDefinitionId: null,
+  sliName: null,
+  sliVersion: null,
+  methodCriteria: null,
 }
 
 let queryClient: QueryClient

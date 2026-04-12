@@ -35,7 +35,7 @@ export function AllEvaluationsPanel({ onSelectAsset }: Props) {
   }, [assets])
   const sloDisplayNames = useMemo(() => {
     const m = new Map<string, string>()
-    for (const s of slos ?? []) if (s.display_name) m.set(s.name, s.display_name)
+    for (const s of slos ?? []) if (s.displayName) m.set(s.name, s.displayName)
     return m
   }, [slos])
 

@@ -1,4 +1,4 @@
-import type { MethodCriteriaOverride } from '@/features/slos/types'
+import type { MethodCriteriaOverride } from '@/features/slos'
 
 interface MethodCriteriaTableProps {
   methods: string[]
@@ -20,12 +20,12 @@ export function MethodCriteriaTable({
   function getEffective(method: string) {
     const override = criteria[method]
     return {
-      pass: override?.pass_threshold?.[0] ?? blueprintPass,
+      pass: override?.passThreshold?.[0] ?? blueprintPass,
       weight: override?.weight ?? blueprintWeight,
-      key_sli: override?.key_sli ?? false,
-      hasPassOverride: override?.pass_threshold != null,
+      keySli: override?.keySli ?? false,
+      hasPassOverride: override?.passThreshold != null,
       hasWeightOverride: override?.weight != null,
-      hasKeySliOverride: override?.key_sli != null,
+      hasKeySliOverride: override?.keySli != null,
     }
   }
 
@@ -34,14 +34,14 @@ export function MethodCriteriaTable({
     const merged = { ...prev, ...patch }
 
     const cleaned: MethodCriteriaOverride = {}
-    if (merged.pass_threshold && merged.pass_threshold[0] !== blueprintPass) {
-      cleaned.pass_threshold = merged.pass_threshold
+    if (merged.passThreshold && merged.passThreshold[0] !== blueprintPass) {
+      cleaned.passThreshold = merged.passThreshold
     }
     if (merged.weight != null && merged.weight !== blueprintWeight) {
       cleaned.weight = merged.weight
     }
-    if (merged.key_sli != null && merged.key_sli !== false) {
-      cleaned.key_sli = merged.key_sli
+    if (merged.keySli != null && merged.keySli !== false) {
+      cleaned.keySli = merged.keySli
     }
 
     const next = { ...criteria }
@@ -78,7 +78,7 @@ export function MethodCriteriaTable({
                     <input
                       type="text"
                       value={eff.pass}
-                      onChange={e => updateMethod(method, { pass_threshold: [e.target.value] })}
+                      onChange={e => updateMethod(method, { passThreshold: [e.target.value] })}
                       className={`w-24 rounded border border-border bg-popover px-1.5 py-0.5 text-xs font-mono ${
                         eff.hasPassOverride ? 'text-foreground' : 'text-muted-foreground italic'
                       }`}
@@ -101,8 +101,8 @@ export function MethodCriteriaTable({
                   <td className="py-2 px-2">
                     <input
                       type="checkbox"
-                      checked={eff.key_sli}
-                      onChange={e => updateMethod(method, { key_sli: e.target.checked })}
+                      checked={eff.keySli}
+                      onChange={e => updateMethod(method, { keySli: e.target.checked })}
                     />
                   </td>
                 </tr>

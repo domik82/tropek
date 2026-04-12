@@ -1,13 +1,14 @@
 // src/features/slos/hooks.ts
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { sloKeys, groupKeys, assetKeys, assignmentKeys } from '@/lib/queryKeys'
-import { fetchSlos, fetchSloDetail, validateSlo, createSloDefinition, deleteSlo, fetchSloVersions } from './api'
 import {
+  fetchSlos, fetchSloDetail, validateSlo, createSloDefinition, deleteSlo, fetchSloVersions,
   fetchGroupTree, createGroup, updateGroup, deleteGroup,
   addSubgroup, fetchSloTagKeys, fetchSloTagValues,
   fetchAssetSloAssignments, fetchGroupSloAssignments,
   fetchAssetSloGroupAssignments,
   createGroupSloAssignment, deleteGroupSloAssignment,
+  type SloCreateInput,
 } from './api'
 
 export function useSlos() {
@@ -34,7 +35,7 @@ export function useSloValidation() {
 export function useCreateSlo() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (payload: Parameters<typeof createSloDefinition>[0]) => createSloDefinition(payload),
+    mutationFn: (payload: SloCreateInput) => createSloDefinition(payload),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: sloKeys.all })
     },

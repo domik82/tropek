@@ -23,15 +23,15 @@ export function useAllGroupLinks(groupNames: string[]) {
     for (let i = 0; i < filtered.length; i++) {
       const data = assignmentQueries[i]?.data ?? []
       const bindings: MinBinding[] = data.map(a => ({
-        slo_name: a.slo_name,
-        data_source_name: a.data_source_name,
+        sloName: a.sloName,
+        dataSourceName: a.dataSourceName,
       }))
       byGroup[filtered[i]] = bindings
       flat.push(...bindings)
     }
     const seen = new Set<string>()
     const unique = flat.filter(b => {
-      const key = `${b.slo_name}|${b.data_source_name}`
+      const key = `${b.sloName}|${b.dataSourceName}`
       if (seen.has(key)) return false
       seen.add(key)
       return true

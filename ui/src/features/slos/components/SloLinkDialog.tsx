@@ -48,7 +48,7 @@ export function SloLinkDialog({ open, onOpenChange, lockedSloName, lockedGroupNa
   /* eslint-enable react-hooks/set-state-in-effect */
 
   const selectedSlo = slos?.find(s => s.name === sloName)
-  const isDuplicate = existingAssignments?.some(a => a.slo_name === sloName) ?? false
+  const isDuplicate = existingAssignments?.some(a => a.sloName === sloName) ?? false
   const isValid = !!(datasource && sliName && groupName && sloName && selectedSlo && !isDuplicate)
 
   const handleLink = async () => {
@@ -124,7 +124,7 @@ export function SloLinkDialog({ open, onOpenChange, lockedSloName, lockedGroupNa
           >
             <option value="">Select SLO...</option>
             {slos?.filter(s => s.active).map(s => (
-              <option key={s.name} value={s.name}>{s.display_name ?? s.name}</option>
+              <option key={s.name} value={s.name}>{s.displayName ?? s.name}</option>
             ))}
           </select>
         </div>

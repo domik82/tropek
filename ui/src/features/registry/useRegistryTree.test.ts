@@ -5,11 +5,11 @@ import type { TreeNode } from './ui-types'
 import type { SloGroup } from '@/features/slo-groups'
 
 describe('buildSloTree', () => {
-  it('builds SLO → SLI → DS hierarchy from bindings and SLO sli_name', () => {
-    const slos = [{ name: 'http-slo', display_name: 'HTTP SLO', version: 3, active: true, sli_name: 'http-sli', sli_version: 1 }]
+  it('builds SLO → SLI → DS hierarchy from bindings and SLO sliName', () => {
+    const slos = [{ name: 'http-slo', displayName: 'HTTP SLO', version: 3, active: true, sliName: 'http-sli', sliVersion: 1 }]
     const slis = [{ name: 'http-sli', displayName: null, adapterType: 'prometheus', active: true, indicators: { rt: 'q1', err: 'q2' } }]
     const datasources = [{ name: 'prom', displayName: null, adapterType: 'prometheus' }]
-    const bindings = [{ slo_name: 'http-slo', data_source_name: 'prom' }]
+    const bindings = [{ sloName: 'http-slo', dataSourceName: 'prom' }]
 
     const tree = buildSloTree(slos, slis, datasources, bindings)
     expect(tree).toHaveLength(1)
@@ -20,9 +20,9 @@ describe('buildSloTree', () => {
     expect(tree[0].children![0].children![0]).toMatchObject({ name: 'prom', type: 'datasource' })
   })
 
-  it('shows DS directly under SLO when no sli_name on SLO', () => {
+  it('shows DS directly under SLO when no sliName on SLO', () => {
     const slos = [{ name: 'http-slo', version: 1, active: true }]
-    const bindings = [{ slo_name: 'http-slo', data_source_name: 'prom' }]
+    const bindings = [{ sloName: 'http-slo', dataSourceName: 'prom' }]
     const datasources = [{ name: 'prom', displayName: null, adapterType: 'prometheus' }]
     const tree = buildSloTree(slos, [], datasources, bindings)
     expect(tree).toHaveLength(1)
@@ -39,11 +39,11 @@ describe('buildSloTree', () => {
 })
 
 describe('buildDatasourceTree', () => {
-  it('builds DS → SLI → SLO hierarchy using sli_name from SLO definition', () => {
+  it('builds DS → SLI → SLO hierarchy using sliName from SLO definition', () => {
     const datasources = [{ name: 'prom', displayName: null, adapterType: 'prometheus' }]
     const slis = [{ name: 'http-sli', displayName: null, adapterType: 'prometheus', active: true, indicators: { rt: 'q' } }]
-    const slos = [{ name: 'http-slo', display_name: null, version: 2, active: true, sli_name: 'http-sli', sli_version: 1 }]
-    const bindings = [{ slo_name: 'http-slo', data_source_name: 'prom' }]
+    const slos = [{ name: 'http-slo', displayName: null, version: 2, active: true, sliName: 'http-sli', sliVersion: 1 }]
+    const bindings = [{ sloName: 'http-slo', dataSourceName: 'prom' }]
 
     const tree = buildDatasourceTree(datasources, slis, slos, bindings)
     expect(tree).toHaveLength(1)
@@ -52,10 +52,10 @@ describe('buildDatasourceTree', () => {
     expect(tree[0].children![0].children![0]).toMatchObject({ type: 'slo' })
   })
 
-  it('shows SLOs without sli_name directly under datasource', () => {
+  it('shows SLOs without sliName directly under datasource', () => {
     const datasources = [{ name: 'prom', displayName: null, adapterType: 'prometheus' }]
-    const slos = [{ name: 'bare-slo', display_name: null, version: 1, active: true }]
-    const bindings = [{ slo_name: 'bare-slo', data_source_name: 'prom' }]
+    const slos = [{ name: 'bare-slo', displayName: null, version: 1, active: true }]
+    const bindings = [{ sloName: 'bare-slo', dataSourceName: 'prom' }]
 
     const tree = buildDatasourceTree(datasources, [], slos, bindings)
     expect(tree).toHaveLength(1)
@@ -65,10 +65,10 @@ describe('buildDatasourceTree', () => {
 })
 
 describe('buildAssetTree', () => {
-  it('builds Group → Asset → SLO → SLI → DS hierarchy when SLO has sli_name', () => {
-    const groups = [{ name: 'core', display_name: null, members: [{ asset_name: 'checkout-api' }] }]
-    const groupBindingsMap = { core: [{ slo_name: 'http-slo', data_source_name: 'prom' }] }
-    const slos = [{ name: 'http-slo', display_name: 'HTTP SLO', version: 2, active: true, sli_name: 'http-sli', sli_version: 1 }]
+  it('builds Group → Asset → SLO → SLI → DS hierarchy when SLO has sliName', () => {
+    const groups = [{ name: 'core', displayName: null, members: [{ asset_name: 'checkout-api' }] }]
+    const groupBindingsMap = { core: [{ sloName: 'http-slo', dataSourceName: 'prom' }] }
+    const slos = [{ name: 'http-slo', displayName: 'HTTP SLO', version: 2, active: true, sliName: 'http-sli', sliVersion: 1 }]
     const slis = [{ name: 'http-sli', displayName: null, adapterType: 'prometheus', active: true, indicators: { rt: 'q1', err: 'q2' } }]
 
     const tree = buildAssetTree(groups, groups, groupBindingsMap, {}, slos, slis)
@@ -88,9 +88,9 @@ describe('buildAssetTree', () => {
     expect(sloNode.children![0].children![0]).toMatchObject({ type: 'datasource', name: 'prom' })
   })
 
-  it('shows DS directly under SLO when SLO has no sli_name', () => {
-    const groups = [{ name: 'core', display_name: null, members: [{ asset_name: 'checkout-api' }] }]
-    const groupBindingsMap = { core: [{ slo_name: 'bare-slo', data_source_name: 'prom' }] }
+  it('shows DS directly under SLO when SLO has no sliName', () => {
+    const groups = [{ name: 'core', displayName: null, members: [{ asset_name: 'checkout-api' }] }]
+    const groupBindingsMap = { core: [{ sloName: 'bare-slo', dataSourceName: 'prom' }] }
     const slos = [{ name: 'bare-slo', version: 1, active: true }]
 
     const tree = buildAssetTree(groups, groups, groupBindingsMap, {}, slos, [])
@@ -107,9 +107,9 @@ describe('buildAssetTree', () => {
   })
 
   it('shows asset-level assignments when no group-level bindings exist', () => {
-    const groups = [{ name: 'core', display_name: null, members: [{ asset_name: 'checkout-api' }] }]
-    const assetBindingsMap = { 'checkout-api': [{ slo_name: 'asset-slo', data_source_name: 'prom' }] }
-    const slos = [{ name: 'asset-slo', display_name: 'Asset SLO', version: 1, active: true, sli_name: 'http-sli' }]
+    const groups = [{ name: 'core', displayName: null, members: [{ asset_name: 'checkout-api' }] }]
+    const assetBindingsMap = { 'checkout-api': [{ sloName: 'asset-slo', dataSourceName: 'prom' }] }
+    const slos = [{ name: 'asset-slo', displayName: 'Asset SLO', version: 1, active: true, sliName: 'http-sli' }]
     const slis = [{ name: 'http-sli', displayName: null, adapterType: 'prometheus', active: true, indicators: { rt: 'q1' } }]
 
     const tree = buildAssetTree(groups, groups, {}, assetBindingsMap, slos, slis)
@@ -123,12 +123,12 @@ describe('buildSloSections', () => {
     { name: 'http-sli', displayName: null, adapterType: 'prometheus', active: true, indicators: { latency: 'q' } },
   ]
   const datasources = [{ name: 'prom', displayName: null, adapterType: 'prometheus' }]
-  const bindings = [{ slo_name: 'web-perf', data_source_name: 'prom' }]
+  const bindings = [{ sloName: 'web-perf', dataSourceName: 'prom' }]
 
   it('separates standard SLOs from templates', () => {
     const slos = [
-      { name: 'web-perf', display_name: null, version: 3, active: true, sli_name: 'http-sli', sli_version: 1, kind: 'standard' },
-      { name: 'plugin-tpl', display_name: null, version: 1, active: true, sli_name: 'http-sli', sli_version: 1, kind: 'template' },
+      { name: 'web-perf', displayName: null, version: 3, active: true, sliName: 'http-sli', sliVersion: 1, kind: 'standard' },
+      { name: 'plugin-tpl', displayName: null, version: 1, active: true, sliName: 'http-sli', sliVersion: 1, kind: 'template' },
     ]
     const groups: SloGroup[] = []
     const { standard, templates, groupNodes } = buildSloSections(slos, slis, datasources, bindings, groups)
@@ -142,7 +142,7 @@ describe('buildSloSections', () => {
 
   it('builds group nodes with badge and subtitle', () => {
     const slos = [
-      { name: 'web-perf', display_name: null, version: 1, active: true, sli_name: null, sli_version: null, kind: 'standard' },
+      { name: 'web-perf', displayName: null, version: 1, active: true, sliName: null, sliVersion: null, kind: 'standard' },
     ]
     const groups: SloGroup[] = [
       { id: '1', name: 'app-plugins', displayName: 'App Plugins', templateSloName: 'plugin-tpl',
@@ -212,7 +212,7 @@ describe('mergeBindings', () => {
     const result = mergeBindings(
       ['core'],
       ['checkout-api'],
-      [[{ slo_name: 'http-slo', data_source_name: 'prom' }]],
+      [[{ sloName: 'http-slo', dataSourceName: 'prom' }]],
       [[]],
       [[]],
       new Map(),
@@ -226,12 +226,12 @@ describe('mergeBindings', () => {
       [],
       ['checkout-api'],
       [],
-      [[{ slo_name: 'asset-slo', data_source_name: 'prom' }]],
+      [[{ sloName: 'asset-slo', dataSourceName: 'prom' }]],
       [[]],
       new Map(),
     )
     expect(result.assetBindingsMap['checkout-api']).toHaveLength(1)
-    expect(result.assetBindingsMap['checkout-api'][0].slo_name).toBe('asset-slo')
+    expect(result.assetBindingsMap['checkout-api'][0].sloName).toBe('asset-slo')
   })
 
   it('resolves SLO group assignments to individual SLO names', () => {
@@ -241,11 +241,11 @@ describe('mergeBindings', () => {
       ['checkout-api'],
       [],
       [[]],
-      [[{ slo_group_name: 'perf-group', data_source_name: 'prom' }]],
+      [[{ sloGroupName: 'perf-group', dataSourceName: 'prom' }]],
       sloGroupMap,
     )
     expect(result.assetBindingsMap['checkout-api']).toHaveLength(2)
-    expect(result.assetBindingsMap['checkout-api'].map(b => b.slo_name)).toEqual(['gen-slo-1', 'gen-slo-2'])
+    expect(result.assetBindingsMap['checkout-api'].map(b => b.sloName)).toEqual(['gen-slo-1', 'gen-slo-2'])
   })
 
   it('falls back to group name when sloGroupMap has no entry', () => {
@@ -254,11 +254,11 @@ describe('mergeBindings', () => {
       ['checkout-api'],
       [],
       [[]],
-      [[{ slo_group_name: 'unknown-group', data_source_name: 'prom' }]],
+      [[{ sloGroupName: 'unknown-group', dataSourceName: 'prom' }]],
       new Map(),
     )
     expect(result.assetBindingsMap['checkout-api']).toHaveLength(1)
-    expect(result.assetBindingsMap['checkout-api'][0].slo_name).toBe('unknown-group')
+    expect(result.assetBindingsMap['checkout-api'][0].sloName).toBe('unknown-group')
   })
 
   it('combines direct and group assignments for same asset', () => {
@@ -267,20 +267,20 @@ describe('mergeBindings', () => {
       [],
       ['checkout-api'],
       [],
-      [[{ slo_name: 'direct-slo', data_source_name: 'prom' }]],
-      [[{ slo_group_name: 'perf-group', data_source_name: 'prom' }]],
+      [[{ sloName: 'direct-slo', dataSourceName: 'prom' }]],
+      [[{ sloGroupName: 'perf-group', dataSourceName: 'prom' }]],
       sloGroupMap,
     )
     expect(result.assetBindingsMap['checkout-api']).toHaveLength(2)
-    expect(result.assetBindingsMap['checkout-api'].map(b => b.slo_name)).toEqual(['direct-slo', 'gen-slo'])
+    expect(result.assetBindingsMap['checkout-api'].map(b => b.sloName)).toEqual(['direct-slo', 'gen-slo'])
   })
 
   it('deduplicates allBindings across groups and assets', () => {
     const result = mergeBindings(
       ['core'],
       ['checkout-api'],
-      [[{ slo_name: 'http-slo', data_source_name: 'prom' }]],
-      [[{ slo_name: 'http-slo', data_source_name: 'prom' }]],
+      [[{ sloName: 'http-slo', dataSourceName: 'prom' }]],
+      [[{ sloName: 'http-slo', dataSourceName: 'prom' }]],
       [[]],
       new Map(),
     )

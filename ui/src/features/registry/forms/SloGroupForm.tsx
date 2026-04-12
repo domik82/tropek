@@ -89,7 +89,7 @@ export function SloGroupForm({ onClose }: Props) {
             <option value="">Select a template...</option>
             {templateSlos.map(t => (
               <option key={t.name} value={t.name}>
-                {t.display_name ?? t.name} (v{t.version})
+                {t.displayName ?? t.name} (v{t.version})
               </option>
             ))}
           </select>

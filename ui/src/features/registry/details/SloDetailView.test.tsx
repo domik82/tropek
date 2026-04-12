@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, fireEvent, cleanup } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { SloDetailView } from './SloDetailView'
-import type { SloDefinition } from '@/features/slos'
+import type { Slo } from '@/features/slos'
 
 vi.mock('@/features/slos', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/features/slos')>()
@@ -21,56 +21,56 @@ vi.mock('@/features/slis', () => ({
 
 import { useSloDetail, useSloVersions, useDeleteSlo, useGroupTree } from '@/features/slos'
 
-const mockSlo: SloDefinition = {
+const mockSlo: Slo = {
   id: 'slo-1',
   name: 'api-availability',
   version: 2,
-  comparable_from_version: 1,
-  display_name: 'API Availability SLO',
+  comparableFromVersion: 1,
+  displayName: 'API Availability SLO',
   author: 'alice',
   notes: 'Tracks API availability and error rate',
   tags: { env: 'prod', team: 'platform' },
   variables: { service: 'api-service', region: 'us-east-1' },
   kind: 'standard',
-  sli_definition_id: null,
-  sli_name: null,
-  sli_version: null,
-  created_at: '2024-01-01T00:00:00Z',
+  sliDefinitionId: null,
+  sliName: null,
+  sliVersion: null,
+  createdAt: new Date('2024-01-01T00:00:00Z'),
   active: true,
   objectives: [
     {
       sli: 'error-rate',
-      display_name: 'Error Rate',
-      pass_threshold: ['<1%', '<100'],
-      warning_threshold: ['<5%'],
+      displayName: 'Error Rate',
+      passThreshold: ['<1%', '<100'],
+      warningThreshold: ['<5%'],
       weight: 2,
-      key_sli: true,
-      sort_order: 0,
+      keySli: true,
+      sortOrder: 0,
     },
     {
       sli: 'latency-p99',
-      display_name: 'P99 Latency',
-      pass_threshold: ['<200ms'],
-      warning_threshold: ['<500ms', '<1000ms'],
+      displayName: 'P99 Latency',
+      passThreshold: ['<200ms'],
+      warningThreshold: ['<500ms', '<1000ms'],
       weight: 1,
-      key_sli: false,
-      sort_order: 1,
+      keySli: false,
+      sortOrder: 1,
     },
   ],
-  total_score_pass_threshold: 90,
-  total_score_warning_threshold: 75,
+  totalScorePassThreshold: 90,
+  totalScoreWarningThreshold: 75,
   comparison: {
-    compare_with: 'several_results',
-    number_of_comparison_results: 3,
-    include_result_with_score: 'pass_or_warn',
-    aggregate_function: 'avg',
+    compareWith: 'several_results',
+    numberOfComparisonResults: 3,
+    includeResultWithScore: 'pass_or_warn',
+    aggregateFunction: 'avg',
   },
-  method_criteria: null,
+  methodCriteria: null,
 }
 
-const mockVersions: SloDefinition[] = [
-  { ...mockSlo, version: 1, created_at: '2023-06-01T00:00:00Z' },
-  { ...mockSlo, version: 2, created_at: '2024-01-01T00:00:00Z' },
+const mockVersions: Slo[] = [
+  { ...mockSlo, version: 1, createdAt: new Date('2023-06-01T00:00:00Z') },
+  { ...mockSlo, version: 2, createdAt: new Date('2024-01-01T00:00:00Z') },
 ]
 
 let queryClient: QueryClient

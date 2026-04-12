@@ -4,7 +4,7 @@ import { useFieldArray, useForm, Controller } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useCreateSlo, useSloValidation } from '../hooks'
-import type { SloDefinition } from '../types'
+import type { Slo } from '../domain'
 
 const objectiveSchema = z.object({
   sli: z.string().min(1),
@@ -24,7 +24,7 @@ const formSchema = z.object({
 type FormValues = z.infer<typeof formSchema>
 
 interface Props {
-  slo: SloDefinition
+  slo: Slo
   onCancel: () => void
   onSaved: () => void
 }
@@ -86,59 +86,63 @@ export function SloObjectiveEditor({ slo, onCancel, onSaved }: Props) {
 
   const defaultObjectives = slo.objectives.map(obj => ({
     sli: obj.sli,
-    display_name: obj.display_name,
-    pass_threshold: obj.pass_threshold.join(', '),
-    warning_threshold: obj.warning_threshold.join(', '),
+    display_name: obj.displayName,
+    pass_threshold: obj.passThreshold.join(', '),
+    warning_threshold: obj.warningThreshold.join(', '),
     weight: obj.weight,
-    key_sli: obj.key_sli,
+    key_sli: obj.keySli,
   }))
 
   const { register, control, handleSubmit } = useForm<FormValues, unknown, FormValues>({
     resolver: zodResolver(formSchema) as import('react-hook-form').Resolver<FormValues>,
     defaultValues: {
-      total_score_pass_threshold: slo.total_score_pass_threshold,
-      total_score_warning_threshold: slo.total_score_warning_threshold,
+      total_score_pass_threshold: slo.totalScorePassThreshold,
+      total_score_warning_threshold: slo.totalScoreWarningThreshold,
       objectives: defaultObjectives,
     },
   })
 
   const { fields, append, remove } = useFieldArray({ control, name: 'objectives' })
 
-  function buildPayload(values: FormValues) {
-    return {
-      objectives: values.objectives.map((obj, i) => ({
-        sli: obj.sli,
-        display_name: obj.display_name || obj.sli,
-        pass_threshold: obj.pass_threshold ? obj.pass_threshold.split(',').map(s => s.trim()).filter(Boolean) : [],
-        warning_threshold: obj.warning_threshold ? obj.warning_threshold.split(',').map(s => s.trim()).filter(Boolean) : [],
-        weight: obj.weight,
-        key_sli: obj.key_sli,
-        sort_order: i,
-      })),
-      total_score_pass_threshold: values.total_score_pass_threshold,
-      total_score_warning_threshold: values.total_score_warning_threshold,
-      comparison: slo.comparison ?? {},
-      comparable_from_version: values.comparable_from_version || undefined,
-    }
+  function buildObjectives(values: FormValues) {
+    return values.objectives.map((obj) => ({
+      sli: obj.sli,
+      display_name: obj.display_name || obj.sli,
+      pass_threshold: obj.pass_threshold ? obj.pass_threshold.split(',').map(s => s.trim()).filter(Boolean) : [],
+      warning_threshold: obj.warning_threshold ? obj.warning_threshold.split(',').map(s => s.trim()).filter(Boolean) : [],
+      weight: obj.weight,
+      key_sli: obj.key_sli,
+    }))
   }
 
   function onSubmit(values: FormValues) {
-    const payload = buildPayload(values)
-    validate.mutate(payload, {
-      onSuccess: (result) => {
-        if (!result.valid) return
-        create.mutate(
-          {
-            name: slo.name,
-            display_name: slo.display_name ?? undefined,
-            author: slo.author ?? undefined,
-            notes: slo.notes ?? undefined,
-            ...payload,
-          },
-          { onSuccess: () => onSaved() },
-        )
+    const objectives = buildObjectives(values)
+    validate.mutate(
+      {
+        objectives,
+        total_score_pass_threshold: values.total_score_pass_threshold,
+        total_score_warning_threshold: values.total_score_warning_threshold,
       },
-    })
+      {
+        onSuccess: (result) => {
+          if (!result.valid) return
+          create.mutate(
+            {
+              name: slo.name,
+              kind: slo.kind,
+              display_name: slo.displayName ?? undefined,
+              author: slo.author ?? undefined,
+              notes: slo.notes ?? undefined,
+              objectives,
+              total_score_pass_threshold: values.total_score_pass_threshold,
+              total_score_warning_threshold: values.total_score_warning_threshold,
+              comparable_from_version: values.comparable_from_version || undefined,
+            },
+            { onSuccess: () => onSaved() },
+          )
+        },
+      },
+    )
   }
 
   const inp = 'w-full px-2 py-1.5 bg-surface-sunken border border-border rounded text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary'

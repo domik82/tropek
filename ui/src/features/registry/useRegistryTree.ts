@@ -3,11 +3,11 @@ import type { TreeNode } from './ui-types'
 
 export interface MinSlo {
   name: string
-  display_name?: string | null
+  displayName?: string | null
   version: number
   active: boolean
-  sli_name?: string | null
-  sli_version?: number | null
+  sliName?: string | null
+  sliVersion?: number | null
   kind?: string
   tags?: Record<string, string>
 }
@@ -27,8 +27,8 @@ export interface MinDs {
 }
 
 export interface MinBinding {
-  slo_name: string
-  data_source_name: string
+  sloName: string
+  dataSourceName: string
 }
 
 export interface MinGroup {
@@ -48,8 +48,8 @@ export function buildSloTree(
   const dsByName = new Map(datasources.map(d => [d.name, d]))
 
   return slos.filter(s => s.active).map(slo => {
-    const sloBindings = bindings.filter(b => b.slo_name === slo.name)
-    const dsNames = [...new Set(sloBindings.map(b => b.data_source_name))]
+    const sloBindings = bindings.filter(b => b.sloName === slo.name)
+    const dsNames = [...new Set(sloBindings.map(b => b.dataSourceName))]
 
     const dsChildren: TreeNode[] = dsNames.map(dsName => ({
       id: `ds:${dsName}`,
@@ -60,12 +60,12 @@ export function buildSloTree(
 
     // SLI comes from the SLO definition, not from bindings
     const sliChildren: TreeNode[] = []
-    if (slo.sli_name) {
-      const sli = sliByName.get(slo.sli_name)
+    if (slo.sliName) {
+      const sli = sliByName.get(slo.sliName)
       const indicatorCount = sli?.indicators ? Object.keys(sli.indicators).length : 0
       sliChildren.push({
-        id: `sli:${slo.sli_name}`,
-        name: slo.sli_name,
+        id: `sli:${slo.sliName}`,
+        name: slo.sliName,
         displayName: sli?.displayName ?? undefined,
         type: 'sli' as const,
         badge: indicatorCount > 0 ? `${indicatorCount}` : undefined,
@@ -76,7 +76,7 @@ export function buildSloTree(
     return {
       id: `slo:${slo.name}`,
       name: slo.name,
-      displayName: slo.display_name ?? undefined,
+      displayName: slo.displayName ?? undefined,
       type: 'slo' as const,
       badge: `v${slo.version}`,
       children: sliChildren.length > 0 ? sliChildren : dsChildren,
@@ -95,13 +95,13 @@ export function buildDatasourceTree(
   return datasources.map(ds => {
     // Find SLOs bound to this datasource
     const boundSloNames = [...new Set(
-      bindings.filter(b => b.data_source_name === ds.name).map(b => b.slo_name),
+      bindings.filter(b => b.dataSourceName === ds.name).map(b => b.sloName),
     )]
-    // Group bound SLOs by their sli_name (from the SLO definition)
+    // Group bound SLOs by their sliName (from the SLO definition)
     const sliToSlos = new Map<string, string[]>()
     for (const sloName of boundSloNames) {
       const slo = sloByName.get(sloName)
-      const sliName = slo?.sli_name ?? '__none__'
+      const sliName = slo?.sliName ?? '__none__'
       const existing = sliToSlos.get(sliName) ?? []
       existing.push(sloName)
       sliToSlos.set(sliName, existing)
@@ -117,7 +117,7 @@ export function buildDatasourceTree(
         return {
           id: `slo:${sloName}`,
           name: sloName,
-          displayName: slo?.display_name ?? undefined,
+          displayName: slo?.displayName ?? undefined,
           type: 'slo' as const,
           badge: slo ? `v${slo.version}` : undefined,
         }
@@ -139,7 +139,7 @@ export function buildDatasourceTree(
       return {
         id: `slo:${sloName}`,
         name: sloName,
-        displayName: slo?.display_name ?? undefined,
+        displayName: slo?.displayName ?? undefined,
         type: 'slo' as const,
         badge: slo ? `v${slo.version}` : undefined,
       }
@@ -181,27 +181,27 @@ export function buildAssetTree(
     const memberChildren: TreeNode[] = (group.members ?? []).map(member => {
       const assetBindings = assetBindingsMap[member.asset_name] ?? []
       // Deduplicate: asset-level bindings take precedence, then add group-level ones
-      const seen = new Set(assetBindings.map(b => `${b.slo_name}|${b.data_source_name}`))
+      const seen = new Set(assetBindings.map(b => `${b.sloName}|${b.dataSourceName}`))
       const mergedBindings = [
         ...assetBindings,
-        ...groupBindings.filter(b => !seen.has(`${b.slo_name}|${b.data_source_name}`)),
+        ...groupBindings.filter(b => !seen.has(`${b.sloName}|${b.dataSourceName}`)),
       ]
       const sloChildren: TreeNode[] = mergedBindings.map(binding => {
-        const slo = sloByName.get(binding.slo_name)
+        const slo = sloByName.get(binding.sloName)
         const dsNode: TreeNode = {
-          id: `binding-ds:${member.asset_name}:${binding.data_source_name}`,
-          name: binding.data_source_name,
+          id: `binding-ds:${member.asset_name}:${binding.dataSourceName}`,
+          name: binding.dataSourceName,
           type: 'datasource' as const,
           groupName: group.name,
         }
 
         let sloLeaf: TreeNode[]
-        if (slo?.sli_name) {
-          const sli = sliByName.get(slo.sli_name)
+        if (slo?.sliName) {
+          const sli = sliByName.get(slo.sliName)
           const indicatorCount = sli?.indicators ? Object.keys(sli.indicators).length : 0
           sloLeaf = [{
-            id: `binding-sli:${member.asset_name}:${slo.sli_name}`,
-            name: slo.sli_name,
+            id: `binding-sli:${member.asset_name}:${slo.sliName}`,
+            name: slo.sliName,
             displayName: sli?.displayName ?? undefined,
             type: 'sli' as const,
             badge: indicatorCount > 0 ? `${indicatorCount}` : undefined,
@@ -213,9 +213,9 @@ export function buildAssetTree(
         }
 
         return {
-          id: `binding-slo:${member.asset_name}:${binding.slo_name}`,
-          name: binding.slo_name,
-          displayName: slo?.display_name ?? undefined,
+          id: `binding-slo:${member.asset_name}:${binding.sloName}`,
+          name: binding.sloName,
+          displayName: slo?.displayName ?? undefined,
           type: 'slo' as const,
           badge: slo ? `v${slo.version}` : undefined,
           groupName: group.name,
@@ -262,8 +262,8 @@ export function buildSloSections(
 
   // Build standard SLO nodes (same logic as buildSloTree)
   const standard: TreeNode[] = standardSlos.map(slo => {
-    const sloBindings = bindings.filter(b => b.slo_name === slo.name)
-    const dsNames = [...new Set(sloBindings.map(b => b.data_source_name))]
+    const sloBindings = bindings.filter(b => b.sloName === slo.name)
+    const dsNames = [...new Set(sloBindings.map(b => b.dataSourceName))]
     const dsChildren: TreeNode[] = dsNames.map(dsName => ({
       id: `ds:${dsName}`,
       name: dsName,
@@ -271,12 +271,12 @@ export function buildSloSections(
       type: 'datasource' as const,
     }))
     const sliChildren: TreeNode[] = []
-    if (slo.sli_name) {
-      const sli = sliByName.get(slo.sli_name)
+    if (slo.sliName) {
+      const sli = sliByName.get(slo.sliName)
       const indicatorCount = sli?.indicators ? Object.keys(sli.indicators).length : 0
       sliChildren.push({
-        id: `sli:${slo.sli_name}`,
-        name: slo.sli_name,
+        id: `sli:${slo.sliName}`,
+        name: slo.sliName,
         displayName: sli?.displayName ?? undefined,
         type: 'sli' as const,
         badge: `${indicatorCount} indicators`,
@@ -286,7 +286,7 @@ export function buildSloSections(
     return {
       id: `slo:${slo.name}`,
       name: slo.name,
-      displayName: slo.display_name ?? undefined,
+      displayName: slo.displayName ?? undefined,
       type: 'slo' as const,
       badge: `v${slo.version}`,
       children: sliChildren.length > 0 ? sliChildren : dsChildren,
@@ -299,7 +299,7 @@ export function buildSloSections(
     return {
       id: `template:${slo.name}`,
       name: slo.name,
-      displayName: slo.display_name ?? undefined,
+      displayName: slo.displayName ?? undefined,
       type: 'template' as const,
       badge: `v${slo.version}`,
       subtitle: `${refGroups.length} group${refGroups.length !== 1 ? 's' : ''}`,
@@ -320,8 +320,8 @@ export function buildSloSections(
 }
 
 export interface MinGroupAssignment {
-  slo_group_name: string
-  data_source_name: string
+  sloGroupName: string
+  dataSourceName: string
 }
 
 export function buildSloGroupMap(slos: MinSlo[]): Map<string, string[]> {
@@ -351,8 +351,8 @@ export function mergeBindings(
 
   for (let i = 0; i < groupNames.length; i++) {
     const bindings: MinBinding[] = (groupAssignments[i] ?? []).map(a => ({
-      slo_name: a.slo_name,
-      data_source_name: a.data_source_name,
+      sloName: a.sloName,
+      dataSourceName: a.dataSourceName,
     }))
     byGroup[groupNames[i]] = bindings
     flat.push(...bindings)
@@ -360,15 +360,15 @@ export function mergeBindings(
 
   for (let i = 0; i < assetNames.length; i++) {
     const directBindings: MinBinding[] = (directAssetAssignments[i] ?? []).map(a => ({
-      slo_name: a.slo_name,
-      data_source_name: a.data_source_name,
+      sloName: a.sloName,
+      dataSourceName: a.dataSourceName,
     }))
 
     const groupBindings: MinBinding[] = (assetGroupAssignments[i] ?? []).flatMap(ga => {
-      const sloNames = sloGroupMap.get(ga.slo_group_name) ?? [ga.slo_group_name]
+      const sloNames = sloGroupMap.get(ga.sloGroupName) ?? [ga.sloGroupName]
       return sloNames.map(sloName => ({
-        slo_name: sloName,
-        data_source_name: ga.data_source_name,
+        sloName,
+        dataSourceName: ga.dataSourceName,
       }))
     })
 
@@ -379,7 +379,7 @@ export function mergeBindings(
 
   const seen = new Set<string>()
   const unique = flat.filter(b => {
-    const key = `${b.slo_name}|${b.data_source_name}`
+    const key = `${b.sloName}|${b.dataSourceName}`
     if (seen.has(key)) return false
     seen.add(key)
     return true

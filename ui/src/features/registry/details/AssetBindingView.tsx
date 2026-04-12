@@ -140,8 +140,8 @@ export function AssetBindingView({
             {(assetGroupAssignments ?? []).map((ga: SloGroupAssignment) => (
               <div key={ga.id} className="flex items-center justify-between px-3 py-2 border border-border rounded-lg bg-table-header-bg">
                 <div>
-                  <span className="text-sm font-medium text-foreground">{ga.slo_group_name}</span>
-                  <span className="text-xs text-muted-foreground ml-2">via {ga.data_source_name}</span>
+                  <span className="text-sm font-medium text-foreground">{ga.sloGroupName}</span>
+                  <span className="text-xs text-muted-foreground ml-2">via {ga.dataSourceName}</span>
                 </div>
               </div>
             ))}
@@ -164,8 +164,8 @@ function AssignmentCard({
   groupName: string
   onNavigate: (node: SelectedNode) => void
 }) {
-  const { data: slo } = useSloDetail(assignment.slo_name)
-  const sliName = slo?.sli_name ?? null
+  const { data: slo } = useSloDetail(assignment.sloName)
+  const sliName = slo?.sliName ?? null
   const { data: sli } = useSliDetail(sliName ?? '')
   const deleteMutation = useDeleteGroupSloAssignment()
   const assetVars = asset?.variables ?? {}
@@ -177,17 +177,17 @@ function AssignmentCard({
       {/* Assignment header — dark bg like table headers */}
       <div className="flex items-center justify-between gap-2 px-3 py-2.5 bg-table-header-bg border-b border-border">
         <BindingChainBreadcrumb
-          sloName={assignment.slo_name}
-          sloVersion={String(assignment.slo_version)}
+          sloName={assignment.sloName}
+          sloVersion={String(assignment.sloVersion)}
           sliName={sliName ?? undefined}
-          dsName={assignment.data_source_name}
-          onClickSlo={() => onNavigate({ type: 'slo', name: assignment.slo_name })}
+          dsName={assignment.dataSourceName}
+          onClickSlo={() => onNavigate({ type: 'slo', name: assignment.sloName })}
           onClickSli={sliName ? () => onNavigate({ type: 'sli', name: sliName }) : undefined}
-          onClickDs={() => onNavigate({ type: 'datasource', name: assignment.data_source_name })}
+          onClickDs={() => onNavigate({ type: 'datasource', name: assignment.dataSourceName })}
         />
         <div className="flex shrink-0 gap-2">
           <button
-            onClick={() => onNavigate({ type: 'slo', name: assignment.slo_name })}
+            onClick={() => onNavigate({ type: 'slo', name: assignment.sloName })}
             className="px-3 py-1.5 text-xs rounded border border-border text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1.5"
           >
             <Pencil className="w-3.5 h-3.5" />

@@ -1,67 +1,69 @@
 // src/features/slos/api.ts
-import type { SloDefinition, SloObjective, SloValidationResult, SloComparisonConfig } from './types'
-import type { AssetGroupUpdate } from './types'
-import type { SloAssignment, SloAssignmentCreate, SloGroupAssignment } from './types'
+import type { components } from '@/generated/api'
+import type {
+  Slo,
+  SloAssignment,
+  SloGroupAssignment,
+  SloValidationResult,
+} from './domain'
+import {
+  dtoToSlo,
+  dtoToSloAssignment,
+  dtoToSloGroupAssignment,
+  dtoToSloValidationResult,
+  type SloDto,
+  type SloAssignmentDto,
+  type SloGroupAssignmentDto,
+  type SloValidationResultDto,
+} from './mappers'
 import type { AssetGroup, AssetGroupTree } from '@/features/assets/types'
+
+export type SloCreateInput = components['schemas']['SLODefinitionCreate']
+export type SloAssignmentCreateInput = components['schemas']['SLOAssignmentCreate']
+export type AssetGroupUpdateInput = components['schemas']['AssetGroupUpdate']
 
 const BASE = '/api'
 
-export async function fetchSlos(tagKey?: string, tagVal?: string): Promise<SloDefinition[]> {
+export async function fetchSlos(tagKey?: string, tagVal?: string): Promise<Slo[]> {
   const params = new URLSearchParams()
   if (tagKey) params.set('tag_key', tagKey)
   if (tagVal) params.set('tag_val', tagVal)
   const qs = params.toString()
   const res = await fetch(`${BASE}/slo-definitions${qs ? `?${qs}` : ''}`)
   if (!res.ok) throw new Error(`fetchSlos: ${res.status}`)
-  const data: { items: SloDefinition[]; total: number } = await res.json()
-  return data.items
+  const data: { items: SloDto[]; total: number } = await res.json()
+  return data.items.map(dtoToSlo)
 }
 
-export async function fetchSloDetail(name: string): Promise<SloDefinition> {
+export async function fetchSloDetail(name: string): Promise<Slo> {
   const res = await fetch(`${BASE}/slo-definitions/${encodeURIComponent(name)}`)
   if (!res.ok) throw new Error(`fetchSloDetail: ${res.status}`)
-  return res.json()
+  const body: SloDto = await res.json()
+  return dtoToSlo(body)
 }
 
-export async function validateSlo(payload: {
-  objectives: SloObjective[]
-  total_score_pass_threshold: number
-  total_score_warning_threshold: number
-  comparison: SloComparisonConfig
-}): Promise<SloValidationResult> {
+export async function validateSlo(
+  payload: components['schemas']['SLOValidateRequest'],
+): Promise<SloValidationResult> {
   const res = await fetch(`${BASE}/slo-definitions/validate`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   })
   if (!res.ok) throw new Error(`validateSlo: ${res.status}`)
-  return res.json()
+  const body: SloValidationResultDto = await res.json()
+  return dtoToSloValidationResult(body)
 }
 
-export async function createSloDefinition(payload: {
-  name: string
-  objectives: SloObjective[]
-  total_score_pass_threshold: number
-  total_score_warning_threshold: number
-  comparison: SloComparisonConfig
-  display_name?: string
-  notes?: string
-  author?: string
-  tags?: Record<string, string>
-  variables?: Record<string, string>
-  comparable_from_version?: number
-  kind?: string
-  sli_name?: string
-  sli_version?: number
-  method_criteria?: Record<string, import('./types').MethodCriteriaOverride>
-}): Promise<SloDefinition> {
+export async function createSloDefinition(payload: SloCreateInput): Promise<Slo> {
   const res = await fetch(`${BASE}/slo-definitions`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   })
   if (!res.ok) throw new Error(`createSloDefinition: ${res.status}`)
-  return res.json()
+  const body: SloDto = await res.json()
+  return dtoToSlo(body)
 }
 
 export async function deleteSlo(name: string): Promise<void> {
@@ -69,10 +71,11 @@ export async function deleteSlo(name: string): Promise<void> {
   if (!res.ok) throw new Error(`deleteSlo: ${res.status}`)
 }
 
-export async function fetchSloVersions(name: string): Promise<SloDefinition[]> {
+export async function fetchSloVersions(name: string): Promise<Slo[]> {
   const res = await fetch(`${BASE}/slo-definitions/${encodeURIComponent(name)}/versions`)
   if (!res.ok) throw new Error(`fetchSloVersions: ${res.status}`)
-  return res.json()
+  const body: SloDto[] = await res.json()
+  return body.map(dtoToSlo)
 }
 
 export async function fetchGroupTree(): Promise<AssetGroupTree> {
@@ -93,7 +96,7 @@ export async function createGroup(body: {
   return res.json()
 }
 
-export async function updateGroup(name: string, body: AssetGroupUpdate): Promise<AssetGroup> {
+export async function updateGroup(name: string, body: AssetGroupUpdateInput): Promise<AssetGroup> {
   const res = await fetch(`${BASE}/asset-groups/${encodeURIComponent(name)}`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
@@ -139,39 +142,52 @@ export async function fetchSloTagValues(key: string): Promise<{ value: string; c
 export async function fetchAssetSloAssignments(assetName: string): Promise<SloAssignment[]> {
   const res = await fetch(`${BASE}/assets/${encodeURIComponent(assetName)}/slo-assignments`)
   if (!res.ok) throw new Error(`fetchAssetSloAssignments: ${res.status}`)
-  return res.json()
+  const body: SloAssignmentDto[] = await res.json()
+  return body.map(dtoToSloAssignment)
 }
 
-export async function fetchAssetSloGroupAssignments(assetName: string): Promise<SloGroupAssignment[]> {
+export async function fetchAssetSloGroupAssignments(
+  assetName: string,
+): Promise<SloGroupAssignment[]> {
   const res = await fetch(`${BASE}/assets/${encodeURIComponent(assetName)}/slo-group-assignments`)
   if (!res.ok) throw new Error(`fetchAssetSloGroupAssignments: ${res.status}`)
-  return res.json()
+  const body: SloGroupAssignmentDto[] = await res.json()
+  return body.map(dtoToSloGroupAssignment)
 }
 
-export async function createAssetSloAssignment(assetName: string, body: SloAssignmentCreate): Promise<SloAssignment> {
+export async function createAssetSloAssignment(
+  assetName: string,
+  body: SloAssignmentCreateInput,
+): Promise<SloAssignment> {
   const res = await fetch(`${BASE}/assets/${encodeURIComponent(assetName)}/slo-assignments`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   })
   if (!res.ok) throw new Error(`createAssetSloAssignment: ${res.status}`)
-  return res.json()
+  const response: SloAssignmentDto = await res.json()
+  return dtoToSloAssignment(response)
 }
 
 export async function fetchGroupSloAssignments(groupName: string): Promise<SloAssignment[]> {
   const res = await fetch(`${BASE}/asset-groups/${encodeURIComponent(groupName)}/slo-assignments`)
   if (!res.ok) throw new Error(`fetchGroupSloAssignments: ${res.status}`)
-  return res.json()
+  const body: SloAssignmentDto[] = await res.json()
+  return body.map(dtoToSloAssignment)
 }
 
-export async function createGroupSloAssignment(groupName: string, body: SloAssignmentCreate): Promise<SloAssignment> {
+export async function createGroupSloAssignment(
+  groupName: string,
+  body: SloAssignmentCreateInput,
+): Promise<SloAssignment> {
   const res = await fetch(`${BASE}/asset-groups/${encodeURIComponent(groupName)}/slo-assignments`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   })
   if (!res.ok) throw new Error(`createGroupSloAssignment: ${res.status}`)
-  return res.json()
+  const response: SloAssignmentDto = await res.json()
+  return dtoToSloAssignment(response)
 }
 
 export async function deleteGroupSloAssignment(groupName: string, assignmentId: string): Promise<void> {

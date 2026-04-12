@@ -51,7 +51,7 @@ export function SloLinkDialogRevised({
   }, [open, lockedGroupName, lockedSloName])
   /* eslint-enable react-hooks/set-state-in-effect */
 
-  const isDuplicate = existingAssignments?.some((a) => a.slo_name === sloName) ?? false
+  const isDuplicate = existingAssignments?.some((a) => a.sloName === sloName) ?? false
   const isValid = datasource && groupName && sloName && selectedSlo && !isDuplicate
 
   const handleLink = async () => {
@@ -71,8 +71,8 @@ export function SloLinkDialogRevised({
     .filter((s) => s.active)
     .map((s) => ({
       value: s.name,
-      label: s.display_name ?? s.name,
-      badge: s.sli_name ?? undefined,
+      label: s.displayName ?? s.name,
+      badge: s.sliName ?? undefined,
     }))
 
   const groupItems = (tree?.all_groups ?? []).map((g) => ({
@@ -125,11 +125,11 @@ export function SloLinkDialogRevised({
                 placeholder="Select SLO..."
               />
             )}
-            {selectedSlo?.sli_name && (
+            {selectedSlo?.sliName && (
               <p className="mt-1 text-[10px] text-muted-foreground">
-                SLI: <span className="text-foreground/70">{selectedSlo.sli_name}</span>
-                {selectedSlo.sli_version != null && (
-                  <span className="opacity-50"> v{selectedSlo.sli_version}</span>
+                SLI: <span className="text-foreground/70">{selectedSlo.sliName}</span>
+                {selectedSlo.sliVersion != null && (
+                  <span className="opacity-50"> v{selectedSlo.sliVersion}</span>
                 )}
               </p>
             )}
