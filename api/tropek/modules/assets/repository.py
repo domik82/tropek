@@ -17,11 +17,10 @@ from tropek.db.models import (
     AssetGroupMember,
     AssetType,
 )
+from tropek.modules.assets.params import AssetCreateParams, AssetGroupCreateParams
 from tropek.modules.assets.schemas import (
-    AssetGroupMemberCreate,
     AssetGroupMemberRead,
     AssetGroupRead,
-    AssetGroupSubgroupCreate,
     AssetGroupSubgroupRead,
     AssetGroupTreeResponse,
 )
@@ -124,37 +123,23 @@ class AssetRepository(TagQueryMixin):
         self._session = session
         self._cache = cache
 
-    async def create(
-        self,
-        name: str,
-        *,
-        type_name: str = 'vm',
-        display_name: str | None = None,
-        color: str | None = None,
-        tags: dict[str, Any] | None = None,
-        variables: dict[str, Any] | None = None,
-    ) -> Asset:
+    async def create(self, params: AssetCreateParams) -> Asset:
         """Create a new asset.
 
         Args:
-            name: Unique name for this asset.
-            type_name: Asset type name (must exist in asset_types).
-            display_name: Optional human-readable label.
-            color: Optional hex color string.
-            tags: Optional free-form metadata tags.
-            variables: Optional template variable bindings.
+            params: Validated parameters for the new asset.
 
         Returns:
             The newly created Asset record.
         """
         asset = Asset(
             id=uuid.uuid4(),
-            name=name,
-            display_name=display_name,
-            color=color,
-            type_name=type_name,
-            tags=tags or {},
-            variables=variables or {},
+            name=params.name,
+            display_name=params.display_name,
+            color=params.color,
+            type_name=params.type_name,
+            tags=params.tags,
+            variables=params.variables,
         )
         self._session.add(asset)
         await self._session.flush()
@@ -283,42 +268,28 @@ class AssetGroupRepository:
             updated_at=group.updated_at,
         )
 
-    async def create(
-        self,
-        name: str,
-        *,
-        display_name: str | None = None,
-        description: str | None = None,
-        color: str | None = None,
-        members: list[AssetGroupMemberCreate] | None = None,
-        subgroups: list[AssetGroupSubgroupCreate] | None = None,
-    ) -> AssetGroupRead:
+    async def create(self, params: AssetGroupCreateParams) -> AssetGroupRead:
         """Create a new asset group with optional members and subgroups.
 
         Args:
-            name: Unique name for this group.
-            display_name: Optional human-readable label.
-            description: Optional description text.
-            color: Optional hex color; auto-assigned from palette if omitted.
-            members: Initial member assets to add.
-            subgroups: Initial child groups to add.
+            params: Validated parameters for the new asset group.
 
         Returns:
             The newly created AssetGroupRead with members and subgroups.
         """
         group = AssetGroup(
             id=uuid.uuid4(),
-            name=name,
-            display_name=display_name,
-            description=description,
-            color=color if color is not None else random.choice(GROUP_COLOR_PALETTE),  # noqa: S311
+            name=params.name,
+            display_name=params.display_name,
+            description=params.description,
+            color=params.color if params.color is not None else random.choice(GROUP_COLOR_PALETTE),  # noqa: S311
         )
         self._session.add(group)
         await self._session.flush()  # get group.id
 
-        for m in members or []:
+        for m in params.members:
             self._session.add(AssetGroupMember(asset_group_id=group.id, asset_id=m.asset_id, weight=m.weight))
-        for sg in subgroups or []:
+        for sg in params.subgroups:
             self._session.add(
                 AssetGroupLink(
                     parent_asset_group_id=group.id,

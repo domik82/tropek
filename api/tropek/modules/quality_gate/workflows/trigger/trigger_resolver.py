@@ -6,11 +6,8 @@ import uuid
 from dataclasses import dataclass
 from typing import Any
 
-from tropek.modules.quality_gate.shared.exceptions import (
-    AssetNotFoundError,
-    DataSourceNotFoundError,
-    SLONotConfiguredError,
-)
+from tropek.modules.common.exceptions import NotFoundError
+from tropek.modules.quality_gate.shared.exceptions import SLONotConfiguredError
 from tropek.modules.quality_gate.shared.protocols import (
     AssetReader,
     AssignmentReader,
@@ -58,8 +55,7 @@ async def resolve_single_trigger(
     """
     asset = await asset_repo.get_by_name(asset_name)
     if asset is None:
-        msg = f"asset '{asset_name}' not found"
-        raise AssetNotFoundError(msg)
+        raise NotFoundError('asset', asset_name)
 
     resolved = await assignment_repo.find_for_asset(asset.id, group_ids, slo_name)
     if resolved is None:
@@ -84,8 +80,7 @@ async def resolve_single_trigger(
 
     ds = await ds_repo.get_by_id(resolved.data_source_id)
     if ds is None:
-        msg = f"datasource '{resolved.data_source_id}' not found"
-        raise DataSourceNotFoundError(msg)
+        raise NotFoundError('data source', str(resolved.data_source_id))
 
     return TriggerContext(
         asset_id=asset.id,

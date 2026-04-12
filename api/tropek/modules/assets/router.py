@@ -4,10 +4,11 @@ from __future__ import annotations
 
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from tropek.db.session import get_session
+from tropek.modules.assets.params import AssetCreateParams, AssetGroupCreateParams
 from tropek.modules.assets.repository import (
     AssetGroupRepository,
     AssetRepository,
@@ -27,7 +28,7 @@ from tropek.modules.assets.schemas import (
     AssetTypeUpdate,
     AssetUpdate,
 )
-from tropek.modules.common.exceptions import NotFoundError
+from tropek.modules.common.exceptions import DomainValidationError, NotFoundError
 from tropek.modules.common.schemas import PagedResponse, TagKeyCount, TagValueCount
 
 router = APIRouter()
@@ -100,7 +101,7 @@ async def rename_asset_type(
 ) -> AssetTypeRead:
     """Rename an asset type."""
     if body.name is None:
-        raise HTTPException(status_code=422, detail='name is required')
+        raise DomainValidationError('name is required')
     repo = AssetTypeRepository(session)
     at = await repo.rename(name, body.name)
     if at is None:
@@ -132,12 +133,14 @@ async def create_asset(
     """Create a new asset."""
     repo = AssetRepository(session)
     asset = await repo.create(
-        body.name,
-        type_name=body.type_name,
-        display_name=body.display_name,
-        color=body.color,
-        tags=body.tags,
-        variables=body.variables,
+        AssetCreateParams(
+            name=body.name,
+            type_name=body.type_name,
+            display_name=body.display_name,
+            color=body.color,
+            tags=body.tags or {},
+            variables=body.variables or {},
+        ),
     )
     return AssetRead.model_validate(asset)
 
@@ -231,12 +234,14 @@ async def create_asset_group(
     """Create a new asset group."""
     repo = AssetGroupRepository(session)
     return await repo.create(
-        body.name,
-        display_name=body.display_name,
-        description=body.description,
-        color=body.color,
-        members=body.members,
-        subgroups=body.subgroups,
+        AssetGroupCreateParams(
+            name=body.name,
+            display_name=body.display_name,
+            description=body.description,
+            color=body.color,
+            members=body.members or [],
+            subgroups=body.subgroups or [],
+        ),
     )
 
 

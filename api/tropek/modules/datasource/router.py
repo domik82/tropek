@@ -9,6 +9,7 @@ from tropek.db.models import DataSource
 from tropek.db.session import get_session
 from tropek.modules.common.exceptions import NotFoundError
 from tropek.modules.common.schemas import PagedResponse, TagKeyCount, TagValueCount
+from tropek.modules.datasource.params import DataSourceCreateParams
 from tropek.modules.datasource.repository import DataSourceRepository
 from tropek.modules.datasource.schemas import DataSourceCreate, DataSourceRead, DataSourceUpdate
 
@@ -43,12 +44,14 @@ async def create_datasource(
     """Create a new datasource."""
     repo = DataSourceRepository(session)
     ds = await repo.create(
-        body.name,
-        adapter_type=body.adapter_type,
-        adapter_url=body.adapter_url,
-        display_name=body.display_name,
-        tags=body.tags,
-        token=body.token,
+        DataSourceCreateParams(
+            name=body.name,
+            adapter_type=body.adapter_type,
+            adapter_url=body.adapter_url,
+            display_name=body.display_name,
+            tags=body.tags or {},
+            token=body.token,
+        ),
     )
     return _ds_read(ds)
 

@@ -7,6 +7,7 @@ import pytest_asyncio
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from tropek.db.models import AssetType
+from tropek.modules.assets.params import AssetCreateParams, AssetGroupCreateParams
 from tropek.modules.assets.repository import (
     AssetGroupRepository,
     AssetRepository,
@@ -72,7 +73,7 @@ async def test_asset_type_delete_in_use_raises(db_session: AsyncSession) -> None
     type_repo = AssetTypeRepository(db_session)
     asset_repo = AssetRepository(db_session)
     await type_repo.create('in-use-type', is_default=False)
-    await asset_repo.create('asset-using-type', type_name='in-use-type')
+    await asset_repo.create(AssetCreateParams(name='asset-using-type', type_name='in-use-type'))
     with pytest.raises(ConflictError) as exc_info:
         await type_repo.delete('in-use-type')
     assert exc_info.value.name == 'in-use-type'
@@ -85,10 +86,12 @@ async def test_asset_type_delete_in_use_raises(db_session: AsyncSession) -> None
 async def test_asset_create_and_get(db_session: AsyncSession) -> None:
     repo = AssetRepository(db_session)
     await repo.create(
-        'vm-test-01',
-        type_name='vm',
-        tags={'dc': 'a'},
-        variables={'host': 'vm-test-01.example.com'},
+        AssetCreateParams(
+            name='vm-test-01',
+            type_name='vm',
+            tags={'dc': 'a'},
+            variables={'host': 'vm-test-01.example.com'},
+        ),
     )
     fetched = await repo.get_by_name('vm-test-01')
     assert fetched is not None
@@ -100,7 +103,7 @@ async def test_asset_create_and_get(db_session: AsyncSession) -> None:
 @pytest.mark.integration
 async def test_asset_update(db_session: AsyncSession) -> None:
     repo = AssetRepository(db_session)
-    await repo.create('vm-update-01', type_name='vm')
+    await repo.create(AssetCreateParams(name='vm-update-01', type_name='vm'))
     updated = await repo.update('vm-update-01', display_name='My VM', tags={'env': 'prod'})
     assert updated.display_name == 'My VM'
     assert updated.tags == {'env': 'prod'}
@@ -109,8 +112,8 @@ async def test_asset_update(db_session: AsyncSession) -> None:
 @pytest.mark.integration
 async def test_asset_list_filter_by_type(db_session: AsyncSession) -> None:
     repo = AssetRepository(db_session)
-    await repo.create('vm-filter-01', type_name='vm')
-    await repo.create('sensor-filter-01', type_name='sensor')
+    await repo.create(AssetCreateParams(name='vm-filter-01', type_name='vm'))
+    await repo.create(AssetCreateParams(name='sensor-filter-01', type_name='sensor'))
     vms = await repo.list_all(type_name='vm')
     vm_names = {a.name for a in vms}
     assert 'vm-filter-01' in vm_names
@@ -123,11 +126,13 @@ async def test_asset_list_filter_by_type(db_session: AsyncSession) -> None:
 @pytest.mark.integration
 async def test_asset_group_create_with_members(db_session: AsyncSession) -> None:
     asset_repo = AssetRepository(db_session)
-    asset = await asset_repo.create('vm-group-member-01', type_name='vm')
+    asset = await asset_repo.create(AssetCreateParams(name='vm-group-member-01', type_name='vm'))
     group_repo = AssetGroupRepository(db_session)
     group = await group_repo.create(
-        'linux-boxes',
-        members=[AssetGroupMemberCreate(asset_id=asset.id, weight=1.0)],
+        AssetGroupCreateParams(
+            name='linux-boxes',
+            members=[AssetGroupMemberCreate(asset_id=asset.id, weight=1.0)],
+        ),
     )
     assert group.name == 'linux-boxes'
     assert len(group.members) == 1
@@ -137,9 +142,9 @@ async def test_asset_group_create_with_members(db_session: AsyncSession) -> None
 @pytest.mark.integration
 async def test_asset_group_add_remove_member(db_session: AsyncSession) -> None:
     asset_repo = AssetRepository(db_session)
-    asset = await asset_repo.create('vm-addremove-01', type_name='vm')
+    asset = await asset_repo.create(AssetCreateParams(name='vm-addremove-01', type_name='vm'))
     group_repo = AssetGroupRepository(db_session)
-    group = await group_repo.create('test-group-addremove')
+    group = await group_repo.create(AssetGroupCreateParams(name='test-group-addremove'))
     group = await group_repo.add_member('test-group-addremove', asset.id, weight=2.0)
     assert len(group.members) == 1
     await group_repo.remove_member('test-group-addremove', asset.id)
@@ -151,8 +156,8 @@ async def test_asset_group_add_remove_member(db_session: AsyncSession) -> None:
 @pytest.mark.integration
 async def test_asset_group_tree_top_level(db_session: AsyncSession) -> None:
     group_repo = AssetGroupRepository(db_session)
-    await group_repo.create('parent-group-tree')
-    child = await group_repo.create('child-group-tree')
+    await group_repo.create(AssetGroupCreateParams(name='parent-group-tree'))
+    child = await group_repo.create(AssetGroupCreateParams(name='child-group-tree'))
     await group_repo.add_subgroup('parent-group-tree', child.id, weight=1.0)
     tree = await group_repo.get_tree()
     top_names = {g.name for g in tree.top_level}
@@ -165,7 +170,7 @@ async def test_asset_group_tree_top_level(db_session: AsyncSession) -> None:
 @pytest.mark.integration
 async def test_group_update_properties(db_session: AsyncSession) -> None:
     repo = AssetGroupRepository(db_session)
-    await repo.create('upd-grp', display_name='Old Name')
+    await repo.create(AssetGroupCreateParams(name='upd-grp', display_name='Old Name'))
     updated = await repo.update('upd-grp', display_name='New Name', description='desc')
     assert updated is not None
     assert updated.display_name == 'New Name'
@@ -209,7 +214,7 @@ async def test_asset_type_rename_duplicate(db_session: AsyncSession) -> None:
 @pytest.mark.integration
 async def test_asset_delete(db_session: AsyncSession) -> None:
     repo = AssetRepository(db_session)
-    await repo.create('deletable-asset', type_name='vm')
+    await repo.create(AssetCreateParams(name='deletable-asset', type_name='vm'))
     result = await repo.delete('deletable-asset')
     assert result is True
     assert await repo.get_by_name('deletable-asset') is None
@@ -226,8 +231,8 @@ async def test_asset_delete_not_found(db_session: AsyncSession) -> None:
 async def test_asset_delete_removes_group_memberships(db_session: AsyncSession) -> None:
     asset_repo = AssetRepository(db_session)
     group_repo = AssetGroupRepository(db_session)
-    asset = await asset_repo.create('member-asset', type_name='vm')
-    await group_repo.create('test-group')
+    asset = await asset_repo.create(AssetCreateParams(name='member-asset', type_name='vm'))
+    await group_repo.create(AssetGroupCreateParams(name='test-group'))
     await group_repo.add_member('test-group', asset.id)
     await asset_repo.delete('member-asset')
     refreshed = await group_repo.get_by_name('test-group')
@@ -243,8 +248,8 @@ async def test_asset_type_list_includes_count(db_session: AsyncSession) -> None:
     type_repo = AssetTypeRepository(db_session)
     asset_repo = AssetRepository(db_session)
     await type_repo.create('counted-type', is_default=False)
-    await asset_repo.create('a1', type_name='counted-type')
-    await asset_repo.create('a2', type_name='counted-type')
+    await asset_repo.create(AssetCreateParams(name='a1', type_name='counted-type'))
+    await asset_repo.create(AssetCreateParams(name='a2', type_name='counted-type'))
     counts = await type_repo.get_asset_counts()
     assert counts['counted-type'] == 2
 
@@ -255,9 +260,9 @@ async def test_asset_type_list_includes_count(db_session: AsyncSession) -> None:
 @pytest.mark.integration
 async def test_tag_keys_aggregation(db_session: AsyncSession) -> None:
     repo = AssetRepository(db_session)
-    await repo.create('lk1', type_name='vm', tags={'os': 'linux', 'env': 'prod'})
-    await repo.create('lk2', type_name='vm', tags={'os': 'windows', 'env': 'staging'})
-    await repo.create('lk3', type_name='vm', tags={'os': 'linux'})
+    await repo.create(AssetCreateParams(name='lk1', type_name='vm', tags={'os': 'linux', 'env': 'prod'}))
+    await repo.create(AssetCreateParams(name='lk2', type_name='vm', tags={'os': 'windows', 'env': 'staging'}))
+    await repo.create(AssetCreateParams(name='lk3', type_name='vm', tags={'os': 'linux'}))
     keys = await repo.get_tag_keys()
     assert keys == {'os': 3, 'env': 2}
 
@@ -265,8 +270,8 @@ async def test_tag_keys_aggregation(db_session: AsyncSession) -> None:
 @pytest.mark.integration
 async def test_tag_values_for_key(db_session: AsyncSession) -> None:
     repo = AssetRepository(db_session)
-    await repo.create('lv1', type_name='vm', tags={'os': 'linux'})
-    await repo.create('lv2', type_name='vm', tags={'os': 'linux'})
-    await repo.create('lv3', type_name='vm', tags={'os': 'windows'})
+    await repo.create(AssetCreateParams(name='lv1', type_name='vm', tags={'os': 'linux'}))
+    await repo.create(AssetCreateParams(name='lv2', type_name='vm', tags={'os': 'linux'}))
+    await repo.create(AssetCreateParams(name='lv3', type_name='vm', tags={'os': 'windows'}))
     values = await repo.get_tag_values('os')
     assert values == {'linux': 2, 'windows': 1}

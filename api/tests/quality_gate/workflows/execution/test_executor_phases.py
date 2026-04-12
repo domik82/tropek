@@ -7,6 +7,8 @@ from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
+from tropek.modules.quality_gate.evaluation_engine.constants import EvaluationOutcome
+from tropek.modules.quality_gate.evaluation_engine.result_models import EvaluationResult, IndicatorResult
 from tropek.modules.quality_gate.workflows.execution.evaluation_executor import (
     EvaluationSnapshot,
     FetchAndEvaluateResult,
@@ -15,6 +17,42 @@ from tropek.modules.quality_gate.workflows.execution.evaluation_executor import 
     write_results,
     write_sli_values_phase,
 )
+
+
+def _make_indicator_result(
+    *,
+    metric: str = 'response_time',
+    value: float | None = 500.0,
+    status: str = 'pass',
+    score: float = 1.0,
+) -> IndicatorResult:
+    return IndicatorResult(
+        metric=metric,
+        display_name=metric,
+        value=value,
+        compared_value=None,
+        status=status,
+        score=score,
+        weight=1.0,
+        key_sli=False,
+        pass_targets=[],
+        warning_targets=None,
+        change_absolute=None,
+        change_relative_pct=None,
+    )
+
+
+def _make_eval_result(
+    *,
+    result: EvaluationOutcome = EvaluationOutcome.PASS,
+    score: float = 100.0,
+    indicator_results: list[IndicatorResult] | None = None,
+) -> EvaluationResult:
+    return EvaluationResult(
+        result=result,
+        score=score,
+        indicator_results=indicator_results if indicator_results is not None else [_make_indicator_result()],
+    )
 
 EVAL_ID = uuid.uuid4()
 PARENT_RUN_ID = uuid.uuid4()
@@ -234,22 +272,8 @@ async def test_write_results_commits_eval_and_indicators() -> None:
     session = AsyncMock()
     snapshot = _make_snapshot()
 
-    ir = MagicMock()
-    ir.metric = 'response_time'
-    ir.value = 500.0
-    ir.compared_value = None
-    ir.change_absolute = None
-    ir.change_relative_pct = None
-    ir.status = 'pass'
-    ir.score = 1.0
-
-    eval_result = MagicMock()
-    eval_result.result = 'pass'
-    eval_result.score = 100.0
-    eval_result.indicator_results = [ir]
-
     fetch_result = FetchAndEvaluateResult(
-        eval_result=eval_result,
+        eval_result=_make_eval_result(),
         metrics_fetched={'response_time': 500.0},
         fetch_errors={},
         sli_metadata={},
@@ -295,20 +319,8 @@ async def test_write_sli_values_phase_writes_to_hypertable() -> None:
     session = AsyncMock()
     snapshot = _make_snapshot()
 
-    ir = MagicMock()
-    ir.metric = 'response_time'
-    ir.value = 500.0
-    ir.compared_value = None
-    ir.change_absolute = None
-    ir.change_relative_pct = None
-    ir.status = 'pass'
-    ir.score = 1.0
-
-    eval_result = MagicMock()
-    eval_result.indicator_results = [ir]
-
     fetch_result = FetchAndEvaluateResult(
-        eval_result=eval_result,
+        eval_result=_make_eval_result(),
         metrics_fetched={'response_time': 500.0},
         fetch_errors={},
         sli_metadata={},

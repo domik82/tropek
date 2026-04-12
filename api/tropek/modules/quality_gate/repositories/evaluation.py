@@ -12,8 +12,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from tropek.db.models import Asset, EvaluationAnnotation, EvaluationRun, IndicatorResultRow, SLOEvaluation
+from tropek.modules.common.exceptions import ConflictError
 from tropek.modules.quality_gate.evaluation_engine.constants import EvaluationStatus
-from tropek.modules.quality_gate.shared.exceptions import DuplicateEvaluationError
 from tropek.modules.quality_gate.shared.params import EvalCreateParams
 
 
@@ -85,7 +85,7 @@ class EvaluationRepository:
             cause: BaseException | None = exc
             while cause is not None:
                 if isinstance(cause, UniqueViolationError):
-                    raise DuplicateEvaluationError from exc
+                    raise ConflictError('evaluation', str(params.evaluation_name), 'duplicate') from exc
                 cause = cause.__cause__
             raise
         return ev

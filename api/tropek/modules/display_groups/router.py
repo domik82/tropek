@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from tropek.db.session import get_session
-from tropek.modules.common.errors import raise_not_found
+from tropek.modules.common.exceptions import NotFoundError
 from tropek.modules.display_groups.repository import DisplayGroupRepository
 from tropek.modules.display_groups.schemas import (
     DisplayGroupCreate,
@@ -49,7 +49,7 @@ async def delete_display_group(
     """Delete a display group and all its memberships."""
     repo = DisplayGroupRepository(session)
     if await repo.get_by_name(name) is None:
-        raise_not_found('slo display group', name)
+        raise NotFoundError('slo display group', name)
     await repo.delete(name)
 
 
@@ -59,7 +59,7 @@ async def list_members(name: str, session: AsyncSession = Depends(get_session)) 
     repo = DisplayGroupRepository(session)
     group = await repo.get_by_name(name)
     if group is None:
-        raise_not_found('slo display group', name)
+        raise NotFoundError('slo display group', name)
     return await repo.list_members(group.id)
 
 
@@ -73,7 +73,7 @@ async def add_member(
     repo = DisplayGroupRepository(session)
     group = await repo.get_by_name(name)
     if group is None:
-        raise_not_found('slo display group', name)
+        raise NotFoundError('slo display group', name)
     await repo.add_member(group.id, body.slo_name)
 
 
@@ -87,5 +87,5 @@ async def remove_member(
     repo = DisplayGroupRepository(session)
     group = await repo.get_by_name(name)
     if group is None:
-        raise_not_found('slo display group', name)
+        raise NotFoundError('slo display group', name)
     await repo.remove_member(group.id, slo_name)

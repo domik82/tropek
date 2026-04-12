@@ -8,8 +8,10 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from tropek.db.models import AssetType
+from tropek.modules.assets.params import AssetCreateParams, AssetGroupCreateParams
 from tropek.modules.assets.repository import AssetGroupRepository, AssetRepository
 from tropek.modules.assignments.repository import AssignmentRepository
+from tropek.modules.datasource.params import DataSourceCreateParams
 from tropek.modules.datasource.repository import DataSourceRepository
 from tropek.modules.slo_groups.repository import SLOGroupRepository
 from tropek.modules.slo_registry.params import SLOCreateParams, SLOObjectiveParams
@@ -33,14 +35,16 @@ async def seed_asset_types(db_session: AsyncSession) -> None:
 
 
 async def _make_asset(session: AsyncSession, name: str) -> object:
-    return await AssetRepository(session).create(name, type_name='vm')
+    return await AssetRepository(session).create(AssetCreateParams(name=name, type_name='vm'))
 
 
 async def _make_datasource(session: AsyncSession, name: str) -> object:
     return await DataSourceRepository(session).create(
-        name=name,
-        adapter_type='prometheus',
-        adapter_url='http://adapter:8081',
+        DataSourceCreateParams(
+            name=name,
+            adapter_type='prometheus',
+            adapter_url='http://adapter:8081',
+        ),
     )
 
 
@@ -77,7 +81,7 @@ async def test_create_slo_assignment_for_asset(db_session: AsyncSession) -> None
 
 @pytest.mark.integration
 async def test_create_slo_assignment_for_group(db_session: AsyncSession) -> None:
-    ag = await AssetGroupRepository(db_session).create('assign-group-1')
+    ag = await AssetGroupRepository(db_session).create(AssetGroupCreateParams(name='assign-group-1'))
     slo = await _make_slo(db_session, 'assign-slo-g1')
     ds = await _make_datasource(db_session, 'assign-ds-g1')
 
@@ -201,7 +205,7 @@ async def test_resolve_direct_asset_assignment(db_session: AsyncSession) -> None
 
 @pytest.mark.integration
 async def test_resolve_direct_asset_wins_over_group(db_session: AsyncSession) -> None:
-    ag = await AssetGroupRepository(db_session).create('resolve-group-2')
+    ag = await AssetGroupRepository(db_session).create(AssetGroupCreateParams(name='resolve-group-2'))
     asset = await _make_asset(db_session, 'resolve-asset-2')
     ds = await _make_datasource(db_session, 'resolve-ds-2')
 
