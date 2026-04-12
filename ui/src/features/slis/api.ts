@@ -1,11 +1,17 @@
 // src/features/slis/api.ts
-import type { SliDefinition, SliDefinitionCreate } from './types'
+import type { components } from '@/generated/api'
+import type { Sli } from './domain'
+import { dtoToSli, type SliDto } from './mappers'
+
+export type SliCreateInput = components['schemas']['SLIDefinitionCreate']
+
+type SliListDto = { items: SliDto[]; total: number }
 
 const BASE = '/api'
 
 export async function fetchSliDefinitions(
   adapterType?: string, tagKey?: string, tagVal?: string,
-): Promise<SliDefinition[]> {
+): Promise<Sli[]> {
   const params = new URLSearchParams()
   if (adapterType) params.set('adapter_type', adapterType)
   if (tagKey) params.set('tag_key', tagKey)
@@ -13,26 +19,26 @@ export async function fetchSliDefinitions(
   const qs = params.toString()
   const res = await fetch(`${BASE}/sli-definitions${qs ? `?${qs}` : ''}`)
   if (!res.ok) throw new Error(`fetchSliDefinitions: ${res.status}`)
-  const data: { items: SliDefinition[]; total: number } = await res.json()
-  return data.items
+  const data: SliListDto = await res.json()
+  return data.items.map(dtoToSli)
 }
 
-export async function fetchSliDetail(name: string): Promise<SliDefinition> {
+export async function fetchSliDetail(name: string): Promise<Sli> {
   const res = await fetch(`${BASE}/sli-definitions/${encodeURIComponent(name)}`)
   if (!res.ok) throw new Error(`fetchSliDetail: ${res.status}`)
-  return res.json()
+  const body: SliDto = await res.json()
+  return dtoToSli(body)
 }
 
-export async function createSliDefinition(
-  payload: SliDefinitionCreate
-): Promise<SliDefinition> {
+export async function createSliDefinition(payload: SliCreateInput): Promise<Sli> {
   const res = await fetch(`${BASE}/sli-definitions`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   })
   if (!res.ok) throw new Error(`createSliDefinition: ${res.status}`)
-  return res.json()
+  const body: SliDto = await res.json()
+  return dtoToSli(body)
 }
 
 export async function deleteSliDefinition(name: string): Promise<void> {
@@ -42,12 +48,13 @@ export async function deleteSliDefinition(name: string): Promise<void> {
   if (!res.ok) throw new Error(`deleteSliDefinition: ${res.status}`)
 }
 
-export async function fetchSliVersions(name: string): Promise<SliDefinition[]> {
+export async function fetchSliVersions(name: string): Promise<Sli[]> {
   const res = await fetch(
     `${BASE}/sli-definitions/${encodeURIComponent(name)}/versions`
   )
   if (!res.ok) throw new Error(`fetchSliVersions: ${res.status}`)
-  return res.json()
+  const body: SliDto[] = await res.json()
+  return body.map(dtoToSli)
 }
 
 export async function fetchSliTagKeys(): Promise<{ key: string; count: number }[]> {

@@ -3,7 +3,7 @@ import { GitBranch, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { DeletionConfirmForm } from '@/components/DeletionConfirmForm'
 import { useSliDetail, useDeleteSli } from '@/features/slis'
-import type { SliDefinition } from '@/features/slis'
+import type { Sli } from '@/features/slis'
 import { useSlos } from '@/features/slos'
 import type { SelectedNode } from '@/features/registry'
 import { ENTITY_COLORS } from '@/lib/entity-colors'
@@ -14,7 +14,7 @@ const VARIABLE_COLOR = 'var(--chip-var-key)'
 interface SliDetailViewProps {
   name: string
   onNavigate: (node: SelectedNode) => void
-  onNewVersion: (sli: SliDefinition) => void
+  onNewVersion: (sli: Sli) => void
 }
 
 function highlightVariables(query: string): React.ReactNode {
@@ -68,7 +68,7 @@ export function SliDetailView({ name, onNavigate, onNewVersion }: SliDetailViewP
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0">
               <h2 className="text-xl font-semibold text-foreground truncate">
-                {sli.display_name ?? sli.name}
+                {sli.displayName ?? sli.name}
               </h2>
               <p className="text-xs font-mono text-muted-foreground mt-0.5">{sli.name}</p>
             </div>
@@ -81,7 +81,7 @@ export function SliDetailView({ name, onNavigate, onNewVersion }: SliDetailViewP
               <span
                 className="px-2 py-0.5 text-xs rounded-full border border-border bg-muted/40 text-muted-foreground"
               >
-                {sli.adapter_type}
+                {sli.adapterType}
               </span>
               {(sli.mode ?? 'raw') === 'aggregated' && (
                 <span
@@ -174,7 +174,7 @@ export function SliDetailView({ name, onNavigate, onNewVersion }: SliDetailViewP
             <div>
               <p className="text-xs text-muted-foreground mb-1">Query Template</p>
               <p className="text-sm font-mono text-foreground break-all">
-                {sli.query_template ? highlightVariables(sli.query_template) : '—'}
+                {sli.queryTemplate ? highlightVariables(sli.queryTemplate) : '—'}
               </p>
             </div>
             <div className="flex gap-6">

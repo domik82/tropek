@@ -3,7 +3,7 @@ import { render, screen, fireEvent, cleanup } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { DatasourceDetailView } from './DatasourceDetailView'
 import type { Datasource } from '@/features/datasources'
-import type { SliDefinition } from '@/features/slis'
+import type { Sli } from '@/features/slis'
 
 vi.mock('@/features/datasources/hooks', () => ({
   useDatasource: vi.fn(),
@@ -29,42 +29,42 @@ const mockDs: Datasource = {
   updatedAt: new Date('2024-01-02T00:00:00Z'),
 }
 
-const mockSlis: SliDefinition[] = [
+const mockSlis: Sli[] = [
   {
     id: 'sli-1',
     name: 'http-sli',
-    display_name: 'HTTP SLI',
-    adapter_type: 'prometheus',
+    displayName: 'HTTP SLI',
+    adapterType: 'prometheus',
     version: 1,
-    comparable_from_version: 1,
+    comparableFromVersion: 1,
     indicators: {},
     mode: 'raw',
-    query_template: null,
+    queryTemplate: null,
     interval: null,
     methods: null,
     notes: null,
     author: null,
     tags: {},
     active: true,
-    created_at: '2024-01-01T00:00:00Z',
+    createdAt: new Date('2024-01-01T00:00:00Z'),
   },
   {
     id: 'sli-2',
     name: 'db-sli',
-    display_name: 'DB SLI',
-    adapter_type: 'datadog',
+    displayName: 'DB SLI',
+    adapterType: 'datadog',
     version: 1,
-    comparable_from_version: 1,
+    comparableFromVersion: 1,
     indicators: {},
     mode: 'raw',
-    query_template: null,
+    queryTemplate: null,
     interval: null,
     methods: null,
     notes: null,
     author: null,
     tags: {},
     active: true,
-    created_at: '2024-01-01T00:00:00Z',
+    createdAt: new Date('2024-01-01T00:00:00Z'),
   },
 ]
 

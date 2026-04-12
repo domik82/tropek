@@ -7,7 +7,7 @@ import type { SloGroup } from '@/features/slo-groups/types'
 describe('buildSloTree', () => {
   it('builds SLO → SLI → DS hierarchy from bindings and SLO sli_name', () => {
     const slos = [{ name: 'http-slo', display_name: 'HTTP SLO', version: 3, active: true, sli_name: 'http-sli', sli_version: 1 }]
-    const slis = [{ name: 'http-sli', display_name: null, adapter_type: 'prometheus', active: true, indicators: { rt: 'q1', err: 'q2' } }]
+    const slis = [{ name: 'http-sli', displayName: null, adapterType: 'prometheus', active: true, indicators: { rt: 'q1', err: 'q2' } }]
     const datasources = [{ name: 'prom', displayName: null, adapterType: 'prometheus' }]
     const bindings = [{ slo_name: 'http-slo', data_source_name: 'prom' }]
 
@@ -41,7 +41,7 @@ describe('buildSloTree', () => {
 describe('buildDatasourceTree', () => {
   it('builds DS → SLI → SLO hierarchy using sli_name from SLO definition', () => {
     const datasources = [{ name: 'prom', displayName: null, adapterType: 'prometheus' }]
-    const slis = [{ name: 'http-sli', display_name: null, adapter_type: 'prometheus', active: true, indicators: { rt: 'q' } }]
+    const slis = [{ name: 'http-sli', displayName: null, adapterType: 'prometheus', active: true, indicators: { rt: 'q' } }]
     const slos = [{ name: 'http-slo', display_name: null, version: 2, active: true, sli_name: 'http-sli', sli_version: 1 }]
     const bindings = [{ slo_name: 'http-slo', data_source_name: 'prom' }]
 
@@ -69,7 +69,7 @@ describe('buildAssetTree', () => {
     const groups = [{ name: 'core', display_name: null, members: [{ asset_name: 'checkout-api' }] }]
     const groupBindingsMap = { core: [{ slo_name: 'http-slo', data_source_name: 'prom' }] }
     const slos = [{ name: 'http-slo', display_name: 'HTTP SLO', version: 2, active: true, sli_name: 'http-sli', sli_version: 1 }]
-    const slis = [{ name: 'http-sli', display_name: null, adapter_type: 'prometheus', active: true, indicators: { rt: 'q1', err: 'q2' } }]
+    const slis = [{ name: 'http-sli', displayName: null, adapterType: 'prometheus', active: true, indicators: { rt: 'q1', err: 'q2' } }]
 
     const tree = buildAssetTree(groups, groups, groupBindingsMap, {}, slos, slis)
     expect(tree).toHaveLength(1)
@@ -110,7 +110,7 @@ describe('buildAssetTree', () => {
     const groups = [{ name: 'core', display_name: null, members: [{ asset_name: 'checkout-api' }] }]
     const assetBindingsMap = { 'checkout-api': [{ slo_name: 'asset-slo', data_source_name: 'prom' }] }
     const slos = [{ name: 'asset-slo', display_name: 'Asset SLO', version: 1, active: true, sli_name: 'http-sli' }]
-    const slis = [{ name: 'http-sli', display_name: null, adapter_type: 'prometheus', active: true, indicators: { rt: 'q1' } }]
+    const slis = [{ name: 'http-sli', displayName: null, adapterType: 'prometheus', active: true, indicators: { rt: 'q1' } }]
 
     const tree = buildAssetTree(groups, groups, {}, assetBindingsMap, slos, slis)
     expect(tree[0].children![0].children).toHaveLength(1)
@@ -120,7 +120,7 @@ describe('buildAssetTree', () => {
 
 describe('buildSloSections', () => {
   const slis = [
-    { name: 'http-sli', display_name: null, adapter_type: 'prometheus', active: true, indicators: { latency: 'q' } },
+    { name: 'http-sli', displayName: null, adapterType: 'prometheus', active: true, indicators: { latency: 'q' } },
   ]
   const datasources = [{ name: 'prom', displayName: null, adapterType: 'prometheus' }]
   const bindings = [{ slo_name: 'web-perf', data_source_name: 'prom' }]

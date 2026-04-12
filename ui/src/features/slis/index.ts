@@ -1,4 +1,5 @@
-export type { SliDefinition, SliDefinitionCreate } from './types'
+export type { Sli } from './domain'
+export type { SliCreateInput } from './api'
 export {
   useSliDefinitions, useSliDetail, useSliVersions,
   useCreateSli, useDeleteSli, useSliTagKeys, useSliTagValues,

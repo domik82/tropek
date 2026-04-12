@@ -118,8 +118,8 @@ export function WizardStepPickSli({ data, onChange, editIndicatorNames }: Wizard
 
   const sliItems = filteredSlis.map((sli) => ({
     value: sli.name,
-    label: sli.display_name ?? sli.name,
-    badge: sli.adapter_type,
+    label: sli.displayName ?? sli.name,
+    badge: sli.adapterType,
   }))
 
   function handleTagToggle(key: string, value: string) {

@@ -11,7 +11,7 @@ import { ENTITY_COLORS } from '@/lib/entity-colors'
 import { SANS_SERIF } from '@/lib/fonts'
 import { tagsToRows, rowsToTags } from './tagUtils'
 import type { TagRow } from './tagUtils'
-import type { SliDefinition } from '@/features/slis'
+import type { Sli, SliCreateInput } from '@/features/slis'
 
 const rawSchema = z.object({
   name: z.string().min(1, 'Name is required'),
@@ -42,7 +42,7 @@ type FormValues = z.infer<typeof rawSchema>
 interface SliFormProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  editFrom?: SliDefinition
+  editFrom?: Sli
   defaultAdapterType?: string
 }
 
@@ -65,7 +65,7 @@ export function SliForm({ open, onOpenChange, editFrom, defaultAdapterType }: Sl
   const initialMode = editFrom?.mode ?? 'raw'
 
   const [mode, setMode] = useState<'raw' | 'aggregated'>(initialMode)
-  const [queryTemplate, setQueryTemplate] = useState(editFrom?.query_template ?? '')
+  const [queryTemplate, setQueryTemplate] = useState(editFrom?.queryTemplate ?? '')
   const [interval, setInterval] = useState(editFrom?.interval ?? '1m')
   const [methods, setMethods] = useState<string[]>(editFrom?.methods ?? [])
 
@@ -75,8 +75,8 @@ export function SliForm({ open, onOpenChange, editFrom, defaultAdapterType }: Sl
     resolver: zodResolver(schema),
     defaultValues: {
       name: editFrom?.name ?? '',
-      display_name: editFrom?.display_name ?? '',
-      adapter_type: editFrom?.adapter_type ?? defaultAdapterType ?? '',
+      display_name: editFrom?.displayName ?? '',
+      adapter_type: editFrom?.adapterType ?? defaultAdapterType ?? '',
       author: editFrom?.author ?? '',
       notes: editFrom?.notes ?? '',
       indicators: editFrom?.indicators ? indicatorsToRows(editFrom.indicators) : [],
@@ -94,14 +94,14 @@ export function SliForm({ open, onOpenChange, editFrom, defaultAdapterType }: Sl
     if (editFrom) {
       reset({
         name: editFrom.name,
-        display_name: editFrom.display_name ?? '',
-        adapter_type: editFrom.adapter_type,
+        display_name: editFrom.displayName ?? '',
+        adapter_type: editFrom.adapterType,
         author: editFrom.author ?? '',
         notes: editFrom.notes ?? '',
         indicators: indicatorsToRows(editFrom.indicators),
       })
       setMode(editFrom.mode ?? 'raw')
-      setQueryTemplate(editFrom.query_template ?? '')
+      setQueryTemplate(editFrom.queryTemplate ?? '')
       setInterval(editFrom.interval ?? '1m')
       setMethods(editFrom.methods ?? [])
       setTagRows(tagsToRows(editFrom.tags))
@@ -122,25 +122,32 @@ export function SliForm({ open, onOpenChange, editFrom, defaultAdapterType }: Sl
       adapter_type: values.adapter_type,
       notes: values.notes || undefined,
       author: values.author || undefined,
-      tags: Object.keys(tags).length > 0 ? tags : undefined,
+      tags,
     }
 
     if (mode === 'raw') {
-      createMutation.mutate(
-        { ...base, mode: 'raw', indicators: rowsToIndicators(values.indicators) },
-        { onSuccess: () => { reset(); onOpenChange(false) } },
-      )
+      const payload: SliCreateInput = {
+        ...base,
+        mode: 'raw',
+        indicators: rowsToIndicators(values.indicators),
+      }
+      createMutation.mutate(payload, {
+        onSuccess: () => { reset(); onOpenChange(false) },
+      })
     } else {
-      createMutation.mutate(
-        {
-          ...base,
-          mode: 'aggregated',
-          query_template: queryTemplate,
-          interval,
-          methods,
-        },
-        { onSuccess: () => { reset(); onOpenChange(false) } },
-      )
+      const payload: SliCreateInput = {
+        ...base,
+        mode: 'aggregated',
+        indicators: {},
+        query_template: queryTemplate,
+        interval,
+        // Aggregation methods come from a free-form string-state checkbox group;
+        // backend constrains to AggregationMethod literals.
+        methods: methods as SliCreateInput['methods'],
+      }
+      createMutation.mutate(payload, {
+        onSuccess: () => { reset(); onOpenChange(false) },
+      })
     }
   }
 

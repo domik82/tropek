@@ -103,7 +103,7 @@ export function SloLinkDialog({ open, onOpenChange, lockedSloName, lockedGroupNa
             : <option value="">Select SLI...</option>
           }
           {slis?.filter(s => s.active).map(s => (
-            <option key={s.id} value={s.name}>{s.display_name ?? s.name}</option>
+            <option key={s.id} value={s.name}>{s.displayName ?? s.name}</option>
           ))}
         </select>
       </div>

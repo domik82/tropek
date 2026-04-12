@@ -15,7 +15,7 @@ import { SloLinkDialogRevised } from '@/features/registry/forms/SloLinkDialogRev
 import { useCreateGroup } from '@/features/slos'
 import { useDatasource } from '@/features/datasources'
 import type { SloDefinition } from '@/features/slos'
-import type { SliDefinition } from '@/features/slis'
+import type { Sli } from '@/features/slis'
 
 export function SloRegistryPage() {
   const [searchParams, setSearchParams] = useSearchParams()
@@ -36,7 +36,7 @@ export function SloRegistryPage() {
   const [dsEditName, setDsEditName] = useState<string | undefined>()
   const [sliFormOpen, setSliFormOpen] = useState(false)
   const [sliDefaultAdapter, setSliDefaultAdapter] = useState<string | undefined>()
-  const [sliEditFrom, setSliEditFrom] = useState<SliDefinition | undefined>()
+  const [sliEditFrom, setSliEditFrom] = useState<Sli | undefined>()
   const [linkDialogOpen, setLinkDialogOpen] = useState(false)
   const [linkLockedGroup, setLinkLockedGroup] = useState<string | undefined>()
 
@@ -160,7 +160,7 @@ export function SloRegistryPage() {
     setWizardOpen(true)
   }, [])
 
-  const handleNewSliVersion = useCallback((sli: SliDefinition) => {
+  const handleNewSliVersion = useCallback((sli: Sli) => {
     setSliEditFrom(sli)
     setSliFormOpen(true)
   }, [])

@@ -10,7 +10,7 @@ import {
   fetchSliTagKeys,
   fetchSliTagValues,
 } from './api'
-import type { SliDefinitionCreate } from './types'
+import type { SliCreateInput } from './api'
 
 export function useSliDefinitions(adapterType?: string) {
   return useQuery({
@@ -38,7 +38,7 @@ export function useSliVersions(name: string) {
 export function useCreateSli() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (payload: SliDefinitionCreate) => createSliDefinition(payload),
+    mutationFn: (payload: SliCreateInput) => createSliDefinition(payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: sliKeys.all })
     },
