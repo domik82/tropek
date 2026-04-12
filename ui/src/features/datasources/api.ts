@@ -1,14 +1,10 @@
 import type { components } from '@/generated/api'
-import type {
-  Datasource,
-  DatasourceCreateInput,
-  DatasourceUpdateInput,
-  TagKeyCount,
-  TagValueCount,
-} from './domain'
-import { dtoToDatasource } from './mappers'
+import type { Datasource, TagKeyCount, TagValueCount } from './domain'
+import { dtoToDatasource, type DatasourceDto } from './mappers'
 
-type DatasourceDto = components['schemas']['DataSourceRead']
+export type DatasourceCreateInput = components['schemas']['DataSourceCreate']
+export type DatasourceUpdateInput = components['schemas']['DataSourceUpdate']
+
 type DatasourceListDto = { items: DatasourceDto[]; total: number }
 
 const BASE = '/api'

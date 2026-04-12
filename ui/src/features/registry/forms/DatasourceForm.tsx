@@ -74,7 +74,6 @@ export function DatasourceForm({ open, onOpenChange, editFrom }: DatasourceFormP
 
   function onSubmitCreate(values: CreateValues) {
     const tags = rowsToTags(tagRows)
-    const tagsPayload = Object.keys(tags).length > 0 ? tags : undefined
     createMutation.mutate(
       {
         name: values.name,
@@ -82,7 +81,7 @@ export function DatasourceForm({ open, onOpenChange, editFrom }: DatasourceFormP
         adapter_type: values.adapter_type,
         adapter_url: values.adapter_url,
         token: values.token || undefined,
-        tags: tagsPayload,
+        tags,
       },
       { onSuccess: () => { createForm.reset(); onOpenChange(false) } },
     )
