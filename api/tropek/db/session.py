@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import (
     create_async_engine,
 )
 
+from tropek.cache.redis_cache import RedisCache
 from tropek.config import get_settings
 
 _engine: AsyncEngine | None = None
@@ -42,3 +43,8 @@ async def get_session(request: Request) -> AsyncSession:
     """Return the per-request session created by SessionMiddleware."""
     session: AsyncSession = request.state.session
     return session
+
+
+def get_cache(request: Request) -> RedisCache | None:
+    """Return the app-wide Redis cache instance, or None if not configured."""
+    return getattr(request.app.state, 'cache', None)

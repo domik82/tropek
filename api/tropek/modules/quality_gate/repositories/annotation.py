@@ -86,7 +86,11 @@ class AnnotationRepository:
                 update(EvaluationAnnotation).where(EvaluationAnnotation.id == annotation_id).values(**values)
             )
             await self._session.flush()
-        return await self.get_annotation_by_id(annotation_id)
+        ann = await self.get_annotation_by_id(annotation_id)
+        if self._cache and ann is not None:
+            await self._cache.invalidate(f'annot_count:{ann.slo_evaluation_id}')
+            await self._cache.invalidate(f'annot_latest:{ann.slo_evaluation_id}')
+        return ann
 
     async def hide_annotation(
         self,

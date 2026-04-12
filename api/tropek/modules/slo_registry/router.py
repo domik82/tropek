@@ -7,7 +7,8 @@ import uuid
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from tropek.db.session import get_session
+from tropek.cache.redis_cache import RedisCache
+from tropek.db.session import get_cache, get_session
 from tropek.modules.common.exceptions import DomainValidationError, NotFoundError
 from tropek.modules.common.schemas import PagedResponse, TagKeyCount, TagValueCount
 from tropek.modules.quality_gate.evaluation_engine.criteria import parse_criteria_string
@@ -38,9 +39,10 @@ async def list_slo_definitions(
     tag_val: str | None = None,
     kind: str | None = None,
     session: AsyncSession = Depends(get_session),
+    cache: RedisCache | None = Depends(get_cache),
 ) -> PagedResponse[SLODefinitionRead]:
     """List all active SLO definitions."""
-    repo = SLORepository(session)
+    repo = SLORepository(session, cache=cache)
     items = await repo.list_all(tag_key=tag_key, tag_val=tag_val, kind=kind)
     return PagedResponse(items=[SLODefinitionRead.model_validate(i) for i in items], total=len(items))
 
@@ -49,11 +51,12 @@ async def list_slo_definitions(
 async def create_slo_definition(
     body: SLODefinitionCreate,
     session: AsyncSession = Depends(get_session),
+    cache: RedisCache | None = Depends(get_cache),
 ) -> SLODefinitionRead:
     """Create a new SLO definition (or a new version if name already exists)."""
     resolved_sli_id: uuid.UUID | None = None
     if body.sli_name is not None:
-        sli_repo = SLIRepository(session)
+        sli_repo = SLIRepository(session, cache=cache)
         if body.sli_version is not None:
             sli_def = await sli_repo.get_version(body.sli_name, body.sli_version)
         else:
@@ -70,7 +73,7 @@ async def create_slo_definition(
                     f"objective sli '{obj.sli}' not found in SLI definition '{body.sli_name}' indicators"
                 )
         resolved_sli_id = sli_def.id
-    repo = SLORepository(session)
+    repo = SLORepository(session, cache=cache)
     params = SLOCreateParams(
         name=body.name,
         objectives=[SLOObjectiveParams(**o.model_dump()) for o in body.objectives],
@@ -157,9 +160,10 @@ async def test_slo(
 @router.get('/slo-definitions/tag-keys', response_model=list[TagKeyCount])
 async def get_slo_tag_keys(
     session: AsyncSession = Depends(get_session),
+    cache: RedisCache | None = Depends(get_cache),
 ) -> list[TagKeyCount]:
     """Return distinct tag keys with usage counts."""
-    repo = SLORepository(session)
+    repo = SLORepository(session, cache=cache)
     keys = await repo.get_tag_keys()
     return [TagKeyCount(key=k, count=v) for k, v in keys.items()]
 
@@ -168,9 +172,10 @@ async def get_slo_tag_keys(
 async def get_slo_tag_values(
     key: str = Query(...),
     session: AsyncSession = Depends(get_session),
+    cache: RedisCache | None = Depends(get_cache),
 ) -> list[TagValueCount]:
     """Return distinct tag values for a key with usage counts."""
-    repo = SLORepository(session)
+    repo = SLORepository(session, cache=cache)
     values = await repo.get_tag_values(key)
     return [TagValueCount(value=v, count=c) for v, c in values.items()]
 
@@ -179,9 +184,10 @@ async def get_slo_tag_values(
 async def list_slo_versions(
     name: str,
     session: AsyncSession = Depends(get_session),
+    cache: RedisCache | None = Depends(get_cache),
 ) -> list[SLODefinitionRead]:
     """List all versions of an SLO definition."""
-    repo = SLORepository(session)
+    repo = SLORepository(session, cache=cache)
     versions = await repo.list_versions(name)
     return [SLODefinitionRead.model_validate(v) for v in versions]
 
@@ -190,9 +196,10 @@ async def list_slo_versions(
 async def get_slo_definition(
     name: str,
     session: AsyncSession = Depends(get_session),
+    cache: RedisCache | None = Depends(get_cache),
 ) -> SLODefinitionRead:
     """Get the latest active version of an SLO definition."""
-    repo = SLORepository(session)
+    repo = SLORepository(session, cache=cache)
     slo = await repo.get_latest(name)
     if slo is None:
         raise NotFoundError('slo definition', name)
@@ -203,9 +210,10 @@ async def get_slo_definition(
 async def delete_slo_definition(
     name: str,
     session: AsyncSession = Depends(get_session),
+    cache: RedisCache | None = Depends(get_cache),
 ) -> None:
     """Deactivate all versions of an SLO definition."""
-    repo = SLORepository(session)
+    repo = SLORepository(session, cache=cache)
     existing = await repo.get_latest(name)
     if existing is None:
         raise NotFoundError('slo definition', name)
