@@ -9,10 +9,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from tropek.modules.quality_gate.schemas import EvaluateSingleRequest
 from tropek.modules.quality_gate.shared.dependencies import QualityGateRepos
-from tropek.modules.quality_gate.shared.exceptions import (
-    AssetNotFoundError,
-    EvaluationError,
-)
+from tropek.modules.common.exceptions import NotFoundError
+from tropek.modules.quality_gate.shared.exceptions import EvaluationError
 from tropek.modules.quality_gate.workflows.trigger.trigger_service import TriggerService
 
 _START = datetime(2026, 3, 15, 10, 0, 0, tzinfo=UTC)
@@ -126,7 +124,7 @@ async def test_trigger_evaluate_asset_not_found() -> None:
     pool = AsyncMock()
 
     service = TriggerService(repos, pool)
-    with pytest.raises(AssetNotFoundError, match='asset'):
+    with pytest.raises(NotFoundError, match='asset'):
         await service.trigger_evaluate(_make_evaluate_request())
 
 

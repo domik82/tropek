@@ -6,9 +6,10 @@ import uuid
 from datetime import datetime
 
 from arq.connections import ArqRedis
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query  # HTTPException: BaselinePinConflictError dict detail
 
-from tropek.modules.common.exceptions import NotFoundError
+from tropek.modules.assets.service import AssetService
+from tropek.modules.common.exceptions import ConflictError, DomainValidationError, NotFoundError
 from tropek.modules.common.schemas import PagedResponse
 from tropek.modules.quality_gate.schemas import (
     AnnotationCreate,
@@ -93,31 +94,18 @@ async def list_evaluations(  # noqa: PLR0913
 ) -> PagedResponse[EvaluationSummary]:
     """List evaluations with optional filters."""
     if date and (from_ts or to_ts):
-        raise HTTPException(
-            status_code=422,
-            detail='date and from/to filters are mutually exclusive',
-        )
-    resolved_asset_id: uuid.UUID | None = None
-    asset_ids: list[uuid.UUID] | None = None
+        raise DomainValidationError('date and from/to filters are mutually exclusive')
 
-    if asset_name:
-        asset = await repos.asset_repo.get_by_name(asset_name)
-        if asset is None:
-            raise NotFoundError('asset', asset_name)
-        resolved_asset_id = asset.id
-
-    if group_name:
-        group = await repos.asset_group_repo.get_by_name(group_name)
-        if group:
-            asset_ids = [m.asset_id for m in group.members]
+    asset_service = AssetService(repos.asset_repo, repos.asset_group_repo)
+    scope = await asset_service.resolve_asset_ids(asset_name, group_name)
 
     evals, total, count_map, latest_map = await repos.eval_repo.list_with_counts(
-        asset_id=resolved_asset_id,
+        asset_id=scope.asset_id,
         slo_name=slo_name,
         evaluation_name=evaluation_name,
         result=result,
         date_prefix=date,
-        asset_ids=asset_ids,
+        asset_ids=scope.asset_ids,
         from_ts=from_ts,
         to_ts=to_ts,
         limit=limit,
@@ -248,7 +236,7 @@ async def re_evaluate_evaluations(
             },
         ) from e
     except ValueError as e:
-        raise HTTPException(status_code=422, detail=str(e)) from e
+        raise DomainValidationError(str(e)) from e
 
 
 @router.get('/evaluations/names', response_model=list[EvaluationNameEntry])
@@ -349,9 +337,9 @@ async def pin_baseline(
     if ev is None:
         raise NotFoundError('evaluation', str(eval_id))
     if ev.status != 'completed':
-        raise HTTPException(status_code=409, detail='only completed evaluations can be pinned')
+        raise ConflictError('evaluation', str(eval_id), 'only completed evaluations can be pinned')
     if ev.invalidated:
-        raise HTTPException(status_code=409, detail='cannot pin an invalidated evaluation')
+        raise ConflictError('evaluation', str(eval_id), 'cannot pin an invalidated evaluation')
     updated = await repos.eval_repo.pin_baseline(eval_id, reason=body.reason, author=body.author)
     if updated is None:
         raise NotFoundError('evaluation', str(eval_id))
@@ -384,9 +372,9 @@ async def override_status(
     if ev is None:
         raise NotFoundError('evaluation', str(eval_id))
     if ev.status != 'completed':
-        raise HTTPException(status_code=409, detail='only completed evaluations can be overridden')
+        raise ConflictError('evaluation', str(eval_id), 'only completed evaluations can be overridden')
     if body.new_result not in ('pass', 'warning', 'fail'):
-        raise HTTPException(status_code=422, detail='new_result must be pass, warning, or fail')
+        raise DomainValidationError('new_result must be pass, warning, or fail')
     updated = await repos.eval_repo.override_status(
         eval_id, new_result=body.new_result, reason=body.reason, author=body.author
     )
@@ -405,7 +393,7 @@ async def restore_override(
     if ev is None:
         raise NotFoundError('evaluation', str(eval_id))
     if ev.original_result is None:
-        raise HTTPException(status_code=409, detail='evaluation has no override to restore')
+        raise ConflictError('evaluation', str(eval_id), 'has no override to restore')
     updated = await repos.eval_repo.restore_override(eval_id)
     if updated is None:
         raise NotFoundError('evaluation', str(eval_id))
@@ -500,29 +488,20 @@ async def get_trend(
     has_any_asset_param = asset_name is not None or slo_name is not None
 
     if has_eval and has_any_asset_param:
-        raise HTTPException(
-            status_code=422,
-            detail='provide either eval_id or (asset_name + slo_name), not both',
-        )
+        raise DomainValidationError('provide either eval_id or (asset_name + slo_name), not both')
     if not has_eval and not has_any_asset_param:
-        raise HTTPException(
-            status_code=422,
-            detail='provide either eval_id or (asset_name + slo_name)',
-        )
+        raise DomainValidationError('provide either eval_id or (asset_name + slo_name)')
     if has_any_asset_param and (asset_name is None or slo_name is None):
-        raise HTTPException(
-            status_code=422,
-            detail='both asset_name and slo_name are required when not using eval_id',
-        )
+        raise DomainValidationError('both asset_name and slo_name are required when not using eval_id')
 
     if eval_id is not None:
         ev = await repos.eval_repo.get_by_id(eval_id)
         if ev is None:
             raise NotFoundError('evaluation', str(eval_id))
         if ev.asset_id is None:
-            raise HTTPException(status_code=422, detail='evaluation has no associated asset')
+            raise DomainValidationError('evaluation has no associated asset')
         if ev.slo_name is None:
-            raise HTTPException(status_code=422, detail='evaluation has no associated slo')
+            raise DomainValidationError('evaluation has no associated slo')
         resolved_asset_id = ev.asset_id
         resolved_slo_name = ev.slo_name
     else:

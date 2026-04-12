@@ -13,11 +13,9 @@ from tropek.modules.quality_gate.schemas import (
     EvaluateSingleRequest,
     EvaluateSingleResponse,
 )
+from tropek.modules.common.exceptions import NotFoundError
 from tropek.modules.quality_gate.shared.dependencies import QualityGateRepos
-from tropek.modules.quality_gate.shared.exceptions import (
-    AssetNotFoundError,
-    EvaluationError,
-)
+from tropek.modules.quality_gate.shared.exceptions import EvaluationError
 from tropek.modules.quality_gate.shared.params import EvalCreateParams
 from tropek.modules.quality_gate.workflows.trigger.trigger_resolver import (
     resolve_all_slos_for_asset,
@@ -36,8 +34,7 @@ class TriggerService:
         """Create parent EvaluationRun + one SLOEvaluation per SLO assignment. Enqueue all."""
         asset = await self._repos.asset_repo.get_by_name(request.asset_name)
         if asset is None:
-            msg = f"asset '{request.asset_name}' not found"
-            raise AssetNotFoundError(msg)
+            raise NotFoundError('asset', request.asset_name)
 
         group_ids = await self._repos.asset_group_repo.list_group_ids_for_asset(asset.id)
         slo_names = await resolve_all_slos_for_asset(

@@ -6,11 +6,11 @@ import uuid
 from dataclasses import dataclass
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from tropek.db.session import get_session
-from tropek.modules.common.errors import raise_not_found
+from tropek.modules.common.exceptions import ConflictError, DomainValidationError, NotFoundError
 from tropek.modules.common.schemas import PagedResponse
 from tropek.modules.sli_registry.repository import SLIRepository
 from tropek.modules.slo_groups.generator import generate_slo_specs
@@ -50,7 +50,7 @@ async def _build_group_read(
     count = await group_repo.count_generated_slos(group.id)
     template_slo = await slo_repo.get_by_id(group.template_slo_definition_id)
     if template_slo is None:
-        raise HTTPException(status_code=500, detail='template slo definition not found')
+        raise DomainValidationError('template slo definition not found')
     return SLOGroupRead(
         id=group.id,
         name=group.name,
@@ -80,15 +80,9 @@ async def _load_template_slo(
     else:
         template = await slo_repo.get_latest(template_slo_name)
     if template is None:
-        raise HTTPException(
-            status_code=422,
-            detail=f"template slo '{template_slo_name}' not found",
-        )
+        raise DomainValidationError(f"template slo '{template_slo_name}' not found")
     if template.kind != 'template':
-        raise HTTPException(
-            status_code=422,
-            detail=(f"slo '{template_slo_name}' has kind '{template.kind}', expected 'template'"),
-        )
+        raise DomainValidationError(f"slo '{template_slo_name}' has kind '{template.kind}', expected 'template'")
     return template
 
 
@@ -176,16 +170,13 @@ async def create_slo_group(
     try:
         gen_result = generate_slo_specs(template, body.gen_variables, body.name)
     except ValueError as exc:
-        raise HTTPException(status_code=422, detail=str(exc)) from exc
+        raise DomainValidationError(str(exc)) from exc
 
     # Check for name collisions
     for spec in gen_result.specs:
         existing = await slo_repo.get_latest(spec.name)
         if existing is not None:
-            raise HTTPException(
-                status_code=409,
-                detail=f"slo '{spec.name}' already exists",
-            )
+            raise ConflictError('slo', spec.name, 'already exists')
 
     # Create group row
     group_repo = SLOGroupRepository(session)
@@ -234,7 +225,7 @@ async def get_slo_group(
     group_repo = SLOGroupRepository(session)
     group = await group_repo.get_by_name(name)
     if group is None:
-        raise_not_found('slo group', name)
+        raise NotFoundError('slo group', name)
     slo_repo = SLORepository(session)
     return await _build_group_read(group_repo, group, slo_repo)
 
@@ -249,14 +240,14 @@ async def update_slo_group(
     group_repo = SLOGroupRepository(session)
     group = await group_repo.get_by_name(name)
     if group is None:
-        raise_not_found('slo group', name)
+        raise NotFoundError('slo group', name)
 
     slo_repo = SLORepository(session)
 
     # Load current (old) template via FK
     old_template = await slo_repo.get_by_id(group.template_slo_definition_id)
     if old_template is None:
-        raise HTTPException(status_code=422, detail='current template slo definition not found')
+        raise DomainValidationError('current template slo definition not found')
 
     # Determine effective (new) template — by name/version if provided, else keep current
     if body.template_slo_name is not None:
@@ -279,7 +270,7 @@ async def update_slo_group(
     try:
         gen_result = generate_slo_specs(template, eff_gen_vars, name)
     except ValueError as exc:
-        raise HTTPException(status_code=422, detail=str(exc)) from exc
+        raise DomainValidationError(str(exc)) from exc
 
     # Resolve SLI indicators for old and new via FK
     old_sli_indicators = await _resolve_sli_indicators(
@@ -317,7 +308,7 @@ async def update_slo_group(
         tags=body.tags if body.tags is not None else None,
     )
     if updated_group is None:
-        raise_not_found('slo group', name)
+        raise NotFoundError('slo group', name)
 
     return await _build_group_read(group_repo, updated_group, slo_repo)
 
@@ -331,7 +322,7 @@ async def delete_slo_group(
     group_repo = SLOGroupRepository(session)
     group = await group_repo.get_by_name(name)
     if group is None:
-        raise_not_found('slo group', name)
+        raise NotFoundError('slo group', name)
 
     slo_repo = SLORepository(session)
     generated_slos = await slo_repo.list_by_group_id(group.id)
@@ -411,20 +402,17 @@ async def extract_slo(
 
     group = await group_repo.get_by_name(name)
     if group is None:
-        raise_not_found('slo group', name)
+        raise NotFoundError('slo group', name)
 
     gen_slo = await slo_repo.get_latest(body.slo_name)
     if gen_slo is None:
-        raise_not_found('generated slo', body.slo_name)
+        raise NotFoundError('generated slo', body.slo_name)
     if gen_slo.generated_by_group_id != group.id:
-        raise HTTPException(
-            status_code=422,
-            detail=f"slo '{body.slo_name}' is not generated by group '{name}'",
-        )
+        raise DomainValidationError(f"slo '{body.slo_name}' is not generated by group '{name}'")
 
     template = await slo_repo.get_by_id(group.template_slo_definition_id)
     if template is None:
-        raise HTTPException(status_code=422, detail='template slo definition not found')
+        raise DomainValidationError('template slo definition not found')
 
     # Create the standalone copy and deactivate the original generated SLO
     await slo_repo.create(_build_standalone_slo_params(gen_slo, body.new_name))

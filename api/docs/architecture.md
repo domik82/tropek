@@ -96,7 +96,7 @@ graph TD
 ## Common Patterns
 
 - **Pagination**: list endpoints return `PagedResponse[T]` with `items` and `total`
-- **Error handling**: `raise_not_found(entity, name)` -> 404, `raise_conflict(entity, name)` -> 409
+- **Error handling**: domain exceptions (`NotFoundError` -> 404, `ConflictError` -> 409, `DomainValidationError` -> 422) with centralized handlers in `main.py`
 - **Schema validation**: Pydantic v2 models with `model_validate()` for ORM -> response
 - **Naming**: all lookups by human-readable `name`, not UUID (UUIDs are internal PKs)
 - **Versioning**: SLO/SLI auto-increment via `SELECT ... FOR UPDATE`

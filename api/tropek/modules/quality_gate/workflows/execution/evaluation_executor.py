@@ -14,6 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from tropek.cache.redis_cache import RedisCache
 from tropek.db.models import DataSource, SLIDefinition, SLODefinition, SLOEvaluation
 from tropek.modules.quality_gate.evaluation_engine.evaluator import evaluate
+from tropek.modules.quality_gate.evaluation_engine.result_models import EvaluationResult, IndicatorResult
 from tropek.modules.quality_gate.evaluation_engine.slo_models import SLO
 from tropek.modules.quality_gate.evaluation_engine.variables import substitute_variables
 from tropek.modules.quality_gate.repositories.baseline import BaselineRepository
@@ -59,7 +60,7 @@ class FetchAndEvaluateResult(BaseModel):
 
     model_config = {'arbitrary_types_allowed': True}
 
-    eval_result: Any
+    eval_result: EvaluationResult
     metrics_fetched: dict[str, float | None]
     fetch_errors: dict[str, str]
     sli_metadata: dict[str, Any]
@@ -171,7 +172,7 @@ async def _write_indicator_rows(
     session: AsyncSession,
     slo_evaluation_id: uuid.UUID,
     slo_def: SLODefinition,
-    indicator_results: list[Any],
+    indicator_results: list[IndicatorResult],
 ) -> None:
     """Write indicator results to the normalized indicator_results table."""
     indicator_repo = IndicatorRepository(session)
@@ -190,7 +191,7 @@ def _build_sli_rows(
     eval_id: uuid.UUID,
     ev: SLOEvaluation | EvaluationSnapshot,
     sli_def: SLIDefinition,
-    indicator_results: list[Any],
+    indicator_results: list[IndicatorResult],
     asset_snapshot: dict[str, Any],
 ) -> list[dict[str, Any]]:
     """Build SLI value rows for TimescaleDB hypertable."""
@@ -238,7 +239,7 @@ def _log_adapter_response(
 
 def _log_eval_result(
     log: structlog.stdlib.BoundLogger,
-    eval_result: Any,
+    eval_result: EvaluationResult,
     metrics_fetched: dict[str, float | None],
     baselines: dict[str, float | None],
 ) -> None:

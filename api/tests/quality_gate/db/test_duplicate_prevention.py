@@ -13,7 +13,7 @@ import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 from tropek.db.models import Asset, AssetType
 from tropek.modules.quality_gate.repositories.evaluation import EvaluationRepository
-from tropek.modules.quality_gate.shared.exceptions import DuplicateEvaluationError
+from tropek.modules.common.exceptions import ConflictError
 from tropek.modules.quality_gate.shared.params import EvalCreateParams
 
 _START = datetime(2026, 3, 15, 10, 0, 0, tzinfo=UTC)
@@ -181,7 +181,7 @@ async def test_create_pending_raises_on_constraint_violation(db_session: AsyncSe
             slo_name='latency-slo',
         )
     )
-    with pytest.raises(DuplicateEvaluationError):
+    with pytest.raises(ConflictError):
         await repo.create_pending(
             EvalCreateParams(
                 evaluation_id=uuid.uuid4(),

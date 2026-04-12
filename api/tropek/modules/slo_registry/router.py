@@ -4,11 +4,11 @@ from __future__ import annotations
 
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from tropek.db.session import get_session
-from tropek.modules.common.exceptions import NotFoundError
+from tropek.modules.common.exceptions import DomainValidationError, NotFoundError
 from tropek.modules.common.schemas import PagedResponse, TagKeyCount, TagValueCount
 from tropek.modules.quality_gate.evaluation_engine.criteria import parse_criteria_string
 from tropek.modules.quality_gate.evaluation_engine.slo_models import SLOParseError
@@ -59,9 +59,8 @@ async def create_slo_definition(
         else:
             sli_def = await sli_repo.get_latest(body.sli_name)
         if sli_def is None:
-            raise HTTPException(
-                status_code=422,
-                detail=f"sli definition '{body.sli_name}' version {body.sli_version} not found",
+            raise DomainValidationError(
+                f"sli definition '{body.sli_name}' version {body.sli_version} not found"
             )
         if sli_def.mode == 'aggregated' and sli_def.methods:
             indicator_keys = {f'{body.sli_name}.{m}' for m in sli_def.methods}
@@ -69,9 +68,8 @@ async def create_slo_definition(
             indicator_keys = set(sli_def.indicators.keys())
         for obj in body.objectives:
             if obj.sli not in indicator_keys:
-                raise HTTPException(
-                    status_code=422,
-                    detail=f"objective sli '{obj.sli}' not found in SLI definition '{body.sli_name}' indicators",
+                raise DomainValidationError(
+                    f"objective sli '{obj.sli}' not found in SLI definition '{body.sli_name}' indicators"
                 )
         resolved_sli_id = sli_def.id
     repo = SLORepository(session)

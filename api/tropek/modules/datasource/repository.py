@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from tropek.db.models import DataSource
 from tropek.modules.common.tag_mixin import TagQueryMixin
+from tropek.modules.datasource.params import DataSourceCreateParams
 
 
 class DataSourceRepository(TagQueryMixin):
@@ -20,36 +21,23 @@ class DataSourceRepository(TagQueryMixin):
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
 
-    async def create(
-        self,
-        name: str,
-        adapter_type: str,
-        adapter_url: str,
-        display_name: str | None = None,
-        tags: dict[str, Any] | None = None,
-        token: str | None = None,
-    ) -> DataSource:
+    async def create(self, params: DataSourceCreateParams) -> DataSource:
         """Register a new datasource.
 
         Args:
-            name: Unique name for this datasource registration.
-            adapter_type: The adapter kind (e.g. "prometheus").
-            adapter_url: Base URL of the running adapter service.
-            display_name: Optional human-readable label.
-            tags: Optional free-form metadata tags.
-            token: Optional authentication token for the adapter.
+            params: Validated parameters for the new datasource.
 
         Returns:
             The newly created DataSource record.
         """
         ds = DataSource(
             id=uuid.uuid4(),
-            name=name,
-            display_name=display_name,
-            adapter_type=adapter_type,
-            adapter_url=adapter_url,
-            tags=tags or {},
-            token=token,
+            name=params.name,
+            display_name=params.display_name,
+            adapter_type=params.adapter_type,
+            adapter_url=params.adapter_url,
+            tags=params.tags,
+            token=params.token,
         )
         self._session.add(ds)
         await self._session.flush()
