@@ -5,7 +5,7 @@ import {
   updateDatasource, deleteDatasource,
   fetchDatasourceTagKeys, fetchDatasourceTagValues,
 } from './api'
-import type { DatasourceCreateInput, DatasourceUpdateInput } from './domain'
+import type { DatasourceCreateInput, DatasourceUpdateInput } from './api'
 
 export function useDatasources(tagKey?: string, tagVal?: string) {
   return useQuery({

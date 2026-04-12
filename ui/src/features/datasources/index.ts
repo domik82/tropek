@@ -1,4 +1,5 @@
-export type { Datasource, DatasourceCreateInput, DatasourceUpdateInput } from './domain'
+export type { Datasource } from './domain'
+export type { DatasourceCreateInput, DatasourceUpdateInput } from './api'
 export {
   useDatasources, useDatasource,
   useCreateDatasource, useUpdateDatasource, useDeleteDatasource,

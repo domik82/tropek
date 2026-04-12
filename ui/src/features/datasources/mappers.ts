@@ -1,8 +1,10 @@
 import type { components } from '@/generated/api'
 import type { Datasource } from './domain'
 
-type DatasourceDto = components['schemas']['DataSourceRead']
+export type DatasourceDto = components['schemas']['DataSourceRead']
 
+// Placeholder for DTO fields intentionally not surfaced in the domain type.
+// Add entries as `'field_name'` union members, each with a comment explaining why.
 type DroppedDatasourceKeys = never
 
 type MappedDatasourceKeys =
@@ -16,6 +18,11 @@ type MappedDatasourceKeys =
   | 'created_at'
   | 'updated_at'
 
+// Compile-time check: every non-dropped DTO key must be mapped. If TypeScript
+// errors here with a string literal type (e.g. `"new_field"`), the generated
+// DTO has a new field — add it to `MappedDatasourceKeys` and map it in
+// `dtoToDatasource`, or add it to `DroppedDatasourceKeys` with a comment
+// explaining why the UI intentionally ignores it.
 type _DatasourceCoverage = Exclude<
   keyof DatasourceDto,
   MappedDatasourceKeys | DroppedDatasourceKeys
