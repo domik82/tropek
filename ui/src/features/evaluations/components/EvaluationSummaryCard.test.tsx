@@ -31,7 +31,7 @@ function makeEvaluation(overrides: Partial<EvaluationDetail> = {}): EvaluationDe
     override_author: null,
     invalidation_note: null,
     asset_snapshot: { name: 'api-gateway', tags: { env: 'prod' } },
-    evaluation_metadata: {},
+    variables: {},
     compared_evaluation_ids: [],
     annotations: [],
     indicator_results: [],

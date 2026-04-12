@@ -51,7 +51,7 @@ export interface EvaluationSummary {
     primary_version?: string
     build_ref?: string
   }
-  evaluation_metadata: Record<string, string>
+  variables: Record<string, string>
   latest_annotation?: Annotation
   annotation_count?: number
   created_at: string
@@ -102,7 +102,6 @@ export interface SliMetadata {
 
 export interface EvaluationDetail extends EvaluationSummary {
   invalidation_note: string | null
-  evaluation_metadata: Record<string, string>
   compared_evaluation_ids: string[]
   annotations: Annotation[]
   indicator_results: IndicatorResult[]
