@@ -49,6 +49,7 @@ def _build_repos(session: AsyncSession) -> QualityGateRepos:
         session=session,
     )
 
+
 _START = datetime(2026, 3, 10, 10, 0, 0, tzinfo=UTC)
 _END = datetime(2026, 3, 10, 10, 30, 0, tzinfo=UTC)
 

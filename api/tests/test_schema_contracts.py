@@ -18,6 +18,7 @@ from tropek.modules.quality_gate.schemas import (
     EvaluateSingleRequest,
     EvaluationSummary,
 )
+from tropek.modules.quality_gate.schemas import heatmap as heatmap_module
 from tropek.modules.quality_gate.schemas.evaluations import (
     AssetSnapshot,
     EvaluationDetail,
@@ -25,10 +26,8 @@ from tropek.modules.quality_gate.schemas.evaluations import (
     PassTarget,
     SliMetadata,
 )
-from tropek.modules.quality_gate.schemas import heatmap as heatmap_module
 from tropek.modules.quality_gate.schemas.heatmap import (
     HeatmapCellGrouped,
-    HeatmapSloGroupSection,
     HeatmapSummaryCell,
 )
 from tropek.modules.sli_registry.schemas import SLIDefinitionRead

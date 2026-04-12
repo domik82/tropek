@@ -164,9 +164,7 @@ def _collect_slo_heatmap_data(
                             compared_value=row.compared_value,
                         ),
                         warning_targets=resolve_targets(
-                            list(objective.warning_threshold)
-                            if objective.warning_threshold
-                            else None,
+                            list(objective.warning_threshold) if objective.warning_threshold else None,
                             value=row.value,
                             compared_value=row.compared_value,
                         ),
@@ -201,9 +199,7 @@ def _build_slo_groups(
             slo_eval = entry['per_col'].get(column_index)
             result = _slo_summary_result(slo_eval)
             score = (
-                slo_eval.achieved_points / slo_eval.total_points * 100
-                if slo_eval and slo_eval.total_points
-                else 0.0
+                slo_eval.achieved_points / slo_eval.total_points * 100 if slo_eval and slo_eval.total_points else 0.0
             )
             summary.append(
                 HeatmapSummaryCell(
@@ -215,9 +211,7 @@ def _build_slo_groups(
                         slo_eval.job_stats.get('total_score_pass_threshold') if slo_eval else None
                     ),
                     total_score_warning_threshold=(
-                        slo_eval.job_stats.get('total_score_warning_threshold')
-                        if slo_eval
-                        else None
+                        slo_eval.job_stats.get('total_score_warning_threshold') if slo_eval else None
                     ),
                     sli_metadata=slo_eval.job_stats.get('sli_metadata') if slo_eval else None,
                     invalidated=slo_eval.invalidated if slo_eval else False,
@@ -246,13 +240,9 @@ def _build_composite_summary(runs_asc: list[EvaluationRun]) -> list[HeatmapSumma
         total_points = run.total_points
         achieved_points = run.achieved_points
         run_score = (
-            round(achieved_points / total_points * 100, 2)
-            if total_points and achieved_points is not None
-            else 0.0
+            round(achieved_points / total_points * 100, 2) if total_points and achieved_points is not None else 0.0
         )
-        all_invalidated = run.slo_evaluations and all(
-            slo_eval.invalidated for slo_eval in run.slo_evaluations
-        )
+        all_invalidated = run.slo_evaluations and all(slo_eval.invalidated for slo_eval in run.slo_evaluations)
         composite.append(
             HeatmapSummaryCell(
                 evaluation_id=run.id,
@@ -287,9 +277,7 @@ def build_grouped_heatmap_response(
         )
         for run in runs_asc
     ]
-    column_index_by_run_id: dict[uuid.UUID, int] = {
-        run.id: index for index, run in enumerate(runs_asc)
-    }
+    column_index_by_run_id: dict[uuid.UUID, int] = {run.id: index for index, run in enumerate(runs_asc)}
 
     slo_data = _collect_slo_heatmap_data(runs_asc, column_index_by_run_id)
     groups = _build_slo_groups(slo_data, runs_asc)

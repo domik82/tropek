@@ -7,9 +7,9 @@ from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from tropek.modules.common.exceptions import NotFoundError
 from tropek.modules.quality_gate.schemas import EvaluateSingleRequest
 from tropek.modules.quality_gate.shared.dependencies import QualityGateRepos
-from tropek.modules.common.exceptions import NotFoundError
 from tropek.modules.quality_gate.shared.exceptions import EvaluationError
 from tropek.modules.quality_gate.workflows.trigger.trigger_service import TriggerService
 

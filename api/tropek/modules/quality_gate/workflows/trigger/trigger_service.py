@@ -7,13 +7,13 @@ from datetime import datetime
 
 from arq.connections import ArqRedis
 
+from tropek.modules.common.exceptions import NotFoundError
 from tropek.modules.quality_gate.schemas import (
     EvaluateBatchRequest,
     EvaluateBatchResponse,
     EvaluateSingleRequest,
     EvaluateSingleResponse,
 )
-from tropek.modules.common.exceptions import NotFoundError
 from tropek.modules.quality_gate.shared.dependencies import QualityGateRepos
 from tropek.modules.quality_gate.shared.exceptions import EvaluationError
 from tropek.modules.quality_gate.shared.params import EvalCreateParams

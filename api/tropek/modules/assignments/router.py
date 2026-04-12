@@ -106,7 +106,9 @@ async def create_asset_slo_assignment(
         )
     except IntegrityError as exc:
         raise ConflictError(
-            'slo assignment', slo_def.name, 'already exists for this asset',
+            'slo assignment',
+            slo_def.name,
+            'already exists for this asset',
         ) from exc
     # Attach loaded relations for enriched response
     row.slo_definition = slo_def
@@ -210,7 +212,9 @@ async def create_group_slo_assignment(
         )
     except IntegrityError as exc:
         raise ConflictError(
-            'slo assignment', slo_def.name, 'already exists for this group',
+            'slo assignment',
+            slo_def.name,
+            'already exists for this group',
         ) from exc
     row.slo_definition = slo_def
     row.data_source = ds
