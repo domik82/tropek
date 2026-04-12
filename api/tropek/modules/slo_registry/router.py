@@ -59,9 +59,7 @@ async def create_slo_definition(
         else:
             sli_def = await sli_repo.get_latest(body.sli_name)
         if sli_def is None:
-            raise DomainValidationError(
-                f"sli definition '{body.sli_name}' version {body.sli_version} not found"
-            )
+            raise DomainValidationError(f"sli definition '{body.sli_name}' version {body.sli_version} not found")
         if sli_def.mode == 'aggregated' and sli_def.methods:
             indicator_keys = {f'{body.sli_name}.{m}' for m in sli_def.methods}
         else:
@@ -88,10 +86,7 @@ async def create_slo_definition(
         kind=body.kind,
         sli_definition_id=resolved_sli_id,
         method_criteria=(
-            {
-                key: override.model_dump(exclude_none=True)
-                for key, override in body.method_criteria.items()
-            }
+            {key: override.model_dump(exclude_none=True) for key, override in body.method_criteria.items()}
             if body.method_criteria is not None
             else None
         ),

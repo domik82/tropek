@@ -12,8 +12,8 @@ from datetime import UTC, datetime
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 from tropek.db.models import Asset, AssetType
-from tropek.modules.quality_gate.repositories.evaluation import EvaluationRepository
 from tropek.modules.common.exceptions import ConflictError
+from tropek.modules.quality_gate.repositories.evaluation import EvaluationRepository
 from tropek.modules.quality_gate.shared.params import EvalCreateParams
 
 _START = datetime(2026, 3, 15, 10, 0, 0, tzinfo=UTC)
