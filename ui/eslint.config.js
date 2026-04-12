@@ -21,12 +21,21 @@ export default defineConfig([
     },
     rules: {
       'no-restricted-imports': ['error', {
-        patterns: [{
-          group: ['@/generated/api', '@/generated/api/*'],
-          message:
-            'Components must import domain types from features/<x>, never DTOs directly. ' +
-            'Only features/*/api.ts and features/*/mappers.ts may import from @/generated/api.',
-        }],
+        patterns: [
+          {
+            group: ['@/generated/api', '@/generated/api/*'],
+            message:
+              'Components must import domain types from features/<x>, never DTOs directly. ' +
+              'Only features/*/api.ts and features/*/mappers.ts may import from @/generated/api.',
+          },
+          {
+            group: ['@/features/*/mappers', '@/features/*/mappers/*'],
+            message:
+              'Mappers are private to each feature. Import domain types from ' +
+              "'@/features/<x>' (the feature barrel) instead of reaching into another " +
+              "feature's mappers.",
+          },
+        ],
       }],
     },
   },
