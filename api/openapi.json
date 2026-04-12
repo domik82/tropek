@@ -717,7 +717,9 @@
             "type": "string"
           },
           "tags": {
-            "additionalProperties": true,
+            "additionalProperties": {
+              "type": "string"
+            },
             "title": "Tags",
             "type": "object"
           },
@@ -731,7 +733,9 @@
             "type": "string"
           },
           "variables": {
-            "additionalProperties": true,
+            "additionalProperties": {
+              "type": "string"
+            },
             "title": "Variables",
             "type": "object"
           }
