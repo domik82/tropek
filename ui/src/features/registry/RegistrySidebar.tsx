@@ -14,7 +14,7 @@ import { assignmentKeys } from '@/lib/queryKeys'
 import { useSliDefinitions } from '@/features/slis'
 import { useDatasources, useDatasourceTagKeys, useDatasourceTagValues } from '@/features/datasources'
 import { useTagKeys, useTagValues } from '@/features/assets'
-import type { RegistryMode, SelectedNode, TagFilter } from './types'
+import type { RegistryMode, SelectedNode, TagFilter } from './ui-types'
 
 const MODES: { key: RegistryMode; label: string }[] = [
   { key: 'asset', label: 'Asset' },

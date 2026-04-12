@@ -3,7 +3,7 @@ import { TreeNode } from '@/components/tree'
 import { getEntityIcon, getAssetTypeIcon } from '@/components/tree'
 import { NODE_TYPE_COLORS } from '@/lib/entity-colors'
 import { SANS_SERIF } from '@/lib/fonts'
-import type { TreeNode as TreeNodeData, SelectedNode } from './types'
+import type { TreeNode as TreeNodeData, SelectedNode } from './ui-types'
 
 interface Props {
   nodes: TreeNodeData[]

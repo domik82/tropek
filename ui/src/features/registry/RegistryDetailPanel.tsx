@@ -1,7 +1,7 @@
 import { SANS_SERIF } from '@/lib/fonts'
 import type { SloDefinition } from '@/features/slos'
 import type { SliDefinition } from '@/features/slis'
-import type { SelectedNode } from './types'
+import type { SelectedNode } from './ui-types'
 import { DatasourceDetailView } from './details/DatasourceDetailView'
 import { SliDetailView } from './details/SliDetailView'
 import { SloDetailView } from './details/SloDetailView'
