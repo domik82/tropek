@@ -25,14 +25,14 @@ export function SloHistoryPanel({ name }: Props) {
               ? <span className="text-xs bg-pass/20 text-pass border border-pass/30 px-1.5 py-0.5 rounded-full">active</span>
               : <span className="text-xs bg-surface-sunken/40 text-muted-foreground border border-border/40 px-1.5 py-0.5 rounded-full">inactive</span>
             }
-            {v.comparable_from_version != null && (
+            {v.comparableFromVersion != null && (
               <span className="text-xs bg-primary/20 text-link border border-primary/30 px-1.5 py-0.5 rounded-full">
-                comparable from v{v.comparable_from_version}
+                comparable from v{v.comparableFromVersion}
               </span>
             )}
             {v.author && <span className="text-xs text-muted-foreground">{v.author}</span>}
             {v.notes && <span className="text-xs text-muted-foreground/60 italic truncate max-w-xs">{v.notes}</span>}
-            <span className="ml-auto text-xs text-muted-foreground/60">{v.created_at.slice(0, 16).replace('T', ' ')}</span>
+            <span className="ml-auto text-xs text-muted-foreground/60">{v.createdAt.toISOString().slice(0, 16).replace('T', ' ')}</span>
             <button
               onClick={() => setExpanded(prev => prev === v.version ? null : v.version)}
               className="text-xs text-muted-foreground hover:text-foreground transition-colors shrink-0"

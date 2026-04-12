@@ -108,7 +108,7 @@ export function GroupEditDialog({ open, onOpenChange, groupName }: Props) {
                 className="flex items-center justify-between text-xs py-1 border-b border-border/50"
               >
                 <span className="text-foreground">
-                  {assignment.slo_name} → {assignment.data_source_name}
+                  {assignment.sloName} → {assignment.dataSourceName}
                 </span>
                 <button
                   onClick={() => unlinkSlo.mutate({ groupName: groupName!, assignmentId: assignment.id })}

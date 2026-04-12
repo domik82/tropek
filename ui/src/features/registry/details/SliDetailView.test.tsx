@@ -3,7 +3,7 @@ import { render, screen, fireEvent, cleanup } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { SliDetailView } from './SliDetailView'
 import type { Sli } from '@/features/slis'
-import type { SloDefinition } from '@/features/slos'
+import type { Slo } from '@/features/slos'
 
 vi.mock('@/features/slis/hooks', () => ({
   useSliDetail: vi.fn(),
@@ -39,70 +39,70 @@ const mockSli: Sli = {
   createdAt: new Date('2024-01-01T00:00:00Z'),
 }
 
-const mockSlos: SloDefinition[] = [
+const mockSlos: Slo[] = [
   {
     id: 'slo-1',
     name: 'api-slo',
     version: 1,
-    comparable_from_version: 1,
-    display_name: 'API SLO',
+    comparableFromVersion: 1,
+    displayName: 'API SLO',
     kind: 'standard',
-    sli_definition_id: null,
-    sli_name: null,
-    sli_version: null,
+    sliDefinitionId: null,
+    sliName: null,
+    sliVersion: null,
     author: null,
     notes: null,
     tags: {},
     variables: {},
-    created_at: '2024-01-01T00:00:00Z',
+    createdAt: new Date('2024-01-01T00:00:00Z'),
     active: true,
     objectives: [
       {
         sli: 'http-error-rate',
-        display_name: 'Error Rate',
-        pass_threshold: ['<1%'],
-        warning_threshold: ['<5%'],
+        displayName: 'Error Rate',
+        passThreshold: ['<1%'],
+        warningThreshold: ['<5%'],
         weight: 1,
-        key_sli: true,
-        sort_order: 0,
+        keySli: true,
+        sortOrder: 0,
       },
     ],
-    total_score_pass_threshold: 90,
-    total_score_warning_threshold: 75,
+    totalScorePassThreshold: 90,
+    totalScoreWarningThreshold: 75,
     comparison: {},
-    method_criteria: null,
+    methodCriteria: null,
   },
   {
     id: 'slo-2',
     name: 'db-slo',
     version: 1,
-    comparable_from_version: 1,
-    display_name: 'DB SLO',
+    comparableFromVersion: 1,
+    displayName: 'DB SLO',
     kind: 'standard',
-    sli_definition_id: null,
-    sli_name: null,
-    sli_version: null,
+    sliDefinitionId: null,
+    sliName: null,
+    sliVersion: null,
     author: null,
     notes: null,
     tags: {},
     variables: {},
-    created_at: '2024-01-01T00:00:00Z',
+    createdAt: new Date('2024-01-01T00:00:00Z'),
     active: true,
     objectives: [
       {
         sli: 'db-latency',
-        display_name: 'DB Latency',
-        pass_threshold: ['<200ms'],
-        warning_threshold: ['<500ms'],
+        displayName: 'DB Latency',
+        passThreshold: ['<200ms'],
+        warningThreshold: ['<500ms'],
         weight: 1,
-        key_sli: false,
-        sort_order: 0,
+        keySli: false,
+        sortOrder: 0,
       },
     ],
-    total_score_pass_threshold: 90,
-    total_score_warning_threshold: 75,
+    totalScorePassThreshold: 90,
+    totalScoreWarningThreshold: 75,
     comparison: {},
-    method_criteria: null,
+    methodCriteria: null,
   },
 ]
 

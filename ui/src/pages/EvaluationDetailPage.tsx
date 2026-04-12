@@ -33,7 +33,7 @@ export function EvaluationDetailPage() {
   }, [assets, ev])
   const sloDisplayName = useMemo(() => {
     if (!ev?.slo_name) return undefined
-    return slos?.find(s => s.name === ev.slo_name)?.display_name ?? undefined
+    return slos?.find(s => s.name === ev.slo_name)?.displayName ?? undefined
   }, [slos, ev])
 
   if (isLoading) return <div className="p-6 text-muted-foreground">Loading…</div>

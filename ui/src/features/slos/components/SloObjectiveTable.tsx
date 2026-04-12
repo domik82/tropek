@@ -2,7 +2,7 @@
 import { useState } from 'react'
 import { ChevronRight } from 'lucide-react'
 import { DataTable, DataTableHeader, dataTableRowClass } from '@/components/ui/data-table'
-import type { SloDefinition } from '../types'
+import type { Slo } from '../domain'
 
 const VARIABLE_COLOR = 'var(--chip-var-key)'
 
@@ -21,7 +21,7 @@ function highlightVariables(query: string): React.ReactNode {
 }
 
 interface Props {
-  slo: SloDefinition
+  slo: Slo
   /** metric_name → query_string map from the linked SLI definition */
   indicators?: Record<string, string>
 }
@@ -62,7 +62,7 @@ export function SloObjectiveTable({ slo, indicators }: Props) {
             return (
               <tr key={obj.sli} className={dataTableRowClass(idx)}>
                 <td className="px-2 py-2 text-center align-top">
-                  {obj.key_sli
+                  {obj.keySli
                     ? <span className="text-indicator-key-sli text-xs" title="Key SLI">◆</span>
                     : <span className="text-muted-foreground/40">—</span>
                   }
@@ -82,8 +82,8 @@ export function SloObjectiveTable({ slo, indicators }: Props) {
                     )}
                     <div className="font-mono text-xs text-pass">{obj.sli}</div>
                   </div>
-                  {obj.display_name && obj.display_name !== obj.sli && (
-                    <div className="text-xs text-muted-foreground ml-[18px]">{obj.display_name}</div>
+                  {obj.displayName && obj.displayName !== obj.sli && (
+                    <div className="text-xs text-muted-foreground ml-[18px]">{obj.displayName}</div>
                   )}
                   {query && isExpanded && (
                     <div className="mt-1.5 ml-[18px] px-2 py-1.5 rounded bg-muted/40 border border-border/60 font-mono text-xs text-muted-foreground break-all">
@@ -92,10 +92,10 @@ export function SloObjectiveTable({ slo, indicators }: Props) {
                   )}
                 </td>
                 <td className="px-3 py-2 text-center text-xs text-pass align-top">
-                  {obj.pass_threshold.join(', ') || '—'}
+                  {obj.passThreshold.join(', ') || '—'}
                 </td>
                 <td className="px-3 py-2 text-center text-xs text-warning align-top">
-                  {obj.warning_threshold.join(', ') || '—'}
+                  {obj.warningThreshold.join(', ') || '—'}
                 </td>
                 <td className="px-3 py-2 text-center text-muted-foreground align-top">{obj.weight}</td>
               </tr>
@@ -105,10 +105,10 @@ export function SloObjectiveTable({ slo, indicators }: Props) {
       </DataTable>
 
       <div className="mt-3 flex flex-wrap gap-6 text-sm text-muted-foreground">
-        <span>Total pass: <strong className="text-pass">{slo.total_score_pass_threshold}%</strong></span>
-        <span>Total warning: <strong className="text-warning">{slo.total_score_warning_threshold}%</strong></span>
-        {slo.comparable_from_version != null && (
-          <span>Comparable from: <strong className="text-link">v{slo.comparable_from_version}</strong></span>
+        <span>Total pass: <strong className="text-pass">{slo.totalScorePassThreshold}%</strong></span>
+        <span>Total warning: <strong className="text-warning">{slo.totalScoreWarningThreshold}%</strong></span>
+        {slo.comparableFromVersion != null && (
+          <span>Comparable from: <strong className="text-link">v{slo.comparableFromVersion}</strong></span>
         )}
       </div>
     </div>

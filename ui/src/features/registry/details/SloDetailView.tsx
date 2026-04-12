@@ -4,7 +4,7 @@ import { GitBranch, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { DeletionConfirmForm } from '@/components/DeletionConfirmForm'
 import { SloObjectiveTable, useSloDetail, useSloVersions, useDeleteSlo, useGroupTree, fetchGroupSloAssignments } from '@/features/slos'
-import type { SloDefinition } from '@/features/slos'
+import type { Slo } from '@/features/slos'
 import { useSliDetail } from '@/features/slis'
 import type { SelectedNode } from '@/features/registry'
 import { groupKeys } from '@/lib/queryKeys'
@@ -14,14 +14,14 @@ import { SANS_SERIF } from '@/lib/fonts'
 interface SloDetailViewProps {
   name: string
   onNavigate: (node: SelectedNode) => void
-  onNewVersion: (slo: SloDefinition) => void
+  onNewVersion: (slo: Slo) => void
 }
 
 export function SloDetailView({ name, onNavigate, onNewVersion }: SloDetailViewProps) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
 
   const { data: slo, isLoading } = useSloDetail(name)
-  const { data: sli } = useSliDetail(slo?.sli_name ?? '')
+  const { data: sli } = useSliDetail(slo?.sliName ?? '')
   const { data: versions } = useSloVersions(name, true)
   const deleteMutation = useDeleteSlo()
 
@@ -38,7 +38,7 @@ export function SloDetailView({ name, onNavigate, onNewVersion }: SloDetailViewP
     })),
   })
   const linkedGroups = useMemo(
-    () => groupNames.filter((_, i) => (assignmentQueries[i]?.data ?? []).some(a => a.slo_name === name)),
+    () => groupNames.filter((_, i) => (assignmentQueries[i]?.data ?? []).some(a => a.sloName === name)),
     [groupNames, assignmentQueries, name],
   )
 
@@ -68,7 +68,7 @@ export function SloDetailView({ name, onNavigate, onNewVersion }: SloDetailViewP
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
             <h2 className="text-xl font-semibold text-foreground truncate">
-              {slo.display_name ?? slo.name}
+              {slo.displayName ?? slo.name}
             </h2>
             <p className="text-xs font-mono text-muted-foreground mt-0.5">{slo.name}</p>
           </div>
@@ -128,7 +128,7 @@ export function SloDetailView({ name, onNavigate, onNewVersion }: SloDetailViewP
         </div>
 
         {/* Method criteria overrides (aggregated-mode SLO templates) */}
-        {slo.method_criteria && Object.keys(slo.method_criteria).length > 0 && (
+        {slo.methodCriteria && Object.keys(slo.methodCriteria).length > 0 && (
           <div>
             <p className="text-xs text-muted-foreground mb-2">Method Criteria Overrides</p>
             <div className="overflow-x-auto">
@@ -142,17 +142,17 @@ export function SloDetailView({ name, onNavigate, onNewVersion }: SloDetailViewP
                   </tr>
                 </thead>
                 <tbody>
-                  {Object.entries(slo.method_criteria).map(([method, override]) => (
+                  {Object.entries(slo.methodCriteria).map(([method, override]) => (
                     <tr key={method} className="border-b border-border/40">
                       <td className="py-1.5 pr-3 font-mono text-foreground">{method}</td>
                       <td className="py-1.5 pr-3 font-mono text-muted-foreground">
-                        {override.pass_threshold?.join(', ') ?? '—'}
+                        {override.passThreshold?.join(', ') ?? '—'}
                       </td>
                       <td className="py-1.5 pr-3 text-muted-foreground">
                         {override.weight ?? '—'}
                       </td>
                       <td className="py-1.5 text-muted-foreground">
-                        {override.key_sli ? '◆' : '—'}
+                        {override.keySli ? '◆' : '—'}
                       </td>
                     </tr>
                   ))}
@@ -168,15 +168,15 @@ export function SloDetailView({ name, onNavigate, onNewVersion }: SloDetailViewP
             <p className="text-xs text-muted-foreground mb-1">Comparison</p>
             <p className="text-sm text-foreground font-mono">
               {[
-                comparison.compare_with,
-                comparison.number_of_comparison_results != null
-                  ? `(${comparison.number_of_comparison_results})`
+                comparison.compareWith,
+                comparison.numberOfComparisonResults != null
+                  ? `(${comparison.numberOfComparisonResults})`
                   : undefined,
-                comparison.include_result_with_score
-                  ? `include: ${comparison.include_result_with_score}`
+                comparison.includeResultWithScore
+                  ? `include: ${comparison.includeResultWithScore}`
                   : undefined,
-                comparison.aggregate_function
-                  ? `aggregate: ${comparison.aggregate_function}`
+                comparison.aggregateFunction
+                  ? `aggregate: ${comparison.aggregateFunction}`
                   : undefined,
               ]
                 .filter(Boolean)
@@ -274,7 +274,7 @@ export function SloDetailView({ name, onNavigate, onNewVersion }: SloDetailViewP
                     v{v.version}
                   </span>
                   <span className="text-muted-foreground">
-                    {new Date(v.created_at).toLocaleDateString()}
+                    {v.createdAt.toLocaleDateString()}
                   </span>
                 </li>
               ))}

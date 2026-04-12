@@ -14,7 +14,7 @@ import { SloGroupForm } from '@/features/registry/forms/SloGroupForm'
 import { SloLinkDialogRevised } from '@/features/registry/forms/SloLinkDialogRevised'
 import { useCreateGroup } from '@/features/slos'
 import { useDatasource } from '@/features/datasources'
-import type { SloDefinition } from '@/features/slos'
+import type { Slo } from '@/features/slos'
 import type { Sli } from '@/features/slis'
 
 export function SloRegistryPage() {
@@ -46,7 +46,7 @@ export function SloRegistryPage() {
 
   // SloWizard state (replaces detail panel, not a dialog)
   const [wizardOpen, setWizardOpen] = useState(false)
-  const [wizardEditSlo, setWizardEditSlo] = useState<SloDefinition | undefined>()
+  const [wizardEditSlo, setWizardEditSlo] = useState<Slo | undefined>()
   const [wizardDefaultKind, setWizardDefaultKind] = useState<'standard' | 'template'>('standard')
 
   // SloGroupForm state
@@ -155,7 +155,7 @@ export function SloRegistryPage() {
     setDsFormOpen(true)
   }, [])
 
-  const handleNewSloVersion = useCallback((slo: SloDefinition) => {
+  const handleNewSloVersion = useCallback((slo: Slo) => {
     setWizardEditSlo(slo)
     setWizardOpen(true)
   }, [])

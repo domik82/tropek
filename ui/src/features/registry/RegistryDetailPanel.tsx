@@ -1,5 +1,5 @@
 import { SANS_SERIF } from '@/lib/fonts'
-import type { SloDefinition } from '@/features/slos'
+import type { Slo } from '@/features/slos'
 import type { Sli } from '@/features/slis'
 import type { SelectedNode } from './ui-types'
 import { DatasourceDetailView } from './details/DatasourceDetailView'
@@ -13,7 +13,7 @@ interface RegistryDetailPanelProps {
   selected: SelectedNode | null
   onNavigate: (node: SelectedNode) => void
   onEditDatasource?: (name: string) => void
-  onNewSloVersion?: (slo: SloDefinition) => void
+  onNewSloVersion?: (slo: Slo) => void
   onNewSliVersion?: (sli: Sli) => void
   onLinkSlo?: (groupName: string) => void
 }

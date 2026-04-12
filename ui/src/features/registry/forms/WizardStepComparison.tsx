@@ -4,7 +4,6 @@ import { ENTITY_COLORS } from '@/lib/entity-colors'
 import type { TagRow } from './tagUtils'
 
 export interface ComparisonData {
-  baseline_mode: 'previous' | 'manual'
   compare_count: number
   aggregate_function: string
   include_result_with_score: string
@@ -55,21 +54,6 @@ export function WizardStepComparison({ data, onChange }: WizardStepComparisonPro
         {/* Left column — Comparison Settings */}
         <div className="space-y-3">
           <span className="text-xs font-medium text-muted-foreground">Comparison Settings</span>
-
-          <div>
-            <label htmlFor="baseline-mode" className="block text-xs text-muted-foreground mb-1">
-              Baseline Mode
-            </label>
-            <select
-              id="baseline-mode"
-              className="w-full rounded border border-border bg-popover px-2 py-1.5 text-sm"
-              value={data.baseline_mode}
-              onChange={(e) => update('baseline_mode', e.target.value as 'previous' | 'manual')}
-            >
-              <option value="previous">Previous evaluations</option>
-              <option value="manual">Manual</option>
-            </select>
-          </div>
 
           <div>
             <label htmlFor="compare-count" className="block text-xs text-muted-foreground mb-1">

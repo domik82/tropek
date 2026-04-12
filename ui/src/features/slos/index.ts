@@ -1,4 +1,19 @@
-export type { SloDefinition, SloObjective, SloAssignment, SloAssignmentCreate, SloGroupAssignment, MethodCriteriaOverride } from './types'
+export type {
+  Slo,
+  SloObjective,
+  SloComparisonConfig,
+  MethodCriteriaOverride,
+  SloValidationResult,
+  SloValidationObjective,
+  SloValidationError,
+  SloAssignment,
+  SloGroupAssignment,
+} from './domain'
+export type {
+  SloCreateInput,
+  SloAssignmentCreateInput,
+  AssetGroupUpdateInput,
+} from './api'
 export {
   useSlos, useSloDetail, useSloVersions, useCreateSlo, useDeleteSlo,
   useGroupTree, useCreateGroup, useUpdateGroup, useDeleteGroup, useAddSubgroup,

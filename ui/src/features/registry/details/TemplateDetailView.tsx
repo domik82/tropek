@@ -5,13 +5,13 @@ import { SloObjectiveTable } from '@/features/slos/components/SloObjectiveTable'
 import { useSloDetail } from '@/features/slos/hooks'
 import { useSloGroups } from '@/features/slo-groups'
 import { Button } from '@/components/ui/button'
-import type { SloDefinition } from '@/features/slos/types'
+import type { Slo } from '@/features/slos'
 import type { SelectedNode } from '@/features/registry/ui-types'
 
 interface Props {
   name: string
   onNavigate: (node: SelectedNode) => void
-  onNewVersion: (slo: SloDefinition) => void
+  onNewVersion: (slo: Slo) => void
 }
 
 export function TemplateDetailView({ name, onNavigate, onNewVersion }: Props) {
@@ -39,7 +39,7 @@ export function TemplateDetailView({ name, onNavigate, onNewVersion }: Props) {
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0">
               <h2 className="text-xl font-semibold text-foreground truncate">
-                {slo.display_name ?? slo.name}
+                {slo.displayName ?? slo.name}
               </h2>
               <p className="text-xs font-mono text-muted-foreground mt-0.5">{slo.name}</p>
             </div>
@@ -69,15 +69,15 @@ export function TemplateDetailView({ name, onNavigate, onNewVersion }: Props) {
         </div>
 
         {/* SLI link */}
-        {slo.sli_name && (
+        {slo.sliName && (
           <div>
             <p className="text-xs text-muted-foreground mb-1">SLI Definition</p>
             <button
               type="button"
               className="text-sm text-primary hover:underline cursor-pointer"
-              onClick={() => onNavigate({ type: 'sli', name: slo.sli_name! })}
+              onClick={() => onNavigate({ type: 'sli', name: slo.sliName! })}
             >
-              {slo.sli_name} v{slo.sli_version}
+              {slo.sliName} v{slo.sliVersion}
             </button>
           </div>
         )}

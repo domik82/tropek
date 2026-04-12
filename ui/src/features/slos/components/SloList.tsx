@@ -1,7 +1,7 @@
 // ui/src/features/slos/components/SloList.tsx
 import { useState } from 'react'
 import { useSloDetail, useDeleteSlo } from '@/features/slos/hooks'
-import type { SloDefinition } from '@/features/slos/types'
+import type { Slo } from '@/features/slos'
 import { SloObjectiveTable } from './SloObjectiveTable'
 import { SloObjectiveEditor } from './SloObjectiveEditor'
 import { SloHistoryPanel } from './SloHistoryPanel'
@@ -80,7 +80,7 @@ function DeleteConfirm({ name, onDone }: { name: string; onDone: () => void }) {
 }
 
 interface Props {
-  slos: SloDefinition[]
+  slos: Slo[]
   selectedGroup: string | null
   showAll: boolean
   onShowAll: () => void
@@ -119,7 +119,7 @@ export function SloList({ slos, selectedGroup, showAll, onShowAll, onLinkSlo }: 
                 onClick={() => setExpandedSlo(prev => prev === slo.name ? null : slo.name)}
               >
                 <span className="font-semibold text-foreground truncate">
-                  {slo.display_name ?? slo.name}
+                  {slo.displayName ?? slo.name}
                 </span>
                 <span className="text-xs text-muted-foreground shrink-0">v{slo.version}</span>
                 {slo.active
@@ -145,7 +145,7 @@ export function SloList({ slos, selectedGroup, showAll, onShowAll, onLinkSlo }: 
                     {slo.notes}
                   </span>
                 )}
-                <span className="text-muted-foreground/60">{slo.created_at.slice(0, 10)}</span>
+                <span className="text-muted-foreground/60">{slo.createdAt.toISOString().slice(0, 10)}</span>
 
                 {slo.active && (
                   <button

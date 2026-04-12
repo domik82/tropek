@@ -81,6 +81,7 @@ export function SloCreateForm({ onCancel, onSaved }: Props) {
     create.mutate(
       {
         name: values.name,
+        kind: 'standard',
         display_name: values.display_name || undefined,
         notes: values.notes || undefined,
         author: values.author || undefined,

@@ -245,8 +245,8 @@ export function GroupDetailPanel({ groupName, onSelectGroup, selectedAsset }: Pr
               <tbody>
                 {assignments.map((assignment, idx) => (
                   <tr key={assignment.id} className={`border-b border-border/60 last:border-0 hover:bg-table-row-hover transition-colors ${idx % 2 === 0 ? 'bg-table-row-bg' : 'bg-table-row-alt'}`}>
-                    <td className="px-3 py-2 font-medium text-foreground">{assignment.slo_name}</td>
-                    <td className="px-3 py-2 text-muted-foreground/60">{assignment.data_source_name}</td>
+                    <td className="px-3 py-2 font-medium text-foreground">{assignment.sloName}</td>
+                    <td className="px-3 py-2 text-muted-foreground/60">{assignment.dataSourceName}</td>
                     <td className="px-3 py-2 text-center">
                       <button
                         onClick={() => unlinkSlo.mutate({ groupName, assignmentId: assignment.id })}

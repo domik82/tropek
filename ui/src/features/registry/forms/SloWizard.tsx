@@ -12,47 +12,46 @@ import type { IdentityData } from './WizardStepIdentity'
 import type { PickSliData } from './WizardStepPickSli'
 import type { IndicatorRow } from './WizardStepIndicators'
 import type { ComparisonData } from './WizardStepComparison'
-import type { SloDefinition, MethodCriteriaOverride } from '@/features/slos'
+import type { Slo, MethodCriteriaOverride } from '@/features/slos'
 
 interface SloWizardProps {
-  editSlo?: SloDefinition
+  editSlo?: Slo
   defaultKind?: 'standard' | 'template'
   onClose?: () => void
 }
 
-function buildIdentityFromEdit(slo: SloDefinition): IdentityData {
+function buildIdentityFromEdit(slo: Slo): IdentityData {
   return {
     name: slo.name,
-    display_name: slo.display_name ?? '',
+    display_name: slo.displayName ?? '',
     author: slo.author ?? '',
     notes: slo.notes ?? '',
   }
 }
 
-function buildIndicatorRowsFromEdit(slo: SloDefinition): IndicatorRow[] {
+function buildIndicatorRowsFromEdit(slo: Slo): IndicatorRow[] {
   return slo.objectives.map((obj) => ({
     sli: obj.sli,
     checked: true,
     weight: obj.weight,
-    key_sli: obj.key_sli,
-    passCriteria: obj.pass_threshold.length > 0
-      ? obj.pass_threshold.map((c) => parseCriteria(c) ?? { ...DEFAULT_CRITERIA })
+    key_sli: obj.keySli,
+    passCriteria: obj.passThreshold.length > 0
+      ? obj.passThreshold.map((c) => parseCriteria(c) ?? { ...DEFAULT_CRITERIA })
       : [{ ...DEFAULT_CRITERIA }],
-    warnCriteria: obj.warning_threshold.length > 0
-      ? obj.warning_threshold.map((c) => parseCriteria(c) ?? { ...DEFAULT_CRITERIA })
+    warnCriteria: obj.warningThreshold.length > 0
+      ? obj.warningThreshold.map((c) => parseCriteria(c) ?? { ...DEFAULT_CRITERIA })
       : [{ ...DEFAULT_CRITERIA }],
   }))
 }
 
-function buildComparisonFromEdit(slo: SloDefinition): ComparisonData {
+function buildComparisonFromEdit(slo: Slo): ComparisonData {
   const comp = slo.comparison
   return {
-    baseline_mode: comp.baseline_mode === 'manual' ? 'manual' : 'previous',
-    compare_count: comp.number_of_comparison_results ?? 3,
-    aggregate_function: comp.aggregate_function ?? 'avg',
-    include_result_with_score: comp.include_result_with_score ?? 'pass_or_warn',
-    pass_threshold: slo.total_score_pass_threshold,
-    warn_criteria: slo.total_score_warning_threshold,
+    compare_count: comp.numberOfComparisonResults ?? 3,
+    aggregate_function: comp.aggregateFunction ?? 'avg',
+    include_result_with_score: comp.includeResultWithScore ?? 'pass_or_warn',
+    pass_threshold: slo.totalScorePassThreshold,
+    warn_criteria: slo.totalScoreWarningThreshold,
     tags: tagsToRows(slo.tags),
     variables: Object.entries(slo.variables).map(([key, value]) => ({ key, value })),
   }
@@ -67,7 +66,7 @@ export function SloWizard({ editSlo, defaultKind, onClose }: SloWizardProps) {
 
   const [pickSli, setPickSli] = useState<PickSliData>(
     editSlo
-      ? { sliName: editSlo.sli_name ?? '', sliVersion: editSlo.sli_version ?? null, indicators: Object.fromEntries(editSlo.objectives.map((o) => [o.sli, ''])) }
+      ? { sliName: editSlo.sliName ?? '', sliVersion: editSlo.sliVersion ?? null, indicators: Object.fromEntries(editSlo.objectives.map((o) => [o.sli, ''])) }
       : { sliName: '', sliVersion: null, indicators: {} },
   )
 
@@ -76,14 +75,13 @@ export function SloWizard({ editSlo, defaultKind, onClose }: SloWizardProps) {
   )
 
   const [methodCriteria, setMethodCriteria] = useState<Record<string, MethodCriteriaOverride>>(
-    editSlo?.method_criteria ?? {},
+    editSlo?.methodCriteria ?? {},
   )
 
   const [comparison, setComparison] = useState<ComparisonData>(
     editSlo
       ? buildComparisonFromEdit(editSlo)
       : {
-          baseline_mode: 'previous',
           compare_count: 3,
           aggregate_function: 'avg',
           include_result_with_score: 'pass_or_warn',
@@ -102,7 +100,7 @@ export function SloWizard({ editSlo, defaultKind, onClose }: SloWizardProps) {
 
   // In edit mode, fetch the full SLI definition to show ALL indicators
   // (not just the subset used by the current SLO objectives)
-  const { data: fullSli } = useSliDetail(pickSli.sliName || editSlo?.sli_name || '')
+  const { data: fullSli } = useSliDetail(pickSli.sliName || editSlo?.sliName || '')
   const isAggregatedSli = fullSli?.mode === 'aggregated'
   const aggregatedMethods = fullSli?.methods ?? []
   const sliMergedRef = useRef(false)
@@ -208,7 +206,6 @@ export function SloWizard({ editSlo, defaultKind, onClose }: SloWizardProps) {
         total_score_pass_threshold: comparison.pass_threshold,
         total_score_warning_threshold: comparison.warn_criteria,
         comparison: {
-          baseline_mode: comparison.baseline_mode,
           number_of_comparison_results: comparison.compare_count,
           aggregate_function: comparison.aggregate_function,
           include_result_with_score: comparison.include_result_with_score,
