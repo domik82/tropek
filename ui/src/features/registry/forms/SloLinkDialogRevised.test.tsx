@@ -15,7 +15,7 @@ vi.mock('@/features/datasources/hooks', () => ({
   }),
 }))
 
-vi.mock('@/features/slos/hooks', () => ({
+vi.mock('@/features/assets/hooks', () => ({
   useGroupTree: () => ({
     data: {
       all_groups: [
@@ -25,6 +25,9 @@ vi.mock('@/features/slos/hooks', () => ({
       top_level: [],
     },
   }),
+}))
+
+vi.mock('@/features/slos/hooks', () => ({
   useSlos: () => ({
     data: [
       { id: 'slo-def-1', name: 'latency-slo', displayName: 'Latency SLO', active: true, sliName: 'response-time', sliVersion: 1 },

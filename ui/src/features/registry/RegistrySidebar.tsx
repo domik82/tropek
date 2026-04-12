@@ -9,11 +9,11 @@ import { groupKeys } from '@/lib/queryKeys'
 import { TagFilterBar } from '@/components/shared/TagFilterBar'
 import { RegistryTree, SectionHeader } from './RegistryTree'
 import { buildSloTree, buildSloSections, buildDatasourceTree, buildAssetTree, filterTree, buildSloGroupMap, mergeBindings } from './useRegistryTree'
-import { useSlos, useGroupTree, useSloTagKeys, useSloTagValues, fetchGroupSloAssignments, fetchAssetSloAssignments, fetchAssetSloGroupAssignments } from '@/features/slos'
+import { useSlos, useSloTagKeys, useSloTagValues, fetchGroupSloAssignments, fetchAssetSloAssignments, fetchAssetSloGroupAssignments } from '@/features/slos'
 import { assignmentKeys } from '@/lib/queryKeys'
 import { useSliDefinitions } from '@/features/slis'
 import { useDatasources, useDatasourceTagKeys, useDatasourceTagValues } from '@/features/datasources'
-import { useTagKeys, useTagValues } from '@/features/assets'
+import { useTagKeys, useTagValues, useGroupTree } from '@/features/assets'
 import type { RegistryMode, SelectedNode, TagFilter } from './ui-types'
 
 const MODES: { key: RegistryMode; label: string }[] = [

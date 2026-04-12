@@ -1,11 +1,12 @@
 // src/features/assets/hooks.ts
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { assetKeys, assetTypeKeys, labelKeys, groupKeys } from '@/lib/queryKeys'
+import { assetKeys, assetTypeKeys, labelKeys, groupKeys, sloKeys } from '@/lib/queryKeys'
 import {
   fetchAssets, fetchAsset, createAsset, updateAsset, deleteAsset,
   fetchAssetGroupTree, fetchAssetGroup, addGroupMember, removeGroupMember,
   fetchAssetTypes, createAssetType, renameAssetType, setDefaultAssetType, deleteAssetType,
   fetchTagKeys, fetchTagValues,
+  fetchGroupTree, createGroup, updateGroup, deleteGroup, addSubgroup,
 } from './api'
 
 // ---- Assets ----
@@ -84,6 +85,62 @@ export function useRemoveGroupMember() {
   return useMutation({
     mutationFn: ({ groupName, assetId }: { groupName: string; assetId: string }) =>
       removeGroupMember(groupName, assetId),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: groupKeys.all })
+      void qc.invalidateQueries({ queryKey: assetKeys.groups() })
+    },
+  })
+}
+
+// ---- Asset Group CRUD ----
+
+export function useGroupTree() {
+  return useQuery({ queryKey: groupKeys.tree(), queryFn: fetchGroupTree })
+}
+
+export function useCreateGroup() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: createGroup,
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: groupKeys.all })
+      void qc.invalidateQueries({ queryKey: assetKeys.groups() })
+    },
+  })
+}
+
+export function useUpdateGroup() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ name, ...body }: { name: string; display_name?: string; description?: string }) =>
+      updateGroup(name, body),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: groupKeys.all })
+      void qc.invalidateQueries({ queryKey: assetKeys.groups() })
+    },
+  })
+}
+
+export function useDeleteGroup() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ name, deactivateSlos }: { name: string; deactivateSlos: boolean }) =>
+      deleteGroup(name, deactivateSlos),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: groupKeys.all })
+      void qc.invalidateQueries({ queryKey: assetKeys.groups() })
+      // Group deletion invalidates SLO caches owned by the slos feature — this is
+      // intentional. When you delete a group, any bound SLO assignments become stale.
+      void qc.invalidateQueries({ queryKey: sloKeys.all })
+    },
+  })
+}
+
+export function useAddSubgroup() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ parentName, childGroupId }: { parentName: string; childGroupId: string }) =>
+      addSubgroup(parentName, childGroupId),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: groupKeys.all })
       void qc.invalidateQueries({ queryKey: assetKeys.groups() })

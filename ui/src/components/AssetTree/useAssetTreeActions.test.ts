@@ -3,15 +3,11 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { renderHook } from '@testing-library/react'
 import { TestWrapper } from '@/test-wrapper'
 import { useAssetTreeActions } from './useAssetTreeActions'
-import { useRemoveGroupMember, useDeleteAsset } from '@/features/assets/hooks'
-import { useUpdateGroup } from '@/features/slos/hooks'
+import { useRemoveGroupMember, useDeleteAsset, useUpdateGroup } from '@/features/assets/hooks'
 
 vi.mock('@/features/assets/hooks', () => ({
   useRemoveGroupMember: vi.fn(() => ({ mutate: vi.fn() })),
   useDeleteAsset: vi.fn(() => ({ mutate: vi.fn() })),
-}))
-
-vi.mock('@/features/slos/hooks', () => ({
   useUpdateGroup: vi.fn(() => ({ mutate: vi.fn() })),
 }))
 

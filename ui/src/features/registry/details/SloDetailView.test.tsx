@@ -11,6 +11,13 @@ vi.mock('@/features/slos', async (importOriginal) => {
     useSloDetail: vi.fn(),
     useSloVersions: vi.fn(),
     useDeleteSlo: vi.fn(),
+  }
+})
+
+vi.mock('@/features/assets', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/features/assets')>()
+  return {
+    ...actual,
     useGroupTree: vi.fn(),
   }
 })
@@ -19,7 +26,8 @@ vi.mock('@/features/slis', () => ({
   useSliDetail: vi.fn(() => ({ data: undefined, isLoading: false })),
 }))
 
-import { useSloDetail, useSloVersions, useDeleteSlo, useGroupTree } from '@/features/slos'
+import { useSloDetail, useSloVersions, useDeleteSlo } from '@/features/slos'
+import { useGroupTree } from '@/features/assets'
 
 const mockSlo: Slo = {
   id: 'slo-1',

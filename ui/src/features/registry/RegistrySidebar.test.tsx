@@ -10,7 +10,6 @@ vi.mock('@/features/slo-groups', () => ({
 
 vi.mock('@/features/slos/hooks', () => ({
   useSlos: () => ({ data: [] }),
-  useGroupTree: () => ({ data: { top_level: [], all_groups: [] } }),
   useSloTagKeys: () => ({ data: [], isLoading: false }),
   useSloTagValues: () => ({ data: [], isLoading: false }),
 }))
@@ -32,6 +31,7 @@ vi.mock('@/features/datasources/hooks', () => ({
 vi.mock('@/features/assets/hooks', () => ({
   useTagKeys: () => ({ data: [], isLoading: false }),
   useTagValues: () => ({ data: [], isLoading: false }),
+  useGroupTree: () => ({ data: { top_level: [], all_groups: [] } }),
 }))
 
 let queryClient: QueryClient

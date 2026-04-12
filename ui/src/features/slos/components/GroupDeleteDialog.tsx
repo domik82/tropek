@@ -2,7 +2,8 @@ import { useState } from 'react'
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose,
 } from '@/components/ui/dialog'
-import { useDeleteGroup, useGroupTree, useGroupSloAssignments } from '../hooks'
+import { useDeleteGroup, useGroupTree } from '@/features/assets'
+import { useGroupSloAssignments } from '../hooks'
 
 interface Props {
   open: boolean

@@ -3,8 +3,9 @@ import { FieldLabel } from '@/components/ui/field-label'
 import { FormDialog } from '@/components/ui/form-dialog'
 import { useDatasources } from '@/features/datasources/hooks'
 import { useSliDefinitions } from '@/features/slis/hooks'
+import { useGroupTree } from '@/features/assets'
 import {
-  useGroupTree, useSlos,
+  useSlos,
   useCreateGroupSloAssignment, useGroupSloAssignments,
 } from '../hooks'
 

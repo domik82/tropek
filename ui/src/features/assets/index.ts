@@ -13,6 +13,7 @@ export type {
   AssetUpdateInput,
   AssetTypeCreateInput,
   AssetTypeUpdateInput,
+  AssetGroupUpdateInput,
 } from './api'
 export {
   useAssets, useAsset,
@@ -21,6 +22,7 @@ export {
   useAddGroupMember, useRemoveGroupMember,
   useAssetTypes,
   useTagKeys, useTagValues,
+  useGroupTree, useCreateGroup, useUpdateGroup, useDeleteGroup, useAddSubgroup,
 } from './hooks'
 export { fetchAssets, fetchAssetGroupTree } from './api'
 export { AssetCreateDialog } from './components/AssetCreateDialog'

@@ -1,5 +1,4 @@
-import { useUpdateGroup } from '@/features/slos'
-import { useRemoveGroupMember, useDeleteAsset } from '@/features/assets'
+import { useUpdateGroup, useRemoveGroupMember, useDeleteAsset } from '@/features/assets'
 import type { TreeMode, ContextMenuState } from './types'
 
 interface ActionCallbacks {

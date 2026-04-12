@@ -3,10 +3,8 @@ import { FieldLabel } from '@/components/ui/field-label'
 import { Input } from '@/components/ui/input'
 import { FormDialog } from '@/components/ui/form-dialog'
 import { GroupTreeSelector } from '@/features/assets/components/GroupTreeSelector'
-import {
-  useUpdateGroup, useGroupSloAssignments, useDeleteGroupSloAssignment, useGroupTree,
-  useAddSubgroup,
-} from '../hooks'
+import { useUpdateGroup, useGroupTree, useAddSubgroup } from '@/features/assets'
+import { useGroupSloAssignments, useDeleteGroupSloAssignment } from '../hooks'
 
 interface Props {
   open: boolean

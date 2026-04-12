@@ -4,7 +4,7 @@ import { Input } from '@/components/ui/input'
 import { FormDialog } from '@/components/ui/form-dialog'
 import { GroupTreeSelector } from '@/features/assets/components/GroupTreeSelector'
 import { isValidEntityName, ENTITY_NAME_HINT } from '@/lib/validation'
-import { useCreateGroup, useGroupTree, useAddSubgroup } from '../hooks'
+import { useCreateGroup, useGroupTree, useAddSubgroup } from '@/features/assets'
 
 interface Props {
   open: boolean
