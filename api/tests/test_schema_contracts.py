@@ -212,6 +212,80 @@ class TestSloRegistryNestedTypes:
         field = SLODefinitionCreate.model_fields['method_criteria']
         assert field.annotation == dict[str, MethodCriteriaOverride] | None
 
+    def test_comparison_config_accepts_scope_tags(self) -> None:
+        """scope_tags is now a declared field, not a smuggled extra."""
+        config = ComparisonConfig(scope_tags=['os', 'arch'])
+        assert config.scope_tags == ['os', 'arch']
+        assert config.model_dump(exclude_none=True)['scope_tags'] == ['os', 'arch']
+
+    def test_comparison_config_ignores_unknown_fields(self) -> None:
+        """After dropping extra='allow', unknown fields are silently dropped.
+
+        This locks in the current Pydantic default behavior so a future switch
+        to extra='forbid' becomes visible in a test rather than a 422 in prod.
+        """
+        config = ComparisonConfig.model_validate({
+            'compare_with': 'single_result',
+            'baseline_mode': 'manual',  # UI phantom -- now dropped
+        })
+        assert config.compare_with == 'single_result'
+        assert 'baseline_mode' not in config.model_dump()
+
+    def test_method_criteria_override_has_threshold_fields(self) -> None:
+        """MethodCriteriaOverride uses pass_threshold / warning_threshold
+        (not pass_criteria / warning_criteria). The old names were a
+        half-finished rename."""
+        override = MethodCriteriaOverride(
+            pass_threshold=['<25'],
+            warning_threshold=['<50'],
+        )
+        assert override.pass_threshold == ['<25']
+        assert override.warning_threshold == ['<50']
+
+    def test_method_criteria_override_accepts_weight_and_key_sli(self) -> None:
+        """weight and key_sli mirror SLOObjectiveIn so template Level-2
+        expansion can override them per method."""
+        override = MethodCriteriaOverride(weight=2, key_sli=True)
+        assert override.weight == 2
+        assert override.key_sli is True
+
+    def test_method_criteria_override_all_fields_optional(self) -> None:
+        """Empty MethodCriteriaOverride is valid -- all six fields are None by default."""
+        override = MethodCriteriaOverride()
+        assert override.model_dump(exclude_none=True) == {}
+
+    def test_slo_definition_create_roundtrips_method_criteria(self) -> None:
+        """End-to-end: a template with method_criteria survives Pydantic
+        validation with the new field shape."""
+        payload = {
+            'name': 'test_template',
+            'kind': 'template',
+            'objectives': [{
+                'sli': 'cpu_usage',
+                'display_name': 'CPU',
+                'pass_threshold': ['<80'],
+                'warning_threshold': ['<90'],
+                'weight': 1,
+                'key_sli': False,
+            }],
+            'method_criteria': {
+                'p99': {
+                    'pass_threshold': ['<25'],
+                    'warning_threshold': ['<50'],
+                    'weight': 2,
+                    'key_sli': True,
+                },
+            },
+        }
+        request = SLODefinitionCreate.model_validate(payload)
+        assert request.method_criteria is not None
+        assert 'p99' in request.method_criteria
+        override = request.method_criteria['p99']
+        assert override.pass_threshold == ['<25']
+        assert override.warning_threshold == ['<50']
+        assert override.weight == 2
+        assert override.key_sli is True
+
 
 # -- Annotations --------------------------------------------------------------
 
