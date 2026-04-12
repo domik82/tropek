@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { DatasourceForm } from './DatasourceForm'
-import type { DataSource } from '@/features/datasources'
+import type { Datasource } from '@/features/datasources'
 
 vi.mock('@/features/datasources/hooks', () => ({
   useCreateDatasource: vi.fn(),
@@ -14,16 +14,16 @@ import { useCreateDatasource, useUpdateDatasource } from '@/features/datasources
 const mockCreate = vi.fn()
 const mockUpdate = vi.fn()
 
-const mockDs: DataSource = {
+const mockDs: Datasource = {
   id: 'ds-1',
   name: 'prom-main',
-  display_name: 'Prometheus Main',
-  adapter_type: 'prometheus',
-  adapter_url: 'http://prometheus:9090',
+  displayName: 'Prometheus Main',
+  adapterType: 'prometheus',
+  adapterUrl: 'http://prometheus:9090',
   tags: { env: 'prod' },
-  has_token: true,
-  created_at: '2024-01-01T00:00:00Z',
-  updated_at: '2024-01-02T00:00:00Z',
+  hasToken: true,
+  createdAt: new Date('2024-01-01T00:00:00Z'),
+  updatedAt: new Date('2024-01-02T00:00:00Z'),
 }
 
 let queryClient: QueryClient

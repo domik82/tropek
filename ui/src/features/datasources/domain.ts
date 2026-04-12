@@ -1,16 +1,19 @@
-export interface DataSource {
+// Domain types for the datasources feature. UI vocabulary; camelCase;
+// Date objects rather than ISO strings. Hand-written — never regenerated.
+
+export interface Datasource {
   id: string
   name: string
-  display_name: string | null
-  adapter_type: string
-  adapter_url: string
+  displayName: string | null
+  adapterType: string
+  adapterUrl: string
   tags: Record<string, string>
-  has_token: boolean
-  created_at: string
-  updated_at: string
+  hasToken: boolean
+  createdAt: Date
+  updatedAt: Date
 }
 
-export interface DataSourceCreate {
+export interface DatasourceCreateInput {
   name: string
   display_name?: string
   adapter_type: string
@@ -19,7 +22,7 @@ export interface DataSourceCreate {
   tags?: Record<string, string>
 }
 
-export interface DataSourceUpdate {
+export interface DatasourceUpdateInput {
   display_name?: string
   adapter_url?: string
   token?: string

@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, fireEvent, cleanup } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { DatasourceDetailView } from './DatasourceDetailView'
-import type { DataSource } from '@/features/datasources'
+import type { Datasource } from '@/features/datasources'
 import type { SliDefinition } from '@/features/slis'
 
 vi.mock('@/features/datasources/hooks', () => ({
@@ -17,16 +17,16 @@ vi.mock('@/features/slis/hooks', () => ({
 import { useDatasource, useDeleteDatasource } from '@/features/datasources/hooks'
 import { useSliDefinitions } from '@/features/slis/hooks'
 
-const mockDs: DataSource = {
+const mockDs: Datasource = {
   id: 'ds-1',
   name: 'prom-main',
-  display_name: 'Prometheus Main',
-  adapter_type: 'prometheus',
-  adapter_url: 'http://prometheus:9090',
+  displayName: 'Prometheus Main',
+  adapterType: 'prometheus',
+  adapterUrl: 'http://prometheus:9090',
   tags: { env: 'prod', team: 'platform' },
-  has_token: true,
-  created_at: '2024-01-01T00:00:00Z',
-  updated_at: '2024-01-02T00:00:00Z',
+  hasToken: true,
+  createdAt: new Date('2024-01-01T00:00:00Z'),
+  updatedAt: new Date('2024-01-02T00:00:00Z'),
 }
 
 const mockSlis: SliDefinition[] = [
@@ -121,7 +121,7 @@ describe('DatasourceDetailView', () => {
 
   it('shows "None" when has_token is false', () => {
     vi.mocked(useDatasource).mockReturnValue({
-      data: { ...mockDs, has_token: false },
+      data: { ...mockDs, hasToken: false },
       isLoading: false,
       isError: false,
     } as ReturnType<typeof useDatasource>)

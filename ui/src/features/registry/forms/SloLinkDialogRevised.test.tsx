@@ -9,8 +9,8 @@ let mockExistingAssignments: { slo_name: string }[] = []
 vi.mock('@/features/datasources/hooks', () => ({
   useDatasources: () => ({
     data: [
-      { id: 'ds-1', name: 'prom-prod', display_name: 'Prometheus Prod', adapter_type: 'prometheus' },
-      { id: 'ds-2', name: 'dynatrace-prod', display_name: 'Dynatrace Prod', adapter_type: 'dynatrace' },
+      { id: 'ds-1', name: 'prom-prod', displayName: 'Prometheus Prod', adapterType: 'prometheus' },
+      { id: 'ds-2', name: 'dynatrace-prod', displayName: 'Dynatrace Prod', adapterType: 'dynatrace' },
     ],
   }),
 }))

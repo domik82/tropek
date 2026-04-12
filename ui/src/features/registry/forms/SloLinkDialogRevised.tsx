@@ -31,8 +31,8 @@ export function SloLinkDialogRevised({
 
   const dsItems = (datasources ?? []).map((ds) => ({
     value: ds.name,
-    label: ds.display_name ?? ds.name,
-    badge: ds.adapter_type,
+    label: ds.displayName ?? ds.name,
+    badge: ds.adapterType,
   }))
 
   /* eslint-disable react-hooks/set-state-in-effect -- intentional sync from props */

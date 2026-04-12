@@ -23,7 +23,7 @@ export function SloLinkDialog({ open, onOpenChange, lockedSloName, lockedGroupNa
 
   const { data: datasources } = useDatasources()
   const selectedDs = datasources?.find(d => d.name === datasource)
-  const { data: slis } = useSliDefinitions(selectedDs?.adapter_type)
+  const { data: slis } = useSliDefinitions(selectedDs?.adapterType)
   const { data: tree } = useGroupTree()
   const { data: slos } = useSlos()
   const { data: existingAssignments } = useGroupSloAssignments(groupName || lockedGroupName || '')
@@ -83,14 +83,14 @@ export function SloLinkDialog({ open, onOpenChange, lockedSloName, lockedGroupNa
           <option value="">Select datasource...</option>
           {datasources?.map(ds => (
             <option key={ds.id} value={ds.name}>
-              {ds.display_name ?? ds.name} ({ds.adapter_type})
+              {ds.displayName ?? ds.name} ({ds.adapterType})
             </option>
           ))}
         </select>
       </div>
       <div>
         <FieldLabel>
-          SLI {selectedDs && <span className="text-[10px] opacity-60 normal-case">— filtered to {selectedDs.adapter_type}</span>}
+          SLI {selectedDs && <span className="text-[10px] opacity-60 normal-case">— filtered to {selectedDs.adapterType}</span>}
         </FieldLabel>
         <select
           value={sliName}

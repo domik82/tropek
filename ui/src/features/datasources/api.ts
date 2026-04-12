@@ -1,42 +1,59 @@
-import type { DataSource, DataSourceCreate, DataSourceUpdate, TagKeyCount, TagValueCount } from './types'
+import type { components } from '@/generated/api'
+import type {
+  Datasource,
+  DatasourceCreateInput,
+  DatasourceUpdateInput,
+  TagKeyCount,
+  TagValueCount,
+} from './domain'
+import { dtoToDatasource } from './mappers'
+
+type DatasourceDto = components['schemas']['DataSourceRead']
+type DatasourceListDto = { items: DatasourceDto[]; total: number }
 
 const BASE = '/api'
 
-export async function fetchDatasources(tagKey?: string, tagVal?: string): Promise<DataSource[]> {
+export async function fetchDatasources(tagKey?: string, tagVal?: string): Promise<Datasource[]> {
   const params = new URLSearchParams()
   if (tagKey) params.set('tag_key', tagKey)
   if (tagVal) params.set('tag_val', tagVal)
   const qs = params.toString()
   const res = await fetch(`${BASE}/datasources${qs ? `?${qs}` : ''}`)
   if (!res.ok) throw new Error(`fetchDatasources: ${res.status}`)
-  const data: { items: DataSource[]; total: number } = await res.json()
-  return data.items
+  const body: DatasourceListDto = await res.json()
+  return body.items.map(dtoToDatasource)
 }
 
-export async function fetchDatasource(name: string): Promise<DataSource> {
+export async function fetchDatasource(name: string): Promise<Datasource> {
   const res = await fetch(`${BASE}/datasources/${encodeURIComponent(name)}`)
   if (!res.ok) throw new Error(`fetchDatasource: ${res.status}`)
-  return res.json()
+  const body: DatasourceDto = await res.json()
+  return dtoToDatasource(body)
 }
 
-export async function createDatasource(payload: DataSourceCreate): Promise<DataSource> {
+export async function createDatasource(payload: DatasourceCreateInput): Promise<Datasource> {
   const res = await fetch(`${BASE}/datasources`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   })
   if (!res.ok) throw new Error(`createDatasource: ${res.status}`)
-  return res.json()
+  const body: DatasourceDto = await res.json()
+  return dtoToDatasource(body)
 }
 
-export async function updateDatasource(name: string, payload: DataSourceUpdate): Promise<DataSource> {
+export async function updateDatasource(
+  name: string,
+  payload: DatasourceUpdateInput,
+): Promise<Datasource> {
   const res = await fetch(`${BASE}/datasources/${encodeURIComponent(name)}`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   })
   if (!res.ok) throw new Error(`updateDatasource: ${res.status}`)
-  return res.json()
+  const body: DatasourceDto = await res.json()
+  return dtoToDatasource(body)
 }
 
 export async function deleteDatasource(name: string): Promise<void> {

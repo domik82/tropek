@@ -29,7 +29,7 @@ export function DatasourceDetailView({ name, onNavigate, onEdit }: DatasourceDet
     )
   }
 
-  const usedBySlis = (slis ?? []).filter(s => s.adapter_type === ds.adapter_type)
+  const usedBySlis = (slis ?? []).filter(s => s.adapter_type === ds.adapterType)
 
   function handleDelete() {
     deleteMutation.mutate(ds!.name)
@@ -47,14 +47,14 @@ export function DatasourceDetailView({ name, onNavigate, onEdit }: DatasourceDet
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0">
               <h2 className="text-xl font-semibold text-foreground truncate">
-                {ds.display_name ?? ds.name}
+                {ds.displayName ?? ds.name}
               </h2>
               <p className="text-xs font-mono text-muted-foreground mt-0.5">{ds.name}</p>
             </div>
             <span
               className="shrink-0 px-2 py-0.5 text-xs rounded-full border border-border bg-muted/40 text-muted-foreground"
             >
-              {ds.adapter_type}
+              {ds.adapterType}
             </span>
           </div>
 
@@ -92,13 +92,13 @@ export function DatasourceDetailView({ name, onNavigate, onEdit }: DatasourceDet
         {/* Adapter URL */}
         <div>
           <p className="text-xs text-muted-foreground mb-1">Adapter URL</p>
-          <p className="text-sm font-mono break-all">{ds.adapter_url}</p>
+          <p className="text-sm font-mono break-all">{ds.adapterUrl}</p>
         </div>
 
         {/* Token */}
         <div>
           <p className="text-xs text-muted-foreground mb-1">Token</p>
-          <p className="text-sm">{ds.has_token ? '••••••••' : 'None'}</p>
+          <p className="text-sm">{ds.hasToken ? '••••••••' : 'None'}</p>
         </div>
 
         {/* Tags */}
