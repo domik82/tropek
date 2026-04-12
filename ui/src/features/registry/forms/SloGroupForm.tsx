@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button'
 import { ENTITY_COLORS } from '@/lib/entity-colors'
 import { SANS_SERIF } from '@/lib/fonts'
 import { useSlos } from '@/features/slos/hooks'
-import { useCreateSloGroup } from '@/features/slo-groups/hooks'
+import { useCreateSloGroup } from '@/features/slo-groups'
 
 interface Props {
   onClose: () => void
@@ -40,6 +40,7 @@ export function SloGroupForm({ onClose }: Props) {
       template_slo_name: templateSloName,
       template_slo_version: selectedTemplate.version,
       gen_variables: genVariables,
+      tags: {},
     })
     onClose()
   }

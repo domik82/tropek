@@ -4,22 +4,22 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import type { ReactNode } from 'react'
 import { SloGroupDetailView } from './SloGroupDetailView'
 
-vi.mock('@/features/slo-groups/hooks', () => ({
+vi.mock('@/features/slo-groups', () => ({
   useSloGroupDetail: () => ({
     data: {
       id: '1',
       name: 'app-x-plugins',
-      display_name: 'App-X Plugins',
-      template_slo_name: 'plugin-tpl',
-      template_slo_version: 1,
-      gen_variables: { process_name: ['auth', 'cache', 'db'] },
+      displayName: 'App-X Plugins',
+      templateSloName: 'plugin-tpl',
+      templateSloVersion: 1,
+      genVariables: { process_name: ['auth', 'cache', 'db'] },
       tags: { app: 'app-x' },
       author: 'admin',
       version: 1,
       active: true,
-      created_at: '2026-01-01',
-      updated_at: '2026-01-01',
-      generated_slo_count: 3,
+      createdAt: new Date('2026-01-01'),
+      updatedAt: new Date('2026-01-01'),
+      generatedSloCount: 3,
     },
     isLoading: false,
   }),

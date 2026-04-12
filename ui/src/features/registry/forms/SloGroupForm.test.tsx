@@ -12,7 +12,7 @@ vi.mock('@/features/slos/hooks', () => ({
   }),
 }))
 
-vi.mock('@/features/slo-groups/hooks', () => ({
+vi.mock('@/features/slo-groups', () => ({
   useCreateSloGroup: () => ({ mutateAsync: vi.fn(), isPending: false }),
 }))
 

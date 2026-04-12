@@ -1,5 +1,5 @@
 import { useState, useMemo, useRef, useEffect } from 'react'
-import { useSloGroups } from '@/features/slo-groups/hooks'
+import { useSloGroups } from '@/features/slo-groups'
 import { useQueries } from '@tanstack/react-query'
 import { Plus } from 'lucide-react'
 import { TreeFilter, TreeNode, getEntityIcon } from '@/components/tree'

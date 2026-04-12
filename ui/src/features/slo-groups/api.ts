@@ -1,38 +1,51 @@
-import type { SloGroup, SloGroupCreate, SloGroupUpdate } from './types'
+import type { components } from '@/generated/api'
+import type { SloGroup } from './domain'
+import { dtoToSloGroup, type SloGroupDto } from './mappers'
+
+export type SloGroupCreateInput = components['schemas']['SLOGroupCreate']
+export type SloGroupUpdateInput = components['schemas']['SLOGroupUpdate']
+
+type SloGroupListDto = { items: SloGroupDto[]; total: number }
 
 const BASE = '/api'
 
 export async function fetchSloGroups(): Promise<SloGroup[]> {
   const res = await fetch(`${BASE}/slo-groups`)
   if (!res.ok) throw new Error(`fetchSloGroups: ${res.status}`)
-  const data: { items: SloGroup[]; total: number } = await res.json()
-  return data.items
+  const body: SloGroupListDto = await res.json()
+  return body.items.map(dtoToSloGroup)
 }
 
 export async function fetchSloGroupDetail(name: string): Promise<SloGroup> {
   const res = await fetch(`${BASE}/slo-groups/${encodeURIComponent(name)}`)
   if (!res.ok) throw new Error(`fetchSloGroupDetail: ${res.status}`)
-  return res.json()
+  const body: SloGroupDto = await res.json()
+  return dtoToSloGroup(body)
 }
 
-export async function createSloGroup(body: SloGroupCreate): Promise<SloGroup> {
+export async function createSloGroup(payload: SloGroupCreateInput): Promise<SloGroup> {
   const res = await fetch(`${BASE}/slo-groups`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
+    body: JSON.stringify(payload),
   })
   if (!res.ok) throw new Error(`createSloGroup: ${res.status}`)
-  return res.json()
+  const body: SloGroupDto = await res.json()
+  return dtoToSloGroup(body)
 }
 
-export async function updateSloGroup(name: string, body: SloGroupUpdate): Promise<SloGroup> {
+export async function updateSloGroup(
+  name: string,
+  payload: SloGroupUpdateInput,
+): Promise<SloGroup> {
   const res = await fetch(`${BASE}/slo-groups/${encodeURIComponent(name)}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
+    body: JSON.stringify(payload),
   })
   if (!res.ok) throw new Error(`updateSloGroup: ${res.status}`)
-  return res.json()
+  const body: SloGroupDto = await res.json()
+  return dtoToSloGroup(body)
 }
 
 export async function deleteSloGroup(name: string): Promise<void> {

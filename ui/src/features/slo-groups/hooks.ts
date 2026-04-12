@@ -1,7 +1,14 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { sloGroupKeys, sloKeys } from '@/lib/queryKeys'
-import { fetchSloGroups, fetchSloGroupDetail, createSloGroup, updateSloGroup, deleteSloGroup } from './api'
-import type { SloGroupCreate, SloGroupUpdate } from './types'
+import {
+  fetchSloGroups,
+  fetchSloGroupDetail,
+  createSloGroup,
+  updateSloGroup,
+  deleteSloGroup,
+  type SloGroupCreateInput,
+  type SloGroupUpdateInput,
+} from './api'
 
 export function useSloGroups() {
   return useQuery({
@@ -21,7 +28,7 @@ export function useSloGroupDetail(name: string) {
 export function useCreateSloGroup() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (body: SloGroupCreate) => createSloGroup(body),
+    mutationFn: (body: SloGroupCreateInput) => createSloGroup(body),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: sloGroupKeys.all })
       void qc.invalidateQueries({ queryKey: sloKeys.all })
@@ -32,7 +39,8 @@ export function useCreateSloGroup() {
 export function useUpdateSloGroup() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: ({ name, body }: { name: string; body: SloGroupUpdate }) => updateSloGroup(name, body),
+    mutationFn: ({ name, body }: { name: string; body: SloGroupUpdateInput }) =>
+      updateSloGroup(name, body),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: sloGroupKeys.all })
       void qc.invalidateQueries({ queryKey: sloKeys.all })
