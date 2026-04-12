@@ -194,6 +194,56 @@ pnpm exec vitest run --watch              # Watch mode
 Vitest requires `vite.config.ts` for happy-dom environment. Running `pnpm exec vitest` from the repo root
 (outside `ui/`) will fail with `document is not defined`. Always use `just test-ui` or `cd ui` first.
 
+### Layering: DTO / Domain / Mapper (anti-corruption layer)
+
+TROPEK UI uses a layered architecture to isolate components from API wire shapes. The full
+design spec is at `docs/superpowers/specs/2026-04-12-ui-layering-design.md`. Read it before
+making cross-boundary changes.
+
+**Two type universes, one mapping point:**
+
+- **DTOs** live in `ui/src/generated/api.ts` (generated from OpenAPI via `just codegen`).
+  They are the exact wire format — snake_case, dates-as-strings, backend vocabulary.
+- **Domain types** live in `features/<x>/domain.ts`. They are hand-written in UI vocabulary —
+  camelCase, real `Date` objects, parsed criteria, typed enums. Components import from here.
+- **Mappers** (`features/<x>/mappers.ts`) hold `dtoToX(dto): X` functions. They run inside
+  fetch functions in `api.ts`, once per network call, before the result is returned to
+  React Query. The React Query cache stores domain types, not DTOs.
+
+**Per-feature layout:**
+
+```
+features/<x>/
+├── api.ts         # fetch fns; invoke mapper before returning
+├── domain.ts      # domain types (UI vocabulary)
+├── mappers.ts     # dtoToX (+ xInputToDto when needed)
+├── hooks.ts       # thin React Query wrappers
+├── ui-types.ts    # UI-only types (heatmap state, prop types, etc.)
+├── index.ts       # re-exports domain types + hooks ONLY
+└── components/    # import domain types from '@/features/<x>'
+```
+
+**Hard rules:**
+
+1. **Components and `hooks.ts` never import from `@/generated/api`.** Only `api.ts`,
+   `mappers.ts`, and `queryOptions.ts` may. Enforced by ESLint `no-restricted-imports`.
+2. **`features/*/index.ts` never re-exports mappers or DTOs.** DTO types stay invisible.
+3. **Hand-written `types.ts` files are deprecated.** Migrating a feature renames it to
+   `domain.ts` and adds a mapper.
+4. **Mappers are strict sync.** No `await`, no `fetch` inside a mapper. Multi-resource
+   composition happens at the hook layer via composed queries, never inside a mapper.
+5. **`select` is for in-component derivation only** — never for DTO→domain conversion.
+   Mapping at the fetch boundary keeps the cache in a single type system.
+6. **Write paths send backend shapes directly by default.** A reverse mapper
+   (`xInputToDto`) exists only when the domain vocabulary legitimately diverges from the
+   request body (discriminated unions, enum→string, merged date ranges, optimistic updates).
+
+**Migration status:** the pattern is designed but not yet implemented. `features/assets/`
+has the Phase 1 pure-alias migration in `.worktrees/contract-testing-phase-1/` and will be
+refactored per the new pattern as the first task of the expanded plan. No other feature
+has been migrated yet. When touching an unmigrated feature, do NOT silently apply the new
+pattern mid-task — flag to the user whether this is the right moment to migrate.
+
 ### UI testing
 
 Component tests use **Vitest + React Testing Library + happy-dom**. Config lives in `vite.config.ts` (`test` block), setup in `src/test-setup.ts`.
