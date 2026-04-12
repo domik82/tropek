@@ -1,5 +1,5 @@
 import type { SloGroup } from '@/features/slo-groups/types'
-import type { TreeNode } from './types'
+import type { TreeNode } from './ui-types'
 
 export interface MinSlo {
   name: string

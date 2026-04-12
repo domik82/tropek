@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { buildSloTree, buildDatasourceTree, buildAssetTree, filterTree, buildSloSections, buildSloGroupMap, mergeBindings } from './useRegistryTree'
 import type { MinSlo } from './useRegistryTree'
-import type { TreeNode } from './types'
+import type { TreeNode } from './ui-types'
 import type { SloGroup } from '@/features/slo-groups/types'
 
 describe('buildSloTree', () => {

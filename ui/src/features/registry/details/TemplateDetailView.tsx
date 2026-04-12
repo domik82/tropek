@@ -6,7 +6,7 @@ import { useSloDetail } from '@/features/slos/hooks'
 import { useSloGroups } from '@/features/slo-groups/hooks'
 import { Button } from '@/components/ui/button'
 import type { SloDefinition } from '@/features/slos/types'
-import type { SelectedNode } from '@/features/registry/types'
+import type { SelectedNode } from '@/features/registry/ui-types'
 
 interface Props {
   name: string

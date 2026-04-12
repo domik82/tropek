@@ -6,7 +6,7 @@ import { ENTITY_COLORS } from '@/lib/entity-colors'
 import { SANS_SERIF } from '@/lib/fonts'
 import { useSloGroupDetail, useDeleteSloGroup, useUpdateSloGroup } from '@/features/slo-groups/hooks'
 import { useSloVersions } from '@/features/slos/hooks'
-import type { SelectedNode } from '@/features/registry/types'
+import type { SelectedNode } from '@/features/registry/ui-types'
 
 interface Props {
   name: string

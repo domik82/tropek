@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import { RegistryTree } from './RegistryTree'
-import type { TreeNode, SelectedNode } from './types'
+import type { TreeNode, SelectedNode } from './ui-types'
 
 describe('RegistryTree', () => {
   const nodes: TreeNode[] = [

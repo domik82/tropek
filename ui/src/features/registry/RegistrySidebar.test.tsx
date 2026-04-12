@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, fireEvent, cleanup } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { RegistrySidebar } from './RegistrySidebar'
-import type { RegistryMode, SelectedNode } from './types'
+import type { RegistryMode, SelectedNode } from './ui-types'
 
 vi.mock('@/features/slo-groups/hooks', () => ({
   useSloGroups: () => ({ data: [] }),
