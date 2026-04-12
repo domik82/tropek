@@ -20,13 +20,16 @@ vi.mock('@/features/slis/hooks', () => ({
   }),
 }))
 
-vi.mock('../hooks', () => ({
+vi.mock('@/features/assets', () => ({
   useGroupTree: () => ({
     data: {
       allGroups: [{ id: 'g-1', name: 'production', displayName: 'Production' }],
       topLevel: [],
     },
   }),
+}))
+
+vi.mock('../hooks', () => ({
   useSlos: () => ({
     data: [
       { id: 'slo-def-1', name: 'latency-slo', display_name: 'Latency SLO', active: true },

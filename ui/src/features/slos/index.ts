@@ -12,11 +12,9 @@ export type {
 export type {
   SloCreateInput,
   SloAssignmentCreateInput,
-  AssetGroupUpdateInput,
 } from './api'
 export {
   useSlos, useSloDetail, useSloVersions, useCreateSlo, useDeleteSlo,
-  useGroupTree, useCreateGroup, useUpdateGroup, useDeleteGroup, useAddSubgroup,
   useAssetSloAssignments, useAssetSloGroupAssignments, useGroupSloAssignments,
   useCreateGroupSloAssignment, useDeleteGroupSloAssignment,
   useSloTagKeys, useSloTagValues,

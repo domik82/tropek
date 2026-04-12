@@ -16,17 +16,9 @@ import {
   type SloGroupAssignmentDto,
   type SloValidationResultDto,
 } from './mappers'
-import type { AssetGroup, AssetGroupTree } from '@/features/assets'
-import {
-  dtoToAssetGroup,
-  dtoToAssetGroupTree,
-  type AssetGroupDto,
-  type AssetGroupTreeDto,
-} from '@/features/assets/mappers'
 
 export type SloCreateInput = components['schemas']['SLODefinitionCreate']
 export type SloAssignmentCreateInput = components['schemas']['SLOAssignmentCreate']
-export type AssetGroupUpdateInput = components['schemas']['AssetGroupUpdate']
 
 const BASE = '/api'
 
@@ -83,57 +75,6 @@ export async function fetchSloVersions(name: string): Promise<Slo[]> {
   const body: SloDto[] = await res.json()
   return body.map(dtoToSlo)
 }
-
-export async function fetchGroupTree(): Promise<AssetGroupTree> {
-  const res = await fetch(`${BASE}/asset-groups/tree`)
-  if (!res.ok) throw new Error(`fetchGroupTree: ${res.status}`)
-  const body: AssetGroupTreeDto = await res.json()
-  return dtoToAssetGroupTree(body)
-}
-
-export async function createGroup(body: {
-  name: string; display_name?: string; description?: string
-}): Promise<AssetGroup> {
-  const res = await fetch(`${BASE}/asset-groups`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  })
-  if (!res.ok) throw new Error(`createGroup: ${res.status}`)
-  const response: AssetGroupDto = await res.json()
-  return dtoToAssetGroup(response)
-}
-
-export async function updateGroup(name: string, body: AssetGroupUpdateInput): Promise<AssetGroup> {
-  const res = await fetch(`${BASE}/asset-groups/${encodeURIComponent(name)}`, {
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  })
-  if (!res.ok) throw new Error(`updateGroup: ${res.status}`)
-  const response: AssetGroupDto = await res.json()
-  return dtoToAssetGroup(response)
-}
-
-export async function deleteGroup(name: string, deactivateSlos: boolean): Promise<void> {
-  const res = await fetch(
-    `${BASE}/asset-groups/${encodeURIComponent(name)}?deactivate_slos=${deactivateSlos}`,
-    { method: 'DELETE' },
-  )
-  if (!res.ok) throw new Error(`deleteGroup: ${res.status}`)
-}
-
-export async function addSubgroup(parentName: string, childGroupId: string): Promise<AssetGroup> {
-  const res = await fetch(`${BASE}/asset-groups/${encodeURIComponent(parentName)}/subgroups`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ child_group_id: childGroupId, weight: 1.0 }),
-  })
-  if (!res.ok) throw new Error(`addSubgroup: ${res.status}`)
-  const body: AssetGroupDto = await res.json()
-  return dtoToAssetGroup(body)
-}
-
 
 export async function fetchSloTagKeys(): Promise<{ key: string; count: number }[]> {
   const res = await fetch(`${BASE}/slo-definitions/tag-keys`)

@@ -1,10 +1,9 @@
 // src/features/slos/hooks.ts
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { sloKeys, groupKeys, assetKeys, assignmentKeys } from '@/lib/queryKeys'
+import { sloKeys, groupKeys, assignmentKeys } from '@/lib/queryKeys'
 import {
   fetchSlos, fetchSloDetail, validateSlo, createSloDefinition, deleteSlo, fetchSloVersions,
-  fetchGroupTree, createGroup, updateGroup, deleteGroup,
-  addSubgroup, fetchSloTagKeys, fetchSloTagValues,
+  fetchSloTagKeys, fetchSloTagValues,
   fetchAssetSloAssignments, fetchGroupSloAssignments,
   fetchAssetSloGroupAssignments,
   createGroupSloAssignment, deleteGroupSloAssignment,
@@ -59,60 +58,6 @@ export function useSloVersions(name: string, enabled: boolean) {
     enabled: enabled && !!name,
   })
 }
-
-export function useGroupTree() {
-  return useQuery({ queryKey: groupKeys.tree(), queryFn: fetchGroupTree })
-}
-
-
-export function useCreateGroup() {
-  const qc = useQueryClient()
-  return useMutation({
-    mutationFn: createGroup,
-    onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: groupKeys.all })
-      void qc.invalidateQueries({ queryKey: assetKeys.groups() })
-    },
-  })
-}
-
-export function useUpdateGroup() {
-  const qc = useQueryClient()
-  return useMutation({
-    mutationFn: ({ name, ...body }: { name: string; display_name?: string; description?: string }) =>
-      updateGroup(name, body),
-    onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: groupKeys.all })
-      void qc.invalidateQueries({ queryKey: assetKeys.groups() })
-    },
-  })
-}
-
-export function useDeleteGroup() {
-  const qc = useQueryClient()
-  return useMutation({
-    mutationFn: ({ name, deactivateSlos }: { name: string; deactivateSlos: boolean }) =>
-      deleteGroup(name, deactivateSlos),
-    onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: groupKeys.all })
-      void qc.invalidateQueries({ queryKey: assetKeys.groups() })
-      void qc.invalidateQueries({ queryKey: sloKeys.all })
-    },
-  })
-}
-
-export function useAddSubgroup() {
-  const qc = useQueryClient()
-  return useMutation({
-    mutationFn: ({ parentName, childGroupId }: { parentName: string; childGroupId: string }) =>
-      addSubgroup(parentName, childGroupId),
-    onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: groupKeys.all })
-      void qc.invalidateQueries({ queryKey: assetKeys.groups() })
-    },
-  })
-}
-
 
 export function useSloTagKeys() {
   return useQuery({ queryKey: sloKeys.tagKeys(), queryFn: fetchSloTagKeys })

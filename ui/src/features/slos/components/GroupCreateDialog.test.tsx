@@ -4,7 +4,7 @@ import { GroupCreateDialog } from './GroupCreateDialog'
 
 const mockMutateAsync = vi.fn().mockResolvedValue({ id: 'group-1', name: 'test-group' })
 
-vi.mock('../hooks', () => ({
+vi.mock('@/features/assets', () => ({
   useCreateGroup: () => ({ mutateAsync: mockMutateAsync, isPending: false }),
   useAddSubgroup: () => ({ mutateAsync: vi.fn() }),
   useGroupTree: () => ({ data: { all_groups: [], root_groups: [] } }),

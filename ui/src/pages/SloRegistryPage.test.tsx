@@ -40,7 +40,7 @@ vi.mock('@/features/registry/forms/SloLinkDialogRevised', () => ({
   SloLinkDialogRevised: () => <div data-testid="slo-link-dialog" />,
 }))
 
-vi.mock('@/features/slos/hooks', () => ({
+vi.mock('@/features/assets/hooks', () => ({
   useCreateGroup: () => ({ mutateAsync: vi.fn() }),
 }))
 

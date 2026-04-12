@@ -24,6 +24,7 @@ export type AssetCreateInput = components['schemas']['AssetCreate']
 export type AssetUpdateInput = components['schemas']['AssetUpdate']
 export type AssetTypeCreateInput = components['schemas']['AssetTypeCreate']
 export type AssetTypeUpdateInput = components['schemas']['AssetTypeUpdate']
+export type AssetGroupUpdateInput = components['schemas']['AssetGroupUpdate']
 
 const BASE = '/api'
 
@@ -178,4 +179,56 @@ export async function removeGroupMember(groupName: string, assetId: string): Pro
     { method: 'DELETE' },
   )
   if (!res.ok) throw new Error(`removeGroupMember: ${res.status}`)
+}
+
+// ---- Asset Group CRUD ----
+
+export async function fetchGroupTree(): Promise<AssetGroupTree> {
+  const res = await fetch(`${BASE}/asset-groups/tree`)
+  if (!res.ok) throw new Error(`fetchGroupTree: ${res.status}`)
+  const body: AssetGroupTreeDto = await res.json()
+  return dtoToAssetGroupTree(body)
+}
+
+export async function createGroup(body: {
+  name: string; display_name?: string; description?: string
+}): Promise<AssetGroup> {
+  const res = await fetch(`${BASE}/asset-groups`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+  if (!res.ok) throw new Error(`createGroup: ${res.status}`)
+  const response: AssetGroupDto = await res.json()
+  return dtoToAssetGroup(response)
+}
+
+export async function updateGroup(name: string, body: AssetGroupUpdateInput): Promise<AssetGroup> {
+  const res = await fetch(`${BASE}/asset-groups/${encodeURIComponent(name)}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+  if (!res.ok) throw new Error(`updateGroup: ${res.status}`)
+  const response: AssetGroupDto = await res.json()
+  return dtoToAssetGroup(response)
+}
+
+export async function deleteGroup(name: string, deactivateSlos: boolean): Promise<void> {
+  const res = await fetch(
+    `${BASE}/asset-groups/${encodeURIComponent(name)}?deactivate_slos=${deactivateSlos}`,
+    { method: 'DELETE' },
+  )
+  if (!res.ok) throw new Error(`deleteGroup: ${res.status}`)
+}
+
+export async function addSubgroup(parentName: string, childGroupId: string): Promise<AssetGroup> {
+  const res = await fetch(`${BASE}/asset-groups/${encodeURIComponent(parentName)}/subgroups`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ child_group_id: childGroupId, weight: 1.0 }),
+  })
+  if (!res.ok) throw new Error(`addSubgroup: ${res.status}`)
+  const body: AssetGroupDto = await res.json()
+  return dtoToAssetGroup(body)
 }
