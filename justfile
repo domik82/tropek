@@ -95,3 +95,9 @@ up:
 # Run e2e integration test suite
 e2e:
     ./scripts/integration-test.sh
+
+# ─── Contract Testing ─────────────────────────────────────────────────
+
+# Export FastAPI OpenAPI schema to api/openapi.json
+export-schema:
+    uv run --directory api python ../scripts/export-schema.py
