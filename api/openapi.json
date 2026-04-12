@@ -753,6 +753,60 @@
         "title": "AssetRead",
         "type": "object"
       },
+      "AssetSnapshot": {
+        "description": "Snapshot of asset identity/version at evaluation time.",
+        "properties": {
+          "build_ref": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Build Ref"
+          },
+          "display_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Name"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "primary_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Primary Version"
+          },
+          "tags": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Tags",
+            "type": "object"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "AssetSnapshot",
+        "type": "object"
+      },
       "AssetTypeCreate": {
         "additionalProperties": false,
         "description": "Request body for creating an asset type.",
@@ -959,6 +1013,58 @@
           "period_end"
         ],
         "title": "BatchPeriod",
+        "type": "object"
+      },
+      "ComparisonConfig": {
+        "additionalProperties": true,
+        "description": "Per-SLO comparison configuration. All fields optional.",
+        "properties": {
+          "aggregate_function": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Aggregate Function"
+          },
+          "compare_with": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Compare With"
+          },
+          "include_result_with_score": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Include Result With Score"
+          },
+          "number_of_comparison_results": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Number Of Comparison Results"
+          }
+        },
+        "title": "ComparisonConfig",
         "type": "object"
       },
       "DataSourceCreate": {
@@ -1496,9 +1602,7 @@
             "type": "array"
           },
           "asset_snapshot": {
-            "additionalProperties": true,
-            "title": "Asset Snapshot",
-            "type": "object"
+            "$ref": "#/components/schemas/AssetSnapshot"
           },
           "baseline_pin_author": {
             "anyOf": [
@@ -1700,7 +1804,9 @@
           "sli_metadata": {
             "anyOf": [
               {
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "$ref": "#/components/schemas/SliMetadata"
+                },
                 "type": "object"
               },
               {
@@ -1788,7 +1894,9 @@
             "title": "Total Score Warning Threshold"
           },
           "variables": {
-            "additionalProperties": true,
+            "additionalProperties": {
+              "type": "string"
+            },
             "title": "Variables",
             "type": "object"
           }
@@ -1865,9 +1973,7 @@
             "type": "integer"
           },
           "asset_snapshot": {
-            "additionalProperties": true,
-            "title": "Asset Snapshot",
-            "type": "object"
+            "$ref": "#/components/schemas/AssetSnapshot"
           },
           "baseline_pin_author": {
             "anyOf": [
@@ -2096,7 +2202,9 @@
             "type": "array"
           },
           "variables": {
-            "additionalProperties": true,
+            "additionalProperties": {
+              "type": "string"
+            },
             "title": "Variables",
             "type": "object"
           }
@@ -2204,7 +2312,7 @@
           },
           "groups": {
             "items": {
-              "$ref": "#/components/schemas/SloGroup"
+              "$ref": "#/components/schemas/HeatmapSloGroupSection"
             },
             "title": "Groups",
             "type": "array"
@@ -2336,8 +2444,7 @@
             "anyOf": [
               {
                 "items": {
-                  "additionalProperties": true,
-                  "type": "object"
+                  "$ref": "#/components/schemas/PassTarget"
                 },
                 "type": "array"
               },
@@ -2391,8 +2498,7 @@
             "anyOf": [
               {
                 "items": {
-                  "additionalProperties": true,
-                  "type": "object"
+                  "$ref": "#/components/schemas/PassTarget"
                 },
                 "type": "array"
               },
@@ -2439,6 +2545,55 @@
         "title": "HeatmapMetric",
         "type": "object"
       },
+      "HeatmapSloGroupSection": {
+        "description": "One SLO's contribution to the grouped heatmap.",
+        "properties": {
+          "cells": {
+            "items": {
+              "$ref": "#/components/schemas/HeatmapCellGrouped"
+            },
+            "title": "Cells",
+            "type": "array"
+          },
+          "metrics": {
+            "items": {
+              "$ref": "#/components/schemas/HeatmapMetric"
+            },
+            "title": "Metrics",
+            "type": "array"
+          },
+          "slo_display_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Slo Display Name"
+          },
+          "slo_name": {
+            "title": "Slo Name",
+            "type": "string"
+          },
+          "summary": {
+            "items": {
+              "$ref": "#/components/schemas/HeatmapSummaryCell"
+            },
+            "title": "Summary",
+            "type": "array"
+          }
+        },
+        "required": [
+          "slo_name",
+          "metrics",
+          "cells",
+          "summary"
+        ],
+        "title": "HeatmapSloGroupSection",
+        "type": "object"
+      },
       "HeatmapSummaryCell": {
         "description": "Per-column aggregate for an SLO group or the Overall composite row.",
         "properties": {
@@ -2479,7 +2634,9 @@
           "sli_metadata": {
             "anyOf": [
               {
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "$ref": "#/components/schemas/SliMetadata"
+                },
                 "type": "object"
               },
               {
@@ -2583,8 +2740,7 @@
             "anyOf": [
               {
                 "items": {
-                  "additionalProperties": true,
-                  "type": "object"
+                  "$ref": "#/components/schemas/PassTarget"
                 },
                 "type": "array"
               },
@@ -2628,8 +2784,7 @@
             "anyOf": [
               {
                 "items": {
-                  "additionalProperties": true,
-                  "type": "object"
+                  "$ref": "#/components/schemas/PassTarget"
                 },
                 "type": "array"
               },
@@ -2674,6 +2829,63 @@
           "invalidation_note"
         ],
         "title": "InvalidateRequest",
+        "type": "object"
+      },
+      "MethodCriteriaOverride": {
+        "description": "Per-indicator method-criteria override. All four fields optional.",
+        "properties": {
+          "aggregation": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Aggregation"
+          },
+          "method": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Method"
+          },
+          "pass_criteria": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pass Criteria"
+          },
+          "warning_criteria": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Warning Criteria"
+          }
+        },
+        "title": "MethodCriteriaOverride",
         "type": "object"
       },
       "MetricHeatmapResponse": {
@@ -2906,6 +3118,30 @@
           "total"
         ],
         "title": "PagedResponse[SLOGroupRead]",
+        "type": "object"
+      },
+      "PassTarget": {
+        "description": "A single resolved pass/warning target on an indicator result.",
+        "properties": {
+          "criteria": {
+            "title": "Criteria",
+            "type": "string"
+          },
+          "target_value": {
+            "title": "Target Value",
+            "type": "number"
+          },
+          "violated": {
+            "title": "Violated",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "criteria",
+          "target_value",
+          "violated"
+        ],
+        "title": "PassTarget",
         "type": "object"
       },
       "PinBaselineRequest": {
@@ -3515,9 +3751,7 @@
             "title": "Comparable From Version"
           },
           "comparison": {
-            "additionalProperties": true,
-            "title": "Comparison",
-            "type": "object"
+            "$ref": "#/components/schemas/ComparisonConfig"
           },
           "display_name": {
             "anyOf": [
@@ -3538,7 +3772,9 @@
           "method_criteria": {
             "anyOf": [
               {
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "$ref": "#/components/schemas/MethodCriteriaOverride"
+                },
                 "type": "object"
               },
               {
@@ -3592,7 +3828,9 @@
             "title": "Sli Version"
           },
           "tags": {
-            "additionalProperties": true,
+            "additionalProperties": {
+              "type": "string"
+            },
             "title": "Tags",
             "type": "object"
           },
@@ -3607,7 +3845,9 @@
             "type": "number"
           },
           "variables": {
-            "additionalProperties": true,
+            "additionalProperties": {
+              "type": "string"
+            },
             "title": "Variables",
             "type": "object"
           }
@@ -3642,9 +3882,7 @@
             "type": "integer"
           },
           "comparison": {
-            "additionalProperties": true,
-            "title": "Comparison",
-            "type": "object"
+            "$ref": "#/components/schemas/ComparisonConfig"
           },
           "created_at": {
             "format": "date-time",
@@ -3674,7 +3912,9 @@
           "method_criteria": {
             "anyOf": [
               {
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "$ref": "#/components/schemas/MethodCriteriaOverride"
+                },
                 "type": "object"
               },
               {
@@ -3740,7 +3980,9 @@
             "title": "Sli Version"
           },
           "tags": {
-            "additionalProperties": true,
+            "additionalProperties": {
+              "type": "string"
+            },
             "title": "Tags",
             "type": "object"
           },
@@ -3753,7 +3995,9 @@
             "type": "number"
           },
           "variables": {
-            "additionalProperties": true,
+            "additionalProperties": {
+              "type": "string"
+            },
             "title": "Variables",
             "type": "object"
           },
@@ -4224,9 +4468,7 @@
             ]
           },
           "comparison": {
-            "additionalProperties": true,
-            "title": "Comparison",
-            "type": "object"
+            "$ref": "#/components/schemas/ComparisonConfig"
           },
           "data_source_name": {
             "title": "Data Source Name",
@@ -4355,9 +4597,7 @@
         "description": "Request body for SLO validation (no save).",
         "properties": {
           "comparison": {
-            "additionalProperties": true,
-            "title": "Comparison",
-            "type": "object"
+            "$ref": "#/components/schemas/ComparisonConfig"
           },
           "objectives": {
             "items": {
@@ -4438,53 +4678,39 @@
         "title": "SLOValidationResult",
         "type": "object"
       },
-      "SloGroup": {
-        "description": "One SLO's contribution to the grouped heatmap.",
+      "SliMetadata": {
+        "description": "Per-metric aggregation fidelity info for a single indicator.",
         "properties": {
-          "cells": {
-            "items": {
-              "$ref": "#/components/schemas/HeatmapCellGrouped"
-            },
-            "title": "Cells",
-            "type": "array"
+          "actual_samples": {
+            "title": "Actual Samples",
+            "type": "integer"
           },
-          "metrics": {
-            "items": {
-              "$ref": "#/components/schemas/HeatmapMetric"
-            },
-            "title": "Metrics",
-            "type": "array"
+          "chunks_failed": {
+            "title": "Chunks Failed",
+            "type": "integer"
           },
-          "slo_display_name": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Slo Display Name"
+          "expected_samples": {
+            "title": "Expected Samples",
+            "type": "integer"
           },
-          "slo_name": {
-            "title": "Slo Name",
+          "missing_pct": {
+            "title": "Missing Pct",
+            "type": "number"
+          },
+          "mode": {
+            "const": "aggregated",
+            "title": "Mode",
             "type": "string"
-          },
-          "summary": {
-            "items": {
-              "$ref": "#/components/schemas/HeatmapSummaryCell"
-            },
-            "title": "Summary",
-            "type": "array"
           }
         },
         "required": [
-          "slo_name",
-          "metrics",
-          "cells",
-          "summary"
+          "mode",
+          "expected_samples",
+          "actual_samples",
+          "missing_pct",
+          "chunks_failed"
         ],
-        "title": "SloGroup",
+        "title": "SliMetadata",
         "type": "object"
       },
       "TagKeyCount": {
