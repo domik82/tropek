@@ -7,7 +7,8 @@ import uuid
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from tropek.db.session import get_session
+from tropek.cache.redis_cache import RedisCache
+from tropek.db.session import get_cache, get_session
 from tropek.modules.assets.params import AssetCreateParams, AssetGroupCreateParams
 from tropek.modules.assets.repository import (
     AssetGroupRepository,
@@ -118,9 +119,10 @@ async def list_assets(
     tag_key: str | None = None,
     tag_val: str | None = None,
     session: AsyncSession = Depends(get_session),
+    cache: RedisCache | None = Depends(get_cache),
 ) -> PagedResponse[AssetRead]:
     """List all assets with optional type or tag filters."""
-    repo = AssetRepository(session)
+    repo = AssetRepository(session, cache=cache)
     items = await repo.list_all(type_name=type_name, tag_key=tag_key, tag_val=tag_val)
     return PagedResponse(items=[AssetRead.model_validate(a) for a in items], total=len(items))
 
@@ -129,9 +131,10 @@ async def list_assets(
 async def create_asset(
     body: AssetCreate,
     session: AsyncSession = Depends(get_session),
+    cache: RedisCache | None = Depends(get_cache),
 ) -> AssetRead:
     """Create a new asset."""
-    repo = AssetRepository(session)
+    repo = AssetRepository(session, cache=cache)
     asset = await repo.create(
         AssetCreateParams(
             name=body.name,
@@ -148,9 +151,10 @@ async def create_asset(
 @router.get('/assets/tag-keys', response_model=list[TagKeyCount])
 async def list_tag_keys(
     session: AsyncSession = Depends(get_session),
+    cache: RedisCache | None = Depends(get_cache),
 ) -> list[TagKeyCount]:
     """List all distinct tag keys with usage counts."""
-    repo = AssetRepository(session)
+    repo = AssetRepository(session, cache=cache)
     keys = await repo.get_tag_keys()
     return [TagKeyCount(key=k, count=v) for k, v in keys.items()]
 
@@ -159,9 +163,10 @@ async def list_tag_keys(
 async def list_tag_values(
     key: str,
     session: AsyncSession = Depends(get_session),
+    cache: RedisCache | None = Depends(get_cache),
 ) -> list[TagValueCount]:
     """List all distinct values for a tag key with usage counts."""
-    repo = AssetRepository(session)
+    repo = AssetRepository(session, cache=cache)
     values = await repo.get_tag_values(key)
     return [TagValueCount(value=k, count=v) for k, v in values.items()]
 
@@ -170,9 +175,10 @@ async def list_tag_values(
 async def get_asset(
     name: str,
     session: AsyncSession = Depends(get_session),
+    cache: RedisCache | None = Depends(get_cache),
 ) -> AssetRead:
     """Get an asset by name."""
-    repo = AssetRepository(session)
+    repo = AssetRepository(session, cache=cache)
     asset = await repo.get_by_name(name)
     if asset is None:
         raise NotFoundError('asset', name)
@@ -184,9 +190,10 @@ async def update_asset(
     name: str,
     body: AssetUpdate,
     session: AsyncSession = Depends(get_session),
+    cache: RedisCache | None = Depends(get_cache),
 ) -> AssetRead:
     """Update mutable asset fields."""
-    repo = AssetRepository(session)
+    repo = AssetRepository(session, cache=cache)
     asset = await repo.update(name, **body.model_dump(exclude_none=True))
     return AssetRead.model_validate(asset)
 
@@ -195,9 +202,10 @@ async def update_asset(
 async def delete_asset(
     name: str,
     session: AsyncSession = Depends(get_session),
+    cache: RedisCache | None = Depends(get_cache),
 ) -> None:
     """Delete an asset and all its group memberships and SLO links."""
-    repo = AssetRepository(session)
+    repo = AssetRepository(session, cache=cache)
     found = await repo.delete(name)
     if not found:
         raise NotFoundError('asset', name)

@@ -11,6 +11,7 @@ from sqlalchemy import String, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from tropek.cache.redis_cache import RedisCache
 from tropek.db.models import Asset, EvaluationAnnotation, EvaluationRun, IndicatorResultRow, SLOEvaluation
 from tropek.modules.common.exceptions import ConflictError
 from tropek.modules.quality_gate.evaluation_engine.constants import EvaluationStatus
@@ -20,8 +21,15 @@ from tropek.modules.quality_gate.shared.params import EvalCreateParams
 class EvaluationRepository:
     """Data access layer for evaluation CRUD and status mutations."""
 
-    def __init__(self, session: AsyncSession) -> None:
+    def __init__(self, session: AsyncSession, cache: RedisCache | None = None) -> None:
         self._session = session
+        self._cache = cache
+
+    async def _invalidate_baseline_cache(
+        self, asset_id: uuid.UUID | None, slo_name: str | None,
+    ) -> None:
+        if self._cache and asset_id and slo_name:
+            await self._cache.invalidate(f'baseline:{asset_id}:{slo_name}')
 
     async def create_pending(self, params: EvalCreateParams) -> SLOEvaluation:
         """Create a new evaluation record in pending status.
@@ -178,6 +186,7 @@ class EvaluationRepository:
         slo_version: int | None = None,
         job_stats: dict[str, Any] | None = None,
         compared_evaluation_ids: list[str] | None = None,
+        asset_id: uuid.UUID | None = None,
     ) -> None:
         """Write final result and transition to completed.
 
@@ -191,6 +200,7 @@ class EvaluationRepository:
             slo_version: Version of the named SLO, if any.
             job_stats: Optional dict of job execution stats to merge.
             compared_evaluation_ids: IDs of evaluations used for relative criteria.
+            asset_id: Asset UUID for baseline cache invalidation.
         """
         merged_stats: dict[str, Any] = dict(job_stats or {})
         if compared_evaluation_ids is not None:
@@ -208,6 +218,7 @@ class EvaluationRepository:
         if slo_version is not None:
             values['slo_version'] = slo_version
         await self._session.execute(update(SLOEvaluation).where(SLOEvaluation.id == eval_id).values(**values))
+        await self._invalidate_baseline_cache(asset_id, slo_name)
 
     async def mark_failed(self, eval_id: uuid.UUID, job_stats: dict[str, Any] | None = None) -> None:
         """Transition evaluation to failed, recording error info.
@@ -406,6 +417,7 @@ class EvaluationRepository:
             .where(SLOEvaluation.evaluation_id == ev.evaluation_id)
             .values(invalidated=True, invalidation_note=note)
         )
+        await self._invalidate_baseline_cache(ev.asset_id, ev.slo_name)
         return await self.get_by_id(eval_id)
 
     async def restore(self, eval_id: uuid.UUID) -> SLOEvaluation | None:
@@ -418,6 +430,7 @@ class EvaluationRepository:
             .where(SLOEvaluation.evaluation_id == ev.evaluation_id)
             .values(invalidated=False, invalidation_note=None)
         )
+        await self._invalidate_baseline_cache(ev.asset_id, ev.slo_name)
         return await self.get_by_id(eval_id)
 
     async def pin_baseline(
@@ -458,14 +471,19 @@ class EvaluationRepository:
             )
         )
         await self._session.flush()
+        await self._invalidate_baseline_cache(ev.asset_id, ev.slo_name)
         return await self.get_by_id(eval_id)
 
     async def unpin_baseline(self, eval_id: uuid.UUID) -> SLOEvaluation | None:
         """Remove the baseline pin from an evaluation."""
+        ev = await self.get_by_id(eval_id)
+        if ev is None:
+            return None
         await self._session.execute(
             update(SLOEvaluation).where(SLOEvaluation.id == eval_id).values(baseline_unpinned_at=func.now())
         )
         await self._session.flush()
+        await self._invalidate_baseline_cache(ev.asset_id, ev.slo_name)
         return await self.get_by_id(eval_id)
 
     async def override_status(
@@ -490,6 +508,7 @@ class EvaluationRepository:
             values['original_result'] = ev.result
         await self._session.execute(update(SLOEvaluation).where(SLOEvaluation.id == eval_id).values(**values))
         await self._session.flush()
+        await self._invalidate_baseline_cache(ev.asset_id, ev.slo_name)
         return await self.get_by_id(eval_id)
 
     async def restore_override(self, eval_id: uuid.UUID) -> SLOEvaluation | None:
@@ -508,6 +527,7 @@ class EvaluationRepository:
             )
         )
         await self._session.flush()
+        await self._invalidate_baseline_cache(ev.asset_id, ev.slo_name)
         return await self.get_by_id(eval_id)
 
     async def get_by_run_id(self, run_id: uuid.UUID) -> list[SLOEvaluation]:

@@ -198,6 +198,7 @@ async def run_evaluation_job(ctx: dict[str, Any], eval_id_str: str, defer_count:
             snapshot=snapshot,
             slo_def=slo_def,
             fetch_result=fetch_result,
+            cache=cache,
         )
         await session.commit()
 
