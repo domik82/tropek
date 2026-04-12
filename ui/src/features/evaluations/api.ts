@@ -88,8 +88,8 @@ export async function fetchTrend(
 
 export async function triggerEvaluation(
   payload: TriggerEvaluationPayload
-): Promise<{ id: string }> {
-  const res = await fetch(`${BASE}/evaluations`, {
+): Promise<{ evaluation_id: string; slo_evaluation_ids: string[] }> {
+  const res = await fetch(`${BASE}/evaluate`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),

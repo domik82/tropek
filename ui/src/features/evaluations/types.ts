@@ -131,12 +131,11 @@ export interface EvaluationFilters {
 }
 
 export interface TriggerEvaluationPayload {
-  group_name: string
-  evaluation_name: string
-  slo_name: string
+  asset_name: string
+  eval_name: string
   period_start: string
   period_end: string
-  metadata?: Record<string, string>
+  variables?: Record<string, string>
 }
 
 // Column definition for EvaluationTable column picker.

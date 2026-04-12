@@ -1,6 +1,6 @@
 // src/features/evaluations/components/TriggerEvaluationModal.tsx
 // Modal form for triggering a new evaluation.
-// Cross-feature: imports useAssetGroups from features/assets and useSlos from features/slos.
+// Cross-feature: imports useAssets from features/assets.
 
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -12,14 +12,12 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { triggerEvaluation } from '../api'
-import { useAssetGroups } from '@/features/assets/hooks'
-import { useSlos } from '@/features/slos/hooks'
+import { useAssets } from '@/features/assets/hooks'
 import { evaluationKeys } from '@/lib/queryKeys'
 
 const schema = z.object({
-  group_name: z.string().min(1, 'Required'),
-  evaluation_name: z.string().min(1, 'Required'),
-  slo_name: z.string().min(1, 'Required'),
+  asset_name: z.string().min(1, 'Required'),
+  eval_name: z.string().min(1, 'Required'),
   period_start: z.string().min(1, 'Required'),
   period_end: z.string().min(1, 'Required'),
 })
@@ -32,8 +30,7 @@ interface Props {
 
 export function TriggerEvaluationModal({ open, onClose }: Props) {
   const qc = useQueryClient()
-  const { data: assetGroups } = useAssetGroups()
-  const { data: slos } = useSlos()
+  const { data: assets } = useAssets()
 
   const { register, handleSubmit, reset, formState: { errors } } = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -49,11 +46,15 @@ export function TriggerEvaluationModal({ open, onClose }: Props) {
   })
 
   function onSubmit(values: FormValues) {
-    trigger.mutate(values)
+    trigger.mutate({
+      asset_name: values.asset_name,
+      eval_name: values.eval_name,
+      period_start: new Date(values.period_start).toISOString(),
+      period_end: new Date(values.period_end).toISOString(),
+    })
   }
 
-  const groupNames = assetGroups?.top_level.map(g => g.name) ?? []
-  const sloNames = slos?.map(s => s.name) ?? []
+  const assetNames = assets?.map(a => a.name) ?? []
 
   return (
     <Dialog open={open} onOpenChange={v => !v && onClose()}>
@@ -63,25 +64,17 @@ export function TriggerEvaluationModal({ open, onClose }: Props) {
         </DialogHeader>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-3 pt-2">
           <div>
-            <label className="text-xs text-muted-foreground">Asset Group</label>
-            <select {...register('group_name')} className="w-full mt-1 bg-surface-sunken border border-border rounded px-3 py-2 text-sm">
-              <option value="">Select group...</option>
-              {groupNames.map(n => <option key={n} value={n}>{n}</option>)}
+            <label className="text-xs text-muted-foreground">Asset</label>
+            <select {...register('asset_name')} className="w-full mt-1 bg-surface-sunken border border-border rounded px-3 py-2 text-sm">
+              <option value="">Select asset...</option>
+              {assetNames.map(n => <option key={n} value={n}>{n}</option>)}
             </select>
-            {errors.group_name && <p className="text-destructive-form-text text-xs mt-1">{errors.group_name.message}</p>}
+            {errors.asset_name && <p className="text-destructive-form-text text-xs mt-1">{errors.asset_name.message}</p>}
           </div>
           <div>
             <label className="text-xs text-muted-foreground">Evaluation Name</label>
-            <Input {...register('evaluation_name')} placeholder="e.g. perf-test-linux" className="mt-1" />
-            {errors.evaluation_name && <p className="text-destructive-form-text text-xs mt-1">{errors.evaluation_name.message}</p>}
-          </div>
-          <div>
-            <label className="text-xs text-muted-foreground">SLO</label>
-            <select {...register('slo_name')} className="w-full mt-1 bg-surface-sunken border border-border rounded px-3 py-2 text-sm">
-              <option value="">Select SLO...</option>
-              {sloNames.map(n => <option key={n} value={n}>{n}</option>)}
-            </select>
-            {errors.slo_name && <p className="text-destructive-form-text text-xs mt-1">{errors.slo_name.message}</p>}
+            <Input {...register('eval_name')} placeholder="e.g. perf-test-linux" className="mt-1" />
+            {errors.eval_name && <p className="text-destructive-form-text text-xs mt-1">{errors.eval_name.message}</p>}
           </div>
           <div className="flex gap-2">
             <div className="flex-1">
