@@ -69,8 +69,8 @@ class AssetRead(BaseModel):
     name: str
     display_name: str | None
     type_name: str
-    tags: dict[str, Any]
-    variables: dict[str, Any]
+    tags: dict[str, str]
+    variables: dict[str, str]
     heatmap_config: dict[str, Any] | None = None
     color: str | None = None
     created_at: datetime

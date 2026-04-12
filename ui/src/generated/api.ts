@@ -1752,7 +1752,7 @@ export interface components {
             name: string;
             /** Tags */
             tags: {
-                [key: string]: unknown;
+                [key: string]: string;
             };
             /** Type Name */
             type_name: string;
@@ -1763,7 +1763,7 @@ export interface components {
             updated_at: string;
             /** Variables */
             variables: {
-                [key: string]: unknown;
+                [key: string]: string;
             };
         };
         /**
