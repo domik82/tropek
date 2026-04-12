@@ -1,59 +1,16 @@
 // src/features/assets/types.ts
+// Thin aliases over the generated OpenAPI types.
+// DO NOT add fields here. If a field is missing, add it to the backend
+// schema and regenerate: `just export-schema && just codegen`.
+import type { components } from '@/generated/api'
 
-export interface AssetType {
-  id: string
-  name: string
-  is_default: boolean
-  asset_count: number
-}
+type Schemas = components['schemas']
 
-export interface Asset {
-  id: string
-  name: string
-  display_name?: string
-  type_name: string
-  tags: Record<string, string>
-  variables: Record<string, string>
-  color?: string | null
-  created_at: string
-  updated_at: string
-}
-
-export interface AssetGroupMember {
-  asset_id: string
-  asset_name: string
-  asset_display_name?: string | null
-  asset_type_name?: string
-  weight: number
-}
-
-export interface AssetGroupSubgroup {
-  group_id: string
-  group_name: string
-  weight: number
-}
-
-export interface AssetGroup {
-  id: string
-  name: string
-  display_name?: string
-  description?: string
-  color?: string | null
-  members: AssetGroupMember[]
-  subgroups: AssetGroupSubgroup[]
-}
-
-export interface AssetGroupTree {
-  top_level: AssetGroup[]
-  all_groups: AssetGroup[]
-}
-
-export interface TagKeyCount {
-  key: string
-  count: number
-}
-
-export interface TagValueCount {
-  value: string
-  count: number
-}
+export type Asset = Schemas['AssetRead']
+export type AssetType = Schemas['AssetTypeRead']
+export type AssetGroup = Schemas['AssetGroupRead']
+export type AssetGroupMember = Schemas['AssetGroupMemberRead']
+export type AssetGroupSubgroup = Schemas['AssetGroupSubgroupRead']
+export type AssetGroupTree = Schemas['AssetGroupTreeResponse']
+export type TagKeyCount = Schemas['TagKeyCount']
+export type TagValueCount = Schemas['TagValueCount']
