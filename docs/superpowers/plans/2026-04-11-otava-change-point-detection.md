@@ -17,12 +17,20 @@
 ## Key Decisions (Updated from Original Spec)
 
 1. **Otava is indicator-only** — never gates the build. Change points are supplementary markers.
-2. **Per-indicator config** — each metric gets its own `window_size`, `min_sample_size`, and `enabled` flag via `change_point_config` table, keyed by `(slo_name, metric_name)`. This is decoupled from versioned SLO definitions.
-3. **Reuse `BaselineRepository`** — the detector's history window respects baseline pins and `comparable_from_version` automatically.
-4. **Baseline pin resets Otava** — when a pin is active, Otava only sees evaluations from the pin onward. A shift at the pin boundary is intentional, not a regression.
-5. **Denormalized `change_points` table** — `asset_id`, `slo_name`, `metric_name`, `period_start` stored directly on the row (same pattern as `sli_values`). No complex join chains.
-6. **Dedup by ordinal proximity** — before inserting, check `change_points` for the same `(asset_id, slo_name, metric_name)` within ±2 evaluations by `period_start` order. Single-table query.
-7. **Backend provides markers** — heatmap cells and trend points include `change_point: {direction, magnitude} | null`. Frontend renders diamonds if present, nothing if null. No frontend filtering logic.
+2. **Enabled by default, sparse overrides** — detection runs on every metric using hardcoded defaults. The `change_point_config` table stores **only overrides** — a row exists only to tune or disable a specific metric. Zero rows in a fresh install = full coverage with standard params.
+3. **Full Otava tunability** — all three Otava parameters (`window_size`, `max_pvalue`, `min_magnitude`) are exposed per-metric, plus our own `min_sample_size` guard and an `enabled` flag. The three Otava knobs cover the real sensitivity dials:
+   - `window_size` (maps to Otava `window_len`) — how far back to look
+   - `max_pvalue` — statistical significance threshold; tighten to reduce false positives
+   - `min_magnitude` — minimum effect size; raise to ignore tiny-but-significant shifts
+   - `min_sample_size` — our wrapper guard: skip detection if history shorter than this
+   Global defaults: `enabled=True`, `window_size=30`, `max_pvalue=0.001`, `min_magnitude=0.0`, `min_sample_size=10`.
+4. **Per-metric override granularity** — overrides are keyed by `(slo_name, metric_name)`. Any subset of fields can be overridden — absent fields fall back to defaults. Decoupled from versioned SLO definitions.
+5. **Overrides live inside the SLO manifest, not a separate kind** — each SLO objective may carry an optional `change_point:` subfield with any subset of `{enabled, window_size, max_pvalue, min_magnitude, min_sample_size}`. One file per SLO, all knobs visible in one place. The reconciler splits the YAML into two API calls internally (SLO CRUD + change_point_config upsert), but the user sees one document. Crucially, **the `change_point` subfield is excluded from SLO version-bump comparison** — tuning a window never creates a new SLO version, baselines stay intact.
+6. **Reuse `BaselineRepository`** — the detector's history window respects baseline pins and `comparable_from_version` automatically.
+7. **Baseline pin resets Otava** — when a pin is active, Otava only sees evaluations from the pin onward. A shift at the pin boundary is intentional, not a regression.
+8. **Denormalized `change_points` table** — `asset_id`, `slo_name`, `metric_name`, `period_start` stored directly on the row (same pattern as `sli_values`). No complex join chains.
+9. **Dedup by ordinal proximity** — before inserting, check `change_points` for the same `(asset_id, slo_name, metric_name)` within ±2 evaluations by `period_start` order. Single-table query.
+10. **Backend provides markers** — heatmap cells and trend points include `change_point: {direction, magnitude} | null`. Frontend renders diamonds if present, nothing if null. No frontend filtering logic.
 
 ---
 
@@ -99,7 +107,13 @@ Add after the `SLOObjective` class in `models.py`:
 
 ```python
 class ChangePointConfig(Base):
-    """Per-indicator Otava detection config — operational, not versioned with SLO."""
+    """Per-indicator Otava detection override — SPARSE table.
+
+    Rows exist ONLY to override the hardcoded defaults for a specific
+    (slo_name, metric_name). Absence of a row = use defaults = detection
+    enabled with standard window_size and min_sample_size. To disable
+    detection on a noisy metric, insert a row with enabled=False.
+    """
 
     __tablename__ = 'change_point_config'
     __table_args__ = (
@@ -110,8 +124,14 @@ class ChangePointConfig(Base):
     id:              Mapped[uuid.UUID]      = mapped_column(UUID, primary_key=True, default=uuid.uuid4)
     slo_name:        Mapped[str]            = mapped_column(Text, nullable=False)
     metric_name:     Mapped[str]            = mapped_column(Text, nullable=False)
-    enabled:         Mapped[bool]           = mapped_column(Boolean, nullable=False, server_default=false())
-    window_size:     Mapped[int]            = mapped_column(Integer, nullable=False, server_default=text('30'))
+    # Server defaults match the code-level defaults (see detector.DEFAULT_*).
+    # A row overrides one or more of these for a single metric.
+    enabled:         Mapped[bool]           = mapped_column(Boolean, nullable=False, server_default=text('true'))
+    # Otava `compute_change_points` tunables:
+    window_size:     Mapped[int]            = mapped_column(Integer, nullable=False, server_default=text('30'))        # window_len
+    max_pvalue:      Mapped[float]          = mapped_column(Float, nullable=False, server_default=text('0.001'))        # t-test significance
+    min_magnitude:   Mapped[float]          = mapped_column(Float, nullable=False, server_default=text('0.0'))          # effect-size floor
+    # Our own wrapper guard — skip detection when history is shorter than this:
     min_sample_size: Mapped[int]            = mapped_column(Integer, nullable=False, server_default=text('10'))
     created_at:      Mapped[datetime]       = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at:      Mapped[datetime]       = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
@@ -337,6 +357,10 @@ Create empty `api/tropek/modules/change_points/__init__.py` and `api/tests/chang
 
 No I/O. Takes a list of values + timestamps, returns detected change points
 with direction, magnitude, and statistical significance.
+
+Global defaults live here as module constants so the whole system has one
+canonical source. Per-metric overrides in `change_point_config` replace
+individual fields; absent rows inherit these defaults entirely.
 """
 
 from __future__ import annotations
@@ -348,6 +372,18 @@ from statistics import mean
 from pydantic import BaseModel
 
 from otava.analysis import compute_change_points
+
+# --- Global defaults ---
+# Tune these if the detector is noisy or missing real regressions across the
+# fleet. Per-metric overrides for exceptional cases go in change_point_config.
+#
+# The three Otava-facing knobs (window_size, max_pvalue, min_magnitude) are
+# the real sensitivity dials. min_sample_size is our wrapper guard.
+DEFAULT_ENABLED = True
+DEFAULT_WINDOW_SIZE = 30          # Otava window_len
+DEFAULT_MAX_PVALUE = 0.001         # Otava max_pvalue — tighten to reduce false positives
+DEFAULT_MIN_MAGNITUDE = 0.0        # Otava min_magnitude — raise to ignore tiny shifts
+DEFAULT_MIN_SAMPLE_SIZE = 10       # wrapper guard: skip detection below this
 
 
 class ChangePointResult(BaseModel):
@@ -368,9 +404,10 @@ def detect_change_points(
     values: Sequence[float],
     timestamps: Sequence[datetime],
     higher_is_better: bool = False,
-    window_size: int = 30,
-    min_sample_size: int = 10,
-    max_pvalue: float = 0.001,
+    window_size: int = DEFAULT_WINDOW_SIZE,
+    max_pvalue: float = DEFAULT_MAX_PVALUE,
+    min_magnitude: float = DEFAULT_MIN_MAGNITUDE,
+    min_sample_size: int = DEFAULT_MIN_SAMPLE_SIZE,
 ) -> list[ChangePointResult]:
     """Run E-Divisive change point detection on a single metric time series.
 
@@ -393,6 +430,7 @@ def detect_change_points(
         series=list(values),
         window_len=min(window_size, len(values)),
         max_pvalue=max_pvalue,
+        min_magnitude=min_magnitude,
     )
 
     results: list[ChangePointResult] = []
@@ -753,16 +791,46 @@ class ChangePointRepository:
         result = await self._session.execute(query)
         return {config.metric_name: config for config in result.scalars().all()}
 
+    async def delete_config(
+        self,
+        *,
+        slo_name: str,
+        metric_name: str,
+    ) -> bool:
+        """Delete an override row. Returns True if a row was deleted."""
+        from sqlalchemy import delete
+        from sqlalchemy.engine import CursorResult
+        from typing import Any, cast
+
+        cursor = cast(
+            'CursorResult[Any]',
+            await self._session.execute(
+                delete(ChangePointConfig).where(
+                    ChangePointConfig.slo_name == slo_name,
+                    ChangePointConfig.metric_name == metric_name,
+                )
+            ),
+        )
+        await self._session.flush()
+        return cursor.rowcount > 0
+
     async def upsert_config(
         self,
         *,
         slo_name: str,
         metric_name: str,
-        enabled: bool,
-        window_size: int = 30,
-        min_sample_size: int = 10,
+        enabled: bool = DEFAULT_ENABLED,
+        window_size: int = DEFAULT_WINDOW_SIZE,
+        max_pvalue: float = DEFAULT_MAX_PVALUE,
+        min_magnitude: float = DEFAULT_MIN_MAGNITUDE,
+        min_sample_size: int = DEFAULT_MIN_SAMPLE_SIZE,
     ) -> ChangePointConfig:
-        """Create or update detection config for a specific SLO+metric."""
+        """Create or update detection config for a specific SLO+metric.
+
+        Any field left unset falls back to the module-level default so
+        sparse overrides (e.g., only setting max_pvalue) still produce a
+        well-formed row.
+        """
         query = select(ChangePointConfig).where(
             ChangePointConfig.slo_name == slo_name,
             ChangePointConfig.metric_name == metric_name,
@@ -773,6 +841,8 @@ class ChangePointRepository:
         if existing:
             existing.enabled = enabled
             existing.window_size = window_size
+            existing.max_pvalue = max_pvalue
+            existing.min_magnitude = min_magnitude
             existing.min_sample_size = min_sample_size
             await self._session.flush()
             return existing
@@ -782,6 +852,8 @@ class ChangePointRepository:
             metric_name=metric_name,
             enabled=enabled,
             window_size=window_size,
+            max_pvalue=max_pvalue,
+            min_magnitude=min_magnitude,
             min_sample_size=min_sample_size,
         )
         self._session.add(config)
@@ -993,6 +1065,193 @@ git commit -m "feat(otava): add change point repository with dedup and config qu
 
 ---
 
+## Task 6b: Config Resolver — Defaults-First Resolution
+
+**Files:**
+- Modify: `api/tropek/modules/change_points/repository.py`
+- Modify: `api/tests/change_points/test_repository.py`
+
+The resolver gives the worker a single `ResolvedConfig` per metric, regardless of whether a DB row exists. Absent row → use hardcoded defaults. Present row → use the row's values.
+
+- [ ] **Step 1: Add resolver test**
+
+Append to `test_repository.py`:
+
+```python
+@pytest.mark.integration
+async def test_resolve_config_uses_defaults_when_no_row(db_session: AsyncSession) -> None:
+    """No override row → detection enabled with default params."""
+    repo = ChangePointRepository(db_session)
+
+    resolved = await repo.resolve_config(slo_name='perf-slo', metric_name='latency_p95')
+
+    assert resolved.enabled is True
+    assert resolved.window_size == 30
+    assert resolved.max_pvalue == 0.001
+    assert resolved.min_magnitude == 0.0
+    assert resolved.min_sample_size == 10
+
+
+@pytest.mark.integration
+async def test_resolve_config_honors_disable_override(db_session: AsyncSession) -> None:
+    """Row with enabled=False disables detection for that metric."""
+    repo = ChangePointRepository(db_session)
+
+    db_session.add(ChangePointConfig(
+        slo_name='perf-slo',
+        metric_name='noisy_metric',
+        enabled=False,
+    ))
+    await db_session.flush()
+
+    resolved = await repo.resolve_config(slo_name='perf-slo', metric_name='noisy_metric')
+    assert resolved.enabled is False
+
+
+@pytest.mark.integration
+async def test_resolve_config_honors_all_otava_overrides(db_session: AsyncSession) -> None:
+    """All three Otava params plus the wrapper guard can be overridden per-metric."""
+    repo = ChangePointRepository(db_session)
+
+    db_session.add(ChangePointConfig(
+        slo_name='perf-slo',
+        metric_name='slow_drift',
+        enabled=True,
+        window_size=60,
+        max_pvalue=0.0001,       # tighter significance
+        min_magnitude=0.05,      # ignore sub-5% shifts
+        min_sample_size=20,
+    ))
+    await db_session.flush()
+
+    resolved = await repo.resolve_config(slo_name='perf-slo', metric_name='slow_drift')
+    assert resolved.enabled is True
+    assert resolved.window_size == 60
+    assert resolved.max_pvalue == 0.0001
+    assert resolved.min_magnitude == 0.05
+    assert resolved.min_sample_size == 20
+```
+
+- [ ] **Step 2: Run tests — expect failure**
+
+```bash
+./scripts/api-test.sh --tail 20 tests/change_points/test_repository.py::test_resolve_config_uses_defaults_when_no_row -v -m integration
+```
+
+- [ ] **Step 3: Implement `ResolvedConfig` and `resolve_config` in the repository**
+
+Add to `repository.py`:
+
+```python
+from pydantic import BaseModel
+
+from tropek.modules.change_points.detector import (
+    DEFAULT_ENABLED,
+    DEFAULT_MAX_PVALUE,
+    DEFAULT_MIN_MAGNITUDE,
+    DEFAULT_MIN_SAMPLE_SIZE,
+    DEFAULT_WINDOW_SIZE,
+)
+
+
+class ResolvedConfig(BaseModel):
+    """Config for a single metric after merging DB override with defaults."""
+
+    enabled: bool
+    window_size: int
+    max_pvalue: float
+    min_magnitude: float
+    min_sample_size: int
+
+
+def _default_resolved_config() -> ResolvedConfig:
+    return ResolvedConfig(
+        enabled=DEFAULT_ENABLED,
+        window_size=DEFAULT_WINDOW_SIZE,
+        max_pvalue=DEFAULT_MAX_PVALUE,
+        min_magnitude=DEFAULT_MIN_MAGNITUDE,
+        min_sample_size=DEFAULT_MIN_SAMPLE_SIZE,
+    )
+
+
+def _resolve_from_row(row: ChangePointConfig) -> ResolvedConfig:
+    return ResolvedConfig(
+        enabled=row.enabled,
+        window_size=row.window_size,
+        max_pvalue=row.max_pvalue,
+        min_magnitude=row.min_magnitude,
+        min_sample_size=row.min_sample_size,
+    )
+```
+
+Add a method on `ChangePointRepository`:
+
+```python
+    async def resolve_config(
+        self,
+        *,
+        slo_name: str,
+        metric_name: str,
+    ) -> ResolvedConfig:
+        """Return the effective config for a metric.
+
+        Looks up an override row in change_point_config. If absent, returns
+        the hardcoded defaults — detection is enabled everywhere by default.
+        """
+        query = select(ChangePointConfig).where(
+            ChangePointConfig.slo_name == slo_name,
+            ChangePointConfig.metric_name == metric_name,
+        )
+        result = await self._session.execute(query)
+        row = result.scalar_one_or_none()
+        if row is None:
+            return _default_resolved_config()
+        return _resolve_from_row(row)
+
+    async def resolve_configs_for_metrics(
+        self,
+        *,
+        slo_name: str,
+        metric_names: list[str],
+    ) -> dict[str, ResolvedConfig]:
+        """Batch-resolve configs for a list of metrics in one query.
+
+        Used by the worker step to avoid N queries per evaluation.
+        """
+        if not metric_names:
+            return {}
+        query = select(ChangePointConfig).where(
+            ChangePointConfig.slo_name == slo_name,
+            ChangePointConfig.metric_name.in_(metric_names),
+        )
+        result = await self._session.execute(query)
+        overrides = {row.metric_name: row for row in result.scalars().all()}
+
+        resolved: dict[str, ResolvedConfig] = {}
+        for metric_name in metric_names:
+            row = overrides.get(metric_name)
+            if row is None:
+                resolved[metric_name] = _default_resolved_config()
+            else:
+                resolved[metric_name] = _resolve_from_row(row)
+        return resolved
+```
+
+- [ ] **Step 4: Run tests**
+
+```bash
+./scripts/api-test.sh --tail 20 tests/change_points/test_repository.py -v -m integration
+```
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add api/tropek/modules/change_points/repository.py api/tests/change_points/test_repository.py
+git commit -m "feat(otava): add defaults-first config resolver"
+```
+
+---
+
 ## Task 7: Worker Integration — Fault-Isolated Detection Step
 
 **Files:**
@@ -1042,15 +1301,31 @@ class TestWorkerStep:
         slo.comparable_from_version = 1
         return slo
 
-    async def test_skips_when_no_config(self, snapshot: MagicMock, slo_def: MagicMock) -> None:
-        """No change_point_config → no detection runs."""
+    async def test_detects_by_default_without_config_row(
+        self, snapshot: MagicMock, slo_def: MagicMock
+    ) -> None:
+        """No override row → detection runs with defaults (enabled=True)."""
         session = AsyncMock()
+        from tropek.modules.change_points.repository import ResolvedConfig
+
+        default_config = ResolvedConfig(
+            enabled=True,
+            window_size=30,
+            max_pvalue=0.001,
+            min_magnitude=0.0,
+            min_sample_size=10,
+        )
+
         with patch(
             'tropek.modules.change_points.worker_step.ChangePointRepository'
         ) as mock_repo_cls:
             mock_repo = mock_repo_cls.return_value
-            mock_repo.get_configs_for_slo = AsyncMock(return_value={})
+            mock_repo.resolve_configs_for_metrics = AsyncMock(
+                return_value={'response_time_p95': default_config}
+            )
+            mock_repo.has_nearby_change_point = AsyncMock(return_value=False)
 
+            # No indicator rows → nothing to detect, but resolver must still be called
             await run_change_point_detection(
                 session=session,
                 snapshot=snapshot,
@@ -1058,20 +1333,27 @@ class TestWorkerStep:
                 indicator_rows=[],
             )
 
-            mock_repo.has_nearby_change_point.assert_not_called()
+            mock_repo.resolve_configs_for_metrics.assert_called_once()
 
-    async def test_skips_disabled_metrics(self, snapshot: MagicMock, slo_def: MagicMock) -> None:
-        """Config exists but enabled=False → skip."""
+    async def test_skips_disabled_override(self, snapshot: MagicMock, slo_def: MagicMock) -> None:
+        """Override row with enabled=False → skip that metric."""
         session = AsyncMock()
-        config = MagicMock()
-        config.enabled = False
+        from tropek.modules.change_points.repository import ResolvedConfig
+
+        disabled = ResolvedConfig(
+            enabled=False,
+            window_size=30,
+            max_pvalue=0.001,
+            min_magnitude=0.0,
+            min_sample_size=10,
+        )
 
         with patch(
             'tropek.modules.change_points.worker_step.ChangePointRepository'
         ) as mock_repo_cls:
             mock_repo = mock_repo_cls.return_value
-            mock_repo.get_configs_for_slo = AsyncMock(
-                return_value={'response_time_p95': config}
+            mock_repo.resolve_configs_for_metrics = AsyncMock(
+                return_value={'response_time_p95': disabled}
             )
 
             await run_change_point_detection(
@@ -1142,18 +1424,23 @@ async def run_change_point_detection(
         slo_name=snapshot.slo_name,
     )
 
-    cp_repo = ChangePointRepository(session)
-    configs = await cp_repo.get_configs_for_slo(snapshot.slo_name)
-    if not configs:
-        return
-
     # Build objective lookup for polarity and indicator_result_id mapping
     objective_lookup = {obj.sli: obj for obj in slo_def.objectives}
     indicator_lookup = {row.objective.sli: row for row in indicator_rows if row.objective}
 
+    # Detection runs for every metric the SLO defines — resolver returns
+    # defaults when no override row exists. Admins only touch change_point_config
+    # to disable or tune specific noisy metrics.
+    metric_names = list(objective_lookup.keys())
+    cp_repo = ChangePointRepository(session)
+    resolved_configs = await cp_repo.resolve_configs_for_metrics(
+        slo_name=snapshot.slo_name,
+        metric_names=metric_names,
+    )
+
     baseline_repo = BaselineRepository(session, cache=cache)
 
-    for metric_name, config in configs.items():
+    for metric_name, config in resolved_configs.items():
         if not config.enabled:
             continue
 
@@ -1246,6 +1533,8 @@ async def _detect_for_metric(
         timestamps=timestamps,
         higher_is_better=higher_is_better,
         window_size=config.window_size,
+        max_pvalue=config.max_pvalue,
+        min_magnitude=config.min_magnitude,
         min_sample_size=config.min_sample_size,
     )
 
@@ -1420,17 +1709,26 @@ class ChangePointConfigRead(BaseModel):
     metric_name: str
     enabled: bool
     window_size: int
+    max_pvalue: float
+    min_magnitude: float
     min_sample_size: int
 
     model_config = {'from_attributes': True}
 
 
 class ChangePointConfigUpsert(StrictInput):
-    """Request body for creating/updating detection config."""
+    """Request body for creating/updating detection config.
 
-    enabled: bool
-    window_size: int = 30
-    min_sample_size: int = 10
+    All fields optional — omitted fields fall back to the global defaults
+    in detector.py. This lets operators submit sparse overrides like
+    `{"max_pvalue": 0.0001}` without restating unchanged params.
+    """
+
+    enabled: bool | None = None
+    window_size: int | None = None
+    max_pvalue: float | None = None
+    min_magnitude: float | None = None
+    min_sample_size: int | None = None
 ```
 
 - [ ] **Step 2: Add `change_point` field to `HeatmapCellGrouped`**
@@ -1762,36 +2060,90 @@ async def bulk_triage(
 
 
 # --- Config endpoints ---
+# Note: change_point_config is a SPARSE override table. Rows exist only
+# where the admin has tuned or disabled detection for a specific metric.
+# Absence of a row = default behavior (detection enabled with standard params).
+
+@router.get('/config/defaults', response_model=ChangePointConfigRead)
+async def get_default_config() -> ChangePointConfigRead:
+    """Return the hardcoded default config used when no override exists."""
+    from tropek.modules.change_points.detector import (
+        DEFAULT_ENABLED,
+        DEFAULT_MAX_PVALUE,
+        DEFAULT_MIN_MAGNITUDE,
+        DEFAULT_MIN_SAMPLE_SIZE,
+        DEFAULT_WINDOW_SIZE,
+    )
+    return ChangePointConfigRead(
+        slo_name='__default__',
+        metric_name='__default__',
+        enabled=DEFAULT_ENABLED,
+        window_size=DEFAULT_WINDOW_SIZE,
+        max_pvalue=DEFAULT_MAX_PVALUE,
+        min_magnitude=DEFAULT_MIN_MAGNITUDE,
+        min_sample_size=DEFAULT_MIN_SAMPLE_SIZE,
+    )
+
 
 @router.get('/config/{slo_name}', response_model=list[ChangePointConfigRead])
-async def list_configs(
+async def list_config_overrides(
     slo_name: str,
     session: AsyncSession = Depends(get_session),
 ) -> list[ChangePointConfigRead]:
-    """List all detection configs for an SLO."""
+    """List all OVERRIDE rows for an SLO — metrics not listed use defaults."""
     repo = ChangePointRepository(session)
     configs = await repo.get_configs_for_slo(slo_name)
     return [ChangePointConfigRead.model_validate(c) for c in configs.values()]
 
 
 @router.put('/config/{slo_name}/{metric_name}', response_model=ChangePointConfigRead)
-async def upsert_config(
+async def upsert_config_override(
     slo_name: str,
     metric_name: str,
     body: ChangePointConfigUpsert,
     session: AsyncSession = Depends(get_session),
 ) -> ChangePointConfigRead:
-    """Create or update detection config for a specific SLO+metric."""
+    """Create or update an override for a specific SLO+metric.
+
+    Only needed when the defaults don't fit — e.g., disable a noisy metric,
+    tighten the p-value, or raise the minimum magnitude.
+
+    Sparse payload: any field omitted from the request body falls back to
+    the global default. Send only the knobs you want to change.
+    """
+    from tropek.modules.change_points.detector import (
+        DEFAULT_ENABLED,
+        DEFAULT_MAX_PVALUE,
+        DEFAULT_MIN_MAGNITUDE,
+        DEFAULT_MIN_SAMPLE_SIZE,
+        DEFAULT_WINDOW_SIZE,
+    )
     repo = ChangePointRepository(session)
     config = await repo.upsert_config(
         slo_name=slo_name,
         metric_name=metric_name,
-        enabled=body.enabled,
-        window_size=body.window_size,
-        min_sample_size=body.min_sample_size,
+        enabled=body.enabled if body.enabled is not None else DEFAULT_ENABLED,
+        window_size=body.window_size if body.window_size is not None else DEFAULT_WINDOW_SIZE,
+        max_pvalue=body.max_pvalue if body.max_pvalue is not None else DEFAULT_MAX_PVALUE,
+        min_magnitude=body.min_magnitude if body.min_magnitude is not None else DEFAULT_MIN_MAGNITUDE,
+        min_sample_size=body.min_sample_size if body.min_sample_size is not None else DEFAULT_MIN_SAMPLE_SIZE,
     )
     await session.commit()
     return ChangePointConfigRead.model_validate(config)
+
+
+@router.delete('/config/{slo_name}/{metric_name}', status_code=204)
+async def delete_config_override(
+    slo_name: str,
+    metric_name: str,
+    session: AsyncSession = Depends(get_session),
+) -> None:
+    """Remove an override so the metric falls back to defaults."""
+    repo = ChangePointRepository(session)
+    deleted = await repo.delete_config(slo_name=slo_name, metric_name=metric_name)
+    if not deleted:
+        raise HTTPException(status_code=404, detail='config override not found')
+    await session.commit()
 ```
 
 **Important:** The `/bulk` route must be registered BEFORE `/{change_point_id}` to avoid FastAPI interpreting `"bulk"` as a UUID path parameter. Reorder the routes so `bulk_triage` comes first, or use a different path like `/bulk-triage`.
@@ -2022,6 +2374,456 @@ Add `/change-points` to the router config.
 ```bash
 git add ui/src/
 git commit -m "feat(otava): add change points list page with triage workflow"
+```
+
+---
+
+## Task 15b: Tropek Client — Embed `change_point` in SLO Manifest
+
+**Files:**
+- Modify: `clients/python/tropek_client/manifest.py`
+- Modify: `clients/python/tropek_client/client.py` (add `change_point_configs` resource)
+- Modify: `clients/python/tests/test_manifest.py`
+- Modify: `bootstrap_prometheus/manifests/slo-definitions.yaml` (example usage)
+
+Change point overrides are expressed as an optional `change_point:` subfield on each SLO objective. One file per SLO, single source of truth. The reconciler splits the YAML into two API calls internally (SLO CRUD + `change_point_config` upsert/delete). **Critical:** the `change_point` subfield must not contribute to the SLO version-bump comparison — tuning sensitivity stays version-free.
+
+Manifest example (showing all three Otava knobs + our wrapper guard):
+
+```yaml
+api_version: tropek/v1
+kind: SLO
+metadata:
+  name: obs-http-slo
+spec:
+  sli_name: obs-http-sli
+  sli_version: 1
+  kind: standard
+  total_score:
+    pass_threshold: 90.0
+    warning_threshold: 75.0
+  objectives:
+    - sli: error_rate
+      pass_threshold: ["<0.01"]
+      warning_threshold: ["<0.05"]
+      weight: 2
+      key_sli: true
+      # no change_point block → uses all defaults
+    - sli: p99_latency
+      pass_threshold: ["<0.5"]
+      warning_threshold: ["<1.0"]
+      weight: 2
+      key_sli: true
+      change_point:
+        window_size: 60         # Otava window_len — slow drift, wider window
+        min_sample_size: 20     # wrapper guard — require more history
+    - sli: throughput
+      pass_threshold: [">1"]
+      weight: 1
+      change_point:
+        max_pvalue: 0.0001      # Otava max_pvalue — tighter significance, fewer false positives
+        min_magnitude: 0.05     # Otava min_magnitude — ignore shifts under 5%
+    - sli: cpu
+      pass_threshold: ["<80"]
+      weight: 1
+      change_point:
+        enabled: false          # known noisy — disable detection entirely
+```
+
+- [ ] **Step 1: Write the manifest loader tests**
+
+Append to `clients/python/tests/test_manifest.py`:
+
+```python
+def test_slo_with_change_point_overrides_loads(tmp_path: Path) -> None:
+    """SLO manifest with embedded change_point overrides parses correctly."""
+    manifest_file = tmp_path / 'slo-with-cp.yaml'
+    manifest_file.write_text(
+        """
+api_version: tropek/v1
+kind: SLO
+metadata:
+  name: obs-http-slo
+spec:
+  objectives:
+    - sli: error_rate
+      pass_threshold: ["<0.01"]
+      weight: 2
+    - sli: p99_latency
+      pass_threshold: ["<0.5"]
+      weight: 2
+      change_point:
+        window_size: 60
+        min_sample_size: 20
+    - sli: cpu
+      pass_threshold: ["<80"]
+      weight: 1
+      change_point:
+        enabled: false
+"""
+    )
+    docs = load_manifests(str(manifest_file))
+    assert len(docs) == 1
+    slo = docs[0]
+    objectives = slo.spec['objectives']
+    assert 'change_point' not in objectives[0]
+    assert objectives[1]['change_point'] == {'window_size': 60, 'min_sample_size': 20}
+    assert objectives[2]['change_point'] == {'enabled': False}
+
+
+def test_change_point_override_does_not_trigger_slo_diff() -> None:
+    """Adding/changing change_point must NOT cause an SLO version bump.
+
+    _has_diff must compare objectives with change_point stripped out.
+    """
+    from tropek_client.manifest import ManifestDocument, _has_diff
+
+    # Fake existing SLO with two objectives and NO change point config
+    class FakeObjective:
+        def __init__(self, **kwargs: Any) -> None:
+            self.__dict__.update(kwargs)
+
+        def model_dump(self) -> dict[str, Any]:
+            return {k: v for k, v in self.__dict__.items()}
+
+    class FakeSLO:
+        def __init__(self) -> None:
+            self.objectives = [
+                FakeObjective(
+                    sli='error_rate',
+                    display_name='',
+                    pass_threshold=['<0.01'],
+                    warning_threshold=[],
+                    weight=2,
+                    key_sli=False,
+                    sort_order=0,
+                ),
+            ]
+            self.total_score_pass_threshold = 90.0
+            self.total_score_warning_threshold = 75.0
+            self.comparison = {}
+
+    # Manifest adds change_point on the objective — but content is identical
+    doc = ManifestDocument(
+        api_version='tropek/v1',
+        kind='SLO',
+        metadata={'name': 'obs-http-slo'},
+        spec={
+            'objectives': [
+                {
+                    'sli': 'error_rate',
+                    'display_name': '',
+                    'pass_threshold': ['<0.01'],
+                    'warning_threshold': [],
+                    'weight': 2,
+                    'key_sli': False,
+                    'change_point': {'enabled': False},  # new override
+                },
+            ],
+            'total_score': {'pass_threshold': 90.0, 'warning_threshold': 75.0},
+            'comparison': {},
+        },
+    )
+
+    # MUST return False — change_point is operational, not versioned
+    assert _has_diff(doc, FakeSLO()) is False
+
+
+def test_slo_diff_still_detects_content_changes() -> None:
+    """Sanity check: actual objective content changes still trigger diff."""
+    from tropek_client.manifest import ManifestDocument, _has_diff
+
+    class FakeObjective:
+        def __init__(self, **kwargs: Any) -> None:
+            self.__dict__.update(kwargs)
+
+        def model_dump(self) -> dict[str, Any]:
+            return {k: v for k, v in self.__dict__.items()}
+
+    class FakeSLO:
+        def __init__(self) -> None:
+            self.objectives = [
+                FakeObjective(
+                    sli='error_rate',
+                    display_name='',
+                    pass_threshold=['<0.01'],
+                    warning_threshold=[],
+                    weight=2,
+                    key_sli=False,
+                    sort_order=0,
+                ),
+            ]
+            self.total_score_pass_threshold = 90.0
+            self.total_score_warning_threshold = 75.0
+            self.comparison = {}
+
+    # Different pass_threshold → must diff
+    doc = ManifestDocument(
+        api_version='tropek/v1',
+        kind='SLO',
+        metadata={'name': 'obs-http-slo'},
+        spec={
+            'objectives': [
+                {
+                    'sli': 'error_rate',
+                    'display_name': '',
+                    'pass_threshold': ['<0.005'],  # changed from <0.01
+                    'warning_threshold': [],
+                    'weight': 2,
+                    'key_sli': False,
+                },
+            ],
+            'total_score': {'pass_threshold': 90.0, 'warning_threshold': 75.0},
+            'comparison': {},
+        },
+    )
+
+    assert _has_diff(doc, FakeSLO()) is True
+```
+
+- [ ] **Step 2: Run tests — expect failure**
+
+```bash
+uv run --directory clients/python pytest tests/test_manifest.py -v -k "change_point or slo_diff"
+```
+
+Expected: FAIL — `_has_diff` currently compares objectives verbatim, so the `change_point` subfield leaks into the comparison.
+
+- [ ] **Step 3: Strip `change_point` from the content comparison in `_has_diff`**
+
+In `clients/python/tropek_client/manifest.py`, update the `SLO` case of `_has_diff`:
+
+```python
+        case 'SLO':
+            existing_objectives = [
+                {k: v for k, v in o.model_dump().items() if k != 'sort_order'}
+                for o in (existing.objectives if hasattr(existing, 'objectives') else [])
+            ]
+            # Strip the change_point subfield before comparison — it's operational
+            # config that must never trigger an SLO version bump.
+            manifest_objectives = [
+                {k: v for k, v in obj.items() if k != 'change_point'}
+                for obj in doc.spec.get('objectives', [])
+            ]
+            return (
+                manifest_objectives != existing_objectives
+                or doc.spec.get('total_score', {}).get('pass_threshold')
+                != getattr(existing, 'total_score_pass_threshold', None)
+                or doc.spec.get('total_score', {}).get('warning_threshold')
+                != getattr(existing, 'total_score_warning_threshold', None)
+                or doc.spec.get('comparison', {}) != getattr(existing, 'comparison', {})
+            )
+```
+
+- [ ] **Step 4: Strip `change_point` when calling `slo_definitions.create`**
+
+Still in `manifest.py`, update `_create` and `_update` for the `SLO` case so the `change_point` subfield is removed from objectives **before** sending to the SLO API (which doesn't know about it), then separately reconcile the overrides via the new `change_point_configs` resource.
+
+Add a helper at module level:
+
+```python
+def _split_slo_objectives(
+    objectives: list[dict[str, Any]],
+) -> tuple[list[dict[str, Any]], dict[str, dict[str, Any]]]:
+    """Separate SLO content from change_point overrides.
+
+    Returns (cleaned_objectives, overrides_by_metric) where cleaned_objectives
+    is what gets sent to the SLO API, and overrides_by_metric maps
+    metric_name -> {enabled?, window_size?, min_sample_size?}.
+    """
+    cleaned: list[dict[str, Any]] = []
+    overrides: dict[str, dict[str, Any]] = {}
+    for obj in objectives:
+        cp_override = obj.get('change_point')
+        clean_obj = {k: v for k, v in obj.items() if k != 'change_point'}
+        cleaned.append(clean_obj)
+        if cp_override is not None:
+            overrides[obj['sli']] = cp_override
+    return cleaned, overrides
+
+
+def _reconcile_change_point_overrides(
+    client: Any,
+    slo_name: str,
+    overrides: dict[str, dict[str, Any]],
+) -> None:
+    """Apply desired-state reconciliation for change_point overrides.
+
+    - Upsert every override present in the manifest
+    - Delete any existing override rows for metrics not in the manifest
+      (so removing a change_point: block reverts that metric to defaults)
+    """
+    try:
+        existing_rows = client.change_point_configs.list(slo_name=slo_name)
+    except Exception:  # noqa: BLE001
+        existing_rows = []
+
+    existing_metrics = {row.metric_name for row in existing_rows}
+    desired_metrics = set(overrides.keys())
+
+    # Upsert manifest overrides. Pass sparse payload straight through — the
+    # API merges unset fields with global defaults so operators can set just
+    # one knob (e.g., max_pvalue=0.0001) without restating the rest.
+    for metric_name, override in overrides.items():
+        client.change_point_configs.upsert(
+            slo_name=slo_name,
+            metric_name=metric_name,
+            enabled=override.get('enabled'),
+            window_size=override.get('window_size'),
+            max_pvalue=override.get('max_pvalue'),
+            min_magnitude=override.get('min_magnitude'),
+            min_sample_size=override.get('min_sample_size'),
+        )
+
+    # Delete-on-absent: any row no longer in the manifest reverts to defaults
+    for stale_metric in existing_metrics - desired_metrics:
+        client.change_point_configs.delete(slo_name=slo_name, metric_name=stale_metric)
+```
+
+- [ ] **Step 5: Wire the helper into `_create` and `_update` for SLO**
+
+In `_create`:
+
+```python
+        case 'SLO':
+            total = doc.spec.get('total_score', {})
+            cleaned_objectives, cp_overrides = _split_slo_objectives(doc.spec['objectives'])
+            client.slo_definitions.create(
+                name,
+                objectives=cleaned_objectives,
+                total_score_pass_threshold=total.get('pass_threshold', 90.0),
+                total_score_warning_threshold=total.get('warning_threshold', 75.0),
+                comparison=doc.spec.get('comparison', {}),
+                display_name=doc.metadata.get('display_name'),
+                notes=doc.metadata.get('notes'),
+                author=doc.metadata.get('author'),
+                sli_name=doc.spec.get('sli_name'),
+                sli_version=doc.spec.get('sli_version'),
+                kind=doc.spec.get('kind', 'standard'),
+                variables=doc.spec.get('variables', {}),
+                method_criteria=doc.spec.get('method_criteria'),
+            )
+            _reconcile_change_point_overrides(client, name, cp_overrides)
+```
+
+In `_update`, the SLO case also needs the split and reconcile at the end — but importantly, `_update` is only called when `_has_diff` returned True, which with the Step 3 change means SLO **content** differs (not just change_point). If only change_points differ, `_has_diff` returns False → SKIP is chosen → no SLO version bump. In that case we still want the overrides reconciled, so we need to reconcile them in the SKIP path too.
+
+Update the main `apply()` loop to always reconcile change_points for SLO kind, regardless of skip vs update:
+
+```python
+    for action, doc in zip(plan.actions, manifests, strict=False):
+        name = doc.metadata.get('name', 'unknown')
+        if action.operation == 'SKIP':
+            result.skipped += 1
+            # Even for SKIP, reconcile change_point overrides — they're decoupled
+            # from SLO content and must always converge to the manifest's desired state.
+            if doc.kind == 'SLO':
+                try:
+                    _, cp_overrides = _split_slo_objectives(doc.spec.get('objectives', []))
+                    _reconcile_change_point_overrides(client, name, cp_overrides)
+                except Exception as e:  # noqa: BLE001
+                    result.errors.append(ApplyError(kind=doc.kind, name=name, error=str(e)))
+            continue
+        # ... rest of loop unchanged
+```
+
+- [ ] **Step 6: Add the `change_point_configs` client resource**
+
+In `clients/python/tropek_client/client.py` (or wherever resource classes live), add:
+
+```python
+class ChangePointConfigModel(BaseModel):
+    slo_name: str
+    metric_name: str
+    enabled: bool
+    window_size: int
+    max_pvalue: float
+    min_magnitude: float
+    min_sample_size: int
+
+
+class ChangePointConfigsResource:
+    def __init__(self, http: HttpClient) -> None:
+        self._http = http
+
+    def list(self, *, slo_name: str) -> list[ChangePointConfigModel]:
+        data = self._http.get(f'/api/change-points/config/{slo_name}')
+        return [ChangePointConfigModel.model_validate(item) for item in data]
+
+    def upsert(
+        self,
+        *,
+        slo_name: str,
+        metric_name: str,
+        enabled: bool | None = None,
+        window_size: int | None = None,
+        max_pvalue: float | None = None,
+        min_magnitude: float | None = None,
+        min_sample_size: int | None = None,
+    ) -> ChangePointConfigModel:
+        """Upsert a detection override with sparse payload.
+
+        Any field left as None is omitted from the request body — the API
+        substitutes the global default server-side. Operators can tune a
+        single knob without restating unchanged params.
+        """
+        payload: dict[str, Any] = {}
+        if enabled is not None:
+            payload['enabled'] = enabled
+        if window_size is not None:
+            payload['window_size'] = window_size
+        if max_pvalue is not None:
+            payload['max_pvalue'] = max_pvalue
+        if min_magnitude is not None:
+            payload['min_magnitude'] = min_magnitude
+        if min_sample_size is not None:
+            payload['min_sample_size'] = min_sample_size
+
+        data = self._http.put(
+            f'/api/change-points/config/{slo_name}/{metric_name}',
+            json=payload,
+        )
+        return ChangePointConfigModel.model_validate(data)
+
+    def delete(self, *, slo_name: str, metric_name: str) -> None:
+        self._http.delete(f'/api/change-points/config/{slo_name}/{metric_name}')
+```
+
+Register on the main client constructor: `self.change_point_configs = ChangePointConfigsResource(http)`.
+
+- [ ] **Step 7: Run tests — expect pass**
+
+```bash
+uv run --directory clients/python pytest tests/test_manifest.py -v
+```
+
+Expected: all manifest tests pass, including the new `change_point`-aware ones.
+
+- [ ] **Step 8: Update `bootstrap_prometheus/manifests/slo-definitions.yaml` with an example override**
+
+Add one commented-out example to an existing objective showing the override shape, so future operators discover the feature:
+
+```yaml
+    - sli: cpu
+      display_name: CPU Usage
+      pass_threshold: ["<80"]
+      warning_threshold: ["<90"]
+      weight: 1
+      # change_point:              # uncomment any subset to override defaults
+      #   enabled: false           # disable detection entirely for this metric
+      #   window_size: 60          # Otava window_len — wider window for slow drift
+      #   max_pvalue: 0.0001       # Otava max_pvalue — tighter significance
+      #   min_magnitude: 0.05      # Otava min_magnitude — ignore sub-5% shifts
+      #   min_sample_size: 20      # wrapper guard — need more history
+```
+
+Do NOT actually enable the override — leave the defaults applied for the bootstrap setup.
+
+- [ ] **Step 9: Commit**
+
+```bash
+git add clients/python/ bootstrap_prometheus/manifests/slo-definitions.yaml
+git commit -m "feat(otava): embed change_point overrides in SLO manifest, version-free"
 ```
 
 ---
