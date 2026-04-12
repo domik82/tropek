@@ -8,7 +8,16 @@
 
 **Tech Stack:** Python 3.13, FastAPI, `openapi-typescript` (Node CLI), just, pnpm.
 
-**Recommended subagent model:** **Haiku**. Every task here is mechanical — write a small script, add a recipe, run a command, commit. No architectural judgment required. Haiku is faster and cheaper for this kind of deterministic file-producing work.
+**Recommended subagent model (per task group):**
+
+| Tasks | Model | Why |
+|---|---|---|
+| 1, 2, 3, 4, 7, 8 | **Haiku** | Pure mechanical — write a script, add a recipe, install a dep, write a README, create a CI YAML. Deterministic file production. |
+| 5 (type-level sanity test) | **Haiku** | Template assertion, no judgment. |
+| 6 (migrate assets feature to generated types) | **Sonnet** | Requires reading the real generated schema names, matching them to existing interfaces, and handling any shape drift. This is where real judgment calls happen — if the generated `Asset` shape differs from the UI's expectation, the agent has to decide "fix UI" vs "fix backend Pydantic". Haiku would silently paper over mismatches. |
+| **Phase 1 verification gate** | **Sonnet** | Runs the full `just check-schema-fresh` loop, reviews all committed diffs, and confirms the pattern is actually reusable for the remaining features. Reviewer needs to spot subtle issues Haiku's implementation might have missed. |
+
+Default for this phase: **Haiku**, with Sonnet called in explicitly for Task 6 and the final verification.
 
 **Spec reference:** `docs/superpowers/specs/2026-04-12-contract-testing-design.md` (Phase 1 section).
 

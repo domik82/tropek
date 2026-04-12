@@ -8,7 +8,17 @@
 
 **Tech Stack:** `schemathesis>=3.36`, pytest, FastAPI test client, existing test DB, the `api/openapi.json` file produced in Phase 1.
 
-**Recommended subagent model:** **Sonnet** for implementation tasks (1–8). Schemathesis configuration is declarative but requires understanding FastAPI lifespan, arq queue suppression, and how to safely exclude side-effectful endpoints. **Opus** for Task 9 (test audit) — it involves reading every integration test, reasoning about what each actually verifies, and making judgment calls about redundancy vs irreplaceability. That is exactly the kind of nuanced reading+reasoning task where Opus outperforms Sonnet.
+**Recommended subagent model (per task group):**
+
+| Tasks | Model | Why |
+|---|---|---|
+| 1 (install), 2 (harness skeleton) | **Haiku** | `uv sync` + boilerplate conftest and test module. No reasoning required — the templates in the tasks are complete. |
+| 3 (first run + triage) | **Sonnet** | The first Schemathesis run will surface real backend bugs. Each failure needs a triage decision: backend bug (fix), auth config missing (handle in Task 4), or legitimate exclusion (document why). Haiku would likely either silence findings or chase ghosts. |
+| 4 (auth configuration) | **Sonnet** | Requires grepping the real auth setup in `tropek.main`, understanding `Depends` chains, and choosing between header injection vs session hooks. |
+| 5 (security checks), 6 (stateful tests) | **Sonnet** | Schemathesis API surface varies between 3.x minor versions — agent must read docs and adapt. The task describes intent, not the exact current API. |
+| 7 (wrapper script), 8 (CI job) | **Haiku** | Mechanical Bash + GitHub Actions YAML. |
+| 9 (test audit — Phase 3.5) | **Opus** | The audit script is a proposal, not a final answer. The valuable work is reading every integration test, reasoning about what each verifies, and making judgment calls like "this test *looks* like an API-shape check but actually guards a subtle DB-state invariant — keep it." This is exactly the kind of nuanced reading+reasoning task where Opus outperforms Sonnet. Worth the cost because a wrong deletion silently loses coverage. |
+| **Phase 3 verification gate** | **Sonnet** | Runs the full Schemathesis suite, confirms zero findings, and spot-checks a few generated test cases to ensure they look realistic. |
 
 **Prerequisite:** Phase 1 complete (`api/openapi.json` exists and is fresh). Phase 2 recommended but not required — the audit task in Task 9 benefits from having pact interactions to cross-reference.
 
