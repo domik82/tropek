@@ -4,7 +4,7 @@
  */
 
 import type { EvaluationSummary, EvaluationDetail, IndicatorResult, TrendPoint, FailingIndicator } from '../features/evaluations/types'
-import type { AssetGroup } from '../features/assets/types'
+import type { AssetGroupDto as AssetGroup } from '../features/assets/mappers'
 import type { MetricHeatmapResponse, EvaluationColumn, HeatmapSloGroup, HeatmapSummaryCell } from '../features/navigator/types'
 import { computeChangePct } from '../utils/metrics'
 

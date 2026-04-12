@@ -28,7 +28,7 @@ export function SloDetailView({ name, onNavigate, onNewVersion }: SloDetailViewP
   // Fetch bound groups: query each group's bindings and filter to this SLO
   const { data: tree } = useGroupTree()
   const groupNames = useMemo(
-    () => (tree?.all_groups ?? []).map(g => g.name).filter(n => n !== '__ungrouped__'),
+    () => (tree?.allGroups ?? []).map(g => g.name).filter(n => n !== '__ungrouped__'),
     [tree],
   )
   const assignmentQueries = useQueries({

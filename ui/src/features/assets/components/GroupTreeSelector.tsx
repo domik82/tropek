@@ -1,7 +1,7 @@
 // ui/src/features/assets/components/GroupTreeSelector.tsx
 import { useState } from 'react'
 import { ChevronRight, ChevronDown } from 'lucide-react'
-import type { AssetGroup, AssetGroupTree } from '../types'
+import type { AssetGroup, AssetGroupTree } from '../domain'
 import { SANS_SERIF } from '@/lib/fonts'
 
 interface Props {
@@ -13,7 +13,7 @@ interface Props {
 
 function findSubgroups(group: AssetGroup, allGroups: AssetGroup[]): AssetGroup[] {
   return group.subgroups
-    .map(s => allGroups.find(g => g.id === s.group_id))
+    .map(s => allGroups.find(g => g.id === s.groupId))
     .filter((g): g is AssetGroup => g !== undefined)
 }
 
@@ -60,7 +60,7 @@ function GroupNode({
         ) : (
           <span className="w-3.5 shrink-0" />
         )}
-        <span>{group.display_name ?? group.name}</span>
+        <span>{group.displayName ?? group.name}</span>
       </button>
       {isExpanded && children.map(child => (
         <GroupNode
@@ -81,7 +81,7 @@ function GroupNode({
 
 export function GroupTreeSelector({ tree, value, onChange, excludeName }: Props) {
   const [expandedSet, setExpandedSet] = useState<Set<string>>(() => {
-    return new Set(tree.all_groups.map(g => g.name))
+    return new Set(tree.allGroups.map(g => g.name))
   })
 
   const onToggle = (name: string) => {
@@ -113,11 +113,11 @@ export function GroupTreeSelector({ tree, value, onChange, excludeName }: Props)
         </span>
       </button>
 
-      {tree.top_level.map(group => (
+      {tree.topLevel.map(group => (
         <GroupNode
           key={group.id}
           group={group}
-          allGroups={tree.all_groups}
+          allGroups={tree.allGroups}
           depth={0}
           value={value}
           onChange={onChange}

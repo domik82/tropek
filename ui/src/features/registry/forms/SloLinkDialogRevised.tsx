@@ -75,9 +75,9 @@ export function SloLinkDialogRevised({
       badge: s.sliName ?? undefined,
     }))
 
-  const groupItems = (tree?.all_groups ?? []).map((g) => ({
+  const groupItems = (tree?.allGroups ?? []).map((g) => ({
     value: g.name,
-    label: g.display_name ?? g.name,
+    label: g.displayName ?? g.name,
   }))
 
   return (

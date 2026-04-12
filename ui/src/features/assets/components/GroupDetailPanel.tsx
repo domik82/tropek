@@ -12,7 +12,7 @@ import { SANS_SERIF } from '@/lib/fonts'
 import { SloLinkDialog } from '@/features/slos/components/SloLinkDialog'
 import { AddAssetToGroupDialog } from './AddAssetToGroupDialog'
 import { AssetEditDialog } from './AssetEditDialog'
-import type { AssetGroup } from '../types'
+import type { AssetGroup } from '../domain'
 
 interface Props {
   groupName: string
@@ -44,14 +44,14 @@ export function GroupDetailPanel({ groupName, onSelectGroup, selectedAsset }: Pr
   // Resolve subgroups from tree
   const subgroups: AssetGroup[] = tree
     ? group.subgroups
-        .map(sg => tree.all_groups.find(g => g.id === sg.group_id))
+        .map(sg => tree.allGroups.find(g => g.id === sg.groupId))
         .filter((g): g is AssetGroup => g !== undefined)
     : []
 
   // Resolve member assets
   const memberAssets = group.members.map(m => ({
     ...m,
-    asset: assets.find(a => a.id === m.asset_id),
+    asset: assets.find(a => a.id === m.assetId),
   }))
 
   const statsLine = [
@@ -70,7 +70,7 @@ export function GroupDetailPanel({ groupName, onSelectGroup, selectedAsset }: Pr
         <div className="flex items-start justify-between">
           <div>
             <h2 className="text-xl font-semibold text-foreground">
-              {group.display_name ?? group.name}
+              {group.displayName ?? group.name}
             </h2>
             <p className="text-sm text-muted-foreground mt-0.5">{statsLine}</p>
           </div>
@@ -127,7 +127,7 @@ export function GroupDetailPanel({ groupName, onSelectGroup, selectedAsset }: Pr
                 onClick={() => onSelectGroup(sg.name)}
                 className="bg-card border border-border rounded-lg border-t-[3px] border-t-indicator-default p-3 min-w-[160px] text-left hover:bg-muted/30 transition-colors"
               >
-                <p className="text-sm font-medium text-foreground">{sg.display_name ?? sg.name}</p>
+                <p className="text-sm font-medium text-foreground">{sg.displayName ?? sg.name}</p>
                 <p className="text-xs text-muted-foreground mt-1">{sg.members.length} assets</p>
               </button>
             ))}
@@ -164,25 +164,25 @@ export function GroupDetailPanel({ groupName, onSelectGroup, selectedAsset }: Pr
                 </tr>
               </thead>
               <tbody>
-                {memberAssets.map(({ asset_id, asset_name, weight, asset }, idx) => {
-                  const isHighlighted = selectedAsset === asset_name
+                {memberAssets.map(({ assetId, assetName, weight, asset }, idx) => {
+                  const isHighlighted = selectedAsset === assetName
                   return (
-                  <tr key={asset_id} className={`border-b border-border/60 last:border-0 hover:bg-table-row-hover transition-colors ${isHighlighted ? 'bg-table-row-selected' : idx % 2 === 0 ? 'bg-table-row-bg' : 'bg-table-row-alt'}`}>
+                  <tr key={assetId} className={`border-b border-border/60 last:border-0 hover:bg-table-row-hover transition-colors ${isHighlighted ? 'bg-table-row-selected' : idx % 2 === 0 ? 'bg-table-row-bg' : 'bg-table-row-alt'}`}>
                     <td className="px-3 py-2">
-                      <span className="font-mono text-foreground">{asset?.display_name ?? asset_name}</span>
-                      {asset?.display_name && (
-                        <span className="text-xs text-muted-foreground ml-1.5">{asset_name}</span>
+                      <span className="font-mono text-foreground">{asset?.displayName ?? assetName}</span>
+                      {asset?.displayName && (
+                        <span className="text-xs text-muted-foreground ml-1.5">{assetName}</span>
                       )}
                     </td>
                     <td className="px-3 py-2 font-mono text-muted-foreground">
-                      {asset?.type_name ?? '—'}
+                      {asset?.typeName ?? '—'}
                     </td>
                     <td className="px-3 py-2">
                       <LabelChips
                         labels={asset?.tags ?? {}}
                         maxVisible={3}
                         size="small"
-                        onEdit={() => setLabelEditAsset({ name: asset_name, tags: asset?.tags ?? {} })}
+                        onEdit={() => setLabelEditAsset({ name: assetName, tags: asset?.tags ?? {} })}
                       />
                     </td>
                     <td className="px-3 py-2 text-center font-mono text-muted-foreground">
@@ -191,14 +191,14 @@ export function GroupDetailPanel({ groupName, onSelectGroup, selectedAsset }: Pr
                     <td className="px-3 py-2">
                       <div className="flex items-center justify-center gap-1">
                         <button
-                          onClick={() => setEditingAssetName(asset_name)}
+                          onClick={() => setEditingAssetName(assetName)}
                           className="p-1 text-action-primary hover:bg-action-primary-hover rounded transition-colors"
                           title="Edit asset"
                         >
                           <Pencil className="w-3.5 h-3.5" />
                         </button>
                         <button
-                          onClick={() => removeMember.mutate({ groupName, assetId: asset_id })}
+                          onClick={() => removeMember.mutate({ groupName, assetId })}
                           className="p-1 text-action-destructive hover:bg-action-destructive-bg rounded transition-colors"
                           title="Remove from group"
                         >

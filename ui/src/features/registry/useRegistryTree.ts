@@ -33,9 +33,9 @@ export interface MinBinding {
 
 export interface MinGroup {
   name: string
-  display_name?: string | null
-  members?: { asset_name: string; asset_type_name?: string }[]
-  subgroups?: { group_id: string; group_name: string }[]
+  displayName?: string | null
+  members?: { assetName: string; assetTypeName?: string }[]
+  subgroups?: { groupId: string; groupName: string }[]
 }
 
 export function buildSloTree(
@@ -173,13 +173,13 @@ export function buildAssetTree(
 
     // Subgroup children (recursive)
     const subgroupChildren: TreeNode[] = (group.subgroups ?? [])
-      .map(sg => groupByName.get(sg.group_name))
+      .map(sg => groupByName.get(sg.groupName))
       .filter((g): g is MinGroup => g != null)
       .map(buildGroupNode)
 
     // Asset member children — merge group-level and asset-level bindings
     const memberChildren: TreeNode[] = (group.members ?? []).map(member => {
-      const assetBindings = assetBindingsMap[member.asset_name] ?? []
+      const assetBindings = assetBindingsMap[member.assetName] ?? []
       // Deduplicate: asset-level bindings take precedence, then add group-level ones
       const seen = new Set(assetBindings.map(b => `${b.sloName}|${b.dataSourceName}`))
       const mergedBindings = [
@@ -189,7 +189,7 @@ export function buildAssetTree(
       const sloChildren: TreeNode[] = mergedBindings.map(binding => {
         const slo = sloByName.get(binding.sloName)
         const dsNode: TreeNode = {
-          id: `binding-ds:${member.asset_name}:${binding.dataSourceName}`,
+          id: `binding-ds:${member.assetName}:${binding.dataSourceName}`,
           name: binding.dataSourceName,
           type: 'datasource' as const,
           groupName: group.name,
@@ -200,7 +200,7 @@ export function buildAssetTree(
           const sli = sliByName.get(slo.sliName)
           const indicatorCount = sli?.indicators ? Object.keys(sli.indicators).length : 0
           sloLeaf = [{
-            id: `binding-sli:${member.asset_name}:${slo.sliName}`,
+            id: `binding-sli:${member.assetName}:${slo.sliName}`,
             name: slo.sliName,
             displayName: sli?.displayName ?? undefined,
             type: 'sli' as const,
@@ -213,7 +213,7 @@ export function buildAssetTree(
         }
 
         return {
-          id: `binding-slo:${member.asset_name}:${binding.sloName}`,
+          id: `binding-slo:${member.assetName}:${binding.sloName}`,
           name: binding.sloName,
           displayName: slo?.displayName ?? undefined,
           type: 'slo' as const,
@@ -223,10 +223,10 @@ export function buildAssetTree(
         }
       })
       return {
-        id: `asset:${member.asset_name}`,
-        name: member.asset_name,
+        id: `asset:${member.assetName}`,
+        name: member.assetName,
         type: 'asset' as const,
-        assetTypeName: member.asset_type_name,
+        assetTypeName: member.assetTypeName,
         groupName: group.name,
         children: sloChildren.length > 0 ? sloChildren : undefined,
       }
@@ -236,7 +236,7 @@ export function buildAssetTree(
     return {
       id: `group:${group.name}`,
       name: group.name,
-      displayName: group.display_name ?? undefined,
+      displayName: group.displayName ?? undefined,
       type: 'group' as const,
       badge: (group.members?.length ?? 0) > 0 ? `${group.members!.length}` : undefined,
       children: allChildren.length > 0 ? allChildren : undefined,

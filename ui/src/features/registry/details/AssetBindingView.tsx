@@ -50,7 +50,7 @@ export function AssetBindingView({
   const statsLine = isGroup
     ? `group · ${items.length} assignments`
     : [
-        asset?.type_name ?? 'asset',
+        asset?.typeName ?? 'asset',
         varCount > 0 ? `${varCount} variables` : null,
         tagCount > 0 ? `${tagCount} tags` : null,
       ].filter(Boolean).join(' · ')
@@ -66,7 +66,7 @@ export function AssetBindingView({
         <div className="flex items-start justify-between">
           <div>
             <h2 className="text-xl font-semibold text-foreground">
-              {asset?.display_name ?? assetName}
+              {asset?.displayName ?? assetName}
             </h2>
             <p className="text-sm text-muted-foreground mt-0.5">{statsLine}</p>
           </div>

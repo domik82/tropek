@@ -1,8 +1,29 @@
 // src/features/assets/api.ts
+import type { components } from '@/generated/api'
 import type {
-  Asset, AssetGroup, AssetGroupTree, AssetType,
-  TagKeyCount, TagValueCount,
-} from './types'
+  Asset,
+  AssetGroup,
+  AssetGroupTree,
+  AssetType,
+  TagKeyCount,
+  TagValueCount,
+} from './domain'
+import {
+  dtoToAsset,
+  dtoToAssetGroup,
+  dtoToAssetGroupTree,
+  dtoToAssetType,
+  type AssetDto,
+  type AssetGroupDto,
+  type AssetGroupTreeDto,
+  type AssetTypeDto,
+} from './mappers'
+
+// Input types as direct DTO aliases — forms send backend-shaped bodies directly.
+export type AssetCreateInput = components['schemas']['AssetCreate']
+export type AssetUpdateInput = components['schemas']['AssetUpdate']
+export type AssetTypeCreateInput = components['schemas']['AssetTypeCreate']
+export type AssetTypeUpdateInput = components['schemas']['AssetTypeUpdate']
 
 const BASE = '/api'
 
@@ -11,8 +32,8 @@ const BASE = '/api'
 export async function fetchAssetTypes(): Promise<AssetType[]> {
   const res = await fetch(`${BASE}/asset-types`)
   if (!res.ok) throw new Error(`fetchAssetTypes: ${res.status}`)
-  const data: { items: AssetType[]; total: number } = await res.json()
-  return data.items
+  const data: { items: AssetTypeDto[]; total: number } = await res.json()
+  return data.items.map(dtoToAssetType)
 }
 
 export async function createAssetType(name: string, isDefault = false): Promise<AssetType> {
@@ -22,7 +43,8 @@ export async function createAssetType(name: string, isDefault = false): Promise<
     body: JSON.stringify({ name, is_default: isDefault }),
   })
   if (!res.ok) throw new Error(`createAssetType: ${res.status}`)
-  return res.json()
+  const body: AssetTypeDto = await res.json()
+  return dtoToAssetType(body)
 }
 
 export async function renameAssetType(oldName: string, newName: string): Promise<AssetType> {
@@ -32,7 +54,8 @@ export async function renameAssetType(oldName: string, newName: string): Promise
     body: JSON.stringify({ name: newName }),
   })
   if (!res.ok) throw new Error(`renameAssetType: ${res.status}`)
-  return res.json()
+  const body: AssetTypeDto = await res.json()
+  return dtoToAssetType(body)
 }
 
 export async function setDefaultAssetType(name: string): Promise<AssetType> {
@@ -40,7 +63,8 @@ export async function setDefaultAssetType(name: string): Promise<AssetType> {
     method: 'PATCH',
   })
   if (!res.ok) throw new Error(`setDefaultAssetType: ${res.status}`)
-  return res.json()
+  const body: AssetTypeDto = await res.json()
+  return dtoToAssetType(body)
 }
 
 export async function deleteAssetType(name: string): Promise<void> {
@@ -55,14 +79,15 @@ export async function deleteAssetType(name: string): Promise<void> {
 export async function fetchAssets(): Promise<Asset[]> {
   const res = await fetch(`${BASE}/assets`)
   if (!res.ok) throw new Error(`fetchAssets: ${res.status}`)
-  const data: { items: Asset[]; total: number } = await res.json()
-  return data.items
+  const data: { items: AssetDto[]; total: number } = await res.json()
+  return data.items.map(dtoToAsset)
 }
 
 export async function fetchAsset(name: string): Promise<Asset> {
   const res = await fetch(`${BASE}/assets/${encodeURIComponent(name)}`)
   if (!res.ok) throw new Error(`fetchAsset: ${res.status}`)
-  return res.json()
+  const body: AssetDto = await res.json()
+  return dtoToAsset(body)
 }
 
 export async function createAsset(body: {
@@ -77,7 +102,8 @@ export async function createAsset(body: {
     body: JSON.stringify(body),
   })
   if (!res.ok) throw new Error(`createAsset: ${res.status}`)
-  return res.json()
+  const response: AssetDto = await res.json()
+  return dtoToAsset(response)
 }
 
 export async function updateAsset(
@@ -90,7 +116,8 @@ export async function updateAsset(
     body: JSON.stringify(body),
   })
   if (!res.ok) throw new Error(`updateAsset: ${res.status}`)
-  return res.json()
+  const response: AssetDto = await res.json()
+  return dtoToAsset(response)
 }
 
 export async function deleteAsset(name: string): Promise<void> {
@@ -119,13 +146,15 @@ export async function fetchTagValues(key: string): Promise<TagValueCount[]> {
 export async function fetchAssetGroupTree(): Promise<AssetGroupTree> {
   const res = await fetch(`${BASE}/asset-groups/tree`)
   if (!res.ok) throw new Error(`fetchAssetGroupTree: ${res.status}`)
-  return res.json()
+  const body: AssetGroupTreeDto = await res.json()
+  return dtoToAssetGroupTree(body)
 }
 
 export async function fetchAssetGroup(name: string): Promise<AssetGroup> {
   const res = await fetch(`${BASE}/asset-groups/${encodeURIComponent(name)}`)
   if (!res.ok) throw new Error(`fetchAssetGroup: ${res.status}`)
-  return res.json()
+  const body: AssetGroupDto = await res.json()
+  return dtoToAssetGroup(body)
 }
 
 export async function addGroupMember(
@@ -139,7 +168,8 @@ export async function addGroupMember(
     body: JSON.stringify({ asset_id: assetId, weight }),
   })
   if (!res.ok) throw new Error(`addGroupMember: ${res.status}`)
-  return res.json()
+  const body: AssetGroupDto = await res.json()
+  return dtoToAssetGroup(body)
 }
 
 export async function removeGroupMember(groupName: string, assetId: string): Promise<void> {

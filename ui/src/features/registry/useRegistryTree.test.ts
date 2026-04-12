@@ -66,7 +66,7 @@ describe('buildDatasourceTree', () => {
 
 describe('buildAssetTree', () => {
   it('builds Group → Asset → SLO → SLI → DS hierarchy when SLO has sliName', () => {
-    const groups = [{ name: 'core', displayName: null, members: [{ asset_name: 'checkout-api' }] }]
+    const groups = [{ name: 'core', displayName: null, members: [{ assetName: 'checkout-api' }] }]
     const groupBindingsMap = { core: [{ sloName: 'http-slo', dataSourceName: 'prom' }] }
     const slos = [{ name: 'http-slo', displayName: 'HTTP SLO', version: 2, active: true, sliName: 'http-sli', sliVersion: 1 }]
     const slis = [{ name: 'http-sli', displayName: null, adapterType: 'prometheus', active: true, indicators: { rt: 'q1', err: 'q2' } }]
@@ -89,7 +89,7 @@ describe('buildAssetTree', () => {
   })
 
   it('shows DS directly under SLO when SLO has no sliName', () => {
-    const groups = [{ name: 'core', displayName: null, members: [{ asset_name: 'checkout-api' }] }]
+    const groups = [{ name: 'core', displayName: null, members: [{ assetName: 'checkout-api' }] }]
     const groupBindingsMap = { core: [{ sloName: 'bare-slo', dataSourceName: 'prom' }] }
     const slos = [{ name: 'bare-slo', version: 1, active: true }]
 
@@ -101,13 +101,13 @@ describe('buildAssetTree', () => {
   })
 
   it('shows asset with no bindings as leaf', () => {
-    const groups = [{ name: 'core', members: [{ asset_name: 'lonely-svc' }] }]
+    const groups = [{ name: 'core', members: [{ assetName: 'lonely-svc' }] }]
     const tree = buildAssetTree(groups, groups, {}, {})
     expect(tree[0].children![0].children).toBeUndefined()
   })
 
   it('shows asset-level assignments when no group-level bindings exist', () => {
-    const groups = [{ name: 'core', displayName: null, members: [{ asset_name: 'checkout-api' }] }]
+    const groups = [{ name: 'core', displayName: null, members: [{ assetName: 'checkout-api' }] }]
     const assetBindingsMap = { 'checkout-api': [{ sloName: 'asset-slo', dataSourceName: 'prom' }] }
     const slos = [{ name: 'asset-slo', displayName: 'Asset SLO', version: 1, active: true, sliName: 'http-sli' }]
     const slis = [{ name: 'http-sli', displayName: null, adapterType: 'prometheus', active: true, indicators: { rt: 'q1' } }]

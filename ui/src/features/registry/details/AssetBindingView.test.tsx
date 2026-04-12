@@ -28,12 +28,14 @@ import { useSliDetail } from '@/features/slis/hooks'
 const MOCK_ASSET = {
   id: '1',
   name: 'checkout-api',
-  display_name: 'Checkout API',
-  type_name: 'service',
+  displayName: 'Checkout API',
+  typeName: 'service',
+  color: null,
   tags: { env: 'production', team: 'payments', tier: 'critical' },
   variables: { job: 'checkout-api', namespace: 'ecommerce' },
-  created_at: '2026-03-15T00:00:00Z',
-  updated_at: '2026-03-15T00:00:00Z',
+  heatmapConfig: null,
+  createdAt: new Date('2026-03-15T00:00:00Z'),
+  updatedAt: new Date('2026-03-15T00:00:00Z'),
 }
 
 const MOCK_SLO = {

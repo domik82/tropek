@@ -75,7 +75,7 @@ export function AssetPanel({ assetName, initialEvalId }: Props) {
   const { data: assets } = useAssets()
   const { data: slos } = useSlos()
   const assetDisplayName = useMemo(() => {
-    return assets?.find(a => a.name === assetName)?.display_name
+    return assets?.find(a => a.name === assetName)?.displayName
   }, [assets, assetName])
   const sloDisplayNames = useMemo(() => {
     const m = new Map<string, string>()

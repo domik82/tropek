@@ -22,14 +22,14 @@ export function GroupTreeRenderer({
   const isOpen = forceExpanded !== undefined ? forceExpanded : open
 
   const subGroups = group.subgroups
-    .map(sg => tree.all_groups.find(g => g.id === sg.group_id))
+    .map(sg => tree.allGroups.find(g => g.id === sg.groupId))
     .filter(Boolean) as AssetGroup[]
 
   const matchesFilter = !filterQuery
-    || (group.display_name ?? group.name).toLowerCase().includes(filterQuery.toLowerCase())
+    || (group.displayName ?? group.name).toLowerCase().includes(filterQuery.toLowerCase())
 
   const hasMatchingChildren = subGroups.some(sg =>
-    (sg.display_name ?? sg.name).toLowerCase().includes(filterQuery.toLowerCase())
+    (sg.displayName ?? sg.name).toLowerCase().includes(filterQuery.toLowerCase())
   )
 
   if (filterQuery && !matchesFilter && !hasMatchingChildren) return null

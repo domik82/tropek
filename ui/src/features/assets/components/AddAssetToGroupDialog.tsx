@@ -19,9 +19,9 @@ export function AddAssetToGroupDialog({ open, onOpenChange, groupName }: Props) 
   // Find current group members to exclude them from the list
   const currentMemberIds = useMemo(() => {
     if (!tree || !groupName) return new Set<string>()
-    const group = tree.all_groups.find(g => g.name === groupName)
+    const group = tree.allGroups.find(g => g.name === groupName)
     if (!group) return new Set<string>()
-    return new Set(group.members.map(m => m.asset_id))
+    return new Set(group.members.map(m => m.assetId))
   }, [tree, groupName])
 
   const available = useMemo(() => {
@@ -29,7 +29,7 @@ export function AddAssetToGroupDialog({ open, onOpenChange, groupName }: Props) 
     return assets
       .filter(a => !currentMemberIds.has(a.id))
       .filter(a => !filter || a.name.toLowerCase().includes(filter.toLowerCase())
-        || (a.display_name ?? '').toLowerCase().includes(filter.toLowerCase()))
+        || (a.displayName ?? '').toLowerCase().includes(filter.toLowerCase()))
   }, [assets, currentMemberIds, filter])
 
   if (!open || !groupName) return null
@@ -80,8 +80,8 @@ export function AddAssetToGroupDialog({ open, onOpenChange, groupName }: Props) 
                 className="w-full px-3 py-2 text-left text-sm hover:bg-accent rounded-md transition-colors flex items-center justify-between gap-2"
                 onClick={() => handleAdd(asset.id)}
               >
-                <span className="truncate text-foreground">{asset.display_name ?? asset.name}</span>
-                <span className="text-[11px] text-muted-foreground shrink-0">{asset.type_name}</span>
+                <span className="truncate text-foreground">{asset.displayName ?? asset.name}</span>
+                <span className="text-[11px] text-muted-foreground shrink-0">{asset.typeName}</span>
               </button>
             ))}
           </div>

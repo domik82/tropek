@@ -69,11 +69,11 @@ export function RegistrySidebar({ mode, onModeChange, selected, onSelect, onCrea
 
   // Fetch SLO assignments for all groups and assets to build hierarchical trees
   const groupNames = useMemo(
-    () => (tree?.all_groups ?? []).map(g => g.name).filter(n => n !== '__ungrouped__'),
+    () => (tree?.allGroups ?? []).map(g => g.name).filter(n => n !== '__ungrouped__'),
     [tree],
   )
   const assetNames = useMemo(
-    () => [...new Set((tree?.all_groups ?? []).flatMap(g => (g.members ?? []).map(m => m.asset_name)))],
+    () => [...new Set((tree?.allGroups ?? []).flatMap(g => (g.members ?? []).map(m => m.assetName)))],
     [tree],
   )
 
@@ -114,7 +114,7 @@ export function RegistrySidebar({ mode, onModeChange, selected, onSelect, onCrea
   const treeNodes = useMemo(() => {
     if (mode === 'slo') return buildSloTree(slos ?? [], slis ?? [], datasources ?? [], allBindings)
     if (mode === 'datasource') return buildDatasourceTree(datasources ?? [], slis ?? [], slos ?? [], allBindings)
-    return buildAssetTree(tree?.top_level ?? [], tree?.all_groups ?? [], groupBindingsMap, assetBindingsMap, slos ?? [], slis ?? [])
+    return buildAssetTree(tree?.topLevel ?? [], tree?.allGroups ?? [], groupBindingsMap, assetBindingsMap, slos ?? [], slis ?? [])
   }, [mode, slos, slis, datasources, tree, allBindings, groupBindingsMap, assetBindingsMap])
 
   const filteredNodes = useMemo(() => filterTree(treeNodes, search), [treeNodes, search])

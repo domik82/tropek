@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest'
 import { countLeafMembers } from './treeUtils'
-import type { AssetGroup, AssetGroupTree } from '@/features/assets/types'
+import type { AssetGroup, AssetGroupTree } from '@/features/assets'
 
-const TS = '2026-01-01T00:00:00Z'
+const TS = new Date('2026-01-01T00:00:00Z')
 
 function mkGroup(
   id: string,
@@ -12,24 +12,26 @@ function mkGroup(
   return {
     id,
     name: id,
-    display_name: null,
+    displayName: null,
     description: null,
+    color: null,
     members: Array.from({ length: members }, (_, i) => ({
-      asset_id: `${id}-asset-${i}`,
-      asset_name: `${id}-asset-${i}`,
-      asset_type_name: 'service',
+      assetId: `${id}-asset-${i}`,
+      assetName: `${id}-asset-${i}`,
+      assetDisplayName: null,
+      assetTypeName: 'service',
       weight: 1,
     })),
-    subgroups: subgroupIds.map(gid => ({ group_id: gid, group_name: gid, weight: 1 })),
-    created_at: TS,
-    updated_at: TS,
+    subgroups: subgroupIds.map((gid) => ({ groupId: gid, groupName: gid, weight: 1 })),
+    createdAt: TS,
+    updatedAt: TS,
   }
 }
 
 describe('countLeafMembers', () => {
   it('returns direct member count for a group with no subgroups', () => {
     const group = mkGroup('g1', 3)
-    const tree: AssetGroupTree = { top_level: [group], all_groups: [group] }
+    const tree: AssetGroupTree = { topLevel: [group], allGroups: [group] }
     expect(countLeafMembers(group, tree)).toBe(3)
   })
 
@@ -38,8 +40,8 @@ describe('countLeafMembers', () => {
     const child2 = mkGroup('child2', 6)
     const parent = mkGroup('parent', 0, ['child1', 'child2'])
     const tree: AssetGroupTree = {
-      top_level: [parent],
-      all_groups: [parent, child1, child2],
+      topLevel: [parent],
+      allGroups: [parent, child1, child2],
     }
     expect(countLeafMembers(parent, tree)).toBe(11)
   })
@@ -49,21 +51,21 @@ describe('countLeafMembers', () => {
     const child = mkGroup('child', 2, ['gc'])
     const root = mkGroup('root', 1, ['child'])
     const tree: AssetGroupTree = {
-      top_level: [root],
-      all_groups: [root, child, grandchild],
+      topLevel: [root],
+      allGroups: [root, child, grandchild],
     }
     expect(countLeafMembers(root, tree)).toBe(7)
   })
 
   it('returns 0 for a group with no members and no subgroups', () => {
     const group = mkGroup('empty', 0)
-    const tree: AssetGroupTree = { top_level: [group], all_groups: [group] }
+    const tree: AssetGroupTree = { topLevel: [group], allGroups: [group] }
     expect(countLeafMembers(group, tree)).toBe(0)
   })
 
   it('skips unresolved subgroup IDs', () => {
     const parent = mkGroup('parent', 3, ['nonexistent'])
-    const tree: AssetGroupTree = { top_level: [parent], all_groups: [parent] }
+    const tree: AssetGroupTree = { topLevel: [parent], allGroups: [parent] }
     expect(countLeafMembers(parent, tree)).toBe(3)
   })
 })

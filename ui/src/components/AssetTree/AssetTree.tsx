@@ -113,7 +113,7 @@ export function AssetTree({
   const totalCount = useMemo(() => {
     if (!tree) return 0
     if (mode === 'navigator') {
-      return tree.top_level.reduce((sum, g) => sum + countLeafMembers(g, tree), 0)
+      return tree.topLevel.reduce((sum, g) => sum + countLeafMembers(g, tree), 0)
     }
     let total = 0
     sloLinkCounts.forEach(v => { total += v })
@@ -122,7 +122,7 @@ export function AssetTree({
 
   const expandAll = useCallback(() => {
     if (!tree) return
-    setExpandedGroups(new Set(tree.all_groups.map(g => g.name)))
+    setExpandedGroups(new Set(tree.allGroups.map(g => g.name)))
     setBulkMenuOpen(false)
   }, [tree])
 
@@ -222,7 +222,7 @@ export function AssetTree({
             <div className="my-1 mx-3 border-t border-border/50" />
 
             {/* Top-level groups */}
-            {tree.top_level.map((group) => (
+            {tree.topLevel.map((group) => (
               <AssetTreeNode
                 key={group.id}
                 group={group}

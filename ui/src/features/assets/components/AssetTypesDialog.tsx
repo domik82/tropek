@@ -117,7 +117,7 @@ export function AssetTypesDialog({ open, onOpenChange }: Props) {
               )
             }
 
-            const canDelete = type.asset_count === 0 && !type.is_default
+            const canDelete = type.assetCount === 0 && !type.isDefault
 
             return (
               <div
@@ -158,7 +158,7 @@ export function AssetTypesDialog({ open, onOpenChange }: Props) {
 
                 {/* Default indicator */}
                 <div className="w-[80px] flex items-center justify-center">
-                  {type.is_default ? (
+                  {type.isDefault ? (
                     <span className="text-xs text-indicator-default font-medium">default</span>
                   ) : (
                     <span className="w-2.5 h-2.5 rounded-full border border-muted-foreground/40" />
@@ -167,7 +167,7 @@ export function AssetTypesDialog({ open, onOpenChange }: Props) {
 
                 {/* Asset count */}
                 <div className="w-[60px] text-center text-sm font-mono text-muted-foreground">
-                  {type.asset_count}
+                  {type.assetCount}
                 </div>
 
                 {/* Actions */}
@@ -180,16 +180,16 @@ export function AssetTypesDialog({ open, onOpenChange }: Props) {
                     <Pencil className="w-3.5 h-3.5" />
                   </button>
                   <button
-                    onClick={() => !type.is_default && void setDefault.mutateAsync(type.name)}
-                    disabled={type.is_default}
+                    onClick={() => !type.isDefault && void setDefault.mutateAsync(type.name)}
+                    disabled={type.isDefault}
                     className={`w-7 h-6 flex items-center justify-center rounded-md border ${
-                      type.is_default
+                      type.isDefault
                         ? 'border-border text-indicator-default'
                         : 'border-border text-muted-foreground hover:text-indicator-default hover:bg-muted/30'
                     }`}
                     title="Set as default"
                   >
-                    <Star className={`w-3.5 h-3.5 ${type.is_default ? 'fill-current' : ''}`} />
+                    <Star className={`w-3.5 h-3.5 ${type.isDefault ? 'fill-current' : ''}`} />
                   </button>
                   <button
                     onClick={() => canDelete && setDeletingName(type.name)}
@@ -199,7 +199,7 @@ export function AssetTypesDialog({ open, onOpenChange }: Props) {
                         ? 'border-action-destructive-border text-action-destructive hover:bg-action-destructive-bg'
                         : 'border-border text-muted-foreground cursor-not-allowed'
                     }`}
-                    title={canDelete ? 'Delete' : type.is_default ? 'Cannot delete default type' : 'Cannot delete type with assets'}
+                    title={canDelete ? 'Delete' : type.isDefault ? 'Cannot delete default type' : 'Cannot delete type with assets'}
                   >
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>

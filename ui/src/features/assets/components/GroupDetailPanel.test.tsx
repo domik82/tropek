@@ -12,13 +12,13 @@ vi.mock('@/features/assets/hooks', () => ({
     data: {
       id: 'g1',
       name: 'payments',
-      display_name: 'Payments',
+      displayName: 'Payments',
       description: 'Payment services',
       members: [
-        { asset_id: 'a1', asset_name: 'cart-service', weight: 1.0 },
-        { asset_id: 'a2', asset_name: 'checkout-api', weight: 2.0 },
+        { assetId: 'a1', assetName: 'cart-service', weight: 1.0 },
+        { assetId: 'a2', assetName: 'checkout-api', weight: 2.0 },
       ],
-      subgroups: [{ group_id: 'g2', group_name: 'payments-eu', weight: 1.0 }],
+      subgroups: [{ groupId: 'g2', groupName: 'payments-eu', weight: 1.0 }],
     },
   })),
   useAssets: vi.fn(() => ({
@@ -26,8 +26,8 @@ vi.mock('@/features/assets/hooks', () => ({
       {
         id: 'a1',
         name: 'cart-service',
-        display_name: 'Cart Service',
-        type_name: 'service',
+        displayName: 'Cart Service',
+        typeName: 'service',
         tags: { env: 'prod' },
         created_at: '2026-01-01T00:00:00Z',
         updated_at: '2026-01-01T00:00:00Z',
@@ -35,8 +35,8 @@ vi.mock('@/features/assets/hooks', () => ({
       {
         id: 'a2',
         name: 'checkout-api',
-        display_name: null,
-        type_name: 'api',
+        displayName: null,
+        typeName: 'api',
         tags: {},
         created_at: '2026-01-01T00:00:00Z',
         updated_at: '2026-01-01T00:00:00Z',
@@ -46,35 +46,35 @@ vi.mock('@/features/assets/hooks', () => ({
   useRemoveGroupMember: vi.fn(() => ({ mutate: vi.fn(), isPending: false })),
   useAssetGroups: vi.fn(() => ({
     data: {
-      top_level: [
+      topLevel: [
         {
           id: 'g1',
           name: 'payments',
-          display_name: 'Payments',
+          displayName: 'Payments',
           description: 'Payment services',
           members: [
-            { asset_id: 'a1', asset_name: 'cart-service', weight: 1.0 },
-            { asset_id: 'a2', asset_name: 'checkout-api', weight: 2.0 },
+            { assetId: 'a1', assetName: 'cart-service', weight: 1.0 },
+            { assetId: 'a2', assetName: 'checkout-api', weight: 2.0 },
           ],
-          subgroups: [{ group_id: 'g2', group_name: 'payments-eu', weight: 1.0 }],
+          subgroups: [{ groupId: 'g2', groupName: 'payments-eu', weight: 1.0 }],
         },
       ],
-      all_groups: [
+      allGroups: [
         {
           id: 'g1',
           name: 'payments',
-          display_name: 'Payments',
+          displayName: 'Payments',
           description: 'Payment services',
           members: [
-            { asset_id: 'a1', asset_name: 'cart-service', weight: 1.0 },
-            { asset_id: 'a2', asset_name: 'checkout-api', weight: 2.0 },
+            { assetId: 'a1', assetName: 'cart-service', weight: 1.0 },
+            { assetId: 'a2', assetName: 'checkout-api', weight: 2.0 },
           ],
-          subgroups: [{ group_id: 'g2', group_name: 'payments-eu', weight: 1.0 }],
+          subgroups: [{ groupId: 'g2', groupName: 'payments-eu', weight: 1.0 }],
         },
         {
           id: 'g2',
           name: 'payments-eu',
-          display_name: 'Payments EU',
+          displayName: 'Payments EU',
           description: '',
           members: [],
           subgroups: [],
@@ -176,9 +176,9 @@ describe('GroupDetailPanel', () => {
       <GroupDetailPanel groupName="payments" onSelectGroup={() => {}} />,
       { wrapper: TestWrapper }
     )
-    // cart-service has display_name 'Cart Service'
+    // cart-service has displayName 'Cart Service'
     expect(screen.getByText('Cart Service')).toBeInTheDocument()
-    // checkout-api has display_name null, so falls back to asset_name
+    // checkout-api has displayName null, so falls back to assetName
     expect(screen.getByText('checkout-api')).toBeInTheDocument()
     expect(screen.getByText('service')).toBeInTheDocument()
     expect(screen.getByText('api')).toBeInTheDocument()

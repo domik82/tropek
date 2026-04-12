@@ -29,8 +29,8 @@ export function GroupPanel({ groupName, onSelectAsset }: Props) {
   const [selectedNames, setSelectedNames] = useState<string[] | undefined>(undefined)
 
   const { data: tree } = useAssetGroups()
-  const group = tree?.all_groups.find(g => g.name === groupName)
-  const groupLabel = group?.display_name ?? prettyGroupName(groupName)
+  const group = tree?.allGroups.find(g => g.name === groupName)
+  const groupLabel = group?.displayName ?? prettyGroupName(groupName)
 
   const { data: evalNames = [] } = useEvaluationNames(undefined, groupName)
 
@@ -44,7 +44,7 @@ export function GroupPanel({ groupName, onSelectAsset }: Props) {
   const { data: slos } = useSlos()
   const assetDisplayNames = useMemo(() => {
     const m = new Map<string, string>()
-    for (const a of assets ?? []) if (a.display_name) m.set(a.name, a.display_name)
+    for (const a of assets ?? []) if (a.displayName) m.set(a.name, a.displayName)
     return m
   }, [assets])
   const sloDisplayNames = useMemo(() => {
