@@ -296,15 +296,19 @@ This is executable documentation that fails loudly when someone accidentally re-
 
 Mappers run exactly **once per network request**, inside the fetch function in `api.ts`, before returning to React Query. React Query's cache stores the domain type, not the DTO. Rendering components never triggers re-mapping.
 
-### 8.2 Why not `select`
+### 8.2 Why map at the fetch boundary rather than in `select`
 
-React Query's `select` option is tempting because it co-locates transform logic with the hook. It's the wrong place for a mapper in this project:
+React Query's `select` option is a legitimate tool, and TkDodo (React Query maintainer) actually recommends it *above* `queryFn` for transforms in the general case — his main argument is that `select` enables partial subscriptions, so a component that only reads `evaluation.score` can skip re-rendering when unrelated fields change. See [React Query Data Transformations](https://tkdodo.eu/blog/react-query-data-transformations) and [Selectors, Supercharged](https://tkdodo.eu/blog/react-query-selectors-supercharged).
 
-- `select` runs on every render unless memoized. For a mapper that parses dates, walks indicator arrays, and parses criteria strings, that's non-trivial work per render.
-- Memoization in `select` is subtle — reference equality on the DTO is not preserved across refetches, so naive `useMemo` doesn't help.
-- The mapper becomes a render-critical path. For large evaluation datasets (TROPEK already sees rendering slowness on large asset heatmaps), this is the wrong layer to pay that cost.
+Despite that, TROPEK maps at the fetch boundary (inside `queryFn`, so the cache stores the domain type). This is a deliberate trade-off, not a dismissal of `select`:
 
-By mapping at the fetch boundary, the cost is paid once per refetch — which matches how often the underlying data actually changes. React Query cache hits return the already-mapped domain type with reference-equal stability.
+- **Single type system in the cache.** With boundary mapping, the cache stores `Evaluation`, and every consumer — queries, mutations, future `setQueryData` writes, optimistic updates — speaks the same language. With `select`, the cache stores the DTO and transformed views come out on read; mutations writing to the cache must produce DTOs, which either pushes us toward symmetric write-path mappers (§11.3) or creates a two-type-system mental model.
+- **TROPEK doesn't exploit partial subscriptions today.** Zero `select` usages exist in the current codebase. The benefit that motivates TkDodo's recommendation is unrealized here, so we pay none of its cost by choosing the other fork.
+- **`useQueries` compatibility.** TROPEK uses `useQueries` in the registry and metric-explorer pages for multiplexed fetches. Boundary mapping Just Works; per-query `select` on multiplexed queries is awkward.
+- **Existing precedent.** `fetchEvaluations` already performs a fetch-boundary transform (aggregating paginated responses into `{items, total, truncated}`). Boundary mapping extends a pattern that's already in the codebase rather than introducing a new one.
+- **Mapper cost is negligible per-render anyway.** Mappers are O(n) in input size with microsecond-scale work (§8.3), so the "don't re-run on every render" argument isn't load-bearing here — the real argument is cache-shape cleanliness, not perf.
+
+`select` remains available and appropriate for **in-component derivation** — e.g. a component reading `useEvaluation(id, { select: e => e.indicators.length })` to subscribe only to the indicator count. It is not used for the DTO → domain boundary crossing.
 
 ### 8.3 Mapper cost budget
 
@@ -332,7 +336,7 @@ This is a discovery item, not a blocker.
 
 ## 9. ESLint enforcement
 
-A custom ESLint rule (or a `no-restricted-imports` configuration) enforces that `@/generated/api` is only imported from `features/*/api.ts` and `features/*/mappers.ts`. Any component file importing it is a boundary violation and fails lint.
+A custom ESLint rule (or a `no-restricted-imports` configuration) enforces that `@/generated/api` is only imported from `features/*/api.ts`, `features/*/mappers.ts`, and (if adopted) `features/*/queryOptions.ts`. Any other file — including `features/*/hooks.ts`, `features/*/components/*.tsx`, and anything outside `features/*` — is a boundary violation and fails lint. `hooks.ts` is explicitly on the forbidden side: if a hook needs the DTO type, that's a signal the mapper boundary is being bypassed.
 
 Configuration sketch (final form decided during implementation):
 
@@ -422,45 +426,65 @@ Discovery does **not** decide:
 
 ---
 
-## 11. Open questions for future sessions
+## 11. Resolved questions
 
-### 11.1 React Query interaction
+The three open questions in earlier drafts of this spec have been resolved via a research + brainstorming session (2026-04-12). The session audited current React Query usage in TROPEK and surveyed community guidance (TkDodo, Josh Karamuth, Jesse Warden, profy.dev). Findings and decisions below.
 
-The user has flagged uncertainty about how Pattern B interconnects with React Query idioms. The proposed default (§5, §8) is:
+### 11.1 React Query interaction — RESOLVED: map in `queryFn`
 
-- Mappers run inside `api.ts` fetch functions
-- React Query `queryFn` calls the fetch function and caches the domain type
-- React Query `select` is unused for the DTO→domain transform (but remains available for further derivation inside a component)
-- Hooks like `useEvaluation(id)` return `UseQueryResult<Evaluation>`
+**Decision:** Mappers run inside `api.ts` fetch functions, invoked by `queryFn`. React Query's cache stores domain types. `select` is reserved for in-component derivation and is not used for the DTO → domain boundary.
 
-This default is reasonable but not fully examined. A separate brainstorming session should:
+**Supporting audit findings:**
 
-1. Audit current React Query usage in TROPEK (where `useQuery`, `useMutation`, `useInfiniteQuery` are used, and what transforms exist today)
-2. Confirm the "map at fetch boundary" default doesn't break existing patterns
-3. Decide how mutations interact — whether `useMutation` needs a symmetric `domainToDto` mapper for write paths or whether writes can send DTOs directly
-4. Decide how optimistic updates work with domain types (mutations typically set cache via `setQueryData`, which must write a domain type)
-5. Revisit the `select` decision if there's a concrete use case for it
+- Zero current uses of React Query `select` in TROPEK — greenfield decision, no migration burden.
+- Zero current uses of `setQueryData` — all cache updates go through `invalidateQueries`. No optimistic updates exist today.
+- `useInfiniteQuery` is not used anywhere; `fetchEvaluations` already hand-aggregates pagination inside the fetch function (precedent for boundary transforms).
+- `useQueries` is used in 4 locations (registry, metric explorer) for multiplexed fetches where per-query `select` would be awkward.
+- `fetchEvaluations` is already doing a fetch-boundary transform today, so boundary mapping extends an existing pattern rather than introducing a new one.
 
-That session is out of scope for this spec. The conclusions land in a follow-up spec or an amendment to this one.
+**Consequences:**
 
-### 11.2 Synchronous vs asynchronous mappers
+- Hooks like `useEvaluation(id)` return `UseQueryResult<Evaluation>`.
+- When optimistic updates are eventually added, the cache write produces a domain object directly — no reverse mapper required for the cache path.
+- Debugging the raw wire shape requires the browser's Network tab rather than React Query DevTools. Accepted cost.
+- The implementation plan should adopt TkDodo's `queryOptions` factory pattern ([The Query Options API](https://tkdodo.eu/blog/the-query-options-api)) as the natural home for the `queryFn` + mapper wiring, matching TROPEK's existing `api.ts` / `hooks.ts` split.
 
-This spec defaults to **synchronous mappers**. Rationale:
+**Follow-up:** if a future change introduces heavy render-time derivations on a specific query that would benefit from `select`-based partial subscriptions, `select` can be added *on top of* the boundary mapping (transforming domain → narrower domain view). The boundary mapping is not incompatible with `select`; it just isn't where `select` lives.
 
-- Simpler to compose and test
-- React Query's `queryFn` can `await fetch(...)` then synchronously map; no added latency beyond the network
-- Asynchronous mappers would allow the mapper to fetch auxiliary data (e.g., hydrate an asset reference from a separate endpoint) — but that's better modeled as multiple queries joined in a hook, not as a mapper responsibility
+### 11.2 Synchronous vs asynchronous mappers — RESOLVED: strict sync
 
-If a concrete need for an async mapper arises during migration, it's added then with a clear rationale. Until then, mappers are pure synchronous functions.
+**Decision:** Mappers are pure synchronous functions. A mapper never performs I/O (no `fetch`, no `await` on anything network-bound).
 
-### 11.3 Write-path mappers
+**Rationale:**
 
-Most features are predominantly read-only from the UI's perspective. For the few write paths (creating/updating assets, triggering evaluations, pinning baselines), the spec accepts two possibilities:
+- No authoritative source (TkDodo, TanStack docs, published anti-corruption-layer articles) recommends async mappers. The universal pattern is "compose multiple queries at the hook level," not "let mappers fetch."
+- Any plausible async-mapper use case in TROPEK (loading supplementary data for a tooltip, lazily fetching details on user interaction, hydrating cross-entity references) is better modeled as a separate `useQuery` hook that fires on its own trigger. This keeps each network call visible to React Query, individually cacheable, and independently invalidatable.
+- Sync mappers are trivially testable as pure functions with no async harness.
 
-- **Option A:** Send DTO types directly from the UI. The domain-to-DTO conversion is trivial (often a renaming of UI-level fields back to `snake_case`) and the anti-corruption layer has less value on write than on read.
-- **Option B:** Symmetric `domainToDto` mappers for every write path.
+**Rule:** multi-resource composition happens at the hook layer via composed queries, never inside a mapper. If a concrete case arises that cannot be solved this way, the decision is revisited via a new spec amendment — not by informally loosening the rule.
 
-Default: **Option A** unless a write path has non-trivial transformation. Discovery §D5 flags write paths where the UI's domain vocabulary differs enough from the DTO to justify Option B.
+### 11.3 Write-path mappers — RESOLVED: pragmatic split (Option 3C)
+
+**Decision:** Forms send backend-shaped request bodies directly by default (Option 3A behavior). A `domainToDto` reverse mapper is written **only** when a specific write path meets one of these triggers:
+
+1. The domain vocabulary (§6.2) legitimately differs from the request body's field names (e.g. domain `period: DateRange` vs request body `period_start` + `period_end`).
+2. The domain type uses a typed enum where the request body expects a plain string (e.g. domain `Outcome` → `new_result: string`).
+3. The domain type uses a discriminated union where the request body expects a flat either/or shape.
+4. The write path performs optimistic updates where the cache write and the network payload need to diverge in shape.
+
+If none of these triggers fire, the form's data type **is** the request body type, and no reverse mapper exists.
+
+**Audit findings.** Every current TROPEK write path (asset CRUD, SLO CRUD, SLI CRUD, datasource CRUD, slo-group CRUD, asset-group membership, asset-type CRUD) sends a snake_case flat body that already matches the Pydantic model. These paths receive no reverse mapper. Three evaluation write paths are flagged for discovery review — they may or may not need reverse mappers depending on the domain vocabulary chosen in §D5:
+
+| Write path | File | Why flagged |
+|---|---|---|
+| `triggerEvaluation` | `features/evaluations/api.ts` | Form has `period_start` + `period_end`; if domain uses `period: DateRange`, a reverse mapper splits it back into two string fields |
+| `reEvaluate` | `features/evaluations/api.ts` | Body has `from_baseline` XOR `from_date`; if domain models this as a discriminated union, a reverse mapper flattens it |
+| `overrideStatus` | `features/evaluations/api.ts` | Sends `new_result: string`; if domain uses an `Outcome` enum, a reverse mapper converts enum → string |
+
+These are **inspection points**, not commitments. Discovery §D5 produces the domain vocabulary; the implementation plan for the evaluations migration decides per path whether a reverse mapper is needed.
+
+**Naming:** reverse mappers follow the convention `xInputToDto(input: XInput): XCreateDto` (or `XUpdateDto`) and live next to `dtoToX` in the same `mappers.ts` file. The `XInput` type represents "what the form produces" — which may or may not equal the read-side domain type `X`, depending on whether creation requires fields that reads don't expose or vice versa.
 
 ---
 
@@ -516,3 +540,141 @@ This spec is considered "complete enough to start discovery" when:
 - [x] Next-session kickoff instructions are explicit (§13)
 
 This spec is considered "complete enough to start implementation planning" after discovery returns and its findings are reconciled with the spec (which may mean adding a §15: reconciliation notes from discovery).
+
+---
+
+## 15. Reconciliation notes from discovery (2026-04-12)
+
+Discovery ran on 2026-04-12 and produced `docs/superpowers/discovery/2026-04-12-ui-layering-discovery.md`. Four UNCLEAR items from the initial audit were resolved in a targeted follow-up. This section captures the deltas to the earlier spec sections, the execution chunking decided in the same session, and the prerequisites that must land before implementation planning begins.
+
+### 15.1 Backend contract bugs surfaced (9 total, up from 7)
+
+Discovery's D3 found 7 Pydantic `dict[str, Any]` / typing bugs. The Item 2 follow-up confirmed both flagged `SLODefinitionRead` issues at high confidence and surfaced two additional ones (`comparison`, `tags`) while reading. Final count: **9 backend bugs**, all of the same "tighten `dict[str, Any]` to a concrete type" pattern. All nine are fixed in Chunk A (§15.5).
+
+Full list:
+
+| # | Module / file | Field | Fix |
+|---|---|---|---|
+| 1 | `quality_gate/schemas/evaluations.py` | `EvaluationDetail.asset_snapshot: dict[str, Any]` | new typed model |
+| 2 | `quality_gate/schemas/evaluations.py` | `EvaluationDetail.sli_metadata: dict[str, Any] \| None` | `SliMetadata` model |
+| 3 | `quality_gate/schemas/evaluations.py` | `EvaluationSummary.variables: dict[str, Any]` | `dict[str, str]` |
+| 4 | `quality_gate/schemas/results.py` | `IndicatorResult.pass_targets` / `warning_targets: list[dict[str, Any]] \| None` | `list[PassTarget]` |
+| 5 | `quality_gate/schemas/heatmap.py` | `HeatmapCellGrouped.pass_targets` / `warning_targets` | same as (4) |
+| 6 | `assets/schemas.py` | `AssetRead.heatmap_config: dict[str, Any] \| None` | **not fixed — stays opaque** (see §15.3) |
+| 7 | `quality_gate/schemas/heatmap.py` | `SloGroup` / `SLOGroupRead` name collision in OpenAPI | disambiguate schema names |
+| 8 | `slo_registry/schemas.py` | `SLODefinitionRead.variables: dict[str, Any]` (also `SLODefinitionCreate.variables`) | `dict[str, str]` |
+| 9 | `slo_registry/schemas.py` | `SLODefinitionRead.method_criteria: dict[str, Any] \| None` (also `SLODefinitionCreate`) | new `MethodCriteriaOverride` model with 4 optional fields — shape fully specified in `docs/old-implemented/specs/2026-03-29-prometheus-sli-adapter-design.md:381` |
+
+Bonus fixes worth bundling into Chunk A because they're the same pattern touching the same files: `SLODefinitionRead.comparison: dict[str, Any]` → `ComparisonConfig` model (5 named optional fields), and `SLODefinitionRead.tags: dict[str, Any]` → `dict[str, str]`.
+
+### 15.2 Item 1 — `evaluation_metadata` is dead code
+
+The UI's hand-written `EvaluationSummary`/`EvaluationDetail` declare `evaluation_metadata` but the backend has no such field. Git history shows commit `7043b1a` renamed `evaluation_metadata` → `variables` in the Pydantic schemas and the DB column. The UI read sites (`features/evaluations/types.ts:54,105`, `hooks.ts:203`, `EvaluationTable.tsx:156`) never caught up. A contract test at `api/tests/test_schema_contracts.py:99-104` already guards the backend against regression.
+
+**Resolution:** delete `evaluation_metadata` from UI types, rename read sites to `variables`, update the 6 test fixtures and `mocks/generate.ts` that still populate the old key. Folded into Chunk A, not the evaluations migration — it's a correctness cleanup, not a mapper concern.
+
+### 15.3 Item 3 — Trigger Evaluation modal is broken
+
+The Trigger Evaluation modal is a real user-facing feature, but was never exercised against a real backend after a rename landed. Current state:
+
+- UI posts `POST /api/evaluations` — that endpoint **does not exist**. Only `POST /api/evaluate` exists (`api/tropek/modules/quality_gate/router.py:56`).
+- UI body shape doesn't match `EvaluateSingleRequest` (`quality_gate/schemas/trigger.py:13-20`): missing required `asset_name`, uses wrong field names (`evaluation_name` vs `eval_name`, `metadata` vs `variables`), sends unknown fields (`group_name`, `slo_name`) that `StrictInput` rejects with 422.
+
+Only caller: `TriggerEvaluationModal.tsx:43`. Confirmed by the user that the feature is intended to work — the regression was invisible because no one clicked the button against a real backend.
+
+**Resolution:** fix the UI in Chunk A. Rewrite `TriggerEvaluationPayload` to match `EvaluateSingleRequest`, change the URL, add `asset_name` to the form. A reverse mapper (`triggerEvaluationInputToDto`) is added later during the evaluations migration (Chunk B3) for cosmetic symmetry — not required for the Chunk A fix.
+
+### 15.4 Item 4 — `heatmap_config` stays opaque
+
+`AssetRead.heatmap_config` is `dict[str, Any] | None` by intent, not by accident. Originating plan `docs/old-implemented/plans/2026-03-19-duplicate-evaluation-prevention.md:139-172` describes it as "per-asset default filter preferences" but the shape was never designed and the field has **zero UI consumers today**.
+
+**Resolution:** do NOT fix this one in Chunk A. In the domain layer, type it as `Record<string, unknown> | null`. Pass-through mapper. When someone eventually wires a filter-preferences form, design the `HeatmapConfig` schema at that time and migrate. A memory note (`memory/project_heatmap_config_investigation.md`) captures the deferred design work so it doesn't get silently re-typed in the future.
+
+### 15.5 Execution chunking
+
+Implementation is split into four chunks, each with its own manual-test checkpoint on a real backend instance. Chunks A and C land on `main` independently; chunks B1–B3 land sequentially on top of A.
+
+#### Chunk A — API contract cleanup *(standalone PR to main)*
+
+All correctness work that is an improvement regardless of Pattern B. Lands first so `main` gets the bug fixes sooner and the migration has a clean baseline.
+
+Contents:
+1. Fix 9 backend Pydantic bugs (§15.1) plus the two bonus `SLODefinitionRead` fixes (`comparison`, `tags`).
+2. Fix the Trigger Evaluation modal (§15.3) — URL, body shape, required `asset_name`.
+3. Delete `evaluation_metadata` from UI types, rename read sites to `variables` (§15.2).
+4. Rebase the Phase 1 tooling (`export-schema`, `codegen`, `check-schema-fresh`, `.github/workflows/contract-freshness.yml`) onto `main` — lands `ui/src/generated/api.ts` on `main` for the first time. Required prerequisite for Chunks B1–B3.
+
+**Reuses the existing `.worktrees/contract-testing-phase-1/` worktree** — it already has the tooling foundation and the Phase 1 backend bug fix. No new worktree.
+
+**Manual test:** dev server smoke test — assets list, SLO list, evaluations list, trigger a real evaluation end-to-end, verify no regressions.
+
+#### Chunk B1 — Pattern B migration: simple features *(PR on top of A)*
+
+Apply the DTO / Domain / Mapper pattern to every feature through assets. Validates the pattern six times before hitting the complex features.
+
+Order (revised from §10 D6 based on discovery findings):
+1. `datasources` — trivial CRUD, end-to-end validation of the pattern.
+2. `registry` — zero mapper cost, pure `types.ts` → `ui-types.ts` rename (discovery found all five types are UI state with no backend analogue). Moved earlier than the original §10 D6 order.
+3. `sli_registry`
+4. `slos`
+5. `slo-groups`
+6. `assets` — upgrade from Phase 1 pure-alias to full mapper.
+
+**Manual test:** for each feature, render its page in the dev server and verify it looks identical to before. Single cross-feature smoke test at the end.
+
+#### Chunk B2 — Navigator *(PR on top of B1)*
+
+Navigator gets its own chunk because of the heatmap rename and the mapper's presentation logic (cell coordinate attachment, result sentinel normalization, y-index math lifted out of `utils.ts`).
+
+- `HeatmapCell` (UI-only ECharts type) renamed to `HeatmapEChartsCell` in `features/navigator/ui-types.ts`.
+- `HeatmapCell` (backend DTO) is referenced as `HeatmapCellGroupedDto` in the mapper (§6.1 DTO suffix convention).
+- `assetHeatmapDtoToDomain(resp, expandState)` owns: y-index math, cell coordinate attachment, collapsing `invalidated` sentinel into canonical `result` union, building the per-SLO summary lookup.
+- `buildAssetHeatmapData` in `navigator/utils.ts` shrinks by ~80 lines as its work moves into the mapper.
+- **No perf work.** Those wins are Chunk C.
+
+**Manual test:** render the navigator heatmap against a realistic dataset, verify row ordering, expand/collapse, composite row, SLO summaries, and cell coloring all match current behavior.
+
+#### Chunk B3 — Evaluations *(PR on top of B2)*
+
+The biggest and last feature migration. Everything the pattern is designed for:
+
+- `Evaluation` domain type with `period: DateRange` (replaces `period_start`/`period_end`), `outcome: Outcome` (typed union), `BaselinePin` struct (replaces scattered `baseline_pin_author`/`reason`/`pinned_at`/`unpinned_at` fields that discovery found **entirely absent** from the hand-written UI types — the exact coverage gap §7 was designed to surface).
+- `Indicator` domain type with parsed `criteria: Criteria` struct (replaces `pass_criteria: string`).
+- Reverse mappers (`xInputToDto`) for the three write paths flagged in §11.3: `triggerEvaluation`, `reEvaluate`, `overrideStatus`. `triggerEvaluation`'s shape fix already landed in Chunk A — the B3 work is the cosmetic mapper wrapping the already-correct shape.
+- Inline date parsing and string-slicing in `EvaluationHeatmap.tsx`, `EvaluationTable.tsx`, `EvaluationSummaryCard.tsx`, `ReEvaluateForm.tsx` is removed — the mapper does it once at the fetch boundary.
+
+**Manual test:** the evaluations list, detail page, re-evaluation form, baseline pin flow, override status flow, trigger evaluation flow. Full regression pass on the evaluations feature.
+
+#### Chunk C — Heatmap performance *(separate worktree, after B3 lands)*
+
+Deferred. Three concrete wins, ranked by impact/effort:
+
+1. **Redis cache grouped heatmap response** per `(asset_id, from, to, eval_names)` key with ~60s TTL, invalidated on new eval completion. Matches the pre-existing memory note `project_column_level_redis_caching.md`. (H impact / M effort)
+2. **Hoist `pass_targets` / `warning_targets` to per-metric** in `SloGroup.metrics[]` instead of per-cell. Shrinks payload, halves Pydantic instantiations. (M impact / L effort)
+3. **Precompute `resolve_targets()` per objective** once instead of twice per cell (`presenter.py:158-169`). Pairs with (2). (M impact / L effort)
+
+Runs in a separate worktree with load testing, not inline with feature migration. Not blocked by Chunk B; could run in parallel but is deferred by user preference to "stabilize before optimizing."
+
+### 15.6 Migration order changes from §10 D6
+
+One change to the originally proposed §10 D6 order: **`registry` moves from position 5 to position 2** (between `datasources` and `sli_registry`). Discovery found that all five `registry` types are pure UI state with zero backend analogue — it's a `types.ts` → `ui-types.ts` rename with no mapper and no domain file. That makes it the cheapest migration in the tree and a confidence booster early in Chunk B1.
+
+### 15.7 Prerequisites
+
+Before implementation planning starts:
+
+- [x] Discovery document exists and is reviewed
+- [x] §15 reconciliation notes (this section) are written
+- [ ] User confirms chunking strategy (confirmed 2026-04-12 — four-chunk split A / B1 / B2 / B3 with C deferred)
+- [ ] User triages any UNCLEAR items surfaced during planning (none remain at time of writing)
+
+### 15.8 Open items for implementation planning
+
+The implementation plan must still decide:
+
+1. **Backend bug fixes (9+2): one commit or several?** Recommend grouping by Pydantic file (3–4 commits max) to keep blast radius small and make bisect easy.
+2. **Chunk A rollout:** does the backend bug fix commit go on `main` *before* the Phase 1 tooling rebase, or after? Recommendation: bugs first, then tooling rebase that regenerates `api.ts` against the now-correct Pydantic — so the first committed `api.ts` on `main` is already clean.
+3. **Per-feature mapper cost budget.** Discovery D7 estimated boilerplate per feature; the plan should cap review effort per chunk and split further if any single feature exceeds the cap.
+4. **Chunk C trigger.** Perf work starts after B3 lands, but on what signal? A scheduled follow-up, or wait until a user complaint? Recommend scheduled — the memory note has been open long enough.
+
+These are planning-session concerns, not spec concerns.
