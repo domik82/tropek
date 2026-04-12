@@ -1016,7 +1016,6 @@
         "type": "object"
       },
       "ComparisonConfig": {
-        "additionalProperties": true,
         "description": "Per-SLO comparison configuration. All fields optional.",
         "properties": {
           "aggregate_function": {
@@ -1062,6 +1061,20 @@
               }
             ],
             "title": "Number Of Comparison Results"
+          },
+          "scope_tags": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scope Tags"
           }
         },
         "title": "ComparisonConfig",
@@ -2832,7 +2845,7 @@
         "type": "object"
       },
       "MethodCriteriaOverride": {
-        "description": "Per-indicator method-criteria override. All four fields optional.",
+        "description": "Per-method override for template Level-2 expansion.\n\nMirrors the four override-capable fields of SLOObjectiveIn\n(pass_threshold, warning_threshold, weight, key_sli), plus\ntwo method/aggregation hints. All fields optional \u2014 only the\nfields explicitly set on an override are applied during template\ninstantiation; unset fields inherit from the template's objective.\n\nStored on SLODefinition.method_criteria and consumed during\nslo_groups/generator.py Level-2 expansion (not yet implemented,\ntracked as a follow-up).",
         "properties": {
           "aggregation": {
             "anyOf": [
@@ -2845,6 +2858,17 @@
             ],
             "title": "Aggregation"
           },
+          "key_sli": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Key Sli"
+          },
           "method": {
             "anyOf": [
               {
@@ -2856,7 +2880,7 @@
             ],
             "title": "Method"
           },
-          "pass_criteria": {
+          "pass_threshold": {
             "anyOf": [
               {
                 "items": {
@@ -2868,9 +2892,9 @@
                 "type": "null"
               }
             ],
-            "title": "Pass Criteria"
+            "title": "Pass Threshold"
           },
-          "warning_criteria": {
+          "warning_threshold": {
             "anyOf": [
               {
                 "items": {
@@ -2882,7 +2906,18 @@
                 "type": "null"
               }
             ],
-            "title": "Warning Criteria"
+            "title": "Warning Threshold"
+          },
+          "weight": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Weight"
           }
         },
         "title": "MethodCriteriaOverride",

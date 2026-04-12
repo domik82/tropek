@@ -19,17 +19,29 @@ class ComparisonConfig(BaseModel):
     include_result_with_score: str | None = None
     number_of_comparison_results: int | None = None
     aggregate_function: str | None = None
-
-    model_config = ConfigDict(extra='allow')  # forward-compat during rollout
+    scope_tags: list[str] | None = None
 
 
 class MethodCriteriaOverride(BaseModel):
-    """Per-indicator method-criteria override. All four fields optional."""
+    """Per-method override for template Level-2 expansion.
+
+    Mirrors the four override-capable fields of SLOObjectiveIn
+    (pass_threshold, warning_threshold, weight, key_sli), plus
+    two method/aggregation hints. All fields optional — only the
+    fields explicitly set on an override are applied during template
+    instantiation; unset fields inherit from the template's objective.
+
+    Stored on SLODefinition.method_criteria and consumed during
+    slo_groups/generator.py Level-2 expansion (not yet implemented,
+    tracked as a follow-up).
+    """
 
     method: str | None = None
     aggregation: str | None = None
-    pass_criteria: list[str] | None = None
-    warning_criteria: list[str] | None = None
+    pass_threshold: list[str] | None = None
+    warning_threshold: list[str] | None = None
+    weight: int | None = None
+    key_sli: bool | None = None
 
 
 class SLOObjectiveIn(StrictInput):

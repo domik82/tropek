@@ -1899,8 +1899,8 @@ export interface components {
             include_result_with_score?: string | null;
             /** Number Of Comparison Results */
             number_of_comparison_results?: number | null;
-        } & {
-            [key: string]: unknown;
+            /** Scope Tags */
+            scope_tags?: string[] | null;
         };
         /**
          * DataSourceCreate
@@ -2571,17 +2571,31 @@ export interface components {
         };
         /**
          * MethodCriteriaOverride
-         * @description Per-indicator method-criteria override. All four fields optional.
+         * @description Per-method override for template Level-2 expansion.
+         *
+         *     Mirrors the four override-capable fields of SLOObjectiveIn
+         *     (pass_threshold, warning_threshold, weight, key_sli), plus
+         *     two method/aggregation hints. All fields optional — only the
+         *     fields explicitly set on an override are applied during template
+         *     instantiation; unset fields inherit from the template's objective.
+         *
+         *     Stored on SLODefinition.method_criteria and consumed during
+         *     slo_groups/generator.py Level-2 expansion (not yet implemented,
+         *     tracked as a follow-up).
          */
         MethodCriteriaOverride: {
             /** Aggregation */
             aggregation?: string | null;
+            /** Key Sli */
+            key_sli?: boolean | null;
             /** Method */
             method?: string | null;
-            /** Pass Criteria */
-            pass_criteria?: string[] | null;
-            /** Warning Criteria */
-            warning_criteria?: string[] | null;
+            /** Pass Threshold */
+            pass_threshold?: string[] | null;
+            /** Warning Threshold */
+            warning_threshold?: string[] | null;
+            /** Weight */
+            weight?: number | null;
         };
         /**
          * MetricHeatmapResponse
