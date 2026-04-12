@@ -105,15 +105,15 @@ vi.mock('@/features/slos/hooks', () => ({
   useDeleteGroupSloAssignment: vi.fn(() => ({ mutate: vi.fn(), isPending: false })),
 }))
 
-vi.mock('@/features/slos/components/GroupEditDialog', () => ({
+vi.mock('./GroupEditDialog', () => ({
   GroupEditDialog: vi.fn(() => null),
 }))
 
-vi.mock('@/features/slos/components/GroupDeleteDialog', () => ({
+vi.mock('./GroupDeleteDialog', () => ({
   GroupDeleteDialog: vi.fn(() => null),
 }))
 
-vi.mock('@/features/slos/components/GroupCreateDialog', () => ({
+vi.mock('./GroupCreateDialog', () => ({
   GroupCreateDialog: vi.fn(() => null),
 }))
 

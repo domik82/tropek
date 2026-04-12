@@ -3,7 +3,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose,
 } from '@/components/ui/dialog'
 import { useDeleteGroup, useGroupTree } from '@/features/assets'
-import { useGroupSloAssignments } from '../hooks'
+import { useGroupSloAssignments } from '@/features/slos'
 
 interface Props {
   open: boolean

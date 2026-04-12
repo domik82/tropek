@@ -1,7 +1,5 @@
 // ui/src/features/slos/components/SloGroupDialogs.tsx
-import { GroupCreateDialog } from './GroupCreateDialog'
-import { GroupEditDialog } from './GroupEditDialog'
-import { GroupDeleteDialog } from './GroupDeleteDialog'
+import { GroupCreateDialog, GroupEditDialog, GroupDeleteDialog } from '@/features/assets'
 import { SloLinkDialog } from './SloLinkDialog'
 
 interface Props {
