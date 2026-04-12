@@ -12,6 +12,26 @@ from tropek.modules.common.schemas import StrictInput
 from tropek.modules.quality_gate.schemas import IndicatorResult
 
 
+class ComparisonConfig(BaseModel):
+    """Per-SLO comparison configuration. All fields optional."""
+
+    compare_with: str | None = None
+    include_result_with_score: str | None = None
+    number_of_comparison_results: int | None = None
+    aggregate_function: str | None = None
+
+    model_config = ConfigDict(extra='allow')  # forward-compat during rollout
+
+
+class MethodCriteriaOverride(BaseModel):
+    """Per-indicator method-criteria override. All four fields optional."""
+
+    method: str | None = None
+    aggregation: str | None = None
+    pass_criteria: list[str] | None = None
+    warning_criteria: list[str] | None = None
+
+
 class SLOObjectiveIn(StrictInput):
     """SLO objective for create/validate requests."""
 
@@ -39,16 +59,16 @@ class SLODefinitionCreate(StrictInput):
     objectives: list[SLOObjectiveIn]
     total_score_pass_threshold: float = 90.0
     total_score_warning_threshold: float = 75.0
-    comparison: dict[str, Any] = Field(default_factory=dict)
+    comparison: ComparisonConfig = Field(default_factory=ComparisonConfig)
     notes: str | None = None
     author: str | None = None
-    tags: dict[str, Any] = Field(default_factory=dict)
-    variables: dict[str, Any] = Field(default_factory=dict)
+    tags: dict[str, str] = Field(default_factory=dict)
+    variables: dict[str, str] = Field(default_factory=dict)
     comparable_from_version: int | None = None
     kind: str = 'standard'
     sli_name: str | None = None
     sli_version: int | None = None
-    method_criteria: dict[str, Any] | None = None
+    method_criteria: dict[str, MethodCriteriaOverride] | None = None
 
 
 class SLODefinitionRead(BaseModel):
@@ -63,13 +83,13 @@ class SLODefinitionRead(BaseModel):
     objectives: list[SLOObjectiveRead]
     total_score_pass_threshold: float
     total_score_warning_threshold: float
-    comparison: dict[str, Any]
+    comparison: ComparisonConfig
     notes: str | None
     author: str | None
-    tags: dict[str, Any]
-    variables: dict[str, Any]
+    tags: dict[str, str]
+    variables: dict[str, str]
     kind: str
-    method_criteria: dict[str, Any] | None
+    method_criteria: dict[str, MethodCriteriaOverride] | None
     sli_definition_id: uuid.UUID | None
     sli_name: str | None = None
     sli_version: int | None = None
@@ -98,7 +118,7 @@ class SLOValidateRequest(StrictInput):
     objectives: list[SLOObjectiveIn]
     total_score_pass_threshold: float = 90.0
     total_score_warning_threshold: float = 75.0
-    comparison: dict[str, Any] = Field(default_factory=dict)
+    comparison: ComparisonConfig = Field(default_factory=ComparisonConfig)
 
 
 class SLOValidationError(BaseModel):
@@ -131,7 +151,7 @@ class SLOTestRequest(StrictInput):
     objectives: list[SLOObjectiveIn]
     total_score_pass_threshold: float = 90.0
     total_score_warning_threshold: float = 75.0
-    comparison: dict[str, Any] = Field(default_factory=dict)
+    comparison: ComparisonConfig = Field(default_factory=ComparisonConfig)
     # Evaluation context — unchanged
     sli_name: str
     data_source_name: str

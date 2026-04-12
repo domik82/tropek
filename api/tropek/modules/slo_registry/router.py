@@ -78,7 +78,7 @@ async def create_slo_definition(
         objectives=[SLOObjectiveParams(**o.model_dump()) for o in body.objectives],
         total_score_pass_threshold=body.total_score_pass_threshold,
         total_score_warning_threshold=body.total_score_warning_threshold,
-        comparison=body.comparison or None,
+        comparison=body.comparison.model_dump(exclude_none=True) or None,
         display_name=body.display_name,
         notes=body.notes,
         author=body.author,
@@ -87,7 +87,14 @@ async def create_slo_definition(
         comparable_from_version=body.comparable_from_version,
         kind=body.kind,
         sli_definition_id=resolved_sli_id,
-        method_criteria=body.method_criteria,
+        method_criteria=(
+            {
+                key: override.model_dump(exclude_none=True)
+                for key, override in body.method_criteria.items()
+            }
+            if body.method_criteria is not None
+            else None
+        ),
     )
     slo = await repo.create(params)
     return SLODefinitionRead.model_validate(slo)
@@ -109,7 +116,7 @@ async def validate_slo(body: SLOValidateRequest) -> SLOValidationResult:  # noqa
             objectives=[o.model_dump() for o in body.objectives],
             total_score_pass_threshold=body.total_score_pass_threshold,
             total_score_warning_threshold=body.total_score_warning_threshold,
-            comparison=body.comparison,
+            comparison=body.comparison.model_dump(exclude_none=True),
         )
     except SLOParseError as e:
         return SLOValidationResult(
