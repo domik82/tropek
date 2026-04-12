@@ -19,5 +19,37 @@ export default defineConfig([
       ecmaVersion: 2020,
       globals: globals.browser,
     },
+    rules: {
+      'no-restricted-imports': ['error', {
+        patterns: [{
+          group: ['@/generated/api', '@/generated/api/*'],
+          message:
+            'Components must import domain types from features/<x>, never DTOs directly. ' +
+            'Only features/*/api.ts and features/*/mappers.ts may import from @/generated/api.',
+        }],
+      }],
+    },
+  },
+  // Allow the DTO import inside the mapper / fetch boundary files.
+  {
+    files: [
+      'src/features/*/api.ts',
+      'src/features/*/mappers.ts',
+    ],
+    rules: {
+      'no-restricted-imports': 'off',
+    },
+  },
+  // TEMPORARY: allow unmigrated features to keep using DTOs until their own
+  // migration chunks land. Navigator = Chunk B2, evaluations = Chunk B3.
+  // Delete these overrides after B2 / B3 complete.
+  {
+    files: [
+      'src/features/navigator/**/*.{ts,tsx}',
+      'src/features/evaluations/**/*.{ts,tsx}',
+    ],
+    rules: {
+      'no-restricted-imports': 'off',
+    },
   },
 ])
