@@ -3,11 +3,22 @@ import { describe, it, expect } from 'vitest'
 import { collectGroupAssetNames } from './utils'
 import type { AssetGroup, AssetGroupTree } from './types'
 
+const TS = '2026-01-01T00:00:00Z'
+
 const makeGroup = (id: string, memberNames: string[], subgroupIds: string[] = []): AssetGroup => ({
   id,
   name: id,
-  members: memberNames.map(n => ({ asset_id: n, asset_name: n, weight: 1 })),
+  display_name: null,
+  description: null,
+  members: memberNames.map(n => ({
+    asset_id: n,
+    asset_name: n,
+    asset_type_name: 'service',
+    weight: 1,
+  })),
   subgroups: subgroupIds.map(gid => ({ group_id: gid, group_name: gid, weight: 1 })),
+  created_at: TS,
+  updated_at: TS,
 })
 
 describe('collectGroupAssetNames', () => {
