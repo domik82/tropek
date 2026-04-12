@@ -4,7 +4,7 @@ import { Input } from '@/components/ui/input'
 import { FormDialog } from '@/components/ui/form-dialog'
 import { GroupTreeSelector } from '@/features/assets/components/GroupTreeSelector'
 import { useUpdateGroup, useGroupTree, useAddSubgroup } from '@/features/assets'
-import { useGroupSloAssignments, useDeleteGroupSloAssignment } from '../hooks'
+import { useGroupSloAssignments, useDeleteGroupSloAssignment } from '@/features/slos'
 
 interface Props {
   open: boolean
