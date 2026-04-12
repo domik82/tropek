@@ -339,9 +339,9 @@ def test_build_detail_sli_metadata_from_job_stats() -> None:
     )
     detail = build_detail(ev)
     assert detail.sli_metadata is not None
-    assert detail.sli_metadata['cpu']['expected_samples'] == 100
-    assert detail.sli_metadata['cpu']['mode'] == 'aggregated'
-    assert detail.sli_metadata['cpu']['missing_pct'] == 5.0
+    assert detail.sli_metadata['cpu'].expected_samples == 100
+    assert detail.sli_metadata['cpu'].mode == 'aggregated'
+    assert detail.sli_metadata['cpu'].missing_pct == 5.0
 
 
 def test_build_detail_sli_metadata_none_when_absent() -> None:
@@ -386,5 +386,7 @@ def test_build_detail_uses_stored_targets() -> None:
     ev = _make_evaluation(indicator_rows=[row])
     detail = build_detail(ev)
     ind = detail.indicator_results[0]
-    assert ind.pass_targets == stored['pass']
-    assert ind.warning_targets == stored['warn']
+    assert ind.pass_targets is not None
+    assert [pt.model_dump() for pt in ind.pass_targets] == stored['pass']
+    assert ind.warning_targets is not None
+    assert [pt.model_dump() for pt in ind.warning_targets] == stored['warn']
