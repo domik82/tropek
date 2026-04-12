@@ -101,3 +101,12 @@ e2e:
 # Export FastAPI OpenAPI schema to api/openapi.json
 export-schema:
     uv run --directory api python ../scripts/export-schema.py
+
+# Regenerate TypeScript types from api/openapi.json
+codegen:
+    cd ui && pnpm exec openapi-typescript ../api/openapi.json -o src/generated/api.ts
+
+# Regenerate schema + types and fail if anything changed (CI freshness check)
+check-schema-fresh: export-schema codegen
+    @git diff --exit-code api/openapi.json ui/src/generated/api.ts || \
+        (echo "ERROR: schema or generated types are stale — run 'just export-schema && just codegen' and commit" && exit 1)
