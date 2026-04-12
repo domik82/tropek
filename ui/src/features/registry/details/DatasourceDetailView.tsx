@@ -29,7 +29,7 @@ export function DatasourceDetailView({ name, onNavigate, onEdit }: DatasourceDet
     )
   }
 
-  const usedBySlis = (slis ?? []).filter(s => s.adapter_type === ds.adapterType)
+  const usedBySlis = (slis ?? []).filter(s => s.adapterType === ds.adapterType)
 
   function handleDelete() {
     deleteMutation.mutate(ds!.name)
@@ -134,7 +134,7 @@ export function DatasourceDetailView({ name, onNavigate, onEdit }: DatasourceDet
                     className="text-sm text-primary hover:underline cursor-pointer"
                     onClick={() => onNavigate({ type: 'sli', name: sli.name })}
                   >
-                    {sli.display_name ?? sli.name}
+                    {sli.displayName ?? sli.name}
                   </button>
                 </li>
               ))}

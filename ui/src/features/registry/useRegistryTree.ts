@@ -14,8 +14,8 @@ export interface MinSlo {
 
 export interface MinSli {
   name: string
-  display_name?: string | null
-  adapter_type: string
+  displayName?: string | null
+  adapterType: string
   active: boolean
   indicators?: Record<string, string>
 }
@@ -66,7 +66,7 @@ export function buildSloTree(
       sliChildren.push({
         id: `sli:${slo.sli_name}`,
         name: slo.sli_name,
-        displayName: sli?.display_name ?? undefined,
+        displayName: sli?.displayName ?? undefined,
         type: 'sli' as const,
         badge: indicatorCount > 0 ? `${indicatorCount}` : undefined,
         children: dsChildren,
@@ -126,7 +126,7 @@ export function buildDatasourceTree(
       sliChildren.push({
         id: `sli:${sliName}`,
         name: sliName,
-        displayName: sli?.display_name ?? undefined,
+        displayName: sli?.displayName ?? undefined,
         type: 'sli' as const,
         badge: indicatorCount > 0 ? `${indicatorCount}` : undefined,
         children: sloChildren,
@@ -202,7 +202,7 @@ export function buildAssetTree(
           sloLeaf = [{
             id: `binding-sli:${member.asset_name}:${slo.sli_name}`,
             name: slo.sli_name,
-            displayName: sli?.display_name ?? undefined,
+            displayName: sli?.displayName ?? undefined,
             type: 'sli' as const,
             badge: indicatorCount > 0 ? `${indicatorCount}` : undefined,
             groupName: group.name,
@@ -277,7 +277,7 @@ export function buildSloSections(
       sliChildren.push({
         id: `sli:${slo.sli_name}`,
         name: slo.sli_name,
-        displayName: sli?.display_name ?? undefined,
+        displayName: sli?.displayName ?? undefined,
         type: 'sli' as const,
         badge: `${indicatorCount} indicators`,
         children: dsChildren,

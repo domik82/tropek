@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { SliForm } from './SliForm'
-import type { SliDefinition } from '@/features/slis'
+import type { Sli } from '@/features/slis'
 
 vi.mock('@/features/slis/hooks', () => ({
   useCreateSli: vi.fn(),
@@ -12,26 +12,26 @@ import { useCreateSli } from '@/features/slis/hooks'
 
 const mockCreate = vi.fn()
 
-const mockSli: SliDefinition = {
+const mockSli: Sli = {
   id: 'sli-1',
   name: 'http-error-rate',
-  display_name: 'HTTP Error Rate',
-  adapter_type: 'prometheus',
+  displayName: 'HTTP Error Rate',
+  adapterType: 'prometheus',
   version: 3,
-  comparable_from_version: 2,
+  comparableFromVersion: 2,
   indicators: {
     error_rate: 'sum(rate(http_requests_total[5m]))',
     latency: 'histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m]))',
   },
   mode: 'raw',
-  query_template: null,
+  queryTemplate: null,
   interval: null,
   methods: null,
   notes: 'Error rate SLI',
   author: 'alice',
   tags: { env: 'prod' },
   active: true,
-  created_at: '2024-01-01T00:00:00Z',
+  createdAt: new Date('2024-01-01T00:00:00Z'),
 }
 
 let queryClient: QueryClient
@@ -200,11 +200,11 @@ describe('SliForm', () => {
   })
 
   it('edit mode pre-fills aggregated fields', () => {
-    const aggSli: SliDefinition = {
+    const aggSli: Sli = {
       ...mockSli,
       mode: 'aggregated',
       indicators: {},
-      query_template: 'rate(cpu[$interval])',
+      queryTemplate: 'rate(cpu[$interval])',
       interval: '5m',
       methods: ['mean', 'p99'],
     }
