@@ -19,6 +19,7 @@ export const evaluationKeys = {
   all: ['evaluations'] as const,
   list: (filters: EvalFilters) => [...evaluationKeys.all, filters] as const,
   detail: (id: string) => [...evaluationKeys.all, id] as const,
+  allTrends: ['trend'] as const,
   trend: (assetName: string, sloName: string, metric: string, dateRange?: Record<string, string | undefined>) =>
     ['trend', assetName, sloName, metric, dateRange] as const,
   allHeatmaps: ['metric-heatmap'] as const,

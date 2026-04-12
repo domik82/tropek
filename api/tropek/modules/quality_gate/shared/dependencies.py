@@ -52,7 +52,7 @@ async def get_qg_repos(
     """Build the full repository bundle from a DB session."""
     cache: RedisCache | None = getattr(request.app.state, 'cache', None)
     return QualityGateRepos(
-        eval_repo=EvaluationRepository(session),
+        eval_repo=EvaluationRepository(session, cache=cache),
         eval_run_repo=EvaluationRunRepository(session),
         annotation_repo=AnnotationRepository(session, cache=cache),
         sli_repo=SLIValueRepository(session),

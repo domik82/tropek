@@ -120,6 +120,7 @@ export function useInvalidateEvaluation(evalId: string) {
       qc.invalidateQueries({ queryKey: evaluationKeys.all })
       qc.invalidateQueries({ queryKey: evaluationKeys.allNames })
       qc.invalidateQueries({ queryKey: evaluationKeys.allHeatmaps })
+      qc.invalidateQueries({ queryKey: evaluationKeys.allTrends })
     },
   })
 }
@@ -133,6 +134,7 @@ export function useRestoreEvaluation(evalId: string) {
       qc.invalidateQueries({ queryKey: evaluationKeys.all })
       qc.invalidateQueries({ queryKey: evaluationKeys.allNames })
       qc.invalidateQueries({ queryKey: evaluationKeys.allHeatmaps })
+      qc.invalidateQueries({ queryKey: evaluationKeys.allTrends })
     },
   })
 }
@@ -146,6 +148,7 @@ export function useOverrideStatus(evalId: string) {
       qc.invalidateQueries({ queryKey: evaluationKeys.detail(evalId) })
       qc.invalidateQueries({ queryKey: evaluationKeys.all })
       qc.invalidateQueries({ queryKey: evaluationKeys.allHeatmaps })
+      qc.invalidateQueries({ queryKey: evaluationKeys.allTrends })
     },
   })
 }
@@ -158,6 +161,7 @@ export function usePinBaseline(evalId: string) {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: evaluationKeys.detail(evalId) })
       qc.invalidateQueries({ queryKey: evaluationKeys.all })
+      qc.invalidateQueries({ queryKey: evaluationKeys.allTrends })
     },
   })
 }
@@ -170,6 +174,7 @@ export function useReEvaluate() {
       qc.invalidateQueries({ queryKey: evaluationKeys.all })
       qc.invalidateQueries({ queryKey: evaluationKeys.allNames })
       qc.invalidateQueries({ queryKey: evaluationKeys.allHeatmaps })
+      qc.invalidateQueries({ queryKey: evaluationKeys.allTrends })
     },
   })
 }
