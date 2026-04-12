@@ -4,11 +4,39 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
-from typing import Any
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from tropek.modules.quality_gate.schemas.annotations import AnnotationRead
+
+
+class AssetSnapshot(BaseModel):
+    """Snapshot of asset identity/version at evaluation time."""
+
+    name: str
+    display_name: str | None = None
+    tags: dict[str, str] = Field(default_factory=dict)
+    primary_version: str | None = None
+    build_ref: str | None = None
+
+
+class SliMetadata(BaseModel):
+    """Per-metric aggregation fidelity info for a single indicator."""
+
+    mode: Literal['aggregated']
+    expected_samples: int
+    actual_samples: int
+    missing_pct: float
+    chunks_failed: int
+
+
+class PassTarget(BaseModel):
+    """A single resolved pass/warning target on an indicator result."""
+
+    criteria: str
+    target_value: float
+    violated: bool
 
 
 class FailingIndicator(BaseModel):
@@ -35,8 +63,8 @@ class IndicatorResult(BaseModel):
     score: float
     weight: float
     key_sli: bool
-    pass_targets: list[dict[str, Any]] | None
-    warning_targets: list[dict[str, Any]] | None
+    pass_targets: list[PassTarget] | None
+    warning_targets: list[PassTarget] | None
 
 
 class EvaluationSummary(BaseModel):
@@ -66,8 +94,8 @@ class EvaluationSummary(BaseModel):
     original_score: float | None = None
     override_reason: str | None = None
     override_author: str | None = None
-    asset_snapshot: dict[str, Any]
-    variables: dict[str, Any]
+    asset_snapshot: AssetSnapshot
+    variables: dict[str, str]
     annotation_count: int = 0
     latest_annotation: AnnotationRead | None = None
     top_failures: list[FailingIndicator] = []
@@ -85,7 +113,7 @@ class EvaluationDetail(EvaluationSummary):
     indicator_results: list[IndicatorResult]
     total_score_pass_threshold: float | None = None
     total_score_warning_threshold: float | None = None
-    sli_metadata: dict[str, Any] | None = None
+    sli_metadata: dict[str, SliMetadata] | None = None
 
     @model_validator(mode='after')
     def sync_annotation_count(self) -> EvaluationDetail:

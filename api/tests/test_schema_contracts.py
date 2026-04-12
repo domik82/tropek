@@ -18,6 +18,13 @@ from tropek.modules.quality_gate.schemas import (
     EvaluateSingleRequest,
     EvaluationSummary,
 )
+from tropek.modules.quality_gate.schemas.evaluations import (
+    AssetSnapshot,
+    EvaluationDetail,
+    IndicatorResult,
+    PassTarget,
+    SliMetadata,
+)
 from tropek.modules.sli_registry.schemas import SLIDefinitionRead
 from tropek.modules.slo_registry.schemas import SLODefinitionRead
 
@@ -107,6 +114,33 @@ class TestEvaluationSchemaContract:
         fields = _field_names(EvaluateSingleRequest)
         assert 'variables' in fields
         assert 'metadata' not in fields
+
+
+# -- Evaluation nested model types (Chunk A §15.1 bugs #1-#4) -----------------
+
+
+class TestEvaluationNestedTypes:
+    """Nested types must be concrete Pydantic models, not dict[str, Any]."""
+
+    def test_asset_snapshot_is_typed_model(self) -> None:
+        field = EvaluationSummary.model_fields['asset_snapshot']
+        assert field.annotation is AssetSnapshot
+
+    def test_variables_is_str_map(self) -> None:
+        field = EvaluationSummary.model_fields['variables']
+        assert field.annotation == dict[str, str]
+
+    def test_sli_metadata_value_type_is_typed(self) -> None:
+        field = EvaluationDetail.model_fields['sli_metadata']
+        assert field.annotation == dict[str, SliMetadata] | None
+
+    def test_pass_targets_is_typed_list(self) -> None:
+        field = IndicatorResult.model_fields['pass_targets']
+        assert field.annotation == list[PassTarget] | None
+
+    def test_warning_targets_is_typed_list(self) -> None:
+        field = IndicatorResult.model_fields['warning_targets']
+        assert field.annotation == list[PassTarget] | None
 
 
 # -- Annotations --------------------------------------------------------------

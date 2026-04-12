@@ -198,7 +198,10 @@ async def test_detail_round_trip_all_fields(db_session: AsyncSession) -> None:
     assert ir_pass.status == 'pass'
     assert ir_pass.key_sli is True
     assert ir_pass.tab_group == 'latency'
-    assert ir_pass.pass_targets == [{'criteria': '<600', 'target_value': 600, 'violated': False}]
+    assert ir_pass.pass_targets is not None
+    assert [pt.model_dump() for pt in ir_pass.pass_targets] == [
+        {'criteria': '<600', 'target_value': 600, 'violated': False}
+    ]
 
     # Assert fail indicator
     ir_fail = next(ir for ir in detail.indicator_results if ir.metric == 'error_rate')

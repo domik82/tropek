@@ -20,6 +20,7 @@ from tropek.modules.quality_gate.schemas import (
     IndicatorResult,
     SloGroup,
 )
+from tropek.modules.quality_gate.schemas.evaluations import PassTarget
 from tropek.modules.quality_gate.workflows.presentation.target_resolver import resolve_targets
 
 
@@ -28,21 +29,26 @@ def _read_stored_targets(
     objective: Any,
     *,
     is_pass: bool,
-) -> list[dict[str, Any]] | None:
+) -> list[PassTarget] | None:
     """Read targets from stored JSONB, falling back to resolve_targets for old rows."""
     stored = getattr(row, 'targets', None)
     if stored is not None:
         key = 'pass' if is_pass else 'warn'
-        result: list[dict[str, Any]] | None = stored.get(key)
-        return result
+        raw_targets = stored.get(key)
+        if raw_targets is None:
+            return None
+        return [PassTarget.model_validate(entry) for entry in raw_targets]
     criteria = list(objective.pass_threshold) if is_pass else list(objective.warning_threshold)
     if not criteria:
         return None
-    return resolve_targets(
+    resolved = resolve_targets(
         criteria,
         value=row.value,
         compared_value=row.compared_value,
     )
+    if resolved is None:
+        return None
+    return [PassTarget.model_validate(entry) for entry in resolved]
 
 
 def _indicators_from_orm_rows(rows: list[IndicatorResultRow]) -> list[IndicatorResult]:
@@ -86,7 +92,7 @@ def _top_failures(indicators: list[IndicatorResult]) -> list[FailingIndicator]:
             metric=ind.metric,
             display_name=ind.display_name,
             value=ind.value,
-            threshold=(ind.pass_targets or [{}])[0].get('criteria', ''),
+            threshold=ind.pass_targets[0].criteria if ind.pass_targets else '',
         )
         for ind in indicators
         if ind.status == 'fail'
