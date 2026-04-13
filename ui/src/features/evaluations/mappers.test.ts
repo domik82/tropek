@@ -15,6 +15,7 @@ import {
   dtoToAnnotation,
   dtoToTrendPoint,
   dtoToEvaluationNameEntry,
+  dtoToReEvaluateResponse,
 } from './mappers'
 
 function makeSummaryDto(overrides: Partial<EvaluationSummaryDto> = {}): EvaluationSummaryDto {
@@ -239,5 +240,29 @@ describe('dtoToEvaluationNameEntry', () => {
     const domain = dtoToEvaluationNameEntry(dto)
     expect(domain.lastRun).toBeInstanceOf(Date)
     expect(domain.count).toBe(5)
+  })
+})
+
+describe('dtoToReEvaluateResponse', () => {
+  it('camelCases results and collapses result strings to Outcome', () => {
+    const domain = dtoToReEvaluateResponse({
+      affected_evaluations: 2,
+      slo_version_used: 4,
+      results: [{
+        id: 'e1',
+        evaluation_name: 'perf',
+        period_start: '2026-03-15T10:00:00Z',
+        period_end: '2026-03-15T10:30:00Z',
+        old_result: 'fail',
+        new_result: 'pass',
+        old_score: 40,
+        new_score: 92,
+      }],
+    })
+    expect(domain.affectedEvaluations).toBe(2)
+    expect(domain.sloVersionUsed).toBe(4)
+    expect(domain.results[0].period.from).toBe('2026-03-15T10:00:00Z')
+    expect(domain.results[0].oldOutcome).toBe('fail')
+    expect(domain.results[0].newOutcome).toBe('pass')
   })
 })
