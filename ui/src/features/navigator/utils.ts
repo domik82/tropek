@@ -1,6 +1,7 @@
 // ui/src/features/navigator/utils.ts
 import type { EvaluationSummary } from '@/features/evaluations/types'
-import type { HeatmapCell, GroupHeatmapData, SlotScoreData, AssetHeatmapData, MetricHeatmapResponse, HeatmapSummaryCell, MetricHeatmapCell } from './types'
+import type { HeatmapEChartsCell } from './ui-types'
+import type { GroupHeatmapData, SlotScoreData } from './types'
 
 const RESULT_RANK: Record<string, number> = { pass: 0, warning: 1, fail: 2, error: 3, invalidated: 4 }
 
@@ -37,7 +38,7 @@ export function buildGroupHeatmapData(evals: EvaluationSummary[], fallbackNames?
     }
   }
 
-  const cells: HeatmapCell[] = []
+  const cells: HeatmapEChartsCell[] = []
   for (let xi = 0; xi < slots.length; xi++) {
     for (let yi = 0; yi < assetNames.length; yi++) {
       const prefix = `${assetNames[yi]}\0${slots[xi]}\0`
@@ -88,131 +89,4 @@ export function buildGroupScoreData(evals: EvaluationSummary[]): SlotScoreData[]
       totalMax: assets.length * 100,
     }
   })
-}
-
-export function buildAssetHeatmapData(
-  resp: MetricHeatmapResponse,
-  expandState: Map<string, boolean>,
-): AssetHeatmapData {
-  const columns = resp.columns
-  const n = columns.length
-  const sortedGroups = [...resp.groups].sort((a, b) => a.slo_name.localeCompare(b.slo_name))
-
-  // Build column index map: evaluation_id → xi
-  const colIdx = new Map<string, number>()
-  for (let i = 0; i < columns.length; i++) colIdx.set(columns[i].evaluation_id, i)
-
-  // Build display rows in visual top-to-bottom order:
-  //   displayRows[0] = "Overall Score" (top)
-  //   displayRows[1] = SLO header (nginx)
-  //   displayRows[2..] = nginx indicators if expanded
-  //   ... etc.
-  const displayRows: Array<{
-    label: string
-    type: 'overall' | 'slo-header' | 'indicator'
-    sloName?: string
-    metricName?: string
-  }> = [{ label: 'Overall Score', type: 'overall' }]
-
-  for (const group of sortedGroups) {
-    const label = group.slo_display_name ?? group.slo_name
-    const isExpanded = expandState.get(group.slo_name) ?? false
-    displayRows.push({ label, type: 'slo-header', sloName: group.slo_name })
-    if (isExpanded) {
-      for (const m of group.metrics) {
-        displayRows.push({ label: m.display_name, type: 'indicator', sloName: group.slo_name, metricName: m.name })
-      }
-    }
-  }
-
-  const N = displayRows.length
-  // ECharts renders category axis bottom-to-top, so reverse for correct visual order
-  const rows = [...displayRows].reverse().map(r => r.label)
-
-  // ECharts y-index for displayRows[i] = N - 1 - i
-  function yi(displayRowIndex: number): number {
-    return N - 1 - displayRowIndex
-  }
-
-  // Build indicator cell lookup: `${sloName}\0${evaluationId}\0${metricName}` → MetricHeatmapCell
-  const indicatorMap = new Map<string, MetricHeatmapCell>()
-  for (const group of sortedGroups) {
-    for (const cell of group.cells) {
-      indicatorMap.set(`${group.slo_name}\0${cell.evaluation_id}\0${cell.metric}`, cell)
-    }
-  }
-
-  // Build summary cell lookups
-  const compositeByCol = new Map<string, HeatmapSummaryCell>()
-  for (const s of resp.composite) compositeByCol.set(s.evaluation_id, s)
-
-  const summaryByGroupCol = new Map<string, HeatmapSummaryCell>()
-  for (const group of sortedGroups) {
-    for (const s of group.summary) {
-      summaryByGroupCol.set(`${group.slo_name}\0${s.evaluation_id}`, s)
-    }
-  }
-
-  const gridCells: HeatmapCell[] = []
-  const headerRowIndices = new Set<number>()
-
-  for (let di = 0; di < displayRows.length; di++) {
-    const row = displayRows[di]
-    const rowYi = yi(di)
-
-    if (row.type === 'overall') {
-      for (let xi = 0; xi < n; xi++) {
-        const col = columns[xi]
-        const s = compositeByCol.get(col.evaluation_id)
-        gridCells.push({
-          value: [xi, rowYi],
-          result: s?.result ?? 'none',
-          score: s ? Math.round(s.score) : 0,
-          slot: col.period_start,
-          rowLabel: row.label,
-          columnKey: col.evaluation_id,
-          evaluation_name: col.eval_name,
-        })
-      }
-    } else if (row.type === 'slo-header') {
-      headerRowIndices.add(rowYi)
-      for (let xi = 0; xi < n; xi++) {
-        const col = columns[xi]
-        const s = summaryByGroupCol.get(`${row.sloName}\0${col.evaluation_id}`)
-        gridCells.push({
-          value: [xi, rowYi],
-          result: s?.result ?? 'none',
-          score: s ? Math.round(s.score) : 0,
-          slot: col.period_start,
-          rowLabel: row.label,
-          columnKey: col.evaluation_id,
-          evaluation_name: col.eval_name,
-          isSloHeader: true,
-          sloName: row.sloName,
-        })
-      }
-    } else {
-      // indicator row
-      for (let xi = 0; xi < n; xi++) {
-        const col = columns[xi]
-        const key = `${row.sloName}\0${col.evaluation_id}\0${row.metricName}`
-        const cell = indicatorMap.get(key)
-        gridCells.push({
-          value: [xi, rowYi],
-          result: cell?.result ?? 'none',
-          score: cell ? Math.round(cell.score) : 0,
-          slot: col.period_start,
-          rowLabel: row.label,
-          columnKey: col.evaluation_id,
-          evaluation_name: col.eval_name,
-          evalId: cell?.slo_evaluation_id,
-          sloName: row.sloName,
-          metricName: row.metricName,
-        })
-      }
-    }
-  }
-
-  const slots = columns.map(c => c.period_start)
-  return { slots, rows, cells: gridCells, headerRowIndices }
 }
