@@ -1,17 +1,45 @@
 export type {
-  EvaluationSummary, EvaluationDetail, EvaluationFilters,
-  IndicatorResult, ColumnDef, ActionKind, TrendPoint,
-} from './types'
+  Annotation,
+  AssetSnapshot,
+  BaselinePin,
+  Evaluation,
+  EvaluationDetail,
+  EvaluationFilters,
+  EvaluationList,
+  EvaluationNameEntry,
+  FailingIndicator,
+  Indicator,
+  Outcome,
+  OverrideStatusInput,
+  PassTarget,
+  PinConflictInfo,
+  ReEvaluateInput,
+  ReEvaluateMode,
+  ReEvaluateResponse,
+  ReEvaluateResultItem,
+  SliMetadata,
+  TrendPoint,
+  TrendTargetEntry,
+  TrendTargets,
+  TriggerEvaluationInput,
+} from './domain'
+export type { ActionKind, ColumnDef } from './ui-types'
 export {
-  useEvaluations, useEvaluationDetail, useTrend,
-  useDynamicColumns, useColumnVisibility,
-  useInvalidateEvaluation, useRestoreEvaluation,
-  useOverrideStatus, usePinBaseline, useReEvaluate,
-  useAddAnnotation, useHideAnnotation,
+  useEvaluations,
+  useEvaluationDetail,
+  useTrend,
+  useDynamicColumns,
+  useColumnVisibility,
+  useInvalidateEvaluation,
+  useRestoreEvaluation,
+  useOverrideStatus,
+  usePinBaseline,
+  useReEvaluate,
+  useAddAnnotation,
+  useHideAnnotation,
 } from './hooks'
 export { useTabState } from './hooks/useTabState'
 export { useMetricTrendState } from './hooks/useMetricTrendState'
-export { fetchEvaluations, fetchEvaluationDetail, fetchTrend } from './api'
 export { EvaluationTable } from './components/EvaluationTable'
 export { SLIBreakdownTable } from './components/SLIBreakdownTable'
 export { EvaluationHeatmap } from './components/EvaluationHeatmap'
