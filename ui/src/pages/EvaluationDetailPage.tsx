@@ -28,12 +28,12 @@ export function EvaluationDetailPage() {
   const { data: assets } = useAssets()
   const { data: slos } = useSlos()
   const assetDisplayName = useMemo(() => {
-    if (!ev || ev.asset_snapshot.display_name) return undefined
-    return assets?.find(a => a.name === ev.asset_snapshot.name)?.displayName ?? undefined
+    if (!ev || ev.assetSnapshot.displayName) return undefined
+    return assets?.find(a => a.name === ev.assetSnapshot.name)?.displayName ?? undefined
   }, [assets, ev])
   const sloDisplayName = useMemo(() => {
-    if (!ev?.slo_name) return undefined
-    return slos?.find(s => s.name === ev.slo_name)?.displayName ?? undefined
+    if (!ev?.sloName) return undefined
+    return slos?.find(s => s.name === ev.sloName)?.displayName ?? undefined
   }, [slos, ev])
 
   if (isLoading) return <div className="p-6 text-muted-foreground">Loading…</div>
@@ -47,7 +47,7 @@ export function EvaluationDetailPage() {
           ← Navigator{backGroup && <span className="text-muted-foreground/60"> ({backGroup})</span>}{backAsset && <span className="text-muted-foreground/60"> ({backAsset})</span>}
         </Link>
         <span>/</span>
-        <span className="text-foreground">{ev.evaluation_name}</span>
+        <span className="text-foreground">{ev.evaluationName}</span>
       </div>
 
       <EvaluationSummaryCard
@@ -57,7 +57,7 @@ export function EvaluationDetailPage() {
         sloDisplayName={sloDisplayName}
         actions={
           <EvaluationActionsButton
-            currentResult={ev.result ?? 'error'}
+            currentResult={ev.outcome ?? 'error'}
             invalidated={ev.invalidated}
             activeAction={activeAction}
             onSelectAction={setActiveAction}
@@ -70,12 +70,12 @@ export function EvaluationDetailPage() {
       {activeAction && (activeAction === 'restore' || !ev.invalidated) && (
         <EvaluationActionForm
           evalId={id!}
-          currentResult={ev.result ?? 'error'}
+          currentResult={ev.outcome ?? 'error'}
           activeAction={activeAction}
           onClose={() => setActiveAction(null)}
-          assetName={ev.asset_snapshot.name}
-          sloName={ev.slo_name ?? ''}
-          defaultFromDate={ev.period_start.slice(0, 16)}
+          assetName={ev.assetSnapshot.name}
+          sloName={ev.sloName ?? ''}
+          defaultFromDate={ev.period.from.slice(0, 16)}
         />
       )}
 

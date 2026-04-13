@@ -35,8 +35,8 @@ export function GroupPanel({ groupName, onSelectAsset }: Props) {
   const { data: evalNames = [] } = useEvaluationNames(undefined, groupName)
 
   const { data: evals = [], isLoading, truncated, total } = useEvaluations({
-    group_name: groupName,
-    evaluation_name: selectedNames,
+    groupName: groupName,
+    evaluationName: selectedNames,
   })
 
   // Live display name lookups — fallback for evaluations whose snapshot lacks display_name
@@ -56,7 +56,7 @@ export function GroupPanel({ groupName, onSelectAsset }: Props) {
   const dynamicCols = useDynamicColumns(evals)
   const colVis = useColumnVisibility(dynamicCols)
   const tableEvals = selectedDate
-    ? evals.filter(e => e.period_start === selectedDate)
+    ? evals.filter(e => e.period.from === selectedDate)
     : evals
 
   return (
@@ -98,13 +98,13 @@ export function GroupPanel({ groupName, onSelectAsset }: Props) {
               assetDisplayNames={assetDisplayNames}
               onAssetSelect={(assetName) => {
                 const match = selectedDate
-                  ? evals.find(e => e.asset_snapshot.name === assetName && e.period_start === selectedDate)
+                  ? evals.find(e => e.assetSnapshot.name === assetName && e.period.from === selectedDate)
                   : undefined
                 onSelectAsset(assetName, match?.id)
               }}
             />
           </div>
-          <EvaluationTable evaluations={tableEvals} {...colVis} onAssetSelect={onSelectAsset} onEvalClick={ev => onSelectAsset(ev.asset_snapshot.name, ev.id)} assetDisplayNames={assetDisplayNames} sloDisplayNames={sloDisplayNames} />
+          <EvaluationTable evaluations={tableEvals} {...colVis} onAssetSelect={onSelectAsset} onEvalClick={ev => onSelectAsset(ev.assetSnapshot.name, ev.id)} assetDisplayNames={assetDisplayNames} sloDisplayNames={sloDisplayNames} />
         </>
       )}
 

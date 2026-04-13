@@ -1,4 +1,4 @@
-import type { EvaluationNameEntry } from '@/features/evaluations/api'
+import type { EvaluationNameEntry } from '@/features/evaluations'
 import { SANS_SERIF } from '@/lib/fonts'
 
 interface Props {

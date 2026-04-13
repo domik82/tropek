@@ -1,26 +1,36 @@
 // ui/src/features/navigator/utils.test.ts
 import { describe, it, expect } from 'vitest'
 import { buildGroupHeatmapData, buildGroupScoreData } from './utils'
-import type { EvaluationSummary } from '@/features/evaluations/types'
+import type { Evaluation } from '@/features/evaluations'
 
-function mkEval(asset: string, slot: string, result: 'pass' | 'warning' | 'fail', score: number, evalName = 'test'): EvaluationSummary {
+function mkEval(asset: string, slot: string, result: 'pass' | 'warning' | 'fail', score: number, evalName = 'test'): Evaluation {
   return {
     id: `${asset}-${slot}-${evalName}`,
-    evaluation_id: `run-${asset}-${slot}`,
-    evaluation_name: evalName,
+    evaluationId: `run-${asset}-${slot}`,
+    evaluationName: evalName,
     status: 'completed',
-    result,
+    outcome: result,
     score,
-    period_start: slot,
-    period_end: slot,
-    slo_name: null, slo_version: null, sli_name: null, sli_version: null,
-    data_source_name: null, ingestion_mode: 'pull', adapter_used: null,
+    period: { from: slot, to: slot },
+    sloName: null,
+    sloVersion: null,
+    sliName: null,
+    sliVersion: null,
+    dataSourceName: null,
+    ingestionMode: 'pull',
+    adapterUsed: null,
     invalidated: false,
-    original_result: null, original_score: null,
-    override_reason: null, override_author: null,
-    asset_snapshot: { name: asset, tags: {} },
+    originalOutcome: null,
+    originalScore: null,
+    overrideReason: null,
+    overrideAuthor: null,
+    assetSnapshot: { name: asset, displayName: null, tags: {}, primaryVersion: null, buildRef: null },
     variables: {},
-    created_at: slot,
+    baselinePin: null,
+    latestAnnotation: null,
+    annotationCount: 0,
+    createdAt: new Date(slot),
+    topFailures: [],
   }
 }
 
@@ -84,7 +94,7 @@ describe('buildGroupScoreData', () => {
 
 describe('buildGroupHeatmapData — collision fix', () => {
   it('creates separate cells for same asset+slot with different evaluation_name', () => {
-    const evals: EvaluationSummary[] = [
+    const evals: Evaluation[] = [
       mkEval('checkout-api', '2026-03-15T00:00:00Z', 'pass', 90, 'load-test'),
       mkEval('checkout-api', '2026-03-15T00:00:00Z', 'fail', 40, 'ad-hoc-run'),
     ]

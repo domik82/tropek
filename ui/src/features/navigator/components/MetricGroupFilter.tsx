@@ -1,8 +1,8 @@
 // ui/src/features/navigator/components/MetricGroupFilter.tsx
-import type { IndicatorResult } from '@/features/evaluations/types'
+import type { Indicator } from '@/features/evaluations'
 
 interface Props {
-  allIndicators: IndicatorResult[]
+  allIndicators: Indicator[]
   metricGroups: string[]
   activeFilter: string
   onFilterChange: (group: string) => void
@@ -27,7 +27,7 @@ export function MetricGroupFilter({ allIndicators, metricGroups, activeFilter, o
             activeFilter === g ? 'bg-state-selected-bg text-foreground' : 'text-muted-foreground hover:text-foreground'
           }`}
         >
-          {g} ({allIndicators.filter(i => i.tab_group === g).length})
+          {g} ({allIndicators.filter(i => i.tabGroup === g).length})
         </button>
       ))}
     </div>

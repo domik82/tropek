@@ -5,7 +5,7 @@ import { ViewToggle } from '@/components/charts/ViewToggle'
 import type { ViewMode } from '@/components/charts/ViewToggle'
 import { AssetScoreChart } from './AssetScoreChart'
 import { MetricGroupFilter } from './MetricGroupFilter'
-import type { EvaluationSummary, IndicatorResult } from '@/features/evaluations/types'
+import type { Evaluation, Indicator } from '@/features/evaluations'
 import type { GroupedMetricHeatmapResponseDto } from '../mappers'
 import type { TimeSlotSelection } from './AssetHeatmap'
 
@@ -20,7 +20,7 @@ interface Props {
    * highlighting the matching timestamp.
    */
   selectedPeriodStart: string | undefined
-  evals: EvaluationSummary[]
+  evals: Evaluation[]
   heatmapData: GroupedMetricHeatmapResponseDto | undefined
   onEvalSelect: (evalId: string) => void
   onSlotSelect: (slot: TimeSlotSelection) => void
@@ -39,15 +39,22 @@ export function AssetPanelChartView({
 
   // One point per EvaluationRun using the composite (aggregated) score.
   // Without this, evals has N entries per run (one per SLO), producing N× too many points.
-  const scoreChartEvals = useMemo((): EvaluationSummary[] => {
+  const scoreChartEvals = useMemo((): Evaluation[] => {
     if (!heatmapData || heatmapData.composite.length === 0) return evals
     return heatmapData.composite.map(cell => {
-      const rep = evals.find(e => e.period_start === cell.period_start)
+      const rep = evals.find(e => e.period.from === cell.period_start)
+      const outcome: Evaluation['outcome'] = (() => {
+        const raw = cell.result
+        if (raw === 'pass' || raw === 'warning' || raw === 'fail' || raw === 'error' || raw === 'invalidated') {
+          return raw
+        }
+        return 'error'
+      })()
       return {
-        ...(rep ?? {} as EvaluationSummary),
+        ...(rep ?? {} as Evaluation),
         id: rep?.id ?? cell.evaluation_id,
-        period_start: cell.period_start,
-        result: (cell.result as EvaluationSummary['result']) ?? 'error',
+        period: { from: cell.period_start, to: rep?.period.to ?? cell.period_start },
+        outcome,
         score: cell.score,
         invalidated: false,
       }
@@ -102,9 +109,9 @@ export function AssetPanelChartView({
   function handleScoreChartClick(evalId: string) {
     const entry = scoreChartEvals.find(e => e.id === evalId)
     if (!entry) { onEvalSelect(evalId); return }
-    const evalIds = slotEvalIds.get(entry.period_start) ?? [evalId]
-    const columnEvalId = slotColumnEvalId.get(entry.period_start)
-    onSlotSelect({ periodStart: entry.period_start, evalIds, columnEvalId })
+    const evalIds = slotEvalIds.get(entry.period.from) ?? [evalId]
+    const columnEvalId = slotColumnEvalId.get(entry.period.from)
+    onSlotSelect({ periodStart: entry.period.from, evalIds, columnEvalId })
   }
 
   // Trend chart click → same full-slot selection so every SLO's chart and
@@ -135,34 +142,35 @@ export function AssetPanelChartView({
     return m
   }, [heatmapData])
 
-  const allIndicators: IndicatorResult[] = useMemo(() => {
+  const allIndicators: Indicator[] = useMemo(() => {
     if (!heatmapData) return []
     const allMetrics = heatmapData.groups.flatMap(g => g.metrics)
     return allMetrics.filter(m => m.name !== '__score__').map(m => ({
       metric: m.name,
-      display_name: m.display_name,
+      displayName: m.display_name,
+      tabGroup: null,
       value: 0,
-      compared_value: null,
-      change_absolute: null,
-      change_relative_pct: null,
-      aggregation: 'avg' as const,
+      comparedValue: null,
+      changeAbsolute: null,
+      changeRelativePct: null,
+      aggregation: 'avg',
       status: 'pass' as const,
       score: 0,
       weight: 1,
-      key_sli: false,
-      pass_targets: null,
-      warning_targets: null,
+      keySli: false,
+      passTargets: [],
+      warningTargets: [],
     }))
   }, [heatmapData])
 
   const metricGroups = useMemo(
-    () => Array.from(new Set(allIndicators.map(i => i.tab_group).filter(Boolean) as string[])),
+    () => Array.from(new Set(allIndicators.map(i => i.tabGroup).filter(Boolean) as string[])),
     [allIndicators],
   )
 
   const chartIndicators = metricGroupFilter === 'all'
     ? allIndicators
-    : allIndicators.filter(i => i.tab_group === metricGroupFilter)
+    : allIndicators.filter(i => i.tabGroup === metricGroupFilter)
 
   return (
     <>
