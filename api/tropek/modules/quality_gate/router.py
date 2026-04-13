@@ -202,12 +202,23 @@ async def get_grouped_metric_heatmap(
     evaluation_name: list[str] | None = Query(default=None),
     from_ts: datetime | None = Query(default=None, alias='from'),
     to_ts: datetime | None = Query(default=None, alias='to'),
+    cache: bool = Query(
+        default=True,
+        description=(
+            'When false, bypass the Redis column cache entirely: read every '
+            'column from the DB, build every fragment, do not write back. '
+            'Used for debugging and for the cache-correctness property test.'
+        ),
+    ),
     repos: QualityGateRepos = Depends(get_qg_repos),
 ) -> GroupedMetricHeatmapResponse:
     """Return a grouped metric heatmap — one column per parent EvaluationRun."""
     asset = await repos.asset_repo.get_by_name(asset_name)
     if asset is None:
         raise NotFoundError('asset', asset_name)
+    # PR1: cache parameter is accepted but not yet plumbed — both paths fall
+    # through to the same build. PR2 replaces this body with MGET + assemble.
+    _ = cache
     runs = await repos.trend_repo.get_grouped_metric_heatmap(
         asset_id=asset.id,
         eval_name=evaluation_name,
