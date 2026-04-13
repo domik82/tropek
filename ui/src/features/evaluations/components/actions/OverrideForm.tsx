@@ -36,8 +36,8 @@ export function OverrideForm({ evaluationId, currentResult, onComplete }: Props)
 
   const handleConfirm = useCallback(() => {
     if (!canConfirm) return
-    const newResult = currentResult === 'pass' ? 'fail' : 'pass'
-    override.mutate({ new_result: newResult, reason, author }, { onSuccess: onComplete })
+    const outcome = currentResult === 'pass' ? 'fail' : 'pass'
+    override.mutate({ outcome, reason, author }, { onSuccess: onComplete })
   }, [reason, author, currentResult, canConfirm, override, onComplete])
 
   return (

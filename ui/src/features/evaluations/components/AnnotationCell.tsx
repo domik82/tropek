@@ -1,5 +1,5 @@
 // src/features/evaluations/components/AnnotationCell.tsx
-import type { Annotation } from '../types'
+import type { Annotation } from '../domain'
 
 interface Props {
   annotation?: Annotation

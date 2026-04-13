@@ -5,7 +5,7 @@ import { RestoreForm } from './actions/RestoreForm'
 import { OverrideForm } from './actions/OverrideForm'
 import { BaselineForm } from './actions/BaselineForm'
 import { ReEvaluateForm } from './actions/ReEvaluateForm'
-import type { ActionKind } from '../types'
+import type { ActionKind } from '../ui-types'
 
 interface ActionDef {
   kind: ActionKind

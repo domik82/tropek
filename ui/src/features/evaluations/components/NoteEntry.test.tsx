@@ -2,19 +2,19 @@ import { describe, it, expect } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { NoteEntry } from './NoteEntry'
-import type { Annotation } from '../types'
+import type { Annotation } from '../domain'
 
 const annotation: Annotation = {
   id: 'ann-1',
   content: 'test note',
   author: 'tester',
   category: 'investigation',
-  meta: {},
-  hidden_at: null,
-  hidden_by: null,
-  hidden_reason: null,
-  created_at: '2026-03-19T10:00:00Z',
-  updated_at: '2026-03-19T10:00:00Z',
+  tags: {},
+  hiddenAt: null,
+  hiddenBy: null,
+  hiddenReason: null,
+  createdAt: new Date('2026-03-19T10:00:00Z'),
+  updatedAt: new Date('2026-03-19T10:00:00Z'),
 }
 
 function renderWithQuery(ui: React.ReactElement) {

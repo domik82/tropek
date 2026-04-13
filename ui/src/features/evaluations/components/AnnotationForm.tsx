@@ -1,6 +1,6 @@
 // ui/src/features/evaluations/components/AnnotationForm.tsx
 import { useState, useImperativeHandle, forwardRef } from 'react'
-import type { Annotation } from '../types'
+import type { Annotation } from '../domain'
 import { NoteEntry } from './NoteEntry'
 import { AddNoteForm } from './AddNoteForm'
 import { SANS_SERIF } from '@/lib/fonts'

@@ -99,8 +99,7 @@ function cell(
     case 'annotations':
       return (
         <td key="annotations" className="px-4 py-3">
-          {/* AnnotationCell still uses the old Annotation shape (Task 14). Cast through never to bridge until that batch lands. */}
-          <AnnotationCell annotation={(ev.latestAnnotation ?? undefined) as never} count={ev.annotationCount} />
+          <AnnotationCell annotation={ev.latestAnnotation ?? undefined} count={ev.annotationCount} />
         </td>
       )
     default:

@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { AnnotationSection } from './AnnotationForm'
-import type { Annotation } from '../types'
+import type { Annotation } from '../domain'
 
 const addAnnotationMutate = vi.fn()
 const hideAnnotationMutate = vi.fn()
@@ -29,24 +29,24 @@ const annotations: Annotation[] = [
     content: 'First note',
     author: 'alice',
     category: 'investigation',
-    meta: {},
-    hidden_at: null,
-    hidden_by: null,
-    hidden_reason: null,
-    created_at: '2026-03-19T10:00:00Z',
-    updated_at: '2026-03-19T10:00:00Z',
+    tags: {},
+    hiddenAt: null,
+    hiddenBy: null,
+    hiddenReason: null,
+    createdAt: new Date('2026-03-19T10:00:00Z'),
+    updatedAt: new Date('2026-03-19T10:00:00Z'),
   },
   {
     id: 'ann-2',
     content: 'Second note',
     author: 'bob',
     category: null,
-    meta: {},
-    hidden_at: null,
-    hidden_by: null,
-    hidden_reason: null,
-    created_at: '2026-03-19T11:00:00Z',
-    updated_at: '2026-03-19T11:00:00Z',
+    tags: {},
+    hiddenAt: null,
+    hiddenBy: null,
+    hiddenReason: null,
+    createdAt: new Date('2026-03-19T11:00:00Z'),
+    updatedAt: new Date('2026-03-19T11:00:00Z'),
   },
 ]
 

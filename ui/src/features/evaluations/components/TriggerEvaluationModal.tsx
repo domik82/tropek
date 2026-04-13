@@ -47,10 +47,13 @@ export function TriggerEvaluationModal({ open, onClose }: Props) {
 
   function onSubmit(values: FormValues) {
     trigger.mutate({
-      asset_name: values.asset_name,
-      eval_name: values.eval_name,
-      period_start: new Date(values.period_start).toISOString(),
-      period_end: new Date(values.period_end).toISOString(),
+      assetName: values.asset_name,
+      evalName: values.eval_name,
+      period: {
+        from: new Date(values.period_start).toISOString(),
+        to: new Date(values.period_end).toISOString(),
+      },
+      variables: {},
     })
   }
 
