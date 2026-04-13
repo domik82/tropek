@@ -1,9 +1,16 @@
 import { describe, it, expect } from 'vitest'
-import type { EvaluationSummaryDto, EvaluationDetailDto } from './mappers'
+import type {
+  EvaluationSummaryDto,
+  EvaluationDetailDto,
+  IndicatorResultDto,
+  AnnotationDto,
+} from './mappers'
 import {
   dtoToEvaluationSummary,
   dtoToEvaluationDetail,
   dtoToEvaluationList,
+  dtoToIndicator,
+  dtoToAnnotation,
 } from './mappers'
 
 function makeSummaryDto(overrides: Partial<EvaluationSummaryDto> = {}): EvaluationSummaryDto {
@@ -121,5 +128,76 @@ describe('dtoToEvaluationList', () => {
     expect(list.items[1].id).toBe('id-2')
     expect(list.total).toBe(17)
     expect(list.truncated).toBe(true)
+  })
+})
+
+describe('dtoToIndicator', () => {
+  it('converts PassTargets camelCase and keeps criteria as display string', () => {
+    const dto: IndicatorResultDto = {
+      metric: 'latency_p95',
+      display_name: 'P95 Latency',
+      tab_group: 'latency',
+      value: 412.3,
+      compared_value: 400,
+      change_absolute: 12.3,
+      change_relative_pct: 3.075,
+      aggregation: 'p95',
+      status: 'pass',
+      score: 95,
+      weight: 1,
+      key_sli: true,
+      pass_targets: [{ criteria: '<600', target_value: 600, violated: false }],
+      warning_targets: [{ criteria: '<=+10%', target_value: 440, violated: false }],
+    }
+    const domain = dtoToIndicator(dto)
+    expect(domain.displayName).toBe('P95 Latency')
+    expect(domain.keySli).toBe(true)
+    expect(domain.changeRelativePct).toBeCloseTo(3.075)
+    expect(domain.passTargets[0]).toEqual({ criteria: '<600', targetValue: 600, violated: false })
+    expect(domain.warningTargets[0].targetValue).toBe(440)
+  })
+
+  it('normalizes null pass_targets / warning_targets to empty arrays', () => {
+    const dto: IndicatorResultDto = {
+      metric: 'm',
+      display_name: 'M',
+      tab_group: null,
+      value: 1,
+      compared_value: null,
+      change_absolute: null,
+      change_relative_pct: null,
+      aggregation: null,
+      status: 'pass',
+      score: 100,
+      weight: 1,
+      key_sli: false,
+      pass_targets: null,
+      warning_targets: null,
+    }
+    const domain = dtoToIndicator(dto)
+    expect(domain.passTargets).toEqual([])
+    expect(domain.warningTargets).toEqual([])
+  })
+})
+
+describe('dtoToAnnotation', () => {
+  it('parses dates and normalizes nullable fields', () => {
+    const dto: AnnotationDto = {
+      id: 'ann-1',
+      content: 'flaky run',
+      author: 'bob',
+      category: 'flake',
+      tags: { source: 'ui' },
+      hidden_at: null,
+      hidden_by: null,
+      hidden_reason: null,
+      created_at: '2026-03-15T11:00:00Z',
+      updated_at: null,
+    }
+    const domain = dtoToAnnotation(dto)
+    expect(domain.id).toBe('ann-1')
+    expect(domain.createdAt).toBeInstanceOf(Date)
+    expect(domain.updatedAt).toBeNull()
+    expect(domain.hiddenAt).toBeNull()
   })
 })
