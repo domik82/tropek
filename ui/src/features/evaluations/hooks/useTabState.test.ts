@@ -1,23 +1,24 @@
 import { describe, it, expect } from 'vitest'
 import { renderHook, act } from '@testing-library/react'
 import { useTabState } from './useTabState'
-import type { IndicatorResult } from '../types'
+import type { Indicator } from '../domain'
 
-function makeIndicator(overrides: Partial<IndicatorResult> = {}): IndicatorResult {
+function makeIndicator(overrides: Partial<Indicator> = {}): Indicator {
   return {
     metric: 'response_time',
-    display_name: 'Response Time',
+    displayName: 'Response Time',
+    tabGroup: null,
     value: 100,
-    compared_value: null,
-    change_absolute: null,
-    change_relative_pct: null,
+    comparedValue: null,
+    changeAbsolute: null,
+    changeRelativePct: null,
     aggregation: 'avg',
     status: 'pass',
     score: 1,
     weight: 1,
-    key_sli: false,
-    pass_targets: null,
-    warning_targets: null,
+    keySli: false,
+    passTargets: [],
+    warningTargets: [],
     ...overrides,
   }
 }
@@ -39,9 +40,9 @@ describe('useTabState', () => {
 
   it('extracts unique tab groups from indicator results', () => {
     const indicators = [
-      makeIndicator({ metric: 'a', tab_group: 'latency' }),
-      makeIndicator({ metric: 'b', tab_group: 'throughput' }),
-      makeIndicator({ metric: 'c', tab_group: 'latency' }),
+      makeIndicator({ metric: 'a', tabGroup: 'latency' }),
+      makeIndicator({ metric: 'b', tabGroup: 'throughput' }),
+      makeIndicator({ metric: 'c', tabGroup: 'latency' }),
     ]
     const { result } = renderHook(() => useTabState(indicators))
     expect(result.current.availableGroups).toEqual(['latency', 'throughput'])
@@ -49,10 +50,10 @@ describe('useTabState', () => {
 
   it('counts indicators per group', () => {
     const indicators = [
-      makeIndicator({ metric: 'a', tab_group: 'latency' }),
-      makeIndicator({ metric: 'b', tab_group: 'throughput' }),
-      makeIndicator({ metric: 'c', tab_group: 'latency' }),
-      makeIndicator({ metric: 'd', tab_group: 'latency' }),
+      makeIndicator({ metric: 'a', tabGroup: 'latency' }),
+      makeIndicator({ metric: 'b', tabGroup: 'throughput' }),
+      makeIndicator({ metric: 'c', tabGroup: 'latency' }),
+      makeIndicator({ metric: 'd', tabGroup: 'latency' }),
     ]
     const { result } = renderHook(() => useTabState(indicators))
     expect(result.current.counts).toEqual({ latency: 3, throughput: 1 })
@@ -60,7 +61,7 @@ describe('useTabState', () => {
 
   it('defaults to "all" tab', () => {
     const indicators = [
-      makeIndicator({ metric: 'a', tab_group: 'latency' }),
+      makeIndicator({ metric: 'a', tabGroup: 'latency' }),
     ]
     const { result } = renderHook(() => useTabState(indicators))
     expect(result.current.activeTab).toBe('all')
@@ -68,8 +69,8 @@ describe('useTabState', () => {
 
   it('setActiveTab updates the active tab', () => {
     const indicators = [
-      makeIndicator({ metric: 'a', tab_group: 'latency' }),
-      makeIndicator({ metric: 'b', tab_group: 'throughput' }),
+      makeIndicator({ metric: 'a', tabGroup: 'latency' }),
+      makeIndicator({ metric: 'b', tabGroup: 'throughput' }),
     ]
     const { result } = renderHook(() => useTabState(indicators))
 
@@ -79,9 +80,9 @@ describe('useTabState', () => {
 
   it('filters indicators by active tab', () => {
     const indicators = [
-      makeIndicator({ metric: 'a', tab_group: 'latency' }),
-      makeIndicator({ metric: 'b', tab_group: 'throughput' }),
-      makeIndicator({ metric: 'c', tab_group: 'latency' }),
+      makeIndicator({ metric: 'a', tabGroup: 'latency' }),
+      makeIndicator({ metric: 'b', tabGroup: 'throughput' }),
+      makeIndicator({ metric: 'c', tabGroup: 'latency' }),
     ]
     const { result } = renderHook(() => useTabState(indicators))
 
@@ -92,8 +93,8 @@ describe('useTabState', () => {
 
   it('returns all indicators when activeTab is "all"', () => {
     const indicators = [
-      makeIndicator({ metric: 'a', tab_group: 'latency' }),
-      makeIndicator({ metric: 'b', tab_group: 'throughput' }),
+      makeIndicator({ metric: 'a', tabGroup: 'latency' }),
+      makeIndicator({ metric: 'b', tabGroup: 'throughput' }),
     ]
     const { result } = renderHook(() => useTabState(indicators))
     expect(result.current.tabIndicators).toHaveLength(2)
@@ -101,7 +102,7 @@ describe('useTabState', () => {
 
   it('resets to "all" when activeTab becomes invalid', () => {
     const indicators = [
-      makeIndicator({ metric: 'a', tab_group: 'latency' }),
+      makeIndicator({ metric: 'a', tabGroup: 'latency' }),
     ]
     const { result } = renderHook(() => useTabState(indicators))
 
@@ -111,8 +112,8 @@ describe('useTabState', () => {
 
   it('ignores indicators without tab_group when extracting groups', () => {
     const indicators = [
-      makeIndicator({ metric: 'a', tab_group: 'latency' }),
-      makeIndicator({ metric: 'b', tab_group: undefined }),
+      makeIndicator({ metric: 'a', tabGroup: 'latency' }),
+      makeIndicator({ metric: 'b', tabGroup: null }),
     ]
     const { result } = renderHook(() => useTabState(indicators))
     expect(result.current.availableGroups).toEqual(['latency'])

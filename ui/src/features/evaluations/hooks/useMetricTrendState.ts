@@ -2,7 +2,7 @@
 import { useState, useMemo } from 'react'
 import { useTheme } from '@/lib/theme-context'
 import { RESULT_COLOUR, CHART_THEME } from '@/lib/theme'
-import type { TrendPoint, IndicatorResult, TrendTargetEntry } from '../types'
+import type { TrendPoint, Indicator, TrendTargetEntry } from '../domain'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -46,7 +46,7 @@ interface DiscoveredTarget {
 
 /**
  * Scan all trend points and collect the union of distinct {level, criteria} pairs.
- * A target is "always zero" if target_value === 0 on every point where it appears.
+ * A target is "always zero" if targetValue === 0 on every point where it appears.
  */
 function discoverTargets(trend: TrendPoint[]): DiscoveredTarget[] {
   const map = new Map<
@@ -62,12 +62,12 @@ function discoverTargets(trend: TrendPoint[]): DiscoveredTarget[] {
         const key = `${level}:${e.criteria}`
         const existing = map.get(key)
         if (existing) {
-          if (e.target_value !== 0) existing.hasNonZero = true
+          if (e.targetValue !== 0) existing.hasNonZero = true
         } else {
           map.set(key, {
             level,
             criteria: e.criteria,
-            hasNonZero: e.target_value !== 0,
+            hasNonZero: e.targetValue !== 0,
           })
         }
       }
@@ -94,7 +94,7 @@ function discoverTargets(trend: TrendPoint[]): DiscoveredTarget[] {
 }
 
 /**
- * For a given criteria key and level, extract the target_value from a trend point.
+ * For a given criteria key and level, extract the targetValue from a trend point.
  * Returns null if the point doesn't have that criteria.
  */
 function getTargetValue(
@@ -105,7 +105,7 @@ function getTargetValue(
   const entries: TrendTargetEntry[] | undefined = point.targets?.[level]
   if (!entries) return null
   const entry = entries.find(e => e.criteria === criteria)
-  return entry?.target_value ?? null
+  return entry?.targetValue ?? null
 }
 
 // ── Hook ─────────────────────────────────────────────────────────────────────
@@ -113,7 +113,7 @@ function getTargetValue(
 export function useMetricTrendState(
   trend: TrendPoint[] | undefined,
   evalId: string,
-  _indicator: IndicatorResult,
+  _indicator: Indicator,
   onEvalSelect?: (evalId: string) => void,
   selectedEvalIds?: ReadonlySet<string>,
   selectedPeriodStart?: string,
@@ -260,34 +260,34 @@ export function buildChartOption(input: ChartOptionInput): object {
 
   const hasIdMatch = trend.some(
     p =>
-      (!!selectedEvalIds && selectedEvalIds.has(p.eval_id)) ||
-      p.eval_id === evalId,
+      (!!selectedEvalIds && selectedEvalIds.has(p.evalId)) ||
+      p.evalId === evalId,
   )
 
   const isSelected = (p: TrendPoint): boolean => {
     if (
-      (!!selectedEvalIds && selectedEvalIds.has(p.eval_id)) ||
-      p.eval_id === evalId
+      (!!selectedEvalIds && selectedEvalIds.has(p.evalId)) ||
+      p.evalId === evalId
     )
       return true
     if (
       !hasIdMatch &&
       selectedPeriodStart &&
-      p.timestamp === selectedPeriodStart
+      p.timestamp.toISOString() === selectedPeriodStart
     )
       return true
     return false
   }
 
   const times = trend.map(p =>
-    p.timestamp.slice(0, 16).replace('T', ' '),
+    p.timestamp.toISOString().slice(0, 16).replace('T', ' '),
   )
 
   const chartData = trend.map(p => ({
     value: p.value,
     itemStyle: {
       color:
-        colours[p.result as keyof typeof colours] ?? '#6b7280',
+        colours[p.outcome as keyof typeof colours] ?? '#6b7280',
       borderColor: isSelected(p) ? '#ffffff' : 'transparent',
       borderWidth: 2,
     },
@@ -359,10 +359,10 @@ export function buildChartOption(input: ChartOptionInput): object {
         const p = idx != null ? trend[idx] : undefined
         if (!p) return ''
         const lines = [
-          `<b style="color:#58a6ff">${p.evaluation_name ?? '(no evaluation_name)'}</b>`,
+          `<b style="color:#58a6ff">${p.evaluationName ?? '(no evaluation_name)'}</b>`,
           `<b>${times[idx as number]}</b>`,
           `value: <b>${p.value}</b>`,
-          `result: <b style="color:${colours[p.result as keyof typeof colours] ?? '#6b7280'}">${p.result.toUpperCase()}</b>`,
+          `result: <b style="color:${colours[p.outcome as keyof typeof colours] ?? '#6b7280'}">${p.outcome.toUpperCase()}</b>`,
         ]
         return lines.join('<br/>')
       },

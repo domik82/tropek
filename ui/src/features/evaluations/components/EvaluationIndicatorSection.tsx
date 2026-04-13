@@ -4,7 +4,7 @@ import { useTabState } from '../hooks/useTabState'
 import { SLIBreakdownTable } from './SLIBreakdownTable'
 import { MetricTrendBlock } from './MetricTrendBlock'
 import { EvaluationTabs, tabLabel } from './EvaluationTabs'
-import type { EvaluationDetail, Indicator } from '../domain'
+import type { EvaluationDetail } from '../domain'
 
 interface Props {
   evaluation: EvaluationDetail
@@ -16,16 +16,8 @@ interface Props {
 }
 
 export function EvaluationIndicatorSection({ evaluation: ev, onMetricClick, assetDisplayName, sloDisplayName }: Props) {
-  // Task 14 removes this shim: useTabState still reads `tab_group` on the
-  // legacy DTO-shaped IndicatorResult. Until that hook is migrated to the
-  // domain Indicator type we surface a snake_case `tab_group` alias so the
-  // tab filter keeps working at runtime.
-  const indicatorsForTabState = ev.indicators.map(ind => ({
-    ...ind,
-    tab_group: ind.tabGroup ?? undefined,
-  }))
   const { availableGroups, counts, activeTab, setActiveTab, tabIndicators } =
-    useTabState(indicatorsForTabState as never)
+    useTabState(ev.indicators)
 
   const sliMetadata = ev.sliMetadata
 
@@ -61,7 +53,7 @@ export function EvaluationIndicatorSection({ evaluation: ev, onMetricClick, asse
         />
 
         <SLIBreakdownTable
-          indicators={tabIndicators as unknown as Indicator[]}
+          indicators={tabIndicators}
           sliMetadata={sliMetadata}
           onIndicatorClick={(metric, tabGroup) => {
             if (activeTab !== 'all') setActiveTab(tabGroup)
@@ -83,7 +75,7 @@ export function EvaluationIndicatorSection({ evaluation: ev, onMetricClick, asse
           Dot colour reflects each metric's own pass/warn/fail result.
         </p>
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-          {(tabIndicators as unknown as Indicator[]).map(ind => (
+          {tabIndicators.map(ind => (
             <MetricTrendBlock
               key={ind.metric}
               assetName={ev.assetSnapshot.name}
