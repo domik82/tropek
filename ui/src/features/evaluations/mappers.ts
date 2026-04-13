@@ -403,9 +403,8 @@ const _reEvaluateResponseExhaustive: _ReEvaluateResponseCoverage extends never
   : _ReEvaluateResponseCoverage = true
 void _reEvaluateResponseExhaustive
 
-// --- Stub functions (implemented in tasks 5-9) ----------------------------
+// --- Read-side mappers (tasks 5-8) and write-side mappers (task 9) -----------
 
-/* eslint-disable @typescript-eslint/no-unused-vars -- filled in by Task 5+ */
 export function dtoToEvaluationSummary(dto: EvaluationSummaryDto): Evaluation {
   return {
     id: dto.id,
@@ -531,18 +530,43 @@ export function dtoToReEvaluateResponse(
 }
 
 export function triggerEvaluationInputToDto(
-  _input: TriggerEvaluationInput,
+  input: TriggerEvaluationInput,
 ): EvaluateSingleRequestDto {
-  throw new Error('triggerEvaluationInputToDto: not yet implemented (Task 9)')
+  return {
+    asset_name: input.assetName,
+    eval_name: input.evalName,
+    period_start: input.period.from,
+    period_end: input.period.to,
+    variables: input.variables,
+  }
 }
 
-export function reEvaluateInputToDto(_input: ReEvaluateInput): ReEvaluateRequestDto {
-  throw new Error('reEvaluateInputToDto: not yet implemented (Task 9)')
+export function reEvaluateInputToDto(input: ReEvaluateInput): ReEvaluateRequestDto {
+  const base: ReEvaluateRequestDto = {
+    asset_name: input.assetName,
+    slo_name: input.sloName,
+    slo_version: input.sloVersion,
+    dry_run: input.dryRun,
+    pin_strategy: input.pinStrategy,
+    from_baseline: false,
+    from_date: null,
+    from_evaluation_id: null,
+  }
+  switch (input.mode.kind) {
+    case 'baseline':
+      return { ...base, from_baseline: true }
+    case 'date':
+      return { ...base, from_date: input.mode.fromDate }
+    case 'evaluation':
+      return { ...base, from_evaluation_id: input.mode.fromEvaluationId }
+  }
 }
 
 export function overrideStatusInputToDto(
-  _input: OverrideStatusInput,
+  input: OverrideStatusInput,
 ): OverrideStatusRequestDto {
-  throw new Error('overrideStatusInputToDto: not yet implemented (Task 9)')
+  if (input.outcome === 'invalidated') {
+    throw new Error('cannot override to invalidated — use invalidateEvaluation instead')
+  }
+  return { new_result: input.outcome, reason: input.reason, author: input.author }
 }
-/* eslint-enable @typescript-eslint/no-unused-vars */
