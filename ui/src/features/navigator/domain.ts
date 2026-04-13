@@ -91,3 +91,34 @@ export interface AssetHeatmapView {
   cells: HeatmapEChartsCell[]
   headerRowIndices: Set<number>
 }
+
+// --- Pre-computed visualization shapes (group view) -----------------------
+// These are render-ready structures emitted by buildGroupHeatmapData /
+// buildGroupScoreData in utils.ts for the group-view heatmap and stacked
+// bar chart. They consume already-domain-mapped EvaluationSummary objects
+// (evaluations feature — unmigrated at time of writing; Chunk B3 will
+// replace them with a proper domain type).
+
+// Pre-computed group heatmap: rows = assets, cols = time slots.
+export interface GroupHeatmapData {
+  slots: string[]
+  rows: string[]
+  cells: HeatmapEChartsCell[]
+}
+
+// One point in the group score stacked-bar chart.
+export interface AssetScorePoint {
+  slot: string
+  assetName: string
+  score: number
+  result: string
+  maxScore: number
+}
+
+// Per-slot grouping for the stacked-bar render.
+export interface SlotScoreData {
+  slot: string
+  assets: AssetScorePoint[]
+  totalAchieved: number
+  totalMax: number
+}
