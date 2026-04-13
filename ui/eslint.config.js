@@ -49,12 +49,18 @@ export default defineConfig([
       'no-restricted-imports': 'off',
     },
   },
+  // Mocks and generators are dev/test utilities that legitimately produce
+  // wire-shaped fixtures — they import DTOs directly.
+  {
+    files: ['src/mocks/**/*.{ts,tsx}'],
+    rules: {
+      'no-restricted-imports': 'off',
+    },
+  },
   // TEMPORARY: allow unmigrated features to keep using DTOs until their own
-  // migration chunks land. Navigator = Chunk B2, evaluations = Chunk B3.
-  // Delete these overrides after B2 / B3 complete.
+  // migration chunks land. Evaluations = Chunk B3. Delete after B3 completes.
   {
     files: [
-      'src/features/navigator/**/*.{ts,tsx}',
       'src/features/evaluations/**/*.{ts,tsx}',
     ],
     rules: {
