@@ -8,12 +8,12 @@ import type { SloBreakdownGroup } from '@/features/evaluations/components/SLIBre
 import { ViewToggle } from '@/components/charts/ViewToggle'
 import type { ViewMode } from '@/components/charts/ViewToggle'
 import type { TimeSlotSelection } from './AssetHeatmap'
-import type { MetricHeatmapResponse } from '../types'
+import type { GroupedMetricHeatmapResponseDto } from '../mappers'
 import type { SliMetadata } from '@/features/evaluations/types'
 
 interface Props {
   assetName: string
-  heatmapData: MetricHeatmapResponse | undefined
+  heatmapData: GroupedMetricHeatmapResponseDto | undefined
   selectedColumnEvalId: string | undefined
   effectiveEvalId: string | undefined
   /** All slo_evaluation_ids in the currently selected column, one per SLO. */
@@ -152,7 +152,7 @@ export function AssetPanelHeatmapView({
         : (summary?.result ?? 'none')
       return {
         slo_name: g.slo_name,
-        slo_display_name: g.slo_display_name,
+        slo_display_name: g.slo_display_name ?? undefined,
         indicators,
         score: Math.round(summary?.score ?? 0),
         result,

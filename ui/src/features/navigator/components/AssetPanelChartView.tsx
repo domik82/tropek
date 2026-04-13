@@ -6,7 +6,7 @@ import type { ViewMode } from '@/components/charts/ViewToggle'
 import { AssetScoreChart } from './AssetScoreChart'
 import { MetricGroupFilter } from './MetricGroupFilter'
 import type { EvaluationSummary, IndicatorResult } from '@/features/evaluations/types'
-import type { MetricHeatmapResponse } from '../types'
+import type { GroupedMetricHeatmapResponseDto } from '../mappers'
 import type { TimeSlotSelection } from './AssetHeatmap'
 
 interface Props {
@@ -21,7 +21,7 @@ interface Props {
    */
   selectedPeriodStart: string | undefined
   evals: EvaluationSummary[]
-  heatmapData: MetricHeatmapResponse | undefined
+  heatmapData: GroupedMetricHeatmapResponseDto | undefined
   onEvalSelect: (evalId: string) => void
   onSlotSelect: (slot: TimeSlotSelection) => void
   mode: ViewMode
