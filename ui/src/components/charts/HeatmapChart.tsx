@@ -18,7 +18,7 @@ import { NoteIndicatorRow, type SlotNote, type ColumnPosition } from './NoteIndi
 /** Grid padding shared between HeatmapChart and NoteIndicatorRow for alignment. */
 export const HEATMAP_GRID_LEFT = 210
 export const HEATMAP_GRID_RIGHT = 20
-import type { HeatmapCell } from '@/features/navigator'
+import type { HeatmapEChartsCell } from '@/features/navigator/ui-types'
 
 // ── brighten ─────────────────────────────────────────────────────────────────
 // Lightens a hex colour by multiplying each channel by `factor`.
@@ -33,10 +33,10 @@ function brighten(hex: string, factor: number): string {
 }
 
 // ── Internal render-ready cell ────────────────────────────────────────────────
-// Extends HeatmapCell with computed visual properties so renderItem can stay
+// Extends HeatmapEChartsCell with computed visual properties so renderItem can stay
 // a pure lookup (no colour logic inside the ECharts callback).
 
-interface RenderCell extends HeatmapCell {
+interface RenderCell extends HeatmapEChartsCell {
   itemStyle: { color: string; borderColor: string; borderWidth: number }
   hoverColor: string
 }
@@ -49,14 +49,14 @@ export interface HeatmapChartProps {
   /** Ordered list of column keys — ISO timestamps or any string identifier. */
   columns: string[]
   /** Flat array of cells covering the grid (sparse grids are fine). */
-  cells: HeatmapCell[]
+  cells: HeatmapEChartsCell[]
   /**
    * Column index that should receive a white highlight border.
    * Matches `cell.value[0]` (the x-index).
    */
   selectedColumn?: number
   /** Called when the user clicks a cell. */
-  onCellClick: (cell: HeatmapCell) => void
+  onCellClick: (cell: HeatmapEChartsCell) => void
   /**
    * When true, cells with `hasNote === true` render a small amber square
    * in their top-right corner (annotation indicator).
@@ -68,7 +68,7 @@ export interface HeatmapChartProps {
    */
   height?: number | 'auto'
   /** Returns the HTML string shown inside the ECharts tooltip for a given cell. */
-  formatTooltip: (cell: HeatmapCell) => string
+  formatTooltip: (cell: HeatmapEChartsCell) => string
   /**
    * Formats each column key into the x-axis label.
    * Defaults to `fmtSlot` (renders ISO timestamps as "MM-DD HH:MM").
@@ -184,7 +184,7 @@ export function HeatmapChart({
     }
   }, [notedColumns, computeColumnPositions])
 
-  // Map each incoming HeatmapCell to a RenderCell with visual properties baked in.
+  // Map each incoming HeatmapEChartsCell to a RenderCell with visual properties baked in.
   // Recomputes when selection, colours, or underlying data changes.
   const renderCells: RenderCell[] = useMemo(
     () =>

@@ -3,25 +3,25 @@ import { render, cleanup } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { ThemeProvider } from '@/lib/theme-context'
 import { AssetHeatmap } from './AssetHeatmap'
-import type { MetricHeatmapResponse } from '../types'
+import type { GroupedMetricHeatmapResponseDto } from '../mappers'
 
 const EVAL_ID_1 = 'aaaaaaaa-0000-0000-0000-000000000001'
 const SLO_EVAL_ID_1 = 'bbbbbbbb-0000-0000-0000-000000000001'
 
-const RESP: MetricHeatmapResponse = {
+const RESP: GroupedMetricHeatmapResponseDto = {
   asset_name: 'test-asset',
   columns: [
-    { evaluation_id: EVAL_ID_1, period_start: '2026-01-15T00:00:00Z', period_end: '2026-01-15T23:59:59Z', eval_name: 'daily' },
+    { evaluation_id: EVAL_ID_1, period_start: '2026-01-15T00:00:00Z', period_end: '2026-01-15T23:59:59Z', eval_name: 'daily', has_notes: false },
   ],
   groups: [
     {
       slo_name: 'nginx',
       metrics: [{ name: 'error_rate', display_name: 'Error Rate' }],
-      cells: [{ evaluation_id: EVAL_ID_1, slo_evaluation_id: SLO_EVAL_ID_1, period_start: '2026-01-15T00:00:00Z', metric: 'error_rate', display_name: 'Error Rate', result: 'pass', score: 100 }],
-      summary: [{ evaluation_id: EVAL_ID_1, period_start: '2026-01-15T00:00:00Z', result: 'pass', score: 100 }],
+      cells: [{ evaluation_id: EVAL_ID_1, slo_evaluation_id: SLO_EVAL_ID_1, period_start: '2026-01-15T00:00:00Z', metric: 'error_rate', display_name: 'Error Rate', result: 'pass', score: 100, key_sli: false, weight: 1 }],
+      summary: [{ evaluation_id: EVAL_ID_1, period_start: '2026-01-15T00:00:00Z', result: 'pass', score: 100, invalidated: false }],
     },
   ],
-  composite: [{ evaluation_id: EVAL_ID_1, period_start: '2026-01-15T00:00:00Z', result: 'pass', score: 100 }],
+  composite: [{ evaluation_id: EVAL_ID_1, period_start: '2026-01-15T00:00:00Z', result: 'pass', score: 100, invalidated: false }],
 }
 
 let queryClient: QueryClient

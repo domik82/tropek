@@ -11,7 +11,7 @@ import type { ResultColours } from '@/lib/theme'
 import { fmtDateTime } from '@/lib/format'
 import type { EvaluationSummary } from '../types'
 import { HeatmapChart } from '@/components/charts/HeatmapChart'
-import type { HeatmapCell } from '@/features/navigator/types'
+import type { HeatmapEChartsCell } from '@/features/navigator/ui-types'
 
 interface Props {
   evaluations: EvaluationSummary[]
@@ -28,7 +28,7 @@ const RESULT_RANK: Record<string, number> = { pass: 0, warning: 1, fail: 2, erro
 
 type CellAccum = { result: string; score: number; count: number; hasNote: boolean; noteContent: string; evalName: string }
 
-function buildData(evals: EvaluationSummary[], fallbackNames?: Map<string, string>): { slots: string[]; rows: string[]; cells: HeatmapCell[]; evalNameMap: Map<string, string>; assetNames: string[] } {
+function buildData(evals: EvaluationSummary[], fallbackNames?: Map<string, string>): { slots: string[]; rows: string[]; cells: HeatmapEChartsCell[]; evalNameMap: Map<string, string>; assetNames: string[] } {
   // Step 1: build sorted axes — rows are asset name only
   const slots = Array.from(new Set(evals.map(e => e.period_start))).sort()
   // Internal keys: raw asset names. Display: snapshot display_name → fallback map → raw name.
@@ -68,7 +68,7 @@ function buildData(evals: EvaluationSummary[], fallbackNames?: Map<string, strin
   }
 
   // Step 3: produce HeatmapCells per grid position + build evalName lookup for tooltip
-  const cells: HeatmapCell[] = []
+  const cells: HeatmapEChartsCell[] = []
   const evalNameMap = new Map<string, string>()
   for (let xi = 0; xi < slots.length; xi++) {
     for (let yi = 0; yi < assetNames.length; yi++) {
@@ -115,7 +115,7 @@ export function EvaluationHeatmap({ evaluations, selectedDate, onDateSelect, onA
   const selectedColumn = selectedDate ? slots.indexOf(selectedDate) : undefined
 
   const formatTooltip = useMemo(
-    () => (cell: HeatmapCell): string => {
+    () => (cell: HeatmapEChartsCell): string => {
       if (cell.result === 'none') {
         return `${cell.rowLabel}<br/>${fmtDateTime(cell.slot)}<br/><em>no data</em>`
       }
@@ -136,7 +136,7 @@ export function EvaluationHeatmap({ evaluations, selectedDate, onDateSelect, onA
     [colours, evalNameMap],
   )
 
-  const onCellClick = useCallback((cell: HeatmapCell) => {
+  const onCellClick = useCallback((cell: HeatmapEChartsCell) => {
     if (cell.slot !== selectedDate) {
       onDateSelect(cell.slot)
     } else if (onAssetSelect) {
