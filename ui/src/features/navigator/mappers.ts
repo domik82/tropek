@@ -137,7 +137,7 @@ export function assetHeatmapDtoToDomain(
     compositeLookup.set(summary.evaluation_id, summary)
   }
 
-  // Per-SLO summary lookup: `${sloName}\0${evaluationId}\0` → summary cell
+  // Per-SLO summary lookup: `${sloName}\0${evaluationId}` → summary cell
   const sloSummaryLookup = new Map<string, HeatmapSummaryCellDto>()
   for (const group of sortedGroups) {
     for (const summary of group.summary) {
