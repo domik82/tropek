@@ -1,40 +1,40 @@
 // ui/src/features/evaluations/hooks/useTabState.ts
 import { useState, useMemo } from 'react'
-import type { IndicatorResult } from '../types'
+import type { Indicator } from '../domain'
 
 export interface TabState {
   availableGroups: string[]
   counts: Record<string, number>
   activeTab: string
   setActiveTab: (tab: string) => void
-  tabIndicators: IndicatorResult[]
+  tabIndicators: Indicator[]
 }
 
-export function useTabState(indicatorResults: IndicatorResult[] | undefined): TabState {
+export function useTabState(indicators: Indicator[] | undefined): TabState {
   const [activeTab, setActiveTab] = useState('all')
 
   const availableGroups = useMemo(
-    () => [...new Set(indicatorResults?.map(i => i.tab_group).filter(Boolean) as string[])],
-    [indicatorResults],
+    () => [...new Set(indicators?.map(i => i.tabGroup).filter(Boolean) as string[])],
+    [indicators],
   )
 
   const counts = useMemo(
     () => Object.fromEntries(
       availableGroups.map(g => [
         g,
-        indicatorResults?.filter(i => i.tab_group === g).length ?? 0,
+        indicators?.filter(i => i.tabGroup === g).length ?? 0,
       ]),
     ),
-    [indicatorResults, availableGroups],
+    [indicators, availableGroups],
   )
 
   const resolvedTab = ['all', ...availableGroups].includes(activeTab) ? activeTab : 'all'
 
   const tabIndicators = useMemo(
     () => resolvedTab === 'all'
-      ? (indicatorResults ?? [])
-      : (indicatorResults?.filter(ind => ind.tab_group === resolvedTab) ?? []),
-    [indicatorResults, resolvedTab],
+      ? (indicators ?? [])
+      : (indicators?.filter(ind => ind.tabGroup === resolvedTab) ?? []),
+    [indicators, resolvedTab],
   )
 
   return {

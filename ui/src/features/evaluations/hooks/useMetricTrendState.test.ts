@@ -3,7 +3,7 @@ import { renderHook, act } from '@testing-library/react'
 import { buildChartOption, useMetricTrendState } from './useMetricTrendState'
 import type { ChartTarget } from './useMetricTrendState'
 import { RESULT_COLOUR, CHART_THEME } from '@/lib/theme'
-import type { TrendPoint, IndicatorResult } from '../types'
+import type { TrendPoint, Indicator } from '../domain'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -26,30 +26,34 @@ function baseInput(overrides: Record<string, unknown> = {}) {
 
 function makeTrendPoint(overrides: Partial<TrendPoint> = {}): TrendPoint {
   return {
-    timestamp: '2026-03-15T10:30:00Z',
+    timestamp: new Date('2026-03-15T10:30:00Z'),
     value: 100,
     score: 1,
-    eval_id: 'eval-1',
-    result: 'pass',
+    evalId: 'eval-1',
+    outcome: 'pass',
+    baseline: null,
+    evaluationName: null,
+    targets: null,
     ...overrides,
   }
 }
 
-function makeIndicator(overrides: Partial<IndicatorResult> = {}): IndicatorResult {
+function makeIndicator(overrides: Partial<Indicator> = {}): Indicator {
   return {
     metric: 'response_time',
-    display_name: 'Response Time',
+    displayName: 'Response Time',
+    tabGroup: null,
     value: 100,
-    compared_value: null,
-    change_absolute: null,
-    change_relative_pct: null,
+    comparedValue: null,
+    changeAbsolute: null,
+    changeRelativePct: null,
     aggregation: 'avg',
     status: 'pass',
     score: 1,
     weight: 1,
-    key_sli: false,
-    pass_targets: null,
-    warning_targets: null,
+    keySli: false,
+    passTargets: [],
+    warningTargets: [],
     ...overrides,
   }
 }
@@ -59,8 +63,8 @@ function makeIndicator(overrides: Partial<IndicatorResult> = {}): IndicatorResul
 describe('buildChartOption', () => {
   it('creates series for metric values', () => {
     const trend = [
-      makeTrendPoint({ value: 100, result: 'pass' }),
-      makeTrendPoint({ value: 200, result: 'warning', timestamp: '2026-03-16T10:30:00Z' }),
+      makeTrendPoint({ value: 100, outcome: 'pass' }),
+      makeTrendPoint({ value: 200, outcome: 'warning', timestamp: new Date('2026-03-16T10:30:00Z') }),
     ]
     const option = buildChartOption(baseInput({ trend })) as Record<string, unknown>
     const series = option.series as Array<Record<string, unknown>>
@@ -86,7 +90,7 @@ describe('buildChartOption', () => {
 
   it('adds relative warn target as dashed line series', () => {
     const trend = [
-      makeTrendPoint({ value: 100, targets: { warn: [{ criteria: '<=+15%', target_value: 230, violated: false }] } }),
+      makeTrendPoint({ value: 100, targets: { pass: [], warn: [{ criteria: '<=+15%', targetValue: 230, violated: false }] } }),
     ]
     const option = buildChartOption(baseInput({
       trend,
@@ -114,7 +118,7 @@ describe('buildChartOption', () => {
   it('adds baseline series when visible', () => {
     const trend = [
       makeTrendPoint({ value: 100, baseline: 90 }),
-      makeTrendPoint({ value: 110, baseline: 100, timestamp: '2026-03-16T10:30:00Z' }),
+      makeTrendPoint({ value: 110, baseline: 100, timestamp: new Date('2026-03-16T10:30:00Z') }),
     ]
     const option = buildChartOption(baseInput({
       trend,
@@ -136,9 +140,10 @@ describe('buildChartOption', () => {
         baseline: 90,
         targets: {
           pass: [
-            { criteria: '<=600', target_value: 600, violated: false },
-            { criteria: '<=+10%', target_value: 99, violated: false },
+            { criteria: '<=600', targetValue: 600, violated: false },
+            { criteria: '<=+10%', targetValue: 99, violated: false },
           ],
+          warn: [],
         },
       }),
     ]
@@ -160,12 +165,12 @@ describe('buildChartOption', () => {
         baseline: 90,
         targets: {
           pass: [
-            { criteria: '<=600', target_value: 600, violated: false },
-            { criteria: '<=+10%', target_value: 99, violated: false },
+            { criteria: '<=600', targetValue: 600, violated: false },
+            { criteria: '<=+10%', targetValue: 99, violated: false },
           ],
           warn: [
-            { criteria: '<=800', target_value: 800, violated: false },
-            { criteria: '<=+15%', target_value: 103, violated: false },
+            { criteria: '<=800', targetValue: 800, violated: false },
+            { criteria: '<=+15%', targetValue: 103, violated: false },
           ],
         },
       }),
@@ -205,8 +210,8 @@ describe('buildChartOption', () => {
 
   it('highlights current evaluation point with white border', () => {
     const trend = [
-      makeTrendPoint({ eval_id: 'eval-1' }),
-      makeTrendPoint({ eval_id: 'eval-2' }),
+      makeTrendPoint({ evalId: 'eval-1' }),
+      makeTrendPoint({ evalId: 'eval-2' }),
     ]
     const option = buildChartOption(baseInput({ trend, evalId: 'eval-1' })) as Record<string, unknown>
     const series = option.series as Array<Record<string, unknown>>
@@ -249,11 +254,11 @@ describe('useMetricTrendState', () => {
         baseline: 90,
         targets: {
           pass: [
-            { criteria: '<=600', target_value: 600, violated: false },
-            { criteria: '<=+10%', target_value: 99, violated: false },
+            { criteria: '<=600', targetValue: 600, violated: false },
+            { criteria: '<=+10%', targetValue: 99, violated: false },
           ],
           warn: [
-            { criteria: '<=+15%', target_value: 103, violated: false },
+            { criteria: '<=+15%', targetValue: 103, violated: false },
           ],
         },
       }),
@@ -269,14 +274,15 @@ describe('useMetricTrendState', () => {
     expect(result.current.targets[3]).toMatchObject({ key: 'baseline', level: 'baseline' })
   })
 
-  it('filters out >0 targets where target_value is always 0', () => {
+  it('filters out >0 targets where targetValue is always 0', () => {
     const trend: TrendPoint[] = [
       makeTrendPoint({
         targets: {
           pass: [
-            { criteria: '>0', target_value: 0, violated: false },
-            { criteria: '<=600', target_value: 600, violated: false },
+            { criteria: '>0', targetValue: 0, violated: false },
+            { criteria: '<=600', targetValue: 600, violated: false },
           ],
+          warn: [],
         },
       }),
     ]
@@ -291,7 +297,7 @@ describe('useMetricTrendState', () => {
   it('toggling a target flips its visibility', () => {
     const trend: TrendPoint[] = [
       makeTrendPoint({
-        targets: { pass: [{ criteria: '<=600', target_value: 600, violated: false }] },
+        targets: { pass: [{ criteria: '<=600', targetValue: 600, violated: false }], warn: [] },
       }),
     ]
     const { result } = renderHook(() =>
@@ -306,7 +312,7 @@ describe('useMetricTrendState', () => {
 
   it('baseline defaults to hidden', () => {
     const trend: TrendPoint[] = [
-      makeTrendPoint({ baseline: 90, targets: {} }),
+      makeTrendPoint({ baseline: 90, targets: { pass: [], warn: [] } }),
     ]
     const { result } = renderHook(() =>
       useMetricTrendState(trend, 'eval-1', makeIndicator()),

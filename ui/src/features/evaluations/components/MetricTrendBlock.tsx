@@ -117,9 +117,7 @@ export function MetricTrendBlock({
     yMin, yMax, setYMin, setYMax,
     targets,
     chartOption,
-    // Task 14 removes these casts: useMetricTrendState still consumes the
-    // legacy DTO-shaped TrendPoint / IndicatorResult types.
-  } = useMetricTrendState(trend as never, selectedEvalId ?? '', indicator as never, onEvalSelect, selectedEvalIds, selectedPeriodStart)
+  } = useMetricTrendState(trend, selectedEvalId ?? '', indicator, onEvalSelect, selectedEvalIds, selectedPeriodStart)
 
   return (
     <div id={blockId ?? `trend-${indicator.metric}`} className="bg-card border border-border rounded-xl p-4 scroll-mt-4">
