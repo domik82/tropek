@@ -189,21 +189,6 @@ export async function fetchMetricHeatmap(
   return res.json()
 }
 
-export async function fetchGroupedMetricHeatmap(
-  assetName: string,
-  filters: { evaluation_name?: string[]; from?: string; to?: string } = {}
-): Promise<MetricHeatmapResponse> {
-  const p = new URLSearchParams({ asset_name: assetName })
-  if (filters.evaluation_name?.length) {
-    for (const n of filters.evaluation_name) p.append('evaluation_name', n)
-  }
-  if (filters.from) p.set('from', filters.from)
-  if (filters.to) p.set('to', filters.to)
-  const res = await fetch(`${BASE}/evaluate/metric-heatmap?${p}`)
-  if (!res.ok) throw new Error(`fetchGroupedMetricHeatmap: ${res.status}`)
-  return res.json()
-}
-
 export async function fetchColumnAnnotations(
   evaluationId: string,
 ): Promise<Annotation[]> {
