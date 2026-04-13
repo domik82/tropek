@@ -4,6 +4,8 @@ import type {
   EvaluationDetailDto,
   IndicatorResultDto,
   AnnotationDto,
+  TrendPointDto,
+  EvaluationNameEntryDto,
 } from './mappers'
 import {
   dtoToEvaluationSummary,
@@ -11,6 +13,8 @@ import {
   dtoToEvaluationList,
   dtoToIndicator,
   dtoToAnnotation,
+  dtoToTrendPoint,
+  dtoToEvaluationNameEntry,
 } from './mappers'
 
 function makeSummaryDto(overrides: Partial<EvaluationSummaryDto> = {}): EvaluationSummaryDto {
@@ -199,5 +203,41 @@ describe('dtoToAnnotation', () => {
     expect(domain.createdAt).toBeInstanceOf(Date)
     expect(domain.updatedAt).toBeNull()
     expect(domain.hiddenAt).toBeNull()
+  })
+})
+
+describe('dtoToTrendPoint', () => {
+  it('parses timestamp to Date and maps result to outcome', () => {
+    const dto: TrendPointDto = {
+      timestamp: '2026-03-15T12:00:00Z',
+      value: 120,
+      score: 88,
+      eval_id: 'eval-1',
+      result: 'warning',
+      baseline: 100,
+      evaluation_name: 'perf',
+      targets: {
+        pass: [{ criteria: '<100', target_value: 100, violated: false }],
+        warn: null,
+      },
+    }
+    const domain = dtoToTrendPoint(dto)
+    expect(domain.timestamp).toBeInstanceOf(Date)
+    expect(domain.outcome).toBe('warning')
+    expect(domain.targets?.pass[0].targetValue).toBe(100)
+    expect(domain.targets?.warn).toEqual([])
+  })
+})
+
+describe('dtoToEvaluationNameEntry', () => {
+  it('parses last_run to Date', () => {
+    const dto: EvaluationNameEntryDto = {
+      name: 'perf',
+      count: 5,
+      last_run: '2026-03-15T13:00:00Z',
+    }
+    const domain = dtoToEvaluationNameEntry(dto)
+    expect(domain.lastRun).toBeInstanceOf(Date)
+    expect(domain.count).toBe(5)
   })
 })
