@@ -22,6 +22,7 @@ import type {
   PassTarget,
   ReEvaluateInput,
   ReEvaluateResponse,
+  ReEvaluateResultItem,
   SliMetadata,
   TrendPoint,
   TrendTargetEntry,
@@ -126,6 +127,18 @@ function dtoToTrendTargets(dto: TrendTargetsDto): TrendTargets {
   return {
     pass: (dto.pass ?? []).map(dtoToTrendTargetEntry),
     warn: (dto.warn ?? []).map(dtoToTrendTargetEntry),
+  }
+}
+
+function dtoToReEvaluateResultItem(dto: ReEvalResultItemDto): ReEvaluateResultItem {
+  return {
+    id: dto.id,
+    evaluationName: dto.evaluation_name,
+    period: makeDateRange(dto.period_start, dto.period_end),
+    oldOutcome: normalizeOutcome(dto.old_result),
+    newOutcome: normalizeOutcome(dto.new_result),
+    oldScore: dto.old_score,
+    newScore: dto.new_score,
   }
 }
 
@@ -508,9 +521,13 @@ export function dtoToEvaluationNameEntry(
 }
 
 export function dtoToReEvaluateResponse(
-  _dto: ReEvaluateResponseDto,
+  dto: ReEvaluateResponseDto,
 ): ReEvaluateResponse {
-  throw new Error('dtoToReEvaluateResponse: not yet implemented (Task 8)')
+  return {
+    affectedEvaluations: dto.affected_evaluations,
+    sloVersionUsed: dto.slo_version_used,
+    results: dto.results.map(dtoToReEvaluateResultItem),
+  }
 }
 
 export function triggerEvaluationInputToDto(
