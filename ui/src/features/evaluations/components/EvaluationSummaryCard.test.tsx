@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { EvaluationSummaryCard } from './EvaluationSummaryCard'
-import type { EvaluationDetail } from '../types'
+import type { EvaluationDetail } from '../domain'
 
 vi.mock('@/lib/theme-context', () => ({
   useTheme: () => ({ theme: 'current' as const, fontSize: 14 }),
@@ -10,36 +10,44 @@ vi.mock('@/lib/theme-context', () => ({
 function makeEvaluation(overrides: Partial<EvaluationDetail> = {}): EvaluationDetail {
   return {
     id: 'eval-1',
-    evaluation_id: 'run-1',
-    evaluation_name: 'nightly-perf',
+    evaluationId: 'run-1',
+    evaluationName: 'nightly-perf',
     status: 'completed',
-    result: 'pass',
+    outcome: 'pass',
     score: 95.5,
-    period_start: '2026-03-15T10:00:00Z',
-    period_end: '2026-03-15T10:30:00Z',
-    slo_name: 'latency-slo',
-    slo_version: 2,
-    sli_name: null,
-    sli_version: null,
-    data_source_name: null,
-    ingestion_mode: 'push',
-    adapter_used: 'prometheus',
+    period: { from: '2026-03-15T10:00:00Z', to: '2026-03-15T10:30:00Z' },
+    sloName: 'latency-slo',
+    sloVersion: 2,
+    sliName: null,
+    sliVersion: null,
+    dataSourceName: null,
+    ingestionMode: 'push',
+    adapterUsed: 'prometheus',
     invalidated: false,
-    original_result: null,
-    original_score: null,
-    override_reason: null,
-    override_author: null,
-    invalidation_note: null,
-    asset_snapshot: { name: 'api-gateway', tags: { env: 'prod' } },
+    originalOutcome: null,
+    originalScore: null,
+    overrideReason: null,
+    overrideAuthor: null,
+    invalidationNote: null,
+    assetSnapshot: {
+      name: 'api-gateway',
+      displayName: null,
+      tags: { env: 'prod' },
+      primaryVersion: null,
+      buildRef: null,
+    },
     variables: {},
-    compared_evaluation_ids: [],
+    baselinePin: null,
+    comparedEvaluationIds: [],
     annotations: [],
-    indicator_results: [],
-    total_score_pass_threshold: 90,
-    total_score_warning_threshold: 75,
-    latest_annotation: undefined,
-    annotation_count: 0,
-    created_at: '2026-03-15T10:30:00Z',
+    indicators: [],
+    totalScorePassThreshold: 90,
+    totalScoreWarningThreshold: 75,
+    sliMetadata: {},
+    latestAnnotation: null,
+    annotationCount: 0,
+    createdAt: new Date('2026-03-15T10:30:00Z'),
+    topFailures: [],
     ...overrides,
   }
 }
@@ -56,7 +64,7 @@ describe('EvaluationSummaryCard', () => {
   })
 
   it('renders result badge with correct status', () => {
-    render(<EvaluationSummaryCard evaluation={makeEvaluation({ result: 'warning' })} />)
+    render(<EvaluationSummaryCard evaluation={makeEvaluation({ outcome: 'warning' })} />)
     expect(screen.getByText('warning')).toBeInTheDocument()
   })
 
@@ -73,7 +81,8 @@ describe('EvaluationSummaryCard', () => {
   it('shows invalidation card when evaluation is invalidated', () => {
     render(<EvaluationSummaryCard evaluation={makeEvaluation({
       invalidated: true,
-      invalidation_note: 'bad data',
+      outcome: 'invalidated',
+      invalidationNote: 'bad data',
     })} />)
     expect(screen.getByText('Invalidated')).toBeInTheDocument()
     expect(screen.getByText(/bad data/)).toBeInTheDocument()
@@ -82,16 +91,17 @@ describe('EvaluationSummaryCard', () => {
   it('shows invalidated as result badge when invalidated', () => {
     render(<EvaluationSummaryCard evaluation={makeEvaluation({
       invalidated: true,
-      invalidation_note: 'bad data',
+      outcome: 'invalidated',
+      invalidationNote: 'bad data',
     })} />)
     expect(screen.getByText('invalidated')).toBeInTheDocument()
   })
 
   it('shows override card when status is overridden', () => {
     render(<EvaluationSummaryCard evaluation={makeEvaluation({
-      original_result: 'fail',
-      override_author: 'admin',
-      override_reason: 'false positive',
+      originalOutcome: 'fail',
+      overrideAuthor: 'admin',
+      overrideReason: 'false positive',
     })} />)
     expect(screen.getByText('Status overridden')).toBeInTheDocument()
     expect(screen.getByText('admin')).toBeInTheDocument()
@@ -100,18 +110,18 @@ describe('EvaluationSummaryCard', () => {
 
   it('shows original result transition in override card', () => {
     render(<EvaluationSummaryCard evaluation={makeEvaluation({
-      result: 'pass',
-      original_result: 'fail',
-      override_author: 'admin',
+      outcome: 'pass',
+      originalOutcome: 'fail',
+      overrideAuthor: 'admin',
     })} />)
     expect(screen.getByText(/fail → pass/)).toBeInTheDocument()
   })
 
-  it('shows re-evaluated card when original_result set without override_author', () => {
+  it('shows re-evaluated card when originalOutcome set without overrideAuthor', () => {
     render(<EvaluationSummaryCard evaluation={makeEvaluation({
-      result: 'pass',
-      original_result: 'warning',
-      original_score: 65.0,
+      outcome: 'pass',
+      originalOutcome: 'warning',
+      originalScore: 65.0,
       score: 85.0,
     })} />)
     expect(screen.getByText('Re-evaluated')).toBeInTheDocument()
@@ -120,8 +130,8 @@ describe('EvaluationSummaryCard', () => {
 
   it('renders SLO info in metadata', () => {
     render(<EvaluationSummaryCard evaluation={makeEvaluation({
-      slo_name: 'latency-slo',
-      slo_version: 3,
+      sloName: 'latency-slo',
+      sloVersion: 3,
     })} />)
     expect(screen.getByText(/latency-slo/)).toBeInTheDocument()
     expect(screen.getByText(/v3/)).toBeInTheDocument()

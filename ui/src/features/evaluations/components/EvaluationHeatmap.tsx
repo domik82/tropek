@@ -9,12 +9,12 @@ import { useTheme } from '@/lib/theme-context'
 import { RESULT_COLOUR } from '@/lib/theme'
 import type { ResultColours } from '@/lib/theme'
 import { fmtDateTime } from '@/lib/format'
-import type { EvaluationSummary } from '../types'
+import type { Evaluation } from '../domain'
 import { HeatmapChart } from '@/components/charts/HeatmapChart'
 import type { HeatmapEChartsCell } from '@/features/navigator/ui-types'
 
 interface Props {
-  evaluations: EvaluationSummary[]
+  evaluations: Evaluation[]
   selectedDate: string | null
   onDateSelect: (date: string | null) => void
   onAssetSelect?: (assetName: string) => void
@@ -28,31 +28,31 @@ const RESULT_RANK: Record<string, number> = { pass: 0, warning: 1, fail: 2, erro
 
 type CellAccum = { result: string; score: number; count: number; hasNote: boolean; noteContent: string; evalName: string }
 
-function buildData(evals: EvaluationSummary[], fallbackNames?: Map<string, string>): { slots: string[]; rows: string[]; cells: HeatmapEChartsCell[]; evalNameMap: Map<string, string>; assetNames: string[] } {
+function buildData(evals: Evaluation[], fallbackNames?: Map<string, string>): { slots: string[]; rows: string[]; cells: HeatmapEChartsCell[]; evalNameMap: Map<string, string>; assetNames: string[] } {
   // Step 1: build sorted axes — rows are asset name only
-  const slots = Array.from(new Set(evals.map(e => e.period_start))).sort()
-  // Internal keys: raw asset names. Display: snapshot display_name → fallback map → raw name.
+  const slots = Array.from(new Set(evals.map(e => e.period.from))).sort()
+  // Internal keys: raw asset names. Display: snapshot displayName → fallback map → raw name.
   const displayNameMap = new Map<string, string>()
   for (const e of evals) {
-    if (!displayNameMap.has(e.asset_snapshot.name)) {
-      const dn = e.asset_snapshot.display_name ?? fallbackNames?.get(e.asset_snapshot.name)
-      if (dn) displayNameMap.set(e.asset_snapshot.name, dn)
+    if (!displayNameMap.has(e.assetSnapshot.name)) {
+      const dn = e.assetSnapshot.displayName ?? fallbackNames?.get(e.assetSnapshot.name)
+      if (dn) displayNameMap.set(e.assetSnapshot.name, dn)
     }
   }
-  const assetNames = Array.from(new Set(evals.map(e => e.asset_snapshot.name))).sort()
+  const assetNames = Array.from(new Set(evals.map(e => e.assetSnapshot.name))).sort()
   const rows = assetNames.map(n => displayNameMap.get(n) ?? n)
 
   // Step 2: group evaluations into cells, keyed by asset+slot+evalName
   const cellMap = new Map<string, CellAccum>()
 
   for (const e of evals) {
-    const key = `${e.asset_snapshot.name}\0${e.period_start}\0${e.evaluation_name}`
+    const key = `${e.assetSnapshot.name}\0${e.period.from}\0${e.evaluationName}`
     const existing = cellMap.get(key)
-    const effectiveResult = e.invalidated ? 'invalidated' : (e.result ?? 'error')
-    const hasNote = (e.annotation_count ?? 0) > 0
-    const note = e.latest_annotation?.content ?? ''
+    const effectiveResult = e.outcome
+    const hasNote = (e.annotationCount ?? 0) > 0
+    const note = e.latestAnnotation?.content ?? ''
     if (!existing) {
-      cellMap.set(key, { result: effectiveResult, score: e.score ?? 0, count: 1, hasNote, noteContent: note, evalName: e.evaluation_name })
+      cellMap.set(key, { result: effectiveResult, score: e.score ?? 0, count: 1, hasNote, noteContent: note, evalName: e.evaluationName })
     } else {
       const rank = (r: string) => RESULT_RANK[r] ?? 0
       const newIsWorse = rank(effectiveResult) > rank(existing.result)
@@ -62,7 +62,7 @@ function buildData(evals: EvaluationSummary[], fallbackNames?: Map<string, strin
         count: existing.count + 1,
         hasNote: existing.hasNote || hasNote,
         noteContent: existing.noteContent || note,
-        evalName: newIsWorse ? e.evaluation_name : existing.evalName,
+        evalName: newIsWorse ? e.evaluationName : existing.evalName,
       })
     }
   }
