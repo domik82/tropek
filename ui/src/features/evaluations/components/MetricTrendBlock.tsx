@@ -6,7 +6,7 @@ import { useTrend } from '../hooks'
 import { STATUS_TEXT } from '@/lib/status'
 import { useChartAreaClick } from '@/lib/useChartAreaClick'
 import { useMetricTrendState } from '../hooks/useMetricTrendState'
-import type { IndicatorResult } from '../types'
+import type { Indicator } from '../domain'
 
 interface Props {
   assetName: string
@@ -15,7 +15,7 @@ interface Props {
   selectedEvalId?: string
   selectedEvalIds?: ReadonlySet<string>
   selectedPeriodStart?: string
-  indicator: IndicatorResult
+  indicator: Indicator
   onEvalSelect?: (evalId: string) => void
   onScrollToTable?: () => void
   blockId?: string
@@ -103,7 +103,7 @@ export function MetricTrendBlock({
   const handleClickIndex = useCallback(
     (idx: number) => {
       const pt = (trend ?? [])[idx]
-      if (pt && onEvalSelect) onEvalSelect(pt.eval_id)
+      if (pt && onEvalSelect) onEvalSelect(pt.evalId)
     },
     [trend, onEvalSelect],
   )
@@ -117,7 +117,9 @@ export function MetricTrendBlock({
     yMin, yMax, setYMin, setYMax,
     targets,
     chartOption,
-  } = useMetricTrendState(trend, selectedEvalId ?? '', indicator, onEvalSelect, selectedEvalIds, selectedPeriodStart)
+    // Task 14 removes these casts: useMetricTrendState still consumes the
+    // legacy DTO-shaped TrendPoint / IndicatorResult types.
+  } = useMetricTrendState(trend as never, selectedEvalId ?? '', indicator as never, onEvalSelect, selectedEvalIds, selectedPeriodStart)
 
   return (
     <div id={blockId ?? `trend-${indicator.metric}`} className="bg-card border border-border rounded-xl p-4 scroll-mt-4">
@@ -146,14 +148,14 @@ export function MetricTrendBlock({
 
       {isLoading ? (
         <div>
-          <div className="text-xs text-muted-foreground mb-2">{indicator.display_name}</div>
+          <div className="text-xs text-muted-foreground mb-2">{indicator.displayName}</div>
           <div className="h-[200px] flex items-center justify-center text-muted-foreground/60 text-xs">loading…</div>
         </div>
       ) : (
         <div>
           <div className="flex items-center gap-3 mb-1">
             <span className="text-xs font-semibold text-foreground truncate" title={indicator.metric}>
-              {indicator.display_name || indicator.metric}
+              {indicator.displayName || indicator.metric}
             </span>
             <div className="flex items-center gap-1 ml-auto text-xs">
               <TargetDropdown targets={targets} />

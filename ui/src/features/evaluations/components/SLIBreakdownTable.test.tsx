@@ -1,38 +1,40 @@
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import { SLIBreakdownTable } from './SLIBreakdownTable'
-import type { IndicatorResult, SliMetadata } from '../types'
+import type { Indicator, SliMetadata } from '../domain'
 
-const indicators: IndicatorResult[] = [
+const indicators: Indicator[] = [
   {
     metric: 'response_time_p95',
-    display_name: 'Response Time P95',
+    displayName: 'Response Time P95',
+    tabGroup: null,
     value: 245.5,
-    compared_value: 230.0,
-    change_absolute: 15.5,
-    change_relative_pct: 6.74,
+    comparedValue: 230.0,
+    changeAbsolute: 15.5,
+    changeRelativePct: 6.74,
     aggregation: 'p95',
     status: 'pass',
     score: 1,
     weight: 2,
-    key_sli: true,
-    pass_targets: [{ criteria: '<=+10%', target_value: 253, violated: false }],
-    warning_targets: [{ criteria: '<=+15%', target_value: 264.5, violated: false }],
+    keySli: true,
+    passTargets: [{ criteria: '<=+10%', targetValue: 253, violated: false }],
+    warningTargets: [{ criteria: '<=+15%', targetValue: 264.5, violated: false }],
   },
   {
     metric: 'error_rate',
-    display_name: 'Error Rate',
+    displayName: 'Error Rate',
+    tabGroup: null,
     value: 5.2,
-    compared_value: 2.0,
-    change_absolute: 3.2,
-    change_relative_pct: 160.0,
+    comparedValue: 2.0,
+    changeAbsolute: 3.2,
+    changeRelativePct: 160.0,
     aggregation: 'avg',
     status: 'fail',
     score: 0,
     weight: 1,
-    key_sli: false,
-    pass_targets: [{ criteria: '<=+10%', target_value: 2.2, violated: true }],
-    warning_targets: null,
+    keySli: false,
+    passTargets: [{ criteria: '<=+10%', targetValue: 2.2, violated: true }],
+    warningTargets: [],
   },
 ]
 
@@ -58,7 +60,7 @@ describe('SLIBreakdownTable', () => {
   it('shows key SLI marker for key indicators', () => {
     render(<SLIBreakdownTable indicators={indicators} />)
     const keyMarkers = screen.getAllByTitle('Key SLI')
-    // One in header, one for the key_sli indicator
+    // One in header, one for the keySli indicator
     expect(keyMarkers.length).toBeGreaterThanOrEqual(1)
   })
 
@@ -106,76 +108,80 @@ describe('SLIBreakdownTable', () => {
   })
 })
 
-const aggregatedIndicators: IndicatorResult[] = [
+const aggregatedIndicators: Indicator[] = [
   {
     metric: 'cpu.mean',
-    display_name: 'cpu.mean',
+    displayName: 'cpu.mean',
+    tabGroup: null,
     value: 4.3,
-    compared_value: 4.1,
-    change_absolute: 0.2,
-    change_relative_pct: 4.88,
+    comparedValue: 4.1,
+    changeAbsolute: 0.2,
+    changeRelativePct: 4.88,
     aggregation: 'mean',
     status: 'pass',
     score: 1,
     weight: 1,
-    key_sli: false,
-    pass_targets: [{ criteria: '<10', target_value: 10, violated: false }],
-    warning_targets: null,
+    keySli: false,
+    passTargets: [{ criteria: '<10', targetValue: 10, violated: false }],
+    warningTargets: [],
   },
   {
     metric: 'cpu.p99',
-    display_name: 'cpu.p99',
+    displayName: 'cpu.p99',
+    tabGroup: null,
     value: 18.7,
-    compared_value: 17.0,
-    change_absolute: 1.7,
-    change_relative_pct: 10.0,
+    comparedValue: 17.0,
+    changeAbsolute: 1.7,
+    changeRelativePct: 10.0,
     aggregation: 'p99',
     status: 'pass',
     score: 1,
     weight: 2,
-    key_sli: true,
-    pass_targets: [{ criteria: '<25', target_value: 25, violated: false }],
-    warning_targets: null,
+    keySli: true,
+    passTargets: [{ criteria: '<25', targetValue: 25, violated: false }],
+    warningTargets: [],
   },
   {
     metric: 'cpu.max',
-    display_name: 'cpu.max',
+    displayName: 'cpu.max',
+    tabGroup: null,
     value: 31.2,
-    compared_value: 28.0,
-    change_absolute: 3.2,
-    change_relative_pct: 11.43,
+    comparedValue: 28.0,
+    changeAbsolute: 3.2,
+    changeRelativePct: 11.43,
     aggregation: 'max',
     status: 'pass',
     score: 1,
     weight: 1,
-    key_sli: false,
-    pass_targets: [{ criteria: '<40', target_value: 40, violated: false }],
-    warning_targets: null,
+    keySli: false,
+    passTargets: [{ criteria: '<40', targetValue: 40, violated: false }],
+    warningTargets: [],
   },
   {
     metric: 'error_rate',
-    display_name: 'Error Rate',
+    displayName: 'Error Rate',
+    tabGroup: null,
     value: 0.02,
-    compared_value: 0.01,
-    change_absolute: 0.01,
-    change_relative_pct: 100.0,
+    comparedValue: 0.01,
+    changeAbsolute: 0.01,
+    changeRelativePct: 100.0,
     aggregation: 'avg',
     status: 'pass',
     score: 1,
     weight: 3,
-    key_sli: false,
-    pass_targets: [{ criteria: '<0.05', target_value: 0.05, violated: false }],
-    warning_targets: null,
+    keySli: false,
+    passTargets: [{ criteria: '<0.05', targetValue: 0.05, violated: false }],
+    warningTargets: [],
   },
 ]
 
 const sliMetadata: Record<string, SliMetadata> = {
   cpu: {
     mode: 'aggregated',
-    expected_samples: 1440,
-    actual_samples: 1387,
-    missing_pct: 3.7,
-    chunks_failed: 0,
+    expectedSamples: 1440,
+    actualSamples: 1387,
+    missingPct: 3.7,
+    chunksFailed: 0,
   },
 }
 
@@ -213,9 +219,9 @@ describe('SLIBreakdownTable grouped display', () => {
     expect(screen.getByText('max')).toBeInTheDocument()
   })
 
-  it('shows low-confidence warning when missing_pct exceeds threshold', () => {
+  it('shows low-confidence warning when missingPct exceeds threshold', () => {
     const highMissing: Record<string, SliMetadata> = {
-      cpu: { ...sliMetadata.cpu, missing_pct: 25.0 },
+      cpu: { ...sliMetadata.cpu, missingPct: 25.0 },
     }
     render(
       <SLIBreakdownTable

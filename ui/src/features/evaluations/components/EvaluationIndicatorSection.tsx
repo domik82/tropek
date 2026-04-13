@@ -4,7 +4,7 @@ import { useTabState } from '../hooks/useTabState'
 import { SLIBreakdownTable } from './SLIBreakdownTable'
 import { MetricTrendBlock } from './MetricTrendBlock'
 import { EvaluationTabs, tabLabel } from './EvaluationTabs'
-import type { EvaluationDetail, SliMetadata } from '../types'
+import type { EvaluationDetail, Indicator } from '../domain'
 
 interface Props {
   evaluation: EvaluationDetail
@@ -16,10 +16,18 @@ interface Props {
 }
 
 export function EvaluationIndicatorSection({ evaluation: ev, onMetricClick, assetDisplayName, sloDisplayName }: Props) {
+  // Task 14 removes this shim: useTabState still reads `tab_group` on the
+  // legacy DTO-shaped IndicatorResult. Until that hook is migrated to the
+  // domain Indicator type we surface a snake_case `tab_group` alias so the
+  // tab filter keeps working at runtime.
+  const indicatorsForTabState = ev.indicators.map(ind => ({
+    ...ind,
+    tab_group: ind.tabGroup ?? undefined,
+  }))
   const { availableGroups, counts, activeTab, setActiveTab, tabIndicators } =
-    useTabState(ev.indicator_results)
+    useTabState(indicatorsForTabState as never)
 
-  const sliMetadata = ev.sli_metadata as Record<string, SliMetadata> | undefined
+  const sliMetadata = ev.sliMetadata
 
   const sliTableRef = useRef<HTMLDivElement>(null)
 
@@ -46,14 +54,14 @@ export function EvaluationIndicatorSection({ evaluation: ev, onMetricClick, asse
 
         <EvaluationTabs
           availableGroups={availableGroups}
-          allCount={ev.indicator_results.length}
+          allCount={ev.indicators.length}
           counts={counts}
           activeTab={activeTab}
           onTabChange={setActiveTab}
         />
 
         <SLIBreakdownTable
-          indicators={tabIndicators}
+          indicators={tabIndicators as unknown as Indicator[]}
           sliMetadata={sliMetadata}
           onIndicatorClick={(metric, tabGroup) => {
             if (activeTab !== 'all') setActiveTab(tabGroup)
@@ -71,15 +79,15 @@ export function EvaluationIndicatorSection({ evaluation: ev, onMetricClick, asse
         <p className="text-xs text-muted-foreground">
           30-day trend for{' '}
           <strong className="text-foreground">{activeTab === 'all' ? 'All' : tabLabel(activeTab)}</strong>{' '}
-          metrics on <strong className="text-foreground">{ev.asset_snapshot.display_name ?? assetDisplayName ?? ev.asset_snapshot.name}</strong>.
+          metrics on <strong className="text-foreground">{ev.assetSnapshot.displayName ?? assetDisplayName ?? ev.assetSnapshot.name}</strong>.
           Dot colour reflects each metric's own pass/warn/fail result.
         </p>
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-          {tabIndicators.map(ind => (
+          {(tabIndicators as unknown as Indicator[]).map(ind => (
             <MetricTrendBlock
               key={ind.metric}
-              assetName={ev.asset_snapshot.name}
-              sloName={ev.slo_name ?? ''}
+              assetName={ev.assetSnapshot.name}
+              sloName={ev.sloName ?? ''}
               sloDisplayName={sloDisplayName}
               selectedEvalId={ev.id}
               indicator={ind}

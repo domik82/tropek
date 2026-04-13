@@ -4,7 +4,7 @@ import { ChevronDown, ChevronRight, ChartLine } from 'lucide-react'
 import { fmt } from '@/lib/format'
 import { STATUS_TEXT } from '@/lib/status'
 import { DataTable, DataTableHeader } from '@/components/ui/data-table'
-import type { IndicatorResult, SliMetadata } from '../types'
+import type { Indicator, SliMetadata } from '../domain'
 
 function fmtPct(v: number | null | undefined): string {
   if (v == null) return '—'
@@ -17,23 +17,23 @@ const LOW_CONFIDENCE_THRESHOLD = 20
 
 interface SliGroup {
   prefix: string
-  indicators: IndicatorResult[]
+  indicators: Indicator[]
   metadata?: SliMetadata
 }
 
 function groupIndicators(
-  indicators: IndicatorResult[],
+  indicators: Indicator[],
   sliMetadata?: Record<string, SliMetadata>,
-): (IndicatorResult | SliGroup)[] {
+): (Indicator | SliGroup)[] {
   if (!sliMetadata || Object.keys(sliMetadata).length === 0) {
     return indicators
   }
 
-  const result: (IndicatorResult | SliGroup)[] = []
+  const result: (Indicator | SliGroup)[] = []
   const grouped = new Set<string>()
 
   // Build groups from metadata keys
-  const prefixMap = new Map<string, IndicatorResult[]>()
+  const prefixMap = new Map<string, Indicator[]>()
   for (const ind of indicators) {
     const dotIdx = ind.metric.lastIndexOf('.')
     if (dotIdx > 0) {
@@ -68,12 +68,12 @@ function groupIndicators(
   return result
 }
 
-function isGroup(item: IndicatorResult | SliGroup): item is SliGroup {
+function isGroup(item: Indicator | SliGroup): item is SliGroup {
   return 'prefix' in item && 'indicators' in item
 }
 
 interface Props {
-  indicators: IndicatorResult[]
+  indicators: Indicator[]
   sliMetadata?: Record<string, SliMetadata>
   onIndicatorClick?: (metric: string, tabGroup: string) => void
   /**
@@ -137,7 +137,7 @@ export function SLIBreakdownTable({ indicators, sliMetadata, onIndicatorClick, r
           if (isGroup(item)) {
             const collapsed = collapsedGroups.has(item.prefix)
             const meta = item.metadata
-            const lowConfidence = meta && meta.missing_pct > LOW_CONFIDENCE_THRESHOLD
+            const lowConfidence = meta && meta.missingPct > LOW_CONFIDENCE_THRESHOLD
             return (
               <GroupRows
                 key={item.prefix}
@@ -201,7 +201,7 @@ function GroupRows({ group, collapsed, lowConfidence, onToggle, selectedMetric, 
             <span className="text-foreground">{group.prefix}</span>
             {meta && (
               <span className="text-xs text-muted-foreground font-mono">
-                {meta.actual_samples}/{meta.expected_samples} samples ({meta.missing_pct.toFixed(1)}% missing)
+                {meta.actualSamples}/{meta.expectedSamples} samples ({meta.missingPct.toFixed(1)}% missing)
               </span>
             )}
             {lowConfidence && (
@@ -234,7 +234,7 @@ function GroupRows({ group, collapsed, lowConfidence, onToggle, selectedMetric, 
 }
 
 interface IndicatorRowProps {
-  ind: IndicatorResult
+  ind: Indicator
   idx: number
   isSelected: boolean
   onClick: (metric: string) => void
@@ -249,7 +249,7 @@ function IndicatorRow({ ind, idx, isSelected, onClick, onIndicatorClick, display
   const rowBg = isSelected ? 'bg-table-row-selected' : zebraBase
   const rowHover = isSelected ? 'hover:bg-table-row-selected' : 'hover:bg-table-row-hover'
   const rowRing = isSelected ? 'ring-1 ring-inset ring-muted-foreground/60' : ''
-  const label = displayName ?? (ind.display_name || ind.metric)
+  const label = displayName ?? (ind.displayName || ind.metric)
 
   return (
     <tr
@@ -258,7 +258,7 @@ function IndicatorRow({ ind, idx, isSelected, onClick, onIndicatorClick, display
       className={`transition-colors group border-b border-border/60 last:border-0 scroll-mt-24 ${rowBg} ${rowHover} ${rowRing}`}
     >
       <td className="px-2 py-3 text-center">
-        {ind.key_sli && (
+        {ind.keySli && (
           <span className="text-indicator-key-sli text-xs leading-none" title="Key SLI">◆</span>
         )}
       </td>
@@ -271,7 +271,7 @@ function IndicatorRow({ ind, idx, isSelected, onClick, onIndicatorClick, display
             <button
               onClick={e => {
                 e.stopPropagation()
-                onIndicatorClick(ind.metric, ind.tab_group ?? 'summary')
+                onIndicatorClick(ind.metric, ind.tabGroup ?? 'summary')
               }}
               className="text-muted-foreground/60 hover:text-link-hover transition-colors"
               title="Go to trend chart"
@@ -283,11 +283,11 @@ function IndicatorRow({ ind, idx, isSelected, onClick, onIndicatorClick, display
         </span>
       </td>
       <td className="px-4 py-3 text-right font-mono truncate" title={String(ind.value ?? '')}>{fmt(ind.value)}</td>
-      <td className="px-4 py-3 text-right font-mono text-muted-foreground truncate" title={String(ind.compared_value ?? '')}>{fmt(ind.compared_value)}</td>
+      <td className="px-4 py-3 text-right font-mono text-muted-foreground truncate" title={String(ind.comparedValue ?? '')}>{fmt(ind.comparedValue)}</td>
       <td className="px-4 py-3 text-right font-mono">
-        {ind.change_relative_pct != null ? (
+        {ind.changeRelativePct != null ? (
           <span className={STATUS_TEXT[ind.status] ?? 'text-foreground'}>
-            {fmtPct(ind.change_relative_pct)}
+            {fmtPct(ind.changeRelativePct)}
           </span>
         ) : '—'}
       </td>
@@ -297,14 +297,14 @@ function IndicatorRow({ ind, idx, isSelected, onClick, onIndicatorClick, display
         {ind.status}
       </td>
       <td className="px-4 py-3 text-xs text-muted-foreground">
-        {ind.pass_targets?.map((t, i) => (
+        {ind.passTargets.map((t, i) => (
           <div key={i} className={`font-mono ${t.violated ? 'text-destructive-form-text' : ''}`}>
             {t.criteria}{t.violated && ' ✗'}
           </div>
         ))}
       </td>
       <td className="px-4 py-3 text-xs text-muted-foreground">
-        {ind.warning_targets?.map((t, i) => (
+        {ind.warningTargets.map((t, i) => (
           <div key={i} className="font-mono">{t.criteria}</div>
         ))}
       </td>
