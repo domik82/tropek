@@ -5,17 +5,14 @@ import { RESULT_COLOUR } from '@/lib/theme'
 import { fmtDateTime } from '@/lib/format'
 import { HeatmapChart } from '@/components/charts/HeatmapChart'
 import type { SlotNote } from '@/components/charts/NoteIndicatorRow'
-import { buildAssetHeatmapData } from '../utils'
-import type { MetricHeatmapResponse, HeatmapCell } from '../types'
+import { assetHeatmapDtoToDomain } from '../mappers'
+import type { GroupedMetricHeatmapResponseDto } from '../mappers'
+import type { HeatmapEChartsCell, TimeSlotSelection } from '../ui-types'
 
-export interface TimeSlotSelection {
-  periodStart: string
-  evalIds: string[]
-  columnEvalId?: string
-}
+export type { TimeSlotSelection } from '../ui-types'
 
 interface Props {
-  data: MetricHeatmapResponse
+  data: GroupedMetricHeatmapResponseDto
   selectedEvalId?: string
   onEvalSelect?: (evalId: string) => void
   onSlotSelect?: (slot: TimeSlotSelection) => void
@@ -39,7 +36,7 @@ export function AssetHeatmap({
   const colours = RESULT_COLOUR[theme]
 
   const { slots, rows, cells, headerRowIndices } = useMemo(
-    () => buildAssetHeatmapData(data, expandState),
+    () => assetHeatmapDtoToDomain(data, expandState),
     [data, expandState],
   )
 
@@ -57,7 +54,7 @@ export function AssetHeatmap({
     return colIdx >= 0 ? colIdx : undefined
   }, [selectedEvalId, cells, data])
 
-  const formatTooltip = useCallback((cell: HeatmapCell): string => {
+  const formatTooltip = useCallback((cell: HeatmapEChartsCell): string => {
     if (cell.result === 'none') {
       return `${cell.rowLabel}<br/>${fmtDateTime(cell.slot)}<br/><em>no data</em>`
     }
@@ -81,7 +78,7 @@ export function AssetHeatmap({
     ].filter(Boolean).join('<br/>')
   }, [colours])
 
-  const onCellClick = useCallback((cell: HeatmapCell): void => {
+  const onCellClick = useCallback((cell: HeatmapEChartsCell): void => {
     // SLO header row click → toggle expand/collapse AND select the column
     if (cell.isSloHeader && cell.sloName) {
       onSloToggle(cell.sloName)
