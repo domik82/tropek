@@ -16,6 +16,9 @@ import {
   dtoToTrendPoint,
   dtoToEvaluationNameEntry,
   dtoToReEvaluateResponse,
+  triggerEvaluationInputToDto,
+  reEvaluateInputToDto,
+  overrideStatusInputToDto,
 } from './mappers'
 
 function makeSummaryDto(overrides: Partial<EvaluationSummaryDto> = {}): EvaluationSummaryDto {
@@ -264,5 +267,72 @@ describe('dtoToReEvaluateResponse', () => {
     expect(domain.results[0].period.from).toBe('2026-03-15T10:00:00Z')
     expect(domain.results[0].oldOutcome).toBe('fail')
     expect(domain.results[0].newOutcome).toBe('pass')
+  })
+})
+
+describe('triggerEvaluationInputToDto', () => {
+  it('flattens period DateRange into period_start/period_end', () => {
+    const dto = triggerEvaluationInputToDto({
+      assetName: 'checkout',
+      evalName: 'perf-linux',
+      period: { from: '2026-03-15T10:00:00Z', to: '2026-03-15T10:30:00Z' },
+      variables: { env: 'prod' },
+    })
+    expect(dto.asset_name).toBe('checkout')
+    expect(dto.eval_name).toBe('perf-linux')
+    expect(dto.period_start).toBe('2026-03-15T10:00:00Z')
+    expect(dto.period_end).toBe('2026-03-15T10:30:00Z')
+    expect(dto.variables).toEqual({ env: 'prod' })
+  })
+})
+
+describe('reEvaluateInputToDto', () => {
+  it('flattens baseline mode to from_baseline: true', () => {
+    const dto = reEvaluateInputToDto({
+      assetName: 'a', sloName: 's',
+      mode: { kind: 'baseline' },
+      sloVersion: null, dryRun: false, pinStrategy: null,
+    })
+    expect(dto.from_baseline).toBe(true)
+    expect(dto.from_date).toBeNull()
+    expect(dto.from_evaluation_id).toBeNull()
+  })
+
+  it('flattens date mode to from_date', () => {
+    const dto = reEvaluateInputToDto({
+      assetName: 'a', sloName: 's',
+      mode: { kind: 'date', fromDate: '2026-03-10T00:00:00Z' },
+      sloVersion: 2, dryRun: true, pinStrategy: 'skip_to_pin',
+    })
+    expect(dto.from_baseline).toBe(false)
+    expect(dto.from_date).toBe('2026-03-10T00:00:00Z')
+    expect(dto.slo_version).toBe(2)
+    expect(dto.dry_run).toBe(true)
+    expect(dto.pin_strategy).toBe('skip_to_pin')
+  })
+
+  it('flattens evaluation mode to from_evaluation_id', () => {
+    const dto = reEvaluateInputToDto({
+      assetName: 'a', sloName: 's',
+      mode: { kind: 'evaluation', fromEvaluationId: 'eval-7' },
+      sloVersion: null, dryRun: false, pinStrategy: null,
+    })
+    expect(dto.from_evaluation_id).toBe('eval-7')
+    expect(dto.from_baseline).toBe(false)
+  })
+})
+
+describe('overrideStatusInputToDto', () => {
+  it('converts Outcome enum to new_result string', () => {
+    const dto = overrideStatusInputToDto({ outcome: 'pass', reason: 'flaky infra', author: 'alice' })
+    expect(dto.new_result).toBe('pass')
+    expect(dto.reason).toBe('flaky infra')
+    expect(dto.author).toBe('alice')
+  })
+
+  it('rejects invalidated outcome (not a valid override target)', () => {
+    expect(() =>
+      overrideStatusInputToDto({ outcome: 'invalidated', reason: 'x', author: 'y' }),
+    ).toThrow(/cannot override to invalidated/)
   })
 })
