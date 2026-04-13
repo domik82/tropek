@@ -1,47 +1,57 @@
 // src/features/evaluations/api.ts
-// Pure async fetch functions — no mock logic, no caching.
-// MSW intercepts these calls in development; the real API handles them in production.
-
+import { getConfig } from '@/lib/config'
 import type {
-  EvaluationSummary,
-  EvaluationDetail,
-  TrendPoint,
-  EvaluationFilters,
-  TriggerEvaluationPayload,
   Annotation,
-  ReEvaluatePayload,
-  ReEvaluateResponse,
+  Evaluation,
+  EvaluationDetail,
+  EvaluationFilters,
+  EvaluationList,
+  EvaluationNameEntry,
+  OverrideStatusInput,
   PinConflictInfo,
-} from './types'
+  ReEvaluateInput,
+  ReEvaluateResponse,
+  TrendPoint,
+  TriggerEvaluationInput,
+} from './domain'
+import {
+  dtoToAnnotation,
+  dtoToEvaluationDetail,
+  dtoToEvaluationList,
+  dtoToEvaluationNameEntry,
+  dtoToEvaluationSummary,
+  dtoToReEvaluateResponse,
+  dtoToTrendPoint,
+  overrideStatusInputToDto,
+  reEvaluateInputToDto,
+  triggerEvaluationInputToDto,
+  type AnnotationDto,
+  type EvaluationDetailDto,
+  type EvaluationNameEntryDto,
+  type EvaluationSummaryDto,
+  type EvaluateSingleResponseDto,
+  type ReEvaluateResponseDto,
+  type TrendPointDto,
+} from './mappers'
 
 const BASE = '/api'
 
 function toParams(filters: EvaluationFilters): string {
-  const p = new URLSearchParams()
-  if (filters.group_name) p.set('group_name', filters.group_name)
-  if (filters.asset_name) p.set('asset_name', filters.asset_name)
-  if (filters.evaluation_name?.length) {
-    for (const n of filters.evaluation_name) p.append('evaluation_name', n)
+  const params = new URLSearchParams()
+  if (filters.groupName) params.set('group_name', filters.groupName)
+  if (filters.assetName) params.set('asset_name', filters.assetName)
+  if (filters.evaluationName?.length) {
+    for (const name of filters.evaluationName) params.append('evaluation_name', name)
   }
-  if (filters.date) p.set('date', filters.date)
-  if (filters.from) p.set('from', filters.from)
-  if (filters.to) p.set('to', filters.to)
-  return p.toString()
+  if (filters.date) params.set('date', filters.date)
+  if (filters.from) params.set('from', filters.from)
+  if (filters.to) params.set('to', filters.to)
+  return params.toString()
 }
 
-import { getConfig } from '@/lib/config'
-
-export interface EvaluationResult {
-  items: EvaluationSummary[]
-  total: number
-  truncated: boolean
-}
-
-export async function fetchEvaluations(
-  filters: EvaluationFilters = {}
-): Promise<EvaluationResult> {
+export async function fetchEvaluations(filters: EvaluationFilters = {}): Promise<EvaluationList> {
   const base = toParams(filters)
-  const all: EvaluationSummary[] = []
+  const allItems: EvaluationSummaryDto[] = []
   const { maxEvaluations, pageSize } = getConfig()
   let total = 0
   let offset = 0
@@ -50,25 +60,26 @@ export async function fetchEvaluations(
     const qs = `${base}&limit=${pageSize}&offset=${offset}`
     const res = await fetch(`${BASE}/evaluations?${qs}`)
     if (!res.ok) throw new Error(`fetchEvaluations: ${res.status}`)
-    const data: { items: EvaluationSummary[]; total: number } = await res.json()
-    total = data.total
-    all.push(...data.items)
-    if (all.length >= data.total || data.items.length < pageSize) break
-    if (all.length >= maxEvaluations) break
+    const page: { items: EvaluationSummaryDto[]; total: number } = await res.json()
+    total = page.total
+    allItems.push(...page.items)
+    if (allItems.length >= page.total || page.items.length < pageSize) break
+    if (allItems.length >= maxEvaluations) break
     offset += pageSize
   }
 
-  return {
-    items: all.slice(0, maxEvaluations),
+  return dtoToEvaluationList({
+    items: allItems.slice(0, maxEvaluations),
     total,
     truncated: total > maxEvaluations,
-  }
+  })
 }
 
 export async function fetchEvaluationDetail(id: string): Promise<EvaluationDetail> {
   const res = await fetch(`${BASE}/evaluations/${id}`)
   if (!res.ok) throw new Error(`fetchEvaluationDetail: ${res.status}`)
-  return res.json()
+  const body: EvaluationDetailDto = await res.json()
+  return dtoToEvaluationDetail(body)
 }
 
 export async function fetchTrend(
@@ -82,24 +93,26 @@ export async function fetchTrend(
   if (dateRange?.to) params.set('to', dateRange.to)
   const res = await fetch(`${BASE}/trend?${params}`)
   if (!res.ok) throw new Error(`fetchTrend: ${res.status}`)
-  return res.json()
+  const body: TrendPointDto[] = await res.json()
+  return body.map(dtoToTrendPoint)
 }
 
 export async function triggerEvaluation(
-  payload: TriggerEvaluationPayload
-): Promise<{ evaluation_id: string; slo_evaluation_ids: string[] }> {
+  input: TriggerEvaluationInput,
+): Promise<{ evaluationId: string; sloEvaluationIds: string[] }> {
   const res = await fetch(`${BASE}/evaluate`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
+    body: JSON.stringify(triggerEvaluationInputToDto(input)),
   })
   if (!res.ok) throw new Error(`triggerEvaluation: ${res.status}`)
-  return res.json()
+  const body: EvaluateSingleResponseDto = await res.json()
+  return { evaluationId: body.evaluation_id, sloEvaluationIds: body.slo_evaluation_ids }
 }
 
 export async function addAnnotation(
   evalId: string,
-  payload: { content: string; category?: string; author?: string }
+  payload: { content: string; category?: string; author?: string },
 ): Promise<Annotation> {
   const res = await fetch(`${BASE}/evaluations/${evalId}/annotations`, {
     method: 'POST',
@@ -107,62 +120,63 @@ export async function addAnnotation(
     body: JSON.stringify(payload),
   })
   if (!res.ok) throw new Error(`addAnnotation: ${res.status}`)
-  return res.json()
+  const body: AnnotationDto = await res.json()
+  return dtoToAnnotation(body)
 }
 
 export async function hideAnnotation(
   evalId: string,
   annotationId: string,
-  payload: { reason: string; author?: string }
+  payload: { reason: string; author?: string },
 ): Promise<Annotation> {
-  const res = await fetch(`${BASE}/evaluations/${evalId}/annotations/${annotationId}/hide`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
-  })
+  const res = await fetch(
+    `${BASE}/evaluations/${evalId}/annotations/${annotationId}/hide`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    },
+  )
   if (!res.ok) throw new Error(`hideAnnotation: ${res.status}`)
-  return res.json()
+  const body: AnnotationDto = await res.json()
+  return dtoToAnnotation(body)
 }
 
-export async function invalidateEvaluation(
-  evalId: string,
-  note: string
-): Promise<EvaluationSummary> {
+export async function invalidateEvaluation(evalId: string, note: string): Promise<Evaluation> {
   const res = await fetch(`${BASE}/evaluations/${evalId}/invalidate`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ invalidation_note: note }),
   })
   if (!res.ok) throw new Error(`invalidateEvaluation: ${res.status}`)
-  return res.json()
+  const body: EvaluationSummaryDto = await res.json()
+  return dtoToEvaluationSummary(body)
 }
 
-export async function restoreEvaluation(
-  evalId: string
-): Promise<EvaluationSummary> {
-  const res = await fetch(`${BASE}/evaluations/${evalId}/restore`, {
-    method: 'PATCH',
-  })
+export async function restoreEvaluation(evalId: string): Promise<Evaluation> {
+  const res = await fetch(`${BASE}/evaluations/${evalId}/restore`, { method: 'PATCH' })
   if (!res.ok) throw new Error(`restoreEvaluation: ${res.status}`)
-  return res.json()
+  const body: EvaluationSummaryDto = await res.json()
+  return dtoToEvaluationSummary(body)
 }
 
 export async function overrideStatus(
   evalId: string,
-  payload: { new_result: string; reason: string; author: string }
+  input: OverrideStatusInput,
 ): Promise<EvaluationDetail> {
   const res = await fetch(`${BASE}/evaluations/${evalId}/override-status`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
+    body: JSON.stringify(overrideStatusInputToDto(input)),
   })
   if (!res.ok) throw new Error(`overrideStatus: ${res.status}`)
-  return res.json()
+  const body: EvaluationDetailDto = await res.json()
+  return dtoToEvaluationDetail(body)
 }
 
 export async function pinBaseline(
   evalId: string,
-  payload: { reason: string; author: string }
+  payload: { reason: string; author: string },
 ): Promise<EvaluationDetail> {
   const res = await fetch(`${BASE}/evaluations/${evalId}/pin-baseline`, {
     method: 'PATCH',
@@ -170,62 +184,59 @@ export async function pinBaseline(
     body: JSON.stringify(payload),
   })
   if (!res.ok) throw new Error(`pinBaseline: ${res.status}`)
-  return res.json()
+  const body: EvaluationDetailDto = await res.json()
+  return dtoToEvaluationDetail(body)
 }
 
-export async function fetchColumnAnnotations(
-  evaluationId: string,
-): Promise<Annotation[]> {
+export async function fetchColumnAnnotations(evaluationId: string): Promise<Annotation[]> {
   const params = new URLSearchParams({ evaluation_id: evaluationId })
   const res = await fetch(`${BASE}/evaluations/column-annotations?${params}`)
   if (!res.ok) throw new Error(`fetchColumnAnnotations: ${res.status}`)
-  return res.json()
-}
-
-export interface EvaluationNameEntry {
-  name: string
-  count: number
-  last_run: string
+  const body: AnnotationDto[] = await res.json()
+  return body.map(dtoToAnnotation)
 }
 
 export async function fetchEvaluationNames(
-  params: { asset_name?: string; group_name?: string },
+  params: { assetName?: string; groupName?: string },
 ): Promise<EvaluationNameEntry[]> {
-  const p = new URLSearchParams()
-  if (params.asset_name) p.set('asset_name', params.asset_name)
-  if (params.group_name) p.set('group_name', params.group_name)
-  const qs = p.toString()
+  const query = new URLSearchParams()
+  if (params.assetName) query.set('asset_name', params.assetName)
+  if (params.groupName) query.set('group_name', params.groupName)
+  const qs = query.toString()
   const res = await fetch(`${BASE}/evaluations/names${qs ? `?${qs}` : ''}`)
   if (!res.ok) throw new Error(`fetchEvaluationNames: ${res.status}`)
-  return res.json()
+  const body: EvaluationNameEntryDto[] = await res.json()
+  return body.map(dtoToEvaluationNameEntry)
 }
 
 export class PinConflictError extends Error {
-  pin_date: string
-  pin_evaluation_id: string
+  pinDate: string
+  pinEvaluationId: string
 
   constructor(info: PinConflictInfo) {
     super('re-evaluation start date is before the active baseline pin')
-    this.pin_date = info.pin_date
-    this.pin_evaluation_id = info.pin_evaluation_id
+    this.pinDate = info.pinDate
+    this.pinEvaluationId = info.pinEvaluationId
   }
 }
 
-export async function reEvaluate(
-  payload: ReEvaluatePayload
-): Promise<ReEvaluateResponse> {
+export async function reEvaluate(input: ReEvaluateInput): Promise<ReEvaluateResponse> {
   const res = await fetch(`${BASE}/evaluations/re-evaluate`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
+    body: JSON.stringify(reEvaluateInputToDto(input)),
   })
   if (!res.ok) {
     const body = await res.json().catch(() => ({}))
     if (res.status === 409 && body.detail?.pin_date) {
-      throw new PinConflictError(body.detail)
+      throw new PinConflictError({
+        pinDate: body.detail.pin_date,
+        pinEvaluationId: body.detail.pin_evaluation_id,
+      })
     }
     const message = typeof body.detail === 'string' ? body.detail : `reEvaluate: ${res.status}`
     throw new Error(message)
   }
-  return res.json()
+  const body: ReEvaluateResponseDto = await res.json()
+  return dtoToReEvaluateResponse(body)
 }
