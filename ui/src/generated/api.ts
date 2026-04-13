@@ -2522,6 +2522,10 @@ export interface components {
             sli_metadata?: {
                 [key: string]: components["schemas"]["SliMetadata"];
             } | null;
+            /** Sli Version */
+            sli_version?: number | null;
+            /** Slo Version */
+            slo_version?: number | null;
             /** Total Score Pass Threshold */
             total_score_pass_threshold?: number | null;
             /** Total Score Warning Threshold */

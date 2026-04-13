@@ -12,6 +12,8 @@ export interface SloBreakdownGroup {
   result: string
   achieved_points: number
   total_points: number
+  slo_version?: number | null
+  sli_version?: number | null
 }
 
 function CopySloButton({ text }: { text: string }) {
@@ -98,6 +100,15 @@ export function SLIBreakdownGrouped({
                 {label}
               </span>
               <CopySloButton text={g.slo_name} />
+              {(g.slo_version != null || g.sli_version != null) && (
+                <span className="text-xs text-muted-foreground/70 tabular-nums shrink-0">
+                  [
+                  {g.slo_version != null && `SLO v${g.slo_version}`}
+                  {g.slo_version != null && g.sli_version != null && ' '}
+                  {g.sli_version != null && `SLI v${g.sli_version}`}
+                  ]
+                </span>
+              )}
               {onScrollToHeatmap && (
                 <span
                   role="button"

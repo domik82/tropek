@@ -2658,6 +2658,28 @@
             ],
             "title": "Sli Metadata"
           },
+          "sli_version": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sli Version"
+          },
+          "slo_version": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Slo Version"
+          },
           "total_score_pass_threshold": {
             "anyOf": [
               {

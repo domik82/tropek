@@ -48,6 +48,8 @@ class HeatmapSummaryCell(BaseModel):
     total_score_pass_threshold: float | None = None
     total_score_warning_threshold: float | None = None
     sli_metadata: dict[str, SliMetadata] | None = None
+    slo_version: int | None = None
+    sli_version: int | None = None
     invalidated: bool = False
     invalidation_note: str | None = None
 
