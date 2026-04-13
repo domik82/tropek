@@ -65,6 +65,23 @@ export function EvaluationSummaryCard({ evaluation: ev, onAddNote, actions, asse
               </span>
             </div>
           )}
+          {ev.baselinePin && (
+            <div className="mt-2">
+              <span className="text-xs text-entity-slo bg-entity-slo/10 border border-entity-slo/30 px-2 py-1 rounded inline-flex flex-wrap items-center gap-x-1.5">
+                <span className="font-medium">📌 Baseline pinned</span>
+                <span>by <span className="text-entity-slo">{ev.baselinePin.author}</span></span>
+                <span>at {ev.baselinePin.pinnedAt.toISOString().slice(0, 16).replace('T', ' ')}</span>
+                {ev.baselinePin.reason && (
+                  <span className="text-entity-slo/80">— {ev.baselinePin.reason}</span>
+                )}
+                {ev.baselinePin.unpinnedAt && (
+                  <span className="text-muted-foreground">
+                    (unpinned {ev.baselinePin.unpinnedAt.toISOString().slice(0, 10)})
+                  </span>
+                )}
+              </span>
+            </div>
+          )}
           {ev.originalOutcome && !ev.overrideAuthor && (
             <div className="mt-2 flex flex-col gap-1">
               <span className="text-xs text-entity-sli bg-entity-sli/10 border border-entity-sli/30 px-2 py-1 rounded inline-flex flex-wrap items-center gap-x-1.5">
