@@ -24,6 +24,8 @@ import type {
   ReEvaluateResponse,
   SliMetadata,
   TrendPoint,
+  TrendTargetEntry,
+  TrendTargets,
   TriggerEvaluationInput,
 } from './domain'
 
@@ -114,6 +116,17 @@ function dtoToSliMetadata(dto: SliMetadataDto): SliMetadata {
 
 function dtoToPassTarget(dto: PassTargetDto): PassTarget {
   return { criteria: dto.criteria, targetValue: dto.target_value, violated: dto.violated }
+}
+
+function dtoToTrendTargetEntry(dto: TrendTargetEntryDto): TrendTargetEntry {
+  return { criteria: dto.criteria, targetValue: dto.target_value, violated: dto.violated }
+}
+
+function dtoToTrendTargets(dto: TrendTargetsDto): TrendTargets {
+  return {
+    pass: (dto.pass ?? []).map(dtoToTrendTargetEntry),
+    warn: (dto.warn ?? []).map(dtoToTrendTargetEntry),
+  }
 }
 
 // --- Exhaustiveness frames ------------------------------------------------
@@ -475,14 +488,23 @@ export function dtoToAnnotation(dto: AnnotationDto): Annotation {
   }
 }
 
-export function dtoToTrendPoint(_dto: TrendPointDto): TrendPoint {
-  throw new Error('dtoToTrendPoint: not yet implemented (Task 7)')
+export function dtoToTrendPoint(dto: TrendPointDto): TrendPoint {
+  return {
+    timestamp: new Date(dto.timestamp),
+    value: dto.value,
+    score: dto.score,
+    evalId: dto.eval_id,
+    outcome: normalizeOutcome(dto.result),
+    baseline: dto.baseline,
+    evaluationName: dto.evaluation_name ?? null,
+    targets: dto.targets ? dtoToTrendTargets(dto.targets) : null,
+  }
 }
 
 export function dtoToEvaluationNameEntry(
-  _dto: EvaluationNameEntryDto,
+  dto: EvaluationNameEntryDto,
 ): EvaluationNameEntry {
-  throw new Error('dtoToEvaluationNameEntry: not yet implemented (Task 7)')
+  return { name: dto.name, count: dto.count, lastRun: new Date(dto.last_run) }
 }
 
 export function dtoToReEvaluateResponse(
