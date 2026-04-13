@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { evaluationKeys } from '@/lib/queryKeys'
-import { fetchEvaluations, fetchGroupedMetricHeatmap, fetchEvaluationNames } from '@/features/evaluations/api'
+import { fetchEvaluations, fetchEvaluationNames } from '@/features/evaluations/api'
+import { fetchGroupedMetricHeatmap } from './api'
 import { useTimeRange } from '@/lib/time-range-context'
 
 export function useAssetEvaluations(assetName: string | undefined, evaluationNames?: string[]) {
