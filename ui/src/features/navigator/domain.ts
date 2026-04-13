@@ -5,6 +5,11 @@
 
 import type { HeatmapEChartsCell } from './ui-types'
 
+// Period timestamps stay as ISO strings (not Date) throughout navigator:
+// they are used as Map keys for column/row lookup and as ECharts x-axis
+// labels, where object identity would break equality. This is a deliberate
+// narrow exception to the "Date objects, not strings" domain-layer rule.
+
 // Canonical result union used throughout navigator. The backend emits
 // `result: string` on HeatmapCellGrouped / HeatmapSummaryCell, and a
 // separate `invalidated: boolean` flag on summary cells. The mapper
