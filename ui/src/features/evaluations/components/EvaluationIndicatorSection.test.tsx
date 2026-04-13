@@ -1,68 +1,79 @@
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import { EvaluationIndicatorSection } from './EvaluationIndicatorSection'
-import type { EvaluationDetail, IndicatorResult } from '../types'
+import type { EvaluationDetail, Indicator } from '../domain'
 
 vi.mock('@/lib/theme-context', () => ({
   useTheme: () => ({ theme: 'current' as const, fontSize: 14 }),
 }))
 
 vi.mock('./MetricTrendBlock', () => ({
-  MetricTrendBlock: ({ indicator }: { indicator: IndicatorResult }) => (
-    <div data-testid={`trend-${indicator.metric}`}>{indicator.display_name} trend</div>
+  MetricTrendBlock: ({ indicator }: { indicator: Indicator }) => (
+    <div data-testid={`trend-${indicator.metric}`}>{indicator.displayName} trend</div>
   ),
 }))
 
-function makeIndicator(overrides: Partial<IndicatorResult> = {}): IndicatorResult {
+function makeIndicator(overrides: Partial<Indicator> = {}): Indicator {
   return {
     metric: 'response_time',
-    display_name: 'Response Time',
+    displayName: 'Response Time',
+    tabGroup: null,
     value: 100,
-    compared_value: null,
-    change_absolute: null,
-    change_relative_pct: null,
+    comparedValue: null,
+    changeAbsolute: null,
+    changeRelativePct: null,
     aggregation: 'avg',
     status: 'pass',
     score: 1,
     weight: 1,
-    key_sli: false,
-    pass_targets: null,
-    warning_targets: null,
+    keySli: false,
+    passTargets: [],
+    warningTargets: [],
     ...overrides,
   }
 }
 
-function makeEval(indicators: IndicatorResult[]): EvaluationDetail {
+function makeEval(indicators: Indicator[]): EvaluationDetail {
   return {
     id: 'eval-1',
-    evaluation_id: 'run-1',
-    evaluation_name: 'nightly-perf',
+    evaluationId: 'run-1',
+    evaluationName: 'nightly-perf',
     status: 'completed',
-    result: 'pass',
+    outcome: 'pass',
     score: 95,
-    period_start: '2026-03-15T10:00:00Z',
-    period_end: '2026-03-15T10:30:00Z',
-    slo_name: null,
-    slo_version: null,
-    sli_name: null,
-    sli_version: null,
-    data_source_name: null,
-    ingestion_mode: 'push',
-    adapter_used: null,
+    period: { from: '2026-03-15T10:00:00Z', to: '2026-03-15T10:30:00Z' },
+    sloName: null,
+    sloVersion: null,
+    sliName: null,
+    sliVersion: null,
+    dataSourceName: null,
+    ingestionMode: 'push',
+    adapterUsed: null,
     invalidated: false,
-    original_result: null,
-    original_score: null,
-    override_reason: null,
-    override_author: null,
-    invalidation_note: null,
-    asset_snapshot: { name: 'api-gateway', tags: {} },
+    originalOutcome: null,
+    originalScore: null,
+    overrideReason: null,
+    overrideAuthor: null,
+    invalidationNote: null,
+    assetSnapshot: {
+      name: 'api-gateway',
+      displayName: null,
+      tags: {},
+      primaryVersion: null,
+      buildRef: null,
+    },
     variables: {},
-    compared_evaluation_ids: [],
+    baselinePin: null,
+    comparedEvaluationIds: [],
     annotations: [],
-    indicator_results: indicators,
-    total_score_pass_threshold: 90,
-    total_score_warning_threshold: 75,
-    created_at: '2026-03-15T10:30:00Z',
+    indicators,
+    totalScorePassThreshold: 90,
+    totalScoreWarningThreshold: 75,
+    sliMetadata: {},
+    latestAnnotation: null,
+    annotationCount: 0,
+    createdAt: new Date('2026-03-15T10:30:00Z'),
+    topFailures: [],
   }
 }
 
@@ -75,8 +86,8 @@ describe('EvaluationIndicatorSection', () => {
 
   it('renders tab bar with available groups', () => {
     const indicators = [
-      makeIndicator({ metric: 'a', tab_group: 'latency', display_name: 'Latency A' }),
-      makeIndicator({ metric: 'b', tab_group: 'throughput', display_name: 'Throughput B' }),
+      makeIndicator({ metric: 'a', tabGroup: 'latency', displayName: 'Latency A' }),
+      makeIndicator({ metric: 'b', tabGroup: 'throughput', displayName: 'Throughput B' }),
     ]
     const ev = makeEval(indicators)
     render(<EvaluationIndicatorSection evaluation={ev} />)
@@ -88,8 +99,8 @@ describe('EvaluationIndicatorSection', () => {
 
   it('renders SLI breakdown table rows', () => {
     const indicators = [
-      makeIndicator({ metric: 'a', display_name: 'Metric A' }),
-      makeIndicator({ metric: 'b', display_name: 'Metric B' }),
+      makeIndicator({ metric: 'a', displayName: 'Metric A' }),
+      makeIndicator({ metric: 'b', displayName: 'Metric B' }),
     ]
     const ev = makeEval(indicators)
     render(<EvaluationIndicatorSection evaluation={ev} />)
@@ -99,8 +110,8 @@ describe('EvaluationIndicatorSection', () => {
 
   it('switches tab when tab button clicked', () => {
     const indicators = [
-      makeIndicator({ metric: 'a', tab_group: 'latency', display_name: 'Latency A' }),
-      makeIndicator({ metric: 'b', tab_group: 'throughput', display_name: 'Throughput B' }),
+      makeIndicator({ metric: 'a', tabGroup: 'latency', displayName: 'Latency A' }),
+      makeIndicator({ metric: 'b', tabGroup: 'throughput', displayName: 'Throughput B' }),
     ]
     const ev = makeEval(indicators)
     render(<EvaluationIndicatorSection evaluation={ev} />)
@@ -118,8 +129,8 @@ describe('EvaluationIndicatorSection', () => {
 
   it('shows all indicators when no groups defined', () => {
     const indicators = [
-      makeIndicator({ metric: 'a', display_name: 'Metric A' }),
-      makeIndicator({ metric: 'b', display_name: 'Metric B' }),
+      makeIndicator({ metric: 'a', displayName: 'Metric A' }),
+      makeIndicator({ metric: 'b', displayName: 'Metric B' }),
     ]
     const ev = makeEval(indicators)
     render(<EvaluationIndicatorSection evaluation={ev} />)
@@ -129,8 +140,8 @@ describe('EvaluationIndicatorSection', () => {
 
   it('renders trend blocks for each visible indicator', () => {
     const indicators = [
-      makeIndicator({ metric: 'rt', display_name: 'Response Time' }),
-      makeIndicator({ metric: 'tp', display_name: 'Throughput' }),
+      makeIndicator({ metric: 'rt', displayName: 'Response Time' }),
+      makeIndicator({ metric: 'tp', displayName: 'Throughput' }),
     ]
     const ev = makeEval(indicators)
     render(<EvaluationIndicatorSection evaluation={ev} />)

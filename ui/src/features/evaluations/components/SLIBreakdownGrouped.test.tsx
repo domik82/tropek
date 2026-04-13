@@ -2,23 +2,23 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, fireEvent, cleanup } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { SLIBreakdownGrouped } from './SLIBreakdownGrouped'
-import type { IndicatorResult } from '../types'
+import type { Indicator } from '../domain'
 
-const IND: IndicatorResult = {
+const IND: Indicator = {
   metric: 'error_rate',
-  display_name: 'Error Rate',
-  tab_group: undefined,
+  displayName: 'Error Rate',
+  tabGroup: null,
   value: 0.02,
-  compared_value: 0.03,
-  change_absolute: -0.01,
-  change_relative_pct: -33,
+  comparedValue: 0.03,
+  changeAbsolute: -0.01,
+  changeRelativePct: -33,
   aggregation: 'avg',
   status: 'pass',
   score: 100,
   weight: 1,
-  key_sli: false,
-  pass_targets: null,
-  warning_targets: null,
+  keySli: false,
+  passTargets: [],
+  warningTargets: [],
 }
 
 const GROUPS = [

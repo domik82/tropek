@@ -2,12 +2,12 @@
 import { useState, useCallback } from 'react'
 import { ChevronDown, ChevronRight, Copy, Check, Grid3X3 } from 'lucide-react'
 import { SLIBreakdownTable } from './SLIBreakdownTable'
-import type { IndicatorResult, SliMetadata } from '../types'
+import type { Indicator, SliMetadata } from '../domain'
 
 export interface SloBreakdownGroup {
   slo_name: string
   slo_display_name?: string
-  indicators: IndicatorResult[]
+  indicators: Indicator[]
   score: number           // 0–100
   result: string
   achieved_points: number
