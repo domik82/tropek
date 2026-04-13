@@ -17,8 +17,6 @@ export type GroupedMetricHeatmapResponseDto =
   components['schemas']['GroupedMetricHeatmapResponse']
 export type HeatmapCellGroupedDto = components['schemas']['HeatmapCellGrouped']
 export type HeatmapSummaryCellDto = components['schemas']['HeatmapSummaryCell']
-export type HeatmapSloGroupSectionDto =
-  components['schemas']['HeatmapSloGroupSection']
 
 // --- Exhaustiveness check for the top-level response ----------------------
 
@@ -42,6 +40,12 @@ void _groupedExhaustive
 function canonicalSummaryResult(summary: HeatmapSummaryCellDto): HeatmapResult {
   if (summary.invalidated) return 'invalidated'
   return normalizeResult(summary.result)
+}
+
+// Round a nullable score to the integer we display in cells. Centralised so
+// the overall / slo-header / indicator branches share one rule.
+function scoreToDisplay(raw: number | null | undefined): number {
+  return raw == null ? 0 : Math.round(raw)
 }
 
 function normalizeResult(raw: string | null | undefined): HeatmapResult {
@@ -74,7 +78,7 @@ function normalizeResult(raw: string | null | undefined): HeatmapResult {
  *   - Collapsing `invalidated` into the canonical `result` union
  *   - Per-SLO summary lookup construction
  *
- * Replaces the deleted `buildAssetHeatmapData` helper in `utils.ts`.
+ * Will replace `buildAssetHeatmapData` in `utils.ts` (removed in Task 9).
  */
 export function assetHeatmapDtoToDomain(
   dto: GroupedMetricHeatmapResponseDto,
@@ -162,7 +166,7 @@ export function assetHeatmapDtoToDomain(
         cells.push({
           value: [xi, rowYIndex],
           result: summary ? canonicalSummaryResult(summary) : 'none',
-          score: summary ? Math.round(summary.score) : 0,
+          score: scoreToDisplay(summary?.score),
           slot: column.period_start,
           rowLabel: row.label,
           columnKey: column.evaluation_id,
@@ -182,7 +186,7 @@ export function assetHeatmapDtoToDomain(
         cells.push({
           value: [xi, rowYIndex],
           result: summary ? canonicalSummaryResult(summary) : 'none',
-          score: summary ? Math.round(summary.score) : 0,
+          score: scoreToDisplay(summary?.score),
           slot: column.period_start,
           rowLabel: row.label,
           columnKey: column.evaluation_id,
@@ -202,7 +206,7 @@ export function assetHeatmapDtoToDomain(
       cells.push({
         value: [xi, rowYIndex],
         result: indicator ? normalizeResult(indicator.result) : 'none',
-        score: indicator ? Math.round(indicator.score) : 0,
+        score: scoreToDisplay(indicator?.score),
         slot: column.period_start,
         rowLabel: row.label,
         columnKey: column.evaluation_id,
