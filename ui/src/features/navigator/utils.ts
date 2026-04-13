@@ -1,7 +1,7 @@
 // ui/src/features/navigator/utils.ts
 import type { EvaluationSummary } from '@/features/evaluations/types'
 import type { HeatmapEChartsCell } from './ui-types'
-import type { GroupHeatmapData, SlotScoreData } from './types'
+import type { GroupHeatmapData, SlotScoreData } from './domain'
 
 const RESULT_RANK: Record<string, number> = { pass: 0, warning: 1, fail: 2, error: 3, invalidated: 4 }
 
