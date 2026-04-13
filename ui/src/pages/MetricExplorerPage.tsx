@@ -3,7 +3,8 @@ import { useState, useMemo } from 'react'
 import { useSearchParams, Link } from 'react-router-dom'
 import { useQueries } from '@tanstack/react-query'
 import { evaluationKeys } from '@/lib/queryKeys'
-import { useEvaluations, useEvaluationDetail, fetchTrend } from '@/features/evaluations'
+import { useEvaluations, useEvaluationDetail } from '@/features/evaluations'
+import { fetchTrend } from '@/features/evaluations/api'
 import type { TrendPoint } from '@/features/evaluations'
 import { useAssetEvaluations, useMetricHeatmap } from '@/features/navigator'
 import { MetricLabelPanel } from '@/components/charts/MetricLabelPanel'
@@ -93,7 +94,7 @@ function ChartSection({
         metric,
         displayName: ind.display_name,
         color: colors.get(metric) ?? '#64748b',
-        data: points.map(p => ({ timestamp: p.timestamp, value: p[dataKey] })),
+        data: points.map(p => ({ timestamp: p.timestamp.toISOString(), value: p[dataKey] })),
       })
     }
     return result
@@ -240,7 +241,7 @@ export function MetricExplorerPage() {
   const [scoresEnabled, setScoresEnabled] = useState<Set<string>>(new Set())
 
   const { data: groupEvals = [] } = useEvaluations(
-    groupName ? { group_name: groupName } : {},
+    groupName ? { groupName } : {},
   )
   const { data: assetEvals = [] } = useAssetEvaluations(assetName)
   const { data: heatmapData } = useMetricHeatmap(assetName)
@@ -251,7 +252,7 @@ export function MetricExplorerPage() {
     () =>
       [...evals]
         .filter(e => !e.invalidated)
-        .sort((a, b) => b.period_start.localeCompare(a.period_start))[0],
+        .sort((a, b) => b.period.from.localeCompare(a.period.from))[0],
     [evals],
   )
 
@@ -277,10 +278,10 @@ export function MetricExplorerPage() {
       })
     }
     if (latestDetail) {
-      return latestDetail.indicator_results.map(r => ({
+      return latestDetail.indicators.map(r => ({
         metric: r.metric,
-        display_name: r.display_name,
-        tab_group: r.tab_group,
+        display_name: r.displayName,
+        tab_group: r.tabGroup ?? undefined,
       }))
     }
     return []

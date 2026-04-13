@@ -9,7 +9,7 @@ import { ViewToggle } from '@/components/charts/ViewToggle'
 import type { ViewMode } from '@/components/charts/ViewToggle'
 import type { TimeSlotSelection } from './AssetHeatmap'
 import type { GroupedMetricHeatmapResponseDto } from '../mappers'
-import type { SliMetadata } from '@/features/evaluations/types'
+import type { Indicator, SliMetadata } from '@/features/evaluations'
 
 interface Props {
   assetName: string
@@ -129,23 +129,31 @@ export function AssetPanelHeatmapView({
     if (!heatmapData || !selectedColumnEvalId) return []
     return [...heatmapData.groups].sort((a, b) => a.slo_name.localeCompare(b.slo_name)).map(g => {
       const summary = g.summary.find(s => s.evaluation_id === selectedColumnEvalId)
-      const indicators = g.cells
+      const indicators: Indicator[] = g.cells
         .filter(c => c.evaluation_id === selectedColumnEvalId)
         .map(c => ({
           metric: c.metric,
-          display_name: c.display_name,
+          displayName: c.display_name,
+          tabGroup: c.tab_group ?? null,
           value: c.value ?? 0,
-          compared_value: c.compared_value ?? null,
-          change_absolute: null,
-          change_relative_pct: c.change_relative_pct ?? null,
+          comparedValue: c.compared_value ?? null,
+          changeAbsolute: null,
+          changeRelativePct: c.change_relative_pct ?? null,
           aggregation: c.aggregation ?? '',
           status: c.result as 'pass' | 'warning' | 'fail',
           score: c.score,
           weight: c.weight ?? 1,
-          key_sli: c.key_sli ?? false,
-          pass_targets: c.pass_targets ?? null,
-          warning_targets: c.warning_targets ?? null,
-          tab_group: c.tab_group ?? undefined,
+          keySli: c.key_sli ?? false,
+          passTargets: (c.pass_targets ?? []).map(t => ({
+            criteria: t.criteria,
+            targetValue: t.target_value,
+            violated: t.violated,
+          })),
+          warningTargets: (c.warning_targets ?? []).map(t => ({
+            criteria: t.criteria,
+            targetValue: t.target_value,
+            violated: t.violated,
+          })),
         }))
       const result = summary?.invalidated
         ? 'invalidated'
@@ -168,7 +176,17 @@ export function AssetPanelHeatmapView({
     const meta: Record<string, SliMetadata> = {}
     for (const g of heatmapData.groups) {
       const summary = g.summary.find(s => s.evaluation_id === selectedColumnEvalId)
-      if (summary?.sli_metadata) Object.assign(meta, summary.sli_metadata)
+      if (summary?.sli_metadata) {
+        for (const [metricName, dto] of Object.entries(summary.sli_metadata)) {
+          meta[metricName] = {
+            mode: dto.mode,
+            expectedSamples: dto.expected_samples,
+            actualSamples: dto.actual_samples,
+            missingPct: dto.missing_pct,
+            chunksFailed: dto.chunks_failed,
+          }
+        }
+      }
     }
     return Object.keys(meta).length > 0 ? meta : undefined
   }, [heatmapData, selectedColumnEvalId])

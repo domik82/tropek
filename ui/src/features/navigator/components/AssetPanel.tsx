@@ -9,7 +9,7 @@ import { useSlos } from '@/features/slos/hooks'
 import { EvaluationHeader } from '@/features/evaluations/components/EvaluationHeader'
 import { AnnotationSection, type AnnotationSectionHandle } from '@/features/evaluations/components/AnnotationForm'
 import { EvaluationActionsButton, EvaluationActionForm, NoteIconButton } from '@/features/evaluations/components/EvaluationActions'
-import type { ActionKind } from '@/features/evaluations/types'
+import type { ActionKind, Outcome } from '@/features/evaluations'
 import type { TimeSlotSelection } from './AssetHeatmap'
 import type { ViewMode } from '@/components/charts/ViewToggle'
 import { EvaluationNameFilter } from './EvaluationNameFilter'
@@ -85,13 +85,13 @@ export function AssetPanel({ assetName, initialEvalId }: Props) {
 
   const defaultEvalId = useMemo(() => {
     if (!evals.length) return undefined
-    const sorted = [...evals].sort((a, b) => b.period_start.localeCompare(a.period_start))
+    const sorted = [...evals].sort((a, b) => b.period.from.localeCompare(a.period.from))
     return (sorted.find(e => !e.invalidated) ?? sorted[0]).id
   }, [evals])
 
   const earliestPeriodStart = useMemo(() => {
     if (!evals.length) return undefined
-    return [...evals].sort((a, b) => a.period_start.localeCompare(b.period_start))[0].period_start
+    return [...evals].sort((a, b) => a.period.from.localeCompare(b.period.from))[0].period.from
   }, [evals])
 
   const effectiveEvalId = selectedEvalId ?? defaultEvalId
@@ -154,7 +154,7 @@ export function AssetPanel({ assetName, initialEvalId }: Props) {
     const direct = evals.find(e => e.id === effectiveEvalId)
     if (direct) return direct
     if (selectedColumnEvalId) {
-      return evals.find(e => e.evaluation_id === selectedColumnEvalId)
+      return evals.find(e => e.evaluationId === selectedColumnEvalId)
     }
     return undefined
   }, [evals, effectiveEvalId, selectedColumnEvalId])
@@ -182,8 +182,15 @@ export function AssetPanel({ assetName, initialEvalId }: Props) {
     }
     // period_start from any cell in this column
     const firstCell = heatmapData.groups[0]?.cells.find(c => c.evaluation_id === selectedColumnEvalId)
+    const compositeResult: Outcome = (() => {
+      const raw = composite?.result
+      if (raw === 'pass' || raw === 'warning' || raw === 'fail' || raw === 'error' || raw === 'invalidated') {
+        return raw
+      }
+      return 'error'
+    })()
     return {
-      result: invalidated ? 'invalidated' as const : (composite?.result ?? 'error'),
+      result: (invalidated ? 'invalidated' : compositeResult) as Outcome,
       score: composite ? Math.round(composite.score) : undefined,
       invalidated,
       periodStart: firstCell?.period_start ?? composite?.period_start,
@@ -285,13 +292,13 @@ export function AssetPanel({ assetName, initialEvalId }: Props) {
         metadata={hasColumn ? (
           <>
             <div className="flex flex-wrap gap-x-6 gap-y-1 text-sm text-muted-foreground">
-              <span>Asset: <span className="text-foreground">{ev?.asset_snapshot.display_name ?? assetDisplayName ?? ev?.asset_snapshot.name ?? assetName}</span></span>
-              {ev && Object.entries(ev.asset_snapshot.tags ?? {}).map(([k, v]) => (
+              <span>Asset: <span className="text-foreground">{ev?.assetSnapshot.displayName ?? assetDisplayName ?? ev?.assetSnapshot.name ?? assetName}</span></span>
+              {ev && Object.entries(ev.assetSnapshot.tags ?? {}).map(([k, v]) => (
                 <span key={k} className="text-muted-foreground text-xs">{k}: {v as string}</span>
               ))}
               {columnInfo.periodStart && (
                 <span className="text-xs">
-                  {columnInfo.periodStart.slice(0, 16).replace('T', ' ')}{ev ? ` → ${ev.period_end.slice(11, 16)}` : ''}
+                  {columnInfo.periodStart.slice(0, 16).replace('T', ' ')}{ev ? ` → ${ev.period.to.slice(11, 16)}` : ''}
                 </span>
               )}
             </div>
@@ -301,12 +308,12 @@ export function AssetPanel({ assetName, initialEvalId }: Props) {
               ) : heatmapData && heatmapData.groups.length > 1 ? (
                 <>SLOs: {heatmapData.groups.map(g => g.slo_display_name ?? g.slo_name).join(', ')}</>
               ) : ev ? (
-                <>SLO: {(ev.slo_name && sloDisplayNames.get(ev.slo_name)) ?? ev.slo_name ?? '—'}{ev.slo_version != null && ` v${ev.slo_version}`}</>
+                <>SLO: {(ev.sloName && sloDisplayNames.get(ev.sloName)) ?? ev.sloName ?? '—'}{ev.sloVersion != null && ` v${ev.sloVersion}`}</>
               ) : heatmapData && heatmapData.groups.length === 1 ? (
                 <>SLO: {heatmapData.groups[0].slo_display_name ?? heatmapData.groups[0].slo_name}</>
               ) : null}
-              {ev?.adapter_used && ` · adapter: ${ev.adapter_used}`}
-              {ev?.asset_snapshot.build_ref && ` · build: ${ev.asset_snapshot.build_ref}`}
+              {ev?.adapterUsed && ` · adapter: ${ev.adapterUsed}`}
+              {ev?.assetSnapshot.buildRef && ` · build: ${ev.assetSnapshot.buildRef}`}
             </div>
           </>
         ) : undefined}
@@ -315,7 +322,7 @@ export function AssetPanel({ assetName, initialEvalId }: Props) {
         ) : undefined}
         actions={hasColumn && effectiveEvalId ? (
           <EvaluationActionsButton
-            currentResult={columnInfo.result === 'invalidated' ? (ev?.result ?? 'error') : columnInfo.result}
+            currentResult={columnInfo.result === 'invalidated' ? (ev?.outcome ?? 'error') : columnInfo.result}
             invalidated={columnInfo.invalidated}
             activeAction={activeAction}
             onSelectAction={setActiveAction}
@@ -328,11 +335,11 @@ export function AssetPanel({ assetName, initialEvalId }: Props) {
       {hasColumn && activeAction && effectiveEvalId && (activeAction === 'restore' || !columnInfo.invalidated) && (
         <EvaluationActionForm
           evalId={effectiveEvalId}
-          currentResult={ev?.result ?? 'error'}
+          currentResult={ev?.outcome ?? 'error'}
           activeAction={activeAction}
           onClose={() => setActiveAction(null)}
           assetName={assetName}
-          sloName={ev?.slo_name ?? heatmapData?.groups[0]?.slo_name ?? ''}
+          sloName={ev?.sloName ?? heatmapData?.groups[0]?.slo_name ?? ''}
           defaultFromDate={earliestPeriodStart?.slice(0, 16)}
         />
       )}

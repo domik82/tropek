@@ -3,9 +3,14 @@
  * Uses a seeded LCG so output is identical on every page reload.
  */
 
-import type { EvaluationSummary, EvaluationDetail, IndicatorResult, TrendPoint, FailingIndicator } from '../features/evaluations/types'
-import type { AssetGroupDto as AssetGroup } from '../features/assets/mappers'
 import type { components } from '@/generated/api'
+
+type EvaluationSummary = components['schemas']['EvaluationSummary']
+type EvaluationDetail = components['schemas']['EvaluationDetail']
+type IndicatorResult = components['schemas']['IndicatorResult']
+type TrendPoint = components['schemas']['TrendPoint']
+type FailingIndicator = components['schemas']['FailingIndicator']
+import type { AssetGroupDto as AssetGroup } from '../features/assets/mappers'
 import type { GroupedMetricHeatmapResponseDto } from '../features/navigator/mappers'
 type EvaluationColumn = components['schemas']['EvaluationColumn']
 type HeatmapSloGroupSection = components['schemas']['HeatmapSloGroupSection']
@@ -299,18 +304,18 @@ export function generateAllEvaluations(): EvaluationSummary[] {
           // win-monthly-01 (seed 1001)
           if (scenario.seed === 1001 && day === 12)
             // invalidated record
-            return { id: `ann-${evalId}-1`, meta: {}, updated_at: created, content: 'Invalidated — agent crashed mid-run during scheduled maintenance window. Results not representative.', author: 'ops-team', category: 'invalidated', created_at: created, hidden_at: null, hidden_by: null, hidden_reason: null }
+            return { id: `ann-${evalId}-1`, tags: {}, updated_at: created, content: 'Invalidated — agent crashed mid-run during scheduled maintenance window. Results not representative.', author: 'ops-team', category: 'invalidated', created_at: created, hidden_at: null, hidden_by: null, hidden_reason: null }
           if (scenario.seed === 1001 && day === 18)
             // first failure: two notes — investigation + JIRA creation
-            return { id: `ann-${evalId}-1`, meta: {}, updated_at: created, content: 'ABC investigation\nCreated JIRA', author: 'j.kowalski', category: 'investigation', created_at: created, hidden_at: null, hidden_by: null, hidden_reason: null }
+            return { id: `ann-${evalId}-1`, tags: {}, updated_at: created, content: 'ABC investigation\nCreated JIRA', author: 'j.kowalski', category: 'investigation', created_at: created, hidden_at: null, hidden_by: null, hidden_reason: null }
           if (scenario.seed === 1001 && day >= 19 && day <= 22 && (evalResult === 'fail' || evalResult === 'warning'))
-            return { id: `ann-${evalId}-1`, meta: { ticket: 'PERF-481' }, updated_at: created, content: 'Tracking in JIRA', author: null, category: null, created_at: created, hidden_at: null, hidden_by: null, hidden_reason: null }
+            return { id: `ann-${evalId}-1`, tags: { ticket: 'PERF-481' }, updated_at: created, content: 'Tracking in JIRA', author: null, category: null, created_at: created, hidden_at: null, hidden_by: null, hidden_reason: null }
 
           // mac-monthly-01 (seed 1003)
           if (scenario.seed === 1003 && day >= 24 && day <= 26 && (evalResult === 'fail' || evalResult === 'warning'))
-            return { id: `ann-${evalId}-1`, meta: {}, updated_at: created, content: 'Disk failure on primary storage volume — I/O errors causing compilation timeouts.', author: 'infra', category: 'hardware', created_at: created, hidden_at: null, hidden_by: null, hidden_reason: null }
+            return { id: `ann-${evalId}-1`, tags: {}, updated_at: created, content: 'Disk failure on primary storage volume — I/O errors causing compilation timeouts.', author: 'infra', category: 'hardware', created_at: created, hidden_at: null, hidden_by: null, hidden_reason: null }
           if (scenario.seed === 1003 && day === 27 && evalResult === 'pass')
-            return { id: `ann-${evalId}-1`, meta: {}, updated_at: created, content: 'Disk replaced — new NVMe installed and benchmarked. Monitoring next 2 runs.', author: 'infra', category: 'resolved', created_at: created, hidden_at: null, hidden_by: null, hidden_reason: null }
+            return { id: `ann-${evalId}-1`, tags: {}, updated_at: created, content: 'Disk replaced — new NVMe installed and benchmarked. Monitoring next 2 runs.', author: 'infra', category: 'resolved', created_at: created, hidden_at: null, hidden_by: null, hidden_reason: null }
 
           return null
         })()
@@ -344,7 +349,7 @@ export function generateAllEvaluations(): EvaluationSummary[] {
           top_failures: hasError ? [
             { metric: 'compilation_errors', display_name: 'Compilation Errors', value: 3, threshold: '= 0' },
             { metric: 'link_errors', display_name: 'Link Errors', value: 2, threshold: '= 0' },
-          ] : top_failures,
+          ] : (top_failures ?? []),
         })
       }
     }
@@ -458,26 +463,26 @@ export function generateEvaluationDetail(
 
       // win-monthly-01 invalidated
       if (scenario.seed === 1001 && day === 12)
-        return [{ id: `ann-${scenario.seed}-${day}-1`, content: 'Invalidated — agent crashed mid-run during scheduled maintenance window. Results not representative.', author: 'ops-team', category: 'invalidated', meta: {}, created_at: t, updated_at: t, hidden_at: null, hidden_by: null, hidden_reason: null }]
+        return [{ id: `ann-${scenario.seed}-${day}-1`, content: 'Invalidated — agent crashed mid-run during scheduled maintenance window. Results not representative.', author: 'ops-team', category: 'invalidated', tags: {}, created_at: t, updated_at: t, hidden_at: null, hidden_by: null, hidden_reason: null }]
 
       // win-monthly-01 first failure — two annotations
       if (scenario.seed === 1001 && day === 18)
         return [
-          { id: `ann-${scenario.seed}-${day}-1`, content: 'ABC investigation — compilation times show ~35% regression across all stages. Correlates with toolchain upgrade on day 17.', author: 'j.kowalski', category: 'investigation', meta: {}, created_at: t, updated_at: t, hidden_at: null, hidden_by: null, hidden_reason: null },
-          { id: `ann-${scenario.seed}-${day}-2`, content: 'Created JIRA: https://jira.example.com/browse/PERF-481', author: 'j.kowalski', category: 'investigation', meta: { ticket: 'PERF-481' }, created_at: t, updated_at: t, hidden_at: null, hidden_by: null, hidden_reason: null },
+          { id: `ann-${scenario.seed}-${day}-1`, content: 'ABC investigation — compilation times show ~35% regression across all stages. Correlates with toolchain upgrade on day 17.', author: 'j.kowalski', category: 'investigation', tags: {}, created_at: t, updated_at: t, hidden_at: null, hidden_by: null, hidden_reason: null },
+          { id: `ann-${scenario.seed}-${day}-2`, content: 'Created JIRA: https://jira.example.com/browse/PERF-481', author: 'j.kowalski', category: 'investigation', tags: { ticket: 'PERF-481' }, created_at: t, updated_at: t, hidden_at: null, hidden_by: null, hidden_reason: null },
         ]
 
       // win-monthly-01 following failures — JIRA reference in meta
       if (scenario.seed === 1001 && day >= 19 && day <= 22)
-        return [{ id: `ann-${scenario.seed}-${day}-1`, content: '', author: null, category: null, meta: { ticket: 'PERF-481' }, created_at: t, updated_at: t, hidden_at: null, hidden_by: null, hidden_reason: null }]
+        return [{ id: `ann-${scenario.seed}-${day}-1`, content: '', author: null, category: null, tags: { ticket: 'PERF-481' }, created_at: t, updated_at: t, hidden_at: null, hidden_by: null, hidden_reason: null }]
 
       // mac-monthly-01 disk failure days
       if (scenario.seed === 1003 && day >= 24 && day <= 26)
-        return [{ id: `ann-${scenario.seed}-${day}-1`, content: 'Disk failure on primary storage volume — I/O errors causing compilation timeouts.', author: 'infra', category: 'hardware', meta: {}, created_at: t, updated_at: t, hidden_at: null, hidden_by: null, hidden_reason: null }]
+        return [{ id: `ann-${scenario.seed}-${day}-1`, content: 'Disk failure on primary storage volume — I/O errors causing compilation timeouts.', author: 'infra', category: 'hardware', tags: {}, created_at: t, updated_at: t, hidden_at: null, hidden_by: null, hidden_reason: null }]
 
       // mac-monthly-01 first green after disk replacement
       if (scenario.seed === 1003 && day === 27)
-        return [{ id: `ann-${scenario.seed}-${day}-1`, content: 'Disk replaced — new NVMe installed and benchmarked. Monitoring next 2 runs.', author: 'infra', category: 'resolved', meta: {}, created_at: t, updated_at: t, hidden_at: null, hidden_by: null, hidden_reason: null }]
+        return [{ id: `ann-${scenario.seed}-${day}-1`, content: 'Disk replaced — new NVMe installed and benchmarked. Monitoring next 2 runs.', author: 'infra', category: 'resolved', tags: {}, created_at: t, updated_at: t, hidden_at: null, hidden_by: null, hidden_reason: null }]
 
       return []
     })(),

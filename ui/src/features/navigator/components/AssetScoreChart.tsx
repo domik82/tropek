@@ -5,10 +5,10 @@ import { useTheme } from '@/lib/theme-context'
 import { RESULT_COLOUR, CHART_THEME } from '@/lib/theme'
 import { fmtSlot, fmtDateTime } from '@/lib/format'
 import { useChartAreaClick } from '@/lib/useChartAreaClick'
-import type { EvaluationSummary } from '@/features/evaluations/types'
+import type { Evaluation, Outcome } from '@/features/evaluations'
 
 interface Props {
-  evaluations: EvaluationSummary[]
+  evaluations: Evaluation[]
   selectedEvalId?: string
   onEvalSelect?: (evalId: string) => void
 }
@@ -19,7 +19,7 @@ export function AssetScoreChart({ evaluations, selectedEvalId, onEvalSelect }: P
   const ct = CHART_THEME[theme]
 
   const sorted = useMemo(
-    () => [...evaluations].sort((a, b) => a.period_start.localeCompare(b.period_start)),
+    () => [...evaluations].sort((a, b) => a.period.from.localeCompare(b.period.from)),
     [evaluations],
   )
 
@@ -38,7 +38,7 @@ export function AssetScoreChart({ evaluations, selectedEvalId, onEvalSelect }: P
 
   const data = useMemo(
     () => sorted.map(e => {
-      const effectiveResult = e.invalidated ? 'invalidated' : (e.result ?? 'error')
+      const effectiveResult: Outcome = e.invalidated ? 'invalidated' : (e.outcome ?? 'error')
       const color = colours[effectiveResult] ?? colours.error
       const isSelected = e.id === selectedEvalId
       return {
@@ -55,7 +55,7 @@ export function AssetScoreChart({ evaluations, selectedEvalId, onEvalSelect }: P
   )
 
   const xAxisData = useMemo(
-    () => sorted.map(e => e.period_start),
+    () => sorted.map(e => e.period.from),
     [sorted],
   )
 
@@ -73,10 +73,10 @@ export function AssetScoreChart({ evaluations, selectedEvalId, onEvalSelect }: P
         const e = sorted[p.dataIndex]
         if (!e) return ''
         const score = p.data.value
-        const effectiveResult = e.invalidated ? 'invalidated' : (e.result ?? 'error')
+        const effectiveResult: Outcome = e.invalidated ? 'invalidated' : (e.outcome ?? 'error')
         const rc = colours[effectiveResult] ?? colours.error
         return [
-          `<b>${fmtDateTime(e.period_start)}</b>`,
+          `<b>${fmtDateTime(e.period.from)}</b>`,
           `Score: <b style="color:${rc}">${score}%</b>`,
           `Result: <b style="color:${rc}">${effectiveResult}</b>`,
         ].join('<br/>')

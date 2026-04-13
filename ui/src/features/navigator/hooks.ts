@@ -7,13 +7,19 @@ import { useTimeRange } from '@/lib/time-range-context'
 export function useAssetEvaluations(assetName: string | undefined, evaluationNames?: string[]) {
   const { from, to } = useTimeRange()
   const filters = {
+    assetName,
+    evaluationName: evaluationNames,
+    from,
+    ...(to ? { to } : {}),
+  }
+  const keyFilters = {
     asset_name: assetName,
     evaluation_name: evaluationNames,
     from,
     ...(to ? { to } : {}),
   }
   const query = useQuery({
-    queryKey: evaluationKeys.list(filters),
+    queryKey: evaluationKeys.list(keyFilters),
     queryFn: () => fetchEvaluations(filters),
     enabled: !!assetName,
   })
@@ -39,6 +45,6 @@ export function useMetricHeatmap(assetName: string | undefined, evaluationNames?
 export function useEvaluationNames(assetName?: string, groupName?: string) {
   return useQuery({
     queryKey: evaluationKeys.names({ asset_name: assetName, group_name: groupName }),
-    queryFn: () => fetchEvaluationNames({ asset_name: assetName, group_name: groupName }),
+    queryFn: () => fetchEvaluationNames({ assetName, groupName }),
   })
 }

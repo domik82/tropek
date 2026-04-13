@@ -4,8 +4,8 @@ import userEvent from '@testing-library/user-event'
 import { EvaluationNameFilter } from './EvaluationNameFilter'
 
 const NAMES = [
-  { name: 'load-test', count: 42, last_run: '2026-03-27T08:00:00Z' },
-  { name: 'ad-hoc-run', count: 3, last_run: '2026-03-26T14:00:00Z' },
+  { name: 'load-test', count: 42, lastRun: new Date('2026-03-27T08:00:00Z') },
+  { name: 'ad-hoc-run', count: 3, lastRun: new Date('2026-03-26T14:00:00Z') },
 ]
 
 describe('EvaluationNameFilter', () => {

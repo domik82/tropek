@@ -4,7 +4,7 @@ import { render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { TestWrapper } from '@/test-wrapper'
 import { AssetPanel } from './AssetPanel'
-import type { EvaluationSummary } from '@/features/evaluations/types'
+import type { Evaluation } from '@/features/evaluations'
 
 // ── Hook mocks ─────────────────────────────────────────────────────────────────
 
@@ -76,31 +76,34 @@ vi.mock('@/features/slos/hooks', () => ({
 
 // ── Fixtures ───────────────────────────────────────────────────────────────────
 
-function makeSummary(overrides: Partial<EvaluationSummary> = {}): EvaluationSummary {
+function makeSummary(overrides: Partial<Evaluation> = {}): Evaluation {
   return {
     id: 'eval-1',
-    evaluation_id: 'run-1',
-    evaluation_name: 'nightly',
+    evaluationId: 'run-1',
+    evaluationName: 'nightly',
     status: 'completed',
-    result: 'pass',
+    outcome: 'pass',
     score: 95,
-    period_start: '2026-03-15T10:00:00Z',
-    period_end: '2026-03-15T10:30:00Z',
-    slo_name: 'latency-slo',
-    slo_version: 1,
-    sli_name: null,
-    sli_version: null,
-    data_source_name: null,
-    ingestion_mode: 'push',
-    adapter_used: null,
+    period: { from: '2026-03-15T10:00:00Z', to: '2026-03-15T10:30:00Z' },
+    sloName: 'latency-slo',
+    sloVersion: 1,
+    sliName: null,
+    sliVersion: null,
+    dataSourceName: null,
+    ingestionMode: 'push',
+    adapterUsed: null,
     invalidated: false,
-    original_result: null,
-    original_score: null,
-    override_reason: null,
-    override_author: null,
-    asset_snapshot: { name: 'catalog-db', tags: {} },
+    originalOutcome: null,
+    originalScore: null,
+    overrideReason: null,
+    overrideAuthor: null,
+    assetSnapshot: { name: 'catalog-db', displayName: null, tags: {}, primaryVersion: null, buildRef: null },
     variables: {},
-    created_at: '2026-03-15T10:30:00Z',
+    baselinePin: null,
+    latestAnnotation: null,
+    annotationCount: 0,
+    createdAt: new Date('2026-03-15T10:30:00Z'),
+    topFailures: [],
     ...overrides,
   }
 }
@@ -145,9 +148,9 @@ describe('AssetPanel', () => {
 
   it('selects latest non-invalidated eval as default', () => {
     const evals = [
-      makeSummary({ id: 'old', period_start: '2026-03-14T10:00:00Z' }),
-      makeSummary({ id: 'newest-invalidated', period_start: '2026-03-16T10:00:00Z', invalidated: true }),
-      makeSummary({ id: 'newest-valid', period_start: '2026-03-15T10:00:00Z' }),
+      makeSummary({ id: 'old', period: { from: '2026-03-14T10:00:00Z', to: '2026-03-14T10:30:00Z' } }),
+      makeSummary({ id: 'newest-invalidated', period: { from: '2026-03-16T10:00:00Z', to: '2026-03-16T10:30:00Z' }, invalidated: true }),
+      makeSummary({ id: 'newest-valid', period: { from: '2026-03-15T10:00:00Z', to: '2026-03-15T10:30:00Z' } }),
     ]
     mockUseAssetEvaluations.mockReturnValue({ data: evals, isLoading: false })
 
@@ -159,7 +162,7 @@ describe('AssetPanel', () => {
 
   it('resets selectedEvalId when assetName prop changes', () => {
     // Asset A: user had selected eval-A
-    const evalsA = [makeSummary({ id: 'eval-A', asset_snapshot: { name: 'api-gateway', tags: {} } })]
+    const evalsA = [makeSummary({ id: 'eval-A', assetSnapshot: { name: 'api-gateway', displayName: null, tags: {}, primaryVersion: null, buildRef: null } })]
     mockUseAssetEvaluations.mockReturnValue({ data: evalsA, isLoading: false })
 
     const { rerender } = renderPanel('api-gateway', 'eval-A')
@@ -168,7 +171,7 @@ describe('AssetPanel', () => {
     expect(screen.getByTestId('heatmap-eval-id')).toHaveTextContent('eval-A')
 
     // Switch to asset B
-    const evalsB = [makeSummary({ id: 'eval-B', asset_snapshot: { name: 'catalog-db', tags: {} } })]
+    const evalsB = [makeSummary({ id: 'eval-B', assetSnapshot: { name: 'catalog-db', displayName: null, tags: {}, primaryVersion: null, buildRef: null } })]
     mockUseAssetEvaluations.mockReturnValue({ data: evalsB, isLoading: false })
 
     rerender(

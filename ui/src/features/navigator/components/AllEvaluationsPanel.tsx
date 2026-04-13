@@ -22,7 +22,7 @@ export function AllEvaluationsPanel({ onSelectAsset }: Props) {
   const { data: evalNames = [] } = useEvaluationNames()
 
   const { data: evals = [], isLoading, truncated, total } = useEvaluations({
-    evaluation_name: selectedNames,
+    evaluationName: selectedNames,
   })
 
   // Live display name lookups — fallback for evaluations whose snapshot lacks display_name
@@ -42,12 +42,12 @@ export function AllEvaluationsPanel({ onSelectAsset }: Props) {
   const dynamicCols = useDynamicColumns(evals)
   const colVis = useColumnVisibility(dynamicCols)
   const tableEvals = selectedDate
-    ? evals.filter(e => e.period_start === selectedDate)
+    ? evals.filter(e => e.period.from === selectedDate)
     : evals
 
   const dateRange = useMemo(() => {
     if (!evals.length) return null
-    const dates = evals.map(e => e.period_start).sort()
+    const dates = evals.map(e => e.period.from).sort()
     return Math.round(
       (new Date(dates[dates.length - 1]).getTime() - new Date(dates[0]).getTime()) /
       (1000 * 60 * 60 * 24)
@@ -97,7 +97,7 @@ export function AllEvaluationsPanel({ onSelectAsset }: Props) {
             evaluations={tableEvals}
             {...colVis}
             onAssetSelect={onSelectAsset}
-            onEvalClick={ev => onSelectAsset(ev.asset_snapshot.name, ev.id)}
+            onEvalClick={ev => onSelectAsset(ev.assetSnapshot.name, ev.id)}
             assetDisplayNames={assetDisplayNames}
             sloDisplayNames={sloDisplayNames}
           />

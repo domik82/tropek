@@ -5,10 +5,10 @@ import { useTheme } from '@/lib/theme-context'
 import { RESULT_COLOUR, CHART_THEME } from '@/lib/theme'
 import { fmtSlot } from '@/lib/format'
 import { buildGroupScoreData } from '../utils'
-import type { EvaluationSummary } from '@/features/evaluations/types'
+import type { Evaluation } from '@/features/evaluations'
 
 interface Props {
-  evaluations: EvaluationSummary[]
+  evaluations: Evaluation[]
   assetDisplayNames?: Map<string, string>
 }
 
@@ -19,15 +19,15 @@ export function GroupScoreChart({ evaluations, assetDisplayNames }: Props) {
   const [normalized, setNormalized] = useState(false)
 
   const slotData = useMemo(() => buildGroupScoreData(evaluations), [evaluations])
-  const assetNames = Array.from(new Set(evaluations.map(e => e.asset_snapshot.name))).sort()
+  const assetNames = Array.from(new Set(evaluations.map(e => e.assetSnapshot.name))).sort()
   const slots = slotData.map(d => d.slot)
 
   const displayNameMap = useMemo(() => {
     const map = new Map<string, string>()
     for (const e of evaluations) {
-      if (!map.has(e.asset_snapshot.name)) {
-        const dn = e.asset_snapshot.display_name ?? assetDisplayNames?.get(e.asset_snapshot.name)
-        if (dn) map.set(e.asset_snapshot.name, dn)
+      if (!map.has(e.assetSnapshot.name)) {
+        const dn = e.assetSnapshot.displayName ?? assetDisplayNames?.get(e.assetSnapshot.name)
+        if (dn) map.set(e.assetSnapshot.name, dn)
       }
     }
     return map
