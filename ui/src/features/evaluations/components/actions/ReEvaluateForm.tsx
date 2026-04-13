@@ -4,7 +4,7 @@ import { useReEvaluate } from '../../hooks'
 import { PinConflictError } from '../../api'
 import { Input } from '@/components/ui/input'
 import { ActionFormShell } from './ActionFormShell'
-import type { ReEvaluateResponse, PinConflictInfo } from '../../types'
+import type { ReEvaluateMode, ReEvaluateResponse, PinConflictInfo } from '../../domain'
 
 const ACTION_DEF = {
   label: 'Run Evaluations',
@@ -35,18 +35,23 @@ export function ReEvaluateForm({ assetName, sloName, defaultFromDate, onComplete
   const submitReEval = useCallback(
     (pinStrategy?: 'skip_to_pin' | 'ignore_pin') => {
       setPinConflict(null)
+      const mode: ReEvaluateMode = fromBaseline
+        ? { kind: 'baseline' }
+        : { kind: 'date', fromDate: new Date(fromDate).toISOString() }
       reEvaluate.mutate(
         {
-          asset_name: assetName,
-          slo_name: sloName,
-          ...(fromBaseline ? { from_baseline: true } : { from_date: new Date(fromDate).toISOString() }),
-          ...(pinStrategy ? { pin_strategy: pinStrategy } : {}),
+          assetName,
+          sloName,
+          mode,
+          sloVersion: null,
+          dryRun: false,
+          pinStrategy: pinStrategy ?? null,
         },
         {
           onSuccess: (data) => setReEvalResult(data),
           onError: (err) => {
             if (err instanceof PinConflictError) {
-              setPinConflict({ pin_date: err.pin_date, pin_evaluation_id: err.pin_evaluation_id })
+              setPinConflict({ pinDate: err.pinDate, pinEvaluationId: err.pinEvaluationId })
             }
           },
         },
@@ -73,28 +78,28 @@ export function ReEvaluateForm({ assetName, sloName, defaultFromDate, onComplete
       >
         <div className="space-y-2">
           <p className="text-sm text-foreground">
-            {reEvalResult.affected_evaluations} evaluation{reEvalResult.affected_evaluations !== 1 ? 's' : ''}{' '}
-            re-evaluated (SLO v{reEvalResult.slo_version_used})
+            {reEvalResult.affectedEvaluations} evaluation{reEvalResult.affectedEvaluations !== 1 ? 's' : ''}{' '}
+            re-evaluated (SLO v{reEvalResult.sloVersionUsed})
           </p>
           <div className="max-h-48 overflow-y-auto space-y-1">
             {reEvalResult.results.map((r) => (
               <div key={r.id} className="flex items-center justify-between text-xs px-3 py-1.5 bg-muted/50 rounded">
                 <span className="text-muted-foreground">
-                  {new Date(r.period_start).toLocaleDateString()}
+                  {new Date(r.period.from).toLocaleDateString()}
                 </span>
                 <span>
-                  <span className="text-muted-foreground">{r.old_result}</span>
+                  <span className="text-muted-foreground">{r.oldOutcome}</span>
                   <span className="text-muted-foreground/60 mx-1">{'\u2192'}</span>
                   <span className={
-                    r.new_result === 'pass' ? 'text-pass'
-                      : r.new_result === 'warning' ? 'text-warning'
+                    r.newOutcome === 'pass' ? 'text-pass'
+                      : r.newOutcome === 'warning' ? 'text-warning'
                         : 'text-fail'
                   }>
-                    {r.new_result}
+                    {r.newOutcome}
                   </span>
                 </span>
                 <span className="text-muted-foreground">
-                  {r.old_score.toFixed(1)} {'\u2192'} {r.new_score.toFixed(1)}
+                  {r.oldScore.toFixed(1)} {'\u2192'} {r.newScore.toFixed(1)}
                 </span>
               </div>
             ))}
@@ -126,7 +131,7 @@ export function ReEvaluateForm({ assetName, sloName, defaultFromDate, onComplete
         <div className="text-xs border border-warning/30 bg-warning/5 rounded px-3 py-2 space-y-2">
           <p className="text-warning">
             Start date is before the baseline pin at{' '}
-            <span className="text-foreground">{new Date(pinConflict.pin_date).toLocaleString()}</span>
+            <span className="text-foreground">{new Date(pinConflict.pinDate).toLocaleString()}</span>
           </p>
           <div className="flex gap-2">
             <button

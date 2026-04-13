@@ -1,7 +1,7 @@
 // ui/src/features/evaluations/components/EvaluationNotesSection.tsx
 import { useRef, forwardRef, useImperativeHandle } from 'react'
 import { AnnotationSection, type AnnotationSectionHandle } from './AnnotationForm'
-import type { Annotation } from '../types'
+import type { Annotation } from '../domain'
 
 interface Props {
   evaluationId: string

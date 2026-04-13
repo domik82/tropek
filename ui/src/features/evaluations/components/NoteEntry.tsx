@@ -2,7 +2,7 @@
 import { useState } from 'react'
 import { DeletionConfirmForm } from '@/components/DeletionConfirmForm'
 import { useHideAnnotation } from '../hooks'
-import type { Annotation } from '../types'
+import type { Annotation } from '../domain'
 
 const URL_RE = /https?:\/\/[^\s]+/g
 
@@ -49,7 +49,7 @@ export function NoteEntry({ evalId, annotation: a, compact }: Props) {
         )}
         <span className="text-foreground/70 text-xs truncate flex-1">{a.content}</span>
         <span className="text-muted-foreground text-[10px] shrink-0 ml-auto">
-          {a.created_at.slice(5, 16).replace('T', ' ')}
+          {a.createdAt.toISOString().slice(5, 16).replace('T', ' ')}
         </span>
         <button
           onClick={() => setHiding(true)}
@@ -86,13 +86,13 @@ export function NoteEntry({ evalId, annotation: a, compact }: Props) {
       {/* Row 2: author + meta + date */}
       <div className="flex items-center gap-2 mt-1 ml-5">
         {a.author && <span className="text-muted-foreground text-[10px]">{a.author}</span>}
-        {a.meta && Object.keys(a.meta).length > 0 && (
+        {a.tags && Object.keys(a.tags).length > 0 && (
           <span className="text-muted-foreground text-[10px]">
-            {Object.entries(a.meta).map(([k, v]) => `${k}: ${v}`).join(' · ')}
+            {Object.entries(a.tags).map(([k, v]) => `${k}: ${v}`).join(' · ')}
           </span>
         )}
         <span className="text-muted-foreground/60 text-[10px] ml-auto">
-          {a.created_at.slice(0, 16).replace('T', ' ')}
+          {a.createdAt.toISOString().slice(0, 16).replace('T', ' ')}
         </span>
       </div>
 
