@@ -178,3 +178,49 @@ Sources merged (in priority order):
 3. Built-in: `$asset_name`, `$test_name`, `$start`, `$end`
 
 Example: `rate(http_requests_total{instance="$vm_ip"}[5m])` with `metadata={"vm_ip": "10.0.1.15"}`
+
+## Known Limitations
+
+### No validation of pass vs warning criteria ordering
+
+The engine does **not** validate that warning criteria are logically between pass and fail.
+`score_objective()` checks pass first, then warning (see Scoring above). If the criteria are
+written so that warning is stricter than pass, the warning branch becomes unreachable — every
+value either passes (satisfies the looser pass criteria) or fails outright.
+
+**Example — relative criteria with swapped thresholds:**
+
+```yaml
+objectives:
+  - sli: response_time_p95
+    pass:
+      criteria: ["<=+5%"]     # tight bound — intended as warning
+    warning:
+      criteria: ["<=+20%"]    # loose bound — intended as pass
+```
+
+Here `<=+5%` (pass) is stricter than `<=+20%` (warning). A value within 5% of baseline passes.
+A value between 5–20% fails the pass check, then satisfies the looser warning check — so
+everything lands in either pass or warning, and nothing ever reaches fail.
+
+The correct version:
+
+```yaml
+    pass:
+      criteria: ["<=+20%"]    # looser = pass
+    warning:
+      criteria: ["<=+5%"]     # tighter = warning
+```
+
+This is counterintuitive but follows from the evaluation order: **pass is checked first, warning
+is the fallback.** So pass criteria must be the *easiest* to satisfy (widest acceptable band).
+Warning criteria must be *stricter* — they define the narrower band of "good enough to not fail
+but not good enough to pass."
+
+**Why no static validation?** For simple cases (same operator, both fixed or both relative %),
+contradictions are detectable. But criteria blocks can mix fixed and relative thresholds, use
+different operators, or depend on a runtime baseline — making general static analysis unreliable.
+This matches Keptn lighthouse-service behaviour, which also performed no such validation.
+
+**The same concern applies to `total_score` thresholds.** If `warning_threshold` is set higher
+than `pass_threshold`, the warning band disappears — everything above warning also passes.
