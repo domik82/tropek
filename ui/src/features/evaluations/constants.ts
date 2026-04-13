@@ -6,7 +6,7 @@ export { RESULT_COLOUR } from '@/lib/theme'
 
 // Fixed columns always visible in the EvaluationTable.
 // Dynamic tag/metadata columns are added at runtime from eval data.
-export type { ColumnDef } from './types'
+export type { ColumnDef } from './ui-types'
 
 // Structural columns that are always present regardless of data.
 // Tag and metadata columns (arch, os, branch, build, etc.) are discovered

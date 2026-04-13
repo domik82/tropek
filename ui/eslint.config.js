@@ -57,14 +57,4 @@ export default defineConfig([
       'no-restricted-imports': 'off',
     },
   },
-  // TEMPORARY: allow unmigrated features to keep using DTOs until their own
-  // migration chunks land. Evaluations = Chunk B3. Delete after B3 completes.
-  {
-    files: [
-      'src/features/evaluations/**/*.{ts,tsx}',
-    ],
-    rules: {
-      'no-restricted-imports': 'off',
-    },
-  },
 ])
