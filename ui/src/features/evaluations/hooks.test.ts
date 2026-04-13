@@ -1,7 +1,7 @@
 // src/features/evaluations/hooks.test.ts
 import { describe, it, expect } from 'vitest'
 import { toggleColumnKey } from './hooks'
-import type { ColumnDef } from './types'
+import type { ColumnDef } from './ui-types'
 
 const col = (key: string, required = false): ColumnDef => ({ key, label: key, required })
 
