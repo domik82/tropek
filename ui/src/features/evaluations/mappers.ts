@@ -6,16 +6,22 @@
 // network request, and React Query stores the domain type.
 
 import type { components } from '@/generated/api'
+import { makeDateRange } from '@/lib/dateRange'
 import type {
   Annotation,
+  AssetSnapshot,
+  BaselinePin,
   Evaluation,
   EvaluationDetail,
   EvaluationList,
   EvaluationNameEntry,
+  FailingIndicator,
   Indicator,
+  Outcome,
   OverrideStatusInput,
   ReEvaluateInput,
   ReEvaluateResponse,
+  SliMetadata,
   TrendPoint,
   TriggerEvaluationInput,
 } from './domain'
@@ -40,6 +46,70 @@ export type ReEvalResultItemDto = components['schemas']['ReEvalResultItem']
 export type EvaluateSingleRequestDto = components['schemas']['EvaluateSingleRequest']
 export type OverrideStatusRequestDto = components['schemas']['OverrideStatusRequest']
 export type EvaluateSingleResponseDto = components['schemas']['EvaluateSingleResponse']
+
+// --- Helpers --------------------------------------------------------------
+
+function normalizeOutcome(raw: string | null | undefined): Outcome {
+  switch (raw) {
+    case 'pass':
+    case 'warning':
+    case 'fail':
+    case 'error':
+    case 'invalidated':
+      return raw
+    default:
+      return 'error'
+  }
+}
+
+// Collapse (result, invalidated) into a single Outcome value. See the
+// `Outcome` comment in domain.ts for rationale.
+function collapseOutcome(
+  result: string | null | undefined,
+  invalidated: boolean,
+): Outcome {
+  if (invalidated) return 'invalidated'
+  return normalizeOutcome(result)
+}
+
+function dtoToAssetSnapshot(dto: AssetSnapshotDto): AssetSnapshot {
+  return {
+    name: dto.name,
+    displayName: dto.display_name ?? null,
+    tags: (dto.tags ?? {}) as Record<string, string>,
+    primaryVersion: dto.primary_version ?? null,
+    buildRef: dto.build_ref ?? null,
+  }
+}
+
+function dtoToBaselinePin(dto: EvaluationSummaryDto | EvaluationDetailDto): BaselinePin | null {
+  if (!dto.baseline_pinned_at) return null
+  return {
+    author: dto.baseline_pin_author ?? '',
+    reason: dto.baseline_pin_reason ?? '',
+    pinnedAt: new Date(dto.baseline_pinned_at),
+    unpinnedAt: dto.baseline_unpinned_at ? new Date(dto.baseline_unpinned_at) : null,
+  }
+}
+
+function dtoToFailingIndicator(dto: FailingIndicatorDto): FailingIndicator {
+  return {
+    metric: dto.metric,
+    displayName: dto.display_name,
+    value: dto.value ?? null,
+    threshold: dto.threshold,
+  }
+}
+
+function dtoToSliMetadata(dto: SliMetadataDto): SliMetadata {
+  return {
+    mode: dto.mode,
+    expectedSamples: dto.expected_samples,
+    actualSamples: dto.actual_samples,
+    missingPct: dto.missing_pct,
+    chunksFailed: dto.chunks_failed,
+  }
+}
 
 // --- Exhaustiveness frames ------------------------------------------------
 
@@ -305,20 +375,65 @@ void _reEvaluateResponseExhaustive
 // --- Stub functions (implemented in tasks 5-9) ----------------------------
 
 /* eslint-disable @typescript-eslint/no-unused-vars -- filled in by Task 5+ */
-export function dtoToEvaluationSummary(_dto: EvaluationSummaryDto): Evaluation {
-  throw new Error('dtoToEvaluationSummary: not yet implemented (Task 5)')
+export function dtoToEvaluationSummary(dto: EvaluationSummaryDto): Evaluation {
+  return {
+    id: dto.id,
+    evaluationId: dto.evaluation_id,
+    evaluationName: dto.evaluation_name,
+    status: dto.status,
+    outcome: collapseOutcome(dto.result, dto.invalidated),
+    score: dto.score,
+    period: makeDateRange(dto.period_start, dto.period_end),
+    sloName: dto.slo_name,
+    sloVersion: dto.slo_version,
+    sliName: dto.sli_name,
+    sliVersion: dto.sli_version,
+    dataSourceName: dto.data_source_name,
+    ingestionMode: dto.ingestion_mode,
+    adapterUsed: dto.adapter_used,
+    invalidated: dto.invalidated,
+    originalOutcome: dto.original_result == null ? null : normalizeOutcome(dto.original_result),
+    originalScore: dto.original_score ?? null,
+    overrideReason: dto.override_reason ?? null,
+    overrideAuthor: dto.override_author ?? null,
+    assetSnapshot: dtoToAssetSnapshot(dto.asset_snapshot),
+    variables: dto.variables ?? {},
+    baselinePin: dtoToBaselinePin(dto),
+    latestAnnotation: dto.latest_annotation ? dtoToAnnotation(dto.latest_annotation) : null,
+    annotationCount: dto.annotation_count ?? 0,
+    createdAt: new Date(dto.created_at),
+    topFailures: (dto.top_failures ?? []).map(dtoToFailingIndicator),
+  }
 }
 
-export function dtoToEvaluationDetail(_dto: EvaluationDetailDto): EvaluationDetail {
-  throw new Error('dtoToEvaluationDetail: not yet implemented (Task 5)')
+export function dtoToEvaluationDetail(dto: EvaluationDetailDto): EvaluationDetail {
+  const summary = dtoToEvaluationSummary(dto)
+  const sliMetadata: Record<string, SliMetadata> = {}
+  for (const [key, value] of Object.entries(dto.sli_metadata ?? {})) {
+    sliMetadata[key] = dtoToSliMetadata(value)
+  }
+  return {
+    ...summary,
+    invalidationNote: dto.invalidation_note ?? null,
+    comparedEvaluationIds: dto.compared_evaluation_ids ?? [],
+    annotations: (dto.annotations ?? []).map(dtoToAnnotation),
+    indicators: (dto.indicator_results ?? []).map(dtoToIndicator),
+    totalScorePassThreshold: dto.total_score_pass_threshold ?? null,
+    totalScoreWarningThreshold: dto.total_score_warning_threshold ?? null,
+    sliMetadata,
+  }
 }
 
-export function dtoToEvaluationList(_dto: {
+export function dtoToEvaluationList(dto: {
   items: EvaluationSummaryDto[]
   total: number
   truncated: boolean
 }): EvaluationList {
-  throw new Error('dtoToEvaluationList: not yet implemented (Task 5)')
+  return {
+    items: dto.items.map(dtoToEvaluationSummary),
+    total: dto.total,
+    truncated: dto.truncated,
+  }
 }
 
 export function dtoToIndicator(_dto: IndicatorResultDto): Indicator {
