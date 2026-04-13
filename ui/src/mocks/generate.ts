@@ -5,7 +5,11 @@
 
 import type { EvaluationSummary, EvaluationDetail, IndicatorResult, TrendPoint, FailingIndicator } from '../features/evaluations/types'
 import type { AssetGroupDto as AssetGroup } from '../features/assets/mappers'
-import type { MetricHeatmapResponse, EvaluationColumn, HeatmapSloGroup, HeatmapSummaryCell } from '../features/navigator/types'
+import type { components } from '@/generated/api'
+import type { GroupedMetricHeatmapResponseDto } from '../features/navigator/mappers'
+type EvaluationColumn = components['schemas']['EvaluationColumn']
+type HeatmapSloGroupSection = components['schemas']['HeatmapSloGroupSection']
+type HeatmapSummaryCell = components['schemas']['HeatmapSummaryCell']
 import { computeChangePct } from '../utils/metrics'
 
 // ---------------------------------------------------------------------------
@@ -664,7 +668,7 @@ export function getSloDefinitions() {
   return (sloFixture as { items: unknown[] }).items
 }
 
-export function getMetricHeatmap(assetName: string): MetricHeatmapResponse {
+export function getMetricHeatmap(assetName: string): GroupedMetricHeatmapResponseDto {
   // Delegate to the grouped implementation — old endpoint kept for backward compat
   return getGroupedMetricHeatmap(assetName)
 }
@@ -708,7 +712,7 @@ export function getGroupSloLinks(groupName: string) {
   return links
 }
 
-export function getGroupedMetricHeatmap(assetName: string): MetricHeatmapResponse {
+export function getGroupedMetricHeatmap(assetName: string): GroupedMetricHeatmapResponseDto {
   const prng = makePrng(assetName.charCodeAt(0) + 42)
   const RESULTS = ['pass', 'pass', 'pass', 'warning', 'fail'] as const
 
@@ -721,6 +725,7 @@ export function getGroupedMetricHeatmap(assetName: string): MetricHeatmapRespons
       period_start: d.toISOString(),
       period_end: new Date(d.getTime() + 86_400_000).toISOString(),
       eval_name: 'daily',
+      has_notes: false,
     }
   })
 
@@ -747,7 +752,7 @@ export function getGroupedMetricHeatmap(assetName: string): MetricHeatmapRespons
     SLO_EVAL_IDS[slo] = columns.map(() => crypto.randomUUID())
   }
 
-  const groups: HeatmapSloGroup[] = SLO_GROUPS.map(sloName => {
+  const groups: HeatmapSloGroupSection[] = SLO_GROUPS.map(sloName => {
     const metrics = SLO_METRICS[sloName]
     const cells = columns.flatMap((col, xi) =>
       metrics.map(m => ({
@@ -758,6 +763,8 @@ export function getGroupedMetricHeatmap(assetName: string): MetricHeatmapRespons
         display_name: m.display_name,
         result: RESULTS[Math.floor(prng() * RESULTS.length)],
         score: Math.round(prng() * 100),
+        weight: 1,
+        key_sli: false,
       }))
     )
     const summary: HeatmapSummaryCell[] = columns.map(col => ({
@@ -765,6 +772,7 @@ export function getGroupedMetricHeatmap(assetName: string): MetricHeatmapRespons
       period_start: col.period_start,
       result: RESULTS[Math.floor(prng() * RESULTS.length)],
       score: Math.round(prng() * 100),
+      invalidated: false,
     }))
     return { slo_name: sloName, metrics, cells, summary }
   })
@@ -774,6 +782,7 @@ export function getGroupedMetricHeatmap(assetName: string): MetricHeatmapRespons
     period_start: col.period_start,
     result: RESULTS[Math.floor(prng() * RESULTS.length)],
     score: Math.round(prng() * 100),
+    invalidated: false,
   }))
 
   return { asset_name: assetName, columns, groups, composite }

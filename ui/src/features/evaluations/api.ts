@@ -13,7 +13,6 @@ import type {
   ReEvaluateResponse,
   PinConflictInfo,
 } from './types'
-import type { MetricHeatmapResponse } from '@/features/navigator/types'
 
 const BASE = '/api'
 
@@ -171,21 +170,6 @@ export async function pinBaseline(
     body: JSON.stringify(payload),
   })
   if (!res.ok) throw new Error(`pinBaseline: ${res.status}`)
-  return res.json()
-}
-
-export async function fetchMetricHeatmap(
-  assetName: string,
-  filters?: { from?: string; to?: string; evaluation_name?: string[] },
-): Promise<MetricHeatmapResponse> {
-  const params = new URLSearchParams({ asset_name: assetName })
-  if (filters?.from) params.set('from', filters.from)
-  if (filters?.to) params.set('to', filters.to)
-  if (filters?.evaluation_name?.length) {
-    for (const n of filters.evaluation_name) params.append('evaluation_name', n)
-  }
-  const res = await fetch(`${BASE}/evaluations/metric-heatmap?${params}`)
-  if (!res.ok) throw new Error(`fetchMetricHeatmap: ${res.status}`)
   return res.json()
 }
 
