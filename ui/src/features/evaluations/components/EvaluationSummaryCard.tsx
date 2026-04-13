@@ -1,28 +1,26 @@
 // ui/src/features/evaluations/components/EvaluationSummaryCard.tsx
 import { EvaluationHeader } from './EvaluationHeader'
 import { NoteIconButton } from './EvaluationActions'
-import type { EvaluationDetail } from '../types'
+import type { EvaluationDetail } from '../domain'
 
 interface Props {
   evaluation: EvaluationDetail
   onAddNote?: () => void
   actions?: React.ReactNode
-  /** Fallback display name for the asset (when snapshot lacks display_name). */
+  /** Fallback display name for the asset (when snapshot lacks displayName). */
   assetDisplayName?: string
   /** Fallback display name for the SLO. */
   sloDisplayName?: string
 }
 
 export function EvaluationSummaryCard({ evaluation: ev, onAddNote, actions, assetDisplayName, sloDisplayName }: Props) {
-  const displayResult = ev.invalidated ? 'invalidated' : (ev.result ?? 'error')
-
   return (
     <EvaluationHeader
-      title={ev.evaluation_name}
-      result={displayResult}
+      title={ev.evaluationName}
+      result={ev.outcome}
       score={ev.score ?? undefined}
-      passPct={ev.total_score_pass_threshold}
-      warningPct={ev.total_score_warning_threshold}
+      passPct={ev.totalScorePassThreshold}
+      warningPct={ev.totalScoreWarningThreshold}
       noteButton={
         onAddNote && !ev.invalidated ? (
           <NoteIconButton onClick={onAddNote} annotationCount={ev.annotations.length} />
@@ -31,52 +29,52 @@ export function EvaluationSummaryCard({ evaluation: ev, onAddNote, actions, asse
       metadata={
         <>
           <div className="flex flex-wrap gap-x-6 gap-y-1 text-sm text-muted-foreground">
-            <span>Asset: <span className="text-foreground">{ev.asset_snapshot.display_name ?? assetDisplayName ?? ev.asset_snapshot.name}</span></span>
-            {Object.entries(ev.asset_snapshot.tags ?? {}).map(([k, v]) => (
+            <span>Asset: <span className="text-foreground">{ev.assetSnapshot.displayName ?? assetDisplayName ?? ev.assetSnapshot.name}</span></span>
+            {Object.entries(ev.assetSnapshot.tags ?? {}).map(([k, v]) => (
               <span key={k} className="text-muted-foreground text-xs">{k}: {v as string}</span>
             ))}
             <span className="text-xs">
-              {ev.period_start.slice(0, 16).replace('T', ' ')} → {ev.period_end.slice(11, 16)}
+              {ev.period.from.slice(0, 16).replace('T', ' ')} → {ev.period.to.slice(11, 16)}
             </span>
           </div>
           <div className="mt-1 text-xs text-muted-foreground">
-            SLO: {sloDisplayName ?? ev.slo_name ?? '—'}{ev.slo_version != null && ` v${ev.slo_version}`}
-            {' · '}mode: {ev.ingestion_mode}
-            {ev.adapter_used && ` · adapter: ${ev.adapter_used}`}
-            {ev.asset_snapshot.build_ref && ` · build: ${ev.asset_snapshot.build_ref}`}
+            SLO: {sloDisplayName ?? ev.sloName ?? '—'}{ev.sloVersion != null && ` v${ev.sloVersion}`}
+            {' · '}mode: {ev.ingestionMode}
+            {ev.adapterUsed && ` · adapter: ${ev.adapterUsed}`}
+            {ev.assetSnapshot.buildRef && ` · build: ${ev.assetSnapshot.buildRef}`}
           </div>
-          {ev.invalidated && ev.invalidation_note && (
+          {ev.invalidated && ev.invalidationNote && (
             <div className="mt-2">
               <span className="text-xs text-destructive-form-text bg-destructive-form-bg border border-destructive-form-border px-2 py-1 rounded inline-flex flex-wrap items-center gap-x-1.5">
                 <span className="font-medium">Invalidated</span>
-                <span className="text-destructive-form-text/80">— {ev.invalidation_note}</span>
+                <span className="text-destructive-form-text/80">— {ev.invalidationNote}</span>
               </span>
             </div>
           )}
-          {ev.original_result && ev.override_author && (
+          {ev.originalOutcome && ev.overrideAuthor && (
             <div className="mt-2 flex flex-col gap-1">
               <span className="text-xs text-amber-300 bg-amber-900/20 border border-amber-700/30 px-2 py-1 rounded inline-flex flex-wrap items-center gap-x-1.5">
                 <span className="font-medium">Status overridden</span>
                 <span className="text-amber-500">
-                  {ev.original_result} → {ev.result}
+                  {ev.originalOutcome} → {ev.outcome}
                 </span>
-                <span>by <span className="text-amber-200">{ev.override_author}</span></span>
-                {ev.override_reason && (
-                  <span className="text-amber-400/80">— {ev.override_reason}</span>
+                <span>by <span className="text-amber-200">{ev.overrideAuthor}</span></span>
+                {ev.overrideReason && (
+                  <span className="text-amber-400/80">— {ev.overrideReason}</span>
                 )}
               </span>
             </div>
           )}
-          {ev.original_result && !ev.override_author && (
+          {ev.originalOutcome && !ev.overrideAuthor && (
             <div className="mt-2 flex flex-col gap-1">
               <span className="text-xs text-entity-sli bg-entity-sli/10 border border-entity-sli/30 px-2 py-1 rounded inline-flex flex-wrap items-center gap-x-1.5">
                 <span className="font-medium">Re-evaluated</span>
                 <span className="text-entity-sli">
-                  {ev.original_result} → {ev.result}
+                  {ev.originalOutcome} → {ev.outcome}
                 </span>
-                {ev.original_score != null && (
+                {ev.originalScore != null && (
                   <span className="text-entity-sli/80">
-                    ({ev.original_score.toFixed(1)} → {ev.score?.toFixed(1) ?? '—'})
+                    ({ev.originalScore.toFixed(1)} → {ev.score?.toFixed(1) ?? '—'})
                   </span>
                 )}
               </span>

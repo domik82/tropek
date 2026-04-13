@@ -5,10 +5,11 @@ import { ResultBadge } from './ResultBadge'
 import { fmtDateTime } from '@/lib/format'
 import { AnnotationCell } from './AnnotationCell'
 import { DataTable, DataTableHeader, dataTableRowClass } from '@/components/ui/data-table'
-import type { EvaluationSummary, ColumnDef } from '../types'
+import type { Evaluation } from '../domain'
+import type { ColumnDef } from '../ui-types'
 
 interface Props {
-  evaluations: EvaluationSummary[]
+  evaluations: Evaluation[]
   visibleKeys: Set<string>
   allCols: ColumnDef[]
   open: boolean
@@ -17,7 +18,7 @@ interface Props {
   pickerRef: RefObject<HTMLTableCellElement | null>
   onAssetSelect?: (name: string) => void
   /** When provided, clicking the evaluation name calls this instead of navigating to the detail page. */
-  onEvalClick?: (ev: EvaluationSummary) => void
+  onEvalClick?: (ev: Evaluation) => void
   /** Fallback lookup for asset display names (for evaluations created before snapshot included display_name). */
   assetDisplayNames?: Map<string, string>
   /** Fallback lookup for SLO display names. */
@@ -29,10 +30,10 @@ const STATIC_KEYS = new Set([
 ])
 
 function cell(
-  ev: EvaluationSummary,
+  ev: Evaluation,
   key: string,
   onAssetSelect?: (name: string) => void,
-  onEvalClick?: (ev: EvaluationSummary) => void,
+  onEvalClick?: (ev: Evaluation) => void,
   assetDisplayNames?: Map<string, string>,
   sloDisplayNames?: Map<string, string>,
 ) {
@@ -45,25 +46,25 @@ function cell(
               onClick={() => onEvalClick(ev)}
               className="text-foreground hover:text-link-hover hover:underline decoration-dotted underline-offset-2 font-medium cursor-pointer transition-colors"
             >
-              {ev.evaluation_name}
+              {ev.evaluationName}
             </button>
           ) : (
             <Link to={`/evaluations/${ev.id}`} className="text-foreground hover:text-link-hover hover:underline decoration-dotted underline-offset-2 font-medium transition-colors">
-              {ev.evaluation_name}
+              {ev.evaluationName}
             </Link>
           )}
         </td>
       )
     case 'asset': {
-      const assetLabel = ev.asset_snapshot.display_name
-        ?? assetDisplayNames?.get(ev.asset_snapshot.name)
-        ?? ev.asset_snapshot.name
-      const hasDisplayName = assetLabel !== ev.asset_snapshot.name
+      const assetLabel = ev.assetSnapshot.displayName
+        ?? assetDisplayNames?.get(ev.assetSnapshot.name)
+        ?? ev.assetSnapshot.name
+      const hasDisplayName = assetLabel !== ev.assetSnapshot.name
       return (
         <td key="asset" className="px-4 py-3 text-sm">
           {onAssetSelect ? (
             <button
-              onClick={() => onAssetSelect(ev.asset_snapshot.name)}
+              onClick={() => onAssetSelect(ev.assetSnapshot.name)}
               className="text-foreground hover:text-link-hover hover:underline decoration-dotted underline-offset-2 cursor-pointer transition-colors"
             >
               {assetLabel}
@@ -72,33 +73,34 @@ function cell(
             <span className="text-foreground">{assetLabel}</span>
           )}
           {hasDisplayName && (
-            <span className="block text-xs text-muted-foreground font-mono">{ev.asset_snapshot.name}</span>
+            <span className="block text-xs text-muted-foreground font-mono">{ev.assetSnapshot.name}</span>
           )}
         </td>
       )
     }
     case 'start':
-      return <td key="start" className="px-4 py-3 text-sm text-muted-foreground tabular-nums whitespace-nowrap">{fmtDateTime(ev.period_start)}</td>
+      return <td key="start" className="px-4 py-3 text-sm text-muted-foreground tabular-nums whitespace-nowrap">{fmtDateTime(ev.period.from)}</td>
     case 'score':
       return <td key="score" className="px-4 py-3 tabular-nums font-medium font-mono">{ev.score != null ? `${ev.score.toFixed(1)}%` : '—'}</td>
     case 'result':
       return (
         <td key="result" className="px-4 py-3">
-          <ResultBadge result={ev.result ?? 'error'} />
+          <ResultBadge result={ev.outcome} />
         </td>
       )
     case 'slo': {
-      const sloLabel = (ev.slo_name && sloDisplayNames?.get(ev.slo_name)) ?? ev.slo_name
+      const sloLabel = (ev.sloName && sloDisplayNames?.get(ev.sloName)) ?? ev.sloName
       return (
         <td key="slo" className="px-4 py-3 text-sm text-muted-foreground">
-          {sloLabel ? `${sloLabel}${ev.slo_version != null ? ` v${ev.slo_version}` : ''}` : '—'}
+          {sloLabel ? `${sloLabel}${ev.sloVersion != null ? ` v${ev.sloVersion}` : ''}` : '—'}
         </td>
       )
     }
     case 'annotations':
       return (
         <td key="annotations" className="px-4 py-3">
-          <AnnotationCell annotation={ev.latest_annotation} count={ev.annotation_count} />
+          {/* AnnotationCell still uses the old Annotation shape (Task 14). Cast through never to bridge until that batch lands. */}
+          <AnnotationCell annotation={(ev.latestAnnotation ?? undefined) as never} count={ev.annotationCount} />
         </td>
       )
     default:
@@ -153,7 +155,7 @@ export function EvaluationTable({
                 ? cell(ev, col.key, onAssetSelect, onEvalClick, assetDisplayNames, sloDisplayNames)
                 : (
                   <td key={col.key} className="px-4 py-3 text-sm text-muted-foreground">
-                    {ev.asset_snapshot.tags?.[col.key] ?? ev.variables?.[col.key] ?? '—'}
+                    {ev.assetSnapshot.tags?.[col.key] ?? ev.variables?.[col.key] ?? '—'}
                   </td>
                 )
             )}

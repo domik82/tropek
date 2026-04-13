@@ -7,12 +7,13 @@ import type { ReactNode } from 'react'
 import { ResultBadge } from './ResultBadge'
 import { useTheme } from '@/lib/theme-context'
 import { RESULT_COLOUR } from '@/lib/theme'
+import type { Outcome } from '../domain'
 
 interface Props {
   title: string
   titleMono?: boolean
   subtitle?: string
-  result?: string
+  result?: Outcome
   score?: number
   /** Color the score with the result color. False → foreground color. */
   scoreColored?: boolean

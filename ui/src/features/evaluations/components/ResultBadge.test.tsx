@@ -23,9 +23,9 @@ describe('ResultBadge', () => {
     expect(screen.getByText('invalidated')).toBeInTheDocument()
   })
 
-  it('renders unknown result gracefully', () => {
-    render(<ResultBadge result="unknown" />)
-    expect(screen.getByText('unknown')).toBeInTheDocument()
+  it('renders error result gracefully', () => {
+    render(<ResultBadge result="error" />)
+    expect(screen.getByText('error')).toBeInTheDocument()
   })
 
   it('renders as an inline span element', () => {
