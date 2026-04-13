@@ -214,6 +214,8 @@ def _build_slo_groups(
                         slo_eval.job_stats.get('total_score_warning_threshold') if slo_eval else None
                     ),
                     sli_metadata=slo_eval.job_stats.get('sli_metadata') if slo_eval else None,
+                    slo_version=slo_eval.slo_version if slo_eval else None,
+                    sli_version=slo_eval.sli_version if slo_eval else None,
                     invalidated=slo_eval.invalidated if slo_eval else False,
                     invalidation_note=slo_eval.invalidation_note if slo_eval else None,
                 )

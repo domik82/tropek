@@ -166,6 +166,8 @@ export function AssetPanelHeatmapView({
         result,
         achieved_points: indicators.reduce((sum, ind) => sum + ind.score, 0),
         total_points: indicators.reduce((sum, ind) => sum + ind.weight, 0),
+        slo_version: summary?.slo_version ?? null,
+        sli_version: summary?.sli_version ?? null,
       }
     })
   }, [heatmapData, selectedColumnEvalId])

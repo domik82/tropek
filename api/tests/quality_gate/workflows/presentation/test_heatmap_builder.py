@@ -60,6 +60,8 @@ def _make_slo_eval(  # noqa: PLR0913 - test factory intentionally exposes many k
     total_points: int = 10,
     job_stats: dict | None = None,
     indicator_rows: list | None = None,
+    slo_version: int | None = None,
+    sli_version: int | None = None,
 ) -> SimpleNamespace:
     return SimpleNamespace(
         id=uuid.uuid4(),
@@ -72,6 +74,8 @@ def _make_slo_eval(  # noqa: PLR0913 - test factory intentionally exposes many k
         total_points=total_points,
         job_stats=job_stats or {},
         indicator_rows=indicator_rows or [_make_indicator_row()],
+        slo_version=slo_version,
+        sli_version=sli_version,
     )
 
 
@@ -214,6 +218,30 @@ def test_summary_invalidated_flag() -> None:
     summary = resp.groups[0].summary[0]
     assert summary.invalidated is True
     assert summary.invalidation_note == 'bad data'
+
+
+def test_summary_carries_slo_sli_versions() -> None:
+    """HeatmapSummaryCell includes SLO and SLI versions from the evaluation."""
+    slo_eval = _make_slo_eval(slo_version=3, sli_version=2)
+    run = _make_run(slo_evaluations=[slo_eval])
+
+    resp = build_grouped_heatmap_response('test-asset', [run])
+
+    summary = resp.groups[0].summary[0]
+    assert summary.slo_version == 3
+    assert summary.sli_version == 2
+
+
+def test_summary_versions_default_to_none() -> None:
+    """HeatmapSummaryCell version fields default to None when not set."""
+    slo_eval = _make_slo_eval()
+    run = _make_run(slo_evaluations=[slo_eval])
+
+    resp = build_grouped_heatmap_response('test-asset', [run])
+
+    summary = resp.groups[0].summary[0]
+    assert summary.slo_version is None
+    assert summary.sli_version is None
 
 
 def test_composite_row_defaults() -> None:
