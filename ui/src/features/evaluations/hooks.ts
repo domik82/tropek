@@ -18,7 +18,13 @@ import {
   reEvaluate,
 } from './api'
 import { useTimeRange } from '@/lib/time-range-context'
-import type { EvaluationFilters, EvaluationSummary, ColumnDef, ReEvaluatePayload } from './types'
+import type {
+  Evaluation,
+  EvaluationFilters,
+  OverrideStatusInput,
+  ReEvaluateInput,
+} from './domain'
+import type { ColumnDef } from './ui-types'
 import { FIXED_COLS, DEFAULT_VISIBLE_KEYS } from './constants'
 
 // ── List ──────────────────────────────────────────────────────────────────────
@@ -142,8 +148,7 @@ export function useRestoreEvaluation(evalId: string) {
 export function useOverrideStatus(evalId: string) {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (payload: { new_result: string; reason: string; author: string }) =>
-      overrideStatus(evalId, payload),
+    mutationFn: (input: OverrideStatusInput) => overrideStatus(evalId, input),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: evaluationKeys.detail(evalId) })
       qc.invalidateQueries({ queryKey: evaluationKeys.all })
@@ -169,7 +174,7 @@ export function usePinBaseline(evalId: string) {
 export function useReEvaluate() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (payload: ReEvaluatePayload) => reEvaluate(payload),
+    mutationFn: (input: ReEvaluateInput) => reEvaluate(input),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: evaluationKeys.all })
       qc.invalidateQueries({ queryKey: evaluationKeys.allNames })
@@ -194,12 +199,12 @@ function prettyLabel(key: string): string {
  * Scans asset_snapshot.tags and variables across all evals,
  * deduplicates, and returns ColumnDef[] for keys not already in FIXED_COLS.
  */
-export function useDynamicColumns(evals: EvaluationSummary[]): ColumnDef[] {
+export function useDynamicColumns(evals: Evaluation[]): ColumnDef[] {
   return useMemo(() => {
     const seen = new Set<string>()
     const cols: ColumnDef[] = []
     for (const ev of evals) {
-      for (const key of Object.keys(ev.asset_snapshot.tags ?? {})) {
+      for (const key of Object.keys(ev.assetSnapshot.tags ?? {})) {
         if (!FIXED_KEYS.has(key) && !seen.has(key)) {
           seen.add(key)
           cols.push({ key, label: prettyLabel(key), required: false })
