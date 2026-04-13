@@ -17,8 +17,8 @@ import resource
 import statistics
 import sys
 import time
-from urllib.request import urlopen
 
+import httpx
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 from tropek.config import get_settings
@@ -38,14 +38,15 @@ PROFILE_ITERATIONS = 50
 
 def _measure(url: str, label: str) -> None:
     """Run WARMUP + SAMPLES serial requests and print markdown latency table."""
-    for _ in range(WARMUP):
-        urlopen(url).read()  # noqa: S310
-    latencies_ms: list[float] = []
-    payload_bytes = 0
-    for _ in range(SAMPLES):
-        start = time.perf_counter()
-        payload_bytes = len(urlopen(url).read())  # noqa: S310
-        latencies_ms.append((time.perf_counter() - start) * 1000)
+    with httpx.Client(timeout=30.0) as client:
+        for _ in range(WARMUP):
+            client.get(url).read()
+        latencies_ms: list[float] = []
+        payload_bytes = 0
+        for _ in range(SAMPLES):
+            start = time.perf_counter()
+            payload_bytes = len(client.get(url).read())
+            latencies_ms.append((time.perf_counter() - start) * 1000)
     latencies_ms.sort()
 
     def percentile(fraction: float) -> float:
