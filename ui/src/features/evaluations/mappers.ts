@@ -19,6 +19,7 @@ import type {
   Indicator,
   Outcome,
   OverrideStatusInput,
+  PassTarget,
   ReEvaluateInput,
   ReEvaluateResponse,
   SliMetadata,
@@ -109,6 +110,10 @@ function dtoToSliMetadata(dto: SliMetadataDto): SliMetadata {
     missingPct: dto.missing_pct,
     chunksFailed: dto.chunks_failed,
   }
+}
+
+function dtoToPassTarget(dto: PassTargetDto): PassTarget {
+  return { criteria: dto.criteria, targetValue: dto.target_value, violated: dto.violated }
 }
 
 // --- Exhaustiveness frames ------------------------------------------------
@@ -436,12 +441,38 @@ export function dtoToEvaluationList(dto: {
   }
 }
 
-export function dtoToIndicator(_dto: IndicatorResultDto): Indicator {
-  throw new Error('dtoToIndicator: not yet implemented (Task 6)')
+export function dtoToIndicator(dto: IndicatorResultDto): Indicator {
+  return {
+    metric: dto.metric,
+    displayName: dto.display_name,
+    tabGroup: dto.tab_group ?? null,
+    value: dto.value,
+    comparedValue: dto.compared_value,
+    changeAbsolute: dto.change_absolute,
+    changeRelativePct: dto.change_relative_pct,
+    aggregation: dto.aggregation ?? null,
+    status: dto.status as 'pass' | 'warning' | 'fail',
+    score: dto.score,
+    weight: dto.weight,
+    keySli: dto.key_sli,
+    passTargets: (dto.pass_targets ?? []).map(dtoToPassTarget),
+    warningTargets: (dto.warning_targets ?? []).map(dtoToPassTarget),
+  }
 }
 
-export function dtoToAnnotation(_dto: AnnotationDto): Annotation {
-  throw new Error('dtoToAnnotation: not yet implemented (Task 6)')
+export function dtoToAnnotation(dto: AnnotationDto): Annotation {
+  return {
+    id: dto.id,
+    content: dto.content,
+    author: dto.author,
+    category: dto.category,
+    tags: dto.tags ?? {},
+    hiddenAt: dto.hidden_at ? new Date(dto.hidden_at) : null,
+    hiddenBy: dto.hidden_by,
+    hiddenReason: dto.hidden_reason,
+    createdAt: new Date(dto.created_at),
+    updatedAt: dto.updated_at ? new Date(dto.updated_at) : null,
+  }
 }
 
 export function dtoToTrendPoint(_dto: TrendPointDto): TrendPoint {
