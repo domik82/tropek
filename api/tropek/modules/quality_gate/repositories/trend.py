@@ -107,6 +107,26 @@ class TrendRepository:
         result = await self._session.execute(q)
         return list(result.scalars().all())
 
+    async def get_run_with_slo_evaluations(self, run_id: uuid.UUID) -> EvaluationRun | None:
+        """Return one ``EvaluationRun`` with all relationships needed by the fragment builder.
+
+        Eagerly loads ``slo_evaluations`` and their ``indicator_rows`` joined to
+        ``SLOObjective``, mirroring the loader chain in
+        :meth:`get_grouped_metric_heatmap` so the worker warm path produces an
+        identical fragment to the read path's rebuild.
+        """
+        query = (
+            select(EvaluationRun)
+            .options(
+                selectinload(EvaluationRun.slo_evaluations)
+                .selectinload(SLOEvaluation.indicator_rows)
+                .joinedload(IndicatorResultRow.objective),
+            )
+            .where(EvaluationRun.id == run_id)
+        )
+        result = await self._session.execute(query)
+        return result.scalar_one_or_none()
+
     async def list_runs_for_heatmap(
         self,
         *,

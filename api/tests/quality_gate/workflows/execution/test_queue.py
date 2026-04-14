@@ -269,6 +269,37 @@ async def test_finalize_run_job_completes_parent() -> None:
     sessions[0].commit.assert_awaited_once()
 
 
+async def test_finalize_run_job_warms_heatmap_column_cache_when_redis_available() -> None:
+    """When finalize succeeds and Redis is configured, the warm helper fires
+    with a fresh session. This pins the wiring contract — the warm hook must
+    run on the fast path, not only on the sweeper rescue path.
+    """
+    run_id = uuid.uuid4()
+    # Two sessions: one for finalize, one for the warm helper.
+    sessions = [_mock_session(), _mock_session()]
+    factory = _session_factory_from_list(sessions)
+
+    mock_run_repo = AsyncMock()
+    mock_finalized = MagicMock()
+    mock_finalized.result = 'pass'
+    mock_run_repo.finalize_if_all_done.return_value = mock_finalized
+    mock_warm = AsyncMock()
+    mock_cache = MagicMock()
+
+    with (
+        patch('tropek.queue.get_session_factory', return_value=factory),
+        patch('tropek.queue.EvaluationRunRepository', return_value=mock_run_repo),
+        patch('tropek.queue.warm_heatmap_column_cache', new=mock_warm),
+    ):
+        await finalize_run_job({'cache': mock_cache}, str(run_id))
+
+    mock_warm.assert_awaited_once()
+    warm_args = mock_warm.await_args
+    assert warm_args.args[0] is sessions[1]
+    assert warm_args.args[1] == run_id
+    assert warm_args.kwargs['redis_cache'] is mock_cache
+
+
 async def test_finalize_run_job_noop_when_children_pending() -> None:
     """finalize_if_all_done returns None -> no logging, still commits."""
     run_id = uuid.uuid4()

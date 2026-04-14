@@ -15,10 +15,17 @@ from typing import Any
 
 import pytest
 from httpx import AsyncClient
+from sqlalchemy import select
+from tropek.cache.redis_cache import RedisCache
+from tropek.config import get_settings
+from tropek.db.models import EvaluationRun
 from tropek.modules.quality_gate.schemas.heatmap import (
     EvaluationColumn,
     HeatmapColumnFragment,
     HeatmapSummaryCell,
+)
+from tropek.modules.quality_gate.workflows.execution.evaluation_executor import (
+    warm_heatmap_column_cache,
 )
 from tropek.modules.quality_gate.workflows.presentation import heatmap_cache
 
@@ -206,3 +213,74 @@ async def test_cache_false_does_not_read_or_write_cache(
     cached_after = await cache.get_many(run_ids)
     snapshot_after = {run_id: fragment.model_dump_json() for run_id, fragment in cached_after.items()}
     assert snapshot_after == snapshot_before, 'cache=false must not write fragments back to Redis'
+
+
+# ---------------------------------------------------------------------------
+# Worker warm path — Task 10
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.integration
+async def test_worker_warm_helper_caches_fragment(
+    redis_client,
+    db_session,
+    seed_asset_with_indicators: Callable[..., Coroutine[Any, Any, SeededAsset]],
+) -> None:
+    """``warm_heatmap_column_cache`` builds and caches a fragment for a completed run.
+
+    The helper is fire-and-forget — this test exercises the happy path, asserting
+    that the fragment lands in Redis under the column cache key. The executor's
+    wiring (``finalize_run_job`` → warm helper) is covered by reading rather
+    than by test; Task 12's property test will cover the end-to-end contract.
+    """
+    seeded = await seed_asset_with_indicators(cell_count=1)
+
+    run_id_result = await db_session.execute(select(EvaluationRun.id).where(EvaluationRun.asset_id == seeded.id))
+    run_id = run_id_result.scalar_one()
+
+    redis_cache = RedisCache(redis_client)
+    await warm_heatmap_column_cache(
+        db_session,
+        run_id,
+        redis_cache=redis_cache,
+        settings=get_settings(),
+    )
+
+    column_cache = heatmap_cache.HeatmapColumnCache(redis_client)
+    hits = await column_cache.get_many([run_id])
+    assert str(run_id) in hits, 'warm helper must write a fragment to the column cache'
+    cached_fragment = hits[str(run_id)]
+    assert cached_fragment.evaluation_run_id == run_id
+    assert cached_fragment.column.has_notes is False
+
+
+@pytest.mark.integration
+async def test_worker_warm_helper_is_fire_and_forget_on_missing_run(
+    redis_client,
+    db_session,
+) -> None:
+    """A missing run must not raise — the helper logs and returns."""
+    redis_cache = RedisCache(redis_client)
+    await warm_heatmap_column_cache(
+        db_session,
+        uuid.uuid4(),
+        redis_cache=redis_cache,
+        settings=get_settings(),
+    )
+
+
+@pytest.mark.integration
+async def test_worker_warm_helper_noop_when_redis_cache_is_none(
+    db_session,
+    seed_asset_with_indicators: Callable[..., Coroutine[Any, Any, SeededAsset]],
+) -> None:
+    """If no RedisCache is configured, the helper short-circuits without touching the DB."""
+    seeded = await seed_asset_with_indicators(cell_count=1)
+    run_id_result = await db_session.execute(select(EvaluationRun.id).where(EvaluationRun.asset_id == seeded.id))
+    run_id = run_id_result.scalar_one()
+    await warm_heatmap_column_cache(
+        db_session,
+        run_id,
+        redis_cache=None,
+        settings=get_settings(),
+    )
