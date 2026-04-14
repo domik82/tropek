@@ -263,20 +263,15 @@ export function AssetPanel({ assetName, initialEvalId }: Props) {
   const isLoading = evalsLoading || heatmapLoading
 
   const notedSlots = useMemo(() => {
-    // Multiple runs can share a period_start (e.g. original + re-eval both
-    // anchored at the same timestamp). Collect ALL eval ids per slot so the
-    // tooltip fires one column-annotations query per run and merges results —
-    // keeping a single `evalId` here silently drops notes from the losing run.
+    // Keyed by evaluation_id (unique per EvaluationRun) — matches the slot
+    // key used by the mapper. Two runs sharing a period_start (e.g. load-test
+    // and prod-validation at the same 16:00) stay as distinct slots so their
+    // notes do not bleed across columns.
     const slots = new Map<string, { evalIds: string[]; count: number }>()
     if (!heatmapData) return slots
     for (const col of heatmapData.columns) {
       if (col.has_notes) {
-        const existing = slots.get(col.period_start)
-        if (existing) {
-          existing.evalIds.push(col.evaluation_id)
-        } else {
-          slots.set(col.period_start, { evalIds: [col.evaluation_id], count: 0 })
-        }
+        slots.set(col.evaluation_id, { evalIds: [col.evaluation_id], count: 0 })
       }
     }
     return slots

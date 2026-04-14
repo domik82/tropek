@@ -167,7 +167,8 @@ export function assetHeatmapDtoToDomain(
           value: [xi, rowYIndex],
           result: summary ? canonicalSummaryResult(summary) : 'none',
           score: scoreToDisplay(summary?.score),
-          slot: column.period_start,
+          slot: column.evaluation_id,
+          periodStart: column.period_start,
           rowLabel: row.label,
           columnKey: column.evaluation_id,
           evaluation_name: column.eval_name,
@@ -187,7 +188,8 @@ export function assetHeatmapDtoToDomain(
           value: [xi, rowYIndex],
           result: summary ? canonicalSummaryResult(summary) : 'none',
           score: scoreToDisplay(summary?.score),
-          slot: column.period_start,
+          slot: column.evaluation_id,
+          periodStart: column.period_start,
           rowLabel: row.label,
           columnKey: column.evaluation_id,
           evaluation_name: column.eval_name,
@@ -207,7 +209,8 @@ export function assetHeatmapDtoToDomain(
         value: [xi, rowYIndex],
         result: indicator ? normalizeResult(indicator.result) : 'none',
         score: scoreToDisplay(indicator?.score),
-        slot: column.period_start,
+        slot: column.evaluation_id,
+        periodStart: column.period_start,
         rowLabel: row.label,
         columnKey: column.evaluation_id,
         evaluation_name: column.eval_name,
@@ -218,6 +221,16 @@ export function assetHeatmapDtoToDomain(
     }
   }
 
-  const slots = columns.map(column => column.period_start)
-  return { slots, rows, cells, headerRowIndices }
+  // Slot key must be unique per column. Two distinct runs can share a
+  // period_start (e.g. load-test and prod-validation both at 16:00), so
+  // keying on period_start would collide — use evaluation_id, which is
+  // guaranteed unique per EvaluationRun. The display label (the ISO
+  // timestamp shown on the x-axis) is provided via a separate
+  // `slotLabels` map consumed by HeatmapChart.formatColumnLabel.
+  const slots = columns.map(column => column.evaluation_id)
+  const slotLabels = new Map<string, string>()
+  for (const column of columns) {
+    slotLabels.set(column.evaluation_id, column.period_start)
+  }
+  return { slots, slotLabels, rows, cells, headerRowIndices }
 }

@@ -35,9 +35,14 @@ export function AssetHeatmap({
   const { theme } = useTheme()
   const colours = RESULT_COLOUR[theme]
 
-  const { slots, rows, cells, headerRowIndices } = useMemo(
+  const { slots, slotLabels, rows, cells, headerRowIndices } = useMemo(
     () => assetHeatmapDtoToDomain(data, expandState),
     [data, expandState],
+  )
+
+  const formatColumnLabel = useCallback(
+    (slot: string) => fmtDateTime(slotLabels.get(slot) ?? slot),
+    [slotLabels],
   )
 
   const selectedColumn = useMemo(() => {
@@ -56,13 +61,13 @@ export function AssetHeatmap({
 
   const formatTooltip = useCallback((cell: HeatmapEChartsCell): string => {
     if (cell.result === 'none') {
-      return `${cell.rowLabel}<br/>${fmtDateTime(cell.slot)}<br/><em>no data</em>`
+      return `${cell.rowLabel}<br/>${fmtDateTime(cell.periodStart)}<br/><em>no data</em>`
     }
     const rc = colours[cell.result as keyof typeof colours] ?? '#ccc'
     if (cell.isSloHeader) {
       return [
         `<b style="color:#58a6ff">${cell.rowLabel}</b>`,
-        fmtDateTime(cell.slot),
+        fmtDateTime(cell.periodStart),
         `Score: <b style="color:${rc}">${cell.score}</b> · <b style="color:${rc}">${cell.result.toUpperCase()}</b>`,
         `<span style="color:#888;font-size:10px">Click to expand/collapse</span>`,
       ].join('<br/>')
@@ -70,7 +75,7 @@ export function AssetHeatmap({
     return [
       cell.evaluation_name ? `<span style="color:#94a3b8">${cell.evaluation_name}</span>` : '',
       `<b>${cell.rowLabel}</b>`,
-      fmtDateTime(cell.slot),
+      fmtDateTime(cell.periodStart),
       `Score: <b style="color:${rc}">${cell.score}</b> · <b style="color:${rc}">${cell.result.toUpperCase()}</b>`,
       cell.evalId
         ? `<span style="color:#888;font-size:10px">Click to select this evaluation</span>`
@@ -107,7 +112,7 @@ export function AssetHeatmap({
         )]
       }
       if (evalIds.length > 0) {
-        onSlotSelect({ periodStart: cell.slot, evalIds, columnEvalId: columnKey })
+        onSlotSelect({ periodStart: cell.periodStart, evalIds, columnEvalId: columnKey })
       }
     } else if (cell.evalId && onEvalSelect) {
       onEvalSelect(cell.evalId)
@@ -122,6 +127,7 @@ export function AssetHeatmap({
       selectedColumn={selectedColumn}
       onCellClick={onCellClick}
       formatTooltip={formatTooltip}
+      formatColumnLabel={formatColumnLabel}
       headerRowIndices={headerRowIndices}
       instructionText="Click an indicator cell to select that evaluation. Click an SLO row to expand/collapse."
       notedColumns={notedSlots}
