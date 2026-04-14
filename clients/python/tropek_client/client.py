@@ -567,7 +567,7 @@ class _Evaluations:
     def re_evaluate(
         self,
         asset_name: str,
-        slo_name: str,
+        slo_name: str | None = None,
         *,
         from_date: str | None = None,
         from_baseline: bool = False,
@@ -577,7 +577,9 @@ class _Evaluations:
         pin_strategy: str | None = None,
     ) -> dict[str, Any]:
         """Re-evaluate completed evaluations from stored SLI values."""
-        body: dict[str, Any] = {'asset_name': asset_name, 'slo_name': slo_name}
+        body: dict[str, Any] = {'asset_name': asset_name}
+        if slo_name is not None:
+            body['slo_name'] = slo_name
         if from_date is not None:
             body['from_date'] = from_date
         if from_baseline:

@@ -70,6 +70,8 @@ def _make_annotation(
     ann.author = 'tester'
     ann.category = category
     ann.tags = {}
+    ann.note_group_id = None
+    ann.note_group_name = None
     ann.hidden_at = None
     ann.hidden_by = None
     ann.hidden_reason = None
