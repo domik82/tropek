@@ -63,7 +63,8 @@ export function useColumnAnnotations(evaluationId: string | undefined) {
     queryKey: evaluationKeys.columnAnnotations(evaluationId ?? ''),
     queryFn: () => fetchColumnAnnotations(evaluationId!),
     enabled: !!evaluationId,
-    staleTime: Infinity,
+    staleTime: 0,
+    refetchOnMount: 'always',
   })
 }
 
