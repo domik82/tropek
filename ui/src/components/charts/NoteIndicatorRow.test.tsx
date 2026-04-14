@@ -4,15 +4,15 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import type { Annotation } from '@/features/evaluations/domain'
 import { NoteIndicatorRow } from './NoteIndicatorRow'
 
-const mockUseColumnAnnotations = vi.fn()
-vi.mock('@/features/evaluations/hooks', () => ({
-  useColumnAnnotations: (...args: unknown[]) => mockUseColumnAnnotations(...args),
+const mockFetch = vi.fn()
+vi.mock('@/features/evaluations/api', () => ({
+  fetchColumnAnnotations: (...args: unknown[]) => mockFetch(...args),
 }))
 
 let queryClient: QueryClient
 beforeEach(() => {
   queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-  mockUseColumnAnnotations.mockReset()
+  mockFetch.mockReset()
 })
 afterEach(() => {
   queryClient.cancelQueries()
@@ -44,7 +44,7 @@ function makeAnnotation(partial: Partial<Annotation>): Annotation {
 
 describe('NoteIndicatorRow tooltip', () => {
   it('renders a standalone annotation (noteGroupId=null) in the tooltip', async () => {
-    const annotations: Annotation[] = [
+    mockFetch.mockResolvedValue([
       makeAnnotation({
         id: 'group-1',
         content: 'plugin/auth: pass → pass, score 100.0 → 100.0',
@@ -59,18 +59,13 @@ describe('NoteIndicatorRow tooltip', () => {
         author: 'd',
         noteGroupId: null,
       }),
-    ]
-    mockUseColumnAnnotations.mockReturnValue({
-      data: annotations,
-      isFetching: false,
-      refetch: vi.fn(),
-    })
+    ])
 
     render(
       wrap(
         <NoteIndicatorRow
           columns={['col-1']}
-          notedColumns={new Map([['col-1', { evalId: 'eval-1', count: 2 }]])}
+          notedColumns={new Map([['col-1', { evalIds: ['eval-1'], count: 2 }]])}
           columnPositions={[{ x: 0, width: 20 }]}
         />,
       ),
@@ -80,12 +75,65 @@ describe('NoteIndicatorRow tooltip', () => {
     const wrapper = screen.getByRole('button').parentElement!
     fireEvent.mouseEnter(wrapper)
 
-    // Both the grouped content and the standalone content must be visible
     expect(
       await screen.findByText(/plugin\/auth: pass → pass/),
     ).toBeInTheDocument()
     expect(
       await screen.findByText(/this is really long text/),
     ).toBeInTheDocument()
+  })
+
+  it('merges annotations from multiple runs sharing one slot (original + re-eval)', async () => {
+    // Two runs at the same period_start. The manual note is on the first
+    // run; the second run only has re-eval annotations. The tooltip must
+    // surface both sets — dropping either silently hides the user's note.
+    mockFetch.mockImplementation((evalId: string) => {
+      if (evalId === 'run-with-note') {
+        return Promise.resolve([
+          makeAnnotation({
+            id: 'manual',
+            content: 'THE MANUAL NOTE CONTENT',
+            category: 'error',
+            author: 'd',
+            noteGroupId: null,
+          }),
+        ])
+      }
+      if (evalId === 'run-reeval-only') {
+        return Promise.resolve([
+          makeAnnotation({
+            id: 'reeval',
+            content: 'plugin/auth: pass → pass, score 100.0 → 100.0',
+            category: 're-evaluation',
+            noteGroupId: 'g1',
+            noteGroupName: 're-evaluation — 5 SLOs',
+          }),
+        ])
+      }
+      return Promise.resolve([])
+    })
+
+    render(
+      wrap(
+        <NoteIndicatorRow
+          columns={['slot-1']}
+          notedColumns={new Map([[
+            'slot-1',
+            { evalIds: ['run-with-note', 'run-reeval-only'], count: 2 },
+          ]])}
+          columnPositions={[{ x: 0, width: 20 }]}
+        />,
+      ),
+    )
+
+    const wrapper = screen.getByRole('button').parentElement!
+    fireEvent.mouseEnter(wrapper)
+
+    expect(await screen.findByText(/THE MANUAL NOTE CONTENT/)).toBeInTheDocument()
+    expect(
+      await screen.findByText(/plugin\/auth: pass → pass/),
+    ).toBeInTheDocument()
+    expect(mockFetch).toHaveBeenCalledWith('run-with-note')
+    expect(mockFetch).toHaveBeenCalledWith('run-reeval-only')
   })
 })
