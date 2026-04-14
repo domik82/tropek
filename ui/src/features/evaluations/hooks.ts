@@ -10,6 +10,7 @@ import {
   fetchTrend,
   fetchColumnAnnotations,
   addAnnotation,
+  addRunAnnotation,
   hideAnnotation,
   invalidateEvaluation,
   restoreEvaluation,
@@ -92,6 +93,19 @@ export function useAddAnnotation(evalId: string) {
       qc.invalidateQueries({ queryKey: [...evaluationKeys.all, 'column-annotations'] })
       // Metric-heatmap carries has_notes per column — refetch so a newly added
       // note makes its indicator appear immediately.
+      qc.invalidateQueries({ queryKey: evaluationKeys.allHeatmaps })
+    },
+  })
+}
+
+export function useAddRunAnnotation(runId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (payload: { content: string; category?: string; author?: string }) =>
+      addRunAnnotation(runId, payload),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: evaluationKeys.detail(runId) })
+      qc.invalidateQueries({ queryKey: [...evaluationKeys.all, 'column-annotations'] })
       qc.invalidateQueries({ queryKey: evaluationKeys.allHeatmaps })
     },
   })

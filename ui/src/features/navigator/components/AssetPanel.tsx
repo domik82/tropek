@@ -361,9 +361,9 @@ export function AssetPanel({ assetName, initialEvalId }: Props) {
       )}
 
       {/* Notes */}
-      {!isLoading && hasColumn && effectiveEvalId && (
+      {!isLoading && hasColumn && selectedColumnEvalId && (
         <div ref={notesSectionRef}>
-          <AnnotationSection ref={notesRef} evalId={effectiveEvalId} annotations={displayAnnotations} />
+          <AnnotationSection ref={notesRef} runId={selectedColumnEvalId} annotations={displayAnnotations} />
         </div>
       )}
 

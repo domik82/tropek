@@ -183,3 +183,37 @@ async def test_column_annotations_404_for_unknown_run(
         params={'evaluation_id': str(uuid.uuid4())},
     )
     assert resp.status_code == 404
+
+
+@pytest.mark.integration
+async def test_column_annotations_unions_run_level_and_slo_level(
+    db_session: AsyncSession,
+    async_client: AsyncClient,
+) -> None:
+    """Run-level notes (new UI form) and SLO-level notes (re-eval) are both returned."""
+    asset_id = await _setup_asset(db_session, 'col-ann-union-asset')
+    run_id, slo_ann_ids = await _setup_run_with_annotations(db_session, asset_id)
+
+    run_ann = EvaluationAnnotation(
+        id=uuid.uuid4(),
+        evaluation_run_id=run_id,
+        content='column-level note',
+        author='daisy',
+    )
+    db_session.add(run_ann)
+    await db_session.flush()
+
+    resp = await async_client.get(
+        '/evaluations/column-annotations',
+        params={'evaluation_id': str(run_id)},
+    )
+    assert resp.status_code == 200
+    data = resp.json()
+    returned_ids = {a['id'] for a in data}
+    assert returned_ids == {str(run_ann.id), *(str(aid) for aid in slo_ann_ids)}
+    run_ann_entry = next(a for a in data if a['id'] == str(run_ann.id))
+    assert run_ann_entry['evaluation_run_id'] == str(run_id)
+    assert run_ann_entry['slo_evaluation_id'] is None
+    slo_ann_entry = next(a for a in data if a['id'] == str(slo_ann_ids[0]))
+    assert slo_ann_entry['evaluation_run_id'] is None
+    assert slo_ann_entry['slo_evaluation_id'] is not None

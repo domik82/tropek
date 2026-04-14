@@ -70,12 +70,12 @@ export interface AnnotationSectionHandle {
 }
 
 interface Props {
-  evalId: string
+  runId: string
   annotations: Annotation[]
 }
 
 export const AnnotationSection = forwardRef<AnnotationSectionHandle, Props>(
-  function AnnotationSection({ evalId, annotations }, ref) {
+  function AnnotationSection({ runId, annotations }, ref) {
     const [showForm, setShowForm] = useState(false)
     const [viewMode, setViewMode] = useState<'compact' | 'expanded'>('compact')
 
@@ -131,7 +131,7 @@ export const AnnotationSection = forwardRef<AnnotationSectionHandle, Props>(
 
         {/* Add note form */}
         {showForm && (
-          <AddNoteForm evalId={evalId} onClose={() => setShowForm(false)} />
+          <AddNoteForm runId={runId} onClose={() => setShowForm(false)} />
         )}
 
         {/* Note entries — grouped and standalone */}
@@ -139,14 +139,14 @@ export const AnnotationSection = forwardRef<AnnotationSectionHandle, Props>(
           entry.kind === 'group' ? (
             <NoteGroup
               key={entry.groupId}
-              evalId={evalId}
+              runId={runId}
               annotations={entry.annotations}
               compact={viewMode === 'compact'}
             />
           ) : (
             <NoteEntry
               key={entry.annotation.id}
-              evalId={evalId}
+              runId={runId}
               annotation={entry.annotation}
               compact={viewMode === 'compact'}
             />

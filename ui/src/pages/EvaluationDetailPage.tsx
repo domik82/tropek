@@ -79,7 +79,7 @@ export function EvaluationDetailPage() {
         />
       )}
 
-      <EvaluationNotesSection ref={notesSectionRef} evaluationId={id!} annotations={ev.annotations} />
+      <EvaluationNotesSection ref={notesSectionRef} runId={ev.evaluationId} annotations={ev.annotations} />
 
       <EvaluationIndicatorSection evaluation={ev} assetDisplayName={assetDisplayName} sloDisplayName={sloDisplayName} />
     </div>

@@ -5,13 +5,13 @@ import { useHideAnnotation } from '../hooks'
 import type { Annotation } from '../domain'
 
 interface Props {
-  evalId: string
+  runId: string
   annotations: Annotation[]
   compact?: boolean
 }
 
-export function NoteGroup({ evalId, annotations, compact }: Props) {
-  const hideAnnotation = useHideAnnotation(evalId)
+export function NoteGroup({ runId, annotations, compact }: Props) {
+  const hideAnnotation = useHideAnnotation(runId)
   const [hidingId, setHidingId] = useState<string | null>(null)
   const firstCreated = annotations[0].createdAt
 
