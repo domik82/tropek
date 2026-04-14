@@ -102,3 +102,33 @@ class GroupedMetricHeatmapResponse(BaseModel):
     columns: list[EvaluationColumn]  # ordered oldest → newest
     groups: list[HeatmapSloGroupSection]  # SLO groups in appearance order
     composite: list[HeatmapSummaryCell]  # Overall row (worst-case across all groups)
+
+
+class HeatmapColumnSloFragment(BaseModel):
+    """One SLO's contribution to one column's fragment.
+
+    Criteria strings are embedded inside each cell's pass_targets/warning_targets
+    and are correctly scoped to the SLO version that ran at that moment — a
+    later SLO version edit does not mutate this fragment.
+    """
+
+    slo_name: str
+    slo_display_name: str | None = None
+    metrics: list[HeatmapMetric]
+    cells: list[HeatmapCellGrouped]
+    summary: HeatmapSummaryCell  # this SLO's per-column summary cell
+
+
+class HeatmapColumnFragment(BaseModel):
+    """One column of the grouped heatmap, cached independently in Redis.
+
+    Cache key: `heatmap:col:v1:{evaluation_run_id}` with a 7-day TTL backstop.
+    The full GroupedMetricHeatmapResponse is assembled by merging N fragments
+    at read time — see heatmap_cache.assemble_response().
+    """
+
+    schema_version: int = 1  # bumped when the fragment shape changes
+    evaluation_run_id: uuid.UUID
+    column: EvaluationColumn
+    per_slo: list[HeatmapColumnSloFragment]
+    composite_summary: HeatmapSummaryCell
