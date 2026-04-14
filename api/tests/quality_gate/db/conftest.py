@@ -7,6 +7,7 @@ from collections.abc import AsyncGenerator
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 
+import fakeredis.aioredis
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -15,7 +16,9 @@ from tropek.db.session import get_session
 from tropek.main import app
 from tropek.modules.quality_gate.repositories.evaluation import EvaluationRepository
 from tropek.modules.quality_gate.repositories.evaluation_run import EvaluationRunRepository
+from tropek.modules.quality_gate.shared.dependencies import get_heatmap_column_cache
 from tropek.modules.quality_gate.shared.params import EvalCreateParams
+from tropek.modules.quality_gate.workflows.presentation.heatmap_cache import HeatmapColumnCache
 
 from tests.db.conftest import db_engine, db_session, db_url, redis_client  # noqa: F401
 
@@ -31,17 +34,27 @@ class SeededAsset:
 
 
 @pytest_asyncio.fixture()
-async def api_client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient]:  # noqa: F811
+async def api_client(
+    db_session: AsyncSession,  # noqa: F811
+    redis_client: fakeredis.aioredis.FakeRedis,  # noqa: F811
+) -> AsyncGenerator[AsyncClient]:
     """Yield an httpx AsyncClient bound to the FastAPI app with the test DB session.
 
     Overrides the ``get_session`` dependency so every handler call shares the
-    same rolled-back session managed by ``db_session``.
+    same rolled-back session managed by ``db_session``. Also overrides
+    ``get_heatmap_column_cache`` so handlers see the same fakeredis instance
+    the test fixtures are poking at — avoids having to reach through
+    ``app.state.cache`` (which is only set up by the production lifespan).
     """
 
     async def _override_get_session() -> AsyncGenerator[AsyncSession]:
         yield db_session
 
+    async def _override_get_heatmap_column_cache() -> HeatmapColumnCache:
+        return HeatmapColumnCache(redis_client)
+
     app.dependency_overrides[get_session] = _override_get_session
+    app.dependency_overrides[get_heatmap_column_cache] = _override_get_heatmap_column_cache
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url='http://test') as client:
         yield client

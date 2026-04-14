@@ -32,15 +32,22 @@ from tropek.modules.quality_gate.schemas import (
     PinBaselineRequest,
     TrendPoint,
 )
+from tropek.modules.quality_gate.schemas.heatmap import HeatmapColumnFragment
 from tropek.modules.quality_gate.schemas.re_evaluation import (
     ReEvaluateRequest,
     ReEvaluateResponse,
 )
-from tropek.modules.quality_gate.shared.dependencies import QualityGateRepos, get_qg_repos
+from tropek.modules.quality_gate.shared.dependencies import (
+    QualityGateRepos,
+    get_heatmap_column_cache,
+    get_qg_repos,
+)
 from tropek.modules.quality_gate.shared.exceptions import BaselinePinConflictError
+from tropek.modules.quality_gate.workflows.presentation.heatmap_cache import HeatmapColumnCache
 from tropek.modules.quality_gate.workflows.presentation.presenter import (
+    assemble_grouped_response,
+    build_column_fragment,
     build_detail,
-    build_grouped_heatmap_response,
     build_summary,
 )
 from tropek.modules.quality_gate.workflows.re_evaluation.re_evaluation_service import re_evaluate
@@ -211,22 +218,66 @@ async def get_grouped_metric_heatmap(
         ),
     ),
     repos: QualityGateRepos = Depends(get_qg_repos),
+    column_cache: HeatmapColumnCache | None = Depends(get_heatmap_column_cache),
 ) -> GroupedMetricHeatmapResponse:
-    """Return a grouped metric heatmap — one column per parent EvaluationRun."""
+    """Return a grouped metric heatmap — one column per parent EvaluationRun.
+
+    Read path: run a cheap list query for the candidate run ids in the window,
+    MGET the Redis column cache for those ids, fall through to the heavy DB
+    build only for runs that missed the cache, assemble the final response
+    from the combined fragments, and write newly built fragments back to the
+    cache. ``cache=false`` bypasses Redis entirely — no reads, no writes.
+    """
     asset = await repos.asset_repo.get_by_name(asset_name)
     if asset is None:
         raise NotFoundError('asset', asset_name)
-    # PR1: cache parameter is accepted but not yet plumbed — both paths fall
-    # through to the same build. PR2 replaces this body with MGET + assemble.
-    _ = cache
-    runs = await repos.trend_repo.get_grouped_metric_heatmap(
+
+    # Cheap query: which runs live in the window? This becomes the cache-key
+    # inventory for the MGET below.
+    candidate_runs = await repos.trend_repo.list_runs_for_heatmap(
         asset_id=asset.id,
         eval_name=evaluation_name,
         from_ts=from_ts,
         to_ts=to_ts,
     )
-    noted_run_ids = await repos.trend_repo.get_run_ids_with_notes([run.id for run in runs])
-    return build_grouped_heatmap_response(asset_name, runs, noted_run_ids=noted_run_ids)
+    candidate_run_ids = [run.id for run in candidate_runs]
+
+    # Read whatever is already cached (unless the caller opted out).
+    active_cache = column_cache if cache else None
+    fragments_by_id: dict[str, HeatmapColumnFragment] = {}
+    if active_cache is not None:
+        fragments_by_id = await active_cache.get_many(candidate_run_ids)
+
+    # Anything missing from the cache gets rebuilt from the DB. When
+    # cache=false this rebuilds everything — pure bypass.
+    missing_ids = [run_id for run_id in candidate_run_ids if str(run_id) not in fragments_by_id]
+    if missing_ids:
+        missing_runs = await repos.trend_repo.get_grouped_metric_heatmap(asset_id=asset.id, run_id_filter=missing_ids)
+        # has_notes is overlaid below from the fresh note-state query, so
+        # any placeholder works here.
+        rebuilt_fragments = [build_column_fragment(run, has_notes=False) for run in missing_runs]
+        for fragment in rebuilt_fragments:
+            fragments_by_id[str(fragment.evaluation_run_id)] = fragment
+        if active_cache is not None:
+            await active_cache.set_many(rebuilt_fragments)
+
+    # Fresh note state for every column — annotations do not invalidate the
+    # column cache, so they are overlaid onto each fragment at assembly time.
+    noted_run_ids = await repos.trend_repo.get_run_ids_with_notes(candidate_run_ids)
+
+    # Assemble in canonical column order (oldest → newest, with eval_name as
+    # the tie-breaker) so the cached path matches the legacy wrapper exactly.
+    ordered_runs = sorted(candidate_runs, key=lambda r: (r.period_start, r.eval_name or ''))
+    ordered_fragments: list[HeatmapColumnFragment] = []
+    for run in ordered_runs:
+        fragment = fragments_by_id[str(run.id)]
+        ordered_fragments.append(
+            fragment.model_copy(
+                update={'column': fragment.column.model_copy(update={'has_notes': run.id in noted_run_ids})}
+            )
+        )
+
+    return assemble_grouped_response(asset_name, ordered_fragments)
 
 
 @router.post('/evaluations/re-evaluate', response_model=ReEvaluateResponse)

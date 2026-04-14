@@ -2,21 +2,27 @@
 
 The property test (cache_equals_uncached_after_mutation) lives in a follow-up
 task (Task 12). These tests cover the raw cache module: key shape, MGET, SET,
-DELETE, and corrupt-payload handling.
+DELETE, and corrupt-payload handling, plus the read-path integration that
+wires the cache into the router handler.
 """
 
 from __future__ import annotations
 
 import uuid
+from collections.abc import Callable, Coroutine
 from datetime import UTC, datetime
+from typing import Any
 
 import pytest
+from httpx import AsyncClient
 from tropek.modules.quality_gate.schemas.heatmap import (
     EvaluationColumn,
     HeatmapColumnFragment,
     HeatmapSummaryCell,
 )
 from tropek.modules.quality_gate.workflows.presentation import heatmap_cache
+
+from .conftest import SeededAsset
 
 
 def _make_fragment(run_id: uuid.UUID | None = None) -> HeatmapColumnFragment:
@@ -113,3 +119,90 @@ async def test_corrupted_payload_returns_miss_not_exception(redis_client) -> Non
     )
     results = await cache.get_many([run_id])
     assert results == {}
+
+
+# ---------------------------------------------------------------------------
+# Read-path integration tests (router handler + HeatmapColumnCache)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.integration
+async def test_read_path_cold_cache_writes_back_every_column(
+    api_client: AsyncClient,
+    redis_client,
+    seed_asset_with_indicators: Callable[..., Coroutine[Any, Any, SeededAsset]],
+) -> None:
+    """Cold cache: the read path must rebuild every column from the DB and
+    write each fresh fragment back into Redis before returning.
+    """
+    seeded = await seed_asset_with_indicators(cell_count=5)
+
+    cache = heatmap_cache.HeatmapColumnCache(redis_client)
+    pre_hits = await cache.get_many([])
+    assert pre_hits == {}
+
+    response = await api_client.get(f'/evaluate/metric-heatmap?asset_name={seeded.name}')
+    assert response.status_code == 200
+    column_ids = [column['evaluation_id'] for column in response.json()['columns']]
+    assert len(column_ids) == 5
+
+    hits_after = await cache.get_many(column_ids)
+    assert len(hits_after) == 5
+    for column_id in column_ids:
+        assert column_id in hits_after
+
+
+@pytest.mark.integration
+async def test_read_path_warm_cache_serves_same_response(
+    api_client: AsyncClient,
+    redis_client,  # consumed by the api_client fixture override; required to share state
+    seed_asset_with_indicators: Callable[..., Coroutine[Any, Any, SeededAsset]],
+) -> None:
+    """Warm cache: a second read hits the cached fragments and the response
+    must be byte-identical to the first (cold) read.
+    """
+    seeded = await seed_asset_with_indicators(cell_count=4)
+
+    first = await api_client.get(f'/evaluate/metric-heatmap?asset_name={seeded.name}')
+    second = await api_client.get(f'/evaluate/metric-heatmap?asset_name={seeded.name}')
+
+    assert first.status_code == 200
+    assert second.status_code == 200
+    assert first.json() == second.json()
+    assert len(first.json()['columns']) == 4
+
+
+@pytest.mark.integration
+async def test_cache_false_does_not_read_or_write_cache(
+    api_client: AsyncClient,
+    redis_client,
+    seed_asset_with_indicators: Callable[..., Coroutine[Any, Any, SeededAsset]],
+) -> None:
+    """``cache=false`` is pure bypass: no Redis read, no Redis write.
+
+    We pre-warm the cache with a real first read, snapshot every fragment
+    payload, issue a ``cache=false`` read, and assert that the cache state is
+    byte-identical after the bypass. If the handler wrote rebuilt fragments
+    back under ``cache=false``, the payloads would diverge (even trivially,
+    because the write would touch Redis). If it read from cache under
+    ``cache=false``, the rebuilt response would still be correct but the
+    write-back half is the load-bearing assertion here.
+    """
+    seeded = await seed_asset_with_indicators(cell_count=3)
+
+    initial = await api_client.get(f'/evaluate/metric-heatmap?asset_name={seeded.name}')
+    assert initial.status_code == 200
+    run_ids = [column['evaluation_id'] for column in initial.json()['columns']]
+    assert len(run_ids) == 3
+
+    cache = heatmap_cache.HeatmapColumnCache(redis_client)
+    cached_before = await cache.get_many(run_ids)
+    snapshot_before = {run_id: fragment.model_dump_json() for run_id, fragment in cached_before.items()}
+    assert len(snapshot_before) == 3
+
+    bypass = await api_client.get(f'/evaluate/metric-heatmap?asset_name={seeded.name}&cache=false')
+    assert bypass.status_code == 200
+
+    cached_after = await cache.get_many(run_ids)
+    snapshot_after = {run_id: fragment.model_dump_json() for run_id, fragment in cached_after.items()}
+    assert snapshot_after == snapshot_before, 'cache=false must not write fragments back to Redis'

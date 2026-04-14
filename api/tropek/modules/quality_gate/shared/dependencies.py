@@ -8,6 +8,7 @@ from fastapi import Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from tropek.cache.redis_cache import RedisCache
+from tropek.config import get_settings
 from tropek.db.session import get_session
 from tropek.modules.assets.repository import (
     AssetGroupRepository,
@@ -21,6 +22,7 @@ from tropek.modules.quality_gate.repositories.evaluation import EvaluationReposi
 from tropek.modules.quality_gate.repositories.evaluation_run import EvaluationRunRepository
 from tropek.modules.quality_gate.repositories.sli_value import SLIValueRepository
 from tropek.modules.quality_gate.repositories.trend import TrendRepository
+from tropek.modules.quality_gate.workflows.presentation.heatmap_cache import HeatmapColumnCache
 from tropek.modules.sli_registry.repository import SLIRepository
 from tropek.modules.slo_registry.repository import SLORepository
 
@@ -66,4 +68,26 @@ async def get_qg_repos(
         ds_repo=DataSourceRepository(session),
         session=session,
         cache=cache,
+    )
+
+
+async def get_heatmap_column_cache(request: Request) -> HeatmapColumnCache | None:
+    """Return a ``HeatmapColumnCache`` for the request, or ``None`` when Redis is unavailable.
+
+    Reaches through the existing ``RedisCache`` on ``app.state.cache`` to reuse
+    the same underlying ``redis.asyncio`` client. The handler treats ``None``
+    as "cache disabled" and falls through to the DB build path.
+
+    This is deliberately a thin reach-through rather than a second top-level
+    provider: the lifespan in ``main.py`` owns exactly one redis client (via
+    ``RedisCache``), and Task 10's worker warm path will want the same
+    construction, so keeping a single wiring point avoids drift.
+    """
+    redis_cache: RedisCache | None = getattr(request.app.state, 'cache', None)
+    if redis_cache is None:
+        return None
+    settings = get_settings()
+    return HeatmapColumnCache(
+        redis_cache._redis,
+        ttl_seconds=settings.cache.ttl.heatmap_column,
     )
