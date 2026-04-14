@@ -16,20 +16,43 @@ from tropek.db.models import Asset, EvaluationAnnotation, EvaluationRun, Indicat
 from tropek.modules.common.exceptions import ConflictError
 from tropek.modules.quality_gate.evaluation_engine.constants import EvaluationStatus
 from tropek.modules.quality_gate.shared.params import EvalCreateParams
+from tropek.modules.quality_gate.workflows.presentation.heatmap_cache import HeatmapColumnCache
 
 
 class EvaluationRepository:
     """Data access layer for evaluation CRUD and status mutations."""
 
-    def __init__(self, session: AsyncSession, cache: RedisCache | None = None) -> None:
+    def __init__(
+        self,
+        session: AsyncSession,
+        cache: RedisCache | None = None,
+        heatmap_cache: HeatmapColumnCache | None = None,
+    ) -> None:
         self._session = session
         self._cache = cache
+        self._heatmap_cache = heatmap_cache
 
     async def _invalidate_baseline_cache(
-        self, asset_id: uuid.UUID | None, slo_name: str | None,
+        self,
+        asset_id: uuid.UUID | None,
+        slo_name: str | None,
     ) -> None:
         if self._cache and asset_id and slo_name:
             await self._cache.invalidate(f'baseline:{asset_id}:{slo_name}')
+
+    async def _invalidate_heatmap_column(self, run_id: uuid.UUID | None) -> None:
+        """Delete the cached heatmap column fragment for a run.
+
+        Called from every mutation that changes a run's presented state
+        (mark_completed, invalidate, restore, override_status, restore_override,
+        pin_baseline, unpin_baseline). The cache is opportunistic — Redis
+        failures are logged and dropped by ``HeatmapColumnCache.delete``, so
+        this method never raises. Short-circuits when the cache is not wired
+        or the caller has no run id in scope.
+        """
+        if run_id is None or self._heatmap_cache is None:
+            return
+        await self._heatmap_cache.delete(run_id)
 
     async def create_pending(self, params: EvalCreateParams) -> SLOEvaluation:
         """Create a new evaluation record in pending status.
@@ -187,6 +210,7 @@ class EvaluationRepository:
         job_stats: dict[str, Any] | None = None,
         compared_evaluation_ids: list[str] | None = None,
         asset_id: uuid.UUID | None = None,
+        run_id: uuid.UUID | None = None,
     ) -> None:
         """Write final result and transition to completed.
 
@@ -201,6 +225,7 @@ class EvaluationRepository:
             job_stats: Optional dict of job execution stats to merge.
             compared_evaluation_ids: IDs of evaluations used for relative criteria.
             asset_id: Asset UUID for baseline cache invalidation.
+            run_id: Parent EvaluationRun UUID for heatmap column cache invalidation.
         """
         merged_stats: dict[str, Any] = dict(job_stats or {})
         if compared_evaluation_ids is not None:
@@ -219,6 +244,7 @@ class EvaluationRepository:
             values['slo_version'] = slo_version
         await self._session.execute(update(SLOEvaluation).where(SLOEvaluation.id == eval_id).values(**values))
         await self._invalidate_baseline_cache(asset_id, slo_name)
+        await self._invalidate_heatmap_column(run_id)
 
     async def mark_failed(self, eval_id: uuid.UUID, job_stats: dict[str, Any] | None = None) -> None:
         """Transition evaluation to failed, recording error info.
@@ -422,6 +448,7 @@ class EvaluationRepository:
             .values(invalidated=True, invalidation_note=note)
         )
         await self._invalidate_baseline_cache(ev.asset_id, ev.slo_name)
+        await self._invalidate_heatmap_column(ev.evaluation_id)
         return await self.get_by_id(eval_id)
 
     async def restore(self, eval_id: uuid.UUID) -> SLOEvaluation | None:
@@ -435,6 +462,7 @@ class EvaluationRepository:
             .values(invalidated=False, invalidation_note=None)
         )
         await self._invalidate_baseline_cache(ev.asset_id, ev.slo_name)
+        await self._invalidate_heatmap_column(ev.evaluation_id)
         return await self.get_by_id(eval_id)
 
     async def pin_baseline(
@@ -476,6 +504,7 @@ class EvaluationRepository:
         )
         await self._session.flush()
         await self._invalidate_baseline_cache(ev.asset_id, ev.slo_name)
+        await self._invalidate_heatmap_column(ev.evaluation_id)
         return await self.get_by_id(eval_id)
 
     async def unpin_baseline(self, eval_id: uuid.UUID) -> SLOEvaluation | None:
@@ -488,6 +517,7 @@ class EvaluationRepository:
         )
         await self._session.flush()
         await self._invalidate_baseline_cache(ev.asset_id, ev.slo_name)
+        await self._invalidate_heatmap_column(ev.evaluation_id)
         return await self.get_by_id(eval_id)
 
     async def override_status(
@@ -513,6 +543,7 @@ class EvaluationRepository:
         await self._session.execute(update(SLOEvaluation).where(SLOEvaluation.id == eval_id).values(**values))
         await self._session.flush()
         await self._invalidate_baseline_cache(ev.asset_id, ev.slo_name)
+        await self._invalidate_heatmap_column(ev.evaluation_id)
         return await self.get_by_id(eval_id)
 
     async def restore_override(self, eval_id: uuid.UUID) -> SLOEvaluation | None:
@@ -532,6 +563,7 @@ class EvaluationRepository:
         )
         await self._session.flush()
         await self._invalidate_baseline_cache(ev.asset_id, ev.slo_name)
+        await self._invalidate_heatmap_column(ev.evaluation_id)
         return await self.get_by_id(eval_id)
 
     async def get_by_run_id(self, run_id: uuid.UUID) -> list[SLOEvaluation]:

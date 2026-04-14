@@ -28,9 +28,11 @@ from tropek.modules.quality_gate.workflows.execution.evaluation_executor import 
     _load_definitions,
     fetch_and_evaluate,
     load_evaluation_snapshot,
+    warm_heatmap_column_cache,
     write_results,
     write_sli_values_phase,
 )
+from tropek.modules.quality_gate.workflows.presentation.heatmap_cache import HeatmapColumnCache
 
 logger = structlog.get_logger()
 
@@ -192,6 +194,13 @@ async def run_evaluation_job(ctx: dict[str, Any], eval_id_str: str, defer_count:
         return
 
     # Phase 3a: Write evaluation result + indicator rows (COMMIT immediately)
+    settings = get_settings()
+    heatmap_column_cache: HeatmapColumnCache | None = None
+    if cache is not None and cache._redis is not None:
+        heatmap_column_cache = HeatmapColumnCache(
+            cache._redis,
+            ttl_seconds=settings.cache.ttl.heatmap_column,
+        )
     async with session_factory() as session:
         await write_results(
             session=session,
@@ -199,6 +208,7 @@ async def run_evaluation_job(ctx: dict[str, Any], eval_id_str: str, defer_count:
             slo_def=slo_def,
             fetch_result=fetch_result,
             cache=cache,
+            heatmap_cache=heatmap_column_cache,
         )
         await session.commit()
 
@@ -232,6 +242,7 @@ async def finalize_run_job(ctx: dict[str, Any], run_id_str: str) -> None:
     """Arq job — finalize parent evaluation run if all children are done."""
     session_factory = get_session_factory()
     run_id = uuid.UUID(run_id_str)
+    cache: RedisCache | None = ctx.get('cache')
 
     async with session_factory() as session:
         run_repo = EvaluationRunRepository(session)
@@ -244,6 +255,20 @@ async def finalize_run_job(ctx: dict[str, Any], run_id_str: str) -> None:
             evaluation_id=run_id_str,
             result=finalized.result,
         )
+        # Warm the per-column heatmap cache so the first reader pays zero
+        # rebuild cost. Only touches the DB if Redis is actually available —
+        # the helper short-circuits on None, and we mirror that guard here so
+        # a cache-less deployment does not open a second session per finalize.
+        # Failures are logged inside the helper — cache state must never
+        # block finalize completion.
+        if cache is not None:
+            async with session_factory() as session:
+                await warm_heatmap_column_cache(
+                    session,
+                    run_id,
+                    redis_cache=cache,
+                    settings=get_settings(),
+                )
 
 
 def _sweeper_cron_seconds(interval_seconds: int) -> set[int]:

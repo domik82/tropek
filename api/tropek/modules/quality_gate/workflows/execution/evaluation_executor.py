@@ -12,6 +12,7 @@ from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from tropek.cache.redis_cache import RedisCache
+from tropek.config import Settings
 from tropek.db.models import DataSource, SLIDefinition, SLODefinition, SLOEvaluation
 from tropek.modules.quality_gate.evaluation_engine.evaluator import evaluate
 from tropek.modules.quality_gate.evaluation_engine.result_models import EvaluationResult, IndicatorResult
@@ -21,6 +22,7 @@ from tropek.modules.quality_gate.repositories.baseline import BaselineRepository
 from tropek.modules.quality_gate.repositories.evaluation import EvaluationRepository
 from tropek.modules.quality_gate.repositories.indicator import IndicatorRepository, build_indicator_row_dicts
 from tropek.modules.quality_gate.repositories.sli_value import SLIValueRepository
+from tropek.modules.quality_gate.repositories.trend import TrendRepository
 from tropek.modules.quality_gate.workflows.execution.adapter_client import HttpAdapterClient
 from tropek.modules.quality_gate.workflows.execution.evaluation_helpers import (
     build_eval_variables as _build_eval_variables_shared,
@@ -29,6 +31,8 @@ from tropek.modules.quality_gate.workflows.execution.evaluation_helpers import (
     build_slo_model,
     compute_baselines,
 )
+from tropek.modules.quality_gate.workflows.presentation.heatmap_cache import HeatmapColumnCache
+from tropek.modules.quality_gate.workflows.presentation.presenter import build_column_fragment
 from tropek.modules.sli_registry.repository import SLIRepository
 from tropek.modules.slo_registry.repository import SLORepository
 
@@ -416,6 +420,7 @@ async def write_results(
     slo_def: SLODefinition,
     fetch_result: FetchAndEvaluateResult,
     cache: RedisCache | None = None,
+    heatmap_cache: HeatmapColumnCache | None = None,
 ) -> None:
     """Phase 3a: write evaluation result and indicator rows.
 
@@ -430,7 +435,7 @@ async def write_results(
 
     achieved_points = sum(round(ir.score) for ir in eval_result.indicator_results)
     total_points = sum(int(obj.weight) for obj in slo_def.objectives)
-    repo = EvaluationRepository(session, cache=cache)
+    repo = EvaluationRepository(session, cache=cache, heatmap_cache=heatmap_cache)
     await repo.mark_completed(
         snapshot.eval_id,
         result=eval_result.result,
@@ -447,6 +452,7 @@ async def write_results(
         achieved_points=achieved_points,
         total_points=total_points,
         asset_id=snapshot.asset_id,
+        run_id=snapshot.parent_run_id,
     )
 
     await _write_indicator_rows(
@@ -485,3 +491,46 @@ async def write_sli_values_phase(
     if sli_rows:
         sli_repo = SLIValueRepository(session)
         await sli_repo.write_sli_values(sli_rows)
+
+
+async def warm_heatmap_column_cache(
+    session: AsyncSession,
+    run_id: uuid.UUID,
+    *,
+    redis_cache: RedisCache | None,
+    settings: Settings,
+) -> None:
+    """Build the HeatmapColumnFragment for a just-completed run and cache it.
+
+    Called from ``finalize_run_job`` immediately after an ``EvaluationRun`` is
+    transitioned to ``completed`` so the next heatmap reader pays zero rebuild
+    cost for that column.
+
+    Fire-and-forget: any failure is logged and swallowed — the DB is the
+    source of truth, the cache is opportunistic and must never block eval
+    completion. ``has_notes`` is pinned to ``False`` because a freshly-completed
+    run has no annotations; the router overlays notes from a fresh query at
+    assembly time, so later annotations correct the response without needing
+    to mutate the cached fragment.
+
+    The ``redis_cache._redis`` reach-through matches the pattern in
+    ``get_heatmap_column_cache`` (shared/dependencies.py): one redis client
+    owned by ``RedisCache``, shared between the read path and the warm path.
+    When that wiring is refactored, both call sites are updated together.
+    """
+    if redis_cache is None or redis_cache._redis is None:
+        return
+    try:
+        trend_repo = TrendRepository(session)
+        run = await trend_repo.get_run_with_slo_evaluations(run_id)
+        if run is None:
+            logger.warning('heatmap warm skipped: run not found', evaluation_id=str(run_id))
+            return
+        fragment = build_column_fragment(run, has_notes=False)
+        column_cache = HeatmapColumnCache(
+            redis_cache._redis,
+            ttl_seconds=settings.cache.ttl.heatmap_column,
+        )
+        await column_cache.set_many([fragment])
+    except Exception as exc:  # noqa: BLE001 - warm path must never block eval completion
+        logger.warning('heatmap warm failed', evaluation_id=str(run_id), error=str(exc))
