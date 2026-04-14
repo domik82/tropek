@@ -24,7 +24,7 @@ interface Props {
    * back to highlighting the matching timestamp.
    */
   selectedPeriodStart: string | undefined
-  notedSlots: Map<string, { evalId: string; count: number }>
+  notedSlots: Map<string, { evalIds: string[]; count: number }>
   onEvalSelect: (evalId: string) => void
   onSlotSelect?: (slot: TimeSlotSelection) => void
   mode: ViewMode

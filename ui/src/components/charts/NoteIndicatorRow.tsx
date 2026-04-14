@@ -1,12 +1,19 @@
 // ui/src/components/charts/NoteIndicatorRow.tsx
 import { useState, useRef, useCallback, useMemo } from 'react'
+import { useQueries } from '@tanstack/react-query'
 import { MessageSquareWarning, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import type { Annotation } from '@/features/evaluations/domain'
-import { useColumnAnnotations } from '@/features/evaluations/hooks'
+import { fetchColumnAnnotations } from '@/features/evaluations/api'
+import { evaluationKeys } from '@/lib/queryKeys'
 
 export interface SlotNote {
-  evalId: string
+  /**
+   * All parent EvaluationRun ids that have notes at this slot. Plural because
+   * two runs (original + re-eval) can share a period_start — we fetch and
+   * merge annotations across all of them so none are silently dropped.
+   */
+  evalIds: string[]
   count: number
 }
 
@@ -95,10 +102,25 @@ function NoteIcon({ slot, info, x, width, onIndicatorClick }: {
 }) {
   const [open, setOpen] = useState(false)
   const hideTimer = useRef<ReturnType<typeof setTimeout>>(null)
-  const { data: annotations, isFetching } = useColumnAnnotations(
-    open ? info.evalId : undefined,
-  )
 
+  // Fire one column-annotations query per parent run at this slot, then
+  // flatten the results so a slot backed by multiple runs (original +
+  // re-eval) surfaces every note regardless of which run owns it.
+  const results = useQueries({
+    queries: info.evalIds.map(evalId => ({
+      queryKey: evaluationKeys.columnAnnotations(evalId),
+      queryFn: () => fetchColumnAnnotations(evalId),
+      enabled: open,
+      staleTime: 0,
+      refetchOnMount: 'always' as const,
+    })),
+  })
+  const annotations: Annotation[] | undefined = useMemo(() => {
+    if (!open) return undefined
+    if (results.some(r => r.data === undefined)) return undefined
+    return results.flatMap(r => r.data ?? [])
+  }, [open, results])
+  const isFetching = results.some(r => r.isFetching)
   const count = annotations?.length ?? 0
 
   const show = useCallback(() => {

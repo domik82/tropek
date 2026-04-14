@@ -263,14 +263,20 @@ export function AssetPanel({ assetName, initialEvalId }: Props) {
   const isLoading = evalsLoading || heatmapLoading
 
   const notedSlots = useMemo(() => {
-    const slots = new Map<string, { evalId: string; count: number }>()
+    // Multiple runs can share a period_start (e.g. original + re-eval both
+    // anchored at the same timestamp). Collect ALL eval ids per slot so the
+    // tooltip fires one column-annotations query per run and merges results —
+    // keeping a single `evalId` here silently drops notes from the losing run.
+    const slots = new Map<string, { evalIds: string[]; count: number }>()
     if (!heatmapData) return slots
     for (const col of heatmapData.columns) {
       if (col.has_notes) {
-        // Use period_start as the slot key (matches HeatmapChart column key) and
-        // store the parent evaluation_id for hover-time annotation fetches.
-        // count=0 because the actual number is loaded lazily on hover.
-        slots.set(col.period_start, { evalId: col.evaluation_id, count: 0 })
+        const existing = slots.get(col.period_start)
+        if (existing) {
+          existing.evalIds.push(col.evaluation_id)
+        } else {
+          slots.set(col.period_start, { evalIds: [col.evaluation_id], count: 0 })
+        }
       }
     }
     return slots
