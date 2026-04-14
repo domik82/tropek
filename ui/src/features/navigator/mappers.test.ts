@@ -117,9 +117,24 @@ describe('assetHeatmapDtoToDomain', () => {
     expect(latencyHeaderRun2?.result).toBe('fail')
   })
 
-  it('slots array mirrors column period_start in order', () => {
+  it('slots array uses evaluation_id as the unique column key', () => {
     const view = assetHeatmapDtoToDomain(makeDto(), new Map())
-    expect(view.slots).toEqual(['2026-04-01T00:00:00Z', '2026-04-01T01:00:00Z'])
+    // Slot key = evaluation_id (unique per run) so load-test + prod-validation
+    // at the same period_start stay as distinct columns.
+    expect(view.slots).toEqual(['run-1', 'run-2'])
+    expect(view.slotLabels.get('run-1')).toBe('2026-04-01T00:00:00Z')
+    expect(view.slotLabels.get('run-2')).toBe('2026-04-01T01:00:00Z')
+  })
+
+  it('keeps distinct columns when two runs share a period_start', () => {
+    const dto = makeDto()
+    // Second run shares period_start with first but has a different eval_name
+    dto.columns[1].period_start = '2026-04-01T00:00:00Z'
+    dto.columns[1].eval_name = 'prod-validation'
+    const view = assetHeatmapDtoToDomain(dto, new Map())
+    expect(view.slots).toEqual(['run-1', 'run-2'])
+    expect(view.slotLabels.get('run-1')).toBe('2026-04-01T00:00:00Z')
+    expect(view.slotLabels.get('run-2')).toBe('2026-04-01T00:00:00Z')
   })
 
   it('ECharts y-index places Overall Score at the top visually (highest y)', () => {

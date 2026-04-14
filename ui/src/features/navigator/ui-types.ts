@@ -10,10 +10,17 @@ export interface HeatmapEChartsCell {
   value: [number, number]
   result: string                // canonical result union — see mappers.ts
   score: number
-  slot: string                  // ISO timestamp for column label (period_start)
+  /**
+   * Unique column key = parent EvaluationRun id. Two runs can share a
+   * period_start (e.g. load-test + prod-validation both at 16:00), so
+   * the slot key cannot be the timestamp — use evaluation_id, which is
+   * unique per run. For human display, use `periodStart`.
+   */
+  slot: string
+  periodStart: string           // ISO timestamp — used for tooltips and x-axis labels
   rowLabel: string              // asset name / metric display name / SLO name
   evalId?: string               // slo_evaluation_id for indicator cells
-  columnKey?: string            // parent evaluation_id (column identity)
+  columnKey?: string            // parent evaluation_id (== slot, kept for clarity)
   evaluation_name?: string      // tooltip label
   hasNote?: boolean
   noteContent?: string

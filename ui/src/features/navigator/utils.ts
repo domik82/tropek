@@ -49,6 +49,7 @@ export function buildGroupHeatmapData(evals: Evaluation[], fallbackNames?: Map<s
           result: 'none',
           score: 0,
           slot: slots[xi],
+          periodStart: slots[xi],
           rowLabel: rows[yi],
         })
       } else {
@@ -59,6 +60,7 @@ export function buildGroupHeatmapData(evals: Evaluation[], fallbackNames?: Map<s
             result: cell.result,
             score: Math.round(cell.score),
             slot: slots[xi],
+            periodStart: slots[xi],
             rowLabel: rows[yi],
             evaluation_name: cell.evalName,
           })
