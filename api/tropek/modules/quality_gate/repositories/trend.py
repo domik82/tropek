@@ -69,11 +69,17 @@ class TrendRepository:
         eval_name: list[str] | None = None,
         from_ts: datetime | None = None,
         to_ts: datetime | None = None,
+        run_id_filter: list[uuid.UUID] | None = None,
     ) -> list[EvaluationRun]:
         """Fetch completed EvaluationRun rows with all child SLO evaluations and indicator results.
 
         Returns rows ordered period_start DESC (caller reverses to oldest-first for display).
         When no date range is provided, falls back to the most recent 100 runs as a safety cap.
+
+        When ``run_id_filter`` is provided, only runs whose id is in that list are
+        returned (and the 100-run safety cap is skipped — the caller already decided
+        which ids to load). This is how the cached read path refetches exactly the
+        columns that missed the Redis column cache.
         """
         q = (
             select(EvaluationRun)
@@ -82,6 +88,45 @@ class TrendRepository:
                 .selectinload(SLOEvaluation.indicator_rows)
                 .joinedload(IndicatorResultRow.objective),
             )
+            .where(
+                EvaluationRun.asset_id == asset_id,
+                EvaluationRun.status == EvaluationStatus.COMPLETED,
+            )
+            .order_by(EvaluationRun.period_start.desc())
+        )
+        if eval_name:
+            q = q.where(EvaluationRun.eval_name.in_(eval_name))
+        if from_ts:
+            q = q.where(EvaluationRun.period_start >= from_ts)
+        if to_ts:
+            q = q.where(EvaluationRun.period_start <= to_ts)
+        if run_id_filter is not None:
+            q = q.where(EvaluationRun.id.in_(run_id_filter))
+        elif not from_ts and not to_ts:
+            q = q.limit(100)
+        result = await self._session.execute(q)
+        return list(result.scalars().all())
+
+    async def list_runs_for_heatmap(
+        self,
+        *,
+        asset_id: uuid.UUID,
+        eval_name: list[str] | None = None,
+        from_ts: datetime | None = None,
+        to_ts: datetime | None = None,
+    ) -> list[EvaluationRun]:
+        """Return completed EvaluationRun rows in the window with no joined relationships.
+
+        This is the lightweight cache-key inventory query for the grouped heatmap
+        read path: cheaper than ``get_grouped_metric_heatmap`` because it skips
+        the JOIN to ``slo_evaluations`` / ``indicator_rows`` / ``slo_objectives``.
+        Rows are ordered period_start DESC to match the heavy query, so the
+        caller can treat the two as returning the same run set for the same
+        window. When no date range is provided, falls back to the most recent
+        100 runs as a safety cap — again mirroring ``get_grouped_metric_heatmap``.
+        """
+        q = (
+            select(EvaluationRun)
             .where(
                 EvaluationRun.asset_id == asset_id,
                 EvaluationRun.status == EvaluationStatus.COMPLETED,
