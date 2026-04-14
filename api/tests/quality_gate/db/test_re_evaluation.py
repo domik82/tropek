@@ -193,6 +193,7 @@ async def test_persist_reeval_result_preserves_original(db_session: AsyncSession
     await _persist_reeval_result(
         db_session,
         ev=ev_row,
+        slo_name='test-slo',
         new_result='pass',
         new_score=92.0,
         old_result='fail',
@@ -202,7 +203,7 @@ async def test_persist_reeval_result_preserves_original(db_session: AsyncSession
         slo_objectives=None,
         cache=None,
         note_group_id=batch_id,
-        note_group_name='re-evaluation — SLO v2, from 2026-03-10',
+        note_group_name='re-evaluation — test-slo',
     )
     ev = await repo.get_by_id(eid)
     assert ev is not None
@@ -216,6 +217,7 @@ async def test_persist_reeval_result_preserves_original(db_session: AsyncSession
     await _persist_reeval_result(
         db_session,
         ev=ev_row,
+        slo_name='test-slo',
         new_result='warning',
         new_score=78.0,
         old_result='pass',
@@ -225,7 +227,7 @@ async def test_persist_reeval_result_preserves_original(db_session: AsyncSession
         slo_objectives=None,
         cache=None,
         note_group_id=uuid.uuid4(),
-        note_group_name='re-evaluation — SLO v3, from 2026-03-10',
+        note_group_name='re-evaluation — test-slo',
     )
     ev2 = await repo.get_by_id(eid)
     assert ev2 is not None
@@ -300,10 +302,11 @@ async def test_re_evaluate_updates_results_and_adds_annotation(
     # Verify annotation was added with group fields
     assert len(ev.annotations) == 1
     annotation = ev.annotations[0]
+    assert 're-eval-slo' in annotation.content
     assert 'fail' in annotation.content and 'pass' in annotation.content
     assert annotation.note_group_id is not None
     assert annotation.note_group_name is not None
-    assert 'SLO v2' in annotation.note_group_name
+    assert 're-eval-slo' in annotation.note_group_name
 
 
 @pytest.mark.integration

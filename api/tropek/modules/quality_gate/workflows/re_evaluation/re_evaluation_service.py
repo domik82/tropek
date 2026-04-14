@@ -122,6 +122,7 @@ async def _persist_reeval_result(  # noqa: PLR0913
     session: AsyncSession,
     *,
     ev: SLOEvaluation,
+    slo_name: str,
     new_result: str,
     new_score: float,
     old_result: str,
@@ -158,7 +159,7 @@ async def _persist_reeval_result(  # noqa: PLR0913
 
     await session.execute(update(SLOEvaluation).where(SLOEvaluation.id == ev.id).values(**values))
 
-    annotation_content = f'{old_result} \u2192 {new_result}, score {old_score} \u2192 {new_score}'
+    annotation_content = f'{slo_name}: {old_result} \u2192 {new_result}, score {old_score} \u2192 {new_score}'
     if cache:
         await cache.invalidate(f'baseline:{fresh_ev.asset_id}:{fresh_ev.slo_name}')
     ann_repo = AnnotationRepository(session, cache=cache)
@@ -230,6 +231,7 @@ async def _rescore_single(  # noqa: PLR0913
         await _persist_reeval_result(
             session,
             ev=ev,
+            slo_name=slo_name,
             new_result=eval_result.result,
             new_score=eval_result.score,
             old_result=old_result,
@@ -383,9 +385,8 @@ async def re_evaluate(
 
     # Build a single note group for the entire re-eval action
     note_group_id = uuid.uuid4()
-    scope_label = 'from baseline' if request.from_baseline else f'from date'
     slo_label = slo_names[0] if len(slo_names) == 1 else f'{len(slo_names)} SLOs'
-    note_group_name = f're-evaluation \u2014 {slo_label}, {scope_label}'
+    note_group_name = f're-evaluation \u2014 {slo_label}'
 
     # Re-evaluate each SLO
     all_results: list[ReEvalResultItem] = []
