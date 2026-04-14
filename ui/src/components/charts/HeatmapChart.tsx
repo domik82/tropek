@@ -212,6 +212,11 @@ export function HeatmapChart({
 
   const option = useMemo(
     () => ({
+      // Disable the default initial fade-in animation. For dense heatmaps
+      // (thousands of cells) the animation runs sequentially across every
+      // group, adding hundreds of ms of opacity tweens on first paint.
+      // See docs/perf/heatmap-chunk-c.md "Follow-ups" for the full analysis.
+      animation: false,
       backgroundColor: 'transparent',
       tooltip: {
         trigger: 'item' as const,
