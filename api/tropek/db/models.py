@@ -309,6 +309,8 @@ class EvaluationAnnotation(Base):
     author:            Mapped[str | None]     = mapped_column(Text, nullable=True)
     category:          Mapped[str | None]     = mapped_column(Text, nullable=True)
     tags:              Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, server_default=text("'{}'"), default=dict)
+    note_group_id:     Mapped[uuid.UUID | None] = mapped_column(UUID, nullable=True, index=True)
+    note_group_name:   Mapped[str | None]     = mapped_column(Text, nullable=True)
     hidden_at:         Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     hidden_by:         Mapped[str | None]     = mapped_column(Text, nullable=True)
     hidden_reason:     Mapped[str | None]     = mapped_column(Text, nullable=True)

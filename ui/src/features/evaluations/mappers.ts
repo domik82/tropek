@@ -134,6 +134,8 @@ function dtoToReEvaluateResultItem(dto: ReEvalResultItemDto): ReEvaluateResultIt
   return {
     id: dto.id,
     evaluationName: dto.evaluation_name,
+    sloName: dto.slo_name,
+    sloVersion: dto.slo_version,
     period: makeDateRange(dto.period_start, dto.period_end),
     oldOutcome: normalizeOutcome(dto.old_result),
     newOutcome: normalizeOutcome(dto.new_result),
@@ -240,6 +242,8 @@ type MappedAnnotationKeys =
   | 'author'
   | 'category'
   | 'tags'
+  | 'note_group_id'
+  | 'note_group_name'
   | 'hidden_at'
   | 'hidden_by'
   | 'hidden_reason'
@@ -373,6 +377,8 @@ type DroppedReEvalResultItemKeys = never
 type MappedReEvalResultItemKeys =
   | 'id'
   | 'evaluation_name'
+  | 'slo_name'
+  | 'slo_version'
   | 'period_start'
   | 'period_end'
   | 'old_result'
@@ -492,6 +498,8 @@ export function dtoToAnnotation(dto: AnnotationDto): Annotation {
     author: dto.author,
     category: dto.category,
     tags: dto.tags ?? {},
+    noteGroupId: dto.note_group_id ?? null,
+    noteGroupName: dto.note_group_name ?? null,
     hiddenAt: dto.hidden_at ? new Date(dto.hidden_at) : null,
     hiddenBy: dto.hidden_by,
     hiddenReason: dto.hidden_reason,

@@ -202,6 +202,29 @@
             "title": "Id",
             "type": "string"
           },
+          "note_group_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note Group Id"
+          },
+          "note_group_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note Group Name"
+          },
           "tags": {
             "additionalProperties": true,
             "title": "Tags",
@@ -226,6 +249,8 @@
           "author",
           "category",
           "tags",
+          "note_group_id",
+          "note_group_name",
           "hidden_at",
           "hidden_by",
           "hidden_reason",
@@ -3258,11 +3283,21 @@
             "format": "date-time",
             "title": "Period Start",
             "type": "string"
+          },
+          "slo_name": {
+            "title": "Slo Name",
+            "type": "string"
+          },
+          "slo_version": {
+            "title": "Slo Version",
+            "type": "integer"
           }
         },
         "required": [
           "id",
           "evaluation_name",
+          "slo_name",
+          "slo_version",
           "period_start",
           "period_end",
           "old_result",
@@ -3275,7 +3310,7 @@
       },
       "ReEvaluateRequest": {
         "additionalProperties": false,
-        "description": "Request body for POST /evaluations/re-evaluate.",
+        "description": "Request body for POST /evaluations/re-evaluate.\n\nWhen ``slo_name`` is omitted, all SLOs assigned to the asset are\nre-evaluated (same resolution logic as POST /evaluate).",
         "properties": {
           "asset_name": {
             "title": "Asset Name",
@@ -3331,8 +3366,15 @@
             "title": "Pin Strategy"
           },
           "slo_name": {
-            "title": "Slo Name",
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Slo Name"
           },
           "slo_version": {
             "anyOf": [
@@ -3347,8 +3389,7 @@
           }
         },
         "required": [
-          "asset_name",
-          "slo_name"
+          "asset_name"
         ],
         "title": "ReEvaluateRequest",
         "type": "object"
@@ -3368,8 +3409,15 @@
             "type": "array"
           },
           "slo_version_used": {
-            "title": "Slo Version Used",
-            "type": "integer"
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Slo Version Used"
           }
         },
         "required": [

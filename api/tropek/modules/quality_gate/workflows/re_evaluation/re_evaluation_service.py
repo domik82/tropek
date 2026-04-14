@@ -26,6 +26,7 @@ from tropek.modules.quality_gate.schemas.re_evaluation import (
 from tropek.modules.quality_gate.shared.dependencies import QualityGateRepos
 from tropek.modules.quality_gate.shared.exceptions import BaselinePinConflictError
 from tropek.modules.quality_gate.workflows.execution.evaluation_helpers import build_slo_model, compute_baselines
+from tropek.modules.quality_gate.workflows.trigger.trigger_resolver import resolve_all_slos_for_asset
 from tropek.modules.sli_registry.repository import SLIRepository
 
 # Earliest possible timezone-aware datetime for "no lower bound" queries
@@ -42,6 +43,7 @@ def _metrics_from_indicator_rows(
 async def _resolve_from_date(
     request: ReEvaluateRequest,
     asset_id: uuid.UUID,
+    slo_name: str,
     eval_repo: EvaluationRepository,
     baseline_repo: BaselineRepository,
 ) -> datetime:
@@ -58,20 +60,21 @@ async def _resolve_from_date(
     # from_baseline: find the most recent evaluation with an active baseline pin
     recent_evals = await baseline_repo.load_evaluations_for_reeval(
         asset_id=asset_id,
-        slo_name=request.slo_name,
+        slo_name=slo_name,
         from_date=_DATETIME_MIN,
     )
     for ev in reversed(recent_evals):
         if ev.baseline_pinned_at is not None and ev.baseline_unpinned_at is None:
             return ev.period_start
 
-    raise ValueError('no evaluation with pinned baseline found')
+    raise ValueError(f"no evaluation with pinned baseline found for slo '{slo_name}'")
 
 
 async def _resolve_pin_conflict(
     request: ReEvaluateRequest,
     from_date: datetime,
     asset_id: uuid.UUID,
+    slo_name: str,
     baseline_repo: BaselineRepository,
 ) -> tuple[datetime, bool]:
     """Check for baseline pin conflict and apply the chosen strategy.
@@ -85,7 +88,7 @@ async def _resolve_pin_conflict(
     if request.from_baseline:
         return from_date, False
 
-    pin_info = await baseline_repo.get_active_pin(asset_id=asset_id, slo_name=request.slo_name)
+    pin_info = await baseline_repo.get_active_pin(asset_id=asset_id, slo_name=slo_name)
     if pin_info is None:
         return from_date, False
 
@@ -127,6 +130,8 @@ async def _persist_reeval_result(  # noqa: PLR0913
     new_engine_results: list[Any] | None,
     slo_objectives: list[Any] | None,
     cache: RedisCache | None,
+    note_group_id: uuid.UUID,
+    note_group_name: str,
 ) -> None:
     """Overwrite evaluation result from re-evaluation, preserving original on first call."""
     result = await session.execute(
@@ -153,7 +158,7 @@ async def _persist_reeval_result(  # noqa: PLR0913
 
     await session.execute(update(SLOEvaluation).where(SLOEvaluation.id == ev.id).values(**values))
 
-    annotation_content = f're-evaluated: {old_result} -> {new_result}, score {old_score} -> {new_score}'
+    annotation_content = f'{old_result} \u2192 {new_result}, score {old_score} \u2192 {new_score}'
     if cache:
         await cache.invalidate(f'baseline:{fresh_ev.asset_id}:{fresh_ev.slo_name}')
     ann_repo = AnnotationRepository(session, cache=cache)
@@ -162,6 +167,8 @@ async def _persist_reeval_result(  # noqa: PLR0913
         content=annotation_content,
         author='system',
         category='re-evaluation',
+        note_group_id=note_group_id,
+        note_group_name=note_group_name,
     )
 
     if new_engine_results and slo_objectives:
@@ -193,6 +200,8 @@ async def _rescore_single(  # noqa: PLR0913
     cache: RedisCache | None,
     dry_run: bool,
     skip_pin_filter: bool = False,
+    note_group_id: uuid.UUID | None = None,
+    note_group_name: str | None = None,
 ) -> ReEvalResultItem:
     """Re-score a single evaluation and optionally persist the update."""
     metrics = _metrics_from_indicator_rows(ev.indicator_rows)
@@ -217,7 +226,7 @@ async def _rescore_single(  # noqa: PLR0913
     old_result = ev.result or 'error'
     old_score = ev.score if ev.score is not None else 0.0
 
-    if not dry_run:
+    if not dry_run and note_group_id and note_group_name:
         await _persist_reeval_result(
             session,
             ev=ev,
@@ -229,11 +238,15 @@ async def _rescore_single(  # noqa: PLR0913
             new_engine_results=eval_result.indicator_results,
             slo_objectives=slo_def.objectives,
             cache=cache,
+            note_group_id=note_group_id,
+            note_group_name=note_group_name,
         )
 
     return ReEvalResultItem(
         id=ev.id,
         evaluation_name=ev.evaluation_name,
+        slo_name=slo_name,
+        slo_version=slo_version,
         period_start=ev.period_start,
         period_end=ev.period_end,
         old_result=old_result,
@@ -243,11 +256,102 @@ async def _rescore_single(  # noqa: PLR0913
     )
 
 
+async def _re_evaluate_single_slo(  # noqa: PLR0913
+    request: ReEvaluateRequest,
+    slo_name: str,
+    asset_id: uuid.UUID,
+    repos: QualityGateRepos,
+) -> tuple[int, list[ReEvalResultItem]]:
+    """Re-evaluate all evaluations for a single SLO. Returns (slo_version, results)."""
+    session = repos.session
+    slo_repo = repos.slo_repo
+    sli_repo = repos.sli_def_repo
+    eval_repo = repos.eval_repo
+    baseline_repo = repos.baseline_repo
+    cache = repos.cache
+
+    # Load SLO definition (specified version or latest)
+    if request.slo_version is not None:
+        slo_def = await slo_repo.get_version(slo_name, request.slo_version)
+    else:
+        slo_def = await slo_repo.get_latest(slo_name)
+    if slo_def is None:
+        raise ValueError(f"slo '{slo_name}' not found")
+
+    slo_model = build_slo_model(slo_def)
+
+    # Determine window start
+    from_date = await _resolve_from_date(request, asset_id, slo_name, eval_repo, baseline_repo)
+
+    # Detect baseline pin conflict
+    from_date, skip_pin = await _resolve_pin_conflict(request, from_date, asset_id, slo_name, baseline_repo)
+
+    # Load evaluations to re-process (chronological order)
+    evals_to_process = await baseline_repo.load_evaluations_for_reeval(
+        asset_id=asset_id,
+        slo_name=slo_name,
+        from_date=from_date,
+    )
+    if not evals_to_process:
+        return slo_def.version, []
+
+    # Determine default SLI version range from the first eval
+    first = evals_to_process[0]
+    default_sli_range = await _resolve_sli_version_range(first.sli_name, first.sli_version, sli_repo)
+
+    # Seed eligible IDs from pre-window baselines
+    pre_baselines = await baseline_repo.get_reeval_baselines(
+        asset_id=asset_id,
+        slo_name=slo_name,
+        period_start_before=from_date,
+        include_result_with_score=slo_model.comparison.include_result_with_score.value,
+        limit=slo_model.comparison.number_of_comparison_results,
+        sli_version_range=default_sli_range,
+        skip_pin_filter=skip_pin,
+    )
+    eligible_ids: list[uuid.UUID] = [ev.id for ev in pre_baselines]
+
+    # Build note group for this SLO's re-eval run
+    note_group_id = uuid.uuid4()
+    scope_label = 'from baseline' if request.from_baseline else f'from {from_date:%Y-%m-%d}'
+    note_group_name = f're-evaluation \u2014 {slo_name} v{slo_def.version}, {scope_label}'
+
+    # Re-evaluate each in chronological order with cascading baselines
+    results: list[ReEvalResultItem] = []
+    for ev in evals_to_process:
+        item = await _rescore_single(
+            ev,
+            slo_model=slo_model,
+            slo_def=slo_def,
+            slo_version=slo_def.version,
+            eligible_ids=eligible_ids,
+            asset_id=asset_id,
+            slo_name=slo_name,
+            default_sli_version_range=default_sli_range,
+            baseline_repo=baseline_repo,
+            sli_repo=sli_repo,
+            session=session,
+            cache=cache,
+            dry_run=request.dry_run,
+            skip_pin_filter=skip_pin,
+            note_group_id=note_group_id,
+            note_group_name=note_group_name,
+        )
+        eligible_ids.append(ev.id)
+        results.append(item)
+
+    return slo_def.version, results
+
+
 async def re_evaluate(
     request: ReEvaluateRequest,
     repos: QualityGateRepos,
 ) -> ReEvaluateResponse:
     """Re-evaluate historical evaluations against a (possibly new) SLO version.
+
+    When ``request.slo_name`` is provided, only that SLO is re-evaluated.
+    When omitted, all SLOs assigned to the asset are re-evaluated (same
+    resolution logic as POST /evaluate).
 
     Args:
         request: Validated re-evaluation request parameters.
@@ -259,84 +363,37 @@ async def re_evaluate(
     Raises:
         ValueError: If asset, SLO, or baseline anchor cannot be found.
     """
-    session = repos.session
     asset_repo = repos.asset_repo
-    slo_repo = repos.slo_repo
-    sli_repo = repos.sli_def_repo
-    eval_repo = repos.eval_repo
-    baseline_repo = repos.baseline_repo
-    cache = repos.cache
 
     # Resolve asset
     asset = await asset_repo.get_by_name(request.asset_name)
     if asset is None:
         raise ValueError(f"asset '{request.asset_name}' not found")
 
-    # Load SLO definition (specified version or latest)
-    if request.slo_version is not None:
-        slo_def = await slo_repo.get_version(request.slo_name, request.slo_version)
+    # Determine which SLOs to re-evaluate
+    if request.slo_name is not None:
+        slo_names = [request.slo_name]
     else:
-        slo_def = await slo_repo.get_latest(request.slo_name)
-    if slo_def is None:
-        raise ValueError(f"slo '{request.slo_name}' not found")
-
-    slo_model = build_slo_model(slo_def)
-
-    # Determine window start
-    from_date = await _resolve_from_date(request, asset.id, eval_repo, baseline_repo)
-
-    # Detect baseline pin conflict
-    from_date, skip_pin = await _resolve_pin_conflict(request, from_date, asset.id, baseline_repo)
-
-    # Load evaluations to re-process (chronological order)
-    evals_to_process = await baseline_repo.load_evaluations_for_reeval(
-        asset_id=asset.id,
-        slo_name=request.slo_name,
-        from_date=from_date,
-    )
-    if not evals_to_process:
-        return ReEvaluateResponse(affected_evaluations=0, slo_version_used=slo_def.version, results=[])
-
-    # Determine default SLI version range from the first eval
-    first = evals_to_process[0]
-    default_sli_range = await _resolve_sli_version_range(first.sli_name, first.sli_version, sli_repo)
-
-    # Seed eligible IDs from pre-window baselines
-    pre_baselines = await baseline_repo.get_reeval_baselines(
-        asset_id=asset.id,
-        slo_name=request.slo_name,
-        period_start_before=from_date,
-        include_result_with_score=slo_model.comparison.include_result_with_score.value,
-        limit=slo_model.comparison.number_of_comparison_results,
-        sli_version_range=default_sli_range,
-        skip_pin_filter=skip_pin,
-    )
-    eligible_ids: list[uuid.UUID] = [ev.id for ev in pre_baselines]
-
-    # Re-evaluate each in chronological order with cascading baselines
-    results: list[ReEvalResultItem] = []
-    for ev in evals_to_process:
-        item = await _rescore_single(
-            ev,
-            slo_model=slo_model,
-            slo_def=slo_def,
-            slo_version=slo_def.version,
-            eligible_ids=eligible_ids,
+        group_ids = await repos.asset_group_repo.list_group_ids_for_asset(asset.id)
+        slo_names = await resolve_all_slos_for_asset(
             asset_id=asset.id,
-            slo_name=request.slo_name,
-            default_sli_version_range=default_sli_range,
-            baseline_repo=baseline_repo,
-            sli_repo=sli_repo,
-            session=session,
-            cache=cache,
-            dry_run=request.dry_run,
-            skip_pin_filter=skip_pin,
+            assignment_repo=repos.assignment_repo,
+            group_ids=group_ids,
         )
-        eligible_ids.append(ev.id)
-        results.append(item)
+        if not slo_names:
+            raise ValueError(f"no slo assignments found for asset '{request.asset_name}'")
+
+    # Re-evaluate each SLO
+    all_results: list[ReEvalResultItem] = []
+    single_slo_version: int | None = None
+    for slo_name in slo_names:
+        slo_version, results = await _re_evaluate_single_slo(request, slo_name, asset.id, repos)
+        all_results.extend(results)
+        if len(slo_names) == 1:
+            single_slo_version = slo_version
 
     return ReEvaluateResponse(
-        affected_evaluations=len(results),
-        slo_version_used=slo_def.version,
-        results=results,
+        affected_evaluations=len(all_results),
+        slo_version_used=single_slo_version,
+        results=all_results,
     )

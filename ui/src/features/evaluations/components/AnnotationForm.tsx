@@ -1,9 +1,69 @@
 // ui/src/features/evaluations/components/AnnotationForm.tsx
-import { useState, useImperativeHandle, forwardRef } from 'react'
+import { useState, useImperativeHandle, forwardRef, useMemo } from 'react'
 import type { Annotation } from '../domain'
 import { NoteEntry } from './NoteEntry'
+import { NoteGroup } from './NoteGroup'
 import { AddNoteForm } from './AddNoteForm'
 import { SANS_SERIF } from '@/lib/fonts'
+
+interface GroupedEntry {
+  kind: 'group'
+  groupId: string
+  groupName: string
+  annotations: Annotation[]
+  firstCreatedAt: Date
+}
+
+interface StandaloneEntry {
+  kind: 'standalone'
+  annotation: Annotation
+}
+
+type NoteListEntry = GroupedEntry | StandaloneEntry
+
+function buildNoteList(annotations: Annotation[]): NoteListEntry[] {
+  const groups = new Map<string, { name: string; items: Annotation[] }>()
+  const entries: NoteListEntry[] = []
+  const groupInsertOrder: string[] = []
+
+  for (const annotation of annotations) {
+    if (annotation.noteGroupId) {
+      const existing = groups.get(annotation.noteGroupId)
+      if (existing) {
+        existing.items.push(annotation)
+      } else {
+        groups.set(annotation.noteGroupId, {
+          name: annotation.noteGroupName ?? 're-evaluation',
+          items: [annotation],
+        })
+        groupInsertOrder.push(annotation.noteGroupId)
+      }
+    }
+  }
+
+  let groupIndex = 0
+  for (const annotation of annotations) {
+    if (annotation.noteGroupId) {
+      // Insert the group entry at the position of its first annotation
+      if (groupIndex < groupInsertOrder.length && groupInsertOrder[groupIndex] === annotation.noteGroupId) {
+        const group = groups.get(annotation.noteGroupId)!
+        entries.push({
+          kind: 'group',
+          groupId: annotation.noteGroupId,
+          groupName: group.name,
+          annotations: group.items,
+          firstCreatedAt: group.items[0].createdAt,
+        })
+        groupIndex++
+      }
+      // Skip subsequent annotations in the same group (already included above)
+    } else {
+      entries.push({ kind: 'standalone', annotation })
+    }
+  }
+
+  return entries
+}
 
 export interface AnnotationSectionHandle {
   openForm: () => void
@@ -18,6 +78,8 @@ export const AnnotationSection = forwardRef<AnnotationSectionHandle, Props>(
   function AnnotationSection({ evalId, annotations }, ref) {
     const [showForm, setShowForm] = useState(false)
     const [viewMode, setViewMode] = useState<'compact' | 'expanded'>('compact')
+
+    const noteList = useMemo(() => buildNoteList(annotations), [annotations])
 
     useImperativeHandle(ref, () => ({
       openForm: () => setShowForm(true),
@@ -72,10 +134,25 @@ export const AnnotationSection = forwardRef<AnnotationSectionHandle, Props>(
           <AddNoteForm evalId={evalId} onClose={() => setShowForm(false)} />
         )}
 
-        {/* Note entries */}
-        {annotations.map(a => (
-          <NoteEntry key={a.id} evalId={evalId} annotation={a} compact={viewMode === 'compact'} />
-        ))}
+        {/* Note entries — grouped and standalone */}
+        {noteList.map(entry =>
+          entry.kind === 'group' ? (
+            <NoteGroup
+              key={entry.groupId}
+              evalId={evalId}
+              groupName={entry.groupName}
+              annotations={entry.annotations}
+              compact={viewMode === 'compact'}
+            />
+          ) : (
+            <NoteEntry
+              key={entry.annotation.id}
+              evalId={evalId}
+              annotation={entry.annotation}
+              compact={viewMode === 'compact'}
+            />
+          ),
+        )}
 
         {annotations.length === 0 && !showForm && (
           <p className="text-xs text-muted-foreground/40">No notes yet.</p>
