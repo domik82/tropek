@@ -2,7 +2,7 @@
 
 Revision ID: 001
 Revises: 
-Create Date: 2026-04-14 08:12:35.079550
+Create Date: 2026-04-14 20:23:17.144311
 
 """
 from collections.abc import Sequence
@@ -300,7 +300,8 @@ def upgrade() -> None:
     op.create_index('uq_slo_evaluations_identity', 'slo_evaluations', ['asset_id', 'slo_name', 'evaluation_name', 'period_start', 'period_end'], unique=True, postgresql_where=sa.text("status != 'failed'"))
     op.create_table('evaluation_annotations',
     sa.Column('id', sa.UUID(), nullable=False),
-    sa.Column('slo_evaluation_id', sa.UUID(), nullable=False),
+    sa.Column('slo_evaluation_id', sa.UUID(), nullable=True),
+    sa.Column('evaluation_run_id', sa.UUID(), nullable=True),
     sa.Column('content', sa.Text(), nullable=False),
     sa.Column('author', sa.Text(), nullable=True),
     sa.Column('category', sa.Text(), nullable=True),
@@ -312,9 +313,12 @@ def upgrade() -> None:
     sa.Column('hidden_reason', sa.Text(), nullable=True),
     sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
     sa.Column('updated_at', sa.DateTime(timezone=True), nullable=True),
+    sa.CheckConstraint('(slo_evaluation_id IS NULL) <> (evaluation_run_id IS NULL)', name='ck_annotation_exactly_one_parent'),
+    sa.ForeignKeyConstraint(['evaluation_run_id'], ['evaluations.id'], ondelete='CASCADE'),
     sa.ForeignKeyConstraint(['slo_evaluation_id'], ['slo_evaluations.id'], ondelete='CASCADE'),
     sa.PrimaryKeyConstraint('id')
     )
+    op.create_index('idx_annotations_evaluation_run', 'evaluation_annotations', ['evaluation_run_id'], unique=False)
     op.create_index('idx_annotations_slo_evaluation', 'evaluation_annotations', ['slo_evaluation_id'], unique=False)
     op.create_index(op.f('ix_evaluation_annotations_note_group_id'), 'evaluation_annotations', ['note_group_id'], unique=False)
     op.create_table('indicator_results',
@@ -361,6 +365,7 @@ def downgrade() -> None:
     op.drop_table('indicator_results')
     op.drop_index(op.f('ix_evaluation_annotations_note_group_id'), table_name='evaluation_annotations')
     op.drop_index('idx_annotations_slo_evaluation', table_name='evaluation_annotations')
+    op.drop_index('idx_annotations_evaluation_run', table_name='evaluation_annotations')
     op.drop_table('evaluation_annotations')
     op.drop_index('uq_slo_evaluations_identity', table_name='slo_evaluations', postgresql_where=sa.text("status != 'failed'"))
     op.drop_index('idx_slo_evaluations_stuck', table_name='slo_evaluations', postgresql_where=sa.text("status = 'running'"))

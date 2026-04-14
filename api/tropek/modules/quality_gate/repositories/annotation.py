@@ -30,10 +30,10 @@ class AnnotationRepository:
         note_group_id: uuid.UUID | None = None,
         note_group_name: str | None = None,
     ) -> EvaluationAnnotation:
-        """Append an annotation to an evaluation.
+        """Append an SLO-level annotation (used by re-eval and per-SLO flows).
 
         Args:
-            slo_evaluation_id: Evaluation to annotate.
+            slo_evaluation_id: SLOEvaluation row the note attaches to.
             content: Note text (required).
             author: Optional identifier of who wrote the annotation.
             category: Optional free label (e.g. "environment", "deployment").
@@ -60,6 +60,42 @@ class AnnotationRepository:
             await self._cache.invalidate(f'annot_count:{slo_evaluation_id}')
             await self._cache.invalidate(f'annot_latest:{slo_evaluation_id}')
         return ann
+
+    async def add_run_annotation(
+        self,
+        evaluation_run_id: uuid.UUID,
+        *,
+        content: str,
+        author: str | None = None,
+        category: str | None = None,
+        tags: dict[str, Any] | None = None,
+        note_group_id: uuid.UUID | None = None,
+        note_group_name: str | None = None,
+    ) -> EvaluationAnnotation:
+        """Append a run-level annotation (column-level notes from the UI)."""
+        ann = EvaluationAnnotation(
+            id=uuid.uuid4(),
+            evaluation_run_id=evaluation_run_id,
+            content=content,
+            author=author,
+            category=category,
+            tags=tags or {},
+            note_group_id=note_group_id,
+            note_group_name=note_group_name,
+        )
+        self._session.add(ann)
+        await self._session.flush()
+        return ann
+
+    async def list_for_run(self, run_id: uuid.UUID) -> list[EvaluationAnnotation]:
+        """Return non-hidden run-level annotations for an EvaluationRun."""
+        result = await self._session.execute(
+            select(EvaluationAnnotation)
+            .where(EvaluationAnnotation.evaluation_run_id == run_id)
+            .where(EvaluationAnnotation.hidden_at.is_(None))
+            .order_by(EvaluationAnnotation.created_at)
+        )
+        return list(result.scalars().all())
 
     async def get_annotation_by_id(self, annotation_id: uuid.UUID) -> EvaluationAnnotation | None:
         """Fetch a single annotation by its ID."""
@@ -93,7 +129,7 @@ class AnnotationRepository:
             )
             await self._session.flush()
         ann = await self.get_annotation_by_id(annotation_id)
-        if self._cache and ann is not None:
+        if self._cache and ann is not None and ann.slo_evaluation_id is not None:
             await self._cache.invalidate(f'annot_count:{ann.slo_evaluation_id}')
             await self._cache.invalidate(f'annot_latest:{ann.slo_evaluation_id}')
         return ann
@@ -126,7 +162,7 @@ class AnnotationRepository:
         )
         await self._session.flush()
         ann = await self.get_annotation_by_id(annotation_id)
-        if self._cache and ann is not None:
+        if self._cache and ann is not None and ann.slo_evaluation_id is not None:
             await self._cache.invalidate(f'annot_count:{ann.slo_evaluation_id}')
             await self._cache.invalidate(f'annot_latest:{ann.slo_evaluation_id}')
         return ann

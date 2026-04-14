@@ -336,19 +336,20 @@ async def get_column_annotations(
     evaluation_id: uuid.UUID = Query(...),
     repos: QualityGateRepos = Depends(get_qg_repos),
 ) -> list[AnnotationRead]:
-    """Return all non-hidden annotations across all SLOs for one evaluation run."""
+    """Return all non-hidden annotations for one evaluation run.
+
+    Unions run-level notes (new column-level UI form) with the notes attached to each
+    child SLO evaluation (per-SLO re-eval deltas). Sorted oldest-first by created_at.
+    """
     run = await repos.eval_run_repo.get_by_id(evaluation_id)
     if run is None:
         raise NotFoundError('evaluation run', str(evaluation_id))
     slo_evals = await repos.eval_repo.get_by_run_id(evaluation_id)
-    annotations: list[AnnotationRead] = []
-    annotations.extend(
-        AnnotationRead.model_validate(ann)
-        for slo_eval in slo_evals
-        for ann in slo_eval.annotations
-        if ann.hidden_at is None
-    )
-    return annotations
+    run_annotations = await repos.annotation_repo.list_for_run(evaluation_id)
+    merged = list(run_annotations)
+    merged.extend(ann for slo_eval in slo_evals for ann in slo_eval.annotations if ann.hidden_at is None)
+    merged.sort(key=lambda a: a.created_at)
+    return [AnnotationRead.model_validate(ann) for ann in merged]
 
 
 @router.get('/evaluations/{eval_id}', response_model=EvaluationDetail)
@@ -483,12 +484,36 @@ async def create_annotation(
     body: AnnotationCreate,
     repos: QualityGateRepos = Depends(get_qg_repos),
 ) -> AnnotationRead:
-    """Add an annotation to an evaluation."""
+    """Add an SLO-level annotation to a single SLOEvaluation."""
     ev = await repos.eval_repo.get_by_id(eval_id)
     if ev is None:
         raise NotFoundError('evaluation', str(eval_id))
     ann = await repos.annotation_repo.add_annotation(
         eval_id,
+        content=body.content,
+        author=body.author,
+        category=body.category,
+        tags=body.tags,
+    )
+    return AnnotationRead.model_validate(ann)
+
+
+@router.post(
+    '/evaluations/run/{run_id}/annotations',
+    response_model=AnnotationRead,
+    status_code=201,
+)
+async def create_run_annotation(
+    run_id: uuid.UUID,
+    body: AnnotationCreate,
+    repos: QualityGateRepos = Depends(get_qg_repos),
+) -> AnnotationRead:
+    """Add a run-level (column-level) annotation to an EvaluationRun."""
+    run = await repos.eval_run_repo.get_by_id(run_id)
+    if run is None:
+        raise NotFoundError('evaluation run', str(run_id))
+    ann = await repos.annotation_repo.add_run_annotation(
+        run_id,
         content=body.content,
         author=body.author,
         category=body.category,

@@ -296,27 +296,41 @@ class SLODefinition(Base):
 
 
 class EvaluationAnnotation(Base):
-    """Append-only contextual note on an evaluation."""
+    """Append-only contextual note on an evaluation.
+
+    Attaches to exactly one parent — either an SLOEvaluation (per-SLO notes, e.g. re-eval
+    deltas) or an EvaluationRun (column-level notes from the UI). The XOR is enforced at
+    the DB level by a check constraint.
+    """
 
     __tablename__ = 'evaluation_annotations'
-    __table_args__ = (Index('idx_annotations_slo_evaluation', 'slo_evaluation_id'),)
+    __table_args__ = (
+        Index('idx_annotations_slo_evaluation', 'slo_evaluation_id'),
+        Index('idx_annotations_evaluation_run', 'evaluation_run_id'),
+        CheckConstraint(
+            '(slo_evaluation_id IS NULL) <> (evaluation_run_id IS NULL)',
+            name='ck_annotation_exactly_one_parent',
+        ),
+    )
 
     # fmt: off
 
-    id:                Mapped[uuid.UUID]      = mapped_column(UUID, primary_key=True, default=uuid.uuid4)
-    slo_evaluation_id: Mapped[uuid.UUID]      = mapped_column(UUID, ForeignKey('slo_evaluations.id', ondelete='CASCADE'), nullable=False)
-    content:           Mapped[str]            = mapped_column(Text, nullable=False)
-    author:            Mapped[str | None]     = mapped_column(Text, nullable=True)
-    category:          Mapped[str | None]     = mapped_column(Text, nullable=True)
-    tags:              Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, server_default=text("'{}'"), default=dict)
+    id:                Mapped[uuid.UUID]        = mapped_column(UUID, primary_key=True, default=uuid.uuid4)
+    slo_evaluation_id: Mapped[uuid.UUID | None] = mapped_column(UUID, ForeignKey('slo_evaluations.id', ondelete='CASCADE'), nullable=True)
+    evaluation_run_id: Mapped[uuid.UUID | None] = mapped_column(UUID, ForeignKey('evaluations.id', ondelete='CASCADE'), nullable=True)
+    content:           Mapped[str]              = mapped_column(Text, nullable=False)
+    author:            Mapped[str | None]       = mapped_column(Text, nullable=True)
+    category:          Mapped[str | None]       = mapped_column(Text, nullable=True)
+    tags:              Mapped[dict[str, Any]]   = mapped_column(JSONB, nullable=False, server_default=text("'{}'"), default=dict)
     note_group_id:     Mapped[uuid.UUID | None] = mapped_column(UUID, nullable=True, index=True)
-    note_group_name:   Mapped[str | None]     = mapped_column(Text, nullable=True)
-    hidden_at:         Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    hidden_by:         Mapped[str | None]     = mapped_column(Text, nullable=True)
-    hidden_reason:     Mapped[str | None]     = mapped_column(Text, nullable=True)
-    created_at:        Mapped[datetime]       = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
-    updated_at:        Mapped[datetime | None] = mapped_column(DateTime(timezone=True), onupdate=func.now(), nullable=True)
-    slo_evaluation:    Mapped[SLOEvaluation] = relationship('SLOEvaluation', back_populates='annotations')
+    note_group_name:   Mapped[str | None]       = mapped_column(Text, nullable=True)
+    hidden_at:         Mapped[datetime | None]  = mapped_column(DateTime(timezone=True), nullable=True)
+    hidden_by:         Mapped[str | None]       = mapped_column(Text, nullable=True)
+    hidden_reason:     Mapped[str | None]       = mapped_column(Text, nullable=True)
+    created_at:        Mapped[datetime]         = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    updated_at:        Mapped[datetime | None]  = mapped_column(DateTime(timezone=True), onupdate=func.now(), nullable=True)
+    slo_evaluation:    Mapped[SLOEvaluation | None] = relationship('SLOEvaluation', back_populates='annotations')
+    evaluation_run:    Mapped[EvaluationRun | None] = relationship('EvaluationRun', back_populates='annotations')
 
     # fmt: on
 
@@ -619,4 +633,5 @@ class EvaluationRun(Base):
     total_points:    Mapped[int | None]     = mapped_column(Integer, nullable=True)
     created_at:      Mapped[datetime]       = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     slo_evaluations: Mapped[list[SLOEvaluation]] = relationship('SLOEvaluation', back_populates='evaluation_run', cascade='all, delete-orphan')
+    annotations:     Mapped[list[EvaluationAnnotation]] = relationship('EvaluationAnnotation', back_populates='evaluation_run', cascade='all, delete-orphan')
     # fmt: on

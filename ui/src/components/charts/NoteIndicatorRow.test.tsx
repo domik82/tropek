@@ -27,6 +27,8 @@ function wrap(ui: React.ReactNode) {
 function makeAnnotation(partial: Partial<Annotation>): Annotation {
   return {
     id: 'id-' + Math.random(),
+    sloEvaluationId: null,
+    evaluationRunId: 'run-1',
     content: '',
     author: null,
     category: null,

@@ -238,6 +238,8 @@ void _indicatorExhaustive
 type DroppedAnnotationKeys = never
 type MappedAnnotationKeys =
   | 'id'
+  | 'slo_evaluation_id'
+  | 'evaluation_run_id'
   | 'content'
   | 'author'
   | 'category'
@@ -494,6 +496,8 @@ export function dtoToIndicator(dto: IndicatorResultDto): Indicator {
 export function dtoToAnnotation(dto: AnnotationDto): Annotation {
   return {
     id: dto.id,
+    sloEvaluationId: dto.slo_evaluation_id,
+    evaluationRunId: dto.evaluation_run_id,
     content: dto.content,
     author: dto.author,
     category: dto.category,

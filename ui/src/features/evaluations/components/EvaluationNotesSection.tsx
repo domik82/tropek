@@ -4,7 +4,7 @@ import { AnnotationSection, type AnnotationSectionHandle } from './AnnotationFor
 import type { Annotation } from '../domain'
 
 interface Props {
-  evaluationId: string
+  runId: string
   annotations: Annotation[]
 }
 
@@ -13,7 +13,7 @@ export interface EvaluationNotesSectionHandle {
 }
 
 export const EvaluationNotesSection = forwardRef<EvaluationNotesSectionHandle, Props>(
-  function EvaluationNotesSection({ evaluationId, annotations }, ref) {
+  function EvaluationNotesSection({ runId, annotations }, ref) {
     const notesRef = useRef<AnnotationSectionHandle>(null)
     const sectionRef = useRef<HTMLDivElement>(null)
 
@@ -26,7 +26,7 @@ export const EvaluationNotesSection = forwardRef<EvaluationNotesSectionHandle, P
 
     return (
       <div ref={sectionRef}>
-        <AnnotationSection ref={notesRef} evalId={evaluationId} annotations={annotations} />
+        <AnnotationSection ref={notesRef} runId={runId} annotations={annotations} />
       </div>
     )
   },

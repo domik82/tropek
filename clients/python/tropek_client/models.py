@@ -218,10 +218,14 @@ class Annotation(BaseModel):
     """Evaluation annotation."""
 
     id: uuid.UUID
+    slo_evaluation_id: uuid.UUID | None = None
+    evaluation_run_id: uuid.UUID | None = None
     content: str
     author: str | None
     category: str | None
     tags: dict[str, Any]
+    note_group_id: uuid.UUID | None = None
+    note_group_name: str | None = None
     hidden_at: datetime | None = None
     hidden_by: str | None = None
     hidden_reason: str | None = None
@@ -233,6 +237,7 @@ class EvaluationSummary(BaseModel):
     """Compact evaluation for list views."""
 
     id: uuid.UUID
+    evaluation_id: uuid.UUID
     evaluation_name: str
     status: str
     result: str | None
