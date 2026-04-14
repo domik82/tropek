@@ -267,11 +267,11 @@ export function AssetPanel({ assetName, initialEvalId }: Props) {
     // key used by the mapper. Two runs sharing a period_start (e.g. load-test
     // and prod-validation at the same 16:00) stay as distinct slots so their
     // notes do not bleed across columns.
-    const slots = new Map<string, { evalIds: string[]; count: number }>()
+    const slots = new Map<string, { evalId: string; count: number }>()
     if (!heatmapData) return slots
     for (const col of heatmapData.columns) {
       if (col.has_notes) {
-        slots.set(col.evaluation_id, { evalIds: [col.evaluation_id], count: 0 })
+        slots.set(col.evaluation_id, { evalId: col.evaluation_id, count: 0 })
       }
     }
     return slots
