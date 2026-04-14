@@ -13,12 +13,15 @@ from collections.abc import Callable, Coroutine
 from datetime import UTC, datetime
 from typing import Any
 
+import fakeredis.aioredis
 import pytest
 from httpx import AsyncClient
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 from tropek.cache.redis_cache import RedisCache
 from tropek.config import get_settings
 from tropek.db.models import EvaluationRun, SLOEvaluation
+from tropek.modules.quality_gate.repositories.annotation import AnnotationRepository
 from tropek.modules.quality_gate.repositories.evaluation import EvaluationRepository
 from tropek.modules.quality_gate.schemas.heatmap import (
     EvaluationColumn,
@@ -447,3 +450,138 @@ async def test_reevaluation_persist_deletes_cached_fragment(
 
     hits_after = await column_cache.get_many([run_id])
     assert str(run_id) not in hits_after, f're-evaluation persist did not invalidate the fragment for run {run_id}'
+
+
+# ---------------------------------------------------------------------------
+# Task 12 — property test: cache=true equals cache=false after every mutation
+# ---------------------------------------------------------------------------
+
+
+async def _apply_mutation(
+    mutation: str,
+    db_session: AsyncSession,
+    seeded: SeededAsset,
+    redis_client: fakeredis.aioredis.FakeRedis,
+) -> None:
+    """Apply one mutation flavor to the seeded asset state.
+
+    Mirrors the invocation style used by Task 11's repository-layer tests:
+    direct repository calls rather than API calls, because several
+    mutations require setup state (e.g. restore_override needs a pending
+    override to restore) that is cleaner to stage in-test than to go through
+    the API.
+
+    Every repo is wired with the same fakeredis-backed ``HeatmapColumnCache``
+    that the ``api_client`` fixture exposes, so invalidations performed here
+    land in the same Redis instance the subsequent API reads consult.
+    """
+    column_cache = heatmap_cache.HeatmapColumnCache(redis_client)
+    evaluation_repo = EvaluationRepository(db_session, heatmap_cache=column_cache)
+    annotation_repo = AnnotationRepository(db_session)
+
+    child_row = await db_session.execute(select(SLOEvaluation).where(SLOEvaluation.asset_id == seeded.id))
+    child_eval: SLOEvaluation = child_row.scalars().first()
+
+    if mutation == 'invalidate':
+        await evaluation_repo.invalidate(child_eval.id, note='stale data')
+    elif mutation == 'restore':
+        await evaluation_repo.invalidate(child_eval.id, note='stale data')
+        await evaluation_repo.restore(child_eval.id)
+    elif mutation == 'override_status':
+        await evaluation_repo.override_status(
+            child_eval.id,
+            new_result='fail',
+            reason='manual flip',
+            author='tester',
+        )
+    elif mutation == 'restore_override':
+        await evaluation_repo.override_status(
+            child_eval.id,
+            new_result='fail',
+            reason='setup',
+            author='tester',
+        )
+        await evaluation_repo.restore_override(child_eval.id)
+    elif mutation == 'pin_baseline':
+        await evaluation_repo.pin_baseline(child_eval.id, reason='golden', author='tester')
+    elif mutation == 'unpin_baseline':
+        await evaluation_repo.pin_baseline(child_eval.id, reason='setup', author='tester')
+        await evaluation_repo.unpin_baseline(child_eval.id)
+    elif mutation == 'add_annotation':
+        await annotation_repo.add_annotation(
+            child_eval.id,
+            content='investigating the spike',
+            author='tester',
+        )
+    elif mutation == 'hide_annotation':
+        created = await annotation_repo.add_annotation(
+            child_eval.id,
+            content='investigating the spike',
+            author='tester',
+        )
+        await annotation_repo.hide_annotation(created.id, reason='false alarm', author='tester')
+    else:
+        raise ValueError(f'unknown mutation: {mutation}')
+
+
+@pytest.mark.integration
+@pytest.mark.parametrize(
+    'mutation',
+    [
+        'none',
+        'invalidate',
+        'restore',
+        'override_status',
+        'restore_override',
+        'pin_baseline',
+        'unpin_baseline',
+        'add_annotation',
+        'hide_annotation',
+    ],
+)
+async def test_cache_equals_uncached_after_mutation(
+    mutation: str,
+    api_client: AsyncClient,
+    redis_client: fakeredis.aioredis.FakeRedis,
+    db_session: AsyncSession,
+    seed_asset_with_indicators: Callable[..., Coroutine[Any, Any, SeededAsset]],
+) -> None:
+    """Correctness centerpiece of Chunk C: for any sequence of
+    (warm cache → mutate → read), the ``cache=true`` response must equal the
+    ``cache=false`` response. If this ever fails, invalidation is incomplete
+    — the missing site is revealed by which mutation flavor triggers the
+    divergence.
+
+    Annotations (``add_annotation`` / ``hide_annotation``) do NOT invalidate
+    the cached fragment — note state is overlaid at assembly time from
+    ``get_run_ids_with_notes``. The test still runs them to verify the
+    overlay works correctly on BOTH the cache-hit path (where the cached
+    fragment is stale w.r.t. ``has_notes``) and the cache-bypass path
+    (where the freshly-built fragment always reflects the latest notes).
+    """
+    seeded = await seed_asset_with_indicators(cell_count=3)
+
+    # Step 1: warm the cache with a normal read, and assert the baseline
+    # invariant BEFORE mutating. If this trips, the read path itself is
+    # wrong — not an invalidation bug.
+    cached_initial = await api_client.get(f'/evaluate/metric-heatmap?asset_name={seeded.name}')
+    uncached_initial = await api_client.get(f'/evaluate/metric-heatmap?asset_name={seeded.name}&cache=false')
+    assert cached_initial.status_code == 200
+    assert uncached_initial.status_code == 200
+    assert cached_initial.json() == uncached_initial.json(), (
+        'baseline invariant failed BEFORE mutation — the read path itself is wrong'
+    )
+
+    # Step 2: apply the mutation (if any).
+    if mutation != 'none':
+        await _apply_mutation(mutation, db_session, seeded, redis_client)
+
+    # Step 3: re-read both variants and assert they still agree.
+    cached_after = await api_client.get(f'/evaluate/metric-heatmap?asset_name={seeded.name}')
+    uncached_after = await api_client.get(f'/evaluate/metric-heatmap?asset_name={seeded.name}&cache=false')
+    assert cached_after.status_code == 200
+    assert uncached_after.status_code == 200
+    assert cached_after.json() == uncached_after.json(), (
+        f'invariant failed after {mutation}: the cache diverged from the DB. '
+        f'an invalidation site is missing for {mutation}'
+    )
