@@ -35,9 +35,15 @@ function brighten(hex: string, factor: number): string {
 // ── Internal render-ready cell ────────────────────────────────────────────────
 // Extends HeatmapEChartsCell with computed visual properties so renderItem can stay
 // a pure lookup (no colour logic inside the ECharts callback).
+//
+// Selection border (stroke / lineWidth) is intentionally NOT baked in here —
+// it is computed per-render inside renderItem from the live `selectedColumn`
+// prop. Keeping selection out of RenderCell means clicking a cell to change
+// selection does not invalidate the renderCells memo, which would otherwise
+// remap every cell on every click and make interaction laggy on large grids.
 
 interface RenderCell extends HeatmapEChartsCell {
-  itemStyle: { color: string; borderColor: string; borderWidth: number }
+  itemStyle: { color: string }
   hoverColor: string
 }
 
@@ -185,12 +191,13 @@ export function HeatmapChart({
   }, [notedColumns, computeColumnPositions])
 
   // Map each incoming HeatmapEChartsCell to a RenderCell with visual properties baked in.
-  // Recomputes when selection, colours, or underlying data changes.
+  // Recomputes when colours or underlying data change — but NOT when selection
+  // changes. Selection border is drawn dynamically in renderItem from the live
+  // `selectedColumn` prop; remapping every cell on every click would be wasted
+  // work on large grids.
   const renderCells: RenderCell[] = useMemo(
     () =>
       cells.map(cell => {
-        const isSelected =
-          selectedColumn !== undefined && cell.value[0] === selectedColumn
         const isHeader = headerRowIndices.has(cell.value[1])
         const baseColour =
           cell.result === 'none'
@@ -200,18 +207,19 @@ export function HeatmapChart({
         return {
           ...cell,
           hoverColor: brighten(colour, 1.4),
-          itemStyle: {
-            color: colour,
-            borderColor: isSelected ? ct.selectionRing : 'transparent',
-            borderWidth: isSelected ? 2 : 0,
-          },
+          itemStyle: { color: colour },
         }
       }),
-    [cells, colours, ct, selectedColumn, headerRowIndices],
+    [cells, colours, ct, headerRowIndices],
   )
 
   const option = useMemo(
     () => ({
+      // Disable the default initial fade-in animation. For dense heatmaps
+      // (thousands of cells) the animation runs sequentially across every
+      // group, adding hundreds of ms of opacity tweens on first paint.
+      // See docs/perf/heatmap-chunk-c.md "Follow-ups" for the full analysis.
+      animation: false,
       backgroundColor: 'transparent',
       tooltip: {
         trigger: 'item' as const,
@@ -262,6 +270,16 @@ export function HeatmapChart({
       series: [
         {
           type: 'custom',
+          // Progressive rendering: draw cells in data-array order, one chunk per
+          // animation frame, so the browser stays responsive during the render
+          // and the visible top-of-chart rows appear before off-screen ones.
+          // The mapper emits cells in visual top-to-bottom order, so `sequential`
+          // chunk mode naturally renders the viewport first. Only engages above
+          // 1500 cells — below that, sync render is faster than the frame
+          // scheduling overhead.
+          progressive: 1000,
+          progressiveThreshold: 1500,
+          progressiveChunkMode: 'sequential' as const,
           renderItem: (
             params: { dataIndex: number },
             api: {
@@ -280,7 +298,10 @@ export function HeatmapChart({
             const rh = h - pad * 2
 
             const cellData = renderCells[params.dataIndex]
-            const is = cellData?.itemStyle
+            // Selection border is computed here (not in the renderCells memo)
+            // so clicking to change selection does NOT invalidate the full
+            // cell mapping — the option rebuild fires but renderCells survives.
+            const isSelected = selectedColumn !== undefined && xi === selectedColumn
 
             const children: object[] = []
 
@@ -288,9 +309,9 @@ export function HeatmapChart({
               type: 'rect',
               shape: { x: rx, y: ry, width: rw, height: rh, r: 3 },
               style: {
-                fill: is?.color,
-                stroke: is?.borderColor,
-                lineWidth: is?.borderWidth ?? 0,
+                fill: cellData?.itemStyle.color,
+                stroke: isSelected ? ct.selectionRing : 'transparent',
+                lineWidth: isSelected ? 2 : 0,
               },
               emphasis: {
                 style: {
@@ -324,7 +345,11 @@ export function HeatmapChart({
       ],
       grid: { top: 10, bottom: 80, left: HEATMAP_GRID_LEFT, right: HEATMAP_GRID_RIGHT },
     }),
-    [columns, rows, renderCells, ct, pad, annotations, formatTooltip, formatColumnLabel, headerRowIndices],
+    // `selectedColumn` is in deps so the renderItem closure picks up the new
+    // value when selection changes. Cost is cheap: rebuilding the option
+    // object is ~1ms even for large grids because `renderCells` is not
+    // re-mapped (it doesn't depend on `selectedColumn`).
+    [columns, rows, renderCells, ct, pad, annotations, formatTooltip, formatColumnLabel, headerRowIndices, selectedColumn],
   )
 
   const chartHeight =

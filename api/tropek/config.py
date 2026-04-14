@@ -72,6 +72,7 @@ class CacheTTLSettings:
         self.evaluation_list: int = data.get('evaluation_list', 30)
         self.evaluation_detail: int = data.get('evaluation_detail', 300)
         self.slo_definition: int = data.get('slo_definition', 600)
+        self.heatmap_column: int = data.get('heatmap_column', 7 * 24 * 60 * 60)
 
 
 class CacheSettings(BaseSettings):

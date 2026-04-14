@@ -3,15 +3,20 @@
 from __future__ import annotations
 
 import uuid
+from collections.abc import Callable, Coroutine
 from datetime import UTC, datetime, timedelta
+from typing import Any
 
 import pytest
+from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 from tropek.db.models import Asset, AssetType
 from tropek.modules.quality_gate.repositories.evaluation import EvaluationRepository
 from tropek.modules.quality_gate.repositories.evaluation_run import EvaluationRunRepository
 from tropek.modules.quality_gate.repositories.trend import TrendRepository
 from tropek.modules.quality_gate.shared.params import EvalCreateParams
+
+from .conftest import SeededAsset
 
 _BASE = datetime(2026, 3, 15, 10, 0, 0, tzinfo=UTC)
 
@@ -105,3 +110,25 @@ async def test_grouped_heatmap_eval_name_filter(db_session: AsyncSession) -> Non
     runs = await trend_repo.get_grouped_metric_heatmap(asset_id=asset_id, eval_name=['daily'])
     assert len(runs) == 1
     assert runs[0].eval_name == 'daily'
+
+
+@pytest.mark.integration
+async def test_cache_parameter_accepted_and_response_identical_pre_cache(
+    api_client: AsyncClient,
+    seed_asset_with_indicators: Callable[[Any], Coroutine[Any, Any, SeededAsset]],
+) -> None:
+    """PR1 contract: ?cache=true and ?cache=false both return identical JSON.
+
+    Until PR2 lands, both paths fall through to the same build path — equality
+    is guaranteed. PR2 must preserve this invariant (the property test).
+    """
+    asset = await seed_asset_with_indicators(cell_count=5)
+    cached_response = await api_client.get(
+        f'/evaluate/metric-heatmap?asset_name={asset.name}'
+    )
+    uncached_response = await api_client.get(
+        f'/evaluate/metric-heatmap?asset_name={asset.name}&cache=false'
+    )
+    assert cached_response.status_code == 200
+    assert uncached_response.status_code == 200
+    assert cached_response.json() == uncached_response.json()

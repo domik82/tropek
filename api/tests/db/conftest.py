@@ -17,6 +17,7 @@ import uuid
 from collections.abc import AsyncGenerator
 from pathlib import Path
 
+import fakeredis.aioredis
 import pytest
 import pytest_asyncio
 from dotenv import load_dotenv
@@ -80,6 +81,22 @@ async def db_engine(db_url: str) -> AsyncGenerator[AsyncEngine, None]:  # noqa: 
                 await conn.execute(text(f'DROP DATABASE IF EXISTS "{ephemeral_name}" WITH (FORCE)'))
         finally:
             await admin.dispose()
+
+
+@pytest_asyncio.fixture()
+async def redis_client() -> AsyncGenerator[fakeredis.aioredis.FakeRedis, None]:  # noqa: UP043
+    """In-memory async Redis for integration tests.
+
+    Uses fakeredis so cache tests don't require a real Redis container — the
+    dedicated test-env profile only runs TimescaleDB. Each test gets a fresh
+    instance; tear-down flushes all keys.
+    """
+    client = fakeredis.aioredis.FakeRedis()
+    try:
+        yield client
+    finally:
+        await client.flushdb()
+        await client.aclose()
 
 
 @pytest_asyncio.fixture()

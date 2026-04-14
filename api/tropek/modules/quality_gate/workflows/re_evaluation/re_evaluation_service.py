@@ -26,6 +26,7 @@ from tropek.modules.quality_gate.schemas.re_evaluation import (
 from tropek.modules.quality_gate.shared.dependencies import QualityGateRepos
 from tropek.modules.quality_gate.shared.exceptions import BaselinePinConflictError
 from tropek.modules.quality_gate.workflows.execution.evaluation_helpers import build_slo_model, compute_baselines
+from tropek.modules.quality_gate.workflows.presentation.heatmap_cache import HeatmapColumnCache
 from tropek.modules.quality_gate.workflows.trigger.trigger_resolver import resolve_all_slos_for_asset
 from tropek.modules.sli_registry.repository import SLIRepository
 
@@ -133,6 +134,7 @@ async def _persist_reeval_result(  # noqa: PLR0913
     cache: RedisCache | None,
     note_group_id: uuid.UUID,
     note_group_name: str,
+    heatmap_cache: HeatmapColumnCache | None = None,
 ) -> None:
     """Overwrite evaluation result from re-evaluation, preserving original on first call."""
     result = await session.execute(
@@ -162,6 +164,8 @@ async def _persist_reeval_result(  # noqa: PLR0913
     annotation_content = f'{slo_name}: {old_result} \u2192 {new_result}, score {old_score} \u2192 {new_score}'
     if cache:
         await cache.invalidate(f'baseline:{fresh_ev.asset_id}:{fresh_ev.slo_name}')
+    if heatmap_cache is not None:
+        await heatmap_cache.delete(fresh_ev.evaluation_id)
     ann_repo = AnnotationRepository(session, cache=cache)
     await ann_repo.add_annotation(
         ev.id,
@@ -203,6 +207,7 @@ async def _rescore_single(  # noqa: PLR0913
     skip_pin_filter: bool = False,
     note_group_id: uuid.UUID | None = None,
     note_group_name: str | None = None,
+    heatmap_cache: HeatmapColumnCache | None = None,
 ) -> ReEvalResultItem:
     """Re-score a single evaluation and optionally persist the update."""
     metrics = _metrics_from_indicator_rows(ev.indicator_rows)
@@ -242,6 +247,7 @@ async def _rescore_single(  # noqa: PLR0913
             cache=cache,
             note_group_id=note_group_id,
             note_group_name=note_group_name,
+            heatmap_cache=heatmap_cache,
         )
 
     return ReEvalResultItem(
@@ -258,7 +264,7 @@ async def _rescore_single(  # noqa: PLR0913
     )
 
 
-async def _re_evaluate_single_slo(  # noqa: PLR0913
+async def _re_evaluate_single_slo(
     request: ReEvaluateRequest,
     slo_name: str,
     asset_id: uuid.UUID,
@@ -274,6 +280,7 @@ async def _re_evaluate_single_slo(  # noqa: PLR0913
     eval_repo = repos.eval_repo
     baseline_repo = repos.baseline_repo
     cache = repos.cache
+    heatmap_cache = repos.heatmap_cache
 
     # Load SLO definition (specified version or latest)
     if request.slo_version is not None:
@@ -336,6 +343,7 @@ async def _re_evaluate_single_slo(  # noqa: PLR0913
             skip_pin_filter=skip_pin,
             note_group_id=note_group_id,
             note_group_name=note_group_name,
+            heatmap_cache=heatmap_cache,
         )
         eligible_ids.append(ev.id)
         results.append(item)
