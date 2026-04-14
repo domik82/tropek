@@ -154,3 +154,45 @@ def test_build_column_fragment_criteria_scoped_per_row_not_hoisted() -> None:
     assert cells[0].pass_targets[0].criteria == '<600'
     assert cells[1].pass_targets is not None
     assert cells[1].pass_targets[0].criteria == '<500'
+
+
+def test_assemble_grouped_response_merges_fragments_by_slo_name() -> None:
+    obj = _objective('latency', ['<600'], ['<800'])
+    run1 = _run([_slo_eval('slo-a', [_indicator_row(obj, 500, 400)])])
+    run2 = _run([_slo_eval('slo-a', [_indicator_row(obj, 550, 400)])])
+    fragment_one = presenter.build_column_fragment(run1, has_notes=False)
+    fragment_two = presenter.build_column_fragment(run2, has_notes=True)
+    response = presenter.assemble_grouped_response(asset_name='svc', fragments=[fragment_one, fragment_two])
+    assert response.asset_name == 'svc'
+    assert len(response.columns) == 2
+    assert response.columns[0].has_notes is False
+    assert response.columns[1].has_notes is True
+    assert len(response.groups) == 1
+    group = response.groups[0]
+    assert group.slo_name == 'slo-a'
+    assert len(group.cells) == 2
+    assert len(group.summary) == 2
+    assert len(response.composite) == 2
+
+
+def test_assemble_grouped_response_orders_slos_by_appearance() -> None:
+    obj = _objective('latency', ['<600'], ['<800'])
+    # run1 has only slo-b, run2 has slo-a and slo-b
+    run1 = _run([_slo_eval('slo-b', [_indicator_row(obj, 500, 400)])])
+    run2 = _run(
+        [
+            _slo_eval('slo-a', [_indicator_row(obj, 500, 400)]),
+            _slo_eval('slo-b', [_indicator_row(obj, 500, 400)]),
+        ]
+    )
+    fragment_one = presenter.build_column_fragment(run1, has_notes=False)
+    fragment_two = presenter.build_column_fragment(run2, has_notes=False)
+    response = presenter.assemble_grouped_response('svc', fragments=[fragment_one, fragment_two])
+    # slo-b appears first (first column has only slo-b)
+    assert [g.slo_name for g in response.groups] == ['slo-b', 'slo-a']
+    # slo-a only has cells from run2
+    slo_a_group = next(g for g in response.groups if g.slo_name == 'slo-a')
+    assert len(slo_a_group.cells) == 1
+    # slo-a summary is padded with a 'none' entry for run1
+    assert len(slo_a_group.summary) == 2
+    assert slo_a_group.summary[0].result == 'none'
