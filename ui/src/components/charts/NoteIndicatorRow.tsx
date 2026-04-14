@@ -1,7 +1,8 @@
 // ui/src/components/charts/NoteIndicatorRow.tsx
-import { useState, useRef, useCallback } from 'react'
+import { useState, useRef, useCallback, useMemo } from 'react'
 import { MessageSquareWarning, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import type { Annotation } from '@/features/evaluations/domain'
 import { useColumnAnnotations } from '@/features/evaluations/hooks'
 
 export interface SlotNote {
@@ -23,6 +24,49 @@ interface Props {
   columnPositions: ColumnPosition[]
   /** Called when user clicks an indicator */
   onIndicatorClick?: (slot: string) => void
+}
+
+/** Collapse grouped annotations (same noteGroupId) into a single summary line. */
+function TooltipNoteList({ annotations }: { annotations: Annotation[] }) {
+  const entries = useMemo(() => {
+    const groups = new Map<string, { name: string; count: number }>()
+    const standalone: Annotation[] = []
+    for (const a of annotations) {
+      if (a.noteGroupId) {
+        const existing = groups.get(a.noteGroupId)
+        if (existing) {
+          existing.count++
+        } else {
+          groups.set(a.noteGroupId, { name: a.noteGroupName ?? 're-evaluation', count: 1 })
+        }
+      } else {
+        standalone.push(a)
+      }
+    }
+    return { groups: [...groups.values()], standalone }
+  }, [annotations])
+
+  return (
+    <div className="space-y-1">
+      {entries.groups.map((g, i) => (
+        <div key={i} className="flex items-center gap-1.5">
+          <span className="text-[10px] bg-amber-900/40 text-amber-300 px-1 py-0.5 rounded shrink-0">
+            re-eval
+          </span>
+          <span className="text-xs text-foreground/80 truncate">{g.name}</span>
+          <span className="text-[10px] text-muted-foreground/60 shrink-0">({g.count})</span>
+        </div>
+      ))}
+      {entries.standalone.map(a => (
+        <div key={a.id}>
+          <p className="text-xs text-foreground line-clamp-2">{a.content}</p>
+          {a.author && (
+            <p className="text-[10px] text-muted-foreground">— {a.author}</p>
+          )}
+        </div>
+      ))}
+    </div>
+  )
 }
 
 function NoteIcon({ slot, info, x, width, onIndicatorClick }: {
@@ -72,7 +116,7 @@ function NoteIcon({ slot, info, x, width, onIndicatorClick }: {
         )}
       </Button>
       {open && (
-        <div className="absolute bottom-full mb-1.5 z-30 left-1/2 -translate-x-1/2 w-56 bg-popover border border-amber-700/40 rounded-lg shadow-xl p-2.5">
+        <div className="absolute bottom-full mb-1.5 z-30 left-1/2 -translate-x-1/2 w-64 bg-popover border border-amber-700/40 rounded-lg shadow-xl p-2.5">
           <div className="flex items-center gap-1.5 mb-1">
             <span className="text-amber-400 text-xs">⚑</span>
             <span className="text-[10px] text-muted-foreground">
@@ -80,16 +124,7 @@ function NoteIcon({ slot, info, x, width, onIndicatorClick }: {
             </span>
           </div>
           {annotations ? (
-            <div className="space-y-1.5 max-h-48 overflow-y-auto">
-              {annotations.map(a => (
-                <div key={a.id}>
-                  <p className="text-xs text-foreground line-clamp-2">{a.content}</p>
-                  {a.author && (
-                    <p className="text-[10px] text-muted-foreground">— {a.author}</p>
-                  )}
-                </div>
-              ))}
-            </div>
+            <TooltipNoteList annotations={annotations} />
           ) : (
             <div className="flex items-center gap-1.5">
               <Loader2 className="w-3 h-3 text-amber-400 animate-spin" />
