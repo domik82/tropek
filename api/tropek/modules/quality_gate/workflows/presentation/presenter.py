@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 import uuid
-from typing import Any
+from typing import Any, NamedTuple
 
 from tropek.db.models import EvaluationRun, IndicatorResultRow, SLOEvaluation
 from tropek.modules.quality_gate.evaluation_engine.constants import RESULT_RANK
+from tropek.modules.quality_gate.evaluation_engine.criteria import ParsedCriteria, parse_criteria_string
 from tropek.modules.quality_gate.schemas import (
     AnnotationRead,
     EvaluationColumn,
@@ -21,7 +22,14 @@ from tropek.modules.quality_gate.schemas import (
     IndicatorResult,
 )
 from tropek.modules.quality_gate.schemas.evaluations import PassTarget
-from tropek.modules.quality_gate.workflows.presentation.target_resolver import resolve_targets
+from tropek.modules.quality_gate.schemas.heatmap import (
+    HeatmapColumnFragment,
+    HeatmapColumnSloFragment,
+)
+from tropek.modules.quality_gate.workflows.presentation.target_resolver import (
+    resolve_targets,
+    resolve_targets_from_parsed,
+)
 
 
 def _read_stored_targets(
@@ -290,6 +298,162 @@ def build_grouped_heatmap_response(
         columns=columns,
         groups=groups,
         composite=composite,
+    )
+
+
+class _ParsedObjectiveCriteria(NamedTuple):
+    """Cache entry for a single objective's parsed criteria, reused per-cell."""
+
+    raw_pass: list[str] | None
+    parsed_pass: list[ParsedCriteria] | None
+    raw_warning: list[str] | None
+    parsed_warning: list[ParsedCriteria] | None
+
+
+def _parse_objective_criteria(objective: Any) -> _ParsedObjectiveCriteria:
+    """Parse an objective's pass + warning criteria strings exactly once."""
+    raw_pass = list(objective.pass_threshold) if objective.pass_threshold else None
+    raw_warning = list(objective.warning_threshold) if objective.warning_threshold else None
+    parsed_pass = [parse_criteria_string(raw) for raw in raw_pass] if raw_pass is not None else None
+    parsed_warning = [parse_criteria_string(raw) for raw in raw_warning] if raw_warning is not None else None
+    return _ParsedObjectiveCriteria(
+        raw_pass=raw_pass,
+        parsed_pass=parsed_pass,
+        raw_warning=raw_warning,
+        parsed_warning=parsed_warning,
+    )
+
+
+def build_column_fragment(
+    run: EvaluationRun,
+    *,
+    has_notes: bool,
+) -> HeatmapColumnFragment:
+    """Build one heatmap column fragment for a single EvaluationRun.
+
+    Cached independently in Redis per (schema_version, run.id). Criteria
+    strings are parsed exactly once per unique objective within this fragment
+    via a per-call cache keyed on ``id(objective)`` — safe because
+    ``IndicatorResultRow.objective`` is a joined-loaded ``SLOObjective``
+    relationship, so the same Python object is reused across rows within one
+    SQLAlchemy session.
+    """
+    parsed_cache: dict[int, _ParsedObjectiveCriteria] = {}
+    per_slo: list[HeatmapColumnSloFragment] = []
+
+    for slo_eval in run.slo_evaluations or []:
+        metrics: dict[str, str] = {}
+        cells: list[HeatmapCellGrouped] = []
+        sli_metadata = slo_eval.job_stats.get('sli_metadata', {}) if slo_eval.job_stats else {}
+
+        for row in slo_eval.indicator_rows or []:
+            objective = row.objective
+            metric_name = objective.sli
+            display_name = objective.display_name or metric_name
+            if metric_name not in metrics:
+                metrics[metric_name] = display_name
+
+            cache_key = id(objective)
+            entry = parsed_cache.get(cache_key)
+            if entry is None:
+                entry = _parse_objective_criteria(objective)
+                parsed_cache[cache_key] = entry
+
+            cells.append(
+                HeatmapCellGrouped(
+                    evaluation_id=run.id,
+                    slo_evaluation_id=slo_eval.id,
+                    period_start=run.period_start,
+                    metric=metric_name,
+                    display_name=display_name,
+                    result='invalidated' if slo_eval.invalidated else row.status,
+                    score=row.score,
+                    value=row.value,
+                    compared_value=row.compared_value,
+                    change_relative_pct=row.change_relative_pct,
+                    weight=objective.weight,
+                    key_sli=objective.key_sli,
+                    pass_targets=resolve_targets_from_parsed(
+                        entry.parsed_pass,
+                        entry.raw_pass,
+                        value=row.value,
+                        compared_value=row.compared_value,
+                    ),
+                    warning_targets=resolve_targets_from_parsed(
+                        entry.parsed_warning,
+                        entry.raw_warning,
+                        value=row.value,
+                        compared_value=row.compared_value,
+                    ),
+                    tab_group=objective.tab_group,
+                    aggregation=sli_metadata.get(metric_name, {}).get('mode'),
+                )
+            )
+
+        slo_score = (
+            slo_eval.achieved_points / slo_eval.total_points * 100
+            if slo_eval.total_points and slo_eval.achieved_points is not None
+            else 0.0
+        )
+        per_slo.append(
+            HeatmapColumnSloFragment(
+                slo_name=slo_eval.slo_name,
+                slo_display_name=getattr(slo_eval, 'slo_display_name', None),
+                metrics=[
+                    HeatmapMetric(name=metric_name, display_name=display_name)
+                    for metric_name, display_name in metrics.items()
+                ],
+                cells=cells,
+                summary=HeatmapSummaryCell(
+                    evaluation_id=run.id,
+                    period_start=run.period_start,
+                    result=_slo_summary_result(slo_eval),
+                    score=round(slo_score, 2),
+                    total_score_pass_threshold=(
+                        slo_eval.job_stats.get('total_score_pass_threshold') if slo_eval.job_stats else None
+                    ),
+                    total_score_warning_threshold=(
+                        slo_eval.job_stats.get('total_score_warning_threshold') if slo_eval.job_stats else None
+                    ),
+                    sli_metadata=sli_metadata or None,
+                    slo_version=slo_eval.slo_version,
+                    sli_version=slo_eval.sli_version,
+                    invalidated=slo_eval.invalidated,
+                    invalidation_note=slo_eval.invalidation_note,
+                ),
+            )
+        )
+
+    return HeatmapColumnFragment(
+        evaluation_run_id=run.id,
+        column=EvaluationColumn(
+            evaluation_id=run.id,
+            period_start=run.period_start,
+            period_end=run.period_end,
+            eval_name=run.eval_name,
+            has_notes=has_notes,
+        ),
+        per_slo=per_slo,
+        composite_summary=_build_composite_summary_for_run(run),
+    )
+
+
+def _build_composite_summary_for_run(run: EvaluationRun) -> HeatmapSummaryCell:
+    """Build one composite summary cell for a single run.
+
+    Worst-case across all SLOs for this run, producing one cell of the
+    Overall row in the grouped heatmap response.
+    """
+    total_points = run.total_points
+    achieved_points = run.achieved_points
+    run_score = round(achieved_points / total_points * 100, 2) if total_points and achieved_points is not None else 0.0
+    slo_evaluations = run.slo_evaluations or []
+    all_invalidated = bool(slo_evaluations) and all(slo_eval.invalidated for slo_eval in slo_evaluations)
+    return HeatmapSummaryCell(
+        evaluation_id=run.id,
+        period_start=run.period_start,
+        result='invalidated' if all_invalidated else (run.result or 'none'),
+        score=run_score,
     )
 
 
