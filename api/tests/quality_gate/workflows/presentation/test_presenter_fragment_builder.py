@@ -175,9 +175,12 @@ def test_assemble_grouped_response_merges_fragments_by_slo_name() -> None:
     assert len(response.composite) == 2
 
 
-def test_assemble_grouped_response_orders_slos_by_appearance() -> None:
+def test_assemble_grouped_response_orders_slos_alphabetically() -> None:
+    """Stable alphabetical ordering required so cache=true and cache=false
+    responses are byte-identical regardless of which run got built first."""
     obj = _objective('latency', ['<600'], ['<800'])
-    # run1 has only slo-b, run2 has slo-a and slo-b
+    # run1 has only slo-b (alphabetically later); run2 has slo-a and slo-b.
+    # Even though slo-b appears first chronologically, slo-a must come first.
     run1 = _run([_slo_eval('slo-b', [_indicator_row(obj, 500, 400)])])
     run2 = _run(
         [
@@ -188,11 +191,9 @@ def test_assemble_grouped_response_orders_slos_by_appearance() -> None:
     fragment_one = presenter.build_column_fragment(run1, has_notes=False)
     fragment_two = presenter.build_column_fragment(run2, has_notes=False)
     response = presenter.assemble_grouped_response('svc', fragments=[fragment_one, fragment_two])
-    # slo-b appears first (first column has only slo-b)
-    assert [g.slo_name for g in response.groups] == ['slo-b', 'slo-a']
-    # slo-a only has cells from run2
+    assert [g.slo_name for g in response.groups] == ['slo-a', 'slo-b']
+    # slo-a only has cells from run2; its summary is padded for run1
     slo_a_group = next(g for g in response.groups if g.slo_name == 'slo-a')
     assert len(slo_a_group.cells) == 1
-    # slo-a summary is padded with a 'none' entry for run1
     assert len(slo_a_group.summary) == 2
     assert slo_a_group.summary[0].result == 'none'

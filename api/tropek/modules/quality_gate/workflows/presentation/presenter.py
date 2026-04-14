@@ -146,13 +146,14 @@ def assemble_grouped_response(
     columns = [fragment.column for fragment in fragments]
     composite = [fragment.composite_summary for fragment in fragments]
 
-    # Collect groups in order of first appearance.
-    slo_order: list[str] = []
+    # Collect groups, then emit alphabetically by slo_name. Stable ordering
+    # is required so cache=true and cache=false responses are byte-identical
+    # regardless of which run got built first (see the property test in the
+    # test_heatmap_cache.py battery).
     groups_by_name: dict[str, dict[str, Any]] = {}
     for column_index, fragment in enumerate(fragments):
         for slo_part in fragment.per_slo:
             if slo_part.slo_name not in groups_by_name:
-                slo_order.append(slo_part.slo_name)
                 groups_by_name[slo_part.slo_name] = {
                     'slo_display_name': slo_part.slo_display_name,
                     'metrics_by_name': {metric.name: metric for metric in slo_part.metrics},
@@ -166,7 +167,7 @@ def assemble_grouped_response(
             entry['summary_by_col'][column_index] = slo_part.summary
 
     groups: list[HeatmapSloGroupSection] = []
-    for slo_name in slo_order:
+    for slo_name in sorted(groups_by_name):
         entry = groups_by_name[slo_name]
         summary = [
             entry['summary_by_col'].get(column_index) or _empty_summary_for_run(fragments[column_index])
