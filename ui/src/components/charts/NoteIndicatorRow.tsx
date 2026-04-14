@@ -26,43 +26,60 @@ interface Props {
   onIndicatorClick?: (slot: string) => void
 }
 
-/** Collapse grouped annotations (same noteGroupId) into a single summary line. */
+interface TooltipGroup {
+  id: string
+  items: Annotation[]
+}
+
+/** Group annotations by noteGroupId; show full content of every annotation. */
 function TooltipNoteList({ annotations }: { annotations: Annotation[] }) {
-  const entries = useMemo(() => {
-    const groups = new Map<string, { name: string; count: number }>()
+  const { groups, standalone } = useMemo(() => {
+    const groupMap = new Map<string, TooltipGroup>()
     const standalone: Annotation[] = []
     for (const a of annotations) {
       if (a.noteGroupId) {
-        const existing = groups.get(a.noteGroupId)
+        const existing = groupMap.get(a.noteGroupId)
         if (existing) {
-          existing.count++
+          existing.items.push(a)
         } else {
-          groups.set(a.noteGroupId, { name: a.noteGroupName ?? 're-evaluation', count: 1 })
+          groupMap.set(a.noteGroupId, { id: a.noteGroupId, items: [a] })
         }
       } else {
         standalone.push(a)
       }
     }
-    return { groups: [...groups.values()], standalone }
+    return { groups: [...groupMap.values()], standalone }
   }, [annotations])
 
   return (
-    <div className="space-y-1">
-      {entries.groups.map((g, i) => (
-        <div key={i} className="flex items-center gap-1.5">
-          <span className="text-[10px] bg-amber-900/40 text-amber-300 px-1 py-0.5 rounded shrink-0">
-            re-eval
+    <div className="space-y-2">
+      {groups.map(g => (
+        <div key={g.id} className="flex items-start gap-1.5">
+          <span className="text-[10px] bg-amber-900/40 text-amber-300 px-1 py-0.5 rounded shrink-0 mt-0.5">
+            re-evaluation
           </span>
-          <span className="text-xs text-foreground/80 truncate">{g.name}</span>
-          <span className="text-[10px] text-muted-foreground/60 shrink-0">({g.count})</span>
+          <div className="flex-1 min-w-0 space-y-0.5">
+            {g.items.map(a => (
+              <p key={a.id} className="text-xs text-foreground/85 break-words">
+                {a.content}
+              </p>
+            ))}
+          </div>
         </div>
       ))}
-      {entries.standalone.map(a => (
-        <div key={a.id}>
-          <p className="text-xs text-foreground line-clamp-2">{a.content}</p>
-          {a.author && (
-            <p className="text-[10px] text-muted-foreground">— {a.author}</p>
+      {standalone.map(a => (
+        <div key={a.id} className="flex items-start gap-1.5">
+          {a.category && (
+            <span className="text-[10px] bg-amber-900/40 text-amber-300 px-1 py-0.5 rounded shrink-0 mt-0.5">
+              {a.category}
+            </span>
           )}
+          <div className="flex-1 min-w-0">
+            <p className="text-xs text-foreground/85 break-words">{a.content}</p>
+            {a.author && (
+              <p className="text-[10px] text-muted-foreground">— {a.author}</p>
+            )}
+          </div>
         </div>
       ))}
     </div>
@@ -116,8 +133,8 @@ function NoteIcon({ slot, info, x, width, onIndicatorClick }: {
         )}
       </Button>
       {open && (
-        <div className="absolute bottom-full mb-1.5 z-30 left-1/2 -translate-x-1/2 w-64 bg-popover border border-amber-700/40 rounded-lg shadow-xl p-2.5">
-          <div className="flex items-center gap-1.5 mb-1">
+        <div className="absolute bottom-full mb-1.5 z-30 left-1/2 -translate-x-1/2 w-[28rem] max-w-[90vw] bg-popover border border-amber-700/40 rounded-lg shadow-xl p-2.5">
+          <div className="flex items-center gap-1.5 mb-1.5">
             <span className="text-amber-400 text-xs">⚑</span>
             <span className="text-[10px] text-muted-foreground">
               {annotations ? `${count} note${count !== 1 ? 's' : ''}` : 'Notes'}
