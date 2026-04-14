@@ -36,6 +36,7 @@ export {
   usePinBaseline,
   useReEvaluate,
   useAddAnnotation,
+  useAddRunAnnotation,
   useHideAnnotation,
 } from './hooks'
 export { useTabState } from './hooks/useTabState'

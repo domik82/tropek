@@ -192,6 +192,8 @@ describe('dtoToAnnotation', () => {
   it('parses dates and normalizes nullable fields', () => {
     const dto: AnnotationDto = {
       id: 'ann-1',
+      slo_evaluation_id: null,
+      evaluation_run_id: 'run-1',
       content: 'flaky run',
       author: 'bob',
       category: 'flake',
@@ -206,6 +208,8 @@ describe('dtoToAnnotation', () => {
     }
     const domain = dtoToAnnotation(dto)
     expect(domain.id).toBe('ann-1')
+    expect(domain.evaluationRunId).toBe('run-1')
+    expect(domain.sloEvaluationId).toBeNull()
     expect(domain.createdAt).toBeInstanceOf(Date)
     expect(domain.updatedAt).toBeNull()
     expect(domain.hiddenAt).toBeNull()

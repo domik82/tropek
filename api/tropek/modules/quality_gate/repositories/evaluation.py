@@ -430,7 +430,11 @@ class EvaluationRepository:
                 .distinct(EvaluationAnnotation.slo_evaluation_id)
             )
             latest_rows = await self._session.execute(latest_q)
-            latest_map = {a.slo_evaluation_id: a for a in latest_rows.scalars().all()}
+            latest_map = {
+                a.slo_evaluation_id: a
+                for a in latest_rows.scalars().all()
+                if a.slo_evaluation_id is not None
+            }
         return evals, total, count_map, latest_map
 
     async def invalidate(self, eval_id: uuid.UUID, *, note: str) -> SLOEvaluation | None:
