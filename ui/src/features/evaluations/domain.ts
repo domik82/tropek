@@ -35,6 +35,8 @@ export interface BaselinePin {
 
 export interface Annotation {
   id: string
+  sloEvaluationId: string | null
+  evaluationRunId: string | null
   content: string
   author: string | null
   category: string | null

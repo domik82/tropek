@@ -2,16 +2,16 @@
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { useAddAnnotation } from '../hooks'
+import { useAddRunAnnotation } from '../hooks'
 import { SANS_SERIF } from '@/lib/fonts'
 
 interface Props {
-  evalId: string
+  runId: string
   onClose: () => void
 }
 
-export function AddNoteForm({ evalId, onClose }: Props) {
-  const addAnnotation = useAddAnnotation(evalId)
+export function AddNoteForm({ runId, onClose }: Props) {
+  const addAnnotation = useAddRunAnnotation(runId)
   const [content, setContent] = useState('')
   const [author, setAuthor] = useState('')
   const [category, setCategory] = useState('')

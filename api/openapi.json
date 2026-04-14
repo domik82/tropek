@@ -130,7 +130,7 @@
         "type": "object"
       },
       "AnnotationRead": {
-        "description": "Response schema for an evaluation annotation.",
+        "description": "Response schema for an evaluation annotation.\n\nExactly one of slo_evaluation_id / evaluation_run_id is set. SLO-level notes come\nfrom re-eval (per-SLO deltas); run-level notes come from the UI column form.",
         "properties": {
           "author": {
             "anyOf": [
@@ -162,6 +162,18 @@
             "format": "date-time",
             "title": "Created At",
             "type": "string"
+          },
+          "evaluation_run_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Evaluation Run Id"
           },
           "hidden_at": {
             "anyOf": [
@@ -225,6 +237,18 @@
             ],
             "title": "Note Group Name"
           },
+          "slo_evaluation_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Slo Evaluation Id"
+          },
           "tags": {
             "additionalProperties": true,
             "title": "Tags",
@@ -245,6 +269,8 @@
         },
         "required": [
           "id",
+          "slo_evaluation_id",
+          "evaluation_run_id",
           "content",
           "author",
           "category",
@@ -7192,7 +7218,7 @@
     },
     "/evaluations/column-annotations": {
       "get": {
-        "description": "Return all non-hidden annotations across all SLOs for one evaluation run.",
+        "description": "Return all non-hidden annotations for one evaluation run.\n\nUnions run-level notes (new column-level UI form) with the notes attached to each\nchild SLO evaluation (per-SLO re-eval deltas). Sorted oldest-first by created_at.",
         "operationId": "get_column_annotations_evaluations_column_annotations_get",
         "parameters": [
           {
@@ -7434,6 +7460,57 @@
         "summary": "Re Evaluate Evaluations"
       }
     },
+    "/evaluations/run/{run_id}/annotations": {
+      "post": {
+        "description": "Add a run-level (column-level) annotation to an EvaluationRun.",
+        "operationId": "create_run_annotation_evaluations_run__run_id__annotations_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Run Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AnnotationCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnnotationRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Run Annotation"
+      }
+    },
     "/evaluations/{eval_id}": {
       "get": {
         "description": "Get full evaluation detail including annotations and indicator results.",
@@ -7520,7 +7597,7 @@
         "summary": "List Annotations"
       },
       "post": {
-        "description": "Add an annotation to an evaluation.",
+        "description": "Add an SLO-level annotation to a single SLOEvaluation.",
         "operationId": "create_annotation_evaluations__eval_id__annotations_post",
         "parameters": [
           {

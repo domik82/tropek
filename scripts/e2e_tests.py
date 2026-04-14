@@ -269,36 +269,51 @@ def test_slo_assignments(client: TropekClient) -> None:
 
 
 def test_annotations(client: TropekClient) -> None:
-    """Create, list, update, and delete an annotation on an evaluation."""
+    """Create, list, update, and delete annotations on an evaluation (SLO + run level)."""
     step('Step 13: Annotation lifecycle')
     evals = client.evaluations.list(asset_name='checkout-api')
     assert evals.items, 'expected evaluations'
-    eval_id = str(evals.items[0].id)
+    slo_eval_id = str(evals.items[0].id)
+    run_id = str(evals.items[0].evaluation_id)
 
     ann = client.annotations.create(
-        eval_id,
+        slo_eval_id,
         'deployment looked fine, ignoring regression',
         author='test-runner',
         category='deployment',
     )
     assert ann.content == 'deployment looked fine, ignoring regression'
     assert ann.author == 'test-runner'
+    assert ann.slo_evaluation_id is not None, 'SLO-level note should carry slo_evaluation_id'
+    assert ann.evaluation_run_id is None, 'SLO-level note must not carry evaluation_run_id'
     ann_id = str(ann.id)
-    print(f'created annotation: {ann_id}')
+    print(f'created SLO-level annotation: {ann_id}')
 
-    anns = client.annotations.list(eval_id)
+    anns = client.annotations.list(slo_eval_id)
     assert any(str(a.id) == ann_id for a in anns), f'annotation {ann_id} not found in list'
     print(f'listed {len(anns)} annotation(s)')
 
-    updated = client.annotations.update(eval_id, ann_id, content='updated note')
+    updated = client.annotations.update(slo_eval_id, ann_id, content='updated note')
     assert updated.content == 'updated note'
     print('updated annotation content')
 
-    hidden = client.annotations.hide(eval_id, ann_id, 'mistake', author='test-runner')
+    run_ann = client.annotations.create_for_run(
+        run_id,
+        'column-level note from e2e test',
+        author='test-runner',
+        category='observation',
+    )
+    assert run_ann.evaluation_run_id is not None, 'run-level note should carry evaluation_run_id'
+    assert run_ann.slo_evaluation_id is None, 'run-level note must not carry slo_evaluation_id'
+    run_ann_id = str(run_ann.id)
+    print(f'created run-level annotation: {run_ann_id}')
+
+    hidden = client.annotations.hide(slo_eval_id, ann_id, 'mistake', author='test-runner')
     assert hidden.hidden_at is not None
     assert hidden.hidden_reason == 'mistake'
-    assert not any(str(a.id) == ann_id for a in client.annotations.list(eval_id))
-    print('PASS: create, list, update, hide annotation')
+    assert not any(str(a.id) == ann_id for a in client.annotations.list(slo_eval_id))
+    client.annotations.hide(run_id, run_ann_id, 'cleanup', author='test-runner')
+    print('PASS: create, list, update, hide annotation (SLO + run level)')
 
 
 def test_asset_type_rename(client: TropekClient) -> None:

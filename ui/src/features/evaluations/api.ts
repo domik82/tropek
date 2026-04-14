@@ -124,6 +124,20 @@ export async function addAnnotation(
   return dtoToAnnotation(body)
 }
 
+export async function addRunAnnotation(
+  runId: string,
+  payload: { content: string; category?: string; author?: string },
+): Promise<Annotation> {
+  const res = await fetch(`${BASE}/evaluations/run/${runId}/annotations`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  })
+  if (!res.ok) throw new Error(`addRunAnnotation: ${res.status}`)
+  const body: AnnotationDto = await res.json()
+  return dtoToAnnotation(body)
+}
+
 export async function hideAnnotation(
   evalId: string,
   annotationId: string,

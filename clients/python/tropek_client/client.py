@@ -608,9 +608,16 @@ class _Annotations:
         return [Annotation.model_validate(a) for a in resp.json()]
 
     def create(self, eval_id: str, content: str, **kwargs: Any) -> Annotation:
-        """Create an annotation on an evaluation."""
+        """Create an SLO-level annotation on an SLOEvaluation."""
         body = {'content': content, **kwargs}
         resp = self._http.post(f'/evaluations/{eval_id}/annotations', json=body)
+        _raise_for_status(resp)
+        return Annotation.model_validate(resp.json())
+
+    def create_for_run(self, run_id: str, content: str, **kwargs: Any) -> Annotation:
+        """Create a run-level (column-level) annotation on an EvaluationRun."""
+        body = {'content': content, **kwargs}
+        resp = self._http.post(f'/evaluations/run/{run_id}/annotations', json=body)
         _raise_for_status(resp)
         return Annotation.model_validate(resp.json())
 

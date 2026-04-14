@@ -66,6 +66,8 @@ def _make_annotation(
 ) -> MagicMock:
     ann = MagicMock()
     ann.id = uuid.uuid4()
+    ann.slo_evaluation_id = uuid.uuid4()
+    ann.evaluation_run_id = None
     ann.content = content
     ann.author = 'tester'
     ann.category = category

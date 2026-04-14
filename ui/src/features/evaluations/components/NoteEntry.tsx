@@ -24,13 +24,13 @@ function LinkifiedText({ text }: { text: string }) {
 }
 
 interface Props {
-  evalId: string
+  runId: string
   annotation: Annotation
   compact?: boolean
 }
 
-export function NoteEntry({ evalId, annotation: a, compact }: Props) {
-  const hideAnnotation = useHideAnnotation(evalId)
+export function NoteEntry({ runId, annotation: a, compact }: Props) {
+  const hideAnnotation = useHideAnnotation(runId)
   const [hiding, setHiding] = useState(false)
 
   function handleHide(reason: string, author: string) {

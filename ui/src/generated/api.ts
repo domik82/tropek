@@ -697,7 +697,10 @@ export interface paths {
         };
         /**
          * Get Column Annotations
-         * @description Return all non-hidden annotations across all SLOs for one evaluation run.
+         * @description Return all non-hidden annotations for one evaluation run.
+         *
+         *     Unions run-level notes (new column-level UI form) with the notes attached to each
+         *     child SLO evaluation (per-SLO re-eval deltas). Sorted oldest-first by created_at.
          */
         get: operations["get_column_annotations_evaluations_column_annotations_get"];
         put?: never;
@@ -768,6 +771,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/evaluations/run/{run_id}/annotations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create Run Annotation
+         * @description Add a run-level (column-level) annotation to an EvaluationRun.
+         */
+        post: operations["create_run_annotation_evaluations_run__run_id__annotations_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/evaluations/{eval_id}": {
         parameters: {
             query?: never;
@@ -803,7 +826,7 @@ export interface paths {
         put?: never;
         /**
          * Create Annotation
-         * @description Add an annotation to an evaluation.
+         * @description Add an SLO-level annotation to a single SLOEvaluation.
          */
         post: operations["create_annotation_evaluations__eval_id__annotations_post"];
         delete?: never;
@@ -1505,6 +1528,9 @@ export interface components {
         /**
          * AnnotationRead
          * @description Response schema for an evaluation annotation.
+         *
+         *     Exactly one of slo_evaluation_id / evaluation_run_id is set. SLO-level notes come
+         *     from re-eval (per-SLO deltas); run-level notes come from the UI column form.
          */
         AnnotationRead: {
             /** Author */
@@ -1518,6 +1544,8 @@ export interface components {
              * Format: date-time
              */
             created_at: string;
+            /** Evaluation Run Id */
+            evaluation_run_id: string | null;
             /** Hidden At */
             hidden_at: string | null;
             /** Hidden By */
@@ -1533,6 +1561,8 @@ export interface components {
             note_group_id: string | null;
             /** Note Group Name */
             note_group_name: string | null;
+            /** Slo Evaluation Id */
+            slo_evaluation_id: string | null;
             /** Tags */
             tags: {
                 [key: string]: unknown;
@@ -5043,6 +5073,41 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ReEvaluateResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_run_annotation_evaluations_run__run_id__annotations_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AnnotationCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AnnotationRead"];
                 };
             };
             /** @description Validation Error */
