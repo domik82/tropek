@@ -10,6 +10,8 @@ const annotation: Annotation = {
   author: 'tester',
   category: 'investigation',
   tags: {},
+  noteGroupId: null,
+  noteGroupName: null,
   hiddenAt: null,
   hiddenBy: null,
   hiddenReason: null,

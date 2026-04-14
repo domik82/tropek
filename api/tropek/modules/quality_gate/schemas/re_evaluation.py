@@ -12,10 +12,14 @@ from tropek.modules.common.schemas import StrictInput
 
 
 class ReEvaluateRequest(StrictInput):
-    """Request body for POST /evaluations/re-evaluate."""
+    """Request body for POST /evaluations/re-evaluate.
+
+    When ``slo_name`` is omitted, all SLOs assigned to the asset are
+    re-evaluated (same resolution logic as POST /evaluate).
+    """
 
     asset_name: str
-    slo_name: str
+    slo_name: str | None = None
 
     # Scope — exactly one required
     from_date: datetime | None = None
@@ -48,6 +52,8 @@ class ReEvalResultItem(BaseModel):
 
     id: uuid.UUID
     evaluation_name: str
+    slo_name: str
+    slo_version: int
     period_start: datetime
     period_end: datetime
     old_result: str
@@ -60,5 +66,5 @@ class ReEvaluateResponse(BaseModel):
     """Response body for POST /evaluations/re-evaluate."""
 
     affected_evaluations: int
-    slo_version_used: int
+    slo_version_used: int | None
     results: list[ReEvalResultItem]

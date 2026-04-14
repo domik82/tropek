@@ -27,6 +27,8 @@ class AnnotationRepository:
         author: str | None = None,
         category: str | None = None,
         tags: dict[str, Any] | None = None,
+        note_group_id: uuid.UUID | None = None,
+        note_group_name: str | None = None,
     ) -> EvaluationAnnotation:
         """Append an annotation to an evaluation.
 
@@ -36,6 +38,8 @@ class AnnotationRepository:
             author: Optional identifier of who wrote the annotation.
             category: Optional free label (e.g. "environment", "deployment").
             tags: Optional arbitrary tags.
+            note_group_id: Optional shared UUID to group related annotations.
+            note_group_name: Optional human-readable label for the group.
 
         Returns:
             Newly created EvaluationAnnotation.
@@ -47,6 +51,8 @@ class AnnotationRepository:
             author=author,
             category=category,
             tags=tags or {},
+            note_group_id=note_group_id,
+            note_group_name=note_group_name,
         )
         self._session.add(ann)
         await self._session.flush()

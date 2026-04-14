@@ -39,6 +39,8 @@ export interface Annotation {
   author: string | null
   category: string | null
   tags: Record<string, unknown>
+  noteGroupId: string | null
+  noteGroupName: string | null
   hiddenAt: Date | null
   hiddenBy: string | null
   hiddenReason: string | null
@@ -168,7 +170,7 @@ export type ReEvaluateMode =
 
 export interface ReEvaluateInput {
   assetName: string
-  sloName: string
+  sloName: string | null
   mode: ReEvaluateMode
   sloVersion: number | null
   dryRun: boolean
@@ -178,6 +180,8 @@ export interface ReEvaluateInput {
 export interface ReEvaluateResultItem {
   id: string
   evaluationName: string
+  sloName: string
+  sloVersion: number
   period: DateRange
   oldOutcome: Outcome
   newOutcome: Outcome
@@ -187,7 +191,7 @@ export interface ReEvaluateResultItem {
 
 export interface ReEvaluateResponse {
   affectedEvaluations: number
-  sloVersionUsed: number
+  sloVersionUsed: number | null
   results: ReEvaluateResultItem[]
 }
 

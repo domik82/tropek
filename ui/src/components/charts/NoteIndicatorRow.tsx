@@ -38,7 +38,6 @@ function NoteIcon({ slot, info, x, width, onIndicatorClick }: {
     open ? info.evalId : undefined,
   )
 
-  const latest = annotations?.[annotations.length - 1]
   const count = annotations?.length ?? 0
 
   const show = useCallback(() => {
@@ -80,13 +79,17 @@ function NoteIcon({ slot, info, x, width, onIndicatorClick }: {
               {annotations ? `${count} note${count !== 1 ? 's' : ''}` : 'Notes'}
             </span>
           </div>
-          {latest ? (
-            <>
-              <p className="text-xs text-foreground line-clamp-3">{latest.content}</p>
-              {latest.author && (
-                <p className="text-[10px] text-muted-foreground mt-1">— {latest.author}</p>
-              )}
-            </>
+          {annotations ? (
+            <div className="space-y-1.5 max-h-48 overflow-y-auto">
+              {annotations.map(a => (
+                <div key={a.id}>
+                  <p className="text-xs text-foreground line-clamp-2">{a.content}</p>
+                  {a.author && (
+                    <p className="text-[10px] text-muted-foreground">— {a.author}</p>
+                  )}
+                </div>
+              ))}
+            </div>
           ) : (
             <div className="flex items-center gap-1.5">
               <Loader2 className="w-3 h-3 text-amber-400 animate-spin" />

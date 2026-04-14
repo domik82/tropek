@@ -233,6 +233,25 @@ def test_reeval_dry_run(client: TropekClient) -> None:
     print('PASS: re-evaluate dry run')
 
 
+def test_reeval_asset_wide(client: TropekClient) -> None:
+    """Re-evaluate all SLOs for an asset when slo_name is omitted."""
+    step('Step 16b: Asset-wide re-evaluate')
+    result = client.evaluations.re_evaluate(
+        'checkout-api',
+        from_date='2026-03-15T16:00:00Z',
+        pin_strategy='ignore_pin',
+    )
+    print(f'asset-wide re-evaluated {result["affected_evaluations"]} evals')
+    assert result['slo_version_used'] is None, 'slo_version_used should be null for multi-SLO re-eval'
+    assert result['affected_evaluations'] >= 1, 'expected at least 1 re-evaluated eval'
+    slo_names = {r['slo_name'] for r in result['results']}
+    print(f'  SLOs affected: {slo_names}')
+    assert len(slo_names) >= 1, 'expected results from at least 1 SLO'
+    for r in result['results']:
+        print(f'  {r["slo_name"]} {r["period_start"][:16]}: {r["old_result"]} -> {r["new_result"]}')
+    print('PASS: asset-wide re-evaluate')
+
+
 def test_slo_assignments(client: TropekClient) -> None:
     """Verify SLO assignments were created by bootstrap."""
     step('Step 17: SLO assignments')
@@ -417,6 +436,7 @@ def main() -> None:
     test_reeval_from_pinned_baseline(client)
     test_reeval_from_date(client)
     test_reeval_dry_run(client)
+    test_reeval_asset_wide(client)
     test_slo_assignments(client)
     test_annotations(client)
     test_asset_type_rename(client)

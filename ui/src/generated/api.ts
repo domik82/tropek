@@ -1529,6 +1529,10 @@ export interface components {
              * Format: uuid
              */
             id: string;
+            /** Note Group Id */
+            note_group_id: string | null;
+            /** Note Group Name */
+            note_group_name: string | null;
             /** Tags */
             tags: {
                 [key: string]: unknown;
@@ -2735,10 +2739,17 @@ export interface components {
              * Format: date-time
              */
             period_start: string;
+            /** Slo Name */
+            slo_name: string;
+            /** Slo Version */
+            slo_version: number;
         };
         /**
          * ReEvaluateRequest
          * @description Request body for POST /evaluations/re-evaluate.
+         *
+         *     When ``slo_name`` is omitted, all SLOs assigned to the asset are
+         *     re-evaluated (same resolution logic as POST /evaluate).
          */
         ReEvaluateRequest: {
             /** Asset Name */
@@ -2760,7 +2771,7 @@ export interface components {
             /** Pin Strategy */
             pin_strategy?: ("skip_to_pin" | "ignore_pin") | null;
             /** Slo Name */
-            slo_name: string;
+            slo_name?: string | null;
             /** Slo Version */
             slo_version?: number | null;
         };
@@ -2774,7 +2785,7 @@ export interface components {
             /** Results */
             results: components["schemas"]["ReEvalResultItem"][];
             /** Slo Version Used */
-            slo_version_used: number;
+            slo_version_used: number | null;
         };
         /**
          * SLIDefinitionCreate
