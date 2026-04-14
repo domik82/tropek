@@ -261,6 +261,9 @@ async def _re_evaluate_single_slo(  # noqa: PLR0913
     slo_name: str,
     asset_id: uuid.UUID,
     repos: QualityGateRepos,
+    *,
+    note_group_id: uuid.UUID,
+    note_group_name: str,
 ) -> tuple[int, list[ReEvalResultItem]]:
     """Re-evaluate all evaluations for a single SLO. Returns (slo_version, results)."""
     session = repos.session
@@ -310,11 +313,6 @@ async def _re_evaluate_single_slo(  # noqa: PLR0913
         skip_pin_filter=skip_pin,
     )
     eligible_ids: list[uuid.UUID] = [ev.id for ev in pre_baselines]
-
-    # Build note group for this SLO's re-eval run
-    note_group_id = uuid.uuid4()
-    scope_label = 'from baseline' if request.from_baseline else f'from {from_date:%Y-%m-%d}'
-    note_group_name = f're-evaluation \u2014 {slo_name} v{slo_def.version}, {scope_label}'
 
     # Re-evaluate each in chronological order with cascading baselines
     results: list[ReEvalResultItem] = []
@@ -383,11 +381,21 @@ async def re_evaluate(
         if not slo_names:
             raise ValueError(f"no slo assignments found for asset '{request.asset_name}'")
 
+    # Build a single note group for the entire re-eval action
+    note_group_id = uuid.uuid4()
+    scope_label = 'from baseline' if request.from_baseline else f'from date'
+    slo_label = slo_names[0] if len(slo_names) == 1 else f'{len(slo_names)} SLOs'
+    note_group_name = f're-evaluation \u2014 {slo_label}, {scope_label}'
+
     # Re-evaluate each SLO
     all_results: list[ReEvalResultItem] = []
     single_slo_version: int | None = None
     for slo_name in slo_names:
-        slo_version, results = await _re_evaluate_single_slo(request, slo_name, asset.id, repos)
+        slo_version, results = await _re_evaluate_single_slo(
+            request, slo_name, asset.id, repos,
+            note_group_id=note_group_id,
+            note_group_name=note_group_name,
+        )
         all_results.extend(results)
         if len(slo_names) == 1:
             single_slo_version = slo_version
