@@ -26,6 +26,7 @@ from tropek.modules.quality_gate.schemas.re_evaluation import (
 from tropek.modules.quality_gate.shared.dependencies import QualityGateRepos
 from tropek.modules.quality_gate.shared.exceptions import BaselinePinConflictError
 from tropek.modules.quality_gate.workflows.execution.evaluation_helpers import build_slo_model, compute_baselines
+from tropek.modules.quality_gate.workflows.presentation.heatmap_cache import HeatmapColumnCache
 from tropek.modules.sli_registry.repository import SLIRepository
 
 # Earliest possible timezone-aware datetime for "no lower bound" queries
@@ -127,6 +128,7 @@ async def _persist_reeval_result(  # noqa: PLR0913
     new_engine_results: list[Any] | None,
     slo_objectives: list[Any] | None,
     cache: RedisCache | None,
+    heatmap_cache: HeatmapColumnCache | None = None,
 ) -> None:
     """Overwrite evaluation result from re-evaluation, preserving original on first call."""
     result = await session.execute(
@@ -156,6 +158,8 @@ async def _persist_reeval_result(  # noqa: PLR0913
     annotation_content = f're-evaluated: {old_result} -> {new_result}, score {old_score} -> {new_score}'
     if cache:
         await cache.invalidate(f'baseline:{fresh_ev.asset_id}:{fresh_ev.slo_name}')
+    if heatmap_cache is not None:
+        await heatmap_cache.delete(fresh_ev.evaluation_id)
     ann_repo = AnnotationRepository(session, cache=cache)
     await ann_repo.add_annotation(
         ev.id,
@@ -193,6 +197,7 @@ async def _rescore_single(  # noqa: PLR0913
     cache: RedisCache | None,
     dry_run: bool,
     skip_pin_filter: bool = False,
+    heatmap_cache: HeatmapColumnCache | None = None,
 ) -> ReEvalResultItem:
     """Re-score a single evaluation and optionally persist the update."""
     metrics = _metrics_from_indicator_rows(ev.indicator_rows)
@@ -229,6 +234,7 @@ async def _rescore_single(  # noqa: PLR0913
             new_engine_results=eval_result.indicator_results,
             slo_objectives=slo_def.objectives,
             cache=cache,
+            heatmap_cache=heatmap_cache,
         )
 
     return ReEvalResultItem(
@@ -266,6 +272,7 @@ async def re_evaluate(
     eval_repo = repos.eval_repo
     baseline_repo = repos.baseline_repo
     cache = repos.cache
+    heatmap_cache = repos.heatmap_cache
 
     # Resolve asset
     asset = await asset_repo.get_by_name(request.asset_name)
@@ -331,6 +338,7 @@ async def re_evaluate(
             cache=cache,
             dry_run=request.dry_run,
             skip_pin_filter=skip_pin,
+            heatmap_cache=heatmap_cache,
         )
         eligible_ids.append(ev.id)
         results.append(item)

@@ -18,7 +18,8 @@ from httpx import AsyncClient
 from sqlalchemy import select
 from tropek.cache.redis_cache import RedisCache
 from tropek.config import get_settings
-from tropek.db.models import EvaluationRun
+from tropek.db.models import EvaluationRun, SLOEvaluation
+from tropek.modules.quality_gate.repositories.evaluation import EvaluationRepository
 from tropek.modules.quality_gate.schemas.heatmap import (
     EvaluationColumn,
     HeatmapColumnFragment,
@@ -28,6 +29,9 @@ from tropek.modules.quality_gate.workflows.execution.evaluation_executor import 
     warm_heatmap_column_cache,
 )
 from tropek.modules.quality_gate.workflows.presentation import heatmap_cache
+from tropek.modules.quality_gate.workflows.re_evaluation.re_evaluation_service import (
+    _persist_reeval_result,
+)
 
 from .conftest import SeededAsset
 
@@ -284,3 +288,162 @@ async def test_worker_warm_helper_noop_when_redis_cache_is_none(
         redis_cache=None,
         settings=get_settings(),
     )
+
+
+# ---------------------------------------------------------------------------
+# Task 11 — invalidation wiring at every mutation site
+# ---------------------------------------------------------------------------
+
+
+async def _prime_cache_fragment(
+    column_cache: heatmap_cache.HeatmapColumnCache,
+    run_id: uuid.UUID,
+) -> None:
+    """Write a sentinel fragment for ``run_id`` so invalidation has something to delete."""
+    await column_cache.set_many([_make_fragment(run_id=run_id)])
+    hits = await column_cache.get_many([run_id])
+    assert str(run_id) in hits, 'prime failed — subsequent assertions would be vacuous'
+
+
+@pytest.mark.integration
+@pytest.mark.parametrize('mutation', ['invalidate', 'restore', 'override_status', 'restore_override'])
+async def test_repository_mutation_deletes_cached_fragment(
+    mutation: str,
+    redis_client,
+    db_session,
+    seed_asset_with_indicators: Callable[..., Coroutine[Any, Any, SeededAsset]],
+) -> None:
+    """Every repository mutation that changes a run's presented state must
+    delete the cached HeatmapColumnFragment for that run.
+
+    The helper in EvaluationRepository short-circuits on a missing heatmap
+    cache, so the test builds a repo instance that is explicitly wired to
+    the same fakeredis client the fixture exposes. This exercises the exact
+    production contract: repo method → ``_invalidate_heatmap_column`` → cache
+    delete — without reaching for the API layer or the service layer.
+    """
+    seeded = await seed_asset_with_indicators(cell_count=1)
+
+    child_row = await db_session.execute(select(SLOEvaluation).where(SLOEvaluation.asset_id == seeded.id))
+    child_eval: SLOEvaluation = child_row.scalars().one()
+    run_id = child_eval.evaluation_id
+
+    column_cache = heatmap_cache.HeatmapColumnCache(redis_client)
+    await _prime_cache_fragment(column_cache, run_id)
+
+    repo = EvaluationRepository(db_session, heatmap_cache=column_cache)
+
+    if mutation == 'invalidate':
+        await repo.invalidate(child_eval.id, note='stale data')
+    elif mutation == 'restore':
+        # Invalidate first using a cache-less repo so the cache stays primed,
+        # then run restore on the wired repo to exercise its invalidation.
+        uncached_repo = EvaluationRepository(db_session)
+        await uncached_repo.invalidate(child_eval.id, note='stale data')
+        await _prime_cache_fragment(column_cache, run_id)
+        await repo.restore(child_eval.id)
+    elif mutation == 'override_status':
+        await repo.override_status(
+            child_eval.id,
+            new_result='fail',
+            reason='manual flip',
+            author='tester',
+        )
+    elif mutation == 'restore_override':
+        # override_status must run first to populate original_result.
+        uncached_repo = EvaluationRepository(db_session)
+        await uncached_repo.override_status(
+            child_eval.id,
+            new_result='fail',
+            reason='setup',
+            author='tester',
+        )
+        await _prime_cache_fragment(column_cache, run_id)
+        await repo.restore_override(child_eval.id)
+    else:
+        raise AssertionError(f'unknown mutation parameter: {mutation}')
+
+    hits_after = await column_cache.get_many([run_id])
+    assert str(run_id) not in hits_after, (
+        f'{mutation} did not invalidate the heatmap column cache entry for run {run_id}'
+    )
+
+
+@pytest.mark.integration
+@pytest.mark.parametrize('mutation', ['pin_baseline', 'unpin_baseline'])
+async def test_baseline_pin_mutation_deletes_cached_fragment(
+    mutation: str,
+    redis_client,
+    db_session,
+    seed_asset_with_indicators: Callable[..., Coroutine[Any, Any, SeededAsset]],
+) -> None:
+    """Pin and unpin baseline mutations must also delete the cached fragment.
+
+    The pinned run's own heatmap column does not embed ``baseline_pinned_at``
+    today, so a missed invalidation would not surface visually. The
+    invalidation is still wired — a correct-but-redundant cache clear is
+    cheap and guards against future fragment shape changes.
+    """
+    seeded = await seed_asset_with_indicators(cell_count=1)
+
+    child_row = await db_session.execute(select(SLOEvaluation).where(SLOEvaluation.asset_id == seeded.id))
+    child_eval: SLOEvaluation = child_row.scalars().one()
+    run_id = child_eval.evaluation_id
+
+    column_cache = heatmap_cache.HeatmapColumnCache(redis_client)
+    await _prime_cache_fragment(column_cache, run_id)
+
+    repo = EvaluationRepository(db_session, heatmap_cache=column_cache)
+
+    if mutation == 'pin_baseline':
+        await repo.pin_baseline(child_eval.id, reason='golden', author='tester')
+    elif mutation == 'unpin_baseline':
+        uncached_repo = EvaluationRepository(db_session)
+        await uncached_repo.pin_baseline(child_eval.id, reason='setup', author='tester')
+        await _prime_cache_fragment(column_cache, run_id)
+        await repo.unpin_baseline(child_eval.id)
+    else:
+        raise AssertionError(f'unknown mutation parameter: {mutation}')
+
+    hits_after = await column_cache.get_many([run_id])
+    assert str(run_id) not in hits_after, (
+        f'{mutation} did not invalidate the heatmap column cache entry for run {run_id}'
+    )
+
+
+@pytest.mark.integration
+async def test_reevaluation_persist_deletes_cached_fragment(
+    redis_client,
+    db_session,
+    seed_asset_with_indicators: Callable[..., Coroutine[Any, Any, SeededAsset]],
+) -> None:
+    """``_persist_reeval_result`` must delete the cached fragment for the
+    mutated run. Re-evaluate is the batch-mutation flavor; each call within
+    the batch invalidates exactly one run fragment without a per-call SELECT
+    because the caller already holds the ``SLOEvaluation`` row.
+    """
+    seeded = await seed_asset_with_indicators(cell_count=1)
+
+    child_row = await db_session.execute(select(SLOEvaluation).where(SLOEvaluation.asset_id == seeded.id))
+    child_eval: SLOEvaluation = child_row.scalars().one()
+    run_id = child_eval.evaluation_id
+
+    column_cache = heatmap_cache.HeatmapColumnCache(redis_client)
+    await _prime_cache_fragment(column_cache, run_id)
+
+    await _persist_reeval_result(
+        db_session,
+        ev=child_eval,
+        new_result='warning',
+        new_score=82.0,
+        old_result='pass',
+        old_score=100.0,
+        slo_version=2,
+        new_engine_results=None,
+        slo_objectives=None,
+        cache=None,
+        heatmap_cache=column_cache,
+    )
+
+    hits_after = await column_cache.get_many([run_id])
+    assert str(run_id) not in hits_after, f're-evaluation persist did not invalidate the fragment for run {run_id}'

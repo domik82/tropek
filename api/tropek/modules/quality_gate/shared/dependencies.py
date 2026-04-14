@@ -27,50 +27,6 @@ from tropek.modules.sli_registry.repository import SLIRepository
 from tropek.modules.slo_registry.repository import SLORepository
 
 
-@dataclass
-class QualityGateRepos:
-    """Bundle of all repositories needed by quality gate endpoints."""
-
-    eval_repo: EvaluationRepository
-    eval_run_repo: EvaluationRunRepository
-    annotation_repo: AnnotationRepository
-    sli_repo: SLIValueRepository
-    trend_repo: TrendRepository
-    baseline_repo: BaselineRepository
-    asset_repo: AssetRepository
-    asset_group_repo: AssetGroupRepository
-    assignment_repo: AssignmentRepository
-    sli_def_repo: SLIRepository
-    slo_repo: SLORepository
-    ds_repo: DataSourceRepository
-    session: AsyncSession
-    cache: RedisCache | None = None
-
-
-async def get_qg_repos(
-    request: Request,
-    session: AsyncSession = Depends(get_session),  # noqa: B008
-) -> QualityGateRepos:
-    """Build the full repository bundle from a DB session."""
-    cache: RedisCache | None = getattr(request.app.state, 'cache', None)
-    return QualityGateRepos(
-        eval_repo=EvaluationRepository(session, cache=cache),
-        eval_run_repo=EvaluationRunRepository(session),
-        annotation_repo=AnnotationRepository(session, cache=cache),
-        sli_repo=SLIValueRepository(session),
-        trend_repo=TrendRepository(session),
-        baseline_repo=BaselineRepository(session, cache=cache),
-        asset_repo=AssetRepository(session, cache=cache),
-        asset_group_repo=AssetGroupRepository(session),
-        assignment_repo=AssignmentRepository(session),
-        sli_def_repo=SLIRepository(session, cache=cache),
-        slo_repo=SLORepository(session, cache=cache),
-        ds_repo=DataSourceRepository(session),
-        session=session,
-        cache=cache,
-    )
-
-
 async def get_heatmap_column_cache(request: Request) -> HeatmapColumnCache | None:
     """Return a ``HeatmapColumnCache`` for the request, or ``None`` when Redis is unavailable.
 
@@ -90,4 +46,51 @@ async def get_heatmap_column_cache(request: Request) -> HeatmapColumnCache | Non
     return HeatmapColumnCache(
         redis_cache._redis,
         ttl_seconds=settings.cache.ttl.heatmap_column,
+    )
+
+
+@dataclass
+class QualityGateRepos:
+    """Bundle of all repositories needed by quality gate endpoints."""
+
+    eval_repo: EvaluationRepository
+    eval_run_repo: EvaluationRunRepository
+    annotation_repo: AnnotationRepository
+    sli_repo: SLIValueRepository
+    trend_repo: TrendRepository
+    baseline_repo: BaselineRepository
+    asset_repo: AssetRepository
+    asset_group_repo: AssetGroupRepository
+    assignment_repo: AssignmentRepository
+    sli_def_repo: SLIRepository
+    slo_repo: SLORepository
+    ds_repo: DataSourceRepository
+    session: AsyncSession
+    cache: RedisCache | None = None
+    heatmap_cache: HeatmapColumnCache | None = None
+
+
+async def get_qg_repos(
+    request: Request,
+    session: AsyncSession = Depends(get_session),  # noqa: B008
+    heatmap_cache: HeatmapColumnCache | None = Depends(get_heatmap_column_cache),  # noqa: B008
+) -> QualityGateRepos:
+    """Build the full repository bundle from a DB session."""
+    cache: RedisCache | None = getattr(request.app.state, 'cache', None)
+    return QualityGateRepos(
+        eval_repo=EvaluationRepository(session, cache=cache, heatmap_cache=heatmap_cache),
+        eval_run_repo=EvaluationRunRepository(session),
+        annotation_repo=AnnotationRepository(session, cache=cache),
+        sli_repo=SLIValueRepository(session),
+        trend_repo=TrendRepository(session),
+        baseline_repo=BaselineRepository(session, cache=cache),
+        asset_repo=AssetRepository(session, cache=cache),
+        asset_group_repo=AssetGroupRepository(session),
+        assignment_repo=AssignmentRepository(session),
+        sli_def_repo=SLIRepository(session, cache=cache),
+        slo_repo=SLORepository(session, cache=cache),
+        ds_repo=DataSourceRepository(session),
+        session=session,
+        cache=cache,
+        heatmap_cache=heatmap_cache,
     )
