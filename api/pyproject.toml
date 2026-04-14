@@ -33,6 +33,7 @@ dev = [
     "types-pyyaml",
     "types-redis",
     "sqlalchemy[mypy]>=2.0",
+    "fakeredis>=2.21",
 ]
 
 [build-system]

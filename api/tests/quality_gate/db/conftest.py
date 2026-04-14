@@ -17,7 +17,7 @@ from tropek.modules.quality_gate.repositories.evaluation import EvaluationReposi
 from tropek.modules.quality_gate.repositories.evaluation_run import EvaluationRunRepository
 from tropek.modules.quality_gate.shared.params import EvalCreateParams
 
-from tests.db.conftest import db_engine, db_session, db_url  # noqa: F401
+from tests.db.conftest import db_engine, db_session, db_url, redis_client  # noqa: F401
 
 _BASE_TS = datetime(2026, 3, 15, 10, 0, 0, tzinfo=UTC)
 
