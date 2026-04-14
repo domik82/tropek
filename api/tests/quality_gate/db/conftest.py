@@ -92,7 +92,7 @@ def seed_asset_with_indicators(db_session: AsyncSession):  # noqa: F811
                 period_start=start,
                 period_end=start + timedelta(hours=1),
             )
-            await eval_repo.create_pending(
+            child_eval = await eval_repo.create_pending(
                 EvalCreateParams(
                     evaluation_id=run.id,
                     evaluation_name='perf-eval',
@@ -104,6 +104,18 @@ def seed_asset_with_indicators(db_session: AsyncSession):  # noqa: F811
                     asset_id=asset_id,
                     slo_name='perf-slo',
                 )
+            )
+            # Transition the child SLO evaluation to completed so mutation
+            # endpoints (override-status, pin-baseline) accept it as a target.
+            await eval_repo.mark_completed(
+                child_eval.id,
+                result='pass',
+                score=100.0,
+                achieved_points=10,
+                total_points=10,
+                slo_name='perf-slo',
+                asset_id=asset_id,
+                run_id=run.id,
             )
             await run_repo.mark_completed(
                 run.id,

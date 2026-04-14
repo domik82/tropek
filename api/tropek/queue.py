@@ -32,6 +32,7 @@ from tropek.modules.quality_gate.workflows.execution.evaluation_executor import 
     write_results,
     write_sli_values_phase,
 )
+from tropek.modules.quality_gate.workflows.presentation.heatmap_cache import HeatmapColumnCache
 
 logger = structlog.get_logger()
 
@@ -193,6 +194,13 @@ async def run_evaluation_job(ctx: dict[str, Any], eval_id_str: str, defer_count:
         return
 
     # Phase 3a: Write evaluation result + indicator rows (COMMIT immediately)
+    settings = get_settings()
+    heatmap_column_cache: HeatmapColumnCache | None = None
+    if cache is not None and cache._redis is not None:
+        heatmap_column_cache = HeatmapColumnCache(
+            cache._redis,
+            ttl_seconds=settings.cache.ttl.heatmap_column,
+        )
     async with session_factory() as session:
         await write_results(
             session=session,
@@ -200,6 +208,7 @@ async def run_evaluation_job(ctx: dict[str, Any], eval_id_str: str, defer_count:
             slo_def=slo_def,
             fetch_result=fetch_result,
             cache=cache,
+            heatmap_cache=heatmap_column_cache,
         )
         await session.commit()
 

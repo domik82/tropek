@@ -420,6 +420,7 @@ async def write_results(
     slo_def: SLODefinition,
     fetch_result: FetchAndEvaluateResult,
     cache: RedisCache | None = None,
+    heatmap_cache: HeatmapColumnCache | None = None,
 ) -> None:
     """Phase 3a: write evaluation result and indicator rows.
 
@@ -434,7 +435,7 @@ async def write_results(
 
     achieved_points = sum(round(ir.score) for ir in eval_result.indicator_results)
     total_points = sum(int(obj.weight) for obj in slo_def.objectives)
-    repo = EvaluationRepository(session, cache=cache)
+    repo = EvaluationRepository(session, cache=cache, heatmap_cache=heatmap_cache)
     await repo.mark_completed(
         snapshot.eval_id,
         result=eval_result.result,
@@ -451,6 +452,7 @@ async def write_results(
         achieved_points=achieved_points,
         total_points=total_points,
         asset_id=snapshot.asset_id,
+        run_id=snapshot.parent_run_id,
     )
 
     await _write_indicator_rows(
