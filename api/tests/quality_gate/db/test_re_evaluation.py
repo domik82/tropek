@@ -6,6 +6,7 @@ import uuid
 from datetime import UTC, datetime, timedelta
 
 import pytest
+from pydantic import ValidationError
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from tropek.db.models import Asset, AssetType, SLOEvaluation, SLOObjective
@@ -130,6 +131,38 @@ async def _seed_indicator_rows(
         )
     if ir_rows:
         await indicator_repo.bulk_insert(eval_id, ir_rows)
+
+
+def test_slo_name_and_slo_names_mutually_exclusive() -> None:
+    """Supplying both slo_name and slo_names is rejected at schema level."""
+    with pytest.raises(ValidationError, match='mutually exclusive'):
+        ReEvaluateRequest(
+            asset_name='checkout-api',
+            slo_name='latency-slo',
+            slo_names=['latency-slo', 'avail-slo'],
+            from_baseline=True,
+        )
+
+
+def test_empty_slo_names_rejected() -> None:
+    """An empty slo_names list is rejected — it is ambiguous with omission."""
+    with pytest.raises(ValidationError, match='slo_names must be non-empty'):
+        ReEvaluateRequest(
+            asset_name='checkout-api',
+            slo_names=[],
+            from_baseline=True,
+        )
+
+
+def test_slo_names_happy_path() -> None:
+    """slo_names round-trips and leaves slo_name unset."""
+    request = ReEvaluateRequest(
+        asset_name='checkout-api',
+        slo_names=['latency-slo', 'avail-slo'],
+        from_baseline=True,
+    )
+    assert request.slo_names == ['latency-slo', 'avail-slo']
+    assert request.slo_name is None
 
 
 @pytest.mark.integration
@@ -404,3 +437,49 @@ async def test_re_evaluate_cascading_baselines(db_session: AsyncSession) -> None
     # Second eval: baseline=100, value=105 -> +5% -> pass
     # Third eval: baseline=105, value=110 -> +4.8% -> pass
     assert all(r.new_result == 'pass' for r in response.results)
+
+
+@pytest.mark.integration
+async def test_re_evaluate_filters_to_slo_names_subset(db_session: AsyncSession) -> None:
+    """slo_names filters re-evaluation to only the listed SLOs on the asset."""
+    repo = EvaluationRepository(db_session)
+    slo_repo = SLORepository(db_session)
+    asset_id = await _create_asset(db_session)
+
+    slo_a = f'subset-a-{uuid.uuid4().hex[:6]}'
+    slo_b = f'subset-b-{uuid.uuid4().hex[:6]}'
+    slo_c = f'subset-c-{uuid.uuid4().hex[:6]}'
+
+    for slo_name in (slo_a, slo_b, slo_c):
+        await slo_repo.create(
+            SLOCreateParams(
+                name=slo_name,
+                objectives=[SLOObjectiveParams(sli='cpu', pass_threshold=['<100'], weight=1)],
+            )
+        )
+        eid = await _create_completed_eval(
+            repo,
+            asset_id,
+            datetime(2026, 3, 10, tzinfo=UTC),
+            result='fail',
+            score=0.0,
+            slo_name=slo_name,
+        )
+        await _seed_indicator_rows(db_session, eid, slo_name, {'cpu': 50.0}, status='fail')
+
+    asset_row = await db_session.get(Asset, asset_id)
+    assert asset_row is not None
+
+    response = await re_evaluate(
+        ReEvaluateRequest(
+            asset_name=asset_row.name,
+            slo_names=[slo_a, slo_b],
+            from_date=datetime(2026, 3, 9, tzinfo=UTC),
+        ),
+        _build_repos(db_session),
+    )
+
+    touched_slo_names = {item.slo_name for item in response.results}
+    assert touched_slo_names == {slo_a, slo_b}
+    assert slo_c not in touched_slo_names
+    assert response.affected_evaluations == 2
