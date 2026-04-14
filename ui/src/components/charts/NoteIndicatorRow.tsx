@@ -48,17 +48,11 @@ function TooltipNoteList({ annotations }: { annotations: Annotation[] }) {
         standalone.push(a)
       }
     }
-    // eslint-disable-next-line no-console
-    console.log('[TooltipNoteList] total=%d groups=%d standalone=%d raw=%o',
-      annotations.length, groupMap.size, standalone.length, annotations)
     return { groups: [...groupMap.values()], standalone }
   }, [annotations])
 
   return (
     <div className="space-y-2">
-      <div className="text-[9px] text-fuchsia-400 font-mono">
-        DBG total={annotations.length} groups={groups.length} standalone={standalone.length}
-      </div>
       {groups.map(g => (
         <div key={g.id} className="flex items-start gap-1.5">
           <span className="text-[10px] bg-amber-900/40 text-amber-300 px-1 py-0.5 rounded shrink-0 mt-0.5">
@@ -101,7 +95,7 @@ function NoteIcon({ slot, info, x, width, onIndicatorClick }: {
 }) {
   const [open, setOpen] = useState(false)
   const hideTimer = useRef<ReturnType<typeof setTimeout>>(null)
-  const { data: annotations, isFetching, refetch } = useColumnAnnotations(
+  const { data: annotations, isFetching } = useColumnAnnotations(
     open ? info.evalId : undefined,
   )
 
@@ -110,10 +104,7 @@ function NoteIcon({ slot, info, x, width, onIndicatorClick }: {
   const show = useCallback(() => {
     if (hideTimer.current) clearTimeout(hideTimer.current)
     setOpen(true)
-    // Force a fresh fetch every time the tooltip opens so newly-added
-    // notes show up without waiting for stale-while-revalidate.
-    void refetch()
-  }, [refetch])
+  }, [])
 
   const hide = useCallback(() => {
     hideTimer.current = setTimeout(() => setOpen(false), 150)
