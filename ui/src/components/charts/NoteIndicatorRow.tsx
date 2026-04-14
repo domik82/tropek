@@ -48,11 +48,17 @@ function TooltipNoteList({ annotations }: { annotations: Annotation[] }) {
         standalone.push(a)
       }
     }
+    // eslint-disable-next-line no-console
+    console.log('[TooltipNoteList] total=%d groups=%d standalone=%d raw=%o',
+      annotations.length, groupMap.size, standalone.length, annotations)
     return { groups: [...groupMap.values()], standalone }
   }, [annotations])
 
   return (
     <div className="space-y-2">
+      <div className="text-[9px] text-fuchsia-400 font-mono">
+        DBG total={annotations.length} groups={groups.length} standalone={standalone.length}
+      </div>
       {groups.map(g => (
         <div key={g.id} className="flex items-start gap-1.5">
           <span className="text-[10px] bg-amber-900/40 text-amber-300 px-1 py-0.5 rounded shrink-0 mt-0.5">
