@@ -79,7 +79,7 @@ export function ReEvaluateForm({ assetName, sloName, defaultFromDate, onComplete
         <div className="space-y-2">
           <p className="text-sm text-foreground">
             {reEvalResult.affectedEvaluations} evaluation{reEvalResult.affectedEvaluations !== 1 ? 's' : ''}{' '}
-            re-evaluated (SLO v{reEvalResult.sloVersionUsed})
+            re-evaluated{reEvalResult.sloVersionUsed != null ? ` (SLO v${reEvalResult.sloVersionUsed})` : ''}
           </p>
           <div className="max-h-48 overflow-y-auto space-y-1">
             {reEvalResult.results.map((r) => (

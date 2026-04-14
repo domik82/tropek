@@ -437,6 +437,7 @@ async def test_reevaluation_persist_deletes_cached_fragment(
     await _persist_reeval_result(
         db_session,
         ev=child_eval,
+        slo_name=child_eval.slo_name,
         new_result='warning',
         new_score=82.0,
         old_result='pass',
@@ -445,6 +446,8 @@ async def test_reevaluation_persist_deletes_cached_fragment(
         new_engine_results=None,
         slo_objectives=None,
         cache=None,
+        note_group_id=uuid.uuid4(),
+        note_group_name='test-reeval-group',
         heatmap_cache=column_cache,
     )
 

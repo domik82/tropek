@@ -19,6 +19,8 @@ class AnnotationRead(BaseModel):
     author: str | None
     category: str | None
     tags: dict[str, Any]
+    note_group_id: uuid.UUID | None
+    note_group_name: str | None
     hidden_at: datetime | None
     hidden_by: str | None
     hidden_reason: str | None

@@ -263,14 +263,15 @@ export function AssetPanel({ assetName, initialEvalId }: Props) {
   const isLoading = evalsLoading || heatmapLoading
 
   const notedSlots = useMemo(() => {
+    // Keyed by evaluation_id (unique per EvaluationRun) — matches the slot
+    // key used by the mapper. Two runs sharing a period_start (e.g. load-test
+    // and prod-validation at the same 16:00) stay as distinct slots so their
+    // notes do not bleed across columns.
     const slots = new Map<string, { evalId: string; count: number }>()
     if (!heatmapData) return slots
     for (const col of heatmapData.columns) {
       if (col.has_notes) {
-        // Use period_start as the slot key (matches HeatmapChart column key) and
-        // store the parent evaluation_id for hover-time annotation fetches.
-        // count=0 because the actual number is loaded lazily on hover.
-        slots.set(col.period_start, { evalId: col.evaluation_id, count: 0 })
+        slots.set(col.evaluation_id, { evalId: col.evaluation_id, count: 0 })
       }
     }
     return slots

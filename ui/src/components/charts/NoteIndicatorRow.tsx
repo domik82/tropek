@@ -1,10 +1,13 @@
 // ui/src/components/charts/NoteIndicatorRow.tsx
-import { useState, useRef, useCallback } from 'react'
+import { useState, useRef, useCallback, useMemo } from 'react'
 import { MessageSquareWarning, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import type { Annotation } from '@/features/evaluations/domain'
 import { useColumnAnnotations } from '@/features/evaluations/hooks'
 
 export interface SlotNote {
+  /** Parent EvaluationRun id — unique per slot since the asset heatmap slot
+   * key is the run id, not period_start. */
   evalId: string
   count: number
 }
@@ -25,6 +28,66 @@ interface Props {
   onIndicatorClick?: (slot: string) => void
 }
 
+interface TooltipGroup {
+  id: string
+  items: Annotation[]
+}
+
+/** Group annotations by noteGroupId; show full content of every annotation. */
+function TooltipNoteList({ annotations }: { annotations: Annotation[] }) {
+  const { groups, standalone } = useMemo(() => {
+    const groupMap = new Map<string, TooltipGroup>()
+    const standalone: Annotation[] = []
+    for (const a of annotations) {
+      if (a.noteGroupId) {
+        const existing = groupMap.get(a.noteGroupId)
+        if (existing) {
+          existing.items.push(a)
+        } else {
+          groupMap.set(a.noteGroupId, { id: a.noteGroupId, items: [a] })
+        }
+      } else {
+        standalone.push(a)
+      }
+    }
+    return { groups: [...groupMap.values()], standalone }
+  }, [annotations])
+
+  return (
+    <div className="space-y-2">
+      {groups.map(g => (
+        <div key={g.id} className="flex items-start gap-1.5">
+          <span className="text-[10px] bg-amber-900/40 text-amber-300 px-1 py-0.5 rounded shrink-0 mt-0.5">
+            re-evaluation
+          </span>
+          <div className="flex-1 min-w-0 space-y-0.5">
+            {g.items.map(a => (
+              <p key={a.id} className="text-xs text-foreground/85 break-words">
+                {a.content}
+              </p>
+            ))}
+          </div>
+        </div>
+      ))}
+      {standalone.map(a => (
+        <div key={a.id} className="flex items-start gap-1.5">
+          {a.category && (
+            <span className="text-[10px] bg-amber-900/40 text-amber-300 px-1 py-0.5 rounded shrink-0 mt-0.5">
+              {a.category}
+            </span>
+          )}
+          <div className="flex-1 min-w-0">
+            <p className="text-xs text-foreground/85 break-words">{a.content}</p>
+            {a.author && (
+              <p className="text-[10px] text-muted-foreground">— {a.author}</p>
+            )}
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 function NoteIcon({ slot, info, x, width, onIndicatorClick }: {
   slot: string
   info: SlotNote
@@ -38,7 +101,6 @@ function NoteIcon({ slot, info, x, width, onIndicatorClick }: {
     open ? info.evalId : undefined,
   )
 
-  const latest = annotations?.[annotations.length - 1]
   const count = annotations?.length ?? 0
 
   const show = useCallback(() => {
@@ -73,20 +135,15 @@ function NoteIcon({ slot, info, x, width, onIndicatorClick }: {
         )}
       </Button>
       {open && (
-        <div className="absolute bottom-full mb-1.5 z-30 left-1/2 -translate-x-1/2 w-56 bg-popover border border-amber-700/40 rounded-lg shadow-xl p-2.5">
-          <div className="flex items-center gap-1.5 mb-1">
+        <div className="absolute bottom-full mb-1.5 z-30 left-1/2 -translate-x-1/2 w-[28rem] max-w-[90vw] bg-popover border border-amber-700/40 rounded-lg shadow-xl p-2.5">
+          <div className="flex items-center gap-1.5 mb-1.5">
             <span className="text-amber-400 text-xs">⚑</span>
             <span className="text-[10px] text-muted-foreground">
               {annotations ? `${count} note${count !== 1 ? 's' : ''}` : 'Notes'}
             </span>
           </div>
-          {latest ? (
-            <>
-              <p className="text-xs text-foreground line-clamp-3">{latest.content}</p>
-              {latest.author && (
-                <p className="text-[10px] text-muted-foreground mt-1">— {latest.author}</p>
-              )}
-            </>
+          {annotations ? (
+            <TooltipNoteList annotations={annotations} />
           ) : (
             <div className="flex items-center gap-1.5">
               <Loader2 className="w-3 h-3 text-amber-400 animate-spin" />

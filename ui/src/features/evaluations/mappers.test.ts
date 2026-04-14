@@ -196,6 +196,8 @@ describe('dtoToAnnotation', () => {
       author: 'bob',
       category: 'flake',
       tags: { source: 'ui' },
+      note_group_id: null,
+      note_group_name: null,
       hidden_at: null,
       hidden_by: null,
       hidden_reason: null,
@@ -254,6 +256,8 @@ describe('dtoToReEvaluateResponse', () => {
       results: [{
         id: 'e1',
         evaluation_name: 'perf',
+        slo_name: 'latency-p95',
+        slo_version: 4,
         period_start: '2026-03-15T10:00:00Z',
         period_end: '2026-03-15T10:30:00Z',
         old_result: 'fail',
@@ -264,6 +268,8 @@ describe('dtoToReEvaluateResponse', () => {
     })
     expect(domain.affectedEvaluations).toBe(2)
     expect(domain.sloVersionUsed).toBe(4)
+    expect(domain.results[0].sloName).toBe('latency-p95')
+    expect(domain.results[0].sloVersion).toBe(4)
     expect(domain.results[0].period.from).toBe('2026-03-15T10:00:00Z')
     expect(domain.results[0].oldOutcome).toBe('fail')
     expect(domain.results[0].newOutcome).toBe('pass')

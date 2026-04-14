@@ -86,7 +86,8 @@ export interface GroupedMetricHeatmap {
 // positioned (value = [xi, yi]), result is in the canonical union, and
 // headerRowIndices marks the ECharts y-indices of SLO group header rows.
 export interface AssetHeatmapView {
-  slots: string[]
+  slots: string[]                      // column keys = evaluation_ids (unique)
+  slotLabels: Map<string, string>      // evaluation_id → ISO period_start for display
   rows: string[]
   cells: HeatmapEChartsCell[]
   headerRowIndices: Set<number>

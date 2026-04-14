@@ -189,9 +189,11 @@ async def test_persist_reeval_result_preserves_original(db_session: AsyncSession
     assert ev_row is not None
 
     # First re-eval
+    batch_id = uuid.uuid4()
     await _persist_reeval_result(
         db_session,
         ev=ev_row,
+        slo_name='test-slo',
         new_result='pass',
         new_score=92.0,
         old_result='fail',
@@ -200,6 +202,8 @@ async def test_persist_reeval_result_preserves_original(db_session: AsyncSession
         new_engine_results=None,
         slo_objectives=None,
         cache=None,
+        note_group_id=batch_id,
+        note_group_name='re-evaluation — test-slo',
     )
     ev = await repo.get_by_id(eid)
     assert ev is not None
@@ -213,6 +217,7 @@ async def test_persist_reeval_result_preserves_original(db_session: AsyncSession
     await _persist_reeval_result(
         db_session,
         ev=ev_row,
+        slo_name='test-slo',
         new_result='warning',
         new_score=78.0,
         old_result='pass',
@@ -221,6 +226,8 @@ async def test_persist_reeval_result_preserves_original(db_session: AsyncSession
         new_engine_results=None,
         slo_objectives=None,
         cache=None,
+        note_group_id=uuid.uuid4(),
+        note_group_name='re-evaluation — test-slo',
     )
     ev2 = await repo.get_by_id(eid)
     assert ev2 is not None
@@ -292,9 +299,14 @@ async def test_re_evaluate_updates_results_and_adds_annotation(
     assert ev.result == 'pass'
     assert ev.job_stats['original_result'] == 'fail'
 
-    # Verify annotation was added
+    # Verify annotation was added with group fields
     assert len(ev.annotations) == 1
-    assert 're-evaluated' in ev.annotations[0].content
+    annotation = ev.annotations[0]
+    assert 're-eval-slo' in annotation.content
+    assert 'fail' in annotation.content and 'pass' in annotation.content
+    assert annotation.note_group_id is not None
+    assert annotation.note_group_name is not None
+    assert 're-eval-slo' in annotation.note_group_name
 
 
 @pytest.mark.integration
