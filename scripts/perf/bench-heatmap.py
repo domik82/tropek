@@ -12,6 +12,7 @@ from __future__ import annotations
 import asyncio
 import cProfile
 import io
+import os
 import pstats
 import resource
 import statistics
@@ -29,7 +30,8 @@ from tropek.modules.quality_gate.workflows.presentation.presenter import (
 )
 
 ASSET_NAME = 'perf-heatmap-asset'
-URL = f'http://localhost:8080/evaluate/metric-heatmap?asset_name={ASSET_NAME}'
+API_BASE = os.environ.get('TROPEK_API_BASE', 'http://localhost:9080')
+URL = f'{API_BASE}/evaluate/metric-heatmap?asset_name={ASSET_NAME}'
 URL_UNCACHED = URL + '&cache=false'
 WARMUP = 10
 SAMPLES = 100
