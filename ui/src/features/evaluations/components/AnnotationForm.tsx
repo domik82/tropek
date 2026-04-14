@@ -140,7 +140,6 @@ export const AnnotationSection = forwardRef<AnnotationSectionHandle, Props>(
             <NoteGroup
               key={entry.groupId}
               evalId={evalId}
-              groupName={entry.groupName}
               annotations={entry.annotations}
               compact={viewMode === 'compact'}
             />
