@@ -557,6 +557,7 @@ export function reEvaluateInputToDto(input: ReEvaluateInput): ReEvaluateRequestD
   const base: ReEvaluateRequestDto = {
     asset_name: input.assetName,
     slo_name: input.sloName,
+    slo_names: input.sloNames,
     slo_version: input.sloVersion,
     dry_run: input.dryRun,
     pin_strategy: input.pinStrategy,

@@ -3336,7 +3336,7 @@
       },
       "ReEvaluateRequest": {
         "additionalProperties": false,
-        "description": "Request body for POST /evaluations/re-evaluate.\n\nWhen ``slo_name`` is omitted, all SLOs assigned to the asset are\nre-evaluated (same resolution logic as POST /evaluate).",
+        "description": "Request body for POST /evaluations/re-evaluate.\n\nWhen both ``slo_name`` and ``slo_names`` are omitted, all SLOs assigned\nto the asset are re-evaluated (same resolution logic as POST /evaluate).\nWhen ``slo_names`` is provided, scoring runs only for the listed SLOs.",
         "properties": {
           "asset_name": {
             "title": "Asset Name",
@@ -3401,6 +3401,20 @@
               }
             ],
             "title": "Slo Name"
+          },
+          "slo_names": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Slo Names"
           },
           "slo_version": {
             "anyOf": [
@@ -6940,7 +6954,7 @@
     },
     "/evaluate/metric-heatmap": {
       "get": {
-        "description": "Return a grouped metric heatmap \u2014 one column per parent EvaluationRun.",
+        "description": "Return a grouped metric heatmap \u2014 one column per parent EvaluationRun.\n\nRead path: run a cheap list query for the candidate run ids in the window,\nMGET the Redis column cache for those ids, fall through to the heavy DB\nbuild only for runs that missed the cache, assemble the final response\nfrom the combined fragments, and write newly built fragments back to the\ncache. ``cache=false`` bypasses Redis entirely \u2014 no reads, no writes.",
         "operationId": "get_grouped_metric_heatmap_evaluate_metric_heatmap_get",
         "parameters": [
           {
@@ -7003,6 +7017,18 @@
                 }
               ],
               "title": "To"
+            }
+          },
+          {
+            "description": "When false, bypass the Redis column cache entirely: read every column from the DB, build every fragment, do not write back. Used for debugging and for the cache-correctness property test.",
+            "in": "query",
+            "name": "cache",
+            "required": false,
+            "schema": {
+              "default": true,
+              "description": "When false, bypass the Redis column cache entirely: read every column from the DB, build every fragment, do not write back. Used for debugging and for the cache-correctness property test.",
+              "title": "Cache",
+              "type": "boolean"
             }
           }
         ],
