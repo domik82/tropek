@@ -173,6 +173,7 @@ export type ReEvaluateMode =
 export interface ReEvaluateInput {
   assetName: string
   sloName: string | null
+  sloNames: string[] | null
   mode: ReEvaluateMode
   sloVersion: number | null
   dryRun: boolean
