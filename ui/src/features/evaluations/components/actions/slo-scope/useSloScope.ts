@@ -52,6 +52,10 @@ export function useSloScope({
       if (filter === 'invalidated-only' && outcome !== 'invalidated') continue
       if (filter === 'not-invalidated' && outcome === 'invalidated') continue
 
+      // sloEvaluationId only lives on indicator cells, so we recover it from any
+      // indicator in this group matching the column. Relies on the navigator
+      // mapper always emitting at least one indicator cell per (group, column)
+      // pair — true today, brittle if that mapper ever drops 'none' indicators.
       const indicatorCell = group.cells.find(cell => cell.evaluationId === columnEvalId)
       if (!indicatorCell) continue
 
@@ -78,6 +82,8 @@ export function useSloScope({
 
   // Re-seed the selection whenever the backing key set changes — column
   // switch, filter change, or heatmap refetch producing different rows.
+  // This is React's blessed "adjusting state during render" pattern: cheaper
+  // than a useEffect (no extra commit), the if-guard prevents a render loop.
   const selectionKey = `${columnEvalId ?? ''}:${filter}:${availableSlos
     .map(option => option.sloName)
     .join(',')}`
