@@ -44,8 +44,13 @@ writes meta data.
 - Deriving timeline spans at query time from those snapshots (never materialized).
 - A read endpoint that returns data **directly in vis-timeline's consumer format** so
   the UI does zero domain translation.
-- A collapsible section in the evaluation detail page that renders the timeline with
-  the current evaluation pinned as a non-draggable vertical marker.
+- A **default-collapsed single-row strip** placed between the heatmap and the first
+  table in the evaluation detail page. The strip shows a lightweight "N items
+  tracked" summary and expands on click to reveal the full vis-timeline with the
+  current evaluation pinned as a non-draggable vertical marker. The collapsed state
+  is the primary state — the timeline is an investigation tool, not a routine
+  artifact, and the eval detail page's normal flow (heatmap → scores → tables)
+  stays intact until a user actively wants to investigate changes.
 - Hierarchical meta via path-based keys (app → plugin-package → plugin → ... up to 6
   levels deep), rendered using vis-timeline's native `nestedGroups` + `showNested`.
 - Explicit closure semantics — a key is only "uninstalled" when the owning source
@@ -468,9 +473,140 @@ asset yet. See docs → Meta Ingestion to start pushing.").
 - **404 Not Found** — `asset_id` does not exist.
 - **500 Internal Server Error** — derivation error (log with full snapshot dump).
 
+### 6.7 Summary endpoint (for the collapsed strip)
+
+The UI's default-collapsed strip (see §9.2) shows a lightweight "N items tracked"
+count without issuing the full timeline query. This is served by a second endpoint:
+
+```
+GET /assets/{asset_id}/meta/timeline/summary?from={iso}&to={iso}
+```
+
+**Query parameters:** identical to `GET /assets/{asset_id}/meta/timeline` — same
+`from` / `to` semantics so the count reflects exactly the same window that would be
+rendered on expand.
+
+**Response (200 OK):**
+
+```json
+{ "itemCount": 7 }
+```
+
+Where `itemCount` is the number of **distinct leaf paths** (groups that have at
+least one span in the window — synthetic intermediate ancestors do not count). For
+example, if the window has values for `["app-A"]`, `["app-A", "plugin-alpha"]`, and
+`["cpu-cores"]`, the count is 3 (not 4; `["app-A"]` is a leaf only if it has its
+own value, and the synthetic parent if any does not add to the count).
+
+**Error responses:** identical to §6.6 — 400 / 404 / 500.
+
+**Implementation note.** The summary endpoint is a **cheap specialization** of the
+full read path: it reuses `derive_raw_spans` + `resolve_multi_source_conflicts` +
+`clip_spans` exactly as §7 describes, then counts `len({tuple(s.path) for s in
+clipped})` instead of running tree building and item emission. The savings come from
+avoiding JSON serialization of the full response, not from a different algorithm.
+
+A future optimization (not Phase 1) could answer this from an index without walking
+snapshots — e.g. a materialized "latest non-null value per (asset, path)" view —
+but the current implementation is a ~5-line function and fast enough for Phase 1
+data volumes.
+
+```python
+# service.py — additional method
+
+async def get_timeline_summary(
+    session: AsyncSession,
+    asset_id: UUID,
+    window_from: datetime,
+    window_to: datetime,
+) -> TimelineSummaryResponse:
+    await _ensure_asset_exists(session, asset_id)
+    snapshots = await meta_repo.load_snapshots_for_derivation(
+        session, asset_id=asset_id, until=window_to,
+    )
+    raw_spans = derive_raw_spans(snapshots)
+    resolved = resolve_multi_source_conflicts(raw_spans, asset_id, logger)
+    clipped = clip_spans(resolved, window_from, window_to)
+    item_count = count_distinct_leaf_paths(clipped)
+    return TimelineSummaryResponse(item_count=item_count)
+
+
+def count_distinct_leaf_paths(spans: list[ClippedSpan]) -> int:
+    """Count distinct paths present in the clipped spans.
+
+    Pure function. Phase 1 treats every span's path as a "leaf" — synthetic
+    ancestors are a rendering concept that only exist after tree_builder runs.
+    """
+    return len({tuple(s.path) for s in spans})
+```
+
+`count_distinct_leaf_paths` gets its own one-line test (single fixture, one
+assertion). Reusing the existing pure functions means there is no second code path
+to keep in sync with the full endpoint.
+
 ---
 
 ## 7. Server-side algorithms
+
+**Design principles for this section.** Every algorithmic function described below is:
+
+- **Pure** (except where marked `async` for DB I/O). Derivation, conflict resolution,
+  clipping, tree building, and item emission are all zero-I/O: they take data in, return
+  data out, and have no side effects beyond an optional log warning.
+- **Single-purpose.** Each function does exactly one thing. The top-level orchestrator
+  `build_timeline_response` is a 5-line composition of the stages; it does no real work
+  itself.
+- **Independently unit-testable.** Each function can be exercised in isolation with a
+  small fixture — no DB, no network, no mocks beyond `logger`. §10.1 lists a focused
+  test case per function.
+- **DRY across read and write paths.** The `_ensure_asset_exists` helper is shared by
+  both the ingest and read services (§8.3). The `encode_path_as_group_id` helper is the
+  single point of truth for path → vis-timeline group-id encoding.
+
+The full function decomposition is:
+
+```
+# derivation.py  (pure, zero I/O)
+derive_raw_spans(snapshots)                             -> list[RawSpan]
+  apply_snapshot(open_spans, snapshot, emitted)         -> None
+    apply_value(open_spans, source, path, value, t, emitted)  -> None
+    close_cascade(open_spans, source, ancestor, t, emitted)   -> None
+      is_prefix(prefix, full)                           -> bool
+  finalize_open_spans(open_spans, emitted)              -> None
+
+# conflict_resolution.py  (pure, logger-only side effect)
+resolve_multi_source_conflicts(spans, asset_id, logger) -> list[RawSpan]
+  group_spans_by_path(spans)                            -> dict[path, list[RawSpan]]
+  compute_latest_observation_per_source(spans)          -> dict[source, datetime]
+  pick_winning_source(sources_latest)                   -> str
+  log_source_conflict(logger, asset_id, path, sources, winner)  -> None
+
+# clipping.py  (pure)
+clip_spans(spans, window_from, window_to)               -> list[ClippedSpan]
+  clip_one_span(span, window_from, window_to)           -> ClippedSpan | None
+    compute_span_classes(span, window_from, window_to, clipped_start, clipped_end)  -> list[str]
+
+# tree_builder.py  (pure)
+build_groups_wire(clipped_spans)                        -> list[dict]
+  collect_distinct_paths(spans)                         -> set[tuple]
+  expand_with_synthetic_ancestors(paths)                -> set[tuple]
+  compute_children_map(paths)                           -> dict[path, list[path]]
+  sort_groups_deterministically(paths)                  -> list[tuple]
+  build_group_entry(path, children_map)                 -> dict
+  encode_path_as_group_id(path)                         -> str
+
+# item_emitter.py  (pure)
+build_items_wire(spans)                                 -> list[dict]
+  item_from_span(span, index)                           -> dict
+
+# orchestrator.py  (pure)
+build_timeline_response(asset_id, snapshots, window_from, window_to, logger)  -> dict
+```
+
+Each bullet in the list above is a separate named function with a single responsibility.
+Sub-functions are called only by their listed parent; cross-module calls go through the
+top-level public function of each module (e.g., `tree_builder.build_groups_wire` is
+public; `compute_children_map` is a private module helper).
 
 ### 7.1 Span derivation
 
@@ -496,15 +632,46 @@ snapshots = SELECT s.*, v.path AS v_path, v.value, c.path AS c_path
 Group the flat join result into `(snapshot, values_list, closures_list)` tuples in
 application code.
 
-**Step 2 — walk and emit.**
+**Step 2 — walk and emit (small, composable functions).**
 
 ```python
-# open_spans maps (source, tuple(path)) -> (value, span_start)
-open_spans: dict[tuple[str, tuple[str, ...]], tuple[str, datetime]] = {}
-emitted: list[RawSpan] = []
+# derivation.py
 
-for snapshot in snapshots_ordered_by_observed_at:
-    # Apply closures FIRST (so close-and-reopen in same snapshot works).
+from collections.abc import Iterable
+
+OpenSpanMap = dict[tuple[str, tuple[str, ...]], "OpenSpan"]
+
+
+@dataclass(frozen=True)
+class OpenSpan:
+    value: str
+    span_start: datetime
+
+
+def derive_raw_spans(snapshots: Iterable[SnapshotWithEntries]) -> list[RawSpan]:
+    """Top-level entry point. Walks snapshots in order and emits raw spans.
+
+    Pure function. Zero I/O. The caller (`build_timeline_response`) owns snapshot
+    loading.
+    """
+    open_spans: OpenSpanMap = {}
+    emitted: list[RawSpan] = []
+    for snapshot in snapshots:
+        apply_snapshot(open_spans, snapshot, emitted)
+    finalize_open_spans(open_spans, emitted)
+    return emitted
+
+
+def apply_snapshot(
+    open_spans: OpenSpanMap,
+    snapshot: SnapshotWithEntries,
+    emitted: list[RawSpan],
+) -> None:
+    """Apply one snapshot to the in-progress state.
+
+    Closures run BEFORE values so that close-and-reopen in the same push is
+    deterministic (old span ends, new span starts, both at observed_at).
+    """
     for closure_path in snapshot.closures:
         close_cascade(
             open_spans=open_spans,
@@ -513,65 +680,113 @@ for snapshot in snapshots_ordered_by_observed_at:
             closed_at=snapshot.observed_at,
             emitted=emitted,
         )
-
-    # Then apply values.
     for path, value in snapshot.values:
-        key = (snapshot.source, tuple(path))
-        existing = open_spans.get(key)
-        if existing is None:
-            open_spans[key] = (value, snapshot.observed_at)
-        else:
-            existing_value, existing_start = existing
-            if existing_value == value:
-                pass  # span continues unchanged
-            else:
-                emitted.append(RawSpan(
-                    source=key[0],
-                    path=list(key[1]),
-                    value=existing_value,
-                    start=existing_start,
-                    end=snapshot.observed_at,
-                    end_reason="value_change",
-                ))
-                open_spans[key] = (value, snapshot.observed_at)
+        apply_value(
+            open_spans=open_spans,
+            source=snapshot.source,
+            path=tuple(path),
+            value=value,
+            observed_at=snapshot.observed_at,
+            emitted=emitted,
+        )
 
-# After all snapshots are processed, any remaining open_spans are still active.
-for (source, path_tuple), (value, start) in open_spans.items():
+
+def apply_value(
+    open_spans: OpenSpanMap,
+    source: str,
+    path: tuple[str, ...],
+    value: str,
+    observed_at: datetime,
+    emitted: list[RawSpan],
+) -> None:
+    """Record one observation of (source, path) = value at observed_at.
+
+    - If no span is currently open for (source, path), open one.
+    - If an open span has the same value, the span continues unchanged (no-op).
+    - If an open span has a different value, close it at observed_at and open a new
+      one at the same instant. The two spans are adjacent with zero gap.
+    """
+    key = (source, path)
+    existing = open_spans.get(key)
+    if existing is None:
+        open_spans[key] = OpenSpan(value=value, span_start=observed_at)
+        return
+    if existing.value == value:
+        return
     emitted.append(RawSpan(
         source=source,
-        path=list(path_tuple),
-        value=value,
-        start=start,
-        end=None,  # None == still open at the end of known data
-        end_reason="open",
+        path=list(path),
+        value=existing.value,
+        start=existing.span_start,
+        end=observed_at,
+        end_reason="value_change",
     ))
-```
+    open_spans[key] = OpenSpan(value=value, span_start=observed_at)
 
-Where `close_cascade` is:
 
-```python
-def close_cascade(open_spans, source, ancestor, closed_at, emitted):
-    """Close ancestor's span AND every descendant for the same source."""
+def close_cascade(
+    open_spans: OpenSpanMap,
+    source: str,
+    ancestor: tuple[str, ...],
+    closed_at: datetime,
+    emitted: list[RawSpan],
+) -> None:
+    """Close the open span for `ancestor` AND every currently-open descendant for the
+    same source.
+
+    Idempotent: if no open span matches, this function is a silent no-op.
+    """
     to_close = [
         key for key in open_spans
-        if key[0] == source and _is_prefix(ancestor, key[1])
+        if key[0] == source and is_prefix(ancestor, key[1])
     ]
     for key in to_close:
-        value, start = open_spans.pop(key)
+        open_span = open_spans.pop(key)
         emitted.append(RawSpan(
             source=key[0],
             path=list(key[1]),
-            value=value,
-            start=start,
+            value=open_span.value,
+            start=open_span.span_start,
             end=closed_at,
             end_reason="closed",
         ))
 
 
-def _is_prefix(prefix: tuple[str, ...], full: tuple[str, ...]) -> bool:
+def finalize_open_spans(open_spans: OpenSpanMap, emitted: list[RawSpan]) -> None:
+    """After all snapshots processed, emit remaining open spans with end=None.
+
+    A None end means "still open at the end of known data" — §7.3 clipping will
+    assign the `meta-span-open` class and set the rendered end to the query window's
+    `to`.
+    """
+    for (source, path_tuple), open_span in open_spans.items():
+        emitted.append(RawSpan(
+            source=source,
+            path=list(path_tuple),
+            value=open_span.value,
+            start=open_span.span_start,
+            end=None,
+            end_reason="open",
+        ))
+
+
+def is_prefix(prefix: tuple[str, ...], full: tuple[str, ...]) -> bool:
     """True if `prefix` is a prefix of `full` (including equal)."""
-    return len(prefix) <= len(full) and full[:len(prefix)] == prefix
+    return len(prefix) <= len(full) and full[: len(prefix)] == prefix
 ```
+
+Each function is independently testable:
+
+- `is_prefix` — one-liner, dozens of trivial cases.
+- `apply_value` — pre-populate `open_spans`, call, assert state change.
+- `close_cascade` — pre-populate with parent + descendants + unrelated siblings,
+  call with the parent path, assert only the subtree closed.
+- `apply_snapshot` — fixture with both closures and values, assert order-of-operations
+  (close-and-reopen lands cleanly).
+- `finalize_open_spans` — pre-populate `open_spans`, call, assert every key became a
+  `RawSpan` with `end=None`.
+- `derive_raw_spans` — end-to-end orchestrator, minimal coverage since the pieces are
+  already tested.
 
 **Important invariants:**
 
@@ -605,47 +820,96 @@ deterministic rule: **the source whose most recent observation for that path is 
 wins the entire row; spans from losing sources are dropped entirely**.
 
 ```python
+# conflict_resolution.py
+
 from collections import defaultdict
+from datetime import datetime, timezone
 
-# Group emitted spans by path. For each path, also record the latest observation
-# timestamp per source touching that path, so we can pick the winner.
-spans_by_path: dict[tuple[str, ...], list[RawSpan]] = defaultdict(list)
-latest_per_source: dict[tuple[str, ...], dict[str, datetime]] = defaultdict(dict)
+_SENTINEL_OPEN_END = datetime.max.replace(tzinfo=timezone.utc)
 
-for span in emitted:
-    path_key = tuple(span.path)
-    spans_by_path[path_key].append(span)
-    # The "latest observation for this (path, source)" is the latest span start OR end
-    # (the end of an open span is the query's `to`, which is fine as a sentinel — any
-    # source with a live open span at query time has the most recent observation).
-    observed_time = span.end if span.end is not None else datetime.max
-    current = latest_per_source[path_key].get(span.source, datetime.min)
-    latest_per_source[path_key][span.source] = max(current, observed_time)
 
-# Resolve: for each path with >1 source, pick the source with the latest observation,
-# drop the others, log a warning.
-winning_spans: list[RawSpan] = []
-for path_key, spans in spans_by_path.items():
-    sources = latest_per_source[path_key]
-    if len(sources) == 1:
-        winning_spans.extend(spans)
-        continue
+def resolve_multi_source_conflicts(
+    spans: list[RawSpan],
+    asset_id: UUID,
+    logger: Logger,
+) -> list[RawSpan]:
+    """Collapse multi-source conflicts down to one winning source per path.
 
-    winning_source = max(sources.items(), key=lambda kv: (kv[1], kv[0]))[0]
-    # ^ primary key: most recent; secondary key: source name (deterministic tie-break)
+    For paths where only one source contributed, returns its spans unchanged.
+    For paths where multiple sources contributed, picks the source whose most
+    recent observation is latest (tie-break: source name alphabetically), drops
+    the other sources' spans, and logs a warning.
+    """
+    spans_by_path = group_spans_by_path(spans)
+    resolved: list[RawSpan] = []
+    for path_key, path_spans in spans_by_path.items():
+        sources_latest = compute_latest_observation_per_source(path_spans)
+        if len(sources_latest) == 1:
+            resolved.extend(path_spans)
+            continue
+        winner = pick_winning_source(sources_latest)
+        log_source_conflict(logger, asset_id, path_key, sources_latest, winner)
+        resolved.extend(span for span in path_spans if span.source == winner)
+    return resolved
+
+
+def group_spans_by_path(
+    spans: list[RawSpan],
+) -> dict[tuple[str, ...], list[RawSpan]]:
+    """Bucket spans by their `path`."""
+    result: dict[tuple[str, ...], list[RawSpan]] = defaultdict(list)
+    for span in spans:
+        result[tuple(span.path)].append(span)
+    return result
+
+
+def compute_latest_observation_per_source(
+    path_spans: list[RawSpan],
+) -> dict[str, datetime]:
+    """For each source touching this path, the timestamp of its latest observation.
+
+    A still-open span (end=None) is treated as "observed at the sentinel future" so
+    that any source with a currently-open span beats a source whose spans all have
+    known ends in the past. This is the right rule: the most-current data wins.
+    """
+    latest: dict[str, datetime] = {}
+    for span in path_spans:
+        observed_at = span.end if span.end is not None else _SENTINEL_OPEN_END
+        if span.source not in latest or latest[span.source] < observed_at:
+            latest[span.source] = observed_at
+    return latest
+
+
+def pick_winning_source(sources_latest: dict[str, datetime]) -> str:
+    """Primary key: most recent observation. Secondary key: source name alphabetical.
+
+    The secondary key makes the outcome deterministic when two sources have the
+    same most-recent timestamp (rare but possible with heartbeat pushes).
+    """
+    return max(sources_latest.items(), key=lambda kv: (kv[1], kv[0]))[0]
+
+
+def log_source_conflict(
+    logger: Logger,
+    asset_id: UUID,
+    path: tuple[str, ...],
+    sources_latest: dict[str, datetime],
+    winner: str,
+) -> None:
+    """Emit an operator-visible warning about a multi-source conflict.
+
+    Isolated as its own function so tests can assert the warning is emitted without
+    mocking the entire resolve function.
+    """
     logger.warning(
         "asset_meta_timeline.multi_source_conflict",
         extra={
             "asset_id": str(asset_id),
-            "path": list(path_key),
-            "sources": sorted(sources.keys()),
-            "winner": winning_source,
+            "path": list(path),
+            "sources": sorted(sources_latest.keys()),
+            "winner": winner,
         },
     )
-    winning_spans.extend(s for s in spans if s.source == winning_source)
-
-# `winning_spans` replaces `emitted` for downstream clipping and emission.
-emitted = winning_spans
 ```
 
 **Why drop losing sources entirely** (rather than interleave them per time point): the
@@ -661,48 +925,91 @@ operators to correct.
 If Phase 2 needs to visualize both, the fix is one row per `(source, path)` rather
 than one per `path` — a Phase 2 change to §7.4 tree building, not a model change.
 
+**Testability:** each of the five functions is tested in isolation. `pick_winning_source`
+alone has ~10 tiny test cases covering the tie-break logic. `log_source_conflict` is
+tested by asserting a caplog fixture captures the right `extra` fields.
+
 ### 7.3 Window clipping
 
-After raw spans are emitted, clip each span to `[from, to]`:
+After conflict resolution, clip each span to `[window_from, window_to]`:
 
 ```python
-clipped: list[ClippedSpan] = []
-for span in emitted:
-    effective_end = span.end if span.end is not None else to
-    if effective_end <= from_:
-        continue  # entirely before window
-    if span.start >= to:
-        continue  # entirely after window
+# clipping.py
 
-    classes = ["meta-span"]
-    clipped_start = span.start
-    clipped_end = effective_end
+def clip_spans(
+    spans: list[RawSpan],
+    window_from: datetime,
+    window_to: datetime,
+) -> list[ClippedSpan]:
+    """Clip every span to [window_from, window_to] and drop ones outside the window.
 
-    if clipped_start < from_:
-        clipped_start = from_
-        classes.append("meta-span-clipped-left")
+    One-to-zero-or-one transform (spans outside the window produce None).
+    """
+    return [
+        clipped
+        for span in spans
+        if (clipped := clip_one_span(span, window_from, window_to)) is not None
+    ]
 
-    if span.end is None:
-        # Still open at end of known data.
-        if clipped_end > to:
-            clipped_end = to
-        classes.append("meta-span-open")
-    elif clipped_end > to:
-        clipped_end = to
-        classes.append("meta-span-clipped-right")
 
-    if span.end_reason == "closed":
-        classes.append("meta-span-closed")
+def clip_one_span(
+    span: RawSpan,
+    window_from: datetime,
+    window_to: datetime,
+) -> ClippedSpan | None:
+    """Clip a single span to the window. Return None if entirely outside."""
+    effective_end = span.end if span.end is not None else window_to
+    if effective_end <= window_from:
+        return None  # entirely before window
+    if span.start >= window_to:
+        return None  # entirely after window
 
-    clipped.append(ClippedSpan(
+    clipped_start = max(span.start, window_from)
+    clipped_end = min(effective_end, window_to)
+    classes = compute_span_classes(
+        span=span,
+        window_from=window_from,
+        window_to=window_to,
+        clipped_start=clipped_start,
+    )
+    return ClippedSpan(
         source=span.source,
         path=span.path,
         value=span.value,
         start=clipped_start,
         end=clipped_end,
         className=" ".join(classes),
-    ))
+    )
+
+
+def compute_span_classes(
+    span: RawSpan,
+    window_from: datetime,
+    window_to: datetime,
+    clipped_start: datetime,
+) -> list[str]:
+    """Compute the CSS class list for one span based on how it sits in the window.
+
+    Pure function of the span + window. The classes describe VISUAL meaning only;
+    the caller has already decided to include this span in the output.
+    """
+    classes = ["meta-span"]
+    if clipped_start > span.start:
+        classes.append("meta-span-clipped-left")
+    if span.end is None:
+        classes.append("meta-span-open")
+    elif span.end > window_to:
+        classes.append("meta-span-clipped-right")
+    if span.end_reason == "closed":
+        classes.append("meta-span-closed")
+    return classes
 ```
+
+**Testability:** `compute_span_classes` is the most important pure function to
+exhaust — every (clipped_start ?> span.start) × (span.end is None | > window_to | ≤
+window_to) × (end_reason == "closed" | not) combination is a test case. `clip_one_span`
+adds a handful of boundary cases (span exactly at window edge, zero-length span,
+etc.). `clip_spans` is a trivial composition.
 
 **Class semantics (consumed by `meta-timeline.css`):**
 
@@ -719,76 +1026,205 @@ for span in emitted:
 After clipping, build the vis-timeline `groups` list:
 
 ```python
-# Collect all distinct paths that have at least one clipped span.
-distinct_paths: set[tuple[str, ...]] = {tuple(span.path) for span in clipped}
+# tree_builder.py
 
-# For each path, walk every prefix and add synthetic intermediates.
-all_group_paths: set[tuple[str, ...]] = set()
-for path in distinct_paths:
-    for i in range(1, len(path) + 1):
-        all_group_paths.add(path[:i])
+from collections import defaultdict
+import json
 
-# Compute children for each group.
-# A group P has child Q iff len(Q) == len(P) + 1 and Q[:-1] == P.
-children_of: dict[tuple[str, ...], list[tuple[str, ...]]] = defaultdict(list)
-for p in all_group_paths:
-    if len(p) > 1:
-        parent = p[:-1]
-        children_of[parent].append(p)
 
-# Emit the flat group list, sorted for determinism: by depth ASC, then alphabetically
-# on the joined path within a depth. This gives stable diffs in tests.
-sorted_groups = sorted(
-    all_group_paths,
-    key=lambda p: (len(p), p),
-)
+def build_groups_wire(clipped_spans: list[ClippedSpan]) -> list[dict]:
+    """Build the vis-timeline `groups` list from clipped spans.
 
-groups_wire: list[dict] = []
-for path in sorted_groups:
-    entry = {
-        "id": json.dumps(list(path), ensure_ascii=False, separators=(",", ":")),
+    Walks distinct paths, synthesizes intermediate container groups so every
+    ancestor exists even if only a leaf has data, attaches nestedGroups to parents,
+    and sorts deterministically for test stability.
+    """
+    distinct_paths = collect_distinct_paths(clipped_spans)
+    all_group_paths = expand_with_synthetic_ancestors(distinct_paths)
+    children_map = compute_children_map(all_group_paths)
+    return [
+        build_group_entry(path, children_map)
+        for path in sort_groups_deterministically(all_group_paths)
+    ]
+
+
+def collect_distinct_paths(
+    spans: list[ClippedSpan],
+) -> set[tuple[str, ...]]:
+    """Extract the set of distinct path tuples present in the clipped spans."""
+    return {tuple(span.path) for span in spans}
+
+
+def expand_with_synthetic_ancestors(
+    paths: set[tuple[str, ...]],
+) -> set[tuple[str, ...]]:
+    """Return `paths` plus every ancestor prefix.
+
+    Ensures intermediate container groups exist for render. E.g. if the only
+    leaf is ("app-A", "pkg-1", "alpha"), the result contains ("app-A",),
+    ("app-A", "pkg-1"), and ("app-A", "pkg-1", "alpha").
+    """
+    expanded: set[tuple[str, ...]] = set()
+    for path in paths:
+        for length in range(1, len(path) + 1):
+            expanded.add(path[:length])
+    return expanded
+
+
+def compute_children_map(
+    paths: set[tuple[str, ...]],
+) -> dict[tuple[str, ...], list[tuple[str, ...]]]:
+    """Build a parent → immediate-children map from the full group-path set.
+
+    Only immediate children are recorded; vis-timeline handles transitive
+    nesting via the `nestedGroups` chain.
+    """
+    result: dict[tuple[str, ...], list[tuple[str, ...]]] = defaultdict(list)
+    for path in paths:
+        if len(path) > 1:
+            result[path[:-1]].append(path)
+    return result
+
+
+def sort_groups_deterministically(
+    paths: set[tuple[str, ...]],
+) -> list[tuple[str, ...]]:
+    """Stable ordering for test determinism.
+
+    Primary key: depth ASC (roots first). Secondary: path lexicographically.
+    The ordering affects the DataSet emission order; vis-timeline still resolves
+    parent/child visually via nestedGroups regardless of emission order, so this
+    sort is about test stability, not render correctness.
+    """
+    return sorted(paths, key=lambda p: (len(p), p))
+
+
+def build_group_entry(
+    path: tuple[str, ...],
+    children_map: dict[tuple[str, ...], list[tuple[str, ...]]],
+) -> dict:
+    """Build one group dict. Adds nestedGroups/showNested iff the path has children."""
+    entry: dict = {
+        "id": encode_path_as_group_id(path),
         "content": path[-1],
     }
-    if path in children_of:
-        child_paths_sorted = sorted(children_of[path])
-        entry["nestedGroups"] = [
-            json.dumps(list(cp), ensure_ascii=False, separators=(",", ":"))
-            for cp in child_paths_sorted
-        ]
+    if path in children_map:
+        children_sorted = sorted(children_map[path])
+        entry["nestedGroups"] = [encode_path_as_group_id(c) for c in children_sorted]
         entry["showNested"] = False
-    groups_wire.append(entry)
+    return entry
+
+
+def encode_path_as_group_id(path: tuple[str, ...]) -> str:
+    """Single point of truth for path → vis-timeline group id encoding.
+
+    Used by both tree_builder and item_emitter so the two agree on identity.
+    """
+    return json.dumps(list(path), ensure_ascii=False, separators=(",", ":"))
 ```
 
 **Key point: synthetic intermediates.** If the only path with data is
-`["app-A", "plugin-pkg-1", "plugin-alpha"]`, the server synthesizes groups for
-`["app-A"]` and `["app-A", "plugin-pkg-1"]`. Both are pure containers (no items will
-target them) but they exist as group rows with chevrons so the user can collapse the
-subtree. Without synthetics, vis-timeline would have no group for the child to attach
-to via `nestedGroups` and would render the leaf as top-level.
+`["app-A", "plugin-pkg-1", "plugin-alpha"]`, `expand_with_synthetic_ancestors`
+produces groups for `["app-A"]` and `["app-A", "plugin-pkg-1"]`. Both are pure
+containers (no items will target them) but they exist as group rows with chevrons so
+the user can collapse the subtree. Without synthetics, vis-timeline would have no
+group for the child to attach to via `nestedGroups` and would render the leaf as
+top-level.
+
+**Testability:** each helper is unit-tested in isolation:
+
+- `collect_distinct_paths` — given spans with duplicates and variants, returns the
+  expected set.
+- `expand_with_synthetic_ancestors` — leaf-only input produces intermediate ancestors.
+- `compute_children_map` — parent with two children returns both; leaf is absent as
+  a key.
+- `sort_groups_deterministically` — deterministic output regardless of input order.
+- `build_group_entry` — with and without children.
+- `encode_path_as_group_id` — path with special characters (`:`, `/`, quotes,
+  Unicode) encodes without ambiguity.
+- `build_groups_wire` — end-to-end composition over a realistic fixture.
 
 ### 7.5 Item emission
 
 ```python
-items_wire: list[dict] = []
-for index, span in enumerate(clipped):
-    group_id = json.dumps(span.path, ensure_ascii=False, separators=(",", ":"))
-    items_wire.append({
+# item_emitter.py
+
+from .tree_builder import encode_path_as_group_id
+
+
+def build_items_wire(spans: list[ClippedSpan]) -> list[dict]:
+    """Convert clipped spans to vis-timeline items.
+
+    One-to-one transform; no aggregation, no filtering (clipping already removed
+    out-of-window spans).
+    """
+    return [item_from_span(span, index) for index, span in enumerate(spans)]
+
+
+def item_from_span(span: ClippedSpan, index: int) -> dict:
+    """Build one vis-timeline item dict from a clipped span."""
+    return {
         "id": f"s{index}",
-        "group": group_id,
+        "group": encode_path_as_group_id(tuple(span.path)),
         "content": span.value,
         "start": span.start.isoformat(),
         "end":   span.end.isoformat(),
         "type":  "range",
         "className": span.className,
         "source": span.source,
-    })
+    }
 ```
 
-Note: vis-timeline passes extra fields through unchanged on `Item` objects and makes
-them available inside `tooltip.template(item)`. The `source` field is carried purely
-so the tooltip can display it; vis-timeline itself does nothing with it.
+Note: `encode_path_as_group_id` is imported from `tree_builder` so both modules
+share one definition (DRY). vis-timeline passes extra fields through unchanged on
+`Item` objects and makes them available inside `tooltip.template(item)`. The
+`source` field is carried purely so the tooltip can display it; vis-timeline itself
+does nothing with it.
 
-### 7.6 Performance and caching
+**Testability:** `item_from_span` is a trivial pure transform — one test per field to
+confirm it lands. `build_items_wire` is a one-liner composition, one end-to-end test.
+
+### 7.6 Top-level orchestration
+
+The five stages above are composed by a single public function:
+
+```python
+# orchestrator.py
+
+from .derivation import derive_raw_spans
+from .conflict_resolution import resolve_multi_source_conflicts
+from .clipping import clip_spans
+from .tree_builder import build_groups_wire
+from .item_emitter import build_items_wire
+
+
+def build_timeline_response(
+    asset_id: UUID,
+    snapshots: list[SnapshotWithEntries],
+    window_from: datetime,
+    window_to: datetime,
+    logger: Logger,
+) -> dict:
+    """Pure composition of the five stages. Zero I/O.
+
+    The caller (the read-side service) owns snapshot loading and response
+    serialization. This function is the only public entry point of the
+    derivation stack.
+    """
+    raw_spans = derive_raw_spans(snapshots)
+    resolved = resolve_multi_source_conflicts(raw_spans, asset_id, logger)
+    clipped = clip_spans(resolved, window_from, window_to)
+    return {
+        "groups": build_groups_wire(clipped),
+        "items":  build_items_wire(clipped),
+    }
+```
+
+This is **the** function the read service calls. It is a 5-line composition with no
+branching of its own; correctness comes from the tested correctness of its parts.
+Integration tests cover the composition end-to-end with real snapshots (§10.2).
+
+### 7.7 Performance and caching
 
 Phase 1 does no caching. The derivation algorithm is O(total snapshots for asset) and
 runs in-process during the request. At expected volumes (< 10k snapshots per asset per
@@ -807,14 +1243,36 @@ write. **Out of scope for Phase 1** — add only with evidence.
 ```
 api/tropek/modules/asset_meta/
 ├── __init__.py
-├── schemas.py          # Pydantic request/response
-├── params.py           # internal parameter objects
-├── repositories.py     # DB access (async SQLAlchemy)
-├── service.py          # validation + write orchestration
-├── derivation.py       # span derivation algorithm (pure, zero I/O)
-├── tree_builder.py     # group tree building (pure, zero I/O)
-├── router.py           # FastAPI routes
+├── schemas.py                  # Pydantic request/response
+├── params.py                   # internal parameter objects
+├── repositories.py             # DB access (async SQLAlchemy)
+├── service.py                  # thin orchestrator — validate, exist, write, read
+├── router.py                   # FastAPI routes
+└── timeline/                   # pure derivation stack; zero I/O below this line
+    ├── __init__.py             # re-exports the public top-level functions
+    ├── types.py                # RawSpan, ClippedSpan, SnapshotWithEntries, OpenSpan
+    ├── derivation.py           # §7.1
+    ├── conflict_resolution.py  # §7.2
+    ├── clipping.py             # §7.3
+    ├── tree_builder.py         # §7.4
+    ├── item_emitter.py         # §7.5
+    ├── summary.py              # §6.7 count_distinct_leaf_paths
+    └── orchestrator.py         # §7.6 build_timeline_response
 ```
+
+**Why a sub-package for the pure derivation stack:** the ~20 small functions split
+across 7 files (plus `types.py`) is arguably more structure than a single
+`timeline.py` would have — but it keeps each file small and focused. Each function is
+~10–30 lines, each file is ~30–100 lines. No single file becomes a monolith. The
+sub-package boundary (`asset_meta.timeline`) is a clear "pure code only, no I/O"
+zone — anything that needs a DB session or HTTP context belongs in `service.py` or
+`router.py`.
+
+If the implementer finds this over-structured during implementation, they may
+collapse to fewer files (e.g., merge `item_emitter.py` into `tree_builder.py`) as
+long as every function listed in §7 keeps its own name, signature, and focused unit
+tests. The *function* decomposition is the binding contract; the *file* layout is a
+strong suggestion.
 
 **Why a new module.** Asset meta is conceptually adjacent to the existing `assets`
 module but has independent CRUD semantics, its own schemas, and its own read algorithm.
@@ -889,21 +1347,76 @@ class MetaSnapshotCreated(BaseModel):
 A service-layer check enforces "`values` OR `closed` non-empty"; it is not expressible
 as a per-field validator.
 
-### 8.3 Service method (sketch)
+### 8.3 Service methods
+
+The ingest and read services each decompose into small helpers. `_ensure_asset_exists`
+is shared by both (DRY).
 
 ```python
+# service.py
+
 async def create_meta_snapshot(
     session: AsyncSession,
     asset_id: UUID,
     payload: MetaSnapshotCreate,
 ) -> MetaSnapshotCreated:
+    """Ingest one snapshot. Thin orchestrator over validation + existence + write."""
+    _validate_payload_has_content(payload)
+    await _ensure_asset_exists(session, asset_id)
+    snapshot_id = await _write_snapshot_rows(session, asset_id, payload)
+    await session.commit()
+    return MetaSnapshotCreated(snapshot_id=snapshot_id)
+
+
+async def get_timeline(
+    session: AsyncSession,
+    asset_id: UUID,
+    window_from: datetime,
+    window_to: datetime,
+) -> TimelineResponse:
+    """Read one asset's timeline. Thin orchestrator over load + derive."""
+    await _ensure_asset_exists(session, asset_id)
+    snapshots = await meta_repo.load_snapshots_for_derivation(
+        session, asset_id=asset_id, until=window_to,
+    )
+    wire = build_timeline_response(
+        asset_id=asset_id,
+        snapshots=snapshots,
+        window_from=window_from,
+        window_to=window_to,
+        logger=logger,
+    )
+    return TimelineResponse.model_validate(wire)
+
+
+# --- private helpers ---------------------------------------------------------
+
+def _validate_payload_has_content(payload: MetaSnapshotCreate) -> None:
+    """Reject snapshots with neither values nor closures.
+
+    Pure function. Pydantic cannot express this cross-field rule at the field
+    validator level, so it lives in the service layer.
+    """
     if not payload.values and not payload.closed:
         raise AssetMetaValidationError("snapshot must contain values or closed")
 
-    # Asset existence check (404 path).
+
+async def _ensure_asset_exists(session: AsyncSession, asset_id: UUID) -> None:
+    """Raise AssetNotFoundError if the asset does not exist.
+
+    Shared by both create_meta_snapshot and get_timeline. Putting the check in
+    one place means both endpoints return a consistent 404 shape.
+    """
     if not await asset_repo.asset_exists(session, asset_id):
         raise AssetNotFoundError(asset_id)
 
+
+async def _write_snapshot_rows(
+    session: AsyncSession,
+    asset_id: UUID,
+    payload: MetaSnapshotCreate,
+) -> UUID:
+    """Insert the snapshot + values + closures rows. Does not commit."""
     snapshot = await meta_repo.insert_snapshot(
         session,
         asset_id=asset_id,
@@ -914,10 +1427,15 @@ async def create_meta_snapshot(
         await meta_repo.insert_values(session, snapshot.id, payload.values)
     if payload.closed:
         await meta_repo.insert_closures(session, snapshot.id, payload.closed)
-
-    await session.commit()
-    return MetaSnapshotCreated(snapshot_id=snapshot.id)
+    return snapshot.id
 ```
+
+**Why decompose the service even when the code is already short:** each helper can be
+tested in isolation with a lightweight async fixture, and the public orchestrators
+read as a plain English description of what they do (validate, check existence,
+write). Adding a future concern (e.g. rate limiting, audit log writes, metrics
+emission) slots in as another line in the orchestrator without bloating any single
+helper.
 
 ---
 
@@ -956,6 +1474,22 @@ It follows the DTO/Domain/Mapper pattern from `docs/superpowers/specs/2026-04-12
 
 ### 9.2 The collapsible section
 
+The section is rendered as a **compact single-row strip** by default — so it does not
+disrupt the primary eval-detail flow of heatmap → scores → SLI breakdown table. A
+user investigating "what changed" clicks the strip to expand it into the full
+vis-timeline component.
+
+**Collapsed state** (default) — a one-row strip showing:
+
+- A chevron/caret indicating expandability.
+- The label `Asset meta · <N> items tracked` (where N is a lightweight count, see
+  below).
+- A right-aligned subtle hint like `click to investigate changes over time`.
+- Total visual height: ~32px — comparable to a single table row.
+
+**Expanded state** — the strip becomes a card header with a close control, and the
+vis-timeline renders beneath it at 340px fixed height.
+
 ```tsx
 // MetaTimelineSection.tsx
 interface Props {
@@ -969,20 +1503,25 @@ export function MetaTimelineSection({ assetId, focusEval }: Props) {
   const from = useMemo(() => subDays(focusEval.periodEnd, 30), [focusEval.periodEnd])
   const to   = useMemo(() => addDays(focusEval.periodEnd, 7),  [focusEval.periodEnd])
 
+  // Always fetch a lightweight "count" of how many items are tracked, so the
+  // collapsed strip can show it. This is a tiny query — O(distinct paths),
+  // ~100 bytes — and does not wait for expand. Uses a separate hook so the
+  // full-data query is still gated on isExpanded.
+  const { data: summary } = useMetaTimelineSummary(assetId, from, to)
+
   const { data, isLoading, error } = useMetaTimeline(assetId, from, to, {
     enabled: isExpanded,
   })
 
   return (
-    <Card>
-      <CardHeader
-        onClick={() => setIsExpanded((v) => !v)}
+    <div className="meta-timeline-section">
+      <CollapsedStrip
+        itemCount={summary?.itemCount ?? 0}
         expanded={isExpanded}
-      >
-        Asset meta timeline
-      </CardHeader>
+        onToggle={() => setIsExpanded((v) => !v)}
+      />
       {isExpanded && (
-        <CardBody>
+        <div className="meta-timeline-body">
           {isLoading && <LoadingIndicator />}
           {error && <ErrorState error={error} />}
           {data && data.items.length === 0 && <EmptyState />}
@@ -996,20 +1535,80 @@ export function MetaTimelineSection({ assetId, focusEval }: Props) {
               windowEnd={to}
             />
           )}
-        </CardBody>
+        </div>
       )}
-    </Card>
+    </div>
+  )
+}
+
+
+function CollapsedStrip({
+  itemCount, expanded, onToggle,
+}: {
+  itemCount: number
+  expanded: boolean
+  onToggle: () => void
+}) {
+  const itemsText =
+    itemCount === 0 ? "no items tracked"
+    : itemCount === 1 ? "1 item tracked"
+    : `${itemCount} items tracked`
+
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      className="meta-timeline-strip"
+      aria-expanded={expanded}
+    >
+      <ChevronIcon direction={expanded ? "down" : "right"} />
+      <span className="meta-timeline-strip-label">Asset meta</span>
+      <span className="meta-timeline-strip-separator">·</span>
+      <span className="meta-timeline-strip-count">{itemsText}</span>
+      {!expanded && (
+        <span className="meta-timeline-strip-hint">
+          click to investigate changes over time
+        </span>
+      )}
+    </button>
   )
 }
 ```
 
-- **Default collapsed.** Users opt in by clicking. Not every user cares about this row.
-- **Query is gated on `isExpanded`.** We only fetch when the user expands the section,
-  saving the read for users who actively want it. Subsequent collapse/expand cycles
-  reuse the cached query result (standard React Query behavior).
-- **`from` / `to` are computed locally.** Asymmetric window: 30 days of history before
-  the focus eval, 7 days of trailing context to show open-ended spans leaving the
-  current state.
+**Design rationale — why a single-row collapsed strip, not a "card with header":**
+
+- The natural flow of the eval-detail page is heatmap → numbers → table. The meta
+  timeline is an **investigation tool**, not a primary artifact. It should be
+  present but unobtrusive by default, so it adds roughly one row of vertical space
+  to the page when not in use.
+- The item count in the collapsed strip is a small affordance: users can see at a
+  glance whether there's anything *worth* investigating. An asset with zero tracked
+  items gives the user the "no news" signal without requiring them to expand.
+- A dedicated `useMetaTimelineSummary` hook fetches **only the count** (a tiny
+  endpoint returning `{itemCount: number}`), so the collapsed state is cheap and
+  always reflects reality. See §6.7 below for the summary endpoint contract.
+- The strip expands in place — it does not navigate, does not open a modal, does
+  not push other content off-screen. Expanding adds ~340px of vertical height in
+  place; collapsing restores the flow.
+
+**Key properties:**
+
+- **Default collapsed.** Users opt in by clicking. The heatmap, scores, and SLI
+  breakdown remain the primary flow for normal use. Users only expand during
+  investigation — "something changed here, let me see what".
+- **Full-data query is gated on `isExpanded`.** The heavy `GET /meta/timeline`
+  request is only issued when the user expands the section. Subsequent
+  collapse/expand cycles reuse the cached query result (standard React Query
+  behavior).
+- **Summary query runs unconditionally** when the section is mounted — but it is
+  tiny and cached aggressively.
+- **`from` / `to` are computed locally.** Asymmetric window: 30 days of history
+  before the focus eval, 7 days of trailing context to show open-ended spans
+  leaving the current state.
+
+**Note: new summary endpoint.** The collapsed-strip item count requires a second,
+lightweight server endpoint. This is added to §6 as **§6.7** — one new short section
+documenting it.
 
 ### 9.3 The vis-timeline React wrapper
 
@@ -1241,20 +1840,122 @@ different formatter lib is preferred, swap it — the shape is what matters.
 
 ### 9.6 Integration into the evaluation detail page
 
-Locate the `EvaluationDetail` (or equivalent) component that renders eval details, and
-add `<MetaTimelineSection />` below the existing notes section and above any future
-trend blocks. The section is a sibling, not nested inside an existing card.
+**Placement: between the heatmap and the first table in the eval detail view.** The
+collapsed strip sits as a thin row immediately below the heatmap/score block and
+immediately above the SLI breakdown table (or whichever table is the first in the
+detail page). When collapsed it adds ~32px of vertical space — roughly a single
+table row — and does not disrupt the flow from heatmap → scores → detailed
+breakdown.
 
-The section is always rendered when an eval is loaded (regardless of data), so users
-discover the feature exists even for assets that do not yet have meta pushed.
+```
+┌─────────────────────────────────────────────────────────┐
+│  Evaluation header (asset, time, score, status)         │
+├─────────────────────────────────────────────────────────┤
+│  Heatmap / score block                                  │
+├─────────────────────────────────────────────────────────┤
+│  ▸ Asset meta · 7 items tracked · click to investigate… │  ← collapsed strip (default)
+├─────────────────────────────────────────────────────────┤
+│  SLI breakdown table (first table in the page)          │
+├─────────────────────────────────────────────────────────┤
+│  Evaluation actions / notes / ...                       │
+└─────────────────────────────────────────────────────────┘
+```
+
+When expanded, the strip becomes a header and the full vis-timeline renders
+beneath it at 340px height, pushing the SLI table down the page in place:
+
+```
+┌─────────────────────────────────────────────────────────┐
+│  Heatmap / score block                                  │
+├─────────────────────────────────────────────────────────┤
+│  ▾ Asset meta · 7 items tracked                         │
+│  ┌───────────────────────────────────────────────────┐  │
+│  │  [vis-timeline — 340px — focus eval marker]       │  │
+│  └───────────────────────────────────────────────────┘  │
+├─────────────────────────────────────────────────────────┤
+│  SLI breakdown table                                    │
+└─────────────────────────────────────────────────────────┘
+```
+
+**Locating the insertion point:** find the component that renders the evaluation
+detail body (search for where `EvaluationHeatmap` is rendered — the insertion point
+is directly after that block and directly before `SLIBreakdownTable` or similar).
+The section is a sibling of the surrounding blocks, not nested inside any existing
+card.
+
+**The section is always rendered** when an eval is loaded (regardless of whether
+the asset has any meta data). For assets with no meta data, the collapsed strip
+shows "no items tracked" so users discover the feature exists and know how to start
+pushing. Expanding an empty-data section shows the empty-state copy from §6.5.
+
+**Why default-collapsed is the right default:** the natural flow of the eval detail
+page is heatmap → data → graphs → tables. Users reviewing a routine eval do not
+need to see the meta timeline — they want to confirm the result and move on. The
+timeline exists for a specific use case: "this eval failed/regressed, let me see
+what changed on the asset recently". Default-collapsed keeps the primary flow clean
+for routine use and surfaces the timeline on demand for investigation.
 
 ---
 
 ## 10. Testing strategy
 
-### 10.1 Pure unit tests (derivation and tree building)
+### 10.1 Pure unit tests (derivation, conflict, clipping, tree building)
 
-Live in `api/tests/engine/test_asset_meta_derivation.py` (no DB, no network). Cover:
+The server-side algorithm is decomposed into ~20 small pure functions (§7). Each one
+gets **its own focused test section** with a small fixture — not just end-to-end
+tests on the top-level orchestrator. Test files live in
+`api/tests/engine/asset_meta/`, one file per module:
+
+```
+api/tests/engine/asset_meta/
+├── test_derivation.py           # tests for §7.1 functions
+├── test_conflict_resolution.py  # tests for §7.2 functions
+├── test_clipping.py             # tests for §7.3 functions
+├── test_tree_builder.py         # tests for §7.4 functions
+├── test_item_emitter.py         # tests for §7.5 functions
+└── test_orchestrator.py         # end-to-end composition sanity (§7.6)
+```
+
+**Per-function test coverage (minimum):**
+
+| Function | Minimum test cases |
+|---|---|
+| `is_prefix` | true/false for equal, prefix-of, suffix-of, disjoint, empty |
+| `apply_value` | new key opens span; same value no-op; different value closes + opens |
+| `close_cascade` | closes exact match; closes descendants; ignores other sources; ignores non-existent path (idempotent) |
+| `apply_snapshot` | closures-before-values ordering; close-and-reopen in one push |
+| `finalize_open_spans` | converts remaining map entries to open-ended RawSpans |
+| `derive_raw_spans` | 3–4 integration fixtures exercising the algorithm end-to-end |
+| `group_spans_by_path` | empty, single path, multiple paths |
+| `compute_latest_observation_per_source` | open-span sentinel beats closed past; multiple sources |
+| `pick_winning_source` | clear winner; tie-break on source name |
+| `log_source_conflict` | asserts `extra` fields via `caplog` |
+| `resolve_multi_source_conflicts` | single source (no-op); conflict (winner selected, loser dropped, warning logged) |
+| `compute_span_classes` | every combination of (clipped-left/not) × (end None/past/within) × (closed/not) — ~12 cases |
+| `clip_one_span` | entirely before; entirely after; inside; boundary cases (span starts at `window_from`, ends at `window_to`); zero-length |
+| `clip_spans` | composition over a small list |
+| `collect_distinct_paths` | deduplication |
+| `expand_with_synthetic_ancestors` | leaf-only input; already-expanded input is a no-op |
+| `compute_children_map` | parent with multiple children; leaf has no entry |
+| `sort_groups_deterministically` | order-independent input → deterministic output |
+| `build_group_entry` | with and without children |
+| `encode_path_as_group_id` | path with special chars (`:`, `/`, `"`, Unicode) round-trips via `json.loads` |
+| `build_groups_wire` | end-to-end composition fixture |
+| `item_from_span` | one test per output field |
+| `build_items_wire` | trivial composition, one small fixture |
+| `build_timeline_response` | 3 realistic fixtures (simple asset, hierarchical asset, multi-source asset with conflict) |
+
+**Service-layer tests** (in `api/tests/engine/asset_meta/test_service.py`, still no
+real DB — use in-memory fakes for the repositories):
+
+| Function | Minimum test cases |
+|---|---|
+| `_validate_payload_has_content` | empty snapshot raises; values-only passes; closed-only passes; both passes |
+| `_ensure_asset_exists` | exists → no exception; missing → `AssetNotFoundError` |
+| `_write_snapshot_rows` | values-only; closed-only; both; empty lists skipped |
+
+**End-to-end scenario coverage** (exercised by `test_orchestrator.py` and
+`test_derivation.py::test_derive_raw_spans`):
 
 1. Single snapshot with one value → one still-open span clipped to `to`.
 2. Two snapshots with identical value → one long span.
@@ -1305,13 +2006,24 @@ Live in `api/tests/db/test_asset_meta_ingest_and_read.py`, marked
 1. Round-trip: POST a snapshot, GET the timeline, assert the span shows up.
 2. Validation: each Pydantic rule enforced (empty path, too-deep path, empty snapshot,
    duplicate paths in same request, invalid source pattern, malformed datetime).
-3. Asset-not-found returns 404.
+3. Asset-not-found returns 404 on all three endpoints (POST, GET timeline, GET
+   summary).
 4. Multi-source: two sources push to same asset, timeline contains data from both.
 5. Cascading closure: push app + plugins, then close parent, GET confirms all children
    ended at closure time.
 6. Large snapshot (500 values) round-trips without error.
 7. Window clipping: pushes span [−60d, +10d] then GET with window [−30d, now]; assert
    span is clipped-left and open-right in response.
+8. **Closed-only snapshot round-trip**: push values-only to open a span, push
+   closed-only to terminate it, GET confirms the span ended at the closure time
+   with `meta-span-closed` class.
+9. **Summary endpoint**: push 3 distinct-path snapshots, GET the summary, assert
+   `{itemCount: 3}`. Push one more snapshot on a fourth path, GET again, assert
+   `{itemCount: 4}`.
+10. **Summary/timeline count parity**: for several fixtures, assert that
+    `summary.itemCount == len({tuple(item.path) for item in timeline.items with
+    distinct paths})` — the collapsed strip and the expanded timeline never
+    disagree about how many things are tracked.
 
 ### 10.3 UI component tests
 
@@ -1319,10 +2031,22 @@ Live alongside the components as `*.test.tsx`, using Vitest + React Testing Libr
 happy-dom per the existing UI testing guide in CLAUDE.md.
 
 1. `MetaTimelineSection.test.tsx`:
-   - Default collapsed (timeline container not in DOM).
-   - Click header → expands, shows loading state, then the timeline.
-   - Empty response → empty state copy visible.
-   - Error response → error state copy visible.
+   - Default collapsed (timeline container not in DOM; only the single-row
+     `CollapsedStrip` rendered).
+   - Summary query runs on mount; item count appears in the strip.
+   - Click strip → `isExpanded` flips, full-data query fires, timeline container
+     appears in DOM.
+   - Click strip again → collapses back to single row.
+   - Empty response → empty state copy visible when expanded.
+   - Error response → error state copy visible when expanded.
+   - Height when collapsed is ≤ 40px (measured via `getBoundingClientRect`).
+2. `CollapsedStrip.test.tsx`:
+   - Zero items → "no items tracked".
+   - One item → "1 item tracked" (singular).
+   - Many items → "N items tracked".
+   - `aria-expanded` reflects `expanded` prop.
+   - Click fires `onToggle`.
+   - Investigation hint visible only when collapsed, not when expanded.
 2. `MetaTimeline.test.tsx` — this one is awkward because vis-timeline manipulates the
    DOM imperatively and happy-dom does not render the timeline faithfully. Scope:
    - On mount, the `<div>` container ref is bound.
@@ -1443,14 +2167,19 @@ under a new route prefix and new tables live in new schemas.
 2. `POST /assets/{id}/meta/snapshots` accepts the documented contract, validates all
    rules in §5.2, and inserts rows transactionally.
 3. `GET /assets/{id}/meta/timeline?from=&to=` returns vis-timeline-shaped JSON per §6.3.
-4. Unit tests for the derivation and tree-building algorithms cover all cases in
-   §10.1 and pass.
-5. Integration tests in §10.2 pass against a real TimescaleDB.
-6. UI shows `MetaTimelineSection` in the eval detail page, default-collapsed.
-7. Expanding the section fetches and renders the timeline.
-8. The focus-eval marker is pinned, non-draggable, labelled.
-9. Nested groups expand/collapse on chevron click with children visible only when
-   expanded, parent's own bar always visible.
+4. `GET /assets/{id}/meta/timeline/summary?from=&to=` returns `{itemCount: N}` per §6.7.
+5. Unit tests for the derivation, conflict, clipping, tree-building, and item-emitter
+   functions cover all cases in §10.1 per-function table and pass.
+6. Integration tests in §10.2 pass against a real TimescaleDB.
+7. UI shows `MetaTimelineSection` as a single-row collapsed strip between the
+   heatmap and the first table in the eval detail page.
+8. The collapsed strip shows `Asset meta · N items tracked · click to investigate…`
+   where N comes from the summary endpoint.
+9. Clicking the strip expands it in place; the full timeline query is only fetched
+   on first expansion and cached thereafter.
+10. The focus-eval marker is pinned, non-draggable, labelled.
+11. Nested groups expand/collapse on chevron click with children visible only when
+    expanded, parent's own bar always visible.
 10. Theme switch works without re-mount artifacts.
 11. Manual checklist in §10.4 passes.
 12. Existing `docs/meta-gantt/asset_version_gantt_spec.docx` is left in place but marked
