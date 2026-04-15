@@ -214,12 +214,44 @@ Authorization: <existing TROPEK API key scheme>
 { "snapshot_id": "9c4e5a40-3f2d-4e8f-8a2b-1e5c7d2f4a91" }
 ```
 
+**Valid payload shapes.** A snapshot does not need to contain both `values` and
+`closed`. All three of the following are legal:
+
+1. **`values`-only** — the common case. The agent is reporting current state; nothing
+   has been uninstalled since the last push. `closed` is omitted or `[]`.
+2. **`closed`-only** — the "I just noticed something disappeared, nothing else
+   changed" case. Useful when an agent's diff between two collection cycles is
+   purely "one thing vanished". Example:
+
+   ```json
+   {
+     "source": "cicd",
+     "observed_at": "2026-04-16T14:32:00Z",
+     "closed": [
+       { "path": ["legacy-plugin"] },
+       { "path": ["app-A", "plugin-pkg-1", "plugin-beta"] }
+     ]
+   }
+   ```
+
+   Semantics: terminate the currently-open spans for `legacy-plugin` and
+   `plugin-beta` (both as owned by the `cicd` source) at `2026-04-16T14:32:00Z`.
+   No new spans are opened. If either path has no open span from `cicd` at that
+   moment, the closure is a no-op for that path (not an error) — closures are
+   idempotent-safe.
+
+3. **Both together** — values + closures in one push. The close-and-reopen special
+   case (§5.2 rule 3) uses this, but the general form also works: some things
+   terminated, other things observed at their current value, all in one transaction.
+
+A snapshot with **both** `values` and `closed` empty is rejected — see §5.2 rule 4.
+
 ### 5.2 Field types and validation rules
 
 | Field | Type | Required | Validation |
 |---|---|---|---|
 | `source` | `str` | Yes | 1–64 characters; `^[a-zA-Z0-9._-]+$`; case-sensitive. |
-| `observed_at` | ISO-8601 datetime with timezone | Yes | Must be timezone-aware. UTC is normalized via `astimezone(UTC)` on receipt. Must be ≤ `now() + 5m` and ≥ `now() - 10y` (sanity bounds; reject obvious garbage). |
+| `observed_at` | ISO-8601 datetime with timezone | Yes | Must be a valid ISO-8601 datetime **with timezone offset** (naive datetimes rejected as 400). Normalized to UTC via `astimezone(UTC)` on receipt so all downstream code compares in UTC. No upper or lower bound — backfills of historical data and slightly-skewed-clock agents are both legitimate callers. A call pushing `observed_at` in the year 2000 or 2100 is technically legal; the data just appears in the timeline when queried with a matching window. |
 | `values` | `list[MetaValue]` | No | Default `[]`. Up to 10,000 entries per snapshot (hard limit). |
 | `closed` | `list[MetaClosure]` | No | Default `[]`. Up to 1,000 entries per snapshot. |
 | `values[].path` | `list[str]` | Yes | 1–6 entries (inclusive); each entry 1–128 characters; entries cannot be empty; Unicode allowed. |
@@ -553,6 +585,17 @@ def _is_prefix(prefix: tuple[str, ...], full: tuple[str, ...]) -> bool:
 - Consecutive identical-value snapshots do **not** create new spans (see `if
   existing_value == value: pass`). The daily heartbeat case (push the same values every
   day for a month) emits one span covering the full month, not 30 spans.
+- **Closures are idempotent-safe at derivation time.** `close_cascade` builds its
+  `to_close` list from the current `open_spans` map. If no open span matches (because
+  the path was already closed, or was never opened by this source), `to_close` is
+  empty and the closure is silently a no-op. No error, no stale emission. This means
+  a `closed`-only snapshot targeting a path that the source had already closed is
+  fully accepted at ingestion (it just stores a closure row) and fully ignored at
+  read time (it has nothing to close). Agents can push "close everything I no longer
+  see" defensively without needing to track what they've previously closed.
+- A `closed`-only snapshot (no `values`) is handled identically to one that has
+  `values` — the values loop just iterates zero times. The walk over closures still
+  runs and still emits `end_reason="closed"` spans for any actual terminations.
 
 ### 7.2 Source conflict resolution (one row per path)
 
@@ -1231,6 +1274,25 @@ Live in `api/tests/engine/test_asset_meta_derivation.py` (no DB, no network). Co
 14. Empty asset (no snapshots): returns `{groups: [], items: []}`.
 15. Path with only trailing whitespace (`["  "]`): rejected at Pydantic validation,
     not at derivation. Derivation unit tests assume clean input.
+16. **`closed`-only snapshot terminates an existing span.** Setup: push a `values`-only
+    snapshot opening `["legacy-plugin"]` at T0. Push a second snapshot at T1 with
+    `values: []` and `closed: [{path: ["legacy-plugin"]}]`. Expected: one emitted
+    span with `start=T0`, `end=T1`, `end_reason="closed"`, `meta-span-closed` class.
+17. **`closed`-only snapshot targeting an already-closed path is a no-op.** Setup:
+    push `values`-only opening `["foo"]` at T0, `closed`-only closing `["foo"]` at
+    T1, then another `closed`-only closing `["foo"]` again at T2. Expected: exactly
+    one emitted span `[T0, T1]` with `end_reason="closed"`. The T2 closure is
+    silently ignored during derivation; no stray span, no error.
+18. **`closed`-only snapshot targeting a path that was never opened is a no-op.**
+    Setup: push `closed`-only `{path: ["never-existed"]}` at T0 on an asset with no
+    prior snapshots. Expected: derivation emits zero spans for that path. No error.
+    The snapshot row and closure row still exist in the database (§5.3 write
+    semantics are additive regardless of whether anything matches at read time).
+19. **`closed`-only cascading works.** Setup: push `values`-only opening
+    `[["app-A"], ["app-A", "plugin-1"], ["app-A", "plugin-2"]]` at T0 from source
+    `cicd`. Push `closed`-only `{path: ["app-A"]}` at T1 from the same source.
+    Expected: three emitted spans, all with `end=T1`, `end_reason="closed"`, one per
+    path.
 
 Each test case is a small fixture of snapshots → expected `groups` + `items` output,
 compared structurally.
