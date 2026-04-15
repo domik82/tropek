@@ -12,6 +12,12 @@ function fmtPct(v: number | null | undefined): string {
   return `${sign}${v.toFixed(2)}%`
 }
 
+function fmtSignedAbs(v: number | null | undefined): string {
+  if (v == null) return '—'
+  const sign = v >= 0 ? '+' : ''
+  return `${sign}${fmt(v)}`
+}
+
 const LOW_CONFIDENCE_THRESHOLD = 20
 
 
@@ -108,15 +114,16 @@ export function SLIBreakdownTable({ indicators, sliMetadata, onIndicatorClick, r
     <DataTable fixed>
       <colgroup>
         <col style={{ width: '2%' }} />
-        <col style={{ width: '20%' }} />
-        <col style={{ width: '10%' }} />
-        <col style={{ width: '10%' }} />
+        <col style={{ width: '18%' }} />
+        <col style={{ width: '9%' }} />
+        <col style={{ width: '9%' }} />
+        <col style={{ width: '8%' }} />
         <col style={{ width: '8%' }} />
         <col style={{ width: '6%' }} />
         <col style={{ width: '6%' }} />
         <col style={{ width: '10%' }} />
-        <col style={{ width: '14%' }} />
-        <col style={{ width: '14%' }} />
+        <col style={{ width: '12%' }} />
+        <col style={{ width: '12%' }} />
       </colgroup>
       <DataTableHeader>
         <tr>
@@ -124,7 +131,8 @@ export function SLIBreakdownTable({ indicators, sliMetadata, onIndicatorClick, r
           <th className="px-4 py-3">Indicator</th>
           <th className="px-4 py-3 text-right">Value</th>
           <th className="px-4 py-3 text-right">Baseline</th>
-          <th className="px-4 py-3 text-right">Δ</th>
+          <th className="px-4 py-3 text-right" title="Absolute difference vs. baseline">Δ abs</th>
+          <th className="px-4 py-3 text-right" title="Relative difference vs. baseline">Δ %</th>
           <th className="px-4 py-3 text-right">Weight</th>
           <th className="px-4 py-3 text-right">Score</th>
           <th className="px-4 py-3">Status</th>
@@ -192,7 +200,7 @@ function GroupRows({ group, collapsed, lowConfidence, onToggle, selectedMetric, 
         onClick={onToggle}
       >
         <td className="px-2 py-2" />
-        <td className="px-4 py-2 font-medium" colSpan={9}>
+        <td className="px-4 py-2 font-medium" colSpan={10}>
           <div className="flex items-center gap-2">
             {collapsed
               ? <ChevronRight className="size-3.5 text-muted-foreground" />
@@ -284,6 +292,13 @@ function IndicatorRow({ ind, idx, isSelected, onClick, onIndicatorClick, display
       </td>
       <td className="px-4 py-3 text-right font-mono truncate" title={String(ind.value ?? '')}>{fmt(ind.value)}</td>
       <td className="px-4 py-3 text-right font-mono text-muted-foreground truncate" title={String(ind.comparedValue ?? '')}>{fmt(ind.comparedValue)}</td>
+      <td className="px-4 py-3 text-right font-mono">
+        {ind.changeAbsolute != null ? (
+          <span className={STATUS_TEXT[ind.status] ?? 'text-foreground'}>
+            {fmtSignedAbs(ind.changeAbsolute)}
+          </span>
+        ) : '—'}
+      </td>
       <td className="px-4 py-3 text-right font-mono">
         {ind.changeRelativePct != null ? (
           <span className={STATUS_TEXT[ind.status] ?? 'text-foreground'}>
