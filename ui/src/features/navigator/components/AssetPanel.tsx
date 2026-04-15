@@ -8,9 +8,25 @@ import { useAssets } from '@/features/assets/hooks'
 import { useSlos } from '@/features/slos/hooks'
 import { EvaluationHeader } from '@/features/evaluations/components/EvaluationHeader'
 import { AnnotationSection, type AnnotationSectionHandle } from '@/features/evaluations/components/AnnotationForm'
-import { EvaluationActionsButton, EvaluationActionForm, NoteIconButton } from '@/features/evaluations/components/EvaluationActions'
+import { EvaluationActionsButton, NoteIconButton } from '@/features/evaluations/components/EvaluationActions'
+import { ActionPopover } from '@/features/evaluations/components/ActionPopover'
+import { OverrideForm } from '@/features/evaluations/components/actions/OverrideForm'
+import { InvalidateForm } from '@/features/evaluations/components/actions/InvalidateForm'
+import { RestoreForm } from '@/features/evaluations/components/actions/RestoreForm'
+import { BaselineForm } from '@/features/evaluations/components/actions/BaselineForm'
+import { ReEvaluateForm } from '@/features/evaluations/components/actions/ReEvaluateForm'
+import { useSloScope } from '@/features/evaluations/components/actions/slo-scope/useSloScope'
+import type { SloScopeInitialMode } from '@/features/evaluations/components/actions/slo-scope/types'
 import type { ActionKind, Outcome } from '@/features/evaluations'
 import type { TimeSlotSelection } from './AssetHeatmap'
+import type {
+  GroupedMetricHeatmap,
+  HeatmapResult,
+  HeatmapSloGroup,
+  HeatmapIndicatorCell,
+  HeatmapSummaryCell,
+  EvaluationColumn,
+} from '../domain'
 import type { ViewMode } from '@/components/charts/ViewToggle'
 import { EvaluationNameFilter } from './EvaluationNameFilter'
 import { AssetPanelHeatmapView } from './AssetPanelHeatmapView'
@@ -27,6 +43,7 @@ export function AssetPanel({ assetName, initialEvalId }: Props) {
   const [mode, setMode] = useState<ViewMode>('heatmap')
   const [selectedEvalId, setSelectedEvalId] = useState<string | undefined>(initialEvalId)
   const [selectedSlot, setSelectedSlot] = useState<TimeSlotSelection | undefined>(undefined)
+  const [selectedSingleSloEvalId, setSelectedSingleSloEvalId] = useState<string | undefined>(undefined)
   const [activeAction, setActiveAction] = useState<ActionKind | null>(null)
   const [selectedNames, setSelectedNames] = useState<string[] | undefined>(undefined)
   const [sloExpandState, setSloExpandState] = useState<Map<string, boolean>>(() => new Map())
@@ -36,6 +53,7 @@ export function AssetPanel({ assetName, initialEvalId }: Props) {
   useEffect(() => {
     setSelectedEvalId(undefined)
     setSelectedSlot(undefined)
+    setSelectedSingleSloEvalId(undefined)
     setActiveAction(null)
     setSelectedNames(undefined)
     setSloExpandState(new Map())
@@ -247,6 +265,9 @@ export function AssetPanel({ assetName, initialEvalId }: Props) {
     if (slot.evalIds.length > 0) {
       setSelectedEvalId(slot.evalIds[0])
     }
+    // A per-SLO indicator click seeds single-SLO scoping; column-level or
+    // composite clicks clear it so the scope picker defaults back to ALL.
+    setSelectedSingleSloEvalId(slot.specificSloEvalId)
   }
 
   // Close any open action form when the user selects a different evaluation
@@ -278,6 +299,154 @@ export function AssetPanel({ assetName, initialEvalId }: Props) {
   }, [heatmapData])
 
   const hasColumn = columnInfo != null
+
+  // The useSloScope hook consumes the camelCase navigator domain shape, but
+  // useMetricHeatmap still returns the DTO (snake_case) because the navigator
+  // migration is incomplete. Do a narrow, local DTO→domain mapping here so
+  // scope derivation works without touching the heatmap fetch boundary.
+  const scopeHeatmapData = useMemo<GroupedMetricHeatmap | undefined>(() => {
+    if (!heatmapData) return undefined
+    const normaliseResult = (raw: string | null | undefined, invalidated: boolean): HeatmapResult => {
+      if (invalidated) return 'invalidated'
+      switch (raw) {
+        case 'pass':
+        case 'warning':
+        case 'fail':
+        case 'error':
+        case 'invalidated':
+          return raw
+        case null:
+        case undefined:
+        case '':
+          return 'none'
+        default:
+          return 'error'
+      }
+    }
+    const columns: EvaluationColumn[] = heatmapData.columns.map(column => ({
+      evaluationId: column.evaluation_id,
+      periodStart: column.period_start,
+      periodEnd: column.period_end ?? column.period_start,
+      evalName: column.eval_name,
+      hasNotes: column.has_notes,
+    }))
+    const groups: HeatmapSloGroup[] = heatmapData.groups.map(group => {
+      const cells: HeatmapIndicatorCell[] = group.cells.map(cell => ({
+        evaluationId: cell.evaluation_id,
+        sloEvaluationId: cell.slo_evaluation_id,
+        periodStart: cell.period_start,
+        metric: cell.metric,
+        displayName: cell.display_name,
+        result: normaliseResult(cell.result, false),
+        score: cell.score,
+        value: cell.value ?? null,
+        comparedValue: cell.compared_value ?? null,
+        changeRelativePct: cell.change_relative_pct ?? null,
+        weight: cell.weight ?? 1,
+        keySli: cell.key_sli ?? false,
+        passTargets: cell.pass_targets ?? null,
+        warningTargets: cell.warning_targets ?? null,
+        tabGroup: cell.tab_group ?? null,
+        aggregation: cell.aggregation ?? null,
+      }))
+      const summary: HeatmapSummaryCell[] = group.summary.map(summaryCell => ({
+        evaluationId: summaryCell.evaluation_id,
+        periodStart: summaryCell.period_start,
+        result: normaliseResult(summaryCell.result, summaryCell.invalidated ?? false),
+        score: summaryCell.score ?? 0,
+        totalScorePassThreshold: summaryCell.total_score_pass_threshold ?? null,
+        totalScoreWarningThreshold: summaryCell.total_score_warning_threshold ?? null,
+        sliMetadata: summaryCell.sli_metadata ?? null,
+        invalidationNote: summaryCell.invalidation_note ?? null,
+      }))
+      return {
+        sloName: group.slo_name,
+        sloDisplayName: group.slo_display_name ?? null,
+        metrics: group.metrics.map(metric => ({
+          name: metric.name,
+          displayName: metric.display_name,
+        })),
+        cells,
+        summary,
+      }
+    })
+    const composite: HeatmapSummaryCell[] = heatmapData.composite.map(compositeCell => ({
+      evaluationId: compositeCell.evaluation_id,
+      periodStart: compositeCell.period_start,
+      result: normaliseResult(compositeCell.result, compositeCell.invalidated ?? false),
+      score: compositeCell.score ?? 0,
+      totalScorePassThreshold: compositeCell.total_score_pass_threshold ?? null,
+      totalScoreWarningThreshold: compositeCell.total_score_warning_threshold ?? null,
+      sliMetadata: compositeCell.sli_metadata ?? null,
+      invalidationNote: compositeCell.invalidation_note ?? null,
+    }))
+    return {
+      assetName: heatmapData.asset_name,
+      columns,
+      groups,
+      composite,
+    }
+  }, [heatmapData])
+
+  // Resolve the specific cell click to a SLO name so the scope picker can
+  // default to just that SLO. Composite/column clicks leave the cell id
+  // unset and the picker defaults to ALL.
+  function resolveScopeInitialMode(): SloScopeInitialMode {
+    if (!selectedSingleSloEvalId || !scopeHeatmapData) return 'all'
+    for (const group of scopeHeatmapData.groups) {
+      if (group.cells.some(cell => cell.sloEvaluationId === selectedSingleSloEvalId)) {
+        return { singleSlo: group.sloName }
+      }
+    }
+    return 'all'
+  }
+  const scopeInitialMode = resolveScopeInitialMode()
+
+  const scope = useSloScope({
+    heatmapData: scopeHeatmapData,
+    columnEvalId: selectedColumnEvalId,
+    initialMode: scopeInitialMode,
+  })
+
+  // useSloScope only re-seeds its selection when columnEvalId / filter /
+  // row set changes — not when initialMode swings between 'all' and
+  // { singleSlo }. Re-apply the default whenever the clicked cell seeds
+  // a different scope hint so cell-click vs column-click defaults behave
+  // correctly within a single column.
+  const lastSingleSloRef = useRef<string | undefined>(undefined)
+  const { setSelected: setScopeSelected, availableSlos: scopeAvailableSlos } = scope
+  useEffect(() => {
+    if (lastSingleSloRef.current === selectedSingleSloEvalId) return
+    lastSingleSloRef.current = selectedSingleSloEvalId
+    if (scopeInitialMode === 'all') {
+      setScopeSelected(new Set(scopeAvailableSlos.map(option => option.sloName)))
+      return
+    }
+    const targetName = scopeInitialMode.singleSlo
+    if (scopeAvailableSlos.some(option => option.sloName === targetName)) {
+      setScopeSelected(new Set([targetName]))
+    }
+  }, [selectedSingleSloEvalId, scopeInitialMode, scopeAvailableSlos, setScopeSelected])
+
+  // Menu availability derives from the per-SLO summary rows under the
+  // clicked column. allRowsInvalidated hides Invalidate; noRowsInvalidated
+  // hides Restore. Uses the collapsed result union (no separate invalidated
+  // boolean) because scopeHeatmapData has already folded it in.
+  const menuAvailability = useMemo(() => {
+    if (!scopeHeatmapData || !selectedColumnEvalId) {
+      return { allRowsInvalidated: false, noRowsInvalidated: true }
+    }
+    const summaryRows = scopeHeatmapData.groups.flatMap(group =>
+      group.summary.filter(summaryCell => summaryCell.evaluationId === selectedColumnEvalId),
+    )
+    if (summaryRows.length === 0) {
+      return { allRowsInvalidated: false, noRowsInvalidated: true }
+    }
+    return {
+      allRowsInvalidated: summaryRows.every(summaryCell => summaryCell.result === 'invalidated'),
+      noRowsInvalidated: summaryRows.every(summaryCell => summaryCell.result !== 'invalidated'),
+    }
+  }, [scopeHeatmapData, selectedColumnEvalId])
 
   return (
     <div className="p-6 space-y-4">
@@ -321,29 +490,58 @@ export function AssetPanel({ assetName, initialEvalId }: Props) {
         noteButton={hasColumn && effectiveEvalId && !columnInfo.invalidated ? (
           <NoteIconButton onClick={handleAddNote} annotationCount={displayAnnotations.length} />
         ) : undefined}
-        actions={hasColumn && effectiveEvalId ? (
-          <EvaluationActionsButton
-            currentResult={columnInfo.result === 'invalidated' ? (ev?.outcome ?? 'error') : columnInfo.result}
-            invalidated={columnInfo.invalidated}
-            activeAction={activeAction}
-            onSelectAction={setActiveAction}
-            onAddNote={handleAddNote}
-          />
+        actions={hasColumn && effectiveEvalId && selectedColumnEvalId ? (
+          <div className='relative'>
+            <EvaluationActionsButton
+              currentResult={columnInfo.result === 'invalidated' ? (ev?.outcome ?? 'error') : columnInfo.result}
+              allRowsInvalidated={menuAvailability.allRowsInvalidated}
+              noRowsInvalidated={menuAvailability.noRowsInvalidated}
+              activeAction={activeAction}
+              onSelectAction={setActiveAction}
+              onAddNote={handleAddNote}
+            />
+            <ActionPopover open={activeAction !== null} onClose={() => setActiveAction(null)}>
+              {activeAction === 'override' && (
+                <OverrideForm
+                  scope={scope}
+                  columnEvalId={selectedColumnEvalId}
+                  onComplete={() => setActiveAction(null)}
+                />
+              )}
+              {activeAction === 'invalidate' && (
+                <InvalidateForm
+                  scope={scope}
+                  columnEvalId={selectedColumnEvalId}
+                  onComplete={() => setActiveAction(null)}
+                />
+              )}
+              {activeAction === 'restore' && (
+                <RestoreForm
+                  scope={scope}
+                  columnEvalId={selectedColumnEvalId}
+                  onComplete={() => setActiveAction(null)}
+                />
+              )}
+              {activeAction === 'baseline' && (
+                <BaselineForm
+                  scope={scope}
+                  columnEvalId={selectedColumnEvalId}
+                  onComplete={() => setActiveAction(null)}
+                />
+              )}
+              {activeAction === 're-evaluate' && (
+                <ReEvaluateForm
+                  scope={scope}
+                  columnEvalId={selectedColumnEvalId}
+                  assetName={assetName}
+                  defaultFromDate={earliestPeriodStart?.slice(0, 16)}
+                  onComplete={() => setActiveAction(null)}
+                />
+              )}
+            </ActionPopover>
+          </div>
         ) : undefined}
       />
-
-      {/* Action form — requires ev for sloName, falls back gracefully */}
-      {hasColumn && activeAction && effectiveEvalId && (activeAction === 'restore' || !columnInfo.invalidated) && (
-        <EvaluationActionForm
-          evalId={effectiveEvalId}
-          currentResult={ev?.outcome ?? 'error'}
-          activeAction={activeAction}
-          onClose={() => setActiveAction(null)}
-          assetName={assetName}
-          sloName={ev?.sloName ?? heatmapData?.groups[0]?.slo_name ?? ''}
-          defaultFromDate={earliestPeriodStart?.slice(0, 16)}
-        />
-      )}
 
       {evalNames.length >= 1 && (
         <EvaluationNameFilter

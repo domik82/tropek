@@ -299,7 +299,7 @@ describe('triggerEvaluationInputToDto', () => {
 describe('reEvaluateInputToDto', () => {
   it('flattens baseline mode to from_baseline: true', () => {
     const dto = reEvaluateInputToDto({
-      assetName: 'a', sloName: 's',
+      assetName: 'a', sloName: 's', sloNames: null,
       mode: { kind: 'baseline' },
       sloVersion: null, dryRun: false, pinStrategy: null,
     })
@@ -310,7 +310,7 @@ describe('reEvaluateInputToDto', () => {
 
   it('flattens date mode to from_date', () => {
     const dto = reEvaluateInputToDto({
-      assetName: 'a', sloName: 's',
+      assetName: 'a', sloName: 's', sloNames: null,
       mode: { kind: 'date', fromDate: '2026-03-10T00:00:00Z' },
       sloVersion: 2, dryRun: true, pinStrategy: 'skip_to_pin',
     })
@@ -323,7 +323,7 @@ describe('reEvaluateInputToDto', () => {
 
   it('flattens evaluation mode to from_evaluation_id', () => {
     const dto = reEvaluateInputToDto({
-      assetName: 'a', sloName: 's',
+      assetName: 'a', sloName: 's', sloNames: null,
       mode: { kind: 'evaluation', fromEvaluationId: 'eval-7' },
       sloVersion: null, dryRun: false, pinStrategy: null,
     })

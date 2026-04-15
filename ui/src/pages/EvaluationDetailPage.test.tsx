@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
@@ -36,7 +37,27 @@ vi.mock('@/features/evaluations/components/EvaluationNotesSection', () => ({
 
 vi.mock('@/features/evaluations/components/EvaluationActions', () => ({
   EvaluationActionsButton: () => <button data-testid="actions-btn">Actions</button>,
-  EvaluationActionForm: () => <div data-testid="action-form">form</div>,
+}))
+
+vi.mock('@/features/evaluations/components/ActionPopover', () => ({
+  ActionPopover: ({ open, children }: { open: boolean; children: ReactNode }) =>
+    open ? <div data-testid="action-popover">{children}</div> : null,
+}))
+
+vi.mock('@/features/evaluations/components/actions/OverrideForm', () => ({
+  OverrideForm: () => <div data-testid="override-form">override</div>,
+}))
+vi.mock('@/features/evaluations/components/actions/InvalidateForm', () => ({
+  InvalidateForm: () => <div data-testid="invalidate-form">invalidate</div>,
+}))
+vi.mock('@/features/evaluations/components/actions/RestoreForm', () => ({
+  RestoreForm: () => <div data-testid="restore-form">restore</div>,
+}))
+vi.mock('@/features/evaluations/components/actions/BaselineForm', () => ({
+  BaselineForm: () => <div data-testid="baseline-form">baseline</div>,
+}))
+vi.mock('@/features/evaluations/components/actions/ReEvaluateForm', () => ({
+  ReEvaluateForm: () => <div data-testid="reevaluate-form">reeval</div>,
 }))
 
 vi.mock('@/features/assets/hooks', () => ({

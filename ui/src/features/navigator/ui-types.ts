@@ -30,9 +30,14 @@ export interface HeatmapEChartsCell {
 }
 
 // Emitted by the asset heatmap when a user clicks a cell — describes which
-// time-slot and which SLO evaluations were selected together.
+// time-slot and which SLO evaluations were selected together. When the click
+// landed on a per-SLO indicator cell (not the composite "Overall Score" row
+// and not an SLO-header row), `specificSloEvalId` carries that cell's
+// slo_evaluation_id so consumers can default SLO-scoped actions to the
+// clicked SLO. Column/header clicks leave it undefined.
 export interface TimeSlotSelection {
   periodStart: string
   evalIds: string[]
   columnEvalId?: string
+  specificSloEvalId?: string
 }

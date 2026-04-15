@@ -111,8 +111,18 @@ export function AssetHeatmap({
           )
         )]
       }
+      // A click on a per-SLO indicator cell (non-header, has evalId) should
+      // default SLO-scoped actions to that specific SLO. Composite "Overall
+      // Score" rows and SLO-header rows leave specificSloEvalId undefined.
+      const specificSloEvalId =
+        !cell.isSloHeader && cell.evalId ? cell.evalId : undefined
       if (evalIds.length > 0) {
-        onSlotSelect({ periodStart: cell.periodStart, evalIds, columnEvalId: columnKey })
+        onSlotSelect({
+          periodStart: cell.periodStart,
+          evalIds,
+          columnEvalId: columnKey,
+          specificSloEvalId,
+        })
       }
     } else if (cell.evalId && onEvalSelect) {
       onEvalSelect(cell.evalId)
