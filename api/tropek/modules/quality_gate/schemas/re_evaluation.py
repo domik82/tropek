@@ -14,12 +14,14 @@ from tropek.modules.common.schemas import StrictInput
 class ReEvaluateRequest(StrictInput):
     """Request body for POST /evaluations/re-evaluate.
 
-    When ``slo_name`` is omitted, all SLOs assigned to the asset are
-    re-evaluated (same resolution logic as POST /evaluate).
+    When both ``slo_name`` and ``slo_names`` are omitted, all SLOs assigned
+    to the asset are re-evaluated (same resolution logic as POST /evaluate).
+    When ``slo_names`` is provided, scoring runs only for the listed SLOs.
     """
 
     asset_name: str
     slo_name: str | None = None
+    slo_names: list[str] | None = None
 
     # Scope — exactly one required
     from_date: datetime | None = None
@@ -43,6 +45,17 @@ class ReEvaluateRequest(StrictInput):
         )
         if scopes != 1:
             msg = 'exactly one of from_date, from_baseline, or from_evaluation_id is required'
+            raise ValueError(msg)
+        return self
+
+    @model_validator(mode='after')
+    def slo_name_and_names_mutually_exclusive(self) -> ReEvaluateRequest:
+        """slo_name and slo_names cannot be supplied together; reject empty lists."""
+        if self.slo_name is not None and self.slo_names is not None:
+            msg = 'slo_name and slo_names are mutually exclusive'
+            raise ValueError(msg)
+        if self.slo_names is not None and len(self.slo_names) == 0:
+            msg = 'slo_names must be non-empty when provided'
             raise ValueError(msg)
         return self
 

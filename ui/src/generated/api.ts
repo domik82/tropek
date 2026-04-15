@@ -658,6 +658,12 @@ export interface paths {
         /**
          * Get Grouped Metric Heatmap
          * @description Return a grouped metric heatmap — one column per parent EvaluationRun.
+         *
+         *     Read path: run a cheap list query for the candidate run ids in the window,
+         *     MGET the Redis column cache for those ids, fall through to the heavy DB
+         *     build only for runs that missed the cache, assemble the final response
+         *     from the combined fragments, and write newly built fragments back to the
+         *     cache. ``cache=false`` bypasses Redis entirely — no reads, no writes.
          */
         get: operations["get_grouped_metric_heatmap_evaluate_metric_heatmap_get"];
         put?: never;
@@ -2778,8 +2784,9 @@ export interface components {
          * ReEvaluateRequest
          * @description Request body for POST /evaluations/re-evaluate.
          *
-         *     When ``slo_name`` is omitted, all SLOs assigned to the asset are
-         *     re-evaluated (same resolution logic as POST /evaluate).
+         *     When both ``slo_name`` and ``slo_names`` are omitted, all SLOs assigned
+         *     to the asset are re-evaluated (same resolution logic as POST /evaluate).
+         *     When ``slo_names`` is provided, scoring runs only for the listed SLOs.
          */
         ReEvaluateRequest: {
             /** Asset Name */
@@ -2802,6 +2809,8 @@ export interface components {
             pin_strategy?: ("skip_to_pin" | "ignore_pin") | null;
             /** Slo Name */
             slo_name?: string | null;
+            /** Slo Names */
+            slo_names?: string[] | null;
             /** Slo Version */
             slo_version?: number | null;
         };
@@ -4889,6 +4898,8 @@ export interface operations {
                 evaluation_name?: string[] | null;
                 from?: string | null;
                 to?: string | null;
+                /** @description When false, bypass the Redis column cache entirely: read every column from the DB, build every fragment, do not write back. Used for debugging and for the cache-correctness property test. */
+                cache?: boolean;
             };
             header?: never;
             path?: never;
