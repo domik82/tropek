@@ -162,9 +162,7 @@ async def test_create_run_annotation(async_client: AsyncClient, db_session: Asyn
 
 
 @pytest.mark.integration
-async def test_run_annotation_visible_in_column_endpoint(
-    async_client: AsyncClient, db_session: AsyncSession
-) -> None:
+async def test_run_annotation_visible_in_column_endpoint(async_client: AsyncClient, db_session: AsyncSession) -> None:
     asset_id = await _create_asset(db_session)
     run_id = await _create_evaluation_run(db_session, asset_id)
 

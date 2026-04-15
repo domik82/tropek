@@ -336,7 +336,8 @@ async def test_re_evaluate_updates_results_and_adds_annotation(
     assert len(ev.annotations) == 1
     annotation = ev.annotations[0]
     assert 're-eval-slo' in annotation.content
-    assert 'fail' in annotation.content and 'pass' in annotation.content
+    assert 'fail' in annotation.content
+    assert 'pass' in annotation.content
     assert annotation.note_group_id is not None
     assert annotation.note_group_name is not None
     assert 're-eval-slo' in annotation.note_group_name
