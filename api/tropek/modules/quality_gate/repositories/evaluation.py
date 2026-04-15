@@ -431,9 +431,7 @@ class EvaluationRepository:
             )
             latest_rows = await self._session.execute(latest_q)
             latest_map = {
-                a.slo_evaluation_id: a
-                for a in latest_rows.scalars().all()
-                if a.slo_evaluation_id is not None
+                a.slo_evaluation_id: a for a in latest_rows.scalars().all() if a.slo_evaluation_id is not None
             }
         return evals, total, count_map, latest_map
 

@@ -224,10 +224,12 @@ class TestSloRegistryNestedTypes:
         This locks in the current Pydantic default behavior so a future switch
         to extra='forbid' becomes visible in a test rather than a 422 in prod.
         """
-        config = ComparisonConfig.model_validate({
-            'compare_with': 'single_result',
-            'baseline_mode': 'manual',  # UI phantom -- now dropped
-        })
+        config = ComparisonConfig.model_validate(
+            {
+                'compare_with': 'single_result',
+                'baseline_mode': 'manual',  # UI phantom -- now dropped
+            }
+        )
         assert config.compare_with == 'single_result'
         assert 'baseline_mode' not in config.model_dump()
 
@@ -260,14 +262,16 @@ class TestSloRegistryNestedTypes:
         payload = {
             'name': 'test_template',
             'kind': 'template',
-            'objectives': [{
-                'sli': 'cpu_usage',
-                'display_name': 'CPU',
-                'pass_threshold': ['<80'],
-                'warning_threshold': ['<90'],
-                'weight': 1,
-                'key_sli': False,
-            }],
+            'objectives': [
+                {
+                    'sli': 'cpu_usage',
+                    'display_name': 'CPU',
+                    'pass_threshold': ['<80'],
+                    'warning_threshold': ['<90'],
+                    'weight': 1,
+                    'key_sli': False,
+                }
+            ],
             'method_criteria': {
                 'p99': {
                     'pass_threshold': ['<25'],

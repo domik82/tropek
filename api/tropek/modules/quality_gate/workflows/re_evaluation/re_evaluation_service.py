@@ -357,8 +357,9 @@ async def re_evaluate(
 ) -> ReEvaluateResponse:
     """Re-evaluate historical evaluations against a (possibly new) SLO version.
 
-    When ``request.slo_name`` is provided, only that SLO is re-evaluated.
-    When omitted, all SLOs assigned to the asset are re-evaluated (same
+    When ``request.slo_names`` is provided, only the listed SLOs are re-evaluated.
+    When ``request.slo_name`` is provided, only that single SLO is re-evaluated.
+    When both are omitted, all SLOs assigned to the asset are re-evaluated (same
     resolution logic as POST /evaluate).
 
     Args:
@@ -379,7 +380,9 @@ async def re_evaluate(
         raise ValueError(f"asset '{request.asset_name}' not found")
 
     # Determine which SLOs to re-evaluate
-    if request.slo_name is not None:
+    if request.slo_names is not None:
+        slo_names = list(request.slo_names)
+    elif request.slo_name is not None:
         slo_names = [request.slo_name]
     else:
         group_ids = await repos.asset_group_repo.list_group_ids_for_asset(asset.id)
@@ -401,7 +404,10 @@ async def re_evaluate(
     single_slo_version: int | None = None
     for slo_name in slo_names:
         slo_version, results = await _re_evaluate_single_slo(
-            request, slo_name, asset.id, repos,
+            request,
+            slo_name,
+            asset.id,
+            repos,
             note_group_id=note_group_id,
             note_group_name=note_group_name,
         )
