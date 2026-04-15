@@ -84,6 +84,8 @@ convention = "google"
 [tool.ruff.format]
 # Formatter enforces single quotes — keeps Q lint rules out of the picture
 quote-style = "single"
+# Alembic migrations are auto-generated — don't impose formatter style on them.
+exclude = ["**/alembic/versions/*.py"]
 
 [tool.ruff.lint.pylint]
 # Raise the default (5) to accommodate FastAPI dependencies injected via Depends()

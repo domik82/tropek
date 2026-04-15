@@ -97,7 +97,10 @@ def create_app(use_fakeredis: bool = False) -> FastAPI:
 
         redis_client: aioredis.Redis[Any]
         if use_fakeredis:
-            import fakeredis.aioredis
+            # fakeredis is a test-only optional dependency; importing it at
+            # module top-level caused prod startup issues when the package
+            # was unavailable, so it stays lazy behind this flag.
+            import fakeredis.aioredis  # noqa: PLC0415
 
             redis_client = fakeredis.aioredis.FakeRedis()
         else:

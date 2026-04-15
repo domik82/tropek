@@ -404,7 +404,10 @@ async def re_evaluate(
     single_slo_version: int | None = None
     for slo_name in slo_names:
         slo_version, results = await _re_evaluate_single_slo(
-            request, slo_name, asset.id, repos,
+            request,
+            slo_name,
+            asset.id,
+            repos,
             note_group_id=note_group_id,
             note_group_name=note_group_name,
         )
