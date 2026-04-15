@@ -1,56 +1,46 @@
 import { useState, useEffect, useRef } from 'react'
 import { MoreVertical, MessageSquareWarning } from 'lucide-react'
-import { InvalidateForm } from './actions/InvalidateForm'
-import { RestoreForm } from './actions/RestoreForm'
-import { OverrideForm } from './actions/OverrideForm'
-import { BaselineForm } from './actions/BaselineForm'
-import { ReEvaluateForm } from './actions/ReEvaluateForm'
 import type { ActionKind } from '../ui-types'
 
 interface ActionDef {
   kind: ActionKind
   label: string
   description: string
-  accentColor: string        // hex — used for accent strip, title text, confirm bg
-  accentBorder: string       // Tailwind border class for card outline
-  accentText: string         // Tailwind text class for title
-  confirmClasses: string     // Tailwind classes for confirm button bg + hover
+  accentColor: string
+  accentBorder: string
+  accentText: string
+  confirmClasses: string
+}
+
+interface MenuAction extends ActionDef {
+  disabled?: boolean
+  disabledReason?: string
 }
 
 const INVALIDATE: ActionDef = {
   kind: 'invalidate',
   label: 'Invalidate',
-  description: 'Discard this evaluation — it will not be used for scoring or baselines.',
+  description: 'Discard selected SLO evaluations — they will not be used for scoring or baselines.',
   accentColor: 'var(--entity-group)',
   accentBorder: 'border-action-secondary-border/25',
   accentText: 'text-muted-foreground',
   confirmClasses: 'bg-action-secondary-bg hover:bg-action-secondary-bg/80',
 }
 
-const OVERRIDE_TO_PASS: ActionDef = {
+const OVERRIDE: ActionDef = {
   kind: 'override',
-  label: 'Mark as Successful',
-  description: 'Override the failed result — SLOs false-flagged this evaluation.',
-  accentColor: 'var(--status-pass)',
-  accentBorder: 'border-green-500/25',
-  accentText: 'text-green-400',
-  confirmClasses: 'bg-green-600 hover:bg-green-500',
-}
-
-const OVERRIDE_TO_FAIL: ActionDef = {
-  kind: 'override',
-  label: 'Mark as Failure',
-  description: 'Override the passed result — SLOs missed an issue in this evaluation.',
-  accentColor: 'var(--action-destructive)',
-  accentBorder: 'border-action-destructive-border/25',
-  accentText: 'text-action-destructive',
-  confirmClasses: 'bg-action-destructive-confirm hover:bg-action-destructive-confirm/80',
+  label: 'Override result',
+  description: 'Change the result for selected SLOs (pass / warning / fail).',
+  accentColor: 'var(--action-primary)',
+  accentBorder: 'border-blue-500/25',
+  accentText: 'text-blue-400',
+  confirmClasses: 'bg-blue-600 hover:bg-blue-500',
 }
 
 const BASELINE: ActionDef = {
   kind: 'baseline',
   label: 'Pin Baseline',
-  description: 'Set this evaluation as the new baseline — future comparisons start from here.',
+  description: 'Set selected SLO evaluations as the new baseline.',
   accentColor: 'var(--action-primary)',
   accentBorder: 'border-blue-500/25',
   accentText: 'text-blue-400',
@@ -60,7 +50,7 @@ const BASELINE: ActionDef = {
 const RE_EVALUATE: ActionDef = {
   kind: 're-evaluate',
   label: 'Run Evaluations',
-  description: 'Re-score all evaluations from stored data with current SLO thresholds.',
+  description: 'Re-score selected SLO evaluations from stored data with current thresholds.',
   accentColor: 'var(--entity-sli)',
   accentBorder: 'border-entity-sli/25',
   accentText: 'text-entity-sli',
@@ -70,33 +60,51 @@ const RE_EVALUATE: ActionDef = {
 const RESTORE: ActionDef = {
   kind: 'restore',
   label: 'Restore',
-  description: 'Un-invalidate this evaluation — bring it back into scoring and baselines.',
+  description: 'Un-invalidate selected SLO evaluations — bring them back into scoring and baselines.',
   accentColor: 'var(--status-pass)',
   accentBorder: 'border-green-500/25',
   accentText: 'text-green-400',
   confirmClasses: 'bg-green-600 hover:bg-green-500',
 }
 
-function getActions(currentResult: string): ActionDef[] {
-  return [
-    INVALIDATE,
-    currentResult === 'pass' ? OVERRIDE_TO_FAIL : OVERRIDE_TO_PASS,
+interface AvailabilityFlags {
+  allRowsInvalidated: boolean
+  noRowsInvalidated: boolean
+}
+
+function getActions({ allRowsInvalidated, noRowsInvalidated }: AvailabilityFlags): MenuAction[] {
+  const actions: MenuAction[] = [
+    {
+      ...INVALIDATE,
+      disabled: allRowsInvalidated,
+      disabledReason: allRowsInvalidated ? 'all SLOs in this column are already invalidated' : undefined,
+    },
+    OVERRIDE,
     BASELINE,
     RE_EVALUATE,
   ]
+  if (!noRowsInvalidated) {
+    actions.push(RESTORE)
+  }
+  return actions
 }
-
-// ── Dropdown button (goes in EvaluationHeader actions slot) ──
 
 interface ButtonProps {
   currentResult: string
-  invalidated: boolean
+  allRowsInvalidated: boolean
+  noRowsInvalidated: boolean
   activeAction: ActionKind | null
   onSelectAction: (kind: ActionKind) => void
   onAddNote?: () => void
 }
 
-export function EvaluationActionsButton({ currentResult, invalidated, activeAction, onSelectAction, onAddNote }: ButtonProps) {
+export function EvaluationActionsButton({
+  allRowsInvalidated,
+  noRowsInvalidated,
+  activeAction,
+  onSelectAction,
+  onAddNote,
+}: ButtonProps) {
   const [menuOpen, setMenuOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
 
@@ -111,68 +119,77 @@ export function EvaluationActionsButton({ currentResult, invalidated, activeActi
     return () => document.removeEventListener('mousedown', handleClick)
   }, [menuOpen])
 
-  const actions = invalidated
-    ? [RESTORE]
-    : getActions(currentResult)
+  const actions = getActions({ allRowsInvalidated, noRowsInvalidated })
 
   return (
-    <div className="relative" ref={menuRef}>
+    <div className='relative' ref={menuRef}>
       <button
-        onClick={() => setMenuOpen(v => !v)}
-        aria-label="Evaluation actions"
+        onClick={() => setMenuOpen(open => !open)}
+        aria-label='Evaluation actions'
         aria-expanded={menuOpen}
-        aria-haspopup="true"
+        aria-haspopup='true'
         className={`flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg border transition-colors ${
           activeAction
             ? 'bg-primary/15 border-primary/40 text-primary'
             : 'bg-primary/10 border-primary/30 text-primary hover:bg-primary/20'
         }`}
       >
-        <MoreVertical className="w-3.5 h-3.5" />
+        <MoreVertical className='w-3.5 h-3.5' />
         Actions
       </button>
 
       {menuOpen && (
-        <div className="absolute right-0 top-full mt-1 z-20 min-w-[280px] bg-popover border border-border rounded-xl shadow-xl overflow-hidden py-2" role="menu">
-          {/* Add Note — first item */}
+        <div
+          className='absolute right-0 top-full mt-1 z-20 min-w-[280px] bg-popover border border-border rounded-xl shadow-xl overflow-hidden py-2'
+          role='menu'
+        >
           {onAddNote && (
             <>
               <button
-                onClick={() => { onAddNote(); setMenuOpen(false) }}
-                className="flex items-start gap-3 w-full text-left px-3 py-2.5 transition-colors hover:bg-amber-500/10 group"
-                role="menuitem"
-                aria-label="Add note to this evaluation"
+                onClick={() => {
+                  onAddNote()
+                  setMenuOpen(false)
+                }}
+                className='flex items-start gap-3 w-full text-left px-3 py-2.5 transition-colors hover:bg-amber-500/10 group'
+                role='menuitem'
+                aria-label='Add note to this evaluation'
               >
                 <div
-                  className="w-[3px] rounded-full shrink-0 mt-0.5"
+                  className='w-[3px] rounded-full shrink-0 mt-0.5'
                   style={{ backgroundColor: 'var(--indicator-note)', height: 36 }}
                 />
-                <div className="min-w-0">
-                  <div className="text-[13px] font-medium text-amber-400">Add Note</div>
-                  <div className="text-[11px] text-muted-foreground mt-0.5">Annotate this evaluation</div>
+                <div className='min-w-0'>
+                  <div className='text-[13px] font-medium text-amber-400'>Add Note</div>
+                  <div className='text-[11px] text-muted-foreground mt-0.5'>Annotate this evaluation</div>
                 </div>
               </button>
-              <div className="mx-3 my-1 border-t border-border" />
+              <div className='mx-3 my-1 border-t border-border' />
             </>
           )}
           {actions.map(action => (
             <button
               key={action.kind}
-              onClick={() => { onSelectAction(action.kind); setMenuOpen(false) }}
-              className="flex items-start gap-3 w-full text-left px-3 py-2.5 transition-colors hover:bg-accent group"
-              role="menuitem"
-              aria-label={action.description}
+              onClick={() => {
+                if (action.disabled) return
+                onSelectAction(action.kind)
+                setMenuOpen(false)
+              }}
+              aria-disabled={action.disabled || undefined}
+              className={`flex items-start gap-3 w-full text-left px-3 py-2.5 transition-colors ${
+                action.disabled ? 'opacity-40 cursor-not-allowed' : 'hover:bg-accent group'
+              }`}
+              role='menuitem'
+              aria-label={action.label}
+              title={action.disabledReason ?? action.description}
             >
               <div
-                className="w-[3px] rounded-full shrink-0 mt-0.5"
+                className='w-[3px] rounded-full shrink-0 mt-0.5'
                 style={{ backgroundColor: action.accentColor, height: 36 }}
               />
-              <div className="min-w-0">
-                <div className={`text-[13px] font-medium text-popover-foreground`}>
-                  {action.label}
-                </div>
-                <div className="text-[11px] text-muted-foreground mt-0.5">
-                  {action.description}
+              <div className='min-w-0'>
+                <div className='text-[13px] font-medium text-popover-foreground'>{action.label}</div>
+                <div className='text-[11px] text-muted-foreground mt-0.5'>
+                  {action.disabledReason ?? action.description}
                 </div>
               </div>
             </button>
@@ -183,57 +200,17 @@ export function EvaluationActionsButton({ currentResult, invalidated, activeActi
   )
 }
 
-// ── Action form (rendered below EvaluationHeader by the parent) ──
-
-interface FormProps {
-  evalId: string
-  currentResult: string
-  activeAction: ActionKind
-  onClose: () => void
-  /** Required for re-evaluate action */
-  assetName?: string
-  sloName?: string
-  defaultFromDate?: string
-}
-
-export function EvaluationActionForm({
-  evalId, currentResult, activeAction, onClose,
-  assetName, sloName, defaultFromDate,
-}: FormProps) {
-  switch (activeAction) {
-    case 'invalidate':
-      return <InvalidateForm evaluationId={evalId} onComplete={onClose} />
-    case 'restore':
-      return <RestoreForm evaluationId={evalId} onComplete={onClose} />
-    case 'override':
-      return <OverrideForm evaluationId={evalId} currentResult={currentResult} onComplete={onClose} />
-    case 'baseline':
-      return <BaselineForm evaluationId={evalId} onComplete={onClose} />
-    case 're-evaluate':
-      return (
-        <ReEvaluateForm
-          evaluationId={evalId}
-          assetName={assetName ?? ''}
-          sloName={sloName ?? ''}
-          defaultFromDate={defaultFromDate}
-          onComplete={onClose}
-        />
-      )
-  }
-
-}
-
 export function NoteIconButton({ onClick, annotationCount }: { onClick: () => void; annotationCount: number }) {
   return (
     <button
       onClick={onClick}
-      className="relative p-2 rounded-lg border border-amber-700/40 text-amber-400 hover:bg-amber-500/10 hover:border-amber-500/50 transition-colors"
-      title="Add note"
+      className='relative p-2 rounded-lg border border-amber-700/40 text-amber-400 hover:bg-amber-500/10 hover:border-amber-500/50 transition-colors'
+      title='Add note'
       aria-label={`Add note (${annotationCount} existing)`}
     >
-      <MessageSquareWarning className="w-4 h-4" />
+      <MessageSquareWarning className='w-4 h-4' />
       {annotationCount > 0 && (
-        <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-amber-500 text-[9px] font-bold text-black flex items-center justify-center">
+        <span className='absolute -top-1 -right-1 w-4 h-4 rounded-full bg-amber-500 text-[9px] font-bold text-black flex items-center justify-center'>
           {annotationCount > 9 ? '9+' : annotationCount}
         </span>
       )}
