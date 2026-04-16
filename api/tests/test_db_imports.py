@@ -6,6 +6,9 @@ from tropek.db.models import (
     AssetGroup,  # noqa: F401
     AssetGroupLink,
     AssetGroupMember,
+    AssetMetaClosure,  # noqa: F401
+    AssetMetaSnapshot,  # noqa: F401
+    AssetMetaValue,  # noqa: F401
     AssetType,  # noqa: F401
     Base,
     DataSource,  # noqa: F401
@@ -33,6 +36,9 @@ def test_orm_models_importable() -> None:
     table_names = set(Base.metadata.tables.keys())
     assert table_names == {
         'assets',
+        'asset_meta_closures',
+        'asset_meta_snapshots',
+        'asset_meta_values',
         'asset_types',
         'asset_groups',
         'asset_group_members',
