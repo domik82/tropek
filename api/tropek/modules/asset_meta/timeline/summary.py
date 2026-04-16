@@ -1,3 +1,5 @@
+"""Summary statistics for the asset meta timeline pipeline."""
+
 from __future__ import annotations
 
 from .types import ClippedSpan
