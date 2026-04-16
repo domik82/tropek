@@ -125,6 +125,9 @@ uv run --directory clients/python python ../../scripts/bootstrap.py "http://loca
 echo "=== Seeding historical evaluations (mock) ==="
 uv run --directory clients/python python ../../scripts/seed_evaluations.py "http://localhost:$API_PORT"
 
+echo "=== Seeding meta timeline data ==="
+uv run --directory clients/python python ../../scripts/seed_meta_timeline.py "http://localhost:$API_PORT"
+
 echo "=== Running e2e tests ==="
 uv run --directory clients/python python ../../scripts/e2e_tests.py "http://localhost:$API_PORT"
 
