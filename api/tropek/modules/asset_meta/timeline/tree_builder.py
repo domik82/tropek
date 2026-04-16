@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 from collections import defaultdict
+from typing import Any
 
 from .types import ClippedSpan
 
@@ -50,9 +51,9 @@ def sort_groups_deterministically(paths: set[tuple[str, ...]]) -> list[tuple[str
 def build_group_entry(
     path: tuple[str, ...],
     children_map: dict[tuple[str, ...], list[tuple[str, ...]]],
-) -> dict:
+) -> dict[str, Any]:
     """Build one group dict. Adds nestedGroups/showNested iff path has children."""
-    entry: dict = {
+    entry: dict[str, Any] = {
         'id': encode_path_as_group_id(path),
         'content': path[-1],
     }
@@ -63,7 +64,7 @@ def build_group_entry(
     return entry
 
 
-def build_groups_wire(clipped_spans: list[ClippedSpan]) -> list[dict]:
+def build_groups_wire(clipped_spans: list[ClippedSpan]) -> list[dict[str, Any]]:
     """Build vis-timeline groups list. Synthesizes intermediate ancestors."""
     distinct_paths = collect_distinct_paths(clipped_spans)
     all_group_paths = expand_with_synthetic_ancestors(distinct_paths)
