@@ -138,7 +138,7 @@ function makeSummary(overrides: Partial<Evaluation> = {}): Evaluation {
     originalScore: null,
     overrideReason: null,
     overrideAuthor: null,
-    assetSnapshot: { name: 'catalog-db', displayName: null, tags: {}, primaryVersion: null, buildRef: null },
+    assetSnapshot: { assetId: null, name: 'catalog-db', displayName: null, tags: {}, primaryVersion: null, buildRef: null },
     variables: {},
     baselinePin: null,
     latestAnnotation: null,
@@ -312,7 +312,7 @@ describe('AssetPanel', () => {
 
   it('resets selectedEvalId when assetName prop changes', () => {
     // Asset A: user had selected eval-A
-    const evalsA = [makeSummary({ id: 'eval-A', assetSnapshot: { name: 'api-gateway', displayName: null, tags: {}, primaryVersion: null, buildRef: null } })]
+    const evalsA = [makeSummary({ id: 'eval-A', assetSnapshot: { assetId: null, name: 'api-gateway', displayName: null, tags: {}, primaryVersion: null, buildRef: null } })]
     mockUseAssetEvaluations.mockReturnValue({ data: evalsA, isLoading: false })
 
     const { rerender } = renderPanel('api-gateway', 'eval-A')
@@ -321,7 +321,7 @@ describe('AssetPanel', () => {
     expect(screen.getByTestId('heatmap-eval-id')).toHaveTextContent('eval-A')
 
     // Switch to asset B
-    const evalsB = [makeSummary({ id: 'eval-B', assetSnapshot: { name: 'catalog-db', displayName: null, tags: {}, primaryVersion: null, buildRef: null } })]
+    const evalsB = [makeSummary({ id: 'eval-B', assetSnapshot: { assetId: null, name: 'catalog-db', displayName: null, tags: {}, primaryVersion: null, buildRef: null } })]
     mockUseAssetEvaluations.mockReturnValue({ data: evalsB, isLoading: false })
 
     rerender(

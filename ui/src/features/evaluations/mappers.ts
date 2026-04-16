@@ -78,6 +78,7 @@ function collapseOutcome(
 
 function dtoToAssetSnapshot(dto: AssetSnapshotDto): AssetSnapshot {
   return {
+    assetId: dto.asset_id ?? null,
     name: dto.name,
     displayName: dto.display_name ?? null,
     tags: (dto.tags ?? {}) as Record<string, string>,
@@ -263,6 +264,7 @@ void _annotationExhaustive
 // AssetSnapshot
 type DroppedAssetSnapshotKeys = never
 type MappedAssetSnapshotKeys =
+  | 'asset_id'
   | 'name'
   | 'display_name'
   | 'tags'
