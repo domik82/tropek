@@ -15,6 +15,7 @@ import { RestoreForm } from '@/features/evaluations/components/actions/RestoreFo
 import { BaselineForm } from '@/features/evaluations/components/actions/BaselineForm'
 import { ReEvaluateForm } from '@/features/evaluations/components/actions/ReEvaluateForm'
 import { useSloScope } from '@/features/evaluations/components/actions/slo-scope/useSloScope'
+import { MetaTimelineSection } from '@/features/meta_timeline'
 import type { GroupedMetricHeatmap, HeatmapResult } from '@/features/navigator/domain'
 
 function evaluationOutcomeToHeatmapResult(ev: EvaluationDetail): HeatmapResult {
@@ -199,6 +200,13 @@ export function EvaluationDetailPage() {
       />
 
       <EvaluationNotesSection ref={notesSectionRef} runId={ev.evaluationId} annotations={ev.annotations} />
+
+      {ev.assetSnapshot.assetId && (
+        <MetaTimelineSection
+          assetId={ev.assetSnapshot.assetId}
+          focusEval={{ id: ev.id, periodEnd: ev.period.to ? new Date(ev.period.to) : new Date() }}
+        />
+      )}
 
       <EvaluationIndicatorSection evaluation={ev} assetDisplayName={assetDisplayName} sloDisplayName={sloDisplayName} />
     </div>
