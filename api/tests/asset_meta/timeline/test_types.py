@@ -33,14 +33,14 @@ def test_clipped_span_fields() -> None:
         value='2.0',
         start=datetime(2026, 1, 1, tzinfo=UTC),
         end=datetime(2026, 1, 2, tzinfo=UTC),
-        class_name='pass',
+        className='pass',
     )
     assert span.source == 'deploy'
     assert span.path == ['svc', 'env']
     assert span.value == '2.0'
     assert span.start == datetime(2026, 1, 1, tzinfo=UTC)
     assert span.end == datetime(2026, 1, 2, tzinfo=UTC)
-    assert span.class_name == 'pass'
+    assert span.className == 'pass'
 
 
 def test_open_span_fields() -> None:

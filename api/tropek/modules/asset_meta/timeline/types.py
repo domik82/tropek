@@ -28,7 +28,7 @@ class ClippedSpan:
     value: str
     start: datetime
     end: datetime
-    class_name: str
+    className: str  # noqa: N815 — matches vis-timeline's wire format field name
 
 
 @dataclass(frozen=True)
