@@ -4,6 +4,7 @@
 // in api.ts, once per network call. React Query cache stores domain types.
 
 import type { components } from '@/generated/api'
+import { getSpanColorIndex } from './components/spanColor'
 import type {
   MetaTimelineGroup,
   MetaTimelineItem,
@@ -31,6 +32,8 @@ function dtoToGroup(dto: TimelineGroupDto): MetaTimelineGroup {
 }
 
 function dtoToItem(dto: TimelineItemDto): MetaTimelineItem {
+  const colorClass = `meta-span-color-${getSpanColorIndex(dto.content)}`
+  const className = dto.className ? `${dto.className} ${colorClass}` : colorClass
   return {
     id: dto.id,
     group: dto.group,
@@ -38,7 +41,7 @@ function dtoToItem(dto: TimelineItemDto): MetaTimelineItem {
     start: new Date(dto.start),
     end: new Date(dto.end),
     type: 'range',
-    className: dto.className,
+    className,
     source: dto.source,
   }
 }
