@@ -807,6 +807,17 @@
       "AssetSnapshot": {
         "description": "Snapshot of asset identity/version at evaluation time.",
         "properties": {
+          "asset_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Asset Id"
+          },
           "build_ref": {
             "anyOf": [
               {
@@ -2917,6 +2928,107 @@
         "title": "InvalidateRequest",
         "type": "object"
       },
+      "MetaClosureInput": {
+        "additionalProperties": false,
+        "description": "A path to close (end its current span) in the metadata timeline.",
+        "properties": {
+          "path": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 6,
+            "minItems": 1,
+            "title": "Path",
+            "type": "array"
+          }
+        },
+        "required": [
+          "path"
+        ],
+        "title": "MetaClosureInput",
+        "type": "object"
+      },
+      "MetaSnapshotCreate": {
+        "additionalProperties": false,
+        "description": "Request body for creating a metadata snapshot.",
+        "properties": {
+          "closed": {
+            "items": {
+              "$ref": "#/components/schemas/MetaClosureInput"
+            },
+            "maxItems": 1000,
+            "title": "Closed",
+            "type": "array"
+          },
+          "observed_at": {
+            "format": "date-time",
+            "title": "Observed At",
+            "type": "string"
+          },
+          "source": {
+            "maxLength": 64,
+            "minLength": 1,
+            "pattern": "^[a-zA-Z0-9._-]+$",
+            "title": "Source",
+            "type": "string"
+          },
+          "values": {
+            "items": {
+              "$ref": "#/components/schemas/MetaValueInput"
+            },
+            "maxItems": 10000,
+            "title": "Values",
+            "type": "array"
+          }
+        },
+        "required": [
+          "source",
+          "observed_at"
+        ],
+        "title": "MetaSnapshotCreate",
+        "type": "object"
+      },
+      "MetaSnapshotCreated": {
+        "description": "Response body after creating a metadata snapshot.",
+        "properties": {
+          "snapshot_id": {
+            "format": "uuid",
+            "title": "Snapshot Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "snapshot_id"
+        ],
+        "title": "MetaSnapshotCreated",
+        "type": "object"
+      },
+      "MetaValueInput": {
+        "additionalProperties": false,
+        "description": "A single key-value pair to set in the metadata timeline.",
+        "properties": {
+          "path": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 6,
+            "minItems": 1,
+            "title": "Path",
+            "type": "array"
+          },
+          "value": {
+            "maxLength": 1024,
+            "title": "Value",
+            "type": "string"
+          }
+        },
+        "required": [
+          "path",
+          "value"
+        ],
+        "title": "MetaValueInput",
+        "type": "object"
+      },
       "MethodCriteriaOverride": {
         "description": "Per-method override for template Level-2 expansion.\n\nMirrors the four override-capable fields of SLOObjectiveIn\n(pass_threshold, warning_threshold, weight, key_sli), plus\ntwo method/aggregation hints. All fields optional \u2014 only the\nfields explicitly set on an override are applied during template\ninstantiation; unset fields inherit from the template's objective.\n\nStored on SLODefinition.method_criteria and consumed during\nslo_groups/generator.py Level-2 expansion (not yet implemented,\ntracked as a follow-up).",
         "properties": {
@@ -4896,6 +5008,138 @@
         "title": "TagValueCount",
         "type": "object"
       },
+      "TimelineGroup": {
+        "description": "A group in the vis-timeline visualization.",
+        "properties": {
+          "content": {
+            "title": "Content",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "nestedGroups": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nestedgroups"
+          },
+          "showNested": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Shownested"
+          }
+        },
+        "required": [
+          "id",
+          "content"
+        ],
+        "title": "TimelineGroup",
+        "type": "object"
+      },
+      "TimelineItem": {
+        "description": "A single item (span) in the vis-timeline visualization.",
+        "properties": {
+          "className": {
+            "title": "Classname",
+            "type": "string"
+          },
+          "content": {
+            "title": "Content",
+            "type": "string"
+          },
+          "end": {
+            "title": "End",
+            "type": "string"
+          },
+          "group": {
+            "title": "Group",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          },
+          "start": {
+            "title": "Start",
+            "type": "string"
+          },
+          "type": {
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "group",
+          "content",
+          "start",
+          "end",
+          "type",
+          "className",
+          "source"
+        ],
+        "title": "TimelineItem",
+        "type": "object"
+      },
+      "TimelineResponse": {
+        "description": "Full timeline response with groups and items.",
+        "properties": {
+          "groups": {
+            "items": {
+              "$ref": "#/components/schemas/TimelineGroup"
+            },
+            "title": "Groups",
+            "type": "array"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/TimelineItem"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "groups",
+          "items"
+        ],
+        "title": "TimelineResponse",
+        "type": "object"
+      },
+      "TimelineSummaryResponse": {
+        "description": "Summary statistics for the timeline.",
+        "properties": {
+          "itemCount": {
+            "title": "Itemcount",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "itemCount"
+        ],
+        "title": "TimelineSummaryResponse",
+        "type": "object"
+      },
       "TrendPoint": {
         "description": "A single point in a metric trend time series.",
         "properties": {
@@ -6090,6 +6334,188 @@
           }
         },
         "summary": "List Tag Values"
+      }
+    },
+    "/assets/{asset_id}/meta/snapshots": {
+      "post": {
+        "description": "Ingest a point-in-time metadata snapshot for an asset.",
+        "operationId": "create_snapshot_assets__asset_id__meta_snapshots_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "asset_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Asset Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MetaSnapshotCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MetaSnapshotCreated"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Snapshot",
+        "tags": [
+          "asset-meta"
+        ]
+      }
+    },
+    "/assets/{asset_id}/meta/timeline": {
+      "get": {
+        "description": "Return the full meta timeline for an asset within a time window.",
+        "operationId": "get_timeline_assets__asset_id__meta_timeline_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "asset_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Asset Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "from",
+            "required": true,
+            "schema": {
+              "format": "date-time",
+              "title": "From",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "to",
+            "required": true,
+            "schema": {
+              "format": "date-time",
+              "title": "To",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TimelineResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Timeline",
+        "tags": [
+          "asset-meta"
+        ]
+      }
+    },
+    "/assets/{asset_id}/meta/timeline/summary": {
+      "get": {
+        "description": "Return summary stats for the collapsed meta timeline strip.",
+        "operationId": "get_timeline_summary_assets__asset_id__meta_timeline_summary_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "asset_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Asset Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "from",
+            "required": true,
+            "schema": {
+              "format": "date-time",
+              "title": "From",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "to",
+            "required": true,
+            "schema": {
+              "format": "date-time",
+              "title": "To",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TimelineSummaryResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Timeline Summary",
+        "tags": [
+          "asset-meta"
+        ]
       }
     },
     "/assets/{name}": {
