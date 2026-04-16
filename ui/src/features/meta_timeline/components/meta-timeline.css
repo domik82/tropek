@@ -1,0 +1,53 @@
+/* meta-timeline.css — CSS class vocabulary for meta timeline spans and marker.
+ *
+ * References CSS variables (--color-meta-span-bg, etc.) defined in index.css
+ * per theme. Until Chunk 8 lands, undefined variables fall back to inherit.
+ */
+
+.meta-timeline-container {
+  /* component-level defaults */
+}
+
+.vis-item.meta-span {
+  background-color: var(--color-meta-span-bg);
+  border-color: var(--color-meta-span-border);
+  border-radius: 3px;
+  color: var(--color-meta-span-fg);
+  font-family: "system-ui", -apple-system, sans-serif;
+  font-size: 12px;
+}
+
+.vis-item.meta-span-clipped-left {
+  border-left-style: dashed;
+  mask-image: linear-gradient(to right, transparent 0, black 12px);
+}
+
+.vis-item.meta-span-clipped-right {
+  border-right-style: dashed;
+  mask-image: linear-gradient(to left, transparent 0, black 12px);
+}
+
+.vis-item.meta-span-open {
+  border-right-style: none;
+  mask-image: linear-gradient(to left, transparent 0, black 20px);
+}
+
+.vis-item.meta-span-closed {
+  border-right-width: 3px;
+  border-right-style: solid;
+}
+
+/* Focus-eval marker override. */
+.vis-custom-time.focus-eval {
+  background-color: var(--color-focus-eval-marker);
+  width: 2px;
+}
+
+.vis-custom-time.focus-eval > .vis-custom-time-marker {
+  background-color: var(--color-focus-eval-marker);
+  color: var(--color-focus-eval-marker-fg);
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-family: "system-ui", -apple-system, sans-serif;
+  font-size: 11px;
+}
