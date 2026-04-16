@@ -5,13 +5,22 @@ from __future__ import annotations
 import uuid
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
+from unittest.mock import AsyncMock, patch
 
 import pytest
-from tropek.modules.asset_meta.schemas import MetaClosureInput, MetaSnapshotCreate, MetaValueInput
+from tropek.modules.asset_meta.schemas import (
+    MetaClosureInput,
+    MetaSnapshotCreate,
+    MetaValueInput,
+    TimelineResponse,
+    TimelineSummaryResponse,
+)
 from tropek.modules.asset_meta.service import (
     _ensure_asset_exists,
     _validate_payload_has_content,
     _write_snapshot_rows,
+    get_timeline,
+    get_timeline_summary,
 )
 from tropek.modules.common.exceptions import DomainValidationError, NotFoundError
 
@@ -178,3 +187,57 @@ async def test_write_snapshot_rows_both() -> None:
     recorded_closure_snapshot_id, recorded_closure_entries = repository.inserted_closures[0]
     assert recorded_closure_snapshot_id == snapshot_id
     assert recorded_closure_entries == [['region']]
+
+
+# --- get_timeline ---
+
+T0 = datetime(2026, 1, 1, tzinfo=UTC)
+T1 = datetime(2026, 1, 2, tzinfo=UTC)
+
+
+async def test_get_timeline_returns_empty_for_no_snapshots() -> None:
+    fake_session = AsyncMock()
+    asset_id = uuid.uuid4()
+    with patch('tropek.modules.asset_meta.service.AssetMetaRepository') as MockRepo:
+        mock_repo = MockRepo.return_value
+        mock_repo.asset_exists = AsyncMock(return_value=True)
+        mock_repo.load_snapshots_for_derivation = AsyncMock(return_value=[])
+        result = await get_timeline(fake_session, asset_id, T0, T1)
+    assert isinstance(result, TimelineResponse)
+    assert result.groups == []
+    assert result.items == []
+
+
+async def test_get_timeline_raises_not_found_for_missing_asset() -> None:
+    fake_session = AsyncMock()
+    asset_id = uuid.uuid4()
+    with patch('tropek.modules.asset_meta.service.AssetMetaRepository') as MockRepo:
+        mock_repo = MockRepo.return_value
+        mock_repo.asset_exists = AsyncMock(return_value=False)
+        with pytest.raises(NotFoundError, match='asset'):
+            await get_timeline(fake_session, asset_id, T0, T1)
+
+
+# --- get_timeline_summary ---
+
+
+async def test_get_timeline_summary_returns_zero_for_empty_asset() -> None:
+    fake_session = AsyncMock()
+    asset_id = uuid.uuid4()
+    with patch('tropek.modules.asset_meta.service.AssetMetaRepository') as MockRepo:
+        mock_repo = MockRepo.return_value
+        mock_repo.asset_exists = AsyncMock(return_value=True)
+        mock_repo.load_snapshots_for_derivation = AsyncMock(return_value=[])
+        result = await get_timeline_summary(fake_session, asset_id, T0, T1)
+    assert isinstance(result, TimelineSummaryResponse)
+    assert result.item_count == 0
+
+
+async def test_get_timeline_summary_raises_not_found_for_missing_asset() -> None:
+    fake_session = AsyncMock()
+    asset_id = uuid.uuid4()
+    with patch('tropek.modules.asset_meta.service.AssetMetaRepository') as MockRepo:
+        mock_repo = MockRepo.return_value
+        mock_repo.asset_exists = AsyncMock(return_value=False)
+        with pytest.raises(NotFoundError, match='asset'):
+            await get_timeline_summary(fake_session, asset_id, T0, T1)
