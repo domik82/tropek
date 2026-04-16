@@ -9,6 +9,7 @@ from typing import Any
 from sqlalchemy import (
     ARRAY,
     UUID,
+    BigInteger,
     Boolean,
     CheckConstraint,
     DateTime,
@@ -71,6 +72,57 @@ class Asset(Base):
     color:          Mapped[str | None]    = mapped_column(Text, nullable=True)
     created_at:   Mapped[datetime]       = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at:   Mapped[datetime]       = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
+    # fmt: on
+
+
+class AssetMetaSnapshot(Base):
+    """Point-in-time snapshot of hierarchical metadata pushed for one asset from one source."""
+
+    __tablename__ = 'asset_meta_snapshots'
+    __table_args__ = (
+        Index('idx_asset_meta_snapshots_asset_observed', 'asset_id', 'observed_at'),
+        Index('idx_asset_meta_snapshots_asset_source_observed', 'asset_id', 'source', 'observed_at'),
+    )
+
+    # fmt: off
+    id:          Mapped[uuid.UUID] = mapped_column(UUID, primary_key=True, default=uuid.uuid4)
+    asset_id:    Mapped[uuid.UUID] = mapped_column(UUID, ForeignKey('assets.id', ondelete='CASCADE'), nullable=False)
+    source:      Mapped[str]       = mapped_column(Text, nullable=False)
+    observed_at: Mapped[datetime]  = mapped_column(DateTime(timezone=True), nullable=False)
+    created_at:  Mapped[datetime]  = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    # fmt: on
+
+
+class AssetMetaValue(Base):
+    """One key-value leaf in a snapshot — path is a TEXT[] hierarchy, value is the leaf text."""
+
+    __tablename__ = 'asset_meta_values'
+    __table_args__ = (
+        UniqueConstraint('snapshot_id', 'path', name='uq_asset_meta_values_snapshot_path'),
+        Index('idx_asset_meta_values_snapshot', 'snapshot_id'),
+    )
+
+    # fmt: off
+    id:          Mapped[int]       = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    snapshot_id: Mapped[uuid.UUID] = mapped_column(UUID, ForeignKey('asset_meta_snapshots.id', ondelete='CASCADE'), nullable=False)
+    path:        Mapped[list[str]] = mapped_column(ARRAY(Text), nullable=False)
+    value:       Mapped[str]       = mapped_column(Text, nullable=False)
+    # fmt: on
+
+
+class AssetMetaClosure(Base):
+    """Closure-table row for a snapshot — every ancestor path present in that snapshot."""
+
+    __tablename__ = 'asset_meta_closures'
+    __table_args__ = (
+        UniqueConstraint('snapshot_id', 'path', name='uq_asset_meta_closures_snapshot_path'),
+        Index('idx_asset_meta_closures_snapshot', 'snapshot_id'),
+    )
+
+    # fmt: off
+    id:          Mapped[int]       = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    snapshot_id: Mapped[uuid.UUID] = mapped_column(UUID, ForeignKey('asset_meta_snapshots.id', ondelete='CASCADE'), nullable=False)
+    path:        Mapped[list[str]] = mapped_column(ARRAY(Text), nullable=False)
     # fmt: on
 
 
