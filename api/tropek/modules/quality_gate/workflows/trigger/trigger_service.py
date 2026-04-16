@@ -77,6 +77,7 @@ class TriggerService:
                     period_end=request.period_end,
                     ingestion_mode='pull',
                     asset_snapshot={
+                        'asset_id': str(ctx.asset_id),
                         'name': ctx.asset_name,
                         'display_name': ctx.asset_display_name,
                         'tags': ctx.asset_tags,

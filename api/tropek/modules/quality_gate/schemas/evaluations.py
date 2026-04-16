@@ -14,6 +14,7 @@ from tropek.modules.quality_gate.schemas.annotations import AnnotationRead
 class AssetSnapshot(BaseModel):
     """Snapshot of asset identity/version at evaluation time."""
 
+    asset_id: str | None = None
     name: str
     display_name: str | None = None
     tags: dict[str, str] = Field(default_factory=dict)
