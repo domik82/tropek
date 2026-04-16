@@ -2,7 +2,7 @@
 
 Revision ID: 001
 Revises: 
-Create Date: 2026-04-14 20:23:17.144311
+Create Date: 2026-04-16 09:15:46.064996
 
 """
 from collections.abc import Sequence
@@ -172,6 +172,17 @@ def upgrade() -> None:
     )
     op.create_index('idx_asset_group_members_asset', 'asset_group_members', ['asset_id'], unique=False)
     op.create_index('idx_asset_group_members_group', 'asset_group_members', ['asset_group_id'], unique=False)
+    op.create_table('asset_meta_snapshots',
+    sa.Column('id', sa.UUID(), nullable=False),
+    sa.Column('asset_id', sa.UUID(), nullable=False),
+    sa.Column('source', sa.Text(), nullable=False),
+    sa.Column('observed_at', sa.DateTime(timezone=True), nullable=False),
+    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.ForeignKeyConstraint(['asset_id'], ['assets.id'], ondelete='CASCADE'),
+    sa.PrimaryKeyConstraint('id')
+    )
+    op.create_index('idx_asset_meta_snapshots_asset_observed', 'asset_meta_snapshots', ['asset_id', 'observed_at'], unique=False)
+    op.create_index('idx_asset_meta_snapshots_asset_source_observed', 'asset_meta_snapshots', ['asset_id', 'source', 'observed_at'], unique=False)
     op.create_table('evaluations',
     sa.Column('id', sa.UUID(), nullable=False),
     sa.Column('asset_id', sa.UUID(), nullable=False),
@@ -245,6 +256,25 @@ def upgrade() -> None:
     sa.PrimaryKeyConstraint('id')
     )
     op.create_index('idx_slo_objectives_definition', 'slo_objectives', ['slo_definition_id'], unique=False)
+    op.create_table('asset_meta_closures',
+    sa.Column('id', sa.BigInteger(), autoincrement=True, nullable=False),
+    sa.Column('snapshot_id', sa.UUID(), nullable=False),
+    sa.Column('path', sa.ARRAY(sa.Text()), nullable=False),
+    sa.ForeignKeyConstraint(['snapshot_id'], ['asset_meta_snapshots.id'], ondelete='CASCADE'),
+    sa.PrimaryKeyConstraint('id'),
+    sa.UniqueConstraint('snapshot_id', 'path', name='uq_asset_meta_closures_snapshot_path')
+    )
+    op.create_index('idx_asset_meta_closures_snapshot', 'asset_meta_closures', ['snapshot_id'], unique=False)
+    op.create_table('asset_meta_values',
+    sa.Column('id', sa.BigInteger(), autoincrement=True, nullable=False),
+    sa.Column('snapshot_id', sa.UUID(), nullable=False),
+    sa.Column('path', sa.ARRAY(sa.Text()), nullable=False),
+    sa.Column('value', sa.Text(), nullable=False),
+    sa.ForeignKeyConstraint(['snapshot_id'], ['asset_meta_snapshots.id'], ondelete='CASCADE'),
+    sa.PrimaryKeyConstraint('id'),
+    sa.UniqueConstraint('snapshot_id', 'path', name='uq_asset_meta_values_snapshot_path')
+    )
+    op.create_index('idx_asset_meta_values_snapshot', 'asset_meta_values', ['snapshot_id'], unique=False)
     op.create_table('slo_evaluations',
     sa.Column('id', sa.UUID(), nullable=False),
     sa.Column('evaluation_id', sa.UUID(), nullable=False),
@@ -377,6 +407,10 @@ def downgrade() -> None:
     op.drop_index('idx_slo_evaluations_baseline_lookup', table_name='slo_evaluations', postgresql_where=sa.text("status = 'completed' AND invalidated = false"))
     op.drop_index('idx_slo_evaluations_asset', table_name='slo_evaluations')
     op.drop_table('slo_evaluations')
+    op.drop_index('idx_asset_meta_values_snapshot', table_name='asset_meta_values')
+    op.drop_table('asset_meta_values')
+    op.drop_index('idx_asset_meta_closures_snapshot', table_name='asset_meta_closures')
+    op.drop_table('asset_meta_closures')
     op.drop_index('idx_slo_objectives_definition', table_name='slo_objectives')
     op.drop_table('slo_objectives')
     op.drop_index('uq_slo_group_assignments_group', table_name='slo_group_assignments', postgresql_where=sa.text('asset_group_id IS NOT NULL'))
@@ -394,6 +428,9 @@ def downgrade() -> None:
     op.drop_index('idx_evaluations_incomplete_period_end', table_name='evaluations', postgresql_where=sa.text("status != 'completed'"))
     op.drop_index('idx_evaluations_asset', table_name='evaluations')
     op.drop_table('evaluations')
+    op.drop_index('idx_asset_meta_snapshots_asset_source_observed', table_name='asset_meta_snapshots')
+    op.drop_index('idx_asset_meta_snapshots_asset_observed', table_name='asset_meta_snapshots')
+    op.drop_table('asset_meta_snapshots')
     op.drop_index('idx_asset_group_members_group', table_name='asset_group_members')
     op.drop_index('idx_asset_group_members_asset', table_name='asset_group_members')
     op.drop_table('asset_group_members')
