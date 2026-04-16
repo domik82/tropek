@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
-import { addDays, subDays } from 'date-fns'
 import { useMetaTimeline, useMetaTimelineSummary } from '../hooks'
+import { useTimeRange } from '@/lib/time-range-context'
 import { CollapsedStrip } from './CollapsedStrip'
 import { MetaTimeline } from './MetaTimeline'
 
@@ -11,9 +11,15 @@ interface Props {
 
 export function MetaTimelineSection({ assetId, focusEval }: Props) {
   const [isExpanded, setIsExpanded] = useState(false)
+  const timeRange = useTimeRange()
 
-  const from = useMemo(() => subDays(focusEval.periodEnd, 30), [focusEval.periodEnd])
-  const to = useMemo(() => addDays(focusEval.periodEnd, 7), [focusEval.periodEnd])
+  // Window is driven by the global TimeRangePicker so the timeline stays in
+  // lockstep with the heatmap above it.
+  const from = useMemo(() => new Date(timeRange.from), [timeRange.from])
+  const to = useMemo(
+    () => (timeRange.to ? new Date(timeRange.to) : new Date()),
+    [timeRange.to],
+  )
 
   const { data: summary } = useMetaTimelineSummary(assetId, from, to)
 
