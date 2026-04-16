@@ -26,7 +26,20 @@ describe('dtoToMetaTimelineResponse', () => {
     expect(result.items).toHaveLength(3)
     expect(result.items[0].start).toBeInstanceOf(Date)
     expect(result.items[0].end).toBeInstanceOf(Date)
-    expect(result.items[1].className).toBe('meta-span meta-span-open')
+    expect(result.items[1].className).toMatch(/^meta-span meta-span-open meta-span-color-[0-7]$/)
+  })
+
+  it('appends a cycling color class based on value hash', () => {
+    const dto = {
+      groups: [{ id: 'g', content: 'g' }],
+      items: [
+        { id: 'a1', group: 'g', content: '1.0', start: '2026-04-01T00:00:00Z', end: '2026-04-02T00:00:00Z', type: 'range', className: 'meta-span', source: 'cicd' },
+        { id: 'a2', group: 'g', content: '1.0', start: '2026-04-03T00:00:00Z', end: '2026-04-04T00:00:00Z', type: 'range', className: 'meta-span', source: 'cicd' },
+      ],
+    }
+    const result = dtoToMetaTimelineResponse(dto)
+    expect(result.items[0].className).toBe(result.items[1].className)
+    expect(result.items[0].className).toMatch(/meta-span-color-[0-7]/)
   })
 
   it('handles empty input', () => {
