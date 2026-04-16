@@ -155,6 +155,12 @@
   --chart-3: oklch(0.769 0.188 70.08);
   --chart-4: oklch(0.627 0.265 303.9);
   --chart-5: oklch(0.645 0.246 16.439);
+  /* ── Meta Timeline ──────────────────────── */
+  --color-meta-span-bg:           #1f4a7a;
+  --color-meta-span-border:       #58A6FF;
+  --color-meta-span-fg:           var(--color-slate-200);
+  --color-focus-eval-marker:      #F59E0B;
+  --color-focus-eval-marker-fg:   #000000;
 }
 
 /* ── Dark theme — built on Radix colour scales ───────────────── */
@@ -281,11 +287,23 @@
   --chart-3: var(--amber-9);
   --chart-4: var(--red-9);
   --chart-5: var(--yellow-9);
+  /* ── Meta Timeline ──────────────────────── */
+  --color-meta-span-bg:           var(--sky-4);
+  --color-meta-span-border:       var(--sky-7);
+  --color-meta-span-fg:           var(--slate-12);
+  --color-focus-eval-marker:      var(--amber-9);
+  --color-focus-eval-marker-fg:   var(--slate-1);
 }
 
 /* ── Light theme (stub — Radix light reversal, TODO) ─────────── */
 [data-theme="light"] {
   /* Will be filled with Radix light scales once designed */
+  /* ── Meta Timeline ──────────────────────── */
+  --color-meta-span-bg:           #dbeafe;
+  --color-meta-span-border:       #3b82f6;
+  --color-meta-span-fg:           #1e293b;
+  --color-focus-eval-marker:      #f59e0b;
+  --color-focus-eval-marker-fg:   #000000;
 }
 
 /* ── Tailwind token registration ─────────────────────────────── */
