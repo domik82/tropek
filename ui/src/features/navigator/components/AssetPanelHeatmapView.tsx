@@ -10,6 +10,7 @@ import type { ViewMode } from '@/components/charts/ViewToggle'
 import type { TimeSlotSelection } from './AssetHeatmap'
 import type { GroupedMetricHeatmapResponseDto } from '../mappers'
 import type { Indicator, SliMetadata } from '@/features/evaluations'
+import { MetaTimelineSection } from '@/features/meta_timeline'
 
 interface Props {
   assetName: string
@@ -32,13 +33,19 @@ interface Props {
   explorerButton: React.ReactNode
   sloExpandState: Map<string, boolean>
   onSloToggle: (sloName: string) => void
+  /** Asset UUID for the meta-timeline section. Undefined until the asset list loads. */
+  assetId: string | undefined
+  /** period_end of the selected column — used as the meta-timeline focus marker. */
+  focusPeriodEnd: string | undefined
+  /** Stable evaluation id for the meta-timeline focus marker. */
+  focusEvalId: string | undefined
 }
 
 export function AssetPanelHeatmapView({
   assetName, heatmapData, selectedColumnEvalId, effectiveEvalId,
   selectedColumnSloEvalIds, selectedPeriodStart, notedSlots,
   onEvalSelect, onSlotSelect, mode, setMode, explorerButton,
-  sloExpandState, onSloToggle,
+  sloExpandState, onSloToggle, assetId, focusPeriodEnd, focusEvalId,
 }: Props) {
   const sliTableRef = useRef<HTMLDivElement>(null)
   const heatmapRef = useRef<HTMLDivElement>(null)
@@ -225,6 +232,14 @@ export function AssetPanelHeatmapView({
             onSloToggle={onSloToggle}
           />
         </div>
+      )}
+
+      {/* Asset meta timeline — between heatmap and first table per spec §9.6 */}
+      {assetId && focusPeriodEnd && focusEvalId && (
+        <MetaTimelineSection
+          assetId={assetId}
+          focusEval={{ id: focusEvalId, periodEnd: new Date(focusPeriodEnd) }}
+        />
       )}
 
       {/* SLI Breakdown — grouped by SLO */}
