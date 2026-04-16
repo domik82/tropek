@@ -13,6 +13,7 @@ from tropek.config import get_settings
 from tropek.db.middleware import SessionMiddleware
 from tropek.db.session import get_session_factory
 from tropek.logging_config import configure_logging
+from tropek.modules.asset_meta.router import router as asset_meta_router
 from tropek.modules.assets.router import router as assets_router
 from tropek.modules.assignments.router import router as assignments_router
 from tropek.modules.common.exception_handlers import (
@@ -57,6 +58,7 @@ app.add_exception_handler(ConflictError, conflict_handler)  # type: ignore[arg-t
 app.add_exception_handler(DomainValidationError, domain_validation_handler)  # type: ignore[arg-type]
 
 # No prefix= — every router defines full absolute paths
+app.include_router(asset_meta_router)
 app.include_router(assets_router)
 app.include_router(datasource_router)
 app.include_router(sli_router)

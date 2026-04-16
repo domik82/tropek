@@ -90,7 +90,7 @@ function makeEval(overrides: Partial<EvaluationDetail> = {}): EvaluationDetail {
     overrideReason: null,
     overrideAuthor: null,
     invalidationNote: null,
-    assetSnapshot: { name: 'api-gateway', displayName: null, tags: {}, primaryVersion: null, buildRef: null },
+    assetSnapshot: { assetId: null, name: 'api-gateway', displayName: null, tags: {}, primaryVersion: null, buildRef: null },
     variables: {},
     comparedEvaluationIds: [],
     annotations: [],

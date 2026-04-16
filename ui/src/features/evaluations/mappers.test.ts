@@ -44,6 +44,7 @@ function makeSummaryDto(overrides: Partial<EvaluationSummaryDto> = {}): Evaluati
     override_reason: null,
     override_author: null,
     asset_snapshot: {
+      asset_id: '550e8400-e29b-41d4-a716-446655440000',
       name: 'checkout',
       display_name: 'Checkout Service',
       tags: { team: 'payments' },
@@ -68,6 +69,7 @@ describe('dtoToEvaluationSummary', () => {
     expect(result.period.from).toBe('2026-03-15T10:00:00Z')
     expect(result.period.to).toBe('2026-03-15T10:30:00Z')
     expect(result.sloName).toBe('latency-p95')
+    expect(result.assetSnapshot.assetId).toBe('550e8400-e29b-41d4-a716-446655440000')
     expect(result.assetSnapshot.displayName).toBe('Checkout Service')
     expect(result.assetSnapshot.primaryVersion).toBe('1.4.2')
     expect(result.baselinePin).toBeNull()

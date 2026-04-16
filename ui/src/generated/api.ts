@@ -376,6 +376,66 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/assets/{asset_id}/meta/snapshots": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create Snapshot
+         * @description Ingest a point-in-time metadata snapshot for an asset.
+         */
+        post: operations["create_snapshot_assets__asset_id__meta_snapshots_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/assets/{asset_id}/meta/timeline": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Timeline
+         * @description Return the full meta timeline for an asset within a time window.
+         */
+        get: operations["get_timeline_assets__asset_id__meta_timeline_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/assets/{asset_id}/meta/timeline/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Timeline Summary
+         * @description Return summary stats for the collapsed meta timeline strip.
+         */
+        get: operations["get_timeline_summary_assets__asset_id__meta_timeline_summary_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/assets/{name}": {
         parameters: {
             query?: never;
@@ -1811,6 +1871,8 @@ export interface components {
          * @description Snapshot of asset identity/version at evaluation time.
          */
         AssetSnapshot: {
+            /** Asset Id */
+            asset_id?: string | null;
             /** Build Ref */
             build_ref?: string | null;
             /** Display Name */
@@ -2612,6 +2674,52 @@ export interface components {
         InvalidateRequest: {
             /** Invalidation Note */
             invalidation_note: string;
+        };
+        /**
+         * MetaClosureInput
+         * @description A path to close (end its current span) in the metadata timeline.
+         */
+        MetaClosureInput: {
+            /** Path */
+            path: string[];
+        };
+        /**
+         * MetaSnapshotCreate
+         * @description Request body for creating a metadata snapshot.
+         */
+        MetaSnapshotCreate: {
+            /** Closed */
+            closed?: components["schemas"]["MetaClosureInput"][];
+            /**
+             * Observed At
+             * Format: date-time
+             */
+            observed_at: string;
+            /** Source */
+            source: string;
+            /** Values */
+            values?: components["schemas"]["MetaValueInput"][];
+        };
+        /**
+         * MetaSnapshotCreated
+         * @description Response body after creating a metadata snapshot.
+         */
+        MetaSnapshotCreated: {
+            /**
+             * Snapshot Id
+             * Format: uuid
+             */
+            snapshot_id: string;
+        };
+        /**
+         * MetaValueInput
+         * @description A single key-value pair to set in the metadata timeline.
+         */
+        MetaValueInput: {
+            /** Path */
+            path: string[];
+            /** Value */
+            value: string;
         };
         /**
          * MethodCriteriaOverride
@@ -3441,6 +3549,60 @@ export interface components {
             value: string;
         };
         /**
+         * TimelineGroup
+         * @description A group in the vis-timeline visualization.
+         */
+        TimelineGroup: {
+            /** Content */
+            content: string;
+            /** Id */
+            id: string;
+            /** Nestedgroups */
+            nestedGroups?: string[] | null;
+            /** Shownested */
+            showNested?: boolean | null;
+        };
+        /**
+         * TimelineItem
+         * @description A single item (span) in the vis-timeline visualization.
+         */
+        TimelineItem: {
+            /** Classname */
+            className: string;
+            /** Content */
+            content: string;
+            /** End */
+            end: string;
+            /** Group */
+            group: string;
+            /** Id */
+            id: string;
+            /** Source */
+            source: string;
+            /** Start */
+            start: string;
+            /** Type */
+            type: string;
+        };
+        /**
+         * TimelineResponse
+         * @description Full timeline response with groups and items.
+         */
+        TimelineResponse: {
+            /** Groups */
+            groups: components["schemas"]["TimelineGroup"][];
+            /** Items */
+            items: components["schemas"]["TimelineItem"][];
+        };
+        /**
+         * TimelineSummaryResponse
+         * @description Summary statistics for the timeline.
+         */
+        TimelineSummaryResponse: {
+            /** Itemcount */
+            itemCount: number;
+        };
+        /**
          * TrendPoint
          * @description A single point in a metric trend time series.
          */
@@ -4255,6 +4417,109 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TagValueCount"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_snapshot_assets__asset_id__meta_snapshots_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                asset_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MetaSnapshotCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MetaSnapshotCreated"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_timeline_assets__asset_id__meta_timeline_get: {
+        parameters: {
+            query: {
+                from: string;
+                to: string;
+            };
+            header?: never;
+            path: {
+                asset_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TimelineResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_timeline_summary_assets__asset_id__meta_timeline_summary_get: {
+        parameters: {
+            query: {
+                from: string;
+                to: string;
+            };
+            header?: never;
+            path: {
+                asset_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TimelineSummaryResponse"];
                 };
             };
             /** @description Validation Error */

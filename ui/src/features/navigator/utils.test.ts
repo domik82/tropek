@@ -24,7 +24,7 @@ function mkEval(asset: string, slot: string, result: 'pass' | 'warning' | 'fail'
     originalScore: null,
     overrideReason: null,
     overrideAuthor: null,
-    assetSnapshot: { name: asset, displayName: null, tags: {}, primaryVersion: null, buildRef: null },
+    assetSnapshot: { assetId: null, name: asset, displayName: null, tags: {}, primaryVersion: null, buildRef: null },
     variables: {},
     baselinePin: null,
     latestAnnotation: null,

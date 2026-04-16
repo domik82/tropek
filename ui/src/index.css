@@ -155,6 +155,19 @@
   --chart-3: oklch(0.769 0.188 70.08);
   --chart-4: oklch(0.627 0.265 303.9);
   --chart-5: oklch(0.645 0.246 16.439);
+  /* ── Meta Timeline (cycling palette, avoids status hues) ──── */
+  --color-meta-span-0:            #1f4a7a;  /* blue */
+  --color-meta-span-1:            #2d5a6d;  /* teal */
+  --color-meta-span-2:            #4a3a6d;  /* purple */
+  --color-meta-span-3:            #6d4a2d;  /* amber-brown */
+  --color-meta-span-4:            #4a2d4a;  /* plum */
+  --color-meta-span-5:            #2d4a6d;  /* indigo */
+  --color-meta-span-6:            #3a3a5a;  /* slate-blue */
+  --color-meta-span-7:            #6d2d5a;  /* pink */
+  --color-meta-span-border:       #58A6FF;
+  --color-meta-span-fg:           var(--color-slate-200);
+  --color-focus-eval-marker:      #F59E0B;
+  --color-focus-eval-marker-fg:   #000000;
 }
 
 /* ── Dark theme — built on Radix colour scales ───────────────── */
@@ -281,11 +294,37 @@
   --chart-3: var(--amber-9);
   --chart-4: var(--red-9);
   --chart-5: var(--yellow-9);
+  /* ── Meta Timeline (cycling palette, avoids grass/yellow/red) ── */
+  --color-meta-span-0:            var(--sky-4);
+  --color-meta-span-1:            var(--cyan-4);
+  --color-meta-span-2:            var(--jade-4);
+  --color-meta-span-3:            var(--plum-4);
+  --color-meta-span-4:            var(--violet-4);
+  --color-meta-span-5:            var(--indigo-4);
+  --color-meta-span-6:            var(--orange-4);
+  --color-meta-span-7:            var(--pink-4);
+  --color-meta-span-border:       var(--sky-7);
+  --color-meta-span-fg:           var(--slate-12);
+  --color-focus-eval-marker:      var(--amber-9);
+  --color-focus-eval-marker-fg:   var(--slate-1);
 }
 
 /* ── Light theme (stub — Radix light reversal, TODO) ─────────── */
 [data-theme="light"] {
   /* Will be filled with Radix light scales once designed */
+  /* ── Meta Timeline (pastel palette) ──────── */
+  --color-meta-span-0:            #dbeafe;  /* blue */
+  --color-meta-span-1:            #cffafe;  /* cyan */
+  --color-meta-span-2:            #e9d5ff;  /* purple */
+  --color-meta-span-3:            #fed7aa;  /* orange */
+  --color-meta-span-4:            #fce7f3;  /* pink */
+  --color-meta-span-5:            #c7d2fe;  /* indigo */
+  --color-meta-span-6:            #ddd6fe;  /* violet */
+  --color-meta-span-7:            #bae6fd;  /* sky */
+  --color-meta-span-border:       #3b82f6;
+  --color-meta-span-fg:           #1e293b;
+  --color-focus-eval-marker:      #f59e0b;
+  --color-focus-eval-marker-fg:   #000000;
 }
 
 /* ── Tailwind token registration ─────────────────────────────── */
