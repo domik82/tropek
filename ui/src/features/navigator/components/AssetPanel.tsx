@@ -95,6 +95,9 @@ export function AssetPanel({ assetName, initialEvalId }: Props) {
   const assetDisplayName = useMemo(() => {
     return assets?.find(a => a.name === assetName)?.displayName
   }, [assets, assetName])
+  const assetId = useMemo(() => {
+    return assets?.find(a => a.name === assetName)?.id
+  }, [assets, assetName])
   const sloDisplayNames = useMemo(() => {
     const m = new Map<string, string>()
     for (const s of slos ?? []) if (s.displayName) m.set(s.name, s.displayName)
@@ -128,6 +131,13 @@ export function AssetPanel({ assetName, initialEvalId }: Props) {
     }
     return undefined
   }, [selectedSlot, heatmapData, effectiveEvalId])
+
+  // period_end of the currently selected column — used as focus marker for the
+  // asset meta timeline. Derived from the heatmap columns index.
+  const selectedPeriodEnd = useMemo((): string | undefined => {
+    if (!heatmapData || !selectedColumnEvalId) return undefined
+    return heatmapData.columns.find(c => c.evaluation_id === selectedColumnEvalId)?.period_end
+  }, [heatmapData, selectedColumnEvalId])
 
   // period_start of the currently selected column — either set explicitly via a
   // slot click or derived by looking up the effective eval in heatmap cells.
@@ -582,6 +592,9 @@ export function AssetPanel({ assetName, initialEvalId }: Props) {
           explorerButton={explorerButton}
           sloExpandState={sloExpandState}
           onSloToggle={handleSloToggle}
+          assetId={assetId}
+          focusPeriodEnd={selectedPeriodEnd}
+          focusEvalId={selectedColumnEvalId}
         />
       )}
 

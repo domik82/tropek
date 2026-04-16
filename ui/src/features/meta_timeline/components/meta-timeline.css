@@ -1,0 +1,155 @@
+/* meta-timeline.css — CSS class vocabulary for meta timeline spans and marker.
+ *
+ * References CSS variables (--color-meta-span-bg, etc.) defined in index.css
+ * per theme. Until Chunk 8 lands, undefined variables fall back to inherit.
+ */
+
+.meta-timeline-container {
+  /* Explicit height so vis-timeline's construction-time layout sees a
+   * non-zero size. Without this, the timeline initialises inside a
+   * zero-height box and does not paint until a window resize event fires
+   * (e.g. opening DevTools, toggling fullscreen). */
+  height: 340px;
+}
+
+/* ── Theme integration: override vis-timeline defaults ────────────────────
+ * vis-timeline ships a light, rounded, bordered look that clashes with our
+ * dark, sharp, table-aligned UI. These overrides pin every internal surface
+ * to the existing semantic tokens so the timeline sits flush with the
+ * heatmap above and the SLI breakdown below.
+ */
+
+/* Outer frame: rounded corners matching the heatmap and SLO group panels
+ * (Tailwind `rounded-lg` = 0.5rem). overflow:hidden keeps inner panels from
+ * painting past the rounded edge. */
+.meta-timeline-container .vis-timeline {
+  border: 1px solid var(--border-default);
+  border-radius: 0.5rem;
+  overflow: hidden;
+  background-color: var(--surface-raised);
+  color: var(--text-primary);
+  font-family: "system-ui", -apple-system, sans-serif;
+  font-size: 12px;
+}
+
+/* Panel borders — but NOT center/background backgrounds. The `.vis-panel.vis-background`
+ * sits behind `.vis-panel.vis-center` in the DOM; vertical day grids are painted
+ * inside the background panel and are only visible if the center panel stays
+ * transparent. Left/right/top/bottom panels can safely take the surface fill. */
+.meta-timeline-container .vis-panel.vis-left,
+.meta-timeline-container .vis-panel.vis-right,
+.meta-timeline-container .vis-panel.vis-top,
+.meta-timeline-container .vis-panel.vis-bottom {
+  background-color: var(--surface-raised);
+  border-color: var(--border-default);
+}
+.meta-timeline-container .vis-panel.vis-center,
+.meta-timeline-container .vis-panel.vis-background {
+  border-color: var(--border-default);
+}
+
+/* Group label column — dark rows, table-style borders, readable text. */
+.meta-timeline-container .vis-labelset .vis-label {
+  background-color: var(--table-row-bg);
+  color: var(--text-primary);
+  border-bottom: 1px solid var(--table-border);
+  border-color: var(--table-border);
+}
+.meta-timeline-container .vis-labelset .vis-label .vis-inner {
+  padding: 4px 8px;
+}
+
+/* Row backgrounds in the centre panel — match the label column. */
+.meta-timeline-container .vis-foreground .vis-group {
+  border-bottom: 1px solid var(--table-border);
+}
+
+/* Time-axis labels and grid lines. Minor labels (days) get centered between
+ * their grid lines — vis-timeline sets `left` at the slot start but no width,
+ * so we mirror that by shifting the label half a slot to the right via the
+ * ::before trick isn't possible; instead we rely on vis-timeline's inline
+ * width (set to slot width) and text-align. */
+.meta-timeline-container .vis-time-axis .vis-text {
+  color: var(--text-secondary);
+}
+.meta-timeline-container .vis-time-axis .vis-text.vis-minor {
+  text-align: center;
+}
+.meta-timeline-container .vis-time-axis .vis-grid.vis-minor {
+  border-color: var(--table-border);
+}
+.meta-timeline-container .vis-time-axis .vis-grid.vis-major {
+  border-color: var(--table-border);
+}
+
+/* Weekend labels — bold to stand out in the day-scale time axis. */
+.meta-timeline-container .vis-time-axis .vis-text.vis-saturday,
+.meta-timeline-container .vis-time-axis .vis-text.vis-sunday {
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+/* Span bars — centred text, sharper corners to match the palette. */
+.vis-item.meta-span {
+  border-color: transparent;
+  border-left-width: 2px;
+  border-right-width: 2px;
+  border-radius: 2px;
+  background-clip: padding-box;
+  color: var(--color-meta-span-fg);
+  font-family: "system-ui", -apple-system, sans-serif;
+  font-size: 12px;
+}
+.vis-item.meta-span .vis-item-content {
+  width: 100%;
+  padding: 2px 6px;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Cycling palette — index chosen by getSpanColorIndex(value) in the mapper. */
+.vis-item.meta-span-color-0 { background-color: var(--color-meta-span-0); }
+.vis-item.meta-span-color-1 { background-color: var(--color-meta-span-1); }
+.vis-item.meta-span-color-2 { background-color: var(--color-meta-span-2); }
+.vis-item.meta-span-color-3 { background-color: var(--color-meta-span-3); }
+.vis-item.meta-span-color-4 { background-color: var(--color-meta-span-4); }
+.vis-item.meta-span-color-5 { background-color: var(--color-meta-span-5); }
+.vis-item.meta-span-color-6 { background-color: var(--color-meta-span-6); }
+.vis-item.meta-span-color-7 { background-color: var(--color-meta-span-7); }
+
+.vis-item.meta-span-clipped-left {
+  border-left-style: dashed;
+  mask-image: linear-gradient(to right, transparent 0, black 12px);
+}
+
+.vis-item.meta-span-clipped-right {
+  border-right-style: dashed;
+  mask-image: linear-gradient(to left, transparent 0, black 12px);
+}
+
+.vis-item.meta-span-open {
+  border-right-style: none;
+  mask-image: linear-gradient(to left, transparent 0, black 20px);
+}
+
+.vis-item.meta-span-closed {
+  border-right-width: 3px;
+  border-right-style: solid;
+}
+
+/* Focus-eval marker override. */
+.vis-custom-time.focus-eval {
+  background-color: var(--color-focus-eval-marker);
+  width: 2px;
+}
+
+.vis-custom-time.focus-eval > .vis-custom-time-marker {
+  background-color: var(--color-focus-eval-marker);
+  color: var(--color-focus-eval-marker-fg);
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-family: "system-ui", -apple-system, sans-serif;
+  font-size: 11px;
+}

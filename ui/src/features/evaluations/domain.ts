@@ -19,6 +19,7 @@ import type { DateRange } from '@/lib/dateRange'
 export type Outcome = 'pass' | 'warning' | 'fail' | 'error' | 'invalidated'
 
 export interface AssetSnapshot {
+  assetId: string | null
   name: string
   displayName: string | null
   tags: Record<string, string>
