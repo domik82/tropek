@@ -109,7 +109,11 @@ Each chunk is a reviewable unit sized to land as one PR. Each chunk leaves the c
   - `insert_closures(snapshot_id: UUID, entries: Sequence[MetaClosureInput]) -> None` — same pattern.
   - `load_snapshots_for_derivation(asset_id: UUID, until: datetime) -> list[SnapshotWithEntries]` — loads all snapshots with `observed_at <= until`, joined with their values and closures rows, grouped in Python into the `SnapshotWithEntries` dataclass that will be defined in Chunk 2. For now, forward-reference the type in `TYPE_CHECKING` or use a typed-dict placeholder that Chunk 2 replaces. Order: `observed_at ASC, id ASC`.
 
-  **Repository decision note:** because `load_snapshots_for_derivation` returns a type defined in the timeline sub-package (Chunk 2), prefer building the return value as `list[dict]` with fields `source`, `observed_at`, `values` (list of `(path_list, value_str)` tuples), `closures` (list of `path_list`). Chunk 2's `SnapshotWithEntries` is a thin `NamedTuple` / `@dataclass(frozen=True)` over exactly those fields — so the repository can stay unchanged after Chunk 2 lands, as long as the field names match. Declare the shape here via a `TypedDict` named `SnapshotRow` to keep typing clean.
+  **Repository ↔ types.py handoff (cross-chunk dependency):** `load_snapshots_for_derivation` returns data that the derivation stack consumes as `SnapshotWithEntries` (defined in Chunk 2's `timeline/types.py`). Since Chunk 1 lands before Chunk 2:
+
+  - **In Chunk 1:** the repository returns `list[SnapshotRow]` where `SnapshotRow` is a `TypedDict` defined at the top of `repositories.py` with fields `source: str`, `observed_at: datetime`, `values: list[tuple[list[str], str]]`, `closures: list[list[str]]`. This is the repository's own contract — it knows nothing about the timeline sub-package.
+  - **In Chunk 2 (Task 2.1):** `SnapshotWithEntries` is a `@dataclass(frozen=True)` with the exact same field names and types.
+  - **Conversion:** when Chunk 2 lands, update `load_snapshots_for_derivation` to return `list[SnapshotWithEntries]` directly by constructing the dataclass in the grouping loop. Alternatively, add a one-line adapter in `service.py` that unpacks `SnapshotRow` dicts into `SnapshotWithEntries` instances. Either approach is fine — the important thing is that the conversion happens **once**, in **one place**, before the data enters the pure derivation stack. Do this in Task 2.8.3 (the `__init__.py` wiring step) as a small update to `repositories.py`.
 
 - [ ] **Step 1.3.4: Run lint + typecheck.**
   Run: `./scripts/api-test.sh --tail 5` first won't help; instead run `uv run ruff check api/tropek/modules/asset_meta/ && uv run --directory api mypy tropek/modules/asset_meta/`.
@@ -119,7 +123,11 @@ Each chunk is a reviewable unit sized to land as one PR. Each chunk leaves the c
 
 - [ ] **Step 1.4.1: Read** `api/tests/quality_gate/db/conftest.py` and one existing repository integration test (e.g. `test_indicator_repository.py`) to copy the fixture pattern (session fixture, rollback between tests).
 
-- [ ] **Step 1.4.2: Create `api/tests/asset_meta/db/conftest.py`** that re-uses the session fixture from `api/tests/db/conftest.py`. If the existing conftest exposes a session fixture at the right scope, simply `from api.tests.db.conftest import *  # noqa: F401,F403` — or follow whatever pattern the quality_gate tests use.
+- [ ] **Step 1.4.2: Create `api/tests/asset_meta/db/conftest.py`** that re-uses the session fixture from `api/tests/db/conftest.py`. Use the same explicit-import pattern as `api/tests/quality_gate/db/conftest.py:23`:
+  ```python
+  from tests.db.conftest import db_engine, db_session, db_url, redis_client  # noqa: F401
+  ```
+  The `noqa: F401` is acceptable (the imports are consumed by pytest's fixture discovery, not by code in this file). Do NOT use wildcard imports (`import *`) — that would require `F403` suppression, which violates the project's "no silencing lint issues" rule.
 
 - [ ] **Step 1.4.3: Create `api/tests/asset_meta/db/test_repository.py`** marked `@pytest.mark.integration` at the module level. Test cases (each creates an Asset fixture first, then exercises the repo):
   1. `test_insert_snapshot_returns_row_with_generated_id` — call `insert_snapshot`, assert `id`, `asset_id`, `source`, `observed_at` populated.
@@ -671,6 +679,8 @@ The meta timeline endpoint is `GET /assets/{asset_id}/meta/timeline`, but the ev
 
 ### Task 4.5: Regenerate OpenAPI schema + UI types
 
+- [ ] **Step 4.5.0: Verify codegen recipes exist.** Run `just --list` and confirm that `export-schema`, `codegen`, and `check-schema-fresh` are listed. If any are missing, fall back to the underlying commands per CLAUDE.md: `uv run python scripts/export-schema.py` for export, `cd ui && pnpm exec openapi-typescript ../api/openapi.json -o src/generated/api.ts` for codegen (check `ui/package.json` scripts for the exact invocation).
+
 - [ ] **Step 4.5.1: Export the schema.**
   Run: `just export-schema`
   Expected: `api/openapi.json` updated; diff shows three new paths under `/assets/{asset_id}/meta/*` and four new schema components (`MetaSnapshotCreate`, `MetaSnapshotCreated`, `TimelineResponse`, `TimelineSummaryResponse`).
@@ -1000,7 +1010,9 @@ Task 4.5a added `asset_id` to the backend `AssetSnapshot` schema and regenerated
 
   The `MetaTimelineSection` goes between these two. If the existing layout renders `EvaluationNotesSection` between the heatmap and the first table, the section still goes between the heatmap and `EvaluationIndicatorSection` — confirm during implementation, and if unclear, flag in PR review which of the two placements matches the spec diagram at §9.6 lines 1850–1862.
 
-- [ ] **Step 7.3.2: Import and render** `<MetaTimelineSection assetId={ev.assetSnapshot.assetId} focusEval={{id: ev.id, periodEnd: new Date(ev.period.to)}} />` at the chosen point. The `assetId` field was added to `AssetSnapshot` in Task 5.2a and is available on the evaluation domain type.
+- [ ] **Step 7.3.2: Import and render** `<MetaTimelineSection assetId={ev.assetSnapshot.assetId} focusEval={{id: ev.id, periodEnd: new Date(ev.period.to)}} />` at the chosen point.
+
+  **Hard dependency:** `ev.assetSnapshot.assetId` exists only after Task 4.5a (backend) + Task 4.5 (codegen) + Task 5.2a (UI mapper) are merged. If Chunk 7 is attempted before those tasks land, `assetId` will not exist on the domain type and TypeScript will fail. Do not parallelize Chunk 7 with Chunks 4–5.
 
 - [ ] **Step 7.3.3: Update `EvaluationDetailPage.test.tsx` or equivalent** — add a test that confirms the section renders. If the page test uses MSW, add mock handlers for `/meta/timeline/summary` returning `{item_count: 0}` so the test doesn't explode on a missing endpoint.
 
@@ -1029,7 +1041,9 @@ Task 4.5a added `asset_id` to the backend `AssetSnapshot` schema and regenerated
 - [ ] `isExpanded=false` → timeline container not in DOM.
 - [ ] Empty response → empty state copy.
 - [ ] Section renders between the heatmap and the first table.
-- [ ] All UI tests pass; lint + typecheck clean.
+- [ ] All UI tests pass: `./scripts/ui-test.sh --tail 10`.
+- [ ] Lint clean: `./scripts/ui-lint.sh --tail 10`.
+- [ ] Typecheck clean: `cd ui && pnpm exec tsc --noEmit -p tsconfig.app.json`.
 - [ ] Manual visual check confirmed layout is correct (structure, not colour — colour lands in Chunk 8).
 
 ---
@@ -1042,6 +1056,8 @@ Task 4.5a added `asset_id` to the backend `AssetSnapshot` schema and regenerated
 - Modify: `ui/src/index.css` — add CSS variables for meta-span and focus-eval marker to the `dark`, `current`, and `light` theme blocks.
 
 ### Task 8.1: Theme tokens — cycling span palette + marker
+
+**Spec pushback (deliberate deviation):** The spec (§7.3, §9.4) treats `className` as entirely server-emitted — `compute_span_classes` returns the full class list and the UI is "identity-with-dates". This plan moves colour class assignment to the UI mapper instead, because colour is a view concern: it depends on the *value string* (which the server provides) but the *palette index* is a presentation decision that varies per theme. The server still emits structural classes (`meta-span`, `meta-span-clipped-left`, etc.); the UI mapper appends a colour class (`meta-span-color-N`) during DTO→domain mapping. This keeps the server pure-domain and lets theme-switch re-colour spans without a re-fetch.
 
 - [ ] **Step 8.1.1: Read `ui/src/index.css` theme blocks.** The file uses `[data-theme="dark"]`, `[data-theme="current"]`, `[data-theme="light"]` blocks. Locate each one.
 
@@ -1151,13 +1167,19 @@ Walk through each of the 12 numbered acceptance criteria in §14 and tick them o
 
 ### Task 9.3: Final confirmation
 
-- [ ] **Step 9.3.1: Full test sweep.**
-  Run: `./scripts/api-test.sh --tail 5 && ./scripts/api-test.sh --tail 5 -m integration -v && ./scripts/ui-test.sh --tail 5`
-  (These are three separate commands — run them sequentially; do NOT chain with `&&` in one Bash call per CLAUDE.md shell discipline.)
+- [ ] **Step 9.3.1: Full test sweep.** Run each command as a separate Bash call per CLAUDE.md shell discipline:
+  1. `./scripts/api-test.sh --tail 5`
+  2. `./scripts/api-test.sh --tail 5 -m integration -v`
+  3. `./scripts/ui-test.sh --tail 5`
+
   Expected: all pass.
 
-- [ ] **Step 9.3.2: Lint + typecheck sweep.**
-  Run: `uv run ruff check api/ && uv run --directory api mypy tropek/modules/asset_meta/` then separately `./scripts/ui-lint.sh --tail 5` and `cd ui && pnpm exec tsc --noEmit -p tsconfig.app.json`.
+- [ ] **Step 9.3.2: Lint + typecheck sweep.** Run each command as a separate Bash call:
+  1. `uv run ruff check api/`
+  2. `uv run --directory api mypy tropek/modules/asset_meta/`
+  3. `./scripts/ui-lint.sh --tail 5`
+  4. `cd ui && pnpm exec tsc --noEmit -p tsconfig.app.json`
+
   Expected: clean.
 
 - [ ] **Step 9.3.3: Contract freshness.**
