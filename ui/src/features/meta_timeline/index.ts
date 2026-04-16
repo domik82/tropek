@@ -5,3 +5,4 @@ export type {
   MetaTimelineSummary,
 } from './domain'
 export { useMetaTimeline, useMetaTimelineSummary } from './hooks'
+export { MetaTimelineSection } from './components/MetaTimelineSection'
