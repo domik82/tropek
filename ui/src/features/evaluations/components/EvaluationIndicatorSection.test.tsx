@@ -56,6 +56,7 @@ function makeEval(indicators: Indicator[]): EvaluationDetail {
     overrideAuthor: null,
     invalidationNote: null,
     assetSnapshot: {
+      assetId: null,
       name: 'api-gateway',
       displayName: null,
       tags: {},
