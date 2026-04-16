@@ -649,6 +649,26 @@ Functions:
 
 - [ ] **Step 4.4.2: Run** `./scripts/api-test.sh --tail 10 -m integration tests/asset_meta/db/test_summary_endpoint.py -v`. Expected: all 5 pass.
 
+### Task 4.5a: Add `asset_id` to `AssetSnapshot` (prerequisite for UI)
+
+The meta timeline endpoint is `GET /assets/{asset_id}/meta/timeline`, but the evaluation detail response only exposes `asset_snapshot.name` — no UUID. The UI needs the UUID to call the endpoint.
+
+- [ ] **Step 4.5a.1: Add `asset_id` to the backend `AssetSnapshot` Pydantic schema.**
+  File: `api/tropek/modules/quality_gate/schemas/evaluations.py:14`. Add `asset_id: UUID` as the first field. This is a response-only schema (`from_attributes=True`), so the field is populated from whatever dict is passed in.
+
+- [ ] **Step 4.5a.2: Populate `asset_id` in the trigger service.**
+  File: `api/tropek/modules/quality_gate/workflows/trigger/trigger_service.py:79-84`. The `asset_snapshot` dict already has `name`, `display_name`, `tags`, `variables`. Add `'asset_id': str(ctx.asset_id)` to the dict. Note: `ctx.asset_id` is already available at line 86 of the same function — it's passed as a sibling field today. Moving it inside the snapshot means the evaluation record carries the UUID alongside the snapshot, which is the right home.
+
+- [ ] **Step 4.5a.3: Verify existing tests still pass** — the new field is additive.
+  Run: `./scripts/api-test.sh --tail 5`
+  Expected: pass (no existing test asserts the exact shape of `asset_snapshot`; adding a field is backward-compatible).
+
+- [ ] **Step 4.5a.4: Commit**
+  ```bash
+  git add api/tropek/modules/quality_gate/schemas/evaluations.py api/tropek/modules/quality_gate/workflows/trigger/trigger_service.py
+  git commit -m "feat(evaluations): expose asset_id in AssetSnapshot schema"
+  ```
+
 ### Task 4.5: Regenerate OpenAPI schema + UI types
 
 - [ ] **Step 4.5.1: Export the schema.**
@@ -688,6 +708,7 @@ Functions:
 - [ ] `GET /assets/{id}/meta/timeline?from=&to=` returns §6.3 shape.
 - [ ] `GET /assets/{id}/meta/timeline/summary?from=&to=` returns `{itemCount: N}`.
 - [ ] All §10.2 integration cases (1–10) pass.
+- [ ] `AssetSnapshot` schema now includes `asset_id` (Task 4.5a); populated by trigger service.
 - [ ] `api/openapi.json` and `ui/src/generated/api.ts` regenerated; contract freshness check passes.
 - [ ] §14 acceptance criteria 1–4 satisfied.
 
@@ -750,6 +771,32 @@ Functions:
   ```bash
   git add ui/src/features/meta_timeline/domain.ts ui/src/features/meta_timeline/mappers.ts ui/src/features/meta_timeline/mappers.test.ts
   git commit -m "feat(ui/meta-timeline): add domain types and DTO mappers"
+  ```
+
+### Task 5.2a: Flow `assetId` through the evaluations mapper
+
+Task 4.5a added `asset_id` to the backend `AssetSnapshot` schema and regenerated the DTO types. Now the UI evaluation mapper and domain type need to pick it up so `MetaTimelineSection` can read `ev.assetSnapshot.assetId`.
+
+- [ ] **Step 5.2a.1: Add `assetId: string` to `AssetSnapshot`** in `ui/src/features/evaluations/domain.ts:21`.
+
+- [ ] **Step 5.2a.2: Map the new field in `dtoToAssetSnapshot`** in `ui/src/features/evaluations/mappers.ts:79`. Add: `assetId: dto.asset_id`.
+
+- [ ] **Step 5.2a.3: Update the exhaustiveness check** in `mappers.ts:265-278`. Add `'asset_id'` to the `MappedAssetSnapshotKeys` union.
+
+- [ ] **Step 5.2a.4: Update the mapper test** in `ui/src/features/evaluations/mappers.test.ts` — add `asset_id` to the DTO fixture input and assert `assetId` appears on the domain output.
+
+- [ ] **Step 5.2a.5: Run mapper tests.**
+  Run: `./scripts/ui-test.sh --tail 10 src/features/evaluations/mappers.test.ts`
+  Expected: pass.
+
+- [ ] **Step 5.2a.6: Run typecheck** to confirm no type errors from the new field.
+  Run: `cd ui && pnpm exec tsc --noEmit -p tsconfig.app.json`
+  Expected: clean.
+
+- [ ] **Step 5.2a.7: Commit**
+  ```bash
+  git add ui/src/features/evaluations/domain.ts ui/src/features/evaluations/mappers.ts ui/src/features/evaluations/mappers.test.ts
+  git commit -m "feat(ui/evaluations): flow assetId through AssetSnapshot domain type"
   ```
 
 ### Task 5.3: api.ts + hooks.ts + index.ts + ui-types.ts
@@ -953,7 +1000,7 @@ Functions:
 
   The `MetaTimelineSection` goes between these two. If the existing layout renders `EvaluationNotesSection` between the heatmap and the first table, the section still goes between the heatmap and `EvaluationIndicatorSection` — confirm during implementation, and if unclear, flag in PR review which of the two placements matches the spec diagram at §9.6 lines 1850–1862.
 
-- [ ] **Step 7.3.2: Import and render** `<MetaTimelineSection assetId={ev.asset.id} focusEval={{id: ev.id, periodEnd: new Date(ev.period.to)}} />` at the chosen point. Use the evaluation's existing asset identifier — if `ev.asset.id` doesn't exist on the domain type, trace back and use whatever id the existing code uses to hit `/assets/{id}` endpoints. If no asset id is reachable from the evaluation domain type, flag this in PR discussion and temporarily thread one through — this is a plan open question, not a blocker.
+- [ ] **Step 7.3.2: Import and render** `<MetaTimelineSection assetId={ev.assetSnapshot.assetId} focusEval={{id: ev.id, periodEnd: new Date(ev.period.to)}} />` at the chosen point. The `assetId` field was added to `AssetSnapshot` in Task 5.2a and is available on the evaluation domain type.
 
 - [ ] **Step 7.3.3: Update `EvaluationDetailPage.test.tsx` or equivalent** — add a test that confirms the section renders. If the page test uses MSW, add mock handlers for `/meta/timeline/summary` returning `{item_count: 0}` so the test doesn't explode on a missing endpoint.
 
@@ -994,44 +1041,72 @@ Functions:
 **Files:**
 - Modify: `ui/src/index.css` — add CSS variables for meta-span and focus-eval marker to the `dark`, `current`, and `light` theme blocks.
 
-### Task 8.1: Theme tokens
+### Task 8.1: Theme tokens — cycling span palette + marker
 
 - [ ] **Step 8.1.1: Read `ui/src/index.css` theme blocks.** The file uses `[data-theme="dark"]`, `[data-theme="current"]`, `[data-theme="light"]` blocks. Locate each one.
 
-- [ ] **Step 8.1.2: Define the semantic variables.** Per spec §9.4 and §11 open question 1 ("Exact color choices … are a design decision during implementation"):
-  - `--color-meta-span-bg` — base span background.
-  - `--color-meta-span-border` — default border.
-  - `--color-meta-span-fg` — text colour inside a span.
+- [ ] **Step 8.1.2: Define the cycling span palette.** Instead of a single `--color-meta-span-bg`, define a rotating palette of 6–8 distinguishable span colours so consecutive different values pop visually. Each theme block gets:
+  - `--color-meta-span-0` through `--color-meta-span-7` — 8 distinct background colours for span bars.
+  - `--color-meta-span-border` — shared border colour (one per theme).
+  - `--color-meta-span-fg` — text colour inside spans (one per theme, high-contrast against all palette entries).
   - `--color-focus-eval-marker` — marker line + tag background.
   - `--color-focus-eval-marker-fg` — marker tag text.
 
-  Pick concrete colours for each theme. Suggested starting points (adjust in PR review):
-  - `dark`: neutral slate grays, marker in TROPEK green accent (`var(--accent)` or the existing green scale).
-  - `current`: Dynatrace-aligned neutrals, marker in the `--primary` token.
-  - `light`: light-mode neutrals, marker in dark blue / primary.
+  Suggested palette strategy (adjust in PR review):
+  - `dark`: muted jewel tones against slate backgrounds. Draw from Radix scales (jade, cyan, amber, plum, orange, sky, grass, tomato) at low-alpha or the `9`/`10` steps.
+  - `current`: Dynatrace-aligned muted tones, similar hue spread.
+  - `light`: saturated pastels, readable on white.
 
-  Critical constraint per CLAUDE.md colour conventions: the marker colour MUST NOT overlap with the status palette (`--status-pass/warning/fail`) — the marker is viewport metadata, not an outcome.
+  Critical constraint per CLAUDE.md colour conventions: span palette MUST NOT overlap with the status palette (`--status-pass/warning/fail`) — those are reserved for evaluation outcomes only.
+  Marker colour MUST NOT overlap with the span palette — it must read as "viewport metadata", not "another span".
 
-- [ ] **Step 8.1.3: Start the dev server and cycle themes.** Confirm:
-  - Spans are visible in all three themes (readable text contrast).
-  - Marker is clearly distinguishable from spans.
-  - No flicker on theme switch (the `data-theme` attribute re-applies variables live; no re-mount should happen — spec §10.4 bullet "Theme switch (dark ↔ current) re-styles spans and marker without re-mount glitches").
+- [ ] **Step 8.1.3: Create `ui/src/features/meta_timeline/components/spanColor.ts`** — a small pure function `getSpanColorIndex(value: string): number` that hashes the span's `content` (value string) to an index `0..N-1` into the palette. A simple string hash (djb2 or similar) modulo palette size is sufficient. Same value = same colour everywhere on the timeline.
 
-- [ ] **Step 8.1.4: Run UI tests to confirm nothing regressed.**
+  The MetaTimeline wrapper (or the mapper) uses this to append a data attribute or CSS variable (`style={{ '--span-color': 'var(--color-meta-span-${index})' }}`) to each item. Implementation options:
+  - **Option A (recommended):** The mapper in `mappers.ts` computes the index at mapping time and injects it into `className` (e.g. `meta-span meta-span-color-3`). Then CSS rules `.meta-span-color-0 { background: var(--color-meta-span-0); }` through `.meta-span-color-7` handle theming.
+  - **Option B:** vis-timeline's `template` callback applies the style inline per item.
+
+  Pick Option A — it's pure CSS, no runtime style injection, and theme-switch works automatically.
+
+- [ ] **Step 8.1.4: Update the server-side `compute_span_classes`** to NOT emit the colour class — colour is a UI concern based on value, not a server concern. The colour index is computed client-side by the mapper, not by the server.
+
+  Wait — this means the UI mapper needs to append the colour class to each item's `className`. Update `dtoToMetaTimelineResponse` in `mappers.ts` to call `getSpanColorIndex(item.content)` and append `meta-span-color-${index}` to each item's `className` during mapping.
+
+- [ ] **Step 8.1.5: Write `spanColor.test.ts`** with tests:
+  - Same value always returns the same index.
+  - Different values return at least 2 distinct indices (not all collide).
+  - Return value is in range `[0, PALETTE_SIZE)`.
+
+- [ ] **Step 8.1.6: Add the 8 `.meta-span-color-N` CSS rules** to `meta-timeline.css`:
+  ```css
+  .vis-item.meta-span-color-0 { background-color: var(--color-meta-span-0); }
+  .vis-item.meta-span-color-1 { background-color: var(--color-meta-span-1); }
+  /* ... through 7 */
+  ```
+
+- [ ] **Step 8.1.7: Start the dev server and cycle themes.** Confirm:
+  - Spans with different values have visually distinct colours.
+  - Spans with the same value have the same colour.
+  - Marker is clearly distinguishable from all span colours.
+  - No flicker on theme switch.
+
+- [ ] **Step 8.1.8: Run all UI tests to confirm nothing regressed.**
   Run: `./scripts/ui-test.sh --tail 5`
   Expected: all pass.
 
-- [ ] **Step 8.1.5: Commit**
+- [ ] **Step 8.1.9: Commit**
   ```bash
-  git add ui/src/index.css
-  git commit -m "feat(ui/theme): add meta timeline CSS tokens for dark/current/light"
+  git add ui/src/index.css ui/src/features/meta_timeline/components/spanColor.ts ui/src/features/meta_timeline/components/spanColor.test.ts ui/src/features/meta_timeline/components/meta-timeline.css ui/src/features/meta_timeline/mappers.ts
+  git commit -m "feat(ui/meta-timeline): add value-hashed cycling span colours across themes"
   ```
 
 ### Chunk 8 review checkpoint
 
-- [ ] All three themes have defined `--color-meta-span-*` and `--color-focus-eval-marker*` tokens.
-- [ ] Marker colour does not clash with status palette.
+- [ ] All three themes define `--color-meta-span-0` through `--color-meta-span-7` plus `--color-meta-span-border`, `--color-meta-span-fg`, and `--color-focus-eval-marker*` tokens.
+- [ ] Same value = same colour; consecutive different values = visually distinct colours.
+- [ ] Span palette does not clash with status palette; marker does not clash with span palette.
 - [ ] Theme switch does not remount the timeline (verified manually).
+- [ ] `spanColor.test.ts` passes.
 
 ---
 
@@ -1091,19 +1166,19 @@ Walk through each of the 12 numbered acceptance criteria in §14 and tick them o
 
 ---
 
-## Open questions flagged during planning
+## Resolved questions
 
-These are issues the implementer may encounter. None are blockers; document the resolution in the PR.
+These were open during initial planning; all are now resolved.
 
-1. **Test directory convention.** Spec §10.1 says tests live at `api/tests/engine/asset_meta/`. The existing codebase pattern is `api/tests/<module>/` (e.g. `api/tests/quality_gate/evaluation_engine/`). This plan uses `api/tests/asset_meta/timeline/` to match the existing convention. If the implementer prefers the literal spec path, both work — the important thing is that every function from §7 has a test.
+1. **Test directory convention.** Spec §10.1 says tests live at `api/tests/engine/asset_meta/`. The existing codebase pattern is `api/tests/<module>/` (e.g. `api/tests/quality_gate/evaluation_engine/`). This plan uses `api/tests/asset_meta/timeline/` to match the existing convention.
 
-2. **`EvaluationDetail` domain type and the asset id.** The `MetaTimelineSection` needs an `assetId`. The current evaluation domain type may not expose a bare asset UUID (it exposes an `assetSnapshot` with name/displayName). If so, Chunk 7 needs to either (a) thread the asset id from the page-level query into the section as a prop, or (b) add `assetId` to the `EvaluationDetail` domain type via the mapper. Pick (a) — it's smaller and reversible. Flag in PR.
+2. **`EvaluationDetail` domain type and the asset id.** The `MetaTimelineSection` needs an `assetId` (UUID) to call `GET /assets/{id}/meta/timeline`. Currently `AssetSnapshot` (both the backend Pydantic schema at `api/tropek/modules/quality_gate/schemas/evaluations.py:14` and the UI domain type at `ui/src/features/evaluations/domain.ts:21`) only carries `name` / `display_name` / `tags` — no UUID. **Resolution:** add `asset_id: UUID` to the backend `AssetSnapshot` schema, populate it in the trigger service (which already has `ctx.asset_id` at `trigger_service.py:86`), then flow it through the evaluation mapper into the UI domain type. Chunk 4 handles the backend + codegen; Chunk 5 handles the UI mapper update. See **Task 4.5a** for the exact steps.
 
-3. **Placement relative to `EvaluationNotesSection`.** The current layout at `EvaluationDetailPage.tsx:201-203` renders `EvaluationNotesSection` then `EvaluationIndicatorSection`. The spec §9.6 shows the meta section between "heatmap" and "first table" — the notes section is neither, so its relative position is ambiguous. Recommended: place the meta section directly before `EvaluationIndicatorSection` (which contains `SLIBreakdownTable`, the first actual table). Confirm in PR.
+3. **Placement relative to `EvaluationNotesSection`.** **Resolved:** the meta timeline strip goes directly before `EvaluationIndicatorSection` (which contains `SLIBreakdownTable`). Notes stay where they are — above the strip. Notes describe _what happened_; the timeline shows _when/what changed on the asset_. As meta timeline matures, users will rely less on notes for marking asset changes.
 
-4. **Colour values for theme tokens.** §11 open question 1 — concrete values are a design call during implementation. Start with the suggestions in Chunk 8 task 8.1.2.
+4. **Span colours — value-hashed cycling.** The spec describes a single `--color-meta-span-bg` token. **Resolved:** instead of one flat colour, implement value-hashed cycling colours. A small JS helper hashes the span's `content` (value string) to an index into a rotating palette (6–8 colours). Same value = same colour everywhere on the timeline, so consecutive different versions pop visually. The palette uses CSS variables (`--color-meta-span-0` through `--color-meta-span-N`) defined per theme in `index.css`. Phase 2 can refine to strict zebra alternation. See updated **Task 6.2** and **Chunk 8** for details.
 
-5. **`vis-timeline` typing.** If pnpm installs a version where `options.tooltip.template` types do not match the signature used in `renderSpanTooltip.tsx`, cast at the call site with `as unknown as (item: Item) => string` and leave a comment — this is an upstream type narrowness issue, not a code smell.
+5. **`vis-timeline` typing.** vis-timeline's TypeScript declarations may not include our extra `source` field on item objects. The fix is a one-line type cast at the call site — vis-timeline passes through all fields at runtime regardless of its type declarations. Compile-time nuisance, not a runtime bug.
 
 ---
 
