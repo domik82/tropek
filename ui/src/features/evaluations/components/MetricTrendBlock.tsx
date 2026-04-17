@@ -1,8 +1,9 @@
 // src/features/evaluations/components/MetricTrendBlock.tsx
 import ReactECharts from 'echarts-for-react'
-import { useCallback, useState, useRef, useEffect } from 'react'
-import { Sheet, Tags } from 'lucide-react'
-import { useTrend } from '../hooks'
+import { useCallback, useMemo, useState, useRef, useEffect } from 'react'
+import { MessageSquareWarning, Sheet, Tags } from 'lucide-react'
+import { useTrend, useTrendAnnotations } from '../hooks'
+import { useNoteCategories } from '@/features/note-categories'
 import { STATUS_TEXT } from '@/lib/status'
 import { useChartAreaClick } from '@/lib/useChartAreaClick'
 import { useMetricTrendState } from '../hooks/useMetricTrendState'
@@ -99,6 +100,19 @@ export function MetricTrendBlock({
 }: Props) {
   const sloLabel = sloDisplayName ?? (sloName || null)
   const { data: trend, isLoading } = useTrend(assetName, sloName, indicator.metric)
+  const { data: annotations } = useTrendAnnotations(assetName, sloName)
+  const { data: categories } = useNoteCategories()
+
+  const containerRef = useRef<HTMLDivElement>(null)
+  const [containerWidth, setContainerWidth] = useState(0)
+  useEffect(() => {
+    if (!containerRef.current) return
+    const observer = new ResizeObserver(entries => {
+      setContainerWidth(entries[0].contentRect.width)
+    })
+    observer.observe(containerRef.current)
+    return () => observer.disconnect()
+  }, [])
 
   const handleClickIndex = useCallback(
     (idx: number) => {
@@ -117,7 +131,33 @@ export function MetricTrendBlock({
     yMin, yMax, setYMin, setYMax,
     targets,
     chartOption,
-  } = useMetricTrendState(trend, selectedEvalId ?? '', indicator, onEvalSelect, selectedEvalIds, selectedPeriodStart)
+    notesVisible,
+    toggleNotes,
+  } = useMetricTrendState(
+    trend,
+    selectedEvalId ?? '',
+    indicator,
+    onEvalSelect,
+    selectedEvalIds,
+    selectedPeriodStart,
+    annotations,
+    categories,
+    containerWidth,
+  )
+
+  const onEvents = useMemo(
+    () => ({
+      click: (params: { componentType?: string; data?: { evalId?: string } }) => {
+        if (params.componentType === 'markPoint' && params.data?.evalId && onEvalSelect) {
+          onEvalSelect(params.data.evalId)
+          document
+            .getElementById('notes-section')
+            ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+        }
+      },
+    }),
+    [onEvalSelect],
+  )
 
   return (
     <div id={blockId ?? `trend-${indicator.metric}`} className="bg-card border border-border rounded-xl p-4 scroll-mt-4">
@@ -156,6 +196,18 @@ export function MetricTrendBlock({
               {indicator.displayName || indicator.metric}
             </span>
             <div className="flex items-center gap-1 ml-auto text-xs">
+              <button
+                onClick={toggleNotes}
+                className={`p-1 rounded border transition-colors ${
+                  notesVisible
+                    ? 'border-primary/40 text-primary'
+                    : 'border-border text-muted-foreground/60'
+                }`}
+                title="Toggle notes on chart"
+                aria-label="Toggle notes on chart"
+              >
+                <MessageSquareWarning className="size-3.5" />
+              </button>
               <TargetDropdown targets={targets} />
             </div>
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -173,12 +225,17 @@ export function MetricTrendBlock({
               </label>
             </div>
           </div>
-          <div onClick={onContainerClick} style={{ cursor: onEvalSelect ? 'crosshair' : undefined }}>
+          <div
+            ref={containerRef}
+            onClick={onContainerClick}
+            style={{ cursor: onEvalSelect ? 'crosshair' : undefined }}
+          >
             <ReactECharts
               ref={chartRef}
               option={chartOption}
               style={{ height: 200 }}
               opts={{ renderer: 'svg' }}
+              onEvents={onEvents}
               notMerge
             />
           </div>
