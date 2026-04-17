@@ -2,7 +2,21 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { render, screen, cleanup, fireEvent } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import type { Annotation } from '@/features/evaluations/domain'
+import type { NoteCategory } from '@/features/note-categories'
 import { NoteIndicatorRow } from './NoteIndicatorRow'
+
+function makeCategory(name: string): NoteCategory {
+  return {
+    id: `cat-${name}`,
+    name,
+    label: name,
+    color: 'sky',
+    showOnGraph: true,
+    isSystem: false,
+    createdAt: new Date('2026-01-01T00:00:00Z'),
+    updatedAt: null,
+  }
+}
 
 const mockUseColumnAnnotations = vi.fn()
 vi.mock('@/features/evaluations/hooks', () => ({
@@ -31,7 +45,8 @@ function makeAnnotation(partial: Partial<Annotation>): Annotation {
     evaluationRunId: 'run-1',
     content: '',
     author: null,
-    category: null,
+    categoryId: 'cat-info',
+    category: makeCategory('info'),
     tags: {},
     noteGroupId: null,
     noteGroupName: null,
@@ -50,14 +65,16 @@ describe('NoteIndicatorRow tooltip', () => {
       makeAnnotation({
         id: 'group-1',
         content: 'plugin/auth: pass → pass, score 100.0 → 100.0',
-        category: 're-evaluation',
+        categoryId: 'cat-re-evaluation',
+        category: makeCategory('re-evaluation'),
         noteGroupId: 'group-a',
         noteGroupName: 're-evaluation — 5 SLOs',
       }),
       makeAnnotation({
         id: 'standalone-1',
         content: 'this is really long text that I would like to render in the tooltip',
-        category: 'error',
+        categoryId: 'cat-error',
+        category: makeCategory('error'),
         author: 'd',
         noteGroupId: null,
       }),

@@ -6,6 +6,7 @@
 // network request, and React Query stores the domain type.
 
 import type { components } from '@/generated/api'
+import { dtoToNoteCategory } from '@/features/note-categories/mappers'
 import { makeDateRange } from '@/lib/dateRange'
 import type {
   Annotation,
@@ -244,6 +245,7 @@ type MappedAnnotationKeys =
   | 'content'
   | 'author'
   | 'category'
+  | 'category_id'
   | 'tags'
   | 'note_group_id'
   | 'note_group_name'
@@ -502,7 +504,8 @@ export function dtoToAnnotation(dto: AnnotationDto): Annotation {
     evaluationRunId: dto.evaluation_run_id,
     content: dto.content,
     author: dto.author,
-    category: dto.category,
+    categoryId: dto.category_id,
+    category: dtoToNoteCategory(dto.category),
     tags: dto.tags ?? {},
     noteGroupId: dto.note_group_id ?? null,
     noteGroupName: dto.note_group_name ?? null,
@@ -524,6 +527,7 @@ export function dtoToTrendPoint(dto: TrendPointDto): TrendPoint {
     baseline: dto.baseline,
     evaluationName: dto.evaluation_name ?? null,
     targets: dto.targets ? dtoToTrendTargets(dto.targets) : null,
+    overridden: false,
   }
 }
 

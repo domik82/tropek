@@ -3,6 +3,20 @@ import { render, screen, fireEvent } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { AnnotationSection } from './AnnotationForm'
 import type { Annotation } from '../domain'
+import type { NoteCategory } from '@/features/note-categories'
+
+function makeCategory(name: string): NoteCategory {
+  return {
+    id: `cat-${name}`,
+    name,
+    label: name,
+    color: 'sky',
+    showOnGraph: true,
+    isSystem: false,
+    createdAt: new Date('2026-01-01T00:00:00Z'),
+    updatedAt: null,
+  }
+}
 
 const addAnnotationMutate = vi.fn()
 const hideAnnotationMutate = vi.fn()
@@ -30,7 +44,8 @@ const annotations: Annotation[] = [
     evaluationRunId: 'e1',
     content: 'First note',
     author: 'alice',
-    category: 'investigation',
+    categoryId: 'cat-investigation',
+    category: makeCategory('investigation'),
     tags: {},
     noteGroupId: null,
     noteGroupName: null,
@@ -46,7 +61,8 @@ const annotations: Annotation[] = [
     evaluationRunId: 'e1',
     content: 'Second note',
     author: 'bob',
-    category: null,
+    categoryId: 'cat-info',
+    category: makeCategory('info'),
     tags: {},
     noteGroupId: null,
     noteGroupName: null,
