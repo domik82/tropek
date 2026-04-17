@@ -112,12 +112,16 @@ export async function triggerEvaluation(
 
 export async function addAnnotation(
   evalId: string,
-  payload: { content: string; category?: string; author?: string },
+  payload: { content: string; categoryId: string; author?: string },
 ): Promise<Annotation> {
   const res = await fetch(`${BASE}/evaluations/${evalId}/annotations`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
+    body: JSON.stringify({
+      content: payload.content,
+      category_id: payload.categoryId,
+      author: payload.author,
+    }),
   })
   if (!res.ok) throw new Error(`addAnnotation: ${res.status}`)
   const body: AnnotationDto = await res.json()
@@ -126,12 +130,16 @@ export async function addAnnotation(
 
 export async function addRunAnnotation(
   runId: string,
-  payload: { content: string; category?: string; author?: string },
+  payload: { content: string; categoryId: string; author?: string },
 ): Promise<Annotation> {
   const res = await fetch(`${BASE}/evaluations/run/${runId}/annotations`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
+    body: JSON.stringify({
+      content: payload.content,
+      category_id: payload.categoryId,
+      author: payload.author,
+    }),
   })
   if (!res.ok) throw new Error(`addRunAnnotation: ${res.status}`)
   const body: AnnotationDto = await res.json()
