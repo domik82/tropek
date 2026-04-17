@@ -17,6 +17,9 @@ from tropek.modules.assets.repository import (
 from tropek.modules.assignments.repository import AssignmentRepository
 from tropek.modules.datasource.repository import DataSourceRepository
 from tropek.modules.quality_gate.repositories.annotation import AnnotationRepository
+from tropek.modules.quality_gate.repositories.annotation_category import (
+    AnnotationCategoryRepository,
+)
 from tropek.modules.quality_gate.repositories.baseline import BaselineRepository
 from tropek.modules.quality_gate.repositories.evaluation import EvaluationRepository
 from tropek.modules.quality_gate.repositories.evaluation_run import EvaluationRunRepository
@@ -56,6 +59,7 @@ class QualityGateRepos:
     eval_repo: EvaluationRepository
     eval_run_repo: EvaluationRunRepository
     annotation_repo: AnnotationRepository
+    category_repo: AnnotationCategoryRepository
     sli_repo: SLIValueRepository
     trend_repo: TrendRepository
     baseline_repo: BaselineRepository
@@ -81,6 +85,7 @@ async def get_qg_repos(
         eval_repo=EvaluationRepository(session, cache=cache, heatmap_cache=heatmap_cache),
         eval_run_repo=EvaluationRunRepository(session),
         annotation_repo=AnnotationRepository(session, cache=cache),
+        category_repo=AnnotationCategoryRepository(session),
         sli_repo=SLIValueRepository(session),
         trend_repo=TrendRepository(session),
         baseline_repo=BaselineRepository(session, cache=cache),
