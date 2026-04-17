@@ -168,6 +168,23 @@
   --color-meta-span-fg:           var(--color-slate-200);
   --color-focus-eval-marker:      #F59E0B;
   --color-focus-eval-marker-fg:   #000000;
+  /* ── Note-category palette ───────────────── */
+  --color-category-sky-bg:        #0D2847;
+  --color-category-sky-fg:        #58A6FF;
+  --color-category-green-bg:      #0f3320;
+  --color-category-green-fg:      #7dc540;
+  --color-category-amber-bg:      #3d2a05;
+  --color-category-amber-fg:      #F59E0B;
+  --color-category-red-bg:        #3D1418;
+  --color-category-red-fg:        #F85149;
+  --color-category-purple-bg:     #2a1840;
+  --color-category-purple-fg:     #A371F7;
+  --color-category-pink-bg:       #3a1630;
+  --color-category-pink-fg:       #EC4899;
+  --color-category-slate-bg:      var(--color-slate-800);
+  --color-category-slate-fg:      var(--color-slate-200);
+  --color-category-gray-bg:       var(--color-gray-800);
+  --color-category-gray-fg:       var(--color-gray-200);
 }
 
 /* ── Dark theme — built on Radix colour scales ───────────────── */
@@ -307,6 +324,23 @@
   --color-meta-span-fg:           var(--slate-12);
   --color-focus-eval-marker:      var(--amber-9);
   --color-focus-eval-marker-fg:   var(--slate-1);
+  /* ── Note-category palette ───────────────── */
+  --color-category-sky-bg:        var(--sky-3);
+  --color-category-sky-fg:        var(--sky-11);
+  --color-category-green-bg:      var(--grass-3);
+  --color-category-green-fg:      var(--grass-11);
+  --color-category-amber-bg:      var(--amber-3);
+  --color-category-amber-fg:      var(--amber-11);
+  --color-category-red-bg:        var(--red-3);
+  --color-category-red-fg:        var(--red-11);
+  --color-category-purple-bg:     #2a1840;
+  --color-category-purple-fg:     #A371F7;
+  --color-category-pink-bg:       #3a1630;
+  --color-category-pink-fg:       #EC4899;
+  --color-category-slate-bg:      var(--slate-3);
+  --color-category-slate-fg:      var(--slate-11);
+  --color-category-gray-bg:       var(--gray-3);
+  --color-category-gray-fg:       var(--gray-11);
 }
 
 /* ── Light theme (stub — Radix light reversal, TODO) ─────────── */
