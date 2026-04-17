@@ -1,5 +1,7 @@
 // ui/src/features/evaluations/components/AnnotationForm.tsx
 import { useState, useImperativeHandle, forwardRef, useMemo } from 'react'
+import { Link } from 'react-router-dom'
+import { Settings2 } from 'lucide-react'
 import type { Annotation } from '../domain'
 import { NoteEntry } from './NoteEntry'
 import { NoteGroup } from './NoteGroup'
@@ -117,6 +119,16 @@ export const AnnotationSection = forwardRef<AnnotationSectionHandle, Props>(
                 </button>
               </div>
             )}
+
+            {/* Gear link to category management */}
+            <Link
+              to="/settings/note-categories"
+              title="Manage categories"
+              className="text-muted-foreground/60 hover:text-muted-foreground text-xs"
+              aria-label="Manage categories"
+            >
+              <Settings2 className="size-3.5" />
+            </Link>
 
             {/* + Note button */}
             <button
