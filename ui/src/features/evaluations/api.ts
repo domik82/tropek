@@ -210,6 +210,21 @@ export async function pinBaseline(
   return dtoToEvaluationDetail(body)
 }
 
+export async function fetchTrendAnnotations(
+  asset: string,
+  slo: string,
+): Promise<Map<string, Annotation[]>> {
+  const params = new URLSearchParams({ asset, slo })
+  const res = await fetch(`${BASE}/evaluations/trend-annotations?${params}`)
+  if (!res.ok) throw new Error(`fetchTrendAnnotations: ${res.status}`)
+  const body: Record<string, AnnotationDto[]> = await res.json()
+  const map = new Map<string, Annotation[]>()
+  for (const [evalId, dtos] of Object.entries(body)) {
+    map.set(evalId, dtos.map(dtoToAnnotation))
+  }
+  return map
+}
+
 export async function fetchColumnAnnotations(evaluationId: string): Promise<Annotation[]> {
   const params = new URLSearchParams({ evaluation_id: evaluationId })
   const res = await fetch(`${BASE}/evaluations/column-annotations?${params}`)

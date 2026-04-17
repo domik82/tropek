@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from tropek.cache.redis_cache import RedisCache
-from tropek.db.models import EvaluationAnnotation
+from tropek.db.models import EvaluationAnnotation, SLOEvaluation
 
 
 class AnnotationRepository:
@@ -74,6 +74,59 @@ class AnnotationRepository:
         self._session.add(ann)
         await self._session.flush()
         return ann
+
+    async def list_for_trend(
+        self,
+        *,
+        asset_id: uuid.UUID,
+        slo_name: str,
+    ) -> list[EvaluationAnnotation]:
+        """Return non-hidden annotations across all runs for (asset, slo).
+
+        Combines run-level annotations (attached to EvaluationRun) and SLO-level
+        annotations (attached to SLOEvaluation). Each SLO evaluation matching the
+        (asset_id, slo_name) pair contributes both its own annotations and the
+        annotations on its parent run.
+        """
+        slo_evals = await self._session.execute(
+            select(SLOEvaluation.id, SLOEvaluation.evaluation_id)
+            .where(SLOEvaluation.asset_id == asset_id)
+            .where(SLOEvaluation.slo_name == slo_name)
+        )
+        slo_eval_ids: list[uuid.UUID] = []
+        run_ids: set[uuid.UUID] = set()
+        for slo_eval_id, evaluation_id in slo_evals.all():
+            slo_eval_ids.append(slo_eval_id)
+            run_ids.add(evaluation_id)
+
+        if not slo_eval_ids and not run_ids:
+            return []
+
+        result = await self._session.execute(
+            select(EvaluationAnnotation)
+            .options(selectinload(EvaluationAnnotation.category))
+            .where(EvaluationAnnotation.hidden_at.is_(None))
+            .where(
+                (EvaluationAnnotation.slo_evaluation_id.in_(slo_eval_ids))
+                | (EvaluationAnnotation.evaluation_run_id.in_(run_ids))
+            )
+            .order_by(EvaluationAnnotation.created_at)
+        )
+        return list(result.scalars().all())
+
+    async def map_slo_evals_to_runs(
+        self,
+        slo_evaluation_ids: list[uuid.UUID],
+    ) -> dict[uuid.UUID, uuid.UUID]:
+        """Map each SLO evaluation id to its parent evaluation run id."""
+        if not slo_evaluation_ids:
+            return {}
+        result = await self._session.execute(
+            select(SLOEvaluation.id, SLOEvaluation.evaluation_id).where(
+                SLOEvaluation.id.in_(slo_evaluation_ids),
+            )
+        )
+        return {slo_eval_id: run_id for slo_eval_id, run_id in result.all()}
 
     async def list_for_run(self, run_id: uuid.UUID) -> list[EvaluationAnnotation]:
         """Return non-hidden run-level annotations for an EvaluationRun."""

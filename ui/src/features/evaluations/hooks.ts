@@ -9,6 +9,7 @@ import {
   fetchEvaluationDetail,
   fetchTrend,
   fetchColumnAnnotations,
+  fetchTrendAnnotations,
   addAnnotation,
   addRunAnnotation,
   hideAnnotation,
@@ -58,6 +59,18 @@ export function useEvaluationDetail(id: string | undefined) {
 }
 
 // ── Column Annotations ───────────────────────────────────────────────────────
+
+export function useTrendAnnotations(
+  asset: string | undefined,
+  slo: string | null | undefined,
+) {
+  return useQuery({
+    queryKey: ['trend-annotations', asset, slo],
+    queryFn: () => fetchTrendAnnotations(asset!, slo!),
+    enabled: Boolean(asset && slo),
+    staleTime: 60_000,
+  })
+}
 
 export function useColumnAnnotations(evaluationId: string | undefined) {
   return useQuery({
