@@ -60,6 +60,154 @@
         "title": "AggregationMethod",
         "type": "string"
       },
+      "AnnotationCategoryCreate": {
+        "additionalProperties": false,
+        "description": "Request body for creating a user-defined category.",
+        "properties": {
+          "color": {
+            "$ref": "#/components/schemas/CategoryColor"
+          },
+          "label": {
+            "maxLength": 12,
+            "minLength": 1,
+            "title": "Label",
+            "type": "string"
+          },
+          "name": {
+            "maxLength": 40,
+            "minLength": 1,
+            "pattern": "^[a-z][a-z0-9\\-]*$",
+            "title": "Name",
+            "type": "string"
+          },
+          "show_on_graph": {
+            "default": true,
+            "title": "Show On Graph",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "name",
+          "label",
+          "color"
+        ],
+        "title": "AnnotationCategoryCreate",
+        "type": "object"
+      },
+      "AnnotationCategoryRead": {
+        "description": "Category record as returned by the API.",
+        "properties": {
+          "color": {
+            "$ref": "#/components/schemas/CategoryColor"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "is_system": {
+            "title": "Is System",
+            "type": "boolean"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "show_on_graph": {
+            "title": "Show On Graph",
+            "type": "boolean"
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "label",
+          "color",
+          "show_on_graph",
+          "is_system",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "AnnotationCategoryRead",
+        "type": "object"
+      },
+      "AnnotationCategoryUpdate": {
+        "additionalProperties": false,
+        "description": "Request body for patching category fields.",
+        "properties": {
+          "color": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CategoryColor"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "label": {
+            "anyOf": [
+              {
+                "maxLength": 12,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Label"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "maxLength": 40,
+                "minLength": 1,
+                "pattern": "^[a-z][a-z0-9\\-]*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "show_on_graph": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Show On Graph"
+          }
+        },
+        "title": "AnnotationCategoryUpdate",
+        "type": "object"
+      },
       "AnnotationCreate": {
         "additionalProperties": false,
         "description": "Request body for creating an annotation.",
@@ -75,16 +223,10 @@
             ],
             "title": "Author"
           },
-          "category": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Category"
+          "category_id": {
+            "format": "uuid",
+            "title": "Category Id",
+            "type": "string"
           },
           "content": {
             "title": "Content",
@@ -98,7 +240,8 @@
           }
         },
         "required": [
-          "content"
+          "content",
+          "category_id"
         ],
         "title": "AnnotationCreate",
         "type": "object"
@@ -144,15 +287,12 @@
             "title": "Author"
           },
           "category": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Category"
+            "$ref": "#/components/schemas/AnnotationCategoryRead"
+          },
+          "category_id": {
+            "format": "uuid",
+            "title": "Category Id",
+            "type": "string"
           },
           "content": {
             "title": "Content",
@@ -273,6 +413,7 @@
           "evaluation_run_id",
           "content",
           "author",
+          "category_id",
           "category",
           "tags",
           "note_group_id",
@@ -301,16 +442,17 @@
             ],
             "title": "Author"
           },
-          "category": {
+          "category_id": {
             "anyOf": [
               {
+                "format": "uuid",
                 "type": "string"
               },
               {
                 "type": "null"
               }
             ],
-            "title": "Category"
+            "title": "Category Id"
           },
           "content": {
             "anyOf": [
@@ -1076,6 +1218,21 @@
         ],
         "title": "BatchPeriod",
         "type": "object"
+      },
+      "CategoryColor": {
+        "description": "Allowed color tokens for an annotation category.",
+        "enum": [
+          "sky",
+          "green",
+          "amber",
+          "red",
+          "purple",
+          "pink",
+          "slate",
+          "gray"
+        ],
+        "title": "CategoryColor",
+        "type": "string"
       },
       "ComparisonConfig": {
         "description": "Per-SLO comparison configuration. All fields optional.",
@@ -8517,6 +8674,149 @@
           }
         },
         "summary": "Health"
+      }
+    },
+    "/note-categories": {
+      "get": {
+        "description": "Return all annotation categories, alphabetically sorted.",
+        "operationId": "list_note_categories_note_categories_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/AnnotationCategoryRead"
+                  },
+                  "title": "Response List Note Categories Note Categories Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Note Categories"
+      },
+      "post": {
+        "description": "Create a new user-defined annotation category.",
+        "operationId": "create_note_category_note_categories_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AnnotationCategoryCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnnotationCategoryRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Note Category"
+      }
+    },
+    "/note-categories/{category_id}": {
+      "delete": {
+        "description": "Delete a non-system category; returns the reassigned annotation count in a header.",
+        "operationId": "delete_note_category_note_categories__category_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "category_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Category Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Note Category"
+      },
+      "patch": {
+        "description": "Patch an annotation category; renaming system rows returns 409.",
+        "operationId": "update_note_category_note_categories__category_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "category_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Category Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AnnotationCategoryUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnnotationCategoryRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Note Category"
       }
     },
     "/sli-definitions": {
