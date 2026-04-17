@@ -24,32 +24,19 @@ class AnnotationRepository:
         slo_evaluation_id: uuid.UUID,
         *,
         content: str,
+        category_id: uuid.UUID,
         author: str | None = None,
-        category: str | None = None,
         tags: dict[str, Any] | None = None,
         note_group_id: uuid.UUID | None = None,
         note_group_name: str | None = None,
     ) -> EvaluationAnnotation:
-        """Append an SLO-level annotation (used by re-eval and per-SLO flows).
-
-        Args:
-            slo_evaluation_id: SLOEvaluation row the note attaches to.
-            content: Note text (required).
-            author: Optional identifier of who wrote the annotation.
-            category: Optional free label (e.g. "environment", "deployment").
-            tags: Optional arbitrary tags.
-            note_group_id: Optional shared UUID to group related annotations.
-            note_group_name: Optional human-readable label for the group.
-
-        Returns:
-            Newly created EvaluationAnnotation.
-        """
+        """Append an SLO-level annotation (used by re-eval and per-SLO flows)."""
         ann = EvaluationAnnotation(
             id=uuid.uuid4(),
             slo_evaluation_id=slo_evaluation_id,
             content=content,
             author=author,
-            category=category,
+            category_id=category_id,
             tags=tags or {},
             note_group_id=note_group_id,
             note_group_name=note_group_name,
@@ -66,8 +53,8 @@ class AnnotationRepository:
         evaluation_run_id: uuid.UUID,
         *,
         content: str,
+        category_id: uuid.UUID,
         author: str | None = None,
-        category: str | None = None,
         tags: dict[str, Any] | None = None,
         note_group_id: uuid.UUID | None = None,
         note_group_name: str | None = None,
@@ -78,7 +65,7 @@ class AnnotationRepository:
             evaluation_run_id=evaluation_run_id,
             content=content,
             author=author,
-            category=category,
+            category_id=category_id,
             tags=tags or {},
             note_group_id=note_group_id,
             note_group_name=note_group_name,
@@ -110,7 +97,7 @@ class AnnotationRepository:
         *,
         content: str | None = None,
         author: str | None = None,
-        category: str | None = None,
+        category_id: uuid.UUID | None = None,
         tags: dict[str, Any] | None = None,
     ) -> EvaluationAnnotation | None:
         """Update mutable annotation fields."""
@@ -119,8 +106,8 @@ class AnnotationRepository:
             values['content'] = content
         if author is not None:
             values['author'] = author
-        if category is not None:
-            values['category'] = category
+        if category_id is not None:
+            values['category_id'] = category_id
         if tags is not None:
             values['tags'] = tags
         if values:
