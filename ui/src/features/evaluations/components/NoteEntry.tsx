@@ -1,6 +1,7 @@
 // ui/src/features/evaluations/components/NoteEntry.tsx
 import { useState } from 'react'
 import { DeletionConfirmForm } from '@/components/DeletionConfirmForm'
+import { paletteOf } from '@/features/note-categories'
 import { useHideAnnotation } from '../hooks'
 import type { Annotation } from '../domain'
 
@@ -40,11 +41,18 @@ export function NoteEntry({ runId, annotation: a, compact }: Props) {
     )
   }
 
+  const palette = paletteOf(a.category.color)
+
   if (compact && !hiding) {
     return (
       <div className="bg-amber-950/15 border border-amber-700/20 rounded px-3 py-1.5 text-sm flex items-center gap-2">
         <span className="text-amber-400 text-xs leading-none">⚑</span>
-        <span className="text-[10px] bg-amber-900/40 text-amber-300 px-1.5 py-0.5 rounded shrink-0">{a.category.label}</span>
+        <span
+          className="text-[10px] px-1.5 py-0.5 rounded shrink-0"
+          style={{ background: palette.bg, color: palette.fg }}
+        >
+          {a.category.label}
+        </span>
         <span className="text-foreground/70 text-xs truncate flex-1">{a.content}</span>
         <span className="text-muted-foreground text-[10px] shrink-0 ml-auto">
           {a.createdAt.toISOString().slice(5, 16).replace('T', ' ')}
@@ -65,7 +73,12 @@ export function NoteEntry({ runId, annotation: a, compact }: Props) {
       {/* Row 1: flag + category + content inline */}
       <div className="flex items-start gap-2">
         <span className="text-amber-400 text-sm leading-none mt-0.5">⚑</span>
-        <span className="text-[10px] bg-amber-900/40 text-amber-300 px-1.5 py-0.5 rounded shrink-0">{a.category.label}</span>
+        <span
+          className="text-[10px] px-1.5 py-0.5 rounded shrink-0"
+          style={{ background: palette.bg, color: palette.fg }}
+        >
+          {a.category.label}
+        </span>
         <span className="text-foreground/85 text-xs flex-1">
           {a.content && <LinkifiedText text={a.content} />}
         </span>
