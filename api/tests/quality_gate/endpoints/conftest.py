@@ -14,14 +14,22 @@ from datetime import UTC, datetime
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
-from tropek.db.models import Asset, AssetType, IndicatorResultRow, SLODefinition, SLOObjective
+from sqlalchemy import select
+from tropek.db.models import (
+    AnnotationCategory,
+    Asset,
+    AssetType,
+    IndicatorResultRow,
+    SLODefinition,
+    SLOObjective,
+)
 from tropek.db.session import get_session
 from tropek.main import app
 from tropek.modules.quality_gate.repositories.evaluation import EvaluationRepository
 from tropek.modules.quality_gate.shared.params import EvalCreateParams
 
 # Re-export db fixtures so pytest discovers them in this directory.
-from tests.db.conftest import db_engine, db_session, db_url  # noqa: F401
+from tests.db.conftest import db_engine, db_session, db_url, info_category_id  # noqa: F401
 
 _START = datetime(2026, 3, 15, 10, 0, 0, tzinfo=UTC)
 _END = datetime(2026, 3, 15, 10, 30, 0, tzinfo=UTC)
@@ -134,6 +142,13 @@ async def _seed_indicator_row(
         )
     )
     await session.flush()
+
+
+@pytest_asyncio.fixture()
+async def category_ids(db_session: AsyncSession) -> dict[str, uuid.UUID]:
+    """Return {category_name: id} for the seeded default categories."""
+    result = await db_session.execute(select(AnnotationCategory))
+    return {row.name: row.id for row in result.scalars().all()}
 
 
 @pytest_asyncio.fixture()

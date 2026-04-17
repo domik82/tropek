@@ -55,6 +55,7 @@ def test_orm_models_importable() -> None:
         'evaluations',
         'slo_evaluations',
         'evaluation_annotations',
+        'annotation_categories',
         'indicator_results',
         'sli_values',
     }

@@ -7,6 +7,7 @@ from typing import Any
 
 from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from tropek.cache.redis_cache import RedisCache
 from tropek.db.models import EvaluationAnnotation
@@ -78,6 +79,7 @@ class AnnotationRepository:
         """Return non-hidden run-level annotations for an EvaluationRun."""
         result = await self._session.execute(
             select(EvaluationAnnotation)
+            .options(selectinload(EvaluationAnnotation.category))
             .where(EvaluationAnnotation.evaluation_run_id == run_id)
             .where(EvaluationAnnotation.hidden_at.is_(None))
             .order_by(EvaluationAnnotation.created_at)
@@ -87,7 +89,9 @@ class AnnotationRepository:
     async def get_annotation_by_id(self, annotation_id: uuid.UUID) -> EvaluationAnnotation | None:
         """Fetch a single annotation by its ID."""
         result = await self._session.execute(
-            select(EvaluationAnnotation).where(EvaluationAnnotation.id == annotation_id)
+            select(EvaluationAnnotation)
+            .options(selectinload(EvaluationAnnotation.category))
+            .where(EvaluationAnnotation.id == annotation_id)
         )
         return result.scalar_one_or_none()
 

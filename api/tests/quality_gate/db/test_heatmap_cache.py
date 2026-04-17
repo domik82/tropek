@@ -465,6 +465,7 @@ async def _apply_mutation(
     db_session: AsyncSession,
     seeded: SeededAsset,
     redis_client: fakeredis.aioredis.FakeRedis,
+    info_category_id: uuid.UUID,
 ) -> None:
     """Apply one mutation flavor to the seeded asset state.
 
@@ -515,12 +516,14 @@ async def _apply_mutation(
             child_eval.id,
             content='investigating the spike',
             author='tester',
+            category_id=info_category_id,
         )
     elif mutation == 'hide_annotation':
         created = await annotation_repo.add_annotation(
             child_eval.id,
             content='investigating the spike',
             author='tester',
+            category_id=info_category_id,
         )
         await annotation_repo.hide_annotation(created.id, reason='false alarm', author='tester')
     else:
@@ -548,6 +551,7 @@ async def test_cache_equals_uncached_after_mutation(
     redis_client: fakeredis.aioredis.FakeRedis,
     db_session: AsyncSession,
     seed_asset_with_indicators: Callable[..., Coroutine[Any, Any, SeededAsset]],
+    info_category_id: uuid.UUID,
 ) -> None:
     """Correctness centerpiece of Chunk C: for any sequence of
     (warm cache → mutate → read), the ``cache=true`` response must equal the
@@ -577,7 +581,7 @@ async def test_cache_equals_uncached_after_mutation(
 
     # Step 2: apply the mutation (if any).
     if mutation != 'none':
-        await _apply_mutation(mutation, db_session, seeded, redis_client)
+        await _apply_mutation(mutation, db_session, seeded, redis_client, info_category_id)
 
     # Step 3: re-read both variants and assert they still agree.
     cached_after = await api_client.get(f'/evaluate/metric-heatmap?asset_name={seeded.name}')

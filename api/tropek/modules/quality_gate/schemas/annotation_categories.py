@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
-from enum import Enum
+from enum import StrEnum
 from typing import Annotated
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -12,7 +12,9 @@ from pydantic import BaseModel, ConfigDict, Field
 from tropek.modules.common.schemas import StrictInput
 
 
-class CategoryColor(str, Enum):
+class CategoryColor(StrEnum):
+    """Allowed color tokens for an annotation category."""
+
     SKY = 'sky'
     GREEN = 'green'
     AMBER = 'amber'
@@ -28,6 +30,8 @@ NameStr = Annotated[str, Field(min_length=1, max_length=40, pattern=r'^[a-z][a-z
 
 
 class AnnotationCategoryRead(BaseModel):
+    """Category record as returned by the API."""
+
     id: uuid.UUID
     name: str
     label: str
@@ -41,6 +45,8 @@ class AnnotationCategoryRead(BaseModel):
 
 
 class AnnotationCategoryCreate(StrictInput):
+    """Request body for creating a user-defined category."""
+
     name: NameStr
     label: LabelStr
     color: CategoryColor
@@ -48,6 +54,8 @@ class AnnotationCategoryCreate(StrictInput):
 
 
 class AnnotationCategoryUpdate(StrictInput):
+    """Request body for patching category fields."""
+
     name: NameStr | None = None
     label: LabelStr | None = None
     color: CategoryColor | None = None

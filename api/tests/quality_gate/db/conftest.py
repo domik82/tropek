@@ -20,7 +20,13 @@ from tropek.modules.quality_gate.shared.dependencies import get_heatmap_column_c
 from tropek.modules.quality_gate.shared.params import EvalCreateParams
 from tropek.modules.quality_gate.workflows.presentation.heatmap_cache import HeatmapColumnCache
 
-from tests.db.conftest import db_engine, db_session, db_url, redis_client  # noqa: F401
+from tests.db.conftest import (  # noqa: F401
+    db_engine,
+    db_session,
+    db_url,
+    info_category_id,
+    redis_client,
+)
 
 _BASE_TS = datetime(2026, 3, 15, 10, 0, 0, tzinfo=UTC)
 

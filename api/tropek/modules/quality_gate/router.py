@@ -6,12 +6,22 @@ import uuid
 from datetime import datetime
 
 from arq.connections import ArqRedis
-from fastapi import APIRouter, Depends, HTTPException, Query  # HTTPException: BaselinePinConflictError dict detail
+from fastapi import (  # HTTPException: BaselinePinConflictError dict detail
+    APIRouter,
+    Depends,
+    HTTPException,
+    Query,
+    Response,
+)
 
 from tropek.modules.assets.service import AssetService
 from tropek.modules.common.exceptions import ConflictError, DomainValidationError, NotFoundError
 from tropek.modules.common.schemas import PagedResponse
+from tropek.modules.quality_gate.repositories.annotation_category import SystemCategoryError
 from tropek.modules.quality_gate.schemas import (
+    AnnotationCategoryCreate,
+    AnnotationCategoryRead,
+    AnnotationCategoryUpdate,
     AnnotationCreate,
     AnnotationHide,
     AnnotationRead,
@@ -488,14 +498,16 @@ async def create_annotation(
     ev = await repos.eval_repo.get_by_id(eval_id)
     if ev is None:
         raise NotFoundError('evaluation', str(eval_id))
-    ann = await repos.annotation_repo.add_annotation(
+    created = await repos.annotation_repo.add_annotation(
         eval_id,
         content=body.content,
         author=body.author,
-        category=body.category,
+        category_id=body.category_id,
         tags=body.tags,
     )
-    return AnnotationRead.model_validate(ann)
+    fetched = await repos.annotation_repo.get_annotation_by_id(created.id)
+    assert fetched is not None
+    return AnnotationRead.model_validate(fetched)
 
 
 @router.post(
@@ -512,14 +524,16 @@ async def create_run_annotation(
     run = await repos.eval_run_repo.get_by_id(run_id)
     if run is None:
         raise NotFoundError('evaluation run', str(run_id))
-    ann = await repos.annotation_repo.add_run_annotation(
+    created = await repos.annotation_repo.add_run_annotation(
         run_id,
         content=body.content,
         author=body.author,
-        category=body.category,
+        category_id=body.category_id,
         tags=body.tags,
     )
-    return AnnotationRead.model_validate(ann)
+    fetched = await repos.annotation_repo.get_annotation_by_id(created.id)
+    assert fetched is not None
+    return AnnotationRead.model_validate(fetched)
 
 
 @router.patch('/evaluations/{eval_id}/annotations/{ann_id}', response_model=AnnotationRead)
@@ -551,6 +565,70 @@ async def hide_annotation(
     if ann is None:
         raise NotFoundError('annotation', str(ann_id))
     return AnnotationRead.model_validate(ann)
+
+
+# ---- Note categories ----
+
+
+@router.get('/note-categories', response_model=list[AnnotationCategoryRead])
+async def list_note_categories(
+    repos: QualityGateRepos = Depends(get_qg_repos),
+) -> list[AnnotationCategoryRead]:
+    """Return all annotation categories, alphabetically sorted."""
+    rows = await repos.category_repo.list_all()
+    return [AnnotationCategoryRead.model_validate(r) for r in rows]
+
+
+@router.post('/note-categories', response_model=AnnotationCategoryRead, status_code=201)
+async def create_note_category(
+    body: AnnotationCategoryCreate,
+    repos: QualityGateRepos = Depends(get_qg_repos),
+) -> AnnotationCategoryRead:
+    """Create a new user-defined annotation category."""
+    created = await repos.category_repo.create(
+        name=body.name,
+        label=body.label,
+        color=body.color.value,
+        show_on_graph=body.show_on_graph,
+    )
+    return AnnotationCategoryRead.model_validate(created)
+
+
+@router.patch('/note-categories/{category_id}', response_model=AnnotationCategoryRead)
+async def update_note_category(
+    category_id: uuid.UUID,
+    body: AnnotationCategoryUpdate,
+    repos: QualityGateRepos = Depends(get_qg_repos),
+) -> AnnotationCategoryRead:
+    """Patch an annotation category; renaming system rows returns 409."""
+    try:
+        updated = await repos.category_repo.update(
+            category_id,
+            name=body.name,
+            label=body.label,
+            color=body.color.value if body.color else None,
+            show_on_graph=body.show_on_graph,
+        )
+    except SystemCategoryError as exc:
+        raise ConflictError('annotation_category', str(category_id), str(exc)) from exc
+    except LookupError as exc:
+        raise NotFoundError('annotation_category', str(category_id)) from exc
+    return AnnotationCategoryRead.model_validate(updated)
+
+
+@router.delete('/note-categories/{category_id}', status_code=204)
+async def delete_note_category(
+    category_id: uuid.UUID,
+    repos: QualityGateRepos = Depends(get_qg_repos),
+) -> Response:
+    """Delete a non-system category; returns the reassigned annotation count in a header."""
+    try:
+        reassigned = await repos.category_repo.delete(category_id)
+    except SystemCategoryError as exc:
+        raise ConflictError('annotation_category', str(category_id), str(exc)) from exc
+    except LookupError as exc:
+        raise NotFoundError('annotation_category', str(category_id)) from exc
+    return Response(status_code=204, headers={'X-Reassigned-Annotations': str(reassigned)})
 
 
 # ---- Trend ----

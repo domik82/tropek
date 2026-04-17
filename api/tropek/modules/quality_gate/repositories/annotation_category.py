@@ -19,22 +19,27 @@ class CategoryInUseError(Exception):
 
 
 class AnnotationCategoryRepository:
+    """Data access for the annotation_categories table."""
+
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
 
     async def list_all(self) -> list[AnnotationCategory]:
+        """Return every category, sorted alphabetically by name."""
         result = await self._session.execute(
             select(AnnotationCategory).order_by(AnnotationCategory.name)
         )
         return list(result.scalars().all())
 
     async def get_by_id(self, category_id: uuid.UUID) -> AnnotationCategory | None:
+        """Return the category with the given id, or None."""
         result = await self._session.execute(
             select(AnnotationCategory).where(AnnotationCategory.id == category_id)
         )
         return result.scalar_one_or_none()
 
     async def get_by_name(self, name: str) -> AnnotationCategory | None:
+        """Return the category with the given unique name, or None."""
         result = await self._session.execute(
             select(AnnotationCategory).where(AnnotationCategory.name == name)
         )
@@ -48,6 +53,7 @@ class AnnotationCategoryRepository:
         color: str,
         show_on_graph: bool = True,
     ) -> AnnotationCategory:
+        """Insert a new user-defined (non-system) category."""
         row = AnnotationCategory(
             id=uuid.uuid4(),
             name=name,
@@ -69,6 +75,7 @@ class AnnotationCategoryRepository:
         color: str | None = None,
         show_on_graph: bool | None = None,
     ) -> AnnotationCategory:
+        """Patch an existing category; reject renaming a system row."""
         row = await self.get_by_id(category_id)
         if row is None:
             raise LookupError(f'category {category_id} not found')
@@ -96,6 +103,10 @@ class AnnotationCategoryRepository:
         return refreshed
 
     async def delete(self, category_id: uuid.UUID) -> int:
+        """Delete a non-system category, reassigning its annotations to 'info'.
+
+        Returns the number of annotations reassigned.
+        """
         row = await self.get_by_id(category_id)
         if row is None:
             raise LookupError(f'category {category_id} not found')
@@ -106,7 +117,7 @@ class AnnotationCategoryRepository:
         if info is None:
             raise LookupError("default 'info' category missing")
 
-        reassigned = await self._session.execute(
+        reassigned_result = await self._session.execute(
             update(EvaluationAnnotation)
             .where(EvaluationAnnotation.category_id == category_id)
             .values(category_id=info.id)
@@ -115,4 +126,5 @@ class AnnotationCategoryRepository:
             delete(AnnotationCategory).where(AnnotationCategory.id == category_id)
         )
         await self._session.flush()
-        return reassigned.rowcount or 0
+        rowcount = getattr(reassigned_result, 'rowcount', 0)
+        return int(rowcount or 0)

@@ -9,7 +9,6 @@ import pytest
 import pytest_asyncio
 from sqlalchemy.ext.asyncio import AsyncSession
 from tropek.db.models import (
-    AnnotationCategory,
     Asset,
     AssetType,
     EvaluationRun,
@@ -21,29 +20,6 @@ from tropek.modules.quality_gate.repositories.annotation_category import (
 )
 
 pytestmark = pytest.mark.integration
-
-
-@pytest_asyncio.fixture(autouse=True)
-async def _seed_categories(db_session: AsyncSession) -> None:
-    """Seed the 4 default categories expected by the repository tests."""
-    rows = [
-        ('failure', 'Failure', 'red', True, False),
-        ('info', 'Info', 'sky', True, False),
-        ('investigation', 'Investigation', 'amber', True, False),
-        ('re-evaluation', 'Re-eval', 'gray', False, True),
-    ]
-    for name, label, color, show_on_graph, is_system in rows:
-        db_session.add(
-            AnnotationCategory(
-                id=uuid.uuid4(),
-                name=name,
-                label=label,
-                color=color,
-                show_on_graph=show_on_graph,
-                is_system=is_system,
-            )
-        )
-    await db_session.flush()
 
 
 @pytest_asyncio.fixture()

@@ -287,7 +287,9 @@ class EvaluationRepository:
         result = await self._session.execute(
             select(SLOEvaluation)
             .options(
-                selectinload(SLOEvaluation.annotations),
+                selectinload(SLOEvaluation.annotations).selectinload(
+                    EvaluationAnnotation.category
+                ),
                 selectinload(SLOEvaluation.indicator_rows).joinedload(IndicatorResultRow.objective),
             )
             .where(SLOEvaluation.id == eval_id)
@@ -568,7 +570,11 @@ class EvaluationRepository:
         """Fetch all SLO evaluations for a parent run, with annotations eagerly loaded."""
         q = (
             select(SLOEvaluation)
-            .options(selectinload(SLOEvaluation.annotations))
+            .options(
+                selectinload(SLOEvaluation.annotations).selectinload(
+                    EvaluationAnnotation.category
+                )
+            )
             .where(SLOEvaluation.evaluation_id == run_id)
         )
         result = await self._session.execute(q)
