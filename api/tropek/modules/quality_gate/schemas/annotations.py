@@ -9,6 +9,7 @@ from typing import Any
 from pydantic import BaseModel, ConfigDict
 
 from tropek.modules.common.schemas import StrictInput
+from tropek.modules.quality_gate.schemas.annotation_categories import AnnotationCategoryRead
 
 
 class AnnotationRead(BaseModel):
@@ -23,7 +24,8 @@ class AnnotationRead(BaseModel):
     evaluation_run_id: uuid.UUID | None
     content: str
     author: str | None
-    category: str | None
+    category_id: uuid.UUID
+    category: AnnotationCategoryRead
     tags: dict[str, Any]
     note_group_id: uuid.UUID | None
     note_group_name: str | None
@@ -41,7 +43,7 @@ class AnnotationCreate(StrictInput):
 
     content: str
     author: str | None = None
-    category: str | None = None
+    category_id: uuid.UUID
     tags: dict[str, Any] = {}
 
 
@@ -50,7 +52,7 @@ class AnnotationUpdate(StrictInput):
 
     content: str | None = None
     author: str | None = None
-    category: str | None = None
+    category_id: uuid.UUID | None = None
     tags: dict[str, Any] | None = None
 
 
