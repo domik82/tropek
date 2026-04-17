@@ -71,11 +71,9 @@ function TooltipNoteList({ annotations }: { annotations: Annotation[] }) {
       ))}
       {standalone.map(a => (
         <div key={a.id} className="flex items-start gap-1.5">
-          {a.category && (
-            <span className="text-[10px] bg-amber-900/40 text-amber-300 px-1 py-0.5 rounded shrink-0 mt-0.5">
-              {a.category}
-            </span>
-          )}
+          <span className="text-[10px] bg-amber-900/40 text-amber-300 px-1 py-0.5 rounded shrink-0 mt-0.5">
+            {a.category.label}
+          </span>
           <div className="flex-1 min-w-0">
             <p className="text-xs text-foreground/85 break-words">{a.content}</p>
             {a.author && (
