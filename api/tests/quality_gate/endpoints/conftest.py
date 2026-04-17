@@ -13,8 +13,8 @@ from datetime import UTC, datetime
 
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 from tropek.db.models import (
     AnnotationCategory,
     Asset,
@@ -145,7 +145,7 @@ async def _seed_indicator_row(
 
 
 @pytest_asyncio.fixture()
-async def category_ids(db_session: AsyncSession) -> dict[str, uuid.UUID]:
+async def category_ids(db_session: AsyncSession) -> dict[str, uuid.UUID]:  # noqa: F811
     """Return {category_name: id} for the seeded default categories."""
     result = await db_session.execute(select(AnnotationCategory))
     return {row.name: row.id for row in result.scalars().all()}

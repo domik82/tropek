@@ -126,7 +126,7 @@ class AnnotationRepository:
                 SLOEvaluation.id.in_(slo_evaluation_ids),
             )
         )
-        return {slo_eval_id: run_id for slo_eval_id, run_id in result.all()}
+        return {slo_eval_id: run_id for slo_eval_id, run_id in result.all()}  # noqa: C416
 
     async def list_for_run(self, run_id: uuid.UUID) -> list[EvaluationAnnotation]:
         """Return non-hidden run-level annotations for an EvaluationRun."""
