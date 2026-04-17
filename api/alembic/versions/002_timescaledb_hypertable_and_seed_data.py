@@ -38,6 +38,17 @@ def upgrade() -> None:
         ON CONFLICT (name) DO NOTHING
     """)
 
+    # Seed default annotation categories.
+    # ON CONFLICT DO NOTHING so re-running this migration is idempotent.
+    op.execute("""
+        INSERT INTO annotation_categories (id, name, label, color, show_on_graph, is_system) VALUES
+            (gen_random_uuid(), 'failure',       'Failure',       'red',   true,  false),
+            (gen_random_uuid(), 'info',          'Info',          'sky',   true,  false),
+            (gen_random_uuid(), 'investigation', 'Investigation', 'amber', true,  false),
+            (gen_random_uuid(), 're-evaluation', 'Re-eval',       'gray',  false, true)
+        ON CONFLICT (name) DO NOTHING
+    """)
+
 
 def downgrade() -> None:
     """Downgrade schema."""
@@ -45,6 +56,10 @@ def downgrade() -> None:
     op.execute("""
         DELETE FROM asset_types
         WHERE name IN ('vm', 'service', 'database', 'container', 'endpoint', 'load-test')
+    """)
+    op.execute("""
+        DELETE FROM annotation_categories
+        WHERE name IN ('failure', 'info', 'investigation', 're-evaluation')
     """)
     # TimescaleDB hypertables cannot be converted back to plain tables;
     # the table itself is dropped with the schema in migration 1 downgrade.
