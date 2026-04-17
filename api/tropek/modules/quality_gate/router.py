@@ -339,6 +339,43 @@ async def list_evaluation_names(
 
 
 @router.get(
+    '/evaluations/trend-annotations',
+    response_model=dict[str, list[AnnotationRead]],
+)
+async def get_trend_annotations(
+    asset_name: str = Query(alias='asset'),
+    slo_name: str = Query(alias='slo'),
+    repos: QualityGateRepos = Depends(get_qg_repos),
+) -> dict[str, list[AnnotationRead]]:
+    """Return annotations for every run in an (asset, slo) trend, keyed by run id.
+
+    Run-level annotations are keyed by their evaluation_run_id. SLO-level
+    annotations are resolved to their parent run's id via the containing
+    SLOEvaluation.
+    """
+    asset = await repos.asset_repo.get_by_name(asset_name)
+    if asset is None:
+        raise NotFoundError('asset', asset_name)
+
+    annotations = await repos.annotation_repo.list_for_trend(
+        asset_id=asset.id,
+        slo_name=slo_name,
+    )
+    slo_eval_ids = {ann.slo_evaluation_id for ann in annotations if ann.slo_evaluation_id}
+    slo_eval_to_run: dict[uuid.UUID, uuid.UUID] = {}
+    if slo_eval_ids:
+        slo_eval_to_run = await repos.annotation_repo.map_slo_evals_to_runs(list(slo_eval_ids))
+
+    out: dict[str, list[AnnotationRead]] = {}
+    for ann in annotations:
+        run_id = ann.evaluation_run_id or slo_eval_to_run.get(ann.slo_evaluation_id)  # type: ignore[arg-type]
+        if run_id is None:
+            continue
+        out.setdefault(str(run_id), []).append(AnnotationRead.model_validate(ann))
+    return out
+
+
+@router.get(
     '/evaluations/column-annotations',
     response_model=list[AnnotationRead],
 )
