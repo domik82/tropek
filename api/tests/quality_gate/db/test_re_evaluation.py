@@ -14,6 +14,9 @@ from tropek.modules.assets.repository import AssetGroupRepository, AssetReposito
 from tropek.modules.assignments.repository import AssignmentRepository
 from tropek.modules.datasource.repository import DataSourceRepository
 from tropek.modules.quality_gate.repositories.annotation import AnnotationRepository
+from tropek.modules.quality_gate.repositories.annotation_category import (
+    AnnotationCategoryRepository,
+)
 from tropek.modules.quality_gate.repositories.baseline import BaselineRepository
 from tropek.modules.quality_gate.repositories.evaluation import EvaluationRepository
 from tropek.modules.quality_gate.repositories.evaluation_run import EvaluationRunRepository
@@ -38,6 +41,7 @@ def _build_repos(session: AsyncSession) -> QualityGateRepos:
         eval_repo=EvaluationRepository(session),
         eval_run_repo=EvaluationRunRepository(session),
         annotation_repo=AnnotationRepository(session),
+        category_repo=AnnotationCategoryRepository(session),
         sli_repo=SLIValueRepository(session),
         trend_repo=TrendRepository(session),
         baseline_repo=BaselineRepository(session),

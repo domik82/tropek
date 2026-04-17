@@ -14,34 +14,47 @@ from .conftest import _create_asset, _create_completed_eval
 
 
 @pytest.mark.integration
-async def test_create_annotation(async_client: AsyncClient, db_session: AsyncSession) -> None:
+async def test_create_annotation(
+    async_client: AsyncClient,
+    db_session: AsyncSession,
+    category_ids: dict[str, uuid.UUID],
+) -> None:
     asset_id = await _create_asset(db_session)
     eval_id = await _create_completed_eval(db_session, asset_id)
 
     resp = await async_client.post(
         f'/evaluations/{eval_id}/annotations',
-        json={'content': 'Looks like a network blip', 'author': 'alice', 'category': 'observation'},
+        json={
+            'content': 'Looks like a network blip',
+            'author': 'alice',
+            'category_id': str(category_ids['investigation']),
+        },
     )
     assert resp.status_code == 201
     body = resp.json()
     assert body['content'] == 'Looks like a network blip'
     assert body['author'] == 'alice'
-    assert body['category'] == 'observation'
+    assert body['category']['name'] == 'investigation'
     assert body['hidden_at'] is None
 
 
 @pytest.mark.integration
-async def test_annotation_appears_in_eval_detail(async_client: AsyncClient, db_session: AsyncSession) -> None:
+async def test_annotation_appears_in_eval_detail(
+    async_client: AsyncClient,
+    db_session: AsyncSession,
+    category_ids: dict[str, uuid.UUID],
+) -> None:
     asset_id = await _create_asset(db_session)
     eval_id = await _create_completed_eval(db_session, asset_id)
+    info_id = str(category_ids['info'])
 
     await async_client.post(
         f'/evaluations/{eval_id}/annotations',
-        json={'content': 'Note one', 'author': 'alice'},
+        json={'content': 'Note one', 'author': 'alice', 'category_id': info_id},
     )
     await async_client.post(
         f'/evaluations/{eval_id}/annotations',
-        json={'content': 'Note two', 'author': 'bob'},
+        json={'content': 'Note two', 'author': 'bob', 'category_id': info_id},
     )
 
     resp = await async_client.get(f'/evaluations/{eval_id}')
@@ -54,13 +67,21 @@ async def test_annotation_appears_in_eval_detail(async_client: AsyncClient, db_s
 
 
 @pytest.mark.integration
-async def test_list_annotations(async_client: AsyncClient, db_session: AsyncSession) -> None:
+async def test_list_annotations(
+    async_client: AsyncClient,
+    db_session: AsyncSession,
+    category_ids: dict[str, uuid.UUID],
+) -> None:
     asset_id = await _create_asset(db_session)
     eval_id = await _create_completed_eval(db_session, asset_id)
 
     await async_client.post(
         f'/evaluations/{eval_id}/annotations',
-        json={'content': 'Visible note', 'author': 'alice'},
+        json={
+            'content': 'Visible note',
+            'author': 'alice',
+            'category_id': str(category_ids['info']),
+        },
     )
 
     resp = await async_client.get(f'/evaluations/{eval_id}/annotations')
@@ -71,13 +92,21 @@ async def test_list_annotations(async_client: AsyncClient, db_session: AsyncSess
 
 
 @pytest.mark.integration
-async def test_update_annotation(async_client: AsyncClient, db_session: AsyncSession) -> None:
+async def test_update_annotation(
+    async_client: AsyncClient,
+    db_session: AsyncSession,
+    category_ids: dict[str, uuid.UUID],
+) -> None:
     asset_id = await _create_asset(db_session)
     eval_id = await _create_completed_eval(db_session, asset_id)
 
     create_resp = await async_client.post(
         f'/evaluations/{eval_id}/annotations',
-        json={'content': 'Original', 'author': 'alice'},
+        json={
+            'content': 'Original',
+            'author': 'alice',
+            'category_id': str(category_ids['info']),
+        },
     )
     ann_id = create_resp.json()['id']
 
@@ -90,13 +119,21 @@ async def test_update_annotation(async_client: AsyncClient, db_session: AsyncSes
 
 
 @pytest.mark.integration
-async def test_hide_annotation_excludes_from_detail(async_client: AsyncClient, db_session: AsyncSession) -> None:
+async def test_hide_annotation_excludes_from_detail(
+    async_client: AsyncClient,
+    db_session: AsyncSession,
+    category_ids: dict[str, uuid.UUID],
+) -> None:
     asset_id = await _create_asset(db_session)
     eval_id = await _create_completed_eval(db_session, asset_id)
 
     create_resp = await async_client.post(
         f'/evaluations/{eval_id}/annotations',
-        json={'content': 'Will be hidden', 'author': 'alice'},
+        json={
+            'content': 'Will be hidden',
+            'author': 'alice',
+            'category_id': str(category_ids['info']),
+        },
     )
     ann_id = create_resp.json()['id']
 
@@ -114,11 +151,18 @@ async def test_hide_annotation_excludes_from_detail(async_client: AsyncClient, d
 
 
 @pytest.mark.integration
-async def test_create_annotation_on_missing_eval(async_client: AsyncClient) -> None:
+async def test_create_annotation_on_missing_eval(
+    async_client: AsyncClient,
+    category_ids: dict[str, uuid.UUID],
+) -> None:
     fake_id = uuid.uuid4()
     resp = await async_client.post(
         f'/evaluations/{fake_id}/annotations',
-        json={'content': 'Orphan note', 'author': 'alice'},
+        json={
+            'content': 'Orphan note',
+            'author': 'alice',
+            'category_id': str(category_ids['info']),
+        },
     )
     assert resp.status_code == 404
 
@@ -145,13 +189,21 @@ async def _create_evaluation_run(
 
 
 @pytest.mark.integration
-async def test_create_run_annotation(async_client: AsyncClient, db_session: AsyncSession) -> None:
+async def test_create_run_annotation(
+    async_client: AsyncClient,
+    db_session: AsyncSession,
+    category_ids: dict[str, uuid.UUID],
+) -> None:
     asset_id = await _create_asset(db_session)
     run_id = await _create_evaluation_run(db_session, asset_id)
 
     resp = await async_client.post(
         f'/evaluations/run/{run_id}/annotations',
-        json={'content': 'Column-level note from UI', 'author': 'daisy'},
+        json={
+            'content': 'Column-level note from UI',
+            'author': 'daisy',
+            'category_id': str(category_ids['info']),
+        },
     )
     assert resp.status_code == 201
     body = resp.json()
@@ -162,13 +214,21 @@ async def test_create_run_annotation(async_client: AsyncClient, db_session: Asyn
 
 
 @pytest.mark.integration
-async def test_run_annotation_visible_in_column_endpoint(async_client: AsyncClient, db_session: AsyncSession) -> None:
+async def test_run_annotation_visible_in_column_endpoint(
+    async_client: AsyncClient,
+    db_session: AsyncSession,
+    category_ids: dict[str, uuid.UUID],
+) -> None:
     asset_id = await _create_asset(db_session)
     run_id = await _create_evaluation_run(db_session, asset_id)
 
     create_resp = await async_client.post(
         f'/evaluations/run/{run_id}/annotations',
-        json={'content': 'Visible column note', 'author': 'daisy'},
+        json={
+            'content': 'Visible column note',
+            'author': 'daisy',
+            'category_id': str(category_ids['info']),
+        },
     )
     ann_id = create_resp.json()['id']
 
@@ -184,10 +244,17 @@ async def test_run_annotation_visible_in_column_endpoint(async_client: AsyncClie
 
 
 @pytest.mark.integration
-async def test_create_run_annotation_on_missing_run(async_client: AsyncClient) -> None:
+async def test_create_run_annotation_on_missing_run(
+    async_client: AsyncClient,
+    category_ids: dict[str, uuid.UUID],
+) -> None:
     fake_id = uuid.uuid4()
     resp = await async_client.post(
         f'/evaluations/run/{fake_id}/annotations',
-        json={'content': 'Orphan run note', 'author': 'daisy'},
+        json={
+            'content': 'Orphan run note',
+            'author': 'daisy',
+            'category_id': str(category_ids['info']),
+        },
     )
     assert resp.status_code == 404
