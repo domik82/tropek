@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { AnnotationSection } from './AnnotationForm'
 import type { Annotation } from '../domain'
 import type { NoteCategory } from '@/features/note-categories'
+// Re-export for vi.mock factory
 
 function makeCategory(name: string): NoteCategory {
   return {
@@ -31,6 +32,28 @@ vi.mock('../hooks', () => ({
     isPending: false,
   }),
 }))
+
+vi.mock('@/features/note-categories', async () => {
+  const actual =
+    await vi.importActual<typeof import('@/features/note-categories')>('@/features/note-categories')
+  const mk = (name: string): NoteCategory => ({
+    id: `cat-${name}`,
+    name,
+    label: name,
+    color: 'sky',
+    showOnGraph: true,
+    isSystem: false,
+    createdAt: new Date('2026-01-01T00:00:00Z'),
+    updatedAt: null,
+  })
+  return {
+    ...actual,
+    useNoteCategories: () => ({
+      data: [mk('info'), mk('investigation')],
+      isLoading: false,
+    }),
+  }
+})
 
 function renderWithQuery(ui: React.ReactElement) {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })

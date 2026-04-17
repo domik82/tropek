@@ -86,7 +86,7 @@ export function useTrend(assetName: string, sloName: string, metric: string) {
 export function useAddAnnotation(evalId: string) {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (payload: { content: string; category?: string; author?: string }) =>
+    mutationFn: (payload: { content: string; categoryId: string; author?: string }) =>
       addAnnotation(evalId, payload),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: evaluationKeys.detail(evalId) })
@@ -101,7 +101,7 @@ export function useAddAnnotation(evalId: string) {
 export function useAddRunAnnotation(runId: string) {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (payload: { content: string; category?: string; author?: string }) =>
+    mutationFn: (payload: { content: string; categoryId: string; author?: string }) =>
       addRunAnnotation(runId, payload),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: evaluationKeys.detail(runId) })

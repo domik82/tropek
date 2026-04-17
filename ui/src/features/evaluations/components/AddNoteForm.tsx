@@ -1,8 +1,9 @@
 // ui/src/features/evaluations/components/AddNoteForm.tsx
-import { useState } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { useAddRunAnnotation } from '../hooks'
+import { useNoteCategories, paletteOf } from '@/features/note-categories'
 import { SANS_SERIF } from '@/lib/fonts'
 
 interface Props {
@@ -12,22 +13,31 @@ interface Props {
 
 export function AddNoteForm({ runId, onClose }: Props) {
   const addAnnotation = useAddRunAnnotation(runId)
+  const { data: categories = [] } = useNoteCategories()
   const [content, setContent] = useState('')
   const [author, setAuthor] = useState('')
-  const [category, setCategory] = useState('')
+  const [categoryId, setCategoryId] = useState<string>('')
+
+  const infoCat = useMemo(() => categories.find(c => c.name === 'info'), [categories])
+
+  useEffect(() => {
+    if (!categoryId && infoCat) setCategoryId(infoCat.id)
+  }, [categoryId, infoCat])
+
+  const selected = categories.find(c => c.id === categoryId)
+  const palette = selected ? paletteOf(selected.color) : null
 
   function handleSave() {
-    if (!content.trim()) return
+    if (!content.trim() || !categoryId) return
     addAnnotation.mutate(
-      { content, author: author || undefined, category: category || undefined },
-      { onSuccess: () => { setContent(''); setAuthor(''); setCategory(''); onClose() } },
+      { content, author: author || undefined, categoryId },
+      { onSuccess: () => { setContent(''); setAuthor(''); onClose() } },
     )
   }
 
   return (
     <div className="flex justify-end">
       <div className="w-full max-w-md border border-amber-700/40 rounded-xl bg-popover overflow-hidden">
-        {/* Amber accent strip */}
         <div className="h-[3px] bg-amber-500" />
         <div className="p-4 space-y-3">
           <div className="flex items-center justify-between">
@@ -54,18 +64,24 @@ export function AddNoteForm({ runId, onClose }: Props) {
               placeholder="Author"
               autoComplete="name"
             />
-            <Input
-              value={category}
-              onChange={e => setCategory(e.target.value)}
-              placeholder="Category"
-            />
+            <select
+              value={categoryId}
+              onChange={e => setCategoryId(e.target.value)}
+              aria-label="Category"
+              className="bg-surface-sunken border border-border rounded px-2 py-1 text-sm"
+              style={palette ? { background: palette.bg, color: palette.fg } : undefined}
+            >
+              {categories.map(c => (
+                <option key={c.id} value={c.id}>{c.label}</option>
+              ))}
+            </select>
           </div>
 
           <div className="flex justify-end">
             <Button
               size="xs"
               onClick={handleSave}
-              disabled={!content.trim() || addAnnotation.isPending}
+              disabled={!content.trim() || !categoryId || addAnnotation.isPending}
               className="bg-amber-500 text-black hover:bg-amber-400"
             >
               {addAnnotation.isPending ? 'Saving...' : 'Save note'}
