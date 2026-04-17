@@ -15,6 +15,9 @@ from tropek.db.models import IndicatorResultRow, SLODefinition, SLOEvaluation
 from tropek.modules.quality_gate.evaluation_engine.evaluator import evaluate
 from tropek.modules.quality_gate.evaluation_engine.slo_models import SLO
 from tropek.modules.quality_gate.repositories.annotation import AnnotationRepository
+from tropek.modules.quality_gate.repositories.annotation_category import (
+    AnnotationCategoryRepository,
+)
 from tropek.modules.quality_gate.repositories.baseline import BaselineRepository
 from tropek.modules.quality_gate.repositories.evaluation import EvaluationRepository
 from tropek.modules.quality_gate.repositories.indicator import IndicatorRepository, build_indicator_row_dicts
@@ -166,12 +169,16 @@ async def _persist_reeval_result(  # noqa: PLR0913
         await cache.invalidate(f'baseline:{fresh_ev.asset_id}:{fresh_ev.slo_name}')
     if heatmap_cache is not None:
         await heatmap_cache.delete(fresh_ev.evaluation_id)
+    category_repo = AnnotationCategoryRepository(session)
+    re_eval_category = await category_repo.get_by_name('re-evaluation')
+    if re_eval_category is None:
+        raise RuntimeError("seeded 're-evaluation' category missing")
     ann_repo = AnnotationRepository(session, cache=cache)
     await ann_repo.add_annotation(
         ev.id,
         content=annotation_content,
         author='system',
-        category='re-evaluation',
+        category_id=re_eval_category.id,
         note_group_id=note_group_id,
         note_group_name=note_group_name,
     )
