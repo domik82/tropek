@@ -18,6 +18,7 @@ import time
 from datetime import datetime, timedelta
 
 from tropek_client import TropekClient
+from tropek_client.models import EvaluationSummary
 
 # Unique assets — POST /evaluate triggers ALL bound SLOs for an asset at once.
 ASSETS = [
@@ -160,6 +161,48 @@ def main() -> None:
     completed = sum(1 for e in results if e.status == 'completed')
     total = len(all_slo_eval_ids)
     print(f'seeded: {completed}/{total} completed — {passed} pass, {warning} warning, {failed} fail')
+
+    _seed_example_annotations(client, results)
+
+
+def _seed_example_annotations(
+    client: TropekClient, results: list[EvaluationSummary]
+) -> None:
+    """Attach annotations across visible categories so trend charts show pins in dev."""
+    categories_resp = client._http.get('/note-categories')
+    categories_resp.raise_for_status()
+    categories_by_name = {c['name']: c['id'] for c in categories_resp.json()}
+    required = ['info', 'failure', 'investigation']
+    if not all(name in categories_by_name for name in required):
+        print('skipping annotation seeding: required default categories missing')
+        return
+
+    completed = [ev for ev in results if ev.status == 'completed']
+    if len(completed) < 3:  # noqa: PLR2004
+        return
+
+    # Dedupe by run id (evaluation_id on SLO-eval = run id), take the 3 most-recent.
+    seen_runs: list[str] = []
+    for ev in sorted(completed, key=lambda e: e.created_at, reverse=True):
+        run_id = str(ev.evaluation_id)
+        if run_id not in seen_runs:
+            seen_runs.append(run_id)
+        if len(seen_runs) == 3:  # noqa: PLR2004
+            break
+
+    if len(seen_runs) < 3:  # noqa: PLR2004
+        return
+
+    annotations = [
+        (seen_runs[0], 'Routine deployment', categories_by_name['info']),
+        (seen_runs[1], 'Investigating timeout spike', categories_by_name['investigation']),
+        (seen_runs[2], 'Known flake — p99 latency', categories_by_name['failure']),
+    ]
+    for run_id, content, category_id in annotations:
+        client.annotations.create_for_run(
+            run_id, content, author='seed', category_id=category_id
+        )
+    print(f'seeded {len(annotations)} example annotations across info/investigation/failure')
 
 
 if __name__ == '__main__':
