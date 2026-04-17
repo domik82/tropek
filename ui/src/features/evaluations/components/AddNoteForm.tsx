@@ -1,5 +1,5 @@
 // ui/src/features/evaluations/components/AddNoteForm.tsx
-import { useState, useMemo, useEffect } from 'react'
+import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { useAddRunAnnotation } from '../hooks'
@@ -18,19 +18,15 @@ export function AddNoteForm({ runId, onClose }: Props) {
   const [author, setAuthor] = useState('')
   const [categoryId, setCategoryId] = useState<string>('')
 
-  const infoCat = useMemo(() => categories.find(c => c.name === 'info'), [categories])
-
-  useEffect(() => {
-    if (!categoryId && infoCat) setCategoryId(infoCat.id)
-  }, [categoryId, infoCat])
-
-  const selected = categories.find(c => c.id === categoryId)
+  const defaultId = categories.find(c => c.name === 'info')?.id ?? categories[0]?.id ?? ''
+  const effectiveId = categoryId || defaultId
+  const selected = categories.find(c => c.id === effectiveId)
   const palette = selected ? paletteOf(selected.color) : null
 
   function handleSave() {
-    if (!content.trim() || !categoryId) return
+    if (!content.trim() || !effectiveId) return
     addAnnotation.mutate(
-      { content, author: author || undefined, categoryId },
+      { content, author: author || undefined, categoryId: effectiveId },
       { onSuccess: () => { setContent(''); setAuthor(''); onClose() } },
     )
   }
@@ -65,7 +61,7 @@ export function AddNoteForm({ runId, onClose }: Props) {
               autoComplete="name"
             />
             <select
-              value={categoryId}
+              value={effectiveId}
               onChange={e => setCategoryId(e.target.value)}
               aria-label="Category"
               className="bg-surface-sunken border border-border rounded px-2 py-1 text-sm"
@@ -81,7 +77,7 @@ export function AddNoteForm({ runId, onClose }: Props) {
             <Button
               size="xs"
               onClick={handleSave}
-              disabled={!content.trim() || !categoryId || addAnnotation.isPending}
+              disabled={!content.trim() || !effectiveId || addAnnotation.isPending}
               className="bg-amber-500 text-black hover:bg-amber-400"
             >
               {addAnnotation.isPending ? 'Saving...' : 'Save note'}
