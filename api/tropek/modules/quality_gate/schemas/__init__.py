@@ -4,6 +4,12 @@ Existing imports like ``from tropek.modules.quality_gate.schemas import X``
 continue to work unchanged.
 """
 
+from tropek.modules.quality_gate.schemas.annotation_categories import (
+    AnnotationCategoryCreate,
+    AnnotationCategoryRead,
+    AnnotationCategoryUpdate,
+    CategoryColor,
+)
 from tropek.modules.quality_gate.schemas.annotations import (
     AnnotationCreate,
     AnnotationHide,
@@ -48,12 +54,16 @@ from tropek.modules.quality_gate.schemas.trigger import (
 from tropek.modules.quality_gate.shared.exceptions import BaselinePinConflictError
 
 __all__ = [
+    'AnnotationCategoryCreate',
+    'AnnotationCategoryRead',
+    'AnnotationCategoryUpdate',
     'AnnotationCreate',
     'AnnotationHide',
     'AnnotationRead',
     'AnnotationUpdate',
     'BaselinePinConflictError',
     'BatchPeriod',
+    'CategoryColor',
     'EvaluateBatchRequest',
     'EvaluateBatchResponse',
     'EvaluateSingleRequest',
