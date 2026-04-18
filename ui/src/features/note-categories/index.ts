@@ -4,7 +4,12 @@ export type {
   NoteCategoryInput,
   NoteCategoryPatch,
 } from './domain'
-export { paletteOf, PALETTE_OPTIONS } from './palette'
+export {
+  paletteOf,
+  PALETTE_OPTIONS,
+  DEFAULT_CATEGORY_COLOR,
+  DEFAULT_CATEGORY_PALETTE,
+} from './palette'
 export {
   useNoteCategories,
   useCreateNoteCategory,

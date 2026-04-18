@@ -3,7 +3,11 @@ import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { useAddRunAnnotation } from '../hooks'
-import { useNoteCategories, paletteOf } from '@/features/note-categories'
+import {
+  useNoteCategories,
+  paletteOf,
+  DEFAULT_CATEGORY_PALETTE,
+} from '@/features/note-categories'
 import { SANS_SERIF } from '@/lib/fonts'
 
 interface Props {
@@ -31,8 +35,8 @@ export function AddNoteForm({ runId, onClose }: Props) {
     )
   }
 
-  const accentBg = palette?.bg ?? 'var(--color-category-sky-bg)'
-  const accentFg = palette?.fg ?? 'var(--color-category-sky-fg)'
+  const accentBg = palette?.bg ?? DEFAULT_CATEGORY_PALETTE.bg
+  const accentFg = palette?.fg ?? DEFAULT_CATEGORY_PALETTE.fg
 
   return (
     <div className="flex justify-end">
@@ -41,7 +45,7 @@ export function AddNoteForm({ runId, onClose }: Props) {
         <div className="p-4 space-y-3">
           <div className="flex items-center justify-between">
             <p className="text-sm font-medium"
-              style={{ fontFamily: SANS_SERIF, color: accentBg }}>
+              style={{ fontFamily: SANS_SERIF, color: accentFg }}>
               Add Note
             </p>
             <button onClick={onClose}

@@ -191,7 +191,7 @@ export function useMetricTrendState(
 
   const chartResult = useMemo(
     () =>
-      buildChartOption({
+      buildChartRender({
         trend: trendData,
         evalId,
         selectedEvalIds,
@@ -273,7 +273,90 @@ interface ChartOptionInput {
   notesVisible?: boolean
 }
 
-export function buildChartOption(input: ChartOptionInput): { option: object; labelBandPx: number } {
+type TargetColours = ChartOptionInput['colours']
+type ChartTheme = ChartOptionInput['ct']
+
+function buildTargetSeries(
+  trend: TrendPoint[],
+  targets: ChartTarget[],
+  colours: TargetColours,
+  ct: ChartTheme,
+): object[] {
+  const series: object[] = []
+  for (const target of targets) {
+    if (!target.visible) continue
+
+    if (target.level === 'baseline') {
+      series.push({
+        type: 'line',
+        data: trend.map(p => p.baseline ?? null),
+        symbol: 'none',
+        silent: true,
+        lineStyle: {
+          color: ct.baseline,
+          type: 'dotted' as const,
+          width: 1,
+          opacity: 0.6,
+        },
+        tooltip: { show: false },
+      })
+      continue
+    }
+
+    const color = target.level === 'pass' ? colours.pass : colours.warning
+    const lineType = isRelative(target.criteria)
+      ? ('dashed' as const)
+      : ('solid' as const)
+    const level = target.level as 'pass' | 'warn'
+    series.push({
+      type: 'line',
+      data: trend.map(p => getTargetValue(p, level, target.criteria)),
+      symbol: 'none',
+      silent: true,
+      lineStyle: { color, type: lineType, width: 1.5 },
+      tooltip: { show: false },
+    })
+  }
+  return series
+}
+
+interface AnnotationLayer {
+  markLine?: MarkLineOption
+  markPoint?: MarkPointOption
+  labelBandPx: number
+}
+
+function buildAnnotationLayer(
+  trend: TrendPoint[],
+  annotations: Map<string, Annotation[]> | undefined,
+  categories: NoteCategory[] | undefined,
+  chartWidth: number | undefined,
+  notesVisible: boolean,
+): AnnotationLayer {
+  if (!notesVisible || !annotations || annotations.size === 0 || !categories) {
+    return { labelBandPx: 0 }
+  }
+  const categoriesById = new Map(categories.map(c => [c.id, c]))
+  const built = buildNoteAnnotations({
+    trendPoints: trend,
+    annotationsByEvalId: annotations,
+    categoriesById,
+    chartWidth: chartWidth ?? 0,
+  })
+  return {
+    markLine: built.markLine,
+    markPoint: built.markPoint,
+    labelBandPx: built.labelBandPx,
+  }
+}
+
+/** Returns just the echarts option object — convenience for tests and callers
+ * that don't need the outer container's label-band height. */
+export function buildChartOption(input: ChartOptionInput): object {
+  return buildChartRender(input).option
+}
+
+export function buildChartRender(input: ChartOptionInput): { option: object; labelBandPx: number } {
   const {
     trend,
     evalId,
@@ -333,66 +416,14 @@ export function buildChartOption(input: ChartOptionInput): { option: object; lab
     },
   }))
 
-  // ── Target line series ──────────────────────────────────────────────────
-  const targetSeries: object[] = []
-  for (const t of targets) {
-    if (!t.visible) continue
-
-    // Baseline series
-    if (t.level === 'baseline') {
-      const data = trend.map(p => p.baseline ?? null)
-      targetSeries.push({
-        type: 'line',
-        data,
-        symbol: 'none',
-        silent: true,
-        lineStyle: {
-          color: ct.baseline,
-          type: 'dotted' as const,
-          width: 1,
-          opacity: 0.6,
-        },
-        tooltip: { show: false },
-      })
-      continue
-    }
-
-    // Criteria target series
-    const color =
-      t.level === 'pass' ? colours.pass : colours.warning
-    const lineType = isRelative(t.criteria)
-      ? ('dashed' as const)
-      : ('solid' as const)
-    const level = t.level as 'pass' | 'warn'
-    const data = trend.map(p =>
-      getTargetValue(p, level, t.criteria),
-    )
-
-    targetSeries.push({
-      type: 'line',
-      data,
-      symbol: 'none',
-      silent: true,
-      lineStyle: { color, type: lineType, width: 1.5 },
-      tooltip: { show: false },
-    })
-  }
-
-  let markLine: MarkLineOption | undefined
-  let markPoint: MarkPointOption | undefined
-  let labelBandPx = 0
-  if (notesVisible && annotations && annotations.size > 0 && categories) {
-    const categoriesById = new Map(categories.map(c => [c.id, c]))
-    const built = buildNoteAnnotations({
-      trendPoints: trend,
-      annotationsByEvalId: annotations,
-      categoriesById,
-      chartWidth: chartWidth ?? 0,
-    })
-    markLine = built.markLine
-    markPoint = built.markPoint
-    labelBandPx = built.labelBandPx
-  }
+  const targetSeries = buildTargetSeries(trend, targets, colours, ct)
+  const { markLine, markPoint, labelBandPx } = buildAnnotationLayer(
+    trend,
+    annotations,
+    categories,
+    chartWidth,
+    notesVisible,
+  )
 
   const option = {
     animation: false,
