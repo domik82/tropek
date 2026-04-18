@@ -3,6 +3,11 @@ import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { useAddRunAnnotation } from '../hooks'
+import {
+  useNoteCategories,
+  paletteOf,
+  DEFAULT_CATEGORY_PALETTE,
+} from '@/features/note-categories'
 import { SANS_SERIF } from '@/lib/fonts'
 
 interface Props {
@@ -12,27 +17,35 @@ interface Props {
 
 export function AddNoteForm({ runId, onClose }: Props) {
   const addAnnotation = useAddRunAnnotation(runId)
+  const { data: categories = [] } = useNoteCategories()
   const [content, setContent] = useState('')
   const [author, setAuthor] = useState('')
-  const [category, setCategory] = useState('')
+  const [categoryId, setCategoryId] = useState<string>('')
+
+  const defaultId = categories.find(c => c.name === 'info')?.id ?? categories[0]?.id ?? ''
+  const effectiveId = categoryId || defaultId
+  const selected = categories.find(c => c.id === effectiveId)
+  const palette = selected ? paletteOf(selected.color) : null
 
   function handleSave() {
-    if (!content.trim()) return
+    if (!content.trim() || !effectiveId) return
     addAnnotation.mutate(
-      { content, author: author || undefined, category: category || undefined },
-      { onSuccess: () => { setContent(''); setAuthor(''); setCategory(''); onClose() } },
+      { content, author: author || undefined, categoryId: effectiveId },
+      { onSuccess: () => { setContent(''); setAuthor(''); onClose() } },
     )
   }
 
+  const accentBg = palette?.bg ?? DEFAULT_CATEGORY_PALETTE.bg
+  const accentFg = palette?.fg ?? DEFAULT_CATEGORY_PALETTE.fg
+
   return (
     <div className="flex justify-end">
-      <div className="w-full max-w-md border border-amber-700/40 rounded-xl bg-popover overflow-hidden">
-        {/* Amber accent strip */}
-        <div className="h-[3px] bg-amber-500" />
+      <div className="w-full max-w-md border border-border rounded-xl bg-popover overflow-hidden">
+        <div className="h-[3px]" style={{ background: accentBg }} />
         <div className="p-4 space-y-3">
           <div className="flex items-center justify-between">
-            <p className="text-sm font-medium text-amber-400"
-              style={{ fontFamily: SANS_SERIF }}>
+            <p className="text-sm font-medium"
+              style={{ fontFamily: SANS_SERIF, color: accentFg }}>
               Add Note
             </p>
             <button onClick={onClose}
@@ -54,19 +67,25 @@ export function AddNoteForm({ runId, onClose }: Props) {
               placeholder="Author"
               autoComplete="name"
             />
-            <Input
-              value={category}
-              onChange={e => setCategory(e.target.value)}
-              placeholder="Category"
-            />
+            <select
+              value={effectiveId}
+              onChange={e => setCategoryId(e.target.value)}
+              aria-label="Category"
+              className="bg-surface-sunken border border-border rounded px-2 py-1 text-sm"
+              style={{ background: accentBg, color: accentFg }}
+            >
+              {categories.map(c => (
+                <option key={c.id} value={c.id}>{c.label}</option>
+              ))}
+            </select>
           </div>
 
           <div className="flex justify-end">
             <Button
               size="xs"
               onClick={handleSave}
-              disabled={!content.trim() || addAnnotation.isPending}
-              className="bg-amber-500 text-black hover:bg-amber-400"
+              disabled={!content.trim() || !effectiveId || addAnnotation.isPending}
+              style={{ background: accentBg, color: accentFg }}
             >
               {addAnnotation.isPending ? 'Saving...' : 'Save note'}
             </Button>

@@ -10,7 +10,17 @@ const annotation: Annotation = {
   evaluationRunId: 'run-1',
   content: 'test note',
   author: 'tester',
-  category: 'investigation',
+  categoryId: 'cat-investigation',
+  category: {
+    id: 'cat-investigation',
+    name: 'investigation',
+    label: 'Investigation',
+    color: 'amber',
+    showOnGraph: true,
+    isSystem: false,
+    createdAt: new Date('2026-01-01T00:00:00Z'),
+    updatedAt: null,
+  },
   tags: {},
   noteGroupId: null,
   noteGroupName: null,
@@ -31,7 +41,7 @@ describe('NoteEntry', () => {
     renderWithQuery(<NoteEntry runId="e1" annotation={annotation} />)
     expect(screen.getByText('test note')).toBeInTheDocument()
     expect(screen.getByText('tester')).toBeInTheDocument()
-    expect(screen.getByText('investigation')).toBeInTheDocument()
+    expect(screen.getByText('Investigation')).toBeInTheDocument()
   })
 
   it('renders content in compact mode', () => {

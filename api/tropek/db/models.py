@@ -347,6 +347,27 @@ class SLODefinition(Base):
         return self.sli_definition.version
 
 
+class AnnotationCategory(Base):
+    """Category taxonomy for evaluation annotations.
+
+    System rows (is_system=True) cannot be deleted; their name is immutable,
+    but show_on_graph remains toggleable.
+    """
+
+    __tablename__ = 'annotation_categories'
+
+    # fmt: off
+    id:             Mapped[uuid.UUID]  = mapped_column(UUID, primary_key=True, default=uuid.uuid4)
+    name:           Mapped[str]        = mapped_column(Text, unique=True, nullable=False)
+    label:          Mapped[str]        = mapped_column(Text, nullable=False)
+    color:          Mapped[str]        = mapped_column(Text, nullable=False)
+    show_on_graph:  Mapped[bool]       = mapped_column(Boolean, nullable=False, server_default=text('true'))
+    is_system:      Mapped[bool]       = mapped_column(Boolean, nullable=False, server_default=text('false'))
+    created_at:     Mapped[datetime]   = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    updated_at:     Mapped[datetime | None] = mapped_column(DateTime(timezone=True), onupdate=func.now(), nullable=True)
+    # fmt: on
+
+
 class EvaluationAnnotation(Base):
     """Append-only contextual note on an evaluation.
 
@@ -372,7 +393,8 @@ class EvaluationAnnotation(Base):
     evaluation_run_id: Mapped[uuid.UUID | None] = mapped_column(UUID, ForeignKey('evaluations.id', ondelete='CASCADE'), nullable=True)
     content:           Mapped[str]              = mapped_column(Text, nullable=False)
     author:            Mapped[str | None]       = mapped_column(Text, nullable=True)
-    category:          Mapped[str | None]       = mapped_column(Text, nullable=True)
+    category_id:       Mapped[uuid.UUID]        = mapped_column(UUID, ForeignKey('annotation_categories.id'), nullable=False)
+    category:          Mapped[AnnotationCategory] = relationship('AnnotationCategory')
     tags:              Mapped[dict[str, Any]]   = mapped_column(JSONB, nullable=False, server_default=text("'{}'"), default=dict)
     note_group_id:     Mapped[uuid.UUID | None] = mapped_column(UUID, nullable=True, index=True)
     note_group_name:   Mapped[str | None]       = mapped_column(Text, nullable=True)

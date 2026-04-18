@@ -1,8 +1,10 @@
 // ui/src/features/evaluations/hooks/useMetricTrendState.ts
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useCallback } from 'react'
 import { useTheme } from '@/lib/theme-context'
 import { RESULT_COLOUR, CHART_THEME } from '@/lib/theme'
-import type { TrendPoint, Indicator, TrendTargetEntry } from '../domain'
+import { buildNoteAnnotations, type MarkLineOption, type MarkPointOption } from '@/lib/chartAnnotations'
+import type { Annotation, TrendPoint, Indicator, TrendTargetEntry } from '../domain'
+import type { NoteCategory } from '@/features/note-categories'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -28,6 +30,9 @@ export interface MetricTrendState {
   setYMax: (v: string) => void
   targets: TargetToggle[]
   chartOption: object
+  labelBandPx: number
+  notesVisible: boolean
+  toggleNotes: () => void
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -117,10 +122,15 @@ export function useMetricTrendState(
   onEvalSelect?: (evalId: string) => void,
   selectedEvalIds?: ReadonlySet<string>,
   selectedPeriodStart?: string,
+  annotations?: Map<string, Annotation[]>,
+  categories?: NoteCategory[],
+  chartWidth?: number,
 ): MetricTrendState {
   const [yMin, setYMin] = useState('')
   const [yMax, setYMax] = useState('')
   const [visibility, setVisibility] = useState<Record<string, boolean>>({})
+  const [notesVisible, setNotesVisible] = useState(true)
+  const toggleNotes = useCallback(() => setNotesVisible(v => !v), [])
 
   const { theme, fontSize } = useTheme()
   const colours = RESULT_COLOUR[theme]
@@ -179,9 +189,9 @@ export function useMetricTrendState(
     [targets],
   )
 
-  const chartOption = useMemo(
+  const chartResult = useMemo(
     () =>
-      buildChartOption({
+      buildChartRender({
         trend: trendData,
         evalId,
         selectedEvalIds,
@@ -193,6 +203,10 @@ export function useMetricTrendState(
         yMax,
         targets: chartTargets,
         onEvalSelect,
+        annotations,
+        categories,
+        chartWidth,
+        notesVisible,
       }),
     [
       trendData,
@@ -206,10 +220,24 @@ export function useMetricTrendState(
       yMax,
       chartTargets,
       onEvalSelect,
+      annotations,
+      categories,
+      chartWidth,
+      notesVisible,
     ],
   )
 
-  return { yMin, yMax, setYMin, setYMax, targets, chartOption }
+  return {
+    yMin,
+    yMax,
+    setYMin,
+    setYMax,
+    targets,
+    chartOption: chartResult.option,
+    labelBandPx: chartResult.labelBandPx,
+    notesVisible,
+    toggleNotes,
+  }
 }
 
 // ── Pure chart option builder (testable without React) ─────────────────────
@@ -239,9 +267,96 @@ interface ChartOptionInput {
   yMax: string
   targets: ChartTarget[]
   onEvalSelect?: (evalId: string) => void
+  annotations?: Map<string, Annotation[]>
+  categories?: NoteCategory[]
+  chartWidth?: number
+  notesVisible?: boolean
 }
 
+type TargetColours = ChartOptionInput['colours']
+type ChartTheme = ChartOptionInput['ct']
+
+function buildTargetSeries(
+  trend: TrendPoint[],
+  targets: ChartTarget[],
+  colours: TargetColours,
+  ct: ChartTheme,
+): object[] {
+  const series: object[] = []
+  for (const target of targets) {
+    if (!target.visible) continue
+
+    if (target.level === 'baseline') {
+      series.push({
+        type: 'line',
+        data: trend.map(p => p.baseline ?? null),
+        symbol: 'none',
+        silent: true,
+        lineStyle: {
+          color: ct.baseline,
+          type: 'dotted' as const,
+          width: 1,
+          opacity: 0.6,
+        },
+        tooltip: { show: false },
+      })
+      continue
+    }
+
+    const color = target.level === 'pass' ? colours.pass : colours.warning
+    const lineType = isRelative(target.criteria)
+      ? ('dashed' as const)
+      : ('solid' as const)
+    const level = target.level as 'pass' | 'warn'
+    series.push({
+      type: 'line',
+      data: trend.map(p => getTargetValue(p, level, target.criteria)),
+      symbol: 'none',
+      silent: true,
+      lineStyle: { color, type: lineType, width: 1.5 },
+      tooltip: { show: false },
+    })
+  }
+  return series
+}
+
+interface AnnotationLayer {
+  markLine?: MarkLineOption
+  markPoint?: MarkPointOption
+  labelBandPx: number
+}
+
+function buildAnnotationLayer(
+  trend: TrendPoint[],
+  annotations: Map<string, Annotation[]> | undefined,
+  categories: NoteCategory[] | undefined,
+  chartWidth: number | undefined,
+  notesVisible: boolean,
+): AnnotationLayer {
+  if (!notesVisible || !annotations || annotations.size === 0 || !categories) {
+    return { labelBandPx: 0 }
+  }
+  const categoriesById = new Map(categories.map(c => [c.id, c]))
+  const built = buildNoteAnnotations({
+    trendPoints: trend,
+    annotationsByEvalId: annotations,
+    categoriesById,
+    chartWidth: chartWidth ?? 0,
+  })
+  return {
+    markLine: built.markLine,
+    markPoint: built.markPoint,
+    labelBandPx: built.labelBandPx,
+  }
+}
+
+/** Returns just the echarts option object — convenience for tests and callers
+ * that don't need the outer container's label-band height. */
 export function buildChartOption(input: ChartOptionInput): object {
+  return buildChartRender(input).option
+}
+
+export function buildChartRender(input: ChartOptionInput): { option: object; labelBandPx: number } {
   const {
     trend,
     evalId,
@@ -254,6 +369,10 @@ export function buildChartOption(input: ChartOptionInput): object {
     yMax,
     targets,
     onEvalSelect,
+    annotations,
+    categories,
+    chartWidth,
+    notesVisible = true,
   } = input
 
   const fontScale = fontSize / 14
@@ -288,60 +407,28 @@ export function buildChartOption(input: ChartOptionInput): object {
     itemStyle: {
       color:
         colours[p.outcome as keyof typeof colours] ?? '#6b7280',
-      borderColor: isSelected(p) ? '#ffffff' : 'transparent',
-      borderWidth: 2,
+      borderColor: isSelected(p)
+        ? '#ffffff'
+        : p.overridden
+          ? ct.axisLabel
+          : 'transparent',
+      borderWidth: p.overridden || isSelected(p) ? 2 : 0,
     },
   }))
 
-  // ── Target line series ──────────────────────────────────────────────────
-  const targetSeries: object[] = []
-  for (const t of targets) {
-    if (!t.visible) continue
+  const targetSeries = buildTargetSeries(trend, targets, colours, ct)
+  const { markLine, markPoint, labelBandPx } = buildAnnotationLayer(
+    trend,
+    annotations,
+    categories,
+    chartWidth,
+    notesVisible,
+  )
 
-    // Baseline series
-    if (t.level === 'baseline') {
-      const data = trend.map(p => p.baseline ?? null)
-      targetSeries.push({
-        type: 'line',
-        data,
-        symbol: 'none',
-        silent: true,
-        lineStyle: {
-          color: ct.baseline,
-          type: 'dotted' as const,
-          width: 1,
-          opacity: 0.6,
-        },
-        tooltip: { show: false },
-      })
-      continue
-    }
-
-    // Criteria target series
-    const color =
-      t.level === 'pass' ? colours.pass : colours.warning
-    const lineType = isRelative(t.criteria)
-      ? ('dashed' as const)
-      : ('solid' as const)
-    const level = t.level as 'pass' | 'warn'
-    const data = trend.map(p =>
-      getTargetValue(p, level, t.criteria),
-    )
-
-    targetSeries.push({
-      type: 'line',
-      data,
-      symbol: 'none',
-      silent: true,
-      lineStyle: { color, type: lineType, width: 1.5 },
-      tooltip: { show: false },
-    })
-  }
-
-  return {
+  const option = {
     animation: false,
     backgroundColor: 'transparent',
-    grid: { top: 16, bottom: 52, left: 56, right: 16 },
+    grid: { top: 16 + labelBandPx, bottom: 52, left: 56, right: 16 },
     tooltip: {
       trigger: 'axis',
       backgroundColor: ct.bg,
@@ -364,6 +451,7 @@ export function buildChartOption(input: ChartOptionInput): object {
           `value: <b>${p.value}</b>`,
           `result: <b style="color:${colours[p.outcome as keyof typeof colours] ?? '#6b7280'}">${p.outcome.toUpperCase()}</b>`,
         ]
+        if (p.overridden) lines.push(`<span style="color:${ct.axisLabel}">(override)</span>`)
         return lines.join('<br/>')
       },
     },
@@ -402,8 +490,12 @@ export function buildChartOption(input: ChartOptionInput): object {
           return p && isSelected(p) ? 10 : 6
         },
         lineStyle: { color: ct.line, width: 1.5 },
+        ...(markLine ? { markLine } : {}),
+        ...(markPoint ? { markPoint } : {}),
       },
       ...targetSeries,
     ],
   }
+
+  return { option, labelBandPx }
 }

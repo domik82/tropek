@@ -15,6 +15,9 @@ from tropek.db.models import IndicatorResultRow, SLODefinition, SLOEvaluation
 from tropek.modules.quality_gate.evaluation_engine.evaluator import evaluate
 from tropek.modules.quality_gate.evaluation_engine.slo_models import SLO
 from tropek.modules.quality_gate.repositories.annotation import AnnotationRepository
+from tropek.modules.quality_gate.repositories.annotation_category import (
+    AnnotationCategoryRepository,
+)
 from tropek.modules.quality_gate.repositories.baseline import BaselineRepository
 from tropek.modules.quality_gate.repositories.evaluation import EvaluationRepository
 from tropek.modules.quality_gate.repositories.indicator import IndicatorRepository, build_indicator_row_dicts
@@ -32,6 +35,9 @@ from tropek.modules.sli_registry.repository import SLIRepository
 
 # Earliest possible timezone-aware datetime for "no lower bound" queries
 _DATETIME_MIN = datetime.min.replace(tzinfo=UTC)
+
+# Seeded annotation category used for automatic re-evaluation notes.
+RE_EVALUATION_CATEGORY_NAME = 're-evaluation'
 
 
 def _metrics_from_indicator_rows(
@@ -119,6 +125,102 @@ async def _resolve_sli_version_range(
     return (sli_def.comparable_from_version, sli_def.version)
 
 
+async def _load_fresh_evaluation(session: AsyncSession, evaluation_id: uuid.UUID) -> SLOEvaluation | None:
+    """Reload an evaluation with its annotations eagerly loaded."""
+    result = await session.execute(
+        select(SLOEvaluation)
+        .options(selectinload(SLOEvaluation.annotations))
+        .where(SLOEvaluation.id == evaluation_id)
+    )
+    return result.scalar_one_or_none()
+
+
+async def _update_evaluation_row(
+    session: AsyncSession,
+    *,
+    fresh_ev: SLOEvaluation,
+    new_result: str,
+    new_score: float,
+    old_result: str,
+    old_score: float,
+    slo_version: int,
+) -> None:
+    """Update the SLOEvaluation row with new result/score and re-eval job stats."""
+    stats = dict(fresh_ev.job_stats)
+    if 'original_result' not in stats:
+        stats['original_result'] = old_result
+        stats['original_score'] = old_score
+    stats['re_evaluated_at'] = datetime.now(tz=UTC).isoformat()
+    stats['re_eval_slo_version'] = slo_version
+
+    values: dict[str, Any] = {
+        'result': new_result,
+        'score': new_score,
+        'job_stats': stats,
+        'slo_version': slo_version,
+    }
+    await session.execute(update(SLOEvaluation).where(SLOEvaluation.id == fresh_ev.id).values(**values))
+
+
+async def _invalidate_caches(
+    fresh_ev: SLOEvaluation,
+    cache: RedisCache | None,
+    heatmap_cache: HeatmapColumnCache | None,
+) -> None:
+    """Drop stale baseline and heatmap caches tied to the re-scored evaluation."""
+    if cache:
+        await cache.invalidate(f'baseline:{fresh_ev.asset_id}:{fresh_ev.slo_name}')
+    if heatmap_cache is not None:
+        await heatmap_cache.delete(fresh_ev.evaluation_id)
+
+
+async def _add_reeval_annotation(  # noqa: PLR0913
+    session: AsyncSession,
+    *,
+    evaluation_id: uuid.UUID,
+    slo_name: str,
+    new_result: str,
+    new_score: float,
+    old_result: str,
+    old_score: float,
+    re_eval_category_id: uuid.UUID,
+    note_group_id: uuid.UUID,
+    note_group_name: str,
+    cache: RedisCache | None,
+) -> None:
+    """Record an automatic 're-evaluation' annotation describing the result change."""
+    content = f'{slo_name}: {old_result} \u2192 {new_result}, score {old_score} \u2192 {new_score}'
+    ann_repo = AnnotationRepository(session, cache=cache)
+    await ann_repo.add_annotation(
+        evaluation_id,
+        content=content,
+        author='system',
+        category_id=re_eval_category_id,
+        note_group_id=note_group_id,
+        note_group_name=note_group_name,
+    )
+
+
+async def _replace_indicator_rows(
+    session: AsyncSession,
+    *,
+    evaluation_id: uuid.UUID,
+    new_engine_results: list[Any],
+    slo_objectives: list[Any],
+) -> None:
+    """Replace stored indicator rows with freshly computed ones."""
+    indicator_repo = IndicatorRepository(session)
+    await indicator_repo.delete_for_evaluation(evaluation_id)
+    obj_lookup = {obj.sli: obj.id for obj in slo_objectives}
+    rows = build_indicator_row_dicts(
+        evaluation_id=evaluation_id,
+        indicator_results=new_engine_results,
+        obj_lookup=obj_lookup,
+    )
+    if rows:
+        await indicator_repo.bulk_insert(evaluation_id, rows)
+
+
 async def _persist_reeval_result(  # noqa: PLR0913
     session: AsyncSession,
     *,
@@ -132,61 +234,46 @@ async def _persist_reeval_result(  # noqa: PLR0913
     new_engine_results: list[Any] | None,
     slo_objectives: list[Any] | None,
     cache: RedisCache | None,
+    re_eval_category_id: uuid.UUID,
     note_group_id: uuid.UUID,
     note_group_name: str,
     heatmap_cache: HeatmapColumnCache | None = None,
 ) -> None:
     """Overwrite evaluation result from re-evaluation, preserving original on first call."""
-    result = await session.execute(
-        select(SLOEvaluation).options(selectinload(SLOEvaluation.annotations)).where(SLOEvaluation.id == ev.id)
-    )
-    fresh_ev = result.scalar_one_or_none()
+    fresh_ev = await _load_fresh_evaluation(session, ev.id)
     if fresh_ev is None:
         return
 
-    stats = dict(fresh_ev.job_stats)
-    if 'original_result' not in stats:
-        stats['original_result'] = old_result
-        stats['original_score'] = old_score
-    stats['re_evaluated_at'] = datetime.now(tz=UTC).isoformat()
-    stats['re_eval_slo_version'] = slo_version
-
-    values: dict[str, Any] = {
-        'result': new_result,
-        'score': new_score,
-        'job_stats': stats,
-    }
-    if slo_version is not None:
-        values['slo_version'] = slo_version
-
-    await session.execute(update(SLOEvaluation).where(SLOEvaluation.id == ev.id).values(**values))
-
-    annotation_content = f'{slo_name}: {old_result} \u2192 {new_result}, score {old_score} \u2192 {new_score}'
-    if cache:
-        await cache.invalidate(f'baseline:{fresh_ev.asset_id}:{fresh_ev.slo_name}')
-    if heatmap_cache is not None:
-        await heatmap_cache.delete(fresh_ev.evaluation_id)
-    ann_repo = AnnotationRepository(session, cache=cache)
-    await ann_repo.add_annotation(
-        ev.id,
-        content=annotation_content,
-        author='system',
-        category='re-evaluation',
+    await _update_evaluation_row(
+        session,
+        fresh_ev=fresh_ev,
+        new_result=new_result,
+        new_score=new_score,
+        old_result=old_result,
+        old_score=old_score,
+        slo_version=slo_version,
+    )
+    await _invalidate_caches(fresh_ev, cache, heatmap_cache)
+    await _add_reeval_annotation(
+        session,
+        evaluation_id=ev.id,
+        slo_name=slo_name,
+        new_result=new_result,
+        new_score=new_score,
+        old_result=old_result,
+        old_score=old_score,
+        re_eval_category_id=re_eval_category_id,
         note_group_id=note_group_id,
         note_group_name=note_group_name,
+        cache=cache,
     )
-
     if new_engine_results and slo_objectives:
-        indicator_repo = IndicatorRepository(session)
-        await indicator_repo.delete_for_evaluation(ev.id)
-        obj_lookup = {obj.sli: obj.id for obj in slo_objectives}
-        rows = build_indicator_row_dicts(
+        await _replace_indicator_rows(
+            session,
             evaluation_id=ev.id,
-            indicator_results=new_engine_results,
-            obj_lookup=obj_lookup,
+            new_engine_results=new_engine_results,
+            slo_objectives=slo_objectives,
         )
-        if rows:
-            await indicator_repo.bulk_insert(ev.id, rows)
 
 
 async def _rescore_single(  # noqa: PLR0913
@@ -204,6 +291,7 @@ async def _rescore_single(  # noqa: PLR0913
     session: AsyncSession,
     cache: RedisCache | None,
     dry_run: bool,
+    re_eval_category_id: uuid.UUID,
     skip_pin_filter: bool = False,
     note_group_id: uuid.UUID | None = None,
     note_group_name: str | None = None,
@@ -245,6 +333,7 @@ async def _rescore_single(  # noqa: PLR0913
             new_engine_results=eval_result.indicator_results,
             slo_objectives=slo_def.objectives,
             cache=cache,
+            re_eval_category_id=re_eval_category_id,
             note_group_id=note_group_id,
             note_group_name=note_group_name,
             heatmap_cache=heatmap_cache,
@@ -270,6 +359,7 @@ async def _re_evaluate_single_slo(
     asset_id: uuid.UUID,
     repos: QualityGateRepos,
     *,
+    re_eval_category_id: uuid.UUID,
     note_group_id: uuid.UUID,
     note_group_name: str,
 ) -> tuple[int, list[ReEvalResultItem]]:
@@ -340,6 +430,7 @@ async def _re_evaluate_single_slo(
             session=session,
             cache=cache,
             dry_run=request.dry_run,
+            re_eval_category_id=re_eval_category_id,
             skip_pin_filter=skip_pin,
             note_group_id=note_group_id,
             note_group_name=note_group_name,
@@ -399,6 +490,12 @@ async def re_evaluate(
     slo_label = slo_names[0] if len(slo_names) == 1 else f'{len(slo_names)} SLOs'
     note_group_name = f're-evaluation \u2014 {slo_label}'
 
+    # Resolve the re-evaluation annotation category once for the whole action
+    category_repo = AnnotationCategoryRepository(repos.session)
+    re_eval_category = await category_repo.get_by_name(RE_EVALUATION_CATEGORY_NAME)
+    if re_eval_category is None:
+        raise RuntimeError(f"seeded '{RE_EVALUATION_CATEGORY_NAME}' category missing")
+
     # Re-evaluate each SLO
     all_results: list[ReEvalResultItem] = []
     single_slo_version: int | None = None
@@ -408,6 +505,7 @@ async def re_evaluate(
             slo_name,
             asset.id,
             repos,
+            re_eval_category_id=re_eval_category.id,
             note_group_id=note_group_id,
             note_group_name=note_group_name,
         )

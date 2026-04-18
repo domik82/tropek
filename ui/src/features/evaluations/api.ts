@@ -2,6 +2,7 @@
 import { getConfig } from '@/lib/config'
 import type {
   Annotation,
+  AnnotationCreateInput,
   Evaluation,
   EvaluationDetail,
   EvaluationFilters,
@@ -15,6 +16,7 @@ import type {
   TriggerEvaluationInput,
 } from './domain'
 import {
+  annotationCreateInputToDto,
   dtoToAnnotation,
   dtoToEvaluationDetail,
   dtoToEvaluationList,
@@ -112,12 +114,12 @@ export async function triggerEvaluation(
 
 export async function addAnnotation(
   evalId: string,
-  payload: { content: string; category?: string; author?: string },
+  payload: AnnotationCreateInput,
 ): Promise<Annotation> {
   const res = await fetch(`${BASE}/evaluations/${evalId}/annotations`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
+    body: JSON.stringify(annotationCreateInputToDto(payload)),
   })
   if (!res.ok) throw new Error(`addAnnotation: ${res.status}`)
   const body: AnnotationDto = await res.json()
@@ -126,12 +128,12 @@ export async function addAnnotation(
 
 export async function addRunAnnotation(
   runId: string,
-  payload: { content: string; category?: string; author?: string },
+  payload: AnnotationCreateInput,
 ): Promise<Annotation> {
   const res = await fetch(`${BASE}/evaluations/run/${runId}/annotations`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
+    body: JSON.stringify(annotationCreateInputToDto(payload)),
   })
   if (!res.ok) throw new Error(`addRunAnnotation: ${res.status}`)
   const body: AnnotationDto = await res.json()
@@ -200,6 +202,21 @@ export async function pinBaseline(
   if (!res.ok) throw new Error(`pinBaseline: ${res.status}`)
   const body: EvaluationDetailDto = await res.json()
   return dtoToEvaluationDetail(body)
+}
+
+export async function fetchTrendAnnotations(
+  asset: string,
+  slo: string,
+): Promise<Map<string, Annotation[]>> {
+  const params = new URLSearchParams({ asset, slo })
+  const res = await fetch(`${BASE}/evaluations/trend-annotations?${params}`)
+  if (!res.ok) throw new Error(`fetchTrendAnnotations: ${res.status}`)
+  const body: Record<string, AnnotationDto[]> = await res.json()
+  const map = new Map<string, Annotation[]>()
+  for (const [evalId, dtos] of Object.entries(body)) {
+    map.set(evalId, dtos.map(dtoToAnnotation))
+  }
+  return map
 }
 
 export async function fetchColumnAnnotations(evaluationId: string): Promise<Annotation[]> {

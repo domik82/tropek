@@ -276,11 +276,17 @@ def test_annotations(client: TropekClient) -> None:
     slo_eval_id = str(evals.items[0].id)
     run_id = str(evals.items[0].evaluation_id)
 
+    categories_resp = client._http.get('/note-categories')
+    categories_resp.raise_for_status()
+    categories_by_name = {c['name']: c['id'] for c in categories_resp.json()}
+    info_id = categories_by_name['info']
+    investigation_id = categories_by_name['investigation']
+
     ann = client.annotations.create(
         slo_eval_id,
         'deployment looked fine, ignoring regression',
         author='test-runner',
-        category='deployment',
+        category_id=info_id,
     )
     assert ann.content == 'deployment looked fine, ignoring regression'
     assert ann.author == 'test-runner'
@@ -301,7 +307,7 @@ def test_annotations(client: TropekClient) -> None:
         run_id,
         'column-level note from e2e test',
         author='test-runner',
-        category='observation',
+        category_id=investigation_id,
     )
     assert run_ann.evaluation_run_id is not None, 'run-level note should carry evaluation_run_id'
     assert run_ann.slo_evaluation_id is None, 'run-level note must not carry slo_evaluation_id'

@@ -1,8 +1,24 @@
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { MemoryRouter } from 'react-router-dom'
 import { AnnotationSection } from './AnnotationForm'
 import type { Annotation } from '../domain'
+import type { NoteCategory } from '@/features/note-categories'
+// Re-export for vi.mock factory
+
+function makeCategory(name: string): NoteCategory {
+  return {
+    id: `cat-${name}`,
+    name,
+    label: name,
+    color: 'sky',
+    showOnGraph: true,
+    isSystem: false,
+    createdAt: new Date('2026-01-01T00:00:00Z'),
+    updatedAt: null,
+  }
+}
 
 const addAnnotationMutate = vi.fn()
 const hideAnnotationMutate = vi.fn()
@@ -18,9 +34,35 @@ vi.mock('../hooks', () => ({
   }),
 }))
 
+vi.mock('@/features/note-categories', async () => {
+  const actual =
+    await vi.importActual<typeof import('@/features/note-categories')>('@/features/note-categories')
+  const mk = (name: string): NoteCategory => ({
+    id: `cat-${name}`,
+    name,
+    label: name,
+    color: 'sky',
+    showOnGraph: true,
+    isSystem: false,
+    createdAt: new Date('2026-01-01T00:00:00Z'),
+    updatedAt: null,
+  })
+  return {
+    ...actual,
+    useNoteCategories: () => ({
+      data: [mk('info'), mk('investigation')],
+      isLoading: false,
+    }),
+  }
+})
+
 function renderWithQuery(ui: React.ReactElement) {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-  return render(<QueryClientProvider client={qc}>{ui}</QueryClientProvider>)
+  return render(
+    <QueryClientProvider client={qc}>
+      <MemoryRouter>{ui}</MemoryRouter>
+    </QueryClientProvider>,
+  )
 }
 
 const annotations: Annotation[] = [
@@ -30,7 +72,8 @@ const annotations: Annotation[] = [
     evaluationRunId: 'e1',
     content: 'First note',
     author: 'alice',
-    category: 'investigation',
+    categoryId: 'cat-investigation',
+    category: makeCategory('investigation'),
     tags: {},
     noteGroupId: null,
     noteGroupName: null,
@@ -46,7 +89,8 @@ const annotations: Annotation[] = [
     evaluationRunId: 'e1',
     content: 'Second note',
     author: 'bob',
-    category: null,
+    categoryId: 'cat-info',
+    category: makeCategory('info'),
     tags: {},
     noteGroupId: null,
     noteGroupName: null,

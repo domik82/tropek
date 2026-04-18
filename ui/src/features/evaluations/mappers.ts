@@ -6,9 +6,11 @@
 // network request, and React Query stores the domain type.
 
 import type { components } from '@/generated/api'
+import { dtoToNoteCategory } from '@/features/note-categories/mappers'
 import { makeDateRange } from '@/lib/dateRange'
 import type {
   Annotation,
+  AnnotationCreateInput,
   AssetSnapshot,
   BaselinePin,
   Evaluation,
@@ -50,6 +52,7 @@ export type ReEvalResultItemDto = components['schemas']['ReEvalResultItem']
 export type EvaluateSingleRequestDto = components['schemas']['EvaluateSingleRequest']
 export type OverrideStatusRequestDto = components['schemas']['OverrideStatusRequest']
 export type EvaluateSingleResponseDto = components['schemas']['EvaluateSingleResponse']
+export type AnnotationCreateDto = components['schemas']['AnnotationCreate']
 
 // --- Helpers --------------------------------------------------------------
 
@@ -244,6 +247,7 @@ type MappedAnnotationKeys =
   | 'content'
   | 'author'
   | 'category'
+  | 'category_id'
   | 'tags'
   | 'note_group_id'
   | 'note_group_name'
@@ -502,7 +506,8 @@ export function dtoToAnnotation(dto: AnnotationDto): Annotation {
     evaluationRunId: dto.evaluation_run_id,
     content: dto.content,
     author: dto.author,
-    category: dto.category,
+    categoryId: dto.category_id,
+    category: dtoToNoteCategory(dto.category),
     tags: dto.tags ?? {},
     noteGroupId: dto.note_group_id ?? null,
     noteGroupName: dto.note_group_name ?? null,
@@ -524,6 +529,7 @@ export function dtoToTrendPoint(dto: TrendPointDto): TrendPoint {
     baseline: dto.baseline,
     evaluationName: dto.evaluation_name ?? null,
     targets: dto.targets ? dtoToTrendTargets(dto.targets) : null,
+    overridden: false,
   }
 }
 
@@ -584,4 +590,13 @@ export function overrideStatusInputToDto(
     throw new Error('cannot override to invalidated — use invalidateEvaluation instead')
   }
   return { new_result: input.outcome, reason: input.reason, author: input.author }
+}
+
+export function annotationCreateInputToDto(input: AnnotationCreateInput): AnnotationCreateDto {
+  return {
+    content: input.content,
+    category_id: input.categoryId,
+    author: input.author,
+    tags: {},
+  }
 }

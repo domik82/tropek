@@ -97,6 +97,7 @@ async def _create_run_with_slo(
 async def test_grouped_heatmap_has_notes_true_for_annotated_column(
     db_session: AsyncSession,
     async_client: AsyncClient,
+    info_category_id: uuid.UUID,
 ) -> None:
     """has_notes is True for a run with an annotation, False for one without."""
     asset_name = 'hm-has-notes-asset'
@@ -111,6 +112,7 @@ async def test_grouped_heatmap_has_notes_true_for_annotated_column(
             slo_evaluation_id=annotated_slo_id,
             content='investigated the spike',
             author='tester',
+            category_id=info_category_id,
         )
     )
     await db_session.flush()
@@ -134,6 +136,7 @@ async def test_grouped_heatmap_has_notes_true_for_annotated_column(
 async def test_grouped_heatmap_has_notes_false_when_annotation_hidden(
     db_session: AsyncSession,
     async_client: AsyncClient,
+    info_category_id: uuid.UUID,
 ) -> None:
     """A run whose only annotation is soft-deleted reports has_notes=False."""
     asset_name = 'hm-hidden-notes-asset'
@@ -147,6 +150,7 @@ async def test_grouped_heatmap_has_notes_false_when_annotation_hidden(
             slo_evaluation_id=slo_eval_id,
             content='hidden note',
             author='tester',
+            category_id=info_category_id,
             hidden_at=datetime.now(UTC),
             hidden_by='admin',
             hidden_reason='spam',

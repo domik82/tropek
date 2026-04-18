@@ -9,6 +9,7 @@ import {
   fetchEvaluationDetail,
   fetchTrend,
   fetchColumnAnnotations,
+  fetchTrendAnnotations,
   addAnnotation,
   addRunAnnotation,
   hideAnnotation,
@@ -20,6 +21,7 @@ import {
 } from './api'
 import { useTimeRange } from '@/lib/time-range-context'
 import type {
+  AnnotationCreateInput,
   Evaluation,
   EvaluationFilters,
   OverrideStatusInput,
@@ -59,6 +61,18 @@ export function useEvaluationDetail(id: string | undefined) {
 
 // ── Column Annotations ───────────────────────────────────────────────────────
 
+export function useTrendAnnotations(
+  asset: string | undefined,
+  slo: string | null | undefined,
+) {
+  return useQuery({
+    queryKey: ['trend-annotations', asset, slo],
+    queryFn: () => fetchTrendAnnotations(asset!, slo!),
+    enabled: Boolean(asset && slo),
+    staleTime: 60_000,
+  })
+}
+
 export function useColumnAnnotations(evaluationId: string | undefined) {
   return useQuery({
     queryKey: evaluationKeys.columnAnnotations(evaluationId ?? ''),
@@ -86,7 +100,7 @@ export function useTrend(assetName: string, sloName: string, metric: string) {
 export function useAddAnnotation(evalId: string) {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (payload: { content: string; category?: string; author?: string }) =>
+    mutationFn: (payload: AnnotationCreateInput) =>
       addAnnotation(evalId, payload),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: evaluationKeys.detail(evalId) })
@@ -101,7 +115,7 @@ export function useAddAnnotation(evalId: string) {
 export function useAddRunAnnotation(runId: string) {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (payload: { content: string; category?: string; author?: string }) =>
+    mutationFn: (payload: AnnotationCreateInput) =>
       addRunAnnotation(runId, payload),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: evaluationKeys.detail(runId) })

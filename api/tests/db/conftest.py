@@ -21,13 +21,13 @@ import fakeredis.aioredis
 import pytest
 import pytest_asyncio
 from dotenv import load_dotenv
-from sqlalchemy import text
+from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
     AsyncSession,
     create_async_engine,
 )
-from tropek.db.models import Base
+from tropek.db.models import AnnotationCategory, Base
 
 # Load .env.test (repo root) so TEST_DATABASE_URL and QG_DB_* are available.
 # override=False: shell env vars take precedence if already set.
@@ -72,6 +72,27 @@ async def db_engine(db_url: str) -> AsyncGenerator[AsyncEngine, None]:  # noqa: 
     try:
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
+        # Seed the default annotation categories that migration 002 inserts
+        # in real deployments; integration tests rely on create_all, which
+        # does not run data migrations.
+        async with AsyncSession(engine) as seed_session:
+            for name, label, color, show_on_graph, is_system in (
+                ('failure', 'Failure', 'red', True, False),
+                ('info', 'Info', 'sky', True, False),
+                ('investigation', 'Investigation', 'amber', True, False),
+                ('re-evaluation', 'Re-eval', 'gray', False, True),
+            ):
+                seed_session.add(
+                    AnnotationCategory(
+                        id=uuid.uuid4(),
+                        name=name,
+                        label=label,
+                        color=color,
+                        show_on_graph=show_on_graph,
+                        is_system=is_system,
+                    )
+                )
+            await seed_session.commit()
         yield engine
     finally:
         await engine.dispose()
@@ -97,6 +118,15 @@ async def redis_client() -> AsyncGenerator[fakeredis.aioredis.FakeRedis, None]: 
     finally:
         await client.flushdb()
         await client.aclose()
+
+
+@pytest_asyncio.fixture()
+async def info_category_id(db_session: AsyncSession) -> uuid.UUID:
+    """Return the id of the seeded 'info' annotation category."""
+    result = await db_session.execute(
+        select(AnnotationCategory.id).where(AnnotationCategory.name == 'info')
+    )
+    return result.scalar_one()
 
 
 @pytest_asyncio.fixture()

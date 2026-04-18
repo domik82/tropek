@@ -62,7 +62,7 @@ def _make_evaluation(
 
 def _make_annotation(
     content: str = 'looks good',
-    category: str | None = None,
+    category_name: str = 'info',
 ) -> MagicMock:
     ann = MagicMock()
     ann.id = uuid.uuid4()
@@ -70,6 +70,16 @@ def _make_annotation(
     ann.evaluation_run_id = None
     ann.content = content
     ann.author = 'tester'
+    category = MagicMock()
+    category.id = uuid.uuid4()
+    category.name = category_name
+    category.label = category_name.title()
+    category.color = 'sky'
+    category.show_on_graph = True
+    category.is_system = False
+    category.created_at = _NOW
+    category.updated_at = None
+    ann.category_id = category.id
     ann.category = category
     ann.tags = {}
     ann.note_group_id = None

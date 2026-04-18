@@ -1,6 +1,6 @@
-// ui/src/features/evaluations/components/NoteEntry.tsx
 import { useState } from 'react'
 import { DeletionConfirmForm } from '@/components/DeletionConfirmForm'
+import { paletteOf } from '@/features/note-categories'
 import { useHideAnnotation } from '../hooks'
 import type { Annotation } from '../domain'
 
@@ -23,6 +23,37 @@ function LinkifiedText({ text }: { text: string }) {
   return <>{parts}</>
 }
 
+interface CategoryAccentCardProps {
+  palette: { bg: string; fg: string }
+  variant: 'compact' | 'full'
+  children: React.ReactNode
+}
+
+/** Neutral popover card with a coloured left accent bar. Shared between the
+ * compact (single-line) and full (two-row) note layouts. */
+function CategoryAccentCard({ palette, variant, children }: CategoryAccentCardProps) {
+  const shape = variant === 'compact' ? 'rounded px-3 py-1.5' : 'rounded-md px-3 py-2'
+  return (
+    <div
+      className={`bg-popover border border-border text-sm border-l-2 ${shape}`}
+      style={{ borderLeftColor: palette.bg }}
+    >
+      {children}
+    </div>
+  )
+}
+
+function CategoryBadge({ label, palette }: { label: string; palette: { bg: string; fg: string } }) {
+  return (
+    <span
+      className="text-[10px] px-1.5 py-0.5 rounded shrink-0"
+      style={{ background: palette.bg, color: palette.fg }}
+    >
+      {label}
+    </span>
+  )
+}
+
 interface Props {
   runId: string
   annotation: Annotation
@@ -40,50 +71,43 @@ export function NoteEntry({ runId, annotation: a, compact }: Props) {
     )
   }
 
+  const palette = paletteOf(a.category.color)
+  const deleteButton = (
+    <button
+      onClick={() => setHiding(true)}
+      className="text-muted-foreground/40 hover:text-action-destructive text-xs transition-colors shrink-0"
+      title="Delete note"
+    >
+      ✕
+    </button>
+  )
+
   if (compact && !hiding) {
     return (
-      <div className="bg-amber-950/15 border border-amber-700/20 rounded px-3 py-1.5 text-sm flex items-center gap-2">
-        <span className="text-amber-400 text-xs leading-none">⚑</span>
-        {a.category && (
-          <span className="text-[10px] bg-amber-900/40 text-amber-300 px-1.5 py-0.5 rounded shrink-0">{a.category}</span>
-        )}
-        <span className="text-foreground/70 text-xs truncate flex-1">{a.content}</span>
-        <span className="text-muted-foreground text-[10px] shrink-0 ml-auto">
-          {a.createdAt.toISOString().slice(5, 16).replace('T', ' ')}
-        </span>
-        <button
-          onClick={() => setHiding(true)}
-          className="text-muted-foreground/40 hover:text-action-destructive text-xs transition-colors shrink-0"
-          title="Delete note"
-        >
-          ✕
-        </button>
-      </div>
+      <CategoryAccentCard palette={palette} variant="compact">
+        <div className="flex items-center gap-2">
+          <span className="text-xs leading-none" style={{ color: palette.bg }}>⚑</span>
+          <CategoryBadge label={a.category.label} palette={palette} />
+          <span className="text-foreground/70 text-xs truncate flex-1">{a.content}</span>
+          <span className="text-muted-foreground text-[10px] shrink-0 ml-auto">
+            {a.createdAt.toISOString().slice(5, 16).replace('T', ' ')}
+          </span>
+          {deleteButton}
+        </div>
+      </CategoryAccentCard>
     )
   }
 
   return (
-    <div className="bg-amber-950/20 border border-amber-700/30 rounded-md px-3 py-2 text-sm">
-      {/* Row 1: flag + category + content inline */}
+    <CategoryAccentCard palette={palette} variant="full">
       <div className="flex items-start gap-2">
-        <span className="text-amber-400 text-sm leading-none mt-0.5">⚑</span>
-        {a.category && (
-          <span className="text-[10px] bg-amber-900/40 text-amber-300 px-1.5 py-0.5 rounded shrink-0">{a.category}</span>
-        )}
+        <span className="text-sm leading-none mt-0.5" style={{ color: palette.bg }}>⚑</span>
+        <CategoryBadge label={a.category.label} palette={palette} />
         <span className="text-foreground/85 text-xs flex-1">
           {a.content && <LinkifiedText text={a.content} />}
         </span>
-        {!hiding && (
-          <button
-            onClick={() => setHiding(true)}
-            className="text-muted-foreground/40 hover:text-action-destructive text-xs transition-colors shrink-0"
-            title="Delete note"
-          >
-            ✕
-          </button>
-        )}
+        {!hiding && deleteButton}
       </div>
-      {/* Row 2: author + meta + date */}
       <div className="flex items-center gap-2 mt-1 ml-5">
         {a.author && <span className="text-muted-foreground text-[10px]">{a.author}</span>}
         {a.tags && Object.keys(a.tags).length > 0 && (
@@ -96,7 +120,6 @@ export function NoteEntry({ runId, annotation: a, compact }: Props) {
         </span>
       </div>
 
-      {/* Hide/delete form */}
       {hiding && (
         <div className="mt-2 ml-5">
           <DeletionConfirmForm
@@ -111,6 +134,6 @@ export function NoteEntry({ runId, annotation: a, compact }: Props) {
           />
         </div>
       )}
-    </div>
+    </CategoryAccentCard>
   )
 }

@@ -17,6 +17,26 @@ type HeatmapSloGroupSection = components['schemas']['HeatmapSloGroupSection']
 type HeatmapSummaryCell = components['schemas']['HeatmapSummaryCell']
 import { computeChangePct } from '../utils/metrics'
 
+type AnnotationCategoryDto = components['schemas']['AnnotationCategoryRead']
+
+function mockCategory(name: string | null): AnnotationCategoryDto {
+  const resolved = name ?? 'info'
+  return {
+    id: `cat-${resolved}`,
+    name: resolved,
+    label: resolved.charAt(0).toUpperCase() + resolved.slice(1),
+    color: 'sky',
+    show_on_graph: true,
+    is_system: false,
+    created_at: '2026-01-01T00:00:00Z',
+    updated_at: null,
+  }
+}
+
+function mockCategoryId(name: string | null): string {
+  return `cat-${name ?? 'info'}`
+}
+
 // ---------------------------------------------------------------------------
 // Seeded pseudo-random
 // ---------------------------------------------------------------------------
@@ -304,18 +324,18 @@ export function generateAllEvaluations(): EvaluationSummary[] {
           // win-monthly-01 (seed 1001)
           if (scenario.seed === 1001 && day === 12)
             // invalidated record
-            return { id: `ann-${evalId}-1`, tags: {}, updated_at: created, content: 'Invalidated — agent crashed mid-run during scheduled maintenance window. Results not representative.', author: 'ops-team', category: 'invalidated', created_at: created, slo_evaluation_id: null, evaluation_run_id: 'run-mock', note_group_id: null, note_group_name: null, hidden_at: null, hidden_by: null, hidden_reason: null }
+            return { id: `ann-${evalId}-1`, tags: {}, updated_at: created, content: 'Invalidated — agent crashed mid-run during scheduled maintenance window. Results not representative.', author: 'ops-team', category_id: mockCategoryId('invalidated'), category: mockCategory('invalidated'), created_at: created, slo_evaluation_id: null, evaluation_run_id: 'run-mock', note_group_id: null, note_group_name: null, hidden_at: null, hidden_by: null, hidden_reason: null }
           if (scenario.seed === 1001 && day === 18)
             // first failure: two notes — investigation + JIRA creation
-            return { id: `ann-${evalId}-1`, tags: {}, updated_at: created, content: 'ABC investigation\nCreated JIRA', author: 'j.kowalski', category: 'investigation', created_at: created, slo_evaluation_id: null, evaluation_run_id: 'run-mock', note_group_id: null, note_group_name: null, hidden_at: null, hidden_by: null, hidden_reason: null }
+            return { id: `ann-${evalId}-1`, tags: {}, updated_at: created, content: 'ABC investigation\nCreated JIRA', author: 'j.kowalski', category_id: mockCategoryId('investigation'), category: mockCategory('investigation'), created_at: created, slo_evaluation_id: null, evaluation_run_id: 'run-mock', note_group_id: null, note_group_name: null, hidden_at: null, hidden_by: null, hidden_reason: null }
           if (scenario.seed === 1001 && day >= 19 && day <= 22 && (evalResult === 'fail' || evalResult === 'warning'))
-            return { id: `ann-${evalId}-1`, tags: { ticket: 'PERF-481' }, updated_at: created, content: 'Tracking in JIRA', author: null, category: null, created_at: created, slo_evaluation_id: null, evaluation_run_id: 'run-mock', note_group_id: null, note_group_name: null, hidden_at: null, hidden_by: null, hidden_reason: null }
+            return { id: `ann-${evalId}-1`, tags: { ticket: 'PERF-481' }, updated_at: created, content: 'Tracking in JIRA', author: null, category_id: mockCategoryId(null), category: mockCategory(null), created_at: created, slo_evaluation_id: null, evaluation_run_id: 'run-mock', note_group_id: null, note_group_name: null, hidden_at: null, hidden_by: null, hidden_reason: null }
 
           // mac-monthly-01 (seed 1003)
           if (scenario.seed === 1003 && day >= 24 && day <= 26 && (evalResult === 'fail' || evalResult === 'warning'))
-            return { id: `ann-${evalId}-1`, tags: {}, updated_at: created, content: 'Disk failure on primary storage volume — I/O errors causing compilation timeouts.', author: 'infra', category: 'hardware', created_at: created, slo_evaluation_id: null, evaluation_run_id: 'run-mock', note_group_id: null, note_group_name: null, hidden_at: null, hidden_by: null, hidden_reason: null }
+            return { id: `ann-${evalId}-1`, tags: {}, updated_at: created, content: 'Disk failure on primary storage volume — I/O errors causing compilation timeouts.', author: 'infra', category_id: mockCategoryId('hardware'), category: mockCategory('hardware'), created_at: created, slo_evaluation_id: null, evaluation_run_id: 'run-mock', note_group_id: null, note_group_name: null, hidden_at: null, hidden_by: null, hidden_reason: null }
           if (scenario.seed === 1003 && day === 27 && evalResult === 'pass')
-            return { id: `ann-${evalId}-1`, tags: {}, updated_at: created, content: 'Disk replaced — new NVMe installed and benchmarked. Monitoring next 2 runs.', author: 'infra', category: 'resolved', created_at: created, slo_evaluation_id: null, evaluation_run_id: 'run-mock', note_group_id: null, note_group_name: null, hidden_at: null, hidden_by: null, hidden_reason: null }
+            return { id: `ann-${evalId}-1`, tags: {}, updated_at: created, content: 'Disk replaced — new NVMe installed and benchmarked. Monitoring next 2 runs.', author: 'infra', category_id: mockCategoryId('resolved'), category: mockCategory('resolved'), created_at: created, slo_evaluation_id: null, evaluation_run_id: 'run-mock', note_group_id: null, note_group_name: null, hidden_at: null, hidden_by: null, hidden_reason: null }
 
           return null
         })()
@@ -463,26 +483,26 @@ export function generateEvaluationDetail(
 
       // win-monthly-01 invalidated
       if (scenario.seed === 1001 && day === 12)
-        return [{ id: `ann-${scenario.seed}-${day}-1`, content: 'Invalidated — agent crashed mid-run during scheduled maintenance window. Results not representative.', author: 'ops-team', category: 'invalidated', tags: {}, created_at: t, updated_at: t, slo_evaluation_id: null, evaluation_run_id: 'run-mock', note_group_id: null, note_group_name: null, hidden_at: null, hidden_by: null, hidden_reason: null }]
+        return [{ id: `ann-${scenario.seed}-${day}-1`, content: 'Invalidated — agent crashed mid-run during scheduled maintenance window. Results not representative.', author: 'ops-team', category_id: mockCategoryId('invalidated'), category: mockCategory('invalidated'), tags: {}, created_at: t, updated_at: t, slo_evaluation_id: null, evaluation_run_id: 'run-mock', note_group_id: null, note_group_name: null, hidden_at: null, hidden_by: null, hidden_reason: null }]
 
       // win-monthly-01 first failure — two annotations
       if (scenario.seed === 1001 && day === 18)
         return [
-          { id: `ann-${scenario.seed}-${day}-1`, content: 'ABC investigation — compilation times show ~35% regression across all stages. Correlates with toolchain upgrade on day 17.', author: 'j.kowalski', category: 'investigation', tags: {}, created_at: t, updated_at: t, slo_evaluation_id: null, evaluation_run_id: 'run-mock', note_group_id: null, note_group_name: null, hidden_at: null, hidden_by: null, hidden_reason: null },
-          { id: `ann-${scenario.seed}-${day}-2`, content: 'Created JIRA: https://jira.example.com/browse/PERF-481', author: 'j.kowalski', category: 'investigation', tags: { ticket: 'PERF-481' }, created_at: t, updated_at: t, slo_evaluation_id: null, evaluation_run_id: 'run-mock', note_group_id: null, note_group_name: null, hidden_at: null, hidden_by: null, hidden_reason: null },
+          { id: `ann-${scenario.seed}-${day}-1`, content: 'ABC investigation — compilation times show ~35% regression across all stages. Correlates with toolchain upgrade on day 17.', author: 'j.kowalski', category_id: mockCategoryId('investigation'), category: mockCategory('investigation'), tags: {}, created_at: t, updated_at: t, slo_evaluation_id: null, evaluation_run_id: 'run-mock', note_group_id: null, note_group_name: null, hidden_at: null, hidden_by: null, hidden_reason: null },
+          { id: `ann-${scenario.seed}-${day}-2`, content: 'Created JIRA: https://jira.example.com/browse/PERF-481', author: 'j.kowalski', category_id: mockCategoryId('investigation'), category: mockCategory('investigation'), tags: { ticket: 'PERF-481' }, created_at: t, updated_at: t, slo_evaluation_id: null, evaluation_run_id: 'run-mock', note_group_id: null, note_group_name: null, hidden_at: null, hidden_by: null, hidden_reason: null },
         ]
 
       // win-monthly-01 following failures — JIRA reference in meta
       if (scenario.seed === 1001 && day >= 19 && day <= 22)
-        return [{ id: `ann-${scenario.seed}-${day}-1`, content: '', author: null, category: null, tags: { ticket: 'PERF-481' }, created_at: t, updated_at: t, slo_evaluation_id: null, evaluation_run_id: 'run-mock', note_group_id: null, note_group_name: null, hidden_at: null, hidden_by: null, hidden_reason: null }]
+        return [{ id: `ann-${scenario.seed}-${day}-1`, content: '', author: null, category_id: mockCategoryId(null), category: mockCategory(null), tags: { ticket: 'PERF-481' }, created_at: t, updated_at: t, slo_evaluation_id: null, evaluation_run_id: 'run-mock', note_group_id: null, note_group_name: null, hidden_at: null, hidden_by: null, hidden_reason: null }]
 
       // mac-monthly-01 disk failure days
       if (scenario.seed === 1003 && day >= 24 && day <= 26)
-        return [{ id: `ann-${scenario.seed}-${day}-1`, content: 'Disk failure on primary storage volume — I/O errors causing compilation timeouts.', author: 'infra', category: 'hardware', tags: {}, created_at: t, updated_at: t, slo_evaluation_id: null, evaluation_run_id: 'run-mock', note_group_id: null, note_group_name: null, hidden_at: null, hidden_by: null, hidden_reason: null }]
+        return [{ id: `ann-${scenario.seed}-${day}-1`, content: 'Disk failure on primary storage volume — I/O errors causing compilation timeouts.', author: 'infra', category_id: mockCategoryId('hardware'), category: mockCategory('hardware'), tags: {}, created_at: t, updated_at: t, slo_evaluation_id: null, evaluation_run_id: 'run-mock', note_group_id: null, note_group_name: null, hidden_at: null, hidden_by: null, hidden_reason: null }]
 
       // mac-monthly-01 first green after disk replacement
       if (scenario.seed === 1003 && day === 27)
-        return [{ id: `ann-${scenario.seed}-${day}-1`, content: 'Disk replaced — new NVMe installed and benchmarked. Monitoring next 2 runs.', author: 'infra', category: 'resolved', tags: {}, created_at: t, updated_at: t, slo_evaluation_id: null, evaluation_run_id: 'run-mock', note_group_id: null, note_group_name: null, hidden_at: null, hidden_by: null, hidden_reason: null }]
+        return [{ id: `ann-${scenario.seed}-${day}-1`, content: 'Disk replaced — new NVMe installed and benchmarked. Monitoring next 2 runs.', author: 'infra', category_id: mockCategoryId('resolved'), category: mockCategory('resolved'), tags: {}, created_at: t, updated_at: t, slo_evaluation_id: null, evaluation_run_id: 'run-mock', note_group_id: null, note_group_name: null, hidden_at: null, hidden_by: null, hidden_reason: null }]
 
       return []
     })(),
