@@ -23,6 +23,10 @@ test-one path *args='-v':
 test-ui *args:
     cd ui && pnpm exec vitest run {{args}}
 
+# Run Schemathesis property-based + security fuzzing (requires test-env)
+test-schema *args='-v':
+    ./scripts/schemathesis-run.sh {{args}}
+
 # Run all tests (unit + integration + UI)
 test-all: test test-int test-ui
 
