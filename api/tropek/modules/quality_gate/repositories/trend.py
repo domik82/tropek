@@ -167,16 +167,17 @@ class TrendRepository:
     async def get_run_ids_with_notes(self, run_ids: list[uuid.UUID]) -> set[uuid.UUID]:
         """Return the subset of `run_ids` with at least one non-hidden annotation.
 
-        Returns a set of run IDs that have at least one non-hidden annotation
-        on any of their child SLO evaluations.
-
-        Single roundtrip; uses `idx_annotations_slo_evaluation` for the inner join
-        and `slo_evaluations.evaluation_id` (FK) for the run-id filter.
+        Annotations attach polymorphically (XOR) to either a child SLOEvaluation
+        (re-eval deltas, per-SLO notes) or directly to the EvaluationRun
+        (column-level notes created from the UI). Both forms must count toward
+        the heatmap's note indicator, so this runs a UNION: SLO-level hits
+        resolved via `slo_evaluations.evaluation_id`, run-level hits resolved
+        directly from `evaluation_annotations.evaluation_run_id`.
         """
         if not run_ids:
             return set()
-        q = (
-            select(SLOEvaluation.evaluation_id)
+        slo_level_hits = (
+            select(SLOEvaluation.evaluation_id.label('run_id'))
             .join(
                 EvaluationAnnotation,
                 EvaluationAnnotation.slo_evaluation_id == SLOEvaluation.id,
@@ -185,9 +186,12 @@ class TrendRepository:
                 SLOEvaluation.evaluation_id.in_(run_ids),
                 EvaluationAnnotation.hidden_at.is_(None),
             )
-            .distinct()
         )
-        result = await self._session.execute(q)
+        run_level_hits = select(EvaluationAnnotation.evaluation_run_id.label('run_id')).where(
+            EvaluationAnnotation.evaluation_run_id.in_(run_ids),
+            EvaluationAnnotation.hidden_at.is_(None),
+        )
+        result = await self._session.execute(slo_level_hits.union(run_level_hits))
         return {row[0] for row in result.all()}
 
     async def get_trend_by_domain(

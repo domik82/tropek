@@ -133,6 +133,47 @@ async def test_grouped_heatmap_has_notes_true_for_annotated_column(
 
 
 @pytest.mark.integration
+async def test_grouped_heatmap_has_notes_true_for_run_level_annotation(
+    db_session: AsyncSession,
+    async_client: AsyncClient,
+    info_category_id: uuid.UUID,
+) -> None:
+    """Column-level (run-level) annotations must flip has_notes, like SLO-level ones.
+
+    Regression: get_run_ids_with_notes only joined via slo_evaluation_id, missing
+    annotations attached directly to an EvaluationRun (the shape the UI creates
+    when adding a note from the evaluation detail panel).
+    """
+    asset_name = 'hm-run-level-notes-asset'
+    asset_id = await _setup_asset(db_session, asset_name)
+
+    run_id, _ = await _create_run_with_slo(db_session, asset_id, asset_name, hour_offset=0)
+
+    db_session.add(
+        EvaluationAnnotation(
+            id=uuid.uuid4(),
+            evaluation_run_id=run_id,
+            content='column-level note from the UI',
+            author='tester',
+            category_id=info_category_id,
+        )
+    )
+    await db_session.flush()
+
+    resp = await async_client.get(
+        '/evaluate/metric-heatmap',
+        params={'asset_name': asset_name},
+    )
+    assert resp.status_code == 200, resp.text
+    data = resp.json()
+
+    columns = data['columns']
+    assert len(columns) == 1
+    assert columns[0]['evaluation_id'] == str(run_id)
+    assert columns[0]['has_notes'] is True
+
+
+@pytest.mark.integration
 async def test_grouped_heatmap_has_notes_false_when_annotation_hidden(
     db_session: AsyncSession,
     async_client: AsyncClient,
