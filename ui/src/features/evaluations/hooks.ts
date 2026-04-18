@@ -105,6 +105,9 @@ export function useAddAnnotation(evalId: string) {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: evaluationKeys.detail(evalId) })
       qc.invalidateQueries({ queryKey: [...evaluationKeys.all, 'column-annotations'] })
+      // Trend charts overlay annotations via useTrendAnnotations — refetch so
+      // the new note appears immediately alongside the existing ones.
+      qc.invalidateQueries({ queryKey: ['trend-annotations'] })
       // Metric-heatmap carries has_notes per column — refetch so a newly added
       // note makes its indicator appear immediately.
       qc.invalidateQueries({ queryKey: evaluationKeys.allHeatmaps })
@@ -120,6 +123,7 @@ export function useAddRunAnnotation(runId: string) {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: evaluationKeys.detail(runId) })
       qc.invalidateQueries({ queryKey: [...evaluationKeys.all, 'column-annotations'] })
+      qc.invalidateQueries({ queryKey: ['trend-annotations'] })
       qc.invalidateQueries({ queryKey: evaluationKeys.allHeatmaps })
     },
   })
@@ -137,6 +141,7 @@ export function useHideAnnotation(evalId: string) {
       qc.invalidateQueries({ queryKey: evaluationKeys.detail(evalId) })
       qc.invalidateQueries({ queryKey: evaluationKeys.all })
       qc.invalidateQueries({ queryKey: [...evaluationKeys.all, 'column-annotations'] })
+      qc.invalidateQueries({ queryKey: ['trend-annotations'] })
       // Hiding the last non-hidden annotation on a column flips has_notes back
       // to false — refetch the heatmap so the indicator disappears immediately.
       qc.invalidateQueries({ queryKey: evaluationKeys.allHeatmaps })
