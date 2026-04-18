@@ -110,6 +110,7 @@ export function MetricTrendBlock({
   // the container is hidden during loading and appears only on a later render.
   const containerRef = useCallback((node: HTMLDivElement | null) => {
     observerRef.current?.disconnect()
+    observerRef.current = null
     if (!node) return
     setContainerWidth(node.clientWidth)
     const observer = new ResizeObserver(entries => {

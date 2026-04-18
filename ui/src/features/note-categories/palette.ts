@@ -15,6 +15,10 @@ export function paletteOf(color: CategoryColor): { bg: string; fg: string } {
   return PALETTE[color]
 }
 
+export const DEFAULT_CATEGORY_COLOR: CategoryColor = 'sky'
+
+export const DEFAULT_CATEGORY_PALETTE = PALETTE[DEFAULT_CATEGORY_COLOR]
+
 export const PALETTE_OPTIONS: CategoryColor[] = [
   'sky',
   'green',

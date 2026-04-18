@@ -18,6 +18,12 @@ from tropek.modules.quality_gate.schemas import (
     EvaluateSingleRequest,
     EvaluationSummary,
 )
+from tropek.modules.quality_gate.schemas.annotation_categories import (
+    AnnotationCategoryCreate,
+    AnnotationCategoryRead,
+    AnnotationCategoryUpdate,
+    CategoryColor,
+)
 from tropek.modules.quality_gate.schemas import heatmap as heatmap_module
 from tropek.modules.quality_gate.schemas.evaluations import (
     AssetSnapshot,
@@ -301,6 +307,84 @@ class TestAnnotationSchemaContract:
         fields = _field_names(AnnotationRead)
         assert 'tags' in fields
         assert 'meta' not in fields
+
+    def test_annotation_read_embeds_category(self) -> None:
+        """UI reads category.color / category.show_on_graph directly off AnnotationRead,
+        so the nested object (not just category_id) must be part of the contract."""
+        fields = _field_names(AnnotationRead)
+        assert 'category_id' in fields
+        assert 'category' in fields
+        assert AnnotationRead.model_fields['category'].annotation is AnnotationCategoryRead
+
+    def test_annotation_read_has_note_group_fields(self) -> None:
+        """Per-SLO re-eval groups multiple annotations under a shared note_group_id;
+        UI renders note_group_name as a section header."""
+        fields = _field_names(AnnotationRead)
+        assert 'note_group_id' in fields
+        assert 'note_group_name' in fields
+
+    def test_annotation_read_has_hidden_fields(self) -> None:
+        """Soft-delete surface: hidden_at filters the note out of active lists,
+        hidden_by / hidden_reason power the audit tooltip."""
+        fields = _field_names(AnnotationRead)
+        assert 'hidden_at' in fields
+        assert 'hidden_by' in fields
+        assert 'hidden_reason' in fields
+
+
+# -- Annotation categories ----------------------------------------------------
+
+
+class TestAnnotationCategorySchemaContract:
+    """Category endpoint shapes the UI palette and filter behaviour."""
+
+    def test_category_read_exposes_palette_fields(self) -> None:
+        fields = _field_names(AnnotationCategoryRead)
+        assert {'id', 'name', 'label', 'color', 'show_on_graph', 'is_system'} <= fields
+
+    def test_category_read_color_is_enum(self) -> None:
+        """Colour is a fixed enum (not a free-form hex) so the UI palette maps
+        exhaustively without a fallback branch."""
+        field = AnnotationCategoryRead.model_fields['color']
+        assert field.annotation is CategoryColor
+
+    def test_category_color_enum_matches_ui_palette(self) -> None:
+        """ui/src/features/note-categories/palette.ts defines exactly these eight
+        tokens. Adding or removing one without updating the UI breaks rendering."""
+        assert {c.value for c in CategoryColor} == {
+            'sky', 'green', 'amber', 'red', 'purple', 'pink', 'slate', 'gray',
+        }
+
+    def test_category_create_rejects_unknown_fields(self) -> None:
+        assert issubclass(AnnotationCategoryCreate, StrictInput)
+
+    def test_category_update_rejects_unknown_fields(self) -> None:
+        assert issubclass(AnnotationCategoryUpdate, StrictInput)
+
+    def test_category_update_all_fields_optional(self) -> None:
+        """PATCH endpoint accepts any subset of fields; empty payload is valid."""
+        patch = AnnotationCategoryUpdate()
+        assert patch.model_dump(exclude_none=True) == {}
+
+
+# -- Trend annotations route --------------------------------------------------
+
+
+class TestTrendAnnotationsRoute:
+    """/evaluations/trend-annotations is the batch endpoint the chart calls
+    once per (asset, slo) pair; loss of this route silently drops chart pins."""
+
+    def test_route_registered(self) -> None:
+        paths = {route.path for route in app.routes if isinstance(route, APIRoute)}
+        assert '/evaluations/trend-annotations' in paths
+
+    def test_route_accepts_asset_and_slo_query_params(self) -> None:
+        route = next(
+            r for r in app.routes
+            if isinstance(r, APIRoute) and r.path == '/evaluations/trend-annotations'
+        )
+        param_names = set(inspect.signature(route.endpoint).parameters)
+        assert {'asset_name', 'slo_name'} <= param_names
 
 
 # -- StrictInput enforcement ---------------------------------------------------
