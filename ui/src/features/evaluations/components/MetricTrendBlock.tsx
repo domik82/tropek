@@ -103,15 +103,21 @@ export function MetricTrendBlock({
   const { data: annotations } = useTrendAnnotations(assetName, sloName)
   const { data: categories } = useNoteCategories()
 
-  const containerRef = useRef<HTMLDivElement>(null)
   const [containerWidth, setContainerWidth] = useState(0)
-  useEffect(() => {
-    if (!containerRef.current) return
+  const observerRef = useRef<ResizeObserver | null>(null)
+  // Callback ref attaches the ResizeObserver as soon as the container element
+  // mounts. A plain useRef + useEffect with empty deps misses the case where
+  // the container is hidden during loading and appears only on a later render.
+  const containerRef = useCallback((node: HTMLDivElement | null) => {
+    observerRef.current?.disconnect()
+    if (!node) return
+    setContainerWidth(node.clientWidth)
     const observer = new ResizeObserver(entries => {
-      setContainerWidth(entries[0].contentRect.width)
+      const width = entries[0].contentRect.width
+      if (width > 0) setContainerWidth(width)
     })
-    observer.observe(containerRef.current)
-    return () => observer.disconnect()
+    observer.observe(node)
+    observerRef.current = observer
   }, [])
 
   const handleClickIndex = useCallback(
@@ -131,6 +137,7 @@ export function MetricTrendBlock({
     yMin, yMax, setYMin, setYMax,
     targets,
     chartOption,
+    labelBandPx,
     notesVisible,
     toggleNotes,
   } = useMetricTrendState(
@@ -233,7 +240,7 @@ export function MetricTrendBlock({
             <ReactECharts
               ref={chartRef}
               option={chartOption}
-              style={{ height: 200 }}
+              style={{ height: 200 + labelBandPx }}
               opts={{ renderer: 'svg' }}
               onEvents={onEvents}
               notMerge

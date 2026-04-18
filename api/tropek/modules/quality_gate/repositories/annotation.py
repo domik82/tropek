@@ -80,13 +80,17 @@ class AnnotationRepository:
         *,
         asset_id: uuid.UUID,
         slo_name: str,
-    ) -> list[EvaluationAnnotation]:
+    ) -> tuple[list[EvaluationAnnotation], dict[uuid.UUID, list[uuid.UUID]]]:
         """Return non-hidden annotations across all runs for (asset, slo).
 
         Combines run-level annotations (attached to EvaluationRun) and SLO-level
         annotations (attached to SLOEvaluation). Each SLO evaluation matching the
         (asset_id, slo_name) pair contributes both its own annotations and the
         annotations on its parent run.
+
+        Also returns a run_id → [slo_eval_id, ...] mapping scoped to this
+        (asset, slo), so run-level annotations can be fanned out to every
+        trend point (trend points are keyed by slo_evaluation_id).
         """
         slo_evals = await self._session.execute(
             select(SLOEvaluation.id, SLOEvaluation.evaluation_id)
@@ -94,13 +98,13 @@ class AnnotationRepository:
             .where(SLOEvaluation.slo_name == slo_name)
         )
         slo_eval_ids: list[uuid.UUID] = []
-        run_ids: set[uuid.UUID] = set()
+        run_to_slo_evals: dict[uuid.UUID, list[uuid.UUID]] = {}
         for slo_eval_id, evaluation_id in slo_evals.all():
             slo_eval_ids.append(slo_eval_id)
-            run_ids.add(evaluation_id)
+            run_to_slo_evals.setdefault(evaluation_id, []).append(slo_eval_id)
 
-        if not slo_eval_ids and not run_ids:
-            return []
+        if not slo_eval_ids and not run_to_slo_evals:
+            return [], {}
 
         result = await self._session.execute(
             select(EvaluationAnnotation)
@@ -108,25 +112,11 @@ class AnnotationRepository:
             .where(EvaluationAnnotation.hidden_at.is_(None))
             .where(
                 (EvaluationAnnotation.slo_evaluation_id.in_(slo_eval_ids))
-                | (EvaluationAnnotation.evaluation_run_id.in_(run_ids))
+                | (EvaluationAnnotation.evaluation_run_id.in_(list(run_to_slo_evals.keys())))
             )
             .order_by(EvaluationAnnotation.created_at)
         )
-        return list(result.scalars().all())
-
-    async def map_slo_evals_to_runs(
-        self,
-        slo_evaluation_ids: list[uuid.UUID],
-    ) -> dict[uuid.UUID, uuid.UUID]:
-        """Map each SLO evaluation id to its parent evaluation run id."""
-        if not slo_evaluation_ids:
-            return {}
-        result = await self._session.execute(
-            select(SLOEvaluation.id, SLOEvaluation.evaluation_id).where(
-                SLOEvaluation.id.in_(slo_evaluation_ids),
-            )
-        )
-        return {slo_eval_id: run_id for slo_eval_id, run_id in result.all()}  # noqa: C416
+        return list(result.scalars().all()), run_to_slo_evals
 
     async def list_for_run(self, run_id: uuid.UUID) -> list[EvaluationAnnotation]:
         """Return non-hidden run-level annotations for an EvaluationRun."""

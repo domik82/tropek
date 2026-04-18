@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { PALETTE_OPTIONS, paletteOf } from '../ui-types'
+import { PALETTE_OPTIONS, paletteOf } from '../palette'
 import type { CategoryColor, NoteCategory, NoteCategoryInput } from '../domain'
 
 interface Props {

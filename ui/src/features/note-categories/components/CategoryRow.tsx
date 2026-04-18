@@ -1,5 +1,5 @@
 import { Lock, Pencil, Trash2 } from 'lucide-react'
-import { paletteOf } from '../ui-types'
+import { paletteOf } from '../palette'
 import type { NoteCategory } from '../domain'
 
 interface Props {

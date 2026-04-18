@@ -223,6 +223,12 @@ export interface OverrideStatusInput {
   author: string
 }
 
+export interface AnnotationCreateInput {
+  content: string
+  categoryId: string
+  author?: string
+}
+
 // --- Misc read-only endpoints ---
 
 export interface EvaluationNameEntry {

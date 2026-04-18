@@ -10,6 +10,7 @@ import { dtoToNoteCategory } from '@/features/note-categories/mappers'
 import { makeDateRange } from '@/lib/dateRange'
 import type {
   Annotation,
+  AnnotationCreateInput,
   AssetSnapshot,
   BaselinePin,
   Evaluation,
@@ -51,6 +52,7 @@ export type ReEvalResultItemDto = components['schemas']['ReEvalResultItem']
 export type EvaluateSingleRequestDto = components['schemas']['EvaluateSingleRequest']
 export type OverrideStatusRequestDto = components['schemas']['OverrideStatusRequest']
 export type EvaluateSingleResponseDto = components['schemas']['EvaluateSingleResponse']
+export type AnnotationCreateDto = components['schemas']['AnnotationCreate']
 
 // --- Helpers --------------------------------------------------------------
 
@@ -588,4 +590,13 @@ export function overrideStatusInputToDto(
     throw new Error('cannot override to invalidated — use invalidateEvaluation instead')
   }
   return { new_result: input.outcome, reason: input.reason, author: input.author }
+}
+
+export function annotationCreateInputToDto(input: AnnotationCreateInput): AnnotationCreateDto {
+  return {
+    content: input.content,
+    category_id: input.categoryId,
+    author: input.author,
+    tags: {},
+  }
 }

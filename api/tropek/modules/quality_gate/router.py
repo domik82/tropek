@@ -347,31 +347,29 @@ async def get_trend_annotations(
     slo_name: str = Query(alias='slo'),
     repos: QualityGateRepos = Depends(get_qg_repos),
 ) -> dict[str, list[AnnotationRead]]:
-    """Return annotations for every run in an (asset, slo) trend, keyed by run id.
+    """Return annotations for every point in an (asset, slo) trend, keyed by slo_evaluation_id.
 
-    Run-level annotations are keyed by their evaluation_run_id. SLO-level
-    annotations are resolved to their parent run's id via the containing
-    SLOEvaluation.
+    Trend points are identified by slo_evaluation_id, so the response keys match.
+    Run-level annotations are fanned out across every slo_evaluation_id whose
+    parent run they belong to; SLO-level annotations are keyed directly.
     """
     asset = await repos.asset_repo.get_by_name(asset_name)
     if asset is None:
         raise NotFoundError('asset', asset_name)
 
-    annotations = await repos.annotation_repo.list_for_trend(
+    annotations, run_to_slo_evals = await repos.annotation_repo.list_for_trend(
         asset_id=asset.id,
         slo_name=slo_name,
     )
-    slo_eval_ids = {ann.slo_evaluation_id for ann in annotations if ann.slo_evaluation_id}
-    slo_eval_to_run: dict[uuid.UUID, uuid.UUID] = {}
-    if slo_eval_ids:
-        slo_eval_to_run = await repos.annotation_repo.map_slo_evals_to_runs(list(slo_eval_ids))
 
     out: dict[str, list[AnnotationRead]] = {}
     for ann in annotations:
-        run_id = ann.evaluation_run_id or slo_eval_to_run.get(ann.slo_evaluation_id)  # type: ignore[arg-type]
-        if run_id is None:
-            continue
-        out.setdefault(str(run_id), []).append(AnnotationRead.model_validate(ann))
+        read = AnnotationRead.model_validate(ann)
+        if ann.slo_evaluation_id is not None:
+            out.setdefault(str(ann.slo_evaluation_id), []).append(read)
+        elif ann.evaluation_run_id is not None:
+            for slo_eval_id in run_to_slo_evals.get(ann.evaluation_run_id, []):
+                out.setdefault(str(slo_eval_id), []).append(read)
     return out
 
 
