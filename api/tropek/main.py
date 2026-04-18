@@ -23,6 +23,7 @@ from tropek.modules.common.exception_handlers import (
     integrity_error_handler,
     not_found_handler,
 )
+from tropek.modules.common.method_not_allowed import MethodNotAllowedMiddleware
 from tropek.modules.common.exceptions import (
     ConflictError,
     DomainValidationError,
@@ -76,6 +77,12 @@ app.include_router(display_groups_router)
 async def health() -> dict[str, str]:
     """Return service health status."""
     return {'status': 'ok'}
+
+
+# Must run after every router is registered so the middleware can snapshot the
+# final route list. Placed outermost so it intercepts before Starlette's router
+# would otherwise route a literal-path request onto a parameterised sibling.
+app.add_middleware(MethodNotAllowedMiddleware, routes=app.routes)
 
 
 @app.get('/config/ui')
