@@ -3,9 +3,17 @@
 from __future__ import annotations
 
 import pytest
-from schemathesis import Case
+from schemathesis import Case, checks
 
 from tests.schemathesis.conftest import schema
+
+# Activate the full check set — conformance (status code, content type, schema)
+# plus security-oriented checks: ``negative_data_rejection`` and
+# ``positive_data_acceptance`` fuzz string params with SQLi / path-traversal /
+# XSS payloads, while ``not_a_server_error`` catches unhandled 500s that reveal
+# validation gaps. ``validate_response`` uses the registered set when invoked
+# without an explicit ``checks=`` argument.
+checks.load_all_checks()
 
 # Endpoints excluded from fuzzing because they have production-style side effects
 # that should not be triggered by property-based synthetic inputs.
