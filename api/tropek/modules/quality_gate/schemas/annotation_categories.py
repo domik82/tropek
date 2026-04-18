@@ -7,7 +7,7 @@ from datetime import datetime
 from enum import StrEnum
 from typing import Annotated
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, StrictBool
 
 from tropek.modules.common.schemas import StrictInput
 
@@ -50,7 +50,7 @@ class AnnotationCategoryCreate(StrictInput):
     name: NameStr
     label: LabelStr
     color: CategoryColor
-    show_on_graph: bool = True
+    show_on_graph: StrictBool = True
 
 
 class AnnotationCategoryUpdate(StrictInput):
@@ -59,4 +59,4 @@ class AnnotationCategoryUpdate(StrictInput):
     name: NameStr | None = None
     label: LabelStr | None = None
     color: CategoryColor | None = None
-    show_on_graph: bool | None = None
+    show_on_graph: StrictBool | None = None
