@@ -22,6 +22,9 @@ from tropek.cache.redis_cache import RedisCache
 from tropek.config import get_settings
 from tropek.db.models import EvaluationRun, SLOEvaluation
 from tropek.modules.quality_gate.repositories.annotation import AnnotationRepository
+from tropek.modules.quality_gate.repositories.annotation_category import (
+    AnnotationCategoryRepository,
+)
 from tropek.modules.quality_gate.repositories.evaluation import EvaluationRepository
 from tropek.modules.quality_gate.schemas.heatmap import (
     EvaluationColumn,
@@ -434,6 +437,10 @@ async def test_reevaluation_persist_deletes_cached_fragment(
     column_cache = heatmap_cache.HeatmapColumnCache(redis_client)
     await _prime_cache_fragment(column_cache, run_id)
 
+    category_repo = AnnotationCategoryRepository(db_session)
+    re_eval_category = await category_repo.get_by_name('re-evaluation')
+    assert re_eval_category is not None
+
     await _persist_reeval_result(
         db_session,
         ev=child_eval,
@@ -446,6 +453,7 @@ async def test_reevaluation_persist_deletes_cached_fragment(
         new_engine_results=None,
         slo_objectives=None,
         cache=None,
+        re_eval_category_id=re_eval_category.id,
         note_group_id=uuid.uuid4(),
         note_group_name='test-reeval-group',
         heatmap_cache=column_cache,

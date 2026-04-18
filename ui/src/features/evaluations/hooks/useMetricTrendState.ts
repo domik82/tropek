@@ -2,7 +2,7 @@
 import { useState, useMemo, useCallback } from 'react'
 import { useTheme } from '@/lib/theme-context'
 import { RESULT_COLOUR, CHART_THEME } from '@/lib/theme'
-import { buildNoteMarkPoint, type MarkPointOption } from '@/lib/chartAnnotations'
+import { buildNoteAnnotations, type MarkLineOption, type MarkPointOption } from '@/lib/chartAnnotations'
 import type { Annotation, TrendPoint, Indicator, TrendTargetEntry } from '../domain'
 import type { NoteCategory } from '@/features/note-categories'
 
@@ -30,6 +30,7 @@ export interface MetricTrendState {
   setYMax: (v: string) => void
   targets: TargetToggle[]
   chartOption: object
+  labelBandPx: number
   notesVisible: boolean
   toggleNotes: () => void
 }
@@ -188,7 +189,7 @@ export function useMetricTrendState(
     [targets],
   )
 
-  const chartOption = useMemo(
+  const chartResult = useMemo(
     () =>
       buildChartOption({
         trend: trendData,
@@ -226,7 +227,17 @@ export function useMetricTrendState(
     ],
   )
 
-  return { yMin, yMax, setYMin, setYMax, targets, chartOption, notesVisible, toggleNotes }
+  return {
+    yMin,
+    yMax,
+    setYMin,
+    setYMax,
+    targets,
+    chartOption: chartResult.option,
+    labelBandPx: chartResult.labelBandPx,
+    notesVisible,
+    toggleNotes,
+  }
 }
 
 // ── Pure chart option builder (testable without React) ─────────────────────
@@ -262,7 +273,7 @@ interface ChartOptionInput {
   notesVisible?: boolean
 }
 
-export function buildChartOption(input: ChartOptionInput): object {
+export function buildChartOption(input: ChartOptionInput): { option: object; labelBandPx: number } {
   const {
     trend,
     evalId,
@@ -367,21 +378,26 @@ export function buildChartOption(input: ChartOptionInput): object {
     })
   }
 
+  let markLine: MarkLineOption | undefined
   let markPoint: MarkPointOption | undefined
+  let labelBandPx = 0
   if (notesVisible && annotations && annotations.size > 0 && categories) {
     const categoriesById = new Map(categories.map(c => [c.id, c]))
-    markPoint = buildNoteMarkPoint({
+    const built = buildNoteAnnotations({
       trendPoints: trend,
       annotationsByEvalId: annotations,
       categoriesById,
       chartWidth: chartWidth ?? 0,
     })
+    markLine = built.markLine
+    markPoint = built.markPoint
+    labelBandPx = built.labelBandPx
   }
 
-  return {
+  const option = {
     animation: false,
     backgroundColor: 'transparent',
-    grid: { top: 16, bottom: 52, left: 56, right: 16 },
+    grid: { top: 16 + labelBandPx, bottom: 52, left: 56, right: 16 },
     tooltip: {
       trigger: 'axis',
       backgroundColor: ct.bg,
@@ -443,9 +459,12 @@ export function buildChartOption(input: ChartOptionInput): object {
           return p && isSelected(p) ? 10 : 6
         },
         lineStyle: { color: ct.line, width: 1.5 },
+        ...(markLine ? { markLine } : {}),
         ...(markPoint ? { markPoint } : {}),
       },
       ...targetSeries,
     ],
   }
+
+  return { option, labelBandPx }
 }

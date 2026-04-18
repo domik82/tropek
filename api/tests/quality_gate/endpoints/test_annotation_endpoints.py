@@ -8,7 +8,7 @@ from datetime import UTC, datetime, timedelta
 import pytest
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
-from tropek.db.models import EvaluationRun
+from tropek.db.models import EvaluationRun, SLOEvaluation
 
 from .conftest import _create_asset, _create_completed_eval
 
@@ -64,6 +64,37 @@ async def test_annotation_appears_in_eval_detail(
     contents = [a['content'] for a in detail['annotations']]
     assert 'Note one' in contents
     assert 'Note two' in contents
+
+
+@pytest.mark.integration
+async def test_list_evaluations_serializes_latest_annotation_category(
+    async_client: AsyncClient,
+    db_session: AsyncSession,
+    category_ids: dict[str, uuid.UUID],
+) -> None:
+    """Regression guard: GET /evaluations must serialize latest_annotation.category
+    without triggering a lazy-load (MissingGreenlet) in the presenter."""
+    asset_name = f'reg-asset-{uuid.uuid4().hex[:8]}'
+    asset_id = await _create_asset(db_session, name=asset_name)
+    eval_id = await _create_completed_eval(db_session, asset_id)
+
+    await async_client.post(
+        f'/evaluations/{eval_id}/annotations',
+        json={
+            'content': 'regression probe',
+            'author': 'ops',
+            'category_id': str(category_ids['info']),
+        },
+    )
+
+    resp = await async_client.get(f'/evaluations?asset_name={asset_name}')
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body['total'] >= 1
+    latest = body['items'][0]['latest_annotation']
+    assert latest is not None
+    assert latest['content'] == 'regression probe'
+    assert latest['category']['name'] == 'info'
 
 
 @pytest.mark.integration
@@ -241,6 +272,58 @@ async def test_run_annotation_visible_in_column_endpoint(
     assert len(data) == 1
     assert data[0]['id'] == ann_id
     assert data[0]['evaluation_run_id'] == str(run_id)
+
+
+@pytest.mark.integration
+async def test_trend_annotations_keyed_by_slo_evaluation_id(
+    async_client: AsyncClient,
+    db_session: AsyncSession,
+    category_ids: dict[str, uuid.UUID],
+) -> None:
+    """Regression guard: trend points are keyed by slo_evaluation_id on the UI
+    side, so the trend-annotations map must be keyed the same way. Run-level
+    annotations must fan out to every slo_evaluation_id whose parent run they
+    belong to."""
+    asset_name = f'trend-asset-{uuid.uuid4().hex[:8]}'
+    asset_id = await _create_asset(db_session, name=asset_name)
+    slo_eval_id = await _create_completed_eval(db_session, asset_id, slo_name='svc/latency')
+
+    slo_eval = await db_session.get(SLOEvaluation, slo_eval_id)
+    assert slo_eval is not None
+    run_id = slo_eval.evaluation_id
+
+    run_resp = await async_client.post(
+        f'/evaluations/run/{run_id}/annotations',
+        json={
+            'content': 'run-level note',
+            'author': 'ops',
+            'category_id': str(category_ids['info']),
+        },
+    )
+    assert run_resp.status_code == 201
+
+    slo_resp = await async_client.post(
+        f'/evaluations/{slo_eval_id}/annotations',
+        json={
+            'content': 'slo-level note',
+            'author': 'ops',
+            'category_id': str(category_ids['info']),
+        },
+    )
+    assert slo_resp.status_code == 201
+
+    resp = await async_client.get(
+        '/evaluations/trend-annotations',
+        params={'asset': asset_name, 'slo': 'svc/latency'},
+    )
+    assert resp.status_code == 200
+    body = resp.json()
+    assert str(slo_eval_id) in body, (
+        f'expected slo_evaluation_id as key, got keys: {list(body.keys())}'
+    )
+    assert str(run_id) not in body
+    contents = sorted(ann['content'] for ann in body[str(slo_eval_id)])
+    assert contents == ['run-level note', 'slo-level note']
 
 
 @pytest.mark.integration

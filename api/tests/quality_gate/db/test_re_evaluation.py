@@ -225,6 +225,10 @@ async def test_persist_reeval_result_preserves_original(db_session: AsyncSession
     ev_row = await db_session.get(SLOEvaluation, eid)
     assert ev_row is not None
 
+    category_repo = AnnotationCategoryRepository(db_session)
+    re_eval_category = await category_repo.get_by_name('re-evaluation')
+    assert re_eval_category is not None
+
     # First re-eval
     batch_id = uuid.uuid4()
     await _persist_reeval_result(
@@ -239,6 +243,7 @@ async def test_persist_reeval_result_preserves_original(db_session: AsyncSession
         new_engine_results=None,
         slo_objectives=None,
         cache=None,
+        re_eval_category_id=re_eval_category.id,
         note_group_id=batch_id,
         note_group_name='re-evaluation — test-slo',
     )
@@ -263,6 +268,7 @@ async def test_persist_reeval_result_preserves_original(db_session: AsyncSession
         new_engine_results=None,
         slo_objectives=None,
         cache=None,
+        re_eval_category_id=re_eval_category.id,
         note_group_id=uuid.uuid4(),
         note_group_name='re-evaluation — test-slo',
     )

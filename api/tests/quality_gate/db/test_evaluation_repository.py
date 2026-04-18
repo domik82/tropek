@@ -282,6 +282,43 @@ async def test_hide_annotation(db_session: AsyncSession, info_category_id: uuid.
 
 
 @pytest.mark.integration
+async def test_list_with_counts_eager_loads_latest_annotation_category(
+    db_session: AsyncSession, info_category_id: uuid.UUID
+) -> None:
+    """``latest_map`` entries must have their ``category`` relationship pre-loaded.
+
+    Regression guard: Pydantic serialization of EvaluationSummary walks
+    latest_annotation.category; if the relationship is lazy, the access from
+    the presenter triggers ``MissingGreenlet`` in async context.
+    """
+    asset_id = await _create_asset(db_session)
+    repo = EvaluationRepository(db_session)
+    ann_repo = AnnotationRepository(db_session)
+    ev = await repo.create_pending(
+        EvalCreateParams(
+            evaluation_id=uuid.uuid4(),
+            evaluation_name='eager-load-test',
+            period_start=_START,
+            period_end=_END,
+            ingestion_mode='push',
+            asset_snapshot=_make_snapshot(),
+            variables={},
+            asset_id=asset_id,
+            slo_name='test-slo',
+        )
+    )
+    await ann_repo.add_annotation(
+        ev.id, content='recorded', author='ops', category_id=info_category_id
+    )
+
+    _, _, _, latest_map = await repo.list_with_counts()
+    latest = latest_map.get(ev.id)
+    assert latest is not None
+    # Accessing .category after the query must not trigger a lazy load.
+    assert latest.category.name == 'info'
+
+
+@pytest.mark.integration
 async def test_write_and_read_sli_values(db_session: AsyncSession) -> None:
     asset_id = await _create_asset(db_session)
     repo = EvaluationRepository(db_session)

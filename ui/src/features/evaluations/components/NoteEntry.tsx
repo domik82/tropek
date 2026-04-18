@@ -45,8 +45,11 @@ export function NoteEntry({ runId, annotation: a, compact }: Props) {
 
   if (compact && !hiding) {
     return (
-      <div className="bg-amber-950/15 border border-amber-700/20 rounded px-3 py-1.5 text-sm flex items-center gap-2">
-        <span className="text-amber-400 text-xs leading-none">⚑</span>
+      <div
+        className="bg-popover border border-border rounded px-3 py-1.5 text-sm flex items-center gap-2 border-l-2"
+        style={{ borderLeftColor: palette.bg }}
+      >
+        <span className="text-xs leading-none" style={{ color: palette.bg }}>⚑</span>
         <span
           className="text-[10px] px-1.5 py-0.5 rounded shrink-0"
           style={{ background: palette.bg, color: palette.fg }}
@@ -69,10 +72,13 @@ export function NoteEntry({ runId, annotation: a, compact }: Props) {
   }
 
   return (
-    <div className="bg-amber-950/20 border border-amber-700/30 rounded-md px-3 py-2 text-sm">
+    <div
+      className="bg-popover border border-border rounded-md px-3 py-2 text-sm border-l-2"
+      style={{ borderLeftColor: palette.bg }}
+    >
       {/* Row 1: flag + category + content inline */}
       <div className="flex items-start gap-2">
-        <span className="text-amber-400 text-sm leading-none mt-0.5">⚑</span>
+        <span className="text-sm leading-none mt-0.5" style={{ color: palette.bg }}>⚑</span>
         <span
           className="text-[10px] px-1.5 py-0.5 rounded shrink-0"
           style={{ background: palette.bg, color: palette.fg }}

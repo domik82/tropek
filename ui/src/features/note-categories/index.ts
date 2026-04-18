@@ -4,7 +4,7 @@ export type {
   NoteCategoryInput,
   NoteCategoryPatch,
 } from './domain'
-export { paletteOf, PALETTE_OPTIONS } from './ui-types'
+export { paletteOf, PALETTE_OPTIONS } from './palette'
 export {
   useNoteCategories,
   useCreateNoteCategory,

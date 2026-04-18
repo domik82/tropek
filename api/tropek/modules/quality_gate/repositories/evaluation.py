@@ -421,6 +421,7 @@ class EvaluationRepository:
             # Fetch latest visible annotation per evaluation using DISTINCT ON.
             latest_q = (
                 select(EvaluationAnnotation)
+                .options(selectinload(EvaluationAnnotation.category))
                 .where(
                     EvaluationAnnotation.slo_evaluation_id.in_(eval_ids),
                     EvaluationAnnotation.hidden_at.is_(None),

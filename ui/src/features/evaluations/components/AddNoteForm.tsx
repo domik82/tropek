@@ -31,14 +31,17 @@ export function AddNoteForm({ runId, onClose }: Props) {
     )
   }
 
+  const accentBg = palette?.bg ?? 'var(--color-category-sky-bg)'
+  const accentFg = palette?.fg ?? 'var(--color-category-sky-fg)'
+
   return (
     <div className="flex justify-end">
-      <div className="w-full max-w-md border border-amber-700/40 rounded-xl bg-popover overflow-hidden">
-        <div className="h-[3px] bg-amber-500" />
+      <div className="w-full max-w-md border border-border rounded-xl bg-popover overflow-hidden">
+        <div className="h-[3px]" style={{ background: accentBg }} />
         <div className="p-4 space-y-3">
           <div className="flex items-center justify-between">
-            <p className="text-sm font-medium text-amber-400"
-              style={{ fontFamily: SANS_SERIF }}>
+            <p className="text-sm font-medium"
+              style={{ fontFamily: SANS_SERIF, color: accentBg }}>
               Add Note
             </p>
             <button onClick={onClose}
@@ -65,7 +68,7 @@ export function AddNoteForm({ runId, onClose }: Props) {
               onChange={e => setCategoryId(e.target.value)}
               aria-label="Category"
               className="bg-surface-sunken border border-border rounded px-2 py-1 text-sm"
-              style={palette ? { background: palette.bg, color: palette.fg } : undefined}
+              style={{ background: accentBg, color: accentFg }}
             >
               {categories.map(c => (
                 <option key={c.id} value={c.id}>{c.label}</option>
@@ -78,7 +81,7 @@ export function AddNoteForm({ runId, onClose }: Props) {
               size="xs"
               onClick={handleSave}
               disabled={!content.trim() || !effectiveId || addAnnotation.isPending}
-              className="bg-amber-500 text-black hover:bg-amber-400"
+              style={{ background: accentBg, color: accentFg }}
             >
               {addAnnotation.isPending ? 'Saving...' : 'Save note'}
             </Button>

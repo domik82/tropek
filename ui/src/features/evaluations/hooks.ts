@@ -21,6 +21,7 @@ import {
 } from './api'
 import { useTimeRange } from '@/lib/time-range-context'
 import type {
+  AnnotationCreateInput,
   Evaluation,
   EvaluationFilters,
   OverrideStatusInput,
@@ -99,7 +100,7 @@ export function useTrend(assetName: string, sloName: string, metric: string) {
 export function useAddAnnotation(evalId: string) {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (payload: { content: string; categoryId: string; author?: string }) =>
+    mutationFn: (payload: AnnotationCreateInput) =>
       addAnnotation(evalId, payload),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: evaluationKeys.detail(evalId) })
@@ -114,7 +115,7 @@ export function useAddAnnotation(evalId: string) {
 export function useAddRunAnnotation(runId: string) {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (payload: { content: string; categoryId: string; author?: string }) =>
+    mutationFn: (payload: AnnotationCreateInput) =>
       addRunAnnotation(runId, payload),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: evaluationKeys.detail(runId) })
