@@ -51,6 +51,7 @@ async def _setup_asset(session: AsyncSession, name: str) -> uuid.UUID:
 async def _setup_run_with_annotations(
     session: AsyncSession,
     asset_id: uuid.UUID,
+    category_id: uuid.UUID,
 ) -> tuple[uuid.UUID, list[uuid.UUID]]:
     """Create an EvaluationRun with 2 SLOEvaluations, each with 1 annotation."""
     run = EvaluationRun(
@@ -90,6 +91,7 @@ async def _setup_run_with_annotations(
             slo_evaluation_id=slo_eval.id,
             content=f'note for {slo_name}',
             author='tester',
+            category_id=category_id,
         )
         session.add(ann)
         ann_ids.append(ann.id)
@@ -102,10 +104,11 @@ async def _setup_run_with_annotations(
 async def test_column_annotations_returns_all_slo_annotations(
     db_session: AsyncSession,
     async_client: AsyncClient,
+    info_category_id: uuid.UUID,
 ) -> None:
     """GET /evaluations/column-annotations returns annotations from all SLOs in the run."""
     asset_id = await _setup_asset(db_session, 'col-ann-asset')
-    run_id, ann_ids = await _setup_run_with_annotations(db_session, asset_id)
+    run_id, ann_ids = await _setup_run_with_annotations(db_session, asset_id, info_category_id)
 
     resp = await async_client.get(
         '/evaluations/column-annotations',
@@ -122,10 +125,11 @@ async def test_column_annotations_returns_all_slo_annotations(
 async def test_column_annotations_excludes_hidden(
     db_session: AsyncSession,
     async_client: AsyncClient,
+    info_category_id: uuid.UUID,
 ) -> None:
     """Hidden annotations are excluded from the response."""
     asset_id = await _setup_asset(db_session, 'col-ann-hidden-asset')
-    run_id, ann_ids = await _setup_run_with_annotations(db_session, asset_id)
+    run_id, ann_ids = await _setup_run_with_annotations(db_session, asset_id, info_category_id)
 
     await db_session.execute(
         update(EvaluationAnnotation)
@@ -189,16 +193,18 @@ async def test_column_annotations_404_for_unknown_run(
 async def test_column_annotations_unions_run_level_and_slo_level(
     db_session: AsyncSession,
     async_client: AsyncClient,
+    info_category_id: uuid.UUID,
 ) -> None:
     """Run-level notes (new UI form) and SLO-level notes (re-eval) are both returned."""
     asset_id = await _setup_asset(db_session, 'col-ann-union-asset')
-    run_id, slo_ann_ids = await _setup_run_with_annotations(db_session, asset_id)
+    run_id, slo_ann_ids = await _setup_run_with_annotations(db_session, asset_id, info_category_id)
 
     run_ann = EvaluationAnnotation(
         id=uuid.uuid4(),
         evaluation_run_id=run_id,
         content='column-level note',
         author='daisy',
+        category_id=info_category_id,
     )
     db_session.add(run_ann)
     await db_session.flush()

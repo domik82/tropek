@@ -34,6 +34,7 @@ function makeTrendPoint(overrides: Partial<TrendPoint> = {}): TrendPoint {
     baseline: null,
     evaluationName: null,
     targets: null,
+    overridden: false,
     ...overrides,
   }
 }

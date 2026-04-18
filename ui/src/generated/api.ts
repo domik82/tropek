@@ -1081,6 +1081,54 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/note-categories": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Note Categories
+         * @description Return all annotation categories, alphabetically sorted.
+         */
+        get: operations["list_note_categories_note_categories_get"];
+        put?: never;
+        /**
+         * Create Note Category
+         * @description Create a new user-defined annotation category.
+         */
+        post: operations["create_note_category_note_categories_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/note-categories/{category_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete Note Category
+         * @description Delete a non-system category; returns the reassigned annotation count in a header.
+         */
+        delete: operations["delete_note_category_note_categories__category_id__delete"];
+        options?: never;
+        head?: never;
+        /**
+         * Update Note Category
+         * @description Patch an annotation category; renaming system rows returns 409.
+         */
+        patch: operations["update_note_category_note_categories__category_id__patch"];
+        trace?: never;
+    };
     "/sli-definitions": {
         parameters: {
             query?: never;
@@ -1563,14 +1611,73 @@ export interface components {
          */
         AggregationMethod: "min" | "mean" | "max" | "std" | "sum" | "median" | "p75" | "p90" | "p95" | "p99";
         /**
+         * AnnotationCategoryCreate
+         * @description Request body for creating a user-defined category.
+         */
+        AnnotationCategoryCreate: {
+            color: components["schemas"]["CategoryColor"];
+            /** Label */
+            label: string;
+            /** Name */
+            name: string;
+            /**
+             * Show On Graph
+             * @default true
+             */
+            show_on_graph: boolean;
+        };
+        /**
+         * AnnotationCategoryRead
+         * @description Category record as returned by the API.
+         */
+        AnnotationCategoryRead: {
+            color: components["schemas"]["CategoryColor"];
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Is System */
+            is_system: boolean;
+            /** Label */
+            label: string;
+            /** Name */
+            name: string;
+            /** Show On Graph */
+            show_on_graph: boolean;
+            /** Updated At */
+            updated_at: string | null;
+        };
+        /**
+         * AnnotationCategoryUpdate
+         * @description Request body for patching category fields.
+         */
+        AnnotationCategoryUpdate: {
+            color?: components["schemas"]["CategoryColor"] | null;
+            /** Label */
+            label?: string | null;
+            /** Name */
+            name?: string | null;
+            /** Show On Graph */
+            show_on_graph?: boolean | null;
+        };
+        /**
          * AnnotationCreate
          * @description Request body for creating an annotation.
          */
         AnnotationCreate: {
             /** Author */
             author?: string | null;
-            /** Category */
-            category?: string | null;
+            /**
+             * Category Id
+             * Format: uuid
+             */
+            category_id: string;
             /** Content */
             content: string;
             /**
@@ -1601,8 +1708,12 @@ export interface components {
         AnnotationRead: {
             /** Author */
             author: string | null;
-            /** Category */
-            category: string | null;
+            category: components["schemas"]["AnnotationCategoryRead"];
+            /**
+             * Category Id
+             * Format: uuid
+             */
+            category_id: string;
             /** Content */
             content: string;
             /**
@@ -1643,8 +1754,8 @@ export interface components {
         AnnotationUpdate: {
             /** Author */
             author?: string | null;
-            /** Category */
-            category?: string | null;
+            /** Category Id */
+            category_id?: string | null;
             /** Content */
             content?: string | null;
             /** Tags */
@@ -1988,6 +2099,12 @@ export interface components {
              */
             period_start: string;
         };
+        /**
+         * CategoryColor
+         * @description Allowed color tokens for an annotation category.
+         * @enum {string}
+         */
+        CategoryColor: "sky" | "green" | "amber" | "red" | "purple" | "pink" | "slate" | "gray";
         /**
          * ComparisonConfig
          * @description Per-SLO comparison configuration. All fields optional.
@@ -5782,6 +5899,123 @@ export interface operations {
                     "application/json": {
                         [key: string]: string;
                     };
+                };
+            };
+        };
+    };
+    list_note_categories_note_categories_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AnnotationCategoryRead"][];
+                };
+            };
+        };
+    };
+    create_note_category_note_categories_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AnnotationCategoryCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AnnotationCategoryRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_note_category_note_categories__category_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                category_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_note_category_note_categories__category_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                category_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AnnotationCategoryUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AnnotationCategoryRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

@@ -214,6 +214,19 @@ class FailingIndicator(BaseModel):
     threshold: str
 
 
+class AnnotationCategory(BaseModel):
+    """Category record associated with an annotation."""
+
+    id: uuid.UUID
+    name: str
+    label: str
+    color: str
+    show_on_graph: bool
+    is_system: bool
+    created_at: datetime
+    updated_at: datetime | None
+
+
 class Annotation(BaseModel):
     """Evaluation annotation."""
 
@@ -222,7 +235,8 @@ class Annotation(BaseModel):
     evaluation_run_id: uuid.UUID | None = None
     content: str
     author: str | None
-    category: str | None
+    category_id: uuid.UUID
+    category: AnnotationCategory
     tags: dict[str, Any]
     note_group_id: uuid.UUID | None = None
     note_group_name: str | None = None

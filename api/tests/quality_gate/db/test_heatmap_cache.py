@@ -22,6 +22,9 @@ from tropek.cache.redis_cache import RedisCache
 from tropek.config import get_settings
 from tropek.db.models import EvaluationRun, SLOEvaluation
 from tropek.modules.quality_gate.repositories.annotation import AnnotationRepository
+from tropek.modules.quality_gate.repositories.annotation_category import (
+    AnnotationCategoryRepository,
+)
 from tropek.modules.quality_gate.repositories.evaluation import EvaluationRepository
 from tropek.modules.quality_gate.schemas.heatmap import (
     EvaluationColumn,
@@ -434,6 +437,10 @@ async def test_reevaluation_persist_deletes_cached_fragment(
     column_cache = heatmap_cache.HeatmapColumnCache(redis_client)
     await _prime_cache_fragment(column_cache, run_id)
 
+    category_repo = AnnotationCategoryRepository(db_session)
+    re_eval_category = await category_repo.get_by_name('re-evaluation')
+    assert re_eval_category is not None
+
     await _persist_reeval_result(
         db_session,
         ev=child_eval,
@@ -446,6 +453,7 @@ async def test_reevaluation_persist_deletes_cached_fragment(
         new_engine_results=None,
         slo_objectives=None,
         cache=None,
+        re_eval_category_id=re_eval_category.id,
         note_group_id=uuid.uuid4(),
         note_group_name='test-reeval-group',
         heatmap_cache=column_cache,
@@ -465,6 +473,7 @@ async def _apply_mutation(
     db_session: AsyncSession,
     seeded: SeededAsset,
     redis_client: fakeredis.aioredis.FakeRedis,
+    info_category_id: uuid.UUID,
 ) -> None:
     """Apply one mutation flavor to the seeded asset state.
 
@@ -515,12 +524,14 @@ async def _apply_mutation(
             child_eval.id,
             content='investigating the spike',
             author='tester',
+            category_id=info_category_id,
         )
     elif mutation == 'hide_annotation':
         created = await annotation_repo.add_annotation(
             child_eval.id,
             content='investigating the spike',
             author='tester',
+            category_id=info_category_id,
         )
         await annotation_repo.hide_annotation(created.id, reason='false alarm', author='tester')
     else:
@@ -548,6 +559,7 @@ async def test_cache_equals_uncached_after_mutation(
     redis_client: fakeredis.aioredis.FakeRedis,
     db_session: AsyncSession,
     seed_asset_with_indicators: Callable[..., Coroutine[Any, Any, SeededAsset]],
+    info_category_id: uuid.UUID,
 ) -> None:
     """Correctness centerpiece of Chunk C: for any sequence of
     (warm cache → mutate → read), the ``cache=true`` response must equal the
@@ -577,7 +589,7 @@ async def test_cache_equals_uncached_after_mutation(
 
     # Step 2: apply the mutation (if any).
     if mutation != 'none':
-        await _apply_mutation(mutation, db_session, seeded, redis_client)
+        await _apply_mutation(mutation, db_session, seeded, redis_client, info_category_id)
 
     # Step 3: re-read both variants and assert they still agree.
     cached_after = await api_client.get(f'/evaluate/metric-heatmap?asset_name={seeded.name}')

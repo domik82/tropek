@@ -34,13 +34,16 @@ export interface BaselinePin {
   unpinnedAt: Date | null
 }
 
+import type { NoteCategory } from '@/features/note-categories'
+
 export interface Annotation {
   id: string
   sloEvaluationId: string | null
   evaluationRunId: string | null
   content: string
   author: string | null
-  category: string | null
+  categoryId: string
+  category: NoteCategory
   tags: Record<string, unknown>
   noteGroupId: string | null
   noteGroupName: string | null
@@ -160,6 +163,7 @@ export interface TrendPoint {
   baseline: number | null
   evaluationName: string | null
   targets: TrendTargets | null
+  overridden: boolean
 }
 
 // --- Re-evaluation ---
@@ -217,6 +221,12 @@ export interface OverrideStatusInput {
   outcome: Outcome
   reason: string
   author: string
+}
+
+export interface AnnotationCreateInput {
+  content: string
+  categoryId: string
+  author?: string
 }
 
 // --- Misc read-only endpoints ---

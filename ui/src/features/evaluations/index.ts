@@ -1,5 +1,6 @@
 export type {
   Annotation,
+  AnnotationCreateInput,
   AssetSnapshot,
   BaselinePin,
   Evaluation,

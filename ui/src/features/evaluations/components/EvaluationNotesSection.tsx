@@ -25,7 +25,7 @@ export const EvaluationNotesSection = forwardRef<EvaluationNotesSectionHandle, P
     }))
 
     return (
-      <div ref={sectionRef}>
+      <div id="notes-section" ref={sectionRef}>
         <AnnotationSection ref={notesRef} runId={runId} annotations={annotations} />
       </div>
     )

@@ -223,7 +223,7 @@ async def test_get_baselines_excludes_invalidated(db_session: AsyncSession) -> N
 
 
 @pytest.mark.integration
-async def test_add_and_list_annotations(db_session: AsyncSession) -> None:
+async def test_add_and_list_annotations(db_session: AsyncSession, info_category_id: uuid.UUID) -> None:
     asset_id = await _create_asset(db_session)
     repo = EvaluationRepository(db_session)
     ann_repo = AnnotationRepository(db_session)
@@ -240,7 +240,9 @@ async def test_add_and_list_annotations(db_session: AsyncSession) -> None:
             slo_name='test-slo',
         )
     )
-    await ann_repo.add_annotation(ev.id, content='Defender update applied', author='ops')
+    await ann_repo.add_annotation(
+        ev.id, content='Defender update applied', author='ops', category_id=info_category_id
+    )
     fetched = await repo.get_by_id(ev.id)
     assert fetched is not None
     assert len(fetched.annotations) == 1
@@ -248,7 +250,7 @@ async def test_add_and_list_annotations(db_session: AsyncSession) -> None:
 
 
 @pytest.mark.integration
-async def test_hide_annotation(db_session: AsyncSession) -> None:
+async def test_hide_annotation(db_session: AsyncSession, info_category_id: uuid.UUID) -> None:
     asset_id = await _create_asset(db_session)
     repo = EvaluationRepository(db_session)
     ann_repo = AnnotationRepository(db_session)
@@ -265,7 +267,9 @@ async def test_hide_annotation(db_session: AsyncSession) -> None:
             slo_name='test-slo',
         )
     )
-    ann = await ann_repo.add_annotation(ev.id, content='wrong note', author='ops')
+    ann = await ann_repo.add_annotation(
+        ev.id, content='wrong note', author='ops', category_id=info_category_id
+    )
     hidden = await ann_repo.hide_annotation(ann.id, reason='typo', author='admin')
     assert hidden is not None
     assert hidden.hidden_at is not None
@@ -275,6 +279,43 @@ async def test_hide_annotation(db_session: AsyncSession) -> None:
     # Verify hidden annotation is excluded from counts
     _, _, count_map, _ = await repo.list_with_counts()
     assert count_map.get(ev.id, 0) == 0
+
+
+@pytest.mark.integration
+async def test_list_with_counts_eager_loads_latest_annotation_category(
+    db_session: AsyncSession, info_category_id: uuid.UUID
+) -> None:
+    """``latest_map`` entries must have their ``category`` relationship pre-loaded.
+
+    Regression guard: Pydantic serialization of EvaluationSummary walks
+    latest_annotation.category; if the relationship is lazy, the access from
+    the presenter triggers ``MissingGreenlet`` in async context.
+    """
+    asset_id = await _create_asset(db_session)
+    repo = EvaluationRepository(db_session)
+    ann_repo = AnnotationRepository(db_session)
+    ev = await repo.create_pending(
+        EvalCreateParams(
+            evaluation_id=uuid.uuid4(),
+            evaluation_name='eager-load-test',
+            period_start=_START,
+            period_end=_END,
+            ingestion_mode='push',
+            asset_snapshot=_make_snapshot(),
+            variables={},
+            asset_id=asset_id,
+            slo_name='test-slo',
+        )
+    )
+    await ann_repo.add_annotation(
+        ev.id, content='recorded', author='ops', category_id=info_category_id
+    )
+
+    _, _, _, latest_map = await repo.list_with_counts()
+    latest = latest_map.get(ev.id)
+    assert latest is not None
+    # Accessing .category after the query must not trigger a lazy load.
+    assert latest.category.name == 'info'
 
 
 @pytest.mark.integration
