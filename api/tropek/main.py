@@ -7,6 +7,7 @@ from contextlib import asynccontextmanager
 
 import redis.asyncio as aioredis
 from fastapi import FastAPI
+from sqlalchemy.exc import IntegrityError
 
 from tropek.cache.redis_cache import RedisCache
 from tropek.config import get_settings
@@ -19,6 +20,7 @@ from tropek.modules.assignments.router import router as assignments_router
 from tropek.modules.common.exception_handlers import (
     conflict_handler,
     domain_validation_handler,
+    integrity_error_handler,
     not_found_handler,
 )
 from tropek.modules.common.exceptions import (
@@ -56,6 +58,7 @@ app.add_middleware(SessionMiddleware, session_factory=get_session_factory())
 app.add_exception_handler(NotFoundError, not_found_handler)  # type: ignore[arg-type]
 app.add_exception_handler(ConflictError, conflict_handler)  # type: ignore[arg-type]
 app.add_exception_handler(DomainValidationError, domain_validation_handler)  # type: ignore[arg-type]
+app.add_exception_handler(IntegrityError, integrity_error_handler)  # type: ignore[arg-type]
 
 # No prefix= — every router defines full absolute paths
 app.include_router(asset_meta_router)
