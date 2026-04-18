@@ -4,7 +4,8 @@ Run command: `uv run --directory api pytest tests/schemathesis/test_schema.py`
 
 Run date: 2026-04-18
 
-Result of the latest full run (after landed fixes): **11 passed, 90 failed / 101 tests**.
+Result of the latest full run (after landed fixes): **60 passed, 41 failed / 101 tests**
+(up from 11/101 on first run — see fix log below).
 
 ## Fixes landed in this phase
 
@@ -13,8 +14,36 @@ Result of the latest full run (after landed fixes): **11 passed, 90 failed / 101
 | `f154179` | Test infrastructure | `.env.test` now overrides dev creds in the schemathesis conftest; DB engine rebuilt per request with NullPool so each Hypothesis example gets a connection on its own event loop. Also fixed `alembic/env.py` to resolve `ENV_FILE` relative to repo root. |
 | `bc3c02f` | Response-schema drift | `DomainValidationError` now emits `HTTPValidationError` (`detail: list[ValidationError]`) instead of `detail: <string>`. |
 | `20e74c9` | Silent 500s | Blanket `IntegrityError` → 409 handler so unique / FK / NOT-NULL violations never surface as 500s. |
+| `411d0e0` | Routing / 405 | `MethodNotAllowedMiddleware` snapshots every literal-path route's allowed methods at startup and returns 405 + `Allow` before Starlette would otherwise dispatch to a parameterised sibling and 422 its body. Prompted by security-review concern. |
+| `789e3f3` | Schema drift | Meta path-entry length moved from a custom `@field_validator` to `Annotated[str, StringConstraints(min_length=1, max_length=128)]`. Constraint now flows into the OpenAPI schema so schemathesis stops generating empty / overlong entries that the custom validator would reject. |
+| `42d64da` | OpenAPI ↔ reality alignment | 3 things in one commit: (a) `SessionMiddleware` commits only on 2xx and rolls back on 4xx/5xx — kills `PendingRollbackError` 500s after `IntegrityError` → 409; (b) `custom_openapi()` injects 404 (path-param ops), 409 (mutating ops) and 422 (every op) into the spec since FastAPI only auto-documents 422 on body-bearing endpoints; (c) `AnnotationCategoryCreate.show_on_graph` typed `StrictBool` so Pydantic no longer silently coerces `0`/`1` to boolean — fixes `AcceptedNegativeData` check. |
 
-## Remaining failures — single dominant cause
+## Remaining failures — residual schema drift
+
+After the above fixes the ~41 remaining failures are dominated by schema drift
+around cross-field constraints that **cannot be expressed in vanilla JSON
+Schema** and which we deliberately enforce at the Pydantic `@model_validator`
+layer:
+
+- `ReEvaluateRequest.exactly_one_scope` / `slo_name_and_names_mutually_exclusive`
+- `SLIDefinitionCreate.validate_mode_fields` (mode-dependent field requirements)
+- `GET /trend` query-param `eval_id XOR (asset_name + slo_name)` check
+- `MetaSnapshotCreate` per-list uniqueness by `path`
+
+Schemathesis correctly considers the generated input "schema-compliant" and
+expects a 2xx. Fixing these requires one of:
+
+1. **Discriminated unions / `oneOf` schemas** — architectural refactor of the
+   request bodies so the constraint is representable in OpenAPI. Ideal but
+   non-trivial per endpoint.
+2. **`json_schema_extra` annotations** — expose the constraint (e.g.
+   `uniqueItems: true` on single-field lists) without restructuring the model.
+   Works only for constraints JSON Schema can represent.
+3. **Targeted `schemathesis` exclusion** — document the constraint at the
+   operation level and tell schemathesis these are known-unrepresentable. Keeps
+   every other conformance + security check active.
+
+## Historical note: prior dominant cause (pre-fix)
 
 Spot-checking a representative failure (`GET /datasources/tag-keys`):
 
