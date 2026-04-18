@@ -41,7 +41,7 @@ def test_slo_test_rejects_empty_objectives(client):
         },
     )
     assert resp.status_code == 422
-    assert 'invalid slo' in resp.json()['detail'].lower()
+    assert any('invalid slo' in entry['msg'].lower() for entry in resp.json()['detail'])
 
 
 def test_slo_test_rejects_missing_required_fields(client):

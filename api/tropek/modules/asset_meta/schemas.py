@@ -2,42 +2,27 @@
 
 from __future__ import annotations
 
+from typing import Annotated
 from uuid import UUID
 
-from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, field_validator
+from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, StringConstraints, field_validator
 
 from tropek.modules.common.schemas import StrictInput
 
-MAX_PATH_ENTRY_LENGTH = 128
+PathEntry = Annotated[str, StringConstraints(min_length=1, max_length=128)]
 
 
 class MetaValueInput(StrictInput):
     """A single key-value pair to set in the metadata timeline."""
 
-    path: list[str] = Field(min_length=1, max_length=6)
+    path: list[PathEntry] = Field(min_length=1, max_length=6)
     value: str = Field(max_length=1024)
-
-    @field_validator('path')
-    @classmethod
-    def _validate_path_entries(cls, entries: list[str]) -> list[str]:
-        for entry in entries:
-            if not 1 <= len(entry) <= MAX_PATH_ENTRY_LENGTH:
-                raise ValueError('path entries must be 1-128 characters')
-        return entries
 
 
 class MetaClosureInput(StrictInput):
     """A path to close (end its current span) in the metadata timeline."""
 
-    path: list[str] = Field(min_length=1, max_length=6)
-
-    @field_validator('path')
-    @classmethod
-    def _validate_path_entries(cls, entries: list[str]) -> list[str]:
-        for entry in entries:
-            if not 1 <= len(entry) <= MAX_PATH_ENTRY_LENGTH:
-                raise ValueError('path entries must be 1-128 characters')
-        return entries
+    path: list[PathEntry] = Field(min_length=1, max_length=6)
 
 
 class MetaSnapshotCreate(StrictInput):

@@ -93,11 +93,11 @@ class TestValuesPathValidation:
             MetaValueInput(path=['a', 'b', 'c', 'd', 'e', 'f', 'g'], value='1.0')
 
     def test_empty_string_entry_rejected(self) -> None:
-        with pytest.raises(ValidationError, match='path entries must be 1-128 characters'):
+        with pytest.raises(ValidationError, match='at least 1 character'):
             MetaValueInput(path=[''], value='1.0')
 
     def test_entry_exceeding_128_chars_rejected(self) -> None:
-        with pytest.raises(ValidationError, match='path entries must be 1-128 characters'):
+        with pytest.raises(ValidationError, match='at most 128 characters'):
             MetaValueInput(path=['x' * 129], value='1.0')
 
     def test_valid_six_entry_path_accepted(self) -> None:
@@ -138,11 +138,11 @@ class TestClosedPathValidation:
             MetaClosureInput(path=['a', 'b', 'c', 'd', 'e', 'f', 'g'])
 
     def test_empty_string_entry_rejected(self) -> None:
-        with pytest.raises(ValidationError, match='path entries must be 1-128 characters'):
+        with pytest.raises(ValidationError, match='at least 1 character'):
             MetaClosureInput(path=[''])
 
     def test_entry_exceeding_128_chars_rejected(self) -> None:
-        with pytest.raises(ValidationError, match='path entries must be 1-128 characters'):
+        with pytest.raises(ValidationError, match='at most 128 characters'):
             MetaClosureInput(path=['x' * 129])
 
     def test_valid_path_accepted(self) -> None:
