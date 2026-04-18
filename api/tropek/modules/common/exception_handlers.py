@@ -23,5 +23,14 @@ async def conflict_handler(request: Request, exc: ConflictError) -> JSONResponse
 
 
 async def domain_validation_handler(request: Request, exc: DomainValidationError) -> JSONResponse:
-    """Map DomainValidationError to 422."""
-    return JSONResponse(status_code=422, content={'detail': str(exc)})
+    """Map DomainValidationError to 422 using FastAPI's HTTPValidationError shape.
+
+    FastAPI documents the 422 response as ``HTTPValidationError`` whose
+    ``detail`` is a list of ``ValidationError`` entries. Emitting a plain
+    string here broke OpenAPI conformance; wrap the message so clients and
+    schemathesis both see the expected structure.
+    """
+    return JSONResponse(
+        status_code=422,
+        content={'detail': [{'loc': ['body'], 'msg': str(exc), 'type': 'domain_validation'}]},
+    )
