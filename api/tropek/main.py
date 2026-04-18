@@ -4,9 +4,11 @@ from __future__ import annotations
 
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from typing import Any
 
 import redis.asyncio as aioredis
 from fastapi import FastAPI
+from fastapi.openapi.utils import get_openapi
 from sqlalchemy.exc import IntegrityError
 
 from tropek.cache.redis_cache import RedisCache
@@ -95,3 +97,56 @@ async def ui_config() -> dict[str, int | bool | str]:
         'heatmapSloGroupsExpandedByDefault': settings.ui.heatmap_slo_groups_expanded_by_default,
         'dataStartDate': settings.ui.data_start_date,
     }
+
+
+# Every operation can reach these error branches through the shared
+# exception handlers (integrity → 409, NotFoundError → 404, domain/pydantic
+# validation → 422). FastAPI only auto-documents 422 for operations that
+# declare a body, so endpoints that reach validation via query params or
+# custom validators look undocumented to contract tests. Inject the missing
+# status codes into every operation so the OpenAPI doc matches reality.
+_HTTP_VALIDATION_ERROR = {'$ref': '#/components/schemas/HTTPValidationError'}
+_ERROR_MESSAGE = {
+    'type': 'object',
+    'title': 'ErrorMessage',
+    'properties': {'detail': {'type': 'string', 'title': 'Detail'}},
+    'required': ['detail'],
+}
+
+
+def _custom_openapi() -> dict[str, Any]:
+    if app.openapi_schema:
+        return app.openapi_schema
+    schema = get_openapi(
+        title=app.title,
+        version=app.version,
+        routes=app.routes,
+    )
+    components = schema.setdefault('components', {}).setdefault('schemas', {})
+    components.setdefault('ErrorMessage', _ERROR_MESSAGE)
+    error_message_ref = {'$ref': '#/components/schemas/ErrorMessage'}
+    error_message_response = {
+        'description': 'Error',
+        'content': {'application/json': {'schema': error_message_ref}},
+    }
+    validation_error_response = {
+        'description': 'Validation Error',
+        'content': {'application/json': {'schema': _HTTP_VALIDATION_ERROR}},
+    }
+    mutating_methods = {'post', 'put', 'patch', 'delete'}
+    for path, path_item in schema.get('paths', {}).items():
+        has_path_param = '{' in path
+        for method, operation in path_item.items():
+            if method not in {'get', 'post', 'put', 'patch', 'delete'}:
+                continue
+            responses = operation.setdefault('responses', {})
+            responses.setdefault('422', validation_error_response)
+            if has_path_param:
+                responses.setdefault('404', error_message_response)
+            if method in mutating_methods:
+                responses.setdefault('409', error_message_response)
+    app.openapi_schema = schema
+    return schema
+
+
+app.openapi = _custom_openapi  # type: ignore[method-assign]
