@@ -11,9 +11,16 @@
             "type": "string"
           },
           "weight": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "integer"
+              }
+            ],
             "default": 1.0,
-            "title": "Weight",
-            "type": "number"
+            "title": "Weight"
           }
         },
         "required": [
@@ -32,9 +39,16 @@
             "type": "string"
           },
           "weight": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "integer"
+              }
+            ],
             "default": 1.0,
-            "title": "Weight",
-            "type": "number"
+            "title": "Weight"
           }
         },
         "required": [
@@ -215,6 +229,7 @@
           "author": {
             "anyOf": [
               {
+                "pattern": "^[^\\x00]*$",
                 "type": "string"
               },
               {
@@ -229,6 +244,7 @@
             "type": "string"
           },
           "content": {
+            "pattern": "^[^\\x00]*$",
             "title": "Content",
             "type": "string"
           },
@@ -253,6 +269,7 @@
           "author": {
             "anyOf": [
               {
+                "pattern": "^[^\\x00]*$",
                 "type": "string"
               },
               {
@@ -262,6 +279,7 @@
             "title": "Author"
           },
           "reason": {
+            "pattern": "^[^\\x00]*$",
             "title": "Reason",
             "type": "string"
           }
@@ -434,6 +452,7 @@
           "author": {
             "anyOf": [
               {
+                "pattern": "^[^\\x00]*$",
                 "type": "string"
               },
               {
@@ -457,6 +476,7 @@
           "content": {
             "anyOf": [
               {
+                "pattern": "^[^\\x00]*$",
                 "type": "string"
               },
               {
@@ -488,6 +508,7 @@
           "color": {
             "anyOf": [
               {
+                "pattern": "^[^\\x00]*$",
                 "type": "string"
               },
               {
@@ -499,6 +520,7 @@
           "display_name": {
             "anyOf": [
               {
+                "pattern": "^[^\\x00]*$",
                 "type": "string"
               },
               {
@@ -508,24 +530,40 @@
             "title": "Display Name"
           },
           "name": {
+            "pattern": "^[^\\x00]*$",
             "title": "Name",
             "type": "string"
           },
           "tags": {
             "additionalProperties": {
-              "type": "string"
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "default": {},
             "title": "Tags",
             "type": "object"
           },
           "type_name": {
+            "pattern": "^[^\\x00]*$",
             "title": "Type Name",
             "type": "string"
           },
           "variables": {
             "additionalProperties": {
-              "type": "string"
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "default": {},
             "title": "Variables",
@@ -546,6 +584,7 @@
           "color": {
             "anyOf": [
               {
+                "pattern": "^[^\\x00]*$",
                 "type": "string"
               },
               {
@@ -557,6 +596,7 @@
           "description": {
             "anyOf": [
               {
+                "pattern": "^[^\\x00]*$",
                 "type": "string"
               },
               {
@@ -568,6 +608,7 @@
           "display_name": {
             "anyOf": [
               {
+                "pattern": "^[^\\x00]*$",
                 "type": "string"
               },
               {
@@ -585,6 +626,7 @@
             "type": "array"
           },
           "name": {
+            "pattern": "^[^\\x00]*$",
             "title": "Name",
             "type": "string"
           },
@@ -612,9 +654,16 @@
             "type": "string"
           },
           "weight": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "integer"
+              }
+            ],
             "default": 1.0,
-            "title": "Weight",
-            "type": "number"
+            "title": "Weight"
           }
         },
         "required": [
@@ -756,9 +805,16 @@
             "type": "string"
           },
           "weight": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "integer"
+              }
+            ],
             "default": 1.0,
-            "title": "Weight",
-            "type": "number"
+            "title": "Weight"
           }
         },
         "required": [
@@ -824,6 +880,7 @@
           "color": {
             "anyOf": [
               {
+                "pattern": "^[^\\x00]*$",
                 "type": "string"
               },
               {
@@ -835,6 +892,7 @@
           "description": {
             "anyOf": [
               {
+                "pattern": "^[^\\x00]*$",
                 "type": "string"
               },
               {
@@ -846,6 +904,7 @@
           "display_name": {
             "anyOf": [
               {
+                "pattern": "^[^\\x00]*$",
                 "type": "string"
               },
               {
@@ -950,6 +1009,7 @@
         "description": "Scope targeting a single named asset.",
         "properties": {
           "asset_name": {
+            "pattern": "^[^\\x00]*$",
             "title": "Asset Name",
             "type": "string"
           },
@@ -1041,6 +1101,7 @@
             "type": "boolean"
           },
           "name": {
+            "pattern": "^[^\\x00]*$",
             "title": "Name",
             "type": "string"
           }
@@ -1088,6 +1149,7 @@
           "name": {
             "anyOf": [
               {
+                "pattern": "^[^\\x00]*$",
                 "type": "string"
               },
               {
@@ -1107,6 +1169,7 @@
           "color": {
             "anyOf": [
               {
+                "pattern": "^[^\\x00]*$",
                 "type": "string"
               },
               {
@@ -1118,6 +1181,7 @@
           "display_name": {
             "anyOf": [
               {
+                "pattern": "^[^\\x00]*$",
                 "type": "string"
               },
               {
@@ -1142,7 +1206,14 @@
             "anyOf": [
               {
                 "additionalProperties": {
-                  "type": "string"
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
                 },
                 "type": "object"
               },
@@ -1155,6 +1226,7 @@
           "type_name": {
             "anyOf": [
               {
+                "pattern": "^[^\\x00]*$",
                 "type": "string"
               },
               {
@@ -1167,7 +1239,14 @@
             "anyOf": [
               {
                 "additionalProperties": {
-                  "type": "string"
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
                 },
                 "type": "object"
               },
@@ -1324,16 +1403,19 @@
         "description": "Request body for creating a datasource.",
         "properties": {
           "adapter_type": {
+            "pattern": "^[^\\x00]*$",
             "title": "Adapter Type",
             "type": "string"
           },
           "adapter_url": {
+            "pattern": "^[^\\x00]*$",
             "title": "Adapter Url",
             "type": "string"
           },
           "display_name": {
             "anyOf": [
               {
+                "pattern": "^[^\\x00]*$",
                 "type": "string"
               },
               {
@@ -1343,6 +1425,7 @@
             "title": "Display Name"
           },
           "name": {
+            "pattern": "^[^\\x00]*$",
             "title": "Name",
             "type": "string"
           },
@@ -1357,6 +1440,7 @@
           "token": {
             "anyOf": [
               {
+                "pattern": "^[^\\x00]*$",
                 "type": "string"
               },
               {
@@ -1446,6 +1530,7 @@
           "adapter_url": {
             "anyOf": [
               {
+                "pattern": "^[^\\x00]*$",
                 "type": "string"
               },
               {
@@ -1457,6 +1542,7 @@
           "display_name": {
             "anyOf": [
               {
+                "pattern": "^[^\\x00]*$",
                 "type": "string"
               },
               {
@@ -1482,6 +1568,7 @@
           "token": {
             "anyOf": [
               {
+                "pattern": "^[^\\x00]*$",
                 "type": "string"
               },
               {
@@ -1501,6 +1588,7 @@
           "display_name": {
             "anyOf": [
               {
+                "pattern": "^[^\\x00]*$",
                 "type": "string"
               },
               {
@@ -1510,6 +1598,7 @@
             "title": "Display Name"
           },
           "name": {
+            "pattern": "^[^\\x00]*$",
             "title": "Name",
             "type": "string"
           },
@@ -1527,6 +1616,8 @@
           },
           "sort_order": {
             "default": 0,
+            "maximum": 2147483647.0,
+            "minimum": -2147483648.0,
             "title": "Sort Order",
             "type": "integer"
           }
@@ -1542,6 +1633,7 @@
         "description": "Request body for adding an SLO to a display group.",
         "properties": {
           "slo_name": {
+            "pattern": "^[^\\x00]*$",
             "title": "Slo Name",
             "type": "string"
           }
@@ -1626,6 +1718,7 @@
         "properties": {
           "evaluation_names": {
             "items": {
+              "pattern": "^[^\\x00]*$",
               "type": "string"
             },
             "minItems": 1,
@@ -1652,6 +1745,7 @@
           "asset_name": {
             "anyOf": [
               {
+                "pattern": "^[^\\x00]*$",
                 "type": "string"
               },
               {
@@ -1664,6 +1758,7 @@
             "anyOf": [
               {
                 "items": {
+                  "pattern": "^[^\\x00]*$",
                   "type": "string"
                 },
                 "type": "array"
@@ -1675,10 +1770,12 @@
             "title": "Asset Names"
           },
           "eval_name": {
+            "pattern": "^[^\\x00]*$",
             "title": "Eval Name",
             "type": "string"
           },
           "mode": {
+            "pattern": "^[^\\x00]*$",
             "title": "Mode",
             "type": "string"
           },
@@ -1722,7 +1819,14 @@
           },
           "variables": {
             "additionalProperties": {
-              "type": "string"
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "default": {},
             "title": "Variables",
@@ -1768,10 +1872,12 @@
         "description": "Request body for POST /evaluate.",
         "properties": {
           "asset_name": {
+            "pattern": "^[^\\x00]*$",
             "title": "Asset Name",
             "type": "string"
           },
           "eval_name": {
+            "pattern": "^[^\\x00]*$",
             "title": "Eval Name",
             "type": "string"
           },
@@ -1787,7 +1893,14 @@
           },
           "variables": {
             "additionalProperties": {
-              "type": "string"
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "default": {},
             "title": "Variables",
@@ -2527,10 +2640,12 @@
         "description": "Request body for extracting a generated SLO to standalone.",
         "properties": {
           "new_name": {
+            "pattern": "^[^\\x00]*$",
             "title": "New Name",
             "type": "string"
           },
           "slo_name": {
+            "pattern": "^[^\\x00]*$",
             "title": "Slo Name",
             "type": "string"
           }
@@ -2582,6 +2697,7 @@
         "description": "Scope targeting all assets in a named group.",
         "properties": {
           "group_name": {
+            "pattern": "^[^\\x00]*$",
             "title": "Group Name",
             "type": "string"
           },
@@ -3152,6 +3268,7 @@
         "description": "Request body for invalidating an evaluation.",
         "properties": {
           "invalidation_note": {
+            "pattern": "^[^\\x00]*$",
             "title": "Invalidation Note",
             "type": "string"
           }
@@ -3186,6 +3303,28 @@
       },
       "MetaSnapshotCreate": {
         "additionalProperties": false,
+        "anyOf": [
+          {
+            "properties": {
+              "values": {
+                "minItems": 1
+              }
+            },
+            "required": [
+              "values"
+            ]
+          },
+          {
+            "properties": {
+              "closed": {
+                "minItems": 1
+              }
+            },
+            "required": [
+              "closed"
+            ]
+          }
+        ],
         "description": "Request body for creating a metadata snapshot.",
         "properties": {
           "closed": {
@@ -3194,7 +3333,8 @@
             },
             "maxItems": 1000,
             "title": "Closed",
-            "type": "array"
+            "type": "array",
+            "uniqueItems": true
           },
           "observed_at": {
             "format": "date-time",
@@ -3214,7 +3354,8 @@
             },
             "maxItems": 10000,
             "title": "Values",
-            "type": "array"
+            "type": "array",
+            "uniqueItems": true
           }
         },
         "required": [
@@ -3256,6 +3397,7 @@
           },
           "value": {
             "maxLength": 1024,
+            "pattern": "^[^\\x00]*$",
             "title": "Value",
             "type": "string"
           }
@@ -3390,14 +3532,17 @@
         "description": "Request body for overriding evaluation result.",
         "properties": {
           "author": {
+            "pattern": "^[^\\x00]*$",
             "title": "Author",
             "type": "string"
           },
           "new_result": {
+            "pattern": "^[^\\x00]*$",
             "title": "New Result",
             "type": "string"
           },
           "reason": {
+            "pattern": "^[^\\x00]*$",
             "title": "Reason",
             "type": "string"
           }
@@ -3607,10 +3752,12 @@
         "description": "Request body for pinning an evaluation as baseline.",
         "properties": {
           "author": {
+            "pattern": "^[^\\x00]*$",
             "title": "Author",
             "type": "string"
           },
           "reason": {
+            "pattern": "^[^\\x00]*$",
             "title": "Reason",
             "type": "string"
           }
@@ -3954,12 +4101,14 @@
         "description": "Request body for creating an SLI definition.",
         "properties": {
           "adapter_type": {
+            "pattern": "^[^\\x00]*$",
             "title": "Adapter Type",
             "type": "string"
           },
           "author": {
             "anyOf": [
               {
+                "pattern": "^[^\\x00]*$",
                 "type": "string"
               },
               {
@@ -3982,6 +4131,7 @@
           "display_name": {
             "anyOf": [
               {
+                "pattern": "^[^\\x00]*$",
                 "type": "string"
               },
               {
@@ -4001,6 +4151,7 @@
           "interval": {
             "anyOf": [
               {
+                "pattern": "^[^\\x00]*$",
                 "type": "string"
               },
               {
@@ -4025,16 +4176,19 @@
           },
           "mode": {
             "default": "raw",
+            "pattern": "^[^\\x00]*$",
             "title": "Mode",
             "type": "string"
           },
           "name": {
+            "pattern": "^[^\\x00]*$",
             "title": "Name",
             "type": "string"
           },
           "notes": {
             "anyOf": [
               {
+                "pattern": "^[^\\x00]*$",
                 "type": "string"
               },
               {
@@ -4046,6 +4200,7 @@
           "query_template": {
             "anyOf": [
               {
+                "pattern": "^[^\\x00]*$",
                 "type": "string"
               },
               {
@@ -4228,6 +4383,7 @@
             "title": "Comparison Rules"
           },
           "data_source_name": {
+            "pattern": "^[^\\x00]*$",
             "title": "Data Source Name",
             "type": "string"
           },
@@ -4357,6 +4513,7 @@
           "author": {
             "anyOf": [
               {
+                "pattern": "^[^\\x00]*$",
                 "type": "string"
               },
               {
@@ -4382,6 +4539,7 @@
           "display_name": {
             "anyOf": [
               {
+                "pattern": "^[^\\x00]*$",
                 "type": "string"
               },
               {
@@ -4392,6 +4550,7 @@
           },
           "kind": {
             "default": "standard",
+            "pattern": "^[^\\x00]*$",
             "title": "Kind",
             "type": "string"
           },
@@ -4410,12 +4569,14 @@
             "title": "Method Criteria"
           },
           "name": {
+            "pattern": "^[^\\x00]*$",
             "title": "Name",
             "type": "string"
           },
           "notes": {
             "anyOf": [
               {
+                "pattern": "^[^\\x00]*$",
                 "type": "string"
               },
               {
@@ -4434,6 +4595,7 @@
           "sli_name": {
             "anyOf": [
               {
+                "pattern": "^[^\\x00]*$",
                 "type": "string"
               },
               {
@@ -4455,7 +4617,14 @@
           },
           "tags": {
             "additionalProperties": {
-              "type": "string"
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "title": "Tags",
             "type": "object"
@@ -4472,7 +4641,14 @@
           },
           "variables": {
             "additionalProperties": {
-              "type": "string"
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "title": "Variables",
             "type": "object"
@@ -4660,10 +4836,12 @@
         "description": "Request body for creating an SLO group assignment.",
         "properties": {
           "data_source_name": {
+            "pattern": "^[^\\x00]*$",
             "title": "Data Source Name",
             "type": "string"
           },
           "slo_group_name": {
+            "pattern": "^[^\\x00]*$",
             "title": "Slo Group Name",
             "type": "string"
           }
@@ -4751,6 +4929,7 @@
           "author": {
             "anyOf": [
               {
+                "pattern": "^[^\\x00]*$",
                 "type": "string"
               },
               {
@@ -4762,6 +4941,7 @@
           "display_name": {
             "anyOf": [
               {
+                "pattern": "^[^\\x00]*$",
                 "type": "string"
               },
               {
@@ -4781,6 +4961,7 @@
             "type": "object"
           },
           "name": {
+            "pattern": "^[^\\x00]*$",
             "title": "Name",
             "type": "string"
           },
@@ -4791,6 +4972,7 @@
             "type": "object"
           },
           "template_slo_name": {
+            "pattern": "^[^\\x00]*$",
             "title": "Template Slo Name",
             "type": "string"
           },
@@ -4919,6 +5101,7 @@
           "display_name": {
             "anyOf": [
               {
+                "pattern": "^[^\\x00]*$",
                 "type": "string"
               },
               {
@@ -4959,6 +5142,7 @@
           "template_slo_name": {
             "anyOf": [
               {
+                "pattern": "^[^\\x00]*$",
                 "type": "string"
               },
               {
@@ -4988,6 +5172,7 @@
         "properties": {
           "display_name": {
             "default": "",
+            "pattern": "^[^\\x00]*$",
             "title": "Display Name",
             "type": "string"
           },
@@ -4998,17 +5183,20 @@
           },
           "pass_threshold": {
             "items": {
+              "pattern": "^[^\\x00]*$",
               "type": "string"
             },
             "title": "Pass Threshold",
             "type": "array"
           },
           "sli": {
+            "pattern": "^[^\\x00]*$",
             "title": "Sli",
             "type": "string"
           },
           "warning_threshold": {
             "items": {
+              "pattern": "^[^\\x00]*$",
               "type": "string"
             },
             "title": "Warning Threshold",
@@ -5032,6 +5220,7 @@
         "properties": {
           "display_name": {
             "default": "",
+            "pattern": "^[^\\x00]*$",
             "title": "Display Name",
             "type": "string"
           },
@@ -5042,12 +5231,14 @@
           },
           "pass_threshold": {
             "items": {
+              "pattern": "^[^\\x00]*$",
               "type": "string"
             },
             "title": "Pass Threshold",
             "type": "array"
           },
           "sli": {
+            "pattern": "^[^\\x00]*$",
             "title": "Sli",
             "type": "string"
           },
@@ -5057,6 +5248,7 @@
           },
           "warning_threshold": {
             "items": {
+              "pattern": "^[^\\x00]*$",
               "type": "string"
             },
             "title": "Warning Threshold",
@@ -5080,6 +5272,7 @@
         "description": "Request body for SLO test (dry-run evaluation).",
         "properties": {
           "asset_name": {
+            "pattern": "^[^\\x00]*$",
             "title": "Asset Name",
             "type": "string"
           },
@@ -5097,11 +5290,13 @@
             "$ref": "#/components/schemas/ComparisonConfig"
           },
           "data_source_name": {
+            "pattern": "^[^\\x00]*$",
             "title": "Data Source Name",
             "type": "string"
           },
           "evaluation_name": {
             "default": "",
+            "pattern": "^[^\\x00]*$",
             "title": "Evaluation Name",
             "type": "string"
           },
@@ -5109,6 +5304,7 @@
             "items": {
               "$ref": "#/components/schemas/SLOObjectiveIn"
             },
+            "minItems": 1,
             "title": "Objectives",
             "type": "array"
           },
@@ -5123,6 +5319,7 @@
             "type": "string"
           },
           "sli_name": {
+            "pattern": "^[^\\x00]*$",
             "title": "Sli Name",
             "type": "string"
           },
@@ -5348,6 +5545,7 @@
             "type": "string"
           },
           "slo_name": {
+            "pattern": "^[^\\x00]*$",
             "title": "Slo Name",
             "type": "string"
           }
@@ -5720,6 +5918,26 @@
             },
             "description": "Successful Response"
           },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Error"
+          },
           "422": {
             "content": {
               "application/json": {
@@ -5756,6 +5974,26 @@
               }
             },
             "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Error"
           },
           "409": {
             "content": {
@@ -5795,6 +6033,26 @@
               }
             },
             "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Error"
           },
           "422": {
             "content": {
@@ -5838,6 +6096,16 @@
         "responses": {
           "204": {
             "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Bad Request"
           },
           "404": {
             "content": {
@@ -5897,6 +6165,16 @@
             },
             "description": "Successful Response"
           },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
           "404": {
             "content": {
               "application/json": {
@@ -5954,6 +6232,16 @@
               }
             },
             "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Bad Request"
           },
           "404": {
             "content": {
@@ -6025,6 +6313,16 @@
             },
             "description": "Successful Response"
           },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
           "404": {
             "content": {
               "application/json": {
@@ -6087,6 +6385,16 @@
         "responses": {
           "204": {
             "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Bad Request"
           },
           "404": {
             "content": {
@@ -6152,6 +6460,16 @@
             },
             "description": "Successful Response"
           },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
           "404": {
             "content": {
               "application/json": {
@@ -6209,6 +6527,16 @@
               }
             },
             "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Bad Request"
           },
           "404": {
             "content": {
@@ -6272,6 +6600,16 @@
         "responses": {
           "204": {
             "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Bad Request"
           },
           "404": {
             "content": {
@@ -6337,6 +6675,16 @@
             },
             "description": "Successful Response"
           },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
           "404": {
             "content": {
               "application/json": {
@@ -6394,6 +6742,16 @@
               }
             },
             "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Bad Request"
           },
           "404": {
             "content": {
@@ -6457,6 +6815,16 @@
         "responses": {
           "204": {
             "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Bad Request"
           },
           "404": {
             "content": {
@@ -6528,6 +6896,16 @@
             },
             "description": "Successful Response"
           },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
           "404": {
             "content": {
               "application/json": {
@@ -6591,6 +6969,16 @@
           "204": {
             "description": "Successful Response"
           },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
           "404": {
             "content": {
               "application/json": {
@@ -6640,6 +7028,26 @@
             },
             "description": "Successful Response"
           },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Error"
+          },
           "422": {
             "content": {
               "application/json": {
@@ -6676,6 +7084,26 @@
               }
             },
             "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Error"
           },
           "409": {
             "content": {
@@ -6719,6 +7147,16 @@
         "responses": {
           "204": {
             "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Bad Request"
           },
           "404": {
             "content": {
@@ -6788,6 +7226,16 @@
             },
             "description": "Successful Response"
           },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
           "404": {
             "content": {
               "application/json": {
@@ -6847,6 +7295,16 @@
               }
             },
             "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Bad Request"
           },
           "404": {
             "content": {
@@ -6947,6 +7405,26 @@
             },
             "description": "Successful Response"
           },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Error"
+          },
           "422": {
             "content": {
               "application/json": {
@@ -6983,6 +7461,26 @@
               }
             },
             "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Error"
           },
           "409": {
             "content": {
@@ -7027,6 +7525,26 @@
             },
             "description": "Successful Response"
           },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Error"
+          },
           "422": {
             "content": {
               "application/json": {
@@ -7051,6 +7569,7 @@
             "name": "key",
             "required": true,
             "schema": {
+              "pattern": "^[^\\x00]*$",
               "title": "Key",
               "type": "string"
             }
@@ -7070,6 +7589,26 @@
               }
             },
             "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Error"
           },
           "422": {
             "content": {
@@ -7121,6 +7660,16 @@
               }
             },
             "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Bad Request"
           },
           "404": {
             "content": {
@@ -7206,6 +7755,16 @@
             },
             "description": "Successful Response"
           },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
           "404": {
             "content": {
               "application/json": {
@@ -7279,6 +7838,16 @@
               }
             },
             "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Bad Request"
           },
           "404": {
             "content": {
@@ -7382,6 +7951,16 @@
             },
             "description": "Successful Response"
           },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
           "404": {
             "content": {
               "application/json": {
@@ -7424,6 +8003,16 @@
         "responses": {
           "204": {
             "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Bad Request"
           },
           "404": {
             "content": {
@@ -7483,6 +8072,16 @@
             },
             "description": "Successful Response"
           },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
           "404": {
             "content": {
               "application/json": {
@@ -7540,6 +8139,16 @@
               }
             },
             "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Bad Request"
           },
           "404": {
             "content": {
@@ -7605,6 +8214,16 @@
             },
             "description": "Successful Response"
           },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
           "404": {
             "content": {
               "application/json": {
@@ -7662,6 +8281,16 @@
               }
             },
             "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Bad Request"
           },
           "404": {
             "content": {
@@ -7725,6 +8354,16 @@
         "responses": {
           "204": {
             "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Bad Request"
           },
           "404": {
             "content": {
@@ -7804,6 +8443,16 @@
             },
             "description": "Successful Response"
           },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
           "404": {
             "content": {
               "application/json": {
@@ -7868,6 +8517,16 @@
             },
             "description": "Successful Response"
           },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
           "404": {
             "content": {
               "application/json": {
@@ -7925,6 +8584,16 @@
               }
             },
             "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Bad Request"
           },
           "404": {
             "content": {
@@ -7989,6 +8658,16 @@
           "204": {
             "description": "Successful Response"
           },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
           "404": {
             "content": {
               "application/json": {
@@ -8051,6 +8730,26 @@
               }
             },
             "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Error"
           },
           "422": {
             "content": {
@@ -8131,6 +8830,26 @@
             },
             "description": "Successful Response"
           },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Error"
+          },
           "422": {
             "content": {
               "application/json": {
@@ -8167,6 +8886,26 @@
               }
             },
             "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Error"
           },
           "409": {
             "content": {
@@ -8211,6 +8950,26 @@
             },
             "description": "Successful Response"
           },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Error"
+          },
           "422": {
             "content": {
               "application/json": {
@@ -8235,6 +8994,7 @@
             "name": "key",
             "required": true,
             "schema": {
+              "pattern": "^[^\\x00]*$",
               "title": "Key",
               "type": "string"
             }
@@ -8254,6 +9014,26 @@
               }
             },
             "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Error"
           },
           "422": {
             "content": {
@@ -8287,6 +9067,16 @@
         "responses": {
           "204": {
             "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Bad Request"
           },
           "404": {
             "content": {
@@ -8346,6 +9136,16 @@
             },
             "description": "Successful Response"
           },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
           "404": {
             "content": {
               "application/json": {
@@ -8403,6 +9203,16 @@
               }
             },
             "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Bad Request"
           },
           "404": {
             "content": {
@@ -8475,6 +9285,16 @@
             },
             "description": "Successful Response"
           },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
           "404": {
             "content": {
               "application/json": {
@@ -8536,6 +9356,16 @@
             },
             "description": "Successful Response"
           },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
           "404": {
             "content": {
               "application/json": {
@@ -8590,6 +9420,16 @@
               }
             },
             "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Bad Request"
           },
           "404": {
             "content": {
@@ -8649,6 +9489,16 @@
               }
             },
             "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Bad Request"
           },
           "404": {
             "content": {
@@ -8731,6 +9581,16 @@
             },
             "description": "Successful Response"
           },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
           "404": {
             "content": {
               "application/json": {
@@ -8812,6 +9672,16 @@
             },
             "description": "Successful Response"
           },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
           "404": {
             "content": {
               "application/json": {
@@ -8882,6 +9752,16 @@
               }
             },
             "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Bad Request"
           },
           "404": {
             "content": {
@@ -8954,6 +9834,16 @@
             },
             "description": "Successful Response"
           },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
           "404": {
             "content": {
               "application/json": {
@@ -9025,6 +9915,16 @@
             },
             "description": "Successful Response"
           },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
           "404": {
             "content": {
               "application/json": {
@@ -9086,6 +9986,16 @@
             },
             "description": "Successful Response"
           },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
           "404": {
             "content": {
               "application/json": {
@@ -9146,6 +10056,16 @@
               }
             },
             "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Bad Request"
           },
           "404": {
             "content": {
@@ -9248,6 +10168,16 @@
             },
             "description": "Successful Response"
           },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
           "404": {
             "content": {
               "application/json": {
@@ -9298,6 +10228,16 @@
               }
             },
             "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Bad Request"
           },
           "404": {
             "content": {
@@ -9504,6 +10444,26 @@
             },
             "description": "Successful Response"
           },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Error"
+          },
           "422": {
             "content": {
               "application/json": {
@@ -9540,6 +10500,26 @@
               }
             },
             "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Error"
           },
           "409": {
             "content": {
@@ -9589,6 +10569,26 @@
               }
             },
             "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Error"
           },
           "409": {
             "content": {
@@ -9644,6 +10644,26 @@
               }
             },
             "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Error"
           },
           "422": {
             "content": {
@@ -9750,6 +10770,26 @@
             },
             "description": "Successful Response"
           },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Error"
+          },
           "422": {
             "content": {
               "application/json": {
@@ -9843,6 +10883,26 @@
             },
             "description": "Successful Response"
           },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Error"
+          },
           "422": {
             "content": {
               "application/json": {
@@ -9869,6 +10929,7 @@
             "schema": {
               "anyOf": [
                 {
+                  "pattern": "^[^\\x00]*$",
                   "type": "string"
                 },
                 {
@@ -9885,6 +10946,7 @@
             "schema": {
               "anyOf": [
                 {
+                  "pattern": "^[^\\x00]*$",
                   "type": "string"
                 },
                 {
@@ -9909,6 +10971,26 @@
               }
             },
             "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Error"
           },
           "422": {
             "content": {
@@ -9948,6 +11030,26 @@
               }
             },
             "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Error"
           },
           "409": {
             "content": {
@@ -9997,6 +11099,26 @@
               }
             },
             "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Error"
           },
           "409": {
             "content": {
@@ -10058,6 +11180,16 @@
               }
             },
             "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Bad Request"
           },
           "404": {
             "content": {
@@ -10135,6 +11267,26 @@
             },
             "description": "Successful Response"
           },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Error"
+          },
           "422": {
             "content": {
               "application/json": {
@@ -10168,6 +11320,26 @@
             },
             "description": "Successful Response"
           },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Error"
+          },
           "422": {
             "content": {
               "application/json": {
@@ -10200,6 +11372,26 @@
               }
             },
             "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Error"
           },
           "422": {
             "content": {
@@ -10237,6 +11429,26 @@
               }
             },
             "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Error"
           },
           "409": {
             "content": {
@@ -10281,6 +11493,16 @@
         "responses": {
           "204": {
             "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Bad Request"
           },
           "404": {
             "content": {
@@ -10350,6 +11572,16 @@
               }
             },
             "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Bad Request"
           },
           "404": {
             "content": {
@@ -10450,6 +11682,26 @@
             },
             "description": "Successful Response"
           },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Error"
+          },
           "422": {
             "content": {
               "application/json": {
@@ -10486,6 +11738,26 @@
               }
             },
             "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Error"
           },
           "409": {
             "content": {
@@ -10530,6 +11802,26 @@
             },
             "description": "Successful Response"
           },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Error"
+          },
           "422": {
             "content": {
               "application/json": {
@@ -10554,6 +11846,7 @@
             "name": "key",
             "required": true,
             "schema": {
+              "pattern": "^[^\\x00]*$",
               "title": "Key",
               "type": "string"
             }
@@ -10573,6 +11866,26 @@
               }
             },
             "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Error"
           },
           "422": {
             "content": {
@@ -10606,6 +11919,16 @@
         "responses": {
           "204": {
             "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Bad Request"
           },
           "404": {
             "content": {
@@ -10665,6 +11988,16 @@
             },
             "description": "Successful Response"
           },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
           "404": {
             "content": {
               "application/json": {
@@ -10718,6 +12051,16 @@
               }
             },
             "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Bad Request"
           },
           "404": {
             "content": {
@@ -10808,6 +12151,26 @@
             },
             "description": "Successful Response"
           },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Error"
+          },
           "422": {
             "content": {
               "application/json": {
@@ -10844,6 +12207,26 @@
               }
             },
             "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Error"
           },
           "409": {
             "content": {
@@ -10888,6 +12271,26 @@
             },
             "description": "Successful Response"
           },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Error"
+          },
           "422": {
             "content": {
               "application/json": {
@@ -10912,6 +12315,7 @@
             "name": "key",
             "required": true,
             "schema": {
+              "pattern": "^[^\\x00]*$",
               "title": "Key",
               "type": "string"
             }
@@ -10931,6 +12335,26 @@
               }
             },
             "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Error"
           },
           "422": {
             "content": {
@@ -10970,6 +12394,26 @@
               }
             },
             "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Error"
           },
           "409": {
             "content": {
@@ -11020,6 +12464,26 @@
             },
             "description": "Successful Response"
           },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Error"
+          },
           "409": {
             "content": {
               "application/json": {
@@ -11062,6 +12526,16 @@
         "responses": {
           "204": {
             "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Bad Request"
           },
           "404": {
             "content": {
@@ -11121,6 +12595,16 @@
             },
             "description": "Successful Response"
           },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
           "404": {
             "content": {
               "application/json": {
@@ -11175,6 +12659,16 @@
             },
             "description": "Successful Response"
           },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
           "404": {
             "content": {
               "application/json": {
@@ -11218,6 +12712,26 @@
             },
             "description": "Successful Response"
           },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Error"
+          },
           "422": {
             "content": {
               "application/json": {
@@ -11254,6 +12768,26 @@
               }
             },
             "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Error"
           },
           "409": {
             "content": {
@@ -11297,6 +12831,16 @@
         "responses": {
           "204": {
             "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Bad Request"
           },
           "404": {
             "content": {
@@ -11362,6 +12906,16 @@
             },
             "description": "Successful Response"
           },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
           "404": {
             "content": {
               "application/json": {
@@ -11412,6 +12966,16 @@
         "responses": {
           "204": {
             "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Bad Request"
           },
           "404": {
             "content": {
@@ -11475,6 +13039,16 @@
           "204": {
             "description": "Successful Response"
           },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
           "404": {
             "content": {
               "application/json": {
@@ -11521,6 +13095,7 @@
             "schema": {
               "anyOf": [
                 {
+                  "pattern": "^[^\\x00]*$",
                   "type": "string"
                 },
                 {
@@ -11537,6 +13112,7 @@
             "schema": {
               "anyOf": [
                 {
+                  "pattern": "^[^\\x00]*$",
                   "type": "string"
                 },
                 {
@@ -11557,6 +13133,26 @@
               }
             },
             "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Error"
           },
           "422": {
             "content": {
@@ -11594,6 +13190,26 @@
               }
             },
             "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Error"
           },
           "409": {
             "content": {
@@ -11637,6 +13253,16 @@
         "responses": {
           "204": {
             "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Bad Request"
           },
           "404": {
             "content": {
@@ -11696,6 +13322,16 @@
             },
             "description": "Successful Response"
           },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
           "404": {
             "content": {
               "application/json": {
@@ -11753,6 +13389,16 @@
               }
             },
             "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Bad Request"
           },
           "404": {
             "content": {
@@ -11823,6 +13469,16 @@
               }
             },
             "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Bad Request"
           },
           "404": {
             "content": {
