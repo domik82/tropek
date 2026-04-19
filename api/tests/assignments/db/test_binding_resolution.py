@@ -129,7 +129,7 @@ async def _create_group_with_member(
 async def _evaluate(client: AsyncClient, asset_name: str) -> tuple[int, dict]:
     """Trigger evaluation and return (status_code, response_body)."""
     resp = await client.post(
-        '/evaluate',
+        '/evaluations',
         json={
             'asset_name': asset_name,
             'eval_name': 'binding-test',

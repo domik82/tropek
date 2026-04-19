@@ -99,10 +99,10 @@ async def test_re_evaluate_sets_original_result(async_client: AsyncClient, db_se
     asset_name, eval_id = await _setup_re_eval(db_session)
 
     resp = await async_client.post(
-        '/evaluations/re-evaluate',
+        '/evaluations/re-evaluate/from-date',
         json={
-            'asset_name': asset_name,
-            'slo_name': 're-eval-ep-slo',
+            'scope': {'kind': 'asset', 'asset_name': asset_name},
+            'selector': {'kind': 'slo', 'slo_name': 're-eval-ep-slo'},
             'from_date': '2026-03-09T00:00:00Z',
         },
     )
@@ -113,7 +113,7 @@ async def test_re_evaluate_sets_original_result(async_client: AsyncClient, db_se
     assert body['results'][0]['new_result'] == 'pass'
 
     # Verify original preserved in detail
-    detail = await async_client.get(f'/evaluations/{eval_id}')
+    detail = await async_client.get(f'/evaluation/{eval_id}')
     assert detail.json()['original_score'] == 0.0
 
 
@@ -126,10 +126,10 @@ async def test_re_evaluate_preserves_original_on_second_reeval(
 
     # First re-eval
     await async_client.post(
-        '/evaluations/re-evaluate',
+        '/evaluations/re-evaluate/from-date',
         json={
-            'asset_name': asset_name,
-            'slo_name': 're-eval-ep-slo',
+            'scope': {'kind': 'asset', 'asset_name': asset_name},
+            'selector': {'kind': 'slo', 'slo_name': 're-eval-ep-slo'},
             'from_date': '2026-03-09T00:00:00Z',
         },
     )
@@ -145,15 +145,15 @@ async def test_re_evaluate_preserves_original_on_second_reeval(
 
     # Second re-eval
     resp = await async_client.post(
-        '/evaluations/re-evaluate',
+        '/evaluations/re-evaluate/from-date',
         json={
-            'asset_name': asset_name,
-            'slo_name': 're-eval-ep-slo',
+            'scope': {'kind': 'asset', 'asset_name': asset_name},
+            'selector': {'kind': 'slo', 'slo_name': 're-eval-ep-slo'},
             'from_date': '2026-03-09T00:00:00Z',
         },
     )
     assert resp.status_code == 200
 
     # Verify original_score is still from the very first evaluation (0.0), not from the first re-eval
-    detail = await async_client.get(f'/evaluations/{eval_id}')
+    detail = await async_client.get(f'/evaluation/{eval_id}')
     assert detail.json()['original_score'] == 0.0
