@@ -42,7 +42,7 @@ def test_slo_validate(httpx_mock: HTTPXMock):
 
 def test_evaluate(httpx_mock: HTTPXMock):
     httpx_mock.add_response(
-        url='http://test/evaluate',
+        url='http://test/evaluations',
         json={'evaluation_id': _UUID, 'slo_evaluation_ids': [_UUID]},
     )
     with TropekClient('http://test') as client:
@@ -58,7 +58,7 @@ def test_evaluate(httpx_mock: HTTPXMock):
 
 def test_evaluate_with_variables(httpx_mock: HTTPXMock):
     httpx_mock.add_response(
-        url='http://test/evaluate',
+        url='http://test/evaluations',
         json={'evaluation_id': _UUID, 'slo_evaluation_ids': [_UUID]},
     )
     with TropekClient('http://test') as client:
@@ -74,7 +74,7 @@ def test_evaluate_with_variables(httpx_mock: HTTPXMock):
 
 def test_evaluate_batch_by_date(httpx_mock: HTTPXMock):
     httpx_mock.add_response(
-        url='http://test/evaluate/batch',
+        url='http://test/evaluations/batch',
         json={'evaluation_ids': [_UUID]},
     )
     with TropekClient('http://test') as client:
@@ -91,7 +91,7 @@ def test_evaluate_batch_by_date(httpx_mock: HTTPXMock):
 
 def test_evaluate_batch_by_asset(httpx_mock: HTTPXMock):
     httpx_mock.add_response(
-        url='http://test/evaluate/batch',
+        url='http://test/evaluations/batch',
         json={'evaluation_ids': [_UUID]},
     )
     with TropekClient('http://test') as client:
