@@ -260,6 +260,67 @@ class SLOObjective(Base):
     # fmt: on
 
 
+class ChangePointConfig(Base):
+    """Per-indicator Otava detection override — SPARSE table.
+
+    Rows exist ONLY to override the hardcoded defaults for a specific
+    (slo_name, metric_name). Absence of a row = use defaults = detection
+    enabled with standard window_size and min_sample_size.
+    """
+
+    __tablename__ = 'change_point_config'
+    __table_args__ = (
+        UniqueConstraint('slo_name', 'metric_name', name='uq_cp_config_slo_metric'),
+    )
+
+    # fmt: off
+    id:              Mapped[uuid.UUID]      = mapped_column(UUID, primary_key=True, default=uuid.uuid4)
+    slo_name:        Mapped[str]            = mapped_column(Text, nullable=False)
+    metric_name:     Mapped[str]            = mapped_column(Text, nullable=False)
+    enabled:         Mapped[bool]           = mapped_column(Boolean, nullable=False, server_default=text('true'))
+    window_size:     Mapped[int]            = mapped_column(Integer, nullable=False, server_default=text('30'))
+    max_pvalue:      Mapped[float]          = mapped_column(Float, nullable=False, server_default=text('0.001'))
+    min_magnitude:   Mapped[float]          = mapped_column(Float, nullable=False, server_default=text('0.0'))
+    min_sample_size: Mapped[int]            = mapped_column(Integer, nullable=False, server_default=text('10'))
+    created_at:      Mapped[datetime]       = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at:      Mapped[datetime]       = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    # fmt: on
+
+
+class ChangePoint(Base):
+    """Detected distributional shift for a single metric — denormalized identity."""
+
+    __tablename__ = 'change_points'
+    __table_args__ = (
+        Index('idx_change_points_indicator', 'indicator_result_id'),
+        Index('idx_change_points_identity', 'asset_id', 'slo_name', 'metric_name', 'period_start'),
+        Index('idx_change_points_unprocessed', 'status', postgresql_where=text("status = 'unprocessed'")),
+        Index('idx_change_points_created', 'created_at'),
+    )
+
+    # fmt: off
+    id:                   Mapped[uuid.UUID]        = mapped_column(UUID, primary_key=True, default=uuid.uuid4)
+    indicator_result_id:  Mapped[uuid.UUID | None] = mapped_column(UUID, ForeignKey('indicator_results.id', ondelete='SET NULL'), nullable=True)
+    asset_id:             Mapped[uuid.UUID]        = mapped_column(UUID, nullable=False)
+    slo_name:             Mapped[str]              = mapped_column(Text, nullable=False)
+    metric_name:          Mapped[str]              = mapped_column(Text, nullable=False)
+    period_start:         Mapped[datetime]         = mapped_column(DateTime(timezone=True), nullable=False)
+    direction:            Mapped[str]              = mapped_column(Text, nullable=False)
+    change_relative_pct:  Mapped[float]            = mapped_column(Float, nullable=False)
+    change_absolute:      Mapped[float]            = mapped_column(Float, nullable=False)
+    t_statistic:          Mapped[float]            = mapped_column(Float, nullable=False)
+    pre_segment_mean:     Mapped[float]            = mapped_column(Float, nullable=False)
+    post_segment_mean:    Mapped[float]            = mapped_column(Float, nullable=False)
+    status:               Mapped[str]              = mapped_column(Text, nullable=False, server_default=text("'unprocessed'"))
+    triage_author:        Mapped[str | None]       = mapped_column(Text, nullable=True)
+    triage_note:          Mapped[str | None]       = mapped_column(Text, nullable=True)
+    triage_at:            Mapped[datetime | None]  = mapped_column(DateTime(timezone=True), nullable=True)
+    linked_ticket:        Mapped[str | None]       = mapped_column(Text, nullable=True)
+    created_at:           Mapped[datetime]         = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at:           Mapped[datetime]         = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    # fmt: on
+
+
 class IndicatorResultRow(Base):
     """Normalized indicator result — one row per SLI per evaluation."""
 
