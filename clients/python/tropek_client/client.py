@@ -754,14 +754,13 @@ class _SLOAssignments:
         self, asset_name: str, slo_definition_id: str, data_source_name: str,
         *, comparison_rules: list[dict[str, Any]] | None = None,
     ) -> SLOAssignment:
-        """Create an SLO assignment for an asset."""
-        body: dict[str, Any] = {
-            'slo_definition_id': slo_definition_id,
-            'data_source_name': data_source_name,
-        }
+        """Upsert an SLO assignment for an asset pinned to a specific SLO definition."""
+        body: dict[str, Any] = {'data_source_name': data_source_name}
         if comparison_rules is not None:
             body['comparison_rules'] = comparison_rules
-        resp = self._http.post(f'/assets/{asset_name}/slo-assignments', json=body)
+        resp = self._http.put(
+            f'/assets/{asset_name}/slo-definitions/{slo_definition_id}', json=body
+        )
         _raise_for_status(resp)
         return SLOAssignment.model_validate(resp.json())
 
@@ -769,14 +768,13 @@ class _SLOAssignments:
         self, group_name: str, slo_definition_id: str, data_source_name: str,
         *, comparison_rules: list[dict[str, Any]] | None = None,
     ) -> SLOAssignment:
-        """Create an SLO assignment for an asset group."""
-        body: dict[str, Any] = {
-            'slo_definition_id': slo_definition_id,
-            'data_source_name': data_source_name,
-        }
+        """Upsert an SLO assignment for an asset group pinned to a specific SLO definition."""
+        body: dict[str, Any] = {'data_source_name': data_source_name}
         if comparison_rules is not None:
             body['comparison_rules'] = comparison_rules
-        resp = self._http.post(f'/asset-groups/{group_name}/slo-assignments', json=body)
+        resp = self._http.put(
+            f'/asset-groups/{group_name}/slo-definitions/{slo_definition_id}', json=body
+        )
         _raise_for_status(resp)
         return SLOAssignment.model_validate(resp.json())
 
@@ -792,14 +790,18 @@ class _SLOAssignments:
         _raise_for_status(resp)
         return [SLOAssignment.model_validate(a) for a in resp.json()]
 
-    def delete_for_asset(self, asset_name: str, assignment_id: str) -> None:
-        """Delete an SLO assignment for an asset."""
-        resp = self._http.delete(f'/assets/{asset_name}/slo-assignments/{assignment_id}')
+    def delete_for_asset(self, asset_name: str, slo_definition_id: str) -> None:
+        """Delete an SLO assignment by asset + SLO definition target."""
+        resp = self._http.delete(
+            f'/assets/{asset_name}/slo-definitions/{slo_definition_id}'
+        )
         _raise_for_status(resp)
 
-    def delete_for_group(self, group_name: str, assignment_id: str) -> None:
-        """Delete an SLO assignment for an asset group."""
-        resp = self._http.delete(f'/asset-groups/{group_name}/slo-assignments/{assignment_id}')
+    def delete_for_group(self, group_name: str, slo_definition_id: str) -> None:
+        """Delete an SLO assignment by asset group + SLO definition target."""
+        resp = self._http.delete(
+            f'/asset-groups/{group_name}/slo-definitions/{slo_definition_id}'
+        )
         _raise_for_status(resp)
 
 
@@ -905,10 +907,10 @@ class _SLOGroupAssignments:
     def create_for_asset(
         self, asset_name: str, slo_group_name: str, data_source_name: str,
     ) -> SLOGroupAssignment:
-        """Create an SLO group assignment for an asset."""
-        resp = self._http.post(
-            f'/assets/{asset_name}/slo-group-assignments',
-            json={'slo_group_name': slo_group_name, 'data_source_name': data_source_name},
+        """Upsert an SLO group assignment for an asset pinned to a specific SLO group."""
+        resp = self._http.put(
+            f'/assets/{asset_name}/slo-groups/{slo_group_name}',
+            json={'data_source_name': data_source_name},
         )
         _raise_for_status(resp)
         return SLOGroupAssignment.model_validate(resp.json())
@@ -916,10 +918,10 @@ class _SLOGroupAssignments:
     def create_for_group(
         self, group_name: str, slo_group_name: str, data_source_name: str,
     ) -> SLOGroupAssignment:
-        """Create an SLO group assignment for an asset group."""
-        resp = self._http.post(
-            f'/asset-groups/{group_name}/slo-group-assignments',
-            json={'slo_group_name': slo_group_name, 'data_source_name': data_source_name},
+        """Upsert an SLO group assignment for an asset group pinned to a specific SLO group."""
+        resp = self._http.put(
+            f'/asset-groups/{group_name}/slo-groups/{slo_group_name}',
+            json={'data_source_name': data_source_name},
         )
         _raise_for_status(resp)
         return SLOGroupAssignment.model_validate(resp.json())
@@ -936,15 +938,15 @@ class _SLOGroupAssignments:
         _raise_for_status(resp)
         return [SLOGroupAssignment.model_validate(a) for a in resp.json()]
 
-    def delete_for_asset(self, asset_name: str, assignment_id: str) -> None:
-        """Delete an SLO group assignment for an asset."""
-        resp = self._http.delete(f'/assets/{asset_name}/slo-group-assignments/{assignment_id}')
+    def delete_for_asset(self, asset_name: str, slo_group_name: str) -> None:
+        """Delete an SLO group assignment by asset + SLO group target."""
+        resp = self._http.delete(f'/assets/{asset_name}/slo-groups/{slo_group_name}')
         _raise_for_status(resp)
 
-    def delete_for_group(self, group_name: str, assignment_id: str) -> None:
-        """Delete an SLO group assignment for an asset group."""
+    def delete_for_group(self, group_name: str, slo_group_name: str) -> None:
+        """Delete an SLO group assignment by asset group + SLO group target."""
         resp = self._http.delete(
-            f'/asset-groups/{group_name}/slo-group-assignments/{assignment_id}',
+            f'/asset-groups/{group_name}/slo-groups/{slo_group_name}',
         )
         _raise_for_status(resp)
 

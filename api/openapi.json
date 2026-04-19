@@ -4363,43 +4363,6 @@
         "title": "SLIDefinitionRead",
         "type": "object"
       },
-      "SLOAssignmentCreate": {
-        "additionalProperties": false,
-        "description": "Request body for creating an SLO assignment.",
-        "properties": {
-          "comparison_rules": {
-            "anyOf": [
-              {
-                "items": {
-                  "additionalProperties": true,
-                  "type": "object"
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Comparison Rules"
-          },
-          "data_source_name": {
-            "pattern": "^[^\\x00]*$",
-            "title": "Data Source Name",
-            "type": "string"
-          },
-          "slo_definition_id": {
-            "format": "uuid",
-            "title": "Slo Definition Id",
-            "type": "string"
-          }
-        },
-        "required": [
-          "slo_definition_id",
-          "data_source_name"
-        ],
-        "title": "SLOAssignmentCreate",
-        "type": "object"
-      },
       "SLOAssignmentRead": {
         "description": "Response schema for an SLO assignment.",
         "properties": {
@@ -4504,6 +4467,37 @@
           "new_slo_definition_id"
         ],
         "title": "SLOAssignmentUpgrade",
+        "type": "object"
+      },
+      "SLOAssignmentUpsert": {
+        "additionalProperties": false,
+        "description": "Request body for PUT-upserting an SLO assignment at /{parent}/slo-definitions/{id}.",
+        "properties": {
+          "comparison_rules": {
+            "anyOf": [
+              {
+                "items": {
+                  "additionalProperties": true,
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Comparison Rules"
+          },
+          "data_source_name": {
+            "pattern": "^[^\\x00]*$",
+            "title": "Data Source Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "data_source_name"
+        ],
+        "title": "SLOAssignmentUpsert",
         "type": "object"
       },
       "SLODefinitionCreate": {
@@ -4831,28 +4825,6 @@
         "title": "SLODefinitionRead",
         "type": "object"
       },
-      "SLOGroupAssignmentCreate": {
-        "additionalProperties": false,
-        "description": "Request body for creating an SLO group assignment.",
-        "properties": {
-          "data_source_name": {
-            "pattern": "^[^\\x00]*$",
-            "title": "Data Source Name",
-            "type": "string"
-          },
-          "slo_group_name": {
-            "pattern": "^[^\\x00]*$",
-            "title": "Slo Group Name",
-            "type": "string"
-          }
-        },
-        "required": [
-          "slo_group_name",
-          "data_source_name"
-        ],
-        "title": "SLOGroupAssignmentCreate",
-        "type": "object"
-      },
       "SLOGroupAssignmentRead": {
         "description": "Response schema for an SLO group assignment.",
         "properties": {
@@ -4920,6 +4892,22 @@
           "created_at"
         ],
         "title": "SLOGroupAssignmentRead",
+        "type": "object"
+      },
+      "SLOGroupAssignmentUpsert": {
+        "additionalProperties": false,
+        "description": "Request body for PUT-upserting an SLO group assignment at /{parent}/slo-groups/{name}.",
+        "properties": {
+          "data_source_name": {
+            "pattern": "^[^\\x00]*$",
+            "title": "Data Source Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "data_source_name"
+        ],
+        "title": "SLOGroupAssignmentUpsert",
         "type": "object"
       },
       "SLOGroupCreate": {
@@ -6492,10 +6480,12 @@
           }
         },
         "summary": "List Group Slo Assignments"
-      },
-      "post": {
-        "description": "Assign a specific SLO definition version to an asset group.",
-        "operationId": "create_group_slo_assignment_asset_groups__name__slo_assignments_post",
+      }
+    },
+    "/asset-groups/{name}/slo-definitions/{slo_definition_id}": {
+      "delete": {
+        "description": "Remove the SLO assignment between an asset group and a specific SLO definition version.",
+        "operationId": "delete_group_slo_assignment_by_target_asset_groups__name__slo_definitions__slo_definition_id__delete",
         "parameters": [
           {
             "in": "path",
@@ -6505,20 +6495,101 @@
               "title": "Name",
               "type": "string"
             }
+          },
+          {
+            "in": "path",
+            "name": "slo_definition_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Slo Definition Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Error"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Error"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Group Slo Assignment By Target"
+      },
+      "put": {
+        "description": "Upsert an SLO assignment pinning an asset group to a specific SLO definition version.",
+        "operationId": "put_group_slo_assignment_asset_groups__name__slo_definitions__slo_definition_id__put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "title": "Name",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "slo_definition_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Slo Definition Id",
+              "type": "string"
+            }
           }
         ],
         "requestBody": {
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/SLOAssignmentCreate"
+                "$ref": "#/components/schemas/SLOAssignmentUpsert"
               }
             }
           },
           "required": true
         },
         "responses": {
-          "201": {
+          "200": {
             "content": {
               "application/json": {
                 "schema": {
@@ -6569,80 +6640,7 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Create Group Slo Assignment"
-      }
-    },
-    "/asset-groups/{name}/slo-assignments/{assignment_id}": {
-      "delete": {
-        "description": "Remove an SLO assignment from an asset group.",
-        "operationId": "delete_group_slo_assignment_asset_groups__name__slo_assignments__assignment_id__delete",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "name",
-            "required": true,
-            "schema": {
-              "title": "Name",
-              "type": "string"
-            }
-          },
-          {
-            "in": "path",
-            "name": "assignment_id",
-            "required": true,
-            "schema": {
-              "format": "uuid",
-              "title": "Assignment Id",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "204": {
-            "description": "Successful Response"
-          },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorMessage"
-                }
-              }
-            },
-            "description": "Bad Request"
-          },
-          "404": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorMessage"
-                }
-              }
-            },
-            "description": "Error"
-          },
-          "409": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorMessage"
-                }
-              }
-            },
-            "description": "Error"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Delete Group Slo Assignment"
+        "summary": "Put Group Slo Assignment"
       }
     },
     "/asset-groups/{name}/slo-group-assignments": {
@@ -6707,10 +6705,12 @@
           }
         },
         "summary": "List Group Group Assignments"
-      },
-      "post": {
-        "description": "Assign an SLO group to an asset group (always-latest semantics).",
-        "operationId": "create_group_group_assignment_asset_groups__name__slo_group_assignments_post",
+      }
+    },
+    "/asset-groups/{name}/slo-groups/{slo_group_name}": {
+      "delete": {
+        "description": "Remove the SLO group assignment between an asset group and a specific SLO group.",
+        "operationId": "delete_group_slo_group_assignment_by_target_asset_groups__name__slo_groups__slo_group_name__delete",
         "parameters": [
           {
             "in": "path",
@@ -6720,20 +6720,99 @@
               "title": "Name",
               "type": "string"
             }
+          },
+          {
+            "in": "path",
+            "name": "slo_group_name",
+            "required": true,
+            "schema": {
+              "title": "Slo Group Name",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Error"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Error"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Group Slo Group Assignment By Target"
+      },
+      "put": {
+        "description": "Upsert an SLO group assignment pinning an asset group to a specific SLO group.",
+        "operationId": "put_group_slo_group_assignment_asset_groups__name__slo_groups__slo_group_name__put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "title": "Name",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "slo_group_name",
+            "required": true,
+            "schema": {
+              "title": "Slo Group Name",
+              "type": "string"
+            }
           }
         ],
         "requestBody": {
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/SLOGroupAssignmentCreate"
+                "$ref": "#/components/schemas/SLOGroupAssignmentUpsert"
               }
             }
           },
           "required": true
         },
         "responses": {
-          "201": {
+          "200": {
             "content": {
               "application/json": {
                 "schema": {
@@ -6784,80 +6863,7 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Create Group Group Assignment"
-      }
-    },
-    "/asset-groups/{name}/slo-group-assignments/{assignment_id}": {
-      "delete": {
-        "description": "Remove an SLO group assignment from an asset group.",
-        "operationId": "delete_group_group_assignment_asset_groups__name__slo_group_assignments__assignment_id__delete",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "name",
-            "required": true,
-            "schema": {
-              "title": "Name",
-              "type": "string"
-            }
-          },
-          {
-            "in": "path",
-            "name": "assignment_id",
-            "required": true,
-            "schema": {
-              "format": "uuid",
-              "title": "Assignment Id",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "204": {
-            "description": "Successful Response"
-          },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorMessage"
-                }
-              }
-            },
-            "description": "Bad Request"
-          },
-          "404": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorMessage"
-                }
-              }
-            },
-            "description": "Error"
-          },
-          "409": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorMessage"
-                }
-              }
-            },
-            "description": "Error"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Delete Group Group Assignment"
+        "summary": "Put Group Slo Group Assignment"
       }
     },
     "/asset-groups/{name}/subgroups": {
@@ -8246,158 +8252,9 @@
           }
         },
         "summary": "List Asset Slo Assignments"
-      },
-      "post": {
-        "description": "Assign a specific SLO definition version to an asset.",
-        "operationId": "create_asset_slo_assignment_assets__name__slo_assignments_post",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "name",
-            "required": true,
-            "schema": {
-              "title": "Name",
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/SLOAssignmentCreate"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "201": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/SLOAssignmentRead"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorMessage"
-                }
-              }
-            },
-            "description": "Bad Request"
-          },
-          "404": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorMessage"
-                }
-              }
-            },
-            "description": "Error"
-          },
-          "409": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorMessage"
-                }
-              }
-            },
-            "description": "Error"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Create Asset Slo Assignment"
       }
     },
     "/assets/{name}/slo-assignments/{assignment_id}": {
-      "delete": {
-        "description": "Remove an SLO assignment from an asset.",
-        "operationId": "delete_asset_slo_assignment_assets__name__slo_assignments__assignment_id__delete",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "name",
-            "required": true,
-            "schema": {
-              "title": "Name",
-              "type": "string"
-            }
-          },
-          {
-            "in": "path",
-            "name": "assignment_id",
-            "required": true,
-            "schema": {
-              "format": "uuid",
-              "title": "Assignment Id",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "204": {
-            "description": "Successful Response"
-          },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorMessage"
-                }
-              }
-            },
-            "description": "Bad Request"
-          },
-          "404": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorMessage"
-                }
-              }
-            },
-            "description": "Error"
-          },
-          "409": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorMessage"
-                }
-              }
-            },
-            "description": "Error"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Delete Asset Slo Assignment"
-      },
       "patch": {
         "description": "Upgrade an SLO assignment to a new definition version.",
         "operationId": "upgrade_asset_slo_assignment_assets__name__slo_assignments__assignment_id__patch",
@@ -8487,6 +8344,167 @@
         "summary": "Upgrade Asset Slo Assignment"
       }
     },
+    "/assets/{name}/slo-definitions/{slo_definition_id}": {
+      "delete": {
+        "description": "Remove the SLO assignment between an asset and a specific SLO definition version.",
+        "operationId": "delete_asset_slo_assignment_by_target_assets__name__slo_definitions__slo_definition_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "title": "Name",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "slo_definition_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Slo Definition Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Error"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Error"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Asset Slo Assignment By Target"
+      },
+      "put": {
+        "description": "Upsert an SLO assignment pinning an asset to a specific SLO definition version.",
+        "operationId": "put_asset_slo_assignment_assets__name__slo_definitions__slo_definition_id__put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "title": "Name",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "slo_definition_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Slo Definition Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SLOAssignmentUpsert"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SLOAssignmentRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Error"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Error"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Put Asset Slo Assignment"
+      }
+    },
     "/assets/{name}/slo-group-assignments": {
       "get": {
         "description": "List all SLO group assignments for an asset.",
@@ -8549,10 +8567,12 @@
           }
         },
         "summary": "List Asset Group Assignments"
-      },
-      "post": {
-        "description": "Assign an SLO group to an asset (always-latest semantics).",
-        "operationId": "create_asset_group_assignment_assets__name__slo_group_assignments_post",
+      }
+    },
+    "/assets/{name}/slo-groups/{slo_group_name}": {
+      "delete": {
+        "description": "Remove the SLO group assignment between an asset and a specific SLO group.",
+        "operationId": "delete_asset_slo_group_assignment_by_target_assets__name__slo_groups__slo_group_name__delete",
         "parameters": [
           {
             "in": "path",
@@ -8562,20 +8582,99 @@
               "title": "Name",
               "type": "string"
             }
+          },
+          {
+            "in": "path",
+            "name": "slo_group_name",
+            "required": true,
+            "schema": {
+              "title": "Slo Group Name",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Error"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Error"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Asset Slo Group Assignment By Target"
+      },
+      "put": {
+        "description": "Upsert an SLO group assignment pinning an asset to a specific SLO group.",
+        "operationId": "put_asset_slo_group_assignment_assets__name__slo_groups__slo_group_name__put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "title": "Name",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "slo_group_name",
+            "required": true,
+            "schema": {
+              "title": "Slo Group Name",
+              "type": "string"
+            }
           }
         ],
         "requestBody": {
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/SLOGroupAssignmentCreate"
+                "$ref": "#/components/schemas/SLOGroupAssignmentUpsert"
               }
             }
           },
           "required": true
         },
         "responses": {
-          "201": {
+          "200": {
             "content": {
               "application/json": {
                 "schema": {
@@ -8626,80 +8725,7 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Create Asset Group Assignment"
-      }
-    },
-    "/assets/{name}/slo-group-assignments/{assignment_id}": {
-      "delete": {
-        "description": "Remove an SLO group assignment from an asset.",
-        "operationId": "delete_asset_group_assignment_assets__name__slo_group_assignments__assignment_id__delete",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "name",
-            "required": true,
-            "schema": {
-              "title": "Name",
-              "type": "string"
-            }
-          },
-          {
-            "in": "path",
-            "name": "assignment_id",
-            "required": true,
-            "schema": {
-              "format": "uuid",
-              "title": "Assignment Id",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "204": {
-            "description": "Successful Response"
-          },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorMessage"
-                }
-              }
-            },
-            "description": "Bad Request"
-          },
-          "404": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorMessage"
-                }
-              }
-            },
-            "description": "Error"
-          },
-          "409": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorMessage"
-                }
-              }
-            },
-            "description": "Error"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Delete Asset Group Assignment"
+        "summary": "Put Asset Slo Group Assignment"
       }
     },
     "/config/ui": {

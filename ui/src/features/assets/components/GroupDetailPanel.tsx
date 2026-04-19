@@ -249,7 +249,7 @@ export function GroupDetailPanel({ groupName, onSelectGroup, selectedAsset }: Pr
                     <td className="px-3 py-2 text-muted-foreground/60">{assignment.dataSourceName}</td>
                     <td className="px-3 py-2 text-center">
                       <button
-                        onClick={() => unlinkSlo.mutate({ groupName, assignmentId: assignment.id })}
+                        onClick={() => unlinkSlo.mutate({ groupName, sloDefinitionId: assignment.sloDefinitionId })}
                         className="p-1 text-muted-foreground hover:text-action-destructive transition-colors"
                         title="Unlink"
                       >

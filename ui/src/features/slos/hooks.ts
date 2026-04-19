@@ -112,8 +112,13 @@ export function useCreateGroupSloAssignment() {
 export function useDeleteGroupSloAssignment() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: ({ groupName, assignmentId }: { groupName: string; assignmentId: string }) =>
-      deleteGroupSloAssignment(groupName, assignmentId),
+    mutationFn: ({
+      groupName,
+      sloDefinitionId,
+    }: {
+      groupName: string
+      sloDefinitionId: string
+    }) => deleteGroupSloAssignment(groupName, sloDefinitionId),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: assignmentKeys.all })
       void qc.invalidateQueries({ queryKey: groupKeys.all })

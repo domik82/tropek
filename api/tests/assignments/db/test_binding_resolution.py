@@ -159,11 +159,11 @@ async def test_evaluate_direct_slo_assignment(
     slo_name = f'{prefix}-direct-health'
     slo_id = await _create_slo(async_client, slo_name, sli_name)
 
-    resp = await async_client.post(
-        f'/assets/{asset_name}/slo-assignments',
-        json={'slo_definition_id': slo_id, 'data_source_name': ds_name},
+    resp = await async_client.put(
+        f'/assets/{asset_name}/slo-definitions/{slo_id}',
+        json={'data_source_name': ds_name},
     )
-    assert resp.status_code == 201
+    assert resp.status_code == 200
 
     status, body = await _evaluate(async_client, asset_name)
 
@@ -193,11 +193,11 @@ async def test_evaluate_group_slo_assignment(
     slo_name = f'{prefix}-group-health'
     slo_id = await _create_slo(async_client, slo_name, sli_name)
 
-    resp = await async_client.post(
-        f'/asset-groups/{group_name}/slo-assignments',
-        json={'slo_definition_id': slo_id, 'data_source_name': ds_name},
+    resp = await async_client.put(
+        f'/asset-groups/{group_name}/slo-definitions/{slo_id}',
+        json={'data_source_name': ds_name},
     )
-    assert resp.status_code == 201
+    assert resp.status_code == 200
 
     status, body = await _evaluate(async_client, asset_name)
 
@@ -245,11 +245,11 @@ async def test_evaluate_group_template_assignment(
     )
     assert resp.status_code == 201
 
-    resp = await async_client.post(
-        f'/asset-groups/{group_name}/slo-group-assignments',
-        json={'slo_group_name': f'{prefix}-sg', 'data_source_name': ds_name},
+    resp = await async_client.put(
+        f'/asset-groups/{group_name}/slo-groups/{prefix}-sg',
+        json={'data_source_name': ds_name},
     )
-    assert resp.status_code == 201
+    assert resp.status_code == 200
 
     status, body = await _evaluate(async_client, asset_name)
 
@@ -293,11 +293,11 @@ async def test_evaluate_direct_template_assignment(
     )
     assert resp.status_code == 201
 
-    resp = await async_client.post(
-        f'/assets/{asset_name}/slo-group-assignments',
-        json={'slo_group_name': f'{prefix}-dsg', 'data_source_name': ds_name},
+    resp = await async_client.put(
+        f'/assets/{asset_name}/slo-groups/{prefix}-dsg',
+        json={'data_source_name': ds_name},
     )
-    assert resp.status_code == 201
+    assert resp.status_code == 200
 
     status, body = await _evaluate(async_client, asset_name)
 
@@ -336,18 +336,18 @@ async def test_direct_assignment_overrides_group(
     slo_id = await _create_slo(async_client, slo_name, sli_name)
 
     # Assign to group with ds1
-    resp = await async_client.post(
-        f'/asset-groups/{group_name}/slo-assignments',
-        json={'slo_definition_id': slo_id, 'data_source_name': ds_name},
+    resp = await async_client.put(
+        f'/asset-groups/{group_name}/slo-definitions/{slo_id}',
+        json={'data_source_name': ds_name},
     )
-    assert resp.status_code == 201
+    assert resp.status_code == 200
 
     # Assign directly to asset with ds2 — should win
-    resp = await async_client.post(
-        f'/assets/{asset_name}/slo-assignments',
-        json={'slo_definition_id': slo_id, 'data_source_name': ds2_name},
+    resp = await async_client.put(
+        f'/assets/{asset_name}/slo-definitions/{slo_id}',
+        json={'data_source_name': ds2_name},
     )
-    assert resp.status_code == 201
+    assert resp.status_code == 200
 
     status, body = await _evaluate(async_client, asset_name)
 
@@ -401,21 +401,21 @@ async def test_direct_assignment_overrides_template(
     assert resp.status_code == 201
 
     # Assign template group to asset
-    resp = await async_client.post(
-        f'/assets/{asset_name}/slo-group-assignments',
-        json={'slo_group_name': f'{prefix}-ot-sg', 'data_source_name': ds_name},
+    resp = await async_client.put(
+        f'/assets/{asset_name}/slo-groups/{prefix}-ot-sg',
+        json={'data_source_name': ds_name},
     )
-    assert resp.status_code == 201
+    assert resp.status_code == 200
 
     # Create a direct SLO with the SAME name the template generates
     generated_name = f'{prefix}-ot/alpha'
     direct_slo_id = await _create_slo(async_client, generated_name, sli_name)
 
-    resp = await async_client.post(
-        f'/assets/{asset_name}/slo-assignments',
-        json={'slo_definition_id': direct_slo_id, 'data_source_name': ds2_name},
+    resp = await async_client.put(
+        f'/assets/{asset_name}/slo-definitions/{direct_slo_id}',
+        json={'data_source_name': ds2_name},
     )
-    assert resp.status_code == 201
+    assert resp.status_code == 200
 
     status, body = await _evaluate(async_client, asset_name)
 
@@ -446,20 +446,20 @@ async def test_mixed_binding_types_all_discovered(
     # 1) Direct SLO assignment
     direct_slo_name = f'{prefix}-mix-direct'
     direct_slo_id = await _create_slo(async_client, direct_slo_name, sli_name)
-    resp = await async_client.post(
-        f'/assets/{asset_name}/slo-assignments',
-        json={'slo_definition_id': direct_slo_id, 'data_source_name': ds_name},
+    resp = await async_client.put(
+        f'/assets/{asset_name}/slo-definitions/{direct_slo_id}',
+        json={'data_source_name': ds_name},
     )
-    assert resp.status_code == 201
+    assert resp.status_code == 200
 
     # 2) Group SLO assignment (different name)
     group_slo_name = f'{prefix}-mix-group'
     group_slo_id = await _create_slo(async_client, group_slo_name, sli_name)
-    resp = await async_client.post(
-        f'/asset-groups/{group_name}/slo-assignments',
-        json={'slo_definition_id': group_slo_id, 'data_source_name': ds_name},
+    resp = await async_client.put(
+        f'/asset-groups/{group_name}/slo-definitions/{group_slo_id}',
+        json={'data_source_name': ds_name},
     )
-    assert resp.status_code == 201
+    assert resp.status_code == 200
 
     # 3) Template via group — generates 2 SLOs
     tpl_name = f'{prefix}-mix-tpl/$__gen_proc'
@@ -480,11 +480,11 @@ async def test_mixed_binding_types_all_discovered(
         },
     )
     assert resp.status_code == 201
-    resp = await async_client.post(
-        f'/asset-groups/{group_name}/slo-group-assignments',
-        json={'slo_group_name': f'{prefix}-mix-sg', 'data_source_name': ds_name},
+    resp = await async_client.put(
+        f'/asset-groups/{group_name}/slo-groups/{prefix}-mix-sg',
+        json={'data_source_name': ds_name},
     )
-    assert resp.status_code == 201
+    assert resp.status_code == 200
 
     status, body = await _evaluate(async_client, asset_name)
 
