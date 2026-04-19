@@ -30,7 +30,7 @@ from tropek.modules.assets.schemas import (
     AssetUpdate,
 )
 from tropek.modules.common.exceptions import DomainValidationError, NotFoundError
-from tropek.modules.common.schemas import PagedResponse, TagKeyCount, TagValueCount
+from tropek.modules.common.schemas import PagedResponse, SafeQueryStr, TagKeyCount, TagValueCount
 
 router = APIRouter()
 
@@ -161,7 +161,7 @@ async def list_tag_keys(
 
 @router.get('/assets/tag-values', response_model=list[TagValueCount])
 async def list_tag_values(
-    key: str,
+    key: SafeQueryStr,
     session: AsyncSession = Depends(get_session),
     cache: RedisCache | None = Depends(get_cache),
 ) -> list[TagValueCount]:
