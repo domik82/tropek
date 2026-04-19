@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Annotated
+from typing import Annotated, Any
 
 from fastapi import Query
 from pydantic import AfterValidator, BaseModel, BeforeValidator, ConfigDict, Field
@@ -12,6 +12,28 @@ def reject_null_bytes(value: str) -> str:
     r"""Reject strings containing null bytes (\x00), which break asyncpg."""
     if '\x00' in value:
         raise ValueError('null bytes are not allowed')
+    return value
+
+
+def reject_null_bytes_recursive(value: object) -> object:
+    r"""Recursively reject null bytes (\x00) in any string within a JSONB structure.
+
+    Walks dicts, lists, and strings. For dicts it also validates that no key
+    contains a null byte. Used on request-body fields typed as dict[str, Any]
+    (e.g. annotation tags, heatmap_config) where schemathesis can nest arbitrary
+    structures past the top-level `reject_null_bytes_in_dict` check.
+    """
+    if isinstance(value, str):
+        if '\x00' in value:
+            raise ValueError('null bytes are not allowed')
+    elif isinstance(value, dict):
+        for dict_key, dict_value in value.items():
+            if isinstance(dict_key, str) and '\x00' in dict_key:
+                raise ValueError('null bytes are not allowed in dict keys')
+            reject_null_bytes_recursive(dict_value)
+    elif isinstance(value, list):
+        for item in value:
+            reject_null_bytes_recursive(item)
     return value
 
 
@@ -54,7 +76,13 @@ SafeStr = Annotated[
 # Pydantic v2 does not support patternProperties on dict keys in OpenAPI output,
 # so the constraint is runtime-only (no JSON Schema annotation).  The validator
 # still converts 500 → 422 for schemathesis and real clients.
-SafeJsonDict = Annotated[dict[str, str | None], AfterValidator(reject_null_bytes_in_dict)]
+SafeJsonDict = Annotated[dict[str, str], AfterValidator(reject_null_bytes_in_dict)]
+
+# SafeJsonAny — for JSONB request-body fields that accept arbitrarily nested
+# structures (e.g. annotation tags, heatmap_config). Walks the full tree and
+# rejects null bytes in any key or string value, converting asyncpg's
+# UntranslatableCharacterError (500) into a 422.
+SafeJsonAny = Annotated[dict[str, Any], AfterValidator(reject_null_bytes_recursive)]
 
 # SafeQueryStr — use as a FastAPI query-parameter type to apply the same
 # null-byte validation that SafeStr provides for request body fields.
@@ -80,6 +108,29 @@ def _strict_bool_str(value: object) -> bool:
 # accepts 'true'/'false' strings (case-insensitive), rejecting integer-like
 # values ('0', '1') that FastAPI's lenient bool parsing would otherwise accept.
 StrictQueryBool = Annotated[bool, Query(), BeforeValidator(_strict_bool_str)]
+
+
+def _reject_bool(value: object) -> object:
+    """Reject Python booleans passed where a number is expected.
+
+    isinstance(True, int) is True, so plain `int`/`float` fields accept booleans
+    by default. Pure StrictInt/StrictFloat rejects bools *but also* rejects
+    JSON whole-number-float representations like 2147483646.0 that are
+    wire-valid for integer fields. This BeforeValidator rejects only bools,
+    leaving Pydantic's default coercion of whole-number floats intact.
+    """
+    if isinstance(value, bool):
+        raise ValueError('boolean is not a valid number')
+    return value
+
+
+# IntNotBool — accepts int or JSON whole-number-float, rejects bool.
+# Use on request-body int fields where schemathesis would otherwise send
+# 2147483646.0 and hit StrictInt rejection.
+IntNotBool = Annotated[int, BeforeValidator(_reject_bool)]
+
+# FloatNotBool — same rationale for float fields.
+FloatNotBool = Annotated[float, BeforeValidator(_reject_bool)]
 
 
 class StrictInput(BaseModel):

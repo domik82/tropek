@@ -1854,7 +1854,7 @@ export interface components {
              * @default {}
              */
             tags: {
-                [key: string]: string | null;
+                [key: string]: string;
             };
             /** Type Name */
             type_name: string;
@@ -1863,7 +1863,7 @@ export interface components {
              * @default {}
              */
             variables: {
-                [key: string]: string | null;
+                [key: string]: string;
             };
         };
         /**
@@ -2141,13 +2141,13 @@ export interface components {
             } | null;
             /** Tags */
             tags?: {
-                [key: string]: string | null;
+                [key: string]: string;
             } | null;
             /** Type Name */
             type_name?: string | null;
             /** Variables */
             variables?: {
-                [key: string]: string | null;
+                [key: string]: string;
             } | null;
         };
         /**
@@ -2380,7 +2380,7 @@ export interface components {
              * @default {}
              */
             variables: {
-                [key: string]: string | null;
+                [key: string]: string;
             };
         };
         /**
@@ -2417,7 +2417,7 @@ export interface components {
              * @default {}
              */
             variables: {
-                [key: string]: string | null;
+                [key: string]: string;
             };
         };
         /**
@@ -3385,7 +3385,7 @@ export interface components {
             sli_version?: number | null;
             /** Tags */
             tags?: {
-                [key: string]: string | null;
+                [key: string]: string;
             };
             /**
              * Total Score Pass Threshold
@@ -3399,7 +3399,7 @@ export interface components {
             total_score_warning_threshold: number;
             /** Variables */
             variables?: {
-                [key: string]: string | null;
+                [key: string]: string;
             };
         };
         /**

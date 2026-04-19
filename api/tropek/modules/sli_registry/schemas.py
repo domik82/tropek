@@ -9,7 +9,7 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, model_validator
 
-from tropek.modules.common.schemas import SafeStr, StrictInput
+from tropek.modules.common.schemas import SafeJsonAny, SafeStr, StrictInput
 
 ALLOWED_MODES = frozenset(['raw', 'aggregated'])
 
@@ -78,7 +78,7 @@ class SLIDefinitionCreate(StrictInput):
     # Common fields
     notes: SafeStr | None = None
     author: SafeStr | None = None
-    tags: dict[str, Any] = {}
+    tags: SafeJsonAny = {}
     comparable_from_version: int | None = None
 
     @model_validator(mode='after')
