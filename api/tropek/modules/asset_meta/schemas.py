@@ -37,6 +37,19 @@ class MetaClosureInput(StrictInput):
 class MetaSnapshotCreate(StrictInput):
     """Request body for creating a metadata snapshot."""
 
+    # anyOf tells OpenAPI consumers (e.g. schemathesis) that at least one of
+    # values/closed must be non-empty. The model_validator below is the runtime
+    # authority; anyOf just keeps fuzzers from generating the empty-empty case.
+    model_config = ConfigDict(
+        extra='forbid',
+        json_schema_extra={
+            'anyOf': [
+                {'properties': {'values': {'minItems': 1}}, 'required': ['values']},
+                {'properties': {'closed': {'minItems': 1}}, 'required': ['closed']},
+            ],
+        },
+    )
+
     source: str = Field(min_length=1, max_length=64, pattern=r'^[a-zA-Z0-9._-]+$')
     observed_at: AwareDatetime
     # uniqueItems: True tells schemathesis that duplicate paths are forbidden —
