@@ -8,14 +8,14 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict
 
-from tropek.modules.common.schemas import StrictInput
+from tropek.modules.common.schemas import SafeStr, StrictInput
 
 
 class SLOAssignmentCreate(StrictInput):
     """Request body for creating an SLO assignment."""
 
     slo_definition_id: uuid.UUID
-    data_source_name: str
+    data_source_name: SafeStr
     comparison_rules: list[dict[str, Any]] | None = None
 
 
@@ -45,8 +45,8 @@ class SLOAssignmentUpgrade(StrictInput):
 class SLOGroupAssignmentCreate(StrictInput):
     """Request body for creating an SLO group assignment."""
 
-    slo_group_name: str
-    data_source_name: str
+    slo_group_name: SafeStr
+    data_source_name: SafeStr
 
 
 class SLOGroupAssignmentRead(BaseModel):

@@ -5,18 +5,18 @@ from __future__ import annotations
 from typing import Annotated
 from uuid import UUID
 
-from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, StringConstraints, field_validator
+from pydantic import AfterValidator, AwareDatetime, BaseModel, ConfigDict, Field, StringConstraints, field_validator
 
-from tropek.modules.common.schemas import StrictInput
+from tropek.modules.common.schemas import SafeStr, StrictInput, reject_null_bytes
 
-PathEntry = Annotated[str, StringConstraints(min_length=1, max_length=128)]
+PathEntry = Annotated[str, StringConstraints(min_length=1, max_length=128), AfterValidator(reject_null_bytes)]
 
 
 class MetaValueInput(StrictInput):
     """A single key-value pair to set in the metadata timeline."""
 
     path: list[PathEntry] = Field(min_length=1, max_length=6)
-    value: str = Field(max_length=1024)
+    value: SafeStr = Field(max_length=1024)
 
 
 class MetaClosureInput(StrictInput):

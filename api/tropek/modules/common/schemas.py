@@ -2,7 +2,19 @@
 
 from __future__ import annotations
 
-from pydantic import BaseModel, ConfigDict
+from typing import Annotated
+
+from pydantic import AfterValidator, BaseModel, ConfigDict
+
+
+def reject_null_bytes(value: str) -> str:
+    r"""Reject strings containing null bytes (\x00), which break asyncpg."""
+    if '\x00' in value:
+        raise ValueError('null bytes are not allowed')
+    return value
+
+
+SafeStr = Annotated[str, AfterValidator(reject_null_bytes)]
 
 
 class StrictInput(BaseModel):

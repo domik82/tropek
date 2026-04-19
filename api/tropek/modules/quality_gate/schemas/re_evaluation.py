@@ -8,7 +8,7 @@ from typing import Annotated, Literal
 
 from pydantic import BaseModel, Field
 
-from tropek.modules.common.schemas import StrictInput
+from tropek.modules.common.schemas import SafeStr, StrictInput
 
 # ---- Discriminated-union scope and selector types (new API) ----
 
@@ -17,14 +17,14 @@ class AssetScope(BaseModel):
     """Scope targeting a single named asset."""
 
     kind: Literal['asset']
-    asset_name: str
+    asset_name: SafeStr
 
 
 class GroupScope(BaseModel):
     """Scope targeting all assets in a named group."""
 
     kind: Literal['group']
-    group_name: str
+    group_name: SafeStr
 
 
 Scope = Annotated[AssetScope | GroupScope, Field(discriminator='kind')]
@@ -34,14 +34,14 @@ class SloSelector(BaseModel):
     """Selector limiting re-evaluation to a single named SLO."""
 
     kind: Literal['slo']
-    slo_name: str
+    slo_name: SafeStr
 
 
 class EvalNamesSelector(BaseModel):
     """Selector limiting re-evaluation to a list of evaluation names."""
 
     kind: Literal['evaluation_names']
-    evaluation_names: list[str] = Field(min_length=1)
+    evaluation_names: list[SafeStr] = Field(min_length=1)
 
 
 Selector = Annotated[SloSelector | EvalNamesSelector, Field(discriminator='kind')]
