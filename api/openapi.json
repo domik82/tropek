@@ -946,6 +946,26 @@
         "title": "AssetRead",
         "type": "object"
       },
+      "AssetScope": {
+        "description": "Scope targeting a single named asset.",
+        "properties": {
+          "asset_name": {
+            "title": "Asset Name",
+            "type": "string"
+          },
+          "kind": {
+            "const": "asset",
+            "title": "Kind",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "asset_name"
+        ],
+        "title": "AssetScope",
+        "type": "object"
+      },
       "AssetSnapshot": {
         "description": "Snapshot of asset identity/version at evaluation time.",
         "properties": {
@@ -1599,6 +1619,30 @@
           "detail"
         ],
         "title": "ErrorMessage",
+        "type": "object"
+      },
+      "EvalNamesSelector": {
+        "description": "Selector limiting re-evaluation to a list of evaluation names.",
+        "properties": {
+          "evaluation_names": {
+            "items": {
+              "type": "string"
+            },
+            "minItems": 1,
+            "title": "Evaluation Names",
+            "type": "array"
+          },
+          "kind": {
+            "const": "evaluation_names",
+            "title": "Kind",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "evaluation_names"
+        ],
+        "title": "EvalNamesSelector",
         "type": "object"
       },
       "EvaluateBatchRequest": {
@@ -2532,6 +2576,26 @@
           "threshold"
         ],
         "title": "FailingIndicator",
+        "type": "object"
+      },
+      "GroupScope": {
+        "description": "Scope targeting all assets in a named group.",
+        "properties": {
+          "group_name": {
+            "title": "Group Name",
+            "type": "string"
+          },
+          "kind": {
+            "const": "group",
+            "title": "Kind",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "group_name"
+        ],
+        "title": "GroupScope",
         "type": "object"
       },
       "GroupedMetricHeatmapResponse": {
@@ -3620,47 +3684,14 @@
         "title": "ReEvalResultItem",
         "type": "object"
       },
-      "ReEvaluateRequest": {
+      "ReEvaluateFromBaselineRequest": {
         "additionalProperties": false,
-        "description": "Request body for POST /evaluations/re-evaluate.\n\nWhen both ``slo_name`` and ``slo_names`` are omitted, all SLOs assigned\nto the asset are re-evaluated (same resolution logic as POST /evaluate).\nWhen ``slo_names`` is provided, scoring runs only for the listed SLOs.",
+        "description": "Request body for POST /evaluations/re-evaluate/from-baseline.",
         "properties": {
-          "asset_name": {
-            "title": "Asset Name",
-            "type": "string"
-          },
           "dry_run": {
             "default": false,
             "title": "Dry Run",
             "type": "boolean"
-          },
-          "from_baseline": {
-            "default": false,
-            "title": "From Baseline",
-            "type": "boolean"
-          },
-          "from_date": {
-            "anyOf": [
-              {
-                "format": "date-time",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "From Date"
-          },
-          "from_evaluation_id": {
-            "anyOf": [
-              {
-                "format": "uuid",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "From Evaluation Id"
           },
           "pin_strategy": {
             "anyOf": [
@@ -3677,30 +3708,48 @@
             ],
             "title": "Pin Strategy"
           },
-          "slo_name": {
-            "anyOf": [
+          "scope": {
+            "discriminator": {
+              "mapping": {
+                "asset": "#/components/schemas/AssetScope",
+                "group": "#/components/schemas/GroupScope"
+              },
+              "propertyName": "kind"
+            },
+            "oneOf": [
               {
-                "type": "string"
+                "$ref": "#/components/schemas/AssetScope"
               },
               {
-                "type": "null"
+                "$ref": "#/components/schemas/GroupScope"
               }
             ],
-            "title": "Slo Name"
+            "title": "Scope"
           },
-          "slo_names": {
+          "selector": {
             "anyOf": [
               {
-                "items": {
-                  "type": "string"
+                "discriminator": {
+                  "mapping": {
+                    "evaluation_names": "#/components/schemas/EvalNamesSelector",
+                    "slo": "#/components/schemas/SloSelector"
+                  },
+                  "propertyName": "kind"
                 },
-                "type": "array"
+                "oneOf": [
+                  {
+                    "$ref": "#/components/schemas/SloSelector"
+                  },
+                  {
+                    "$ref": "#/components/schemas/EvalNamesSelector"
+                  }
+                ]
               },
               {
                 "type": "null"
               }
             ],
-            "title": "Slo Names"
+            "title": "Selector"
           },
           "slo_version": {
             "anyOf": [
@@ -3715,9 +3764,155 @@
           }
         },
         "required": [
-          "asset_name"
+          "scope"
         ],
-        "title": "ReEvaluateRequest",
+        "title": "ReEvaluateFromBaselineRequest",
+        "type": "object"
+      },
+      "ReEvaluateFromDateRequest": {
+        "additionalProperties": false,
+        "description": "Request body for POST /evaluations/re-evaluate/from-date.",
+        "properties": {
+          "dry_run": {
+            "default": false,
+            "title": "Dry Run",
+            "type": "boolean"
+          },
+          "from_date": {
+            "format": "date-time",
+            "title": "From Date",
+            "type": "string"
+          },
+          "scope": {
+            "discriminator": {
+              "mapping": {
+                "asset": "#/components/schemas/AssetScope",
+                "group": "#/components/schemas/GroupScope"
+              },
+              "propertyName": "kind"
+            },
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/AssetScope"
+              },
+              {
+                "$ref": "#/components/schemas/GroupScope"
+              }
+            ],
+            "title": "Scope"
+          },
+          "selector": {
+            "anyOf": [
+              {
+                "discriminator": {
+                  "mapping": {
+                    "evaluation_names": "#/components/schemas/EvalNamesSelector",
+                    "slo": "#/components/schemas/SloSelector"
+                  },
+                  "propertyName": "kind"
+                },
+                "oneOf": [
+                  {
+                    "$ref": "#/components/schemas/SloSelector"
+                  },
+                  {
+                    "$ref": "#/components/schemas/EvalNamesSelector"
+                  }
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Selector"
+          },
+          "slo_version": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Slo Version"
+          }
+        },
+        "required": [
+          "scope",
+          "from_date"
+        ],
+        "title": "ReEvaluateFromDateRequest",
+        "type": "object"
+      },
+      "ReEvaluateFromEvaluationRequest": {
+        "additionalProperties": false,
+        "description": "Request body for POST /evaluations/re-evaluate/from-evaluation/{evaluation_id}.",
+        "properties": {
+          "dry_run": {
+            "default": false,
+            "title": "Dry Run",
+            "type": "boolean"
+          },
+          "scope": {
+            "discriminator": {
+              "mapping": {
+                "asset": "#/components/schemas/AssetScope",
+                "group": "#/components/schemas/GroupScope"
+              },
+              "propertyName": "kind"
+            },
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/AssetScope"
+              },
+              {
+                "$ref": "#/components/schemas/GroupScope"
+              }
+            ],
+            "title": "Scope"
+          },
+          "selector": {
+            "anyOf": [
+              {
+                "discriminator": {
+                  "mapping": {
+                    "evaluation_names": "#/components/schemas/EvalNamesSelector",
+                    "slo": "#/components/schemas/SloSelector"
+                  },
+                  "propertyName": "kind"
+                },
+                "oneOf": [
+                  {
+                    "$ref": "#/components/schemas/SloSelector"
+                  },
+                  {
+                    "$ref": "#/components/schemas/EvalNamesSelector"
+                  }
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Selector"
+          },
+          "slo_version": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Slo Version"
+          }
+        },
+        "required": [
+          "scope"
+        ],
+        "title": "ReEvaluateFromEvaluationRequest",
         "type": "object"
       },
       "ReEvaluateResponse": {
@@ -5142,6 +5337,26 @@
           "chunks_failed"
         ],
         "title": "SliMetadata",
+        "type": "object"
+      },
+      "SloSelector": {
+        "description": "Selector limiting re-evaluation to a single named SLO.",
+        "properties": {
+          "kind": {
+            "const": "slo",
+            "title": "Kind",
+            "type": "string"
+          },
+          "slo_name": {
+            "title": "Slo Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "slo_name"
+        ],
+        "title": "SloSelector",
         "type": "object"
       },
       "TagKeyCount": {
@@ -7092,6 +7307,105 @@
         ]
       }
     },
+    "/assets/{asset_name}/slos/{slo_name}/trend": {
+      "get": {
+        "description": "Return time-series trend data for a metric scoped to a specific asset + SLO.",
+        "operationId": "get_trend_by_asset_slo_assets__asset_name__slos__slo_name__trend_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "asset_name",
+            "required": true,
+            "schema": {
+              "title": "Asset Name",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "slo_name",
+            "required": true,
+            "schema": {
+              "title": "Slo Name",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "metric",
+            "required": true,
+            "schema": {
+              "title": "Metric",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "from",
+            "required": true,
+            "schema": {
+              "format": "date-time",
+              "title": "From",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "to",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "To"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/TrendPoint"
+                  },
+                  "title": "Response Get Trend By Asset Slo Assets  Asset Name  Slos  Slo Name  Trend Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Error"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Trend By Asset Slo"
+      }
+    },
     "/assets/{name}": {
       "delete": {
         "description": "Delete an asset and all its group memberships and SLO links.",
@@ -8124,152 +8438,781 @@
         "summary": "Update Datasource"
       }
     },
-    "/evaluate": {
+    "/evaluation-run/{run_id}/annotations": {
       "post": {
-        "description": "Trigger evaluation for all SLOs bound to an asset.",
-        "operationId": "evaluate_asset_evaluate_post",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/EvaluateSingleRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "201": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/EvaluateSingleResponse"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "409": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorMessage"
-                }
-              }
-            },
-            "description": "Error"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Evaluate Asset"
-      }
-    },
-    "/evaluate/batch": {
-      "post": {
-        "description": "Trigger batch evaluations (by_date or by_asset mode).",
-        "operationId": "evaluate_batch_evaluate_batch_post",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/EvaluateBatchRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "201": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/EvaluateBatchResponse"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "409": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorMessage"
-                }
-              }
-            },
-            "description": "Error"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Evaluate Batch"
-      }
-    },
-    "/evaluate/metric-heatmap": {
-      "get": {
-        "description": "Return a grouped metric heatmap \u2014 one column per parent EvaluationRun.\n\nRead path: run a cheap list query for the candidate run ids in the window,\nMGET the Redis column cache for those ids, fall through to the heavy DB\nbuild only for runs that missed the cache, assemble the final response\nfrom the combined fragments, and write newly built fragments back to the\ncache. ``cache=false`` bypasses Redis entirely \u2014 no reads, no writes.",
-        "operationId": "get_grouped_metric_heatmap_evaluate_metric_heatmap_get",
+        "description": "Add a run-level annotation to an EvaluationRun (new URL: /evaluation-run/{id}/annotations).",
+        "operationId": "create_run_annotation_new_evaluation_run__run_id__annotations_post",
         "parameters": [
           {
-            "in": "query",
-            "name": "asset_name",
+            "in": "path",
+            "name": "run_id",
             "required": true,
             "schema": {
-              "title": "Asset Name",
+              "format": "uuid",
+              "title": "Run Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AnnotationCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnnotationRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Error"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Error"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Run Annotation New"
+      }
+    },
+    "/evaluation/{eval_id}": {
+      "get": {
+        "description": "Get full evaluation detail (new singular URL: GET /evaluation/{id}).",
+        "operationId": "get_evaluation_singular_evaluation__eval_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "eval_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Eval Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EvaluationDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Error"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Evaluation Singular"
+      }
+    },
+    "/evaluation/{eval_id}/annotations": {
+      "get": {
+        "description": "List all annotations for an evaluation (new singular URL).",
+        "operationId": "list_annotations_singular_evaluation__eval_id__annotations_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "eval_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Eval Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/AnnotationRead"
+                  },
+                  "title": "Response List Annotations Singular Evaluation  Eval Id  Annotations Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Error"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Annotations Singular"
+      },
+      "post": {
+        "description": "Add an SLO-level annotation to a single SLOEvaluation (new singular URL).",
+        "operationId": "create_annotation_singular_evaluation__eval_id__annotations_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "eval_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Eval Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AnnotationCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnnotationRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Error"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Error"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Annotation Singular"
+      }
+    },
+    "/evaluation/{eval_id}/annotations/{ann_id}": {
+      "patch": {
+        "description": "Update an annotation (new singular URL).",
+        "operationId": "update_annotation_singular_evaluation__eval_id__annotations__ann_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "eval_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Eval Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "ann_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Ann Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AnnotationUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnnotationRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Error"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Error"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Annotation Singular"
+      }
+    },
+    "/evaluation/{eval_id}/annotations/{ann_id}/hide": {
+      "post": {
+        "description": "Soft-delete (hide) an annotation (new singular URL).",
+        "operationId": "hide_annotation_singular_evaluation__eval_id__annotations__ann_id__hide_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "eval_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Eval Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "ann_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Ann Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AnnotationHide"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnnotationRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Error"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Error"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Hide Annotation Singular"
+      }
+    },
+    "/evaluation/{eval_id}/invalidate": {
+      "patch": {
+        "description": "Mark an evaluation as invalidated (new singular URL).",
+        "operationId": "invalidate_evaluation_singular_evaluation__eval_id__invalidate_patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "eval_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Eval Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InvalidateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EvaluationSummary"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Error"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Error"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Invalidate Evaluation Singular"
+      }
+    },
+    "/evaluation/{eval_id}/override-status": {
+      "patch": {
+        "description": "Override the evaluation result (new singular URL).",
+        "operationId": "override_status_singular_evaluation__eval_id__override_status_patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "eval_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Eval Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OverrideStatusRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EvaluationDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Error"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Error"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Override Status Singular"
+      }
+    },
+    "/evaluation/{eval_id}/pin-baseline": {
+      "patch": {
+        "description": "Pin an evaluation as the new baseline (new singular URL).",
+        "operationId": "pin_baseline_singular_evaluation__eval_id__pin_baseline_patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "eval_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Eval Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PinBaselineRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EvaluationDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Error"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Error"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Pin Baseline Singular"
+      }
+    },
+    "/evaluation/{eval_id}/restore": {
+      "patch": {
+        "description": "Clear invalidation flag on an evaluation (new singular URL).",
+        "operationId": "restore_evaluation_singular_evaluation__eval_id__restore_patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "eval_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Eval Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EvaluationSummary"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Error"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Error"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Restore Evaluation Singular"
+      }
+    },
+    "/evaluation/{eval_id}/restore-override": {
+      "patch": {
+        "description": "Restore the original evaluation result (new singular URL).",
+        "operationId": "restore_override_singular_evaluation__eval_id__restore_override_patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "eval_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Eval Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EvaluationDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Error"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Error"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Restore Override Singular"
+      }
+    },
+    "/evaluation/{eval_id}/trend": {
+      "get": {
+        "description": "Return time-series trend data for a metric scoped to the asset+SLO of one evaluation.",
+        "operationId": "get_trend_by_evaluation_evaluation__eval_id__trend_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "eval_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Eval Id",
               "type": "string"
             }
           },
           {
             "in": "query",
-            "name": "evaluation_name",
-            "required": false,
+            "name": "metric",
+            "required": true,
             "schema": {
-              "anyOf": [
-                {
-                  "items": {
-                    "type": "string"
-                  },
-                  "type": "array"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Evaluation Name"
+              "title": "Metric",
+              "type": "string"
             }
           },
           {
             "in": "query",
             "name": "from",
-            "required": false,
+            "required": true,
             "schema": {
-              "anyOf": [
-                {
-                  "format": "date-time",
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "From"
+              "format": "date-time",
+              "title": "From",
+              "type": "string"
             }
           },
           {
@@ -8288,18 +9231,6 @@
               ],
               "title": "To"
             }
-          },
-          {
-            "description": "When false, bypass the Redis column cache entirely: read every column from the DB, build every fragment, do not write back. Used for debugging and for the cache-correctness property test.",
-            "in": "query",
-            "name": "cache",
-            "required": false,
-            "schema": {
-              "default": true,
-              "description": "When false, bypass the Redis column cache entirely: read every column from the DB, build every fragment, do not write back. Used for debugging and for the cache-correctness property test.",
-              "title": "Cache",
-              "type": "boolean"
-            }
           }
         ],
         "responses": {
@@ -8307,11 +9238,25 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/GroupedMetricHeatmapResponse"
+                  "items": {
+                    "$ref": "#/components/schemas/TrendPoint"
+                  },
+                  "title": "Response Get Trend By Evaluation Evaluation  Eval Id  Trend Get",
+                  "type": "array"
                 }
               }
             },
             "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Error"
           },
           "422": {
             "content": {
@@ -8324,7 +9269,68 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Get Grouped Metric Heatmap"
+        "summary": "Get Trend By Evaluation"
+      }
+    },
+    "/evaluation/{eval_id}/unpin-baseline": {
+      "patch": {
+        "description": "Remove baseline pin from an evaluation (new singular URL).",
+        "operationId": "unpin_baseline_singular_evaluation__eval_id__unpin_baseline_patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "eval_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Eval Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EvaluationDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Error"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Error"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Unpin Baseline Singular"
       }
     },
     "/evaluations": {
@@ -8510,6 +9516,102 @@
           }
         },
         "summary": "List Evaluations"
+      },
+      "post": {
+        "description": "Trigger evaluation for all SLOs bound to an asset (new URL: POST /evaluations).",
+        "operationId": "trigger_evaluation_evaluations_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EvaluateSingleRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EvaluateSingleResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Error"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Trigger Evaluation"
+      }
+    },
+    "/evaluations/batch": {
+      "post": {
+        "description": "Trigger batch evaluations (new URL: POST /evaluations/batch).",
+        "operationId": "trigger_evaluation_batch_evaluations_batch_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EvaluateBatchRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EvaluateBatchResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Error"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Trigger Evaluation Batch"
       }
     },
     "/evaluations/column-annotations": {
@@ -8557,10 +9659,115 @@
         "summary": "Get Column Annotations"
       }
     },
-    "/evaluations/metric-heatmap": {
+    "/evaluations/heatmap": {
       "get": {
-        "description": "Return a metric x evaluation heatmap grid for an asset.",
-        "operationId": "get_metric_heatmap_evaluations_metric_heatmap_get",
+        "description": "Return a grouped metric heatmap (new URL: GET /evaluations/heatmap).",
+        "operationId": "get_grouped_metric_heatmap_new_evaluations_heatmap_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "asset_name",
+            "required": true,
+            "schema": {
+              "title": "Asset Name",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "evaluation_name",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Evaluation Name"
+            }
+          },
+          {
+            "in": "query",
+            "name": "from",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "From"
+            }
+          },
+          {
+            "in": "query",
+            "name": "to",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "To"
+            }
+          },
+          {
+            "description": "When false, bypass the Redis column cache entirely: read every column from the DB, build every fragment, do not write back. Used for debugging and for the cache-correctness property test.",
+            "in": "query",
+            "name": "cache",
+            "required": false,
+            "schema": {
+              "default": true,
+              "description": "When false, bypass the Redis column cache entirely: read every column from the DB, build every fragment, do not write back. Used for debugging and for the cache-correctness property test.",
+              "title": "Cache",
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GroupedMetricHeatmapResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Grouped Metric Heatmap New"
+      }
+    },
+    "/evaluations/heatmap/by-metric": {
+      "get": {
+        "description": "Return a metric x evaluation heatmap grid (new URL: GET /evaluations/heatmap/by-metric).",
+        "operationId": "get_metric_heatmap_new_evaluations_heatmap_by_metric_get",
         "parameters": [
           {
             "in": "query",
@@ -8647,7 +9854,7 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Get Metric Heatmap"
+        "summary": "Get Metric Heatmap New"
       }
     },
     "/evaluations/names": {
@@ -8717,15 +9924,15 @@
         "summary": "List Evaluation Names"
       }
     },
-    "/evaluations/re-evaluate": {
+    "/evaluations/re-evaluate/from-baseline": {
       "post": {
-        "description": "Re-evaluate completed evaluations from stored SLI values.",
-        "operationId": "re_evaluate_evaluations_evaluations_re_evaluate_post",
+        "description": "Re-evaluate from the most recently pinned baseline (new split endpoint).",
+        "operationId": "re_evaluate_from_baseline_endpoint_evaluations_re_evaluate_from_baseline_post",
         "requestBody": {
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/ReEvaluateRequest"
+                "$ref": "#/components/schemas/ReEvaluateFromBaselineRequest"
               }
             }
           },
@@ -8763,21 +9970,70 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Re Evaluate Evaluations"
+        "summary": "Re Evaluate From Baseline Endpoint"
       }
     },
-    "/evaluations/run/{run_id}/annotations": {
+    "/evaluations/re-evaluate/from-date": {
       "post": {
-        "description": "Add a run-level (column-level) annotation to an EvaluationRun.",
-        "operationId": "create_run_annotation_evaluations_run__run_id__annotations_post",
+        "description": "Re-evaluate from a fixed start date (new split endpoint).",
+        "operationId": "re_evaluate_from_date_endpoint_evaluations_re_evaluate_from_date_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReEvaluateFromDateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReEvaluateResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Error"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Re Evaluate From Date Endpoint"
+      }
+    },
+    "/evaluations/re-evaluate/from-evaluation/{evaluation_id}": {
+      "post": {
+        "description": "Re-evaluate from the period_start of the given evaluation (new split endpoint).",
+        "operationId": "re_evaluate_from_evaluation_endpoint_evaluations_re_evaluate_from_evaluation__evaluation_id__post",
         "parameters": [
           {
             "in": "path",
-            "name": "run_id",
+            "name": "evaluation_id",
             "required": true,
             "schema": {
               "format": "uuid",
-              "title": "Run Id",
+              "title": "Evaluation Id",
               "type": "string"
             }
           }
@@ -8786,18 +10042,18 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/AnnotationCreate"
+                "$ref": "#/components/schemas/ReEvaluateFromEvaluationRequest"
               }
             }
           },
           "required": true
         },
         "responses": {
-          "201": {
+          "200": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/AnnotationRead"
+                  "$ref": "#/components/schemas/ReEvaluateResponse"
                 }
               }
             },
@@ -8834,7 +10090,7 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Create Run Annotation"
+        "summary": "Re Evaluate From Evaluation Endpoint"
       }
     },
     "/evaluations/trend-annotations": {
@@ -8891,739 +10147,6 @@
           }
         },
         "summary": "Get Trend Annotations"
-      }
-    },
-    "/evaluations/{eval_id}": {
-      "get": {
-        "description": "Get full evaluation detail including annotations and indicator results.",
-        "operationId": "get_evaluation_evaluations__eval_id__get",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "eval_id",
-            "required": true,
-            "schema": {
-              "format": "uuid",
-              "title": "Eval Id",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/EvaluationDetail"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "404": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorMessage"
-                }
-              }
-            },
-            "description": "Error"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Get Evaluation"
-      }
-    },
-    "/evaluations/{eval_id}/annotations": {
-      "get": {
-        "description": "List all annotations for an evaluation.",
-        "operationId": "list_annotations_evaluations__eval_id__annotations_get",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "eval_id",
-            "required": true,
-            "schema": {
-              "format": "uuid",
-              "title": "Eval Id",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "items": {
-                    "$ref": "#/components/schemas/AnnotationRead"
-                  },
-                  "title": "Response List Annotations Evaluations  Eval Id  Annotations Get",
-                  "type": "array"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "404": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorMessage"
-                }
-              }
-            },
-            "description": "Error"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "List Annotations"
-      },
-      "post": {
-        "description": "Add an SLO-level annotation to a single SLOEvaluation.",
-        "operationId": "create_annotation_evaluations__eval_id__annotations_post",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "eval_id",
-            "required": true,
-            "schema": {
-              "format": "uuid",
-              "title": "Eval Id",
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/AnnotationCreate"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "201": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/AnnotationRead"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "404": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorMessage"
-                }
-              }
-            },
-            "description": "Error"
-          },
-          "409": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorMessage"
-                }
-              }
-            },
-            "description": "Error"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Create Annotation"
-      }
-    },
-    "/evaluations/{eval_id}/annotations/{ann_id}": {
-      "patch": {
-        "description": "Update an annotation.",
-        "operationId": "update_annotation_evaluations__eval_id__annotations__ann_id__patch",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "eval_id",
-            "required": true,
-            "schema": {
-              "format": "uuid",
-              "title": "Eval Id",
-              "type": "string"
-            }
-          },
-          {
-            "in": "path",
-            "name": "ann_id",
-            "required": true,
-            "schema": {
-              "format": "uuid",
-              "title": "Ann Id",
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/AnnotationUpdate"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/AnnotationRead"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "404": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorMessage"
-                }
-              }
-            },
-            "description": "Error"
-          },
-          "409": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorMessage"
-                }
-              }
-            },
-            "description": "Error"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Update Annotation"
-      }
-    },
-    "/evaluations/{eval_id}/annotations/{ann_id}/hide": {
-      "post": {
-        "description": "Soft-delete (hide) an annotation.",
-        "operationId": "hide_annotation_evaluations__eval_id__annotations__ann_id__hide_post",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "eval_id",
-            "required": true,
-            "schema": {
-              "format": "uuid",
-              "title": "Eval Id",
-              "type": "string"
-            }
-          },
-          {
-            "in": "path",
-            "name": "ann_id",
-            "required": true,
-            "schema": {
-              "format": "uuid",
-              "title": "Ann Id",
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/AnnotationHide"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/AnnotationRead"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "404": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorMessage"
-                }
-              }
-            },
-            "description": "Error"
-          },
-          "409": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorMessage"
-                }
-              }
-            },
-            "description": "Error"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Hide Annotation"
-      }
-    },
-    "/evaluations/{eval_id}/invalidate": {
-      "patch": {
-        "description": "Mark an evaluation as invalidated.",
-        "operationId": "invalidate_evaluation_evaluations__eval_id__invalidate_patch",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "eval_id",
-            "required": true,
-            "schema": {
-              "format": "uuid",
-              "title": "Eval Id",
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/InvalidateRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/EvaluationSummary"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "404": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorMessage"
-                }
-              }
-            },
-            "description": "Error"
-          },
-          "409": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorMessage"
-                }
-              }
-            },
-            "description": "Error"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Invalidate Evaluation"
-      }
-    },
-    "/evaluations/{eval_id}/override-status": {
-      "patch": {
-        "description": "Override the evaluation result.",
-        "operationId": "override_status_evaluations__eval_id__override_status_patch",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "eval_id",
-            "required": true,
-            "schema": {
-              "format": "uuid",
-              "title": "Eval Id",
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/OverrideStatusRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/EvaluationDetail"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "404": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorMessage"
-                }
-              }
-            },
-            "description": "Error"
-          },
-          "409": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorMessage"
-                }
-              }
-            },
-            "description": "Error"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Override Status"
-      }
-    },
-    "/evaluations/{eval_id}/pin-baseline": {
-      "patch": {
-        "description": "Pin an evaluation as the new baseline for future comparisons.",
-        "operationId": "pin_baseline_evaluations__eval_id__pin_baseline_patch",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "eval_id",
-            "required": true,
-            "schema": {
-              "format": "uuid",
-              "title": "Eval Id",
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/PinBaselineRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/EvaluationDetail"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "404": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorMessage"
-                }
-              }
-            },
-            "description": "Error"
-          },
-          "409": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorMessage"
-                }
-              }
-            },
-            "description": "Error"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Pin Baseline"
-      }
-    },
-    "/evaluations/{eval_id}/restore": {
-      "patch": {
-        "description": "Clear invalidation flag on an evaluation.",
-        "operationId": "restore_evaluation_evaluations__eval_id__restore_patch",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "eval_id",
-            "required": true,
-            "schema": {
-              "format": "uuid",
-              "title": "Eval Id",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/EvaluationSummary"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "404": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorMessage"
-                }
-              }
-            },
-            "description": "Error"
-          },
-          "409": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorMessage"
-                }
-              }
-            },
-            "description": "Error"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Restore Evaluation"
-      }
-    },
-    "/evaluations/{eval_id}/restore-override": {
-      "patch": {
-        "description": "Restore the original evaluation result.",
-        "operationId": "restore_override_evaluations__eval_id__restore_override_patch",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "eval_id",
-            "required": true,
-            "schema": {
-              "format": "uuid",
-              "title": "Eval Id",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/EvaluationDetail"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "404": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorMessage"
-                }
-              }
-            },
-            "description": "Error"
-          },
-          "409": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorMessage"
-                }
-              }
-            },
-            "description": "Error"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Restore Override"
-      }
-    },
-    "/evaluations/{eval_id}/unpin-baseline": {
-      "patch": {
-        "description": "Remove baseline pin from an evaluation.",
-        "operationId": "unpin_baseline_evaluations__eval_id__unpin_baseline_patch",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "eval_id",
-            "required": true,
-            "schema": {
-              "format": "uuid",
-              "title": "Eval Id",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/EvaluationDetail"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "404": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorMessage"
-                }
-              }
-            },
-            "description": "Error"
-          },
-          "409": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorMessage"
-                }
-              }
-            },
-            "description": "Error"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Unpin Baseline"
       }
     },
     "/health": {
@@ -11333,126 +11856,6 @@
           }
         },
         "summary": "Extract Slo"
-      }
-    },
-    "/trend": {
-      "get": {
-        "description": "Return time-series trend data for a specific metric.\n\nExactly one of eval_id or (asset_name + slo_name) must be provided.\nThe ``from`` parameter is required; ``to`` defaults to now.",
-        "operationId": "get_trend_trend_get",
-        "parameters": [
-          {
-            "in": "query",
-            "name": "metric",
-            "required": true,
-            "schema": {
-              "title": "Metric",
-              "type": "string"
-            }
-          },
-          {
-            "in": "query",
-            "name": "eval_id",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "format": "uuid",
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Eval Id"
-            }
-          },
-          {
-            "in": "query",
-            "name": "asset_name",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Asset Name"
-            }
-          },
-          {
-            "in": "query",
-            "name": "slo_name",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Slo Name"
-            }
-          },
-          {
-            "in": "query",
-            "name": "from",
-            "required": true,
-            "schema": {
-              "format": "date-time",
-              "title": "From",
-              "type": "string"
-            }
-          },
-          {
-            "in": "query",
-            "name": "to",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "format": "date-time",
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "To"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "items": {
-                    "$ref": "#/components/schemas/TrendPoint"
-                  },
-                  "title": "Response Get Trend Trend Get",
-                  "type": "array"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Get Trend"
       }
     }
   }
