@@ -5503,7 +5503,7 @@ export interface operations {
             query: {
                 metric: string;
                 from: string;
-                to?: string | null;
+                to?: string;
             };
             header?: never;
             path: {
@@ -7198,7 +7198,7 @@ export interface operations {
             query: {
                 metric: string;
                 from: string;
-                to?: string | null;
+                to?: string;
             };
             header?: never;
             path: {
@@ -7313,8 +7313,8 @@ export interface operations {
                 result?: string | null;
                 date?: string | null;
                 group_name?: string | null;
-                from?: string | null;
-                to?: string | null;
+                from?: string;
+                to?: string;
                 limit?: number;
                 offset?: number;
             };
@@ -7536,8 +7536,8 @@ export interface operations {
             query: {
                 asset_name: string;
                 evaluation_name?: string[] | null;
-                from?: string | null;
-                to?: string | null;
+                from?: string;
+                to?: string;
                 /** @description When false, bypass the Redis column cache entirely: read every column from the DB, build every fragment, do not write back. Used for debugging and for the cache-correctness property test. */
                 cache?: boolean;
             };
@@ -7590,8 +7590,8 @@ export interface operations {
             query: {
                 asset_name: string;
                 evaluation_name?: string[] | null;
-                from?: string | null;
-                to?: string | null;
+                from?: string;
+                to?: string;
             };
             header?: never;
             path?: never;

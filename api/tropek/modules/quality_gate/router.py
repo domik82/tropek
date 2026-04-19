@@ -109,8 +109,16 @@ async def list_evaluations(  # noqa: PLR0913
     result: str | None = None,
     date: str | None = None,
     group_name: str | None = None,
-    from_ts: datetime | None = Query(default=None, alias='from'),
-    to_ts: datetime | None = Query(default=None, alias='to'),
+    from_ts: datetime | None = Query(
+        default=None,
+        alias='from',
+        json_schema_extra={'anyOf': [{'format': 'date-time', 'type': 'string'}]},
+    ),
+    to_ts: datetime | None = Query(
+        default=None,
+        alias='to',
+        json_schema_extra={'anyOf': [{'format': 'date-time', 'type': 'string'}]},
+    ),
     limit: int = Query(default=200, le=500),
     offset: int = 0,
     repos: QualityGateRepos = Depends(get_qg_repos),
@@ -149,8 +157,16 @@ async def list_evaluations(  # noqa: PLR0913
 async def get_grouped_metric_heatmap_new(
     asset_name: str,
     evaluation_name: list[str] | None = Query(default=None),
-    from_ts: datetime | None = Query(default=None, alias='from'),
-    to_ts: datetime | None = Query(default=None, alias='to'),
+    from_ts: datetime | None = Query(
+        default=None,
+        alias='from',
+        json_schema_extra={'anyOf': [{'format': 'date-time', 'type': 'string'}]},
+    ),
+    to_ts: datetime | None = Query(
+        default=None,
+        alias='to',
+        json_schema_extra={'anyOf': [{'format': 'date-time', 'type': 'string'}]},
+    ),
     cache: bool = Query(
         default=True,
         description=(
@@ -208,8 +224,16 @@ async def get_grouped_metric_heatmap_new(
 async def get_metric_heatmap_new(
     asset_name: str,
     evaluation_name: list[str] | None = Query(default=None),
-    from_ts: datetime | None = Query(default=None, alias='from'),
-    to_ts: datetime | None = Query(default=None, alias='to'),
+    from_ts: datetime | None = Query(
+        default=None,
+        alias='from',
+        json_schema_extra={'anyOf': [{'format': 'date-time', 'type': 'string'}]},
+    ),
+    to_ts: datetime | None = Query(
+        default=None,
+        alias='to',
+        json_schema_extra={'anyOf': [{'format': 'date-time', 'type': 'string'}]},
+    ),
     repos: QualityGateRepos = Depends(get_qg_repos),
 ) -> MetricHeatmapResponse:
     """Return a metric x evaluation heatmap grid (new URL: GET /evaluations/heatmap/by-metric)."""
@@ -499,7 +523,11 @@ async def get_trend_by_asset_slo(
     slo_name: str,
     metric: str,
     from_ts: datetime = Query(alias='from'),
-    to_ts: datetime | None = Query(default=None, alias='to'),
+    to_ts: datetime | None = Query(
+        default=None,
+        alias='to',
+        json_schema_extra={'anyOf': [{'format': 'date-time', 'type': 'string'}]},
+    ),
     repos: QualityGateRepos = Depends(get_qg_repos),
 ) -> list[TrendPoint]:
     """Return time-series trend data for a metric scoped to a specific asset + SLO."""
@@ -521,7 +549,11 @@ async def get_trend_by_evaluation(
     eval_id: uuid.UUID,
     metric: str,
     from_ts: datetime = Query(alias='from'),
-    to_ts: datetime | None = Query(default=None, alias='to'),
+    to_ts: datetime | None = Query(
+        default=None,
+        alias='to',
+        json_schema_extra={'anyOf': [{'format': 'date-time', 'type': 'string'}]},
+    ),
     repos: QualityGateRepos = Depends(get_qg_repos),
 ) -> list[TrendPoint]:
     """Return time-series trend data for a metric scoped to the asset+SLO of one evaluation."""
