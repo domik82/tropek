@@ -52,6 +52,7 @@ class TestSourceValidation:
         snapshot = MetaSnapshotCreate(
             source='my.source_name-1',
             observed_at=datetime(2026, 1, 1, tzinfo=UTC),
+            values=[MetaValueInput(path=['app'], value='1.0')],
         )
         assert snapshot.source == 'my.source_name-1'
 
@@ -66,6 +67,7 @@ class TestObservedAtValidation:
         snapshot = MetaSnapshotCreate(
             source='cicd',
             observed_at=datetime(2026, 1, 1, tzinfo=UTC),
+            values=[MetaValueInput(path=['app'], value='1.0')],
         )
         assert snapshot.observed_at.tzinfo is not None
 
@@ -189,19 +191,15 @@ class TestStructuralValidation:
         assert len(snapshot.values) == 1
         assert len(snapshot.closed) == 1
 
-    def test_empty_values_and_closed_accepted_by_pydantic(self) -> None:
-        """Both lists empty is valid at the schema level.
-
-        The service layer rejects this as a no-op (tested in test_service.py).
-        """
-        snapshot = MetaSnapshotCreate(
-            source='cicd',
-            observed_at=datetime(2026, 1, 1, tzinfo=UTC),
-            values=[],
-            closed=[],
-        )
-        assert snapshot.values == []
-        assert snapshot.closed == []
+    def test_empty_values_and_closed_rejected_by_pydantic(self) -> None:
+        """Both lists empty is rejected at the schema level."""
+        with pytest.raises(ValidationError, match='snapshot must contain values or closed'):
+            MetaSnapshotCreate(
+                source='cicd',
+                observed_at=datetime(2026, 1, 1, tzinfo=UTC),
+                values=[],
+                closed=[],
+            )
 
     def test_unknown_field_rejected(self) -> None:
         """StrictInput sets extra='forbid' — unknown fields must be rejected."""

@@ -8,6 +8,7 @@ from datetime import UTC, datetime
 from unittest.mock import AsyncMock, patch
 
 import pytest
+from pydantic import ValidationError
 from tropek.modules.asset_meta.schemas import (
     MetaClosureInput,
     MetaSnapshotCreate,
@@ -17,12 +18,11 @@ from tropek.modules.asset_meta.schemas import (
 )
 from tropek.modules.asset_meta.service import (
     _ensure_asset_exists,
-    _validate_payload_has_content,
     _write_snapshot_rows,
     get_timeline,
     get_timeline_summary,
 )
-from tropek.modules.common.exceptions import DomainValidationError, NotFoundError
+from tropek.modules.common.exceptions import NotFoundError
 
 
 @dataclass
@@ -81,31 +81,36 @@ def _make_payload(
     )
 
 
-# --- _validate_payload_has_content ---
+# --- schema-level content validation (moved from service layer) ---
 
 
-def test_validate_payload_has_content_rejects_empty() -> None:
-    payload = _make_payload()
-    with pytest.raises(DomainValidationError, match='snapshot must contain values or closed'):
-        _validate_payload_has_content(payload)
+def test_schema_rejects_empty_values_and_closed() -> None:
+    with pytest.raises(ValidationError, match='snapshot must contain values or closed'):
+        MetaSnapshotCreate(
+            source='cicd',
+            observed_at=datetime(2026, 4, 16, 10, 0, 0, tzinfo=UTC),
+            values=[],
+            closed=[],
+        )
 
 
-def test_validate_payload_has_content_accepts_values_only() -> None:
+def test_schema_accepts_values_only() -> None:
     payload = _make_payload(values=[MetaValueInput(path=['env'], value='prod')])
-    _validate_payload_has_content(payload)
+    assert payload.values
 
 
-def test_validate_payload_has_content_accepts_closed_only() -> None:
+def test_schema_accepts_closed_only() -> None:
     payload = _make_payload(closed=[MetaClosureInput(path=['env'])])
-    _validate_payload_has_content(payload)
+    assert payload.closed
 
 
-def test_validate_payload_has_content_accepts_both() -> None:
+def test_schema_accepts_both_values_and_closed() -> None:
     payload = _make_payload(
         values=[MetaValueInput(path=['env'], value='prod')],
         closed=[MetaClosureInput(path=['region'])],
     )
-    _validate_payload_has_content(payload)
+    assert payload.values
+    assert payload.closed
 
 
 # --- _ensure_asset_exists ---
@@ -198,8 +203,8 @@ T1 = datetime(2026, 1, 2, tzinfo=UTC)
 async def test_get_timeline_returns_empty_for_no_snapshots() -> None:
     fake_session = AsyncMock()
     asset_id = uuid.uuid4()
-    with patch('tropek.modules.asset_meta.service.AssetMetaRepository') as MockRepo:
-        mock_repo = MockRepo.return_value
+    with patch('tropek.modules.asset_meta.service.AssetMetaRepository') as patched_repo_class:
+        mock_repo = patched_repo_class.return_value
         mock_repo.asset_exists = AsyncMock(return_value=True)
         mock_repo.load_snapshots_for_derivation = AsyncMock(return_value=[])
         result = await get_timeline(fake_session, asset_id, T0, T1)
@@ -211,8 +216,8 @@ async def test_get_timeline_returns_empty_for_no_snapshots() -> None:
 async def test_get_timeline_raises_not_found_for_missing_asset() -> None:
     fake_session = AsyncMock()
     asset_id = uuid.uuid4()
-    with patch('tropek.modules.asset_meta.service.AssetMetaRepository') as MockRepo:
-        mock_repo = MockRepo.return_value
+    with patch('tropek.modules.asset_meta.service.AssetMetaRepository') as patched_repo_class:
+        mock_repo = patched_repo_class.return_value
         mock_repo.asset_exists = AsyncMock(return_value=False)
         with pytest.raises(NotFoundError, match='asset'):
             await get_timeline(fake_session, asset_id, T0, T1)
@@ -224,8 +229,8 @@ async def test_get_timeline_raises_not_found_for_missing_asset() -> None:
 async def test_get_timeline_summary_returns_zero_for_empty_asset() -> None:
     fake_session = AsyncMock()
     asset_id = uuid.uuid4()
-    with patch('tropek.modules.asset_meta.service.AssetMetaRepository') as MockRepo:
-        mock_repo = MockRepo.return_value
+    with patch('tropek.modules.asset_meta.service.AssetMetaRepository') as patched_repo_class:
+        mock_repo = patched_repo_class.return_value
         mock_repo.asset_exists = AsyncMock(return_value=True)
         mock_repo.load_snapshots_for_derivation = AsyncMock(return_value=[])
         result = await get_timeline_summary(fake_session, asset_id, T0, T1)
@@ -236,8 +241,8 @@ async def test_get_timeline_summary_returns_zero_for_empty_asset() -> None:
 async def test_get_timeline_summary_raises_not_found_for_missing_asset() -> None:
     fake_session = AsyncMock()
     asset_id = uuid.uuid4()
-    with patch('tropek.modules.asset_meta.service.AssetMetaRepository') as MockRepo:
-        mock_repo = MockRepo.return_value
+    with patch('tropek.modules.asset_meta.service.AssetMetaRepository') as patched_repo_class:
+        mock_repo = patched_repo_class.return_value
         mock_repo.asset_exists = AsyncMock(return_value=False)
         with pytest.raises(NotFoundError, match='asset'):
             await get_timeline_summary(fake_session, asset_id, T0, T1)

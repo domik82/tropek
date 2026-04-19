@@ -2,10 +2,19 @@
 
 from __future__ import annotations
 
-from typing import Annotated
+from typing import Annotated, Self
 from uuid import UUID
 
-from pydantic import AfterValidator, AwareDatetime, BaseModel, ConfigDict, Field, StringConstraints, field_validator
+from pydantic import (
+    AfterValidator,
+    AwareDatetime,
+    BaseModel,
+    ConfigDict,
+    Field,
+    StringConstraints,
+    field_validator,
+    model_validator,
+)
 
 from tropek.modules.common.schemas import SafeStr, StrictInput, reject_null_bytes
 
@@ -63,6 +72,13 @@ class MetaSnapshotCreate(StrictInput):
                 raise ValueError(f'duplicate path in closed: {entry.path}')
             seen.add(path_key)
         return entries
+
+    @model_validator(mode='after')
+    def _require_values_or_closed(self) -> Self:
+        """Reject snapshots that carry neither values nor closures."""
+        if not self.values and not self.closed:
+            raise ValueError('snapshot must contain values or closed entries')
+        return self
 
 
 class MetaSnapshotCreated(BaseModel):

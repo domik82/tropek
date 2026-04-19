@@ -4,8 +4,9 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
-from typing import Any, Literal
+from typing import Annotated, Any, Literal
 
+from annotated_types import MinLen
 from pydantic import BaseModel, ConfigDict, Field, StrictBool, StrictFloat, StrictInt, model_validator
 
 from tropek.modules.common.schemas import SafeJsonDict, SafeStr, StrictInput
@@ -160,7 +161,7 @@ class SLOTestRequest(StrictInput):
     """Request body for SLO test (dry-run evaluation)."""
 
     # SLO content — replaces slo_yaml
-    objectives: list[SLOObjectiveIn]
+    objectives: Annotated[list[SLOObjectiveIn], MinLen(1)]
     total_score_pass_threshold: StrictFloat = 90.0
     total_score_warning_threshold: StrictFloat = 75.0
     comparison: ComparisonConfig = Field(default_factory=ComparisonConfig)
