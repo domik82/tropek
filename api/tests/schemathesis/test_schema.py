@@ -20,8 +20,14 @@ checks.load_all_checks()
 #   - POST /api/evaluations: enqueues arq worker jobs
 #   - POST /api/evaluations/re-evaluate: enqueues re-evaluation jobs
 EXCLUDED_OPERATIONS: set[tuple[str, str]] = {
+    # Trigger endpoints — enqueue arq worker jobs
     ('POST', '/api/evaluations'),
+    ('POST', '/api/evaluations/batch'),
+    # Re-evaluate endpoints — trigger re-scoring with DB side effects
     ('POST', '/api/evaluations/re-evaluate'),
+    ('POST', '/api/evaluations/re-evaluate/from-date'),
+    ('POST', '/api/evaluations/re-evaluate/from-baseline'),
+    ('POST', '/api/evaluations/re-evaluate/from-evaluation/{evaluation_id}'),
 }
 
 

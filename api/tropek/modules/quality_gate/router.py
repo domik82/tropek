@@ -44,6 +44,9 @@ from tropek.modules.quality_gate.schemas import (
 )
 from tropek.modules.quality_gate.schemas.heatmap import HeatmapColumnFragment
 from tropek.modules.quality_gate.schemas.re_evaluation import (
+    ReEvaluateFromBaselineRequest,
+    ReEvaluateFromDateRequest,
+    ReEvaluateFromEvaluationRequest,
     ReEvaluateRequest,
     ReEvaluateResponse,
 )
@@ -60,7 +63,12 @@ from tropek.modules.quality_gate.workflows.presentation.presenter import (
     build_detail,
     build_summary,
 )
-from tropek.modules.quality_gate.workflows.re_evaluation.re_evaluation_service import re_evaluate
+from tropek.modules.quality_gate.workflows.re_evaluation.re_evaluation_service import (
+    re_evaluate,
+    re_evaluate_from_baseline,
+    re_evaluate_from_date,
+    re_evaluate_from_evaluation,
+)
 from tropek.modules.quality_gate.workflows.trigger.trigger_service import TriggerService
 from tropek.queue import get_arq_pool
 
@@ -88,6 +96,28 @@ async def evaluate_batch(
     arq_pool: ArqRedis = Depends(get_arq_pool),
 ) -> EvaluateBatchResponse:
     """Trigger batch evaluations (by_date or by_asset mode)."""
+    service = TriggerService(repos, arq_pool)
+    return await service.trigger_evaluate_batch(body)
+
+
+@router.post('/evaluations', response_model=EvaluateSingleResponse, status_code=201)
+async def trigger_evaluation(
+    body: EvaluateSingleRequest,
+    repos: QualityGateRepos = Depends(get_qg_repos),
+    arq_pool: ArqRedis = Depends(get_arq_pool),
+) -> EvaluateSingleResponse:
+    """Trigger evaluation for all SLOs bound to an asset (new URL: POST /evaluations)."""
+    service = TriggerService(repos, arq_pool)
+    return await service.trigger_evaluate(body)
+
+
+@router.post('/evaluations/batch', response_model=EvaluateBatchResponse, status_code=201)
+async def trigger_evaluation_batch(
+    body: EvaluateBatchRequest,
+    repos: QualityGateRepos = Depends(get_qg_repos),
+    arq_pool: ArqRedis = Depends(get_arq_pool),
+) -> EvaluateBatchResponse:
+    """Trigger batch evaluations (new URL: POST /evaluations/batch)."""
     service = TriggerService(repos, arq_pool)
     return await service.trigger_evaluate_batch(body)
 
@@ -290,6 +320,134 @@ async def get_grouped_metric_heatmap(
     return assemble_grouped_response(asset_name, ordered_fragments)
 
 
+@router.get('/evaluations/heatmap', response_model=GroupedMetricHeatmapResponse)
+async def get_grouped_metric_heatmap_new(
+    asset_name: str,
+    evaluation_name: list[str] | None = Query(default=None),
+    from_ts: datetime | None = Query(default=None, alias='from'),
+    to_ts: datetime | None = Query(default=None, alias='to'),
+    cache: bool = Query(
+        default=True,
+        description=(
+            'When false, bypass the Redis column cache entirely: read every '
+            'column from the DB, build every fragment, do not write back. '
+            'Used for debugging and for the cache-correctness property test.'
+        ),
+    ),
+    repos: QualityGateRepos = Depends(get_qg_repos),
+    column_cache: HeatmapColumnCache | None = Depends(get_heatmap_column_cache),
+) -> GroupedMetricHeatmapResponse:
+    """Return a grouped metric heatmap (new URL: GET /evaluations/heatmap)."""
+    asset = await repos.asset_repo.get_by_name(asset_name)
+    if asset is None:
+        raise NotFoundError('asset', asset_name)
+
+    candidate_runs = await repos.trend_repo.list_runs_for_heatmap(
+        asset_id=asset.id,
+        eval_name=evaluation_name,
+        from_ts=from_ts,
+        to_ts=to_ts,
+    )
+    candidate_run_ids = [run.id for run in candidate_runs]
+
+    active_cache = column_cache if cache else None
+    fragments_by_id: dict[str, HeatmapColumnFragment] = {}
+    if active_cache is not None:
+        fragments_by_id = await active_cache.get_many(candidate_run_ids)
+
+    missing_ids = [run_id for run_id in candidate_run_ids if str(run_id) not in fragments_by_id]
+    if missing_ids:
+        missing_runs = await repos.trend_repo.get_grouped_metric_heatmap(asset_id=asset.id, run_id_filter=missing_ids)
+        rebuilt_fragments = [build_column_fragment(run, has_notes=False) for run in missing_runs]
+        for fragment in rebuilt_fragments:
+            fragments_by_id[str(fragment.evaluation_run_id)] = fragment
+        if active_cache is not None:
+            await active_cache.set_many(rebuilt_fragments)
+
+    noted_run_ids = await repos.trend_repo.get_run_ids_with_notes(candidate_run_ids)
+
+    ordered_runs = sorted(candidate_runs, key=lambda r: (r.period_start, r.eval_name or ''))
+    ordered_fragments: list[HeatmapColumnFragment] = []
+    for run in ordered_runs:
+        fragment = fragments_by_id[str(run.id)]
+        ordered_fragments.append(
+            fragment.model_copy(
+                update={'column': fragment.column.model_copy(update={'has_notes': run.id in noted_run_ids})}
+            )
+        )
+
+    return assemble_grouped_response(asset_name, ordered_fragments)
+
+
+@router.get('/evaluations/heatmap/by-metric', response_model=MetricHeatmapResponse)
+async def get_metric_heatmap_new(
+    asset_name: str,
+    evaluation_name: list[str] | None = Query(default=None),
+    from_ts: datetime | None = Query(default=None, alias='from'),
+    to_ts: datetime | None = Query(default=None, alias='to'),
+    repos: QualityGateRepos = Depends(get_qg_repos),
+) -> MetricHeatmapResponse:
+    """Return a metric x evaluation heatmap grid (new URL: GET /evaluations/heatmap/by-metric)."""
+    asset = await repos.asset_repo.get_by_name(asset_name)
+    if asset is None:
+        raise NotFoundError('asset', asset_name)
+    evals = await repos.trend_repo.get_metric_heatmap(
+        asset_id=asset.id,
+        evaluation_name=evaluation_name,
+        from_ts=from_ts,
+        to_ts=to_ts,
+    )
+    slots: list[datetime] = []
+    metric_set: dict[str, str] = {}
+    cells: list[HeatmapCell] = []
+    score_metric = '__score__'
+    for ev in reversed(evals):
+        slots.append(ev.period_start)
+        cells.append(
+            HeatmapCell(
+                slot=ev.period_start,
+                metric=score_metric,
+                display_name='Score',
+                result='invalidated' if ev.invalidated else (ev.result or 'none'),
+                score=ev.score or 0.0,
+                eval_id=ev.id,
+                evaluation_name=ev.evaluation_name,
+            )
+        )
+        for row in ev.indicator_rows or []:
+            obj = row.objective
+            metric_name = obj.sli
+            display = obj.display_name or metric_name
+            if metric_name not in metric_set:
+                metric_set[metric_name] = display
+            cells.append(
+                HeatmapCell(
+                    slot=ev.period_start,
+                    metric=metric_name,
+                    display_name=display,
+                    result=(
+                        'invalidated'
+                        if ev.invalidated
+                        else (ev.result or row.status)
+                        if ev.original_result is not None
+                        else row.status
+                    ),
+                    score=row.score,
+                    eval_id=ev.id,
+                    evaluation_name=ev.evaluation_name,
+                )
+            )
+    return MetricHeatmapResponse(
+        asset_name=asset_name,
+        slots=slots,
+        metrics=[
+            *[HeatmapMetric(name=k, display_name=v) for k, v in metric_set.items()],
+            HeatmapMetric(name=score_metric, display_name='Score'),
+        ],
+        cells=cells,
+    )
+
+
 @router.post('/evaluations/re-evaluate', response_model=ReEvaluateResponse)
 async def re_evaluate_evaluations(
     body: ReEvaluateRequest,
@@ -298,6 +456,73 @@ async def re_evaluate_evaluations(
     """Re-evaluate completed evaluations from stored SLI values."""
     try:
         return await re_evaluate(body, repos)
+    except BaselinePinConflictError as e:
+        raise HTTPException(
+            status_code=409,
+            detail={
+                'detail': str(e),
+                'pin_date': e.pin_date.isoformat(),
+                'pin_evaluation_id': str(e.pin_evaluation_id),
+            },
+        ) from e
+    except ValueError as e:
+        raise DomainValidationError(str(e)) from e
+
+
+@router.post('/evaluations/re-evaluate/from-date', response_model=ReEvaluateResponse)
+async def re_evaluate_from_date_endpoint(
+    body: ReEvaluateFromDateRequest,
+    repos: QualityGateRepos = Depends(get_qg_repos),
+) -> ReEvaluateResponse:
+    """Re-evaluate from a fixed start date (new split endpoint)."""
+    try:
+        return await re_evaluate_from_date(body, repos)
+    except BaselinePinConflictError as e:
+        raise HTTPException(
+            status_code=409,
+            detail={
+                'detail': str(e),
+                'pin_date': e.pin_date.isoformat(),
+                'pin_evaluation_id': str(e.pin_evaluation_id),
+            },
+        ) from e
+    except ValueError as e:
+        raise DomainValidationError(str(e)) from e
+
+
+@router.post('/evaluations/re-evaluate/from-baseline', response_model=ReEvaluateResponse)
+async def re_evaluate_from_baseline_endpoint(
+    body: ReEvaluateFromBaselineRequest,
+    repos: QualityGateRepos = Depends(get_qg_repos),
+) -> ReEvaluateResponse:
+    """Re-evaluate from the most recently pinned baseline (new split endpoint)."""
+    try:
+        return await re_evaluate_from_baseline(body, repos)
+    except BaselinePinConflictError as e:
+        raise HTTPException(
+            status_code=409,
+            detail={
+                'detail': str(e),
+                'pin_date': e.pin_date.isoformat(),
+                'pin_evaluation_id': str(e.pin_evaluation_id),
+            },
+        ) from e
+    except ValueError as e:
+        raise DomainValidationError(str(e)) from e
+
+
+@router.post(
+    '/evaluations/re-evaluate/from-evaluation/{evaluation_id}',
+    response_model=ReEvaluateResponse,
+)
+async def re_evaluate_from_evaluation_endpoint(
+    evaluation_id: uuid.UUID,
+    body: ReEvaluateFromEvaluationRequest,
+    repos: QualityGateRepos = Depends(get_qg_repos),
+) -> ReEvaluateResponse:
+    """Re-evaluate from the period_start of the given evaluation (new split endpoint)."""
+    try:
+        return await re_evaluate_from_evaluation(body, evaluation_id, repos)
     except BaselinePinConflictError as e:
         raise HTTPException(
             status_code=409,
@@ -721,3 +946,257 @@ async def get_trend(
         to_ts=to_ts,
     )
     return [TrendPoint(**p) for p in points]
+
+
+@router.get('/assets/{asset_name}/slos/{slo_name}/trend', response_model=list[TrendPoint])
+async def get_trend_by_asset_slo(
+    asset_name: str,
+    slo_name: str,
+    metric: str,
+    from_ts: datetime = Query(alias='from'),
+    to_ts: datetime | None = Query(default=None, alias='to'),
+    repos: QualityGateRepos = Depends(get_qg_repos),
+) -> list[TrendPoint]:
+    """Return time-series trend data for a metric scoped to a specific asset + SLO."""
+    asset = await repos.asset_repo.get_by_name(asset_name)
+    if asset is None:
+        raise NotFoundError('asset', asset_name)
+    points = await repos.trend_repo.get_trend_by_domain(
+        asset_id=asset.id,
+        slo_name=slo_name,
+        metric_name=metric,
+        from_ts=from_ts,
+        to_ts=to_ts,
+    )
+    return [TrendPoint(**p) for p in points]
+
+
+@router.get('/evaluation/{eval_id}/trend', response_model=list[TrendPoint])
+async def get_trend_by_evaluation(
+    eval_id: uuid.UUID,
+    metric: str,
+    from_ts: datetime = Query(alias='from'),
+    to_ts: datetime | None = Query(default=None, alias='to'),
+    repos: QualityGateRepos = Depends(get_qg_repos),
+) -> list[TrendPoint]:
+    """Return time-series trend data for a metric scoped to the asset+SLO of one evaluation."""
+    ev = await repos.eval_repo.get_by_id(eval_id)
+    if ev is None:
+        raise NotFoundError('evaluation', str(eval_id))
+    if ev.asset_id is None:
+        raise DomainValidationError('evaluation has no associated asset')
+    if ev.slo_name is None:
+        raise DomainValidationError('evaluation has no associated slo')
+    points = await repos.trend_repo.get_trend_by_domain(
+        asset_id=ev.asset_id,
+        slo_name=ev.slo_name,
+        metric_name=metric,
+        from_ts=from_ts,
+        to_ts=to_ts,
+    )
+    return [TrendPoint(**p) for p in points]
+
+
+# ---- New singular single-resource routes ----
+
+
+@router.get('/evaluation/{eval_id}', response_model=EvaluationDetail)
+async def get_evaluation_singular(
+    eval_id: uuid.UUID,
+    repos: QualityGateRepos = Depends(get_qg_repos),
+) -> EvaluationDetail:
+    """Get full evaluation detail (new singular URL: GET /evaluation/{id})."""
+    ev = await repos.eval_repo.get_by_id(eval_id)
+    if ev is None:
+        raise NotFoundError('evaluation', str(eval_id))
+    return build_detail(ev)
+
+
+@router.patch('/evaluation/{eval_id}/invalidate', response_model=EvaluationSummary)
+async def invalidate_evaluation_singular(
+    eval_id: uuid.UUID,
+    body: InvalidateRequest,
+    repos: QualityGateRepos = Depends(get_qg_repos),
+) -> EvaluationSummary:
+    """Mark an evaluation as invalidated (new singular URL)."""
+    ev = await repos.eval_repo.invalidate(eval_id, note=body.invalidation_note)
+    if ev is None:
+        raise NotFoundError('evaluation', str(eval_id))
+    return build_summary(ev, annotation_count=0, latest_ann=None)
+
+
+@router.patch('/evaluation/{eval_id}/restore', response_model=EvaluationSummary)
+async def restore_evaluation_singular(
+    eval_id: uuid.UUID,
+    repos: QualityGateRepos = Depends(get_qg_repos),
+) -> EvaluationSummary:
+    """Clear invalidation flag on an evaluation (new singular URL)."""
+    ev = await repos.eval_repo.restore(eval_id)
+    if ev is None:
+        raise NotFoundError('evaluation', str(eval_id))
+    return build_summary(ev, annotation_count=0, latest_ann=None)
+
+
+@router.patch('/evaluation/{eval_id}/pin-baseline', response_model=EvaluationDetail)
+async def pin_baseline_singular(
+    eval_id: uuid.UUID,
+    body: PinBaselineRequest,
+    repos: QualityGateRepos = Depends(get_qg_repos),
+) -> EvaluationDetail:
+    """Pin an evaluation as the new baseline (new singular URL)."""
+    ev = await repos.eval_repo.get_by_id(eval_id)
+    if ev is None:
+        raise NotFoundError('evaluation', str(eval_id))
+    if ev.status != 'completed':
+        raise ConflictError('evaluation', str(eval_id), 'only completed evaluations can be pinned')
+    if ev.invalidated:
+        raise ConflictError('evaluation', str(eval_id), 'cannot pin an invalidated evaluation')
+    updated = await repos.eval_repo.pin_baseline(eval_id, reason=body.reason, author=body.author)
+    if updated is None:
+        raise NotFoundError('evaluation', str(eval_id))
+    return build_detail(updated)
+
+
+@router.patch('/evaluation/{eval_id}/unpin-baseline', response_model=EvaluationDetail)
+async def unpin_baseline_singular(
+    eval_id: uuid.UUID,
+    repos: QualityGateRepos = Depends(get_qg_repos),
+) -> EvaluationDetail:
+    """Remove baseline pin from an evaluation (new singular URL)."""
+    ev = await repos.eval_repo.get_by_id(eval_id)
+    if ev is None:
+        raise NotFoundError('evaluation', str(eval_id))
+    updated = await repos.eval_repo.unpin_baseline(eval_id)
+    if updated is None:
+        raise NotFoundError('evaluation', str(eval_id))
+    return build_detail(updated)
+
+
+@router.patch('/evaluation/{eval_id}/override-status', response_model=EvaluationDetail)
+async def override_status_singular(
+    eval_id: uuid.UUID,
+    body: OverrideStatusRequest,
+    repos: QualityGateRepos = Depends(get_qg_repos),
+) -> EvaluationDetail:
+    """Override the evaluation result (new singular URL)."""
+    ev = await repos.eval_repo.get_by_id(eval_id)
+    if ev is None:
+        raise NotFoundError('evaluation', str(eval_id))
+    if ev.status != 'completed':
+        raise ConflictError('evaluation', str(eval_id), 'only completed evaluations can be overridden')
+    if body.new_result not in ('pass', 'warning', 'fail'):
+        raise DomainValidationError('new_result must be pass, warning, or fail')
+    updated = await repos.eval_repo.override_status(
+        eval_id, new_result=body.new_result, reason=body.reason, author=body.author
+    )
+    if updated is None:
+        raise NotFoundError('evaluation', str(eval_id))
+    return build_detail(updated)
+
+
+@router.patch('/evaluation/{eval_id}/restore-override', response_model=EvaluationDetail)
+async def restore_override_singular(
+    eval_id: uuid.UUID,
+    repos: QualityGateRepos = Depends(get_qg_repos),
+) -> EvaluationDetail:
+    """Restore the original evaluation result (new singular URL)."""
+    ev = await repos.eval_repo.get_by_id(eval_id)
+    if ev is None:
+        raise NotFoundError('evaluation', str(eval_id))
+    if ev.original_result is None:
+        raise ConflictError('evaluation', str(eval_id), 'has no override to restore')
+    updated = await repos.eval_repo.restore_override(eval_id)
+    if updated is None:
+        raise NotFoundError('evaluation', str(eval_id))
+    return build_detail(updated)
+
+
+@router.get('/evaluation/{eval_id}/annotations', response_model=list[AnnotationRead])
+async def list_annotations_singular(
+    eval_id: uuid.UUID,
+    repos: QualityGateRepos = Depends(get_qg_repos),
+) -> list[AnnotationRead]:
+    """List all annotations for an evaluation (new singular URL)."""
+    ev = await repos.eval_repo.get_by_id(eval_id)
+    if ev is None:
+        raise NotFoundError('evaluation', str(eval_id))
+    return [AnnotationRead.model_validate(a) for a in ev.annotations if a.hidden_at is None]
+
+
+@router.post('/evaluation/{eval_id}/annotations', response_model=AnnotationRead, status_code=201)
+async def create_annotation_singular(
+    eval_id: uuid.UUID,
+    body: AnnotationCreate,
+    repos: QualityGateRepos = Depends(get_qg_repos),
+) -> AnnotationRead:
+    """Add an SLO-level annotation to a single SLOEvaluation (new singular URL)."""
+    ev = await repos.eval_repo.get_by_id(eval_id)
+    if ev is None:
+        raise NotFoundError('evaluation', str(eval_id))
+    created = await repos.annotation_repo.add_annotation(
+        eval_id,
+        content=body.content,
+        author=body.author,
+        category_id=body.category_id,
+        tags=body.tags,
+    )
+    fetched = await repos.annotation_repo.get_annotation_by_id(created.id)
+    assert fetched is not None
+    return AnnotationRead.model_validate(fetched)
+
+
+@router.patch('/evaluation/{eval_id}/annotations/{ann_id}', response_model=AnnotationRead)
+async def update_annotation_singular(
+    eval_id: uuid.UUID,
+    ann_id: uuid.UUID,
+    body: AnnotationUpdate,
+    repos: QualityGateRepos = Depends(get_qg_repos),
+) -> AnnotationRead:
+    """Update an annotation (new singular URL)."""
+    ann = await repos.annotation_repo.update_annotation(ann_id, **body.model_dump(exclude_unset=True))
+    if ann is None:
+        raise NotFoundError('annotation', str(ann_id))
+    return AnnotationRead.model_validate(ann)
+
+
+@router.post(
+    '/evaluation/{eval_id}/annotations/{ann_id}/hide',
+    response_model=AnnotationRead,
+)
+async def hide_annotation_singular(
+    eval_id: uuid.UUID,
+    ann_id: uuid.UUID,
+    body: AnnotationHide,
+    repos: QualityGateRepos = Depends(get_qg_repos),
+) -> AnnotationRead:
+    """Soft-delete (hide) an annotation (new singular URL)."""
+    ann = await repos.annotation_repo.hide_annotation(ann_id, reason=body.reason, author=body.author)
+    if ann is None:
+        raise NotFoundError('annotation', str(ann_id))
+    return AnnotationRead.model_validate(ann)
+
+
+@router.post(
+    '/evaluation-run/{run_id}/annotations',
+    response_model=AnnotationRead,
+    status_code=201,
+)
+async def create_run_annotation_new(
+    run_id: uuid.UUID,
+    body: AnnotationCreate,
+    repos: QualityGateRepos = Depends(get_qg_repos),
+) -> AnnotationRead:
+    """Add a run-level annotation to an EvaluationRun (new URL: /evaluation-run/{id}/annotations)."""
+    run = await repos.eval_run_repo.get_by_id(run_id)
+    if run is None:
+        raise NotFoundError('evaluation run', str(run_id))
+    created = await repos.annotation_repo.add_run_annotation(
+        run_id,
+        content=body.content,
+        author=body.author,
+        category_id=body.category_id,
+        tags=body.tags,
+    )
+    fetched = await repos.annotation_repo.get_annotation_by_id(created.id)
+    assert fetched is not None
+    return AnnotationRead.model_validate(fetched)
