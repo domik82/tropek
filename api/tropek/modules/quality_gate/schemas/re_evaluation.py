@@ -4,11 +4,79 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
-from typing import Literal
+from typing import Annotated, Literal
 
-from pydantic import BaseModel, model_validator
+from pydantic import BaseModel, Field, model_validator
 
 from tropek.modules.common.schemas import StrictInput
+
+# ---- Discriminated-union scope and selector types (new API) ----
+
+
+class AssetScope(BaseModel):
+    """Scope targeting a single named asset."""
+
+    kind: Literal['asset']
+    asset_name: str
+
+
+class GroupScope(BaseModel):
+    """Scope targeting all assets in a named group."""
+
+    kind: Literal['group']
+    group_name: str
+
+
+Scope = Annotated[AssetScope | GroupScope, Field(discriminator='kind')]
+
+
+class SloSelector(BaseModel):
+    """Selector limiting re-evaluation to a single named SLO."""
+
+    kind: Literal['slo']
+    slo_name: str
+
+
+class EvalNamesSelector(BaseModel):
+    """Selector limiting re-evaluation to a list of evaluation names."""
+
+    kind: Literal['evaluation_names']
+    evaluation_names: list[str] = Field(min_length=1)
+
+
+Selector = Annotated[SloSelector | EvalNamesSelector, Field(discriminator='kind')]
+
+
+class ReEvaluateFromDateRequest(StrictInput):
+    """Request body for POST /evaluations/re-evaluate/from-date."""
+
+    scope: Scope
+    selector: Selector | None = None
+    from_date: datetime
+    slo_version: int | None = None
+    dry_run: bool = False
+
+
+class ReEvaluateFromBaselineRequest(StrictInput):
+    """Request body for POST /evaluations/re-evaluate/from-baseline."""
+
+    scope: Scope
+    selector: Selector | None = None
+    slo_version: int | None = None
+    dry_run: bool = False
+    pin_strategy: Literal['skip_to_pin', 'ignore_pin'] | None = None
+
+
+class ReEvaluateFromEvaluationRequest(StrictInput):
+    """Request body for POST /evaluations/re-evaluate/from-evaluation/{evaluation_id}."""
+
+    scope: Scope
+    selector: Selector | None = None
+    slo_version: int | None = None
+    dry_run: bool = False
+
+
+# ---- Legacy schema (kept for POST /evaluations/re-evaluate) ----
 
 
 class ReEvaluateRequest(StrictInput):
