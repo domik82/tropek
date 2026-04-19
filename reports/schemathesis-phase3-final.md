@@ -12,8 +12,60 @@ Session: autonomous multi-commit refactor + fix pass
 | After Phase 1 (commits 1-5) | 71 | 33 | URL redesign complete |
 | After Phase 2a (SafeStr) | 71 | 33 | null-byte vector closed (no wire-level drop) |
 | After Phase 2b/2c/2d partial | 64 | 40 | see regression analysis below |
+| Pre residual-fix plan | 90 | 14 | starting point for 2026-04-19 residual plan |
+| After residual-fix plan (tasks 1–7) | 84 | 13 | net −1; regressions from new generators surfaced |
 
 **Integration tests: 265/265 green throughout.** UI tests: 646/646. SDK tests: 23/23.
+
+## Residual-fix plan (2026-04-19/20) — what shipped
+
+7 commits on top of the Phase 2 baseline:
+
+1. `3e884ed` — StrictBool/Int/Float sweep (Group B): `deactivate_slos`, `comparable_from_version`, `total_score_*_threshold`. Custom `StrictQueryBool` added since FastAPI coerces query params even with StrictBool.
+2. `097b53c` — `sort_order` int32 bound (Group C).
+3. `77d5fe2` — `SafeJsonDict` null-byte dict validator (Group A).
+4. `afc5795` — cross-field constraints moved to schema layer: `MinLen(1)` on `objectives`; `MetaSnapshotCreate` model_validator for "values or closed".
+5. `0ff0ec9` — `anyOf` on `MetaSnapshotCreate` so OpenAPI surfaces the "values or closed non-empty" constraint (fixes the Task 4 schema-representability gap).
+6. `0aac77d` — SLO-assignment URL refactor (Group D URLs, cross-stack: API + SDK + UI + MSW + regen).
+7. `abaf328` — `GET /evaluations` `to/from` query params: replaced `nullable: true` OpenAPI output with `anyOf: [{type: string, format: date-time}]` (Group E). Applied same fix to heatmap + trend endpoints; removed now-redundant `EXCLUDED_CHECKS_PER_OP` entries.
+8. `a84da52` + `75cd94a` — `MethodNotAllowedMiddleware` walks parameterized routes, emits 405 for DELETE on `{name:path}` subroutes (Group F).
+
+## Residual 13 failures — categorised
+
+All remaining failures are `RejectedPositiveData` (server returns 422 on JSON-Schema-compliant inputs). Two root causes dominate:
+
+### Pattern α: StrictInt/StrictFloat vs JSON whole-number floats (1 failure confirmed, likely 2–3 more)
+
+- `POST /slo-display-groups` — body `sort_order: 2147483646.0` → 422. JSON Schema `{type: integer}` permits "whole-number float" representations (`2147483646.0`), but Pydantic `StrictInt` rejects any non-`int` input.
+- Same shape suspected for `POST /slo-definitions` (`comparable_from_version` StrictInt) and possibly the `total_score_*_threshold` StrictFloat fields.
+
+**Fix (next session):** either widen the type back to `int`/`float` (accepting coerced wholes) and keep the bool-rejection only via a BeforeValidator; or inject `multipleOf: 1` so hypothesis stops generating `.0` forms. The StrictInt/StrictFloat coverage is over-strict for JSON wire semantics.
+
+### Pattern β: `dict[str, Any]` tags/variables let schemathesis inject arbitrary nested values with null bytes (9 failures)
+
+All of: `POST /assets`, `PATCH /assets/{name}`, `POST /assets/{asset_id}/meta/snapshots`, `POST /datasources`, `POST /slo-definitions`, `POST /note-categories`, `POST /evaluation/{eval_id}/annotations`, `PATCH /evaluation/{eval_id}/annotations/{ann_id}`, `POST /evaluation-run/{run_id}/annotations`.
+
+`SafeJsonDict` was applied where the value type was `str | None`, but `tags`/`variables` fields typed as `dict[str, Any]` (annotations, datasources, etc.) still accept nested dicts/lists where null bytes hide. The runtime validator walks top-level only; OpenAPI schema is `{additionalProperties: true}` so schemathesis freely nests `\u0000`-bearing structures.
+
+**Fix (next session):** write a recursive `reject_null_bytes_recursive` that walks nested dicts/lists/strings, apply to all `dict[str, Any]` fields that map to JSONB. Add JSON-schema-level `pattern` on string values where possible via `patternProperties` (limited Pydantic support).
+
+### Pattern γ: residual Group D/E edge cases (3 failures)
+
+- `POST /slo-definitions/test` — likely an `objectives` item-level constraint still missing (MinLen(1) on the list was added but per-item `criteria` or nested shape might reject something else).
+- `GET /evaluations` — still failing despite `to/from` fix; may be a different query param (`asset_group_name`, `asset_name`?) with a pattern/StrictQueryStr mismatch.
+- `GET /evaluations/trend-annotations` — analogous to `/evaluations`, not addressed in Task 6.
+
+**Fix (next session):** read each failure's reproducer (`reports/schemathesis-phase3-run2.txt`), identify the exact field, apply either a stricter OpenAPI constraint or a loosened validator — one endpoint at a time.
+
+## Honest assessment
+
+The plan targeted ≤2 residuals; we got 13. Reasons:
+
+- Phase 2's StrictInt/Float sweep was over-strict for JSON semantics (generates new failures once hypothesis stops hitting the type-coercion path and starts hitting whole-number-float representations).
+- Task 3's `SafeJsonDict` only covered `dict[str, str | None]`; the majority of `tags`/`variables` fields are `dict[str, Any]` (JSONB for annotations, datasources, slo-definitions) and need a recursive walker.
+- Groups D/E had more variants than the plan enumerated.
+
+Full run log: `reports/schemathesis-phase3-run2.txt`.
 
 ## Phase 1 — URL redesign (shipped clean)
 
