@@ -25,12 +25,12 @@ from tropek.modules.common.exception_handlers import (
     integrity_error_handler,
     not_found_handler,
 )
-from tropek.modules.common.method_not_allowed import MethodNotAllowedMiddleware
 from tropek.modules.common.exceptions import (
     ConflictError,
     DomainValidationError,
     NotFoundError,
 )
+from tropek.modules.common.method_not_allowed import MethodNotAllowedMiddleware
 from tropek.modules.datasource.router import router as datasource_router
 from tropek.modules.display_groups.router import router as display_groups_router
 from tropek.modules.quality_gate.router import router as quality_gate_router
@@ -133,18 +133,26 @@ def _custom_openapi() -> dict[str, Any]:
         'description': 'Validation Error',
         'content': {'application/json': {'schema': _HTTP_VALIDATION_ERROR}},
     }
+    bad_request_response = {
+        'description': 'Bad Request',
+        'content': {'application/json': {'schema': error_message_ref}},
+    }
     mutating_methods = {'post', 'put', 'patch', 'delete'}
-    for path, path_item in schema.get('paths', {}).items():
-        has_path_param = '{' in path
+    for path_item in schema.get('paths', {}).values():
         for method, operation in path_item.items():
             if method not in {'get', 'post', 'put', 'patch', 'delete'}:
                 continue
             responses = operation.setdefault('responses', {})
+            # 422: validation error (FastAPI only auto-adds when a body is declared)
             responses.setdefault('422', validation_error_response)
-            if has_path_param:
-                responses.setdefault('404', error_message_response)
+            # 404: any operation may reference a resource that doesn't exist,
+            # either via path params or query params (e.g. GET /evaluations?asset_name=x)
+            responses.setdefault('404', error_message_response)
+            # 409: integrity / conflict from DB or domain logic
             if method in mutating_methods:
                 responses.setdefault('409', error_message_response)
+            # 400: FastAPI returns 400 for malformed JSON bodies (not 422)
+            responses.setdefault('400', bad_request_response)
     app.openapi_schema = schema
     return schema
 
