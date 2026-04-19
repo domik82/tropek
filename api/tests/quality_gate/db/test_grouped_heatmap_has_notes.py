@@ -118,7 +118,7 @@ async def test_grouped_heatmap_has_notes_true_for_annotated_column(
     await db_session.flush()
 
     resp = await async_client.get(
-        '/evaluate/metric-heatmap',
+        '/evaluations/heatmap',
         params={'asset_name': asset_name},
     )
     assert resp.status_code == 200, resp.text
@@ -159,7 +159,7 @@ async def test_grouped_heatmap_has_notes_false_when_annotation_hidden(
     await db_session.flush()
 
     resp = await async_client.get(
-        '/evaluate/metric-heatmap',
+        '/evaluations/heatmap',
         params={'asset_name': asset_name},
     )
     assert resp.status_code == 200, resp.text

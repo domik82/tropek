@@ -1,4 +1,4 @@
-"""Integration tests for POST /evaluate and POST /evaluate/batch.
+"""Integration tests for POST /evaluations and POST /evaluations/batch.
 
 Requires TEST_DATABASE_URL and a running TimescaleDB instance.
 Run: uv run pytest api/tests/db/test_trigger_evaluate.py -m integration -v
@@ -99,11 +99,11 @@ async def test_evaluate_single_creates_run_and_children(
     async_client: AsyncClient,
     seeded_asset_with_slo_binding: tuple[str, list[str]],
 ) -> None:
-    """POST /evaluate creates one EvaluationRun + one SLOEvaluation per bound SLO."""
+    """POST /evaluations creates one EvaluationRun + one SLOEvaluation per bound SLO."""
     asset_name, slo_names = seeded_asset_with_slo_binding
 
     resp = await async_client.post(
-        '/evaluate',
+        '/evaluations',
         json={
             'asset_name': asset_name,
             'eval_name': 'ci-check',
@@ -122,11 +122,11 @@ async def test_evaluate_batch_by_date(
     async_client: AsyncClient,
     seeded_asset_with_slo_binding: tuple[str, list[str]],
 ) -> None:
-    """POST /evaluate/batch with mode=by_date creates one run per period."""
+    """POST /evaluations/batch with mode=by_date creates one run per period."""
     asset_name, _ = seeded_asset_with_slo_binding
 
     resp = await async_client.post(
-        '/evaluate/batch',
+        '/evaluations/batch',
         json={
             'mode': 'by_date',
             'asset_name': asset_name,
@@ -144,9 +144,9 @@ async def test_evaluate_batch_by_date(
 
 @pytest.mark.integration
 async def test_evaluate_unknown_asset_returns_404(async_client: AsyncClient) -> None:
-    """POST /evaluate with unknown asset_name returns 404."""
+    """POST /evaluations with unknown asset_name returns 404."""
     resp = await async_client.post(
-        '/evaluate',
+        '/evaluations',
         json={
             'asset_name': 'no-such-asset',
             'eval_name': 'test',
