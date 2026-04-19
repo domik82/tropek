@@ -7933,9 +7933,6 @@
                 {
                   "format": "date-time",
                   "type": "string"
-                },
-                {
-                  "type": "null"
                 }
               ],
               "title": "To"
@@ -10170,9 +10167,6 @@
                 {
                   "format": "date-time",
                   "type": "string"
-                },
-                {
-                  "type": "null"
                 }
               ],
               "title": "To"
@@ -10412,9 +10406,6 @@
                 {
                   "format": "date-time",
                   "type": "string"
-                },
-                {
-                  "type": "null"
                 }
               ],
               "title": "From"
@@ -10429,9 +10420,6 @@
                 {
                   "format": "date-time",
                   "type": "string"
-                },
-                {
-                  "type": "null"
                 }
               ],
               "title": "To"
@@ -10747,9 +10735,6 @@
                 {
                   "format": "date-time",
                   "type": "string"
-                },
-                {
-                  "type": "null"
                 }
               ],
               "title": "From"
@@ -10764,9 +10749,6 @@
                 {
                   "format": "date-time",
                   "type": "string"
-                },
-                {
-                  "type": "null"
                 }
               ],
               "title": "To"
@@ -10872,9 +10854,6 @@
                 {
                   "format": "date-time",
                   "type": "string"
-                },
-                {
-                  "type": "null"
                 }
               ],
               "title": "From"
@@ -10889,9 +10868,6 @@
                 {
                   "format": "date-time",
                   "type": "string"
-                },
-                {
-                  "type": "null"
                 }
               ],
               "title": "To"
