@@ -30,7 +30,7 @@ from tropek.modules.assets.schemas import (
     AssetUpdate,
 )
 from tropek.modules.common.exceptions import DomainValidationError, NotFoundError
-from tropek.modules.common.schemas import PagedResponse, SafeQueryStr, TagKeyCount, TagValueCount
+from tropek.modules.common.schemas import PagedResponse, SafeQueryStr, StrictQueryBool, TagKeyCount, TagValueCount
 
 router = APIRouter()
 
@@ -283,7 +283,7 @@ async def update_asset_group(
 @router.delete('/asset-groups/{name}', status_code=204)
 async def delete_asset_group(
     name: str,
-    deactivate_slos: bool = False,
+    deactivate_slos: StrictQueryBool = False,
     session: AsyncSession = Depends(get_session),
 ) -> None:
     """Delete an asset group and optionally deactivate linked SLOs."""
