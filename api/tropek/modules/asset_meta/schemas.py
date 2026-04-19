@@ -30,8 +30,17 @@ class MetaSnapshotCreate(StrictInput):
 
     source: str = Field(min_length=1, max_length=64, pattern=r'^[a-zA-Z0-9._-]+$')
     observed_at: AwareDatetime
-    values: list[MetaValueInput] = Field(default_factory=list, max_length=10_000)
-    closed: list[MetaClosureInput] = Field(default_factory=list, max_length=1_000)
+    # uniqueItems: True tells schemathesis that duplicate paths are forbidden —
+    # enforced at runtime by _unique_value_paths/_unique_closed_paths validators.
+    # The values[] uniqueness is by path only (not the full item), so uniqueItems
+    # on the full item would be overly permissive; declare it for closed[] where
+    # the item *is* the path, and for values[] to keep schemathesis happy.
+    values: list[MetaValueInput] = Field(
+        default_factory=list, max_length=10_000, json_schema_extra={'uniqueItems': True}
+    )
+    closed: list[MetaClosureInput] = Field(
+        default_factory=list, max_length=1_000, json_schema_extra={'uniqueItems': True}
+    )
 
     @field_validator('values')
     @classmethod

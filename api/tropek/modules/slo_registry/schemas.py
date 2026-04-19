@@ -6,7 +6,7 @@ import uuid
 from datetime import datetime
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, StrictBool, StrictInt, model_validator
 
 from tropek.modules.common.schemas import SafeStr, StrictInput
 from tropek.modules.quality_gate.schemas import IndicatorResult
@@ -17,7 +17,7 @@ class ComparisonConfig(BaseModel):
 
     compare_with: str | None = None
     include_result_with_score: str | None = None
-    number_of_comparison_results: int | None = None
+    number_of_comparison_results: StrictInt | None = None
     aggregate_function: str | None = None
     scope_tags: list[str] | None = None
 
@@ -51,8 +51,8 @@ class SLOObjectiveIn(StrictInput):
     display_name: SafeStr = ''
     pass_threshold: list[SafeStr] = Field(default_factory=list)
     warning_threshold: list[SafeStr] = Field(default_factory=list)
-    weight: int = 1
-    key_sli: bool = False
+    weight: StrictInt = 1
+    key_sli: StrictBool = False
 
 
 class SLOObjectiveRead(SLOObjectiveIn):
@@ -79,7 +79,7 @@ class SLODefinitionCreate(StrictInput):
     comparable_from_version: int | None = None
     kind: SafeStr = 'standard'
     sli_name: SafeStr | None = None
-    sli_version: int | None = None
+    sli_version: StrictInt | None = None
     method_criteria: dict[str, MethodCriteriaOverride] | None = None
 
 
