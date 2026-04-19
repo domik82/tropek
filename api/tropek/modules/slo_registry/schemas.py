@@ -7,9 +7,15 @@ from datetime import datetime
 from typing import Annotated, Any, Literal
 
 from annotated_types import MinLen
-from pydantic import BaseModel, ConfigDict, Field, StrictBool, StrictFloat, StrictInt, model_validator
+from pydantic import BaseModel, ConfigDict, Field, StrictBool, model_validator
 
-from tropek.modules.common.schemas import SafeJsonDict, SafeStr, StrictInput
+from tropek.modules.common.schemas import (
+    FloatNotBool,
+    IntNotBool,
+    SafeJsonDict,
+    SafeStr,
+    StrictInput,
+)
 from tropek.modules.quality_gate.schemas import IndicatorResult
 
 
@@ -18,7 +24,7 @@ class ComparisonConfig(BaseModel):
 
     compare_with: str | None = None
     include_result_with_score: str | None = None
-    number_of_comparison_results: StrictInt | None = None
+    number_of_comparison_results: IntNotBool | None = None
     aggregate_function: str | None = None
     scope_tags: list[str] | None = None
 
@@ -42,7 +48,7 @@ class MethodCriteriaOverride(BaseModel):
     pass_threshold: list[str] | None = None
     warning_threshold: list[str] | None = None
     weight: int | None = None
-    key_sli: bool | None = None
+    key_sli: StrictBool | None = None
 
 
 class SLOObjectiveIn(StrictInput):
@@ -52,7 +58,7 @@ class SLOObjectiveIn(StrictInput):
     display_name: SafeStr = ''
     pass_threshold: list[SafeStr] = Field(default_factory=list)
     warning_threshold: list[SafeStr] = Field(default_factory=list)
-    weight: StrictInt = 1
+    weight: IntNotBool = 1
     key_sli: StrictBool = False
 
 
@@ -70,17 +76,17 @@ class SLODefinitionCreate(StrictInput):
     name: SafeStr
     display_name: SafeStr | None = None
     objectives: list[SLOObjectiveIn]
-    total_score_pass_threshold: StrictFloat = 90.0
-    total_score_warning_threshold: StrictFloat = 75.0
+    total_score_pass_threshold: FloatNotBool = 90.0
+    total_score_warning_threshold: FloatNotBool = 75.0
     comparison: ComparisonConfig = Field(default_factory=ComparisonConfig)
     notes: SafeStr | None = None
     author: SafeStr | None = None
     tags: SafeJsonDict = Field(default_factory=dict)
     variables: SafeJsonDict = Field(default_factory=dict)
-    comparable_from_version: StrictInt | None = None
+    comparable_from_version: IntNotBool | None = None
     kind: SafeStr = 'standard'
     sli_name: SafeStr | None = None
-    sli_version: StrictInt | None = None
+    sli_version: IntNotBool | None = None
     method_criteria: dict[str, MethodCriteriaOverride] | None = None
 
 
@@ -129,8 +135,8 @@ class SLOValidateRequest(StrictInput):
     """Request body for SLO validation (no save)."""
 
     objectives: list[SLOObjectiveIn]
-    total_score_pass_threshold: StrictFloat = 90.0
-    total_score_warning_threshold: StrictFloat = 75.0
+    total_score_pass_threshold: FloatNotBool = 90.0
+    total_score_warning_threshold: FloatNotBool = 75.0
     comparison: ComparisonConfig = Field(default_factory=ComparisonConfig)
 
 
@@ -162,8 +168,8 @@ class SLOTestRequest(StrictInput):
 
     # SLO content — replaces slo_yaml
     objectives: Annotated[list[SLOObjectiveIn], MinLen(1)]
-    total_score_pass_threshold: StrictFloat = 90.0
-    total_score_warning_threshold: StrictFloat = 75.0
+    total_score_pass_threshold: FloatNotBool = 90.0
+    total_score_warning_threshold: FloatNotBool = 75.0
     comparison: ComparisonConfig = Field(default_factory=ComparisonConfig)
     # Evaluation context — unchanged
     sli_name: SafeStr

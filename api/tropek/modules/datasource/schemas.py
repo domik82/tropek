@@ -8,7 +8,7 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict
 
-from tropek.modules.common.schemas import SafeStr, StrictInput
+from tropek.modules.common.schemas import SafeJsonDict, SafeStr, StrictInput
 
 
 class DataSourceCreate(StrictInput):
@@ -18,7 +18,7 @@ class DataSourceCreate(StrictInput):
     display_name: SafeStr | None = None
     adapter_type: SafeStr
     adapter_url: SafeStr
-    tags: dict[str, str] = {}
+    tags: SafeJsonDict = {}
     token: SafeStr | None = None
 
 
@@ -27,7 +27,7 @@ class DataSourceUpdate(StrictInput):
 
     display_name: SafeStr | None = None
     adapter_url: SafeStr | None = None
-    tags: dict[str, str] | None = None
+    tags: SafeJsonDict | None = None
     token: SafeStr | None = None
 
 

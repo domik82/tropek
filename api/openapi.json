@@ -536,14 +536,7 @@
           },
           "tags": {
             "additionalProperties": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ]
+              "type": "string"
             },
             "default": {},
             "title": "Tags",
@@ -556,14 +549,7 @@
           },
           "variables": {
             "additionalProperties": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ]
+              "type": "string"
             },
             "default": {},
             "title": "Variables",
@@ -1206,14 +1192,7 @@
             "anyOf": [
               {
                 "additionalProperties": {
-                  "anyOf": [
-                    {
-                      "type": "string"
-                    },
-                    {
-                      "type": "null"
-                    }
-                  ]
+                  "type": "string"
                 },
                 "type": "object"
               },
@@ -1239,14 +1218,7 @@
             "anyOf": [
               {
                 "additionalProperties": {
-                  "anyOf": [
-                    {
-                      "type": "string"
-                    },
-                    {
-                      "type": "null"
-                    }
-                  ]
+                  "type": "string"
                 },
                 "type": "object"
               },
@@ -1616,8 +1588,8 @@
           },
           "sort_order": {
             "default": 0,
-            "maximum": 2147483647.0,
-            "minimum": -2147483648.0,
+            "ge": -2147483648,
+            "le": 2147483647,
             "title": "Sort Order",
             "type": "integer"
           }
@@ -1819,14 +1791,7 @@
           },
           "variables": {
             "additionalProperties": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ]
+              "type": "string"
             },
             "default": {},
             "title": "Variables",
@@ -1893,14 +1858,7 @@
           },
           "variables": {
             "additionalProperties": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ]
+              "type": "string"
             },
             "default": {},
             "title": "Variables",
@@ -4611,14 +4569,7 @@
           },
           "tags": {
             "additionalProperties": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ]
+              "type": "string"
             },
             "title": "Tags",
             "type": "object"
@@ -4635,14 +4586,7 @@
           },
           "variables": {
             "additionalProperties": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ]
+              "type": "string"
             },
             "title": "Variables",
             "type": "object"

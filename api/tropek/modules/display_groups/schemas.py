@@ -6,11 +6,11 @@ import uuid
 from datetime import datetime
 from typing import Annotated
 
-from pydantic import BaseModel, ConfigDict, Field, StrictInt
+from pydantic import BaseModel, ConfigDict, Field
 
-from tropek.modules.common.schemas import SafeStr, StrictInput
+from tropek.modules.common.schemas import IntNotBool, SafeStr, StrictInput
 
-_INT32_SORT_ORDER = Annotated[StrictInt, Field(ge=-(2**31), le=2**31 - 1)]
+_INT32_SORT_ORDER = Annotated[IntNotBool, Field(ge=-(2**31), le=2**31 - 1)]
 
 
 class DisplayGroupCreate(StrictInput):
