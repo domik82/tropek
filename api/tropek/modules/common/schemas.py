@@ -4,7 +4,8 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from pydantic import AfterValidator, BaseModel, ConfigDict
+from fastapi import Query
+from pydantic import AfterValidator, BaseModel, ConfigDict, Field
 
 
 def reject_null_bytes(value: str) -> str:
@@ -14,7 +15,19 @@ def reject_null_bytes(value: str) -> str:
     return value
 
 
-SafeStr = Annotated[str, AfterValidator(reject_null_bytes)]
+# SafeStr — validates null bytes are absent and declares the constraint in the
+# JSON Schema via a pattern so schemathesis (and other tooling) will not
+# generate strings containing \x00, avoiding spurious RejectedPositiveData
+# failures on all request-body string fields.
+SafeStr = Annotated[
+    str,
+    Field(pattern=r'^[^\x00]*$'),
+    AfterValidator(reject_null_bytes),
+]
+
+# SafeQueryStr — use as a FastAPI query-parameter type to apply the same
+# null-byte validation that SafeStr provides for request body fields.
+SafeQueryStr = Annotated[str, Query(pattern=r'^[^\x00]*$'), AfterValidator(reject_null_bytes)]
 
 
 class StrictInput(BaseModel):

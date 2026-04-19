@@ -5,7 +5,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, StrictInt
 
 from tropek.modules.common.schemas import SafeStr, StrictInput
 
@@ -16,7 +16,7 @@ class DisplayGroupCreate(StrictInput):
     name: SafeStr
     display_name: SafeStr | None = None
     parent_id: uuid.UUID | None = None
-    sort_order: int = 0
+    sort_order: StrictInt = 0
 
 
 class DisplayGroupRead(BaseModel):

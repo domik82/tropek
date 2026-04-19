@@ -6,7 +6,7 @@ import uuid
 from datetime import datetime
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, StrictBool, StrictFloat, StrictInt
 
 from tropek.modules.common.schemas import SafeStr, StrictInput
 
@@ -17,7 +17,7 @@ class AssetTypeCreate(StrictInput):
     """Request body for creating an asset type."""
 
     name: SafeStr
-    is_default: bool = False
+    is_default: StrictBool = False
 
 
 class AssetTypeUpdate(StrictInput):
@@ -86,14 +86,14 @@ class AssetGroupMemberCreate(BaseModel):
     """Request body for adding an asset to a group."""
 
     asset_id: uuid.UUID
-    weight: float = 1.0
+    weight: StrictFloat | StrictInt = 1.0
 
 
 class AssetGroupSubgroupCreate(BaseModel):
     """Request body for adding a subgroup to a group."""
 
     child_group_id: uuid.UUID
-    weight: float = 1.0
+    weight: StrictFloat | StrictInt = 1.0
 
 
 class AssetGroupCreate(StrictInput):
@@ -161,11 +161,11 @@ class AddMemberRequest(StrictInput):
     """Request body for POST /asset-groups/{name}/members."""
 
     asset_id: uuid.UUID
-    weight: float = 1.0
+    weight: StrictFloat | StrictInt = 1.0
 
 
 class AddSubgroupRequest(StrictInput):
     """Request body for POST /asset-groups/{name}/subgroups."""
 
     child_group_id: uuid.UUID
-    weight: float = 1.0
+    weight: StrictFloat | StrictInt = 1.0
