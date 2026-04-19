@@ -6,7 +6,7 @@ import uuid
 from datetime import datetime
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, StrictBool, StrictInt, model_validator
+from pydantic import BaseModel, ConfigDict, Field, StrictBool, StrictFloat, StrictInt, model_validator
 
 from tropek.modules.common.schemas import SafeStr, StrictInput
 from tropek.modules.quality_gate.schemas import IndicatorResult
@@ -69,14 +69,14 @@ class SLODefinitionCreate(StrictInput):
     name: SafeStr
     display_name: SafeStr | None = None
     objectives: list[SLOObjectiveIn]
-    total_score_pass_threshold: float = 90.0
-    total_score_warning_threshold: float = 75.0
+    total_score_pass_threshold: StrictFloat = 90.0
+    total_score_warning_threshold: StrictFloat = 75.0
     comparison: ComparisonConfig = Field(default_factory=ComparisonConfig)
     notes: SafeStr | None = None
     author: SafeStr | None = None
     tags: dict[str, str] = Field(default_factory=dict)
     variables: dict[str, str] = Field(default_factory=dict)
-    comparable_from_version: int | None = None
+    comparable_from_version: StrictInt | None = None
     kind: SafeStr = 'standard'
     sli_name: SafeStr | None = None
     sli_version: StrictInt | None = None
@@ -128,8 +128,8 @@ class SLOValidateRequest(StrictInput):
     """Request body for SLO validation (no save)."""
 
     objectives: list[SLOObjectiveIn]
-    total_score_pass_threshold: float = 90.0
-    total_score_warning_threshold: float = 75.0
+    total_score_pass_threshold: StrictFloat = 90.0
+    total_score_warning_threshold: StrictFloat = 75.0
     comparison: ComparisonConfig = Field(default_factory=ComparisonConfig)
 
 
@@ -161,8 +161,8 @@ class SLOTestRequest(StrictInput):
 
     # SLO content — replaces slo_yaml
     objectives: list[SLOObjectiveIn]
-    total_score_pass_threshold: float = 90.0
-    total_score_warning_threshold: float = 75.0
+    total_score_pass_threshold: StrictFloat = 90.0
+    total_score_warning_threshold: StrictFloat = 75.0
     comparison: ComparisonConfig = Field(default_factory=ComparisonConfig)
     # Evaluation context — unchanged
     sli_name: SafeStr

@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Annotated
 
 from fastapi import Query
-from pydantic import AfterValidator, BaseModel, ConfigDict, Field
+from pydantic import AfterValidator, BaseModel, BeforeValidator, ConfigDict, Field
 
 
 def reject_null_bytes(value: str) -> str:
@@ -28,6 +28,27 @@ SafeStr = Annotated[
 # SafeQueryStr — use as a FastAPI query-parameter type to apply the same
 # null-byte validation that SafeStr provides for request body fields.
 SafeQueryStr = Annotated[str, Query(pattern=r'^[^\x00]*$'), AfterValidator(reject_null_bytes)]
+
+
+def _strict_bool_str(value: object) -> bool:
+    """Reject non-boolean strings like '0', '1', 'yes', 'no', 'on', 'off'.
+
+    FastAPI's default bool query-param parsing is lenient (accepts integers and
+    many string aliases). This validator restricts acceptance to the canonical
+    'true' / 'false' strings and actual Python booleans so that schemathesis
+    negative-data checks (sending 0 for a boolean parameter) get the expected 422.
+    """
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str) and value.lower() in ('true', 'false'):
+        return value.lower() == 'true'
+    raise ValueError('value is not a valid boolean')
+
+
+# StrictQueryBool — a strict boolean for FastAPI query parameters that only
+# accepts 'true'/'false' strings (case-insensitive), rejecting integer-like
+# values ('0', '1') that FastAPI's lenient bool parsing would otherwise accept.
+StrictQueryBool = Annotated[bool, Query(), BeforeValidator(_strict_bool_str)]
 
 
 class StrictInput(BaseModel):
