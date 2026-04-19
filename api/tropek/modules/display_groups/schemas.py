@@ -7,14 +7,14 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict
 
-from tropek.modules.common.schemas import StrictInput
+from tropek.modules.common.schemas import SafeStr, StrictInput
 
 
 class DisplayGroupCreate(StrictInput):
     """Request body for creating a display group."""
 
-    name: str
-    display_name: str | None = None
+    name: SafeStr
+    display_name: SafeStr | None = None
     parent_id: uuid.UUID | None = None
     sort_order: int = 0
 
@@ -35,4 +35,4 @@ class DisplayGroupRead(BaseModel):
 class DisplayGroupMemberAdd(StrictInput):
     """Request body for adding an SLO to a display group."""
 
-    slo_name: str
+    slo_name: SafeStr

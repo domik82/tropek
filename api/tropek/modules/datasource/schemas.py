@@ -8,27 +8,27 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict
 
-from tropek.modules.common.schemas import StrictInput
+from tropek.modules.common.schemas import SafeStr, StrictInput
 
 
 class DataSourceCreate(StrictInput):
     """Request body for creating a datasource."""
 
-    name: str
-    display_name: str | None = None
-    adapter_type: str
-    adapter_url: str
+    name: SafeStr
+    display_name: SafeStr | None = None
+    adapter_type: SafeStr
+    adapter_url: SafeStr
     tags: dict[str, str] = {}
-    token: str | None = None
+    token: SafeStr | None = None
 
 
 class DataSourceUpdate(StrictInput):
     """Request body for updating a datasource."""
 
-    display_name: str | None = None
-    adapter_url: str | None = None
+    display_name: SafeStr | None = None
+    adapter_url: SafeStr | None = None
     tags: dict[str, str] | None = None
-    token: str | None = None
+    token: SafeStr | None = None
 
 
 class DataSourceRead(BaseModel):

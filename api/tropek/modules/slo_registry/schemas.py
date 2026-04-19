@@ -8,7 +8,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from tropek.modules.common.schemas import StrictInput
+from tropek.modules.common.schemas import SafeStr, StrictInput
 from tropek.modules.quality_gate.schemas import IndicatorResult
 
 
@@ -47,10 +47,10 @@ class MethodCriteriaOverride(BaseModel):
 class SLOObjectiveIn(StrictInput):
     """SLO objective for create/validate requests."""
 
-    sli: str
-    display_name: str = ''
-    pass_threshold: list[str] = Field(default_factory=list)
-    warning_threshold: list[str] = Field(default_factory=list)
+    sli: SafeStr
+    display_name: SafeStr = ''
+    pass_threshold: list[SafeStr] = Field(default_factory=list)
+    warning_threshold: list[SafeStr] = Field(default_factory=list)
     weight: int = 1
     key_sli: bool = False
 
@@ -66,19 +66,19 @@ class SLOObjectiveRead(SLOObjectiveIn):
 class SLODefinitionCreate(StrictInput):
     """Request body for creating an SLO definition."""
 
-    name: str
-    display_name: str | None = None
+    name: SafeStr
+    display_name: SafeStr | None = None
     objectives: list[SLOObjectiveIn]
     total_score_pass_threshold: float = 90.0
     total_score_warning_threshold: float = 75.0
     comparison: ComparisonConfig = Field(default_factory=ComparisonConfig)
-    notes: str | None = None
-    author: str | None = None
+    notes: SafeStr | None = None
+    author: SafeStr | None = None
     tags: dict[str, str] = Field(default_factory=dict)
     variables: dict[str, str] = Field(default_factory=dict)
     comparable_from_version: int | None = None
-    kind: str = 'standard'
-    sli_name: str | None = None
+    kind: SafeStr = 'standard'
+    sli_name: SafeStr | None = None
     sli_version: int | None = None
     method_criteria: dict[str, MethodCriteriaOverride] | None = None
 
@@ -165,12 +165,12 @@ class SLOTestRequest(StrictInput):
     total_score_warning_threshold: float = 75.0
     comparison: ComparisonConfig = Field(default_factory=ComparisonConfig)
     # Evaluation context — unchanged
-    sli_name: str
-    data_source_name: str
-    asset_name: str
+    sli_name: SafeStr
+    data_source_name: SafeStr
+    asset_name: SafeStr
     period_start: datetime
     period_end: datetime
-    evaluation_name: str = ''
+    evaluation_name: SafeStr = ''
     baseline: BaselineConfig | None = None
     variables: dict[str, str] = Field(default_factory=dict)
 

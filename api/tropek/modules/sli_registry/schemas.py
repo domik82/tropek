@@ -9,7 +9,7 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, model_validator
 
-from tropek.modules.common.schemas import StrictInput
+from tropek.modules.common.schemas import SafeStr, StrictInput
 
 ALLOWED_MODES = frozenset(['raw', 'aggregated'])
 
@@ -62,22 +62,22 @@ def _validate_aggregated_mode(sli: SLIDefinitionCreate) -> None:
 class SLIDefinitionCreate(StrictInput):
     """Request body for creating an SLI definition."""
 
-    name: str
-    adapter_type: str
-    display_name: str | None = None
-    mode: str = 'raw'
+    name: SafeStr
+    adapter_type: SafeStr
+    display_name: SafeStr | None = None
+    mode: SafeStr = 'raw'
 
     # Raw mode fields
     indicators: dict[str, str] = {}
 
     # Aggregated mode fields
-    query_template: str | None = None
-    interval: str | None = None
+    query_template: SafeStr | None = None
+    interval: SafeStr | None = None
     methods: list[AggregationMethod] | None = None
 
     # Common fields
-    notes: str | None = None
-    author: str | None = None
+    notes: SafeStr | None = None
+    author: SafeStr | None = None
     tags: dict[str, Any] = {}
     comparable_from_version: int | None = None
 

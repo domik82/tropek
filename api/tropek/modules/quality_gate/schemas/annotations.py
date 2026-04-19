@@ -8,7 +8,7 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict
 
-from tropek.modules.common.schemas import StrictInput
+from tropek.modules.common.schemas import SafeStr, StrictInput
 from tropek.modules.quality_gate.schemas.annotation_categories import AnnotationCategoryRead
 
 
@@ -41,8 +41,8 @@ class AnnotationRead(BaseModel):
 class AnnotationCreate(StrictInput):
     """Request body for creating an annotation."""
 
-    content: str
-    author: str | None = None
+    content: SafeStr
+    author: SafeStr | None = None
     category_id: uuid.UUID
     tags: dict[str, Any] = {}
 
@@ -50,8 +50,8 @@ class AnnotationCreate(StrictInput):
 class AnnotationUpdate(StrictInput):
     """Request body for updating an annotation."""
 
-    content: str | None = None
-    author: str | None = None
+    content: SafeStr | None = None
+    author: SafeStr | None = None
     category_id: uuid.UUID | None = None
     tags: dict[str, Any] | None = None
 
@@ -59,5 +59,5 @@ class AnnotationUpdate(StrictInput):
 class AnnotationHide(StrictInput):
     """Request body for soft-deleting (hiding) an annotation."""
 
-    reason: str
-    author: str | None = None
+    reason: SafeStr
+    author: SafeStr | None = None
