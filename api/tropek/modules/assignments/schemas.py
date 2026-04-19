@@ -11,10 +11,9 @@ from pydantic import BaseModel, ConfigDict
 from tropek.modules.common.schemas import SafeStr, StrictInput
 
 
-class SLOAssignmentCreate(StrictInput):
-    """Request body for creating an SLO assignment."""
+class SLOAssignmentUpsert(StrictInput):
+    """Request body for PUT-upserting an SLO assignment at /{parent}/slo-definitions/{id}."""
 
-    slo_definition_id: uuid.UUID
     data_source_name: SafeStr
     comparison_rules: list[dict[str, Any]] | None = None
 
@@ -42,10 +41,9 @@ class SLOAssignmentUpgrade(StrictInput):
     new_slo_definition_id: uuid.UUID
 
 
-class SLOGroupAssignmentCreate(StrictInput):
-    """Request body for creating an SLO group assignment."""
+class SLOGroupAssignmentUpsert(StrictInput):
+    """Request body for PUT-upserting an SLO group assignment at /{parent}/slo-groups/{name}."""
 
-    slo_group_name: SafeStr
     data_source_name: SafeStr
 
 

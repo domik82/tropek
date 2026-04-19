@@ -129,18 +129,14 @@ export interface paths {
          */
         get: operations["list_group_slo_assignments_asset_groups__name__slo_assignments_get"];
         put?: never;
-        /**
-         * Create Group Slo Assignment
-         * @description Assign a specific SLO definition version to an asset group.
-         */
-        post: operations["create_group_slo_assignment_asset_groups__name__slo_assignments_post"];
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/asset-groups/{name}/slo-assignments/{assignment_id}": {
+    "/asset-groups/{name}/slo-definitions/{slo_definition_id}": {
         parameters: {
             query?: never;
             header?: never;
@@ -148,13 +144,17 @@ export interface paths {
             cookie?: never;
         };
         get?: never;
-        put?: never;
+        /**
+         * Put Group Slo Assignment
+         * @description Upsert an SLO assignment pinning an asset group to a specific SLO definition version.
+         */
+        put: operations["put_group_slo_assignment_asset_groups__name__slo_definitions__slo_definition_id__put"];
         post?: never;
         /**
-         * Delete Group Slo Assignment
-         * @description Remove an SLO assignment from an asset group.
+         * Delete Group Slo Assignment By Target
+         * @description Remove the SLO assignment between an asset group and a specific SLO definition version.
          */
-        delete: operations["delete_group_slo_assignment_asset_groups__name__slo_assignments__assignment_id__delete"];
+        delete: operations["delete_group_slo_assignment_by_target_asset_groups__name__slo_definitions__slo_definition_id__delete"];
         options?: never;
         head?: never;
         patch?: never;
@@ -173,18 +173,14 @@ export interface paths {
          */
         get: operations["list_group_group_assignments_asset_groups__name__slo_group_assignments_get"];
         put?: never;
-        /**
-         * Create Group Group Assignment
-         * @description Assign an SLO group to an asset group (always-latest semantics).
-         */
-        post: operations["create_group_group_assignment_asset_groups__name__slo_group_assignments_post"];
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/asset-groups/{name}/slo-group-assignments/{assignment_id}": {
+    "/asset-groups/{name}/slo-groups/{slo_group_name}": {
         parameters: {
             query?: never;
             header?: never;
@@ -192,13 +188,17 @@ export interface paths {
             cookie?: never;
         };
         get?: never;
-        put?: never;
+        /**
+         * Put Group Slo Group Assignment
+         * @description Upsert an SLO group assignment pinning an asset group to a specific SLO group.
+         */
+        put: operations["put_group_slo_group_assignment_asset_groups__name__slo_groups__slo_group_name__put"];
         post?: never;
         /**
-         * Delete Group Group Assignment
-         * @description Remove an SLO group assignment from an asset group.
+         * Delete Group Slo Group Assignment By Target
+         * @description Remove the SLO group assignment between an asset group and a specific SLO group.
          */
-        delete: operations["delete_group_group_assignment_asset_groups__name__slo_group_assignments__assignment_id__delete"];
+        delete: operations["delete_group_slo_group_assignment_by_target_asset_groups__name__slo_groups__slo_group_name__delete"];
         options?: never;
         head?: never;
         patch?: never;
@@ -497,11 +497,7 @@ export interface paths {
          */
         get: operations["list_asset_slo_assignments_assets__name__slo_assignments_get"];
         put?: never;
-        /**
-         * Create Asset Slo Assignment
-         * @description Assign a specific SLO definition version to an asset.
-         */
-        post: operations["create_asset_slo_assignment_assets__name__slo_assignments_post"];
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -518,11 +514,7 @@ export interface paths {
         get?: never;
         put?: never;
         post?: never;
-        /**
-         * Delete Asset Slo Assignment
-         * @description Remove an SLO assignment from an asset.
-         */
-        delete: operations["delete_asset_slo_assignment_assets__name__slo_assignments__assignment_id__delete"];
+        delete?: never;
         options?: never;
         head?: never;
         /**
@@ -530,6 +522,30 @@ export interface paths {
          * @description Upgrade an SLO assignment to a new definition version.
          */
         patch: operations["upgrade_asset_slo_assignment_assets__name__slo_assignments__assignment_id__patch"];
+        trace?: never;
+    };
+    "/assets/{name}/slo-definitions/{slo_definition_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Put Asset Slo Assignment
+         * @description Upsert an SLO assignment pinning an asset to a specific SLO definition version.
+         */
+        put: operations["put_asset_slo_assignment_assets__name__slo_definitions__slo_definition_id__put"];
+        post?: never;
+        /**
+         * Delete Asset Slo Assignment By Target
+         * @description Remove the SLO assignment between an asset and a specific SLO definition version.
+         */
+        delete: operations["delete_asset_slo_assignment_by_target_assets__name__slo_definitions__slo_definition_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/assets/{name}/slo-group-assignments": {
@@ -545,18 +561,14 @@ export interface paths {
          */
         get: operations["list_asset_group_assignments_assets__name__slo_group_assignments_get"];
         put?: never;
-        /**
-         * Create Asset Group Assignment
-         * @description Assign an SLO group to an asset (always-latest semantics).
-         */
-        post: operations["create_asset_group_assignment_assets__name__slo_group_assignments_post"];
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/assets/{name}/slo-group-assignments/{assignment_id}": {
+    "/assets/{name}/slo-groups/{slo_group_name}": {
         parameters: {
             query?: never;
             header?: never;
@@ -564,13 +576,17 @@ export interface paths {
             cookie?: never;
         };
         get?: never;
-        put?: never;
+        /**
+         * Put Asset Slo Group Assignment
+         * @description Upsert an SLO group assignment pinning an asset to a specific SLO group.
+         */
+        put: operations["put_asset_slo_group_assignment_assets__name__slo_groups__slo_group_name__put"];
         post?: never;
         /**
-         * Delete Asset Group Assignment
-         * @description Remove an SLO group assignment from an asset.
+         * Delete Asset Slo Group Assignment By Target
+         * @description Remove the SLO group assignment between an asset and a specific SLO group.
          */
-        delete: operations["delete_asset_group_assignment_assets__name__slo_group_assignments__assignment_id__delete"];
+        delete: operations["delete_asset_slo_group_assignment_by_target_assets__name__slo_groups__slo_group_name__delete"];
         options?: never;
         head?: never;
         patch?: never;
@@ -3274,23 +3290,6 @@ export interface components {
             version: number;
         };
         /**
-         * SLOAssignmentCreate
-         * @description Request body for creating an SLO assignment.
-         */
-        SLOAssignmentCreate: {
-            /** Comparison Rules */
-            comparison_rules?: {
-                [key: string]: unknown;
-            }[] | null;
-            /** Data Source Name */
-            data_source_name: string;
-            /**
-             * Slo Definition Id
-             * Format: uuid
-             */
-            slo_definition_id: string;
-        };
-        /**
          * SLOAssignmentRead
          * @description Response schema for an SLO assignment.
          */
@@ -3340,6 +3339,18 @@ export interface components {
              * Format: uuid
              */
             new_slo_definition_id: string;
+        };
+        /**
+         * SLOAssignmentUpsert
+         * @description Request body for PUT-upserting an SLO assignment at /{parent}/slo-definitions/{id}.
+         */
+        SLOAssignmentUpsert: {
+            /** Comparison Rules */
+            comparison_rules?: {
+                [key: string]: unknown;
+            }[] | null;
+            /** Data Source Name */
+            data_source_name: string;
         };
         /**
          * SLODefinitionCreate
@@ -3449,16 +3460,6 @@ export interface components {
             version: number;
         };
         /**
-         * SLOGroupAssignmentCreate
-         * @description Request body for creating an SLO group assignment.
-         */
-        SLOGroupAssignmentCreate: {
-            /** Data Source Name */
-            data_source_name: string;
-            /** Slo Group Name */
-            slo_group_name: string;
-        };
-        /**
          * SLOGroupAssignmentRead
          * @description Response schema for an SLO group assignment.
          */
@@ -3491,6 +3492,14 @@ export interface components {
             slo_group_id: string;
             /** Slo Group Name */
             slo_group_name: string;
+        };
+        /**
+         * SLOGroupAssignmentUpsert
+         * @description Request body for PUT-upserting an SLO group assignment at /{parent}/slo-groups/{name}.
+         */
+        SLOGroupAssignmentUpsert: {
+            /** Data Source Name */
+            data_source_name: string;
         };
         /**
          * SLOGroupCreate
@@ -4425,23 +4434,24 @@ export interface operations {
             };
         };
     };
-    create_group_slo_assignment_asset_groups__name__slo_assignments_post: {
+    put_group_slo_assignment_asset_groups__name__slo_definitions__slo_definition_id__put: {
         parameters: {
             query?: never;
             header?: never;
             path: {
                 name: string;
+                slo_definition_id: string;
             };
             cookie?: never;
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["SLOAssignmentCreate"];
+                "application/json": components["schemas"]["SLOAssignmentUpsert"];
             };
         };
         responses: {
             /** @description Successful Response */
-            201: {
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -4487,13 +4497,13 @@ export interface operations {
             };
         };
     };
-    delete_group_slo_assignment_asset_groups__name__slo_assignments__assignment_id__delete: {
+    delete_group_slo_assignment_by_target_asset_groups__name__slo_definitions__slo_definition_id__delete: {
         parameters: {
             query?: never;
             header?: never;
             path: {
                 name: string;
-                assignment_id: string;
+                slo_definition_id: string;
             };
             cookie?: never;
         };
@@ -4593,23 +4603,24 @@ export interface operations {
             };
         };
     };
-    create_group_group_assignment_asset_groups__name__slo_group_assignments_post: {
+    put_group_slo_group_assignment_asset_groups__name__slo_groups__slo_group_name__put: {
         parameters: {
             query?: never;
             header?: never;
             path: {
                 name: string;
+                slo_group_name: string;
             };
             cookie?: never;
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["SLOGroupAssignmentCreate"];
+                "application/json": components["schemas"]["SLOGroupAssignmentUpsert"];
             };
         };
         responses: {
             /** @description Successful Response */
-            201: {
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -4655,13 +4666,13 @@ export interface operations {
             };
         };
     };
-    delete_group_group_assignment_asset_groups__name__slo_group_assignments__assignment_id__delete: {
+    delete_group_slo_group_assignment_by_target_asset_groups__name__slo_groups__slo_group_name__delete: {
         parameters: {
             query?: never;
             header?: never;
             path: {
                 name: string;
-                assignment_id: string;
+                slo_group_name: string;
             };
             cookie?: never;
         };
@@ -5757,125 +5768,6 @@ export interface operations {
             };
         };
     };
-    create_asset_slo_assignment_assets__name__slo_assignments_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                name: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["SLOAssignmentCreate"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["SLOAssignmentRead"];
-                };
-            };
-            /** @description Bad Request */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorMessage"];
-                };
-            };
-            /** @description Error */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorMessage"];
-                };
-            };
-            /** @description Error */
-            409: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorMessage"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    delete_asset_slo_assignment_assets__name__slo_assignments__assignment_id__delete: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                name: string;
-                assignment_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Bad Request */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorMessage"];
-                };
-            };
-            /** @description Error */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorMessage"];
-                };
-            };
-            /** @description Error */
-            409: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorMessage"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
     upgrade_asset_slo_assignment_assets__name__slo_assignments__assignment_id__patch: {
         parameters: {
             query?: never;
@@ -5900,6 +5792,126 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["SLOAssignmentRead"];
                 };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    put_asset_slo_assignment_assets__name__slo_definitions__slo_definition_id__put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                name: string;
+                slo_definition_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SLOAssignmentUpsert"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SLOAssignmentRead"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_asset_slo_assignment_by_target_assets__name__slo_definitions__slo_definition_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                name: string;
+                slo_definition_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Bad Request */
             400: {
@@ -5988,23 +6000,24 @@ export interface operations {
             };
         };
     };
-    create_asset_group_assignment_assets__name__slo_group_assignments_post: {
+    put_asset_slo_group_assignment_assets__name__slo_groups__slo_group_name__put: {
         parameters: {
             query?: never;
             header?: never;
             path: {
                 name: string;
+                slo_group_name: string;
             };
             cookie?: never;
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["SLOGroupAssignmentCreate"];
+                "application/json": components["schemas"]["SLOGroupAssignmentUpsert"];
             };
         };
         responses: {
             /** @description Successful Response */
-            201: {
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -6050,13 +6063,13 @@ export interface operations {
             };
         };
     };
-    delete_asset_group_assignment_assets__name__slo_group_assignments__assignment_id__delete: {
+    delete_asset_slo_group_assignment_by_target_assets__name__slo_groups__slo_group_name__delete: {
         parameters: {
             query?: never;
             header?: never;
             path: {
                 name: string;
-                assignment_id: string;
+                slo_group_name: string;
             };
             cookie?: never;
         };

@@ -194,7 +194,7 @@ function AssignmentCard({
             Edit
           </button>
           <button
-            onClick={() => deleteMutation.mutate({ groupName, assignmentId: assignment.id })}
+            onClick={() => deleteMutation.mutate({ groupName, sloDefinitionId: assignment.sloDefinitionId })}
             className="px-3 py-1.5 text-xs rounded bg-action-destructive-bg border border-action-destructive-border text-action-destructive hover:bg-action-destructive-bg transition-colors flex items-center gap-1.5"
           >
             <Unlink className="w-3.5 h-3.5" />
