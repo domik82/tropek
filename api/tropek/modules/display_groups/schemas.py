@@ -4,10 +4,13 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
+from typing import Annotated
 
-from pydantic import BaseModel, ConfigDict, StrictInt
+from pydantic import BaseModel, ConfigDict, Field, StrictInt
 
 from tropek.modules.common.schemas import SafeStr, StrictInput
+
+_INT32_SORT_ORDER = Annotated[StrictInt, Field(ge=-(2**31), le=2**31 - 1)]
 
 
 class DisplayGroupCreate(StrictInput):
@@ -16,7 +19,7 @@ class DisplayGroupCreate(StrictInput):
     name: SafeStr
     display_name: SafeStr | None = None
     parent_id: uuid.UUID | None = None
-    sort_order: StrictInt = 0
+    sort_order: _INT32_SORT_ORDER = 0
 
 
 class DisplayGroupRead(BaseModel):
