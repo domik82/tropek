@@ -8,7 +8,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, StrictBool, StrictFloat, StrictInt, model_validator
 
-from tropek.modules.common.schemas import SafeStr, StrictInput
+from tropek.modules.common.schemas import SafeJsonDict, SafeStr, StrictInput
 from tropek.modules.quality_gate.schemas import IndicatorResult
 
 
@@ -74,8 +74,8 @@ class SLODefinitionCreate(StrictInput):
     comparison: ComparisonConfig = Field(default_factory=ComparisonConfig)
     notes: SafeStr | None = None
     author: SafeStr | None = None
-    tags: dict[str, str] = Field(default_factory=dict)
-    variables: dict[str, str] = Field(default_factory=dict)
+    tags: SafeJsonDict = Field(default_factory=dict)
+    variables: SafeJsonDict = Field(default_factory=dict)
     comparable_from_version: StrictInt | None = None
     kind: SafeStr = 'standard'
     sli_name: SafeStr | None = None

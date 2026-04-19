@@ -7,7 +7,7 @@ from datetime import datetime
 
 from pydantic import BaseModel
 
-from tropek.modules.common.schemas import SafeStr, StrictInput
+from tropek.modules.common.schemas import SafeJsonDict, SafeStr, StrictInput
 
 
 class EvaluateSingleRequest(StrictInput):
@@ -17,7 +17,7 @@ class EvaluateSingleRequest(StrictInput):
     eval_name: SafeStr
     period_start: datetime
     period_end: datetime
-    variables: dict[str, str] = {}
+    variables: SafeJsonDict = {}
 
 
 class EvaluateSingleResponse(BaseModel):
@@ -48,7 +48,7 @@ class EvaluateBatchRequest(StrictInput):
     period_start: datetime | None = None
     period_end: datetime | None = None
     eval_name: SafeStr
-    variables: dict[str, str] = {}
+    variables: SafeJsonDict = {}
 
 
 class EvaluateBatchResponse(BaseModel):

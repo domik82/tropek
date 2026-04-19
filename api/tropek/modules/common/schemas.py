@@ -15,6 +15,30 @@ def reject_null_bytes(value: str) -> str:
     return value
 
 
+def reject_null_bytes_in_dict(input_dict: dict[str, object]) -> dict[str, object]:
+    r"""Reject JSONB dict keys or string values containing null bytes (\x00).
+
+    asyncpg raises UntranslatableCharacterError when a null byte appears in any
+    PostgreSQL text value, including JSONB keys and string values.  This validator
+    walks every key and every value that is a plain string and raises ValueError on
+    the first occurrence, converting what would be a 500 into a 422.
+
+    Non-string values (int, float, bool, None, nested dicts/lists) are left
+    untouched — the check is deliberately shallow; it does not recurse into nested
+    structures because TROPEK's JSONB fields that use this type are flat string maps.
+
+    Note: Pydantic v2 / OpenAPI does not have a clean way to emit patternProperties
+    on dict keys, so the null-byte constraint is enforced only at the validator level
+    (not in the generated JSON Schema).  The 500→422 conversion is the primary goal.
+    """
+    for dict_key, dict_value in input_dict.items():
+        if '\x00' in dict_key:
+            raise ValueError('null bytes are not allowed in dict keys')
+        if isinstance(dict_value, str) and '\x00' in dict_value:
+            raise ValueError('null bytes are not allowed in dict values')
+    return input_dict
+
+
 # SafeStr — validates null bytes are absent and declares the constraint in the
 # JSON Schema via a pattern so schemathesis (and other tooling) will not
 # generate strings containing \x00, avoiding spurious RejectedPositiveData
@@ -24,6 +48,13 @@ SafeStr = Annotated[
     Field(pattern=r'^[^\x00]*$'),
     AfterValidator(reject_null_bytes),
 ]
+
+# SafeJsonDict — validates that no JSONB dict key or string value contains null
+# bytes, preventing asyncpg UntranslatableCharacterError (500) on write.
+# Pydantic v2 does not support patternProperties on dict keys in OpenAPI output,
+# so the constraint is runtime-only (no JSON Schema annotation).  The validator
+# still converts 500 → 422 for schemathesis and real clients.
+SafeJsonDict = Annotated[dict[str, str | None], AfterValidator(reject_null_bytes_in_dict)]
 
 # SafeQueryStr — use as a FastAPI query-parameter type to apply the same
 # null-byte validation that SafeStr provides for request body fields.
