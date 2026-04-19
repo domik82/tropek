@@ -2,13 +2,13 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from tropek.cache.redis_cache import RedisCache
 from tropek.db.session import get_cache, get_session
 from tropek.modules.common.exceptions import NotFoundError
-from tropek.modules.common.schemas import PagedResponse, TagKeyCount, TagValueCount
+from tropek.modules.common.schemas import PagedResponse, SafeQueryStr, TagKeyCount, TagValueCount
 from tropek.modules.sli_registry.params import SLICreateParams
 from tropek.modules.sli_registry.repository import SLIRepository
 from tropek.modules.sli_registry.schemas import SLIDefinitionCreate, SLIDefinitionRead
@@ -70,7 +70,7 @@ async def get_sli_tag_keys(
 
 @router.get('/sli-definitions/tag-values', response_model=list[TagValueCount])
 async def get_sli_tag_values(
-    key: str = Query(...),
+    key: SafeQueryStr,
     session: AsyncSession = Depends(get_session),
     cache: RedisCache | None = Depends(get_cache),
 ) -> list[TagValueCount]:

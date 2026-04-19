@@ -16,7 +16,7 @@ from fastapi import (  # HTTPException: BaselinePinConflictError dict detail
 
 from tropek.modules.assets.service import AssetService
 from tropek.modules.common.exceptions import ConflictError, DomainValidationError, NotFoundError
-from tropek.modules.common.schemas import PagedResponse
+from tropek.modules.common.schemas import PagedResponse, SafeQueryStr
 from tropek.modules.quality_gate.repositories.annotation_category import SystemCategoryError
 from tropek.modules.quality_gate.schemas import (
     AnnotationCategoryCreate,
@@ -342,8 +342,8 @@ async def re_evaluate_from_evaluation_endpoint(
 
 @router.get('/evaluations/names', response_model=list[EvaluationNameEntry])
 async def list_evaluation_names(
-    asset_name: str | None = None,
-    group_name: str | None = None,
+    asset_name: SafeQueryStr | None = None,
+    group_name: SafeQueryStr | None = None,
     repos: QualityGateRepos = Depends(get_qg_repos),
 ) -> list[EvaluationNameEntry]:
     """Return distinct evaluation names with count and last-run date."""
