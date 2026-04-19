@@ -333,7 +333,7 @@ async def test_create_run_annotation_on_missing_run(
 ) -> None:
     fake_id = uuid.uuid4()
     resp = await async_client.post(
-        f'/evaluations/run/{fake_id}/annotations',
+        f'/evaluation-run/{fake_id}/annotations',
         json={
             'content': 'Orphan run note',
             'author': 'daisy',
