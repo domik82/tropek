@@ -4,11 +4,11 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
-from typing import Any
+from typing import Annotated, Any
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import AfterValidator, BaseModel, ConfigDict
 
-from tropek.modules.common.schemas import SafeStr, StrictInput
+from tropek.modules.common.schemas import SafeStr, StrictInput, reject_null_bytes_in_dict
 from tropek.modules.quality_gate.schemas.annotation_categories import AnnotationCategoryRead
 
 
@@ -44,7 +44,7 @@ class AnnotationCreate(StrictInput):
     content: SafeStr
     author: SafeStr | None = None
     category_id: uuid.UUID
-    tags: dict[str, Any] = {}
+    tags: Annotated[dict[str, Any], AfterValidator(reject_null_bytes_in_dict)] = {}
 
 
 class AnnotationUpdate(StrictInput):
@@ -53,7 +53,7 @@ class AnnotationUpdate(StrictInput):
     content: SafeStr | None = None
     author: SafeStr | None = None
     category_id: uuid.UUID | None = None
-    tags: dict[str, Any] | None = None
+    tags: Annotated[dict[str, Any], AfterValidator(reject_null_bytes_in_dict)] | None = None
 
 
 class AnnotationHide(StrictInput):
