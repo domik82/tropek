@@ -78,7 +78,7 @@ export async function fetchEvaluations(filters: EvaluationFilters = {}): Promise
 }
 
 export async function fetchEvaluationDetail(id: string): Promise<EvaluationDetail> {
-  const res = await fetch(`${BASE}/evaluations/${id}`)
+  const res = await fetch(`${BASE}/evaluation/${id}`)
   if (!res.ok) throw new Error(`fetchEvaluationDetail: ${res.status}`)
   const body: EvaluationDetailDto = await res.json()
   return dtoToEvaluationDetail(body)
@@ -90,10 +90,12 @@ export async function fetchTrend(
   metric: string,
   dateRange?: { from?: string; to?: string },
 ): Promise<TrendPoint[]> {
-  const params = new URLSearchParams({ asset_name: assetName, slo_name: sloName, metric })
+  const params = new URLSearchParams({ metric })
   if (dateRange?.from) params.set('from', dateRange.from)
   if (dateRange?.to) params.set('to', dateRange.to)
-  const res = await fetch(`${BASE}/trend?${params}`)
+  const res = await fetch(
+    `${BASE}/assets/${encodeURIComponent(assetName)}/slos/${encodeURIComponent(sloName)}/trend?${params}`,
+  )
   if (!res.ok) throw new Error(`fetchTrend: ${res.status}`)
   const body: TrendPointDto[] = await res.json()
   return body.map(dtoToTrendPoint)
@@ -102,7 +104,7 @@ export async function fetchTrend(
 export async function triggerEvaluation(
   input: TriggerEvaluationInput,
 ): Promise<{ evaluationId: string; sloEvaluationIds: string[] }> {
-  const res = await fetch(`${BASE}/evaluate`, {
+  const res = await fetch(`${BASE}/evaluations`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(triggerEvaluationInputToDto(input)),
@@ -116,7 +118,7 @@ export async function addAnnotation(
   evalId: string,
   payload: AnnotationCreateInput,
 ): Promise<Annotation> {
-  const res = await fetch(`${BASE}/evaluations/${evalId}/annotations`, {
+  const res = await fetch(`${BASE}/evaluation/${evalId}/annotations`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(annotationCreateInputToDto(payload)),
@@ -130,7 +132,7 @@ export async function addRunAnnotation(
   runId: string,
   payload: AnnotationCreateInput,
 ): Promise<Annotation> {
-  const res = await fetch(`${BASE}/evaluations/run/${runId}/annotations`, {
+  const res = await fetch(`${BASE}/evaluation-run/${runId}/annotations`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(annotationCreateInputToDto(payload)),
@@ -146,7 +148,7 @@ export async function hideAnnotation(
   payload: { reason: string; author?: string },
 ): Promise<Annotation> {
   const res = await fetch(
-    `${BASE}/evaluations/${evalId}/annotations/${annotationId}/hide`,
+    `${BASE}/evaluation/${evalId}/annotations/${annotationId}/hide`,
     {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -159,7 +161,7 @@ export async function hideAnnotation(
 }
 
 export async function invalidateEvaluation(evalId: string, note: string): Promise<Evaluation> {
-  const res = await fetch(`${BASE}/evaluations/${evalId}/invalidate`, {
+  const res = await fetch(`${BASE}/evaluation/${evalId}/invalidate`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ invalidation_note: note }),
@@ -170,7 +172,7 @@ export async function invalidateEvaluation(evalId: string, note: string): Promis
 }
 
 export async function restoreEvaluation(evalId: string): Promise<Evaluation> {
-  const res = await fetch(`${BASE}/evaluations/${evalId}/restore`, { method: 'PATCH' })
+  const res = await fetch(`${BASE}/evaluation/${evalId}/restore`, { method: 'PATCH' })
   if (!res.ok) throw new Error(`restoreEvaluation: ${res.status}`)
   const body: EvaluationSummaryDto = await res.json()
   return dtoToEvaluationSummary(body)
@@ -180,7 +182,7 @@ export async function overrideStatus(
   evalId: string,
   input: OverrideStatusInput,
 ): Promise<EvaluationDetail> {
-  const res = await fetch(`${BASE}/evaluations/${evalId}/override-status`, {
+  const res = await fetch(`${BASE}/evaluation/${evalId}/override-status`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(overrideStatusInputToDto(input)),
@@ -194,7 +196,7 @@ export async function pinBaseline(
   evalId: string,
   payload: { reason: string; author: string },
 ): Promise<EvaluationDetail> {
-  const res = await fetch(`${BASE}/evaluations/${evalId}/pin-baseline`, {
+  const res = await fetch(`${BASE}/evaluation/${evalId}/pin-baseline`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
@@ -252,10 +254,11 @@ export class PinConflictError extends Error {
 }
 
 export async function reEvaluate(input: ReEvaluateInput): Promise<ReEvaluateResponse> {
-  const res = await fetch(`${BASE}/evaluations/re-evaluate`, {
+  const { endpoint, requestBody } = reEvaluateInputToDto(input)
+  const res = await fetch(`${BASE}${endpoint}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(reEvaluateInputToDto(input)),
+    body: JSON.stringify(requestBody),
   })
   if (!res.ok) {
     const body = await res.json().catch(() => ({}))

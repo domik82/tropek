@@ -19,7 +19,7 @@ export async function fetchGroupedMetricHeatmap(
   }
   if (filters.from) params.set('from', filters.from)
   if (filters.to) params.set('to', filters.to)
-  const response = await fetch(`${BASE}/evaluate/metric-heatmap?${params}`)
+  const response = await fetch(`${BASE}/evaluations/heatmap/by-metric?${params}`)
   if (!response.ok) {
     throw new Error(`fetchGroupedMetricHeatmap: ${response.status}`)
   }

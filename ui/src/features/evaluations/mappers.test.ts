@@ -309,38 +309,39 @@ describe('triggerEvaluationInputToDto', () => {
 })
 
 describe('reEvaluateInputToDto', () => {
-  it('flattens baseline mode to from_baseline: true', () => {
-    const dto = reEvaluateInputToDto({
+  it('maps baseline mode to from-baseline endpoint with scope+selector', () => {
+    const result = reEvaluateInputToDto({
       assetName: 'a', sloName: 's', sloNames: null,
       mode: { kind: 'baseline' },
       sloVersion: null, dryRun: false, pinStrategy: null,
     })
-    expect(dto.from_baseline).toBe(true)
-    expect(dto.from_date).toBeNull()
-    expect(dto.from_evaluation_id).toBeNull()
+    expect(result.endpoint).toBe('/evaluations/re-evaluate/from-baseline')
+    expect(result.requestBody.scope).toEqual({ kind: 'asset', asset_name: 'a' })
+    expect(result.requestBody.selector).toEqual({ kind: 'slo', slo_name: 's' })
   })
 
-  it('flattens date mode to from_date', () => {
-    const dto = reEvaluateInputToDto({
+  it('maps date mode to from-date endpoint with from_date in body', () => {
+    const result = reEvaluateInputToDto({
       assetName: 'a', sloName: 's', sloNames: null,
       mode: { kind: 'date', fromDate: '2026-03-10T00:00:00Z' },
       sloVersion: 2, dryRun: true, pinStrategy: 'skip_to_pin',
     })
-    expect(dto.from_baseline).toBe(false)
-    expect(dto.from_date).toBe('2026-03-10T00:00:00Z')
-    expect(dto.slo_version).toBe(2)
-    expect(dto.dry_run).toBe(true)
-    expect(dto.pin_strategy).toBe('skip_to_pin')
+    expect(result.endpoint).toBe('/evaluations/re-evaluate/from-date')
+    if (result.endpoint === '/evaluations/re-evaluate/from-date') {
+      expect(result.requestBody.from_date).toBe('2026-03-10T00:00:00Z')
+      expect(result.requestBody.slo_version).toBe(2)
+      expect(result.requestBody.dry_run).toBe(true)
+    }
   })
 
-  it('flattens evaluation mode to from_evaluation_id', () => {
-    const dto = reEvaluateInputToDto({
+  it('maps evaluation mode to from-evaluation endpoint with id in path', () => {
+    const result = reEvaluateInputToDto({
       assetName: 'a', sloName: 's', sloNames: null,
       mode: { kind: 'evaluation', fromEvaluationId: 'eval-7' },
       sloVersion: null, dryRun: false, pinStrategy: null,
     })
-    expect(dto.from_evaluation_id).toBe('eval-7')
-    expect(dto.from_baseline).toBe(false)
+    expect(result.endpoint).toBe('/evaluations/re-evaluate/from-evaluation/eval-7')
+    expect(result.requestBody.scope).toEqual({ kind: 'asset', asset_name: 'a' })
   })
 })
 
