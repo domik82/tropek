@@ -18,7 +18,8 @@ dependencies = [
     "pyyaml>=6.0",
     "structlog>=24.0",
     "python-dotenv>=1.0",
-    "apache-otava @ git+https://github.com/apache/otava.git",
+    "numpy>=2.0",
+    "scipy>=1.14",
 ]
 
 [project.scripts]
@@ -40,9 +41,6 @@ dev = [
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
-
-[tool.hatch.metadata]
-allow-direct-references = true
 
 [tool.hatch.build.targets.wheel]
 packages = ["tropek"]
