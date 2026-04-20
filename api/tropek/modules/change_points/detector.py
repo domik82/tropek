@@ -1,4 +1,4 @@
-"""Pure change point detector — wraps Apache Otava's E-Divisive algorithm.
+"""Pure change point detector — wraps the vendored E-Divisive engine.
 
 No I/O. Takes a list of values + timestamps, returns detected change points
 with direction, magnitude, and statistical significance.
@@ -18,9 +18,7 @@ import numpy as np
 import structlog
 from pydantic import BaseModel
 
-from otava.analysis import TTestSignificanceTester, merge
-from otava.change_point_divisive.calculator import PairDistanceCalculator
-from otava.change_point_divisive.detector import ChangePointDetector
+from tropek.modules.change_points.engine import merge, split
 
 logger = structlog.get_logger()
 
@@ -42,39 +40,6 @@ class ChangePointResult(BaseModel):
     t_statistic: float
     pre_segment_mean: float
     post_segment_mean: float
-
-
-def _split_with_boundary_fix(
-    series: np.ndarray,
-    window_len: int,
-    max_pvalue: float,
-) -> list:
-    """Windowed E-Divisive split — filters out boundary CPs that cause ValueError in Otava."""
-    step = int(window_len / 2)
-    start = 0
-    change_points: list = []
-    tester = TTestSignificanceTester(max_pvalue)
-    series_len = len(series)
-
-    while start < series_len:
-        end = min(start + window_len, series_len)
-        algo = ChangePointDetector(significance_tester=tester, calculator=PairDistanceCalculator)
-        new_change_points = algo.get_change_points(series, start, end)
-        last_new_index = new_change_points[-1].index if new_change_points else 0
-        start = max(last_new_index, start + step)
-        for detected_point in new_change_points:
-            # Filter boundary CPs that would produce empty segments
-            if detected_point.index <= 0 or detected_point.index >= series_len:
-                continue
-            if detected_point not in change_points:
-                change_points.append(detected_point)
-
-    change_points.sort(key=lambda cp: cp.index)
-    if not change_points:
-        return []
-
-    intervals = tester.get_intervals(change_points)
-    return [tester.change_point(cp.to_candidate(), series, intervals) for cp in change_points]
 
 
 def detect_change_points(
@@ -110,14 +75,11 @@ def detect_change_points(
     if effective_window < 4:
         return []
 
-    # Two-phase algorithm (same as Otava's compute_change_points):
-    # 1. Split with relaxed pvalue to find candidate ("weak") change points
-    # 2. Merge to filter down to statistically significant ones
     first_pass_pvalue = (
         max_pvalue * 10 if max_pvalue < 0.05
         else (max_pvalue * 2 if max_pvalue < 0.5 else max_pvalue)
     )
-    weak_change_points = _split_with_boundary_fix(series, effective_window, first_pass_pvalue)
+    weak_change_points = split(series, effective_window, first_pass_pvalue)
     detected = merge(weak_change_points, series, max_pvalue, min_magnitude)
 
     results: list[ChangePointResult] = []
