@@ -3181,6 +3181,8 @@ export interface components {
              * @default false
              */
             dry_run: boolean;
+            /** Pin Strategy */
+            pin_strategy?: ("skip_to_pin" | "ignore_pin") | null;
             /** Scope */
             scope: components["schemas"]["AssetScope"] | components["schemas"]["GroupScope"];
             /** Selector */

@@ -639,10 +639,13 @@ class _Evaluations:
         """Re-evaluate from a reference evaluation — POST /evaluations/re-evaluate/from-evaluation/{id}.
 
         ``evaluation_id`` is the source evaluation whose SLI values are the baseline.
+        The source evaluation's ``period_start`` defines the re-evaluation start date.
         ``scope`` must be an asset or group scope dict:
         ``{'kind': 'asset', 'asset_name': '...'}`` or
         ``{'kind': 'group', 'group_name': '...'}``.
         ``selector`` filters by SLO or evaluation names (optional).
+        ``pin_strategy`` resolves baseline-pin conflicts: ``'skip_to_pin'`` or
+        ``'ignore_pin'`` (optional).
         """
         body: dict[str, Any] = {'scope': scope}
         if selector is not None:

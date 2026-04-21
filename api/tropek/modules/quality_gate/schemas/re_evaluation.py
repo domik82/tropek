@@ -75,6 +75,7 @@ class ReEvaluateFromEvaluationRequest(StrictInput):
     selector: Selector | None = None
     slo_version: int | None = None
     dry_run: bool = False
+    pin_strategy: Literal['skip_to_pin', 'ignore_pin'] | None = None
 
 
 # ---- Internal service type (not exposed via API) ----
