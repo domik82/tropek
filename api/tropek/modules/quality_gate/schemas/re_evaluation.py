@@ -55,6 +55,7 @@ class ReEvaluateFromDateRequest(StrictInput):
     from_date: datetime
     slo_version: int | None = None
     dry_run: bool = False
+    pin_strategy: Literal['skip_to_pin', 'ignore_pin'] | None = None
 
 
 class ReEvaluateFromBaselineRequest(StrictInput):

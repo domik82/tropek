@@ -581,6 +581,8 @@ class _Evaluations:
         ``{'kind': 'group', 'group_name': '...'}``.
         ``selector`` filters by SLO or evaluation names (optional).
         ``from_date`` is required (ISO datetime string).
+        ``pin_strategy`` resolves baseline-pin conflicts: ``'skip_to_pin'``
+        snaps ``from_date`` to the pin date; ``'ignore_pin'`` bypasses the pin.
         """
         body: dict[str, Any] = {'scope': scope, 'from_date': from_date}
         if selector is not None:

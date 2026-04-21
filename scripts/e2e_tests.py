@@ -194,7 +194,10 @@ def test_reeval_from_pinned_baseline(client: TropekClient) -> None:
     print(f'pinned eval {pin_target}')
 
     # Re-evaluate from the pinned baseline
-    result = client.evaluations.re_evaluate('checkout-api', 'http-availability-slo', from_baseline=True)
+    result = client.evaluations.re_evaluate_from_baseline(
+        {'kind': 'asset', 'asset_name': 'checkout-api'},
+        selector={'kind': 'slo', 'slo_name': 'http-availability-slo'},
+    )
     print(f're-evaluated {result["affected_evaluations"]} evals (SLO v{result["slo_version_used"]})')
     assert result['affected_evaluations'] >= 1, 'expected at least 1 re-evaluated eval'
     for r in result['results']:
@@ -205,10 +208,10 @@ def test_reeval_from_pinned_baseline(client: TropekClient) -> None:
 def test_reeval_from_date(client: TropekClient) -> None:
     """Re-evaluate evaluations from a specific date."""
     step('Step 15: Re-evaluate from date')
-    result = client.evaluations.re_evaluate(
-        'checkout-api',
-        'http-availability-slo',
+    result = client.evaluations.re_evaluate_from_date(
+        {'kind': 'asset', 'asset_name': 'checkout-api'},
         from_date='2026-03-15T16:00:00Z',
+        selector={'kind': 'slo', 'slo_name': 'http-availability-slo'},
         pin_strategy='ignore_pin',
     )
     print(f're-evaluated {result["affected_evaluations"]} evals (SLO v{result["slo_version_used"]})')
@@ -221,10 +224,10 @@ def test_reeval_from_date(client: TropekClient) -> None:
 def test_reeval_dry_run(client: TropekClient) -> None:
     """Dry-run re-evaluation returns diffs without writing."""
     step('Step 16: Re-evaluate dry run')
-    result = client.evaluations.re_evaluate(
-        'checkout-api',
-        'http-availability-slo',
+    result = client.evaluations.re_evaluate_from_date(
+        {'kind': 'asset', 'asset_name': 'checkout-api'},
         from_date='2026-03-15T00:00:00Z',
+        selector={'kind': 'slo', 'slo_name': 'http-availability-slo'},
         dry_run=True,
         pin_strategy='ignore_pin',
     )
@@ -236,8 +239,8 @@ def test_reeval_dry_run(client: TropekClient) -> None:
 def test_reeval_asset_wide(client: TropekClient) -> None:
     """Re-evaluate all SLOs for an asset when slo_name is omitted."""
     step('Step 16b: Asset-wide re-evaluate')
-    result = client.evaluations.re_evaluate(
-        'checkout-api',
+    result = client.evaluations.re_evaluate_from_date(
+        {'kind': 'asset', 'asset_name': 'checkout-api'},
         from_date='2026-03-15T16:00:00Z',
         pin_strategy='ignore_pin',
     )
