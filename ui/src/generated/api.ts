@@ -3162,6 +3162,8 @@ export interface components {
              * Format: date-time
              */
             from_date: string;
+            /** Pin Strategy */
+            pin_strategy?: ("skip_to_pin" | "ignore_pin") | null;
             /** Scope */
             scope: components["schemas"]["AssetScope"] | components["schemas"]["GroupScope"];
             /** Selector */

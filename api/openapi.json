@@ -3888,6 +3888,21 @@
             "title": "From Date",
             "type": "string"
           },
+          "pin_strategy": {
+            "anyOf": [
+              {
+                "enum": [
+                  "skip_to_pin",
+                  "ignore_pin"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pin Strategy"
+          },
           "scope": {
             "discriminator": {
               "mapping": {

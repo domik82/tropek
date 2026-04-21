@@ -517,7 +517,7 @@ async def delete_note_category(
 # ---- Trend ----
 
 
-@router.get('/assets/{asset_name}/slos/{slo_name}/trend', response_model=list[TrendPoint])
+@router.get('/assets/{asset_name}/slos/{slo_name:path}/trend', response_model=list[TrendPoint])
 async def get_trend_by_asset_slo(
     asset_name: str,
     slo_name: str,

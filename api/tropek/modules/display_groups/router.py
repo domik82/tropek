@@ -77,7 +77,7 @@ async def add_member(
     await repo.add_member(group.id, body.slo_name)
 
 
-@router.delete('/slo-display-groups/{name}/members/{slo_name}', status_code=204)
+@router.delete('/slo-display-groups/{name}/members/{slo_name:path}', status_code=204)
 async def remove_member(
     name: str,
     slo_name: str,

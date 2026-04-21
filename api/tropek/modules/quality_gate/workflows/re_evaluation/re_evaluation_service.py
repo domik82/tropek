@@ -572,7 +572,7 @@ async def re_evaluate_from_date(
         from_evaluation_id=None,
         slo_version=body.slo_version,
         dry_run=body.dry_run,
-        pin_strategy=None,
+        pin_strategy=body.pin_strategy,
     )
     return await re_evaluate(legacy_request, repos)
 
