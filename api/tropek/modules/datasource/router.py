@@ -25,9 +25,9 @@ def _ds_read(ds: DataSource) -> DataSourceRead:
 
 @router.get('/datasources', response_model=PagedResponse[DataSourceRead])
 async def list_datasources(
-    adapter_type: str | None = None,
-    tag_key: str | None = None,
-    tag_val: str | None = None,
+    adapter_type: SafeQueryStr | None = None,
+    tag_key: SafeQueryStr | None = None,
+    tag_val: SafeQueryStr | None = None,
     session: AsyncSession = Depends(get_session),
 ) -> PagedResponse[DataSourceRead]:
     """List all datasources with optional filters."""

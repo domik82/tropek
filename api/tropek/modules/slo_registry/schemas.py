@@ -11,11 +11,13 @@ from pydantic import BaseModel, ConfigDict, Field, StrictBool, model_validator
 
 from tropek.modules.common.schemas import (
     FloatNotBool,
+    IdentifierKey,
     IntNotBool,
-    SafeJsonDict,
     SafeStr,
     StrictInput,
+    Tags,
 )
+from tropek.modules.quality_gate.evaluation_engine.constants import AggregateFunction
 from tropek.modules.quality_gate.schemas import IndicatorResult
 
 
@@ -25,7 +27,7 @@ class ComparisonConfig(BaseModel):
     compare_with: str | None = None
     include_result_with_score: str | None = None
     number_of_comparison_results: IntNotBool | None = None
-    aggregate_function: str | None = None
+    aggregate_function: AggregateFunction | None = None
     scope_tags: list[str] | None = None
 
 
@@ -81,13 +83,13 @@ class SLODefinitionCreate(StrictInput):
     comparison: ComparisonConfig = Field(default_factory=ComparisonConfig)
     notes: SafeStr | None = None
     author: SafeStr | None = None
-    tags: SafeJsonDict = Field(default_factory=dict)
-    variables: SafeJsonDict = Field(default_factory=dict)
+    tags: Tags = Field(default_factory=dict)
+    variables: dict[IdentifierKey, SafeStr] = Field(default_factory=dict)
     comparable_from_version: IntNotBool | None = None
     kind: SafeStr = 'standard'
     sli_name: SafeStr | None = None
     sli_version: IntNotBool | None = None
-    method_criteria: dict[str, MethodCriteriaOverride] | None = None
+    method_criteria: dict[IdentifierKey, MethodCriteriaOverride] | None = None
 
 
 class SLODefinitionRead(BaseModel):
@@ -155,12 +157,12 @@ class SLOValidationResult(BaseModel):
     objectives: list[SLOObjectiveIn] | None = None
 
 
-class BaselineConfig(BaseModel):
+class BaselineConfig(StrictInput):
     """Configuration for baseline comparison in SLO test."""
 
     mode: Literal['none', 'asset_history', 'manual'] = 'none'
     limit: int = 3
-    values: dict[str, float] | None = None
+    values: dict[IdentifierKey, float] | None = None
 
 
 class SLOTestRequest(StrictInput):
@@ -179,7 +181,7 @@ class SLOTestRequest(StrictInput):
     period_end: datetime
     evaluation_name: SafeStr = ''
     baseline: BaselineConfig | None = None
-    variables: dict[str, str] = Field(default_factory=dict)
+    variables: dict[IdentifierKey, SafeStr] = Field(default_factory=dict)
 
 
 class SLOTestResult(BaseModel):

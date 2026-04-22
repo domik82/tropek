@@ -4,20 +4,19 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
-from typing import Annotated, Any
+from typing import Any
 
-from pydantic import AfterValidator, BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict
 
-from tropek.modules.common.schemas import SafeStr, StrictInput, reject_null_bytes_recursive
-
-_SafeRulesList = Annotated[list[dict[str, Any]], AfterValidator(reject_null_bytes_recursive)]
+from tropek.modules.assets.comparison_rules import ComparisonRule
+from tropek.modules.common.schemas import SafeStr, StrictInput
 
 
 class SLOAssignmentUpsert(StrictInput):
     """Request body for PUT-upserting an SLO assignment at /{parent}/slo-definitions/{id}."""
 
     data_source_name: SafeStr
-    comparison_rules: _SafeRulesList | None = None
+    comparison_rules: list[ComparisonRule] | None = None
 
 
 class SLOAssignmentRead(BaseModel):

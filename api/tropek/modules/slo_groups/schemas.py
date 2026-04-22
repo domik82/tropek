@@ -8,7 +8,7 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict
 
-from tropek.modules.common.schemas import SafeJsonAny, SafeStr, StrictInput
+from tropek.modules.common.schemas import IdentifierKey, SafeStr, StrictInput, Tags
 
 
 class SLOGroupCreate(StrictInput):
@@ -18,8 +18,8 @@ class SLOGroupCreate(StrictInput):
     display_name: SafeStr | None = None
     template_slo_name: SafeStr
     template_slo_version: int
-    gen_variables: dict[str, list[str]]
-    tags: SafeJsonAny = {}
+    gen_variables: dict[IdentifierKey, list[SafeStr]]
+    tags: Tags = {}
     author: SafeStr | None = None
 
 
@@ -28,9 +28,9 @@ class SLOGroupUpdate(StrictInput):
 
     template_slo_name: SafeStr | None = None
     template_slo_version: int | None = None
-    gen_variables: dict[str, list[str]] | None = None
+    gen_variables: dict[IdentifierKey, list[SafeStr]] | None = None
     display_name: SafeStr | None = None
-    tags: SafeJsonAny | None = None
+    tags: Tags | None = None
 
 
 class SLOGroupRead(BaseModel):
