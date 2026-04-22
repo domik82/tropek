@@ -18,9 +18,9 @@ router = APIRouter()
 
 @router.get('/sli-definitions', response_model=PagedResponse[SLIDefinitionRead])
 async def list_sli_definitions(
-    adapter_type: str | None = None,
-    tag_key: str | None = None,
-    tag_val: str | None = None,
+    adapter_type: SafeQueryStr | None = None,
+    tag_key: SafeQueryStr | None = None,
+    tag_val: SafeQueryStr | None = None,
     session: AsyncSession = Depends(get_session),
     cache: RedisCache | None = Depends(get_cache),
 ) -> PagedResponse[SLIDefinitionRead]:

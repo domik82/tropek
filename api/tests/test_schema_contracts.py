@@ -11,7 +11,7 @@ from fastapi.routing import APIRoute
 from pydantic import BaseModel
 from tropek.main import app
 from tropek.modules.assets.schemas import AssetCreate, AssetRead
-from tropek.modules.common.schemas import StrictInput
+from tropek.modules.common.schemas import IdentifierKey, SafeStr, StrictInput, TagKey, TagValue
 from tropek.modules.datasource.schemas import DataSourceRead
 from tropek.modules.quality_gate.schemas import (
     AnnotationRead,
@@ -190,17 +190,17 @@ class TestSloRegistryNestedTypes:
         field = SLODefinitionRead.model_fields['variables']
         assert field.annotation == dict[str, str]
 
-    def test_create_variables_is_str_map(self) -> None:
+    def test_create_variables_is_constrained_map(self) -> None:
         field = SLODefinitionCreate.model_fields['variables']
-        assert field.annotation == dict[str, str]
+        assert field.annotation == dict[IdentifierKey, SafeStr]
 
     def test_read_tags_is_str_map(self) -> None:
         field = SLODefinitionRead.model_fields['tags']
         assert field.annotation == dict[str, str]
 
-    def test_create_tags_is_str_map(self) -> None:
+    def test_create_tags_is_constrained_map(self) -> None:
         field = SLODefinitionCreate.model_fields['tags']
-        assert field.annotation == dict[str, str]
+        assert field.annotation == dict[TagKey, TagValue]
 
     def test_read_comparison_is_typed(self) -> None:
         field = SLODefinitionRead.model_fields['comparison']
@@ -216,7 +216,7 @@ class TestSloRegistryNestedTypes:
 
     def test_create_method_criteria_is_typed(self) -> None:
         field = SLODefinitionCreate.model_fields['method_criteria']
-        assert field.annotation == dict[str, MethodCriteriaOverride] | None
+        assert field.annotation == dict[IdentifierKey, MethodCriteriaOverride] | None
 
     def test_comparison_config_accepts_scope_tags(self) -> None:
         """scope_tags is now a declared field, not a smuggled extra."""

@@ -8,7 +8,7 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, StrictBool, StrictFloat, StrictInt
 
-from tropek.modules.common.schemas import SafeJsonAny, SafeJsonDict, SafeStr, StrictInput
+from tropek.modules.common.schemas import IdentifierKey, SafeJsonAny, SafeStr, StrictInput, Tags
 
 # ---- Asset Types ----
 
@@ -46,8 +46,8 @@ class AssetCreate(StrictInput):
     name: SafeStr
     display_name: SafeStr | None = None
     type_name: SafeStr
-    tags: SafeJsonDict = {}
-    variables: SafeJsonDict = {}
+    tags: Tags = {}
+    variables: dict[IdentifierKey, SafeStr] = {}
     color: SafeStr | None = None
 
 
@@ -56,8 +56,8 @@ class AssetUpdate(StrictInput):
 
     display_name: SafeStr | None = None
     type_name: SafeStr | None = None
-    tags: SafeJsonDict | None = None
-    variables: SafeJsonDict | None = None
+    tags: Tags | None = None
+    variables: dict[IdentifierKey, SafeStr] | None = None
     heatmap_config: SafeJsonAny | None = None
     color: SafeStr | None = None
 

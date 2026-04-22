@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import uuid
+from typing import Any
 
 from fastapi import APIRouter, Depends, Response
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -19,12 +20,22 @@ from tropek.modules.assignments.schemas import (
     SLOGroupAssignmentRead,
     SLOGroupAssignmentUpsert,
 )
+from tropek.modules.assets.comparison_rules import ComparisonRule
 from tropek.modules.common.exceptions import DomainValidationError, NotFoundError
 from tropek.modules.datasource.repository import DataSourceRepository
 from tropek.modules.slo_groups.repository import SLOGroupRepository
 from tropek.modules.slo_registry.repository import SLORepository
 
 router = APIRouter()
+
+
+def _serialize_rules(
+    rules: list[ComparisonRule] | None,
+) -> list[dict[str, Any]] | None:
+    """Convert typed ComparisonRule list to JSONB-ready dicts for the repository."""
+    if rules is None:
+        return None
+    return [rule.model_dump() for rule in rules]
 
 
 def _slo_assignment_read(row: SLOAssignmentModel) -> SLOAssignmentRead:
@@ -104,7 +115,7 @@ async def put_asset_slo_assignment(
         slo_definition_id=slo_def.id,
         slo_name=slo_def.name,
         data_source_id=datasource.id,
-        comparison_rules=body.comparison_rules,
+        comparison_rules=_serialize_rules(body.comparison_rules),
     )
     row.slo_definition = slo_def
     row.data_source = datasource
@@ -213,7 +224,7 @@ async def put_group_slo_assignment(
         slo_definition_id=slo_def.id,
         slo_name=slo_def.name,
         data_source_id=datasource.id,
-        comparison_rules=body.comparison_rules,
+        comparison_rules=_serialize_rules(body.comparison_rules),
     )
     row.slo_definition = slo_def
     row.data_source = datasource

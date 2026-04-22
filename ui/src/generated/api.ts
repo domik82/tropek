@@ -1680,6 +1680,16 @@ export interface components {
             weight: number;
         };
         /**
+         * AggregateFunction
+         * @description Aggregation function applied to a set of baseline values.
+         *
+         *     Used in both :mod:`slo_parser` (SLO comparison defaults) and
+         *     :mod:`criteria` (``aggregate_values`` implementation) — the single source
+         *     of truth for valid function names across both modules.
+         * @enum {string}
+         */
+        AggregateFunction: "avg" | "p50" | "p90" | "p95" | "p99";
+        /**
          * AggregationMethod
          * @description Statistical aggregation methods available in aggregated query mode.
          * @enum {string}
@@ -2198,8 +2208,7 @@ export interface components {
          * @description Per-SLO comparison configuration. All fields optional.
          */
         ComparisonConfig: {
-            /** Aggregate Function */
-            aggregate_function?: string | null;
+            aggregate_function?: components["schemas"]["AggregateFunction"] | null;
             /** Compare With */
             compare_with?: string | null;
             /** Include Result With Score */
@@ -2208,6 +2217,20 @@ export interface components {
             number_of_comparison_results?: number | null;
             /** Scope Tags */
             scope_tags?: string[] | null;
+        };
+        /**
+         * ComparisonRule
+         * @description A single comparison rule entry.
+         */
+        ComparisonRule: {
+            /** Compare To */
+            compare_to: {
+                [key: string]: string | boolean;
+            };
+            /** Match */
+            match: {
+                [key: string]: string;
+            };
         };
         /**
          * DataSourceCreate
@@ -3242,7 +3265,7 @@ export interface components {
              * @default {}
              */
             tags: {
-                [key: string]: unknown;
+                [key: string]: string;
             };
         };
         /**
@@ -3350,9 +3373,7 @@ export interface components {
          */
         SLOAssignmentUpsert: {
             /** Comparison Rules */
-            comparison_rules?: {
-                [key: string]: unknown;
-            }[] | null;
+            comparison_rules?: components["schemas"]["ComparisonRule"][] | null;
             /** Data Source Name */
             data_source_name: string;
         };
@@ -3525,7 +3546,7 @@ export interface components {
              * @default {}
              */
             tags: {
-                [key: string]: unknown;
+                [key: string]: string;
             };
             /** Template Slo Name */
             template_slo_name: string;
@@ -3595,7 +3616,7 @@ export interface components {
             } | null;
             /** Tags */
             tags?: {
-                [key: string]: unknown;
+                [key: string]: string;
             } | null;
             /** Template Slo Name */
             template_slo_name?: string | null;

@@ -103,12 +103,12 @@ async def trigger_evaluation_batch(
 
 @router.get('/evaluations', response_model=PagedResponse[EvaluationSummary])
 async def list_evaluations(  # noqa: PLR0913
-    asset_name: str | None = None,
-    slo_name: str | None = None,
-    evaluation_name: list[str] | None = Query(default=None),
-    result: str | None = None,
-    date: str | None = None,
-    group_name: str | None = None,
+    asset_name: SafeQueryStr | None = None,
+    slo_name: SafeQueryStr | None = None,
+    evaluation_name: list[SafeQueryStr] | None = Query(default=None),
+    result: SafeQueryStr | None = None,
+    date: SafeQueryStr | None = None,
+    group_name: SafeQueryStr | None = None,
     from_ts: datetime | None = Query(
         default=None,
         alias='from',
@@ -155,8 +155,8 @@ async def list_evaluations(  # noqa: PLR0913
 
 @router.get('/evaluations/heatmap', response_model=GroupedMetricHeatmapResponse)
 async def get_grouped_metric_heatmap_new(
-    asset_name: str,
-    evaluation_name: list[str] | None = Query(default=None),
+    asset_name: SafeQueryStr,
+    evaluation_name: list[SafeQueryStr] | None = Query(default=None),
     from_ts: datetime | None = Query(
         default=None,
         alias='from',
@@ -222,8 +222,8 @@ async def get_grouped_metric_heatmap_new(
 
 @router.get('/evaluations/heatmap/by-metric', response_model=MetricHeatmapResponse)
 async def get_metric_heatmap_new(
-    asset_name: str,
-    evaluation_name: list[str] | None = Query(default=None),
+    asset_name: SafeQueryStr,
+    evaluation_name: list[SafeQueryStr] | None = Query(default=None),
     from_ts: datetime | None = Query(
         default=None,
         alias='from',

@@ -35,9 +35,9 @@ router = APIRouter()
 
 @router.get('/slo-definitions', response_model=PagedResponse[SLODefinitionRead])
 async def list_slo_definitions(
-    tag_key: str | None = None,
-    tag_val: str | None = None,
-    kind: str | None = None,
+    tag_key: SafeQueryStr | None = None,
+    tag_val: SafeQueryStr | None = None,
+    kind: SafeQueryStr | None = None,
     session: AsyncSession = Depends(get_session),
     cache: RedisCache | None = Depends(get_cache),
 ) -> PagedResponse[SLODefinitionRead]:

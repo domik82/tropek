@@ -57,6 +57,18 @@
         "title": "AddSubgroupRequest",
         "type": "object"
       },
+      "AggregateFunction": {
+        "description": "Aggregation function applied to a set of baseline values.\n\nUsed in both :mod:`slo_parser` (SLO comparison defaults) and\n:mod:`criteria` (``aggregate_values`` implementation) \u2014 the single source\nof truth for valid function names across both modules.",
+        "enum": [
+          "avg",
+          "p50",
+          "p90",
+          "p95",
+          "p99"
+        ],
+        "title": "AggregateFunction",
+        "type": "string"
+      },
       "AggregationMethod": {
         "description": "Statistical aggregation methods available in aggregated query mode.",
         "enum": [
@@ -561,10 +573,21 @@
             "type": "string"
           },
           "tags": {
-            "additionalProperties": {
-              "type": "string"
-            },
             "default": {},
+            "patternProperties": {
+              "^[A-Za-z0-9]([-A-Za-z0-9_.]{0,61}[A-Za-z0-9])?$": {
+                "description": "alphanumeric with -_. separators, 0-63 chars, K8s label value syntax",
+                "maxLength": 63,
+                "pattern": "^(([A-Za-z0-9][-A-Za-z0-9_.]{0,61})?[A-Za-z0-9])?$",
+                "type": "string"
+              }
+            },
+            "propertyNames": {
+              "description": "alphanumeric with -_. separators, 1-63 chars, K8s label key syntax",
+              "maxLength": 63,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9]([-A-Za-z0-9_.]{0,61}[A-Za-z0-9])?$"
+            },
             "title": "Tags",
             "type": "object"
           },
@@ -574,10 +597,19 @@
             "type": "string"
           },
           "variables": {
-            "additionalProperties": {
-              "type": "string"
-            },
             "default": {},
+            "patternProperties": {
+              "^[A-Za-z_][A-Za-z0-9_]*$": {
+                "pattern": "^[^\\x00]*$",
+                "type": "string"
+              }
+            },
+            "propertyNames": {
+              "description": "programming-identifier style key (Prometheus label name style)",
+              "maxLength": 128,
+              "minLength": 1,
+              "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+            },
             "title": "Variables",
             "type": "object"
           }
@@ -1217,8 +1249,19 @@
           "tags": {
             "anyOf": [
               {
-                "additionalProperties": {
-                  "type": "string"
+                "patternProperties": {
+                  "^[A-Za-z0-9]([-A-Za-z0-9_.]{0,61}[A-Za-z0-9])?$": {
+                    "description": "alphanumeric with -_. separators, 0-63 chars, K8s label value syntax",
+                    "maxLength": 63,
+                    "pattern": "^(([A-Za-z0-9][-A-Za-z0-9_.]{0,61})?[A-Za-z0-9])?$",
+                    "type": "string"
+                  }
+                },
+                "propertyNames": {
+                  "description": "alphanumeric with -_. separators, 1-63 chars, K8s label key syntax",
+                  "maxLength": 63,
+                  "minLength": 1,
+                  "pattern": "^[A-Za-z0-9]([-A-Za-z0-9_.]{0,61}[A-Za-z0-9])?$"
                 },
                 "type": "object"
               },
@@ -1243,8 +1286,17 @@
           "variables": {
             "anyOf": [
               {
-                "additionalProperties": {
-                  "type": "string"
+                "patternProperties": {
+                  "^[A-Za-z_][A-Za-z0-9_]*$": {
+                    "pattern": "^[^\\x00]*$",
+                    "type": "string"
+                  }
+                },
+                "propertyNames": {
+                  "description": "programming-identifier style key (Prometheus label name style)",
+                  "maxLength": 128,
+                  "minLength": 1,
+                  "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
                 },
                 "type": "object"
               },
@@ -1259,6 +1311,7 @@
         "type": "object"
       },
       "BaselineConfig": {
+        "additionalProperties": false,
         "description": "Configuration for baseline comparison in SLO test.",
         "properties": {
           "limit": {
@@ -1279,8 +1332,16 @@
           "values": {
             "anyOf": [
               {
-                "additionalProperties": {
-                  "type": "number"
+                "patternProperties": {
+                  "^[A-Za-z_][A-Za-z0-9_]*$": {
+                    "type": "number"
+                  }
+                },
+                "propertyNames": {
+                  "description": "programming-identifier style key (Prometheus label name style)",
+                  "maxLength": 128,
+                  "minLength": 1,
+                  "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
                 },
                 "type": "object"
               },
@@ -1337,13 +1398,12 @@
           "aggregate_function": {
             "anyOf": [
               {
-                "type": "string"
+                "$ref": "#/components/schemas/AggregateFunction"
               },
               {
                 "type": "null"
               }
-            ],
-            "title": "Aggregate Function"
+            ]
           },
           "compare_with": {
             "anyOf": [
@@ -1396,6 +1456,39 @@
         "title": "ComparisonConfig",
         "type": "object"
       },
+      "ComparisonRule": {
+        "additionalProperties": false,
+        "description": "A single comparison rule entry.",
+        "properties": {
+          "compare_to": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "boolean"
+                }
+              ]
+            },
+            "title": "Compare To",
+            "type": "object"
+          },
+          "match": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Match",
+            "type": "object"
+          }
+        },
+        "required": [
+          "match",
+          "compare_to"
+        ],
+        "title": "ComparisonRule",
+        "type": "object"
+      },
       "DataSourceCreate": {
         "additionalProperties": false,
         "description": "Request body for creating a datasource.",
@@ -1428,10 +1521,21 @@
             "type": "string"
           },
           "tags": {
-            "additionalProperties": {
-              "type": "string"
-            },
             "default": {},
+            "patternProperties": {
+              "^[A-Za-z0-9]([-A-Za-z0-9_.]{0,61}[A-Za-z0-9])?$": {
+                "description": "alphanumeric with -_. separators, 0-63 chars, K8s label value syntax",
+                "maxLength": 63,
+                "pattern": "^(([A-Za-z0-9][-A-Za-z0-9_.]{0,61})?[A-Za-z0-9])?$",
+                "type": "string"
+              }
+            },
+            "propertyNames": {
+              "description": "alphanumeric with -_. separators, 1-63 chars, K8s label key syntax",
+              "maxLength": 63,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9]([-A-Za-z0-9_.]{0,61}[A-Za-z0-9])?$"
+            },
             "title": "Tags",
             "type": "object"
           },
@@ -1552,8 +1656,19 @@
           "tags": {
             "anyOf": [
               {
-                "additionalProperties": {
-                  "type": "string"
+                "patternProperties": {
+                  "^[A-Za-z0-9]([-A-Za-z0-9_.]{0,61}[A-Za-z0-9])?$": {
+                    "description": "alphanumeric with -_. separators, 0-63 chars, K8s label value syntax",
+                    "maxLength": 63,
+                    "pattern": "^(([A-Za-z0-9][-A-Za-z0-9_.]{0,61})?[A-Za-z0-9])?$",
+                    "type": "string"
+                  }
+                },
+                "propertyNames": {
+                  "description": "alphanumeric with -_. separators, 1-63 chars, K8s label key syntax",
+                  "maxLength": 63,
+                  "minLength": 1,
+                  "pattern": "^[A-Za-z0-9]([-A-Za-z0-9_.]{0,61}[A-Za-z0-9])?$"
                 },
                 "type": "object"
               },
@@ -1816,10 +1931,19 @@
             "title": "Periods"
           },
           "variables": {
-            "additionalProperties": {
-              "type": "string"
-            },
             "default": {},
+            "patternProperties": {
+              "^[A-Za-z_][A-Za-z0-9_]*$": {
+                "pattern": "^[^\\x00]*$",
+                "type": "string"
+              }
+            },
+            "propertyNames": {
+              "description": "programming-identifier style key (Prometheus label name style)",
+              "maxLength": 128,
+              "minLength": 1,
+              "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+            },
             "title": "Variables",
             "type": "object"
           }
@@ -1883,10 +2007,19 @@
             "type": "string"
           },
           "variables": {
-            "additionalProperties": {
-              "type": "string"
-            },
             "default": {},
+            "patternProperties": {
+              "^[A-Za-z_][A-Za-z0-9_]*$": {
+                "pattern": "^[^\\x00]*$",
+                "type": "string"
+              }
+            },
+            "propertyNames": {
+              "description": "programming-identifier style key (Prometheus label name style)",
+              "maxLength": 128,
+              "minLength": 1,
+              "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+            },
             "title": "Variables",
             "type": "object"
           }
@@ -4155,10 +4288,19 @@
             "title": "Display Name"
           },
           "indicators": {
-            "additionalProperties": {
-              "type": "string"
-            },
             "default": {},
+            "patternProperties": {
+              "^[A-Za-z_][A-Za-z0-9_]*$": {
+                "pattern": "^[^\\x00]*$",
+                "type": "string"
+              }
+            },
+            "propertyNames": {
+              "description": "programming-identifier style key (Prometheus label name style)",
+              "maxLength": 128,
+              "minLength": 1,
+              "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+            },
             "title": "Indicators",
             "type": "object"
           },
@@ -4224,8 +4366,21 @@
             "title": "Query Template"
           },
           "tags": {
-            "additionalProperties": true,
             "default": {},
+            "patternProperties": {
+              "^[A-Za-z0-9]([-A-Za-z0-9_.]{0,61}[A-Za-z0-9])?$": {
+                "description": "alphanumeric with -_. separators, 0-63 chars, K8s label value syntax",
+                "maxLength": 63,
+                "pattern": "^(([A-Za-z0-9][-A-Za-z0-9_.]{0,61})?[A-Za-z0-9])?$",
+                "type": "string"
+              }
+            },
+            "propertyNames": {
+              "description": "alphanumeric with -_. separators, 1-63 chars, K8s label key syntax",
+              "maxLength": 63,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9]([-A-Za-z0-9_.]{0,61}[A-Za-z0-9])?$"
+            },
             "title": "Tags",
             "type": "object"
           }
@@ -4491,8 +4646,7 @@
             "anyOf": [
               {
                 "items": {
-                  "additionalProperties": true,
-                  "type": "object"
+                  "$ref": "#/components/schemas/ComparisonRule"
                 },
                 "type": "array"
               },
@@ -4565,8 +4719,16 @@
           "method_criteria": {
             "anyOf": [
               {
-                "additionalProperties": {
-                  "$ref": "#/components/schemas/MethodCriteriaOverride"
+                "patternProperties": {
+                  "^[A-Za-z_][A-Za-z0-9_]*$": {
+                    "$ref": "#/components/schemas/MethodCriteriaOverride"
+                  }
+                },
+                "propertyNames": {
+                  "description": "programming-identifier style key (Prometheus label name style)",
+                  "maxLength": 128,
+                  "minLength": 1,
+                  "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
                 },
                 "type": "object"
               },
@@ -4624,8 +4786,19 @@
             "title": "Sli Version"
           },
           "tags": {
-            "additionalProperties": {
-              "type": "string"
+            "patternProperties": {
+              "^[A-Za-z0-9]([-A-Za-z0-9_.]{0,61}[A-Za-z0-9])?$": {
+                "description": "alphanumeric with -_. separators, 0-63 chars, K8s label value syntax",
+                "maxLength": 63,
+                "pattern": "^(([A-Za-z0-9][-A-Za-z0-9_.]{0,61})?[A-Za-z0-9])?$",
+                "type": "string"
+              }
+            },
+            "propertyNames": {
+              "description": "alphanumeric with -_. separators, 1-63 chars, K8s label key syntax",
+              "maxLength": 63,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9]([-A-Za-z0-9_.]{0,61}[A-Za-z0-9])?$"
             },
             "title": "Tags",
             "type": "object"
@@ -4641,8 +4814,17 @@
             "type": "number"
           },
           "variables": {
-            "additionalProperties": {
-              "type": "string"
+            "patternProperties": {
+              "^[A-Za-z_][A-Za-z0-9_]*$": {
+                "pattern": "^[^\\x00]*$",
+                "type": "string"
+              }
+            },
+            "propertyNames": {
+              "description": "programming-identifier style key (Prometheus label name style)",
+              "maxLength": 128,
+              "minLength": 1,
+              "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
             },
             "title": "Variables",
             "type": "object"
@@ -4939,11 +5121,20 @@
             "title": "Display Name"
           },
           "gen_variables": {
-            "additionalProperties": {
-              "items": {
-                "type": "string"
-              },
-              "type": "array"
+            "patternProperties": {
+              "^[A-Za-z_][A-Za-z0-9_]*$": {
+                "items": {
+                  "pattern": "^[^\\x00]*$",
+                  "type": "string"
+                },
+                "type": "array"
+              }
+            },
+            "propertyNames": {
+              "description": "programming-identifier style key (Prometheus label name style)",
+              "maxLength": 128,
+              "minLength": 1,
+              "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
             },
             "title": "Gen Variables",
             "type": "object"
@@ -4954,8 +5145,21 @@
             "type": "string"
           },
           "tags": {
-            "additionalProperties": true,
             "default": {},
+            "patternProperties": {
+              "^[A-Za-z0-9]([-A-Za-z0-9_.]{0,61}[A-Za-z0-9])?$": {
+                "description": "alphanumeric with -_. separators, 0-63 chars, K8s label value syntax",
+                "maxLength": 63,
+                "pattern": "^(([A-Za-z0-9][-A-Za-z0-9_.]{0,61})?[A-Za-z0-9])?$",
+                "type": "string"
+              }
+            },
+            "propertyNames": {
+              "description": "alphanumeric with -_. separators, 1-63 chars, K8s label key syntax",
+              "maxLength": 63,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9]([-A-Za-z0-9_.]{0,61}[A-Za-z0-9])?$"
+            },
             "title": "Tags",
             "type": "object"
           },
@@ -5101,11 +5305,20 @@
           "gen_variables": {
             "anyOf": [
               {
-                "additionalProperties": {
-                  "items": {
-                    "type": "string"
-                  },
-                  "type": "array"
+                "patternProperties": {
+                  "^[A-Za-z_][A-Za-z0-9_]*$": {
+                    "items": {
+                      "pattern": "^[^\\x00]*$",
+                      "type": "string"
+                    },
+                    "type": "array"
+                  }
+                },
+                "propertyNames": {
+                  "description": "programming-identifier style key (Prometheus label name style)",
+                  "maxLength": 128,
+                  "minLength": 1,
+                  "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
                 },
                 "type": "object"
               },
@@ -5118,7 +5331,20 @@
           "tags": {
             "anyOf": [
               {
-                "additionalProperties": true,
+                "patternProperties": {
+                  "^[A-Za-z0-9]([-A-Za-z0-9_.]{0,61}[A-Za-z0-9])?$": {
+                    "description": "alphanumeric with -_. separators, 0-63 chars, K8s label value syntax",
+                    "maxLength": 63,
+                    "pattern": "^(([A-Za-z0-9][-A-Za-z0-9_.]{0,61})?[A-Za-z0-9])?$",
+                    "type": "string"
+                  }
+                },
+                "propertyNames": {
+                  "description": "alphanumeric with -_. separators, 1-63 chars, K8s label key syntax",
+                  "maxLength": 63,
+                  "minLength": 1,
+                  "pattern": "^[A-Za-z0-9]([-A-Za-z0-9_.]{0,61}[A-Za-z0-9])?$"
+                },
                 "type": "object"
               },
               {
@@ -5322,8 +5548,17 @@
             "type": "number"
           },
           "variables": {
-            "additionalProperties": {
-              "type": "string"
+            "patternProperties": {
+              "^[A-Za-z_][A-Za-z0-9_]*$": {
+                "pattern": "^[^\\x00]*$",
+                "type": "string"
+              }
+            },
+            "propertyNames": {
+              "description": "programming-identifier style key (Prometheus label name style)",
+              "maxLength": 128,
+              "minLength": 1,
+              "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
             },
             "title": "Variables",
             "type": "object"
@@ -8800,6 +9035,7 @@
             "schema": {
               "anyOf": [
                 {
+                  "pattern": "^[^\\x00]*$",
                   "type": "string"
                 },
                 {
@@ -8816,6 +9052,7 @@
             "schema": {
               "anyOf": [
                 {
+                  "pattern": "^[^\\x00]*$",
                   "type": "string"
                 },
                 {
@@ -8832,6 +9069,7 @@
             "schema": {
               "anyOf": [
                 {
+                  "pattern": "^[^\\x00]*$",
                   "type": "string"
                 },
                 {
@@ -10305,6 +10543,7 @@
             "schema": {
               "anyOf": [
                 {
+                  "pattern": "^[^\\x00]*$",
                   "type": "string"
                 },
                 {
@@ -10321,6 +10560,7 @@
             "schema": {
               "anyOf": [
                 {
+                  "pattern": "^[^\\x00]*$",
                   "type": "string"
                 },
                 {
@@ -10338,6 +10578,7 @@
               "anyOf": [
                 {
                   "items": {
+                    "pattern": "^[^\\x00]*$",
                     "type": "string"
                   },
                   "type": "array"
@@ -10356,6 +10597,7 @@
             "schema": {
               "anyOf": [
                 {
+                  "pattern": "^[^\\x00]*$",
                   "type": "string"
                 },
                 {
@@ -10372,6 +10614,7 @@
             "schema": {
               "anyOf": [
                 {
+                  "pattern": "^[^\\x00]*$",
                   "type": "string"
                 },
                 {
@@ -10388,6 +10631,7 @@
             "schema": {
               "anyOf": [
                 {
+                  "pattern": "^[^\\x00]*$",
                   "type": "string"
                 },
                 {
@@ -10703,6 +10947,7 @@
             "name": "asset_name",
             "required": true,
             "schema": {
+              "pattern": "^[^\\x00]*$",
               "title": "Asset Name",
               "type": "string"
             }
@@ -10715,6 +10960,7 @@
               "anyOf": [
                 {
                   "items": {
+                    "pattern": "^[^\\x00]*$",
                     "type": "string"
                   },
                   "type": "array"
@@ -10822,6 +11068,7 @@
             "name": "asset_name",
             "required": true,
             "schema": {
+              "pattern": "^[^\\x00]*$",
               "title": "Asset Name",
               "type": "string"
             }
@@ -10834,6 +11081,7 @@
               "anyOf": [
                 {
                   "items": {
+                    "pattern": "^[^\\x00]*$",
                     "type": "string"
                   },
                   "type": "array"
@@ -11631,6 +11879,7 @@
             "schema": {
               "anyOf": [
                 {
+                  "pattern": "^[^\\x00]*$",
                   "type": "string"
                 },
                 {
@@ -11647,6 +11896,7 @@
             "schema": {
               "anyOf": [
                 {
+                  "pattern": "^[^\\x00]*$",
                   "type": "string"
                 },
                 {
@@ -11663,6 +11913,7 @@
             "schema": {
               "anyOf": [
                 {
+                  "pattern": "^[^\\x00]*$",
                   "type": "string"
                 },
                 {
@@ -12100,6 +12351,7 @@
             "schema": {
               "anyOf": [
                 {
+                  "pattern": "^[^\\x00]*$",
                   "type": "string"
                 },
                 {
@@ -12116,6 +12368,7 @@
             "schema": {
               "anyOf": [
                 {
+                  "pattern": "^[^\\x00]*$",
                   "type": "string"
                 },
                 {
@@ -12132,6 +12385,7 @@
             "schema": {
               "anyOf": [
                 {
+                  "pattern": "^[^\\x00]*$",
                   "type": "string"
                 },
                 {
