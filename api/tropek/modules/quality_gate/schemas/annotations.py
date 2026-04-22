@@ -8,7 +8,7 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict
 
-from tropek.modules.common.schemas import SafeJsonAny, SafeStr, StrictInput
+from tropek.modules.common.schemas import SafeStr, StrictInput, Tags
 from tropek.modules.quality_gate.schemas.annotation_categories import AnnotationCategoryRead
 
 
@@ -44,7 +44,7 @@ class AnnotationCreate(StrictInput):
     content: SafeStr
     author: SafeStr | None = None
     category_id: uuid.UUID
-    tags: SafeJsonAny = {}
+    tags: Tags = {}
 
 
 class AnnotationUpdate(StrictInput):
@@ -53,7 +53,7 @@ class AnnotationUpdate(StrictInput):
     content: SafeStr | None = None
     author: SafeStr | None = None
     category_id: uuid.UUID | None = None
-    tags: SafeJsonAny | None = None
+    tags: Tags | None = None
 
 
 class AnnotationHide(StrictInput):

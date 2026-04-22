@@ -249,8 +249,21 @@
             "type": "string"
           },
           "tags": {
-            "additionalProperties": true,
             "default": {},
+            "patternProperties": {
+              "^[A-Za-z0-9]([-A-Za-z0-9_.]{0,61}[A-Za-z0-9])?$": {
+                "description": "alphanumeric with -_. separators, 0-63 chars, K8s label value syntax",
+                "maxLength": 63,
+                "pattern": "^(([A-Za-z0-9][-A-Za-z0-9_.]{0,61})?[A-Za-z0-9])?$",
+                "type": "string"
+              }
+            },
+            "propertyNames": {
+              "description": "alphanumeric with -_. separators, 1-63 chars, K8s label key syntax",
+              "maxLength": 63,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9]([-A-Za-z0-9_.]{0,61}[A-Za-z0-9])?$"
+            },
             "title": "Tags",
             "type": "object"
           }
@@ -488,7 +501,20 @@
           "tags": {
             "anyOf": [
               {
-                "additionalProperties": true,
+                "patternProperties": {
+                  "^[A-Za-z0-9]([-A-Za-z0-9_.]{0,61}[A-Za-z0-9])?$": {
+                    "description": "alphanumeric with -_. separators, 0-63 chars, K8s label value syntax",
+                    "maxLength": 63,
+                    "pattern": "^(([A-Za-z0-9][-A-Za-z0-9_.]{0,61})?[A-Za-z0-9])?$",
+                    "type": "string"
+                  }
+                },
+                "propertyNames": {
+                  "description": "alphanumeric with -_. separators, 1-63 chars, K8s label key syntax",
+                  "maxLength": 63,
+                  "minLength": 1,
+                  "pattern": "^[A-Za-z0-9]([-A-Za-z0-9_.]{0,61}[A-Za-z0-9])?$"
+                },
                 "type": "object"
               },
               {
