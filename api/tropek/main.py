@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from typing import Any
@@ -105,6 +106,43 @@ async def ui_config() -> dict[str, int | bool | str]:
 # declare a body, so endpoints that reach validation via query params or
 # custom validators look undocumented to contract tests. Inject the missing
 # status codes into every operation so the OpenAPI doc matches reality.
+_openapi_logger = logging.getLogger(__name__)
+
+
+def _inject_property_names_pattern(schema: Any) -> None:
+    """Inject propertyNames.pattern from patternProperties.
+
+    Pydantic v2 emits ``patternProperties`` for ``dict[TagKey, ...]`` but not
+    ``propertyNames.pattern`` — hypothesis-jsonschema (schemathesis) honors
+    the latter for key generation. Without this transform, schemathesis
+    generates dict keys that violate our Pydantic key patterns. Shim for an
+    upstream gap; delete when Pydantic emits ``propertyNames.pattern``
+    natively.
+    """
+    if not isinstance(schema, dict):
+        return
+    pattern_properties = schema.get('patternProperties')
+    if isinstance(pattern_properties, dict) and pattern_properties:
+        if len(pattern_properties) == 1:
+            key_regex = next(iter(pattern_properties.keys()))
+            property_names = schema.setdefault('propertyNames', {})
+            if isinstance(property_names, dict) and 'pattern' not in property_names:
+                property_names['pattern'] = key_regex
+        else:
+            _openapi_logger.warning(
+                'skipping propertyNames.pattern injection: multiple patternProperties '
+                'keys are ambiguous (keys=%s)',
+                list(pattern_properties.keys()),
+            )
+    for value in schema.values():
+        if isinstance(value, dict):
+            _inject_property_names_pattern(value)
+        elif isinstance(value, list):
+            for item in value:
+                if isinstance(item, dict):
+                    _inject_property_names_pattern(item)
+
+
 _HTTP_VALIDATION_ERROR = {'$ref': '#/components/schemas/HTTPValidationError'}
 _ERROR_MESSAGE = {
     'type': 'object',
@@ -153,6 +191,7 @@ def _custom_openapi() -> dict[str, Any]:
                 responses.setdefault('409', error_message_response)
             # 400: FastAPI returns 400 for malformed JSON bodies (not 422)
             responses.setdefault('400', bad_request_response)
+    _inject_property_names_pattern(schema)
     app.openapi_schema = schema
     return schema
 
