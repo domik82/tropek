@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
+from typing import Annotated
 
 from arq.connections import ArqRedis
 from fastapi import (  # HTTPException: BaselinePinConflictError dict detail
@@ -13,10 +14,11 @@ from fastapi import (  # HTTPException: BaselinePinConflictError dict detail
     Query,
     Response,
 )
+from pydantic import AfterValidator
 
 from tropek.modules.assets.service import AssetService
 from tropek.modules.common.exceptions import ConflictError, DomainValidationError, NotFoundError
-from tropek.modules.common.schemas import PagedResponse, SafeQueryStr
+from tropek.modules.common.schemas import PagedResponse, SafeQueryStr, reject_null_bytes
 from tropek.modules.quality_gate.repositories.annotation_category import SystemCategoryError
 from tropek.modules.quality_gate.schemas import (
     AnnotationCategoryCreate,
@@ -119,8 +121,8 @@ async def list_evaluations(  # noqa: PLR0913
         alias='to',
         json_schema_extra={'anyOf': [{'format': 'date-time', 'type': 'string'}]},
     ),
-    limit: int = Query(default=200, le=500),
-    offset: int = 0,
+    limit: int = Query(default=200, ge=0, le=500),
+    offset: int = Query(default=0, ge=0),
     repos: QualityGateRepos = Depends(get_qg_repos),
 ) -> PagedResponse[EvaluationSummary]:
     """List evaluations with optional filters."""
@@ -396,8 +398,12 @@ async def list_evaluation_names(
     response_model=dict[str, list[AnnotationRead]],
 )
 async def get_trend_annotations(
-    asset_name: str = Query(alias='asset'),
-    slo_name: str = Query(alias='slo'),
+    asset_name: Annotated[
+        str, Query(alias='asset', pattern=r'^[^\x00]*$'), AfterValidator(reject_null_bytes),
+    ],
+    slo_name: Annotated[
+        str, Query(alias='slo', pattern=r'^[^\x00]*$'), AfterValidator(reject_null_bytes),
+    ],
     repos: QualityGateRepos = Depends(get_qg_repos),
 ) -> dict[str, list[AnnotationRead]]:
     """Return annotations for every point in an (asset, slo) trend, keyed by slo_evaluation_id.

@@ -22,12 +22,22 @@ from tropek.modules.quality_gate.schemas import IndicatorResult
 
 
 class ComparisonConfig(BaseModel):
-    """Per-SLO comparison configuration. All fields optional."""
+    """Per-SLO comparison configuration (input). All fields optional."""
+
+    compare_with: SafeStr | None = None
+    include_result_with_score: SafeStr | None = None
+    number_of_comparison_results: IntNotBool | None = None
+    aggregate_function: AggregateFunction | None = None
+    scope_tags: list[SafeStr] | None = None
+
+
+class ComparisonConfigRead(BaseModel):
+    """Per-SLO comparison configuration (response). Accepts any stored value."""
 
     compare_with: str | None = None
     include_result_with_score: str | None = None
-    number_of_comparison_results: IntNotBool | None = None
-    aggregate_function: AggregateFunction | None = None
+    number_of_comparison_results: int | None = None
+    aggregate_function: str | None = None
     scope_tags: list[str] | None = None
 
 
@@ -45,12 +55,23 @@ class MethodCriteriaOverride(BaseModel):
     tracked as a follow-up).
     """
 
+    method: SafeStr | None = None
+    aggregation: SafeStr | None = None
+    pass_threshold: list[SafeStr] | None = None
+    warning_threshold: list[SafeStr] | None = None
+    weight: IntNotBool | None = None
+    key_sli: StrictBool | None = None
+
+
+class MethodCriteriaOverrideRead(BaseModel):
+    """Per-method override in responses. Accepts any stored value without strict validation."""
+
     method: str | None = None
     aggregation: str | None = None
     pass_threshold: list[str] | None = None
     warning_threshold: list[str] | None = None
     weight: int | None = None
-    key_sli: StrictBool | None = None
+    key_sli: bool | None = None
 
 
 class SLOObjectiveIn(StrictInput):
@@ -104,13 +125,13 @@ class SLODefinitionRead(BaseModel):
     objectives: list[SLOObjectiveRead]
     total_score_pass_threshold: float
     total_score_warning_threshold: float
-    comparison: ComparisonConfig
+    comparison: ComparisonConfigRead
     notes: str | None
     author: str | None
     tags: dict[str, str]
     variables: dict[str, str]
     kind: str
-    method_criteria: dict[str, MethodCriteriaOverride] | None
+    method_criteria: dict[str, MethodCriteriaOverrideRead] | None
     sli_definition_id: uuid.UUID | None
     sli_name: str | None = None
     sli_version: int | None = None

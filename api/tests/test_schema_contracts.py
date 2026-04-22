@@ -39,7 +39,9 @@ from tropek.modules.quality_gate.schemas.heatmap import (
 from tropek.modules.sli_registry.schemas import SLIDefinitionRead
 from tropek.modules.slo_registry.schemas import (
     ComparisonConfig,
+    ComparisonConfigRead,
     MethodCriteriaOverride,
+    MethodCriteriaOverrideRead,
     SLODefinitionCreate,
     SLODefinitionRead,
 )
@@ -204,7 +206,7 @@ class TestSloRegistryNestedTypes:
 
     def test_read_comparison_is_typed(self) -> None:
         field = SLODefinitionRead.model_fields['comparison']
-        assert field.annotation is ComparisonConfig
+        assert field.annotation is ComparisonConfigRead
 
     def test_create_comparison_is_typed(self) -> None:
         field = SLODefinitionCreate.model_fields['comparison']
@@ -212,7 +214,7 @@ class TestSloRegistryNestedTypes:
 
     def test_read_method_criteria_is_typed(self) -> None:
         field = SLODefinitionRead.model_fields['method_criteria']
-        assert field.annotation == dict[str, MethodCriteriaOverride] | None
+        assert field.annotation == dict[str, MethodCriteriaOverrideRead] | None
 
     def test_create_method_criteria_is_typed(self) -> None:
         field = SLODefinitionCreate.model_fields['method_criteria']
