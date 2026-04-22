@@ -1760,7 +1760,7 @@ export interface components {
              * @default {}
              */
             tags: {
-                [key: string]: unknown;
+                [key: string]: string;
             };
         };
         /**
@@ -1835,7 +1835,7 @@ export interface components {
             content?: string | null;
             /** Tags */
             tags?: {
-                [key: string]: unknown;
+                [key: string]: string;
             } | null;
         };
         /**
