@@ -89,6 +89,51 @@ SafeJsonAny = Annotated[dict[str, Any], AfterValidator(reject_null_bytes_recursi
 SafeQueryStr = Annotated[str, Query(pattern=r'^[^\x00]*$'), AfterValidator(reject_null_bytes)]
 
 
+# TagKey — K8s label key syntax: alphanumeric with -_. separators, must start
+# and end with alphanumeric. 1-63 chars. Used for Tags dict keys so schemathesis
+# generates realistic values that the DB/UI will accept.
+TagKey = Annotated[
+    str,
+    Field(
+        min_length=1,
+        max_length=63,
+        pattern=r'^[A-Za-z0-9]([-A-Za-z0-9_.]{0,61}[A-Za-z0-9])?$',
+        description='alphanumeric with -_. separators, 1-63 chars, K8s label key syntax',
+    ),
+]
+
+# TagValue — K8s label value syntax: alphanumeric with -_. separators, must
+# start and end with alphanumeric if non-empty. 0-63 chars (empty allowed).
+TagValue = Annotated[
+    str,
+    Field(
+        max_length=63,
+        pattern=r'^(([A-Za-z0-9][-A-Za-z0-9_.]{0,61})?[A-Za-z0-9])?$',
+        description='alphanumeric with -_. separators, 0-63 chars, K8s label value syntax',
+    ),
+]
+
+# Tags — dict of constrained K8s-style key/value string pairs. Replaces
+# dict[str, Any]/dict[str, str] tag fields so fuzzers generate realistic
+# payloads and unconstrained edge cases (null bytes, control chars) are
+# rejected by the schema rather than a downstream validator.
+Tags = dict[TagKey, TagValue]
+
+# IdentifierKey — programming-identifier / Prometheus label name style: starts
+# with letter or underscore, followed by letters, digits, or underscores.
+# 1-128 chars. Used for dict keys that represent SLI indicator names or
+# template variable names.
+IdentifierKey = Annotated[
+    str,
+    Field(
+        min_length=1,
+        max_length=128,
+        pattern=r'^[A-Za-z_][A-Za-z0-9_]*$',
+        description='programming-identifier style key (Prometheus label name style)',
+    ),
+]
+
+
 def _strict_bool_str(value: object) -> bool:
     """Reject non-boolean strings like '0', '1', 'yes', 'no', 'on', 'off'.
 
