@@ -115,9 +115,9 @@ async def rename_asset_type(
 
 @router.get('/assets', response_model=PagedResponse[AssetRead])
 async def list_assets(
-    type_name: str | None = None,
-    tag_key: str | None = None,
-    tag_val: str | None = None,
+    type_name: SafeQueryStr | None = None,
+    tag_key: SafeQueryStr | None = None,
+    tag_val: SafeQueryStr | None = None,
     session: AsyncSession = Depends(get_session),
     cache: RedisCache | None = Depends(get_cache),
 ) -> PagedResponse[AssetRead]:

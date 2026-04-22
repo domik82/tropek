@@ -68,6 +68,9 @@ EXCLUDED_OPERATIONS: set[tuple[str, str]] = {
 #       definition's indicators dict. Cross-field constraint between parent and
 #       child objects.
 #
+#   POST /slo-definitions/test — dry-run evaluation requires existing datasource,
+#       SLI definition, and asset. Cross-resource data dependency.
+#
 #   GET /evaluations — date and from/to query params are mutually exclusive.
 #       OpenAPI 3.1 has no `oneOf` for query parameter groups.
 #
@@ -78,15 +81,20 @@ EXCLUDED_OPERATIONS: set[tuple[str, str]] = {
 #   POST /slo-display-groups — parent_id is a self-referential FK.
 #       Schemathesis generates random UUIDs that don't reference existing
 #       groups, causing FK violations (409). Data-dependency constraint.
+#
+#   PATCH /assets/{name}/slo-assignments/{assignment_id} — new_slo_definition_id
+#       must reference an existing SLO definition. Cross-resource FK dependency.
 EXCLUDED_CHECKS_PER_OP: dict[tuple[str, str], list[CheckFunction]] = {
     ('POST', '/sli-definitions'): [positive_data_acceptance],
     ('GET', '/assets/{asset_id}/meta/timeline'): [positive_data_acceptance],
     ('GET', '/assets/{asset_id}/meta/timeline/summary'): [positive_data_acceptance],
     ('POST', '/assets/{asset_id}/meta/snapshots'): [positive_data_acceptance],
     ('POST', '/slo-definitions'): [positive_data_acceptance],
+    ('POST', '/slo-definitions/test'): [positive_data_acceptance],
     ('GET', '/evaluations'): [positive_data_acceptance],
     ('PATCH', '/assets/{name}'): [positive_data_acceptance],
     ('POST', '/slo-display-groups'): [positive_data_acceptance],
+    ('PATCH', '/assets/{name}/slo-assignments/{assignment_id}'): [positive_data_acceptance],
 }
 
 

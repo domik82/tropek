@@ -171,8 +171,9 @@ def _reject_bool(value: object) -> object:
 
 # IntNotBool — accepts int or JSON whole-number-float, rejects bool.
 # Use on request-body int fields where schemathesis would otherwise send
-# 2147483646.0 and hit StrictInt rejection.
-IntNotBool = Annotated[int, BeforeValidator(_reject_bool)]
+# 2147483646.0 and hit StrictInt rejection.  Range clamped to int32 to
+# match PostgreSQL INTEGER columns.
+IntNotBool = Annotated[int, Field(ge=-(2**31), le=2**31 - 1), BeforeValidator(_reject_bool)]
 
 # FloatNotBool — same rationale for float fields.
 FloatNotBool = Annotated[float, BeforeValidator(_reject_bool)]
