@@ -34,10 +34,11 @@ class ChangePointResult(BaseModel):
 
     position: int
     timestamp: datetime
+    detector: str
     direction: str
     change_relative_pct: float
     change_absolute: float
-    t_statistic: float
+    pvalue: float
     pre_segment_mean: float
     post_segment_mean: float
 
@@ -104,10 +105,11 @@ def detect_change_points(
             ChangePointResult(
                 position=position,
                 timestamp=timestamps[position],
+                detector='e_divisive',
                 direction=direction,
                 change_relative_pct=round(relative_change, 2),
                 change_absolute=round(absolute_change, 4),
-                t_statistic=round(change_point.stats.pvalue, 6),
+                pvalue=round(change_point.stats.pvalue, 6),
                 pre_segment_mean=round(pre_mean, 4),
                 post_segment_mean=round(post_mean, 4),
             )

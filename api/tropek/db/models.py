@@ -305,6 +305,7 @@ class ChangePoint(Base):
     slo_name:             Mapped[str]              = mapped_column(Text, nullable=False)
     metric_name:          Mapped[str]              = mapped_column(Text, nullable=False)
     period_start:         Mapped[datetime]         = mapped_column(DateTime(timezone=True), nullable=False)
+    detector:             Mapped[str]              = mapped_column(Text, nullable=False, server_default=text("'e_divisive'"))
     direction:            Mapped[str]              = mapped_column(Text, nullable=False)
     change_relative_pct:  Mapped[float]            = mapped_column(Float, nullable=False)
     change_absolute:      Mapped[float]            = mapped_column(Float, nullable=False)
