@@ -125,7 +125,7 @@ export function AssetHeatmap({
 
   // Estimate height for lazy-mounted expanded SLOs
   const estimateHeight = (rowCount: number): number =>
-    Math.max(50, rowCount * 28 + 16)
+    Math.max(34, rowCount * 28 + 4)
 
   return (
     <div className="w-full">
