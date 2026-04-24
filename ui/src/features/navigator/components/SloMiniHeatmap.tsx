@@ -72,6 +72,7 @@ export function SloMiniHeatmap({
       headerRowIndices={view.headerRowIndices}
       showXAxis={showXAxis}
       showLegend={false}
+      compact
       notedColumns={notedColumns}
       onNoteIndicatorClick={onNoteIndicatorClick}
     />
