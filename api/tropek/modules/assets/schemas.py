@@ -6,9 +6,9 @@ import uuid
 from datetime import datetime
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, StrictBool, StrictFloat, StrictInt
 
-from tropek.modules.common.schemas import StrictInput
+from tropek.modules.common.schemas import IdentifierKey, SafeJsonAny, SafeStr, StrictInput, Tags
 
 # ---- Asset Types ----
 
@@ -16,14 +16,14 @@ from tropek.modules.common.schemas import StrictInput
 class AssetTypeCreate(StrictInput):
     """Request body for creating an asset type."""
 
-    name: str
-    is_default: bool = False
+    name: SafeStr
+    is_default: StrictBool = False
 
 
 class AssetTypeUpdate(StrictInput):
     """Request body for renaming an asset type."""
 
-    name: str | None = None
+    name: SafeStr | None = None
 
 
 class AssetTypeRead(BaseModel):
@@ -43,23 +43,23 @@ class AssetTypeRead(BaseModel):
 class AssetCreate(StrictInput):
     """Request body for creating an asset."""
 
-    name: str
-    display_name: str | None = None
-    type_name: str
-    tags: dict[str, str] = {}
-    variables: dict[str, str] = {}
-    color: str | None = None
+    name: SafeStr
+    display_name: SafeStr | None = None
+    type_name: SafeStr
+    tags: Tags = {}
+    variables: dict[IdentifierKey, SafeStr] = {}
+    color: SafeStr | None = None
 
 
 class AssetUpdate(StrictInput):
     """Request body for updating an asset."""
 
-    display_name: str | None = None
-    type_name: str | None = None
-    tags: dict[str, str] | None = None
-    variables: dict[str, str] | None = None
-    heatmap_config: dict[str, Any] | None = None
-    color: str | None = None
+    display_name: SafeStr | None = None
+    type_name: SafeStr | None = None
+    tags: Tags | None = None
+    variables: dict[IdentifierKey, SafeStr] | None = None
+    heatmap_config: SafeJsonAny | None = None
+    color: SafeStr | None = None
 
 
 class AssetRead(BaseModel):
@@ -86,23 +86,23 @@ class AssetGroupMemberCreate(BaseModel):
     """Request body for adding an asset to a group."""
 
     asset_id: uuid.UUID
-    weight: float = 1.0
+    weight: StrictFloat | StrictInt = 1.0
 
 
 class AssetGroupSubgroupCreate(BaseModel):
     """Request body for adding a subgroup to a group."""
 
     child_group_id: uuid.UUID
-    weight: float = 1.0
+    weight: StrictFloat | StrictInt = 1.0
 
 
 class AssetGroupCreate(StrictInput):
     """Request body for creating an asset group."""
 
-    name: str
-    display_name: str | None = None
-    description: str | None = None
-    color: str | None = None
+    name: SafeStr
+    display_name: SafeStr | None = None
+    description: SafeStr | None = None
+    color: SafeStr | None = None
     members: list[AssetGroupMemberCreate] = []
     subgroups: list[AssetGroupSubgroupCreate] = []
 
@@ -110,9 +110,9 @@ class AssetGroupCreate(StrictInput):
 class AssetGroupUpdate(StrictInput):
     """Request body for updating an asset group."""
 
-    display_name: str | None = None
-    description: str | None = None
-    color: str | None = None
+    display_name: SafeStr | None = None
+    description: SafeStr | None = None
+    color: SafeStr | None = None
 
 
 class AssetGroupMemberRead(BaseModel):
@@ -161,11 +161,11 @@ class AddMemberRequest(StrictInput):
     """Request body for POST /asset-groups/{name}/members."""
 
     asset_id: uuid.UUID
-    weight: float = 1.0
+    weight: StrictFloat | StrictInt = 1.0
 
 
 class AddSubgroupRequest(StrictInput):
     """Request body for POST /asset-groups/{name}/subgroups."""
 
     child_group_id: uuid.UUID
-    weight: float = 1.0
+    weight: StrictFloat | StrictInt = 1.0

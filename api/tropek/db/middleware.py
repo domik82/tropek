@@ -10,8 +10,11 @@ class SessionMiddleware:
     """Create a DB session per HTTP request, commit before the response is sent.
 
     Wraps the ASGI ``send`` callable so that ``session.commit()`` runs before
-    ``http.response.start`` reaches the client.  On error the session is rolled
-    back instead.  The session is always closed in a ``finally`` block.
+    ``http.response.start`` reaches the client — but only for 2xx responses.
+    On 4xx/5xx (including framework-converted exceptions like an IntegrityError
+    turned into a 409), the session is rolled back so a poisoned transaction
+    never leaks back into the outer context. On a raised exception the session
+    is also rolled back. The session is always closed in a ``finally`` block.
 
     Non-HTTP scopes (WebSocket, lifespan) pass through untouched.
     """
@@ -26,7 +29,7 @@ class SessionMiddleware:
         self.factory = session_factory
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
-        """Wrap the request: create session, commit before response, rollback on error."""
+        """Wrap the request: create session, commit/rollback before response."""
         if scope['type'] != 'http':
             await self.app(scope, receive, send)
             return
@@ -34,13 +37,16 @@ class SessionMiddleware:
         session: AsyncSession = self.factory()
         scope.setdefault('state', {})['session'] = session
 
-        async def _commit_then_send(message: Message) -> None:
+        async def _finalise_then_send(message: Message) -> None:
             if message['type'] == 'http.response.start':
-                await session.commit()
+                if 200 <= message['status'] < 300:
+                    await session.commit()
+                else:
+                    await session.rollback()
             await send(message)
 
         try:
-            await self.app(scope, receive, _commit_then_send)
+            await self.app(scope, receive, _finalise_then_send)
         except Exception:
             await session.rollback()
             raise

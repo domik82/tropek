@@ -1,0 +1,57 @@
+name: Schemathesis
+
+on:
+  pull_request:
+    paths:
+      - 'api/**'
+      - 'adapters/**'
+      - 'scripts/schemathesis-run.sh'
+      - 'api/tests/schemathesis/**'
+      - 'uv.lock'
+      - 'pyproject.toml'
+  push:
+    branches: [main]
+
+jobs:
+  schemathesis:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: timescale/timescaledb:latest-pg16
+        env:
+          POSTGRES_PASSWORD: test
+          POSTGRES_USER: postgres
+          POSTGRES_DB: tropek_test
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      QG_DB_PASSWORD: test
+      QG_DB_USER: postgres
+      QG_SECRET_KEY: test-secret-key
+      QG_REDIS_PASSWORD: ''
+      TEST_DATABASE_URL: postgresql+asyncpg://postgres:test@localhost:5433/tropek_test
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+
+      - name: Install Python 3.13
+        run: uv python install 3.13
+
+      - name: Install dependencies
+        run: uv sync --all-extras
+
+      - name: Install just
+        uses: extractions/setup-just@v2
+
+      - name: Apply test DB migrations
+        run: just migrate-test
+
+      - name: Run Schemathesis
+        run: just test-schema

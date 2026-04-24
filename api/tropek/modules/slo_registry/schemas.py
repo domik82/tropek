@@ -4,16 +4,35 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
-from typing import Any, Literal
+from typing import Annotated, Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from annotated_types import MinLen
+from pydantic import BaseModel, ConfigDict, Field, StrictBool, model_validator
 
-from tropek.modules.common.schemas import StrictInput
+from tropek.modules.common.schemas import (
+    FloatNotBool,
+    IdentifierKey,
+    IntNotBool,
+    SafeStr,
+    StrictInput,
+    Tags,
+)
+from tropek.modules.quality_gate.evaluation_engine.constants import AggregateFunction
 from tropek.modules.quality_gate.schemas import IndicatorResult
 
 
 class ComparisonConfig(BaseModel):
-    """Per-SLO comparison configuration. All fields optional."""
+    """Per-SLO comparison configuration (input). All fields optional."""
+
+    compare_with: SafeStr | None = None
+    include_result_with_score: SafeStr | None = None
+    number_of_comparison_results: IntNotBool | None = None
+    aggregate_function: AggregateFunction | None = None
+    scope_tags: list[SafeStr] | None = None
+
+
+class ComparisonConfigRead(BaseModel):
+    """Per-SLO comparison configuration (response). Accepts any stored value."""
 
     compare_with: str | None = None
     include_result_with_score: str | None = None
@@ -36,6 +55,17 @@ class MethodCriteriaOverride(BaseModel):
     tracked as a follow-up).
     """
 
+    method: SafeStr | None = None
+    aggregation: SafeStr | None = None
+    pass_threshold: list[SafeStr] | None = None
+    warning_threshold: list[SafeStr] | None = None
+    weight: IntNotBool | None = None
+    key_sli: StrictBool | None = None
+
+
+class MethodCriteriaOverrideRead(BaseModel):
+    """Per-method override in responses. Accepts any stored value without strict validation."""
+
     method: str | None = None
     aggregation: str | None = None
     pass_threshold: list[str] | None = None
@@ -47,12 +77,12 @@ class MethodCriteriaOverride(BaseModel):
 class SLOObjectiveIn(StrictInput):
     """SLO objective for create/validate requests."""
 
-    sli: str
-    display_name: str = ''
-    pass_threshold: list[str] = Field(default_factory=list)
-    warning_threshold: list[str] = Field(default_factory=list)
-    weight: int = 1
-    key_sli: bool = False
+    sli: SafeStr
+    display_name: SafeStr = ''
+    pass_threshold: list[SafeStr] = Field(default_factory=list)
+    warning_threshold: list[SafeStr] = Field(default_factory=list)
+    weight: IntNotBool = 1
+    key_sli: StrictBool = False
 
 
 class SLOObjectiveRead(SLOObjectiveIn):
@@ -66,21 +96,21 @@ class SLOObjectiveRead(SLOObjectiveIn):
 class SLODefinitionCreate(StrictInput):
     """Request body for creating an SLO definition."""
 
-    name: str
-    display_name: str | None = None
+    name: SafeStr
+    display_name: SafeStr | None = None
     objectives: list[SLOObjectiveIn]
-    total_score_pass_threshold: float = 90.0
-    total_score_warning_threshold: float = 75.0
+    total_score_pass_threshold: FloatNotBool = 90.0
+    total_score_warning_threshold: FloatNotBool = 75.0
     comparison: ComparisonConfig = Field(default_factory=ComparisonConfig)
-    notes: str | None = None
-    author: str | None = None
-    tags: dict[str, str] = Field(default_factory=dict)
-    variables: dict[str, str] = Field(default_factory=dict)
-    comparable_from_version: int | None = None
-    kind: str = 'standard'
-    sli_name: str | None = None
-    sli_version: int | None = None
-    method_criteria: dict[str, MethodCriteriaOverride] | None = None
+    notes: SafeStr | None = None
+    author: SafeStr | None = None
+    tags: Tags = Field(default_factory=dict)
+    variables: dict[IdentifierKey, SafeStr] = Field(default_factory=dict)
+    comparable_from_version: IntNotBool | None = None
+    kind: SafeStr = 'standard'
+    sli_name: SafeStr | None = None
+    sli_version: IntNotBool | None = None
+    method_criteria: dict[IdentifierKey, MethodCriteriaOverride] | None = None
 
 
 class SLODefinitionRead(BaseModel):
@@ -95,13 +125,13 @@ class SLODefinitionRead(BaseModel):
     objectives: list[SLOObjectiveRead]
     total_score_pass_threshold: float
     total_score_warning_threshold: float
-    comparison: ComparisonConfig
+    comparison: ComparisonConfigRead
     notes: str | None
     author: str | None
     tags: dict[str, str]
     variables: dict[str, str]
     kind: str
-    method_criteria: dict[str, MethodCriteriaOverride] | None
+    method_criteria: dict[str, MethodCriteriaOverrideRead] | None
     sli_definition_id: uuid.UUID | None
     sli_name: str | None = None
     sli_version: int | None = None
@@ -128,8 +158,8 @@ class SLOValidateRequest(StrictInput):
     """Request body for SLO validation (no save)."""
 
     objectives: list[SLOObjectiveIn]
-    total_score_pass_threshold: float = 90.0
-    total_score_warning_threshold: float = 75.0
+    total_score_pass_threshold: FloatNotBool = 90.0
+    total_score_warning_threshold: FloatNotBool = 75.0
     comparison: ComparisonConfig = Field(default_factory=ComparisonConfig)
 
 
@@ -148,31 +178,31 @@ class SLOValidationResult(BaseModel):
     objectives: list[SLOObjectiveIn] | None = None
 
 
-class BaselineConfig(BaseModel):
+class BaselineConfig(StrictInput):
     """Configuration for baseline comparison in SLO test."""
 
     mode: Literal['none', 'asset_history', 'manual'] = 'none'
     limit: int = 3
-    values: dict[str, float] | None = None
+    values: dict[IdentifierKey, float] | None = None
 
 
 class SLOTestRequest(StrictInput):
     """Request body for SLO test (dry-run evaluation)."""
 
     # SLO content — replaces slo_yaml
-    objectives: list[SLOObjectiveIn]
-    total_score_pass_threshold: float = 90.0
-    total_score_warning_threshold: float = 75.0
+    objectives: Annotated[list[SLOObjectiveIn], MinLen(1)]
+    total_score_pass_threshold: FloatNotBool = 90.0
+    total_score_warning_threshold: FloatNotBool = 75.0
     comparison: ComparisonConfig = Field(default_factory=ComparisonConfig)
     # Evaluation context — unchanged
-    sli_name: str
-    data_source_name: str
-    asset_name: str
+    sli_name: SafeStr
+    data_source_name: SafeStr
+    asset_name: SafeStr
     period_start: datetime
     period_end: datetime
-    evaluation_name: str = ''
+    evaluation_name: SafeStr = ''
     baseline: BaselineConfig | None = None
-    variables: dict[str, str] = Field(default_factory=dict)
+    variables: dict[IdentifierKey, SafeStr] = Field(default_factory=dict)
 
 
 class SLOTestResult(BaseModel):

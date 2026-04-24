@@ -467,14 +467,14 @@ class _Evaluations:
 
     def get(self, eval_id: str) -> EvaluationDetail:
         """Get a full evaluation by ID."""
-        resp = self._http.get(f'/evaluations/{eval_id}')
+        resp = self._http.get(f'/evaluation/{eval_id}')
         _raise_for_status(resp)
         return EvaluationDetail.model_validate(resp.json())
 
     def invalidate(self, eval_id: str, note: str) -> EvaluationSummary:
         """Invalidate an evaluation."""
         resp = self._http.patch(
-            f'/evaluations/{eval_id}/invalidate',
+            f'/evaluation/{eval_id}/invalidate',
             json={'invalidation_note': note},
         )
         _raise_for_status(resp)
@@ -482,7 +482,7 @@ class _Evaluations:
 
     def restore(self, eval_id: str) -> EvaluationSummary:
         """Restore an invalidated evaluation."""
-        resp = self._http.patch(f'/evaluations/{eval_id}/restore')
+        resp = self._http.patch(f'/evaluation/{eval_id}/restore')
         _raise_for_status(resp)
         return EvaluationSummary.model_validate(resp.json())
 
@@ -495,9 +495,9 @@ class _Evaluations:
         *,
         variables: dict[str, str] | None = None,
     ) -> dict[str, Any]:
-        """POST /evaluate — trigger all SLOs for an asset."""
+        """POST /evaluations — trigger all SLOs for an asset."""
         resp = self._http.post(
-            '/evaluate',
+            '/evaluations',
             json={
                 'asset_name': asset_name,
                 'eval_name': eval_name,
@@ -521,7 +521,7 @@ class _Evaluations:
         period_end: str | None = None,
         variables: dict[str, str] | None = None,
     ) -> dict[str, Any]:
-        """POST /evaluate/batch — by_date or by_asset batch trigger."""
+        """POST /evaluations/batch — by_date or by_asset batch trigger."""
         payload: dict[str, Any] = {'mode': mode, 'eval_name': eval_name, 'variables': variables or {}}
         if mode == 'by_date':
             payload['asset_name'] = asset_name
@@ -530,14 +530,14 @@ class _Evaluations:
             payload['asset_names'] = asset_names or []
             payload['period_start'] = period_start
             payload['period_end'] = period_end
-        resp = self._http.post('/evaluate/batch', json=payload)
+        resp = self._http.post('/evaluations/batch', json=payload)
         _raise_for_status(resp)
         return resp.json()  # type: ignore[no-any-return]
 
     def pin_baseline(self, eval_id: str, reason: str, author: str) -> EvaluationDetail:
         """Pin an evaluation as baseline."""
         resp = self._http.patch(
-            f'/evaluations/{eval_id}/pin-baseline',
+            f'/evaluation/{eval_id}/pin-baseline',
             json={'reason': reason, 'author': author},
         )
         _raise_for_status(resp)
@@ -545,14 +545,14 @@ class _Evaluations:
 
     def unpin_baseline(self, eval_id: str) -> EvaluationDetail:
         """Remove baseline pin from an evaluation."""
-        resp = self._http.patch(f'/evaluations/{eval_id}/unpin-baseline')
+        resp = self._http.patch(f'/evaluation/{eval_id}/unpin-baseline')
         _raise_for_status(resp)
         return EvaluationDetail.model_validate(resp.json())
 
     def override_status(self, eval_id: str, new_result: str, reason: str, author: str) -> EvaluationDetail:
         """Override evaluation result."""
         resp = self._http.patch(
-            f'/evaluations/{eval_id}/override-status',
+            f'/evaluation/{eval_id}/override-status',
             json={'new_result': new_result, 'reason': reason, 'author': author},
         )
         _raise_for_status(resp)
@@ -560,39 +560,103 @@ class _Evaluations:
 
     def restore_override(self, eval_id: str) -> EvaluationDetail:
         """Restore original evaluation result."""
-        resp = self._http.patch(f'/evaluations/{eval_id}/restore-override')
+        resp = self._http.patch(f'/evaluation/{eval_id}/restore-override')
         _raise_for_status(resp)
         return EvaluationDetail.model_validate(resp.json())
 
-    def re_evaluate(
+    def re_evaluate_from_date(
         self,
-        asset_name: str,
-        slo_name: str | None = None,
+        scope: dict[str, Any],
+        from_date: str,
         *,
-        from_date: str | None = None,
-        from_baseline: bool = False,
-        from_evaluation_id: str | None = None,
+        selector: dict[str, Any] | None = None,
         slo_version: int | None = None,
         dry_run: bool = False,
         pin_strategy: str | None = None,
     ) -> dict[str, Any]:
-        """Re-evaluate completed evaluations from stored SLI values."""
-        body: dict[str, Any] = {'asset_name': asset_name}
-        if slo_name is not None:
-            body['slo_name'] = slo_name
-        if from_date is not None:
-            body['from_date'] = from_date
-        if from_baseline:
-            body['from_baseline'] = True
-        if from_evaluation_id is not None:
-            body['from_evaluation_id'] = from_evaluation_id
+        """Re-evaluate from a date — POST /evaluations/re-evaluate/from-date.
+
+        ``scope`` must be an asset or group scope dict:
+        ``{'kind': 'asset', 'asset_name': '...'}`` or
+        ``{'kind': 'group', 'group_name': '...'}``.
+        ``selector`` filters by SLO or evaluation names (optional).
+        ``from_date`` is required (ISO datetime string).
+        ``pin_strategy`` resolves baseline-pin conflicts: ``'skip_to_pin'``
+        snaps ``from_date`` to the pin date; ``'ignore_pin'`` bypasses the pin.
+        """
+        body: dict[str, Any] = {'scope': scope, 'from_date': from_date}
+        if selector is not None:
+            body['selector'] = selector
         if slo_version is not None:
             body['slo_version'] = slo_version
         if dry_run:
             body['dry_run'] = True
         if pin_strategy is not None:
             body['pin_strategy'] = pin_strategy
-        resp = self._http.post('/evaluations/re-evaluate', json=body)
+        resp = self._http.post('/evaluations/re-evaluate/from-date', json=body)
+        _raise_for_status(resp)
+        return resp.json()  # type: ignore[no-any-return]
+
+    def re_evaluate_from_baseline(
+        self,
+        scope: dict[str, Any],
+        *,
+        selector: dict[str, Any] | None = None,
+        slo_version: int | None = None,
+        dry_run: bool = False,
+        pin_strategy: str | None = None,
+    ) -> dict[str, Any]:
+        """Re-evaluate from the pinned baseline — POST /evaluations/re-evaluate/from-baseline.
+
+        ``scope`` must be an asset or group scope dict:
+        ``{'kind': 'asset', 'asset_name': '...'}`` or
+        ``{'kind': 'group', 'group_name': '...'}``.
+        ``selector`` filters by SLO or evaluation names (optional).
+        """
+        body: dict[str, Any] = {'scope': scope}
+        if selector is not None:
+            body['selector'] = selector
+        if slo_version is not None:
+            body['slo_version'] = slo_version
+        if dry_run:
+            body['dry_run'] = True
+        if pin_strategy is not None:
+            body['pin_strategy'] = pin_strategy
+        resp = self._http.post('/evaluations/re-evaluate/from-baseline', json=body)
+        _raise_for_status(resp)
+        return resp.json()  # type: ignore[no-any-return]
+
+    def re_evaluate_from_evaluation(
+        self,
+        evaluation_id: str,
+        scope: dict[str, Any],
+        *,
+        selector: dict[str, Any] | None = None,
+        slo_version: int | None = None,
+        dry_run: bool = False,
+        pin_strategy: str | None = None,
+    ) -> dict[str, Any]:
+        """Re-evaluate from a reference evaluation — POST /evaluations/re-evaluate/from-evaluation/{id}.
+
+        ``evaluation_id`` is the source evaluation whose SLI values are the baseline.
+        The source evaluation's ``period_start`` defines the re-evaluation start date.
+        ``scope`` must be an asset or group scope dict:
+        ``{'kind': 'asset', 'asset_name': '...'}`` or
+        ``{'kind': 'group', 'group_name': '...'}``.
+        ``selector`` filters by SLO or evaluation names (optional).
+        ``pin_strategy`` resolves baseline-pin conflicts: ``'skip_to_pin'`` or
+        ``'ignore_pin'`` (optional).
+        """
+        body: dict[str, Any] = {'scope': scope}
+        if selector is not None:
+            body['selector'] = selector
+        if slo_version is not None:
+            body['slo_version'] = slo_version
+        if dry_run:
+            body['dry_run'] = True
+        if pin_strategy is not None:
+            body['pin_strategy'] = pin_strategy
+        resp = self._http.post(f'/evaluations/re-evaluate/from-evaluation/{evaluation_id}', json=body)
         _raise_for_status(resp)
         return resp.json()  # type: ignore[no-any-return]
 
@@ -603,27 +667,27 @@ class _Annotations:
 
     def list(self, eval_id: str) -> list[Annotation]:
         """List annotations for an evaluation."""
-        resp = self._http.get(f'/evaluations/{eval_id}/annotations')
+        resp = self._http.get(f'/evaluation/{eval_id}/annotations')
         _raise_for_status(resp)
         return [Annotation.model_validate(a) for a in resp.json()]
 
     def create(self, eval_id: str, content: str, **kwargs: Any) -> Annotation:
         """Create an SLO-level annotation on an SLOEvaluation."""
         body = {'content': content, **kwargs}
-        resp = self._http.post(f'/evaluations/{eval_id}/annotations', json=body)
+        resp = self._http.post(f'/evaluation/{eval_id}/annotations', json=body)
         _raise_for_status(resp)
         return Annotation.model_validate(resp.json())
 
     def create_for_run(self, run_id: str, content: str, **kwargs: Any) -> Annotation:
         """Create a run-level (column-level) annotation on an EvaluationRun."""
         body = {'content': content, **kwargs}
-        resp = self._http.post(f'/evaluations/run/{run_id}/annotations', json=body)
+        resp = self._http.post(f'/evaluation-run/{run_id}/annotations', json=body)
         _raise_for_status(resp)
         return Annotation.model_validate(resp.json())
 
     def update(self, eval_id: str, ann_id: str, **kwargs: Any) -> Annotation:
         """Update an annotation."""
-        resp = self._http.patch(f'/evaluations/{eval_id}/annotations/{ann_id}', json=kwargs)
+        resp = self._http.patch(f'/evaluation/{eval_id}/annotations/{ann_id}', json=kwargs)
         _raise_for_status(resp)
         return Annotation.model_validate(resp.json())
 
@@ -632,7 +696,7 @@ class _Annotations:
         body: dict[str, Any] = {'reason': reason}
         if author:
             body['author'] = author
-        resp = self._http.post(f'/evaluations/{eval_id}/annotations/{ann_id}/hide', json=body)
+        resp = self._http.post(f'/evaluation/{eval_id}/annotations/{ann_id}/hide', json=body)
         _raise_for_status(resp)
         return Annotation.model_validate(resp.json())
 
@@ -641,23 +705,46 @@ class _Trend:
     def __init__(self, http: httpx.Client) -> None:
         self._http = http
 
-    def by_eval(self, eval_id: str, metric: str, limit: int = 50) -> list[TrendPoint]:
-        """Get trend data points for a metric by evaluation ID."""
-        resp = self._http.get('/trend', params={'eval_id': eval_id, 'metric': metric, 'limit': limit})
+    def by_eval(
+        self,
+        eval_id: str,
+        metric: str,
+        from_: str,
+        *,
+        to: str | None = None,
+    ) -> list[TrendPoint]:
+        """Get trend data points for a metric by evaluation ID.
+
+        ``from_`` (ISO datetime) is required — the start of the time window.
+        ``to`` is optional; omit to get all points up to now.
+        The ``limit`` parameter is removed — the server controls result size.
+        """
+        params: dict[str, str] = {'metric': metric, 'from': from_}
+        if to is not None:
+            params['to'] = to
+        resp = self._http.get(f'/evaluation/{eval_id}/trend', params=params)
         _raise_for_status(resp)
         return [TrendPoint.model_validate(p) for p in resp.json()]
 
-    def by_asset(self, asset_name: str, slo_name: str, metric: str, limit: int = 50) -> list[TrendPoint]:
-        """Get trend data points for a metric by asset and SLO."""
-        resp = self._http.get(
-            '/trend',
-            params={
-                'asset_name': asset_name,
-                'slo_name': slo_name,
-                'metric': metric,
-                'limit': limit,
-            },
-        )
+    def by_asset(
+        self,
+        asset_name: str,
+        slo_name: str,
+        metric: str,
+        from_: str,
+        *,
+        to: str | None = None,
+    ) -> list[TrendPoint]:
+        """Get trend data points for a metric by asset and SLO.
+
+        ``from_`` (ISO datetime) is required — the start of the time window.
+        ``to`` is optional; omit to get all points up to now.
+        The ``limit`` parameter is removed — the server controls result size.
+        """
+        params: dict[str, str] = {'metric': metric, 'from': from_}
+        if to is not None:
+            params['to'] = to
+        resp = self._http.get(f'/assets/{asset_name}/slos/{slo_name}/trend', params=params)
         _raise_for_status(resp)
         return [TrendPoint.model_validate(p) for p in resp.json()]
 
@@ -672,14 +759,13 @@ class _SLOAssignments:
         self, asset_name: str, slo_definition_id: str, data_source_name: str,
         *, comparison_rules: list[dict[str, Any]] | None = None,
     ) -> SLOAssignment:
-        """Create an SLO assignment for an asset."""
-        body: dict[str, Any] = {
-            'slo_definition_id': slo_definition_id,
-            'data_source_name': data_source_name,
-        }
+        """Upsert an SLO assignment for an asset pinned to a specific SLO definition."""
+        body: dict[str, Any] = {'data_source_name': data_source_name}
         if comparison_rules is not None:
             body['comparison_rules'] = comparison_rules
-        resp = self._http.post(f'/assets/{asset_name}/slo-assignments', json=body)
+        resp = self._http.put(
+            f'/assets/{asset_name}/slo-definitions/{slo_definition_id}', json=body
+        )
         _raise_for_status(resp)
         return SLOAssignment.model_validate(resp.json())
 
@@ -687,14 +773,13 @@ class _SLOAssignments:
         self, group_name: str, slo_definition_id: str, data_source_name: str,
         *, comparison_rules: list[dict[str, Any]] | None = None,
     ) -> SLOAssignment:
-        """Create an SLO assignment for an asset group."""
-        body: dict[str, Any] = {
-            'slo_definition_id': slo_definition_id,
-            'data_source_name': data_source_name,
-        }
+        """Upsert an SLO assignment for an asset group pinned to a specific SLO definition."""
+        body: dict[str, Any] = {'data_source_name': data_source_name}
         if comparison_rules is not None:
             body['comparison_rules'] = comparison_rules
-        resp = self._http.post(f'/asset-groups/{group_name}/slo-assignments', json=body)
+        resp = self._http.put(
+            f'/asset-groups/{group_name}/slo-definitions/{slo_definition_id}', json=body
+        )
         _raise_for_status(resp)
         return SLOAssignment.model_validate(resp.json())
 
@@ -710,14 +795,18 @@ class _SLOAssignments:
         _raise_for_status(resp)
         return [SLOAssignment.model_validate(a) for a in resp.json()]
 
-    def delete_for_asset(self, asset_name: str, assignment_id: str) -> None:
-        """Delete an SLO assignment for an asset."""
-        resp = self._http.delete(f'/assets/{asset_name}/slo-assignments/{assignment_id}')
+    def delete_for_asset(self, asset_name: str, slo_definition_id: str) -> None:
+        """Delete an SLO assignment by asset + SLO definition target."""
+        resp = self._http.delete(
+            f'/assets/{asset_name}/slo-definitions/{slo_definition_id}'
+        )
         _raise_for_status(resp)
 
-    def delete_for_group(self, group_name: str, assignment_id: str) -> None:
-        """Delete an SLO assignment for an asset group."""
-        resp = self._http.delete(f'/asset-groups/{group_name}/slo-assignments/{assignment_id}')
+    def delete_for_group(self, group_name: str, slo_definition_id: str) -> None:
+        """Delete an SLO assignment by asset group + SLO definition target."""
+        resp = self._http.delete(
+            f'/asset-groups/{group_name}/slo-definitions/{slo_definition_id}'
+        )
         _raise_for_status(resp)
 
 
@@ -823,10 +912,10 @@ class _SLOGroupAssignments:
     def create_for_asset(
         self, asset_name: str, slo_group_name: str, data_source_name: str,
     ) -> SLOGroupAssignment:
-        """Create an SLO group assignment for an asset."""
-        resp = self._http.post(
-            f'/assets/{asset_name}/slo-group-assignments',
-            json={'slo_group_name': slo_group_name, 'data_source_name': data_source_name},
+        """Upsert an SLO group assignment for an asset pinned to a specific SLO group."""
+        resp = self._http.put(
+            f'/assets/{asset_name}/slo-groups/{slo_group_name}',
+            json={'data_source_name': data_source_name},
         )
         _raise_for_status(resp)
         return SLOGroupAssignment.model_validate(resp.json())
@@ -834,10 +923,10 @@ class _SLOGroupAssignments:
     def create_for_group(
         self, group_name: str, slo_group_name: str, data_source_name: str,
     ) -> SLOGroupAssignment:
-        """Create an SLO group assignment for an asset group."""
-        resp = self._http.post(
-            f'/asset-groups/{group_name}/slo-group-assignments',
-            json={'slo_group_name': slo_group_name, 'data_source_name': data_source_name},
+        """Upsert an SLO group assignment for an asset group pinned to a specific SLO group."""
+        resp = self._http.put(
+            f'/asset-groups/{group_name}/slo-groups/{slo_group_name}',
+            json={'data_source_name': data_source_name},
         )
         _raise_for_status(resp)
         return SLOGroupAssignment.model_validate(resp.json())
@@ -854,15 +943,15 @@ class _SLOGroupAssignments:
         _raise_for_status(resp)
         return [SLOGroupAssignment.model_validate(a) for a in resp.json()]
 
-    def delete_for_asset(self, asset_name: str, assignment_id: str) -> None:
-        """Delete an SLO group assignment for an asset."""
-        resp = self._http.delete(f'/assets/{asset_name}/slo-group-assignments/{assignment_id}')
+    def delete_for_asset(self, asset_name: str, slo_group_name: str) -> None:
+        """Delete an SLO group assignment by asset + SLO group target."""
+        resp = self._http.delete(f'/assets/{asset_name}/slo-groups/{slo_group_name}')
         _raise_for_status(resp)
 
-    def delete_for_group(self, group_name: str, assignment_id: str) -> None:
-        """Delete an SLO group assignment for an asset group."""
+    def delete_for_group(self, group_name: str, slo_group_name: str) -> None:
+        """Delete an SLO group assignment by asset group + SLO group target."""
         resp = self._http.delete(
-            f'/asset-groups/{group_name}/slo-group-assignments/{assignment_id}',
+            f'/asset-groups/{group_name}/slo-groups/{slo_group_name}',
         )
         _raise_for_status(resp)
 

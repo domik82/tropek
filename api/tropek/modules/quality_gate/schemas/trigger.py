@@ -7,17 +7,17 @@ from datetime import datetime
 
 from pydantic import BaseModel
 
-from tropek.modules.common.schemas import StrictInput
+from tropek.modules.common.schemas import IdentifierKey, SafeStr, StrictInput
 
 
 class EvaluateSingleRequest(StrictInput):
     """Request body for POST /evaluate."""
 
-    asset_name: str
-    eval_name: str
+    asset_name: SafeStr
+    eval_name: SafeStr
     period_start: datetime
     period_end: datetime
-    variables: dict[str, str] = {}
+    variables: dict[IdentifierKey, SafeStr] = {}
 
 
 class EvaluateSingleResponse(BaseModel):
@@ -41,14 +41,14 @@ class EvaluateBatchRequest(StrictInput):
     mode='by_asset': same window, multiple assets (asset_names + period_start/end required)
     """
 
-    mode: str  # 'by_date' | 'by_asset'
-    asset_name: str | None = None
+    mode: SafeStr  # 'by_date' | 'by_asset'
+    asset_name: SafeStr | None = None
     periods: list[BatchPeriod] | None = None
-    asset_names: list[str] | None = None
+    asset_names: list[SafeStr] | None = None
     period_start: datetime | None = None
     period_end: datetime | None = None
-    eval_name: str
-    variables: dict[str, str] = {}
+    eval_name: SafeStr
+    variables: dict[IdentifierKey, SafeStr] = {}
 
 
 class EvaluateBatchResponse(BaseModel):

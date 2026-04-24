@@ -561,25 +561,95 @@ export function triggerEvaluationInputToDto(
   }
 }
 
-export function reEvaluateInputToDto(input: ReEvaluateInput): ReEvaluateRequestDto {
-  const base: ReEvaluateRequestDto = {
-    asset_name: input.assetName,
-    slo_name: input.sloName,
-    slo_names: input.sloNames,
-    slo_version: input.sloVersion,
-    dry_run: input.dryRun,
-    pin_strategy: input.pinStrategy,
-    from_baseline: false,
-    from_date: null,
-    from_evaluation_id: null,
+// New discriminated-union body shapes for the split re-evaluate endpoints.
+// These are hand-typed because codegen is frozen until commit 5.
+
+type ReEvaluateScope = { kind: 'asset'; asset_name: string }
+
+type ReEvaluateSelector =
+  | { kind: 'slo'; slo_name: string }
+  | { kind: 'evaluation_names'; evaluation_names: string[] }
+  | null
+
+interface ReEvaluateFromDateBody {
+  scope: ReEvaluateScope
+  selector: ReEvaluateSelector
+  from_date: string
+  slo_version: number | null
+  dry_run: boolean
+}
+
+interface ReEvaluateFromBaselineBody {
+  scope: ReEvaluateScope
+  selector: ReEvaluateSelector
+  slo_version: number | null
+  dry_run: boolean
+  pin_strategy: 'skip_to_pin' | 'ignore_pin' | null
+}
+
+interface ReEvaluateFromEvaluationBody {
+  scope: ReEvaluateScope
+  selector: ReEvaluateSelector
+  slo_version: number | null
+  dry_run: boolean
+}
+
+type ReEvaluateDto =
+  | { endpoint: '/evaluations/re-evaluate/from-date'; requestBody: ReEvaluateFromDateBody }
+  | { endpoint: '/evaluations/re-evaluate/from-baseline'; requestBody: ReEvaluateFromBaselineBody }
+  | {
+      endpoint: `/evaluations/re-evaluate/from-evaluation/${string}`
+      requestBody: ReEvaluateFromEvaluationBody
+    }
+
+function buildScope(assetName: string): ReEvaluateScope {
+  return { kind: 'asset', asset_name: assetName }
+}
+
+function buildSelector(input: ReEvaluateInput): ReEvaluateSelector {
+  if (input.sloName != null) return { kind: 'slo', slo_name: input.sloName }
+  if (input.sloNames != null && input.sloNames.length > 0) {
+    return { kind: 'evaluation_names', evaluation_names: input.sloNames }
   }
+  return null
+}
+
+export function reEvaluateInputToDto(input: ReEvaluateInput): ReEvaluateDto {
+  const scope = buildScope(input.assetName)
+  const selector = buildSelector(input)
   switch (input.mode.kind) {
-    case 'baseline':
-      return { ...base, from_baseline: true }
     case 'date':
-      return { ...base, from_date: input.mode.fromDate }
+      return {
+        endpoint: '/evaluations/re-evaluate/from-date',
+        requestBody: {
+          scope,
+          selector,
+          from_date: input.mode.fromDate,
+          slo_version: input.sloVersion,
+          dry_run: input.dryRun,
+        },
+      }
+    case 'baseline':
+      return {
+        endpoint: '/evaluations/re-evaluate/from-baseline',
+        requestBody: {
+          scope,
+          selector,
+          slo_version: input.sloVersion,
+          dry_run: input.dryRun,
+          pin_strategy: input.pinStrategy,
+        },
+      }
     case 'evaluation':
-      return { ...base, from_evaluation_id: input.mode.fromEvaluationId }
+      return {
+        endpoint: `/evaluations/re-evaluate/from-evaluation/${input.mode.fromEvaluationId}`,
+        requestBody: {
+          scope,
+          selector,
+          slo_version: input.sloVersion,
+          dry_run: input.dryRun,
+        },
+      }
   }
 }
 

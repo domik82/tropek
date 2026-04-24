@@ -4,60 +4,102 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
-from typing import Literal
+from typing import Annotated, Literal
 
-from pydantic import BaseModel, model_validator
+from pydantic import BaseModel, Field
 
-from tropek.modules.common.schemas import StrictInput
+from tropek.modules.common.schemas import SafeStr, StrictInput
+
+# ---- Discriminated-union scope and selector types (new API) ----
 
 
-class ReEvaluateRequest(StrictInput):
-    """Request body for POST /evaluations/re-evaluate.
+class AssetScope(BaseModel):
+    """Scope targeting a single named asset."""
 
-    When both ``slo_name`` and ``slo_names`` are omitted, all SLOs assigned
-    to the asset are re-evaluated (same resolution logic as POST /evaluate).
-    When ``slo_names`` is provided, scoring runs only for the listed SLOs.
+    kind: Literal['asset']
+    asset_name: SafeStr
+
+
+class GroupScope(BaseModel):
+    """Scope targeting all assets in a named group."""
+
+    kind: Literal['group']
+    group_name: SafeStr
+
+
+Scope = Annotated[AssetScope | GroupScope, Field(discriminator='kind')]
+
+
+class SloSelector(BaseModel):
+    """Selector limiting re-evaluation to a single named SLO."""
+
+    kind: Literal['slo']
+    slo_name: SafeStr
+
+
+class EvalNamesSelector(BaseModel):
+    """Selector limiting re-evaluation to a list of evaluation names."""
+
+    kind: Literal['evaluation_names']
+    evaluation_names: list[SafeStr] = Field(min_length=1)
+
+
+Selector = Annotated[SloSelector | EvalNamesSelector, Field(discriminator='kind')]
+
+
+class ReEvaluateFromDateRequest(StrictInput):
+    """Request body for POST /evaluations/re-evaluate/from-date."""
+
+    scope: Scope
+    selector: Selector | None = None
+    from_date: datetime
+    slo_version: int | None = None
+    dry_run: bool = False
+    pin_strategy: Literal['skip_to_pin', 'ignore_pin'] | None = None
+
+
+class ReEvaluateFromBaselineRequest(StrictInput):
+    """Request body for POST /evaluations/re-evaluate/from-baseline."""
+
+    scope: Scope
+    selector: Selector | None = None
+    slo_version: int | None = None
+    dry_run: bool = False
+    pin_strategy: Literal['skip_to_pin', 'ignore_pin'] | None = None
+
+
+class ReEvaluateFromEvaluationRequest(StrictInput):
+    """Request body for POST /evaluations/re-evaluate/from-evaluation/{evaluation_id}."""
+
+    scope: Scope
+    selector: Selector | None = None
+    slo_version: int | None = None
+    dry_run: bool = False
+    pin_strategy: Literal['skip_to_pin', 'ignore_pin'] | None = None
+
+
+# ---- Internal service type (not exposed via API) ----
+
+
+class ReEvaluateRequest(BaseModel):
+    """Internal parameter object used by re_evaluation_service bridges.
+
+    Not exposed via any API route. The public split endpoints
+    (ReEvaluateFrom*Request) are the API surface; bridge functions
+    translate them into this type before calling the core service.
     """
 
     asset_name: str
     slo_name: str | None = None
     slo_names: list[str] | None = None
 
-    # Scope — exactly one required
     from_date: datetime | None = None
     from_baseline: bool = False
     from_evaluation_id: uuid.UUID | None = None
 
-    # Optional
     slo_version: int | None = None
     dry_run: bool = False
     pin_strategy: Literal['skip_to_pin', 'ignore_pin'] | None = None
-
-    @model_validator(mode='after')
-    def exactly_one_scope(self) -> ReEvaluateRequest:
-        """Ensure exactly one scope parameter is provided."""
-        scopes = sum(
-            [
-                self.from_date is not None,
-                self.from_baseline,
-                self.from_evaluation_id is not None,
-            ]
-        )
-        if scopes != 1:
-            msg = 'exactly one of from_date, from_baseline, or from_evaluation_id is required'
-            raise ValueError(msg)
-        return self
-
-    @model_validator(mode='after')
-    def slo_name_and_names_mutually_exclusive(self) -> ReEvaluateRequest:
-        """slo_name and slo_names cannot be supplied together; reject empty lists."""
-        if self.slo_name is not None and self.slo_names is not None:
-            msg = 'slo_name and slo_names are mutually exclusive'
-            raise ValueError(msg)
-        if self.slo_names is not None and len(self.slo_names) == 0:
-            msg = 'slo_names must be non-empty when provided'
-            raise ValueError(msg)
-        return self
 
 
 class ReEvalResultItem(BaseModel):

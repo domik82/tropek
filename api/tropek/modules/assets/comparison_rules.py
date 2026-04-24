@@ -19,10 +19,10 @@ from __future__ import annotations
 
 from typing import Any
 
-from pydantic import BaseModel
+from tropek.modules.common.schemas import StrictInput
 
 
-class ComparisonRule(BaseModel):
+class ComparisonRule(StrictInput):
     """A single comparison rule entry."""
 
     match: dict[str, str]
