@@ -17,6 +17,8 @@ from fastapi import (  # HTTPException: BaselinePinConflictError dict detail
 from pydantic import AfterValidator
 
 from tropek.modules.assets.service import AssetService
+from tropek.modules.change_points.repository import ChangePointRepository
+from tropek.modules.change_points.schemas import ChangePointMarker
 from tropek.modules.common.exceptions import ConflictError, DomainValidationError, NotFoundError
 from tropek.modules.common.schemas import PagedResponse, SafeQueryStr, reject_null_bytes
 from tropek.modules.quality_gate.repositories.annotation_category import SystemCategoryError
@@ -219,7 +221,26 @@ async def get_grouped_metric_heatmap_new(
             )
         )
 
-    return assemble_grouped_response(asset_name, ordered_fragments)
+    response = assemble_grouped_response(asset_name, ordered_fragments)
+
+    change_point_repo = ChangePointRepository(repos.session)
+    period_starts = [run.period_start for run in ordered_runs]
+    change_point_lookup = await change_point_repo.get_change_points_for_evaluations(
+        asset_id=asset.id,
+        period_starts=period_starts,
+    )
+    if change_point_lookup:
+        for group in response.groups:
+            for cell in group.cells:
+                key = (cell.metric, cell.period_start)
+                change_point = change_point_lookup.get(key)
+                if change_point is not None:
+                    cell.change_point = ChangePointMarker(
+                        direction=change_point.direction,
+                        change_relative_pct=change_point.change_relative_pct,
+                    )
+
+    return response
 
 
 @router.get('/evaluations/heatmap/by-metric', response_model=MetricHeatmapResponse)
@@ -540,12 +561,21 @@ async def get_trend_by_asset_slo(
     asset = await repos.asset_repo.get_by_name(asset_name)
     if asset is None:
         raise NotFoundError('asset', asset_name)
+    change_point_repo = ChangePointRepository(repos.session)
+    change_point_lookup = await change_point_repo.get_change_points_for_range(
+        asset_id=asset.id,
+        slo_name=slo_name,
+        metric_name=metric,
+        from_ts=from_ts,
+        to_ts=to_ts,
+    )
     points = await repos.trend_repo.get_trend_by_domain(
         asset_id=asset.id,
         slo_name=slo_name,
         metric_name=metric,
         from_ts=from_ts,
         to_ts=to_ts,
+        change_point_lookup=change_point_lookup,
     )
     return [TrendPoint(**p) for p in points]
 
@@ -570,12 +600,21 @@ async def get_trend_by_evaluation(
         raise DomainValidationError('evaluation has no associated asset')
     if ev.slo_name is None:
         raise DomainValidationError('evaluation has no associated slo')
+    change_point_repo = ChangePointRepository(repos.session)
+    change_point_lookup = await change_point_repo.get_change_points_for_range(
+        asset_id=ev.asset_id,
+        slo_name=ev.slo_name,
+        metric_name=metric,
+        from_ts=from_ts,
+        to_ts=to_ts,
+    )
     points = await repos.trend_repo.get_trend_by_domain(
         asset_id=ev.asset_id,
         slo_name=ev.slo_name,
         metric_name=metric,
         from_ts=from_ts,
         to_ts=to_ts,
+        change_point_lookup=change_point_lookup,
     )
     return [TrendPoint(**p) for p in points]
 
