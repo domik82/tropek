@@ -5,8 +5,9 @@ from __future__ import annotations
 import uuid
 from typing import Any
 
-from sqlalchemy import delete
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import joinedload
 
 from tropek.db.models import IndicatorResultRow
 from tropek.modules.quality_gate.evaluation_engine.result_models import IndicatorResult
@@ -75,6 +76,16 @@ class IndicatorRepository:
                 )
             )
         await self._session.flush()
+
+    async def get_for_evaluation(self, slo_evaluation_id: uuid.UUID) -> list[IndicatorResultRow]:
+        """Return all indicator rows for a SLO evaluation with objectives loaded."""
+        query = (
+            select(IndicatorResultRow)
+            .where(IndicatorResultRow.slo_evaluation_id == slo_evaluation_id)
+            .options(joinedload(IndicatorResultRow.objective))
+        )
+        result = await self._session.execute(query)
+        return list(result.scalars().all())
 
     async def delete_for_evaluation(self, slo_evaluation_id: uuid.UUID) -> None:
         """Delete all indicator rows for a SLO evaluation (used by re-evaluation)."""

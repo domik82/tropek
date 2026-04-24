@@ -18,10 +18,12 @@ from tropek.cache.redis_cache import RedisCache
 from tropek.config import get_settings
 from tropek.db.session import get_session_factory
 from tropek.logging_config import configure_logging
+from tropek.modules.change_points.worker_step import run_change_point_detection
 from tropek.modules.datasource.repository import DataSourceRepository
 from tropek.modules.quality_gate.repositories.baseline import BaselineRepository
 from tropek.modules.quality_gate.repositories.evaluation import EvaluationRepository
 from tropek.modules.quality_gate.repositories.evaluation_run import EvaluationRunRepository
+from tropek.modules.quality_gate.repositories.indicator import IndicatorRepository
 from tropek.modules.quality_gate.workflows.execution.adapter_client import HttpAdapterClient
 from tropek.modules.quality_gate.workflows.execution.evaluation_executor import (
     DefinitionLoadError,
@@ -221,6 +223,23 @@ async def run_evaluation_job(ctx: dict[str, Any], eval_id_str: str, defer_count:
             fetch_result=fetch_result,
         )
         await session.commit()
+
+    # Phase 4: Change point detection (fault-isolated, separate txn)
+    try:
+        async with session_factory() as session:
+            indicator_rows = await IndicatorRepository(session).get_for_evaluation(
+                snapshot.eval_id,
+            )
+            await run_change_point_detection(
+                session=session,
+                snapshot=snapshot,
+                slo_def=slo_def,
+                indicator_rows=indicator_rows,
+                cache=cache,
+            )
+            await session.commit()
+    except Exception:
+        log.warning("change point detection step failed, skipping", exc_info=True)
 
     log.info('evaluation completed', result=fetch_result.eval_result.result)
 
