@@ -275,7 +275,7 @@ class ChangePointRepository:
         self,
         *,
         asset_id: uuid.UUID,
-        slo_name: str,
+        slo_name: str | None = None,
         period_starts: list[datetime],
     ) -> dict[tuple[str, datetime], ChangePoint]:
         """Batch-load change points for a set of evaluation timestamps.
@@ -287,10 +287,36 @@ class ChangePointRepository:
             return {}
         query = select(ChangePoint).where(
             ChangePoint.asset_id == asset_id,
-            ChangePoint.slo_name == slo_name,
             ChangePoint.period_start.in_(period_starts),
             ChangePoint.status != 'hidden',
         )
+        if slo_name is not None:
+            query = query.where(ChangePoint.slo_name == slo_name)
+        result = await self._session.execute(query)
+        return {
+            (change_point.metric_name, change_point.period_start): change_point
+            for change_point in result.scalars().all()
+        }
+
+    async def get_change_points_for_range(
+        self,
+        *,
+        asset_id: uuid.UUID,
+        slo_name: str,
+        metric_name: str,
+        from_ts: datetime,
+        to_ts: datetime | None = None,
+    ) -> dict[tuple[str, datetime], ChangePoint]:
+        """Load change points for a metric within a time range."""
+        query = select(ChangePoint).where(
+            ChangePoint.asset_id == asset_id,
+            ChangePoint.slo_name == slo_name,
+            ChangePoint.metric_name == metric_name,
+            ChangePoint.period_start >= from_ts,
+            ChangePoint.status != 'hidden',
+        )
+        if to_ts is not None:
+            query = query.where(ChangePoint.period_start <= to_ts)
         result = await self._session.execute(query)
         return {
             (change_point.metric_name, change_point.period_start): change_point
