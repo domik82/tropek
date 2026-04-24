@@ -358,7 +358,7 @@ export function HeatmapChart({
           encode: { x: 0, y: 1 },
         },
       ],
-      grid: { top: showXAxis ? 10 : 2, bottom: showXAxis ? 80 : 2, left: HEATMAP_GRID_LEFT, right: HEATMAP_GRID_RIGHT },
+      grid: { top: showXAxis ? 10 : 0, bottom: showXAxis ? 80 : 0, left: HEATMAP_GRID_LEFT, right: HEATMAP_GRID_RIGHT },
     }),
     // `selectedColumn` is in deps so the renderItem closure picks up the new
     // value when selection changes. Cost is cheap: rebuilding the option
@@ -369,7 +369,7 @@ export function HeatmapChart({
 
   const chartHeight =
     height === 'auto'
-      ? Math.max(showXAxis ? 200 : 34, rows.length * 28 + (showXAxis ? 100 : 4))
+      ? Math.max(showXAxis ? 200 : 28, rows.length * 28 + (showXAxis ? 100 : 0))
       : height
 
   const hasNotes = notedColumns && notedColumns.size > 0
