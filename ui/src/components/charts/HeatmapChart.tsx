@@ -96,8 +96,8 @@ export interface HeatmapChartProps {
   /** Called when user clicks a note indicator */
   onNoteIndicatorClick?: (slot: string) => void
   /**
-   * When false, hides x-axis labels/ticks and reduces grid bottom padding.
-   * Defaults to true. Set to false for compact stacked mini-heatmaps.
+   * When false, hides x-axis labels/ticks.
+   * Defaults to true.
    */
   showXAxis?: boolean
   /**
@@ -105,6 +105,11 @@ export interface HeatmapChartProps {
    * Defaults to true. Set to false when the legend is rendered once outside.
    */
   showLegend?: boolean
+  /**
+   * Eliminates grid padding (top/bottom → 0) and uses tight height calculation.
+   * Used by stacked mini-heatmaps so cells abut seamlessly.
+   */
+  compact?: boolean
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -128,6 +133,7 @@ export function HeatmapChart({
   onNoteIndicatorClick,
   showXAxis = true,
   showLegend = true,
+  compact = false,
 }: HeatmapChartProps) {
   const { theme } = useTheme()
   const colours = RESULT_COLOUR[theme]
@@ -358,18 +364,25 @@ export function HeatmapChart({
           encode: { x: 0, y: 1 },
         },
       ],
-      grid: { top: showXAxis ? 10 : 0, bottom: showXAxis ? 80 : 0, left: HEATMAP_GRID_LEFT, right: HEATMAP_GRID_RIGHT },
+      grid: {
+        top: compact ? 0 : 10,
+        bottom: compact ? (showXAxis ? 80 : 0) : 80,
+        left: HEATMAP_GRID_LEFT,
+        right: HEATMAP_GRID_RIGHT,
+      },
     }),
     // `selectedColumn` is in deps so the renderItem closure picks up the new
     // value when selection changes. Cost is cheap: rebuilding the option
     // object is ~1ms even for large grids because `renderCells` is not
     // re-mapped (it doesn't depend on `selectedColumn`).
-    [columns, rows, renderCells, ct, pad, annotations, formatTooltip, formatColumnLabel, headerRowIndices, selectedColumn, showXAxis],
+    [columns, rows, renderCells, ct, pad, annotations, formatTooltip, formatColumnLabel, headerRowIndices, selectedColumn, showXAxis, compact],
   )
 
   const chartHeight =
     height === 'auto'
-      ? rows.length * 28 + (showXAxis ? 90 : 0)
+      ? compact
+        ? rows.length * 28 + (showXAxis ? 80 : 0)
+        : Math.max(200, rows.length * 28 + 100)
       : height
 
   const hasNotes = notedColumns && notedColumns.size > 0
