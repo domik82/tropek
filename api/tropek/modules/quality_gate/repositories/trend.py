@@ -21,6 +21,22 @@ from tropek.db.models import (
 from tropek.modules.quality_gate.evaluation_engine.constants import EvaluationStatus
 
 
+def _trend_change_point(
+    lookup: dict[tuple[str, datetime], Any] | None,
+    metric_name: str,
+    period_start: datetime,
+) -> dict[str, Any] | None:
+    if not lookup:
+        return None
+    change_point = lookup.get((metric_name, period_start))
+    if change_point is None:
+        return None
+    return {
+        "direction": change_point.direction,
+        "change_relative_pct": change_point.change_relative_pct,
+    }
+
+
 class TrendRepository:
     """Data access layer for trend queries and metric heatmaps."""
 
@@ -202,6 +218,7 @@ class TrendRepository:
         metric_name: str,
         from_ts: datetime,
         to_ts: datetime | None = None,
+        change_point_lookup: dict[tuple[str, datetime], Any] | None = None,
     ) -> list[dict[str, Any]]:
         """Return time-series trend points for a specific asset+SLO+metric combination.
 
@@ -273,6 +290,9 @@ class TrendRepository:
                 'baseline': r.compared_value,
                 'evaluation_name': r.evaluation_name,
                 'targets': r.targets,
+                'change_point': _trend_change_point(
+                    change_point_lookup, metric_name, r.period_start,
+                ),
             }
             for r in rows
         ]
