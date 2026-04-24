@@ -30,10 +30,12 @@ Regressions" by Fleming et al. (https://doi.org/10.1145/3578244.3583719).
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import SupportsFloat
+from typing import SupportsFloat, cast
 
 import numpy as np
 from scipy.stats import ttest_ind_from_stats
+
+from pydantic import BaseModel
 
 from tropek.modules.change_points.engine.base import (
     CandidateChangePoint,
@@ -42,8 +44,6 @@ from tropek.modules.change_points.engine.base import (
 )
 from tropek.modules.change_points.engine.calculator import PairDistanceCalculator
 from tropek.modules.change_points.engine.detector import ChangePointDetector
-
-from pydantic import BaseModel
 
 
 class TTestStats(BaseModel):
@@ -76,18 +76,6 @@ class TTestStats(BaseModel):
     def change_magnitude(self) -> float:
         """Maximum of absolutes of forward and backward relative change."""
         return max(abs(self.forward_rel_change()), abs(self.backward_rel_change()))
-
-    def mean_before(self) -> float:
-        return self.mean_1
-
-    def mean_after(self) -> float:
-        return self.mean_2
-
-    def stddev_before(self) -> float:
-        return self.std_1
-
-    def stddev_after(self) -> float:
-        return self.std_2
 
 
 class TTestSignificanceTester(SignificanceTester):
@@ -159,19 +147,8 @@ class TTestSignificanceTester(SignificanceTester):
         return ChangePoint.from_candidate(candidate, stats)
 
 
-def fill_missing(data: Sequence[SupportsFloat]) -> None:
-    """Forward-fill None values, then back-fill any remaining leading Nones."""
-    prev = None
-    for i in range(len(data)):
-        if data[i] is None and prev is not None:
-            data[i] = prev
-        prev = data[i]
-
-    prev = None
-    for i in reversed(range(len(data))):
-        if data[i] is None and prev is not None:
-            data[i] = prev
-        prev = data[i]
+def _ttest_stats(change_point: ChangePoint) -> TTestStats:
+    return cast(TTestStats, change_point.stats)
 
 
 def merge(
@@ -186,8 +163,10 @@ def merge(
     while change_points:
         weakest = max(change_points, key=lambda c: c.stats.pvalue)
         if weakest.stats.pvalue < max_pvalue:
-            weakest = min(change_points, key=lambda c: c.stats.change_magnitude())
-            if weakest.stats.change_magnitude() > min_magnitude:
+            weakest = min(
+                change_points, key=lambda c: _ttest_stats(c).change_magnitude(),
+            )
+            if _ttest_stats(weakest).change_magnitude() > min_magnitude:
                 return change_points
 
         weakest_index = change_points.index(weakest)

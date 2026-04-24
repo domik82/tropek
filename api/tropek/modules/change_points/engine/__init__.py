@@ -16,6 +16,7 @@ from tropek.modules.change_points.engine.analysis import (
 from tropek.modules.change_points.engine.base import (
     CandidateChangePoint,
     ChangePoint,
+    fill_missing,
 )
 from tropek.modules.change_points.engine.calculator import PairDistanceCalculator
 from tropek.modules.change_points.engine.detector import ChangePointDetector
@@ -27,6 +28,7 @@ __all__ = [
     'PairDistanceCalculator',
     'TTestSignificanceTester',
     'TTestStats',
+    'fill_missing',
     'merge',
     'split',
 ]

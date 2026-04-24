@@ -6,11 +6,10 @@ import numpy as np
 
 from tropek.modules.change_points.engine.analysis import (
     TTestSignificanceTester,
-    fill_missing,
     merge,
     split,
 )
-from tropek.modules.change_points.engine.base import CandidateChangePoint
+from tropek.modules.change_points.engine.base import CandidateChangePoint, fill_missing
 
 
 def test_fill_missing_forward() -> None:

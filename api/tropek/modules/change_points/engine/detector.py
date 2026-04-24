@@ -55,8 +55,10 @@ class ChangePointDetector:
         end: int | None = None,
     ) -> list[ChangePoint]:
         """Find change points in series[start:end]."""
+        if start is not None or end is not None:
+            series = series[start:end]
         if not isinstance(series, np.ndarray):
-            series = np.array(series[start:end], dtype=np.float64)
+            series = np.array(series, dtype=np.float64)
         if not np.issubdtype(series.dtype, np.floating):
             series = series.astype(np.float64, copy=False)
 
@@ -79,8 +81,9 @@ class ChangePointDetector:
             for change_point in change_points:
                 change_point.index += start
 
-        # Fix: upstream Otava can return CPs at the series boundary (index == end),
-        # producing empty segments that crash TTestSignificanceTester.compare().
+        # Belt-and-suspenders for the boundary fix also applied in split().
+        # Both locations are needed: split() is the primary entry point,
+        # but this filter protects direct callers of ChangePointDetector.
         effective_end = end if end is not None else (start or 0) + len(series)
         change_points = [
             cp for cp in change_points if cp.index < effective_end
