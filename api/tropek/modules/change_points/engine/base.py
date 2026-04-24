@@ -26,7 +26,8 @@ detector, analysis, and calculator modules build on.
 
 from __future__ import annotations
 
-from typing import Generic, TypeVar
+from collections.abc import Sequence
+from typing import SupportsFloat
 
 from numpy.typing import NDArray
 from pydantic import BaseModel
@@ -43,9 +44,6 @@ class BaseStats(BaseModel):
     """Abstract statistics for a change point. Subclassed by each significance test."""
 
     pvalue: float
-
-
-GenericStats = TypeVar('GenericStats', bound=BaseStats)
 
 
 class ChangePoint:
@@ -80,7 +78,7 @@ class ChangePoint:
         return CandidateChangePoint(index=self.index, qhat=self.qhat)
 
 
-class SignificanceTester(Generic[GenericStats]):
+class SignificanceTester:
     """Abstract significance tester — determines if a candidate CP is statistically significant."""
 
     def __init__(self, max_pvalue: float) -> None:
@@ -135,3 +133,18 @@ class Calculator:
     def get_candidate_change_point(self, interval: slice) -> CandidateChangePoint:
         """Given a slice, return the best candidate change point within it."""
         ...
+
+
+def fill_missing(data: Sequence[SupportsFloat]) -> None:
+    """Forward-fill None values, then back-fill any remaining leading Nones."""
+    prev = None
+    for i in range(len(data)):
+        if data[i] is None and prev is not None:
+            data[i] = prev
+        prev = data[i]
+
+    prev = None
+    for i in reversed(range(len(data))):
+        if data[i] is None and prev is not None:
+            data[i] = prev
+        prev = data[i]
