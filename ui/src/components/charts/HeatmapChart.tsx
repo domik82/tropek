@@ -369,7 +369,7 @@ export function HeatmapChart({
 
   const chartHeight =
     height === 'auto'
-      ? Math.max(showXAxis ? 200 : 28, rows.length * 28 + (showXAxis ? 100 : 0))
+      ? rows.length * 28 + (showXAxis ? 90 : 0)
       : height
 
   const hasNotes = notedColumns && notedColumns.size > 0
