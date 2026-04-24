@@ -65,6 +65,7 @@ function buildSingleSloScopeHeatmap(ev: EvaluationDetail): GroupedMetricHeatmap 
             warningTargets: null,
             tabGroup: null,
             aggregation: null,
+            changePoint: null,
           },
         ],
         summary: [

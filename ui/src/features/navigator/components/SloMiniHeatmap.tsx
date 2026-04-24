@@ -49,11 +49,15 @@ export function SloMiniHeatmap({
         `<span style="color:#888;font-size:10px">Click to expand/collapse</span>`,
       ].join('<br/>')
     }
+    const changePointLine = cell.changePoint
+      ? `<span style="color:${cell.changePoint.direction === 'regression' ? '#f85149' : '#3fb950'}">◆ Change point: ${cell.changePoint.direction} (${cell.changePoint.changeRelativePct > 0 ? '+' : ''}${cell.changePoint.changeRelativePct.toFixed(1)}%)</span>`
+      : ''
     return [
       cell.evaluation_name ? `<span style="color:#94a3b8">${cell.evaluation_name}</span>` : '',
       `<b>${cell.rowLabel}</b>`,
       fmtDateTime(cell.periodStart),
       `Score: <b style="color:${rc}">${cell.score}</b> · <b style="color:${rc}">${cell.result.toUpperCase()}</b>`,
+      changePointLine,
       cell.evalId
         ? `<span style="color:#888;font-size:10px">Click to select this evaluation</span>`
         : '',

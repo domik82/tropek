@@ -229,6 +229,7 @@ type MappedIndicatorKeys =
   | 'key_sli'
   | 'pass_targets'
   | 'warning_targets'
+  | 'change_point'
 type _IndicatorCoverage = Exclude<
   keyof IndicatorResultDto,
   MappedIndicatorKeys | DroppedIndicatorKeys
@@ -335,6 +336,7 @@ type MappedTrendPointKeys =
   | 'baseline'
   | 'evaluation_name'
   | 'targets'
+  | 'change_point'
 type _TrendPointCoverage = Exclude<
   keyof TrendPointDto,
   MappedTrendPointKeys | DroppedTrendPointKeys
