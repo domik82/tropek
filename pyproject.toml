@@ -121,6 +121,7 @@ pythonpath = ["api", "adapters/prometheus", "adapters/protocol", "clients/python
 markers = [
     "integration: requires a running TimescaleDB instance (deselect with -m 'not integration')",
     "e2e: requires running adapter + Prometheus + Redis (deselect with -m 'not e2e')",
+    "schemathesis: property-based OpenAPI conformance tests",
 ]
 
 [dependency-groups]

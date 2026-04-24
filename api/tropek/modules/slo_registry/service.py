@@ -158,6 +158,11 @@ class SLOTestService:
                         metrics_fetched[name] = float(val)
                 for name, err in adapter_data.get('errors', {}).items():
                     fetch_errors[name] = str(err)
+        except (httpx.UnsupportedProtocol, httpx.InvalidURL) as e:
+            raise HTTPException(
+                status_code=400,
+                detail=f'adapter url is invalid: {ds.adapter_url}',
+            ) from e
         except httpx.ConnectError as e:
             raise HTTPException(
                 status_code=502,

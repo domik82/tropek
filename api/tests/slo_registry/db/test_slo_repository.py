@@ -234,7 +234,7 @@ async def test_create_slo_rejects_invalid_indicator(async_client: AsyncClient) -
         },
     )
     assert resp.status_code == 422
-    assert 'disk' in resp.json()['detail']
+    assert any('disk' in entry['msg'] for entry in resp.json()['detail'])
 
 
 @pytest.mark.integration

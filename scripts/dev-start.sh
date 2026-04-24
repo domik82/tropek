@@ -100,7 +100,7 @@ uv run --directory adapters/prometheus \
 PIDS+=($!)
 
 echo "=== Starting API on :$API_PORT (log: $LOG_DIR_LOCAL/api.log) ==="
-uv run --directory api uvicorn tropek.main:app --host 127.0.0.1 --port $API_PORT &
+uv run --directory api uvicorn tropek.main:app --host 127.0.0.1 --port $API_PORT --reload &
 PIDS+=($!)
 
 echo "=== Starting arq workers x2 (log: $LOG_DIR_LOCAL/worker.log) ==="

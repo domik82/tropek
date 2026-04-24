@@ -109,7 +109,7 @@ export function GroupEditDialog({ open, onOpenChange, groupName }: Props) {
                   {assignment.sloName} → {assignment.dataSourceName}
                 </span>
                 <button
-                  onClick={() => unlinkSlo.mutate({ groupName: groupName!, assignmentId: assignment.id })}
+                  onClick={() => unlinkSlo.mutate({ groupName: groupName!, sloDefinitionId: assignment.sloDefinitionId })}
                   className="text-muted-foreground hover:text-destructive transition-colors"
                   title="Unlink"
                 >

@@ -15,7 +15,7 @@ async def test_override_status(async_client: AsyncClient, db_session: AsyncSessi
     eval_id = await _create_completed_eval(db_session, asset_id, result='fail', score=30.0)
 
     resp = await async_client.patch(
-        f'/evaluations/{eval_id}/override-status',
+        f'/evaluation/{eval_id}/override-status',
         json={'new_result': 'pass', 'reason': 'False alarm', 'author': 'alice'},
     )
     assert resp.status_code == 200
@@ -32,11 +32,11 @@ async def test_restore_override(async_client: AsyncClient, db_session: AsyncSess
     eval_id = await _create_completed_eval(db_session, asset_id, result='fail', score=30.0)
 
     await async_client.patch(
-        f'/evaluations/{eval_id}/override-status',
+        f'/evaluation/{eval_id}/override-status',
         json={'new_result': 'pass', 'reason': 'Override', 'author': 'alice'},
     )
 
-    resp = await async_client.patch(f'/evaluations/{eval_id}/restore-override')
+    resp = await async_client.patch(f'/evaluation/{eval_id}/restore-override')
     assert resp.status_code == 200
     body = resp.json()
     assert body['result'] == 'fail'
@@ -52,13 +52,13 @@ async def test_double_override_preserves_true_original(async_client: AsyncClient
 
     # First override: fail -> pass
     await async_client.patch(
-        f'/evaluations/{eval_id}/override-status',
+        f'/evaluation/{eval_id}/override-status',
         json={'new_result': 'pass', 'reason': 'v1', 'author': 'alice'},
     )
 
     # Second override: pass -> warning
     resp = await async_client.patch(
-        f'/evaluations/{eval_id}/override-status',
+        f'/evaluation/{eval_id}/override-status',
         json={'new_result': 'warning', 'reason': 'v2', 'author': 'bob'},
     )
     body = resp.json()

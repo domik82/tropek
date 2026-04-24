@@ -58,6 +58,67 @@ class AssignmentRepository:
         await self._session.flush()
         return row
 
+    async def get_slo_assignment_for_target(
+        self,
+        *,
+        asset_id: uuid.UUID | None,
+        asset_group_id: uuid.UUID | None,
+        slo_definition_id: uuid.UUID,
+    ) -> SLOAssignment | None:
+        """Return the existing assignment for (parent, slo_definition_id) or None."""
+        query = select(SLOAssignment).where(SLOAssignment.slo_definition_id == slo_definition_id)
+        if asset_id is not None:
+            query = query.where(SLOAssignment.asset_id == asset_id)
+        else:
+            query = query.where(SLOAssignment.asset_group_id == asset_group_id)
+        result = await self._session.execute(query)
+        return result.scalar_one_or_none()
+
+    async def upsert_slo_assignment(
+        self,
+        *,
+        asset_id: uuid.UUID | None,
+        asset_group_id: uuid.UUID | None,
+        slo_definition_id: uuid.UUID,
+        slo_name: str,
+        data_source_id: uuid.UUID,
+        comparison_rules: list[dict[str, Any]] | None = None,
+    ) -> SLOAssignment:
+        """Create or update the assignment pinned to (parent, slo_definition_id)."""
+        existing = await self.get_slo_assignment_for_target(
+            asset_id=asset_id,
+            asset_group_id=asset_group_id,
+            slo_definition_id=slo_definition_id,
+        )
+        if existing is not None:
+            existing.data_source_id = data_source_id
+            existing.comparison_rules = comparison_rules
+            await self._session.flush()
+            return existing
+        return await self.create_slo_assignment(
+            asset_id=asset_id,
+            asset_group_id=asset_group_id,
+            slo_definition_id=slo_definition_id,
+            slo_name=slo_name,
+            data_source_id=data_source_id,
+            comparison_rules=comparison_rules,
+        )
+
+    async def delete_slo_assignment_for_target(
+        self,
+        *,
+        asset_id: uuid.UUID | None,
+        asset_group_id: uuid.UUID | None,
+        slo_definition_id: uuid.UUID,
+    ) -> None:
+        """Delete the assignment identified by (parent, slo_definition_id) if present."""
+        query = delete(SLOAssignment).where(SLOAssignment.slo_definition_id == slo_definition_id)
+        if asset_id is not None:
+            query = query.where(SLOAssignment.asset_id == asset_id)
+        else:
+            query = query.where(SLOAssignment.asset_group_id == asset_group_id)
+        await self._session.execute(query)
+
     async def list_slo_assignments_for_asset(self, asset_id: uuid.UUID) -> list[SLOAssignment]:
         """Return all direct-asset SLO assignments ordered by slo_name."""
         result = await self._session.execute(
@@ -123,6 +184,62 @@ class AssignmentRepository:
         self._session.add(row)
         await self._session.flush()
         return row
+
+    async def get_group_assignment_for_target(
+        self,
+        *,
+        asset_id: uuid.UUID | None,
+        asset_group_id: uuid.UUID | None,
+        slo_group_id: uuid.UUID,
+    ) -> SLOGroupAssignment | None:
+        """Return the existing group assignment for (parent, slo_group_id) or None."""
+        query = select(SLOGroupAssignment).where(SLOGroupAssignment.slo_group_id == slo_group_id)
+        if asset_id is not None:
+            query = query.where(SLOGroupAssignment.asset_id == asset_id)
+        else:
+            query = query.where(SLOGroupAssignment.asset_group_id == asset_group_id)
+        result = await self._session.execute(query)
+        return result.scalar_one_or_none()
+
+    async def upsert_group_assignment(
+        self,
+        *,
+        asset_id: uuid.UUID | None,
+        asset_group_id: uuid.UUID | None,
+        slo_group_id: uuid.UUID,
+        data_source_id: uuid.UUID,
+    ) -> SLOGroupAssignment:
+        """Create or update the group assignment pinned to (parent, slo_group_id)."""
+        existing = await self.get_group_assignment_for_target(
+            asset_id=asset_id,
+            asset_group_id=asset_group_id,
+            slo_group_id=slo_group_id,
+        )
+        if existing is not None:
+            existing.data_source_id = data_source_id
+            await self._session.flush()
+            return existing
+        return await self.create_group_assignment(
+            asset_id=asset_id,
+            asset_group_id=asset_group_id,
+            slo_group_id=slo_group_id,
+            data_source_id=data_source_id,
+        )
+
+    async def delete_group_assignment_for_target(
+        self,
+        *,
+        asset_id: uuid.UUID | None,
+        asset_group_id: uuid.UUID | None,
+        slo_group_id: uuid.UUID,
+    ) -> None:
+        """Delete the group assignment identified by (parent, slo_group_id) if present."""
+        query = delete(SLOGroupAssignment).where(SLOGroupAssignment.slo_group_id == slo_group_id)
+        if asset_id is not None:
+            query = query.where(SLOGroupAssignment.asset_id == asset_id)
+        else:
+            query = query.where(SLOGroupAssignment.asset_group_id == asset_group_id)
+        await self._session.execute(query)
 
     async def list_group_assignments_for_asset(self, asset_id: uuid.UUID) -> list[SLOGroupAssignment]:
         """Return all group assignments for an asset."""
