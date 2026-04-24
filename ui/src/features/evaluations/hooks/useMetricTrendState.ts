@@ -417,6 +417,38 @@ export function buildChartRender(input: ChartOptionInput): { option: object; lab
   }))
 
   const targetSeries = buildTargetSeries(trend, targets, colours, ct)
+
+  const changePointIndices = trend
+    .map((p, i) => (p.changePoint ? i : -1))
+    .filter(i => i >= 0)
+  const changePointSeries: object[] =
+    changePointIndices.length > 0
+      ? [
+          {
+            type: 'scatter',
+            data: changePointIndices.map(i => {
+              const p = trend[i]
+              return {
+                value: [i, p.value],
+                itemStyle: {
+                  color:
+                    p.changePoint!.direction === 'regression'
+                      ? '#f85149'
+                      : '#3fb950',
+                  borderColor: ct.bg,
+                  borderWidth: 1,
+                },
+              }
+            }),
+            symbol: 'diamond',
+            symbolSize: 14,
+            silent: true,
+            tooltip: { show: false },
+            z: 10,
+          },
+        ]
+      : []
+
   const { markLine, markPoint, labelBandPx } = buildAnnotationLayer(
     trend,
     annotations,
@@ -452,6 +484,11 @@ export function buildChartRender(input: ChartOptionInput): { option: object; lab
           `result: <b style="color:${colours[p.outcome as keyof typeof colours] ?? '#6b7280'}">${p.outcome.toUpperCase()}</b>`,
         ]
         if (p.overridden) lines.push(`<span style="color:${ct.axisLabel}">(override)</span>`)
+        if (p.changePoint) {
+          const cpColor = p.changePoint.direction === 'regression' ? '#f85149' : '#3fb950'
+          const pctSign = p.changePoint.changeRelativePct > 0 ? '+' : ''
+          lines.push(`<span style="color:${cpColor}">◆ ${p.changePoint.direction} (${pctSign}${p.changePoint.changeRelativePct.toFixed(1)}%)</span>`)
+        }
         return lines.join('<br/>')
       },
     },
@@ -494,6 +531,7 @@ export function buildChartRender(input: ChartOptionInput): { option: object; lab
         ...(markPoint ? { markPoint } : {}),
       },
       ...targetSeries,
+      ...changePointSeries,
     ],
   }
 
