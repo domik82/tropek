@@ -14,10 +14,12 @@ from sqlalchemy.ext.asyncio import async_engine_from_config
 from tropek.config import get_settings
 from tropek.db.models import Base
 
-# Load the env file specified by ENV_FILE (default: .env).
-# This lets `uv run alembic upgrade head` work without shell sourcing tricks —
-# pass ENV_FILE=.env.test as a single env var prefix when targeting the test DB.
+# Load the env file specified by ENV_FILE (default: .env). Relative paths
+# resolve against the repo root, not the current working directory, so
+# `uv run --directory api alembic upgrade head` still finds ../.env.test.
 _env_file = Path(os.environ.get('ENV_FILE', '.env'))
+if not _env_file.is_absolute():
+    _env_file = Path(__file__).resolve().parents[2] / _env_file
 load_dotenv(_env_file, override=False)  # env vars already in shell take precedence
 
 config = context.config

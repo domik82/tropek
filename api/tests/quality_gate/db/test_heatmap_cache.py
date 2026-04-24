@@ -158,7 +158,7 @@ async def test_read_path_cold_cache_writes_back_every_column(
     pre_hits = await cache.get_many([])
     assert pre_hits == {}
 
-    response = await api_client.get(f'/evaluate/metric-heatmap?asset_name={seeded.name}')
+    response = await api_client.get(f'/evaluations/heatmap?asset_name={seeded.name}')
     assert response.status_code == 200
     column_ids = [column['evaluation_id'] for column in response.json()['columns']]
     assert len(column_ids) == 5
@@ -180,8 +180,8 @@ async def test_read_path_warm_cache_serves_same_response(
     """
     seeded = await seed_asset_with_indicators(cell_count=4)
 
-    first = await api_client.get(f'/evaluate/metric-heatmap?asset_name={seeded.name}')
-    second = await api_client.get(f'/evaluate/metric-heatmap?asset_name={seeded.name}')
+    first = await api_client.get(f'/evaluations/heatmap?asset_name={seeded.name}')
+    second = await api_client.get(f'/evaluations/heatmap?asset_name={seeded.name}')
 
     assert first.status_code == 200
     assert second.status_code == 200
@@ -207,7 +207,7 @@ async def test_cache_false_does_not_read_or_write_cache(
     """
     seeded = await seed_asset_with_indicators(cell_count=3)
 
-    initial = await api_client.get(f'/evaluate/metric-heatmap?asset_name={seeded.name}')
+    initial = await api_client.get(f'/evaluations/heatmap?asset_name={seeded.name}')
     assert initial.status_code == 200
     run_ids = [column['evaluation_id'] for column in initial.json()['columns']]
     assert len(run_ids) == 3
@@ -217,7 +217,7 @@ async def test_cache_false_does_not_read_or_write_cache(
     snapshot_before = {run_id: fragment.model_dump_json() for run_id, fragment in cached_before.items()}
     assert len(snapshot_before) == 3
 
-    bypass = await api_client.get(f'/evaluate/metric-heatmap?asset_name={seeded.name}&cache=false')
+    bypass = await api_client.get(f'/evaluations/heatmap?asset_name={seeded.name}&cache=false')
     assert bypass.status_code == 200
 
     cached_after = await cache.get_many(run_ids)
@@ -579,8 +579,8 @@ async def test_cache_equals_uncached_after_mutation(
     # Step 1: warm the cache with a normal read, and assert the baseline
     # invariant BEFORE mutating. If this trips, the read path itself is
     # wrong — not an invalidation bug.
-    cached_initial = await api_client.get(f'/evaluate/metric-heatmap?asset_name={seeded.name}')
-    uncached_initial = await api_client.get(f'/evaluate/metric-heatmap?asset_name={seeded.name}&cache=false')
+    cached_initial = await api_client.get(f'/evaluations/heatmap?asset_name={seeded.name}')
+    uncached_initial = await api_client.get(f'/evaluations/heatmap?asset_name={seeded.name}&cache=false')
     assert cached_initial.status_code == 200
     assert uncached_initial.status_code == 200
     assert cached_initial.json() == uncached_initial.json(), (
@@ -592,8 +592,8 @@ async def test_cache_equals_uncached_after_mutation(
         await _apply_mutation(mutation, db_session, seeded, redis_client, info_category_id)
 
     # Step 3: re-read both variants and assert they still agree.
-    cached_after = await api_client.get(f'/evaluate/metric-heatmap?asset_name={seeded.name}')
-    uncached_after = await api_client.get(f'/evaluate/metric-heatmap?asset_name={seeded.name}&cache=false')
+    cached_after = await api_client.get(f'/evaluations/heatmap?asset_name={seeded.name}')
+    uncached_after = await api_client.get(f'/evaluations/heatmap?asset_name={seeded.name}&cache=false')
     assert cached_after.status_code == 200
     assert uncached_after.status_code == 200
     assert cached_after.json() == uncached_after.json(), (

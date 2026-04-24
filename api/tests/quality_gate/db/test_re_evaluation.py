@@ -6,7 +6,6 @@ import uuid
 from datetime import UTC, datetime, timedelta
 
 import pytest
-from pydantic import ValidationError
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from tropek.db.models import Asset, AssetType, SLOEvaluation, SLOObjective
@@ -135,38 +134,6 @@ async def _seed_indicator_rows(
         )
     if ir_rows:
         await indicator_repo.bulk_insert(eval_id, ir_rows)
-
-
-def test_slo_name_and_slo_names_mutually_exclusive() -> None:
-    """Supplying both slo_name and slo_names is rejected at schema level."""
-    with pytest.raises(ValidationError, match='mutually exclusive'):
-        ReEvaluateRequest(
-            asset_name='checkout-api',
-            slo_name='latency-slo',
-            slo_names=['latency-slo', 'avail-slo'],
-            from_baseline=True,
-        )
-
-
-def test_empty_slo_names_rejected() -> None:
-    """An empty slo_names list is rejected — it is ambiguous with omission."""
-    with pytest.raises(ValidationError, match='slo_names must be non-empty'):
-        ReEvaluateRequest(
-            asset_name='checkout-api',
-            slo_names=[],
-            from_baseline=True,
-        )
-
-
-def test_slo_names_happy_path() -> None:
-    """slo_names round-trips and leaves slo_name unset."""
-    request = ReEvaluateRequest(
-        asset_name='checkout-api',
-        slo_names=['latency-slo', 'avail-slo'],
-        from_baseline=True,
-    )
-    assert request.slo_names == ['latency-slo', 'avail-slo']
-    assert request.slo_name is None
 
 
 @pytest.mark.integration

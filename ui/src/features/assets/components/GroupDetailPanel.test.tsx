@@ -218,7 +218,7 @@ describe('GroupDetailPanel', () => {
     )
     const unlinkButton = screen.getByTitle('Unlink')
     await user.click(unlinkButton)
-    expect(mockMutate).toHaveBeenCalledWith({ groupName: 'payments', assignmentId: 'l1' })
+    expect(mockMutate).toHaveBeenCalledWith({ groupName: 'payments', sloDefinitionId: 'sd1' })
   })
 
   it('highlights the selected asset row when selectedAsset matches a member', () => {

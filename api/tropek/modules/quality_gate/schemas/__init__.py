@@ -41,7 +41,6 @@ from tropek.modules.quality_gate.schemas.heatmap import (
 )
 from tropek.modules.quality_gate.schemas.re_evaluation import (
     ReEvalResultItem,
-    ReEvaluateRequest,
     ReEvaluateResponse,
 )
 from tropek.modules.quality_gate.schemas.trigger import (
@@ -85,7 +84,6 @@ __all__ = [
     'OverrideStatusRequest',
     'PinBaselineRequest',
     'ReEvalResultItem',
-    'ReEvaluateRequest',
     'ReEvaluateResponse',
     'TrendPoint',
 ]

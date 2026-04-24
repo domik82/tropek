@@ -11,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from tropek.db.session import get_session
 from tropek.modules.common.exceptions import ConflictError, DomainValidationError, NotFoundError
-from tropek.modules.common.schemas import PagedResponse
+from tropek.modules.common.schemas import PagedResponse, SafeQueryStr
 from tropek.modules.sli_registry.repository import SLIRepository
 from tropek.modules.slo_groups.generator import generate_slo_specs
 from tropek.modules.slo_groups.regeneration import RegenerationPlan, plan_regeneration
@@ -204,8 +204,8 @@ async def create_slo_group(
 
 @router.get('/slo-groups', response_model=PagedResponse[SLOGroupRead])
 async def list_slo_groups(
-    tag_key: str | None = None,
-    tag_val: str | None = None,
+    tag_key: SafeQueryStr | None = None,
+    tag_val: SafeQueryStr | None = None,
     session: AsyncSession = Depends(get_session),
 ) -> PagedResponse[SLOGroupRead]:
     """List all active SLO groups with optional tag filter."""

@@ -23,7 +23,7 @@ from tropek.modules.asset_meta.timeline import (
 from tropek.modules.asset_meta.timeline.clipping import clip_spans
 from tropek.modules.asset_meta.timeline.conflict_resolution import resolve_multi_source_conflicts
 from tropek.modules.asset_meta.timeline.derivation import derive_raw_spans
-from tropek.modules.common.exceptions import DomainValidationError, NotFoundError
+from tropek.modules.common.exceptions import NotFoundError
 
 logger = logging.getLogger(__name__)
 
@@ -33,8 +33,7 @@ async def create_meta_snapshot(
     asset_id: UUID,
     payload: MetaSnapshotCreate,
 ) -> MetaSnapshotCreated:
-    """Ingest one snapshot. Thin orchestrator over validation + existence + write."""
-    _validate_payload_has_content(payload)
+    """Ingest one snapshot. Thin orchestrator over existence check + write."""
     repository = AssetMetaRepository(session)
     await _ensure_asset_exists(repository, asset_id)
     snapshot_id = await _write_snapshot_rows(repository, asset_id, payload)
@@ -101,12 +100,6 @@ async def get_timeline_summary(
     clipped = clip_spans(resolved, window_from, window_to)
     item_count = count_distinct_leaf_paths(clipped)
     return TimelineSummaryResponse.model_validate({'itemCount': item_count})
-
-
-def _validate_payload_has_content(payload: MetaSnapshotCreate) -> None:
-    """Reject snapshots with neither values nor closures."""
-    if not payload.values and not payload.closed:
-        raise DomainValidationError('snapshot must contain values or closed')
 
 
 async def _ensure_asset_exists(repository: AssetMetaRepository, asset_id: UUID) -> None:

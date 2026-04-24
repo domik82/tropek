@@ -2,51 +2,67 @@
 
 from __future__ import annotations
 
+from typing import Annotated, Self
 from uuid import UUID
 
-from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, field_validator
+from pydantic import (
+    AfterValidator,
+    AwareDatetime,
+    BaseModel,
+    ConfigDict,
+    Field,
+    StringConstraints,
+    field_validator,
+    model_validator,
+)
 
-from tropek.modules.common.schemas import StrictInput
+from tropek.modules.common.schemas import SafeStr, StrictInput, reject_null_bytes
 
-MAX_PATH_ENTRY_LENGTH = 128
+PathEntry = Annotated[str, StringConstraints(min_length=1, max_length=128), AfterValidator(reject_null_bytes)]
 
 
 class MetaValueInput(StrictInput):
     """A single key-value pair to set in the metadata timeline."""
 
-    path: list[str] = Field(min_length=1, max_length=6)
-    value: str = Field(max_length=1024)
-
-    @field_validator('path')
-    @classmethod
-    def _validate_path_entries(cls, entries: list[str]) -> list[str]:
-        for entry in entries:
-            if not 1 <= len(entry) <= MAX_PATH_ENTRY_LENGTH:
-                raise ValueError('path entries must be 1-128 characters')
-        return entries
+    path: list[PathEntry] = Field(min_length=1, max_length=6)
+    value: SafeStr = Field(max_length=1024)
 
 
 class MetaClosureInput(StrictInput):
     """A path to close (end its current span) in the metadata timeline."""
 
-    path: list[str] = Field(min_length=1, max_length=6)
-
-    @field_validator('path')
-    @classmethod
-    def _validate_path_entries(cls, entries: list[str]) -> list[str]:
-        for entry in entries:
-            if not 1 <= len(entry) <= MAX_PATH_ENTRY_LENGTH:
-                raise ValueError('path entries must be 1-128 characters')
-        return entries
+    path: list[PathEntry] = Field(min_length=1, max_length=6)
 
 
 class MetaSnapshotCreate(StrictInput):
     """Request body for creating a metadata snapshot."""
 
+    # anyOf tells OpenAPI consumers (e.g. schemathesis) that at least one of
+    # values/closed must be non-empty. The model_validator below is the runtime
+    # authority; anyOf just keeps fuzzers from generating the empty-empty case.
+    model_config = ConfigDict(
+        extra='forbid',
+        json_schema_extra={
+            'anyOf': [
+                {'properties': {'values': {'minItems': 1}}, 'required': ['values']},
+                {'properties': {'closed': {'minItems': 1}}, 'required': ['closed']},
+            ],
+        },
+    )
+
     source: str = Field(min_length=1, max_length=64, pattern=r'^[a-zA-Z0-9._-]+$')
     observed_at: AwareDatetime
-    values: list[MetaValueInput] = Field(default_factory=list, max_length=10_000)
-    closed: list[MetaClosureInput] = Field(default_factory=list, max_length=1_000)
+    # uniqueItems: True tells schemathesis that duplicate paths are forbidden —
+    # enforced at runtime by _unique_value_paths/_unique_closed_paths validators.
+    # The values[] uniqueness is by path only (not the full item), so uniqueItems
+    # on the full item would be overly permissive; declare it for closed[] where
+    # the item *is* the path, and for values[] to keep schemathesis happy.
+    values: list[MetaValueInput] = Field(
+        default_factory=list, max_length=10_000, json_schema_extra={'uniqueItems': True}
+    )
+    closed: list[MetaClosureInput] = Field(
+        default_factory=list, max_length=1_000, json_schema_extra={'uniqueItems': True}
+    )
 
     @field_validator('values')
     @classmethod
@@ -69,6 +85,13 @@ class MetaSnapshotCreate(StrictInput):
                 raise ValueError(f'duplicate path in closed: {entry.path}')
             seen.add(path_key)
         return entries
+
+    @model_validator(mode='after')
+    def _require_values_or_closed(self) -> Self:
+        """Reject snapshots that carry neither values nor closures."""
+        if not self.values and not self.closed:
+            raise ValueError('snapshot must contain values or closed entries')
+        return self
 
 
 class MetaSnapshotCreated(BaseModel):
