@@ -1,15 +1,48 @@
 // ui/src/features/navigator/components/AssetHeatmap.tsx
-import { useMemo, useCallback } from 'react'
-import { useTheme } from '@/lib/theme-context'
-import { RESULT_COLOUR } from '@/lib/theme'
-import { fmtDateTime } from '@/lib/format'
-import { HeatmapChart } from '@/components/charts/HeatmapChart'
-import type { SlotNote } from '@/components/charts/NoteIndicatorRow'
-import { assetHeatmapDtoToDomain } from '../mappers'
+import { useMemo, useCallback, useRef, useEffect, useDeferredValue, type ReactNode, type MutableRefObject } from 'react'
+import { overallScoreToMiniView, sloGroupToMiniView } from '../mappers'
 import type { GroupedMetricHeatmapResponseDto } from '../mappers'
 import type { HeatmapEChartsCell, TimeSlotSelection } from '../ui-types'
+import type { SlotNote } from '@/components/charts/NoteIndicatorRow'
+import { HeatmapChart } from '@/components/charts/HeatmapChart'
+import { fmtDateTime } from '@/lib/format'
+import { SloMiniHeatmap } from './SloMiniHeatmap'
+import { LazyHeatmap } from './LazyHeatmap'
+import { RESULT_COLOUR } from '@/lib/theme'
+import { useTheme } from '@/lib/theme-context'
 
 export type { TimeSlotSelection } from '../ui-types'
+
+function VisibilityTrackedSegment({
+  segmentKey,
+  visibleSegmentsRef,
+  children,
+}: {
+  segmentKey: string
+  visibleSegmentsRef: MutableRefObject<Set<string>>
+  children: ReactNode
+}) {
+  const divRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const element = divRef.current
+    if (!element) return
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          visibleSegmentsRef.current.add(segmentKey)
+        } else {
+          visibleSegmentsRef.current.delete(segmentKey)
+        }
+      },
+      { threshold: 0 },
+    )
+    observer.observe(element)
+    return () => observer.disconnect()
+  }, [segmentKey, visibleSegmentsRef])
+
+  return <div ref={divRef}>{children}</div>
+}
 
 interface Props {
   data: GroupedMetricHeatmapResponseDto
@@ -35,72 +68,81 @@ export function AssetHeatmap({
   const { theme } = useTheme()
   const colours = RESULT_COLOUR[theme]
 
-  const { slots, slotLabels, rows, cells, headerRowIndices } = useMemo(
-    () => assetHeatmapDtoToDomain(data, expandState),
-    [data, expandState],
+  // Shared column data — identical across all mini-heatmaps
+  const slots = useMemo(
+    () => data.columns.map(column => column.evaluation_id),
+    [data.columns],
   )
+
+  const slotLabels = useMemo(() => {
+    const labels = new Map<string, string>()
+    for (const column of data.columns) {
+      labels.set(column.evaluation_id, column.period_start)
+    }
+    return labels
+  }, [data.columns])
 
   const formatColumnLabel = useCallback(
     (slot: string) => fmtDateTime(slotLabels.get(slot) ?? slot),
     [slotLabels],
   )
 
+  // Overall Score segment
+  const overallView = useMemo(
+    () => overallScoreToMiniView(data.columns, data.composite),
+    [data.columns, data.composite],
+  )
+
+  // Per-SLO segments, sorted alphabetically
+  const sortedGroups = useMemo(
+    () => [...data.groups].sort((a, b) => a.slo_name.localeCompare(b.slo_name)),
+    [data.groups],
+  )
+
+  const sloViews = useMemo(
+    () => sortedGroups.map(group => ({
+      sloName: group.slo_name,
+      view: sloGroupToMiniView(
+        group,
+        data.columns,
+        expandState.get(group.slo_name) ?? false,
+      ),
+    })),
+    [sortedGroups, data.columns, expandState],
+  )
+
+  // Selected column index — computed from raw DTO, shared across all segments
   const selectedColumn = useMemo(() => {
     if (!selectedEvalId) return undefined
-    // Try visible indicator cells first
-    const cell = cells.find(c => c.evalId === selectedEvalId)
-    if (cell) return cell.value[0]
-    // Fallback: groups may be collapsed so indicator cells aren't in `cells`.
     const colIdx = data.columns.findIndex(col =>
       data.groups.some(g =>
-        g.cells.some(c => c.slo_evaluation_id === selectedEvalId && c.evaluation_id === col.evaluation_id)
+        g.cells.some(c => c.slo_evaluation_id === selectedEvalId
+                       && c.evaluation_id === col.evaluation_id)
       )
     )
     return colIdx >= 0 ? colIdx : undefined
-  }, [selectedEvalId, cells, data])
+  }, [selectedEvalId, data])
 
-  const formatTooltip = useCallback((cell: HeatmapEChartsCell): string => {
-    if (cell.result === 'none') {
-      return `${cell.rowLabel}<br/>${fmtDateTime(cell.periodStart)}<br/><em>no data</em>`
-    }
-    const rc = colours[cell.result as keyof typeof colours] ?? '#ccc'
-    if (cell.isSloHeader) {
-      return [
-        `<b style="color:#58a6ff">${cell.rowLabel}</b>`,
-        fmtDateTime(cell.periodStart),
-        `Score: <b style="color:${rc}">${cell.score}</b> · <b style="color:${rc}">${cell.result.toUpperCase()}</b>`,
-        `<span style="color:#888;font-size:10px">Click to expand/collapse</span>`,
-      ].join('<br/>')
-    }
-    return [
-      cell.evaluation_name ? `<span style="color:#94a3b8">${cell.evaluation_name}</span>` : '',
-      `<b>${cell.rowLabel}</b>`,
-      fmtDateTime(cell.periodStart),
-      `Score: <b style="color:${rc}">${cell.score}</b> · <b style="color:${rc}">${cell.result.toUpperCase()}</b>`,
-      cell.evalId
-        ? `<span style="color:#888;font-size:10px">Click to select this evaluation</span>`
-        : '',
-    ].filter(Boolean).join('<br/>')
-  }, [colours])
+  // Viewport-aware deferred selection: segments visible in the viewport get
+  // `selectedColumn` immediately, off-screen segments get the deferred value.
+  // The user sees a continuous highlight stripe across all visible charts,
+  // while off-screen charts update in a low-priority render pass.
+  const deferredSelectedColumn = useDeferredValue(selectedColumn)
+  const visibleSegmentsRef = useRef(new Set<string>())
 
+  // Unified click handler — routes all mini-heatmap clicks
   const onCellClick = useCallback((cell: HeatmapEChartsCell): void => {
-    // SLO header row click → toggle expand/collapse AND select the column
     if (cell.isSloHeader && cell.sloName) {
       onSloToggle(cell.sloName)
-      // fall through to also select this column
     }
-    // Indicator cell re-click (column already selected) → scroll to SLI table
+
     if (!cell.isSloHeader && cell.metricName && cell.sloName && onMetricClick
         && selectedColumn === cell.value[0]) {
       onMetricClick(cell.metricName, cell.sloName)
     }
+
     if (onSlotSelect) {
-      // Always collect eval IDs from raw data so collapsed groups are included.
-      const columnKey = cell.columnKey ?? (() => {
-        const colIdx = cell.value[0]
-        const c = cells.find(cc => cc.value[0] === colIdx && cc.columnKey)
-        return c?.columnKey
-      })()
+      const columnKey = cell.columnKey
       let evalIds: string[] = []
       if (columnKey) {
         evalIds = [...new Set(
@@ -111,9 +153,6 @@ export function AssetHeatmap({
           )
         )]
       }
-      // A click on a per-SLO indicator cell (non-header, has evalId) should
-      // default SLO-scoped actions to that specific SLO. Composite "Overall
-      // Score" rows and SLO-header rows leave specificSloEvalId undefined.
       const specificSloEvalId =
         !cell.isSloHeader && cell.evalId ? cell.evalId : undefined
       if (evalIds.length > 0) {
@@ -127,20 +166,99 @@ export function AssetHeatmap({
     } else if (cell.evalId && onEvalSelect) {
       onEvalSelect(cell.evalId)
     }
-  }, [onSloToggle, onMetricClick, onSlotSelect, onEvalSelect, selectedColumn, cells, data])
+  }, [onSloToggle, onMetricClick, onSlotSelect, onEvalSelect, selectedColumn, data])
+
+  // Estimate height for lazy-mounted expanded SLOs
+  const estimateHeight = (rowCount: number): number =>
+    rowCount * 28
 
   return (
-    <HeatmapChart
-      rows={rows}
-      columns={slots}
-      cells={cells}
-      selectedColumn={selectedColumn}
-      onCellClick={onCellClick}
-      formatTooltip={formatTooltip}
-      formatColumnLabel={formatColumnLabel}
-      headerRowIndices={headerRowIndices}
-      instructionText="Click an indicator cell to select that evaluation. Click an SLO row to expand/collapse."
-      notedColumns={notedSlots}
-    />
+    <div className="w-full">
+      {/* Instruction text */}
+      <div className="mb-1 px-1">
+        <span className="text-xs text-muted-foreground">
+          Click an indicator cell to select that evaluation. Click an SLO row to expand/collapse.
+        </span>
+      </div>
+
+      {/* Stacked mini-heatmaps — zero gap between them */}
+      <div className="flex flex-col" style={{ gap: 0 }}>
+        {/* Overall Score (1 row, always rendered, carries note indicators) */}
+        <VisibilityTrackedSegment segmentKey="overall" visibleSegmentsRef={visibleSegmentsRef}>
+          <SloMiniHeatmap
+            view={overallView}
+            slots={slots}
+            slotLabels={slotLabels}
+            selectedColumn={visibleSegmentsRef.current.has('overall') ? selectedColumn : deferredSelectedColumn}
+            onCellClick={onCellClick}
+            showXAxis={false}
+            notedColumns={notedSlots}
+          />
+        </VisibilityTrackedSegment>
+
+        {/* Per-SLO segments */}
+        {sloViews.map(({ sloName, view }) => {
+          const isExpanded = expandState.get(sloName) ?? false
+          const rowCount = view.rows.length
+
+          const needsLazy = isExpanded && rowCount > 3
+
+          const heatmap = (
+            <VisibilityTrackedSegment segmentKey={sloName} visibleSegmentsRef={visibleSegmentsRef}>
+              <SloMiniHeatmap
+                key={sloName}
+                view={view}
+                slots={slots}
+                slotLabels={slotLabels}
+                selectedColumn={visibleSegmentsRef.current.has(sloName) ? selectedColumn : deferredSelectedColumn}
+                onCellClick={onCellClick}
+                showXAxis={false}
+              />
+            </VisibilityTrackedSegment>
+          )
+
+          if (needsLazy) {
+            return (
+              <LazyHeatmap
+                key={sloName}
+                estimatedHeight={estimateHeight(rowCount)}
+              >
+                {heatmap}
+              </LazyHeatmap>
+            )
+          }
+
+          return <div key={sloName}>{heatmap}</div>
+        })}
+
+        {/* Axis-only chart: 0 data rows, renders only the shared x-axis labels */}
+        <HeatmapChart
+          rows={[]}
+          columns={slots}
+          cells={[]}
+          onCellClick={onCellClick}
+          showXAxis
+          showLegend={false}
+          compact
+          height={100}
+          formatTooltip={() => ''}
+          formatColumnLabel={formatColumnLabel}
+        />
+      </div>
+
+      {/* Shared legend — rendered once below all mini-heatmaps */}
+      <div className="flex items-center justify-end gap-3 text-xs text-muted-foreground mt-1 px-1" role="legend" aria-label="Status colour legend">
+        {(['pass', 'warning', 'fail', 'error', 'invalidated'] as const).map(r => (
+          <span key={r} className="flex items-center gap-1" aria-label={`${r} status`}>
+            <span
+              className="inline-block w-3 h-3 rounded-sm"
+              style={{ backgroundColor: colours[r] }}
+              aria-hidden="true"
+            />
+            {r}
+          </span>
+        ))}
+      </div>
+    </div>
   )
 }

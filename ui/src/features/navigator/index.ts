@@ -1,7 +1,6 @@
 export type { HeatmapEChartsCell, TimeSlotSelection } from './ui-types'
 export type {
   GroupedMetricHeatmap,
-  AssetHeatmapView,
   EvaluationColumn,
   HeatmapMetric,
   HeatmapIndicatorCell,
