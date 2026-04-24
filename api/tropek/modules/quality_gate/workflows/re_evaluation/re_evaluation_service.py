@@ -22,9 +22,17 @@ from tropek.modules.quality_gate.repositories.baseline import BaselineRepository
 from tropek.modules.quality_gate.repositories.evaluation import EvaluationRepository
 from tropek.modules.quality_gate.repositories.indicator import IndicatorRepository, build_indicator_row_dicts
 from tropek.modules.quality_gate.schemas.re_evaluation import (
+    AssetScope,
+    EvalNamesSelector,
     ReEvalResultItem,
+    ReEvaluateFromBaselineRequest,
+    ReEvaluateFromDateRequest,
+    ReEvaluateFromEvaluationRequest,
     ReEvaluateRequest,
     ReEvaluateResponse,
+    Scope,
+    Selector,
+    SloSelector,
 )
 from tropek.modules.quality_gate.shared.dependencies import QualityGateRepos
 from tropek.modules.quality_gate.shared.exceptions import BaselinePinConflictError
@@ -518,3 +526,95 @@ async def re_evaluate(
         slo_version_used=single_slo_version,
         results=all_results,
     )
+
+
+def _scope_to_asset_name(scope: Scope) -> str:
+    """Extract asset_name from a Scope discriminated union.
+
+    Only AssetScope is supported; GroupScope requires a different code path that
+    iterates over group members — not yet implemented in the split endpoints.
+    """
+    if isinstance(scope, AssetScope):
+        return scope.asset_name
+    raise ValueError('group scope is not yet supported on split re-evaluate endpoints')
+
+
+def _selector_to_slo_fields(
+    selector: Selector | None,
+) -> tuple[str | None, list[str] | None]:
+    """Return (slo_name, slo_names) from the new selector union.
+
+    Returns a pair that maps directly onto the legacy ReEvaluateRequest fields.
+    """
+    if selector is None:
+        return None, None
+    if isinstance(selector, SloSelector):
+        return selector.slo_name, None
+    # EvalNamesSelector — the legacy request uses slo_names; interpretation
+    # of evaluation_names as SLO names preserves backward-compatible behaviour.
+    assert isinstance(selector, EvalNamesSelector)
+    return None, list(selector.evaluation_names)
+
+
+async def re_evaluate_from_date(
+    body: ReEvaluateFromDateRequest,
+    repos: QualityGateRepos,
+) -> ReEvaluateResponse:
+    """Bridge for POST /evaluations/re-evaluate/from-date."""
+    asset_name = _scope_to_asset_name(body.scope)
+    slo_name, slo_names = _selector_to_slo_fields(body.selector)
+    legacy_request = ReEvaluateRequest(
+        asset_name=asset_name,
+        slo_name=slo_name,
+        slo_names=slo_names,
+        from_date=body.from_date,
+        from_baseline=False,
+        from_evaluation_id=None,
+        slo_version=body.slo_version,
+        dry_run=body.dry_run,
+        pin_strategy=body.pin_strategy,
+    )
+    return await re_evaluate(legacy_request, repos)
+
+
+async def re_evaluate_from_baseline(
+    body: ReEvaluateFromBaselineRequest,
+    repos: QualityGateRepos,
+) -> ReEvaluateResponse:
+    """Bridge for POST /evaluations/re-evaluate/from-baseline."""
+    asset_name = _scope_to_asset_name(body.scope)
+    slo_name, slo_names = _selector_to_slo_fields(body.selector)
+    legacy_request = ReEvaluateRequest(
+        asset_name=asset_name,
+        slo_name=slo_name,
+        slo_names=slo_names,
+        from_date=None,
+        from_baseline=True,
+        from_evaluation_id=None,
+        slo_version=body.slo_version,
+        dry_run=body.dry_run,
+        pin_strategy=body.pin_strategy,
+    )
+    return await re_evaluate(legacy_request, repos)
+
+
+async def re_evaluate_from_evaluation(
+    body: ReEvaluateFromEvaluationRequest,
+    evaluation_id: uuid.UUID,
+    repos: QualityGateRepos,
+) -> ReEvaluateResponse:
+    """Bridge for POST /evaluations/re-evaluate/from-evaluation/{evaluation_id}."""
+    asset_name = _scope_to_asset_name(body.scope)
+    slo_name, slo_names = _selector_to_slo_fields(body.selector)
+    legacy_request = ReEvaluateRequest(
+        asset_name=asset_name,
+        slo_name=slo_name,
+        slo_names=slo_names,
+        from_date=None,
+        from_baseline=False,
+        from_evaluation_id=evaluation_id,
+        slo_version=body.slo_version,
+        dry_run=body.dry_run,
+        pin_strategy=body.pin_strategy,
+    )
+    return await re_evaluate(legacy_request, repos)

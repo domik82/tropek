@@ -2,13 +2,13 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, Query, Response
+from fastapi import APIRouter, Depends, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from tropek.db.models import DataSource
 from tropek.db.session import get_session
 from tropek.modules.common.exceptions import NotFoundError
-from tropek.modules.common.schemas import PagedResponse, TagKeyCount, TagValueCount
+from tropek.modules.common.schemas import PagedResponse, SafeQueryStr, TagKeyCount, TagValueCount
 from tropek.modules.datasource.params import DataSourceCreateParams
 from tropek.modules.datasource.repository import DataSourceRepository
 from tropek.modules.datasource.schemas import DataSourceCreate, DataSourceRead, DataSourceUpdate
@@ -25,9 +25,9 @@ def _ds_read(ds: DataSource) -> DataSourceRead:
 
 @router.get('/datasources', response_model=PagedResponse[DataSourceRead])
 async def list_datasources(
-    adapter_type: str | None = None,
-    tag_key: str | None = None,
-    tag_val: str | None = None,
+    adapter_type: SafeQueryStr | None = None,
+    tag_key: SafeQueryStr | None = None,
+    tag_val: SafeQueryStr | None = None,
     session: AsyncSession = Depends(get_session),
 ) -> PagedResponse[DataSourceRead]:
     """List all datasources with optional filters."""
@@ -68,7 +68,7 @@ async def get_tag_keys(
 
 @router.get('/datasources/tag-values', response_model=list[TagValueCount])
 async def get_tag_values(
-    key: str = Query(...),
+    key: SafeQueryStr,
     session: AsyncSession = Depends(get_session),
 ) -> list[TagValueCount]:
     """Return distinct tag values for a key with usage counts."""

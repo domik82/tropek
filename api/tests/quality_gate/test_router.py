@@ -1,7 +1,6 @@
 # api/tests/test_qg_router.py
 from __future__ import annotations
 
-import uuid
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -53,44 +52,6 @@ def client():
             yield c
     finally:
         app.dependency_overrides.clear()
-
-
-def test_trend_rejects_both_eval_id_and_asset_name(client):
-    resp = client.get(
-        '/trend',
-        params={
-            'eval_id': str(uuid.uuid4()),
-            'asset_name': 'vm-01',
-            'slo_name': 'my-slo',
-            'metric': 'cpu',
-        },
-    )
-    assert resp.status_code == 422
-
-
-def test_trend_rejects_neither_eval_id_nor_asset_name(client):
-    resp = client.get('/trend', params={'metric': 'cpu'})
-    assert resp.status_code == 422
-
-
-def test_trend_rejects_eval_id_combined_with_asset_name(client):
-    resp = client.get(
-        '/trend',
-        params={
-            'eval_id': str(uuid.uuid4()),
-            'asset_name': 'vm-01',
-            'metric': 'cpu',
-        },
-    )
-    assert resp.status_code == 422
-
-
-def test_trend_rejects_asset_name_without_slo_name(client):
-    resp = client.get(
-        '/trend',
-        params={'asset_name': 'vm-01', 'metric': 'cpu'},
-    )
-    assert resp.status_code == 422
 
 
 def test_evaluations_rejects_date_with_from(client):

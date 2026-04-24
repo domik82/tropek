@@ -34,6 +34,7 @@ dev = [
     "types-redis",
     "sqlalchemy[mypy]>=2.0",
     "fakeredis>=2.21",
+    "schemathesis>=3.36",
 ]
 
 [build-system]

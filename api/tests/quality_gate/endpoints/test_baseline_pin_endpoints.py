@@ -15,7 +15,7 @@ async def test_pin_baseline(async_client: AsyncClient, db_session: AsyncSession)
     eval_id = await _create_completed_eval(db_session, asset_id)
 
     resp = await async_client.patch(
-        f'/evaluations/{eval_id}/pin-baseline',
+        f'/evaluation/{eval_id}/pin-baseline',
         json={'reason': 'Golden run', 'author': 'alice'},
     )
     assert resp.status_code == 200
@@ -31,11 +31,11 @@ async def test_unpin_baseline(async_client: AsyncClient, db_session: AsyncSessio
     eval_id = await _create_completed_eval(db_session, asset_id)
 
     await async_client.patch(
-        f'/evaluations/{eval_id}/pin-baseline',
+        f'/evaluation/{eval_id}/pin-baseline',
         json={'reason': 'Golden run', 'author': 'alice'},
     )
 
-    resp = await async_client.patch(f'/evaluations/{eval_id}/unpin-baseline')
+    resp = await async_client.patch(f'/evaluation/{eval_id}/unpin-baseline')
     assert resp.status_code == 200
     body = resp.json()
     assert body['baseline_unpinned_at'] is not None
@@ -58,21 +58,21 @@ async def test_pin_new_unpins_previous(async_client: AsyncClient, db_session: As
 
     # Pin A
     await async_client.patch(
-        f'/evaluations/{eval_a}/pin-baseline',
+        f'/evaluation/{eval_a}/pin-baseline',
         json={'reason': 'First pin', 'author': 'alice'},
     )
 
     # Pin B — should unpin A
     await async_client.patch(
-        f'/evaluations/{eval_b}/pin-baseline',
+        f'/evaluation/{eval_b}/pin-baseline',
         json={'reason': 'Better run', 'author': 'bob'},
     )
 
     # Verify A is unpinned
-    resp_a = await async_client.get(f'/evaluations/{eval_a}')
+    resp_a = await async_client.get(f'/evaluation/{eval_a}')
     assert resp_a.json()['baseline_unpinned_at'] is not None
 
     # Verify B is pinned
-    resp_b = await async_client.get(f'/evaluations/{eval_b}')
+    resp_b = await async_client.get(f'/evaluation/{eval_b}')
     assert resp_b.json()['baseline_pinned_at'] is not None
     assert resp_b.json()['baseline_unpinned_at'] is None

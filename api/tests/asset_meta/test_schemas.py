@@ -52,6 +52,7 @@ class TestSourceValidation:
         snapshot = MetaSnapshotCreate(
             source='my.source_name-1',
             observed_at=datetime(2026, 1, 1, tzinfo=UTC),
+            values=[MetaValueInput(path=['app'], value='1.0')],
         )
         assert snapshot.source == 'my.source_name-1'
 
@@ -66,6 +67,7 @@ class TestObservedAtValidation:
         snapshot = MetaSnapshotCreate(
             source='cicd',
             observed_at=datetime(2026, 1, 1, tzinfo=UTC),
+            values=[MetaValueInput(path=['app'], value='1.0')],
         )
         assert snapshot.observed_at.tzinfo is not None
 
@@ -93,11 +95,11 @@ class TestValuesPathValidation:
             MetaValueInput(path=['a', 'b', 'c', 'd', 'e', 'f', 'g'], value='1.0')
 
     def test_empty_string_entry_rejected(self) -> None:
-        with pytest.raises(ValidationError, match='path entries must be 1-128 characters'):
+        with pytest.raises(ValidationError, match='at least 1 character'):
             MetaValueInput(path=[''], value='1.0')
 
     def test_entry_exceeding_128_chars_rejected(self) -> None:
-        with pytest.raises(ValidationError, match='path entries must be 1-128 characters'):
+        with pytest.raises(ValidationError, match='at most 128 characters'):
             MetaValueInput(path=['x' * 129], value='1.0')
 
     def test_valid_six_entry_path_accepted(self) -> None:
@@ -138,11 +140,11 @@ class TestClosedPathValidation:
             MetaClosureInput(path=['a', 'b', 'c', 'd', 'e', 'f', 'g'])
 
     def test_empty_string_entry_rejected(self) -> None:
-        with pytest.raises(ValidationError, match='path entries must be 1-128 characters'):
+        with pytest.raises(ValidationError, match='at least 1 character'):
             MetaClosureInput(path=[''])
 
     def test_entry_exceeding_128_chars_rejected(self) -> None:
-        with pytest.raises(ValidationError, match='path entries must be 1-128 characters'):
+        with pytest.raises(ValidationError, match='at most 128 characters'):
             MetaClosureInput(path=['x' * 129])
 
     def test_valid_path_accepted(self) -> None:
@@ -189,19 +191,15 @@ class TestStructuralValidation:
         assert len(snapshot.values) == 1
         assert len(snapshot.closed) == 1
 
-    def test_empty_values_and_closed_accepted_by_pydantic(self) -> None:
-        """Both lists empty is valid at the schema level.
-
-        The service layer rejects this as a no-op (tested in test_service.py).
-        """
-        snapshot = MetaSnapshotCreate(
-            source='cicd',
-            observed_at=datetime(2026, 1, 1, tzinfo=UTC),
-            values=[],
-            closed=[],
-        )
-        assert snapshot.values == []
-        assert snapshot.closed == []
+    def test_empty_values_and_closed_rejected_by_pydantic(self) -> None:
+        """Both lists empty is rejected at the schema level."""
+        with pytest.raises(ValidationError, match='snapshot must contain values or closed'):
+            MetaSnapshotCreate(
+                source='cicd',
+                observed_at=datetime(2026, 1, 1, tzinfo=UTC),
+                values=[],
+                closed=[],
+            )
 
     def test_unknown_field_rejected(self) -> None:
         """StrictInput sets extra='forbid' — unknown fields must be rejected."""

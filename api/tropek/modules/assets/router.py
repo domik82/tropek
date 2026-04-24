@@ -30,7 +30,7 @@ from tropek.modules.assets.schemas import (
     AssetUpdate,
 )
 from tropek.modules.common.exceptions import DomainValidationError, NotFoundError
-from tropek.modules.common.schemas import PagedResponse, TagKeyCount, TagValueCount
+from tropek.modules.common.schemas import PagedResponse, SafeQueryStr, StrictQueryBool, TagKeyCount, TagValueCount
 
 router = APIRouter()
 
@@ -115,9 +115,9 @@ async def rename_asset_type(
 
 @router.get('/assets', response_model=PagedResponse[AssetRead])
 async def list_assets(
-    type_name: str | None = None,
-    tag_key: str | None = None,
-    tag_val: str | None = None,
+    type_name: SafeQueryStr | None = None,
+    tag_key: SafeQueryStr | None = None,
+    tag_val: SafeQueryStr | None = None,
     session: AsyncSession = Depends(get_session),
     cache: RedisCache | None = Depends(get_cache),
 ) -> PagedResponse[AssetRead]:
@@ -161,7 +161,7 @@ async def list_tag_keys(
 
 @router.get('/assets/tag-values', response_model=list[TagValueCount])
 async def list_tag_values(
-    key: str,
+    key: SafeQueryStr,
     session: AsyncSession = Depends(get_session),
     cache: RedisCache | None = Depends(get_cache),
 ) -> list[TagValueCount]:
@@ -283,7 +283,7 @@ async def update_asset_group(
 @router.delete('/asset-groups/{name}', status_code=204)
 async def delete_asset_group(
     name: str,
-    deactivate_slos: bool = False,
+    deactivate_slos: StrictQueryBool = False,
     session: AsyncSession = Depends(get_session),
 ) -> None:
     """Delete an asset group and optionally deactivate linked SLOs."""

@@ -8,29 +8,29 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict
 
-from tropek.modules.common.schemas import StrictInput
+from tropek.modules.common.schemas import IdentifierKey, SafeStr, StrictInput, Tags
 
 
 class SLOGroupCreate(StrictInput):
     """Request body for creating an SLO group."""
 
-    name: str
-    display_name: str | None = None
-    template_slo_name: str
+    name: SafeStr
+    display_name: SafeStr | None = None
+    template_slo_name: SafeStr
     template_slo_version: int
-    gen_variables: dict[str, list[str]]
-    tags: dict[str, Any] = {}
-    author: str | None = None
+    gen_variables: dict[IdentifierKey, list[SafeStr]]
+    tags: Tags = {}
+    author: SafeStr | None = None
 
 
 class SLOGroupUpdate(StrictInput):
     """Request body for updating an SLO group (triggers regeneration)."""
 
-    template_slo_name: str | None = None
+    template_slo_name: SafeStr | None = None
     template_slo_version: int | None = None
-    gen_variables: dict[str, list[str]] | None = None
-    display_name: str | None = None
-    tags: dict[str, Any] | None = None
+    gen_variables: dict[IdentifierKey, list[SafeStr]] | None = None
+    display_name: SafeStr | None = None
+    tags: Tags | None = None
 
 
 class SLOGroupRead(BaseModel):
@@ -57,5 +57,5 @@ class SLOGroupRead(BaseModel):
 class ExtractRequest(StrictInput):
     """Request body for extracting a generated SLO to standalone."""
 
-    slo_name: str
-    new_name: str
+    slo_name: SafeStr
+    new_name: SafeStr

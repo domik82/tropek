@@ -31,13 +31,13 @@ async def test_heatmap_invalidated_eval_shows_invalidated_result(
 
     # Invalidate via endpoint
     await async_client.patch(
-        f'/evaluations/{eval_id}/invalidate',
+        f'/evaluation/{eval_id}/invalidate',
         json={'invalidation_note': 'bad data'},
     )
 
     # Fetch heatmap — the router should show "invalidated" not "pass"
     resp = await async_client.get(
-        '/evaluations/metric-heatmap',
+        '/evaluations/heatmap/by-metric',
         params={'asset_name': 'hm-router-inv'},
     )
     assert resp.status_code == 200
@@ -65,12 +65,12 @@ async def test_heatmap_overridden_eval_shows_overridden_result(
 
     # Override via endpoint: fail -> pass
     await async_client.patch(
-        f'/evaluations/{eval_id}/override-status',
+        f'/evaluation/{eval_id}/override-status',
         json={'new_result': 'pass', 'reason': 'false alarm', 'author': 'alice'},
     )
 
     resp = await async_client.get(
-        '/evaluations/metric-heatmap',
+        '/evaluations/heatmap/by-metric',
         params={'asset_name': 'hm-router-ovr'},
     )
     assert resp.status_code == 200

@@ -23,7 +23,7 @@ async def test_create_annotation(
     eval_id = await _create_completed_eval(db_session, asset_id)
 
     resp = await async_client.post(
-        f'/evaluations/{eval_id}/annotations',
+        f'/evaluation/{eval_id}/annotations',
         json={
             'content': 'Looks like a network blip',
             'author': 'alice',
@@ -49,15 +49,15 @@ async def test_annotation_appears_in_eval_detail(
     info_id = str(category_ids['info'])
 
     await async_client.post(
-        f'/evaluations/{eval_id}/annotations',
+        f'/evaluation/{eval_id}/annotations',
         json={'content': 'Note one', 'author': 'alice', 'category_id': info_id},
     )
     await async_client.post(
-        f'/evaluations/{eval_id}/annotations',
+        f'/evaluation/{eval_id}/annotations',
         json={'content': 'Note two', 'author': 'bob', 'category_id': info_id},
     )
 
-    resp = await async_client.get(f'/evaluations/{eval_id}')
+    resp = await async_client.get(f'/evaluation/{eval_id}')
     assert resp.status_code == 200
     detail = resp.json()
     assert detail['annotation_count'] == 2
@@ -79,7 +79,7 @@ async def test_list_evaluations_serializes_latest_annotation_category(
     eval_id = await _create_completed_eval(db_session, asset_id)
 
     await async_client.post(
-        f'/evaluations/{eval_id}/annotations',
+        f'/evaluation/{eval_id}/annotations',
         json={
             'content': 'regression probe',
             'author': 'ops',
@@ -107,7 +107,7 @@ async def test_list_annotations(
     eval_id = await _create_completed_eval(db_session, asset_id)
 
     await async_client.post(
-        f'/evaluations/{eval_id}/annotations',
+        f'/evaluation/{eval_id}/annotations',
         json={
             'content': 'Visible note',
             'author': 'alice',
@@ -115,7 +115,7 @@ async def test_list_annotations(
         },
     )
 
-    resp = await async_client.get(f'/evaluations/{eval_id}/annotations')
+    resp = await async_client.get(f'/evaluation/{eval_id}/annotations')
     assert resp.status_code == 200
     annotations = resp.json()
     assert len(annotations) == 1
@@ -132,7 +132,7 @@ async def test_update_annotation(
     eval_id = await _create_completed_eval(db_session, asset_id)
 
     create_resp = await async_client.post(
-        f'/evaluations/{eval_id}/annotations',
+        f'/evaluation/{eval_id}/annotations',
         json={
             'content': 'Original',
             'author': 'alice',
@@ -142,7 +142,7 @@ async def test_update_annotation(
     ann_id = create_resp.json()['id']
 
     resp = await async_client.patch(
-        f'/evaluations/{eval_id}/annotations/{ann_id}',
+        f'/evaluation/{eval_id}/annotations/{ann_id}',
         json={'content': 'Updated content'},
     )
     assert resp.status_code == 200
@@ -159,7 +159,7 @@ async def test_hide_annotation_excludes_from_detail(
     eval_id = await _create_completed_eval(db_session, asset_id)
 
     create_resp = await async_client.post(
-        f'/evaluations/{eval_id}/annotations',
+        f'/evaluation/{eval_id}/annotations',
         json={
             'content': 'Will be hidden',
             'author': 'alice',
@@ -169,13 +169,13 @@ async def test_hide_annotation_excludes_from_detail(
     ann_id = create_resp.json()['id']
 
     hide_resp = await async_client.post(
-        f'/evaluations/{eval_id}/annotations/{ann_id}/hide',
+        f'/evaluation/{eval_id}/annotations/{ann_id}/hide',
         json={'reason': 'Duplicate', 'author': 'bob'},
     )
     assert hide_resp.status_code == 200
     assert hide_resp.json()['hidden_at'] is not None
 
-    detail_resp = await async_client.get(f'/evaluations/{eval_id}')
+    detail_resp = await async_client.get(f'/evaluation/{eval_id}')
     detail = detail_resp.json()
     assert detail['annotation_count'] == 0
     assert len(detail['annotations']) == 0
@@ -188,7 +188,7 @@ async def test_create_annotation_on_missing_eval(
 ) -> None:
     fake_id = uuid.uuid4()
     resp = await async_client.post(
-        f'/evaluations/{fake_id}/annotations',
+        f'/evaluation/{fake_id}/annotations',
         json={
             'content': 'Orphan note',
             'author': 'alice',
@@ -229,7 +229,7 @@ async def test_create_run_annotation(
     run_id = await _create_evaluation_run(db_session, asset_id)
 
     resp = await async_client.post(
-        f'/evaluations/run/{run_id}/annotations',
+        f'/evaluation-run/{run_id}/annotations',
         json={
             'content': 'Column-level note from UI',
             'author': 'daisy',
@@ -254,7 +254,7 @@ async def test_run_annotation_visible_in_column_endpoint(
     run_id = await _create_evaluation_run(db_session, asset_id)
 
     create_resp = await async_client.post(
-        f'/evaluations/run/{run_id}/annotations',
+        f'/evaluation-run/{run_id}/annotations',
         json={
             'content': 'Visible column note',
             'author': 'daisy',
@@ -293,7 +293,7 @@ async def test_trend_annotations_keyed_by_slo_evaluation_id(
     run_id = slo_eval.evaluation_id
 
     run_resp = await async_client.post(
-        f'/evaluations/run/{run_id}/annotations',
+        f'/evaluation-run/{run_id}/annotations',
         json={
             'content': 'run-level note',
             'author': 'ops',
@@ -303,7 +303,7 @@ async def test_trend_annotations_keyed_by_slo_evaluation_id(
     assert run_resp.status_code == 201
 
     slo_resp = await async_client.post(
-        f'/evaluations/{slo_eval_id}/annotations',
+        f'/evaluation/{slo_eval_id}/annotations',
         json={
             'content': 'slo-level note',
             'author': 'ops',
@@ -333,7 +333,7 @@ async def test_create_run_annotation_on_missing_run(
 ) -> None:
     fake_id = uuid.uuid4()
     resp = await async_client.post(
-        f'/evaluations/run/{fake_id}/annotations',
+        f'/evaluation-run/{fake_id}/annotations',
         json={
             'content': 'Orphan run note',
             'author': 'daisy',

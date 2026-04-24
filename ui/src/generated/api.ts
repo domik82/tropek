@@ -129,18 +129,14 @@ export interface paths {
          */
         get: operations["list_group_slo_assignments_asset_groups__name__slo_assignments_get"];
         put?: never;
-        /**
-         * Create Group Slo Assignment
-         * @description Assign a specific SLO definition version to an asset group.
-         */
-        post: operations["create_group_slo_assignment_asset_groups__name__slo_assignments_post"];
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/asset-groups/{name}/slo-assignments/{assignment_id}": {
+    "/asset-groups/{name}/slo-definitions/{slo_definition_id}": {
         parameters: {
             query?: never;
             header?: never;
@@ -148,13 +144,17 @@ export interface paths {
             cookie?: never;
         };
         get?: never;
-        put?: never;
+        /**
+         * Put Group Slo Assignment
+         * @description Upsert an SLO assignment pinning an asset group to a specific SLO definition version.
+         */
+        put: operations["put_group_slo_assignment_asset_groups__name__slo_definitions__slo_definition_id__put"];
         post?: never;
         /**
-         * Delete Group Slo Assignment
-         * @description Remove an SLO assignment from an asset group.
+         * Delete Group Slo Assignment By Target
+         * @description Remove the SLO assignment between an asset group and a specific SLO definition version.
          */
-        delete: operations["delete_group_slo_assignment_asset_groups__name__slo_assignments__assignment_id__delete"];
+        delete: operations["delete_group_slo_assignment_by_target_asset_groups__name__slo_definitions__slo_definition_id__delete"];
         options?: never;
         head?: never;
         patch?: never;
@@ -173,18 +173,14 @@ export interface paths {
          */
         get: operations["list_group_group_assignments_asset_groups__name__slo_group_assignments_get"];
         put?: never;
-        /**
-         * Create Group Group Assignment
-         * @description Assign an SLO group to an asset group (always-latest semantics).
-         */
-        post: operations["create_group_group_assignment_asset_groups__name__slo_group_assignments_post"];
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/asset-groups/{name}/slo-group-assignments/{assignment_id}": {
+    "/asset-groups/{name}/slo-groups/{slo_group_name}": {
         parameters: {
             query?: never;
             header?: never;
@@ -192,13 +188,17 @@ export interface paths {
             cookie?: never;
         };
         get?: never;
-        put?: never;
+        /**
+         * Put Group Slo Group Assignment
+         * @description Upsert an SLO group assignment pinning an asset group to a specific SLO group.
+         */
+        put: operations["put_group_slo_group_assignment_asset_groups__name__slo_groups__slo_group_name__put"];
         post?: never;
         /**
-         * Delete Group Group Assignment
-         * @description Remove an SLO group assignment from an asset group.
+         * Delete Group Slo Group Assignment By Target
+         * @description Remove the SLO group assignment between an asset group and a specific SLO group.
          */
-        delete: operations["delete_group_group_assignment_asset_groups__name__slo_group_assignments__assignment_id__delete"];
+        delete: operations["delete_group_slo_group_assignment_by_target_asset_groups__name__slo_groups__slo_group_name__delete"];
         options?: never;
         head?: never;
         patch?: never;
@@ -436,6 +436,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/assets/{asset_name}/slos/{slo_name}/trend": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Trend By Asset Slo
+         * @description Return time-series trend data for a metric scoped to a specific asset + SLO.
+         */
+        get: operations["get_trend_by_asset_slo_assets__asset_name__slos__slo_name__trend_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/assets/{name}": {
         parameters: {
             query?: never;
@@ -477,11 +497,7 @@ export interface paths {
          */
         get: operations["list_asset_slo_assignments_assets__name__slo_assignments_get"];
         put?: never;
-        /**
-         * Create Asset Slo Assignment
-         * @description Assign a specific SLO definition version to an asset.
-         */
-        post: operations["create_asset_slo_assignment_assets__name__slo_assignments_post"];
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -498,11 +514,7 @@ export interface paths {
         get?: never;
         put?: never;
         post?: never;
-        /**
-         * Delete Asset Slo Assignment
-         * @description Remove an SLO assignment from an asset.
-         */
-        delete: operations["delete_asset_slo_assignment_assets__name__slo_assignments__assignment_id__delete"];
+        delete?: never;
         options?: never;
         head?: never;
         /**
@@ -510,6 +522,30 @@ export interface paths {
          * @description Upgrade an SLO assignment to a new definition version.
          */
         patch: operations["upgrade_asset_slo_assignment_assets__name__slo_assignments__assignment_id__patch"];
+        trace?: never;
+    };
+    "/assets/{name}/slo-definitions/{slo_definition_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Put Asset Slo Assignment
+         * @description Upsert an SLO assignment pinning an asset to a specific SLO definition version.
+         */
+        put: operations["put_asset_slo_assignment_assets__name__slo_definitions__slo_definition_id__put"];
+        post?: never;
+        /**
+         * Delete Asset Slo Assignment By Target
+         * @description Remove the SLO assignment between an asset and a specific SLO definition version.
+         */
+        delete: operations["delete_asset_slo_assignment_by_target_assets__name__slo_definitions__slo_definition_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/assets/{name}/slo-group-assignments": {
@@ -525,18 +561,14 @@ export interface paths {
          */
         get: operations["list_asset_group_assignments_assets__name__slo_group_assignments_get"];
         put?: never;
-        /**
-         * Create Asset Group Assignment
-         * @description Assign an SLO group to an asset (always-latest semantics).
-         */
-        post: operations["create_asset_group_assignment_assets__name__slo_group_assignments_post"];
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/assets/{name}/slo-group-assignments/{assignment_id}": {
+    "/assets/{name}/slo-groups/{slo_group_name}": {
         parameters: {
             query?: never;
             header?: never;
@@ -544,13 +576,17 @@ export interface paths {
             cookie?: never;
         };
         get?: never;
-        put?: never;
+        /**
+         * Put Asset Slo Group Assignment
+         * @description Upsert an SLO group assignment pinning an asset to a specific SLO group.
+         */
+        put: operations["put_asset_slo_group_assignment_assets__name__slo_groups__slo_group_name__put"];
         post?: never;
         /**
-         * Delete Asset Group Assignment
-         * @description Remove an SLO group assignment from an asset.
+         * Delete Asset Slo Group Assignment By Target
+         * @description Remove the SLO group assignment between an asset and a specific SLO group.
          */
-        delete: operations["delete_asset_group_assignment_assets__name__slo_group_assignments__assignment_id__delete"];
+        delete: operations["delete_asset_slo_group_assignment_by_target_assets__name__slo_groups__slo_group_name__delete"];
         options?: never;
         head?: never;
         patch?: never;
@@ -668,7 +704,7 @@ export interface paths {
         patch: operations["update_datasource_datasources__name__patch"];
         trace?: never;
     };
-    "/evaluate": {
+    "/evaluation-run/{run_id}/annotations": {
         parameters: {
             query?: never;
             header?: never;
@@ -678,37 +714,17 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Evaluate Asset
-         * @description Trigger evaluation for all SLOs bound to an asset.
+         * Create Run Annotation New
+         * @description Add a run-level annotation to an EvaluationRun (new URL: /evaluation-run/{id}/annotations).
          */
-        post: operations["evaluate_asset_evaluate_post"];
+        post: operations["create_run_annotation_new_evaluation_run__run_id__annotations_post"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/evaluate/batch": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Evaluate Batch
-         * @description Trigger batch evaluations (by_date or by_asset mode).
-         */
-        post: operations["evaluate_batch_evaluate_batch_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/evaluate/metric-heatmap": {
+    "/evaluation/{eval_id}": {
         parameters: {
             query?: never;
             header?: never;
@@ -716,22 +732,220 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Get Grouped Metric Heatmap
-         * @description Return a grouped metric heatmap — one column per parent EvaluationRun.
-         *
-         *     Read path: run a cheap list query for the candidate run ids in the window,
-         *     MGET the Redis column cache for those ids, fall through to the heavy DB
-         *     build only for runs that missed the cache, assemble the final response
-         *     from the combined fragments, and write newly built fragments back to the
-         *     cache. ``cache=false`` bypasses Redis entirely — no reads, no writes.
+         * Get Evaluation Singular
+         * @description Get full evaluation detail (new singular URL: GET /evaluation/{id}).
          */
-        get: operations["get_grouped_metric_heatmap_evaluate_metric_heatmap_get"];
+        get: operations["get_evaluation_singular_evaluation__eval_id__get"];
         put?: never;
         post?: never;
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/evaluation/{eval_id}/annotations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Annotations Singular
+         * @description List all annotations for an evaluation (new singular URL).
+         */
+        get: operations["list_annotations_singular_evaluation__eval_id__annotations_get"];
+        put?: never;
+        /**
+         * Create Annotation Singular
+         * @description Add an SLO-level annotation to a single SLOEvaluation (new singular URL).
+         */
+        post: operations["create_annotation_singular_evaluation__eval_id__annotations_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/evaluation/{eval_id}/annotations/{ann_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Update Annotation Singular
+         * @description Update an annotation (new singular URL).
+         */
+        patch: operations["update_annotation_singular_evaluation__eval_id__annotations__ann_id__patch"];
+        trace?: never;
+    };
+    "/evaluation/{eval_id}/annotations/{ann_id}/hide": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Hide Annotation Singular
+         * @description Soft-delete (hide) an annotation (new singular URL).
+         */
+        post: operations["hide_annotation_singular_evaluation__eval_id__annotations__ann_id__hide_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/evaluation/{eval_id}/invalidate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Invalidate Evaluation Singular
+         * @description Mark an evaluation as invalidated (new singular URL).
+         */
+        patch: operations["invalidate_evaluation_singular_evaluation__eval_id__invalidate_patch"];
+        trace?: never;
+    };
+    "/evaluation/{eval_id}/override-status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Override Status Singular
+         * @description Override the evaluation result (new singular URL).
+         */
+        patch: operations["override_status_singular_evaluation__eval_id__override_status_patch"];
+        trace?: never;
+    };
+    "/evaluation/{eval_id}/pin-baseline": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Pin Baseline Singular
+         * @description Pin an evaluation as the new baseline (new singular URL).
+         */
+        patch: operations["pin_baseline_singular_evaluation__eval_id__pin_baseline_patch"];
+        trace?: never;
+    };
+    "/evaluation/{eval_id}/restore": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Restore Evaluation Singular
+         * @description Clear invalidation flag on an evaluation (new singular URL).
+         */
+        patch: operations["restore_evaluation_singular_evaluation__eval_id__restore_patch"];
+        trace?: never;
+    };
+    "/evaluation/{eval_id}/restore-override": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Restore Override Singular
+         * @description Restore the original evaluation result (new singular URL).
+         */
+        patch: operations["restore_override_singular_evaluation__eval_id__restore_override_patch"];
+        trace?: never;
+    };
+    "/evaluation/{eval_id}/trend": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Trend By Evaluation
+         * @description Return time-series trend data for a metric scoped to the asset+SLO of one evaluation.
+         */
+        get: operations["get_trend_by_evaluation_evaluation__eval_id__trend_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/evaluation/{eval_id}/unpin-baseline": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Unpin Baseline Singular
+         * @description Remove baseline pin from an evaluation (new singular URL).
+         */
+        patch: operations["unpin_baseline_singular_evaluation__eval_id__unpin_baseline_patch"];
         trace?: never;
     };
     "/evaluations": {
@@ -747,7 +961,31 @@ export interface paths {
          */
         get: operations["list_evaluations_evaluations_get"];
         put?: never;
-        post?: never;
+        /**
+         * Trigger Evaluation
+         * @description Trigger evaluation for all SLOs bound to an asset (new URL: POST /evaluations).
+         */
+        post: operations["trigger_evaluation_evaluations_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/evaluations/batch": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Trigger Evaluation Batch
+         * @description Trigger batch evaluations (new URL: POST /evaluations/batch).
+         */
+        post: operations["trigger_evaluation_batch_evaluations_batch_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -777,7 +1015,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/evaluations/metric-heatmap": {
+    "/evaluations/heatmap": {
         parameters: {
             query?: never;
             header?: never;
@@ -785,10 +1023,30 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Get Metric Heatmap
-         * @description Return a metric x evaluation heatmap grid for an asset.
+         * Get Grouped Metric Heatmap New
+         * @description Return a grouped metric heatmap (new URL: GET /evaluations/heatmap).
          */
-        get: operations["get_metric_heatmap_evaluations_metric_heatmap_get"];
+        get: operations["get_grouped_metric_heatmap_new_evaluations_heatmap_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/evaluations/heatmap/by-metric": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Metric Heatmap New
+         * @description Return a metric x evaluation heatmap grid (new URL: GET /evaluations/heatmap/by-metric).
+         */
+        get: operations["get_metric_heatmap_new_evaluations_heatmap_by_metric_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -817,7 +1075,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/evaluations/re-evaluate": {
+    "/evaluations/re-evaluate/from-baseline": {
         parameters: {
             query?: never;
             header?: never;
@@ -827,17 +1085,17 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Re Evaluate Evaluations
-         * @description Re-evaluate completed evaluations from stored SLI values.
+         * Re Evaluate From Baseline Endpoint
+         * @description Re-evaluate from the most recently pinned baseline (new split endpoint).
          */
-        post: operations["re_evaluate_evaluations_evaluations_re_evaluate_post"];
+        post: operations["re_evaluate_from_baseline_endpoint_evaluations_re_evaluate_from_baseline_post"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/evaluations/run/{run_id}/annotations": {
+    "/evaluations/re-evaluate/from-date": {
         parameters: {
             query?: never;
             header?: never;
@@ -847,37 +1105,37 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Create Run Annotation
-         * @description Add a run-level (column-level) annotation to an EvaluationRun.
+         * Re Evaluate From Date Endpoint
+         * @description Re-evaluate from a fixed start date (new split endpoint).
          */
-        post: operations["create_run_annotation_evaluations_run__run_id__annotations_post"];
+        post: operations["re_evaluate_from_date_endpoint_evaluations_re_evaluate_from_date_post"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/evaluations/{eval_id}": {
+    "/evaluations/re-evaluate/from-evaluation/{evaluation_id}": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /**
-         * Get Evaluation
-         * @description Get full evaluation detail including annotations and indicator results.
-         */
-        get: operations["get_evaluation_evaluations__eval_id__get"];
+        get?: never;
         put?: never;
-        post?: never;
+        /**
+         * Re Evaluate From Evaluation Endpoint
+         * @description Re-evaluate from the period_start of the given evaluation (new split endpoint).
+         */
+        post: operations["re_evaluate_from_evaluation_endpoint_evaluations_re_evaluate_from_evaluation__evaluation_id__post"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/evaluations/{eval_id}/annotations": {
+    "/evaluations/trend-annotations": {
         parameters: {
             query?: never;
             header?: never;
@@ -885,180 +1143,20 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * List Annotations
-         * @description List all annotations for an evaluation.
+         * Get Trend Annotations
+         * @description Return annotations for every point in an (asset, slo) trend, keyed by slo_evaluation_id.
+         *
+         *     Trend points are identified by slo_evaluation_id, so the response keys match.
+         *     Run-level annotations are fanned out across every slo_evaluation_id whose
+         *     parent run they belong to; SLO-level annotations are keyed directly.
          */
-        get: operations["list_annotations_evaluations__eval_id__annotations_get"];
+        get: operations["get_trend_annotations_evaluations_trend_annotations_get"];
         put?: never;
-        /**
-         * Create Annotation
-         * @description Add an SLO-level annotation to a single SLOEvaluation.
-         */
-        post: operations["create_annotation_evaluations__eval_id__annotations_post"];
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
-        trace?: never;
-    };
-    "/evaluations/{eval_id}/annotations/{ann_id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        /**
-         * Update Annotation
-         * @description Update an annotation.
-         */
-        patch: operations["update_annotation_evaluations__eval_id__annotations__ann_id__patch"];
-        trace?: never;
-    };
-    "/evaluations/{eval_id}/annotations/{ann_id}/hide": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Hide Annotation
-         * @description Soft-delete (hide) an annotation.
-         */
-        post: operations["hide_annotation_evaluations__eval_id__annotations__ann_id__hide_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/evaluations/{eval_id}/invalidate": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        /**
-         * Invalidate Evaluation
-         * @description Mark an evaluation as invalidated.
-         */
-        patch: operations["invalidate_evaluation_evaluations__eval_id__invalidate_patch"];
-        trace?: never;
-    };
-    "/evaluations/{eval_id}/override-status": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        /**
-         * Override Status
-         * @description Override the evaluation result.
-         */
-        patch: operations["override_status_evaluations__eval_id__override_status_patch"];
-        trace?: never;
-    };
-    "/evaluations/{eval_id}/pin-baseline": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        /**
-         * Pin Baseline
-         * @description Pin an evaluation as the new baseline for future comparisons.
-         */
-        patch: operations["pin_baseline_evaluations__eval_id__pin_baseline_patch"];
-        trace?: never;
-    };
-    "/evaluations/{eval_id}/restore": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        /**
-         * Restore Evaluation
-         * @description Clear invalidation flag on an evaluation.
-         */
-        patch: operations["restore_evaluation_evaluations__eval_id__restore_patch"];
-        trace?: never;
-    };
-    "/evaluations/{eval_id}/restore-override": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        /**
-         * Restore Override
-         * @description Restore the original evaluation result.
-         */
-        patch: operations["restore_override_evaluations__eval_id__restore_override_patch"];
-        trace?: never;
-    };
-    "/evaluations/{eval_id}/unpin-baseline": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        /**
-         * Unpin Baseline
-         * @description Remove baseline pin from an evaluation.
-         */
-        patch: operations["unpin_baseline_evaluations__eval_id__unpin_baseline_patch"];
         trace?: never;
     };
     "/health": {
@@ -1545,29 +1643,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/trend": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get Trend
-         * @description Return time-series trend data for a specific metric.
-         *
-         *     Exactly one of eval_id or (asset_name + slo_name) must be provided.
-         *     The ``from`` parameter is required; ``to`` defaults to now.
-         */
-        get: operations["get_trend_trend_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1604,6 +1679,16 @@ export interface components {
              */
             weight: number;
         };
+        /**
+         * AggregateFunction
+         * @description Aggregation function applied to a set of baseline values.
+         *
+         *     Used in both :mod:`slo_parser` (SLO comparison defaults) and
+         *     :mod:`criteria` (``aggregate_values`` implementation) — the single source
+         *     of truth for valid function names across both modules.
+         * @enum {string}
+         */
+        AggregateFunction: "avg" | "p50" | "p90" | "p95" | "p99";
         /**
          * AggregationMethod
          * @description Statistical aggregation methods available in aggregated query mode.
@@ -1685,7 +1770,7 @@ export interface components {
              * @default {}
              */
             tags: {
-                [key: string]: unknown;
+                [key: string]: string;
             };
         };
         /**
@@ -1760,7 +1845,7 @@ export interface components {
             content?: string | null;
             /** Tags */
             tags?: {
-                [key: string]: unknown;
+                [key: string]: string;
             } | null;
         };
         /**
@@ -1978,6 +2063,19 @@ export interface components {
             };
         };
         /**
+         * AssetScope
+         * @description Scope targeting a single named asset.
+         */
+        AssetScope: {
+            /** Asset Name */
+            asset_name: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "asset";
+        };
+        /**
          * AssetSnapshot
          * @description Snapshot of asset identity/version at evaluation time.
          */
@@ -2110,8 +2208,7 @@ export interface components {
          * @description Per-SLO comparison configuration. All fields optional.
          */
         ComparisonConfig: {
-            /** Aggregate Function */
-            aggregate_function?: string | null;
+            aggregate_function?: components["schemas"]["AggregateFunction"] | null;
             /** Compare With */
             compare_with?: string | null;
             /** Include Result With Score */
@@ -2120,6 +2217,20 @@ export interface components {
             number_of_comparison_results?: number | null;
             /** Scope Tags */
             scope_tags?: string[] | null;
+        };
+        /**
+         * ComparisonRule
+         * @description A single comparison rule entry.
+         */
+        ComparisonRule: {
+            /** Compare To */
+            compare_to: {
+                [key: string]: string | boolean;
+            };
+            /** Match */
+            match: {
+                [key: string]: string;
+            };
         };
         /**
          * DataSourceCreate
@@ -2246,6 +2357,24 @@ export interface components {
             parent_id: string | null;
             /** Sort Order */
             sort_order: number;
+        };
+        /** ErrorMessage */
+        ErrorMessage: {
+            /** Detail */
+            detail: string;
+        };
+        /**
+         * EvalNamesSelector
+         * @description Selector limiting re-evaluation to a list of evaluation names.
+         */
+        EvalNamesSelector: {
+            /** Evaluation Names */
+            evaluation_names: string[];
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "evaluation_names";
         };
         /**
          * EvaluateBatchRequest
@@ -2588,6 +2717,19 @@ export interface components {
             value: number | null;
         };
         /**
+         * GroupScope
+         * @description Scope targeting all assets in a named group.
+         */
+        GroupScope: {
+            /** Group Name */
+            group_name: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "group";
+        };
+        /**
          * GroupedMetricHeatmapResponse
          * @description Grouped metric heatmap response. Columns are parent EvaluationRun rows.
          */
@@ -2816,6 +2958,10 @@ export interface components {
             source: string;
             /** Values */
             values?: components["schemas"]["MetaValueInput"][];
+        } | {
+            values: unknown;
+        } | {
+            closed: unknown;
         };
         /**
          * MetaSnapshotCreated
@@ -3006,36 +3152,64 @@ export interface components {
             slo_version: number;
         };
         /**
-         * ReEvaluateRequest
-         * @description Request body for POST /evaluations/re-evaluate.
-         *
-         *     When both ``slo_name`` and ``slo_names`` are omitted, all SLOs assigned
-         *     to the asset are re-evaluated (same resolution logic as POST /evaluate).
-         *     When ``slo_names`` is provided, scoring runs only for the listed SLOs.
+         * ReEvaluateFromBaselineRequest
+         * @description Request body for POST /evaluations/re-evaluate/from-baseline.
          */
-        ReEvaluateRequest: {
-            /** Asset Name */
-            asset_name: string;
+        ReEvaluateFromBaselineRequest: {
+            /**
+             * Dry Run
+             * @default false
+             */
+            dry_run: boolean;
+            /** Pin Strategy */
+            pin_strategy?: ("skip_to_pin" | "ignore_pin") | null;
+            /** Scope */
+            scope: components["schemas"]["AssetScope"] | components["schemas"]["GroupScope"];
+            /** Selector */
+            selector?: (components["schemas"]["SloSelector"] | components["schemas"]["EvalNamesSelector"]) | null;
+            /** Slo Version */
+            slo_version?: number | null;
+        };
+        /**
+         * ReEvaluateFromDateRequest
+         * @description Request body for POST /evaluations/re-evaluate/from-date.
+         */
+        ReEvaluateFromDateRequest: {
             /**
              * Dry Run
              * @default false
              */
             dry_run: boolean;
             /**
-             * From Baseline
-             * @default false
+             * From Date
+             * Format: date-time
              */
-            from_baseline: boolean;
-            /** From Date */
-            from_date?: string | null;
-            /** From Evaluation Id */
-            from_evaluation_id?: string | null;
+            from_date: string;
             /** Pin Strategy */
             pin_strategy?: ("skip_to_pin" | "ignore_pin") | null;
-            /** Slo Name */
-            slo_name?: string | null;
-            /** Slo Names */
-            slo_names?: string[] | null;
+            /** Scope */
+            scope: components["schemas"]["AssetScope"] | components["schemas"]["GroupScope"];
+            /** Selector */
+            selector?: (components["schemas"]["SloSelector"] | components["schemas"]["EvalNamesSelector"]) | null;
+            /** Slo Version */
+            slo_version?: number | null;
+        };
+        /**
+         * ReEvaluateFromEvaluationRequest
+         * @description Request body for POST /evaluations/re-evaluate/from-evaluation/{evaluation_id}.
+         */
+        ReEvaluateFromEvaluationRequest: {
+            /**
+             * Dry Run
+             * @default false
+             */
+            dry_run: boolean;
+            /** Pin Strategy */
+            pin_strategy?: ("skip_to_pin" | "ignore_pin") | null;
+            /** Scope */
+            scope: components["schemas"]["AssetScope"] | components["schemas"]["GroupScope"];
+            /** Selector */
+            selector?: (components["schemas"]["SloSelector"] | components["schemas"]["EvalNamesSelector"]) | null;
             /** Slo Version */
             slo_version?: number | null;
         };
@@ -3091,7 +3265,7 @@ export interface components {
              * @default {}
              */
             tags: {
-                [key: string]: unknown;
+                [key: string]: string;
             };
         };
         /**
@@ -3143,23 +3317,6 @@ export interface components {
             version: number;
         };
         /**
-         * SLOAssignmentCreate
-         * @description Request body for creating an SLO assignment.
-         */
-        SLOAssignmentCreate: {
-            /** Comparison Rules */
-            comparison_rules?: {
-                [key: string]: unknown;
-            }[] | null;
-            /** Data Source Name */
-            data_source_name: string;
-            /**
-             * Slo Definition Id
-             * Format: uuid
-             */
-            slo_definition_id: string;
-        };
-        /**
          * SLOAssignmentRead
          * @description Response schema for an SLO assignment.
          */
@@ -3209,6 +3366,16 @@ export interface components {
              * Format: uuid
              */
             new_slo_definition_id: string;
+        };
+        /**
+         * SLOAssignmentUpsert
+         * @description Request body for PUT-upserting an SLO assignment at /{parent}/slo-definitions/{id}.
+         */
+        SLOAssignmentUpsert: {
+            /** Comparison Rules */
+            comparison_rules?: components["schemas"]["ComparisonRule"][] | null;
+            /** Data Source Name */
+            data_source_name: string;
         };
         /**
          * SLODefinitionCreate
@@ -3318,16 +3485,6 @@ export interface components {
             version: number;
         };
         /**
-         * SLOGroupAssignmentCreate
-         * @description Request body for creating an SLO group assignment.
-         */
-        SLOGroupAssignmentCreate: {
-            /** Data Source Name */
-            data_source_name: string;
-            /** Slo Group Name */
-            slo_group_name: string;
-        };
-        /**
          * SLOGroupAssignmentRead
          * @description Response schema for an SLO group assignment.
          */
@@ -3362,6 +3519,14 @@ export interface components {
             slo_group_name: string;
         };
         /**
+         * SLOGroupAssignmentUpsert
+         * @description Request body for PUT-upserting an SLO group assignment at /{parent}/slo-groups/{name}.
+         */
+        SLOGroupAssignmentUpsert: {
+            /** Data Source Name */
+            data_source_name: string;
+        };
+        /**
          * SLOGroupCreate
          * @description Request body for creating an SLO group.
          */
@@ -3381,7 +3546,7 @@ export interface components {
              * @default {}
              */
             tags: {
-                [key: string]: unknown;
+                [key: string]: string;
             };
             /** Template Slo Name */
             template_slo_name: string;
@@ -3451,7 +3616,7 @@ export interface components {
             } | null;
             /** Tags */
             tags?: {
-                [key: string]: unknown;
+                [key: string]: string;
             } | null;
             /** Template Slo Name */
             template_slo_name?: string | null;
@@ -3646,6 +3811,19 @@ export interface components {
             mode: "aggregated";
         };
         /**
+         * SloSelector
+         * @description Selector limiting re-evaluation to a single named SLO.
+         */
+        SloSelector: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "slo";
+            /** Slo Name */
+            slo_name: string;
+        };
+        /**
          * TagKeyCount
          * @description A tag key with its usage count.
          */
@@ -3808,6 +3986,33 @@ export interface operations {
                     "application/json": components["schemas"]["PagedResponse_AssetGroupRead_"];
                 };
             };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
         };
     };
     create_asset_group_asset_groups_post: {
@@ -3830,6 +4035,33 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AssetGroupRead"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
                 };
             };
             /** @description Validation Error */
@@ -3861,6 +4093,33 @@ export interface operations {
                     "application/json": components["schemas"]["AssetGroupTreeResponse"];
                 };
             };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
         };
     };
     get_asset_group_asset_groups__name__get: {
@@ -3881,6 +4140,24 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AssetGroupRead"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
                 };
             };
             /** @description Validation Error */
@@ -3913,6 +4190,33 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
             };
             /** @description Validation Error */
             422: {
@@ -3947,6 +4251,33 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AssetGroupRead"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
                 };
             };
             /** @description Validation Error */
@@ -3984,6 +4315,33 @@ export interface operations {
                     "application/json": components["schemas"]["AssetGroupRead"];
                 };
             };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -4013,6 +4371,33 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
             };
             /** @description Validation Error */
             422: {
@@ -4045,6 +4430,24 @@ export interface operations {
                     "application/json": components["schemas"]["SLOAssignmentRead"][];
                 };
             };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -4056,23 +4459,24 @@ export interface operations {
             };
         };
     };
-    create_group_slo_assignment_asset_groups__name__slo_assignments_post: {
+    put_group_slo_assignment_asset_groups__name__slo_definitions__slo_definition_id__put: {
         parameters: {
             query?: never;
             header?: never;
             path: {
                 name: string;
+                slo_definition_id: string;
             };
             cookie?: never;
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["SLOAssignmentCreate"];
+                "application/json": components["schemas"]["SLOAssignmentUpsert"];
             };
         };
         responses: {
             /** @description Successful Response */
-            201: {
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -4080,6 +4484,33 @@ export interface operations {
                     "application/json": components["schemas"]["SLOAssignmentRead"];
                 };
             };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -4091,13 +4522,13 @@ export interface operations {
             };
         };
     };
-    delete_group_slo_assignment_asset_groups__name__slo_assignments__assignment_id__delete: {
+    delete_group_slo_assignment_by_target_asset_groups__name__slo_definitions__slo_definition_id__delete: {
         parameters: {
             query?: never;
             header?: never;
             path: {
                 name: string;
-                assignment_id: string;
+                slo_definition_id: string;
             };
             cookie?: never;
         };
@@ -4109,6 +4540,33 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
             };
             /** @description Validation Error */
             422: {
@@ -4141,6 +4599,24 @@ export interface operations {
                     "application/json": components["schemas"]["SLOGroupAssignmentRead"][];
                 };
             };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -4152,23 +4628,24 @@ export interface operations {
             };
         };
     };
-    create_group_group_assignment_asset_groups__name__slo_group_assignments_post: {
+    put_group_slo_group_assignment_asset_groups__name__slo_groups__slo_group_name__put: {
         parameters: {
             query?: never;
             header?: never;
             path: {
                 name: string;
+                slo_group_name: string;
             };
             cookie?: never;
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["SLOGroupAssignmentCreate"];
+                "application/json": components["schemas"]["SLOGroupAssignmentUpsert"];
             };
         };
         responses: {
             /** @description Successful Response */
-            201: {
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -4176,6 +4653,33 @@ export interface operations {
                     "application/json": components["schemas"]["SLOGroupAssignmentRead"];
                 };
             };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -4187,13 +4691,13 @@ export interface operations {
             };
         };
     };
-    delete_group_group_assignment_asset_groups__name__slo_group_assignments__assignment_id__delete: {
+    delete_group_slo_group_assignment_by_target_asset_groups__name__slo_groups__slo_group_name__delete: {
         parameters: {
             query?: never;
             header?: never;
             path: {
                 name: string;
-                assignment_id: string;
+                slo_group_name: string;
             };
             cookie?: never;
         };
@@ -4205,6 +4709,33 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
             };
             /** @description Validation Error */
             422: {
@@ -4241,6 +4772,33 @@ export interface operations {
                     "application/json": components["schemas"]["AssetGroupRead"];
                 };
             };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -4271,6 +4829,33 @@ export interface operations {
                 };
                 content?: never;
             };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -4300,6 +4885,33 @@ export interface operations {
                     "application/json": components["schemas"]["PagedResponse_AssetTypeRead_"];
                 };
             };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
         };
     };
     create_asset_type_asset_types_post: {
@@ -4322,6 +4934,33 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AssetTypeRead"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
                 };
             };
             /** @description Validation Error */
@@ -4352,6 +4991,33 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
             };
             /** @description Validation Error */
             422: {
@@ -4388,6 +5054,33 @@ export interface operations {
                     "application/json": components["schemas"]["AssetTypeRead"];
                 };
             };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -4417,6 +5110,33 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AssetTypeRead"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
                 };
             };
             /** @description Validation Error */
@@ -4452,6 +5172,24 @@ export interface operations {
                     "application/json": components["schemas"]["PagedResponse_AssetRead_"];
                 };
             };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -4485,6 +5223,33 @@ export interface operations {
                     "application/json": components["schemas"]["AssetRead"];
                 };
             };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -4514,6 +5279,33 @@ export interface operations {
                     "application/json": components["schemas"]["TagKeyCount"][];
                 };
             };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
         };
     };
     list_tag_values_assets_tag_values_get: {
@@ -4534,6 +5326,24 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TagValueCount"][];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
                 };
             };
             /** @description Validation Error */
@@ -4571,6 +5381,33 @@ export interface operations {
                     "application/json": components["schemas"]["MetaSnapshotCreated"];
                 };
             };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -4603,6 +5440,24 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TimelineResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
                 };
             };
             /** @description Validation Error */
@@ -4639,6 +5494,78 @@ export interface operations {
                     "application/json": components["schemas"]["TimelineSummaryResponse"];
                 };
             };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_trend_by_asset_slo_assets__asset_name__slos__slo_name__trend_get: {
+        parameters: {
+            query: {
+                metric: string;
+                from: string;
+                to?: string;
+            };
+            header?: never;
+            path: {
+                asset_name: string;
+                slo_name: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TrendPoint"][];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -4670,6 +5597,24 @@ export interface operations {
                     "application/json": components["schemas"]["AssetRead"];
                 };
             };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -4698,6 +5643,33 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
             };
             /** @description Validation Error */
             422: {
@@ -4734,6 +5706,33 @@ export interface operations {
                     "application/json": components["schemas"]["AssetRead"];
                 };
             };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -4765,70 +5764,23 @@ export interface operations {
                     "application/json": components["schemas"]["SLOAssignmentRead"][];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Bad Request */
+            400: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ErrorMessage"];
                 };
             };
-        };
-    };
-    create_asset_slo_assignment_assets__name__slo_assignments_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                name: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["SLOAssignmentCreate"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            201: {
+            /** @description Error */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["SLOAssignmentRead"];
+                    "application/json": components["schemas"]["ErrorMessage"];
                 };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    delete_asset_slo_assignment_assets__name__slo_assignments__assignment_id__delete: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                name: string;
-                assignment_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
             };
             /** @description Validation Error */
             422: {
@@ -4866,6 +5818,153 @@ export interface operations {
                     "application/json": components["schemas"]["SLOAssignmentRead"];
                 };
             };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    put_asset_slo_assignment_assets__name__slo_definitions__slo_definition_id__put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                name: string;
+                slo_definition_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SLOAssignmentUpsert"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SLOAssignmentRead"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_asset_slo_assignment_by_target_assets__name__slo_definitions__slo_definition_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                name: string;
+                slo_definition_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -4897,6 +5996,24 @@ export interface operations {
                     "application/json": components["schemas"]["SLOGroupAssignmentRead"][];
                 };
             };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -4908,23 +6025,24 @@ export interface operations {
             };
         };
     };
-    create_asset_group_assignment_assets__name__slo_group_assignments_post: {
+    put_asset_slo_group_assignment_assets__name__slo_groups__slo_group_name__put: {
         parameters: {
             query?: never;
             header?: never;
             path: {
                 name: string;
+                slo_group_name: string;
             };
             cookie?: never;
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["SLOGroupAssignmentCreate"];
+                "application/json": components["schemas"]["SLOGroupAssignmentUpsert"];
             };
         };
         responses: {
             /** @description Successful Response */
-            201: {
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -4932,6 +6050,33 @@ export interface operations {
                     "application/json": components["schemas"]["SLOGroupAssignmentRead"];
                 };
             };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -4943,13 +6088,13 @@ export interface operations {
             };
         };
     };
-    delete_asset_group_assignment_assets__name__slo_group_assignments__assignment_id__delete: {
+    delete_asset_slo_group_assignment_by_target_assets__name__slo_groups__slo_group_name__delete: {
         parameters: {
             query?: never;
             header?: never;
             path: {
                 name: string;
-                assignment_id: string;
+                slo_group_name: string;
             };
             cookie?: never;
         };
@@ -4961,6 +6106,33 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
             };
             /** @description Validation Error */
             422: {
@@ -4993,6 +6165,33 @@ export interface operations {
                     };
                 };
             };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
         };
     };
     list_datasources_datasources_get: {
@@ -5015,6 +6214,24 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PagedResponse_DataSourceRead_"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
                 };
             };
             /** @description Validation Error */
@@ -5050,6 +6267,33 @@ export interface operations {
                     "application/json": components["schemas"]["DataSourceRead"];
                 };
             };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -5079,6 +6323,33 @@ export interface operations {
                     "application/json": components["schemas"]["TagKeyCount"][];
                 };
             };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
         };
     };
     get_tag_values_datasources_tag_values_get: {
@@ -5099,6 +6370,24 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TagValueCount"][];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
                 };
             };
             /** @description Validation Error */
@@ -5132,6 +6421,24 @@ export interface operations {
                     "application/json": components["schemas"]["DataSourceRead"];
                 };
             };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -5160,6 +6467,33 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
             };
             /** @description Validation Error */
             422: {
@@ -5196,6 +6530,33 @@ export interface operations {
                     "application/json": components["schemas"]["DataSourceRead"];
                 };
             };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -5207,16 +6568,18 @@ export interface operations {
             };
         };
     };
-    evaluate_asset_evaluate_post: {
+    create_run_annotation_new_evaluation_run__run_id__annotations_post: {
         parameters: {
             query?: never;
             header?: never;
-            path?: never;
+            path: {
+                run_id: string;
+            };
             cookie?: never;
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["EvaluateSingleRequest"];
+                "application/json": components["schemas"]["AnnotationCreate"];
             };
         };
         responses: {
@@ -5226,7 +6589,34 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["EvaluateSingleResponse"];
+                    "application/json": components["schemas"]["AnnotationRead"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
                 };
             };
             /** @description Validation Error */
@@ -5240,51 +6630,13 @@ export interface operations {
             };
         };
     };
-    evaluate_batch_evaluate_batch_post: {
+    get_evaluation_singular_evaluation__eval_id__get: {
         parameters: {
             query?: never;
             header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["EvaluateBatchRequest"];
+            path: {
+                eval_id: string;
             };
-        };
-        responses: {
-            /** @description Successful Response */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["EvaluateBatchResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    get_grouped_metric_heatmap_evaluate_metric_heatmap_get: {
-        parameters: {
-            query: {
-                asset_name: string;
-                evaluation_name?: string[] | null;
-                from?: string | null;
-                to?: string | null;
-                /** @description When false, bypass the Redis column cache entirely: read every column from the DB, build every fragment, do not write back. Used for debugging and for the cache-correctness property test. */
-                cache?: boolean;
-            };
-            header?: never;
-            path?: never;
             cookie?: never;
         };
         requestBody?: never;
@@ -5295,7 +6647,675 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["GroupedMetricHeatmapResponse"];
+                    "application/json": components["schemas"]["EvaluationDetail"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_annotations_singular_evaluation__eval_id__annotations_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                eval_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AnnotationRead"][];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_annotation_singular_evaluation__eval_id__annotations_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                eval_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AnnotationCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AnnotationRead"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_annotation_singular_evaluation__eval_id__annotations__ann_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                eval_id: string;
+                ann_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AnnotationUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AnnotationRead"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    hide_annotation_singular_evaluation__eval_id__annotations__ann_id__hide_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                eval_id: string;
+                ann_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AnnotationHide"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AnnotationRead"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    invalidate_evaluation_singular_evaluation__eval_id__invalidate_patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                eval_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InvalidateRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EvaluationSummary"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    override_status_singular_evaluation__eval_id__override_status_patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                eval_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OverrideStatusRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EvaluationDetail"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    pin_baseline_singular_evaluation__eval_id__pin_baseline_patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                eval_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PinBaselineRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EvaluationDetail"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    restore_evaluation_singular_evaluation__eval_id__restore_patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                eval_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EvaluationSummary"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    restore_override_singular_evaluation__eval_id__restore_override_patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                eval_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EvaluationDetail"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_trend_by_evaluation_evaluation__eval_id__trend_get: {
+        parameters: {
+            query: {
+                metric: string;
+                from: string;
+                to?: string;
+            };
+            header?: never;
+            path: {
+                eval_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TrendPoint"][];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    unpin_baseline_singular_evaluation__eval_id__unpin_baseline_patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                eval_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EvaluationDetail"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
                 };
             };
             /** @description Validation Error */
@@ -5318,8 +7338,8 @@ export interface operations {
                 result?: string | null;
                 date?: string | null;
                 group_name?: string | null;
-                from?: string | null;
-                to?: string | null;
+                from?: string;
+                to?: string;
                 limit?: number;
                 offset?: number;
             };
@@ -5336,6 +7356,144 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PagedResponse_EvaluationSummary_"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    trigger_evaluation_evaluations_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EvaluateSingleRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EvaluateSingleResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    trigger_evaluation_batch_evaluations_batch_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EvaluateBatchRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EvaluateBatchResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
                 };
             };
             /** @description Validation Error */
@@ -5369,6 +7527,24 @@ export interface operations {
                     "application/json": components["schemas"]["AnnotationRead"][];
                 };
             };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -5380,13 +7556,67 @@ export interface operations {
             };
         };
     };
-    get_metric_heatmap_evaluations_metric_heatmap_get: {
+    get_grouped_metric_heatmap_new_evaluations_heatmap_get: {
         parameters: {
             query: {
                 asset_name: string;
                 evaluation_name?: string[] | null;
-                from?: string | null;
-                to?: string | null;
+                from?: string;
+                to?: string;
+                /** @description When false, bypass the Redis column cache entirely: read every column from the DB, build every fragment, do not write back. Used for debugging and for the cache-correctness property test. */
+                cache?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GroupedMetricHeatmapResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_metric_heatmap_new_evaluations_heatmap_by_metric_get: {
+        parameters: {
+            query: {
+                asset_name: string;
+                evaluation_name?: string[] | null;
+                from?: string;
+                to?: string;
             };
             header?: never;
             path?: never;
@@ -5401,6 +7631,24 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MetricHeatmapResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
                 };
             };
             /** @description Validation Error */
@@ -5435,6 +7683,24 @@ export interface operations {
                     "application/json": components["schemas"]["EvaluationNameEntry"][];
                 };
             };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -5446,7 +7712,7 @@ export interface operations {
             };
         };
     };
-    re_evaluate_evaluations_evaluations_re_evaluate_post: {
+    re_evaluate_from_baseline_endpoint_evaluations_re_evaluate_from_baseline_post: {
         parameters: {
             query?: never;
             header?: never;
@@ -5455,7 +7721,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["ReEvaluateRequest"];
+                "application/json": components["schemas"]["ReEvaluateFromBaselineRequest"];
             };
         };
         responses: {
@@ -5468,6 +7734,33 @@ export interface operations {
                     "application/json": components["schemas"]["ReEvaluateResponse"];
                 };
             };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -5479,28 +7772,115 @@ export interface operations {
             };
         };
     };
-    create_run_annotation_evaluations_run__run_id__annotations_post: {
+    re_evaluate_from_date_endpoint_evaluations_re_evaluate_from_date_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReEvaluateFromDateRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReEvaluateResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    re_evaluate_from_evaluation_endpoint_evaluations_re_evaluate_from_evaluation__evaluation_id__post: {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                run_id: string;
+                evaluation_id: string;
             };
             cookie?: never;
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["AnnotationCreate"];
+                "application/json": components["schemas"]["ReEvaluateFromEvaluationRequest"];
             };
         };
         responses: {
             /** @description Successful Response */
-            201: {
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["AnnotationRead"];
+                    "application/json": components["schemas"]["ReEvaluateResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
                 };
             };
             /** @description Validation Error */
@@ -5514,13 +7894,14 @@ export interface operations {
             };
         };
     };
-    get_evaluation_evaluations__eval_id__get: {
+    get_trend_annotations_evaluations_trend_annotations_get: {
         parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                eval_id: string;
+            query: {
+                asset: string;
+                slo: string;
             };
+            header?: never;
+            path?: never;
             cookie?: never;
         };
         requestBody?: never;
@@ -5531,343 +7912,27 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["EvaluationDetail"];
+                    "application/json": {
+                        [key: string]: components["schemas"]["AnnotationRead"][];
+                    };
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Bad Request */
+            400: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ErrorMessage"];
                 };
             };
-        };
-    };
-    list_annotations_evaluations__eval_id__annotations_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                eval_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
+            /** @description Error */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["AnnotationRead"][];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    create_annotation_evaluations__eval_id__annotations_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                eval_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["AnnotationCreate"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["AnnotationRead"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    update_annotation_evaluations__eval_id__annotations__ann_id__patch: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                eval_id: string;
-                ann_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["AnnotationUpdate"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["AnnotationRead"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    hide_annotation_evaluations__eval_id__annotations__ann_id__hide_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                eval_id: string;
-                ann_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["AnnotationHide"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["AnnotationRead"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    invalidate_evaluation_evaluations__eval_id__invalidate_patch: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                eval_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["InvalidateRequest"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["EvaluationSummary"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    override_status_evaluations__eval_id__override_status_patch: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                eval_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["OverrideStatusRequest"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["EvaluationDetail"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    pin_baseline_evaluations__eval_id__pin_baseline_patch: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                eval_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["PinBaselineRequest"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["EvaluationDetail"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    restore_evaluation_evaluations__eval_id__restore_patch: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                eval_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["EvaluationSummary"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    restore_override_evaluations__eval_id__restore_override_patch: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                eval_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["EvaluationDetail"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    unpin_baseline_evaluations__eval_id__unpin_baseline_patch: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                eval_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["EvaluationDetail"];
+                    "application/json": components["schemas"]["ErrorMessage"];
                 };
             };
             /** @description Validation Error */
@@ -5901,6 +7966,33 @@ export interface operations {
                     };
                 };
             };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
         };
     };
     list_note_categories_note_categories_get: {
@@ -5919,6 +8011,33 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AnnotationCategoryRead"][];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -5943,6 +8062,33 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AnnotationCategoryRead"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
                 };
             };
             /** @description Validation Error */
@@ -5973,6 +8119,33 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
             };
             /** @description Validation Error */
             422: {
@@ -6009,6 +8182,33 @@ export interface operations {
                     "application/json": components["schemas"]["AnnotationCategoryRead"];
                 };
             };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -6040,6 +8240,24 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PagedResponse_SLIDefinitionRead_"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
                 };
             };
             /** @description Validation Error */
@@ -6075,6 +8293,33 @@ export interface operations {
                     "application/json": components["schemas"]["SLIDefinitionRead"];
                 };
             };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -6104,6 +8349,33 @@ export interface operations {
                     "application/json": components["schemas"]["TagKeyCount"][];
                 };
             };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
         };
     };
     get_sli_tag_values_sli_definitions_tag_values_get: {
@@ -6124,6 +8396,24 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TagValueCount"][];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
                 };
             };
             /** @description Validation Error */
@@ -6157,6 +8447,24 @@ export interface operations {
                     "application/json": components["schemas"]["SLIDefinitionRead"];
                 };
             };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -6185,6 +8493,33 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
             };
             /** @description Validation Error */
             422: {
@@ -6215,6 +8550,24 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SLIDefinitionRead"][];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
                 };
             };
             /** @description Validation Error */
@@ -6250,6 +8603,24 @@ export interface operations {
                     "application/json": components["schemas"]["PagedResponse_SLODefinitionRead_"];
                 };
             };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -6283,6 +8654,33 @@ export interface operations {
                     "application/json": components["schemas"]["SLODefinitionRead"];
                 };
             };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -6312,6 +8710,33 @@ export interface operations {
                     "application/json": components["schemas"]["TagKeyCount"][];
                 };
             };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
         };
     };
     get_slo_tag_values_slo_definitions_tag_values_get: {
@@ -6332,6 +8757,24 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TagValueCount"][];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
                 };
             };
             /** @description Validation Error */
@@ -6367,6 +8810,33 @@ export interface operations {
                     "application/json": components["schemas"]["SLOTestResult"];
                 };
             };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -6400,6 +8870,33 @@ export interface operations {
                     "application/json": components["schemas"]["SLOValidationResult"];
                 };
             };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -6431,6 +8928,24 @@ export interface operations {
                     "application/json": components["schemas"]["SLODefinitionRead"];
                 };
             };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -6459,6 +8974,33 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
             };
             /** @description Validation Error */
             422: {
@@ -6491,6 +9033,24 @@ export interface operations {
                     "application/json": components["schemas"]["SLODefinitionRead"][];
                 };
             };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -6520,6 +9080,33 @@ export interface operations {
                     "application/json": components["schemas"]["DisplayGroupRead"][];
                 };
             };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
         };
     };
     create_display_group_slo_display_groups_post: {
@@ -6542,6 +9129,33 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DisplayGroupRead"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
                 };
             };
             /** @description Validation Error */
@@ -6573,6 +9187,33 @@ export interface operations {
                 };
                 content?: never;
             };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -6602,6 +9243,24 @@ export interface operations {
                 };
                 content: {
                     "application/json": string[];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
                 };
             };
             /** @description Validation Error */
@@ -6637,6 +9296,33 @@ export interface operations {
                 };
                 content?: never;
             };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -6666,6 +9352,33 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
             };
             /** @description Validation Error */
             422: {
@@ -6697,6 +9410,24 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PagedResponse_SLOGroupRead_"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
                 };
             };
             /** @description Validation Error */
@@ -6732,6 +9463,33 @@ export interface operations {
                     "application/json": components["schemas"]["SLOGroupRead"];
                 };
             };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -6761,6 +9519,24 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SLOGroupRead"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
                 };
             };
             /** @description Validation Error */
@@ -6798,6 +9574,33 @@ export interface operations {
                     "application/json": components["schemas"]["SLOGroupRead"];
                 };
             };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -6826,6 +9629,33 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
             };
             /** @description Validation Error */
             422: {
@@ -6862,40 +9692,31 @@ export interface operations {
                     "application/json": components["schemas"]["SLOGroupRead"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Bad Request */
+            400: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ErrorMessage"];
                 };
             };
-        };
-    };
-    get_trend_trend_get: {
-        parameters: {
-            query: {
-                metric: string;
-                eval_id?: string | null;
-                asset_name?: string | null;
-                slo_name?: string | null;
-                from: string;
-                to?: string | null;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
+            /** @description Error */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["TrendPoint"][];
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
                 };
             };
             /** @description Validation Error */

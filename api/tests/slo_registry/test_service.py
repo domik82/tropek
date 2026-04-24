@@ -41,7 +41,8 @@ def test_slo_test_rejects_empty_objectives(client):
         },
     )
     assert resp.status_code == 422
-    assert 'invalid slo' in resp.json()['detail'].lower()
+    # Schema-level MinLen(1) constraint rejects empty objectives list
+    assert any('objectives' in str(entry.get('loc', '')).lower() for entry in resp.json()['detail'])
 
 
 def test_slo_test_rejects_missing_required_fields(client):

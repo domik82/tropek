@@ -123,8 +123,8 @@ async def test_cache_parameter_accepted_and_response_identical_pre_cache(
     is guaranteed. PR2 must preserve this invariant (the property test).
     """
     asset = await seed_asset_with_indicators(cell_count=5)
-    cached_response = await api_client.get(f'/evaluate/metric-heatmap?asset_name={asset.name}')
-    uncached_response = await api_client.get(f'/evaluate/metric-heatmap?asset_name={asset.name}&cache=false')
+    cached_response = await api_client.get(f'/evaluations/heatmap?asset_name={asset.name}')
+    uncached_response = await api_client.get(f'/evaluations/heatmap?asset_name={asset.name}&cache=false')
     assert cached_response.status_code == 200
     assert uncached_response.status_code == 200
     assert cached_response.json() == uncached_response.json()
