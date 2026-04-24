@@ -592,6 +592,134 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/change-points": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Change Points
+         * @description List change points with optional filters.
+         */
+        get: operations["list_change_points_change_points_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/change-points/bulk-triage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Bulk Triage
+         * @description Bulk-update triage state for multiple change points.
+         */
+        patch: operations["bulk_triage_change_points_bulk_triage_patch"];
+        trace?: never;
+    };
+    "/change-points/config/defaults": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Default Config
+         * @description Return the hardcoded default config used when no override exists.
+         */
+        get: operations["get_default_config_change_points_config_defaults_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/change-points/config/{slo_name}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Config Overrides
+         * @description List all override rows for an SLO — metrics not listed use defaults.
+         */
+        get: operations["list_config_overrides_change_points_config__slo_name__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/change-points/config/{slo_name}/{metric_name}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Upsert Config Override
+         * @description Create or update an override for a specific SLO+metric.
+         */
+        put: operations["upsert_config_override_change_points_config__slo_name___metric_name__put"];
+        post?: never;
+        /**
+         * Delete Config Override
+         * @description Remove an override so the metric falls back to defaults.
+         */
+        delete: operations["delete_config_override_change_points_config__slo_name___metric_name__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/change-points/{change_point_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Change Point
+         * @description Get a single change point by ID.
+         */
+        get: operations["get_change_point_change_points__change_point_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Triage Change Point
+         * @description Update triage state of a change point.
+         */
+        patch: operations["triage_change_point_change_points__change_point_id__patch"];
+        trace?: never;
+    };
     "/config/ui": {
         parameters: {
             query?: never;
@@ -2198,17 +2326,152 @@ export interface components {
             period_start: string;
         };
         /**
+         * BulkTriageRequest
+         * @description Request body for bulk-triaging change points.
+         */
+        BulkTriageRequest: {
+            /** Ids */
+            ids: string[];
+            /** Status */
+            status: string;
+            /** Triage Author */
+            triage_author?: string | null;
+            /** Triage Note */
+            triage_note?: string | null;
+        };
+        /**
          * CategoryColor
          * @description Allowed color tokens for an annotation category.
          * @enum {string}
          */
         CategoryColor: "sky" | "green" | "amber" | "red" | "purple" | "pink" | "slate" | "gray";
         /**
+         * ChangePointConfigRead
+         * @description Detection config for a single SLO+metric pair.
+         */
+        ChangePointConfigRead: {
+            /** Enabled */
+            enabled: boolean;
+            /** Max Pvalue */
+            max_pvalue: number;
+            /** Metric Name */
+            metric_name: string;
+            /** Min Magnitude */
+            min_magnitude: number;
+            /** Min Sample Size */
+            min_sample_size: number;
+            /** Slo Name */
+            slo_name: string;
+            /** Window Size */
+            window_size: number;
+        };
+        /**
+         * ChangePointConfigUpsert
+         * @description Request body for creating/updating detection config.
+         */
+        ChangePointConfigUpsert: {
+            /** Enabled */
+            enabled?: boolean | null;
+            /** Max Pvalue */
+            max_pvalue?: number | null;
+            /** Min Magnitude */
+            min_magnitude?: number | null;
+            /** Min Sample Size */
+            min_sample_size?: number | null;
+            /** Window Size */
+            window_size?: number | null;
+        };
+        /**
+         * ChangePointMarker
+         * @description Lightweight marker attached to heatmap cells and trend points.
+         */
+        ChangePointMarker: {
+            /** Change Relative Pct */
+            change_relative_pct: number;
+            /** Direction */
+            direction: string;
+        };
+        /**
+         * ChangePointRead
+         * @description Full change point detail for list views and detail endpoint.
+         */
+        ChangePointRead: {
+            /**
+             * Asset Id
+             * Format: uuid
+             */
+            asset_id: string;
+            /** Change Absolute */
+            change_absolute: number;
+            /** Change Relative Pct */
+            change_relative_pct: number;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Detector */
+            detector: string;
+            /** Direction */
+            direction: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Linked Ticket */
+            linked_ticket: string | null;
+            /** Metric Name */
+            metric_name: string;
+            /**
+             * Period Start
+             * Format: date-time
+             */
+            period_start: string;
+            /** Post Segment Mean */
+            post_segment_mean: number;
+            /** Pre Segment Mean */
+            pre_segment_mean: number;
+            /** Pvalue */
+            pvalue: number;
+            /** Slo Name */
+            slo_name: string;
+            /** Status */
+            status: string;
+            /** Triage At */
+            triage_at: string | null;
+            /** Triage Author */
+            triage_author: string | null;
+            /** Triage Note */
+            triage_note: string | null;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /**
          * ComparisonConfig
-         * @description Per-SLO comparison configuration. All fields optional.
+         * @description Per-SLO comparison configuration (input). All fields optional.
          */
         ComparisonConfig: {
             aggregate_function?: components["schemas"]["AggregateFunction"] | null;
+            /** Compare With */
+            compare_with?: string | null;
+            /** Include Result With Score */
+            include_result_with_score?: string | null;
+            /** Number Of Comparison Results */
+            number_of_comparison_results?: number | null;
+            /** Scope Tags */
+            scope_tags?: string[] | null;
+        };
+        /**
+         * ComparisonConfigRead
+         * @description Per-SLO comparison configuration (response). Accepts any stored value.
+         */
+        ComparisonConfigRead: {
+            /** Aggregate Function */
+            aggregate_function?: string | null;
             /** Compare With */
             compare_with?: string | null;
             /** Include Result With Score */
@@ -2781,6 +3044,7 @@ export interface components {
         HeatmapCellGrouped: {
             /** Aggregation */
             aggregation?: string | null;
+            change_point?: components["schemas"]["ChangePointMarker"] | null;
             /** Change Relative Pct */
             change_relative_pct?: number | null;
             /** Compared Value */
@@ -2901,6 +3165,7 @@ export interface components {
             aggregation?: string | null;
             /** Change Absolute */
             change_absolute: number | null;
+            change_point?: components["schemas"]["ChangePointMarker"] | null;
             /** Change Relative Pct */
             change_relative_pct: number | null;
             /** Compared Value */
@@ -2999,6 +3264,24 @@ export interface components {
          *     tracked as a follow-up).
          */
         MethodCriteriaOverride: {
+            /** Aggregation */
+            aggregation?: string | null;
+            /** Key Sli */
+            key_sli?: boolean | null;
+            /** Method */
+            method?: string | null;
+            /** Pass Threshold */
+            pass_threshold?: string[] | null;
+            /** Warning Threshold */
+            warning_threshold?: string[] | null;
+            /** Weight */
+            weight?: number | null;
+        };
+        /**
+         * MethodCriteriaOverrideRead
+         * @description Per-method override in responses. Accepts any stored value without strict validation.
+         */
+        MethodCriteriaOverrideRead: {
             /** Aggregation */
             aggregation?: string | null;
             /** Key Sli */
@@ -3438,7 +3721,7 @@ export interface components {
             author: string | null;
             /** Comparable From Version */
             comparable_from_version: number;
-            comparison: components["schemas"]["ComparisonConfig"];
+            comparison: components["schemas"]["ComparisonConfigRead"];
             /**
              * Created At
              * Format: date-time
@@ -3455,7 +3738,7 @@ export interface components {
             kind: string;
             /** Method Criteria */
             method_criteria: {
-                [key: string]: components["schemas"]["MethodCriteriaOverride"];
+                [key: string]: components["schemas"]["MethodCriteriaOverrideRead"];
             } | null;
             /** Name */
             name: string;
@@ -3904,6 +4187,7 @@ export interface components {
         TrendPoint: {
             /** Baseline */
             baseline: number | null;
+            change_point?: components["schemas"]["ChangePointMarker"] | null;
             /**
              * Eval Id
              * Format: uuid
@@ -3945,6 +4229,20 @@ export interface components {
             pass?: components["schemas"]["TrendTargetEntry"][] | null;
             /** Warn */
             warn?: components["schemas"]["TrendTargetEntry"][] | null;
+        };
+        /**
+         * TriageRequest
+         * @description Request body for triaging a change point.
+         */
+        TriageRequest: {
+            /** Linked Ticket */
+            linked_ticket?: string | null;
+            /** Status */
+            status: string;
+            /** Triage Author */
+            triage_author?: string | null;
+            /** Triage Note */
+            triage_note?: string | null;
         };
         /** ValidationError */
         ValidationError: {
@@ -6106,6 +6404,452 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_change_points_change_points_get: {
+        parameters: {
+            query?: {
+                status?: string | null;
+                direction?: string | null;
+                asset_id?: string | null;
+                slo_name?: string | null;
+                metric?: string | null;
+                from_ts?: string | null;
+                to_ts?: string | null;
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChangePointRead"][];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    bulk_triage_change_points_bulk_triage_patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BulkTriageRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_default_config_change_points_config_defaults_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChangePointConfigRead"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_config_overrides_change_points_config__slo_name__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slo_name: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChangePointConfigRead"][];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    upsert_config_override_change_points_config__slo_name___metric_name__put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slo_name: string;
+                metric_name: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChangePointConfigUpsert"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChangePointConfigRead"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_config_override_change_points_config__slo_name___metric_name__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slo_name: string;
+                metric_name: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_change_point_change_points__change_point_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                change_point_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChangePointRead"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    triage_change_point_change_points__change_point_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                change_point_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TriageRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChangePointRead"];
+                };
             };
             /** @description Bad Request */
             400: {

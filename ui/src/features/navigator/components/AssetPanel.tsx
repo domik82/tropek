@@ -358,6 +358,12 @@ export function AssetPanel({ assetName, initialEvalId }: Props) {
         warningTargets: cell.warning_targets ?? null,
         tabGroup: cell.tab_group ?? null,
         aggregation: cell.aggregation ?? null,
+        changePoint: cell.change_point
+          ? {
+              direction: cell.change_point.direction as 'regression' | 'improvement',
+              changeRelativePct: cell.change_point.change_relative_pct,
+            }
+          : null,
       }))
       const summary: HeatmapSummaryCell[] = group.summary.map(summaryCell => ({
         evaluationId: summaryCell.evaluation_id,

@@ -43,6 +43,7 @@ function makeHeatmap(): GroupedMetricHeatmap {
             warningTargets: null,
             tabGroup: null,
             aggregation: null,
+            changePoint: null,
           },
           {
             evaluationId: 'col-2',
@@ -61,6 +62,7 @@ function makeHeatmap(): GroupedMetricHeatmap {
             warningTargets: null,
             tabGroup: null,
             aggregation: null,
+            changePoint: null,
           },
         ],
         summary: [
@@ -108,6 +110,7 @@ function makeHeatmap(): GroupedMetricHeatmap {
             warningTargets: null,
             tabGroup: null,
             aggregation: null,
+            changePoint: null,
           },
         ],
         summary: [
