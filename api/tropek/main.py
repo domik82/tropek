@@ -20,6 +20,7 @@ from tropek.logging_config import configure_logging
 from tropek.modules.asset_meta.router import router as asset_meta_router
 from tropek.modules.assets.router import router as assets_router
 from tropek.modules.assignments.router import router as assignments_router
+from tropek.modules.change_points.router import router as change_points_router
 from tropek.modules.common.exception_handlers import (
     conflict_handler,
     domain_validation_handler,
@@ -73,6 +74,7 @@ app.include_router(slo_router)
 app.include_router(slo_groups_router)
 app.include_router(quality_gate_router)
 app.include_router(assignments_router)
+app.include_router(change_points_router)
 app.include_router(display_groups_router)
 
 
