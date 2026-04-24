@@ -82,6 +82,7 @@ export interface Indicator {
   keySli: boolean
   passTargets: PassTarget[]
   warningTargets: PassTarget[]
+  changePoint: ChangePointMarker | null
 }
 
 export interface SliMetadata {

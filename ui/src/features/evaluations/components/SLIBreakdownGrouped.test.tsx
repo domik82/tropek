@@ -19,6 +19,7 @@ const IND: Indicator = {
   keySli: false,
   passTargets: [],
   warningTargets: [],
+  changePoint: null,
 }
 
 const GROUPS = [

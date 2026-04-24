@@ -29,6 +29,7 @@ function makeIndicator(overrides: Partial<Indicator> = {}): Indicator {
     keySli: false,
     passTargets: [],
     warningTargets: [],
+    changePoint: null,
     ...overrides,
   }
 }
