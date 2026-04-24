@@ -93,6 +93,12 @@ export interface AssetHeatmapView {
   headerRowIndices: Set<number>
 }
 
+export interface MiniHeatmapView {
+  rows: string[]
+  cells: HeatmapEChartsCell[]
+  headerRowIndices: Set<number>
+}
+
 // --- Pre-computed visualization shapes (group view) -----------------------
 // These are render-ready structures emitted by buildGroupHeatmapData /
 // buildGroupScoreData in utils.ts for the group-view heatmap and stacked
