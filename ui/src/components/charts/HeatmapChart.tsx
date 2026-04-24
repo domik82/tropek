@@ -396,8 +396,15 @@ export function HeatmapChart({
     },
   }), [onCellClick, hasNotes, computeColumnPositions])
 
+  const handleMouseLeave = useCallback(() => {
+    const instance = chartRef.current?.getEchartsInstance()
+    if (!instance || instance.isDisposed()) return
+    instance.dispatchAction({ type: 'hideTip' })
+    instance.dispatchAction({ type: 'downplay' })
+  }, [])
+
   return (
-    <div className="w-full" ref={containerRef} role="img" aria-label="Heatmap chart showing evaluation results by metric and time">
+    <div className="w-full" ref={containerRef} role="img" aria-label="Heatmap chart showing evaluation results by metric and time" onMouseLeave={handleMouseLeave}>
       {/* Instruction text above the chart */}
       {instructionText && (
         <div className="mb-1 px-1">
