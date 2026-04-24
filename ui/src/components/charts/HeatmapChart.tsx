@@ -366,7 +366,7 @@ export function HeatmapChart({
       ],
       grid: {
         top: compact ? 0 : 10,
-        bottom: compact ? (showXAxis ? 80 : 0) : 80,
+        bottom: compact ? (showXAxis ? 95 : 0) : 80,
         left: HEATMAP_GRID_LEFT,
         right: HEATMAP_GRID_RIGHT,
       },

@@ -198,7 +198,7 @@ export function AssetHeatmap({
           showXAxis
           showLegend={false}
           compact
-          height={80}
+          height={100}
           formatTooltip={() => ''}
           formatColumnLabel={formatColumnLabel}
         />
