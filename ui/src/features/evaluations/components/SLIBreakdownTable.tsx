@@ -1,6 +1,6 @@
 // src/features/evaluations/components/SLIBreakdownTable.tsx
 import { useState } from 'react'
-import { ChevronDown, ChevronRight, ChartLine } from 'lucide-react'
+import { ChevronDown, ChevronRight, ChartLine, Diamond } from 'lucide-react'
 import { fmt } from '@/lib/format'
 import { STATUS_TEXT } from '@/lib/status'
 import { DataTable, DataTableHeader } from '@/components/ui/data-table'
@@ -275,6 +275,14 @@ function IndicatorRow({ ind, idx, isSelected, onClick, onIndicatorClick, display
           <span className="text-foreground truncate" title={ind.metric}>
             {label}
           </span>
+          {ind.changePoint && (
+            <span
+              className={ind.changePoint.direction === 'regression' ? 'text-red-400' : 'text-green-400'}
+              title={`Change point: ${ind.changePoint.direction} (${ind.changePoint.changeRelativePct > 0 ? '+' : ''}${ind.changePoint.changeRelativePct.toFixed(1)}%)`}
+            >
+              <Diamond className="size-3.5" fill="currentColor" />
+            </span>
+          )}
           {onIndicatorClick && (
             <button
               onClick={e => {

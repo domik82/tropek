@@ -483,6 +483,7 @@ export function dtoToEvaluationList(dto: {
 }
 
 export function dtoToIndicator(dto: IndicatorResultDto): Indicator {
+  const changePointDto = dto.change_point
   return {
     metric: dto.metric,
     displayName: dto.display_name,
@@ -498,6 +499,12 @@ export function dtoToIndicator(dto: IndicatorResultDto): Indicator {
     keySli: dto.key_sli,
     passTargets: (dto.pass_targets ?? []).map(dtoToPassTarget),
     warningTargets: (dto.warning_targets ?? []).map(dtoToPassTarget),
+    changePoint: changePointDto
+      ? {
+          direction: changePointDto.direction as 'regression' | 'improvement',
+          changeRelativePct: changePointDto.change_relative_pct,
+        }
+      : null,
   }
 }
 

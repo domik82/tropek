@@ -161,6 +161,12 @@ export function AssetPanelHeatmapView({
             targetValue: t.target_value,
             violated: t.violated,
           })),
+          changePoint: c.change_point
+            ? {
+                direction: c.change_point.direction as 'regression' | 'improvement',
+                changeRelativePct: c.change_point.change_relative_pct,
+              }
+            : null,
         }))
       const result = summary?.invalidated
         ? 'invalidated'
