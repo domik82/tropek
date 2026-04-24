@@ -4,6 +4,8 @@ import { overallScoreToMiniView, sloGroupToMiniView } from '../mappers'
 import type { GroupedMetricHeatmapResponseDto } from '../mappers'
 import type { HeatmapEChartsCell, TimeSlotSelection } from '../ui-types'
 import type { SlotNote } from '@/components/charts/NoteIndicatorRow'
+import { HeatmapChart } from '@/components/charts/HeatmapChart'
+import { fmtDateTime } from '@/lib/format'
 import { SloMiniHeatmap } from './SloMiniHeatmap'
 import { LazyHeatmap } from './LazyHeatmap'
 import { RESULT_COLOUR } from '@/lib/theme'
@@ -48,6 +50,11 @@ export function AssetHeatmap({
     }
     return labels
   }, [data.columns])
+
+  const formatColumnLabel = useCallback(
+    (slot: string) => fmtDateTime(slotLabels.get(slot) ?? slot),
+    [slotLabels],
+  )
 
   // Overall Score segment
   const overallView = useMemo(
@@ -150,13 +157,10 @@ export function AssetHeatmap({
         />
 
         {/* Per-SLO segments */}
-        {sloViews.map(({ sloName, view }, index) => {
-          const isLast = index === sloViews.length - 1
+        {sloViews.map(({ sloName, view }) => {
           const isExpanded = expandState.get(sloName) ?? false
           const rowCount = view.rows.length
 
-          // Collapsed SLOs (1 row) are always cheap — render immediately.
-          // Expanded SLOs with many rows use lazy mounting.
           const needsLazy = isExpanded && rowCount > 3
 
           const heatmap = (
@@ -167,7 +171,7 @@ export function AssetHeatmap({
               slotLabels={slotLabels}
               selectedColumn={selectedColumn}
               onCellClick={onCellClick}
-              showXAxis={isLast}
+              showXAxis={false}
             />
           )
 
@@ -184,6 +188,20 @@ export function AssetHeatmap({
 
           return <div key={sloName}>{heatmap}</div>
         })}
+
+        {/* Axis-only chart: 0 data rows, renders only the shared x-axis labels */}
+        <HeatmapChart
+          rows={[]}
+          columns={slots}
+          cells={[]}
+          onCellClick={onCellClick}
+          showXAxis
+          showLegend={false}
+          compact
+          height={80}
+          formatTooltip={() => ''}
+          formatColumnLabel={formatColumnLabel}
+        />
       </div>
 
       {/* Shared legend — rendered once below all mini-heatmaps */}
