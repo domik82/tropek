@@ -95,6 +95,21 @@ export interface HeatmapChartProps {
   notedColumns?: Map<string, SlotNote>
   /** Called when user clicks a note indicator */
   onNoteIndicatorClick?: (slot: string) => void
+  /**
+   * When false, hides x-axis labels/ticks.
+   * Defaults to true.
+   */
+  showXAxis?: boolean
+  /**
+   * When false, hides the colour legend below the chart.
+   * Defaults to true. Set to false when the legend is rendered once outside.
+   */
+  showLegend?: boolean
+  /**
+   * Eliminates grid padding (top/bottom → 0) and uses tight height calculation.
+   * Used by stacked mini-heatmaps so cells abut seamlessly.
+   */
+  compact?: boolean
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -116,6 +131,9 @@ export function HeatmapChart({
   headerRowIndices = EMPTY_HEADER_INDICES,
   notedColumns,
   onNoteIndicatorClick,
+  showXAxis = true,
+  showLegend = true,
+  compact = false,
 }: HeatmapChartProps) {
   const { theme } = useTheme()
   const colours = RESULT_COLOUR[theme]
@@ -232,7 +250,10 @@ export function HeatmapChart({
       xAxis: {
         type: 'category' as const,
         data: columns.map(formatColumnLabel),
-        axisLabel: { rotate: 45, fontSize: 14, color: ct.axisLabel },
+        axisLabel: showXAxis
+          ? { rotate: 45, fontSize: 14, color: ct.axisLabel }
+          : { show: false },
+        axisTick: showXAxis ? {} : { show: false },
         axisLine: { lineStyle: { color: ct.grid } },
         splitLine: { show: false },
       },
@@ -343,17 +364,26 @@ export function HeatmapChart({
           encode: { x: 0, y: 1 },
         },
       ],
-      grid: { top: 10, bottom: 80, left: HEATMAP_GRID_LEFT, right: HEATMAP_GRID_RIGHT },
+      grid: {
+        top: compact ? 0 : 10,
+        bottom: compact ? (showXAxis ? 95 : 0) : 80,
+        left: HEATMAP_GRID_LEFT,
+        right: HEATMAP_GRID_RIGHT,
+      },
     }),
     // `selectedColumn` is in deps so the renderItem closure picks up the new
     // value when selection changes. Cost is cheap: rebuilding the option
     // object is ~1ms even for large grids because `renderCells` is not
     // re-mapped (it doesn't depend on `selectedColumn`).
-    [columns, rows, renderCells, ct, pad, annotations, formatTooltip, formatColumnLabel, headerRowIndices, selectedColumn],
+    [columns, rows, renderCells, ct, pad, annotations, formatTooltip, formatColumnLabel, headerRowIndices, selectedColumn, showXAxis, compact],
   )
 
   const chartHeight =
-    height === 'auto' ? Math.max(200, rows.length * 28 + 100) : height
+    height === 'auto'
+      ? compact
+        ? rows.length * 28 + (showXAxis ? 80 : 0)
+        : Math.max(200, rows.length * 28 + 100)
+      : height
 
   const hasNotes = notedColumns && notedColumns.size > 0
 
@@ -366,8 +396,15 @@ export function HeatmapChart({
     },
   }), [onCellClick, hasNotes, computeColumnPositions])
 
+  const handleMouseLeave = useCallback(() => {
+    const instance = chartRef.current?.getEchartsInstance()
+    if (!instance || instance.isDisposed()) return
+    instance.dispatchAction({ type: 'hideTip' })
+    instance.dispatchAction({ type: 'downplay' })
+  }, [])
+
   return (
-    <div className="w-full" ref={containerRef} role="img" aria-label="Heatmap chart showing evaluation results by metric and time">
+    <div className="w-full" ref={containerRef} role="img" aria-label="Heatmap chart showing evaluation results by metric and time" onMouseLeave={handleMouseLeave}>
       {/* Instruction text above the chart */}
       {instructionText && (
         <div className="mb-1 px-1">
@@ -395,18 +432,20 @@ export function HeatmapChart({
         )}
       </div>
       {/* Colour legend below the chart */}
-      <div className="flex items-center justify-end gap-3 text-xs text-muted-foreground mt-1 px-1" role="legend" aria-label="Status colour legend">
-        {(['pass', 'warning', 'fail', 'error', 'invalidated'] as const).map(r => (
-          <span key={r} className="flex items-center gap-1" aria-label={`${r} status`}>
-            <span
-              className="inline-block w-3 h-3 rounded-sm"
-              style={{ backgroundColor: colours[r] }}
-              aria-hidden="true"
-            />
-            {r}
-          </span>
-        ))}
-      </div>
+      {showLegend && (
+        <div className="flex items-center justify-end gap-3 text-xs text-muted-foreground mt-1 px-1" role="legend" aria-label="Status colour legend">
+          {(['pass', 'warning', 'fail', 'error', 'invalidated'] as const).map(r => (
+            <span key={r} className="flex items-center gap-1" aria-label={`${r} status`}>
+              <span
+                className="inline-block w-3 h-3 rounded-sm"
+                style={{ backgroundColor: colours[r] }}
+                aria-hidden="true"
+              />
+              {r}
+            </span>
+          ))}
+        </div>
+      )}
     </div>
   )
 }

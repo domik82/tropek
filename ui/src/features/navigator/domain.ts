@@ -81,13 +81,7 @@ export interface GroupedMetricHeatmap {
   composite: HeatmapSummaryCell[]
 }
 
-// Output of the presentational mapper assetHeatmapDtoToDomain. This is the
-// render-ready shape consumed directly by AssetHeatmap.tsx — cells are
-// positioned (value = [xi, yi]), result is in the canonical union, and
-// headerRowIndices marks the ECharts y-indices of SLO group header rows.
-export interface AssetHeatmapView {
-  slots: string[]                      // column keys = evaluation_ids (unique)
-  slotLabels: Map<string, string>      // evaluation_id → ISO period_start for display
+export interface MiniHeatmapView {
   rows: string[]
   cells: HeatmapEChartsCell[]
   headerRowIndices: Set<number>
