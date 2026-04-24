@@ -522,6 +522,7 @@ export function dtoToAnnotation(dto: AnnotationDto): Annotation {
 }
 
 export function dtoToTrendPoint(dto: TrendPointDto): TrendPoint {
+  const changePointDto = dto.change_point
   return {
     timestamp: new Date(dto.timestamp),
     value: dto.value,
@@ -532,6 +533,12 @@ export function dtoToTrendPoint(dto: TrendPointDto): TrendPoint {
     evaluationName: dto.evaluation_name ?? null,
     targets: dto.targets ? dtoToTrendTargets(dto.targets) : null,
     overridden: false,
+    changePoint: changePointDto
+      ? {
+          direction: changePointDto.direction as 'regression' | 'improvement',
+          changeRelativePct: changePointDto.change_relative_pct,
+        }
+      : null,
   }
 }
 

@@ -154,6 +154,11 @@ export interface TrendTargets {
   warn: TrendTargetEntry[]
 }
 
+export interface ChangePointMarker {
+  direction: 'regression' | 'improvement'
+  changeRelativePct: number
+}
+
 export interface TrendPoint {
   timestamp: Date
   value: number
@@ -164,6 +169,7 @@ export interface TrendPoint {
   evaluationName: string | null
   targets: TrendTargets | null
   overridden: boolean
+  changePoint: ChangePointMarker | null
 }
 
 // --- Re-evaluation ---
