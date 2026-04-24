@@ -2,7 +2,7 @@
 
 Revision ID: 001
 Revises: 
-Create Date: 2026-04-20 00:51:32.593517
+Create Date: 2026-04-20 22:34:06.786990
 
 """
 from collections.abc import Sequence
@@ -416,6 +416,7 @@ def upgrade() -> None:
     sa.Column('slo_name', sa.Text(), nullable=False),
     sa.Column('metric_name', sa.Text(), nullable=False),
     sa.Column('period_start', sa.DateTime(timezone=True), nullable=False),
+    sa.Column('detector', sa.Text(), server_default=sa.text("'e_divisive'"), nullable=False),
     sa.Column('direction', sa.Text(), nullable=False),
     sa.Column('change_relative_pct', sa.Float(), nullable=False),
     sa.Column('change_absolute', sa.Float(), nullable=False),

@@ -80,9 +80,10 @@ class TestDetectChangePoints:
         assert isinstance(change_point, ChangePointResult)
         assert isinstance(change_point.position, int)
         assert isinstance(change_point.timestamp, datetime)
+        assert change_point.detector == 'e_divisive'
         assert change_point.direction in ('regression', 'improvement')
         assert isinstance(change_point.change_relative_pct, float)
         assert isinstance(change_point.change_absolute, float)
-        assert isinstance(change_point.t_statistic, float)
+        assert isinstance(change_point.pvalue, float)
         assert isinstance(change_point.pre_segment_mean, float)
         assert isinstance(change_point.post_segment_mean, float)
