@@ -5,24 +5,24 @@ Scope: All `@pytest.mark.integration` test files in `api/tests/`
 
 ## Summary
 
-| Classification | Count | Action |
-|---|---|---|
-| unique-business-logic | ~150 | **Keep** — verifies DB state, multi-step sequences, business rules, or repository logic that Schemathesis cannot reach |
-| schemathesis | 14 | **Candidate for removal** — covered by Schemathesis schema conformance testing |
-| redundant | 0 | — |
+**All ~164 integration tests are kept.** No tests removed.
 
-**Key finding:** The overwhelming majority of integration tests exercise repository-layer logic
-(direct DB calls, not HTTP) or multi-step business workflows. Schemathesis only tests HTTP
-endpoint schema conformance, so these tests provide unique, irreplaceable coverage.
+The overwhelming majority exercise repository-layer logic (direct DB calls, not HTTP) or
+multi-step business workflows that Schemathesis cannot reach.
 
-The 14 candidates for removal are pure shape/status-code checks that Schemathesis already covers.
+14 tests overlap in *coverage area* with Schemathesis (status codes, input validation), but
+they are **designed tests for specific scenarios** while Schemathesis probes heuristically
+with random inputs. Designed tests pin expected behavior and won't drift if the schema
+changes — Schemathesis coverage of the same paths is incidental, not guaranteed. Both layers
+provide complementary value.
 
 ---
 
-## Candidates for Removal (schemathesis-covered)
+## Schemathesis-overlapping tests (kept)
 
-These tests ONLY check status codes or schema validation that Schemathesis already covers.
-No business logic, no DB state verification.
+These 14 tests check status codes or input validation that Schemathesis also probes.
+Kept because they are designed tests pinned to specific scenarios — Schemathesis reaches
+the same paths heuristically but not deterministically.
 
 ### `quality_gate/endpoints/test_annotation_endpoints.py`
 
