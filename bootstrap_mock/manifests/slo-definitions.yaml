@@ -34,6 +34,8 @@ spec:
       pass_threshold: [">=0.999"]
       warning_threshold: [">=0.99"]
       weight: 2
+      change_point:
+        higher_is_better: true
 ---
 api_version: tropek/v1
 kind: SLO
