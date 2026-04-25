@@ -1,5 +1,5 @@
 // ui/src/features/navigator/components/AssetHeatmap.tsx
-import { useMemo, useCallback, useRef, useState, useEffect, useDeferredValue, type ReactNode } from 'react'
+import { useMemo, useCallback, useDeferredValue } from 'react'
 import { overallScoreToMiniView, sloGroupToMiniView } from '../mappers'
 import type { GroupedMetricHeatmapResponseDto } from '../mappers'
 import type { HeatmapEChartsCell, TimeSlotSelection } from '../ui-types'
@@ -8,36 +8,11 @@ import { HeatmapChart } from '@/components/charts/HeatmapChart'
 import { fmtDateTime } from '@/lib/format'
 import { SloMiniHeatmap } from './SloMiniHeatmap'
 import { LazyHeatmap } from './LazyHeatmap'
+import { DeferredWhenOffscreen } from './DeferredWhenOffscreen'
 import { RESULT_COLOUR } from '@/lib/theme'
 import { useTheme } from '@/lib/theme-context'
 
 export type { TimeSlotSelection } from '../ui-types'
-
-function DeferredWhenOffscreen({
-  selectedColumn,
-  deferredSelectedColumn,
-  children,
-}: {
-  selectedColumn: number | undefined
-  deferredSelectedColumn: number | undefined
-  children: (effectiveColumn: number | undefined) => ReactNode
-}) {
-  const divRef = useRef<HTMLDivElement>(null)
-  const [visible, setVisible] = useState(false)
-
-  useEffect(() => {
-    const element = divRef.current
-    if (!element) return
-    const observer = new IntersectionObserver(
-      ([entry]) => setVisible(entry.isIntersecting),
-      { threshold: 0 },
-    )
-    observer.observe(element)
-    return () => observer.disconnect()
-  }, [])
-
-  return <div ref={divRef}>{children(visible ? selectedColumn : deferredSelectedColumn)}</div>
-}
 
 interface Props {
   data: GroupedMetricHeatmapResponseDto
