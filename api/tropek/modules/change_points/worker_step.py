@@ -15,29 +15,34 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from tropek.db.models import IndicatorResultRow, SLODefinition
 from tropek.modules.change_points.detector import detect_change_points
-from tropek.modules.change_points.directionality import is_higher_better
-from tropek.modules.change_points.repository import ChangePointRepository, ResolvedConfig
+from tropek.modules.change_points.repository import (
+    ChangePointInsertParams,
+    ChangePointRepository,
+    ResolvedConfig,
+)
+from tropek.modules.configuration.repository import ConfigurationRepository
 from tropek.modules.quality_gate.repositories.baseline import BaselineRepository
 
 logger = structlog.get_logger()
 
-REGIME_SIMILARITY_THRESHOLD = 0.10
+REGIME_STD_MULTIPLIER = 2.0
 
 
-def _same_regime(previous_mean: float, current_mean: float) -> bool:
-    """Return True if two post-segment means are within REGIME_SIMILARITY_THRESHOLD of each other.
+def _same_regime(
+    previous_mean: float,
+    previous_std: float,
+    current_mean: float,
+) -> bool:
+    """Return True if the new post-segment mean falls within the previous regime's noise band.
 
-    Prevents inserting a new change point when the metric hasn't actually
-    shifted to a meaningfully different level — e.g. when E-Divisive finds
-    a second structural break within a noisy plateau.
+    Uses the standard deviation of the previous change point's post-segment
+    to define the noise band. If the new mean is within k standard deviations
+    of the previous mean, the metric hasn't meaningfully shifted — it's still
+    the same regime.
     """
-    if previous_mean == 0 and current_mean == 0:
-        return True
-    denominator = max(abs(previous_mean), abs(current_mean))
-    if denominator == 0:
-        return True
-    relative_difference = abs(current_mean - previous_mean) / denominator
-    return relative_difference < REGIME_SIMILARITY_THRESHOLD
+    if previous_std <= 0:
+        return previous_mean == current_mean
+    return abs(current_mean - previous_mean) < REGIME_STD_MULTIPLIER * previous_std
 
 
 async def run_change_point_detection(
@@ -48,42 +53,31 @@ async def run_change_point_detection(
     indicator_rows: list[IndicatorResultRow],
     cache: Any | None = None,
 ) -> None:
-    """Run Otava change point detection for each enabled metric.
-
-    Uses BaselineRepository for history scoping (pin-aware, version-aware).
-    Dedup-checks against existing change_points before inserting.
-    """
+    """Run Otava change point detection for each enabled metric."""
     log = logger.bind(
         evaluation_id=str(snapshot.eval_id),
         slo_name=snapshot.slo_name,
     )
 
-    objective_lookup = {obj.sli: obj for obj in slo_def.objectives}
     indicator_lookup = {
         row.objective.sli: row
         for row in indicator_rows
         if row.objective
     }
 
-    metric_names = list(objective_lookup.keys())
-    change_point_repo = ChangePointRepository(session)
-    resolved_configs = await change_point_repo.resolve_configs_for_metrics(
-        slo_name=snapshot.slo_name,
-        metric_names=metric_names,
-    )
+    config_repo = ConfigurationRepository(session)
+    system_defaults = await config_repo.get_change_point_defaults()
 
+    change_point_repo = ChangePointRepository(session)
     baseline_repo = BaselineRepository(session, cache=cache)
 
-    for metric_name, config in resolved_configs.items():
-        if not config.enabled:
-            continue
-
-        objective = objective_lookup.get(metric_name)
-        if not objective:
-            continue
-
-        indicator_row = indicator_lookup.get(metric_name)
+    for objective in slo_def.objectives:
+        indicator_row = indicator_lookup.get(objective.sli)
         if not indicator_row:
+            continue
+
+        resolved = ChangePointRepository.resolve_from_objective(objective, system_defaults)
+        if not resolved.enabled:
             continue
 
         try:
@@ -92,15 +86,15 @@ async def run_change_point_detection(
                 baseline_repo=baseline_repo,
                 change_point_repo=change_point_repo,
                 snapshot=snapshot,
-                metric_name=metric_name,
+                metric_name=objective.sli,
                 indicator_result_id=indicator_row.id,
-                pass_threshold=list(objective.pass_threshold),
-                config=config,
+                higher_is_better=resolved.higher_is_better,
+                config=resolved,
             )
-        except Exception:
+        except (OSError, ValueError, TypeError, RuntimeError, LookupError):
             log.warning(
                 "change point detection failed for metric",
-                metric=metric_name,
+                metric=objective.sli,
                 exc_info=True,
             )
 
@@ -113,7 +107,7 @@ async def _detect_for_metric(
     snapshot: Any,
     metric_name: str,
     indicator_result_id: uuid.UUID,
-    pass_threshold: list[str],
+    higher_is_better: bool,
     config: ResolvedConfig,
 ) -> None:
     """Run detection for a single metric using baseline-scoped history."""
@@ -142,8 +136,6 @@ async def _detect_for_metric(
             min_required=config.min_sample_size,
         )
         return
-
-    higher_is_better = is_higher_better(pass_threshold)
 
     detected = detect_change_points(
         values=values,
@@ -187,28 +179,36 @@ async def _detect_for_metric(
         slo_name=snapshot.slo_name,
         metric_name=metric_name,
     )
-    if previous_cp and _same_regime(previous_cp.post_segment_mean, latest_cp.post_segment_mean):
+    if previous_cp and _same_regime(
+        previous_cp.post_segment_mean,
+        previous_cp.post_segment_std,
+        latest_cp.post_segment_mean,
+    ):
         log.debug(
             "change point suppressed — same regime as previous",
             metric=metric_name,
             previous_mean=previous_cp.post_segment_mean,
+            previous_std=previous_cp.post_segment_std,
             current_mean=latest_cp.post_segment_mean,
         )
         return
 
     await change_point_repo.insert_change_point(
-        indicator_result_id=indicator_result_id,
-        asset_id=snapshot.asset_id,
-        slo_name=snapshot.slo_name,
-        metric_name=metric_name,
-        period_start=latest_cp.timestamp,
-        detector=latest_cp.detector,
-        direction=latest_cp.direction,
-        change_relative_pct=latest_cp.change_relative_pct,
-        change_absolute=latest_cp.change_absolute,
-        t_statistic=latest_cp.pvalue,
-        pre_segment_mean=latest_cp.pre_segment_mean,
-        post_segment_mean=latest_cp.post_segment_mean,
+        ChangePointInsertParams(
+            indicator_result_id=indicator_result_id,
+            asset_id=snapshot.asset_id,
+            slo_name=snapshot.slo_name,
+            metric_name=metric_name,
+            period_start=latest_cp.timestamp,
+            detector=latest_cp.detector,
+            direction=latest_cp.direction,
+            change_relative_pct=latest_cp.change_relative_pct,
+            change_absolute=latest_cp.change_absolute,
+            t_statistic=latest_cp.pvalue,
+            pre_segment_mean=latest_cp.pre_segment_mean,
+            post_segment_mean=latest_cp.post_segment_mean,
+            post_segment_std=latest_cp.post_segment_std,
+        )
     )
 
     log.info(
