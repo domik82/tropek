@@ -62,6 +62,7 @@ class BaselineRepository:
             period_start_before: Only include evaluations before this timestamp.
             include_result_with_score: "pass", "pass_or_warn", or "all".
             limit: Maximum number of baseline evaluations to return.
+            evaluation_name: Optional evaluation series name to restrict baselines to.
 
         Returns:
             Matching completed evaluations ordered by period_start descending.
@@ -110,6 +111,7 @@ class BaselineRepository:
             restrict_to_ids: Optional list of evaluation IDs to restrict results to.
             tag_filters: Optional JSONB key-value filters on variables.
             skip_pin_filter: When True, skip baseline pin filtering for this query.
+            evaluation_name: Optional evaluation series name to restrict baselines to.
 
         Returns:
             Matching completed evaluations ordered by period_start descending.
