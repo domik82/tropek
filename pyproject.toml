@@ -104,7 +104,7 @@ max-args = 8
 # Observability stack is third-party-adjacent config — don't enforce our style on it
 "observability_stack/**" = ["D", "S", "C901", "SIM115", "RUF002", "RUF003", "RUF005"]
 # FastAPI uses Depends() as a default argument — B008 (mutable default) is a false positive here
-"**/router.py" = ["B008"]
+"**/router.py" = ["B008", "PLR0913"]
 
 [tool.mypy]
 python_version = "3.13"

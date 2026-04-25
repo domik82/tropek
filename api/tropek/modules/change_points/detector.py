@@ -12,7 +12,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from datetime import datetime
-from statistics import mean
+from statistics import mean, stdev
 
 import numpy as np
 import structlog
@@ -28,6 +28,11 @@ DEFAULT_MAX_PVALUE = 0.001
 DEFAULT_MIN_MAGNITUDE = 0.0
 DEFAULT_MIN_SAMPLE_SIZE = 10
 
+MIN_EFFECTIVE_WINDOW = 4
+MIN_STDEV_SAMPLES = 2
+PVALUE_STRICT_THRESHOLD = 0.05
+PVALUE_MODERATE_THRESHOLD = 0.5
+
 
 class ChangePointResult(BaseModel):
     """A single detected change point with direction and magnitude."""
@@ -41,6 +46,7 @@ class ChangePointResult(BaseModel):
     pvalue: float
     pre_segment_mean: float
     post_segment_mean: float
+    post_segment_std: float
 
 
 def detect_change_points(
@@ -73,12 +79,12 @@ def detect_change_points(
 
     series = np.array(values, dtype=np.float64)
     effective_window = min(window_size, len(values))
-    if effective_window < 4:
+    if effective_window < MIN_EFFECTIVE_WINDOW:
         return []
 
     first_pass_pvalue = (
-        max_pvalue * 10 if max_pvalue < 0.05
-        else (max_pvalue * 2 if max_pvalue < 0.5 else max_pvalue)
+        max_pvalue * 10 if max_pvalue < PVALUE_STRICT_THRESHOLD
+        else (max_pvalue * 2 if max_pvalue < PVALUE_MODERATE_THRESHOLD else max_pvalue)
     )
     weak_change_points = split(series, effective_window, first_pass_pvalue)
     detected = merge(weak_change_points, series, max_pvalue, min_magnitude)
@@ -93,6 +99,7 @@ def detect_change_points(
         post_values = list(values[position:])
         pre_mean = mean(pre_values)
         post_mean = mean(post_values)
+        post_std = stdev(post_values) if len(post_values) >= MIN_STDEV_SAMPLES else 0.0
         absolute_change = post_mean - pre_mean
         relative_change = (absolute_change / pre_mean * 100) if pre_mean != 0 else 0.0
 
@@ -112,6 +119,7 @@ def detect_change_points(
                 pvalue=round(change_point.stats.pvalue, 6),
                 pre_segment_mean=round(pre_mean, 4),
                 post_segment_mean=round(post_mean, 4),
+                post_segment_std=round(post_std, 4),
             )
         )
 
