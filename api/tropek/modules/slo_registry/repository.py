@@ -11,9 +11,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from tropek.cache.redis_cache import RedisCache
-from tropek.db.models import SLODefinition
+from tropek.db.models import ChangePointConfig, SLODefinition
 from tropek.db.models import SLOObjective as SLOObjectiveORM
+from tropek.modules.change_points.schemas import ChangePointConfigInput
 from tropek.modules.common.tag_mixin import TagQueryMixin
+from tropek.modules.configuration.repository import ConfigurationRepository
 from tropek.modules.slo_registry.params import SLOCreateParams
 
 
@@ -77,6 +79,17 @@ class SLORepository(TagQueryMixin):
         self._session.add(slo)
         await self._session.flush()
 
+        previous_cp_configs: dict[str, ChangePointConfig] = {}
+        if max_version is not None:
+            previous_version = await self.get_version(params.name, max_version)
+            if previous_version:
+                for prev_obj in previous_version.objectives:
+                    if prev_obj.change_point_config:
+                        previous_cp_configs[prev_obj.sli] = prev_obj.change_point_config
+
+        config_repo = ConfigurationRepository(self._session)
+        system_defaults = await config_repo.get_change_point_defaults()
+
         for i, obj in enumerate(params.objectives):
             orm_obj = SLOObjectiveORM(
                 id=uuid.uuid4(),
@@ -90,6 +103,12 @@ class SLORepository(TagQueryMixin):
                 warning_threshold=obj.warning_threshold,
             )
             self._session.add(orm_obj)
+            self._attach_change_point_config(
+                orm_obj,
+                cp_input=obj.change_point,
+                previous_config=previous_cp_configs.get(obj.sli),
+                system_defaults=system_defaults,
+            )
 
         await self._session.flush()
         # Eagerly load objectives and sli_definition so callers can access them
@@ -97,6 +116,51 @@ class SLORepository(TagQueryMixin):
         if self._cache:
             await self._cache.invalidate(f'slo:{params.name}:latest')
         return slo
+
+    def _attach_change_point_config(
+        self,
+        orm_obj: SLOObjectiveORM,
+        cp_input: ChangePointConfigInput | None,
+        previous_config: ChangePointConfig | None,
+        system_defaults: dict[str, Any],
+    ) -> None:
+        """Insert a ChangePointConfig row for an objective if warranted.
+
+        Priority: explicit input from the request > copy-forward from the previous version >
+        no row (system defaults apply at query time).
+
+        Args:
+            orm_obj: The freshly created SLOObjective ORM instance.
+            cp_input: Explicit change-point settings from the create request, or None.
+            previous_config: Existing config from the previous SLO version for this SLI, or None.
+            system_defaults: System-level default values from the configuration table.
+        """
+        if cp_input is not None:
+            self._session.add(ChangePointConfig(
+                slo_objective_id=orm_obj.id,
+                enabled=cp_input.enabled if cp_input.enabled is not None
+                    else system_defaults.get('enabled', True),
+                higher_is_better=cp_input.higher_is_better if cp_input.higher_is_better is not None
+                    else system_defaults.get('higher_is_better', False),
+                window_size=cp_input.window_size if cp_input.window_size is not None
+                    else system_defaults.get('window_size', 30),
+                max_pvalue=cp_input.max_pvalue if cp_input.max_pvalue is not None
+                    else system_defaults.get('max_pvalue', 0.001),
+                min_magnitude=cp_input.min_magnitude if cp_input.min_magnitude is not None
+                    else system_defaults.get('min_magnitude', 0.0),
+                min_sample_size=cp_input.min_sample_size if cp_input.min_sample_size is not None
+                    else system_defaults.get('min_sample_size', 10),
+            ))
+        elif previous_config is not None:
+            self._session.add(ChangePointConfig(
+                slo_objective_id=orm_obj.id,
+                enabled=previous_config.enabled,
+                higher_is_better=previous_config.higher_is_better,
+                window_size=previous_config.window_size,
+                max_pvalue=previous_config.max_pvalue,
+                min_magnitude=previous_config.min_magnitude,
+                min_sample_size=previous_config.min_sample_size,
+            ))
 
     async def get_latest(self, name: str) -> SLODefinition | None:
         """Return the highest version of a named SLO, or None if not found or deleted.
