@@ -11,7 +11,7 @@ from sqlalchemy import delete, func, select, update
 from sqlalchemy.engine import CursorResult
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from tropek.db.models import ChangePoint, ChangePointConfig
+from tropek.db.models import ChangePoint, ChangePointConfig, EvaluationRun, IndicatorResultRow, SLOEvaluation
 
 
 class ResolvedConfig(BaseModel):
@@ -71,6 +71,7 @@ class ChangePointRepository:
         metric_name: str,
         period_start: datetime,
         nearby_timestamps: list[datetime],
+        evaluation_name: str | None = None,
     ) -> bool:
         """Check if a change point exists for this metric within the nearby window.
 
@@ -83,7 +84,21 @@ class ChangePointRepository:
             ChangePoint.slo_name == slo_name,
             ChangePoint.metric_name == metric_name,
             ChangePoint.period_start.in_(nearby_timestamps),
-        ).limit(1)
+        )
+        if evaluation_name is not None:
+            query = query.join(
+                IndicatorResultRow,
+                ChangePoint.indicator_result_id == IndicatorResultRow.id,
+            ).join(
+                SLOEvaluation,
+                IndicatorResultRow.slo_evaluation_id == SLOEvaluation.id,
+            ).join(
+                EvaluationRun,
+                SLOEvaluation.evaluation_id == EvaluationRun.id,
+            ).where(
+                EvaluationRun.eval_name == evaluation_name,
+            )
+        query = query.limit(1)
         result = await self._session.execute(query)
         return result.scalar_one_or_none() is not None
 
@@ -93,6 +108,7 @@ class ChangePointRepository:
         asset_id: uuid.UUID,
         slo_name: str,
         metric_name: str,
+        evaluation_name: str | None = None,
     ) -> ChangePoint | None:
         """Return the most recent change point for this metric, if any."""
         query = (
@@ -102,9 +118,21 @@ class ChangePointRepository:
                 ChangePoint.slo_name == slo_name,
                 ChangePoint.metric_name == metric_name,
             )
-            .order_by(ChangePoint.period_start.desc())
-            .limit(1)
         )
+        if evaluation_name is not None:
+            query = query.join(
+                IndicatorResultRow,
+                ChangePoint.indicator_result_id == IndicatorResultRow.id,
+            ).join(
+                SLOEvaluation,
+                IndicatorResultRow.slo_evaluation_id == SLOEvaluation.id,
+            ).join(
+                EvaluationRun,
+                SLOEvaluation.evaluation_id == EvaluationRun.id,
+            ).where(
+                EvaluationRun.eval_name == evaluation_name,
+            )
+        query = query.order_by(ChangePoint.period_start.desc()).limit(1)
         result = await self._session.execute(query)
         return result.scalar_one_or_none()
 
