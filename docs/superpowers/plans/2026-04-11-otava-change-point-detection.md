@@ -60,7 +60,7 @@
 | `api/tropek/modules/quality_gate/schemas/evaluations.py` | Add `change_point` field to `TrendPoint` and `IndicatorResult` |
 | `api/tropek/modules/quality_gate/workflows/presentation/presenter.py` | Attach change point data to heatmap cells and indicator results |
 | `api/tropek/modules/quality_gate/repositories/trend.py` | Join change points into trend query |
-| `api/tropek/app.py` | Register change points router |
+| `api/tropek/main.py` | Register change points router |
 | `api/pyproject.toml` | Add `apache-otava` dependency |
 
 ---
@@ -394,7 +394,7 @@ class ChangePointResult(BaseModel):
     direction: str  # "regression" | "improvement"
     change_relative_pct: float
     change_absolute: float
-    t_statistic: float
+    pvalue: float
     pre_segment_mean: float
     post_segment_mean: float
 
@@ -1272,6 +1272,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+from tropek.modules.change_points.repository import ResolvedConfig
 from tropek.modules.change_points.worker_step import run_change_point_detection
 
 
@@ -1306,8 +1307,6 @@ class TestWorkerStep:
     ) -> None:
         """No override row → detection runs with defaults (enabled=True)."""
         session = AsyncMock()
-        from tropek.modules.change_points.repository import ResolvedConfig
-
         default_config = ResolvedConfig(
             enabled=True,
             window_size=30,
@@ -1338,8 +1337,6 @@ class TestWorkerStep:
     async def test_skips_disabled_override(self, snapshot: MagicMock, slo_def: MagicMock) -> None:
         """Override row with enabled=False → skip that metric."""
         session = AsyncMock()
-        from tropek.modules.change_points.repository import ResolvedConfig
-
         disabled = ResolvedConfig(
             enabled=False,
             window_size=30,
@@ -1578,7 +1575,7 @@ async def _detect_for_metric(
         direction=latest_cp.direction,
         change_relative_pct=latest_cp.change_relative_pct,
         change_absolute=latest_cp.change_absolute,
-        t_statistic=latest_cp.t_statistic,
+        t_statistic=latest_cp.pvalue,
         pre_segment_mean=latest_cp.pre_segment_mean,
         post_segment_mean=latest_cp.post_segment_mean,
     )
@@ -1605,8 +1602,6 @@ In `api/tropek/queue.py`, after the phase 3b SLI values write (around line 212),
     # Phase 4: Change point detection (fault-isolated, separate txn)
     try:
         async with session_factory() as session:
-            from tropek.modules.change_points.worker_step import run_change_point_detection
-
             await run_change_point_detection(
                 session=session,
                 snapshot=snapshot,
@@ -1619,7 +1614,11 @@ In `api/tropek/queue.py`, after the phase 3b SLI values write (around line 212),
         log.warning('change point detection step failed, skipping', exc_info=True)
 ```
 
-Note: this import is at the top of the function body to keep the import lazy — the change_points module is optional. Move it to the file-level imports if preferred.
+Add the import at the top of `queue.py`:
+
+```python
+from tropek.modules.change_points.worker_step import run_change_point_detection
+```
 
 - [ ] **Step 6: Commit**
 
@@ -1647,7 +1646,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from tropek.modules.common.schemas import StrictInput
 
@@ -1670,7 +1669,7 @@ class ChangePointRead(BaseModel):
     direction: str
     change_relative_pct: float
     change_absolute: float
-    t_statistic: float
+    pvalue: float = Field(validation_alias='t_statistic')
     pre_segment_mean: float
     post_segment_mean: float
     status: str
@@ -1681,7 +1680,7 @@ class ChangePointRead(BaseModel):
     created_at: datetime
     updated_at: datetime
 
-    model_config = {'from_attributes': True}
+    model_config = {'from_attributes': True, 'populate_by_name': True}
 
 
 class TriageRequest(StrictInput):
@@ -1784,7 +1783,18 @@ git commit -m "feat(otava): add change point marker schemas to heatmap and trend
 **Files:**
 - Modify: `api/tropek/modules/quality_gate/workflows/presentation/presenter.py`
 
-The presenter already has `slo_name`, `metric_name`, and `period_start` in scope when building `HeatmapCellGrouped` objects. The change point lookup is a dict keyed by `(metric_name, period_start)` loaded in one batch query.
+The presenter builds heatmap cells inside `build_column_fragment()` (line 249), which
+constructs `HeatmapCellGrouped` objects per indicator row. The current architecture
+caches entire `HeatmapColumnFragment` objects in Redis, so the change point data must
+be embedded in the fragment at build time — not patched on afterward.
+
+The enrichment flow:
+1. `build_column_fragment()` accepts an optional `change_point_lookup` dict
+   keyed by `(metric_name, period_start)`.
+2. When building each `HeatmapCellGrouped`, resolve the marker from the lookup.
+3. `build_grouped_heatmap_response()` passes the lookup through to
+   `build_column_fragment()`.
+4. Cached fragments in Redis will include the marker, so no post-cache enrichment needed.
 
 - [ ] **Step 1: Write test for enrichment**
 
@@ -1807,24 +1817,32 @@ def test_change_point_marker_serialization() -> None:
     assert restored == marker
 ```
 
-- [ ] **Step 2: Modify `_collect_slo_heatmap_data` to accept change point lookup**
+- [ ] **Step 2: Add `change_point_lookup` parameter to `build_column_fragment`**
 
-In `presenter.py`, update `_collect_slo_heatmap_data` to accept an optional `change_point_lookup` parameter:
+In `presenter.py`, update `build_column_fragment` (line 249) to accept an optional
+`change_point_lookup` parameter:
 
 ```python
-def _collect_slo_heatmap_data(
-    runs_asc: list[EvaluationRun],
-    column_index_by_run_id: dict[uuid.UUID, int],
+def build_column_fragment(
+    run: EvaluationRun,
+    *,
+    has_notes: bool,
     change_point_lookup: dict[tuple[str, datetime], object] | None = None,
-) -> dict[str, dict[str, Any]]:
+) -> HeatmapColumnFragment:
 ```
 
-Inside the loop where `HeatmapCellGrouped` is constructed (around line 144-173), add before the closing paren:
+Inside the loop where `HeatmapCellGrouped` is constructed (around line 284-312),
+add `change_point` to the constructor call:
 
 ```python
+            cells.append(
+                HeatmapCellGrouped(
+                    # ... existing fields ...
                     change_point=_resolve_change_point_marker(
                         change_point_lookup, metric_name, run.period_start,
                     ),
+                )
+            )
 ```
 
 Add the helper function:
@@ -1835,7 +1853,6 @@ def _resolve_change_point_marker(
     metric_name: str,
     period_start: datetime,
 ) -> ChangePointMarker | None:
-    """Look up a change point marker for a specific metric+timestamp."""
     if not lookup:
         return None
     cp = lookup.get((metric_name, period_start))
@@ -1847,7 +1864,7 @@ def _resolve_change_point_marker(
     )
 ```
 
-Add the import:
+Add the import at the top of `presenter.py`:
 ```python
 from tropek.modules.change_points.schemas import ChangePointMarker
 ```
@@ -1863,10 +1880,15 @@ def build_grouped_heatmap_response(
 ) -> GroupedMetricHeatmapResponse:
 ```
 
-Pass it to `_collect_slo_heatmap_data`:
+Pass it to `build_column_fragment`:
 
 ```python
-    slo_data = _collect_slo_heatmap_data(runs_asc, column_index_by_run_id, change_point_lookup)
+    fragments = [
+        build_column_fragment(
+            run, has_notes=run.id in noted, change_point_lookup=change_point_lookup,
+        )
+        for run in runs_asc
+    ]
 ```
 
 - [ ] **Step 4: Run existing heatmap tests to verify no regressions**
@@ -1887,50 +1909,43 @@ git commit -m "feat(otava): enrich heatmap cells with change point markers"
 ## Task 10: Trend Query Enrichment
 
 **Files:**
-- Modify: `api/tropek/modules/quality_gate/repositories/trend.py`
+- Modify: the router/caller that calls `get_trend_by_domain` and serializes `TrendPoint`
 
-The trend query `get_trend_by_domain` returns dicts with `timestamp`, `value`, `eval_id`, etc. Add `change_point` to each dict by looking up against the `change_points` table.
+`get_trend_by_domain` in `repositories/trend.py` returns raw dicts — it is not
+the right place to add change point enrichment (that would mix concerns). Instead,
+enrich at the caller layer (router or presenter) where dicts are converted to
+`TrendPoint` Pydantic models.
 
-- [ ] **Step 1: Add change point lookup to `get_trend_by_domain`**
+- [ ] **Step 1: Add enrichment at the serialization boundary**
 
-The simplest approach: after the existing query runs, do a batch lookup of change points for the same `(asset_id, slo_name, metric_name)` and date range, then merge by `period_start`.
-
-Add a new parameter to `get_trend_by_domain`:
-
-```python
-    async def get_trend_by_domain(
-        self,
-        *,
-        asset_id: uuid.UUID,
-        slo_name: str,
-        metric_name: str,
-        from_ts: datetime,
-        to_ts: datetime | None = None,
-        change_point_lookup: dict[tuple[str, datetime], object] | None = None,
-    ) -> list[dict[str, Any]]:
-```
-
-In the return dict construction, add:
+In the caller that converts trend dicts to `TrendPoint` objects, load the change
+point lookup from `ChangePointRepository` and attach markers:
 
 ```python
-                'change_point': _trend_change_point(change_point_lookup, metric_name, r.period_start),
+from tropek.modules.change_points.repository import ChangePointRepository
+from tropek.modules.change_points.schemas import ChangePointMarker
+
+# After fetching trend_rows from get_trend_by_domain:
+cp_repo = ChangePointRepository(session)
+change_points = await cp_repo.get_change_points_for_evaluations(
+    asset_id=asset_id,
+    slo_name=slo_name,
+    period_starts=[row['timestamp'] for row in trend_rows],
+)
+
+# When building TrendPoint from each dict:
+cp = change_points.get((metric_name, row['timestamp']))
+trend_point = TrendPoint(
+    **row,
+    change_point=ChangePointMarker(
+        direction=cp.direction,
+        change_relative_pct=cp.change_relative_pct,
+    ) if cp else None,
+)
 ```
 
-Add helper at module level:
-
-```python
-def _trend_change_point(
-    lookup: dict[tuple[str, Any], object] | None,
-    metric_name: str,
-    period_start: datetime,
-) -> dict[str, Any] | None:
-    if not lookup:
-        return None
-    cp = lookup.get((metric_name, period_start))
-    if cp is None:
-        return None
-    return {'direction': cp.direction, 'change_relative_pct': cp.change_relative_pct}
-```
+The exact caller location depends on how the trend endpoint is wired — find it
+by grepping for `get_trend_by_domain` calls in the router layer.
 
 - [ ] **Step 2: Run existing trend tests to verify no regressions**
 
@@ -1941,7 +1956,7 @@ def _trend_change_point(
 - [ ] **Step 3: Commit**
 
 ```bash
-git add api/tropek/modules/quality_gate/repositories/trend.py
+git add api/tropek/modules/quality_gate/
 git commit -m "feat(otava): enrich trend points with change point markers"
 ```
 
@@ -1951,7 +1966,7 @@ git commit -m "feat(otava): enrich trend points with change point markers"
 
 **Files:**
 - Create: `api/tropek/modules/change_points/router.py`
-- Modify: `api/tropek/app.py`
+- Modify: `api/tropek/main.py`
 
 - [ ] **Step 1: Implement the router**
 
@@ -1967,6 +1982,13 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from tropek.db.session import get_session
+from tropek.modules.change_points.detector import (
+    DEFAULT_ENABLED,
+    DEFAULT_MAX_PVALUE,
+    DEFAULT_MIN_MAGNITUDE,
+    DEFAULT_MIN_SAMPLE_SIZE,
+    DEFAULT_WINDOW_SIZE,
+)
 from tropek.modules.change_points.repository import ChangePointRepository
 from tropek.modules.change_points.schemas import (
     BulkTriageRequest,
@@ -2067,13 +2089,6 @@ async def bulk_triage(
 @router.get('/config/defaults', response_model=ChangePointConfigRead)
 async def get_default_config() -> ChangePointConfigRead:
     """Return the hardcoded default config used when no override exists."""
-    from tropek.modules.change_points.detector import (
-        DEFAULT_ENABLED,
-        DEFAULT_MAX_PVALUE,
-        DEFAULT_MIN_MAGNITUDE,
-        DEFAULT_MIN_SAMPLE_SIZE,
-        DEFAULT_WINDOW_SIZE,
-    )
     return ChangePointConfigRead(
         slo_name='__default__',
         metric_name='__default__',
@@ -2111,13 +2126,6 @@ async def upsert_config_override(
     Sparse payload: any field omitted from the request body falls back to
     the global default. Send only the knobs you want to change.
     """
-    from tropek.modules.change_points.detector import (
-        DEFAULT_ENABLED,
-        DEFAULT_MAX_PVALUE,
-        DEFAULT_MIN_MAGNITUDE,
-        DEFAULT_MIN_SAMPLE_SIZE,
-        DEFAULT_WINDOW_SIZE,
-    )
     repo = ChangePointRepository(session)
     config = await repo.upsert_config(
         slo_name=slo_name,
@@ -2148,9 +2156,9 @@ async def delete_config_override(
 
 **Important:** The `/bulk` route must be registered BEFORE `/{change_point_id}` to avoid FastAPI interpreting `"bulk"` as a UUID path parameter. Reorder the routes so `bulk_triage` comes first, or use a different path like `/bulk-triage`.
 
-- [ ] **Step 2: Register the router in `app.py`**
+- [ ] **Step 2: Register the router in `main.py`**
 
-Find the existing `app.include_router(...)` calls in `api/tropek/app.py` and add:
+Find the existing `app.include_router(...)` calls in `api/tropek/main.py` and add:
 
 ```python
 from tropek.modules.change_points.router import router as change_points_router
@@ -2161,7 +2169,7 @@ app.include_router(change_points_router, prefix='/api')
 - [ ] **Step 3: Verify the app starts**
 
 ```bash
-uv run --directory api uvicorn tropek.app:app --host 0.0.0.0 --port 8080 &
+uv run --directory api uvicorn tropek.main:app --host 0.0.0.0 --port 8080 &
 sleep 2
 curl -s http://localhost:8080/api/change-points | head -c 100
 kill %1
@@ -2172,7 +2180,7 @@ Expected: `[]` (empty list) or a valid JSON response.
 - [ ] **Step 4: Commit**
 
 ```bash
-git add api/tropek/modules/change_points/router.py api/tropek/app.py
+git add api/tropek/modules/change_points/router.py api/tropek/main.py
 git commit -m "feat(otava): add change points API router with triage and config endpoints"
 ```
 
@@ -2182,20 +2190,41 @@ git commit -m "feat(otava): add change points API router with triage and config 
 
 **Files:**
 - Modify: the router/service layer that calls `build_grouped_heatmap_response` and `get_trend_by_domain`
+- Modify: `api/tropek/modules/change_points/repository.py` (add batch query method)
 
 This is the glue that loads change points from the DB and passes them to the presenters.
 
-- [ ] **Step 1: Find the grouped heatmap caller**
+- [ ] **Step 1: Add batch lookup method to ChangePointRepository**
 
-Search for `build_grouped_heatmap_response` in the router to find where it's called. Add a `ChangePointRepository` query before the call to load change points for the displayed evaluations.
+Add `get_change_points_for_asset` that returns a dict keyed by `(metric_name, period_start)`:
 
 ```python
-# In the grouped heatmap endpoint, after fetching runs:
+async def get_change_points_for_asset(
+    self,
+    asset_id: uuid.UUID,
+    period_starts: list[datetime],
+) -> dict[tuple[str, datetime], ChangePoint]:
+    """Batch load all change points for an asset across the given timestamps.
+
+    Returns a dict keyed by (metric_name, period_start) for O(1) lookup
+    when building heatmap cells or trend points.
+    """
+```
+
+Note: query filters by `asset_id` + `period_start IN (...)` + `status != 'hidden'`.
+No SLO filter needed — the heatmap displays multiple SLOs, and the lookup key
+includes `metric_name` which is unique within an SLO.
+
+- [ ] **Step 2: Find the grouped heatmap caller and wire in the lookup**
+
+Search for `build_grouped_heatmap_response` calls in the router/workflow layer.
+Before the call, load the change point lookup and pass it through:
+
+```python
 cp_repo = ChangePointRepository(session)
 period_starts = [run.period_start for run in runs]
-change_point_lookup = await cp_repo.get_change_points_for_evaluations(
+change_point_lookup = await cp_repo.get_change_points_for_asset(
     asset_id=asset_id,
-    slo_name=slo_name,  # may need to iterate SLO groups
     period_starts=period_starts,
 )
 
@@ -2207,22 +2236,25 @@ response = build_grouped_heatmap_response(
 )
 ```
 
-Note: the grouped heatmap shows multiple SLOs. The `get_change_points_for_evaluations` query might need to run per-SLO, or be extended to accept multiple SLO names. Evaluate during implementation based on the actual caller structure.
+Also wire the lookup into any code path that calls `build_column_fragment` directly
+(Redis cache miss path or `cache=false` bypass).
 
-- [ ] **Step 2: Find the trend endpoint caller**
+- [ ] **Step 3: Wire in the trend endpoint caller**
 
-In the trend endpoint, add the same pattern — load change points for the queried `(asset_id, slo_name)` and date range, then pass as `change_point_lookup`.
+In the trend endpoint, add the same pattern — load change points for the queried
+`(asset_id, slo_name)` and date range, then pass as `change_point_lookup` when
+converting trend dicts to `TrendPoint` objects (see Task 10).
 
-- [ ] **Step 3: Run the full test suite to verify no regressions**
+- [ ] **Step 4: Run the full test suite to verify no regressions**
 
 ```bash
 ./scripts/api-test.sh --tail 10
 ```
 
-- [ ] **Step 4: Commit**
+- [ ] **Step 5: Commit**
 
 ```bash
-git add api/tropek/modules/quality_gate/router.py
+git add api/tropek/modules/quality_gate/ api/tropek/modules/change_points/repository.py
 git commit -m "feat(otava): wire change point lookup into heatmap and trend endpoints"
 ```
 
@@ -2432,7 +2464,14 @@ spec:
 
 - [ ] **Step 1: Write the manifest loader tests**
 
-Append to `clients/python/tests/test_manifest.py`:
+Append to `clients/python/tests/test_manifest.py`. First, add the following imports
+at the top of the file (if not already present):
+
+```python
+from tropek_client.manifest import ManifestDocument, _has_diff
+```
+
+Then append the test functions:
 
 ```python
 def test_slo_with_change_point_overrides_loads(tmp_path: Path) -> None:
@@ -2476,8 +2515,6 @@ def test_change_point_override_does_not_trigger_slo_diff() -> None:
 
     _has_diff must compare objectives with change_point stripped out.
     """
-    from tropek_client.manifest import ManifestDocument, _has_diff
-
     # Fake existing SLO with two objectives and NO change point config
     class FakeObjective:
         def __init__(self, **kwargs: Any) -> None:
@@ -2531,8 +2568,6 @@ def test_change_point_override_does_not_trigger_slo_diff() -> None:
 
 def test_slo_diff_still_detects_content_changes() -> None:
     """Sanity check: actual objective content changes still trigger diff."""
-    from tropek_client.manifest import ManifestDocument, _has_diff
-
     class FakeObjective:
         def __init__(self, **kwargs: Any) -> None:
             self.__dict__.update(kwargs)
