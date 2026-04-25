@@ -9,26 +9,23 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from tropek.db.session import get_session
-from tropek.modules.change_points.detector import (
-    DEFAULT_ENABLED,
-    DEFAULT_MAX_PVALUE,
-    DEFAULT_MIN_MAGNITUDE,
-    DEFAULT_MIN_SAMPLE_SIZE,
-    DEFAULT_WINDOW_SIZE,
+from tropek.modules.change_points.repository import (
+    ChangePointListParams,
+    ChangePointRepository,
 )
-from tropek.modules.change_points.repository import ChangePointRepository
 from tropek.modules.change_points.schemas import (
     BulkTriageRequest,
+    ChangePointConfigInput,
     ChangePointConfigRead,
-    ChangePointConfigUpsert,
     ChangePointRead,
     TriageRequest,
 )
+from tropek.modules.configuration.repository import ConfigurationRepository
 
-router = APIRouter(tags=["change-points"])
+router = APIRouter(tags=['change-points'])
 
 
-@router.get("/change-points", response_model=list[ChangePointRead])
+@router.get('/change-points', response_model=list[ChangePointRead])
 async def list_change_points(
     status: str | None = None,
     direction: str | None = None,
@@ -44,20 +41,22 @@ async def list_change_points(
     """List change points with optional filters."""
     repo = ChangePointRepository(session)
     rows = await repo.list_change_points(
-        status=status,
-        direction=direction,
-        asset_id=asset_id,
-        slo_name=slo_name,
-        metric_name=metric,
-        from_ts=from_ts,
-        to_ts=to_ts,
-        limit=limit,
-        offset=offset,
+        ChangePointListParams(
+            status=status,
+            direction=direction,
+            asset_id=asset_id,
+            slo_name=slo_name,
+            metric_name=metric,
+            from_ts=from_ts,
+            to_ts=to_ts,
+            limit=limit,
+            offset=offset,
+        )
     )
     return [ChangePointRead.model_validate(row) for row in rows]
 
 
-@router.patch("/change-points/bulk-triage", response_model=dict)
+@router.patch('/change-points/bulk-triage', response_model=dict)
 async def bulk_triage(
     body: BulkTriageRequest,
     session: AsyncSession = Depends(get_session),
@@ -71,10 +70,87 @@ async def bulk_triage(
         triage_author=body.triage_author,
     )
     await session.commit()
-    return {"updated": count}
+    return {'updated': count}
 
 
-@router.get("/change-points/{change_point_id}", response_model=ChangePointRead)
+@router.get('/change-points/config/{objective_id}', response_model=ChangePointConfigRead)
+async def get_change_point_config(
+    objective_id: uuid.UUID,
+    session: AsyncSession = Depends(get_session),
+) -> ChangePointConfigRead:
+    """Get resolved change point config for an objective."""
+    repo = ChangePointRepository(session)
+    config = await repo.get_config_for_objective(objective_id)
+    if config is not None:
+        return ChangePointConfigRead.model_validate(config)
+    config_repo = ConfigurationRepository(session)
+    system_defaults = await config_repo.get_change_point_defaults()
+    return ChangePointConfigRead(
+        slo_objective_id=objective_id,
+        enabled=system_defaults.get('enabled', True),
+        higher_is_better=system_defaults.get('higher_is_better', False),
+        window_size=system_defaults.get('window_size', 30),
+        max_pvalue=system_defaults.get('max_pvalue', 0.001),
+        min_magnitude=system_defaults.get('min_magnitude', 0.0),
+        min_sample_size=system_defaults.get('min_sample_size', 10),
+    )
+
+
+@router.put('/change-points/config/{objective_id}', response_model=ChangePointConfigRead)
+async def upsert_change_point_config(
+    objective_id: uuid.UUID,
+    body: ChangePointConfigInput,
+    session: AsyncSession = Depends(get_session),
+) -> ChangePointConfigRead:
+    """Create or update change point config for an objective."""
+    config_repo = ConfigurationRepository(session)
+    system_defaults = await config_repo.get_change_point_defaults()
+    repo = ChangePointRepository(session)
+    config = await repo.upsert_config_for_objective(
+        slo_objective_id=objective_id,
+        enabled=(
+            body.enabled if body.enabled is not None
+            else system_defaults.get('enabled', True)
+        ),
+        higher_is_better=(
+            body.higher_is_better if body.higher_is_better is not None
+            else system_defaults.get('higher_is_better', False)
+        ),
+        window_size=(
+            body.window_size if body.window_size is not None
+            else system_defaults.get('window_size', 30)
+        ),
+        max_pvalue=(
+            body.max_pvalue if body.max_pvalue is not None
+            else system_defaults.get('max_pvalue', 0.001)
+        ),
+        min_magnitude=(
+            body.min_magnitude if body.min_magnitude is not None
+            else system_defaults.get('min_magnitude', 0.0)
+        ),
+        min_sample_size=(
+            body.min_sample_size if body.min_sample_size is not None
+            else system_defaults.get('min_sample_size', 10)
+        ),
+    )
+    await session.commit()
+    return ChangePointConfigRead.model_validate(config)
+
+
+@router.delete('/change-points/config/{objective_id}', status_code=204)
+async def delete_change_point_config(
+    objective_id: uuid.UUID,
+    session: AsyncSession = Depends(get_session),
+) -> None:
+    """Remove per-objective config override. Detection falls back to system defaults."""
+    repo = ChangePointRepository(session)
+    deleted = await repo.delete_config_for_objective(objective_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail='change point config not found')
+    await session.commit()
+
+
+@router.get('/change-points/{change_point_id}', response_model=ChangePointRead)
 async def get_change_point(
     change_point_id: uuid.UUID,
     session: AsyncSession = Depends(get_session),
@@ -83,11 +159,11 @@ async def get_change_point(
     repo = ChangePointRepository(session)
     row = await repo.get_by_id(change_point_id)
     if row is None:
-        raise HTTPException(status_code=404, detail="change point not found")
+        raise HTTPException(status_code=404, detail='change point not found')
     return ChangePointRead.model_validate(row)
 
 
-@router.patch("/change-points/{change_point_id}", response_model=ChangePointRead)
+@router.patch('/change-points/{change_point_id}', response_model=ChangePointRead)
 async def triage_change_point(
     change_point_id: uuid.UUID,
     body: TriageRequest,
@@ -103,77 +179,6 @@ async def triage_change_point(
         triage_author=body.triage_author,
     )
     if row is None:
-        raise HTTPException(status_code=404, detail="change point not found")
+        raise HTTPException(status_code=404, detail='change point not found')
     await session.commit()
     return ChangePointRead.model_validate(row)
-
-
-@router.get("/change-points/config/defaults", response_model=ChangePointConfigRead)
-async def get_default_config() -> ChangePointConfigRead:
-    """Return the hardcoded default config used when no override exists."""
-    return ChangePointConfigRead(
-        slo_name="__default__",
-        metric_name="__default__",
-        enabled=DEFAULT_ENABLED,
-        window_size=DEFAULT_WINDOW_SIZE,
-        max_pvalue=DEFAULT_MAX_PVALUE,
-        min_magnitude=DEFAULT_MIN_MAGNITUDE,
-        min_sample_size=DEFAULT_MIN_SAMPLE_SIZE,
-    )
-
-
-@router.get(
-    "/change-points/config/{slo_name}",
-    response_model=list[ChangePointConfigRead],
-)
-async def list_config_overrides(
-    slo_name: str,
-    session: AsyncSession = Depends(get_session),
-) -> list[ChangePointConfigRead]:
-    """List all override rows for an SLO — metrics not listed use defaults."""
-    repo = ChangePointRepository(session)
-    configs = await repo.get_configs_for_slo(slo_name)
-    return [ChangePointConfigRead.model_validate(config) for config in configs.values()]
-
-
-@router.put(
-    "/change-points/config/{slo_name}/{metric_name}",
-    response_model=ChangePointConfigRead,
-)
-async def upsert_config_override(
-    slo_name: str,
-    metric_name: str,
-    body: ChangePointConfigUpsert,
-    session: AsyncSession = Depends(get_session),
-) -> ChangePointConfigRead:
-    """Create or update an override for a specific SLO+metric."""
-    repo = ChangePointRepository(session)
-    config = await repo.upsert_config(
-        slo_name=slo_name,
-        metric_name=metric_name,
-        enabled=body.enabled if body.enabled is not None else DEFAULT_ENABLED,
-        window_size=body.window_size if body.window_size is not None else DEFAULT_WINDOW_SIZE,
-        max_pvalue=body.max_pvalue if body.max_pvalue is not None else DEFAULT_MAX_PVALUE,
-        min_magnitude=(
-            body.min_magnitude if body.min_magnitude is not None else DEFAULT_MIN_MAGNITUDE
-        ),
-        min_sample_size=(
-            body.min_sample_size if body.min_sample_size is not None else DEFAULT_MIN_SAMPLE_SIZE
-        ),
-    )
-    await session.commit()
-    return ChangePointConfigRead.model_validate(config)
-
-
-@router.delete("/change-points/config/{slo_name}/{metric_name}", status_code=204)
-async def delete_config_override(
-    slo_name: str,
-    metric_name: str,
-    session: AsyncSession = Depends(get_session),
-) -> None:
-    """Remove an override so the metric falls back to defaults."""
-    repo = ChangePointRepository(session)
-    deleted = await repo.delete_config(slo_name=slo_name, metric_name=metric_name)
-    if not deleted:
-        raise HTTPException(status_code=404, detail="config override not found")
-    await session.commit()
