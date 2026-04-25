@@ -112,3 +112,12 @@ def compute_baselines(
         baselines[metric] = aggregate_values(values, aggregate_function)
 
     return baselines, compared_ids
+
+
+def resolve_comparison_name(
+    compare_to: dict[str, str] | None,
+    eval_name: str,
+) -> str:
+    if compare_to and 'evaluation_name' in compare_to:
+        return compare_to['evaluation_name']
+    return eval_name
