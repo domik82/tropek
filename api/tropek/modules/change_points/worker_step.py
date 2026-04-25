@@ -21,6 +21,24 @@ from tropek.modules.quality_gate.repositories.baseline import BaselineRepository
 
 logger = structlog.get_logger()
 
+REGIME_SIMILARITY_THRESHOLD = 0.10
+
+
+def _same_regime(previous_mean: float, current_mean: float) -> bool:
+    """Return True if two post-segment means are within REGIME_SIMILARITY_THRESHOLD of each other.
+
+    Prevents inserting a new change point when the metric hasn't actually
+    shifted to a meaningfully different level — e.g. when E-Divisive finds
+    a second structural break within a noisy plateau.
+    """
+    if previous_mean == 0 and current_mean == 0:
+        return True
+    denominator = max(abs(previous_mean), abs(current_mean))
+    if denominator == 0:
+        return True
+    relative_difference = abs(current_mean - previous_mean) / denominator
+    return relative_difference < REGIME_SIMILARITY_THRESHOLD
+
 
 async def run_change_point_detection(
     *,
@@ -162,6 +180,20 @@ async def _detect_for_metric(
 
     if has_existing:
         log.debug("change point deduped", metric=metric_name, position=latest_cp.position)
+        return
+
+    previous_cp = await change_point_repo.get_latest_change_point(
+        asset_id=snapshot.asset_id,
+        slo_name=snapshot.slo_name,
+        metric_name=metric_name,
+    )
+    if previous_cp and _same_regime(previous_cp.post_segment_mean, latest_cp.post_segment_mean):
+        log.debug(
+            "change point suppressed — same regime as previous",
+            metric=metric_name,
+            previous_mean=previous_cp.post_segment_mean,
+            current_mean=latest_cp.post_segment_mean,
+        )
         return
 
     await change_point_repo.insert_change_point(

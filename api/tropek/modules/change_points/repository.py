@@ -147,6 +147,27 @@ class ChangePointRepository:
         result = await self._session.execute(query)
         return result.scalar_one_or_none() is not None
 
+    async def get_latest_change_point(
+        self,
+        *,
+        asset_id: uuid.UUID,
+        slo_name: str,
+        metric_name: str,
+    ) -> ChangePoint | None:
+        """Return the most recent change point for this metric, if any."""
+        query = (
+            select(ChangePoint)
+            .where(
+                ChangePoint.asset_id == asset_id,
+                ChangePoint.slo_name == slo_name,
+                ChangePoint.metric_name == metric_name,
+            )
+            .order_by(ChangePoint.period_start.desc())
+            .limit(1)
+        )
+        result = await self._session.execute(query)
+        return result.scalar_one_or_none()
+
     async def insert_change_point(
         self,
         *,

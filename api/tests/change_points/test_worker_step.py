@@ -9,7 +9,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from tropek.modules.change_points.repository import ResolvedConfig
-from tropek.modules.change_points.worker_step import run_change_point_detection
+from tropek.modules.change_points.worker_step import _same_regime, run_change_point_detection
 
 
 def _make_snapshot() -> MagicMock:
@@ -239,3 +239,187 @@ class TestWorkerStep:
             )
 
             mock_repo.insert_change_point.assert_not_called()
+
+
+class TestSameRegime:
+    """Tests for the _same_regime helper."""
+
+    def test_identical_means(self) -> None:
+        assert _same_regime(500.0, 500.0) is True
+
+    def test_within_threshold(self) -> None:
+        assert _same_regime(500.0, 520.0) is True
+
+    def test_exceeds_threshold(self) -> None:
+        assert _same_regime(500.0, 600.0) is False
+
+    def test_both_zero(self) -> None:
+        assert _same_regime(0.0, 0.0) is True
+
+    def test_one_zero(self) -> None:
+        assert _same_regime(0.0, 100.0) is False
+
+    def test_symmetric(self) -> None:
+        assert _same_regime(500.0, 520.0) == _same_regime(520.0, 500.0)
+
+    def test_negative_values(self) -> None:
+        assert _same_regime(-500.0, -520.0) is True
+        assert _same_regime(-500.0, -100.0) is False
+
+
+class TestRegimeConsolidation:
+    """Tests that same-regime change points are suppressed."""
+
+    @pytest.fixture()
+    def snapshot(self) -> MagicMock:
+        return _make_snapshot()
+
+    @pytest.fixture()
+    def slo_def(self) -> MagicMock:
+        return _make_slo_def()
+
+    async def test_suppresses_same_regime_change_point(
+        self, snapshot: MagicMock, slo_def: MagicMock
+    ) -> None:
+        """A new change point with similar post_segment_mean is suppressed."""
+        session = AsyncMock()
+        indicator_row = MagicMock()
+        indicator_row.objective = MagicMock()
+        indicator_row.objective.sli = "response_time_p95"
+        indicator_row.id = uuid.uuid4()
+
+        baseline_evals = []
+        for i in range(15):
+            eval_mock = MagicMock()
+            eval_mock.period_start = datetime(2026, 4, i + 1, 12, 0, tzinfo=UTC)
+            row_mock = MagicMock()
+            row_mock.objective = MagicMock()
+            row_mock.objective.sli = "response_time_p95"
+            row_mock.value = 100.0 + (50.0 if i >= 10 else 0.0)
+            eval_mock.indicator_rows = [row_mock]
+            baseline_evals.append(eval_mock)
+
+        with (
+            patch(
+                "tropek.modules.change_points.worker_step.ChangePointRepository"
+            ) as mock_repo_cls,
+            patch(
+                "tropek.modules.change_points.worker_step.BaselineRepository"
+            ) as mock_baseline_cls,
+            patch(
+                "tropek.modules.change_points.worker_step.detect_change_points"
+            ) as mock_detect,
+        ):
+            mock_repo = mock_repo_cls.return_value
+            mock_repo.resolve_configs_for_metrics = AsyncMock(
+                return_value={"response_time_p95": _default_config()}
+            )
+            mock_repo.has_nearby_change_point = AsyncMock(return_value=False)
+            mock_repo.insert_change_point = AsyncMock()
+
+            previous_cp = MagicMock()
+            previous_cp.post_segment_mean = 148.0
+            mock_repo.get_latest_change_point = AsyncMock(return_value=previous_cp)
+
+            mock_baseline = mock_baseline_cls.return_value
+            mock_baseline.get_evaluation_baselines = AsyncMock(
+                return_value=baseline_evals
+            )
+
+            from tropek.modules.change_points.detector import ChangePointResult
+
+            mock_detect.return_value = [
+                ChangePointResult(
+                    position=13,
+                    timestamp=datetime(2026, 4, 14, 12, 0, tzinfo=UTC),
+                    detector="e_divisive",
+                    direction="regression",
+                    change_relative_pct=50.0,
+                    change_absolute=50.0,
+                    pvalue=0.0001,
+                    pre_segment_mean=100.0,
+                    post_segment_mean=150.0,
+                )
+            ]
+
+            await run_change_point_detection(
+                session=session,
+                snapshot=snapshot,
+                slo_def=slo_def,
+                indicator_rows=[indicator_row],
+            )
+
+            mock_repo.insert_change_point.assert_not_called()
+
+    async def test_allows_different_regime_change_point(
+        self, snapshot: MagicMock, slo_def: MagicMock
+    ) -> None:
+        """A change point with a meaningfully different post_segment_mean is inserted."""
+        session = AsyncMock()
+        indicator_row = MagicMock()
+        indicator_row.objective = MagicMock()
+        indicator_row.objective.sli = "response_time_p95"
+        indicator_row.id = uuid.uuid4()
+
+        baseline_evals = []
+        for i in range(15):
+            eval_mock = MagicMock()
+            eval_mock.period_start = datetime(2026, 4, i + 1, 12, 0, tzinfo=UTC)
+            row_mock = MagicMock()
+            row_mock.objective = MagicMock()
+            row_mock.objective.sli = "response_time_p95"
+            row_mock.value = 100.0 + (50.0 if i >= 10 else 0.0)
+            eval_mock.indicator_rows = [row_mock]
+            baseline_evals.append(eval_mock)
+
+        with (
+            patch(
+                "tropek.modules.change_points.worker_step.ChangePointRepository"
+            ) as mock_repo_cls,
+            patch(
+                "tropek.modules.change_points.worker_step.BaselineRepository"
+            ) as mock_baseline_cls,
+            patch(
+                "tropek.modules.change_points.worker_step.detect_change_points"
+            ) as mock_detect,
+        ):
+            mock_repo = mock_repo_cls.return_value
+            mock_repo.resolve_configs_for_metrics = AsyncMock(
+                return_value={"response_time_p95": _default_config()}
+            )
+            mock_repo.has_nearby_change_point = AsyncMock(return_value=False)
+            mock_repo.insert_change_point = AsyncMock()
+
+            previous_cp = MagicMock()
+            previous_cp.post_segment_mean = 100.0
+            mock_repo.get_latest_change_point = AsyncMock(return_value=previous_cp)
+
+            mock_baseline = mock_baseline_cls.return_value
+            mock_baseline.get_evaluation_baselines = AsyncMock(
+                return_value=baseline_evals
+            )
+
+            from tropek.modules.change_points.detector import ChangePointResult
+
+            mock_detect.return_value = [
+                ChangePointResult(
+                    position=13,
+                    timestamp=datetime(2026, 4, 14, 12, 0, tzinfo=UTC),
+                    detector="e_divisive",
+                    direction="regression",
+                    change_relative_pct=50.0,
+                    change_absolute=50.0,
+                    pvalue=0.0001,
+                    pre_segment_mean=100.0,
+                    post_segment_mean=150.0,
+                )
+            ]
+
+            await run_change_point_detection(
+                session=session,
+                snapshot=snapshot,
+                slo_def=slo_def,
+                indicator_rows=[indicator_row],
+            )
+
+            mock_repo.insert_change_point.assert_called_once()
