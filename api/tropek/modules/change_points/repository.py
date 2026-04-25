@@ -12,43 +12,49 @@ from sqlalchemy.engine import CursorResult
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from tropek.db.models import ChangePoint, ChangePointConfig
-from tropek.modules.change_points.detector import (
-    DEFAULT_ENABLED,
-    DEFAULT_MAX_PVALUE,
-    DEFAULT_MIN_MAGNITUDE,
-    DEFAULT_MIN_SAMPLE_SIZE,
-    DEFAULT_WINDOW_SIZE,
-)
 
 
 class ResolvedConfig(BaseModel):
     """Config for a single metric after merging DB override with defaults."""
 
     enabled: bool
+    higher_is_better: bool
     window_size: int
     max_pvalue: float
     min_magnitude: float
     min_sample_size: int
 
 
-def _default_resolved_config() -> ResolvedConfig:
-    return ResolvedConfig(
-        enabled=DEFAULT_ENABLED,
-        window_size=DEFAULT_WINDOW_SIZE,
-        max_pvalue=DEFAULT_MAX_PVALUE,
-        min_magnitude=DEFAULT_MIN_MAGNITUDE,
-        min_sample_size=DEFAULT_MIN_SAMPLE_SIZE,
-    )
+class ChangePointInsertParams(BaseModel):
+    """Parameters for inserting a detected change point."""
+
+    indicator_result_id: uuid.UUID | None
+    asset_id: uuid.UUID
+    slo_name: str
+    metric_name: str
+    period_start: datetime
+    detector: str
+    direction: str
+    change_relative_pct: float
+    change_absolute: float
+    t_statistic: float
+    pre_segment_mean: float
+    post_segment_mean: float
+    post_segment_std: float
 
 
-def _resolve_from_row(row: ChangePointConfig) -> ResolvedConfig:
-    return ResolvedConfig(
-        enabled=row.enabled,
-        window_size=row.window_size,
-        max_pvalue=row.max_pvalue,
-        min_magnitude=row.min_magnitude,
-        min_sample_size=row.min_sample_size,
-    )
+class ChangePointListParams(BaseModel):
+    """Filter parameters for listing change points."""
+
+    status: str | None = None
+    direction: str | None = None
+    asset_id: uuid.UUID | None = None
+    slo_name: str | None = None
+    metric_name: str | None = None
+    from_ts: datetime | None = None
+    to_ts: datetime | None = None
+    limit: int = 50
+    offset: int = 0
 
 
 class ChangePointRepository:
@@ -56,72 +62,6 @@ class ChangePointRepository:
 
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
-
-    async def get_configs_for_slo(self, slo_name: str) -> dict[str, ChangePointConfig]:
-        """Return all change point configs for an SLO, keyed by metric_name."""
-        query = select(ChangePointConfig).where(ChangePointConfig.slo_name == slo_name)
-        result = await self._session.execute(query)
-        return {config.metric_name: config for config in result.scalars().all()}
-
-    async def delete_config(
-        self,
-        *,
-        slo_name: str,
-        metric_name: str,
-    ) -> bool:
-        """Delete an override row. Returns True if a row was deleted."""
-        cursor = cast(
-            'CursorResult[Any]',
-            await self._session.execute(
-                delete(ChangePointConfig).where(
-                    ChangePointConfig.slo_name == slo_name,
-                    ChangePointConfig.metric_name == metric_name,
-                )
-            ),
-        )
-        await self._session.flush()
-        return cursor.rowcount > 0
-
-    async def upsert_config(
-        self,
-        *,
-        slo_name: str,
-        metric_name: str,
-        enabled: bool = DEFAULT_ENABLED,
-        window_size: int = DEFAULT_WINDOW_SIZE,
-        max_pvalue: float = DEFAULT_MAX_PVALUE,
-        min_magnitude: float = DEFAULT_MIN_MAGNITUDE,
-        min_sample_size: int = DEFAULT_MIN_SAMPLE_SIZE,
-    ) -> ChangePointConfig:
-        """Create or update detection config for a specific SLO+metric."""
-        query = select(ChangePointConfig).where(
-            ChangePointConfig.slo_name == slo_name,
-            ChangePointConfig.metric_name == metric_name,
-        )
-        result = await self._session.execute(query)
-        existing = result.scalar_one_or_none()
-
-        if existing:
-            existing.enabled = enabled
-            existing.window_size = window_size
-            existing.max_pvalue = max_pvalue
-            existing.min_magnitude = min_magnitude
-            existing.min_sample_size = min_sample_size
-            await self._session.flush()
-            return existing
-
-        config = ChangePointConfig(
-            slo_name=slo_name,
-            metric_name=metric_name,
-            enabled=enabled,
-            window_size=window_size,
-            max_pvalue=max_pvalue,
-            min_magnitude=min_magnitude,
-            min_sample_size=min_sample_size,
-        )
-        self._session.add(config)
-        await self._session.flush()
-        return config
 
     async def has_nearby_change_point(
         self,
@@ -168,71 +108,31 @@ class ChangePointRepository:
         result = await self._session.execute(query)
         return result.scalar_one_or_none()
 
-    async def insert_change_point(
-        self,
-        *,
-        indicator_result_id: uuid.UUID | None,
-        asset_id: uuid.UUID,
-        slo_name: str,
-        metric_name: str,
-        period_start: datetime,
-        detector: str,
-        direction: str,
-        change_relative_pct: float,
-        change_absolute: float,
-        t_statistic: float,
-        pre_segment_mean: float,
-        post_segment_mean: float,
-    ) -> ChangePoint:
+    async def insert_change_point(self, params: ChangePointInsertParams) -> ChangePoint:
         """Insert a new change point row."""
-        change_point = ChangePoint(
-            indicator_result_id=indicator_result_id,
-            asset_id=asset_id,
-            slo_name=slo_name,
-            metric_name=metric_name,
-            period_start=period_start,
-            detector=detector,
-            direction=direction,
-            change_relative_pct=change_relative_pct,
-            change_absolute=change_absolute,
-            t_statistic=t_statistic,
-            pre_segment_mean=pre_segment_mean,
-            post_segment_mean=post_segment_mean,
-        )
+        change_point = ChangePoint(**params.model_dump())
         self._session.add(change_point)
         await self._session.flush()
         return change_point
 
-    async def list_change_points(
-        self,
-        *,
-        status: str | None = None,
-        direction: str | None = None,
-        asset_id: uuid.UUID | None = None,
-        slo_name: str | None = None,
-        metric_name: str | None = None,
-        from_ts: datetime | None = None,
-        to_ts: datetime | None = None,
-        limit: int = 50,
-        offset: int = 0,
-    ) -> list[ChangePoint]:
+    async def list_change_points(self, params: ChangePointListParams) -> list[ChangePoint]:
         """List change points with optional filters, newest first."""
         query = select(ChangePoint).order_by(ChangePoint.created_at.desc())
-        if status:
-            query = query.where(ChangePoint.status == status)
-        if direction:
-            query = query.where(ChangePoint.direction == direction)
-        if asset_id:
-            query = query.where(ChangePoint.asset_id == asset_id)
-        if slo_name:
-            query = query.where(ChangePoint.slo_name == slo_name)
-        if metric_name:
-            query = query.where(ChangePoint.metric_name == metric_name)
-        if from_ts:
-            query = query.where(ChangePoint.created_at >= from_ts)
-        if to_ts:
-            query = query.where(ChangePoint.created_at <= to_ts)
-        query = query.limit(limit).offset(offset)
+        if params.status:
+            query = query.where(ChangePoint.status == params.status)
+        if params.direction:
+            query = query.where(ChangePoint.direction == params.direction)
+        if params.asset_id:
+            query = query.where(ChangePoint.asset_id == params.asset_id)
+        if params.slo_name:
+            query = query.where(ChangePoint.slo_name == params.slo_name)
+        if params.metric_name:
+            query = query.where(ChangePoint.metric_name == params.metric_name)
+        if params.from_ts:
+            query = query.where(ChangePoint.created_at >= params.from_ts)
+        if params.to_ts:
+            query = query.where(ChangePoint.created_at <= params.to_ts)
+        query = query.limit(params.limit).offset(params.offset)
         result = await self._session.execute(query)
         return list(result.scalars().all())
 
@@ -344,48 +244,92 @@ class ChangePointRepository:
             for change_point in result.scalars().all()
         }
 
-    async def resolve_config(
-        self,
-        *,
-        slo_name: str,
-        metric_name: str,
+    @staticmethod
+    def resolve_from_objective(
+        objective: Any,
+        system_defaults: dict[str, bool | int | float | str],
     ) -> ResolvedConfig:
-        """Return the effective config for a metric.
-
-        Looks up an override row in change_point_config. If absent, returns
-        the hardcoded defaults — detection is enabled everywhere by default.
-        """
-        query = select(ChangePointConfig).where(
-            ChangePointConfig.slo_name == slo_name,
-            ChangePointConfig.metric_name == metric_name,
+        """Resolve config for an objective — per-objective override or system defaults."""
+        config = objective.change_point_config
+        if config is not None:
+            return ResolvedConfig(
+                enabled=config.enabled,
+                higher_is_better=config.higher_is_better,
+                window_size=config.window_size,
+                max_pvalue=config.max_pvalue,
+                min_magnitude=config.min_magnitude,
+                min_sample_size=config.min_sample_size,
+            )
+        return ResolvedConfig(
+            enabled=system_defaults.get('enabled', True),
+            higher_is_better=system_defaults.get('higher_is_better', False),
+            window_size=system_defaults.get('window_size', 30),
+            max_pvalue=system_defaults.get('max_pvalue', 0.001),
+            min_magnitude=system_defaults.get('min_magnitude', 0.0),
+            min_sample_size=system_defaults.get('min_sample_size', 10),
         )
-        result = await self._session.execute(query)
-        row = result.scalar_one_or_none()
-        if row is None:
-            return _default_resolved_config()
-        return _resolve_from_row(row)
 
-    async def resolve_configs_for_metrics(
+    async def upsert_config_for_objective(
         self,
         *,
-        slo_name: str,
-        metric_names: list[str],
-    ) -> dict[str, ResolvedConfig]:
-        """Batch-resolve configs for a list of metrics in one query."""
-        if not metric_names:
-            return {}
+        slo_objective_id: uuid.UUID,
+        enabled: bool,
+        higher_is_better: bool,
+        window_size: int,
+        max_pvalue: float,
+        min_magnitude: float,
+        min_sample_size: int,
+    ) -> ChangePointConfig:
+        """Create or update change point config for an objective."""
         query = select(ChangePointConfig).where(
-            ChangePointConfig.slo_name == slo_name,
-            ChangePointConfig.metric_name.in_(metric_names),
+            ChangePointConfig.slo_objective_id == slo_objective_id,
         )
         result = await self._session.execute(query)
-        overrides = {row.metric_name: row for row in result.scalars().all()}
+        existing = result.scalar_one_or_none()
 
-        resolved: dict[str, ResolvedConfig] = {}
-        for metric_name in metric_names:
-            row = overrides.get(metric_name)
-            if row is None:
-                resolved[metric_name] = _default_resolved_config()
-            else:
-                resolved[metric_name] = _resolve_from_row(row)
-        return resolved
+        if existing:
+            existing.enabled = enabled
+            existing.higher_is_better = higher_is_better
+            existing.window_size = window_size
+            existing.max_pvalue = max_pvalue
+            existing.min_magnitude = min_magnitude
+            existing.min_sample_size = min_sample_size
+            await self._session.flush()
+            return existing
+
+        config = ChangePointConfig(
+            slo_objective_id=slo_objective_id,
+            enabled=enabled,
+            higher_is_better=higher_is_better,
+            window_size=window_size,
+            max_pvalue=max_pvalue,
+            min_magnitude=min_magnitude,
+            min_sample_size=min_sample_size,
+        )
+        self._session.add(config)
+        await self._session.flush()
+        return config
+
+    async def delete_config_for_objective(self, slo_objective_id: uuid.UUID) -> bool:
+        """Delete change point config for an objective. Returns True if deleted."""
+        cursor = cast(
+            'CursorResult[Any]',
+            await self._session.execute(
+                delete(ChangePointConfig).where(
+                    ChangePointConfig.slo_objective_id == slo_objective_id,
+                )
+            ),
+        )
+        await self._session.flush()
+        return cursor.rowcount > 0
+
+    async def get_config_for_objective(
+        self, slo_objective_id: uuid.UUID,
+    ) -> ChangePointConfig | None:
+        """Return change point config for an objective, if any."""
+        result = await self._session.execute(
+            select(ChangePointConfig).where(
+                ChangePointConfig.slo_objective_id == slo_objective_id,
+            )
+        )
+        return result.scalar_one_or_none()
