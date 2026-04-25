@@ -49,6 +49,7 @@ class BaselineRepository:
         period_start_before: datetime,
         include_result_with_score: str,
         limit: int,
+        evaluation_name: str | None = None,
     ) -> list[SLOEvaluation]:
         """Fetch previous completed evaluations for baseline comparison during scoring.
 
@@ -70,6 +71,7 @@ class BaselineRepository:
             slo_name=slo_name,
             period_start_before=period_start_before,
             include_result_with_score=include_result_with_score,
+            evaluation_name=evaluation_name,
         )
         q = q.options(
             selectinload(SLOEvaluation.indicator_rows).joinedload(IndicatorResultRow.objective),
@@ -91,6 +93,7 @@ class BaselineRepository:
         restrict_to_ids: list[uuid.UUID] | None = None,
         tag_filters: dict[str, str] | None = None,
         skip_pin_filter: bool = False,
+        evaluation_name: str | None = None,
     ) -> list[SLOEvaluation]:
         """Fetch previous completed evaluations for re-evaluation baseline comparison.
 
@@ -116,6 +119,7 @@ class BaselineRepository:
             slo_name=slo_name,
             period_start_before=period_start_before,
             include_result_with_score=include_result_with_score,
+            evaluation_name=evaluation_name,
         )
         q = q.options(
             selectinload(SLOEvaluation.indicator_rows).joinedload(IndicatorResultRow.objective),
@@ -146,6 +150,7 @@ class BaselineRepository:
         slo_name: str,
         period_start_before: datetime,
         include_result_with_score: str,
+        evaluation_name: str | None = None,
     ) -> Any:
         """Build the shared base query for baseline lookups."""
         q = select(SLOEvaluation).where(
@@ -155,6 +160,8 @@ class BaselineRepository:
             SLOEvaluation.status == EvaluationStatus.COMPLETED,
             SLOEvaluation.invalidated == False,  # noqa: E712
         )
+        if evaluation_name is not None:
+            q = q.where(SLOEvaluation.evaluation_name == evaluation_name)
         if include_result_with_score == 'pass':
             q = q.where(SLOEvaluation.result == 'pass')
         elif include_result_with_score == 'pass_or_warn':
@@ -187,6 +194,7 @@ class BaselineRepository:
         asset_id: uuid.UUID,
         slo_name: str,
         from_date: datetime,
+        evaluation_name: str | None = None,
     ) -> list[SLOEvaluation]:
         """Load completed, non-invalidated evaluations for re-evaluation.
 
@@ -197,6 +205,7 @@ class BaselineRepository:
             asset_id: Asset UUID to scope results to.
             slo_name: SLO name to scope results to.
             from_date: Only include evaluations at or after this timestamp.
+            evaluation_name: Optional evaluation series name to scope results to.
 
         Returns:
             Matching completed evaluations ordered by period_start ascending.
@@ -215,5 +224,7 @@ class BaselineRepository:
             )
             .order_by(SLOEvaluation.period_start)
         )
+        if evaluation_name is not None:
+            q = q.where(SLOEvaluation.evaluation_name == evaluation_name)
         rows = await self._session.execute(q)
         return list(rows.scalars().all())
