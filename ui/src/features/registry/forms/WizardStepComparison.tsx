@@ -5,7 +5,7 @@ import type { TagRow } from './tagUtils'
 
 export interface ComparisonData {
   compare_count: number
-  aggregate_function: string
+  aggregate_function: 'avg' | 'p50' | 'p90' | 'p95' | 'p99'
   include_result_with_score: string
   pass_threshold: number
   warn_criteria: number
@@ -80,7 +80,7 @@ export function WizardStepComparison({ data, onChange }: WizardStepComparisonPro
               id="agg-function"
               className="w-full rounded border border-border bg-popover px-2 py-1.5 text-sm"
               value={data.aggregate_function}
-              onChange={(e) => update('aggregate_function', e.target.value)}
+              onChange={(e) => update('aggregate_function', e.target.value as ComparisonData['aggregate_function'])}
             >
               {AGGREGATE_OPTIONS.map((opt) => (
                 <option key={opt} value={opt}>{opt}</option>

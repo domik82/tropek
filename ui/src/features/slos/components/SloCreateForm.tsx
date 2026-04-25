@@ -28,7 +28,7 @@ const formSchema = z.object({
   compare_with: z.string(),
   number_of_comparison_results: z.coerce.number().min(1),
   include_result_with_score: z.string(),
-  aggregate_function: z.string(),
+  aggregate_function: z.enum(['avg', 'p50', 'p90', 'p95', 'p99']),
   total_score_pass_threshold: z.coerce.number().min(0).max(100),
   total_score_warning_threshold: z.coerce.number().min(0).max(100),
   comparable_from_version: z.coerce.number().min(1).optional(),
