@@ -70,7 +70,8 @@ class ConfigurationRepository:
         entry = await self.get_by_name(name)
         if entry is None:
             return None
-        validator = TYPE_VALIDATORS.get(entry.value_type, lambda v: True)
+        _accept_any: Callable[[str], bool] = lambda v: True
+        validator = TYPE_VALIDATORS.get(entry.value_type, _accept_any)
         if not validator(value):
             msg = f"value '{value}' is not a valid {entry.value_type}"
             raise ValueError(msg)

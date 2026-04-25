@@ -261,12 +261,12 @@ class ChangePointRepository:
                 min_sample_size=config.min_sample_size,
             )
         return ResolvedConfig(
-            enabled=system_defaults.get('enabled', True),
-            higher_is_better=system_defaults.get('higher_is_better', False),
-            window_size=system_defaults.get('window_size', 30),
-            max_pvalue=system_defaults.get('max_pvalue', 0.001),
-            min_magnitude=system_defaults.get('min_magnitude', 0.0),
-            min_sample_size=system_defaults.get('min_sample_size', 10),
+            enabled=bool(system_defaults.get('enabled', True)),
+            higher_is_better=bool(system_defaults.get('higher_is_better', False)),
+            window_size=int(system_defaults.get('window_size', 30)),
+            max_pvalue=float(system_defaults.get('max_pvalue', 0.001)),
+            min_magnitude=float(system_defaults.get('min_magnitude', 0.0)),
+            min_sample_size=int(system_defaults.get('min_sample_size', 10)),
         )
 
     async def upsert_config_for_objective(

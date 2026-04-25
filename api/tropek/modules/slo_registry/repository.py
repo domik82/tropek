@@ -139,17 +139,19 @@ class SLORepository(TagQueryMixin):
             self._session.add(ChangePointConfig(
                 slo_objective_id=orm_obj.id,
                 enabled=cp_input.enabled if cp_input.enabled is not None
-                    else system_defaults.get('enabled', True),
-                higher_is_better=cp_input.higher_is_better if cp_input.higher_is_better is not None
-                    else system_defaults.get('higher_is_better', False),
+                    else bool(system_defaults.get('enabled', True)),
+                higher_is_better=cp_input.higher_is_better
+                    if cp_input.higher_is_better is not None
+                    else bool(system_defaults.get('higher_is_better', False)),
                 window_size=cp_input.window_size if cp_input.window_size is not None
-                    else system_defaults.get('window_size', 30),
+                    else int(system_defaults.get('window_size', 30)),
                 max_pvalue=cp_input.max_pvalue if cp_input.max_pvalue is not None
-                    else system_defaults.get('max_pvalue', 0.001),
+                    else float(system_defaults.get('max_pvalue', 0.001)),
                 min_magnitude=cp_input.min_magnitude if cp_input.min_magnitude is not None
-                    else system_defaults.get('min_magnitude', 0.0),
-                min_sample_size=cp_input.min_sample_size if cp_input.min_sample_size is not None
-                    else system_defaults.get('min_sample_size', 10),
+                    else float(system_defaults.get('min_magnitude', 0.0)),
+                min_sample_size=cp_input.min_sample_size
+                    if cp_input.min_sample_size is not None
+                    else int(system_defaults.get('min_sample_size', 10)),
             ))
         elif previous_config is not None:
             self._session.add(ChangePointConfig(

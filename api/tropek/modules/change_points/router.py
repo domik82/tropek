@@ -56,11 +56,11 @@ async def list_change_points(
     return [ChangePointRead.model_validate(row) for row in rows]
 
 
-@router.patch('/change-points/bulk-triage', response_model=dict)
+@router.patch('/change-points/bulk-triage', response_model=dict[str, int])
 async def bulk_triage(
     body: BulkTriageRequest,
     session: AsyncSession = Depends(get_session),
-) -> dict:
+) -> dict[str, int]:
     """Bulk-update triage state for multiple change points."""
     repo = ChangePointRepository(session)
     count = await repo.bulk_triage(
@@ -87,12 +87,12 @@ async def get_change_point_config(
     system_defaults = await config_repo.get_change_point_defaults()
     return ChangePointConfigRead(
         slo_objective_id=objective_id,
-        enabled=system_defaults.get('enabled', True),
-        higher_is_better=system_defaults.get('higher_is_better', False),
-        window_size=system_defaults.get('window_size', 30),
-        max_pvalue=system_defaults.get('max_pvalue', 0.001),
-        min_magnitude=system_defaults.get('min_magnitude', 0.0),
-        min_sample_size=system_defaults.get('min_sample_size', 10),
+        enabled=bool(system_defaults.get('enabled', True)),
+        higher_is_better=bool(system_defaults.get('higher_is_better', False)),
+        window_size=int(system_defaults.get('window_size', 30)),
+        max_pvalue=float(system_defaults.get('max_pvalue', 0.001)),
+        min_magnitude=float(system_defaults.get('min_magnitude', 0.0)),
+        min_sample_size=int(system_defaults.get('min_sample_size', 10)),
     )
 
 
@@ -110,27 +110,27 @@ async def upsert_change_point_config(
         slo_objective_id=objective_id,
         enabled=(
             body.enabled if body.enabled is not None
-            else system_defaults.get('enabled', True)
+            else bool(system_defaults.get('enabled', True))
         ),
         higher_is_better=(
             body.higher_is_better if body.higher_is_better is not None
-            else system_defaults.get('higher_is_better', False)
+            else bool(system_defaults.get('higher_is_better', False))
         ),
         window_size=(
             body.window_size if body.window_size is not None
-            else system_defaults.get('window_size', 30)
+            else int(system_defaults.get('window_size', 30))
         ),
         max_pvalue=(
             body.max_pvalue if body.max_pvalue is not None
-            else system_defaults.get('max_pvalue', 0.001)
+            else float(system_defaults.get('max_pvalue', 0.001))
         ),
         min_magnitude=(
             body.min_magnitude if body.min_magnitude is not None
-            else system_defaults.get('min_magnitude', 0.0)
+            else float(system_defaults.get('min_magnitude', 0.0))
         ),
         min_sample_size=(
             body.min_sample_size if body.min_sample_size is not None
-            else system_defaults.get('min_sample_size', 10)
+            else int(system_defaults.get('min_sample_size', 10))
         ),
     )
     await session.commit()
