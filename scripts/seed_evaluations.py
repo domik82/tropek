@@ -4,6 +4,7 @@ Triggers evaluations spread across 48 hours of mock data.
 Two windows fall in the degraded period (2026-03-15T18:00Z - 2026-03-16T00:00Z)
 to produce failures.
 
+Each evaluation pattern declares its own named schedule with explicit timestamps.
 Evaluations are triggered window-by-window (chronological order) and each
 window must complete before the next is triggered. This guarantees that
 baseline comparisons always have completed predecessors available.
@@ -15,64 +16,150 @@ from __future__ import annotations
 
 import sys
 import time
+from dataclasses import dataclass
 from datetime import datetime, timedelta
+from typing import Any
 
 from tropek_client import TropekClient
 from tropek_client.models import EvaluationSummary
 
-# Unique assets — POST /evaluate triggers ALL bound SLOs for an asset at once.
-ASSETS = [
-    # E-Commerce
-    'checkout-api',
-    'product-catalog',
-    'user-service',
-    'orders-db',
-    # VM Infrastructure
-    'vm-prod-web-01',
-    'vm-prod-web-02',
-    # Office Laptops
-    'laptop-user-01',
-    'laptop-user-02',
-    # Binding test assets (direct-slo, group-slo, etc.) are NOT seeded here —
-    # they use binding-test-sli which has no mock scenario data.
-    # They exist for integration tests only (mocked arq pool, no real adapter).
-    # Scale Test — seeded separately by _seed_lab_monitor
-]
+TERMINAL_STATUSES = {'completed', 'failed', 'partial'}
 
-# 30-minute windows spread across 48h of mock data.
-# Windows 5 and 6 fall in the degraded spike (18:00-00:00 on 2026-03-15).
-WINDOWS = [
+
+# ---------------------------------------------------------------------------
+# Evaluation schedules — each pattern has its own explicit time windows
+# ---------------------------------------------------------------------------
+
+LOAD_TEST_SCHEDULE = [
     ('2026-03-15T00:00:00Z', '2026-03-15T00:30:00Z'),
     ('2026-03-15T04:00:00Z', '2026-03-15T04:30:00Z'),
     ('2026-03-15T08:00:00Z', '2026-03-15T08:30:00Z'),
     ('2026-03-15T12:00:00Z', '2026-03-15T12:30:00Z'),
     ('2026-03-15T16:00:00Z', '2026-03-15T16:30:00Z'),
-    ('2026-03-15T19:00:00Z', '2026-03-15T19:30:00Z'),  # degraded
-    ('2026-03-15T22:00:00Z', '2026-03-15T22:30:00Z'),  # degraded
+    ('2026-03-15T19:00:00Z', '2026-03-15T19:30:00Z'),  # degraded period
+    ('2026-03-15T22:00:00Z', '2026-03-15T22:30:00Z'),  # degraded period
     ('2026-03-16T02:00:00Z', '2026-03-16T02:30:00Z'),
     ('2026-03-16T06:00:00Z', '2026-03-16T06:30:00Z'),
     ('2026-03-16T10:00:00Z', '2026-03-16T10:30:00Z'),
 ]
 
-TERMINAL_STATUSES = {'completed', 'failed', 'partial'}
+PROD_VALIDATION_SCHEDULE = [
+    ('2026-03-15T00:00:00Z', '2026-03-15T00:30:00Z'),
+    ('2026-03-15T08:00:00Z', '2026-03-15T08:30:00Z'),
+    ('2026-03-15T16:00:00Z', '2026-03-15T16:30:00Z'),
+    ('2026-03-15T22:00:00Z', '2026-03-15T22:30:00Z'),  # degraded period
+    ('2026-03-16T06:00:00Z', '2026-03-16T06:30:00Z'),
+]
+
+FEATURE_BRANCH_SCHEDULE = [
+    ('2026-03-16T02:00:00Z', '2026-03-16T02:30:00Z'),
+    ('2026-03-16T06:00:00Z', '2026-03-16T06:30:00Z'),
+    ('2026-03-16T10:00:00Z', '2026-03-16T10:30:00Z'),
+]
+
+USER_EXPERIENCE_SCHEDULE = [
+    ('2026-03-15T00:00:00Z', '2026-03-15T00:30:00Z'),
+    ('2026-03-15T04:00:00Z', '2026-03-15T04:30:00Z'),
+    ('2026-03-15T08:00:00Z', '2026-03-15T08:30:00Z'),
+    ('2026-03-15T12:00:00Z', '2026-03-15T12:30:00Z'),
+    ('2026-03-15T16:00:00Z', '2026-03-15T16:30:00Z'),
+    ('2026-03-15T19:00:00Z', '2026-03-15T19:30:00Z'),
+    ('2026-03-15T22:00:00Z', '2026-03-15T22:30:00Z'),
+    ('2026-03-16T02:00:00Z', '2026-03-16T02:30:00Z'),
+    ('2026-03-16T06:00:00Z', '2026-03-16T06:30:00Z'),
+    ('2026-03-16T10:00:00Z', '2026-03-16T10:30:00Z'),
+]
+
+OPTIMIZATION_TESTING_SCHEDULE = [
+    ('2026-03-15T00:00:00Z', '2026-03-15T00:30:00Z'),
+    ('2026-03-15T12:00:00Z', '2026-03-15T12:30:00Z'),
+    ('2026-03-15T22:00:00Z', '2026-03-15T22:30:00Z'),
+    ('2026-03-16T10:00:00Z', '2026-03-16T10:30:00Z'),
+]
 
 
-def get_eval_runs(asset_name: str) -> list[tuple[str, list[int]]]:
-    """Return (evaluation_name, window_indices) pairs for this asset."""
-    if asset_name == 'lab-monitor-01':
-        return []  # handled separately in _seed_lab_monitor
-    if 'laptop' in asset_name:
-        return [('load-test', list(range(10)))]
-    if 'vm-' in asset_name:
+# ---------------------------------------------------------------------------
+# Evaluation pattern definition
+# ---------------------------------------------------------------------------
+
+@dataclass
+class EvalPattern:
+    """A named evaluation pattern with schedule and optional cross-series comparison."""
+
+    eval_name: str
+    schedule: list[tuple[str, str]]
+    compare_to: dict[str, str] | None = None
+
+
+# ---------------------------------------------------------------------------
+# Per-asset evaluation patterns
+# ---------------------------------------------------------------------------
+
+ECOMMERCE_ASSETS = ['checkout-api', 'product-catalog', 'user-service', 'orders-db']
+VM_ASSETS = ['vm-prod-web-01', 'vm-prod-web-02']
+LAPTOP_ASSETS = ['laptop-user-01', 'laptop-user-02']
+
+
+def get_patterns_for_asset(asset_name: str) -> list[EvalPattern]:
+    """Return evaluation patterns for a given asset."""
+    if asset_name in ECOMMERCE_ASSETS:
         return [
-            ('user-experience', list(range(10))),
-            ('optimization-testing', [0, 3, 6, 9]),
+            EvalPattern('load-test', LOAD_TEST_SCHEDULE),
+            EvalPattern('prod-validation', PROD_VALIDATION_SCHEDULE),
+            EvalPattern(
+                'feature-branch-test',
+                FEATURE_BRANCH_SCHEDULE,
+                compare_to={'evaluation_name': 'load-test'},
+            ),
         ]
-    # E-commerce + binding test assets
-    return [
-        ('load-test', list(range(10))),
-        ('prod-validation', [0, 2, 4, 6, 8]),
-    ]
+    if asset_name in VM_ASSETS:
+        return [
+            EvalPattern('user-experience', USER_EXPERIENCE_SCHEDULE),
+            EvalPattern('optimization-testing', OPTIMIZATION_TESTING_SCHEDULE),
+        ]
+    if asset_name in LAPTOP_ASSETS:
+        return [EvalPattern('load-test', LOAD_TEST_SCHEDULE)]
+    return []
+
+
+ALL_ASSETS = ECOMMERCE_ASSETS + VM_ASSETS + LAPTOP_ASSETS
+
+
+# ---------------------------------------------------------------------------
+# Execution helpers
+# ---------------------------------------------------------------------------
+
+@dataclass
+class ScheduledJob:
+    """A single evaluation trigger scheduled at a specific time window."""
+
+    asset_name: str
+    eval_name: str
+    start: str
+    end: str
+    compare_to: dict[str, str] | None = None
+
+
+def build_chronological_schedule() -> list[list[ScheduledJob]]:
+    """Merge all asset patterns into chronological window groups.
+
+    Returns a list of window groups, each containing all jobs that share
+    the same start timestamp. Groups are sorted chronologically.
+    """
+    jobs_by_start: dict[str, list[ScheduledJob]] = {}
+    for asset_name in ALL_ASSETS:
+        for pattern in get_patterns_for_asset(asset_name):
+            for start, end in pattern.schedule:
+                job = ScheduledJob(
+                    asset_name=asset_name,
+                    eval_name=pattern.eval_name,
+                    start=start,
+                    end=end,
+                    compare_to=pattern.compare_to,
+                )
+                jobs_by_start.setdefault(start, []).append(job)
+
+    return [jobs_by_start[key] for key in sorted(jobs_by_start)]
 
 
 def _wait_for_ids(client: TropekClient, eval_ids: list[str], label: str) -> None:
@@ -92,6 +179,10 @@ def _wait_for_ids(client: TropekClient, eval_ids: list[str], label: str) -> None
         time.sleep(1)
     print()
 
+
+# ---------------------------------------------------------------------------
+# Lab monitor (90-day series, separate from the main schedule)
+# ---------------------------------------------------------------------------
 
 LAB_START = datetime.fromisoformat('2025-12-16T12:00:00+00:00')
 LAB_DAYS = 90
@@ -117,61 +208,17 @@ def _seed_lab_monitor(client: TropekClient) -> list[str]:
     return all_ids
 
 
-def main() -> None:
-    """Trigger evaluations window-by-window to ensure baselines are available."""
-    if len(sys.argv) != 2:  # noqa: PLR2004
-        print(f'usage: {sys.argv[0]} <api_url>', file=sys.stderr)
-        sys.exit(1)
-
-    client = TropekClient(sys.argv[1])
-
-    # Build per-window schedule: window_index -> [(asset_name, eval_name)]
-    window_jobs: dict[int, list[tuple[str, str]]] = {}
-    for asset_name in ASSETS:
-        for eval_name, window_indices in get_eval_runs(asset_name):
-            for wi in window_indices:
-                window_jobs.setdefault(wi, []).append((asset_name, eval_name))
-
-    all_slo_eval_ids: list[str] = []
-    total_windows = len(window_jobs)
-
-    for wi in sorted(window_jobs):
-        start, end = WINDOWS[wi]
-        jobs = window_jobs[wi]
-        print(f'Window {wi + 1}/{total_windows} ({start}) — {len(jobs)} evaluate calls')
-
-        window_slo_ids: list[str] = []
-        for asset_name, eval_name in jobs:
-            result = client.evaluations.evaluate(asset_name, eval_name, start, end)
-            window_slo_ids.extend(result['slo_evaluation_ids'])
-
-        _wait_for_ids(client, window_slo_ids, f'window {wi + 1}')
-        all_slo_eval_ids.extend(window_slo_ids)
-
-    # Seed lab-monitor-01 with 90 daily evaluations
-    print('Seeding lab-monitor-01 (90 days)...')
-    lab_ids = _seed_lab_monitor(client)
-    all_slo_eval_ids.extend(lab_ids)
-
-    # Final summary (on individual SLO evaluations)
-    results = [client.evaluations.get(str(eid)) for eid in all_slo_eval_ids]
-    passed = sum(1 for e in results if e.result == 'pass')
-    failed = sum(1 for e in results if e.result == 'fail')
-    warning = sum(1 for e in results if e.result == 'warning')
-    completed = sum(1 for e in results if e.status == 'completed')
-    total = len(all_slo_eval_ids)
-    print(f'seeded: {completed}/{total} completed — {passed} pass, {warning} warning, {failed} fail')
-
-    _seed_example_annotations(client, results)
-
+# ---------------------------------------------------------------------------
+# Annotations
+# ---------------------------------------------------------------------------
 
 def _seed_example_annotations(
-    client: TropekClient, results: list[EvaluationSummary]
+    client: TropekClient, results: list[EvaluationSummary],
 ) -> None:
     """Attach annotations across visible categories so trend charts show pins in dev."""
     categories_resp = client._http.get('/note-categories')
     categories_resp.raise_for_status()
-    categories_by_name = {c['name']: c['id'] for c in categories_resp.json()}
+    categories_by_name: dict[str, Any] = {c['name']: c['id'] for c in categories_resp.json()}
     required = ['info', 'failure', 'investigation']
     if not all(name in categories_by_name for name in required):
         print('skipping annotation seeding: required default categories missing')
@@ -181,7 +228,6 @@ def _seed_example_annotations(
     if len(completed) < 3:  # noqa: PLR2004
         return
 
-    # Dedupe by run id (evaluation_id on SLO-eval = run id), take the 3 most-recent.
     seen_runs: list[str] = []
     for ev in sorted(completed, key=lambda e: e.created_at, reverse=True):
         run_id = str(ev.evaluation_id)
@@ -200,9 +246,59 @@ def _seed_example_annotations(
     ]
     for run_id, content, category_id in annotations:
         client.annotations.create_for_run(
-            run_id, content, author='seed', category_id=category_id
+            run_id, content, author='seed', category_id=category_id,
         )
     print(f'seeded {len(annotations)} example annotations across info/investigation/failure')
+
+
+# ---------------------------------------------------------------------------
+# Main
+# ---------------------------------------------------------------------------
+
+def main() -> None:
+    """Trigger evaluations window-by-window to ensure baselines are available."""
+    if len(sys.argv) != 2:  # noqa: PLR2004
+        print(f'usage: {sys.argv[0]} <api_url>', file=sys.stderr)
+        sys.exit(1)
+
+    client = TropekClient(sys.argv[1])
+
+    window_groups = build_chronological_schedule()
+    all_slo_eval_ids: list[str] = []
+
+    for group_index, jobs in enumerate(window_groups):
+        timestamp = jobs[0].start
+        print(f'Window {group_index + 1}/{len(window_groups)} ({timestamp}) — {len(jobs)} triggers')
+
+        window_slo_ids: list[str] = []
+        for job in jobs:
+            result = client.evaluations.evaluate(
+                job.asset_name,
+                job.eval_name,
+                job.start,
+                job.end,
+                compare_to=job.compare_to,
+            )
+            window_slo_ids.extend(result['slo_evaluation_ids'])
+
+        _wait_for_ids(client, window_slo_ids, f'window {group_index + 1}')
+        all_slo_eval_ids.extend(window_slo_ids)
+
+    # Seed lab-monitor-01 with 90 daily evaluations
+    print('Seeding lab-monitor-01 (90 days)...')
+    lab_ids = _seed_lab_monitor(client)
+    all_slo_eval_ids.extend(lab_ids)
+
+    # Final summary (on individual SLO evaluations)
+    results = [client.evaluations.get(str(eid)) for eid in all_slo_eval_ids]
+    passed = sum(1 for e in results if e.result == 'pass')
+    failed = sum(1 for e in results if e.result == 'fail')
+    warning = sum(1 for e in results if e.result == 'warning')
+    completed = sum(1 for e in results if e.status == 'completed')
+    total = len(all_slo_eval_ids)
+    print(f'seeded: {completed}/{total} completed — {passed} pass, {warning} warning, {failed} fail')
+
+    _seed_example_annotations(client, results)
 
 
 if __name__ == '__main__':
