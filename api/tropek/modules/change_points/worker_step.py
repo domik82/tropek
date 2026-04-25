@@ -22,6 +22,7 @@ from tropek.modules.change_points.repository import (
 )
 from tropek.modules.configuration.repository import ConfigurationRepository
 from tropek.modules.quality_gate.repositories.baseline import BaselineRepository
+from tropek.modules.quality_gate.workflows.execution.evaluation_helpers import resolve_comparison_name
 
 logger = structlog.get_logger()
 
@@ -59,6 +60,11 @@ async def run_change_point_detection(
         slo_name=snapshot.slo_name,
     )
 
+    comparison_name = resolve_comparison_name(
+        getattr(snapshot, 'compare_to', None),
+        snapshot.evaluation_name,
+    )
+
     indicator_lookup = {
         row.objective.sli: row
         for row in indicator_rows
@@ -90,6 +96,7 @@ async def run_change_point_detection(
                 indicator_result_id=indicator_row.id,
                 higher_is_better=resolved.higher_is_better,
                 config=resolved,
+                comparison_name=comparison_name,
             )
         except (OSError, ValueError, TypeError, RuntimeError, LookupError):
             log.warning(
@@ -109,6 +116,7 @@ async def _detect_for_metric(
     indicator_result_id: uuid.UUID,
     higher_is_better: bool,
     config: ResolvedConfig,
+    comparison_name: str,
 ) -> None:
     """Run detection for a single metric using baseline-scoped history."""
     history_evals = await baseline_repo.get_evaluation_baselines(
@@ -117,6 +125,7 @@ async def _detect_for_metric(
         period_start_before=snapshot.period_end,
         include_result_with_score="all",
         limit=config.window_size,
+        evaluation_name=comparison_name,
     )
 
     values: list[float] = []
@@ -169,6 +178,7 @@ async def _detect_for_metric(
         metric_name=metric_name,
         period_start=latest_cp.timestamp,
         nearby_timestamps=nearby_timestamps,
+        evaluation_name=comparison_name,
     )
 
     if has_existing:
@@ -179,6 +189,7 @@ async def _detect_for_metric(
         asset_id=snapshot.asset_id,
         slo_name=snapshot.slo_name,
         metric_name=metric_name,
+        evaluation_name=comparison_name,
     )
     if previous_cp and _same_regime(
         previous_cp.post_segment_mean,
