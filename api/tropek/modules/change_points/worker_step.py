@@ -127,6 +127,7 @@ async def _detect_for_metric(
             if row.objective and row.objective.sli == metric_name and row.value is not None:
                 values.append(float(row.value))
                 timestamps.append(evaluation.period_start)
+                break
 
     if len(values) < config.min_sample_size:
         log.debug(
