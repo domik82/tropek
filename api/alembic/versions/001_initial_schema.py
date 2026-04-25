@@ -225,6 +225,7 @@ def upgrade() -> None:
     sa.Column('id', sa.UUID(), nullable=False),
     sa.Column('asset_id', sa.UUID(), nullable=False),
     sa.Column('eval_name', sa.Text(), nullable=False),
+    sa.Column('compare_to', sa.JSON(), nullable=True),
     sa.Column('period_start', sa.DateTime(timezone=True), nullable=False),
     sa.Column('period_end', sa.DateTime(timezone=True), nullable=False),
     sa.Column('status', sa.Text(), server_default=sa.text("'pending'"), nullable=False),

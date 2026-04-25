@@ -779,6 +779,7 @@ class EvaluationRun(Base):
     id:              Mapped[uuid.UUID]      = mapped_column(UUID, primary_key=True, default=uuid.uuid4)
     asset_id:        Mapped[uuid.UUID]      = mapped_column(UUID, ForeignKey('assets.id', ondelete='RESTRICT'), nullable=False)
     eval_name:       Mapped[str]            = mapped_column(Text, nullable=False)
+    compare_to:      Mapped[dict[str, str] | None] = mapped_column(JSONB, nullable=True)
     period_start:    Mapped[datetime]       = mapped_column(DateTime(timezone=True), nullable=False)
     period_end:      Mapped[datetime]       = mapped_column(DateTime(timezone=True), nullable=False)
     status:          Mapped[str]            = mapped_column(Text, nullable=False, server_default=text("'pending'"), default='pending')
