@@ -51,6 +51,7 @@ class TriggerService:
             eval_name=request.eval_name,
             period_start=request.period_start,
             period_end=request.period_end,
+            compare_to=request.compare_to,
         )
 
         slo_eval_ids: list[uuid.UUID] = []
@@ -129,6 +130,7 @@ class TriggerService:
                 period_start=period_start,
                 period_end=period_end,
                 variables=request.variables,
+                compare_to=request.compare_to,
             )
             resp = await self.trigger_evaluate(single_req)
             all_run_ids.append(resp.evaluation_id)
