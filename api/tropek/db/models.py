@@ -257,33 +257,50 @@ class SLOObjective(Base):
     pass_threshold:     Mapped[list[str]]      = mapped_column(ARRAY(Text), nullable=False, server_default=text("'{}'"))
     warning_threshold:  Mapped[list[str]]      = mapped_column(ARRAY(Text), nullable=False, server_default=text("'{}'"))
     tab_group:         Mapped[str | None]     = mapped_column(Text, nullable=True)
+    change_point_config: Mapped[ChangePointConfig | None] = relationship(
+        'ChangePointConfig',
+        uselist=False,
+        cascade='all, delete-orphan',
+        lazy='joined',
+    )
     # fmt: on
 
 
 class ChangePointConfig(Base):
-    """Per-indicator Otava detection override — SPARSE table.
+    """Per-objective Otava detection override — SPARSE table.
 
-    Rows exist ONLY to override the hardcoded defaults for a specific
-    (slo_name, metric_name). Absence of a row = use defaults = detection
-    enabled with standard window_size and min_sample_size.
+    Rows exist ONLY to override the system defaults for a specific SLO objective.
+    Absence of a row = use system defaults from the configuration table.
     """
 
     __tablename__ = 'change_point_config'
-    __table_args__ = (
-        UniqueConstraint('slo_name', 'metric_name', name='uq_cp_config_slo_metric'),
-    )
 
     # fmt: off
-    id:              Mapped[uuid.UUID]      = mapped_column(UUID, primary_key=True, default=uuid.uuid4)
-    slo_name:        Mapped[str]            = mapped_column(Text, nullable=False)
-    metric_name:     Mapped[str]            = mapped_column(Text, nullable=False)
-    enabled:         Mapped[bool]           = mapped_column(Boolean, nullable=False, server_default=text('true'))
-    window_size:     Mapped[int]            = mapped_column(Integer, nullable=False, server_default=text('30'))
-    max_pvalue:      Mapped[float]          = mapped_column(Float, nullable=False, server_default=text('0.001'))
-    min_magnitude:   Mapped[float]          = mapped_column(Float, nullable=False, server_default=text('0.0'))
-    min_sample_size: Mapped[int]            = mapped_column(Integer, nullable=False, server_default=text('10'))
-    created_at:      Mapped[datetime]       = mapped_column(DateTime(timezone=True), server_default=func.now())
-    updated_at:      Mapped[datetime]       = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    id:                Mapped[uuid.UUID] = mapped_column(UUID, primary_key=True, default=uuid.uuid4)
+    slo_objective_id:  Mapped[uuid.UUID] = mapped_column(UUID, ForeignKey('slo_objectives.id', ondelete='CASCADE'), nullable=False, unique=True)
+    enabled:           Mapped[bool]      = mapped_column(Boolean, nullable=False)
+    higher_is_better:  Mapped[bool]      = mapped_column(Boolean, nullable=False)
+    window_size:       Mapped[int]       = mapped_column(Integer, nullable=False)
+    max_pvalue:        Mapped[float]     = mapped_column(Float, nullable=False)
+    min_magnitude:     Mapped[float]     = mapped_column(Float, nullable=False)
+    min_sample_size:   Mapped[int]       = mapped_column(Integer, nullable=False)
+    created_at:        Mapped[datetime]  = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at:        Mapped[datetime]  = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    # fmt: on
+
+
+class Configuration(Base):
+    """System-wide key-value settings — general purpose."""
+
+    __tablename__ = 'configuration'
+
+    # fmt: off
+    name:        Mapped[str]      = mapped_column(Text, primary_key=True)
+    value:       Mapped[str]      = mapped_column(Text, nullable=False)
+    value_type:  Mapped[str]      = mapped_column(Text, nullable=False)
+    description: Mapped[str]      = mapped_column(Text, nullable=False, server_default='')
+    created_at:  Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at:  Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
     # fmt: on
 
 
@@ -312,6 +329,7 @@ class ChangePoint(Base):
     t_statistic:          Mapped[float]            = mapped_column(Float, nullable=False)
     pre_segment_mean:     Mapped[float]            = mapped_column(Float, nullable=False)
     post_segment_mean:    Mapped[float]            = mapped_column(Float, nullable=False)
+    post_segment_std:     Mapped[float]            = mapped_column(Float, nullable=False, server_default=text("0"))
     status:               Mapped[str]              = mapped_column(Text, nullable=False, server_default=text("'unprocessed'"))
     triage_author:        Mapped[str | None]       = mapped_column(Text, nullable=True)
     triage_note:          Mapped[str | None]       = mapped_column(Text, nullable=True)
