@@ -510,7 +510,7 @@ class _Evaluations:
         _raise_for_status(resp)
         return resp.json()  # type: ignore[no-any-return]
 
-    def evaluate_batch(
+    def evaluate_batch(  # noqa: PLR0913
         self,
         mode: str,
         eval_name: str,
