@@ -62,6 +62,23 @@ def upgrade() -> None:
     sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
     sa.PrimaryKeyConstraint('name')
     )
+    op.bulk_insert(
+        sa.table(
+            'configuration',
+            sa.column('name', sa.Text),
+            sa.column('value', sa.Text),
+            sa.column('value_type', sa.Text),
+            sa.column('description', sa.Text),
+        ),
+        [
+            {'name': 'change_point.enabled', 'value': 'true', 'value_type': 'bool', 'description': 'Enable change point detection globally'},
+            {'name': 'change_point.higher_is_better', 'value': 'false', 'value_type': 'bool', 'description': 'Default direction: false = lower is better'},
+            {'name': 'change_point.window_size', 'value': '30', 'value_type': 'int', 'description': 'Number of recent evaluations to analyse'},
+            {'name': 'change_point.max_pvalue', 'value': '0.001', 'value_type': 'float', 'description': 'Maximum p-value to accept a change point'},
+            {'name': 'change_point.min_magnitude', 'value': '0.0', 'value_type': 'float', 'description': 'Minimum relative change to report'},
+            {'name': 'change_point.min_sample_size', 'value': '10', 'value_type': 'int', 'description': 'Minimum evaluations before detection runs'},
+        ],
+    )
     op.create_table('data_sources',
     sa.Column('id', sa.UUID(), nullable=False),
     sa.Column('name', sa.Text(), nullable=False),
