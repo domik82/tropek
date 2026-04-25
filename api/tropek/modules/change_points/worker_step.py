@@ -106,7 +106,7 @@ async def run_change_point_detection(
             )
 
 
-async def _detect_for_metric(
+async def _detect_for_metric(  # noqa: PLR0913
     *,
     log: Any,
     baseline_repo: BaselineRepository,
