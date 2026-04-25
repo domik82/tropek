@@ -25,6 +25,7 @@ class EvaluationRunRepository:
         eval_name: str,
         period_start: datetime,
         period_end: datetime,
+        compare_to: dict[str, str] | None = None,
     ) -> EvaluationRun:
         """Create a new pending EvaluationRun."""
         run = EvaluationRun(
@@ -34,6 +35,7 @@ class EvaluationRunRepository:
             period_start=period_start,
             period_end=period_end,
             status=EvaluationStatus.PENDING,
+            compare_to=compare_to,
         )
         self._session.add(run)
         await self._session.flush()

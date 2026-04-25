@@ -18,6 +18,7 @@ class EvaluateSingleRequest(StrictInput):
     period_start: datetime
     period_end: datetime
     variables: dict[IdentifierKey, SafeStr] = {}
+    compare_to: dict[str, str] | None = None
 
 
 class EvaluateSingleResponse(BaseModel):
@@ -49,6 +50,7 @@ class EvaluateBatchRequest(StrictInput):
     period_end: datetime | None = None
     eval_name: SafeStr
     variables: dict[IdentifierKey, SafeStr] = {}
+    compare_to: dict[str, str] | None = None
 
 
 class EvaluateBatchResponse(BaseModel):
