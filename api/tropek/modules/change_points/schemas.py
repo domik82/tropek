@@ -32,6 +32,7 @@ class ChangePointRead(BaseModel):
     pvalue: float = Field(validation_alias='t_statistic')
     pre_segment_mean: float
     post_segment_mean: float
+    post_segment_std: float
     status: str
     triage_author: str | None
     triage_note: str | None
@@ -61,25 +62,26 @@ class BulkTriageRequest(StrictInput):
     triage_author: str | None = None
 
 
-class ChangePointConfigRead(BaseModel):
-    """Detection config for a single SLO+metric pair."""
+class ChangePointConfigInput(StrictInput):
+    """Optional overrides for change point detection — used in SLO YAML change_point: block."""
 
-    slo_name: str
-    metric_name: str
+    enabled: bool | None = None
+    higher_is_better: bool | None = None
+    window_size: int | None = Field(default=None, strict=True)
+    max_pvalue: float | None = None
+    min_magnitude: float | None = None
+    min_sample_size: int | None = Field(default=None, strict=True)
+
+
+class ChangePointConfigRead(BaseModel):
+    """Full resolved change point config for an objective."""
+
+    slo_objective_id: uuid.UUID
     enabled: bool
+    higher_is_better: bool
     window_size: int
     max_pvalue: float
     min_magnitude: float
     min_sample_size: int
 
     model_config = {'from_attributes': True}
-
-
-class ChangePointConfigUpsert(StrictInput):
-    """Request body for creating/updating detection config."""
-
-    enabled: bool | None = None
-    window_size: int | None = None
-    max_pvalue: float | None = None
-    min_magnitude: float | None = None
-    min_sample_size: int | None = None

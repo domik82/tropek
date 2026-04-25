@@ -9,6 +9,7 @@ from typing import Annotated, Any, Literal
 from annotated_types import MinLen
 from pydantic import BaseModel, ConfigDict, Field, StrictBool, model_validator
 
+from tropek.modules.change_points.schemas import ChangePointConfigInput, ChangePointConfigRead
 from tropek.modules.common.schemas import (
     FloatNotBool,
     IdentifierKey,
@@ -83,12 +84,14 @@ class SLOObjectiveIn(StrictInput):
     warning_threshold: list[SafeStr] = Field(default_factory=list)
     weight: IntNotBool = 1
     key_sli: StrictBool = False
+    change_point: ChangePointConfigInput | None = None
 
 
 class SLOObjectiveRead(SLOObjectiveIn):
     """SLO objective in responses — includes sort_order for round-trip export."""
 
     sort_order: int
+    change_point: ChangePointConfigRead | None = None
 
     model_config = ConfigDict(from_attributes=True)
 
