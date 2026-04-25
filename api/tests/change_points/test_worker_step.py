@@ -8,8 +8,18 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+from tropek.modules.change_points.detector import ChangePointResult
 from tropek.modules.change_points.repository import ResolvedConfig
 from tropek.modules.change_points.worker_step import _same_regime, run_change_point_detection
+
+_SYSTEM_DEFAULTS = {
+    'enabled': True,
+    'higher_is_better': False,
+    'window_size': 30,
+    'max_pvalue': 0.001,
+    'min_magnitude': 0.0,
+    'min_sample_size': 10,
+}
 
 
 def _make_snapshot() -> MagicMock:
@@ -24,11 +34,20 @@ def _make_snapshot() -> MagicMock:
 
 
 def _make_slo_def() -> MagicMock:
+    config = MagicMock()
+    config.enabled = True
+    config.higher_is_better = False
+    config.window_size = 30
+    config.max_pvalue = 0.001
+    config.min_magnitude = 0.0
+    config.min_sample_size = 10
+
     objective = MagicMock()
     objective.sli = "response_time_p95"
     objective.display_name = "Response Time P95"
     objective.pass_threshold = ["<600"]
     objective.warning_threshold = ["<1000"]
+    objective.change_point_config = config
 
     slo = MagicMock()
     slo.objectives = [objective]
@@ -39,6 +58,7 @@ def _make_slo_def() -> MagicMock:
 def _default_config(*, enabled: bool = True) -> ResolvedConfig:
     return ResolvedConfig(
         enabled=enabled,
+        higher_is_better=False,
         window_size=30,
         max_pvalue=0.001,
         min_magnitude=0.0,
@@ -60,16 +80,17 @@ class TestWorkerStep:
     async def test_resolves_configs_even_with_no_indicator_rows(
         self, snapshot: MagicMock, slo_def: MagicMock
     ) -> None:
-        """No indicator rows → resolver is still called, nothing inserted."""
+        """No indicator rows → defaults are still fetched, nothing inserted."""
         session = AsyncMock()
 
-        with patch(
-            "tropek.modules.change_points.worker_step.ChangePointRepository"
-        ) as mock_repo_cls:
-            mock_repo = mock_repo_cls.return_value
-            mock_repo.resolve_configs_for_metrics = AsyncMock(
-                return_value={"response_time_p95": _default_config()}
-            )
+        with (
+            patch("tropek.modules.change_points.worker_step.ChangePointRepository"),
+            patch(
+                "tropek.modules.change_points.worker_step.ConfigurationRepository"
+            ) as mock_config_cls,
+        ):
+            mock_config = mock_config_cls.return_value
+            mock_config.get_change_point_defaults = AsyncMock(return_value=_SYSTEM_DEFAULTS)
 
             await run_change_point_detection(
                 session=session,
@@ -78,21 +99,26 @@ class TestWorkerStep:
                 indicator_rows=[],
             )
 
-            mock_repo.resolve_configs_for_metrics.assert_called_once()
+            mock_config.get_change_point_defaults.assert_called_once()
 
     async def test_skips_disabled_metric(
         self, snapshot: MagicMock, slo_def: MagicMock
     ) -> None:
         """Override row with enabled=False → skip that metric entirely."""
         session = AsyncMock()
+        slo_def.objectives[0].change_point_config.enabled = False
 
-        with patch(
-            "tropek.modules.change_points.worker_step.ChangePointRepository"
-        ) as mock_repo_cls:
+        with (
+            patch(
+                "tropek.modules.change_points.worker_step.ChangePointRepository"
+            ) as mock_repo_cls,
+            patch(
+                "tropek.modules.change_points.worker_step.ConfigurationRepository"
+            ) as mock_config_cls,
+        ):
+            mock_config = mock_config_cls.return_value
+            mock_config.get_change_point_defaults = AsyncMock(return_value=_SYSTEM_DEFAULTS)
             mock_repo = mock_repo_cls.return_value
-            mock_repo.resolve_configs_for_metrics = AsyncMock(
-                return_value={"response_time_p95": _default_config(enabled=False)}
-            )
             mock_repo.has_nearby_change_point = AsyncMock()
 
             await run_change_point_detection(
@@ -119,13 +145,15 @@ class TestWorkerStep:
                 "tropek.modules.change_points.worker_step.ChangePointRepository"
             ) as mock_repo_cls,
             patch(
+                "tropek.modules.change_points.worker_step.ConfigurationRepository"
+            ) as mock_config_cls,
+            patch(
                 "tropek.modules.change_points.worker_step.BaselineRepository"
             ),
         ):
+            mock_config = mock_config_cls.return_value
+            mock_config.get_change_point_defaults = AsyncMock(return_value=_SYSTEM_DEFAULTS)
             mock_repo = mock_repo_cls.return_value
-            mock_repo.resolve_configs_for_metrics = AsyncMock(
-                return_value={"response_time_p95": _default_config()}
-            )
             mock_repo.has_nearby_change_point = AsyncMock()
 
             await run_change_point_detection(
@@ -152,13 +180,16 @@ class TestWorkerStep:
                 "tropek.modules.change_points.worker_step.ChangePointRepository"
             ) as mock_repo_cls,
             patch(
+                "tropek.modules.change_points.worker_step.ConfigurationRepository"
+            ) as mock_config_cls,
+            patch(
                 "tropek.modules.change_points.worker_step.BaselineRepository"
             ) as mock_baseline_cls,
         ):
+            mock_config = mock_config_cls.return_value
+            mock_config.get_change_point_defaults = AsyncMock(return_value=_SYSTEM_DEFAULTS)
+            mock_repo_cls.resolve_from_objective = MagicMock(return_value=_default_config())
             mock_repo = mock_repo_cls.return_value
-            mock_repo.resolve_configs_for_metrics = AsyncMock(
-                return_value={"response_time_p95": _default_config()}
-            )
             mock_repo.has_nearby_change_point = AsyncMock()
 
             mock_baseline = mock_baseline_cls.return_value
@@ -199,23 +230,24 @@ class TestWorkerStep:
                 "tropek.modules.change_points.worker_step.ChangePointRepository"
             ) as mock_repo_cls,
             patch(
+                "tropek.modules.change_points.worker_step.ConfigurationRepository"
+            ) as mock_config_cls,
+            patch(
                 "tropek.modules.change_points.worker_step.BaselineRepository"
             ) as mock_baseline_cls,
             patch(
                 "tropek.modules.change_points.worker_step.detect_change_points"
             ) as mock_detect,
         ):
+            mock_config = mock_config_cls.return_value
+            mock_config.get_change_point_defaults = AsyncMock(return_value=_SYSTEM_DEFAULTS)
+            mock_repo_cls.resolve_from_objective = MagicMock(return_value=_default_config())
             mock_repo = mock_repo_cls.return_value
-            mock_repo.resolve_configs_for_metrics = AsyncMock(
-                return_value={"response_time_p95": _default_config()}
-            )
             mock_repo.has_nearby_change_point = AsyncMock(return_value=True)
             mock_repo.insert_change_point = AsyncMock()
 
             mock_baseline = mock_baseline_cls.return_value
             mock_baseline.get_evaluation_baselines = AsyncMock(return_value=baseline_evals)
-
-            from tropek.modules.change_points.detector import ChangePointResult
 
             mock_detect.return_value = [
                 ChangePointResult(
@@ -228,6 +260,7 @@ class TestWorkerStep:
                     pvalue=0.0001,
                     pre_segment_mean=100.0,
                     post_segment_mean=150.0,
+                    post_segment_std=20.0,
                 )
             ]
 
@@ -242,29 +275,33 @@ class TestWorkerStep:
 
 
 class TestSameRegime:
-    """Tests for the _same_regime helper."""
+    """Tests for the _same_regime helper using std dev."""
 
-    def test_identical_means(self) -> None:
-        assert _same_regime(500.0, 500.0) is True
+    def test_within_two_std(self) -> None:
+        # std=25, 2*25=50 → 520 is within 50 of 500
+        assert _same_regime(500.0, 25.0, 520.0) is True
 
-    def test_within_threshold(self) -> None:
-        assert _same_regime(500.0, 520.0) is True
+    def test_exceeds_two_std(self) -> None:
+        # std=25, 2*25=50 → 600 is 100 away, exceeds band
+        assert _same_regime(500.0, 25.0, 600.0) is False
 
-    def test_exceeds_threshold(self) -> None:
-        assert _same_regime(500.0, 600.0) is False
+    def test_exactly_at_boundary(self) -> None:
+        # std=25, 2*25=50 → 550 is exactly at 2*std, should NOT match (strict <)
+        assert _same_regime(500.0, 25.0, 550.0) is False
 
-    def test_both_zero(self) -> None:
-        assert _same_regime(0.0, 0.0) is True
+    def test_zero_std_same_mean(self) -> None:
+        assert _same_regime(500.0, 0.0, 500.0) is True
 
-    def test_one_zero(self) -> None:
-        assert _same_regime(0.0, 100.0) is False
+    def test_zero_std_different_mean(self) -> None:
+        assert _same_regime(500.0, 0.0, 501.0) is False
 
-    def test_symmetric(self) -> None:
-        assert _same_regime(500.0, 520.0) == _same_regime(520.0, 500.0)
+    def test_large_std_absorbs_big_difference(self) -> None:
+        # std=100, 2*100=200 → 650 is within 200 of 500
+        assert _same_regime(500.0, 100.0, 650.0) is True
 
-    def test_negative_values(self) -> None:
-        assert _same_regime(-500.0, -520.0) is True
-        assert _same_regime(-500.0, -100.0) is False
+    def test_small_std_rejects_small_difference(self) -> None:
+        # std=5, 2*5=10 → 515 is 15 away, exceeds band
+        assert _same_regime(500.0, 5.0, 515.0) is False
 
 
 class TestRegimeConsolidation:
@@ -304,29 +341,31 @@ class TestRegimeConsolidation:
                 "tropek.modules.change_points.worker_step.ChangePointRepository"
             ) as mock_repo_cls,
             patch(
+                "tropek.modules.change_points.worker_step.ConfigurationRepository"
+            ) as mock_config_cls,
+            patch(
                 "tropek.modules.change_points.worker_step.BaselineRepository"
             ) as mock_baseline_cls,
             patch(
                 "tropek.modules.change_points.worker_step.detect_change_points"
             ) as mock_detect,
         ):
+            mock_config = mock_config_cls.return_value
+            mock_config.get_change_point_defaults = AsyncMock(return_value=_SYSTEM_DEFAULTS)
+            mock_repo_cls.resolve_from_objective = MagicMock(return_value=_default_config())
             mock_repo = mock_repo_cls.return_value
-            mock_repo.resolve_configs_for_metrics = AsyncMock(
-                return_value={"response_time_p95": _default_config()}
-            )
             mock_repo.has_nearby_change_point = AsyncMock(return_value=False)
             mock_repo.insert_change_point = AsyncMock()
 
             previous_cp = MagicMock()
             previous_cp.post_segment_mean = 148.0
+            previous_cp.post_segment_std = 25.0
             mock_repo.get_latest_change_point = AsyncMock(return_value=previous_cp)
 
             mock_baseline = mock_baseline_cls.return_value
             mock_baseline.get_evaluation_baselines = AsyncMock(
                 return_value=baseline_evals
             )
-
-            from tropek.modules.change_points.detector import ChangePointResult
 
             mock_detect.return_value = [
                 ChangePointResult(
@@ -339,6 +378,7 @@ class TestRegimeConsolidation:
                     pvalue=0.0001,
                     pre_segment_mean=100.0,
                     post_segment_mean=150.0,
+                    post_segment_std=20.0,
                 )
             ]
 
@@ -354,7 +394,7 @@ class TestRegimeConsolidation:
     async def test_allows_different_regime_change_point(
         self, snapshot: MagicMock, slo_def: MagicMock
     ) -> None:
-        """A change point with a meaningfully different post_segment_mean is inserted."""
+        """A change point with post_segment_mean outside the noise band is inserted."""
         session = AsyncMock()
         indicator_row = MagicMock()
         indicator_row.objective = MagicMock()
@@ -377,29 +417,31 @@ class TestRegimeConsolidation:
                 "tropek.modules.change_points.worker_step.ChangePointRepository"
             ) as mock_repo_cls,
             patch(
+                "tropek.modules.change_points.worker_step.ConfigurationRepository"
+            ) as mock_config_cls,
+            patch(
                 "tropek.modules.change_points.worker_step.BaselineRepository"
             ) as mock_baseline_cls,
             patch(
                 "tropek.modules.change_points.worker_step.detect_change_points"
             ) as mock_detect,
         ):
+            mock_config = mock_config_cls.return_value
+            mock_config.get_change_point_defaults = AsyncMock(return_value=_SYSTEM_DEFAULTS)
+            mock_repo_cls.resolve_from_objective = MagicMock(return_value=_default_config())
             mock_repo = mock_repo_cls.return_value
-            mock_repo.resolve_configs_for_metrics = AsyncMock(
-                return_value={"response_time_p95": _default_config()}
-            )
             mock_repo.has_nearby_change_point = AsyncMock(return_value=False)
             mock_repo.insert_change_point = AsyncMock()
 
             previous_cp = MagicMock()
             previous_cp.post_segment_mean = 100.0
+            previous_cp.post_segment_std = 10.0
             mock_repo.get_latest_change_point = AsyncMock(return_value=previous_cp)
 
             mock_baseline = mock_baseline_cls.return_value
             mock_baseline.get_evaluation_baselines = AsyncMock(
                 return_value=baseline_evals
             )
-
-            from tropek.modules.change_points.detector import ChangePointResult
 
             mock_detect.return_value = [
                 ChangePointResult(
@@ -412,6 +454,7 @@ class TestRegimeConsolidation:
                     pvalue=0.0001,
                     pre_segment_mean=100.0,
                     post_segment_mean=150.0,
+                    post_segment_std=20.0,
                 )
             ]
 
