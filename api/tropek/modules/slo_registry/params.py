@@ -6,6 +6,7 @@ import uuid
 
 from pydantic import Field
 
+from tropek.modules.change_points.schemas import ChangePointConfigInput
 from tropek.modules.common.schemas import StrictInput
 
 
@@ -18,6 +19,7 @@ class SLOObjectiveParams(StrictInput):
     key_sli: bool = False
     pass_threshold: list[str] = Field(default_factory=list)
     warning_threshold: list[str] = Field(default_factory=list)
+    change_point: ChangePointConfigInput | None = None
 
 
 class SLOCreateParams(StrictInput):
