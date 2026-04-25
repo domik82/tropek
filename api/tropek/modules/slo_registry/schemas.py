@@ -91,7 +91,7 @@ class SLOObjectiveRead(SLOObjectiveIn):
     """SLO objective in responses — includes sort_order for round-trip export."""
 
     sort_order: int
-    change_point: ChangePointConfigRead | None = None
+    change_point: ChangePointConfigRead | None = None  # type: ignore[assignment]
 
     model_config = ConfigDict(from_attributes=True)
 

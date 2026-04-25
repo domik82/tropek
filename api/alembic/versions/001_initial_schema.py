@@ -2,7 +2,7 @@
 
 Revision ID: 001
 Revises: 
-Create Date: 2026-04-20 22:34:06.786990
+Create Date: 2026-04-25 12:56:33.490088
 
 """
 from collections.abc import Sequence
@@ -53,19 +53,14 @@ def upgrade() -> None:
     )
     op.create_index('idx_asset_types_name', 'asset_types', ['name'], unique=False)
     op.create_index('uq_asset_types_default', 'asset_types', ['is_default'], unique=True, postgresql_where=sa.text('is_default = true'))
-    op.create_table('change_point_config',
-    sa.Column('id', sa.UUID(), nullable=False),
-    sa.Column('slo_name', sa.Text(), nullable=False),
-    sa.Column('metric_name', sa.Text(), nullable=False),
-    sa.Column('enabled', sa.Boolean(), server_default=sa.text('true'), nullable=False),
-    sa.Column('window_size', sa.Integer(), server_default=sa.text('30'), nullable=False),
-    sa.Column('max_pvalue', sa.Float(), server_default=sa.text('0.001'), nullable=False),
-    sa.Column('min_magnitude', sa.Float(), server_default=sa.text('0.0'), nullable=False),
-    sa.Column('min_sample_size', sa.Integer(), server_default=sa.text('10'), nullable=False),
+    op.create_table('configuration',
+    sa.Column('name', sa.Text(), nullable=False),
+    sa.Column('value', sa.Text(), nullable=False),
+    sa.Column('value_type', sa.Text(), nullable=False),
+    sa.Column('description', sa.Text(), server_default='', nullable=False),
     sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
     sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
-    sa.PrimaryKeyConstraint('id'),
-    sa.UniqueConstraint('slo_name', 'metric_name', name='uq_cp_config_slo_metric')
+    sa.PrimaryKeyConstraint('name')
     )
     op.create_table('data_sources',
     sa.Column('id', sa.UUID(), nullable=False),
@@ -301,6 +296,21 @@ def upgrade() -> None:
     sa.UniqueConstraint('snapshot_id', 'path', name='uq_asset_meta_values_snapshot_path')
     )
     op.create_index('idx_asset_meta_values_snapshot', 'asset_meta_values', ['snapshot_id'], unique=False)
+    op.create_table('change_point_config',
+    sa.Column('id', sa.UUID(), nullable=False),
+    sa.Column('slo_objective_id', sa.UUID(), nullable=False),
+    sa.Column('enabled', sa.Boolean(), nullable=False),
+    sa.Column('higher_is_better', sa.Boolean(), nullable=False),
+    sa.Column('window_size', sa.Integer(), nullable=False),
+    sa.Column('max_pvalue', sa.Float(), nullable=False),
+    sa.Column('min_magnitude', sa.Float(), nullable=False),
+    sa.Column('min_sample_size', sa.Integer(), nullable=False),
+    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.ForeignKeyConstraint(['slo_objective_id'], ['slo_objectives.id'], ondelete='CASCADE'),
+    sa.PrimaryKeyConstraint('id'),
+    sa.UniqueConstraint('slo_objective_id')
+    )
     op.create_table('slo_evaluations',
     sa.Column('id', sa.UUID(), nullable=False),
     sa.Column('evaluation_id', sa.UUID(), nullable=False),
@@ -423,6 +433,7 @@ def upgrade() -> None:
     sa.Column('t_statistic', sa.Float(), nullable=False),
     sa.Column('pre_segment_mean', sa.Float(), nullable=False),
     sa.Column('post_segment_mean', sa.Float(), nullable=False),
+    sa.Column('post_segment_std', sa.Float(), server_default=sa.text('0'), nullable=False),
     sa.Column('status', sa.Text(), server_default=sa.text("'unprocessed'"), nullable=False),
     sa.Column('triage_author', sa.Text(), nullable=True),
     sa.Column('triage_note', sa.Text(), nullable=True),
@@ -467,6 +478,7 @@ def downgrade() -> None:
     op.drop_index('idx_slo_evaluations_baseline_lookup', table_name='slo_evaluations', postgresql_where=sa.text("status = 'completed' AND invalidated = false"))
     op.drop_index('idx_slo_evaluations_asset', table_name='slo_evaluations')
     op.drop_table('slo_evaluations')
+    op.drop_table('change_point_config')
     op.drop_index('idx_asset_meta_values_snapshot', table_name='asset_meta_values')
     op.drop_table('asset_meta_values')
     op.drop_index('idx_asset_meta_closures_snapshot', table_name='asset_meta_closures')
@@ -511,7 +523,7 @@ def downgrade() -> None:
     op.drop_table('sli_definitions')
     op.drop_index('idx_data_sources_name', table_name='data_sources')
     op.drop_table('data_sources')
-    op.drop_table('change_point_config')
+    op.drop_table('configuration')
     op.drop_index('uq_asset_types_default', table_name='asset_types', postgresql_where=sa.text('is_default = true'))
     op.drop_index('idx_asset_types_name', table_name='asset_types')
     op.drop_table('asset_types')

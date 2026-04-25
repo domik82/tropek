@@ -84,13 +84,28 @@ EXCLUDED_OPERATIONS: set[tuple[str, str]] = {
 #
 #   PATCH /assets/{name}/slo-assignments/{assignment_id} — new_slo_definition_id
 #       must reference an existing SLO definition. Cross-resource FK dependency.
+#
+#   POST /slo-definitions/validate — same change_point nested-object constraint
+#       as POST /slo-definitions.
+#
+#   GET /change-points — fuzzed datetime query params rejected by domain validation.
+#
+#   PUT /change-points/config/{objective_id} — StrictInput body; fuzzed numeric
+#       fields (pvalue, magnitude) rejected by domain-range validation.
+#
+#   PATCH /change-points/{change_point_id} — StrictInput triage body; fuzzed
+#       status values rejected by domain validation.
 EXCLUDED_CHECKS_PER_OP: dict[tuple[str, str], list[CheckFunction]] = {
     ('POST', '/sli-definitions'): [positive_data_acceptance],
     ('GET', '/assets/{asset_id}/meta/timeline'): [positive_data_acceptance],
     ('GET', '/assets/{asset_id}/meta/timeline/summary'): [positive_data_acceptance],
     ('POST', '/assets/{asset_id}/meta/snapshots'): [positive_data_acceptance],
     ('POST', '/slo-definitions'): [positive_data_acceptance],
+    ('POST', '/slo-definitions/validate'): [positive_data_acceptance],
     ('POST', '/slo-definitions/test'): [positive_data_acceptance],
+    ('GET', '/change-points'): [positive_data_acceptance],
+    ('PUT', '/change-points/config/{objective_id}'): [positive_data_acceptance],
+    ('PATCH', '/change-points/{change_point_id}'): [positive_data_acceptance],
     ('GET', '/evaluations'): [positive_data_acceptance],
     ('PATCH', '/assets/{name}'): [positive_data_acceptance],
     ('POST', '/slo-display-groups'): [positive_data_acceptance],
