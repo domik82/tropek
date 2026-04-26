@@ -380,12 +380,14 @@ def test_aggregated_evaluation(client: TropekClient) -> None:
     """Trigger evaluations for an asset and verify the agg-latency-slo eval has method-keyed results."""
     step('Step 21: Aggregated-mode evaluation')
 
-    # Use a late time window so seeded evaluations (00:00 through 16:00) provide baselines
+    # Use a late time window so seeded evaluations (00:00 through 16:00) provide baselines.
+    # compare_to references the seeded 'load-test' series for baseline comparison.
     result = client.evaluations.evaluate(
         'checkout-api',
         'agg-baseline-test',
         '2026-03-16T14:00:00Z',
         '2026-03-16T14:30:00Z',
+        compare_to={'evaluation_name': 'load-test'},
     )
     slo_eval_ids = result['slo_evaluation_ids']
     assert slo_eval_ids, 'expected at least one slo_evaluation_id'
