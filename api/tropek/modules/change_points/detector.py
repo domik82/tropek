@@ -12,6 +12,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from datetime import datetime
+from enum import StrEnum
 from statistics import mean, stdev
 
 import numpy as np
@@ -34,13 +35,18 @@ PVALUE_STRICT_THRESHOLD = 0.05
 PVALUE_MODERATE_THRESHOLD = 0.5
 
 
+class Direction(StrEnum):
+    REGRESSION = 'regression'
+    IMPROVEMENT = 'improvement'
+
+
 class ChangePointResult(BaseModel):
     """A single detected change point with direction and magnitude."""
 
     position: int
     timestamp: datetime
     detector: str
-    direction: str
+    direction: Direction
     change_relative_pct: float
     change_absolute: float
     pvalue: float
@@ -104,9 +110,9 @@ def detect_change_points(
         relative_change = (absolute_change / pre_mean * 100) if pre_mean != 0 else 0.0
 
         if higher_is_better:
-            direction = 'regression' if post_mean < pre_mean else 'improvement'
+            direction = Direction.REGRESSION if post_mean < pre_mean else Direction.IMPROVEMENT
         else:
-            direction = 'regression' if post_mean > pre_mean else 'improvement'
+            direction = Direction.REGRESSION if post_mean > pre_mean else Direction.IMPROVEMENT
 
         results.append(
             ChangePointResult(

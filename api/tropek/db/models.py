@@ -284,7 +284,6 @@ class ChangePointConfig(Base):
     max_pvalue:        Mapped[float]     = mapped_column(Float, nullable=False)
     min_magnitude:     Mapped[float]     = mapped_column(Float, nullable=False)
     min_sample_size:   Mapped[int]       = mapped_column(Integer, nullable=False)
-    recency_filter:    Mapped[bool]      = mapped_column(Boolean, nullable=False, server_default='true')
     created_at:        Mapped[datetime]  = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at:        Mapped[datetime]  = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
     # fmt: on

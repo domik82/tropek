@@ -9,6 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from tropek.db.session import get_session
+from tropek.modules.change_points.detector import Direction
 from tropek.modules.change_points.repository import (
     ChangePointListParams,
     ChangePointRepository,
@@ -28,7 +29,7 @@ router = APIRouter(tags=['change-points'])
 @router.get('/change-points', response_model=list[ChangePointRead])
 async def list_change_points(
     status: str | None = None,
-    direction: str | None = None,
+    direction: Direction | None = None,
     asset_id: uuid.UUID | None = None,
     slo_name: str | None = None,
     metric: str | None = None,

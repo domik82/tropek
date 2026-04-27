@@ -2,7 +2,7 @@
 
 Unlike test_worker_step.py (which mocks detect_change_points), these tests
 run the REAL E-Divisive detector against synthetic series and verify that
-the full filtering pipeline (recency, dedup, regime) produces the correct
+the filtering pipeline (dedup, regime suppression) produces the correct
 insert/skip decisions.
 
 Each scenario documents:
@@ -40,7 +40,6 @@ def _config(
     window_size: int = 30,
     max_pvalue: float = 0.05,
     min_magnitude: float = 0.0,
-    recency_filter: bool = True,
 ) -> ResolvedConfig:
     return ResolvedConfig(
         enabled=True,
@@ -49,7 +48,6 @@ def _config(
         max_pvalue=max_pvalue,
         min_magnitude=min_magnitude,
         min_sample_size=min_sample_size,
-        recency_filter=recency_filter,
     )
 
 
@@ -176,19 +174,12 @@ async def _run(
 # ---------------------------------------------------------------------------
 # Scenario 1: Step regression — stable then step up (latency increase)
 #
-#   values:  [350] * 12 + [700] * 5
-#   expect:  1 regression CP near position 12
+#   values:  [350] * 10 + [700] * 3
+#   expect:  1 regression CP near position 10
 #
-#   WHY it works: 12 stable samples provide a strong baseline. The step to 700
-#   is 2× the baseline — clearly significant. The CP is within the last 3
-#   positions of a 17-element series (cutoff = 14), and position 12 >= 14 is
-#   False… wait. Actually position 12 < 14, so the recency filter drops it!
-#
-#   This exposes the recency filter problem: a regression detected at the
-#   step boundary gets filtered once there are >3 post-step samples.
-#   The regression IS detected on earlier evaluations (when the series is
-#   shorter), so the dedup check would see it as "already saved". This test
-#   simulates the first detection window (series of 13 elements).
+#   WHY it works: 10 stable samples provide a strong baseline. The step to 700
+#   is 2× the baseline — clearly significant. Dedup is empty on first run,
+#   so the regression is saved.
 # ---------------------------------------------------------------------------
 
 class TestStepRegression:
@@ -264,9 +255,9 @@ class TestStepImprovement:
 #   E-Divisive should find two split points: spike start and recovery.
 #   Expected: regression at spike, improvement at recovery.
 #
-#   This is the scenario that was failing in production. The old code only
-#   saved detected[-1] and the recency filter could drop either CP depending
-#   on timing.
+#   This is the scenario that was failing in production. Two bugs blocked
+#   the improvement: direction-blind dedup and direction-blind regime
+#   suppression.
 # ---------------------------------------------------------------------------
 
 class TestSpikeAndRecovery:
@@ -276,8 +267,7 @@ class TestSpikeAndRecovery:
         """When the 1st recovery eval runs, both regression and improvement should be saved.
 
         Series: 12 stable + 2 spike + 1 recovery = 15 points.
-        Recency cutoff = 15 - 3 = 12. Regression at ~12, improvement at ~14.
-        Both >= 12 → both pass recency filter.
+        Regression at ~12, improvement at ~14. Both saved.
         """
         values = [350.0] * 12 + [700.0, 700.0] + [350.0]
         inserts = await _run(values)
@@ -289,7 +279,7 @@ class TestSpikeAndRecovery:
         """With 3 recovery samples, improvement should still be detectable.
 
         Series: 12 stable + 2 spike + 3 recovery = 17 points.
-        Recency cutoff = 17 - 3 = 14. Improvement at ~14 is right at the edge.
+        Improvement at ~14 is saved alongside regression at ~12.
         """
         values = [350.0] * 12 + [700.0, 700.0] + [350.0] * 3
         inserts = await _run(values)
@@ -339,66 +329,34 @@ class TestSpikeAndRecovery:
             f'Inserts: {[(cp.direction, getattr(cp, "period_start", "?")) for cp in cp_repo.inserts]}'
         )
 
-    async def test_single_point_spike_only_saves_improvement(self) -> None:
-        """A single-point spike: E-Divisive finds both CPs, but recency drops the regression.
+    async def test_single_point_spike_saves_both_cps(self) -> None:
+        """A single-point spike: E-Divisive finds regression and improvement.
 
         Series: 12 stable + 1 spike + 3 recovery = 16 points.
         E-Divisive detects regression at pos 12 and improvement at pos 13.
-        Recency cutoff = 16 - 3 = 13. Regression (12 < 13) is filtered,
-        improvement (13 >= 13) passes. Only improvement is saved.
-
-        WHY this is acceptable: by the time 3 recovery samples exist, the
-        regression is "historical" — it should have been saved on the eval
-        that first saw it (when the series was shorter).
+        Both are saved — dedup doesn't block because they have different directions.
         """
         values = [350.0] * 12 + [700.0] + [350.0] * 3
         inserts = await _run(values)
 
-        assert len(inserts) == 1
-        assert inserts[0].direction == 'improvement'
+        directions = {cp.direction for cp in inserts}
+        assert directions == {'regression', 'improvement'}
 
 
 # ---------------------------------------------------------------------------
-# Scenario 4: Recency filter drops old CPs
+# Scenario 4: Historical CPs are saved (no recency filter)
 #
-#   The recency cutoff is len(values) - 3. CPs with position < cutoff are
-#   considered "historical" and skipped — they should have been saved on an
-#   earlier eval when they were recent.
+#   Without a recency filter, CPs deep in the history window are still
+#   saved. Dedup prevents re-insertion on subsequent evals.
 # ---------------------------------------------------------------------------
 
-class TestRecencyFilter:
-    """Verify the recency cutoff behaviour."""
+class TestHistoricalCpDetection:
+    """CPs are saved regardless of position in the series."""
 
-    async def test_cp_at_tail_is_saved(self) -> None:
-        """CP within last 3 positions passes the filter."""
-        # Step at position 10 in a 13-element series. Cutoff = 10. 10 >= 10 → passes.
-        values = [350.0] * 10 + [700.0] * 3
-        inserts = await _run(values)
-
-        assert len(inserts) >= 1
-
-    async def test_cp_deep_in_history_is_dropped(self) -> None:
-        """CP more than 3 positions from tail is filtered out.
-
-        WHY: this CP should have been saved on an earlier eval. If it wasn't,
-        re-detecting it now would create a stale retroactive CP.
-        """
-        # Step at position 5 in a 20-element series. Cutoff = 17. 5 < 17 → dropped.
+    async def test_old_step_is_saved(self) -> None:
+        """A step at position 5 in a 20-element series is saved."""
         values = [350.0] * 5 + [700.0] * 15
         inserts = await _run(values)
-
-        # The only CP E-Divisive finds is at position ~5, which is < 17 → filtered.
-        assert len(inserts) == 0
-
-    async def test_recency_filter_disabled_saves_old_cp(self) -> None:
-        """With recency_filter=False, even deep-history CPs are saved.
-
-        Same data as test_cp_deep_in_history_is_dropped — the only difference
-        is the config flag. This is for first-time detection on assets with
-        existing historical data where earlier evals didn't run CP detection.
-        """
-        values = [350.0] * 5 + [700.0] * 15
-        inserts = await _run(values, config=_config(recency_filter=False))
 
         assert len(inserts) >= 1
 
