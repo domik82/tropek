@@ -111,3 +111,17 @@ class HeatmapColumnCache:
             await self._redis.delete(*keys)
         except Exception as exc:  # noqa: BLE001 - cache must never block invalidation
             logger.warning('heatmap column cache delete_many failed: %s', exc)
+
+    async def flush_all(self) -> int:
+        """Delete all heatmap column fragments. Returns the number of keys deleted."""
+        cursor: int | bytes = 0
+        deleted = 0
+        pattern = f'{_KEY_PREFIX}:*'
+        while True:
+            cursor, keys = await self._redis.scan(cursor, match=pattern, count=500)
+            if keys:
+                await self._redis.delete(*keys)
+                deleted += len(keys)
+            if cursor == 0:
+                break
+        return deleted

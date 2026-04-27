@@ -23,6 +23,7 @@ class ResolvedConfig(BaseModel):
     max_pvalue: float
     min_magnitude: float
     min_sample_size: int
+    recency_filter: bool = True
 
 
 class ChangePointInsertParams(BaseModel):
@@ -71,18 +72,20 @@ class ChangePointRepository:
         metric_name: str,
         period_start: datetime,
         nearby_timestamps: list[datetime],
+        direction: str,
         evaluation_name: str | None = None,
     ) -> bool:
-        """Check if a change point exists for this metric within the nearby window.
+        """Check if a change point with the same direction exists nearby.
 
         The nearby_timestamps list represents the ±2 ordinal evaluation positions
-        around the candidate change point. If any existing change point (any status)
-        falls on one of these timestamps, return True to skip insertion.
+        around the candidate change point. Only matches CPs with the same direction
+        — a regression near an improvement does not count as a duplicate.
         """
         query = select(ChangePoint.id).where(
             ChangePoint.asset_id == asset_id,
             ChangePoint.slo_name == slo_name,
             ChangePoint.metric_name == metric_name,
+            ChangePoint.direction == direction,
             ChangePoint.period_start.in_(nearby_timestamps),
         )
         if evaluation_name is not None:
@@ -287,6 +290,7 @@ class ChangePointRepository:
                 max_pvalue=config.max_pvalue,
                 min_magnitude=config.min_magnitude,
                 min_sample_size=config.min_sample_size,
+                recency_filter=config.recency_filter,
             )
         return ResolvedConfig(
             enabled=bool(system_defaults.get('enabled', True)),
@@ -295,6 +299,7 @@ class ChangePointRepository:
             max_pvalue=float(system_defaults.get('max_pvalue', 0.001)),
             min_magnitude=float(system_defaults.get('min_magnitude', 0.0)),
             min_sample_size=int(system_defaults.get('min_sample_size', 10)),
+            recency_filter=bool(system_defaults.get('recency_filter', True)),
         )
 
     async def upsert_config_for_objective(
@@ -307,6 +312,7 @@ class ChangePointRepository:
         max_pvalue: float,
         min_magnitude: float,
         min_sample_size: int,
+        recency_filter: bool = True,
     ) -> ChangePointConfig:
         """Create or update change point config for an objective."""
         query = select(ChangePointConfig).where(
@@ -322,6 +328,7 @@ class ChangePointRepository:
             existing.max_pvalue = max_pvalue
             existing.min_magnitude = min_magnitude
             existing.min_sample_size = min_sample_size
+            existing.recency_filter = recency_filter
             await self._session.flush()
             return existing
 
@@ -333,6 +340,7 @@ class ChangePointRepository:
             max_pvalue=max_pvalue,
             min_magnitude=min_magnitude,
             min_sample_size=min_sample_size,
+            recency_filter=recency_filter,
         )
         self._session.add(config)
         await self._session.flush()

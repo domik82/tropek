@@ -3044,6 +3044,8 @@ export interface components {
         HeatmapCellGrouped: {
             /** Aggregation */
             aggregation?: string | null;
+            /** Change Absolute */
+            change_absolute?: number | null;
             change_point?: components["schemas"]["ChangePointMarker"] | null;
             /** Change Relative Pct */
             change_relative_pct?: number | null;

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import UTC, datetime
+from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
@@ -109,6 +110,8 @@ def _make_snapshot() -> EvaluationSnapshot:
 async def test_load_snapshot_marks_running_and_returns_snapshot() -> None:
     """Phase 1 marks running and returns an EvaluationSnapshot with correct fields."""
     session = AsyncMock()
+    parent_run = SimpleNamespace(compare_to=None)
+    session.get = AsyncMock(return_value=parent_run)
     repo = AsyncMock()
     repo.get_by_id.return_value = _make_orm_evaluation()
 

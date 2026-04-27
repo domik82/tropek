@@ -79,6 +79,7 @@ async def test_dedup_skips_nearby_change_point(db_session: AsyncSession) -> None
             metric_name='response_time_p95',
             period_start=timestamp,
             nearby_timestamps=nearby_timestamps,
+            direction='regression',
         )
         assert has_nearby is True
 
@@ -99,6 +100,7 @@ async def test_dedup_allows_distant_change_point(db_session: AsyncSession) -> No
         metric_name='response_time_p95',
         period_start=_BASE + timedelta(hours=12),
         nearby_timestamps=distant_timestamps,
+        direction='regression',
     )
     assert has_nearby is False
 
@@ -124,8 +126,34 @@ async def test_dedup_respects_hidden_status(db_session: AsyncSession) -> None:
         metric_name='latency',
         period_start=_BASE + timedelta(hours=5),
         nearby_timestamps=nearby_timestamps,
+        direction='regression',
     )
     assert has_nearby is True
+
+
+@pytest.mark.integration
+async def test_dedup_different_direction_not_blocked(db_session: AsyncSession) -> None:
+    """An improvement near an existing regression should NOT be deduped."""
+    asset_id = await _create_asset(db_session)
+    repo = ChangePointRepository(db_session)
+
+    db_session.add(_make_change_point(
+        asset_id,
+        period_start=_BASE + timedelta(hours=2),
+        direction='regression',
+    ))
+    await db_session.flush()
+
+    nearby_timestamps = [_BASE + timedelta(hours=h) for h in [1, 2, 3, 4]]
+    has_nearby = await repo.has_nearby_change_point(
+        asset_id=asset_id,
+        slo_name='perf-slo',
+        metric_name='response_time_p95',
+        period_start=_BASE + timedelta(hours=3),
+        nearby_timestamps=nearby_timestamps,
+        direction='improvement',
+    )
+    assert has_nearby is False
 
 
 @pytest.mark.integration

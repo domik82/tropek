@@ -358,6 +358,7 @@ class TestRegimeConsolidation:
             mock_repo.insert_change_point = AsyncMock()
 
             previous_cp = MagicMock()
+            previous_cp.direction = 'regression'
             previous_cp.post_segment_mean = 148.0
             previous_cp.post_segment_std = 25.0
             mock_repo.get_latest_change_point = AsyncMock(return_value=previous_cp)
@@ -434,6 +435,7 @@ class TestRegimeConsolidation:
             mock_repo.insert_change_point = AsyncMock()
 
             previous_cp = MagicMock()
+            previous_cp.direction = 'regression'
             previous_cp.post_segment_mean = 100.0
             previous_cp.post_segment_std = 10.0
             mock_repo.get_latest_change_point = AsyncMock(return_value=previous_cp)

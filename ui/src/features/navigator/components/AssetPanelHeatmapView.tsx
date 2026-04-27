@@ -144,7 +144,7 @@ export function AssetPanelHeatmapView({
           tabGroup: c.tab_group ?? null,
           value: c.value ?? 0,
           comparedValue: c.compared_value ?? null,
-          changeAbsolute: null,
+          changeAbsolute: c.change_absolute ?? null,
           changeRelativePct: c.change_relative_pct ?? null,
           aggregation: c.aggregation ?? '',
           status: c.result as 'pass' | 'warning' | 'fail',
