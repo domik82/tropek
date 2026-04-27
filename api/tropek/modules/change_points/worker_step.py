@@ -160,16 +160,7 @@ async def _detect_for_metric(  # noqa: PLR0913
     if not detected:
         return
 
-    if config.recency_filter:
-        recency_cutoff = len(values) - 3
-        recent_change_points = [cp for cp in detected if cp.position >= recency_cutoff]
-    else:
-        recent_change_points = list(detected)
-
-    if not recent_change_points:
-        return
-
-    for candidate in recent_change_points:
+    for candidate in detected:
         detection_index = candidate.position
         nearby_indices = range(
             max(0, detection_index - 2),

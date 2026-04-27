@@ -7,13 +7,14 @@ from datetime import datetime
 
 from pydantic import BaseModel, Field
 
+from tropek.modules.change_points.detector import Direction
 from tropek.modules.common.schemas import StrictInput
 
 
 class ChangePointMarker(BaseModel):
     """Lightweight marker attached to heatmap cells and trend points."""
 
-    direction: str
+    direction: Direction
     change_relative_pct: float
 
 
@@ -26,7 +27,7 @@ class ChangePointRead(BaseModel):
     metric_name: str
     period_start: datetime
     detector: str
-    direction: str
+    direction: Direction
     change_relative_pct: float
     change_absolute: float
     pvalue: float = Field(validation_alias='t_statistic')
@@ -71,7 +72,6 @@ class ChangePointConfigInput(StrictInput):
     max_pvalue: float | None = None
     min_magnitude: float | None = None
     min_sample_size: int | None = Field(default=None, strict=True)
-    recency_filter: bool | None = None
 
 
 class ChangePointConfigRead(BaseModel):
@@ -84,6 +84,5 @@ class ChangePointConfigRead(BaseModel):
     max_pvalue: float
     min_magnitude: float
     min_sample_size: int
-    recency_filter: bool
 
     model_config = {'from_attributes': True}

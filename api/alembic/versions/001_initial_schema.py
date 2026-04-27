@@ -323,7 +323,6 @@ def upgrade() -> None:
     sa.Column('max_pvalue', sa.Float(), nullable=False),
     sa.Column('min_magnitude', sa.Float(), nullable=False),
     sa.Column('min_sample_size', sa.Integer(), nullable=False),
-    sa.Column('recency_filter', sa.Boolean(), nullable=False, server_default=sa.text('true')),
     sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
     sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
     sa.ForeignKeyConstraint(['slo_objective_id'], ['slo_objectives.id'], ondelete='CASCADE'),
