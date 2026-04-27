@@ -7,6 +7,8 @@ export function fmt(v: number | null | undefined): string {
   if (v == null) return '—'
   if (v === 0) return '0'
   const abs = Math.abs(v)
+  if (abs >= 1_000_000) return `${(v / 1_000_000).toFixed(2)}M`
+  if (abs >= 1_000) return `${(v / 1_000).toFixed(2)}K`
   if (abs >= 0.01) return v.toFixed(2)
   // For very small values, show up to 6 significant digits and strip trailing zeros
   const digits = Math.min(6, -Math.floor(Math.log10(abs)) + 2)

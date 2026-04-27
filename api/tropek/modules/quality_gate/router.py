@@ -243,6 +243,17 @@ async def get_grouped_metric_heatmap_new(
     return response
 
 
+@router.delete('/evaluations/heatmap/cache', status_code=200)
+async def flush_heatmap_cache(
+    column_cache: HeatmapColumnCache | None = Depends(get_heatmap_column_cache),
+) -> dict[str, int]:
+    """Delete all cached heatmap column fragments, forcing a full rebuild on next request."""
+    if column_cache is None:
+        return {'deleted': 0}
+    deleted = await column_cache.flush_all()
+    return {'deleted': deleted}
+
+
 @router.get('/evaluations/heatmap/by-metric', response_model=MetricHeatmapResponse)
 async def get_metric_heatmap_new(
     asset_name: SafeQueryStr,

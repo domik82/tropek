@@ -319,6 +319,7 @@ def build_column_fragment(
                     score=row.score,
                     value=row.value,
                     compared_value=row.compared_value,
+                    change_absolute=row.change_absolute,
                     change_relative_pct=row.change_relative_pct,
                     weight=objective.weight,
                     key_sli=objective.key_sli,

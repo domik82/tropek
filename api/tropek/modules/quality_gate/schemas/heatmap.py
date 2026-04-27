@@ -67,6 +67,7 @@ class HeatmapCellGrouped(BaseModel):
     score: float
     value: float | None = None
     compared_value: float | None = None
+    change_absolute: float | None = None
     change_relative_pct: float | None = None
     weight: float = 1
     key_sli: bool = False

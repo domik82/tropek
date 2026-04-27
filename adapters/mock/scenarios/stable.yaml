@@ -7,7 +7,7 @@ metrics:
   response_time_p99:
     baseline: 450
     phases:
-      - duration_hours: 18
+      - duration_hours: 42
         pattern: stable
         jitter_pct: 5
       - duration_hours: 6
@@ -20,7 +20,7 @@ metrics:
   error_rate:
     baseline: 0.001
     phases:
-      - duration_hours: 18
+      - duration_hours: 42
         pattern: stable
         jitter_pct: 10
       - duration_hours: 6
@@ -33,14 +33,14 @@ metrics:
   availability:
     baseline: 99.95
     phases:
-      - duration_hours: 48
+      - duration_hours: 72
         pattern: stable
         jitter_pct: 0.05
   # Aggregated SLI base metrics — used by _handle_aggregated for data existence check
   agg-latency-sli:
     baseline: 350
     phases:
-      - duration_hours: 18
+      - duration_hours: 42
         pattern: stable
         jitter_pct: 5
       - duration_hours: 6
@@ -54,14 +54,14 @@ metrics:
   query_latency_p99:
     baseline: 42
     phases:
-      - duration_hours: 48
+      - duration_hours: 72
         pattern: stable
         jitter_pct: 8
   connection_saturation:
     baseline: 0.28
     phases:
-      - duration_hours: 48
+      - duration_hours: 72
         pattern: stable
         jitter_pct: 6
 interval_minutes: 5
-start: "2026-03-15T00:00:00Z"
+start: "2026-03-14T00:00:00Z"

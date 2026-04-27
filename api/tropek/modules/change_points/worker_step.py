@@ -160,72 +160,82 @@ async def _detect_for_metric(  # noqa: PLR0913
     if not detected:
         return
 
-    latest_cp = detected[-1]
+    if config.recency_filter:
+        recency_cutoff = len(values) - 3
+        recent_change_points = [cp for cp in detected if cp.position >= recency_cutoff]
+    else:
+        recent_change_points = list(detected)
 
-    if latest_cp.position < len(values) - 3:
+    if not recent_change_points:
         return
 
-    detection_index = latest_cp.position
-    nearby_indices = range(
-        max(0, detection_index - 2),
-        min(len(timestamps), detection_index + 3),
-    )
-    nearby_timestamps = [timestamps[i] for i in nearby_indices]
-
-    has_existing = await change_point_repo.has_nearby_change_point(
-        asset_id=snapshot.asset_id,
-        slo_name=snapshot.slo_name,
-        metric_name=metric_name,
-        period_start=latest_cp.timestamp,
-        nearby_timestamps=nearby_timestamps,
-        evaluation_name=comparison_name,
-    )
-
-    if has_existing:
-        log.debug("change point deduped", metric=metric_name, position=latest_cp.position)
-        return
-
-    previous_cp = await change_point_repo.get_latest_change_point(
-        asset_id=snapshot.asset_id,
-        slo_name=snapshot.slo_name,
-        metric_name=metric_name,
-        evaluation_name=comparison_name,
-    )
-    if previous_cp and _same_regime(
-        previous_cp.post_segment_mean,
-        previous_cp.post_segment_std,
-        latest_cp.post_segment_mean,
-    ):
-        log.debug(
-            "change point suppressed — same regime as previous",
-            metric=metric_name,
-            previous_mean=previous_cp.post_segment_mean,
-            previous_std=previous_cp.post_segment_std,
-            current_mean=latest_cp.post_segment_mean,
+    for candidate in recent_change_points:
+        detection_index = candidate.position
+        nearby_indices = range(
+            max(0, detection_index - 2),
+            min(len(timestamps), detection_index + 3),
         )
-        return
+        nearby_timestamps = [timestamps[i] for i in nearby_indices]
 
-    await change_point_repo.insert_change_point(
-        ChangePointInsertParams(
-            indicator_result_id=indicator_result_id,
+        has_existing = await change_point_repo.has_nearby_change_point(
             asset_id=snapshot.asset_id,
             slo_name=snapshot.slo_name,
             metric_name=metric_name,
-            period_start=latest_cp.timestamp,
-            detector=latest_cp.detector,
-            direction=latest_cp.direction,
-            change_relative_pct=latest_cp.change_relative_pct,
-            change_absolute=latest_cp.change_absolute,
-            t_statistic=latest_cp.pvalue,
-            pre_segment_mean=latest_cp.pre_segment_mean,
-            post_segment_mean=latest_cp.post_segment_mean,
-            post_segment_std=latest_cp.post_segment_std,
+            period_start=candidate.timestamp,
+            nearby_timestamps=nearby_timestamps,
+            direction=candidate.direction,
+            evaluation_name=comparison_name,
         )
-    )
 
-    log.info(
-        "change point detected",
-        metric=metric_name,
-        direction=latest_cp.direction,
-        magnitude_pct=latest_cp.change_relative_pct,
-    )
+        if has_existing:
+            log.debug("change point deduped", metric=metric_name, position=candidate.position)
+            continue
+
+        previous_cp = await change_point_repo.get_latest_change_point(
+            asset_id=snapshot.asset_id,
+            slo_name=snapshot.slo_name,
+            metric_name=metric_name,
+            evaluation_name=comparison_name,
+        )
+        if (
+            previous_cp
+            and previous_cp.direction == candidate.direction
+            and _same_regime(
+                previous_cp.post_segment_mean,
+                previous_cp.post_segment_std,
+                candidate.post_segment_mean,
+            )
+        ):
+            log.debug(
+                "change point suppressed — same regime as previous",
+                metric=metric_name,
+                previous_mean=previous_cp.post_segment_mean,
+                previous_std=previous_cp.post_segment_std,
+                current_mean=candidate.post_segment_mean,
+            )
+            continue
+
+        await change_point_repo.insert_change_point(
+            ChangePointInsertParams(
+                indicator_result_id=indicator_result_id,
+                asset_id=snapshot.asset_id,
+                slo_name=snapshot.slo_name,
+                metric_name=metric_name,
+                period_start=candidate.timestamp,
+                detector=candidate.detector,
+                direction=candidate.direction,
+                change_relative_pct=candidate.change_relative_pct,
+                change_absolute=candidate.change_absolute,
+                t_statistic=candidate.pvalue,
+                pre_segment_mean=candidate.pre_segment_mean,
+                post_segment_mean=candidate.post_segment_mean,
+                post_segment_std=candidate.post_segment_std,
+            )
+        )
+
+        log.info(
+            "change point detected",
+            metric=metric_name,
+            direction=candidate.direction,
+            magnitude_pct=candidate.change_relative_pct,
+        )

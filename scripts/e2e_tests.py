@@ -380,8 +380,19 @@ def test_aggregated_evaluation(client: TropekClient) -> None:
     """Trigger evaluations for an asset and verify the agg-latency-slo eval has method-keyed results."""
     step('Step 21: Aggregated-mode evaluation')
 
-    # Use a late time window so seeded evaluations (00:00 through 16:00) provide baselines.
-    # compare_to references the seeded 'load-test' series for baseline comparison.
+    # Seed a 'load-test' eval at a window not used by seed_evaluations.py,
+    # so this works against both clean e2e and seeded dev databases.
+    seed_result = client.evaluations.evaluate(
+        'checkout-api',
+        'load-test',
+        '2026-03-15T10:00:00Z',
+        '2026-03-15T10:30:00Z',
+    )
+    for seed_id in seed_result['slo_evaluation_ids']:
+        poll_eval(client, str(seed_id))
+    print(f'seeded load-test baseline: {len(seed_result["slo_evaluation_ids"])} SLO eval(s)')
+
+    # Now trigger the aggregated eval with cross-series comparison against 'load-test'.
     result = client.evaluations.evaluate(
         'checkout-api',
         'agg-baseline-test',
