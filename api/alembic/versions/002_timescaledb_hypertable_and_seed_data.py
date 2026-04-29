@@ -52,14 +52,14 @@ def upgrade() -> None:
 
     # Seed change point detection defaults.
     op.execute("""
-        INSERT INTO configuration (id, name, value, value_type, description) VALUES
-            (gen_random_uuid(), 'change_point.enabled',                    'true',  'bool',  'enable change point detection globally'),
-            (gen_random_uuid(), 'change_point.window_size',                '30',    'int',   'sliding window length for E-Divisive algorithm'),
-            (gen_random_uuid(), 'change_point.max_pvalue',                 '0.001', 'float', 'significance threshold — change points above this are discarded'),
-            (gen_random_uuid(), 'change_point.min_magnitude',              '0.0',   'float', 'minimum relative change (fraction) to keep a change point'),
-            (gen_random_uuid(), 'change_point.min_sample_size',            '10',    'int',   'skip detection if fewer values than this'),
-            (gen_random_uuid(), 'change_point.pvalue_strict_threshold',    '0.05',  'float', 'first-pass relaxation boundary — strict max_pvalue values get 10x relaxation'),
-            (gen_random_uuid(), 'change_point.pvalue_moderate_threshold',  '0.5',   'float', 'first-pass relaxation boundary — moderate max_pvalue values get 2x relaxation')
+        INSERT INTO configuration (name, value, value_type, description) VALUES
+            ('change_point.enabled',                    'true',  'bool',  'enable change point detection globally'),
+            ('change_point.window_size',                '30',    'int',   'sliding window length for E-Divisive algorithm'),
+            ('change_point.max_pvalue',                 '0.001', 'float', 'significance threshold — change points above this are discarded'),
+            ('change_point.min_magnitude',              '0.0',   'float', 'minimum relative change (fraction) to keep a change point'),
+            ('change_point.min_sample_size',            '10',    'int',   'skip detection if fewer values than this'),
+            ('change_point.pvalue_strict_threshold',    '0.05',  'float', 'first-pass relaxation boundary — strict max_pvalue values get 10x relaxation'),
+            ('change_point.pvalue_moderate_threshold',  '0.5',   'float', 'first-pass relaxation boundary — moderate max_pvalue values get 2x relaxation')
         ON CONFLICT (name) DO NOTHING
     """)
 
