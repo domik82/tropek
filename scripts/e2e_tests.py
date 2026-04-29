@@ -380,13 +380,15 @@ def test_aggregated_evaluation(client: TropekClient) -> None:
     """Trigger evaluations for an asset and verify the agg-latency-slo eval has method-keyed results."""
     step('Step 21: Aggregated-mode evaluation')
 
-    # Seed a 'load-test' eval at a window not used by seed_evaluations.py,
-    # so this works against both clean e2e and seeded dev databases.
+    # Seed a 'load-test' eval at a window after all seed_evaluations.py windows
+    # (latest is 2026-03-16T14:00) but still within the mock adapter's data
+    # range (up to 2026-03-16). This avoids baseline pin interference from
+    # step 8 while keeping mock data available.
     seed_result = client.evaluations.evaluate(
         'checkout-api',
         'load-test',
-        '2026-03-15T10:00:00Z',
-        '2026-03-15T10:30:00Z',
+        '2026-03-16T15:00:00Z',
+        '2026-03-16T15:30:00Z',
     )
     seed_evals = []
     for seed_id in seed_result['slo_evaluation_ids']:
@@ -407,8 +409,8 @@ def test_aggregated_evaluation(client: TropekClient) -> None:
     result = client.evaluations.evaluate(
         'checkout-api',
         'agg-baseline-test',
-        '2026-03-16T14:00:00Z',
-        '2026-03-16T14:30:00Z',
+        '2026-03-16T16:00:00Z',
+        '2026-03-16T16:30:00Z',
         compare_to={'evaluation_name': 'load-test'},
     )
     slo_eval_ids = result['slo_evaluation_ids']
