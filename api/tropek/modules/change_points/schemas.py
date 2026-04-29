@@ -30,7 +30,7 @@ class ChangePointRead(BaseModel):
     direction: Direction
     change_relative_pct: float
     change_absolute: float
-    pvalue: float = Field(validation_alias='t_statistic')
+    pvalue: float
     pre_segment_mean: float
     post_segment_mean: float
     post_segment_std: float

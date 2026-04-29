@@ -55,7 +55,7 @@ class ChangePointResult(BaseModel):
     post_segment_std: float
 
 
-def detect_change_points(
+def detect_change_points(  # noqa: PLR0913
     *,
     values: Sequence[float],
     timestamps: Sequence[datetime],
@@ -64,6 +64,8 @@ def detect_change_points(
     max_pvalue: float = DEFAULT_MAX_PVALUE,
     min_magnitude: float = DEFAULT_MIN_MAGNITUDE,
     min_sample_size: int = DEFAULT_MIN_SAMPLE_SIZE,
+    pvalue_strict_threshold: float = PVALUE_STRICT_THRESHOLD,
+    pvalue_moderate_threshold: float = PVALUE_MODERATE_THRESHOLD,
 ) -> list[ChangePointResult]:
     """Run E-Divisive change point detection on a single metric time series.
 
@@ -73,9 +75,15 @@ def detect_change_points(
         higher_is_better: If True, a decrease is a regression (throughput).
                           If False, an increase is a regression (latency).
         window_size: Sliding window length for the algorithm.
-        max_pvalue: Significance threshold for the t-test.
+        max_pvalue: Significance threshold for the merge phase t-test.
         min_magnitude: Minimum relative change to keep a change point.
         min_sample_size: Skip detection if fewer values than this.
+        pvalue_strict_threshold: First-pass relaxation boundary. When max_pvalue
+            is below this, the split phase uses 10x relaxation to cast a wide net
+            for weak candidates that the merge phase refines.
+        pvalue_moderate_threshold: Second relaxation boundary. When max_pvalue is
+            between strict and moderate, the split phase uses 2x relaxation.
+            Above moderate, no relaxation is applied.
 
     Returns:
         List of detected change points, ordered by position.
@@ -89,8 +97,8 @@ def detect_change_points(
         return []
 
     first_pass_pvalue = (
-        max_pvalue * 10 if max_pvalue < PVALUE_STRICT_THRESHOLD
-        else (max_pvalue * 2 if max_pvalue < PVALUE_MODERATE_THRESHOLD else max_pvalue)
+        max_pvalue * 10 if max_pvalue < pvalue_strict_threshold
+        else (max_pvalue * 2 if max_pvalue < pvalue_moderate_threshold else max_pvalue)
     )
     weak_change_points = split(series, effective_window, first_pass_pvalue)
     detected = merge(weak_change_points, series, max_pvalue, min_magnitude)

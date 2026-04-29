@@ -75,8 +75,8 @@ class MethodCriteriaOverrideRead(BaseModel):
     key_sli: bool | None = None
 
 
-class SLOObjectiveIn(StrictInput):
-    """SLO objective for create/validate requests."""
+class _SLOObjectiveBase(StrictInput):
+    """Shared fields for SLO objective input and response schemas."""
 
     sli: SafeStr
     display_name: SafeStr = ''
@@ -84,14 +84,19 @@ class SLOObjectiveIn(StrictInput):
     warning_threshold: list[SafeStr] = Field(default_factory=list)
     weight: IntNotBool = 1
     key_sli: StrictBool = False
+
+
+class SLOObjectiveIn(_SLOObjectiveBase):
+    """SLO objective for create/validate requests."""
+
     change_point: ChangePointConfigInput | None = None
 
 
-class SLOObjectiveRead(SLOObjectiveIn):
+class SLOObjectiveRead(_SLOObjectiveBase):
     """SLO objective in responses — includes sort_order for round-trip export."""
 
     sort_order: int
-    change_point: ChangePointConfigRead | None = None  # type: ignore[assignment]
+    change_point: ChangePointConfigRead | None = None
 
     model_config = ConfigDict(from_attributes=True)
 

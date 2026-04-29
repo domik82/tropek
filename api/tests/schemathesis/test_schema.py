@@ -106,10 +106,18 @@ EXCLUDED_CHECKS_PER_OP: dict[tuple[str, str], list[CheckFunction]] = {
     ('GET', '/change-points'): [positive_data_acceptance],
     ('PUT', '/change-points/config/{objective_id}'): [positive_data_acceptance],
     ('PATCH', '/change-points/{change_point_id}'): [positive_data_acceptance],
+    #   GET /change-points/{change_point_id} — random UUID never matches an existing row.
+    ('GET', '/change-points/{change_point_id}'): [positive_data_acceptance],
+    #   PATCH /change-points/bulk-triage — StrictInput body; fuzzed UUIDs and
+    #       status values rejected by domain validation.
+    ('PATCH', '/change-points/bulk-triage'): [positive_data_acceptance],
     ('GET', '/evaluations'): [positive_data_acceptance],
     ('PATCH', '/assets/{name}'): [positive_data_acceptance],
     ('POST', '/slo-display-groups'): [positive_data_acceptance],
     ('PATCH', '/assets/{name}/slo-assignments/{assignment_id}'): [positive_data_acceptance],
+    #   GET /configuration — null-byte prefix values in fuzzed query params crash
+    #       the asyncpg driver. No user-facing query params to validate.
+    ('GET', '/configuration'): [positive_data_acceptance],
 }
 
 

@@ -37,9 +37,9 @@ function formatDate(date: Date): string {
 
 function StatusBadge({ status }: { status: ChangePointStatus }) {
   const styles: Record<ChangePointStatus, string> = {
-    unprocessed: 'bg-yellow-900/30 text-yellow-400 border-yellow-800',
-    acknowledged: 'bg-green-900/30 text-green-400 border-green-800',
-    hidden: 'bg-zinc-800/50 text-zinc-500 border-zinc-700',
+    unprocessed: 'bg-warning/10 text-warning border-warning/20',
+    acknowledged: 'bg-pass/10 text-pass border-pass/20',
+    hidden: 'bg-muted text-muted-foreground border-border',
   }
   return (
     <span className={`inline-block px-2 py-0.5 rounded text-xs border ${styles[status]}`}>
@@ -49,7 +49,7 @@ function StatusBadge({ status }: { status: ChangePointStatus }) {
 }
 
 function DirectionIndicator({ direction }: { direction: ChangePointDirection }) {
-  const color = direction === 'regression' ? 'text-red-400' : 'text-green-400'
+  const color = direction === 'regression' ? 'text-fail' : 'text-pass'
   return (
     <span className={`flex items-center gap-1 ${color}`}>
       <Diamond className="w-3 h-3" fill="currentColor" />

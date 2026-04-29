@@ -66,6 +66,8 @@ def _default_config(*, enabled: bool = True) -> ResolvedConfig:
         max_pvalue=0.001,
         min_magnitude=0.0,
         min_sample_size=10,
+        pvalue_strict_threshold=0.05,
+        pvalue_moderate_threshold=0.5,
     )
 
 

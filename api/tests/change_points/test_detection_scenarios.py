@@ -50,6 +50,8 @@ def _config(
         max_pvalue=max_pvalue,
         min_magnitude=min_magnitude,
         min_sample_size=min_sample_size,
+        pvalue_strict_threshold=0.05,
+        pvalue_moderate_threshold=0.5,
     )
 
 
