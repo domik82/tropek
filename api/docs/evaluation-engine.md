@@ -1,6 +1,6 @@
 # Evaluation Engine
 
-The core scoring logic lives in `api/app/modules/quality_gate/engine/`. It is pure
+The core scoring logic lives in `api/tropek/modules/quality_gate/evaluation_engine/`. It is pure
 Python with zero I/O -- no database, network, or file access. Fully unit-testable.
 
 Ported from Keptn's Go `lighthouse-service`.
@@ -8,7 +8,7 @@ Ported from Keptn's Go `lighthouse-service`.
 ## Module Map
 
 ```
-engine/
+evaluation_engine/
   evaluator.py       -- evaluate() entry point
   slo_parser.py      -- Build SLO model from structured data
   criteria.py        -- Parse and evaluate criteria strings
