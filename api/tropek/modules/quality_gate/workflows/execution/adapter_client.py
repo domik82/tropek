@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from typing import Any
 
 import httpx
@@ -17,6 +18,11 @@ class AdapterQueryResponse(BaseModel):
     values: dict[str, float | None] = Field(default_factory=dict)
     errors: dict[str, str] = Field(default_factory=dict)
     metadata: dict[str, dict[str, Any]] = Field(default_factory=dict)
+
+
+_TRANSIENT_ERRORS = (httpx.ReadError, httpx.ConnectError)
+_MAX_RETRIES = 3
+_RETRY_BACKOFF_SECONDS = (0.5, 1.0, 2.0)
 
 
 class HttpAdapterClient:
@@ -38,6 +44,9 @@ class HttpAdapterClient:
     ) -> tuple[dict[str, float | None], dict[str, str], dict[str, Any]]:
         """Send metric queries to the adapter and return (values, errors, metadata).
 
+        Retries up to 3 times on transient connection errors (broken keep-alive,
+        connection reset) with exponential backoff.
+
         Args:
             adapter_url: Base URL of the adapter service.
             datasource_name: Datasource name forwarded in the X-Datasource-Name header.
@@ -50,7 +59,7 @@ class HttpAdapterClient:
             Tuple of (metrics_fetched, fetch_errors, metadata).
 
         Raises:
-            httpx.ConnectError: If the adapter is unreachable.
+            httpx.ConnectError: If the adapter is unreachable after all retries.
             httpx.TimeoutException: If the adapter does not respond in time.
             httpx.HTTPStatusError: If the adapter returns a non-2xx response.
         """
@@ -72,11 +81,7 @@ class HttpAdapterClient:
         }
         headers = {'X-Datasource-Name': datasource_name}
 
-        if self._http_client is not None:
-            resp = await self._http_client.post(url, headers=headers, json=payload)
-        else:
-            async with httpx.AsyncClient(timeout=self._timeout) as client:
-                resp = await client.post(url, headers=headers, json=payload)
+        resp = await self._post_with_retry(url, headers=headers, payload=payload)
 
         resp.raise_for_status()
         parsed = AdapterQueryResponse.model_validate(resp.json())
@@ -93,6 +98,35 @@ class HttpAdapterClient:
             metadata=metadata,
         )
         return metrics_fetched, fetch_errors, metadata
+
+    async def _post_with_retry(
+        self,
+        url: str,
+        *,
+        headers: dict[str, str],
+        payload: dict[str, Any],
+    ) -> httpx.Response:
+        """POST with retry on transient connection errors."""
+        last_error: Exception | None = None
+        for attempt in range(_MAX_RETRIES):
+            try:
+                if self._http_client is not None:
+                    return await self._http_client.post(url, headers=headers, json=payload)
+                async with httpx.AsyncClient(timeout=self._timeout) as client:
+                    return await client.post(url, headers=headers, json=payload)
+            except _TRANSIENT_ERRORS as error:
+                last_error = error
+                backoff = _RETRY_BACKOFF_SECONDS[attempt]
+                logger.warning(
+                    'adapter request failed, retrying',
+                    url=url,
+                    attempt=attempt + 1,
+                    max_retries=_MAX_RETRIES,
+                    backoff_seconds=backoff,
+                    error=str(error),
+                )
+                await asyncio.sleep(backoff)
+        raise last_error  # type: ignore[misc]
 
     async def health(self, adapter_url: str) -> bool:
         """Check adapter health by hitting the /health endpoint.

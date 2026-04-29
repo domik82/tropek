@@ -57,7 +57,8 @@ void _sloExhaustive
 
 // --- SloObjective ----------------------------------------------------------
 
-type DroppedSloObjectiveKeys = never
+type DroppedSloObjectiveKeys =
+  | 'change_point' // per-objective CP detection config — not surfaced in SLO detail UI yet
 
 type MappedSloObjectiveKeys =
   | 'sli'

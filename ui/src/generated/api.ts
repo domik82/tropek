@@ -632,7 +632,7 @@ export interface paths {
         patch: operations["bulk_triage_change_points_bulk_triage_patch"];
         trace?: never;
     };
-    "/change-points/config/defaults": {
+    "/change-points/config/{objective_id}": {
         parameters: {
             query?: never;
             header?: never;
@@ -640,57 +640,21 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Get Default Config
-         * @description Return the hardcoded default config used when no override exists.
+         * Get Change Point Config
+         * @description Get resolved change point config for an objective.
          */
-        get: operations["get_default_config_change_points_config_defaults_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/change-points/config/{slo_name}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
+        get: operations["get_change_point_config_change_points_config__objective_id__get"];
         /**
-         * List Config Overrides
-         * @description List all override rows for an SLO — metrics not listed use defaults.
+         * Upsert Change Point Config
+         * @description Create or update change point config for an objective.
          */
-        get: operations["list_config_overrides_change_points_config__slo_name__get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/change-points/config/{slo_name}/{metric_name}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        /**
-         * Upsert Config Override
-         * @description Create or update an override for a specific SLO+metric.
-         */
-        put: operations["upsert_config_override_change_points_config__slo_name___metric_name__put"];
+        put: operations["upsert_change_point_config_change_points_config__objective_id__put"];
         post?: never;
         /**
-         * Delete Config Override
-         * @description Remove an override so the metric falls back to defaults.
+         * Delete Change Point Config
+         * @description Remove per-objective config override. Detection falls back to system defaults.
          */
-        delete: operations["delete_config_override_change_points_config__slo_name___metric_name__delete"];
+        delete: operations["delete_change_point_config_change_points_config__objective_id__delete"];
         options?: never;
         head?: never;
         patch?: never;
@@ -733,6 +697,50 @@ export interface paths {
          */
         get: operations["ui_config_config_ui_get"];
         put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/configuration": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Configuration
+         * @description List all configuration entries, optionally filtered by key prefix.
+         */
+        get: operations["list_configuration_configuration_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/configuration/{name}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Configuration
+         * @description Get a single configuration entry by name.
+         */
+        get: operations["get_configuration_configuration__name__get"];
+        /**
+         * Update Configuration
+         * @description Update a configuration value. The entry must already exist (seeded by migration).
+         */
+        put: operations["update_configuration_configuration__name__put"];
         post?: never;
         delete?: never;
         options?: never;
@@ -1178,6 +1186,26 @@ export interface paths {
         put?: never;
         post?: never;
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/evaluations/heatmap/cache": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Flush Heatmap Cache
+         * @description Delete all cached heatmap column fragments, forcing a full rebuild on next request.
+         */
+        delete: operations["flush_heatmap_cache_evaluations_heatmap_cache_delete"];
         options?: never;
         head?: never;
         patch?: never;
@@ -2346,32 +2374,14 @@ export interface components {
          */
         CategoryColor: "sky" | "green" | "amber" | "red" | "purple" | "pink" | "slate" | "gray";
         /**
-         * ChangePointConfigRead
-         * @description Detection config for a single SLO+metric pair.
+         * ChangePointConfigInput
+         * @description Optional overrides for change point detection — used in SLO YAML change_point: block.
          */
-        ChangePointConfigRead: {
-            /** Enabled */
-            enabled: boolean;
-            /** Max Pvalue */
-            max_pvalue: number;
-            /** Metric Name */
-            metric_name: string;
-            /** Min Magnitude */
-            min_magnitude: number;
-            /** Min Sample Size */
-            min_sample_size: number;
-            /** Slo Name */
-            slo_name: string;
-            /** Window Size */
-            window_size: number;
-        };
-        /**
-         * ChangePointConfigUpsert
-         * @description Request body for creating/updating detection config.
-         */
-        ChangePointConfigUpsert: {
+        ChangePointConfigInput: {
             /** Enabled */
             enabled?: boolean | null;
+            /** Higher Is Better */
+            higher_is_better?: boolean | null;
             /** Max Pvalue */
             max_pvalue?: number | null;
             /** Min Magnitude */
@@ -2382,14 +2392,36 @@ export interface components {
             window_size?: number | null;
         };
         /**
+         * ChangePointConfigRead
+         * @description Full resolved change point config for an objective.
+         */
+        ChangePointConfigRead: {
+            /** Enabled */
+            enabled: boolean;
+            /** Higher Is Better */
+            higher_is_better: boolean;
+            /** Max Pvalue */
+            max_pvalue: number;
+            /** Min Magnitude */
+            min_magnitude: number;
+            /** Min Sample Size */
+            min_sample_size: number;
+            /**
+             * Slo Objective Id
+             * Format: uuid
+             */
+            slo_objective_id: string;
+            /** Window Size */
+            window_size: number;
+        };
+        /**
          * ChangePointMarker
          * @description Lightweight marker attached to heatmap cells and trend points.
          */
         ChangePointMarker: {
             /** Change Relative Pct */
             change_relative_pct: number;
-            /** Direction */
-            direction: string;
+            direction: components["schemas"]["Direction"];
         };
         /**
          * ChangePointRead
@@ -2412,8 +2444,7 @@ export interface components {
             created_at: string;
             /** Detector */
             detector: string;
-            /** Direction */
-            direction: string;
+            direction: components["schemas"]["Direction"];
             /**
              * Id
              * Format: uuid
@@ -2430,6 +2461,8 @@ export interface components {
             period_start: string;
             /** Post Segment Mean */
             post_segment_mean: number;
+            /** Post Segment Std */
+            post_segment_std: number;
             /** Pre Segment Mean */
             pre_segment_mean: number;
             /** Pvalue */
@@ -2494,6 +2527,28 @@ export interface components {
             match: {
                 [key: string]: string;
             };
+        };
+        /**
+         * ConfigurationRead
+         * @description Response schema for a configuration entry.
+         */
+        ConfigurationRead: {
+            /** Description */
+            description: string;
+            /** Name */
+            name: string;
+            /** Value */
+            value: string;
+            /** Value Type */
+            value_type: string;
+        };
+        /**
+         * ConfigurationUpdate
+         * @description Request body for updating a configuration value.
+         */
+        ConfigurationUpdate: {
+            /** Value */
+            value: string;
         };
         /**
          * DataSourceCreate
@@ -2573,6 +2628,11 @@ export interface components {
             token?: string | null;
         };
         /**
+         * Direction
+         * @enum {string}
+         */
+        Direction: "regression" | "improvement";
+        /**
          * DisplayGroupCreate
          * @description Request body for creating a display group.
          */
@@ -2651,6 +2711,10 @@ export interface components {
             asset_name?: string | null;
             /** Asset Names */
             asset_names?: string[] | null;
+            /** Compare To */
+            compare_to?: {
+                [key: string]: string;
+            } | null;
             /** Eval Name */
             eval_name: string;
             /** Mode */
@@ -2686,6 +2750,10 @@ export interface components {
         EvaluateSingleRequest: {
             /** Asset Name */
             asset_name: string;
+            /** Compare To */
+            compare_to?: {
+                [key: string]: string;
+            } | null;
             /** Eval Name */
             eval_name: string;
             /**
@@ -3913,6 +3981,7 @@ export interface components {
          * @description SLO objective for create/validate requests.
          */
         SLOObjectiveIn: {
+            change_point?: components["schemas"]["ChangePointConfigInput"] | null;
             /**
              * Display Name
              * @default
@@ -3940,6 +4009,7 @@ export interface components {
          * @description SLO objective in responses — includes sort_order for round-trip export.
          */
         SLOObjectiveRead: {
+            change_point?: components["schemas"]["ChangePointConfigRead"] | null;
             /**
              * Display Name
              * @default
@@ -6449,7 +6519,7 @@ export interface operations {
         parameters: {
             query?: {
                 status?: string | null;
-                direction?: string | null;
+                direction?: components["schemas"]["Direction"] | null;
                 asset_id?: string | null;
                 slo_name?: string | null;
                 metric?: string | null;
@@ -6522,7 +6592,7 @@ export interface operations {
                 };
                 content: {
                     "application/json": {
-                        [key: string]: unknown;
+                        [key: string]: number;
                     };
                 };
             };
@@ -6564,11 +6634,13 @@ export interface operations {
             };
         };
     };
-    get_default_config_change_points_config_defaults_get: {
+    get_change_point_config_change_points_config__objective_id__get: {
         parameters: {
             query?: never;
             header?: never;
-            path?: never;
+            path: {
+                objective_id: string;
+            };
             cookie?: never;
         };
         requestBody?: never;
@@ -6611,68 +6683,18 @@ export interface operations {
             };
         };
     };
-    list_config_overrides_change_points_config__slo_name__get: {
+    upsert_change_point_config_change_points_config__objective_id__put: {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                slo_name: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ChangePointConfigRead"][];
-                };
-            };
-            /** @description Bad Request */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorMessage"];
-                };
-            };
-            /** @description Error */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorMessage"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    upsert_config_override_change_points_config__slo_name___metric_name__put: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                slo_name: string;
-                metric_name: string;
+                objective_id: string;
             };
             cookie?: never;
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["ChangePointConfigUpsert"];
+                "application/json": components["schemas"]["ChangePointConfigInput"];
             };
         };
         responses: {
@@ -6723,13 +6745,12 @@ export interface operations {
             };
         };
     };
-    delete_config_override_change_points_config__slo_name___metric_name__delete: {
+    delete_change_point_config_change_points_config__objective_id__delete: {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                slo_name: string;
-                metric_name: string;
+                objective_id: string;
             };
             cookie?: never;
         };
@@ -6922,6 +6943,166 @@ export interface operations {
             };
             /** @description Error */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_configuration_configuration_get: {
+        parameters: {
+            query?: {
+                prefix?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConfigurationRead"][];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_configuration_configuration__name__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                name: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConfigurationRead"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_configuration_configuration__name__put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                name: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConfigurationUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConfigurationRead"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -8390,6 +8571,64 @@ export interface operations {
             };
             /** @description Error */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    flush_heatmap_cache_evaluations_heatmap_cache_delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: number;
+                    };
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
