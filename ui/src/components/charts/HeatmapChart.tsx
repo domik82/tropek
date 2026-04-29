@@ -361,8 +361,8 @@ export function HeatmapChart({
               const diamondSize = Math.min(12, rw * 0.4, rh * 0.4)
               const diamondColor =
                 cellData.changePoint.direction === 'regression'
-                  ? 'var(--status-fail)'
-                  : 'var(--status-pass)'
+                  ? 'var(--change-point-regression)'
+                  : 'var(--change-point-improvement)'
               children.push({
                 type: 'polygon',
                 shape: {
