@@ -42,7 +42,7 @@ docker run -d --name adapter-redis -p 6379:6379 redis:7-alpine
 PROMETHEUS_URL=http://localhost:9090 \
 REDIS_URL=redis://localhost:6379/0 \
 uv run --directory adapters/prometheus \
-    uvicorn app.main:app --host 0.0.0.0 --port 8081
+    uvicorn tropek_prometheus.main:app --host 0.0.0.0 --port 8081
 ```
 
 ## API Endpoints
@@ -203,7 +203,7 @@ POST /api/v1/query-jobs
 ### Key files
 
 ```
-app/
+tropek_prometheus/
 ├── main.py                     # App factory with lifespan (Redis, coordinator)
 ├── config.py                   # Pydantic Settings from env vars
 ├── api/
