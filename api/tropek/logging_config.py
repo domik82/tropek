@@ -41,11 +41,13 @@ def configure_logging(
     stderr_handler = logging.StreamHandler(sys.stderr)
     stderr_handler.setLevel(logging.INFO)
 
-    renderer = structlog.processors.JSONRenderer() if json_output else structlog.dev.ConsoleRenderer()
+    console_renderer = (
+        structlog.processors.JSONRenderer() if json_output else structlog.dev.ConsoleRenderer()
+    )
 
     stderr_handler.setFormatter(
         structlog.stdlib.ProcessorFormatter(
-            processor=renderer,
+            processor=console_renderer,
             foreign_pre_chain=[
                 structlog.stdlib.add_log_level,
                 structlog.processors.TimeStamper(fmt='iso'),
@@ -65,9 +67,14 @@ def configure_logging(
             backupCount=_BACKUP_COUNT,
         )
         file_handler.setLevel(logging.DEBUG)
+        file_renderer = (
+            structlog.processors.JSONRenderer()
+            if json_output
+            else structlog.dev.ConsoleRenderer(colors=False)
+        )
         file_handler.setFormatter(
             structlog.stdlib.ProcessorFormatter(
-                processor=renderer,
+                processor=file_renderer,
                 foreign_pre_chain=[
                     structlog.stdlib.add_log_level,
                     structlog.processors.TimeStamper(fmt='iso'),
