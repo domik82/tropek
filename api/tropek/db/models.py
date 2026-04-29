@@ -313,11 +313,13 @@ class ChangePoint(Base):
         Index('idx_change_points_identity', 'asset_id', 'slo_name', 'metric_name', 'period_start'),
         Index('idx_change_points_unprocessed', 'status', postgresql_where=text("status = 'unprocessed'")),
         Index('idx_change_points_created', 'created_at'),
+        Index('idx_change_points_run', 'evaluation_run_id', 'metric_name', 'period_start'),
     )
 
     # fmt: off
     id:                   Mapped[uuid.UUID]        = mapped_column(UUID, primary_key=True, default=uuid.uuid4)
     indicator_result_id:  Mapped[uuid.UUID | None] = mapped_column(UUID, ForeignKey('indicator_results.id', ondelete='SET NULL'), nullable=True)
+    evaluation_run_id:    Mapped[uuid.UUID | None] = mapped_column(UUID, ForeignKey('evaluations.id', ondelete='SET NULL'), nullable=True)
     asset_id:             Mapped[uuid.UUID]        = mapped_column(UUID, nullable=False)
     slo_name:             Mapped[str]              = mapped_column(Text, nullable=False)
     metric_name:          Mapped[str]              = mapped_column(Text, nullable=False)

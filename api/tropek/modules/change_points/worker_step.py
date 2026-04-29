@@ -11,14 +11,14 @@ from datetime import datetime
 from typing import Any
 
 import structlog
+from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from tropek.db.models import IndicatorResultRow, SLODefinition
-from tropek.modules.change_points.detector import detect_change_points
+from tropek.modules.change_points.detector import ChangePointResult, detect_change_points
 from tropek.modules.change_points.repository import (
     ChangePointInsertParams,
     ChangePointRepository,
-    ResolvedConfig,
 )
 from tropek.modules.configuration.repository import ConfigurationRepository
 from tropek.modules.quality_gate.repositories.baseline import BaselineRepository
@@ -27,6 +27,13 @@ from tropek.modules.quality_gate.workflows.execution.evaluation_helpers import r
 logger = structlog.get_logger()
 
 REGIME_STD_MULTIPLIER = 2.0
+
+
+class MetricSeries(BaseModel):
+    """Time-ordered metric values extracted from evaluation history."""
+
+    values: list[float]
+    timestamps: list[datetime]
 
 
 def _same_regime(
@@ -44,6 +51,39 @@ def _same_regime(
     if previous_std <= 0:
         return previous_mean == current_mean
     return abs(current_mean - previous_mean) < REGIME_STD_MULTIPLIER * previous_std
+
+
+async def gather_metric_series(
+    *,
+    baseline_repo: BaselineRepository,
+    asset_id: uuid.UUID,
+    slo_name: str,
+    metric_name: str,
+    period_end: datetime,
+    evaluation_name: str,
+    window_size: int,
+) -> MetricSeries:
+    """Query evaluation history and extract a single metric's time series."""
+    history_evals = await baseline_repo.get_evaluation_baselines(
+        asset_id=asset_id,
+        slo_name=slo_name,
+        period_start_before=period_end,
+        include_result_with_score="all",
+        limit=window_size,
+        evaluation_name=evaluation_name,
+    )
+
+    values: list[float] = []
+    timestamps: list[datetime] = []
+
+    for evaluation in sorted(history_evals, key=lambda ev: ev.period_start):
+        for row in evaluation.indicator_rows or []:
+            if row.objective and row.objective.sli == metric_name and row.value is not None:
+                values.append(float(row.value))
+                timestamps.append(evaluation.period_start)
+                break
+
+    return MetricSeries(values=values, timestamps=timestamps)
 
 
 async def run_change_point_detection(
@@ -64,6 +104,14 @@ async def run_change_point_detection(
         getattr(snapshot, 'compare_to', None),
         snapshot.evaluation_name,
     )
+
+    if comparison_name != snapshot.evaluation_name:
+        log.debug(
+            "skipping change point detection for cross-series comparison",
+            evaluation_name=snapshot.evaluation_name,
+            comparison_name=comparison_name,
+        )
+        return
 
     indicator_lookup = {
         row.objective.sli: row
@@ -87,17 +135,46 @@ async def run_change_point_detection(
             continue
 
         try:
-            await _detect_for_metric(
-                log=log,
+            series = await gather_metric_series(
                 baseline_repo=baseline_repo,
-                change_point_repo=change_point_repo,
-                snapshot=snapshot,
+                asset_id=snapshot.asset_id,
+                slo_name=snapshot.slo_name,
                 metric_name=objective.sli,
-                indicator_result_id=indicator_row.id,
-                higher_is_better=resolved.higher_is_better,
-                config=resolved,
-                comparison_name=comparison_name,
+                period_end=snapshot.period_end,
+                evaluation_name=comparison_name,
+                window_size=resolved.window_size,
             )
+
+            if len(series.values) < resolved.min_sample_size:
+                log.debug(
+                    "insufficient history for change point detection",
+                    metric=objective.sli,
+                    sample_count=len(series.values),
+                    min_required=resolved.min_sample_size,
+                )
+                continue
+
+            detected = detect_change_points(
+                values=series.values,
+                timestamps=series.timestamps,
+                higher_is_better=resolved.higher_is_better,
+                window_size=resolved.window_size,
+                max_pvalue=resolved.max_pvalue,
+                min_magnitude=resolved.min_magnitude,
+                min_sample_size=resolved.min_sample_size,
+            )
+
+            if detected:
+                await _persist_change_points(
+                    log=log,
+                    change_point_repo=change_point_repo,
+                    detected=detected,
+                    timestamps=series.timestamps,
+                    snapshot=snapshot,
+                    metric_name=objective.sli,
+                    indicator_result_id=indicator_row.id,
+                    comparison_name=comparison_name,
+                )
         except (OSError, ValueError, TypeError, RuntimeError, LookupError):
             log.warning(
                 "change point detection failed for metric",
@@ -106,75 +183,37 @@ async def run_change_point_detection(
             )
 
 
-async def _detect_for_metric(  # noqa: PLR0913
+async def _persist_change_points(
     *,
     log: Any,
-    baseline_repo: BaselineRepository,
     change_point_repo: ChangePointRepository,
+    detected: list[ChangePointResult],
+    timestamps: list[datetime],
     snapshot: Any,
     metric_name: str,
     indicator_result_id: uuid.UUID,
-    higher_is_better: bool,
-    config: ResolvedConfig,
     comparison_name: str,
 ) -> None:
-    """Run detection for a single metric using baseline-scoped history."""
-    history_evals = await baseline_repo.get_evaluation_baselines(
-        asset_id=snapshot.asset_id,
-        slo_name=snapshot.slo_name,
-        period_start_before=snapshot.period_end,
-        include_result_with_score="all",
-        limit=config.window_size,
-        evaluation_name=comparison_name,
-    )
-
-    values: list[float] = []
-    timestamps: list[datetime] = []
-
-    for evaluation in sorted(history_evals, key=lambda ev: ev.period_start):
-        for row in evaluation.indicator_rows or []:
-            if row.objective and row.objective.sli == metric_name and row.value is not None:
-                values.append(float(row.value))
-                timestamps.append(evaluation.period_start)
-                break
-
-    if len(values) < config.min_sample_size:
-        log.debug(
-            "insufficient history for change point detection",
-            metric=metric_name,
-            sample_count=len(values),
-            min_required=config.min_sample_size,
-        )
-        return
-
-    detected = detect_change_points(
-        values=values,
-        timestamps=timestamps,
-        higher_is_better=higher_is_better,
-        window_size=config.window_size,
-        max_pvalue=config.max_pvalue,
-        min_magnitude=config.min_magnitude,
-        min_sample_size=config.min_sample_size,
-    )
-
-    if not detected:
-        return
+    """Dedup and persist detected change points."""
+    batch_timestamps: set[datetime] = set()
 
     for candidate in detected:
         detection_index = candidate.position
         nearby_indices = range(
-            max(0, detection_index - 2),
-            min(len(timestamps), detection_index + 3),
+            max(0, detection_index - 1),
+            min(len(timestamps), detection_index + 2),
         )
-        nearby_timestamps = [timestamps[i] for i in nearby_indices]
+        nearby_timestamps = [
+            timestamps[i] for i in nearby_indices
+            if timestamps[i] not in batch_timestamps
+        ]
 
-        has_existing = await change_point_repo.has_nearby_change_point(
+        has_existing = bool(nearby_timestamps) and await change_point_repo.has_nearby_change_point(
             asset_id=snapshot.asset_id,
             slo_name=snapshot.slo_name,
             metric_name=metric_name,
             period_start=candidate.timestamp,
             nearby_timestamps=nearby_timestamps,
-            direction=candidate.direction,
             evaluation_name=comparison_name,
         )
 
@@ -209,6 +248,7 @@ async def _detect_for_metric(  # noqa: PLR0913
         await change_point_repo.insert_change_point(
             ChangePointInsertParams(
                 indicator_result_id=indicator_result_id,
+                evaluation_run_id=snapshot.parent_run_id,
                 asset_id=snapshot.asset_id,
                 slo_name=snapshot.slo_name,
                 metric_name=metric_name,
@@ -224,6 +264,7 @@ async def _detect_for_metric(  # noqa: PLR0913
             )
         )
 
+        batch_timestamps.add(candidate.timestamp)
         log.info(
             "change point detected",
             metric=metric_name,

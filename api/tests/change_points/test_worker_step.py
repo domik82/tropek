@@ -25,11 +25,14 @@ _SYSTEM_DEFAULTS = {
 def _make_snapshot() -> MagicMock:
     snap = MagicMock()
     snap.eval_id = uuid.uuid4()
+    snap.parent_run_id = uuid.uuid4()
     snap.asset_id = uuid.uuid4()
     snap.slo_name = "perf-slo"
+    snap.evaluation_name = "load-test"
     snap.period_start = datetime(2026, 4, 10, 12, 0, tzinfo=UTC)
     snap.period_end = datetime(2026, 4, 10, 12, 30, tzinfo=UTC)
     snap.slo_version = 3
+    snap.compare_to = None
     return snap
 
 

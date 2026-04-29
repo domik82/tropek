@@ -388,9 +388,20 @@ def test_aggregated_evaluation(client: TropekClient) -> None:
         '2026-03-15T10:00:00Z',
         '2026-03-15T10:30:00Z',
     )
+    seed_evals = []
     for seed_id in seed_result['slo_evaluation_ids']:
-        poll_eval(client, str(seed_id))
-    print(f'seeded load-test baseline: {len(seed_result["slo_evaluation_ids"])} SLO eval(s)')
+        seed_ev = poll_eval(client, str(seed_id))
+        seed_evals.append(seed_ev)
+        print(f'  seed: {seed_ev.slo_name} status={seed_ev.status} eval_name={seed_ev.evaluation_name}')
+
+    agg_seed = next((s for s in seed_evals if s.slo_name == 'agg-latency-slo'), None)
+    assert agg_seed is not None, (
+        f'agg-latency-slo not in seeded SLOs: {[s.slo_name for s in seed_evals]}'
+    )
+    assert agg_seed.status == 'completed', (
+        f'seed agg-latency-slo has status={agg_seed.status}, expected completed'
+    )
+    print(f'seeded load-test baseline: {len(seed_evals)} SLO eval(s), agg-latency-slo OK')
 
     # Now trigger the aggregated eval with cross-series comparison against 'load-test'.
     result = client.evaluations.evaluate(

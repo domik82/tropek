@@ -30,6 +30,7 @@ class ChangePointInsertParams(BaseModel):
     """Parameters for inserting a detected change point."""
 
     indicator_result_id: uuid.UUID | None
+    evaluation_run_id: uuid.UUID | None
     asset_id: uuid.UUID
     slo_name: str
     metric_name: str
@@ -72,20 +73,18 @@ class ChangePointRepository:
         metric_name: str,
         period_start: datetime,
         nearby_timestamps: list[datetime],
-        direction: Direction,
         evaluation_name: str | None = None,
     ) -> bool:
-        """Check if a change point with the same direction exists nearby.
+        """Check if any change point exists nearby, regardless of direction.
 
         The nearby_timestamps list represents the ±2 ordinal evaluation positions
-        around the candidate change point. Only matches CPs with the same direction
-        — a regression near an improvement does not count as a duplicate.
+        around the candidate change point. A CP at a given position should only
+        be recorded once — the first detection wins.
         """
         query = select(ChangePoint.id).where(
             ChangePoint.asset_id == asset_id,
             ChangePoint.slo_name == slo_name,
             ChangePoint.metric_name == metric_name,
-            ChangePoint.direction == direction,
             ChangePoint.period_start.in_(nearby_timestamps),
         )
         if evaluation_name is not None:
@@ -229,25 +228,29 @@ class ChangePointRepository:
         asset_id: uuid.UUID,
         slo_name: str | None = None,
         period_starts: list[datetime],
-    ) -> dict[tuple[str, datetime], ChangePoint]:
+    ) -> dict[tuple[str, datetime, str], ChangePoint]:
         """Batch-load change points for a set of evaluation timestamps.
 
-        Returns a dict keyed by (metric_name, period_start) for O(1) lookup
-        in the heatmap/trend presenters.
+        Returns a dict keyed by (metric_name, period_start, eval_name) for O(1)
+        lookup in the heatmap/trend presenters.
         """
         if not period_starts:
             return {}
-        query = select(ChangePoint).where(
-            ChangePoint.asset_id == asset_id,
-            ChangePoint.period_start.in_(period_starts),
-            ChangePoint.status != 'hidden',
+        query = (
+            select(ChangePoint, EvaluationRun.eval_name)
+            .join(EvaluationRun, ChangePoint.evaluation_run_id == EvaluationRun.id)
+            .where(
+                ChangePoint.asset_id == asset_id,
+                ChangePoint.period_start.in_(period_starts),
+                ChangePoint.status != 'hidden',
+            )
         )
         if slo_name is not None:
             query = query.where(ChangePoint.slo_name == slo_name)
         result = await self._session.execute(query)
         return {
-            (change_point.metric_name, change_point.period_start): change_point
-            for change_point in result.scalars().all()
+            (row.ChangePoint.metric_name, row.ChangePoint.period_start, row.eval_name): row.ChangePoint
+            for row in result.all()
         }
 
     async def get_change_points_for_range(
@@ -258,21 +261,25 @@ class ChangePointRepository:
         metric_name: str,
         from_ts: datetime,
         to_ts: datetime | None = None,
-    ) -> dict[tuple[str, datetime], ChangePoint]:
+    ) -> dict[tuple[str, datetime, str], ChangePoint]:
         """Load change points for a metric within a time range."""
-        query = select(ChangePoint).where(
-            ChangePoint.asset_id == asset_id,
-            ChangePoint.slo_name == slo_name,
-            ChangePoint.metric_name == metric_name,
-            ChangePoint.period_start >= from_ts,
-            ChangePoint.status != 'hidden',
+        query = (
+            select(ChangePoint, EvaluationRun.eval_name)
+            .join(EvaluationRun, ChangePoint.evaluation_run_id == EvaluationRun.id)
+            .where(
+                ChangePoint.asset_id == asset_id,
+                ChangePoint.slo_name == slo_name,
+                ChangePoint.metric_name == metric_name,
+                ChangePoint.period_start >= from_ts,
+                ChangePoint.status != 'hidden',
+            )
         )
         if to_ts is not None:
             query = query.where(ChangePoint.period_start <= to_ts)
         result = await self._session.execute(query)
         return {
-            (change_point.metric_name, change_point.period_start): change_point
-            for change_point in result.scalars().all()
+            (row.ChangePoint.metric_name, row.ChangePoint.period_start, row.eval_name): row.ChangePoint
+            for row in result.all()
         }
 
     @staticmethod

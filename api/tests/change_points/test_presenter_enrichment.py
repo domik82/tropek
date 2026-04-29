@@ -22,14 +22,14 @@ def test_change_point_marker_serialization() -> None:
 
 def test_resolve_returns_none_when_no_lookup() -> None:
     timestamp = datetime(2026, 4, 10, 12, 0, tzinfo=UTC)
-    result = _resolve_change_point_marker(None, "response_time", timestamp)
+    result = _resolve_change_point_marker(None, "response_time", timestamp, "load-test")
     assert result is None
 
 
 def test_resolve_returns_none_when_no_match() -> None:
     timestamp = datetime(2026, 4, 10, 12, 0, tzinfo=UTC)
     lookup: dict = {}
-    result = _resolve_change_point_marker(lookup, "response_time", timestamp)
+    result = _resolve_change_point_marker(lookup, "response_time", timestamp, "load-test")
     assert result is None
 
 
@@ -38,10 +38,22 @@ def test_resolve_returns_marker_on_match() -> None:
     change_point = MagicMock()
     change_point.direction = "regression"
     change_point.change_relative_pct = 25.5
-    lookup = {("response_time", timestamp): change_point}
+    lookup = {("response_time", timestamp, "load-test"): change_point}
 
-    result = _resolve_change_point_marker(lookup, "response_time", timestamp)
+    result = _resolve_change_point_marker(lookup, "response_time", timestamp, "load-test")
 
     assert result is not None
     assert result.direction == "regression"
     assert result.change_relative_pct == 25.5
+
+
+def test_resolve_does_not_cross_evaluation_names() -> None:
+    """A CP from one evaluation name must not match a different evaluation name."""
+    timestamp = datetime(2026, 4, 10, 12, 0, tzinfo=UTC)
+    change_point = MagicMock()
+    change_point.direction = "regression"
+    change_point.change_relative_pct = 25.5
+    lookup = {("response_time", timestamp, "canary"): change_point}
+
+    result = _resolve_change_point_marker(lookup, "response_time", timestamp, "load-test")
+    assert result is None

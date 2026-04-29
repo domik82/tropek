@@ -7,6 +7,7 @@ from datetime import datetime
 from typing import Any, NamedTuple
 
 from tropek.db.models import ChangePoint, EvaluationRun, IndicatorResultRow, SLOEvaluation
+from tropek.modules.change_points.detector import Direction
 from tropek.modules.change_points.schemas import ChangePointMarker
 from tropek.modules.quality_gate.evaluation_engine.constants import RESULT_RANK
 from tropek.modules.quality_gate.evaluation_engine.criteria import ParsedCriteria, parse_criteria_string
@@ -209,7 +210,7 @@ def build_grouped_heatmap_response(
     asset_name: str,
     runs: list[EvaluationRun],
     noted_run_ids: set[uuid.UUID] | None = None,
-    change_point_lookup: dict[tuple[str, datetime], ChangePoint] | None = None,
+    change_point_lookup: dict[tuple[str, datetime, str], ChangePoint] | None = None,
 ) -> GroupedMetricHeatmapResponse:
     """Build GroupedMetricHeatmapResponse by delegating to fragment builder + assembler.
 
@@ -257,17 +258,18 @@ def _parse_objective_criteria(objective: Any) -> _ParsedObjectiveCriteria:
 
 
 def _resolve_change_point_marker(
-    lookup: dict[tuple[str, datetime], ChangePoint] | None,
+    lookup: dict[tuple[str, datetime, str], ChangePoint] | None,
     metric_name: str,
     period_start: datetime,
+    eval_name: str,
 ) -> ChangePointMarker | None:
     if not lookup:
         return None
-    change_point = lookup.get((metric_name, period_start))
+    change_point = lookup.get((metric_name, period_start, eval_name))
     if change_point is None:
         return None
     return ChangePointMarker(
-        direction=change_point.direction,
+        direction=Direction(change_point.direction),
         change_relative_pct=change_point.change_relative_pct,
     )
 
@@ -276,7 +278,7 @@ def build_column_fragment(
     run: EvaluationRun,
     *,
     has_notes: bool,
-    change_point_lookup: dict[tuple[str, datetime], ChangePoint] | None = None,
+    change_point_lookup: dict[tuple[str, datetime, str], ChangePoint] | None = None,
 ) -> HeatmapColumnFragment:
     """Build one heatmap column fragment for a single EvaluationRun.
 
@@ -338,7 +340,7 @@ def build_column_fragment(
                     tab_group=objective.tab_group,
                     aggregation=sli_metadata.get(metric_name, {}).get('mode'),
                     change_point=_resolve_change_point_marker(
-                        change_point_lookup, metric_name, run.period_start,
+                        change_point_lookup, metric_name, run.period_start, run.eval_name,
                     ),
                 )
             )

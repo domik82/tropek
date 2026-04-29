@@ -22,13 +22,14 @@ from tropek.modules.quality_gate.evaluation_engine.constants import EvaluationSt
 
 
 def _trend_change_point(
-    lookup: dict[tuple[str, datetime], Any] | None,
+    lookup: dict[tuple[str, datetime, str], Any] | None,
     metric_name: str,
     period_start: datetime,
+    evaluation_name: str,
 ) -> dict[str, Any] | None:
     if not lookup:
         return None
-    change_point = lookup.get((metric_name, period_start))
+    change_point = lookup.get((metric_name, period_start, evaluation_name))
     if change_point is None:
         return None
     return {
@@ -218,7 +219,7 @@ class TrendRepository:
         metric_name: str,
         from_ts: datetime,
         to_ts: datetime | None = None,
-        change_point_lookup: dict[tuple[str, datetime], Any] | None = None,
+        change_point_lookup: dict[tuple[str, datetime, str], Any] | None = None,
     ) -> list[dict[str, Any]]:
         """Return time-series trend points for a specific asset+SLO+metric combination.
 
@@ -291,7 +292,7 @@ class TrendRepository:
                 'evaluation_name': r.evaluation_name,
                 'targets': r.targets,
                 'change_point': _trend_change_point(
-                    change_point_lookup, metric_name, r.period_start,
+                    change_point_lookup, metric_name, r.period_start, r.evaluation_name,
                 ),
             }
             for r in rows
