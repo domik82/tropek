@@ -4,7 +4,7 @@ Async SQLAlchemy ORM with asyncpg driver, managed by Alembic migrations.
 
 ## Session Management
 
-`api/app/db/session.py` provides:
+`api/tropek/db/session.py` provides:
 
 - `_get_engine()` -- shared `AsyncEngine` (created once, reused)
 - `get_session_factory()` -- shared `async_sessionmaker`
@@ -25,7 +25,7 @@ Sessions auto-commit on success, rollback on exception. One session per request.
 
 ## ORM Models
 
-All models live in `api/app/db/models.py`. Key patterns:
+All models live in `api/tropek/db/models.py`. Key patterns:
 
 - **UUID primary keys** generated server-side (`uuid4`)
 - **Timestamps**: `created_at` (server_default) and `updated_at` (onupdate) where applicable
