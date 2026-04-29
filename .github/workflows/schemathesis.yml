@@ -19,22 +19,22 @@ jobs:
       postgres:
         image: timescale/timescaledb:latest-pg16
         env:
-          POSTGRES_PASSWORD: test
-          POSTGRES_USER: postgres
+          POSTGRES_USER: tropek
+          POSTGRES_PASSWORD: tropek_test
           POSTGRES_DB: tropek_test
         ports:
           - 5433:5432
         options: >-
-          --health-cmd pg_isready
+          --health-cmd "pg_isready -U tropek -d tropek_test"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
     env:
-      QG_DB_PASSWORD: test
-      QG_DB_USER: postgres
+      QG_DB_USER: tropek
+      QG_DB_PASSWORD: tropek_test
       QG_SECRET_KEY: test-secret-key
       QG_REDIS_PASSWORD: ''
-      TEST_DATABASE_URL: postgresql+asyncpg://postgres:test@localhost:5433/tropek_test
+      TEST_DATABASE_URL: postgresql+asyncpg://tropek:tropek_test@localhost:5433/tropek_test
     steps:
       - uses: actions/checkout@v4
 
