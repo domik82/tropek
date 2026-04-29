@@ -16,15 +16,21 @@ excluded from fuzzing in ``test_schema.py``.
 
 from __future__ import annotations
 
+import queue
+import socket
+import threading
+import time as _time
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from pathlib import Path
 from types import SimpleNamespace
+from typing import Any
 
 import fakeredis.aioredis
 import schemathesis
 from dotenv import load_dotenv
 from fastapi import FastAPI
+from schemathesis.generation.hypothesis import builder as _hypothesis_builder
 from schemathesis.specs.openapi.schemas import OpenApiSchema
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import NullPool
@@ -41,6 +47,74 @@ from tropek.db import session as db_session  # noqa: E402
 from tropek.main import app  # noqa: E402
 
 _settings = get_settings()
+
+
+# ---------------------------------------------------------------------------
+# Fail fast: verify the test database is reachable before collecting tests.
+# Without this, every request silently fails with a connection error and the
+# full 6-minute collection + execution runs for nothing.
+# ---------------------------------------------------------------------------
+def _check_test_database_reachable() -> None:
+    host = _settings.database.host
+    port = _settings.database.port
+    try:
+        with socket.create_connection((host, port), timeout=2):
+            pass
+    except OSError as exc:
+        raise RuntimeError(
+            f"test database not reachable at {host}:{port} — run 'just test-env' first"
+        ) from exc
+
+
+_check_test_database_reachable()
+
+
+# ---------------------------------------------------------------------------
+# Time-budget the coverage phase per operation.  Schemathesis 4.x generates
+# boundary test cases at collection time via ``add_coverage`` →
+# ``cover_schema_iter``.  For endpoints with deeply nested body schemas the
+# recursive generation explodes — POST /assets/.../snapshots spends ~3 min
+# on two ``cover_schema_iter`` calls that block *inside* a single yield.
+# A between-yield check cannot interrupt that, so we drain the generator in
+# a daemon thread and pull results through a queue with a timeout.
+# ---------------------------------------------------------------------------
+COVERAGE_TIME_BUDGET_SECONDS = 5.0
+
+_SENTINEL = object()
+
+_original_generate_coverage = _hypothesis_builder.generate_coverage_cases
+
+
+def _budgeted_generate_coverage(**kwargs: Any) -> list[Any]:
+    result_queue: queue.Queue[Any] = queue.Queue()
+
+    def _drain() -> None:
+        try:
+            for case in _original_generate_coverage(**kwargs):
+                result_queue.put(case)
+        finally:
+            result_queue.put(_SENTINEL)
+
+    worker = threading.Thread(target=_drain, daemon=True)
+    worker.start()
+
+    cases: list[Any] = []
+    start = _time.monotonic()
+    while True:
+        remaining = COVERAGE_TIME_BUDGET_SECONDS - (_time.monotonic() - start)
+        if remaining <= 0:
+            break
+        try:
+            item = result_queue.get(timeout=remaining)
+        except queue.Empty:
+            break
+        if item is _SENTINEL:
+            break
+        cases.append(item)
+    return cases
+
+
+_hypothesis_builder.generate_coverage_cases = _budgeted_generate_coverage  # type: ignore[assignment]
 
 
 def _fresh_engine():  # type: ignore[no-untyped-def]

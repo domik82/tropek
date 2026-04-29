@@ -1,6 +1,9 @@
 # Superpowers brainstorming sessions
 .superpowers/
 
+# Personal docs (research, design inspiration, old specs)
+docs/personal/
+
 # Git worktrees
 .worktrees/
 
