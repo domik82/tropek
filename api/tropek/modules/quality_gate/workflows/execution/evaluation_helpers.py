@@ -118,7 +118,12 @@ def resolve_comparison_name(
     compare_to: dict[str, str] | None,
     eval_name: str,
 ) -> str:
-    """Derive the evaluation name to filter baselines against."""
+    """Derive the evaluation name to filter baselines and change point history against.
+
+    When compare_to contains an evaluation_name key, baselines are drawn from
+    that series instead of the current evaluation's own history. Falls back to
+    eval_name when compare_to is absent or missing the key.
+    """
     if compare_to and 'evaluation_name' in compare_to:
         return compare_to['evaluation_name']
     return eval_name

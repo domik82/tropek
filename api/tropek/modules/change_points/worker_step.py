@@ -22,6 +22,7 @@ from tropek.modules.change_points.repository import (
 )
 from tropek.modules.configuration.repository import ConfigurationRepository
 from tropek.modules.quality_gate.repositories.baseline import BaselineRepository
+from tropek.modules.quality_gate.workflows.execution.evaluation_executor import EvaluationSnapshot
 from tropek.modules.quality_gate.workflows.execution.evaluation_helpers import resolve_comparison_name
 
 logger = structlog.get_logger()
@@ -89,19 +90,27 @@ async def gather_metric_series(
 async def run_change_point_detection(
     *,
     session: AsyncSession,
-    snapshot: Any,
+    snapshot: EvaluationSnapshot,
     slo_def: SLODefinition,
     indicator_rows: list[IndicatorResultRow],
     cache: Any | None = None,
 ) -> None:
-    """Run Otava change point detection for each enabled metric."""
+    """Run Otava change point detection for each enabled metric.
+
+    Called as a fault-isolated step after evaluation scoring. Iterates over
+    each SLO objective, gathers the metric's historical time series, runs
+    E-Divisive detection, and persists any new change points with dedup.
+
+    Skips detection entirely when compare_to points to a different evaluation
+    series, since cross-series change points are not statistically meaningful.
+    """
     log = logger.bind(
         evaluation_id=str(snapshot.eval_id),
         slo_name=snapshot.slo_name,
     )
 
     comparison_name = resolve_comparison_name(
-        getattr(snapshot, 'compare_to', None),
+        snapshot.compare_to,
         snapshot.evaluation_name,
     )
 
@@ -162,6 +171,8 @@ async def run_change_point_detection(
                 max_pvalue=resolved.max_pvalue,
                 min_magnitude=resolved.min_magnitude,
                 min_sample_size=resolved.min_sample_size,
+                pvalue_strict_threshold=resolved.pvalue_strict_threshold,
+                pvalue_moderate_threshold=resolved.pvalue_moderate_threshold,
             )
 
             if detected:
@@ -189,12 +200,17 @@ async def _persist_change_points(
     change_point_repo: ChangePointRepository,
     detected: list[ChangePointResult],
     timestamps: list[datetime],
-    snapshot: Any,
+    snapshot: EvaluationSnapshot,
     metric_name: str,
     indicator_result_id: uuid.UUID,
     comparison_name: str,
 ) -> None:
-    """Dedup and persist detected change points."""
+    """Dedup and persist detected change points.
+
+    For each candidate, checks for nearby existing change points (±1 ordinal position)
+    and suppresses same-regime duplicates where the metric hasn't meaningfully shifted
+    from the previous change point's post-segment.
+    """
     batch_timestamps: set[datetime] = set()
 
     for candidate in detected:
@@ -257,7 +273,7 @@ async def _persist_change_points(
                 direction=candidate.direction,
                 change_relative_pct=candidate.change_relative_pct,
                 change_absolute=candidate.change_absolute,
-                t_statistic=candidate.pvalue,
+                pvalue=candidate.pvalue,
                 pre_segment_mean=candidate.pre_segment_mean,
                 post_segment_mean=candidate.post_segment_mean,
                 post_segment_std=candidate.post_segment_std,

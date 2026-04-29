@@ -328,7 +328,7 @@ class ChangePoint(Base):
     direction:            Mapped[str]              = mapped_column(Text, nullable=False)
     change_relative_pct:  Mapped[float]            = mapped_column(Float, nullable=False)
     change_absolute:      Mapped[float]            = mapped_column(Float, nullable=False)
-    t_statistic:          Mapped[float]            = mapped_column(Float, nullable=False)
+    pvalue:               Mapped[float]            = mapped_column(Float, nullable=False)
     pre_segment_mean:     Mapped[float]            = mapped_column(Float, nullable=False)
     post_segment_mean:    Mapped[float]            = mapped_column(Float, nullable=False)
     post_segment_std:     Mapped[float]            = mapped_column(Float, nullable=False, server_default=text("0"))

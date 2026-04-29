@@ -432,7 +432,7 @@ def upgrade() -> None:
     sa.Column('direction', sa.Text(), nullable=False),
     sa.Column('change_relative_pct', sa.Float(), nullable=False),
     sa.Column('change_absolute', sa.Float(), nullable=False),
-    sa.Column('t_statistic', sa.Float(), nullable=False),
+    sa.Column('pvalue', sa.Float(), nullable=False),
     sa.Column('pre_segment_mean', sa.Float(), nullable=False),
     sa.Column('post_segment_mean', sa.Float(), nullable=False),
     sa.Column('post_segment_std', sa.Float(), server_default=sa.text('0'), nullable=False),

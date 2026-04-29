@@ -11,7 +11,14 @@ from sqlalchemy import delete, func, select, update
 from sqlalchemy.engine import CursorResult
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from tropek.db.models import ChangePoint, ChangePointConfig, EvaluationRun, IndicatorResultRow, SLOEvaluation
+from tropek.db.models import (
+    ChangePoint,
+    ChangePointConfig,
+    EvaluationRun,
+    IndicatorResultRow,
+    SLOEvaluation,
+    SLOObjective,
+)
 from tropek.modules.change_points.detector import Direction
 
 
@@ -24,6 +31,8 @@ class ResolvedConfig(BaseModel):
     max_pvalue: float
     min_magnitude: float
     min_sample_size: int
+    pvalue_strict_threshold: float
+    pvalue_moderate_threshold: float
 
 
 class ChangePointInsertParams(BaseModel):
@@ -39,7 +48,7 @@ class ChangePointInsertParams(BaseModel):
     direction: Direction
     change_relative_pct: float
     change_absolute: float
-    t_statistic: float
+    pvalue: float
     pre_segment_mean: float
     post_segment_mean: float
     post_segment_std: float
@@ -284,10 +293,19 @@ class ChangePointRepository:
 
     @staticmethod
     def resolve_from_objective(
-        objective: Any,
+        objective: SLOObjective,
         system_defaults: dict[str, bool | int | float | str],
     ) -> ResolvedConfig:
-        """Resolve config for an objective — per-objective override or system defaults."""
+        """Resolve config for an objective — per-objective override merged with system defaults.
+
+        Per-objective config (from the SLO YAML change_point block) overrides detection
+        thresholds. Algorithm tuning parameters (pvalue_strict_threshold, pvalue_moderate_threshold)
+        always come from system defaults since they control the two-pass split/merge behavior
+        rather than per-metric sensitivity.
+        """
+        pvalue_strict = float(system_defaults.get('pvalue_strict_threshold', 0.05))
+        pvalue_moderate = float(system_defaults.get('pvalue_moderate_threshold', 0.5))
+
         config = objective.change_point_config
         if config is not None:
             return ResolvedConfig(
@@ -297,6 +315,8 @@ class ChangePointRepository:
                 max_pvalue=config.max_pvalue,
                 min_magnitude=config.min_magnitude,
                 min_sample_size=config.min_sample_size,
+                pvalue_strict_threshold=pvalue_strict,
+                pvalue_moderate_threshold=pvalue_moderate,
             )
         return ResolvedConfig(
             enabled=bool(system_defaults.get('enabled', True)),
@@ -305,6 +325,8 @@ class ChangePointRepository:
             max_pvalue=float(system_defaults.get('max_pvalue', 0.001)),
             min_magnitude=float(system_defaults.get('min_magnitude', 0.0)),
             min_sample_size=int(system_defaults.get('min_sample_size', 10)),
+            pvalue_strict_threshold=pvalue_strict,
+            pvalue_moderate_threshold=pvalue_moderate,
         )
 
     async def upsert_config_for_objective(

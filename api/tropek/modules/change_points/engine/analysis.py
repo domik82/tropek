@@ -33,9 +33,8 @@ from collections.abc import Sequence
 from typing import SupportsFloat, cast
 
 import numpy as np
-from scipy.stats import ttest_ind_from_stats
-
 from pydantic import BaseModel
+from scipy.stats import ttest_ind_from_stats
 
 from tropek.modules.change_points.engine.base import (
     CandidateChangePoint,
@@ -129,7 +128,7 @@ class TTestSignificanceTester(SignificanceTester):
                 left_interval = interval
                 right_interval = intervals[i + 1]
                 break
-            elif (
+            if (
                 (interval.start is None or interval.start < candidate.index)
                 and (interval.stop is None or candidate.index < interval.stop)
             ):
@@ -148,7 +147,7 @@ class TTestSignificanceTester(SignificanceTester):
 
 
 def _ttest_stats(change_point: ChangePoint) -> TTestStats:
-    return cast(TTestStats, change_point.stats)
+    return cast('TTestStats', change_point.stats)
 
 
 def merge(
@@ -173,17 +172,24 @@ def merge(
         del change_points[weakest_index]
 
         intervals = tester.get_intervals(change_points)
-
-        def recompute(index: int) -> None:
-            if index < 0 or index >= len(change_points):
-                return
-            cp = change_points[index]
-            change_points[index] = tester.change_point(cp.to_candidate(), series, intervals)
-
-        recompute(weakest_index)
-        recompute(weakest_index + 1)
+        _recompute_neighbor(change_points, weakest_index, tester, series, intervals)
+        _recompute_neighbor(change_points, weakest_index + 1, tester, series, intervals)
 
     return change_points
+
+
+def _recompute_neighbor(
+    change_points: list[ChangePoint],
+    index: int,
+    tester: TTestSignificanceTester,
+    series: Sequence[SupportsFloat],
+    intervals: list[slice],
+) -> None:
+    """Recompute statistics for a neighbor after removing the weakest change point."""
+    if index < 0 or index >= len(change_points):
+        return
+    candidate = change_points[index]
+    change_points[index] = tester.change_point(candidate.to_candidate(), series, intervals)
 
 
 def split(

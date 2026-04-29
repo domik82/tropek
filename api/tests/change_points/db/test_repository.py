@@ -53,7 +53,7 @@ def _make_change_point(asset_id: uuid.UUID, **overrides: object) -> ChangePoint:
         'direction': 'regression',
         'change_relative_pct': 15.0,
         'change_absolute': 30.0,
-        't_statistic': 5.2,
+        'pvalue': 5.2,
         'pre_segment_mean': 200.0,
         'post_segment_mean': 230.0,
         'post_segment_std': 12.5,
