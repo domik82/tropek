@@ -4,7 +4,7 @@
 
 A standalone quality gate and performance test evaluation platform. Evaluates SLI/SLO metrics from Prometheus, CSV files, JMeter results, or any source that can POST JSON -- and decides pass / warning / fail.
 
-Extracted and rewritten from [Keptn's](https://keptn.sh) lighthouse-service. Runs in Docker Compose. No Kubernetes required.
+Inspired by [Keptn v1](https://keptn.sh)'s lighthouse-service, [Apache OTAVA](https://github.com/apache/otava) for change point detection, and the Nurkio project. Runs in Docker Compose. No Kubernetes required.
 
 ---
 
@@ -15,10 +15,19 @@ Extracted and rewritten from [Keptn's](https://keptn.sh) lighthouse-service. Run
 - Tracks **trend history** with TimescaleDB for relative comparisons (`<=+10%`)
 - Three **ingestion modes**: pull from Prometheus, push metrics inline, or upload a file (CSV / JMeter)
 - **Versioned SLO & SLI registries** -- every change is stored; evaluations record which version they used
+- **SLO groups & templates** -- organise SLOs into reusable groups, assign them to assets
+- **Display groups** -- control how SLI objectives are grouped and ordered in the UI
 - **Asset & group registry** -- register VMs/services, organise into groups, bind SLOs to assets
-- **Annotations** -- attach contextual notes to evaluations ("kernel updated before this test")
-- **Invalidation** -- mark evaluations as invalid without deleting them
-- **Data source registry** -- register adapter instances (Prometheus, future: InfluxDB, etc.)
+- **Heatmap navigator** -- visual overview of evaluation results across assets and time
+- **Evaluation batches** -- trigger evaluations for multiple assets in a single request
+- **Annotations with categories** -- attach categorised contextual notes to evaluations
+- **Invalidation & restore** -- mark evaluations as invalid and restore them without deleting data
+- **Baseline pinning** -- pin a specific evaluation as the comparison baseline
+- **Status overrides** -- manually override an evaluation's pass/warning/fail status
+- **Re-evaluation** -- re-run an evaluation against updated SLO criteria
+- **Multi-phase worker pipeline** -- arq workers with configurable concurrency (max_jobs=10)
+- **Contract testing** -- OpenAPI codegen + Schemathesis property-based API conformance tests
+- **Data source registry** -- register adapter instances (Prometheus, mock adapter for testing)
 
 ---
 
@@ -27,11 +36,12 @@ Extracted and rewritten from [Keptn's](https://keptn.sh) lighthouse-service. Run
 ```
 Docker Compose
 ├── api                  :8080   FastAPI — evaluation engine, registries, REST API
-├── worker               ×2      arq job workers (same image, different entrypoint)
+├── worker               arq job workers (max_jobs=10, same image, different entrypoint)
 ├── adapter-prometheus   :8081   Prometheus query adapter
+├── adapter-mock         :8082   Mock adapter with data generator (for testing)
 ├── timescaledb          :5432   PostgreSQL + TimescaleDB (evaluations + time-series SLI values)
 ├── redis                :6379   Job queue (arq db 1) + response cache (db 0)
-├── ui                   :3000   React SPA
+├── ui                   :3000   React SPA (nginx; dev server on :5173)
 └── timescaledb-test     :5433   Test database (profile: test — not started by default)
 ```
 
@@ -39,7 +49,7 @@ The evaluation engine is a **pure Python function** -- zero I/O, fully unit-test
 
 For detailed architecture documentation see:
 - [docs/architecture/system-overview.md](docs/architecture/system-overview.md) -- Service topology and communication
-- [docs/architecture/evaluation-flow.md](docs/architecture/evaluation-flow.md) -- Evaluation lifecycle and scoring
+- [docs/architecture/evaluation-lifecycle.md](docs/architecture/evaluation-lifecycle.md) -- Evaluation lifecycle and scoring
 - [docs/architecture/data-model.md](docs/architecture/data-model.md) -- Database schema and design decisions
 - [docs/architecture/configuration.md](docs/architecture/configuration.md) -- Configuration system
 - [api/docs/](api/docs/) -- API layer, evaluation engine, database layer
@@ -59,16 +69,13 @@ cd tropek
 cp .env.example .env
 # Edit .env — set passwords
 
-# 3. Start infrastructure
-docker compose up timescaledb redis -d
+# 3. Install dependencies
+just install          # uv sync + pnpm install
 
-# 4. Run migrations
-uv run --directory api alembic upgrade head
+# 4. Start all services (builds, migrates, starts)
+just up               # docker compose up --build
 
-# 5. Start all services
-docker compose up --build
-
-# 6. Check health
+# 5. Check health
 curl http://localhost:8080/health
 ```
 
@@ -76,57 +83,33 @@ curl http://localhost:8080/health
 
 ## Development setup
 
-Requires: [uv](https://docs.astral.sh/uv/), Python 3.13, Docker, Node.js 18+, [pnpm](https://pnpm.io/)
+Requires: [uv](https://docs.astral.sh/uv/), Python 3.13, Docker, Node.js 18+, [pnpm](https://pnpm.io/), [just](https://github.com/casey/just)
 
 ### Backend (API + worker)
 
 ```bash
-# Install all workspace dependencies
-uv sync
-
-# Run all unit tests (no infrastructure needed)
-uv run pytest api/tests/ -m "not integration" -q
-
-# Run integration tests (requires test DB — see below)
-uv run pytest api/tests/ -m integration -v
-
-# Lint and format
-uv run ruff check api/ adapters/
-uv run ruff format api/ adapters/
-
-# Type check
-uv run mypy api/app adapters/prometheus/app
+just install          # Install all workspace dependencies (uv sync + pnpm)
+just test             # Unit tests (no infrastructure needed)
+just lint             # Ruff linter
+just typecheck        # MyPy strict mode
+just check            # lint + format check + typecheck
 ```
 
 ### Integration tests
 
-Integration tests use a **dedicated test database** on port 5433 -- completely separate from the dev database (port 5432).
+Integration tests use a **dedicated test database** on port 5433 -- completely separate from the dev database (port 5432). `.env.test` is committed with local defaults -- no setup needed.
 
 ```bash
-# First-time setup
-cp .env.test.example .env.test
-
-# Start test infrastructure (idempotent)
-./start_test_infra.sh
-
-# Run integration tests
-uv run pytest api/tests/ -m integration -v
-
-# Tear down
-./stop_test_infra.sh
+just test-env         # Start test infrastructure (idempotent)
+just test-int         # Run integration tests
+just test-env-down    # Tear down when done
 ```
 
 ### Database migrations
 
 ```bash
-# Dev database
-uv run --directory api alembic upgrade head
-
-# Test database
-ENV_FILE=.env.test uv run --directory api alembic upgrade head
-
-# Autogenerate a new migration (against test DB)
-ENV_FILE=.env.test uv run --directory api alembic revision --autogenerate -m "description"
+just migrate          # Dev database
+just migrate-test     # Test database (container must be running)
 ```
 
 ### UI
@@ -283,19 +266,33 @@ error_rate,0.02,avg
 
 ```
 tropek/
-├── api/                          Python FastAPI service (see api/README.md)
-│   ├── app/                      Application code
+├── api/                          Python FastAPI service
+│   ├── tropek/                   Application code
+│   │   └── modules/
+│   │       ├── assets/           Asset (project/service) group CRUD
+│   │       ├── asset_meta/       Asset metadata and tags
+│   │       ├── assignments/      SLO-to-asset assignments
+│   │       ├── datasource/       Datasource (adapter) registry
+│   │       ├── display_groups/   SLI display grouping and ordering
+│   │       ├── quality_gate/     Evaluation router + layered architecture
+│   │       │   └── evaluation_engine/  Pure scoring logic (zero I/O)
+│   │       ├── sli_registry/     SLI definition CRUD
+│   │       ├── slo_groups/       SLO group templates
+│   │       └── slo_registry/     Versioned SLO CRUD
 │   ├── alembic/                  Database migrations
 │   ├── tests/                    Unit + integration tests
 │   └── docs/                     API architecture docs
-├── ui/                           React SPA (see ui/README.md)
+├── ui/                           React SPA
 │   ├── src/                      Application code
 │   └── docs/                     UI architecture docs
 ├── adapters/
-│   └── prometheus/               Prometheus query adapter (see adapters/prometheus/README.md)
+│   ├── prometheus/               Prometheus query adapter
+│   └── mock/                     Mock adapter with data generator
 ├── docs/
-│   └── architecture/             System-wide architecture docs
-├── scripts/                      Migration + DB helper scripts
+│   ├── architecture/             System-wide architecture docs
+│   ├── modules/                  Per-module documentation
+│   └── guides/                   How-to guides
+├── scripts/                      Migration, test, and DB helper scripts
 ├── config.yaml                   Non-secret runtime config (safe to commit)
 ├── .env.example                  Secret config template
 ├── docker-compose.yml            All services + test profile
@@ -341,10 +338,29 @@ tropek/
 
 ## Roadmap
 
-- **Phase 1** (current): Evaluation engine, Prometheus adapter, REST API, basic UI
-- **Phase 2**: Asset registry (VM / service registration, version snapshots), group evaluations with weighted multi-VM rollup
-- **Phase 3**: Test catalog, cross-version comparison UI, Grafana SimpleJSON endpoint, InfluxDB adapter
-- **Post Phase 3**: Change point detection via [Apache OTAVA](https://github.com/apache/otava)
+### Shipped
+
+- Evaluation engine with pure-function scoring (ported from Keptn Go)
+- Prometheus adapter + mock adapter for testing
+- REST API with versioned SLO & SLI registries
+- Asset & group registry with metadata and tags
+- SLO groups, templates, and asset assignments
+- Display groups for SLI ordering in the UI
+- Heatmap navigator with per-asset evaluation overview
+- Evaluation batches, annotations (with categories), invalidation/restore
+- Baseline pinning, status overrides, re-evaluation
+- Multi-phase arq worker pipeline (max_jobs=10)
+- Contract testing (OpenAPI codegen + Schemathesis)
+- React SPA with trend charts, SLI breakdown, theme system
+- Change point detection via [Apache OTAVA](https://github.com/apache/otava) (on branch)
+
+### Next
+
+- InfluxDB adapter
+- Test catalog
+- Cross-version comparison UI
+- Grafana SimpleJSON endpoint
+- OWASP ZAP security scanning
 
 ---
 
@@ -354,49 +370,16 @@ This project is open source. PRs welcome.
 
 ```bash
 # Before submitting a PR:
-uv run ruff check api/ adapters/
-uv run mypy api/app adapters/prometheus/app
-uv run pytest api/tests/ -m "not integration" -q
-cd ui && pnpm lint && pnpm test
+just check            # lint + format check + typecheck
+just test-all         # all tests (unit + UI)
 ```
 
 ---
 
-## Stack
+## Documentation
 
-```mermaid
-graph TB
-    subgraph Browser["Browser"]
-        subgraph UI["UI — React 19 · TypeScript 5.9"]
-            Components["Component Library\nshadcn/ui · Base UI · cmdk"]
-            Styling["Styling\nTailwind CSS v4 · Geist font"]
-            Routing["Routing\nReact Router v7"]
-            DataFetching["Data Fetching\nTanStack React Query v5"]
-            Forms["Forms & Validation\nReact Hook Form v7 · Zod v4"]
-            Charts["Charts\nApache ECharts 6"]
-        end
-        Build["Build — Vite 8\nTest — Vitest 4 · React Testing Library\nLint — ESLint 9\nPkg — pnpm"]
-    end
-
-    subgraph Backend["Backend — Python 3.13"]
-        API["API Server\nFastAPI · Uvicorn · Pydantic v2"]
-        Worker["Job Workers ×2\narq async Redis queue"]
-        ORM["ORM & Migrations\nSQLAlchemy 2 async · Alembic"]
-        Adapter["Prometheus Adapter\nhttpx · tenacity"]
-        BackendTools["Logging — structlog\nConfig — PyYAML · dotenv\nPkg — uv workspace\nLint — ruff · mypy strict\nTest — pytest-asyncio"]
-    end
-
-    subgraph Infra["Infrastructure — Docker Compose"]
-        DB[("PostgreSQL 16\n+ TimescaleDB")]
-        Redis[("Redis 7\nQueue + Cache")]
-    end
-
-    UI -->|"HTTP REST"| API
-    API --> ORM
-    API -->|"enqueue"| Redis
-    Worker -->|"dequeue"| Redis
-    Worker --> ORM
-    Worker -->|"PromQL"| Adapter
-    ORM --> DB
-    Adapter --> Prometheus["Prometheus"]
-```
+- **Architecture**: [docs/architecture/](docs/architecture/) -- system overview, evaluation lifecycle, data model, configuration
+- **Modules**: [docs/modules/](docs/modules/) -- assets, datasources, registries, SLO groups
+- **Guides**: [docs/guides/](docs/guides/) -- adapter protocol, contract testing
+- **API internals**: [api/docs/](api/docs/) -- API layer, evaluation engine, database layer
+- **UI internals**: [ui/docs/](ui/docs/) -- frontend architecture, features, mock system
