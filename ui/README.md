@@ -16,14 +16,14 @@ React SPA for the TROPEK quality gate platform — asset navigation, evaluation 
 | Icons | Lucide React |
 | Font | Geist (variable) |
 | API mocking | MSW 2 (Mock Service Worker) |
-| Testing | Vitest |
+| Testing | Vitest 4 |
 
 ## Quick start
 
 ```bash
 cd ui
-npm install
-npm run dev          # starts on http://localhost:5173 with mock data
+pnpm install
+pnpm dev             # starts on http://localhost:5173 with mock data
 ```
 
 By default the dev server runs with **MSW mocks enabled** — no backend needed. The browser console will show `[MSW] Mocking enabled` on startup.
@@ -33,7 +33,7 @@ By default the dev server runs with **MSW mocks enabled** — no backend needed.
 ### Mock mode (default in dev)
 
 ```bash
-npm run dev
+pnpm dev
 ```
 
 MSW intercepts all `/api/*` requests in the browser. Mock data is deterministic (seeded PRNG) — same data on every reload. Covers 30 days of history across 40 asset/lab scenarios with 30 metrics each.
@@ -43,14 +43,14 @@ Unhandled requests (fonts, static assets) are passed through (`onUnhandledReques
 ### Against the real API
 
 ```bash
-VITE_API_BASE=http://localhost:8080 npm run build
-npm run preview
+VITE_API_BASE=http://localhost:8080 pnpm build
+pnpm preview
 ```
 
 Or for dev with HMR against a running backend:
 
 ```bash
-VITE_USE_MOCKS=false npm run dev
+VITE_USE_MOCKS=false pnpm dev
 ```
 
 The API base URL defaults to `http://localhost:8080` (set in `.env.development`). Override with `VITE_API_BASE`.
@@ -59,11 +59,11 @@ The API base URL defaults to `http://localhost:8080` (set in `.env.development`)
 
 | Command | Purpose |
 |---|---|
-| `npm run dev` | Vite dev server with HMR + MSW mocks |
-| `npm run build` | TypeScript check + production build |
-| `npm run preview` | Serve production build locally |
-| `npm run lint` | ESLint |
-| `npm run test` | Vitest (unit tests) |
+| `pnpm dev` | Vite dev server with HMR + MSW mocks |
+| `pnpm build` | TypeScript check + production build |
+| `pnpm preview` | Serve production build locally |
+| `pnpm lint` | ESLint |
+| `pnpm test` | Vitest (unit tests) |
 
 ## Project structure
 
@@ -76,11 +76,16 @@ src/
 │   ├── charts/                  # HeatmapChart, MultiSeriesChart, MetricLabelPanel
 │   └── ui/                      # shadcn/ui primitives (button, dialog, tabs, etc.)
 ├── features/
-│   ├── evaluations/             # Evaluation list, detail, SLI breakdown, annotations
 │   ├── assets/                  # Asset list, groups, colour legend
+│   ├── datasources/             # Datasource management
+│   ├── evaluations/             # Evaluation list, detail, SLI breakdown, annotations
+│   ├── meta_timeline/           # Asset metadata timeline
 │   ├── navigator/               # Asset tree → group → asset drill-down navigation
-│   ├── slos/                    # SLO registry CRUD, versioning, history
-│   └── slis/                    # SLI definition registry
+│   ├── note-categories/         # Annotation category management
+│   ├── registry/                # 3-mode SLO registry (tree, detail, sidebar)
+│   ├── slis/                    # SLI definition registry
+│   ├── slo-groups/              # SLO group and template binding management
+│   └── slos/                    # SLO CRUD, SLO link dialogs
 ├── pages/
 │   ├── AssetNavigatorPage.tsx   # Main view (default route)
 │   ├── EvaluationDetailPage.tsx # Single evaluation deep-dive
@@ -131,9 +136,9 @@ Theme and font size persist in localStorage (`tropek-theme`, `tropek-font-size`)
 ## Architecture
 
 For detailed architecture documentation, see:
-- [docs/architecture.md](docs/architecture.md) -- Tech stack, directory structure, theming, state management
-- [docs/features.md](docs/features.md) -- Feature module breakdown (evaluations, assets, navigator, SLOs, SLIs)
-- [docs/mocking.md](docs/mocking.md) -- MSW mock system and deterministic data generator
+- [docs/architecture.md](docs/architecture.md) — Tech stack, directory structure, theming, state management
+- [docs/mocking.md](docs/mocking.md) — MSW mock system and deterministic data generator
+- [`docs/modules/`](../docs/modules/) — Per-module domain narratives and API usage
 
 ### Data flow
 
