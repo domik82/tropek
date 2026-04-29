@@ -21,7 +21,7 @@ docker compose up timescaledb redis -d
 uv run --directory api alembic upgrade head
 
 # Start the API
-uv run --directory api uvicorn app.main:app --reload --port 8080
+uv run --directory api uvicorn tropek.main:app --reload --port 8080
 ```
 
 ### Docker
@@ -47,9 +47,9 @@ uv run pytest api/tests/ -m "not integration" -q
 uv run pytest api/tests/engine/test_evaluator.py::TestName -v
 
 # Integration tests (requires test DB)
-./start_test_infra.sh
+just test-env
 uv run pytest api/tests/ -m integration -v
-./stop_test_infra.sh
+just test-env-down
 ```
 
 ## Linting
@@ -57,7 +57,7 @@ uv run pytest api/tests/ -m integration -v
 ```bash
 uv run ruff check api/
 uv run ruff format api/
-uv run mypy api/app
+uv run mypy api/tropek
 ```
 
 ## Migrations
@@ -69,8 +69,8 @@ uv run --directory api alembic upgrade head
 # Test database
 ENV_FILE=.env.test uv run --directory api alembic upgrade head
 
-# Autogenerate new migration (against test DB)
-ENV_FILE=.env.test uv run --directory api alembic revision --autogenerate -m "description"
+# Regenerate migrations from models (drops and recreates test DB)
+./scripts/db-regen-migrations.sh
 ```
 
 ## Architecture
@@ -78,3 +78,6 @@ ENV_FILE=.env.test uv run --directory api alembic revision --autogenerate -m "de
 See [docs/architecture.md](docs/architecture.md) for API layer architecture,
 [docs/evaluation-engine.md](docs/evaluation-engine.md) for the scoring engine, and
 [docs/database-layer.md](docs/database-layer.md) for the database schema and repository pattern.
+
+For module documentation see [`docs/modules/`](../docs/modules/).
+For architecture see [`docs/architecture/`](../docs/architecture/).
