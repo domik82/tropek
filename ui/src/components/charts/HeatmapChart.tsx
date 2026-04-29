@@ -375,7 +375,7 @@ export function HeatmapChart({
                 },
                 style: {
                   fill: diamondColor,
-                  stroke: 'var(--background)',
+                  stroke: ct.bg,
                   lineWidth: 1,
                 },
                 z2: 10,
