@@ -11,9 +11,9 @@ Each scenario documents:
   - What the worker step saves after filtering (expected behaviour)
   - WHY — so we can reason about edge cases
 
-The _detect_for_metric function is the unit under test. We mock only the
-async repos (baseline history, change_point store) — the detector runs for
-real.
+The gather_metric_series + detect_change_points + _persist_change_points
+pipeline is the unit under test. We mock only the async repos (baseline
+history, change_point store) — the detector runs for real.
 """
 
 from __future__ import annotations
@@ -23,12 +23,13 @@ from datetime import UTC, datetime, timedelta
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 
-import pytest
 import structlog
-
+from tropek.modules.change_points.detector import detect_change_points
 from tropek.modules.change_points.repository import ResolvedConfig
-from tropek.modules.change_points.worker_step import _detect_for_metric
-
+from tropek.modules.change_points.worker_step import (
+    _persist_change_points,
+    gather_metric_series,
+)
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -40,10 +41,11 @@ def _config(
     window_size: int = 30,
     max_pvalue: float = 0.05,
     min_magnitude: float = 0.0,
+    higher_is_better: bool = False,
 ) -> ResolvedConfig:
     return ResolvedConfig(
         enabled=True,
-        higher_is_better=False,
+        higher_is_better=higher_is_better,
         window_size=window_size,
         max_pvalue=max_pvalue,
         min_magnitude=min_magnitude,
@@ -87,6 +89,7 @@ def _snapshot(
 ) -> MagicMock:
     snap = MagicMock()
     snap.asset_id = asset_id or uuid.uuid4()
+    snap.parent_run_id = uuid.uuid4()
     snap.slo_name = slo_name
     snap.evaluation_name = evaluation_name
     snap.period_end = period_end
@@ -98,9 +101,9 @@ class _FakeChangePointRepo:
     """Stateful fake that checks inserts for dedup, like the real DB would.
 
     When has_nearby_change_point is called, it scans previously inserted CPs
-    for a match on (metric_name, direction, period_start in nearby_timestamps).
-    This catches bugs where one CP's nearby window overlaps another CP's
-    timestamp — the exact interaction that a stateless mock misses.
+    for a match on (metric_name, period_start in nearby_timestamps).
+    Direction-agnostic: a CP at a given position blocks re-insertion regardless
+    of direction — the first detection wins.
     """
 
     def __init__(
@@ -113,13 +116,11 @@ class _FakeChangePointRepo:
 
     async def has_nearby_change_point(self, **kwargs: Any) -> bool:
         metric_name = kwargs.get('metric_name')
-        direction = kwargs.get('direction')
         nearby_timestamps = kwargs.get('nearby_timestamps', [])
 
         for existing in self.inserts:
             if (
                 existing.metric_name == metric_name
-                and existing.direction == direction
                 and existing.period_start in nearby_timestamps
             ):
                 return True
@@ -134,6 +135,68 @@ class _FakeChangePointRepo:
         self.inserts.append(params)
 
 
+async def _run_pipeline(
+    values: list[float],
+    *,
+    metric: str = 'response_time_p95',
+    config: ResolvedConfig | None = None,
+    cp_repo: _FakeChangePointRepo | None = None,
+    snap: MagicMock | None = None,
+    evaluation_name: str = 'load-test',
+) -> list[Any]:
+    """Run the gather → detect → persist pipeline and return inserted CPs."""
+    history = _make_history(
+        values, metric=metric, evaluation_name=evaluation_name,
+    )
+    baseline_repo = MagicMock()
+    baseline_repo.get_evaluation_baselines = AsyncMock(return_value=history)
+
+    if cp_repo is None:
+        cp_repo = _FakeChangePointRepo()
+
+    if snap is None:
+        snap = _snapshot(evaluation_name=evaluation_name)
+
+    resolved = config or _config()
+
+    series = await gather_metric_series(
+        baseline_repo=baseline_repo,
+        asset_id=snap.asset_id,
+        slo_name=snap.slo_name,
+        metric_name=metric,
+        period_end=snap.period_end,
+        evaluation_name=evaluation_name,
+        window_size=resolved.window_size,
+    )
+
+    if len(series.values) < resolved.min_sample_size:
+        return cp_repo.inserts
+
+    detected = detect_change_points(
+        values=series.values,
+        timestamps=series.timestamps,
+        higher_is_better=resolved.higher_is_better,
+        window_size=resolved.window_size,
+        max_pvalue=resolved.max_pvalue,
+        min_magnitude=resolved.min_magnitude,
+        min_sample_size=resolved.min_sample_size,
+    )
+
+    if detected:
+        await _persist_change_points(
+            log=structlog.get_logger(),
+            change_point_repo=cp_repo,  # type: ignore[arg-type]
+            detected=detected,
+            timestamps=series.timestamps,
+            snapshot=snap,
+            metric_name=metric,
+            indicator_result_id=uuid.uuid4(),
+            comparison_name=evaluation_name,
+        )
+
+    return cp_repo.inserts
+
+
 async def _run(
     values: list[float],
     *,
@@ -142,33 +205,15 @@ async def _run(
     previous_cp: Any = None,
     evaluation_name: str = 'load-test',
 ) -> list[Any]:
-    """Run _detect_for_metric with a synthetic series and return inserted CPs."""
-    history = _make_history(
-        values, metric=metric, evaluation_name=evaluation_name,
+    """Convenience wrapper: create a fresh repo and run the pipeline."""
+    cp_repo = _FakeChangePointRepo(previous_cp=previous_cp)
+    return await _run_pipeline(
+        values,
+        metric=metric,
+        config=config,
+        cp_repo=cp_repo,
+        evaluation_name=evaluation_name,
     )
-    baseline_repo = MagicMock()
-    baseline_repo.get_evaluation_baselines = AsyncMock(return_value=history)
-
-    cp_repo = _FakeChangePointRepo(
-        previous_cp=previous_cp,
-    )
-
-    snap = _snapshot(evaluation_name=evaluation_name)
-    log = structlog.get_logger()
-
-    await _detect_for_metric(
-        log=log,
-        baseline_repo=baseline_repo,
-        change_point_repo=cp_repo,  # type: ignore[arg-type]
-        snapshot=snap,
-        metric_name=metric,
-        indicator_result_id=uuid.uuid4(),
-        higher_is_better=False,
-        config=config or _config(),
-        comparison_name=evaluation_name,
-    )
-
-    return cp_repo.inserts
 
 
 # ---------------------------------------------------------------------------
@@ -178,7 +223,7 @@ async def _run(
 #   expect:  1 regression CP near position 10
 #
 #   WHY it works: 10 stable samples provide a strong baseline. The step to 700
-#   is 2× the baseline — clearly significant. Dedup is empty on first run,
+#   is 2x the baseline -- clearly significant. Dedup is empty on first run,
 #   so the regression is saved.
 # ---------------------------------------------------------------------------
 
@@ -202,24 +247,14 @@ class TestStepRegression:
         inserts the regression, the second finds it via the stateful fake.
         """
         cp_repo = _FakeChangePointRepo()
-        baseline_repo = MagicMock()
         snap = _snapshot()
 
         for high_count in (3, 4):
             values = [350.0] * 10 + [700.0] * high_count
-            history = _make_history(values)
-            baseline_repo.get_evaluation_baselines = AsyncMock(return_value=history)
-
-            await _detect_for_metric(
-                log=structlog.get_logger(),
-                baseline_repo=baseline_repo,
-                change_point_repo=cp_repo,  # type: ignore[arg-type]
-                snapshot=snap,
-                metric_name='response_time_p95',
-                indicator_result_id=uuid.uuid4(),
-                higher_is_better=False,
-                config=_config(),
-                comparison_name='load-test',
+            await _run_pipeline(
+                values,
+                cp_repo=cp_repo,
+                snap=snap,
             )
 
         assert len(cp_repo.inserts) == 1, (
@@ -303,24 +338,14 @@ class TestSpikeAndRecovery:
         and direction-blind dedup blocked it.
         """
         cp_repo = _FakeChangePointRepo()
-        baseline_repo = MagicMock()
         snap = _snapshot()
 
         for recovery_count in (1, 3):
             values = [350.0] * 12 + [700.0, 700.0] + [350.0] * recovery_count
-            history = _make_history(values)
-            baseline_repo.get_evaluation_baselines = AsyncMock(return_value=history)
-
-            await _detect_for_metric(
-                log=structlog.get_logger(),
-                baseline_repo=baseline_repo,
-                change_point_repo=cp_repo,  # type: ignore[arg-type]
-                snapshot=snap,
-                metric_name='response_time_p95',
-                indicator_result_id=uuid.uuid4(),
-                higher_is_better=False,
-                config=_config(),
-                comparison_name='load-test',
+            await _run_pipeline(
+                values,
+                cp_repo=cp_repo,
+                snap=snap,
             )
 
         directions = {cp.direction for cp in cp_repo.inserts}
@@ -365,7 +390,7 @@ class TestHistoricalCpDetection:
 # Scenario 5: Same-regime suppression
 #
 #   If the previous stored CP has post_segment_mean ≈ the new CP's
-#   post_segment_mean (within 2× std), the new CP is noise, not a real shift.
+#   post_segment_mean (within 2x std), the new CP is noise, not a real shift.
 # ---------------------------------------------------------------------------
 
 class TestRegimeSuppression:
@@ -431,9 +456,6 @@ class TestInsufficientHistory:
         values = [350.0] * 7 + [700.0] * 3
         inserts = await _run(values, config=_config(min_sample_size=10))
 
-        # Whether a CP is found depends on E-Divisive significance, but
-        # the point is that detection RUNS (doesn't bail on sample count).
-        # A step from 350→700 with 10 samples should be detectable.
         assert len(inserts) >= 1
 
 
@@ -457,19 +479,16 @@ class TestEvalNameScoping:
         baseline_repo = MagicMock()
         baseline_repo.get_evaluation_baselines = AsyncMock(return_value=history)
 
-        cp_repo = _FakeChangePointRepo()
         snap = _snapshot(evaluation_name='prod-validation')
 
-        await _detect_for_metric(
-            log=structlog.get_logger(),
+        await gather_metric_series(
             baseline_repo=baseline_repo,
-            change_point_repo=cp_repo,  # type: ignore[arg-type]
-            snapshot=snap,
+            asset_id=snap.asset_id,
+            slo_name=snap.slo_name,
             metric_name='response_time_p95',
-            indicator_result_id=uuid.uuid4(),
-            higher_is_better=False,
-            config=_config(),
-            comparison_name='prod-validation',
+            period_end=snap.period_end,
+            evaluation_name='prod-validation',
+            window_size=30,
         )
 
         call_kwargs = baseline_repo.get_evaluation_baselines.call_args.kwargs

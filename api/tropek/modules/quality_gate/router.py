@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
-from typing import Annotated
+from typing import Annotated, Any
 
 from arq.connections import ArqRedis
 from fastapi import (  # HTTPException: BaselinePinConflictError dict detail
@@ -17,6 +17,7 @@ from fastapi import (  # HTTPException: BaselinePinConflictError dict detail
 from pydantic import AfterValidator
 
 from tropek.modules.assets.service import AssetService
+from tropek.modules.change_points.detector import Direction
 from tropek.modules.change_points.repository import ChangePointRepository
 from tropek.modules.change_points.schemas import ChangePointMarker
 from tropek.modules.common.exceptions import ConflictError, DomainValidationError, NotFoundError
@@ -106,7 +107,7 @@ async def trigger_evaluation_batch(
 
 
 @router.get('/evaluations', response_model=PagedResponse[EvaluationSummary])
-async def list_evaluations(  # noqa: PLR0913
+async def list_evaluations(
     asset_name: SafeQueryStr | None = None,
     slo_name: SafeQueryStr | None = None,
     evaluation_name: list[SafeQueryStr] | None = Query(default=None),
@@ -155,6 +156,34 @@ async def list_evaluations(  # noqa: PLR0913
         for ev in evals
     ]
     return PagedResponse(items=items, total=total)
+
+
+async def _enrich_heatmap_with_change_points(
+    repos: QualityGateRepos,
+    ordered_runs: list[Any],
+    response: GroupedMetricHeatmapResponse,
+) -> GroupedMetricHeatmapResponse:
+    if not ordered_runs:
+        return response
+    change_point_repo = ChangePointRepository(repos.session)
+    period_starts = [run.period_start for run in ordered_runs]
+    change_point_lookup = await change_point_repo.get_change_points_for_evaluations(
+        asset_id=ordered_runs[0].asset_id,
+        period_starts=period_starts,
+    )
+    if change_point_lookup:
+        eval_name_by_run_id = {run.id: run.eval_name for run in ordered_runs}
+        for group in response.groups:
+            for cell in group.cells:
+                run_eval_name = eval_name_by_run_id.get(cell.evaluation_id, '')
+                key = (cell.metric, cell.period_start, run_eval_name)
+                change_point = change_point_lookup.get(key)
+                if change_point is not None:
+                    cell.change_point = ChangePointMarker(
+                        direction=Direction(change_point.direction),
+                        change_relative_pct=change_point.change_relative_pct,
+                    )
+    return response
 
 
 @router.get('/evaluations/heatmap', response_model=GroupedMetricHeatmapResponse)
@@ -223,22 +252,7 @@ async def get_grouped_metric_heatmap_new(
 
     response = assemble_grouped_response(asset_name, ordered_fragments)
 
-    change_point_repo = ChangePointRepository(repos.session)
-    period_starts = [run.period_start for run in ordered_runs]
-    change_point_lookup = await change_point_repo.get_change_points_for_evaluations(
-        asset_id=asset.id,
-        period_starts=period_starts,
-    )
-    if change_point_lookup:
-        for group in response.groups:
-            for cell in group.cells:
-                key = (cell.metric, cell.period_start)
-                change_point = change_point_lookup.get(key)
-                if change_point is not None:
-                    cell.change_point = ChangePointMarker(
-                        direction=change_point.direction,
-                        change_relative_pct=change_point.change_relative_pct,
-                    )
+    response = await _enrich_heatmap_with_change_points(repos, ordered_runs, response)
 
     return response
 

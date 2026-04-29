@@ -5,9 +5,10 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 
+import structlog
 from arq.connections import ArqRedis
 
-from tropek.modules.common.exceptions import NotFoundError
+from tropek.modules.common.exceptions import DomainError, NotFoundError
 from tropek.modules.quality_gate.schemas import (
     EvaluateBatchRequest,
     EvaluateBatchResponse,
@@ -67,7 +68,12 @@ class TriggerService:
                     assignment_repo=self._repos.assignment_repo,
                     group_ids=group_ids,
                 )
-            except EvaluationError:
+            except DomainError as exc:
+                structlog.get_logger().warning(
+                    'skipping slo during trigger',
+                    slo_name=slo_name,
+                    error=str(exc),
+                )
                 continue
 
             slo_ev = await self._repos.eval_repo.create_pending(
