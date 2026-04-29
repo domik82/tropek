@@ -433,8 +433,8 @@ export function buildChartRender(input: ChartOptionInput): { option: object; lab
                 itemStyle: {
                   color:
                     p.changePoint!.direction === 'regression'
-                      ? '#f85149'
-                      : '#3fb950',
+                      ? 'var(--change-point-regression)'
+                      : 'var(--change-point-improvement)',
                   borderColor: ct.bg,
                   borderWidth: 1,
                 },
@@ -485,7 +485,7 @@ export function buildChartRender(input: ChartOptionInput): { option: object; lab
         ]
         if (p.overridden) lines.push(`<span style="color:${ct.axisLabel}">(override)</span>`)
         if (p.changePoint) {
-          const cpColor = p.changePoint.direction === 'regression' ? '#f85149' : '#3fb950'
+          const cpColor = p.changePoint.direction === 'regression' ? 'var(--change-point-regression)' : 'var(--change-point-improvement)'
           const pctSign = p.changePoint.changeRelativePct > 0 ? '+' : ''
           lines.push(`<span style="color:${cpColor}">◆ ${p.changePoint.direction} (${pctSign}${p.changePoint.changeRelativePct.toFixed(1)}%)</span>`)
         }
