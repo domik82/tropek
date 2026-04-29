@@ -5,10 +5,10 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, StrictBool
 
 from tropek.modules.change_points.detector import Direction
-from tropek.modules.common.schemas import StrictInput
+from tropek.modules.common.schemas import FloatNotBool, IntNotBool, SafeStr, StrictInput
 
 
 class ChangePointMarker(BaseModel):
@@ -48,30 +48,30 @@ class ChangePointRead(BaseModel):
 class TriageRequest(StrictInput):
     """Request body for triaging a change point."""
 
-    status: str
-    triage_note: str | None = None
-    linked_ticket: str | None = None
-    triage_author: str | None = None
+    status: SafeStr
+    triage_note: SafeStr | None = None
+    linked_ticket: SafeStr | None = None
+    triage_author: SafeStr | None = None
 
 
 class BulkTriageRequest(StrictInput):
     """Request body for bulk-triaging change points."""
 
     ids: list[uuid.UUID]
-    status: str
-    triage_note: str | None = None
-    triage_author: str | None = None
+    status: SafeStr
+    triage_note: SafeStr | None = None
+    triage_author: SafeStr | None = None
 
 
 class ChangePointConfigInput(StrictInput):
     """Optional overrides for change point detection — used in SLO YAML change_point: block."""
 
-    enabled: bool | None = None
-    higher_is_better: bool | None = None
-    window_size: int | None = Field(default=None, strict=True)
-    max_pvalue: float | None = None
-    min_magnitude: float | None = None
-    min_sample_size: int | None = Field(default=None, strict=True)
+    enabled: StrictBool | None = None
+    higher_is_better: StrictBool | None = None
+    window_size: IntNotBool | None = None
+    max_pvalue: FloatNotBool | None = None
+    min_magnitude: FloatNotBool | None = None
+    min_sample_size: IntNotBool | None = None
 
 
 class ChangePointConfigRead(BaseModel):

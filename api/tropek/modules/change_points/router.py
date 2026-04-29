@@ -5,7 +5,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from tropek.db.session import get_session
@@ -21,6 +21,7 @@ from tropek.modules.change_points.schemas import (
     ChangePointRead,
     TriageRequest,
 )
+from tropek.modules.common.schemas import SafeQueryStr
 from tropek.modules.configuration.repository import ConfigurationRepository
 
 router = APIRouter(tags=['change-points'])
@@ -28,15 +29,15 @@ router = APIRouter(tags=['change-points'])
 
 @router.get('/change-points', response_model=list[ChangePointRead])
 async def list_change_points(
-    status: str | None = None,
+    status: SafeQueryStr | None = None,
     direction: Direction | None = None,
     asset_id: uuid.UUID | None = None,
-    slo_name: str | None = None,
-    metric: str | None = None,
+    slo_name: SafeQueryStr | None = None,
+    metric: SafeQueryStr | None = None,
     from_ts: datetime | None = None,
     to_ts: datetime | None = None,
-    limit: int = 50,
-    offset: int = 0,
+    limit: int = Query(default=50, ge=0, le=1000),
+    offset: int = Query(default=0, ge=0),
     session: AsyncSession = Depends(get_session),
 ) -> list[ChangePointRead]:
     """List change points with optional filters."""
