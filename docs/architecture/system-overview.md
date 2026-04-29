@@ -8,10 +8,10 @@ orchestrated via Docker Compose. No Kubernetes required.
 ```mermaid
 graph LR
     Client["Client / CI"]
-    UI["UI<br/>React SPA<br/>:3000"]
+    UI["UI<br/>React SPA<br/>:3000 (prod) / :5173 (dev)"]
     API["API<br/>FastAPI<br/>:8080"]
     Redis["Redis<br/>:6379<br/>db 0 = cache<br/>db 1 = queue"]
-    Worker["Worker<br/>arq<br/>x2 replicas"]
+    Worker["Worker<br/>arq<br/>max_jobs=10"]
     Adapter["Prometheus Adapter<br/>:8081"]
     Prom["Prometheus<br/>(external)"]
     DB["TimescaleDB<br/>PostgreSQL 16<br/>:5432"]
@@ -32,11 +32,11 @@ graph LR
 | Service | Port | Technology | Role |
 |---------|------|------------|------|
 | **api** | 8080 | FastAPI (Python 3.13) | REST API, evaluation trigger, registries, trend queries |
-| **worker** | -- | arq (same image as api) | Async evaluation: fetch metrics, run engine, persist results |
+| **worker** | -- | arq (same image as api) | Async evaluation: fetch metrics, run engine, persist results (max_jobs=10 per worker) |
 | **adapter-prometheus** | 8081 | FastAPI | Translates SLI queries into PromQL, returns aggregated values |
 | **timescaledb** | 5432 | PostgreSQL 16 + TimescaleDB | Evaluations, SLO/SLI registries, SLI time-series hypertable |
 | **redis** | 6379 | Redis 7 | Job queue (db 1) and response cache (db 0) |
-| **ui** | 3000 | React 19 + Vite | SPA with mock-first development (MSW) |
+| **ui** | 3000 (prod) / 5173 (dev) | React 19 + Vite | SPA with mock-first development (MSW) |
 
 ## Communication Patterns
 
