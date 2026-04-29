@@ -27,6 +27,11 @@ test-ui *args:
 test-schema *args='-v':
     ./scripts/schemathesis-run.sh {{args}}
 
+# Run Schemathesis in background, tail the log live (Ctrl+C stops tail, not the test)
+test-schema-log *args='-v --tb=short':
+    @mkdir -p /tmp/tropek
+    @uv run --directory api pytest tests/schemathesis -m schemathesis {{args}} > /tmp/tropek/schemathesis.log 2>&1 & sleep 1 && tail -f /tmp/tropek/schemathesis.log
+
 # Generate test coverage audit report
 test-audit:
     uv run python scripts/test-coverage-audit.py
