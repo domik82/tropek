@@ -250,29 +250,6 @@ Integration tests stayed at 265/265 throughout. UI tests at 646/646.
 
 ---
 
-## Phase 3.5 — Integration Test Audit
-
-**Goal:** Classify all existing integration tests against Schemathesis coverage to
-identify redundancy and confirm that business-logic tests are kept.
-
-**Result:** All ~164 integration tests were kept. No tests removed.
-
-### Rationale
-
-14 tests overlap in coverage area with Schemathesis (status codes, input validation),
-but they are designed tests pinned to specific scenarios while Schemathesis probes
-heuristically with random inputs. Both layers provide complementary value:
-
-- **Designed tests** pin expected behavior and will not drift if the schema changes
-- **Schemathesis** explores the input space heuristically but not deterministically
-
-The remaining ~150 tests exercise repository-layer logic (direct DB calls, not HTTP)
-or multi-step business workflows that Schemathesis cannot reach.
-
-**Full report:** `reports/test-audit.md`
-
----
-
 ## Phase 4 — OWASP ZAP Deep Security Scanning
 
 **Status: PLANNED — not yet implemented.**
