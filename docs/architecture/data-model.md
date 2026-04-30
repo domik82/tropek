@@ -3,202 +3,83 @@
 TROPEK uses PostgreSQL 16 with the TimescaleDB extension. 24 ORM model classes organized into
 six groups.
 
-## Entity Relationship Diagram
+## Table Overview
+
+24 tables in six groups. Cross-group dependencies shown in the rightmost column.
+
+| Group | Table | Depends On (cross-group) |
+|-------|-------|--------------------------|
+| **Asset Inventory** | `asset_types` | — |
+| | `assets` | `asset_types` |
+| | `asset_groups` | — |
+| | `asset_group_members` | `assets`, `asset_groups` |
+| | `asset_group_links` | `asset_groups` (self) |
+| **Asset Metadata** | `asset_meta_snapshots` | `assets` |
+| | `asset_meta_values` | `asset_meta_snapshots` |
+| | `asset_meta_closures` | `asset_meta_snapshots` |
+| **Definition Registries** | `sli_definitions` | — |
+| | `slo_definitions` | `sli_definitions`, `slo_groups` |
+| | `slo_objectives` | `slo_definitions` |
+| | `slo_groups` | `slo_definitions` (template) |
+| | `data_sources` | — |
+| | `slo_display_groups` | self (parent) |
+| | `slo_display_group_members` | `slo_display_groups` |
+| **Evaluation Binding** | `slo_assignments` | `assets`/`asset_groups`, `slo_definitions`, `data_sources` |
+| | `slo_group_assignments` | `assets`/`asset_groups`, `slo_groups`, `data_sources` |
+| **Evaluation Results** | `evaluations` | `assets` |
+| | `slo_evaluations` | `evaluations`, `assets` |
+| | `indicator_results` | `slo_evaluations`, `slo_objectives` |
+| | `sli_values` | `slo_evaluations` (hypertable) |
+| **Annotations** | `annotation_categories` | — |
+| | `evaluation_annotations` | `slo_evaluations`/`evaluations`, `annotation_categories` |
+
+## Entity Relationships by Group
+
+### Assets and Groups
 
 ```mermaid
 erDiagram
     asset_types ||--o{ assets : "type_name"
     assets ||--o{ asset_group_members : "asset_id"
+    asset_groups ||--o{ asset_group_members : "group_id"
+    asset_groups ||--o{ asset_group_links : "parent"
+    asset_groups ||--o{ asset_group_links : "child"
+```
+
+### Asset Metadata
+
+```mermaid
+erDiagram
     assets ||--o{ asset_meta_snapshots : "asset_id"
-    assets ||--o{ slo_assignments : "asset_id"
-    assets ||--o{ slo_group_assignments : "asset_id"
-    assets ||--o{ evaluations : "asset_id"
-    assets ||--o{ slo_evaluations : "asset_id"
-
-    asset_groups ||--o{ asset_group_members : "asset_group_id"
-    asset_groups ||--o{ asset_group_links : "parent_asset_group_id"
-    asset_groups ||--o{ asset_group_links : "child_asset_group_id"
-    asset_groups ||--o{ slo_assignments : "asset_group_id"
-    asset_groups ||--o{ slo_group_assignments : "asset_group_id"
-
     asset_meta_snapshots ||--o{ asset_meta_values : "snapshot_id"
     asset_meta_snapshots ||--o{ asset_meta_closures : "snapshot_id"
+```
 
+### Definition Registries and Binding
+
+```mermaid
+erDiagram
+    sli_definitions ||--o{ slo_definitions : "sli_definition_id"
     slo_definitions ||--o{ slo_objectives : "slo_definition_id"
-    slo_definitions }o--|| sli_definitions : "sli_definition_id"
-    slo_definitions }o--o| slo_groups : "generated_by_group_id"
-    slo_groups ||--o{ slo_assignments : "via slo_definition_id"
+    slo_groups ||--o{ slo_definitions : "generated_by_group_id"
+    slo_definitions ||--o{ slo_assignments : "slo_definition_id"
     slo_groups ||--o{ slo_group_assignments : "slo_group_id"
-
+    data_sources ||--o{ slo_assignments : "data_source_id"
+    data_sources ||--o{ slo_group_assignments : "data_source_id"
     slo_display_groups ||--o{ slo_display_group_members : "group_id"
-    slo_display_groups }o--o| slo_display_groups : "parent_id"
+```
 
-    slo_assignments }o--|| slo_definitions : "slo_definition_id"
-    slo_assignments }o--|| data_sources : "data_source_id"
-    slo_group_assignments }o--|| slo_groups : "slo_group_id"
-    slo_group_assignments }o--|| data_sources : "data_source_id"
+### Evaluation Results and Annotations
 
+```mermaid
+erDiagram
     evaluations ||--o{ slo_evaluations : "evaluation_id"
-    evaluations ||--o{ evaluation_annotations : "evaluation_run_id"
     slo_evaluations ||--o{ indicator_results : "slo_evaluation_id"
     slo_evaluations ||--o{ sli_values : "slo_evaluation_id"
     slo_evaluations ||--o{ evaluation_annotations : "slo_evaluation_id"
+    evaluations ||--o{ evaluation_annotations : "evaluation_run_id"
+    annotation_categories ||--o{ evaluation_annotations : "category_id"
     indicator_results }o--|| slo_objectives : "slo_objective_id"
-    evaluation_annotations }o--|| annotation_categories : "category_id"
-
-    asset_types {
-        uuid id PK
-        text name UK
-        bool is_default
-    }
-    assets {
-        uuid id PK
-        text name UK
-        text type_name FK
-        jsonb tags
-        jsonb variables
-    }
-    asset_groups {
-        uuid id PK
-        text name UK
-        text display_name
-    }
-    asset_group_members {
-        uuid asset_group_id PK
-        uuid asset_id PK
-        float weight
-    }
-    asset_group_links {
-        uuid parent_asset_group_id PK
-        uuid child_asset_group_id PK
-    }
-    asset_meta_snapshots {
-        uuid id PK
-        uuid asset_id FK
-        text source
-        timestamptz observed_at
-    }
-    asset_meta_values {
-        bigint id PK
-        uuid snapshot_id FK
-        text path
-        text value
-    }
-    asset_meta_closures {
-        bigint id PK
-        uuid snapshot_id FK
-        text path
-    }
-    data_sources {
-        uuid id PK
-        text name UK
-        text adapter_type
-        text adapter_url
-    }
-    slo_definitions {
-        uuid id PK
-        text name
-        int version
-        float pass_threshold
-        float warning_threshold
-        uuid sli_definition_id FK
-        bool active
-    }
-    slo_objectives {
-        uuid id PK
-        uuid slo_definition_id FK
-        text sli
-        int weight
-        bool key_sli
-    }
-    sli_definitions {
-        uuid id PK
-        text name
-        int version
-        jsonb indicators
-        text mode
-        bool active
-    }
-    slo_groups {
-        uuid id PK
-        text name
-        uuid template_slo_definition_id FK
-        jsonb gen_variables
-        bool active
-    }
-    slo_display_groups {
-        uuid id PK
-        text name UK
-        uuid parent_id FK
-        int sort_order
-    }
-    slo_display_group_members {
-        uuid group_id PK
-        text slo_name PK
-    }
-    slo_assignments {
-        uuid id PK
-        uuid asset_id FK
-        uuid asset_group_id FK
-        uuid slo_definition_id FK
-        uuid data_source_id FK
-    }
-    slo_group_assignments {
-        uuid id PK
-        uuid asset_id FK
-        uuid asset_group_id FK
-        uuid slo_group_id FK
-        uuid data_source_id FK
-    }
-    annotation_categories {
-        uuid id PK
-        text name UK
-        text label
-        text color
-    }
-    evaluations {
-        uuid id PK
-        uuid asset_id FK
-        text eval_name
-        timestamptz period_start
-        timestamptz period_end
-        text status
-        text result
-    }
-    slo_evaluations {
-        uuid id PK
-        uuid evaluation_id FK
-        uuid asset_id FK
-        text slo_name
-        int slo_version
-        text status
-        text result
-        float score
-        bool invalidated
-    }
-    indicator_results {
-        uuid id PK
-        uuid slo_evaluation_id FK
-        uuid slo_objective_id FK
-        float value
-        float compared_value
-        text status
-    }
-    sli_values {
-        uuid slo_evaluation_id PK
-        timestamptz eval_start PK
-        text metric_name PK
-        text aggregation PK
-        float value
-    }
-    evaluation_annotations {
-        uuid id PK
-        uuid slo_evaluation_id FK
-        uuid evaluation_run_id FK
-        text content
-        text author
-        uuid category_id FK
-    }
 ```
 
 ## Table Groups
