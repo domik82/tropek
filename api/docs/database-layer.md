@@ -8,28 +8,28 @@ Async SQLAlchemy ORM with asyncpg driver, managed by Alembic migrations.
 
 - `_get_engine()` -- shared `AsyncEngine` (created once, reused)
 - `get_session_factory()` -- shared `async_sessionmaker`
-- `get_session()` -- FastAPI dependency (async generator)
+- `get_session()` -- FastAPI dependency (returns session from middleware)
+
+Session lifecycle is managed by `SessionMiddleware` (`api/tropek/db/middleware.py`),
+not by the `get_session()` dependency itself. The middleware creates a session per
+HTTP request, commits on 2xx responses, rolls back on 4xx/5xx or raised exceptions,
+and closes the session in a `finally` block.
 
 ```python
-async def get_session() -> AsyncGenerator[AsyncSession, None]:
-    async with session_factory() as session:
-        try:
-            yield session
-            await session.commit()
-        except Exception:
-            await session.rollback()
-            raise
+async def get_session(request: Request) -> AsyncSession:
+    session: AsyncSession = request.state.session
+    return session
 ```
-
-Sessions auto-commit on success, rollback on exception. One session per request.
 
 ## ORM Models
 
-All models live in `api/tropek/db/models.py`. Key patterns:
+All models live in `api/tropek/db/models.py`. 24 model classes organized into six groups.
+
+Key patterns:
 
 - **UUID primary keys** generated server-side (`uuid4`)
 - **Timestamps**: `created_at` (server_default) and `updated_at` (onupdate) where applicable
-- **JSONB columns** for flexible data: labels, indicators, metadata, job_stats
+- **JSONB columns** for flexible data: tags, indicators, variables, job_stats, comparison
 - **Check constraints** at the DB level for enums: status, result, ingestion_mode
 - **Composite primary keys** for junction tables and the hypertable
 
@@ -37,27 +37,47 @@ All models live in `api/tropek/db/models.py`. Key patterns:
 
 | Model | Table | Key Relationships |
 |-------|-------|-------------------|
+| **Asset Inventory** | | |
 | `AssetType` | `asset_types` | -- |
 | `Asset` | `assets` | -> AssetType (type_name FK) |
 | `AssetGroup` | `asset_groups` | -- |
 | `AssetGroupMember` | `asset_group_members` | -> Asset, -> AssetGroup |
 | `AssetGroupLink` | `asset_group_links` | -> AssetGroup (parent), -> AssetGroup (child) |
-| `DataSource` | `data_sources` | -- |
+| **Asset Metadata** | | |
+| `AssetMetaSnapshot` | `asset_meta_snapshots` | -> Asset (asset_id FK) |
+| `AssetMetaValue` | `asset_meta_values` | -> AssetMetaSnapshot (snapshot_id FK) |
+| `AssetMetaClosure` | `asset_meta_closures` | -> AssetMetaSnapshot (snapshot_id FK) |
+| **Definition Registries** | | |
 | `SLIDefinition` | `sli_definitions` | -- |
-| `SLODefinition` | `slo_definitions` | -> SLOObjective[] (selectin-loaded) |
+| `SLODefinition` | `slo_definitions` | -> SLOObjective[] (selectin-loaded), -> SLOGroup (optional) |
 | `SLOObjective` | `slo_objectives` | -> SLODefinition (FK) |
-| `Evaluation` | `evaluations` | -> Asset (FK), -> EvaluationAnnotation[] (cascade) |
-| `EvaluationAnnotation` | `evaluation_annotations` | -> Evaluation (FK) |
-| `SLIValue` | `sli_values` | No ORM relationship (intentional) |
-| `AssetSLOLink` | `asset_slo_links` | -> Asset (FK) |
-| `AssetGroupSLOLink` | `asset_group_slo_links` | -> AssetGroup (FK) |
-| `EvaluationBatch` | `evaluation_batches` | References evaluations via JSONB |
+| `DataSource` | `data_sources` | -- |
+| `SLOGroup` | `slo_groups` | -> SLODefinition (template FK) |
+| `SLODisplayGroup` | `slo_display_groups` | -> self (parent_id, self-referential) |
+| `SLODisplayGroupMember` | `slo_display_group_members` | -> SLODisplayGroup (FK) |
+| **Evaluation Binding** | | |
+| `SLOAssignment` | `slo_assignments` | -> Asset or AssetGroup (XOR), -> SLODefinition, -> DataSource |
+| `SLOGroupAssignment` | `slo_group_assignments` | -> Asset or AssetGroup (XOR), -> SLOGroup, -> DataSource |
+| **Evaluation Results** | | |
+| `EvaluationRun` | `evaluations` | -> Asset (FK) |
+| `SLOEvaluation` | `slo_evaluations` | -> EvaluationRun (FK) |
+| `IndicatorResultRow` | `indicator_results` | -> SLOEvaluation (FK), -> SLOObjective (FK) |
+| `SLIValue` | `sli_values` | No ORM relationship (intentional — hypertable) |
+| **Annotations** | | |
+| `AnnotationCategory` | `annotation_categories` | -- |
+| `EvaluationAnnotation` | `evaluation_annotations` | -> SLOEvaluation or EvaluationRun (XOR), -> AnnotationCategory |
 
 ### SLIValue: No ORM Relationship
 
-The `sli_values` hypertable has no SQLAlchemy relationship to `Evaluation`. This is
+The `sli_values` hypertable has no SQLAlchemy relationship to `SLOEvaluation`. This is
 intentional -- it prevents accidental lazy-loading of thousands of metric rows when
 fetching an evaluation. SLI values are always queried explicitly through the repository.
+
+### Evaluation parent-child model
+
+`EvaluationRun` is the parent -- one row per `(asset, eval_name, period)` trigger.
+Each bound SLO produces one `SLOEvaluation` child row. Each SLO evaluation produces
+one `IndicatorResultRow` per objective. This replaces the old flat `Evaluation` model.
 
 ## Migrations
 
@@ -69,50 +89,51 @@ Alembic runs in async mode. Configuration in `api/alembic/env.py`:
 
 ### Existing Migrations
 
-1. **001_initial_schema** -- Creates all 14 tables with indexes, constraints, and foreign keys
-2. **002_timescaledb_hypertable** -- Converts `sli_values` to a hypertable and seeds default asset types
+1. **001_initial_schema** -- All tables, indexes, constraints, foreign keys
+2. **002_timescaledb_hypertable** -- Creates the `sli_values` hypertable and seeds default asset types
 
 ### Creating New Migrations
 
-Always autogenerate against the test database:
+Never hand-write migration files. Use the regeneration script:
 
 ```bash
-ENV_FILE=.env.test uv run --directory api alembic revision --autogenerate -m "description"
+./scripts/db-regen-migrations.sh
 ```
 
-Never hand-write migration files.
+This drops and recreates the test database, then regenerates migrations from ORM models.
 
-## EvaluationRepository
+## Key Repositories
 
-The largest repository, organized by concern:
+The evaluation domain is split across multiple focused repositories:
 
-### Lifecycle Methods
-- `create_pending()` -- Create evaluation in pending status
-- `mark_running()` -- Set running, record worker_id and started_at
-- `mark_completed()` -- Write result, score, indicator_results; set completed
-- `mark_failed()` -- Set failed with error details
-- `mark_partial()` -- Mark partial (worker crash mid-execution)
+### EvaluationRepository (SLOEvaluation)
 
-### Query Methods
-- `get_by_id()` -- Fetch with annotations eagerly loaded
-- `list_evaluations()` -- Filtered, paginated list
+The largest repository, handling per-SLO evaluation lifecycle:
+
+- `create_pending()` -- Create SLO evaluation in pending status
+- `mark_running()` -- Set running, record worker_id
+- `mark_completed()` -- Write result, score, indicator results
+- `mark_failed()` / `mark_partial()` -- Set failure/partial status
+- `get_by_id()` / `list_evaluations()` -- Query methods
 - `list_with_counts()` -- List with annotation counts
-- `get_baselines()` -- Previous evaluations for relative comparison
-- `find_stuck()` -- Running evaluations past the stuck threshold
+- `find_stuck()` -- Running evaluations past stuck threshold
+- `invalidate()` / `restore()` -- Mark as invalid or clear invalidation
+- `pin_baseline()` / `unpin_baseline()` -- Baseline pin management
+- `override_status()` / `restore_override()` -- Manual status override
 
-### Annotation Methods
-- `add_annotation()`, `get_annotation_by_id()`
-- `update_annotation()`, `delete_annotation()`
+### EvaluationRunRepository
 
-### SLI Value Methods
-- `write_sli_values()` -- Bulk insert into hypertable
-- `delete_sli_values()` -- Remove by eval_id
-- `get_sli_values_for_eval()` -- Fetch for one evaluation
+Parent evaluation run lifecycle:
 
-### Trend Methods
-- `get_trend()` -- Time-series for one metric
-- `get_trend_by_domain()` -- Query by asset_name + slo_name
+- `create()` -- Create parent run for an asset
+- `mark_completed()` -- Aggregate child SLO evaluation results
+- `finalize_if_all_done()` -- Check if all children completed, finalize
 
-### Invalidation
-- `invalidate()` -- Set invalidated flag + note
-- `restore()` -- Clear invalidation
+### Other Repositories
+
+- `BaselineRepository` -- Fetch previous evaluations for relative comparison
+- `IndicatorRepository` -- Per-SLI result row CRUD
+- `SLIValueRepository` -- Bulk insert/query on the hypertable
+- `TrendRepository` -- Time-series queries by asset+SLO or evaluation ID
+- `AnnotationRepository` -- Annotation CRUD
+- `AnnotationCategoryRepository` -- Category taxonomy management
