@@ -76,7 +76,8 @@ ENV_FILE=.env.test uv run --directory api alembic upgrade head
 ## Architecture
 
 See [docs/architecture.md](docs/architecture.md) for API layer architecture,
-[docs/evaluation-engine.md](docs/evaluation-engine.md) for the scoring engine, and
+[docs/architecture/evaluation-lifecycle.md](../docs/architecture/evaluation-lifecycle.md) for the
+scoring engine and evaluation lifecycle, and
 [docs/database-layer.md](docs/database-layer.md) for the database schema and repository pattern.
 
 For module documentation see [`docs/modules/`](../docs/modules/).

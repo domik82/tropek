@@ -7,6 +7,27 @@ This document covers the full lifecycle from trigger to finalization.
 
 ## Lifecycle States
 
+`EvaluationRun` (parent) and `SLOEvaluation` (child) have different allowed states.
+
+### EvaluationRun states
+
+```mermaid
+stateDiagram-v2
+    [*] --> pending: create()
+    pending --> running: mark_running()
+    running --> completed: finalize_if_all_done()
+    running --> failed: mark_failed()
+```
+
+| Status | Meaning |
+|--------|---------|
+| **pending** | Created, children enqueued |
+| **running** | At least one child started |
+| **completed** | All children terminal, result aggregated |
+| **failed** | Unrecoverable error |
+
+### SLOEvaluation states
+
 ```mermaid
 stateDiagram-v2
     [*] --> pending: create_pending()
@@ -14,7 +35,6 @@ stateDiagram-v2
     running --> completed: mark_completed()
     running --> failed: mark_failed()
     running --> partial: mark_partial() — worker crash
-    partial --> pending: watchdog reschedule
 ```
 
 | Status | Meaning |
@@ -23,7 +43,7 @@ stateDiagram-v2
 | **running** | Worker picked it up, fetching metrics or evaluating |
 | **completed** | Engine ran, result + score + indicators persisted |
 | **failed** | Unrecoverable error (adapter down, invalid SLO, etc.) |
-| **partial** | Worker crashed mid-execution; watchdog can reschedule |
+| **partial** | Worker crashed mid-execution (DB infrastructure exists for watchdog reschedule but no watchdog job is registered yet) |
 
 ## Triggering
 
@@ -137,30 +157,67 @@ flowchart TD
     TS -->|"score vs pass% / warning%"| ER[EvaluationResult]
 ```
 
-### Criteria comparison modes
+### Criteria syntax
 
-- **Fixed threshold**: `<600`, `>=99.9` — compare against a literal value
-- **Relative percent**: `<=+10%` — compare against baseline with a percentage tolerance
-- **Relative absolute**: `<=+50` — compare against baseline with an absolute tolerance
+| Pattern | Type | Meaning |
+|---------|------|---------|
+| `<600` | Fixed | value < 600 |
+| `<=600` | Fixed | value <= 600 |
+| `=0` | Fixed | value == 0 |
+| `>=10` | Fixed | value >= 10 |
+| `<=+10%` | Relative | value <= baseline * 1.10 |
+| `>=-5%` | Relative | value >= baseline * 0.95 |
+| `<=+50` | Relative absolute | value <= baseline + 50 |
+
+Parsed into a `ParsedCriteria` model with operator, type (FIXED/RELATIVE), threshold,
+relative percentage, and a `compute_target_value(baseline)` method that resolves the
+comparison target at evaluation time.
 
 ### Scoring rules
 
-- **Within a criteria block**: AND logic — all criteria must pass for the block to pass
-- **Across blocks**: OR logic — any block passing counts as pass
+Each objective has a flat `pass_threshold` list and a flat `warning_threshold` list.
+Evaluation checks them in priority order — pass first, then warning:
+
+| Condition | Status | Score |
+|-----------|--------|-------|
+| No `pass_threshold` defined | INFO | 0 (does not contribute) |
+| Value is None (not retrieved) | ERROR | 0 |
+| All `pass_threshold` criteria pass (AND) | PASS | weight |
+| All `warning_threshold` criteria pass (AND) | WARNING | 0.5 × weight |
+| Otherwise | FAIL | 0 |
+
 - **Key SLI**: if a key SLI fails, the entire evaluation fails regardless of total score
-- **INFO status**: objectives with no pass criteria are informational — they don't affect score
-- **Scoring**: pass = full weight, warning = 0.5 x weight, fail = 0
+- **Total score**: `sum(achieved) / sum(max_weights) × 100`, compared against
+  `total_score.pass_threshold` (default 90%) and `total_score.warning_threshold` (default 75%)
+
+### Known limitations
+
+The engine does **not** validate that pass criteria are stricter than warning criteria.
+`score_objective()` checks pass first, then warning. If warning is stricter than pass,
+the warning band becomes unreachable — any value satisfying warning also satisfies pass.
+
+**Example (wrong):** `pass: <=+20%`, `warning: <=+5%` — warning is never reached.
+**Correct:** `pass: <=+5%`, `warning: <=+20%` — pass is the strict gate, warning catches
+degraded-but-acceptable values.
+
+The same concern applies to `total_score` thresholds — if `warning_threshold` is set higher
+than `pass_threshold`, the warning band disappears.
 
 ## Baseline Comparison
 
 Relative criteria (e.g. `<=+10%`) compare the current value against a baseline derived
 from previous evaluations:
 
-1. Worker loads the last N completed evaluations for the same (asset, SLO)
+1. Worker loads the last N completed, non-invalidated evaluations for the same (asset, SLO)
 2. Baselines are filtered by result score: all results, pass+warning only, or pass only
-3. Values are aggregated using the configured function (avg, p50, p90, p95, p99)
-4. If `scope_tags` is set, baselines are further filtered to matching asset tags
+   (`include_result_with_score` in `SLOComparison`)
+3. If a baseline pin is active, only evaluations after the pinned evaluation are considered
+4. Per-metric values are aggregated using the configured function (avg, p50, p90, p95, p99)
 5. If no baselines exist, relative criteria **always pass** (no penalty for first run)
+
+The `SLOComparison` model also carries a `scope_tags` field (default `['os']`), but it is
+**not used** during normal evaluation baseline queries — only in the re-evaluation flow
+via `get_reeval_baselines` with `tag_filters`.
 
 ## Entity Hierarchy
 
@@ -210,6 +267,8 @@ erDiagram
         uuid slo_objective_id FK
         float value "measured metric value"
         float compared_value "baseline value"
+        float change_absolute "value minus baseline"
+        float change_relative_pct "percentage change from baseline"
         string status "pass / warning / fail / error"
         float score "0 or weight"
         jsonb targets "resolved pass and warning criteria"
@@ -223,6 +282,7 @@ erDiagram
         float value
         string asset_name "denormalized"
         string evaluation_name "denormalized"
+        string os_tag "denormalized"
     }
 ```
 
@@ -258,15 +318,12 @@ graph LR
         direction LR
         P1["<b>Session 1 — Phase 1</b><br/>~5ms<br/><br/>mark_running<br/>snapshot<br/><br/><i>COMMIT</i>"]
         P2a["<b>Session 2 — Phase 2a</b><br/>~10ms<br/><br/>load SLO def<br/>load SLI def<br/>load datasrc<br/><i>COMMIT</i>"]
-        HTTP["<b>No DB — HTTP I/O</b><br/>1-10s<br/><br/>query adapter"]
-        P2b["<b>Session 3 — Phase 2b</b><br/>~10ms<br/><br/>resolve baselines<br/><br/><i>COMMIT</i>"]
+        P2b["<b>Session 3 — Phase 2b</b><br/>1-10s<br/><br/>HTTP query adapter<br/>resolve baselines<br/>evaluate()<br/><br/><i>COMMIT</i>"]
         P3a["<b>Session 4 — Phase 3a</b><br/>~10ms<br/><br/>mark_completed<br/>INSERT indicators<br/><i>COMMIT</i>"]
         P3b["<b>Session 5 — Phase 3b</b><br/>~10ms<br/><br/>INSERT sli_values<br/><br/><i>COMMIT</i>"]
 
-        P1 --> P2a --> HTTP --> P2b --> P3a --> P3b
+        P1 --> P2a --> P2b --> P3a --> P3b
     end
-
-    style HTTP fill:#2d333b,stroke:#f85149,stroke-width:2px
 ```
 
 > **Snapshot (Pydantic model)** is captured in Phase 1 and carried across all subsequent
@@ -283,16 +340,14 @@ SQLAlchemy objects are carried past this point.
 Opens a fresh session, loads `SLODefinition`, `SLIDefinition`, and `DataSource` by the
 pinned name+version from the snapshot. Read-only, ~10ms.
 
-### HTTP adapter query (no DB session)
+### Phase 2b — HTTP query + baselines + evaluate
 
-The adapter HTTP call (1-10 seconds) happens with **no open DB session and no locks held**.
-Uses a shared `httpx.AsyncClient` per worker process for connection pooling.
-
-### Phase 2b — Resolve baselines + evaluate
-
-Opens a fresh session for read-only baseline queries, then calls `evaluate()` (pure
-function). Produces a `FetchAndEvaluateResult` containing metrics, baselines, and the
-scored result. ~10ms.
+Opens a session, then calls `fetch_and_evaluate()` which: queries the adapter via HTTP
+(1-10 seconds), resolves baselines via the open session, and calls `evaluate()` (pure
+function). The DB session is open during the HTTP call but no queries or locks are held
+during the network wait — the session is only used for baseline reads after the adapter
+responds. Uses a shared `httpx.AsyncClient` per worker process for connection pooling.
+Produces a `FetchAndEvaluateResult` containing metrics, baselines, and the scored result.
 
 ### Phase 3a — Write evaluation result + indicator rows
 
@@ -457,6 +512,62 @@ After completion, evaluations support:
 - **Re-evaluation**: re-run from a specific date or from baseline, with delta annotations
 - **Trend queries**: time-series data from the `sli_values` hypertable
 
+## Evaluation Engine Reference
+
+The core scoring logic lives in `api/tropek/modules/quality_gate/evaluation_engine/`. It is
+pure Python with zero I/O — no database, network, or file access. Ported from Keptn's Go
+`lighthouse-service`.
+
+### Module map
+
+```
+evaluation_engine/
+  evaluator.py       — evaluate() entry point
+  slo_parser.py      — Build SLO model from structured data
+  criteria.py        — Parse and evaluate criteria strings
+  scoring.py         — Per-objective + total score calculation
+  variables.py       — $variable substitution in SLI queries
+  slo_models.py      — SLO domain models (Pydantic BaseModel)
+  result_models.py   — Evaluation result models (Pydantic BaseModel)
+  constants.py       — StrEnums (status, outcome, criteria type)
+```
+
+### Domain models
+
+**SLO models** (`slo_models.py`):
+
+- `SLOObjective` — one metric with `pass_threshold` / `warning_threshold` (flat `list[str]`,
+  AND logic), `weight`, `key_sli` flag
+- `SLOComparison` — baseline config: `compare_with`, `number_of_comparison_results`,
+  `include_result_with_score`, `aggregate_function` (avg/p50/p90/p95/p99), `scope_tags`
+- `SLOTotalScore` — `pass_threshold` (default 90.0), `warning_threshold` (default 75.0)
+- `SLO` — combines `objectives`, `comparison`, `total_score`
+
+**Result models** (`result_models.py`):
+
+- `ObjectiveResult` — per-objective status, score, `contributes_to_score`, `key_sli_failed`
+- `CriteriaTarget` — raw criteria string, resolved `target_value`, `violated` flag
+- `IndicatorResult` — metric name, value, baseline, status, score, weight, pass/warning targets,
+  absolute/relative change
+- `EvaluationResult` — overall `result` (PASS/WARNING/FAIL), `score`, `indicator_results`,
+  `compared_evaluation_ids`
+
+### Variable substitution
+
+SLI queries can contain `$variable` tokens replaced at evaluation time.
+
+Priority (highest wins):
+1. `eval.variables` — per-evaluation overrides (direct assignment)
+2. `slo.variables` — SLO-level defaults (direct assignment)
+3. Reserved built-ins (`$asset_name`, `$evaluation_name`, `$test_name`, `$start`, `$end`,
+   `$TROPEK_ASSET`, `$TROPEK_EVALUATION`)
+4. `asset.variables` (via `setdefault` — won't overwrite reserved)
+5. `asset.tags` (via `setdefault` — won't overwrite reserved or asset.variables)
+
+Example: `rate(http_requests_total{instance="$vm_ip"}[5m])` with `variables={"vm_ip": "10.0.1.15"}`
+
+**Implementation**: `api/tropek/modules/quality_gate/workflows/execution/evaluation_helpers.py`
+
 ## Key Files
 
 | File | Role |
@@ -465,7 +576,14 @@ After completion, evaluations support:
 | `api/tropek/modules/quality_gate/workflows/trigger/trigger_resolver.py` | `resolve_single_trigger` — SLO/SLI/DataSource chain resolution |
 | `api/tropek/modules/quality_gate/workflows/execution/evaluation_executor.py` | Phase functions: `load_evaluation_snapshot`, `fetch_and_evaluate`, `write_results`, `write_sli_values_phase` |
 | `api/tropek/modules/quality_gate/evaluation_engine/evaluator.py` | Pure `evaluate()` function — scoring logic |
+| `api/tropek/modules/quality_gate/evaluation_engine/criteria.py` | `parse_criteria_string`, `evaluate_criteria` — criteria parsing and comparison |
+| `api/tropek/modules/quality_gate/evaluation_engine/scoring.py` | `score_objective`, `calculate_total_score` — per-objective and total scoring |
+| `api/tropek/modules/quality_gate/evaluation_engine/variables.py` | `substitute_variables` — $variable token replacement in SLI queries |
+| `api/tropek/modules/quality_gate/evaluation_engine/slo_models.py` | `SLO`, `SLOObjective`, `SLOComparison` — engine domain models |
+| `api/tropek/modules/quality_gate/evaluation_engine/result_models.py` | `EvaluationResult`, `IndicatorResult`, `CriteriaTarget` — result types |
+| `api/tropek/modules/quality_gate/workflows/execution/evaluation_helpers.py` | `build_eval_variables`, `build_slo_model`, `compute_baselines` — shared helpers |
 | `api/tropek/modules/quality_gate/repositories/evaluation.py` | `EvaluationRepository` — `mark_running`, `mark_completed`, `create_pending` |
 | `api/tropek/modules/quality_gate/repositories/baseline.py` | `BaselineRepository` — historical baseline queries |
 | `api/tropek/db/models.py` | ORM: `SLOEvaluation`, `EvaluationRun`, `SLIValue`, `IndicatorResultRow` |
+| `api/tropek/queue.py` | `run_evaluation_job`, `finalize_run_job`, `finalize_sweeper_job` — arq worker jobs |
 | `config.yaml` | `queue.max_jobs`, `reliability.adapter_timeout_seconds` |

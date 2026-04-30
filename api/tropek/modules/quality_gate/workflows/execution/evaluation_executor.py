@@ -136,7 +136,7 @@ def _build_eval_variables(
 ) -> dict[str, str]:
     """Build merged variables for query substitution.
 
-    Merge priority: reserved < asset.variables < asset.tags < slo.variables < eval.variables.
+    Priority (highest wins): eval.variables > slo.variables > reserved > asset.variables > asset.tags.
     """
     return _build_eval_variables_shared(
         asset_name=asset_snapshot.get('name'),
