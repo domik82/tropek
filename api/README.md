@@ -41,14 +41,14 @@ curl http://localhost:8080/health
 
 ```bash
 # Unit tests (no infrastructure needed)
-uv run pytest api/tests/ -m "not integration" -q
+uv run --directory api pytest tests/ -m "not integration" -q
 
 # Single test
-uv run pytest api/tests/engine/test_evaluator.py::TestName -v
+uv run --directory api pytest tests/engine/test_evaluator.py::TestName -v
 
 # Integration tests (requires test DB)
 just test-env
-uv run pytest api/tests/ -m integration -v
+uv run --directory api pytest tests/ -m integration -v
 just test-env-down
 ```
 
