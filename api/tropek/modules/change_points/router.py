@@ -37,7 +37,7 @@ async def list_change_points(
     from_ts: datetime | None = None,
     to_ts: datetime | None = None,
     limit: int = Query(default=50, ge=0, le=1000),
-    offset: int = Query(default=0, ge=0),
+    offset: int = Query(default=0, ge=0, le=1_000_000),
     session: AsyncSession = Depends(get_session),
 ) -> list[ChangePointRead]:
     """List change points with optional filters."""
