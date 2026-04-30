@@ -25,7 +25,7 @@ class CategoryColor(StrEnum):
     GRAY = 'gray'
 
 
-LabelStr = Annotated[str, Field(min_length=1, max_length=12)]
+LabelStr = Annotated[str, Field(min_length=1, max_length=12, pattern=r'^[^\x00]+$')]
 NameStr = Annotated[str, Field(min_length=1, max_length=40, pattern=r'^[a-z][a-z0-9\-]*$')]
 
 
