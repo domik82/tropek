@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from tropek.db.session import get_session
+from tropek.modules.common.schemas import SafeQueryStr
 from tropek.modules.configuration.repository import ConfigurationRepository
 from tropek.modules.configuration.schemas import ConfigurationRead, ConfigurationUpdate
 
@@ -14,7 +15,7 @@ router = APIRouter(tags=['configuration'])
 
 @router.get('/configuration', response_model=list[ConfigurationRead])
 async def list_configuration(
-    prefix: str | None = None,
+    prefix: SafeQueryStr | None = None,
     session: AsyncSession = Depends(get_session),
 ) -> list[ConfigurationRead]:
     """List all configuration entries, optionally filtered by key prefix."""
