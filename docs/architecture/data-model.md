@@ -46,29 +46,159 @@ erDiagram
     indicator_results }o--|| slo_objectives : "slo_objective_id"
     evaluation_annotations }o--|| annotation_categories : "category_id"
 
-    asset_types { uuid id PK; text name UK; bool is_default }
-    assets { uuid id PK; text name UK; text type_name FK; jsonb tags; jsonb variables; text color }
-    asset_groups { uuid id PK; text name UK; text display_name; text description; text color }
-    asset_group_members { uuid asset_group_id PK_FK; uuid asset_id PK_FK; float weight }
-    asset_group_links { uuid parent_asset_group_id PK_FK; uuid child_asset_group_id PK_FK; float weight }
-    asset_meta_snapshots { uuid id PK; uuid asset_id FK; text source; timestamptz observed_at }
-    asset_meta_values { bigint id PK; uuid snapshot_id FK; text[] path; text value }
-    asset_meta_closures { bigint id PK; uuid snapshot_id FK; text[] path }
-    data_sources { uuid id PK; text name UK; text adapter_type; text adapter_url; jsonb tags; text token }
-    slo_definitions { uuid id PK; text name; int version; float pass_threshold; float warning_threshold; jsonb comparison; uuid sli_definition_id FK; bool active }
-    slo_objectives { uuid id PK; uuid slo_definition_id FK; text sli; int weight; bool key_sli; text[] pass_threshold; text[] warning_threshold }
-    sli_definitions { uuid id PK; text name; int version; jsonb indicators; text mode; bool active }
-    slo_groups { uuid id PK; text name; uuid template_slo_definition_id FK; jsonb gen_variables; bool active }
-    slo_display_groups { uuid id PK; text name UK; uuid parent_id FK; int sort_order }
-    slo_display_group_members { uuid group_id PK_FK; text slo_name PK }
-    slo_assignments { uuid id PK; uuid asset_id FK; uuid asset_group_id FK; uuid slo_definition_id FK; text slo_name; uuid data_source_id FK }
-    slo_group_assignments { uuid id PK; uuid asset_id FK; uuid asset_group_id FK; uuid slo_group_id FK; uuid data_source_id FK }
-    annotation_categories { uuid id PK; text name UK; text label; text color; bool show_on_graph; bool is_system }
-    evaluations { uuid id PK; uuid asset_id FK; text eval_name; timestamptz period_start; timestamptz period_end; text status; text result; int achieved_points; int total_points }
-    slo_evaluations { uuid id PK; uuid evaluation_id FK; uuid asset_id FK; text slo_name; int slo_version; text status; text result; float score; bool invalidated }
-    indicator_results { uuid id PK; uuid slo_evaluation_id FK; uuid slo_objective_id FK; float value; float compared_value; text status; float score }
-    sli_values { uuid slo_evaluation_id PK_FK; timestamptz eval_start PK; text metric_name PK; text aggregation PK; float value; text asset_name; text evaluation_name }
-    evaluation_annotations { uuid id PK; uuid slo_evaluation_id FK; uuid evaluation_run_id FK; text content; text author; uuid category_id FK }
+    asset_types {
+        uuid id PK
+        text name UK
+        bool is_default
+    }
+    assets {
+        uuid id PK
+        text name UK
+        text type_name FK
+        jsonb tags
+        jsonb variables
+    }
+    asset_groups {
+        uuid id PK
+        text name UK
+        text display_name
+    }
+    asset_group_members {
+        uuid asset_group_id PK
+        uuid asset_id PK
+        float weight
+    }
+    asset_group_links {
+        uuid parent_asset_group_id PK
+        uuid child_asset_group_id PK
+    }
+    asset_meta_snapshots {
+        uuid id PK
+        uuid asset_id FK
+        text source
+        timestamptz observed_at
+    }
+    asset_meta_values {
+        bigint id PK
+        uuid snapshot_id FK
+        text path
+        text value
+    }
+    asset_meta_closures {
+        bigint id PK
+        uuid snapshot_id FK
+        text path
+    }
+    data_sources {
+        uuid id PK
+        text name UK
+        text adapter_type
+        text adapter_url
+    }
+    slo_definitions {
+        uuid id PK
+        text name
+        int version
+        float pass_threshold
+        float warning_threshold
+        uuid sli_definition_id FK
+        bool active
+    }
+    slo_objectives {
+        uuid id PK
+        uuid slo_definition_id FK
+        text sli
+        int weight
+        bool key_sli
+    }
+    sli_definitions {
+        uuid id PK
+        text name
+        int version
+        jsonb indicators
+        text mode
+        bool active
+    }
+    slo_groups {
+        uuid id PK
+        text name
+        uuid template_slo_definition_id FK
+        jsonb gen_variables
+        bool active
+    }
+    slo_display_groups {
+        uuid id PK
+        text name UK
+        uuid parent_id FK
+        int sort_order
+    }
+    slo_display_group_members {
+        uuid group_id PK
+        text slo_name PK
+    }
+    slo_assignments {
+        uuid id PK
+        uuid asset_id FK
+        uuid asset_group_id FK
+        uuid slo_definition_id FK
+        uuid data_source_id FK
+    }
+    slo_group_assignments {
+        uuid id PK
+        uuid asset_id FK
+        uuid asset_group_id FK
+        uuid slo_group_id FK
+        uuid data_source_id FK
+    }
+    annotation_categories {
+        uuid id PK
+        text name UK
+        text label
+        text color
+    }
+    evaluations {
+        uuid id PK
+        uuid asset_id FK
+        text eval_name
+        timestamptz period_start
+        timestamptz period_end
+        text status
+        text result
+    }
+    slo_evaluations {
+        uuid id PK
+        uuid evaluation_id FK
+        uuid asset_id FK
+        text slo_name
+        int slo_version
+        text status
+        text result
+        float score
+        bool invalidated
+    }
+    indicator_results {
+        uuid id PK
+        uuid slo_evaluation_id FK
+        uuid slo_objective_id FK
+        float value
+        float compared_value
+        text status
+    }
+    sli_values {
+        uuid slo_evaluation_id PK
+        timestamptz eval_start PK
+        text metric_name PK
+        text aggregation PK
+        float value
+    }
+    evaluation_annotations {
+        uuid id PK
+        uuid slo_evaluation_id FK
+        uuid evaluation_run_id FK
+        text content
+        text author
+        uuid category_id FK
+    }
 ```
 
 ## Table Groups
