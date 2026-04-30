@@ -252,26 +252,25 @@ Each `run_evaluation_job` processes one SLOEvaluation through multiple phases wi
 database sessions**. The core invariant: **no DB transaction may span an HTTP call or hold
 locks longer than ~15ms**.
 
-```
-                        +---------------------------------------------+
-                        |         run_evaluation_job (arq job)        |
-                        +---------------------------------------------+
+```mermaid
+graph LR
+    subgraph "run_evaluation_job (arq job)"
+        direction LR
+        P1["<b>Session 1 — Phase 1</b><br/>~5ms<br/><br/>mark_running<br/>snapshot<br/><br/><i>COMMIT</i>"]
+        P2a["<b>Session 2 — Phase 2a</b><br/>~10ms<br/><br/>load SLO def<br/>load SLI def<br/>load datasrc<br/><i>COMMIT</i>"]
+        HTTP["<b>No DB — HTTP I/O</b><br/>1-10s<br/><br/>query adapter"]
+        P2b["<b>Session 3 — Phase 2b</b><br/>~10ms<br/><br/>resolve baselines<br/><br/><i>COMMIT</i>"]
+        P3a["<b>Session 4 — Phase 3a</b><br/>~10ms<br/><br/>mark_completed<br/>INSERT indicators<br/><i>COMMIT</i>"]
+        P3b["<b>Session 5 — Phase 3b</b><br/>~10ms<br/><br/>INSERT sli_values<br/><br/><i>COMMIT</i>"]
 
- +--------------+  +--------------+  +---------+  +--------------+  +--------------+  +-------------+
- |  Session 1   |  |  Session 2   |  | No DB   |  |  Session 3   |  |  Session 4   |  |  Session 5  |
- |  Phase 1     |  |  Phase 2a    |  | HTTP IO |  |  Phase 2b    |  |  Phase 3a    |  |  Phase 3b   |
- |  ~5ms        |  |  ~10ms       |  | 1-10s   |  |  ~10ms       |  |  ~10ms       |  |  ~10ms      |
- |              |  |              |  |         |  |              |  |              |  |             |
- | mark_running |  | load SLO def |  | query   |  | resolve      |  | mark_        |  | INSERT      |
- | snapshot     |  | load SLI def |  | adapter |  | baselines    |  | completed    |  | sli_values  |
- |              |  | load datasrc |  |         |  |              |  | INSERT       |  |             |
- | COMMIT       |  | COMMIT       |  |         |  | COMMIT       |  | indicators   |  | COMMIT      |
- |              |  |              |  |         |  |              |  | COMMIT       |  |             |
- +--------------+  +--------------+  +---------+  +--------------+  +--------------+  +-------------+
-        |                                                                                    |
-        |                          snapshot (Pydantic model)                                  |
-        +------------------ carried across all phases as detached data ----------------------+
+        P1 --> P2a --> HTTP --> P2b --> P3a --> P3b
+    end
+
+    style HTTP fill:#2d333b,stroke:#f85149,stroke-width:2px
 ```
+
+> **Snapshot (Pydantic model)** is captured in Phase 1 and carried across all subsequent
+> phases as detached data — no SQLAlchemy objects cross session boundaries.
 
 ### Phase 1 — Mark running + snapshot
 
