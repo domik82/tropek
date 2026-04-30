@@ -125,7 +125,7 @@ async def list_evaluations(
         json_schema_extra={'anyOf': [{'format': 'date-time', 'type': 'string'}]},
     ),
     limit: int = Query(default=200, ge=0, le=500),
-    offset: int = Query(default=0, ge=0),
+    offset: int = Query(default=0, ge=0, le=1_000_000),
     repos: QualityGateRepos = Depends(get_qg_repos),
 ) -> PagedResponse[EvaluationSummary]:
     """List evaluations with optional filters."""
