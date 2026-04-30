@@ -33,21 +33,28 @@ Key patterns:
 - **Check constraints** at the DB level for enums: status, result, ingestion_mode
 - **Composite primary keys** for junction tables and the hypertable
 
-### Model Index
+### Asset Inventory
 
 | Model | Table | Key Relationships |
 |-------|-------|-------------------|
-| **Asset Inventory** | | |
 | `AssetType` | `asset_types` | -- |
 | `Asset` | `assets` | -> AssetType (type_name FK) |
 | `AssetGroup` | `asset_groups` | -- |
 | `AssetGroupMember` | `asset_group_members` | -> Asset, -> AssetGroup |
 | `AssetGroupLink` | `asset_group_links` | -> AssetGroup (parent), -> AssetGroup (child) |
-| **Asset Metadata** | | |
+
+### Asset Metadata
+
+| Model | Table | Key Relationships |
+|-------|-------|-------------------|
 | `AssetMetaSnapshot` | `asset_meta_snapshots` | -> Asset (asset_id FK) |
 | `AssetMetaValue` | `asset_meta_values` | -> AssetMetaSnapshot (snapshot_id FK) |
 | `AssetMetaClosure` | `asset_meta_closures` | -> AssetMetaSnapshot (snapshot_id FK) |
-| **Definition Registries** | | |
+
+### Definition Registries
+
+| Model | Table | Key Relationships |
+|-------|-------|-------------------|
 | `SLIDefinition` | `sli_definitions` | -- |
 | `SLODefinition` | `slo_definitions` | -> SLOObjective[] (selectin-loaded), -> SLOGroup (optional) |
 | `SLOObjective` | `slo_objectives` | -> SLODefinition (FK) |
@@ -55,15 +62,27 @@ Key patterns:
 | `SLOGroup` | `slo_groups` | -> SLODefinition (template FK) |
 | `SLODisplayGroup` | `slo_display_groups` | -> self (parent_id, self-referential) |
 | `SLODisplayGroupMember` | `slo_display_group_members` | -> SLODisplayGroup (FK) |
-| **Evaluation Binding** | | |
+
+### Evaluation Binding
+
+| Model | Table | Key Relationships |
+|-------|-------|-------------------|
 | `SLOAssignment` | `slo_assignments` | -> Asset or AssetGroup (XOR), -> SLODefinition, -> DataSource |
 | `SLOGroupAssignment` | `slo_group_assignments` | -> Asset or AssetGroup (XOR), -> SLOGroup, -> DataSource |
-| **Evaluation Results** | | |
+
+### Evaluation Results
+
+| Model | Table | Key Relationships |
+|-------|-------|-------------------|
 | `EvaluationRun` | `evaluations` | -> Asset (FK) |
 | `SLOEvaluation` | `slo_evaluations` | -> EvaluationRun (FK) |
 | `IndicatorResultRow` | `indicator_results` | -> SLOEvaluation (FK), -> SLOObjective (FK) |
 | `SLIValue` | `sli_values` | No ORM relationship (intentional — hypertable) |
-| **Annotations** | | |
+
+### Annotations
+
+| Model | Table | Key Relationships |
+|-------|-------|-------------------|
 | `AnnotationCategory` | `annotation_categories` | -- |
 | `EvaluationAnnotation` | `evaluation_annotations` | -> SLOEvaluation or EvaluationRun (XOR), -> AnnotationCategory |
 
