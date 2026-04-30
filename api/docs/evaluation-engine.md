@@ -14,8 +14,8 @@ evaluation_engine/
   criteria.py        -- Parse and evaluate criteria strings
   scoring.py         -- Per-objective + total score calculation
   variables.py       -- $variable substitution in SLI queries
-  slo_models.py      -- SLO domain models (dataclasses)
-  result_models.py   -- Evaluation result models
+  slo_models.py      -- SLO domain models (Pydantic BaseModel)
+  result_models.py   -- Evaluation result models (Pydantic BaseModel)
   constants.py       -- StrEnums (status, outcome, criteria type)
 ```
 
@@ -23,9 +23,9 @@ evaluation_engine/
 
 ```mermaid
 graph TD
-    SLO_YAML["SLO YAML"]
-    Metrics["Metric Values<br/>(from adapter or push)"]
-    Baselines["Baseline Evaluations<br/>(from DB)"]
+    SLO["SLO Definition"]
+    Metrics["Metric Values<br/>(from adapter)"]
+    Baselines["Baseline Values<br/>(aggregated from DB)"]
 
     Parser["slo_parser.py<br/>build_slo()"]
     Vars["variables.py<br/>substitute_variables()"]
@@ -34,8 +34,8 @@ graph TD
     Score["scoring.py<br/>score_objective()<br/>calculate_total_score()"]
     Result["EvaluationResult<br/>{result, score, indicators}"]
 
-    SLO_YAML --> Parser
-    SLO_YAML --> Vars
+    SLO --> Parser
+    SLO --> Vars
     Parser --> Eval
     Vars -.->|substituted queries| Metrics
     Metrics --> Eval
@@ -51,15 +51,15 @@ graph TD
 def evaluate(
     slo: SLO,
     metrics: dict[str, float | None],
-    baselines: dict[str, list[float]],
-    compared_evaluation_ids: list[str],
+    baselines: dict[str, float | None],
+    compared_evaluation_ids: list[str] | None = None,
 ) -> EvaluationResult
 ```
 
 For each SLO objective:
 1. Look up the metric value from `metrics`
-2. Look up baseline values from `baselines`
-3. Call `score_objective()` to get pass/warning/fail status
+2. Look up the aggregated baseline value from `baselines`
+3. Call `score_objective()` to get pass/warning/fail/error status
 4. Build pass and warning target lists for the response
 
 Then `calculate_total_score()` aggregates all objective results into a final verdict.
@@ -80,21 +80,21 @@ Then `calculate_total_score()` aggregates all objective results into a final ver
 
 ### Evaluation Logic
 
-- **Within a criteria block**: AND (all must pass)
-- **Across blocks**: OR (any block passing = pass)
+- **Within a criteria list**: AND (all must pass)
 - **Relative with no baseline**: always passes (no penalty for first run)
 
 ### Parsed Representation
 
 ```python
-@dataclass
-class ParsedCriteria:
+class ParsedCriteria(BaseModel):
     raw: str                    # Original string
     operator: str               # <, <=, =, >=, >
     type: CriteriaType          # FIXED or RELATIVE
-    threshold: float | None     # For fixed criteria
-    relative_pct: float | None  # For relative %
-    relative_direction: str     # + or -
+    threshold: float            # For fixed criteria (default 0.0)
+    relative_pct: float         # For relative % (default 0.0)
+    relative_direction: str     # + or - (default '+')
+
+    def compute_target_value(self, baseline: float | None) -> float: ...
 ```
 
 ## Scoring
@@ -104,41 +104,44 @@ class ParsedCriteria:
 | Condition | Status | Score |
 |-----------|--------|-------|
 | No pass_threshold defined | INFO | 0 (does not contribute) |
-| Value is None | FAIL | 0 |
-| All pass_threshold pass | PASS | weight |
-| All warning_threshold pass | WARNING | 0.5 * weight |
+| Value is None | ERROR | 0 |
+| All pass_threshold criteria pass | PASS | weight |
+| All warning_threshold criteria pass | WARNING | 0.5 * weight |
 | Otherwise | FAIL | 0 |
 
 ### Total Score (calculate_total_score)
 
 1. Sum achieved scores / sum maximum scores -> percentage
 2. Check for key SLI failures (any key SLI fail = overall FAIL)
-3. Compare percentage against `total_score.pass` and `total_score.warning` thresholds
+3. Compare percentage against `total_score.pass_threshold` and `total_score.warning_threshold`
 
 ## Domain Models
+
+All engine models are Pydantic `BaseModel` classes (not dataclasses).
 
 ### SLO Models (slo_models.py)
 
 ```python
-@dataclass
-class SLOObjective:
+class SLOObjective(BaseModel):
     sli: str
-    display_name: str
-    pass_threshold: list[list[str]]   # Outer = OR, inner = AND
-    warning_threshold: list[list[str]]
-    weight: int
-    key_sli: bool
+    display_name: str = ''
+    pass_threshold: list[str]       # Flat list, AND logic
+    warning_threshold: list[str]    # Flat list, AND logic
+    weight: int = 1
+    key_sli: bool = False
 
-@dataclass
-class SLOComparison:
+class SLOComparison(BaseModel):
     compare_with: CompareWith        # SINGLE_RESULT | SEVERAL_RESULTS
-    number_of_comparison_results: int
+    number_of_comparison_results: int = 3
     include_result_with_score: IncludeResultWithScore  # ALL | PASS_OR_WARN | PASS
     aggregate_function: AggregateFunction  # AVG | P50 | P90 | P95 | P99
-    scope_tags: list[str]
+    scope_tags: list[str]            # default: ['os']
 
-@dataclass
-class SLO:
+class SLOTotalScore(BaseModel):
+    pass_threshold: float = 90.0
+    warning_threshold: float = 75.0
+
+class SLO(BaseModel):
     objectives: list[SLOObjective]
     comparison: SLOComparison
     total_score: SLOTotalScore
@@ -147,19 +150,36 @@ class SLO:
 ### Result Models (result_models.py)
 
 ```python
-@dataclass
-class ObjectiveResult:
+class ObjectiveResult(BaseModel):
     objective: SLOObjective
     status: IndicatorStatus    # PASS | WARNING | FAIL | INFO | ERROR
     score: float
     contributes_to_score: bool
     key_sli_failed: bool
 
-@dataclass
-class EvaluationResult:
+class CriteriaTarget(BaseModel):
+    criteria: str              # Raw criteria string
+    target_value: float | None # Computed threshold after resolving baseline
+    violated: bool             # Whether the metric value violated this criteria
+
+class IndicatorResult(BaseModel):
+    metric: str
+    display_name: str
+    value: float | None
+    compared_value: float | None
+    status: str
+    score: float
+    weight: float
+    key_sli: bool
+    pass_targets: list[CriteriaTarget]
+    warning_targets: list[CriteriaTarget] | None
+    change_absolute: float | None
+    change_relative_pct: float | None
+
+class EvaluationResult(BaseModel):
     result: EvaluationOutcome  # PASS | WARNING | FAIL
     score: float
-    indicator_results: list[ObjectiveResult]
+    indicator_results: list[IndicatorResult]
     compared_evaluation_ids: list[str]
 ```
 
@@ -168,14 +188,13 @@ class EvaluationResult:
 SLI queries can contain `$variable` tokens replaced at evaluation time:
 
 ```python
-build_variables(metadata, asset_name, test_name, start, end) -> dict[str, str]
+build_variables(metadata, asset_name, evaluation_name, start, end) -> dict[str, str]
 substitute_variables(template, variables) -> str
 ```
 
-Sources merged (in priority order):
-1. Evaluation metadata (caller-provided key-values)
-2. Asset labels
-3. Built-in: `$asset_name`, `$test_name`, `$start`, `$end`
+Sources merged (metadata has lowest priority — built-ins are not overridden):
+1. `metadata` dict from the evaluation request
+2. Built-in: `$asset_name`, `$evaluation_name`, `$test_name` (alias), `$start`, `$end`
 
 Example: `rate(http_requests_total{instance="$vm_ip"}[5m])` with `metadata={"vm_ip": "10.0.1.15"}`
 
@@ -183,43 +202,38 @@ Example: `rate(http_requests_total{instance="$vm_ip"}[5m])` with `metadata={"vm_
 
 ### No validation of pass vs warning criteria ordering
 
-The engine does **not** validate that warning criteria are logically between pass and fail.
-`score_objective()` checks pass first, then warning (see Scoring above). If the criteria are
-written so that warning is stricter than pass, the warning branch becomes unreachable — every
-value either passes (satisfies the looser pass criteria) or fails outright.
+The engine does **not** validate that pass criteria are stricter than warning criteria.
+`score_objective()` checks pass first, then warning (see Scoring above). If warning is
+stricter than pass, the warning band becomes unreachable — any value satisfying warning
+also satisfies pass, so the engine never reaches the warning branch.
 
-**Example — relative criteria with swapped thresholds:**
+**Example — warning stricter than pass (wrong):**
 
-```yaml
-objectives:
-  - sli: response_time_p95
-    pass:
-      criteria: ["<=+5%"]     # tight bound — intended as warning
-    warning:
-      criteria: ["<=+20%"]    # loose bound — intended as pass
+```json
+{
+  "pass_threshold": ["<=+20%"],
+  "warning_threshold": ["<=+5%"]
+}
 ```
 
-Here `<=+5%` (pass) is stricter than `<=+20%` (warning). A value within 5% of baseline passes.
-A value between 5–20% fails the pass check, then satisfies the looser warning check — so
-everything lands in either pass or warning, and nothing ever reaches fail.
+Here `<=+20%` (pass) is more permissive than `<=+5%` (warning). A value within 5% of
+baseline satisfies both — but pass is checked first, so it passes. A value between 5–20%
+fails warning but passes pass. Warning is never reached.
 
-The correct version:
+**Correct — pass is stricter, warning is more permissive:**
 
-```yaml
-    pass:
-      criteria: ["<=+20%"]    # looser = pass
-    warning:
-      criteria: ["<=+5%"]     # tighter = warning
+```json
+{
+  "pass_threshold": ["<=+5%"],
+  "warning_threshold": ["<=+20%"]
+}
 ```
 
-This is counterintuitive but follows from the evaluation order: **pass is checked first, warning
-is the fallback.** So pass criteria must be the *easiest* to satisfy (widest acceptable band).
-Warning criteria must be *stricter* — they define the narrower band of "good enough to not fail
-but not good enough to pass."
+Pass is the high-quality gate (strict). Warning catches degraded-but-acceptable values
+that don't meet the pass threshold.
 
-**Why no static validation?** For simple cases (same operator, both fixed or both relative %),
-contradictions are detectable. But criteria blocks can mix fixed and relative thresholds, use
-different operators, or depend on a runtime baseline — making general static analysis unreliable.
+**Why no static validation?** Criteria can mix fixed and relative thresholds, use different
+operators, or depend on a runtime baseline — making general static analysis unreliable.
 This matches Keptn lighthouse-service behaviour, which also performed no such validation.
 
 **The same concern applies to `total_score` thresholds.** If `warning_threshold` is set higher
