@@ -371,17 +371,30 @@ This ensures baseline comparisons always reference fully completed prior evaluat
 
 ### FK relationships and lock interactions
 
-```
-evaluations (EvaluationRun — parent)
-  ^
-  | FK: slo_evaluations.evaluation_id
-  |
-slo_evaluations (SLOEvaluation — one per asset+SLO)
-  ^                          ^
-  | FK: indicator_results    | FK: sli_values
-  |     .evaluation_id       |     .slo_evaluation_id
-  |                          |
-indicator_results            sli_values (TimescaleDB hypertable)
+```mermaid
+erDiagram
+    evaluations ||--o{ slo_evaluations : "evaluation_id"
+    slo_evaluations ||--o{ indicator_results : "slo_evaluation_id"
+    slo_evaluations ||--o{ sli_values : "slo_evaluation_id"
+
+    evaluations {
+        uuid id PK
+        string note "EvaluationRun — parent"
+    }
+    slo_evaluations {
+        uuid id PK
+        uuid evaluation_id FK
+        string note "SLOEvaluation — one per asset+SLO"
+    }
+    indicator_results {
+        uuid id PK
+        uuid slo_evaluation_id FK
+    }
+    sli_values {
+        uuid slo_evaluation_id PK
+        timestamptz eval_start PK
+        string note "TimescaleDB hypertable"
+    }
 ```
 
 Key lock interactions:
