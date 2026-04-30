@@ -2,6 +2,9 @@
 
 Async SQLAlchemy ORM with asyncpg driver, managed by Alembic migrations.
 
+For the full data model (table descriptions, ER diagrams, design decisions):
+[`docs/architecture/data-model.md`](../../docs/architecture/data-model.md)
+
 ## Session Management
 
 `api/tropek/db/session.py` provides:
@@ -23,7 +26,7 @@ async def get_session(request: Request) -> AsyncSession:
 
 ## ORM Models
 
-All models live in `api/tropek/db/models.py`. 24 model classes organized into six groups.
+All 24 model classes live in `api/tropek/db/models.py`.
 
 Key patterns:
 
@@ -32,71 +35,8 @@ Key patterns:
 - **JSONB columns** for flexible data: tags, indicators, variables, job_stats, comparison
 - **Check constraints** at the DB level for enums: status, result, ingestion_mode
 - **Composite primary keys** for junction tables and the hypertable
-
-### Asset Inventory
-
-| Model | Table | Key Relationships |
-|-------|-------|-------------------|
-| `AssetType` | `asset_types` | -- |
-| `Asset` | `assets` | -> AssetType (type_name FK) |
-| `AssetGroup` | `asset_groups` | -- |
-| `AssetGroupMember` | `asset_group_members` | -> Asset, -> AssetGroup |
-| `AssetGroupLink` | `asset_group_links` | -> AssetGroup (parent), -> AssetGroup (child) |
-
-### Asset Metadata
-
-| Model | Table | Key Relationships |
-|-------|-------|-------------------|
-| `AssetMetaSnapshot` | `asset_meta_snapshots` | -> Asset (asset_id FK) |
-| `AssetMetaValue` | `asset_meta_values` | -> AssetMetaSnapshot (snapshot_id FK) |
-| `AssetMetaClosure` | `asset_meta_closures` | -> AssetMetaSnapshot (snapshot_id FK) |
-
-### Definition Registries
-
-| Model | Table | Key Relationships |
-|-------|-------|-------------------|
-| `SLIDefinition` | `sli_definitions` | -- |
-| `SLODefinition` | `slo_definitions` | -> SLOObjective[] (selectin-loaded), -> SLOGroup (optional) |
-| `SLOObjective` | `slo_objectives` | -> SLODefinition (FK) |
-| `DataSource` | `data_sources` | -- |
-| `SLOGroup` | `slo_groups` | -> SLODefinition (template FK) |
-| `SLODisplayGroup` | `slo_display_groups` | -> self (parent_id, self-referential) |
-| `SLODisplayGroupMember` | `slo_display_group_members` | -> SLODisplayGroup (FK) |
-
-### Evaluation Binding
-
-| Model | Table | Key Relationships |
-|-------|-------|-------------------|
-| `SLOAssignment` | `slo_assignments` | -> Asset or AssetGroup (XOR), -> SLODefinition, -> DataSource |
-| `SLOGroupAssignment` | `slo_group_assignments` | -> Asset or AssetGroup (XOR), -> SLOGroup, -> DataSource |
-
-### Evaluation Results
-
-| Model | Table | Key Relationships |
-|-------|-------|-------------------|
-| `EvaluationRun` | `evaluations` | -> Asset (FK) |
-| `SLOEvaluation` | `slo_evaluations` | -> EvaluationRun (FK) |
-| `IndicatorResultRow` | `indicator_results` | -> SLOEvaluation (FK), -> SLOObjective (FK) |
-| `SLIValue` | `sli_values` | No ORM relationship (intentional — hypertable) |
-
-### Annotations
-
-| Model | Table | Key Relationships |
-|-------|-------|-------------------|
-| `AnnotationCategory` | `annotation_categories` | -- |
-| `EvaluationAnnotation` | `evaluation_annotations` | -> SLOEvaluation or EvaluationRun (XOR), -> AnnotationCategory |
-
-### SLIValue: No ORM Relationship
-
-The `sli_values` hypertable has no SQLAlchemy relationship to `SLOEvaluation`. This is
-intentional -- it prevents accidental lazy-loading of thousands of metric rows when
-fetching an evaluation. SLI values are always queried explicitly through the repository.
-
-### Evaluation parent-child model
-
-`EvaluationRun` is the parent -- one row per `(asset, eval_name, period)` trigger.
-Each bound SLO produces one `SLOEvaluation` child row. Each SLO evaluation produces
-one `IndicatorResultRow` per objective. This replaces the old flat `Evaluation` model.
+- **No ORM relationship** on the `sli_values` hypertable — prevents accidental lazy-loading
+  of thousands of metric rows. SLI values are always queried explicitly via repository.
 
 ## Migrations
 
@@ -121,9 +61,7 @@ Never hand-write migration files. Use the regeneration script:
 
 This drops and recreates the test database, then regenerates migrations from ORM models.
 
-## Key Repositories
-
-The evaluation domain is split across multiple focused repositories:
+## Repositories
 
 ### EvaluationRepository (SLOEvaluation)
 
@@ -156,3 +94,10 @@ Parent evaluation run lifecycle:
 - `TrendRepository` -- Time-series queries by asset+SLO or evaluation ID
 - `AnnotationRepository` -- Annotation CRUD
 - `AnnotationCategoryRepository` -- Category taxonomy management
+- `AssignmentRepository` -- SLO and SLO group assignment CRUD
+- `AssetTypeRepository` / `AssetRepository` / `AssetGroupRepository` -- Asset inventory
+- `DataSourceRepository` -- Adapter registry
+- `SLORepository` / `SLIRepository` -- Definition registries
+- `SLOGroupRepository` -- SLO group template management
+- `DisplayGroupRepository` -- UI display group hierarchy
+- `AssetMetaRepository` -- Metadata snapshot ingestion and timeline queries
