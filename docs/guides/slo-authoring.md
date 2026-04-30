@@ -1,66 +1,113 @@
 # SLO Authoring Guide
 
-This guide covers the full SLO definition format, criteria syntax, scoring mechanics,
+This guide covers the SLO definition format, criteria syntax, scoring mechanics,
 and common pitfalls. It is the primary reference for writing and debugging SLO definitions
 in TROPEK.
 
 ## SLO format basics
 
-TROPEK uses a superset of the
-[Keptn 1.0 SLO spec](https://github.com/keptn/spec/blob/master/service_level_objective.md).
-Existing Keptn SLOs work without modification. The key difference: **SLI queries are embedded
-in the SLO file** under an `indicators` block -- no separate SLI file needed.
+TROPEK's evaluation engine is inspired by
+[Keptn v1](https://keptn.sh)'s lighthouse-service and uses a similar criteria syntax,
+but the SLO format is **TROPEK's own**. SLOs are created via the REST API
+(`POST /slo-definitions`) as JSON, or provisioned via YAML manifests using the
+`tropek` Python client (see `bootstrap_mock/manifests/` for examples).
 
-```yaml
-spec_version: '1.0'
+SLI queries are **not embedded** in the SLO — they live in a separate SLI registry
+and are referenced by `sli_name` and `sli_version`.
 
-comparison:
-  compare_with: several_results
-  number_of_comparison_results: 3
-  include_result_with_score: pass_or_warn
-  aggregate_function: avg
-  scope_tags: [os, arch]
+### API format (JSON)
 
-indicators:
-  response_time_p99: 'histogram_quantile(0.99, rate(http_request_duration_seconds_bucket{instance="$vm_ip"}[5m]))'
-  error_rate: 'rate(http_requests_total{status=~"5..",instance="$vm_ip"}[5m])'
-
-objectives:
-  - sli: response_time_p99
-    displayName: "Response Time P99 (ms)"
-    pass:
-      - criteria: ["<600", "<=+10%"]
-    warning:
-      - criteria: ["<800"]
-    weight: 2
-    key_sli: false
-
-  - sli: error_rate
-    displayName: "Error Rate"
-    pass:
-      - criteria: ["=0"]
-    weight: 3
-    key_sli: true
-
-total_score:
-  pass: "90%"
-  warning: "75%"
+```json
+{
+  "name": "http-availability-slo",
+  "display_name": "HTTP Availability SLO",
+  "sli_name": "http-service-sli",
+  "sli_version": 1,
+  "kind": "standard",
+  "comparison": {
+    "compare_with": "several_results",
+    "number_of_comparison_results": 3,
+    "include_result_with_score": "pass_or_warn",
+    "aggregate_function": "avg",
+    "scope_tags": ["os", "arch"]
+  },
+  "total_score_pass_threshold": 90.0,
+  "total_score_warning_threshold": 75.0,
+  "objectives": [
+    {
+      "sli": "response_time_p99",
+      "display_name": "Response Time P99 (ms)",
+      "pass_threshold": ["<600", "<=+10%"],
+      "warning_threshold": ["<800"],
+      "weight": 2,
+      "key_sli": false
+    },
+    {
+      "sli": "error_rate",
+      "display_name": "Error Rate",
+      "pass_threshold": ["=0"],
+      "weight": 3,
+      "key_sli": true
+    }
+  ]
+}
 ```
 
-### Top-level fields
+### Manifest format (YAML via `tropek` client)
+
+```yaml
+api_version: tropek/v1
+kind: SLO
+metadata:
+  name: http-availability-slo
+  display_name: HTTP Availability SLO
+  author: bootstrap
+spec:
+  sli_name: http-service-sli
+  sli_version: 1
+  kind: standard
+  comparison:
+    compare_with: several_results
+    number_of_comparison_results: 3
+    include_result_with_score: pass_or_warn
+    aggregate_function: avg
+  total_score:
+    pass_threshold: 90.0
+    warning_threshold: 75.0
+  objectives:
+    - sli: response_time_p99
+      display_name: "Response Time P99 (ms)"
+      pass_threshold: [">0", "<600", "<=+10%"]
+      warning_threshold: [">0", "<800"]
+      weight: 2
+    - sli: error_rate
+      display_name: "Error Rate"
+      pass_threshold: ["=0"]
+      weight: 3
+      key_sli: true
+```
+
+Apply manifests with: `uv run --directory clients/python tropek apply -f <dir> --base-url http://localhost:8080`
+
+### Top-level fields (API)
 
 | Field | Required | Description |
 |---|---|---|
-| `spec_version` | yes | Always `'1.0'` |
+| `name` | yes | Unique SLO name |
 | `objectives` | yes | List of SLO objectives (at least one) |
-| `total_score` | no | Pass/warning thresholds for overall weighted score. Defaults: pass 90%, warning 75% |
-| `comparison` | no | Baseline comparison strategy for relative criteria. See [Comparison config](#comparison-config) |
-| `indicators` | no | SLI query map. Only needed for inline-indicator SLOs (not when using the SLI registry) |
+| `sli_name` | no | Reference to an SLI definition in the registry |
+| `sli_version` | no | Pinned SLI version (latest if omitted) |
+| `total_score_pass_threshold` | no | Minimum weighted % to pass. Default: 90.0 |
+| `total_score_warning_threshold` | no | Minimum weighted % to warn. Default: 75.0 |
+| `comparison` | no | Baseline comparison strategy. See [Comparison config](#comparison-config) |
+| `kind` | no | `standard` (default) or `template` (for SLO groups) |
+| `variables` | no | Key-value dict for SLI query variable substitution |
 
 ## Criteria syntax
 
-Each objective defines `pass` and optionally `warning` criteria. Criteria are strings
-that compare a metric value against a fixed threshold or a relative baseline.
+Each objective defines `pass_threshold` and optionally `warning_threshold` — flat lists
+of criteria strings that compare a metric value against a fixed threshold or a relative
+baseline.
 
 ### Supported patterns
 
@@ -103,7 +150,7 @@ false failures on initial runs.
 ## Pass vs warning ordering
 
 This is the most counterintuitive aspect of SLO authoring. The evaluation engine
-checks `pass` criteria first, then falls back to `warning`. This means:
+checks `pass_threshold` first, then falls back to `warning_threshold`. This means:
 
 - **Pass criteria must be the easiest to satisfy** (widest acceptable band).
 - **Warning criteria must be stricter** -- they define the narrower band of
@@ -114,13 +161,12 @@ warning criteria are never checked.
 
 ### Correct example
 
-```yaml
-objectives:
-  - sli: response_time_p95
-    pass:
-      - criteria: ["<=+20%"]    # loose -- up to 20% regression is still pass
-    warning:
-      - criteria: ["<=+50%"]    # tighter than fail, but wider than pass
+```json
+{
+  "sli": "response_time_p95",
+  "pass_threshold": ["<=+20%"],
+  "warning_threshold": ["<=+50%"]
+}
 ```
 
 With a baseline of 100ms:
@@ -130,13 +176,12 @@ With a baseline of 100ms:
 
 ### Incorrect example (swapped)
 
-```yaml
-objectives:
-  - sli: response_time_p95
-    pass:
-      - criteria: ["<=+5%"]     # tight -- intended as warning
-    warning:
-      - criteria: ["<=+20%"]    # loose -- intended as pass
+```json
+{
+  "sli": "response_time_p95",
+  "pass_threshold": ["<=+5%"],
+  "warning_threshold": ["<=+20%"]
+}
 ```
 
 With a baseline of 100ms:
@@ -154,18 +199,12 @@ Most values land in warning rather than pass. The intent was the opposite.
 
 This applies equally to fixed thresholds:
 
-```yaml
-# Correct:
-pass:
-  - criteria: ["<800"]     # generous
-warning:
-  - criteria: ["<1000"]    # still acceptable, but worse
+```json
+// Correct:
+{ "pass_threshold": ["<800"], "warning_threshold": ["<1000"] }
 
-# Wrong:
-pass:
-  - criteria: ["<400"]     # too strict for pass
-warning:
-  - criteria: ["<800"]     # this becomes the effective pass threshold
+// Wrong:
+{ "pass_threshold": ["<400"], "warning_threshold": ["<800"] }
 ```
 
 ## Key SLI
@@ -173,13 +212,13 @@ warning:
 Setting `key_sli: true` on an objective makes it a gate: if this objective
 fails, the **entire evaluation fails** regardless of the total weighted score.
 
-```yaml
-objectives:
-  - sli: error_rate
-    pass:
-      - criteria: ["=0"]
-    key_sli: true           # any non-zero error rate fails the whole evaluation
-    weight: 3
+```json
+{
+  "sli": "error_rate",
+  "pass_threshold": ["=0"],
+  "key_sli": true,
+  "weight": 3
+}
 ```
 
 Key SLI failure overrides the total score. Even if the weighted score is 95%
@@ -228,13 +267,14 @@ this is a FAIL.
 The `comparison` block controls how baseline values are selected and aggregated
 for relative criteria.
 
-```yaml
-comparison:
-  compare_with: several_results
-  number_of_comparison_results: 3
-  include_result_with_score: pass_or_warn
-  aggregate_function: avg
-  scope_tags: [os, arch]
+```json
+{
+  "compare_with": "several_results",
+  "number_of_comparison_results": 3,
+  "include_result_with_score": "pass_or_warn",
+  "aggregate_function": "avg",
+  "scope_tags": ["os", "arch"]
+}
 ```
 
 ### Fields
@@ -245,7 +285,7 @@ comparison:
 | `number_of_comparison_results` | integer | `3` | Number of previous results to fetch (only for `several_results`) |
 | `include_result_with_score` | `pass`, `pass_or_warn`, `all` | `all` | Filter previous results by their outcome |
 | `aggregate_function` | `avg`, `p50`, `p90`, `p95`, `p99` | `avg` | How to aggregate multiple baseline values into a single number |
-| `scope_tags` | list of tag keys | `[os]` | **TROPEK extension.** Scope baseline queries to previous evaluations with matching tag values |
+| `scope_tags` | list of tag keys | `["os"]` | Scope baseline queries to previous evaluations with matching tag values |
 
 ### How it works
 
@@ -266,7 +306,9 @@ This prevents cross-environment baseline contamination.
 
 ## Variable substitution
 
-SLI queries can contain `$variable` tokens that are replaced at evaluation time.
+SLI queries (defined in the SLI registry) can contain `$variable` tokens that are
+replaced at evaluation time. Variables come from multiple sources, merged in priority
+order.
 
 ### Built-in variables
 
@@ -283,21 +325,21 @@ SLI queries can contain `$variable` tokens that are replaced at evaluation time.
 Any key-value pair in the evaluation request's `metadata` field becomes a variable.
 Metadata keys take the lowest priority -- built-in variables are not overridden.
 
-```yaml
-indicators:
-  response_time: 'histogram_quantile(0.99, rate(http_duration_bucket{instance="$vm_ip"}[5m]))'
+An SLI query like:
+```
+histogram_quantile(0.99, rate(http_duration_bucket{instance="$vm_ip"}[5m]))
 ```
 
-Triggered with `metadata: {"vm_ip": "10.0.1.15"}`, the query becomes:
-
+Triggered with `metadata: {"vm_ip": "10.0.1.15"}`, becomes:
 ```
 histogram_quantile(0.99, rate(http_duration_bucket{instance="10.0.1.15"}[5m]))
 ```
 
 ### SLO-level variables
 
-SLO definitions can also carry a `variables` dict. These are substituted throughout
-the SLO YAML before parsing, allowing parameterized SLO templates.
+SLO definitions carry a `variables` dict that is substituted into SLI queries at
+evaluation time. This allows the same SLI definition to be reused across SLOs with
+different parameters.
 
 ### Unresolved variables
 
@@ -405,14 +447,13 @@ aggregations (`methods`) over it. The SLO objectives reference the SLI as
 When an SLO links to an aggregated-mode SLI, each objective's `sli` field references
 a specific method:
 
-```yaml
-objectives:
-  - sli: response_time.mean
-    pass:
-      - criteria: ["<500"]
-  - sli: response_time.p99
-    pass:
-      - criteria: ["<2000"]
+```json
+{
+  "objectives": [
+    { "sli": "response_time.mean", "pass_threshold": ["<500"] },
+    { "sli": "response_time.p99", "pass_threshold": ["<2000"] }
+  ]
+}
 ```
 
 ## Common mistakes
@@ -422,18 +463,12 @@ objectives:
 The most frequent mistake. Remember: pass is checked first, so it must be the
 **wider** (more permissive) band.
 
-```yaml
-# Wrong -- warning is unreachable for "good" values
-pass:
-  - criteria: ["<200"]
-warning:
-  - criteria: ["<500"]
+```json
+// Wrong -- warning is unreachable for "good" values
+{ "pass_threshold": ["<200"], "warning_threshold": ["<500"] }
 
-# Correct
-pass:
-  - criteria: ["<500"]
-warning:
-  - criteria: ["<800"]
+// Correct
+{ "pass_threshold": ["<500"], "warning_threshold": ["<800"] }
 ```
 
 See [Pass vs warning ordering](#pass-vs-warning-ordering) for the full explanation.
@@ -447,18 +482,16 @@ This is by design -- no penalty for the first run.
 If you need hard bounds from the very first evaluation, use a fixed threshold
 alongside the relative one:
 
-```yaml
-pass:
-  - criteria: ["<600", "<=+10%"]   # fixed bound catches first-run outliers
+```json
+{ "pass_threshold": ["<600", "<=+10%"] }
 ```
 
 ### 3. Mixing fixed and relative without understanding AND logic
 
 Multiple criteria in a single list are ANDed. Both must pass:
 
-```yaml
-pass:
-  - criteria: ["<600", "<=+10%"]
+```json
+{ "pass_threshold": ["<600", "<=+10%"] }
 ```
 
 This means: value must be less than 600 **AND** within 10% of baseline. The fixed
@@ -472,24 +505,21 @@ the whole evaluation, do not mark it as `key_sli: true`.
 
 ### 5. Warning threshold higher than pass in total_score
 
-If `total_score.warning` is set higher than `total_score.pass`, the warning band
-disappears -- every score above the warning threshold also exceeds the pass threshold.
+If `total_score_warning_threshold` is set higher than `total_score_pass_threshold`,
+the warning band disappears -- every score above the warning threshold also exceeds
+the pass threshold.
 
-```yaml
-# Wrong -- warning band is empty
-total_score:
-  pass: "75%"
-  warning: "90%"
+```json
+// Wrong -- warning band is empty
+{ "total_score_pass_threshold": 75.0, "total_score_warning_threshold": 90.0 }
 
-# Correct
-total_score:
-  pass: "90%"
-  warning: "75%"
+// Correct
+{ "total_score_pass_threshold": 90.0, "total_score_warning_threshold": 75.0 }
 ```
 
 ### 6. Objectives with no pass criteria
 
-An objective without `pass` criteria gets status INFO and does **not contribute**
+An objective without `pass_threshold` criteria gets status INFO and does **not contribute**
 to the total score. The metric is fetched and recorded but has no effect on the
 evaluation outcome. This is useful for informational metrics you want to track
 without gating on them.
