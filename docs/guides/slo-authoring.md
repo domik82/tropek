@@ -149,63 +149,69 @@ false failures on initial runs.
 
 ## Pass vs warning ordering
 
-This is the most counterintuitive aspect of SLO authoring. The evaluation engine
-checks `pass_threshold` first, then falls back to `warning_threshold`. This means:
+The evaluation engine checks `pass_threshold` first, then falls back to
+`warning_threshold`:
 
-- **Pass criteria must be the easiest to satisfy** (widest acceptable band).
-- **Warning criteria must be stricter** -- they define the narrower band of
-  "good enough to not fail, but not good enough to pass."
+1. If the value satisfies `pass_threshold` -> **PASS** (warning is never checked)
+2. If pass fails but `warning_threshold` is satisfied -> **WARNING**
+3. If both fail -> **FAIL**
 
-If a value satisfies the pass criteria, the objective is marked PASS and the
-warning criteria are never checked.
+This means **pass is the stricter gate** — it defines the high-quality band.
+Warning is more permissive — it catches values that aren't good enough to pass
+but aren't bad enough to fail.
 
-### Correct example
-
-```json
-{
-  "sli": "response_time_p95",
-  "pass_threshold": ["<=+20%"],
-  "warning_threshold": ["<=+50%"]
-}
-```
-
-With a baseline of 100ms:
-- 115ms: within +20% (120ms limit) -> **pass**
-- 135ms: exceeds +20% but within +50% (150ms limit) -> **warning**
-- 160ms: exceeds +50% -> **fail**
-
-### Incorrect example (swapped)
+### Example: response time
 
 ```json
 {
   "sli": "response_time_p95",
-  "pass_threshold": ["<=+5%"],
-  "warning_threshold": ["<=+20%"]
+  "pass_threshold": ["<=+10%"],
+  "warning_threshold": ["<=+25%"]
 }
 ```
 
 With a baseline of 100ms:
-- 103ms: within +5% (105ms limit) -> **pass** (correct but too strict)
-- 115ms: exceeds +5%, check warning: within +20% (120ms limit) -> **warning**
-- 125ms: exceeds both -> **fail**
+- 105ms: within +10% (110ms limit) -> **pass** (meets the strict gate)
+- 118ms: exceeds +10% but within +25% (125ms limit) -> **warning** (degraded but acceptable)
+- 130ms: exceeds +25% -> **fail**
 
-The problem: the "warning" band (5-20%) is wider than the "pass" band (0-5%).
-Most values land in warning rather than pass. The intent was the opposite.
-
-### The rule
-
-> Pass is checked first. Warning is the fallback. So pass = the wider band,
-> warning = the narrower band between pass and fail.
-
-This applies equally to fixed thresholds:
+### Example: error rate
 
 ```json
-// Correct:
-{ "pass_threshold": ["<800"], "warning_threshold": ["<1000"] }
-
-// Wrong:
-{ "pass_threshold": ["<400"], "warning_threshold": ["<800"] }
+{
+  "sli": "error_rate",
+  "pass_threshold": ["=0"],
+  "warning_threshold": ["<5"]
+}
 ```
+
+- 0 errors: satisfies `=0` -> **pass**
+- 3 errors: fails `=0`, satisfies `<5` -> **warning**
+- 7 errors: fails both -> **fail**
+
+### The mistake: warning stricter than pass
+
+If `warning_threshold` is stricter than `pass_threshold`, the warning band becomes
+**unreachable** — any value satisfying warning also satisfies pass.
+
+```json
+// Wrong -- warning is unreachable:
+{ "pass_threshold": ["<800"], "warning_threshold": ["<500"] }
+```
+
+Value 400: satisfies `<800` -> PASS (warning never checked).
+Value 600: satisfies `<800` -> PASS (warning never checked).
+Value 900: fails both -> FAIL.
+The warning band is empty — everything is either PASS or FAIL.
+
+```json
+// Correct -- warning catches the degraded-but-acceptable range:
+{ "pass_threshold": ["<500"], "warning_threshold": ["<800"] }
+```
+
+Value 400: satisfies `<500` -> PASS.
+Value 600: fails `<500`, satisfies `<800` -> WARNING.
+Value 900: fails both -> FAIL.
 
 ## Key SLI
 
@@ -458,16 +464,18 @@ a specific method:
 
 ## Common mistakes
 
-### 1. Swapped pass/warning criteria
+### 1. Warning stricter than pass
 
-The most frequent mistake. Remember: pass is checked first, so it must be the
-**wider** (more permissive) band.
+The most frequent mistake. Pass is the **stricter** gate (high-quality band).
+Warning is more permissive (degraded but acceptable). If warning is stricter
+than pass, the warning band is unreachable — any value satisfying warning
+also satisfies pass.
 
 ```json
-// Wrong -- warning is unreachable for "good" values
-{ "pass_threshold": ["<200"], "warning_threshold": ["<500"] }
+// Wrong -- warning is unreachable (stricter than pass)
+{ "pass_threshold": ["<800"], "warning_threshold": ["<500"] }
 
-// Correct
+// Correct -- pass is stricter, warning catches the degraded range
 { "pass_threshold": ["<500"], "warning_threshold": ["<800"] }
 ```
 
