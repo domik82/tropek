@@ -5,33 +5,33 @@ six groups.
 
 ## Table Overview
 
-24 tables in six groups. Cross-group dependencies shown in the rightmost column.
+24 tables in six groups. ORM model class names map to tables in `api/tropek/db/models.py`.
 
-| Group | Table | Depends On (cross-group) |
-|-------|-------|--------------------------|
-| **Asset Inventory** | `asset_types` | — |
-| | `assets` | `asset_types` |
-| | `asset_groups` | — |
-| | `asset_group_members` | `assets`, `asset_groups` |
-| | `asset_group_links` | `asset_groups` (self) |
-| **Asset Metadata** | `asset_meta_snapshots` | `assets` |
-| | `asset_meta_values` | `asset_meta_snapshots` |
-| | `asset_meta_closures` | `asset_meta_snapshots` |
-| **Definition Registries** | `sli_definitions` | — |
-| | `slo_definitions` | `sli_definitions`, `slo_groups` |
-| | `slo_objectives` | `slo_definitions` |
-| | `slo_groups` | `slo_definitions` (template) |
-| | `data_sources` | — |
-| | `slo_display_groups` | self (parent) |
-| | `slo_display_group_members` | `slo_display_groups` |
-| **Evaluation Binding** | `slo_assignments` | `assets`/`asset_groups`, `slo_definitions`, `data_sources` |
-| | `slo_group_assignments` | `assets`/`asset_groups`, `slo_groups`, `data_sources` |
-| **Evaluation Results** | `evaluations` | `assets` |
-| | `slo_evaluations` | `evaluations`, `assets` |
-| | `indicator_results` | `slo_evaluations`, `slo_objectives` |
-| | `sli_values` | `slo_evaluations` (hypertable) |
-| **Annotations** | `annotation_categories` | — |
-| | `evaluation_annotations` | `slo_evaluations`/`evaluations`, `annotation_categories` |
+| Group | ORM Class | Table | Depends On (cross-group) |
+|-------|-----------|-------|--------------------------|
+| **Asset Inventory** | `AssetType` | `asset_types` | — |
+| | `Asset` | `assets` | `asset_types` |
+| | `AssetGroup` | `asset_groups` | — |
+| | `AssetGroupMember` | `asset_group_members` | `assets`, `asset_groups` |
+| | `AssetGroupLink` | `asset_group_links` | `asset_groups` (self) |
+| **Asset Metadata** | `AssetMetaSnapshot` | `asset_meta_snapshots` | `assets` |
+| | `AssetMetaValue` | `asset_meta_values` | `asset_meta_snapshots` |
+| | `AssetMetaClosure` | `asset_meta_closures` | `asset_meta_snapshots` |
+| **Definition Registries** | `SLIDefinition` | `sli_definitions` | — |
+| | `SLODefinition` | `slo_definitions` | `sli_definitions`, `slo_groups` |
+| | `SLOObjective` | `slo_objectives` | `slo_definitions` |
+| | `SLOGroup` | `slo_groups` | `slo_definitions` (template) |
+| | `DataSource` | `data_sources` | — |
+| | `SLODisplayGroup` | `slo_display_groups` | self (parent) |
+| | `SLODisplayGroupMember` | `slo_display_group_members` | `slo_display_groups` |
+| **Evaluation Binding** | `SLOAssignment` | `slo_assignments` | `assets`/`asset_groups`, `slo_definitions`, `data_sources` |
+| | `SLOGroupAssignment` | `slo_group_assignments` | `assets`/`asset_groups`, `slo_groups`, `data_sources` |
+| **Evaluation Results** | `EvaluationRun` | `evaluations` | `assets` |
+| | `SLOEvaluation` | `slo_evaluations` | `evaluations`, `assets` |
+| | `IndicatorResultRow` | `indicator_results` | `slo_evaluations`, `slo_objectives` |
+| | `SLIValue` | `sli_values` | `slo_evaluations` (hypertable) |
+| **Annotations** | `AnnotationCategory` | `annotation_categories` | — |
+| | `EvaluationAnnotation` | `evaluation_annotations` | `slo_evaluations`/`evaluations`, `annotation_categories` |
 
 ## Entity Relationships by Group
 
