@@ -120,6 +120,12 @@ plugins = ["sqlalchemy.ext.mypy.plugin"]
 module = "tropek.modules.change_points.engine.*"
 ignore_errors = true
 
+# Wrapper calls engine functions with ndarray where Sequence[SupportsFloat] is declared;
+# type: ignore is needed in full-codebase CI but appears unused in per-file pre-commit
+[[tool.mypy.overrides]]
+module = "tropek.modules.change_points.detector"
+warn_unused_ignores = false
+
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "session"
