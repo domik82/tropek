@@ -1,0 +1,61 @@
+name: Latest Images
+
+# Manual trigger — run from GitHub Actions UI when main is stable.
+on:
+  workflow_dispatch:
+
+# Uncomment below (and remove workflow_dispatch above) to auto-push latest on every
+# merge to main, once branch protection is in place:
+# on:
+#   push:
+#     branches: [main]
+
+permissions:
+  packages: write
+
+env:
+  REGISTRY: ghcr.io
+
+jobs:
+  build-and-push:
+    name: Build and push latest
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - context: api
+            image: tropek-api
+            config_copy: true
+          - context: ui
+            image: tropek-ui
+            config_copy: false
+          - context: adapters/prometheus
+            image: tropek-adapter-prometheus
+            config_copy: false
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Copy config.yaml into API build context
+        if: matrix.config_copy
+        run: cp config.yaml api/config.yaml
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to ghcr.io
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.context }}
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ matrix.image }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
