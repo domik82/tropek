@@ -19,7 +19,7 @@ class EvalCreateParams(StrictInput):
     period_end: datetime
     ingestion_mode: str
     asset_snapshot: dict[str, object]
-    variables: dict[str, str | None] = Field(default_factory=dict)
+    variables: dict[str, str] = Field(default_factory=dict)
     asset_id: uuid.UUID
     slo_name: str
     slo_version: int | None = None
