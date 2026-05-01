@@ -71,6 +71,7 @@ class ChangePoint:
     def from_candidate(
         cls, candidate: CandidateChangePoint, stats: BaseStats,
     ) -> ChangePoint:
+        """Construct from a candidate and computed significance statistics."""
         return cls(index=candidate.index, qhat=candidate.qhat, stats=stats)
 
     def to_candidate(self) -> CandidateChangePoint:

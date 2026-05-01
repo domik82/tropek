@@ -5,7 +5,6 @@ import uuid
 from datetime import UTC, datetime, timedelta
 
 import pytest
-
 from tropek.modules.asset_meta.timeline.conflict_resolution import (
     compute_latest_observation_per_source,
     group_spans_by_path,

@@ -18,13 +18,13 @@ from tropek.modules.quality_gate.schemas import (
     EvaluateSingleRequest,
     EvaluationSummary,
 )
+from tropek.modules.quality_gate.schemas import heatmap as heatmap_module
 from tropek.modules.quality_gate.schemas.annotation_categories import (
     AnnotationCategoryCreate,
     AnnotationCategoryRead,
     AnnotationCategoryUpdate,
     CategoryColor,
 )
-from tropek.modules.quality_gate.schemas import heatmap as heatmap_module
 from tropek.modules.quality_gate.schemas.evaluations import (
     AssetSnapshot,
     EvaluationDetail,

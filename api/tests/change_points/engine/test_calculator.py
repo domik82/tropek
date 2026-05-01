@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import numpy as np
-
 from tropek.modules.change_points.engine.calculator import PairDistanceCalculator
 
 SEQUENCE = np.array([

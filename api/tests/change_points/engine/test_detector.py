@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import numpy as np
 import pytest
-
 from tropek.modules.change_points.engine.analysis import TTestSignificanceTester, TTestStats, split
 from tropek.modules.change_points.engine.base import ChangePoint
 from tropek.modules.change_points.engine.calculator import PairDistanceCalculator
