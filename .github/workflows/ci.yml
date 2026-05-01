@@ -26,70 +26,22 @@ jobs:
               - 'pyproject.toml'
               - 'uv.lock'
               - '.github/workflows/ci.yml'
+              - '.github/workflows/python-checks.yml'
+              - '.github/actions/setup-python/**'
             ui:
               - 'ui/**'
               - '.github/workflows/ci.yml'
+              - '.github/workflows/ui-checks.yml'
+              - '.github/actions/setup-ui/**'
 
   python:
-    name: Python (lint + typecheck + test)
+    name: Python
     needs: changes
     if: needs.changes.outputs.python == 'true' || github.event_name == 'push'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Install uv
-        uses: astral-sh/setup-uv@v4
-
-      - name: Install Python 3.13
-        run: uv python install 3.13
-
-      - name: Install dependencies
-        run: uv sync --all-extras
-
-      - name: Ruff lint
-        run: uv run ruff check api/ adapters/
-
-      - name: Ruff format check
-        run: uv run ruff format --check api/ adapters/
-
-      - name: MyPy typecheck
-        run: uv run mypy api/tropek adapters/prometheus/tropek_prometheus
-
-      - name: Unit tests
-        run: uv run --directory api pytest tests/ -m "not integration" -q --ignore=tests/schemathesis
+    uses: ./.github/workflows/python-checks.yml
 
   ui:
-    name: UI (lint + typecheck + test)
+    name: UI
     needs: changes
     if: needs.changes.outputs.ui == 'true' || github.event_name == 'push'
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: ui
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 10
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: pnpm
-          cache-dependency-path: ui/pnpm-lock.yaml
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: ESLint
-        run: pnpm exec eslint src/
-
-      - name: TypeScript compile check
-        run: pnpm exec tsc --noEmit -p tsconfig.app.json
-
-      - name: Vitest
-        run: pnpm exec vitest run
+    uses: ./.github/workflows/ui-checks.yml

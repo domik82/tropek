@@ -1,0 +1,16 @@
+name: Setup Python
+description: Install uv, Python 3.13, and project dependencies
+
+runs:
+  using: composite
+  steps:
+    - name: Install uv
+      uses: astral-sh/setup-uv@v4
+
+    - name: Install Python 3.13
+      shell: bash
+      run: uv python install 3.13
+
+    - name: Install dependencies
+      shell: bash
+      run: uv sync --all-extras

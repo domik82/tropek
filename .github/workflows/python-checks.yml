@@ -1,0 +1,24 @@
+name: Python Checks
+
+on:
+  workflow_call:
+
+jobs:
+  python:
+    name: lint + typecheck + test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-python
+
+      - name: Ruff lint
+        run: uv run ruff check api/ adapters/
+
+      - name: Ruff format check
+        run: uv run ruff format --check api/ adapters/
+
+      - name: MyPy typecheck
+        run: uv run mypy api/tropek adapters/prometheus/tropek_prometheus
+
+      - name: Unit tests
+        run: uv run --directory api pytest tests/ -m "not integration" -q --ignore=tests/schemathesis
