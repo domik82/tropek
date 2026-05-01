@@ -493,23 +493,24 @@ class _Evaluations:
         period_start: str,
         period_end: str,
         *,
+        compare_to: dict[str, str] | None = None,
         variables: dict[str, str] | None = None,
     ) -> dict[str, Any]:
         """POST /evaluations — trigger all SLOs for an asset."""
-        resp = self._http.post(
-            '/evaluations',
-            json={
-                'asset_name': asset_name,
-                'eval_name': eval_name,
-                'period_start': period_start,
-                'period_end': period_end,
-                'variables': variables or {},
-            },
-        )
+        body: dict[str, Any] = {
+            'asset_name': asset_name,
+            'eval_name': eval_name,
+            'period_start': period_start,
+            'period_end': period_end,
+            'variables': variables or {},
+        }
+        if compare_to is not None:
+            body['compare_to'] = compare_to
+        resp = self._http.post('/evaluations', json=body)
         _raise_for_status(resp)
         return resp.json()  # type: ignore[no-any-return]
 
-    def evaluate_batch(
+    def evaluate_batch(  # noqa: PLR0913
         self,
         mode: str,
         eval_name: str,
@@ -519,10 +520,13 @@ class _Evaluations:
         asset_names: list[str] | None = None,
         period_start: str | None = None,
         period_end: str | None = None,
+        compare_to: dict[str, str] | None = None,
         variables: dict[str, str] | None = None,
     ) -> dict[str, Any]:
         """POST /evaluations/batch — by_date or by_asset batch trigger."""
         payload: dict[str, Any] = {'mode': mode, 'eval_name': eval_name, 'variables': variables or {}}
+        if compare_to is not None:
+            payload['compare_to'] = compare_to
         if mode == 'by_date':
             payload['asset_name'] = asset_name
             payload['periods'] = periods or []

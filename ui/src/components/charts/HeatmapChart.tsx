@@ -357,6 +357,31 @@ export function HeatmapChart({
               })
             }
 
+            if (cellData?.changePoint) {
+              const diamondSize = Math.min(12, rw * 0.4, rh * 0.4)
+              const diamondColor =
+                cellData.changePoint.direction === 'regression'
+                  ? 'var(--change-point-regression)'
+                  : 'var(--change-point-improvement)'
+              children.push({
+                type: 'polygon',
+                shape: {
+                  points: [
+                    [cx, cy - diamondSize / 2],
+                    [cx + diamondSize / 2, cy],
+                    [cx, cy + diamondSize / 2],
+                    [cx - diamondSize / 2, cy],
+                  ],
+                },
+                style: {
+                  fill: diamondColor,
+                  stroke: ct.bg,
+                  lineWidth: 1,
+                },
+                z2: 10,
+              })
+            }
+
             return { type: 'group', children }
           },
           emphasis: { focus: 'self' },

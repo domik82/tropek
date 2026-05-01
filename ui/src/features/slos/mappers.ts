@@ -57,7 +57,8 @@ void _sloExhaustive
 
 // --- SloObjective ----------------------------------------------------------
 
-type DroppedSloObjectiveKeys = never
+type DroppedSloObjectiveKeys =
+  | 'change_point' // per-objective CP detection config — not surfaced in SLO detail UI yet
 
 type MappedSloObjectiveKeys =
   | 'sli'
@@ -135,7 +136,7 @@ export function dtoToComparison(
     compareWith: dto.compare_with ?? undefined,
     includeResultWithScore: dto.include_result_with_score ?? undefined,
     numberOfComparisonResults: dto.number_of_comparison_results ?? undefined,
-    aggregateFunction: dto.aggregate_function ?? undefined,
+    aggregateFunction: (dto.aggregate_function as SloComparisonConfig['aggregateFunction']) ?? undefined,
     scopeTags: dto.scope_tags ?? undefined,
   }
 }
@@ -209,7 +210,7 @@ export function dtoToSlo(dto: SloDto): Slo {
     objectives: dto.objectives.map(dtoToObjective),
     totalScorePassThreshold: dto.total_score_pass_threshold,
     totalScoreWarningThreshold: dto.total_score_warning_threshold,
-    comparison: dtoToComparison(dto.comparison),
+    comparison: dtoToComparison(dto.comparison as SloComparisonConfigDto),
     methodCriteria: dtoToMethodCriteria(dto.method_criteria),
   }
 }

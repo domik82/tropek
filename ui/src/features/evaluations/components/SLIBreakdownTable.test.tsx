@@ -19,6 +19,7 @@ const indicators: Indicator[] = [
     keySli: true,
     passTargets: [{ criteria: '<=+10%', targetValue: 253, violated: false }],
     warningTargets: [{ criteria: '<=+15%', targetValue: 264.5, violated: false }],
+    changePoint: null,
   },
   {
     metric: 'error_rate',
@@ -35,6 +36,7 @@ const indicators: Indicator[] = [
     keySli: false,
     passTargets: [{ criteria: '<=+10%', targetValue: 2.2, violated: true }],
     warningTargets: [],
+    changePoint: null,
   },
 ]
 
@@ -124,6 +126,7 @@ const aggregatedIndicators: Indicator[] = [
     keySli: false,
     passTargets: [{ criteria: '<10', targetValue: 10, violated: false }],
     warningTargets: [],
+    changePoint: null,
   },
   {
     metric: 'cpu.p99',
@@ -140,6 +143,7 @@ const aggregatedIndicators: Indicator[] = [
     keySli: true,
     passTargets: [{ criteria: '<25', targetValue: 25, violated: false }],
     warningTargets: [],
+    changePoint: null,
   },
   {
     metric: 'cpu.max',
@@ -156,6 +160,7 @@ const aggregatedIndicators: Indicator[] = [
     keySli: false,
     passTargets: [{ criteria: '<40', targetValue: 40, violated: false }],
     warningTargets: [],
+    changePoint: null,
   },
   {
     metric: 'error_rate',
@@ -172,6 +177,7 @@ const aggregatedIndicators: Indicator[] = [
     keySli: false,
     passTargets: [{ criteria: '<0.05', targetValue: 0.05, violated: false }],
     warningTargets: [],
+    changePoint: null,
   },
 ]
 

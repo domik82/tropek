@@ -36,6 +36,11 @@ export interface HeatmapMetric {
   displayName: string
 }
 
+export interface ChangePointMarker {
+  direction: 'regression' | 'improvement'
+  changeRelativePct: number
+}
+
 export interface HeatmapIndicatorCell {
   evaluationId: string
   sloEvaluationId: string
@@ -53,6 +58,7 @@ export interface HeatmapIndicatorCell {
   warningTargets: unknown[] | null
   tabGroup: string | null
   aggregation: string | null
+  changePoint: ChangePointMarker | null
 }
 
 export interface HeatmapSummaryCell {

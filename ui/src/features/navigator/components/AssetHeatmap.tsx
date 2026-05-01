@@ -1,5 +1,5 @@
 // ui/src/features/navigator/components/AssetHeatmap.tsx
-import { useMemo, useCallback, useRef, useEffect, useDeferredValue, type ReactNode, type MutableRefObject } from 'react'
+import { useMemo, useCallback, useDeferredValue } from 'react'
 import { overallScoreToMiniView, sloGroupToMiniView } from '../mappers'
 import type { GroupedMetricHeatmapResponseDto } from '../mappers'
 import type { HeatmapEChartsCell, TimeSlotSelection } from '../ui-types'
@@ -8,41 +8,11 @@ import { HeatmapChart } from '@/components/charts/HeatmapChart'
 import { fmtDateTime } from '@/lib/format'
 import { SloMiniHeatmap } from './SloMiniHeatmap'
 import { LazyHeatmap } from './LazyHeatmap'
+import { DeferredWhenOffscreen } from './DeferredWhenOffscreen'
 import { RESULT_COLOUR } from '@/lib/theme'
 import { useTheme } from '@/lib/theme-context'
 
 export type { TimeSlotSelection } from '../ui-types'
-
-function VisibilityTrackedSegment({
-  segmentKey,
-  visibleSegmentsRef,
-  children,
-}: {
-  segmentKey: string
-  visibleSegmentsRef: MutableRefObject<Set<string>>
-  children: ReactNode
-}) {
-  const divRef = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    const element = divRef.current
-    if (!element) return
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          visibleSegmentsRef.current.add(segmentKey)
-        } else {
-          visibleSegmentsRef.current.delete(segmentKey)
-        }
-      },
-      { threshold: 0 },
-    )
-    observer.observe(element)
-    return () => observer.disconnect()
-  }, [segmentKey, visibleSegmentsRef])
-
-  return <div ref={divRef}>{children}</div>
-}
 
 interface Props {
   data: GroupedMetricHeatmapResponseDto
@@ -128,7 +98,6 @@ export function AssetHeatmap({
   // The user sees a continuous highlight stripe across all visible charts,
   // while off-screen charts update in a low-priority render pass.
   const deferredSelectedColumn = useDeferredValue(selectedColumn)
-  const visibleSegmentsRef = useRef(new Set<string>())
 
   // Unified click handler — routes all mini-heatmap clicks
   const onCellClick = useCallback((cell: HeatmapEChartsCell): void => {
@@ -184,17 +153,22 @@ export function AssetHeatmap({
       {/* Stacked mini-heatmaps — zero gap between them */}
       <div className="flex flex-col" style={{ gap: 0 }}>
         {/* Overall Score (1 row, always rendered, carries note indicators) */}
-        <VisibilityTrackedSegment segmentKey="overall" visibleSegmentsRef={visibleSegmentsRef}>
-          <SloMiniHeatmap
-            view={overallView}
-            slots={slots}
-            slotLabels={slotLabels}
-            selectedColumn={visibleSegmentsRef.current.has('overall') ? selectedColumn : deferredSelectedColumn}
-            onCellClick={onCellClick}
-            showXAxis={false}
-            notedColumns={notedSlots}
-          />
-        </VisibilityTrackedSegment>
+        <DeferredWhenOffscreen
+          selectedColumn={selectedColumn}
+          deferredSelectedColumn={deferredSelectedColumn}
+        >
+          {(effectiveColumn) => (
+            <SloMiniHeatmap
+              view={overallView}
+              slots={slots}
+              slotLabels={slotLabels}
+              selectedColumn={effectiveColumn}
+              onCellClick={onCellClick}
+              showXAxis={false}
+              notedColumns={notedSlots}
+            />
+          )}
+        </DeferredWhenOffscreen>
 
         {/* Per-SLO segments */}
         {sloViews.map(({ sloName, view }) => {
@@ -204,17 +178,22 @@ export function AssetHeatmap({
           const needsLazy = isExpanded && rowCount > 3
 
           const heatmap = (
-            <VisibilityTrackedSegment segmentKey={sloName} visibleSegmentsRef={visibleSegmentsRef}>
-              <SloMiniHeatmap
-                key={sloName}
-                view={view}
-                slots={slots}
-                slotLabels={slotLabels}
-                selectedColumn={visibleSegmentsRef.current.has(sloName) ? selectedColumn : deferredSelectedColumn}
-                onCellClick={onCellClick}
-                showXAxis={false}
-              />
-            </VisibilityTrackedSegment>
+            <DeferredWhenOffscreen
+              key={sloName}
+              selectedColumn={selectedColumn}
+              deferredSelectedColumn={deferredSelectedColumn}
+            >
+              {(effectiveColumn) => (
+                <SloMiniHeatmap
+                  view={view}
+                  slots={slots}
+                  slotLabels={slotLabels}
+                  selectedColumn={effectiveColumn}
+                  onCellClick={onCellClick}
+                  showXAxis={false}
+                />
+              )}
+            </DeferredWhenOffscreen>
           )
 
           if (needsLazy) {

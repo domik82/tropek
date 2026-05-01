@@ -7,7 +7,7 @@
 import type { paths, components } from './api'
 
 type _AssertEvaluationsPath = paths['/evaluations']['get']
-type _AssertEvaluationDetailPath = paths['/evaluations/{eval_id}']['get']
+type _AssertEvaluationDetailPath = paths['/evaluation/{eval_id}']['get']
 type _AssertAssetsPath = paths['/assets']['get']
 
 type _AssertComponentsSchemas = components['schemas']

@@ -18,6 +18,14 @@ class EvaluateSingleRequest(StrictInput):
     period_start: datetime
     period_end: datetime
     variables: dict[IdentifierKey, SafeStr] = {}
+    compare_to: dict[str, str] | None = None
+    """Scope baseline and change point history to a different evaluation series.
+
+    Currently supports {"evaluation_name": "<name>"} to compare against a named
+    series instead of the current eval_name. Useful for cross-series comparison
+    (e.g. canary vs nightly-baseline). When set, change point detection is skipped
+    since cross-series distributional shifts are not meaningful.
+    """
 
 
 class EvaluateSingleResponse(BaseModel):
@@ -49,6 +57,8 @@ class EvaluateBatchRequest(StrictInput):
     period_end: datetime | None = None
     eval_name: SafeStr
     variables: dict[IdentifierKey, SafeStr] = {}
+    compare_to: dict[str, str] | None = None
+    """See EvaluateSingleRequest.compare_to."""
 
 
 class EvaluateBatchResponse(BaseModel):

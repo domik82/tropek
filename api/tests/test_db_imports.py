@@ -11,6 +11,9 @@ from tropek.db.models import (
     AssetMetaValue,  # noqa: F401
     AssetType,  # noqa: F401
     Base,
+    ChangePoint,  # noqa: F401
+    ChangePointConfig,  # noqa: F401
+    Configuration,  # noqa: F401
     DataSource,  # noqa: F401
     EvaluationAnnotation,
     EvaluationRun,
@@ -58,6 +61,9 @@ def test_orm_models_importable() -> None:
         'annotation_categories',
         'indicator_results',
         'sli_values',
+        'change_points',
+        'change_point_config',
+        'configuration',
     }
 
 

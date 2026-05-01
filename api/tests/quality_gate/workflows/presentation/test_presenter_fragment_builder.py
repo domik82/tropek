@@ -35,6 +35,7 @@ def _indicator_row(
         score=100.0 if status == 'pass' else 60.0,
         value=value,
         compared_value=compared,
+        change_absolute=value - compared,
         change_relative_pct=((value - compared) / compared) * 100,
     )
 

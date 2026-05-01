@@ -46,7 +46,6 @@ export type TrendPointDto = components['schemas']['TrendPoint']
 export type TrendTargetsDto = components['schemas']['TrendTargets']
 export type TrendTargetEntryDto = components['schemas']['TrendTargetEntry']
 export type EvaluationNameEntryDto = components['schemas']['EvaluationNameEntry']
-export type ReEvaluateRequestDto = components['schemas']['ReEvaluateRequest']
 export type ReEvaluateResponseDto = components['schemas']['ReEvaluateResponse']
 export type ReEvalResultItemDto = components['schemas']['ReEvalResultItem']
 export type EvaluateSingleRequestDto = components['schemas']['EvaluateSingleRequest']
@@ -229,6 +228,7 @@ type MappedIndicatorKeys =
   | 'key_sli'
   | 'pass_targets'
   | 'warning_targets'
+  | 'change_point'
 type _IndicatorCoverage = Exclude<
   keyof IndicatorResultDto,
   MappedIndicatorKeys | DroppedIndicatorKeys
@@ -335,6 +335,7 @@ type MappedTrendPointKeys =
   | 'baseline'
   | 'evaluation_name'
   | 'targets'
+  | 'change_point'
 type _TrendPointCoverage = Exclude<
   keyof TrendPointDto,
   MappedTrendPointKeys | DroppedTrendPointKeys
@@ -481,6 +482,7 @@ export function dtoToEvaluationList(dto: {
 }
 
 export function dtoToIndicator(dto: IndicatorResultDto): Indicator {
+  const changePointDto = dto.change_point
   return {
     metric: dto.metric,
     displayName: dto.display_name,
@@ -496,6 +498,12 @@ export function dtoToIndicator(dto: IndicatorResultDto): Indicator {
     keySli: dto.key_sli,
     passTargets: (dto.pass_targets ?? []).map(dtoToPassTarget),
     warningTargets: (dto.warning_targets ?? []).map(dtoToPassTarget),
+    changePoint: changePointDto
+      ? {
+          direction: changePointDto.direction as 'regression' | 'improvement',
+          changeRelativePct: changePointDto.change_relative_pct,
+        }
+      : null,
   }
 }
 
@@ -520,6 +528,7 @@ export function dtoToAnnotation(dto: AnnotationDto): Annotation {
 }
 
 export function dtoToTrendPoint(dto: TrendPointDto): TrendPoint {
+  const changePointDto = dto.change_point
   return {
     timestamp: new Date(dto.timestamp),
     value: dto.value,
@@ -530,6 +539,12 @@ export function dtoToTrendPoint(dto: TrendPointDto): TrendPoint {
     evaluationName: dto.evaluation_name ?? null,
     targets: dto.targets ? dtoToTrendTargets(dto.targets) : null,
     overridden: false,
+    changePoint: changePointDto
+      ? {
+          direction: changePointDto.direction as 'regression' | 'improvement',
+          changeRelativePct: changePointDto.change_relative_pct,
+        }
+      : null,
   }
 }
 

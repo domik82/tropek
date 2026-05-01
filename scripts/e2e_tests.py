@@ -380,12 +380,38 @@ def test_aggregated_evaluation(client: TropekClient) -> None:
     """Trigger evaluations for an asset and verify the agg-latency-slo eval has method-keyed results."""
     step('Step 21: Aggregated-mode evaluation')
 
-    # Use a late time window so seeded evaluations (00:00 through 16:00) provide baselines
+    # Seed a 'load-test' eval at a window after all seed_evaluations.py windows
+    # (latest is 2026-03-16T14:00) but still within the mock adapter's data
+    # range (up to 2026-03-16). This avoids baseline pin interference from
+    # step 8 while keeping mock data available.
+    seed_result = client.evaluations.evaluate(
+        'checkout-api',
+        'load-test',
+        '2026-03-16T15:00:00Z',
+        '2026-03-16T15:30:00Z',
+    )
+    seed_evals = []
+    for seed_id in seed_result['slo_evaluation_ids']:
+        seed_ev = poll_eval(client, str(seed_id))
+        seed_evals.append(seed_ev)
+        print(f'  seed: {seed_ev.slo_name} status={seed_ev.status} eval_name={seed_ev.evaluation_name}')
+
+    agg_seed = next((s for s in seed_evals if s.slo_name == 'agg-latency-slo'), None)
+    assert agg_seed is not None, (
+        f'agg-latency-slo not in seeded SLOs: {[s.slo_name for s in seed_evals]}'
+    )
+    assert agg_seed.status == 'completed', (
+        f'seed agg-latency-slo has status={agg_seed.status}, expected completed'
+    )
+    print(f'seeded load-test baseline: {len(seed_evals)} SLO eval(s), agg-latency-slo OK')
+
+    # Now trigger the aggregated eval with cross-series comparison against 'load-test'.
     result = client.evaluations.evaluate(
         'checkout-api',
         'agg-baseline-test',
-        '2026-03-16T14:00:00Z',
-        '2026-03-16T14:30:00Z',
+        '2026-03-16T16:00:00Z',
+        '2026-03-16T16:30:00Z',
+        compare_to={'evaluation_name': 'load-test'},
     )
     slo_eval_ids = result['slo_evaluation_ids']
     assert slo_eval_ids, 'expected at least one slo_evaluation_id'

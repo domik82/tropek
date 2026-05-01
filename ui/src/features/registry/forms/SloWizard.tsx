@@ -48,7 +48,7 @@ function buildComparisonFromEdit(slo: Slo): ComparisonData {
   const comp = slo.comparison
   return {
     compare_count: comp.numberOfComparisonResults ?? 3,
-    aggregate_function: comp.aggregateFunction ?? 'avg',
+    aggregate_function: (comp.aggregateFunction ?? 'avg') as ComparisonData['aggregate_function'],
     include_result_with_score: comp.includeResultWithScore ?? 'pass_or_warn',
     pass_threshold: slo.totalScorePassThreshold,
     warn_criteria: slo.totalScoreWarningThreshold,
