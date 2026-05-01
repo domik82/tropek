@@ -171,10 +171,7 @@ class MultipleChangePointGenerator:
         series: list[float] = []
         segment_idx = 0
         for i in range(count):
-            while (
-                segment_idx < len(self._segments) - 1
-                and i >= self._segments[segment_idx + 1][0]
-            ):
+            while segment_idx < len(self._segments) - 1 and i >= self._segments[segment_idx + 1][0]:
                 segment_idx += 1
             params = self._segments[segment_idx][1]
             series.append(float(self._dist.rvs(**params, random_state=self._rng)))

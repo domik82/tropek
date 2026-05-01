@@ -123,9 +123,7 @@ async def redis_client() -> AsyncGenerator[fakeredis.aioredis.FakeRedis, None]: 
 @pytest_asyncio.fixture()
 async def info_category_id(db_session: AsyncSession) -> uuid.UUID:
     """Return the id of the seeded 'info' annotation category."""
-    result = await db_session.execute(
-        select(AnnotationCategory.id).where(AnnotationCategory.name == 'info')
-    )
+    result = await db_session.execute(select(AnnotationCategory.id).where(AnnotationCategory.name == 'info'))
     return result.scalar_one()
 
 

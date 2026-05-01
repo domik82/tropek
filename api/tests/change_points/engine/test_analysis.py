@@ -32,10 +32,26 @@ def test_fill_missing_trailing() -> None:
 def test_single_series_detects_step() -> None:
     """Two-phase split+merge detects a single step change at index 10."""
     series = [
-        1.02, 0.95, 0.99, 1.00, 1.12,
-        1.00, 1.01, 0.98, 1.01, 0.96,
-        0.50, 0.51, 0.48, 0.48, 0.55,
-        0.50, 0.49, 0.51, 0.50, 0.49,
+        1.02,
+        0.95,
+        0.99,
+        1.00,
+        1.12,
+        1.00,
+        1.01,
+        0.98,
+        1.01,
+        0.96,
+        0.50,
+        0.51,
+        0.48,
+        0.48,
+        0.55,
+        0.50,
+        0.49,
+        0.51,
+        0.50,
+        0.49,
     ]
     max_pvalue = 0.0001
     first_pass_pvalue = max_pvalue * 10

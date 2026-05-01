@@ -136,9 +136,7 @@ async def _resolve_sli_version_range(
 async def _load_fresh_evaluation(session: AsyncSession, evaluation_id: uuid.UUID) -> SLOEvaluation | None:
     """Reload an evaluation with its annotations eagerly loaded."""
     result = await session.execute(
-        select(SLOEvaluation)
-        .options(selectinload(SLOEvaluation.annotations))
-        .where(SLOEvaluation.id == evaluation_id)
+        select(SLOEvaluation).options(selectinload(SLOEvaluation.annotations)).where(SLOEvaluation.id == evaluation_id)
     )
     return result.scalar_one_or_none()
 
