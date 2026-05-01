@@ -165,7 +165,7 @@ def _reject_bool(value: object) -> object:
     leaving Pydantic's default coercion of whole-number floats intact.
     """
     if isinstance(value, bool):
-        raise TypeError('boolean is not a valid number')
+        raise ValueError('boolean is not a valid number')  # noqa: TRY004 — Pydantic BeforeValidator only catches ValueError
     return value
 
 
