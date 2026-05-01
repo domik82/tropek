@@ -3,10 +3,13 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any
+from typing import TYPE_CHECKING, Any
 from uuid import UUID
 
 from pydantic import BaseModel, Field
+
+if TYPE_CHECKING:
+    from tropek_client.models.evaluations import IndicatorResult
 
 from tropek_client.models.common import AggregateFunction
 
@@ -210,7 +213,7 @@ class SLOTestResult(BaseModel):
 
     result: str
     score: float | int
-    indicator_results: list[Any]
+    indicator_results: list[IndicatorResult]
     baseline_mode: str
     metrics_fetched: dict[str, float | int]
     fetch_errors: dict[str, str]

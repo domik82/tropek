@@ -1,10 +1,12 @@
 """Timeline response models."""
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class TimelineItem(BaseModel):
     """A single item on a timeline."""
+
+    model_config = ConfigDict(populate_by_name=True)
 
     id: str
     group: str
@@ -12,17 +14,19 @@ class TimelineItem(BaseModel):
     start: str
     end: str
     type: str
-    class_name: str
+    class_name: str = Field(alias='className')
     source: str
 
 
 class TimelineGroup(BaseModel):
     """A group of timeline items."""
 
+    model_config = ConfigDict(populate_by_name=True)
+
     id: str
     content: str
-    nested_groups: list[str] | None = None
-    show_nested: bool | None = None
+    nested_groups: list[str] | None = Field(default=None, alias='nestedGroups')
+    show_nested: bool | None = Field(default=None, alias='showNested')
 
 
 class TimelineResponse(BaseModel):
