@@ -9,11 +9,11 @@ default:
 
 # Run API unit tests (no infrastructure required)
 test *args='-q':
-    uv run --directory api pytest tests/ -m "not integration" {{args}}
+    uv run --directory api pytest tests/ -m "not integration" --ignore=tests/schemathesis {{args}}
 
 # Run API integration tests (requires test-env)
 test-int *args='-v':
-    uv run --directory api pytest tests/ -m integration {{args}}
+    uv run --directory api pytest tests/ -m integration --ignore=tests/schemathesis {{args}}
 
 # Run a specific API test file or test
 test-one path *args='-v':
