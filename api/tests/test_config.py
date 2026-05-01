@@ -177,3 +177,37 @@ def test_queue_sweeper_rejects_zero_batch_limit(tmp_path: Path) -> None:
 
     with pytest.raises(ValueError, match='finalize_sweeper_batch_limit'):
         importlib.reload(config_module)
+
+
+def test_database_url_takes_precedence(tmp_path: Path) -> None:
+    cfg_file = tmp_path / 'config.yaml'
+    cfg_file.write_text('database:\n  host: yamlhost\n  port: 5432\n  name: tropek\n')
+
+    os.environ['TK_CONFIG_PATH'] = str(cfg_file)
+    os.environ['TK_DATABASE_URL'] = 'postgresql+asyncpg://urluser:urlpass@urlhost:5433/urldb'
+    os.environ['TK_DB_USER'] = 'component_user'
+    os.environ['TK_DB_PASSWORD'] = 'component_pass'
+    os.environ['TK_REDIS_PASSWORD'] = 'r'
+    os.environ['TK_SECRET_KEY'] = 's'
+
+    importlib.reload(config_module)
+
+    url = config_module.get_settings().database.async_url
+    assert url == 'postgresql+asyncpg://urluser:urlpass@urlhost:5433/urldb'
+
+
+def test_redis_url_takes_precedence(tmp_path: Path) -> None:
+    cfg_file = tmp_path / 'config.yaml'
+    cfg_file.write_text('cache:\n  host: yamlredis\n  port: 6379\n  db: 0\n')
+
+    os.environ['TK_CONFIG_PATH'] = str(cfg_file)
+    os.environ['TK_DB_USER'] = 'u'
+    os.environ['TK_DB_PASSWORD'] = 'p'
+    os.environ['TK_REDIS_URL'] = 'redis://:urlredispass@urlredis:6380/2'
+    os.environ['TK_REDIS_PASSWORD'] = 'component_pass'
+    os.environ['TK_SECRET_KEY'] = 's'
+
+    importlib.reload(config_module)
+
+    url = config_module.get_settings().cache.url
+    assert url == 'redis://:urlredispass@urlredis:6380/2'

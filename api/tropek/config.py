@@ -59,7 +59,10 @@ class DatabaseSettings(BaseSettings):
 
     @property
     def async_url(self) -> str:
-        """Construct the asyncpg connection URL from individual settings."""
+        """Return the database URL, preferring TK_DATABASE_URL if set."""
+        explicit_url = os.environ.get('TK_DATABASE_URL')
+        if explicit_url:
+            return explicit_url
         pw = self.password.get_secret_value()
         return f'postgresql+asyncpg://{self.user}:{pw}@{self.host}:{self.port}/{self.name}'
 
@@ -96,7 +99,10 @@ class CacheSettings(BaseSettings):
 
     @property
     def url(self) -> str:
-        """Construct the Redis connection URL including auth if password is set."""
+        """Return the Redis URL, preferring TK_REDIS_URL if set."""
+        explicit_url = os.environ.get('TK_REDIS_URL')
+        if explicit_url:
+            return explicit_url
         pw = self.password.get_secret_value()
         auth = f':{pw}@' if pw else ''
         return f'redis://{auth}{self.host}:{self.port}/{self.db}'
@@ -199,12 +205,17 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix='TK_')
 
     def validate_required(self) -> None:
-        """Raise on missing required secrets. Call at startup."""
+        """Raise on missing required secrets. Call at startup.
+
+        Either TK_DATABASE_URL or TK_DB_PASSWORD must be set.
+        Either TK_REDIS_URL or TK_REDIS_PASSWORD must be set.
+        TK_SECRET_KEY is always required.
+        """
         missing = []
-        if not self.database.password.get_secret_value():
-            missing.append('TK_DB_PASSWORD')
-        if not self.cache.password.get_secret_value():
-            missing.append('TK_REDIS_PASSWORD')
+        if not os.environ.get('TK_DATABASE_URL') and not self.database.password.get_secret_value():
+            missing.append('TK_DB_PASSWORD (or TK_DATABASE_URL)')
+        if not os.environ.get('TK_REDIS_URL') and not self.cache.password.get_secret_value():
+            missing.append('TK_REDIS_PASSWORD (or TK_REDIS_URL)')
         if not self.secret_key.get_secret_value():
             missing.append('TK_SECRET_KEY')
         if missing:
