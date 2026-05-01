@@ -4,7 +4,10 @@
 
 **Trend Reporting and Objective Evaluation toolkit**
 
-A standalone quality gate and performance test evaluation platform. Evaluates SLI/SLO metrics from Prometheus, CSV files, JMeter results, or any source that can POST JSON -- and decides pass / warning / fail.
+A standalone quality gate and performance test evaluation platform. Evaluates SLI/SLO metrics collected from data adapters (currently Prometheus). Any source that can serve scalar metrics — CSV files, JMeter results, custom databases — can be wrapped in an adapter.
+
+Tropek decides if the collected data is pass / warning / fail based on historical trends and SLO criteria.
+
 
 Inspired by [Keptn v1](https://keptn.sh)'s lighthouse-service, [Apache OTAVA](https://github.com/apache/otava) for change point detection, and the Nurkio project. Runs in Docker Compose. No Kubernetes required.
 
@@ -13,23 +16,23 @@ Inspired by [Keptn v1](https://keptn.sh)'s lighthouse-service, [Apache OTAVA](ht
 ## What it does
 
 - Evaluates metrics against **SLO criteria** (fixed thresholds and relative % change)
-- Supports **key SLI veto** -- one critical metric failure fails the whole evaluation regardless of score
+- Supports **key SLI veto** - one critical metric failure fails the whole evaluation regardless of score
 - Tracks **trend history** with TimescaleDB for relative comparisons (`<=+10%`)
-- Three **ingestion modes**: pull from Prometheus, push metrics inline, or upload a file (CSV / JMeter)
-- **Versioned SLO & SLI registries** -- every change is stored; evaluations record which version they used
-- **SLO groups & templates** -- organise SLOs into reusable groups, assign them to assets
-- **Display groups** -- control how SLI objectives are grouped and ordered in the UI
-- **Asset & group registry** -- register VMs/services, organise into groups, bind SLOs to assets
-- **Heatmap navigator** -- visual overview of evaluation results across assets and time
-- **Evaluation batches** -- trigger evaluations for multiple assets in a single request
-- **Annotations with categories** -- attach categorised contextual notes to evaluations
-- **Invalidation & restore** -- mark evaluations as invalid and restore them without deleting data
-- **Baseline pinning** -- pin a specific evaluation as the comparison baseline
-- **Status overrides** -- manually override an evaluation's pass/warning/fail status
-- **Re-evaluation** -- re-run an evaluation against updated SLO criteria
-- **Multi-phase worker pipeline** -- arq workers with configurable concurrency (max_jobs=10)
-- **Contract testing** -- OpenAPI codegen + Schemathesis property-based API conformance tests
-- **Data source registry** -- register adapter instances (Prometheus, mock adapter for testing)
+- **Adapter-based data ingestion** — pull metrics from any adapter (Prometheus shipped; custom adapters for CSV, JMeter, etc. can be added)
+- **Versioned SLO & SLI registries** - every change is stored; evaluations record which version they used
+- **SLO groups & templates** - organise SLOs into reusable groups, assign them to assets
+- **Display groups** - control how SLI objectives are grouped and ordered in the UI
+- **Asset & group registry** - register VMs/services, organise into groups, bind SLOs to assets
+- **Heatmap navigator** - visual overview of evaluation results across assets and time
+- **Evaluation batches** - trigger evaluations for multiple assets in a single request
+- **Annotations with categories** - attach categorised contextual notes to evaluations
+- **Invalidation & restore** - mark evaluations as invalid and restore them without deleting data
+- **Baseline pinning** - pin a specific evaluation as the new comparison baseline
+- **Status overrides** - manually override an evaluation's pass/warning/fail status
+- **Re-evaluation** - re-run an evaluation against updated SLO criteria
+- **Multi-phase worker pipeline** - arq workers with configurable concurrency (max_jobs=10)
+- **Contract testing** - OpenAPI codegen + Schemathesis property-based API conformance tests
+- **Data source registry** - register adapter instances (Prometheus, mock adapter for testing)
 
 ---
 
@@ -176,50 +179,68 @@ pnpm lint        # ESLint
 
 ---
 
-## SLO format
+## SLO / SLI format
 
-TROPEK uses a superset of the [Keptn 1.0 SLO spec](https://github.com/keptn/spec/blob/master/service_level_objective.md). Existing Keptn SLOs work without modification.
+TROPEK's evaluation criteria are split into two manifest kinds: **SLI definitions** (indicator queries) and **SLO definitions** (thresholds and scoring). The scoring engine is inspired by [Keptn v1](https://github.com/keptn/spec/blob/master/service_level_objective.md) but uses its own YAML schema.
 
-The key difference: **SLI queries are embedded in the SLO file** under an `indicators` block -- no separate SLI file needed.
+### SLI definition
 
 ```yaml
-spec_version: '1.0'
-
-# Optional — comparison strategy for relative criteria (<=+10%)
-comparison:
-  compare_with: several_results        # single_result | several_results
-  number_of_comparison_results: 3
-  include_result_with_score: pass_or_warn  # pass | pass_or_warn | all
-  aggregate_function: avg              # avg | p50 | p90 | p95 | p99
-  scope_tags: [os, arch]              # TROPEK extension: scope baseline to matching asset tags
-
-# SLI queries — one entry per metric (PromQL, SQL, or ignored for push/file mode)
-indicators:
-  response_time_p99: 'histogram_quantile(0.99, rate(http_request_duration_seconds_bucket{instance="$vm_ip"}[5m]))'
-  error_rate: 'rate(http_requests_total{status=~"5..",instance="$vm_ip"}[5m])'
-
-objectives:
-  - sli: response_time_p99
-    displayName: "Response Time P99 (ms)"
-    pass:
-      - criteria: ["<600", "<=+10%"]   # AND within a block
-      - criteria: ["<400"]             # OR across blocks — any block passing = pass
-    warning:
-      - criteria: ["<800"]
-    weight: 2
-    key_sli: false                     # true = failure here fails the entire evaluation
-
-  - sli: error_rate
-    displayName: "Error Rate"
-    pass:
-      - criteria: ["=0"]
-    weight: 3
-    key_sli: true
-
-total_score:
-  pass: "90%"      # weighted score >= 90% → pass
-  warning: "75%"   # weighted score >= 75% → warning
+api_version: tropek/v1
+kind: SLI
+metadata:
+  name: http-service-sli
+  display_name: HTTP Service Indicators
+spec:
+  adapter_type: prometheus
+  indicators:
+    response_time_p99: 'histogram_quantile(0.99, rate(http_request_duration_seconds_bucket{job="$job"}[5m]))'
+    error_rate: 'rate(http_requests_total{job="$job",status=~"5.."}[5m]) / rate(http_requests_total{job="$job"}[5m])'
+    availability: 'avg_over_time(up{job="$job"}[5m])'
 ```
+
+### SLO definition
+
+```yaml
+api_version: tropek/v1
+kind: SLO
+metadata:
+  name: http-availability-slo
+  display_name: HTTP Availability SLO
+spec:
+  sli_name: http-service-sli          # references the SLI definition above
+  sli_version: 1
+  kind: standard                      # standard | template
+  comparison:
+    compare_with: several_results     # single_result | several_results
+    number_of_comparison_results: 3
+    include_result_with_score: pass_or_warn
+    aggregate_function: avg           # avg | p50 | p90 | p95 | p99
+  total_score:
+    pass_threshold: 90.0              # weighted score >= 90% → pass
+    warning_threshold: 75.0           # weighted score >= 75% → warning
+  objectives:
+    - sli: response_time_p99
+      display_name: "Response Time P99 (ms)"
+      pass_threshold: [">0", "<500", "<=+10%"]
+      warning_threshold: [">0", "<800", "<=+15%"]
+      weight: 2
+      change_point:
+        max_pvalue: 0.01
+    - sli: error_rate
+      display_name: "Error Rate"
+      pass_threshold: [">0", "<0.01", "<=+10%"]
+      warning_threshold: [">0", "<0.05", "<=+15%"]
+      weight: 3
+      key_sli: true                   # failure here fails the entire evaluation
+    - sli: availability
+      display_name: "Availability"
+      pass_threshold: [">=0.999"]
+      warning_threshold: [">=0.99"]
+      weight: 2
+```
+
+See `bootstrap_mock/manifests/` for complete working examples including template SLOs with `$__gen_` variable expansion and aggregated-mode SLIs.
 
 ### Criteria syntax
 
@@ -239,26 +260,6 @@ Relative criteria with no comparison history **always pass** -- no history means
 
 ## Triggering an evaluation
 
-### Push mode (metrics provided inline)
-
-```bash
-curl -X POST http://localhost:8080/evaluations \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "checkout-api-load-test",
-    "start": "2026-03-12T10:00:00Z",
-    "end": "2026-03-12T10:30:00Z",
-    "slo_name": "http-api-slo",
-    "metrics": {
-      "response_time_p99": 450.3,
-      "error_rate": 0.0
-    },
-    "metadata": {"os": "linux", "branch": "main"}
-  }'
-```
-
-### Pull mode (Prometheus adapter)
-
 ```bash
 curl -X POST http://localhost:8080/evaluations \
   -H "Content-Type: application/json" \
@@ -272,20 +273,7 @@ curl -X POST http://localhost:8080/evaluations \
   }'
 ```
 
-### File mode (CSV)
-
-```bash
-curl -X POST http://localhost:8080/evaluations/file \
-  -F 'meta={"name":"network-test","start":"2026-03-12T09:00:00Z","end":"2026-03-12T09:20:00Z","slo_name":"network-slo","results_format":"csv","metadata":{}}' \
-  -F "results_file=@results.csv"
-```
-
-CSV format:
-```csv
-metric_name,value,aggregation
-response_time_p99,450.3,p99
-error_rate,0.02,avg
-```
+The API enqueues the evaluation; a worker pulls metrics from the configured adapter (Prometheus), runs the scoring engine, and stores results in TimescaleDB.
 
 ---
 
