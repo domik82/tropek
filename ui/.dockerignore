@@ -1,0 +1,11 @@
+node_modules/
+.env*
+dist/
+*.md
+!README.md
+.git/
+.gitignore
+src/**/*.test.tsx
+src/**/*.test.ts
+src/test-setup.ts
+docs/
