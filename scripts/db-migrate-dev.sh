@@ -31,9 +31,9 @@ set +a
 
 # ── Override service hostnames for local dev ──────────────────────────────────
 # config.yaml uses Docker hostnames (timescaledb, redis). When running outside
-# Docker these resolve to nothing. QG_DB_HOST overrides the value from config.yaml.
-export QG_DB_HOST=localhost
-export QG_REDIS_HOST=localhost
+# Docker these resolve to nothing. TK_DB_HOST overrides the value from config.yaml.
+export TK_DB_HOST=localhost
+export TK_REDIS_HOST=localhost
 
 # ── Optional: check mode ─────────────────────────────────────────────────────
 if [[ "${1:-}" == "--check" ]]; then
@@ -53,7 +53,7 @@ uv run --directory "${REPO_ROOT}/api" alembic current
 echo ""
 echo "==> Validating seed data ..."
 
-DB_URL="postgresql://${QG_DB_USER}:${QG_DB_PASSWORD}@localhost:5432/tropek"
+DB_URL="postgresql://${TK_DB_USER}:${TK_DB_PASSWORD}@localhost:5432/tropek"
 
 run_sql() {
     uv run --directory "${REPO_ROOT}" python3 -c "

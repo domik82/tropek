@@ -14,11 +14,11 @@ import os
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 
-DB_USER = os.environ.get("QG_DB_USER", "tropek_e2e")
-DB_PASS = os.environ.get("QG_DB_PASSWORD", "tropek_e2e")
-DB_HOST = os.environ.get("QG_DB_HOST", "localhost")
-DB_PORT = os.environ.get("QG_DB_PORT", "5434")
-DB_NAME = os.environ.get("QG_DB_NAME", "tropek_e2e")
+DB_USER = os.environ.get("TK_DB_USER", "tropek_e2e")
+DB_PASS = os.environ.get("TK_DB_PASSWORD", "tropek_e2e")
+DB_HOST = os.environ.get("TK_DB_HOST", "localhost")
+DB_PORT = os.environ.get("TK_DB_PORT", "5434")
+DB_NAME = os.environ.get("TK_DB_NAME", "tropek_e2e")
 
 DATABASE_URL = f"postgresql+asyncpg://{DB_USER}:{DB_PASS}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
 

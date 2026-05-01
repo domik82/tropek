@@ -59,7 +59,7 @@ just test-env-down
 
 `api/tests/db/conftest.py` loads `.env.test` via `python-dotenv` when the DB fixtures are imported —
 scoped to integration tests only, so unit tests are not affected. **Never** pass
-`TEST_DATABASE_URL` or `QG_*` vars as shell prefixes or inline exports.
+`TEST_DATABASE_URL` or `TK_*` vars as shell prefixes or inline exports.
 
 ### Re-running migrations only (container already running)
 
@@ -323,7 +323,7 @@ ui/src/
 ## Configuration
 
 - Non-secret config: `config.yaml` (server, DB pool, cache TTLs, queue settings, adapter URLs, logging)
-- Secrets: environment variables prefixed `QG_` (e.g., `QG_DB_PASSWORD`, `QG_REDIS_PASSWORD`, `QG_SECRET_KEY`)
+- Secrets: environment variables prefixed `TK_` (e.g., `TK_DB_PASSWORD`, `TK_REDIS_PASSWORD`, `TK_SECRET_KEY`)
 
 ## Shell command discipline
 
