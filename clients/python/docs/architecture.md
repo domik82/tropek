@@ -126,6 +126,10 @@ HTTP-level client tests. No real API calls in any test.
 
 ## Known Limitations
 
+See [`technical-debt.md`](technical-debt.md) for detailed analysis and recommended
+fixes. Summary:
+
+- No contract validation against the backend OpenAPI spec — client can silently drift
 - `AssetGroup` update via manifests is a no-op (member sync not implemented)
 - Assignment updates require manual delete + recreate
 - No async client variant
