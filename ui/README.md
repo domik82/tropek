@@ -18,7 +18,7 @@ React SPA for the TROPEK quality gate platform — asset navigation, evaluation 
 | API mocking | MSW 2 (Mock Service Worker) |
 | Testing | Vitest 4 |
 
-## Quick start
+## Quick Start
 
 ```bash
 cd ui
@@ -28,9 +28,7 @@ pnpm dev             # starts on http://localhost:5173 with mock data
 
 By default the dev server runs with **MSW mocks enabled** — no backend needed. The browser console will show `[MSW] Mocking enabled` on startup.
 
-## Running modes
-
-### Mock mode (default in dev)
+To run against the real API:
 
 ```bash
 pnpm dev
@@ -65,7 +63,15 @@ The API base URL defaults to `http://localhost:8080` (set in `.env.development`)
 | `pnpm lint` | ESLint |
 | `pnpm test` | Vitest (unit tests) |
 
-## Project structure
+Or from the repo root:
+
+```bash
+just test-ui                    # all UI tests
+just test-ui src/features/...   # specific file
+just lint-ui                    # ESLint
+```
+
+## Directory Structure
 
 ```
 src/
@@ -112,26 +118,27 @@ src/
 
 ## Routes
 
-| Path | Page | URL state |
+| Path | Page | URL State |
 |---|---|---|
 | `/` | Redirects to `/navigator` | — |
-| `/navigator` | Asset navigator (tree + panels) | `?group=<name>&asset=<name>&eval=<id>` |
+| `/navigator` | Asset navigator (tree + panels) | `?group=&asset=&eval=` |
 | `/evaluations/:id` | Evaluation detail | — |
-| `/slos` | SLO registry | — |
-| `/assets` | Asset list | — |
-| `/explorer` | Metric explorer (WIP) | — |
+| `/slos` | SLO registry (3-mode) | `?mode=&selected=&type=&group=` |
+| `/assets` | Asset management | `?group=&asset=` |
+| `/explorer` | Metric explorer | `?group=&asset=` |
+| `/settings/note-categories` | Note category management | — |
 
 ## Themes
 
-Three theme variants defined via CSS custom properties in `index.css`:
+Three themes via `data-theme` attribute on `<html>`:
 
-| Theme | Style | Activation |
+| Theme | Style | Toggle |
 |---|---|---|
-| `forest` | Dark, teal/green accent | Default — navbar "Dark" button |
-| `current` | Dark, neutral (original shadcn) | Navbar "Alt" button |
-| `corporate` | Light, blue accent | Stub — not yet in navbar |
+| `current` | Dark, teal/green accent | Navbar "Dark" button |
+| `dark` | Dark, Radix UI colour scales | Navbar "Alt" button |
+| `light` | Light | Stub — not yet exposed |
 
-Theme and font size persist in localStorage (`tropek-theme`, `tropek-font-size`).
+Theme and font size persist in localStorage.
 
 ## Architecture
 
@@ -208,39 +215,35 @@ flowchart TD
     end
 ```
 
-## Environment variables
+## Environment Variables
 
 | Variable | Default | Purpose |
 |---|---|---|
 | `VITE_USE_MOCKS` | `true` (dev) | Enable MSW browser mocking |
 | `VITE_API_BASE` | `http://localhost:8080` | Backend API base URL |
 
-## API endpoints consumed
+## Documentation
 
-```
-GET    /api/evaluations[?group_name&asset_name&date&from&to]
-GET    /api/evaluations/:id
-GET    /api/evaluations/metric-heatmap?asset_name=X
-GET    /api/trend?eval_id=X&metric=Y
-POST   /api/evaluations
-PATCH  /api/evaluations/:id/invalidate
-PATCH  /api/evaluations/:id/override-status
-PATCH  /api/evaluations/:id/pin-baseline
-POST   /api/evaluations/:id/annotations
+### Architecture & Contributor Guides (`ui/docs/`)
 
-GET    /api/assets
-GET    /api/asset-groups/tree
+| Document | Scope |
+|---|---|
+| [architecture.md](docs/architecture.md) | Tech stack, directory structure, feature inventory, key decisions |
+| [patterns.md](docs/patterns.md) | Data flow, state management, module structure, conventions |
+| [components.md](docs/components.md) | Component catalogue by feature area |
+| [charts.md](docs/charts.md) | HeatmapChart, stacked mini-heatmaps, MultiSeriesChart, colours |
+| [theming.md](docs/theming.md) | Theme system, CSS tokens, colour scales |
+| [forms.md](docs/forms.md) | Action forms, SLO wizard, entity CRUD dialogs |
+| [testing.md](docs/testing.md) | Test stack, MSW setup, QueryClient cleanup, coverage gaps |
+| [mocking.md](docs/mocking.md) | MSW mock system and deterministic data generator |
+| [known-issues.md](docs/known-issues.md) | Technical debt, accessibility gaps, test coverage |
 
-GET    /api/slo-definitions
-GET    /api/slo-definitions/:name
-GET    /api/slo-definitions/:name/versions
-POST   /api/slo-definitions
-POST   /api/slo-definitions/validate
-DELETE /api/slo-definitions/:name
+### User-Facing Feature Docs (`docs/modules/`)
 
-GET    /api/sli-definitions
-GET    /api/sli-definitions/:name
-GET    /api/sli-definitions/:name/versions
-POST   /api/sli-definitions
-DELETE /api/sli-definitions/:name
-```
+| Document | Feature |
+|---|---|
+| [navigator-ui.md](../docs/modules/navigator-ui.md) | Navigator page (heatmaps, panels, drill-down) |
+| [evaluations-ui.md](../docs/modules/evaluations-ui.md) | Evaluations (detail, actions, SLI breakdown) |
+| [registry-ui.md](../docs/modules/registry-ui.md) | SLO/SLI/Datasource registry |
+| [assets-ui.md](../docs/modules/assets-ui.md) | Assets, groups, datasources |
+| [meta-timeline-ui.md](../docs/modules/meta-timeline-ui.md) | Meta-timeline |
