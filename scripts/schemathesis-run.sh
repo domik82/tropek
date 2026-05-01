@@ -24,7 +24,7 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-CMD=(uv run --directory api pytest tests/schemathesis -m schemathesis "${ARGS[@]}")
+CMD=(uv run --directory api pytest tests/schemathesis -m schemathesis -n auto --maxprocesses 4 "${ARGS[@]}")
 
 if [[ "$TAIL_LINES" -gt 0 ]]; then
   "${CMD[@]}" 2>&1 | tail -n "$TAIL_LINES"
