@@ -186,9 +186,7 @@ async def test_cascading_closure_round_trip(
     for item in body['items']:
         # Check the className field — try both alias and field name
         class_name = item.get('className', item.get('class_name', ''))
-        assert 'meta-span-closed' in class_name, (
-            f'expected meta-span-closed in className, got: {class_name}'
-        )
+        assert 'meta-span-closed' in class_name, f'expected meta-span-closed in className, got: {class_name}'
 
 
 async def test_large_snapshot_roundtrips(
@@ -243,12 +241,8 @@ async def test_window_clipping_left_and_open_right(
     assert len(body['items']) == 1
     item = body['items'][0]
     class_name = item.get('className', item.get('class_name', ''))
-    assert 'meta-span-clipped-left' in class_name, (
-        f'expected meta-span-clipped-left in className, got: {class_name}'
-    )
-    assert 'meta-span-open' in class_name, (
-        f'expected meta-span-open in className, got: {class_name}'
-    )
+    assert 'meta-span-clipped-left' in class_name, f'expected meta-span-clipped-left in className, got: {class_name}'
+    assert 'meta-span-open' in class_name, f'expected meta-span-open in className, got: {class_name}'
 
 
 async def test_closed_only_snapshot_round_trip(
@@ -284,6 +278,4 @@ async def test_closed_only_snapshot_round_trip(
     assert len(body['items']) == 1
     item = body['items'][0]
     class_name = item.get('className', item.get('class_name', ''))
-    assert 'meta-span-closed' in class_name, (
-        f'expected meta-span-closed in className, got: {class_name}'
-    )
+    assert 'meta-span-closed' in class_name, f'expected meta-span-closed in className, got: {class_name}'

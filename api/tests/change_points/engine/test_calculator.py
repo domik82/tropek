@@ -3,14 +3,26 @@
 from __future__ import annotations
 
 import numpy as np
-
 from tropek.modules.change_points.engine.calculator import PairDistanceCalculator
 
-SEQUENCE = np.array([
-    0.3, 2.4, 1.5, -0.9, -0.5,
-    99.7, 98.3, 99.1,
-    149.0, 149.7, 149.5, 149.1, 148.8, 150.0,
-])
+SEQUENCE = np.array(
+    [
+        0.3,
+        2.4,
+        1.5,
+        -0.9,
+        -0.5,
+        99.7,
+        98.3,
+        99.1,
+        149.0,
+        149.7,
+        149.5,
+        149.1,
+        148.8,
+        150.0,
+    ]
+)
 
 
 def _compute_q_brute_force(sequence: np.ndarray) -> tuple[np.ndarray, float, int]:
@@ -27,18 +39,10 @@ def _compute_q_brute_force(sequence: np.ndarray) -> tuple[np.ndarray, float, int
             a_sum = sum(abs(x - y) for x in left for y in right)
             a_val = 2 / (n_right + n_left) * a_sum
 
-            b_sum = sum(
-                abs(left[i] - left[k])
-                for i in range(n_left - 1)
-                for k in range(i + 1, n_left)
-            )
+            b_sum = sum(abs(left[i] - left[k]) for i in range(n_left - 1) for k in range(i + 1, n_left))
             b_val = 2 * n_right / (n_right + n_left) / (n_left - 1) * b_sum if n_left > 1 else 0
 
-            c_sum = sum(
-                abs(right[j] - right[k])
-                for j in range(n_right - 1)
-                for k in range(j, n_right)
-            )
+            c_sum = sum(abs(right[j] - right[k]) for j in range(n_right - 1) for k in range(j, n_right))
             c_val = 2 * n_left / (n_right + n_left) / (n_right - 1) * c_sum if n_right > 1 else 0
 
             Q[tau - 1, kappa - 2] = a_val - b_val - c_val

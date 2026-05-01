@@ -445,10 +445,14 @@ async def list_evaluation_names(
 )
 async def get_trend_annotations(
     asset_name: Annotated[
-        str, Query(alias='asset', pattern=r'^[^\x00]*$'), AfterValidator(reject_null_bytes),
+        str,
+        Query(alias='asset', pattern=r'^[^\x00]*$'),
+        AfterValidator(reject_null_bytes),
     ],
     slo_name: Annotated[
-        str, Query(alias='slo', pattern=r'^[^\x00]*$'), AfterValidator(reject_null_bytes),
+        str,
+        Query(alias='slo', pattern=r'^[^\x00]*$'),
+        AfterValidator(reject_null_bytes),
     ],
     repos: QualityGateRepos = Depends(get_qg_repos),
 ) -> dict[str, list[AnnotationRead]]:

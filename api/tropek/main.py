@@ -21,7 +21,6 @@ from tropek.modules.asset_meta.router import router as asset_meta_router
 from tropek.modules.assets.router import router as assets_router
 from tropek.modules.assignments.router import router as assignments_router
 from tropek.modules.change_points.router import router as change_points_router
-from tropek.modules.configuration.router import router as configuration_router
 from tropek.modules.common.exception_handlers import (
     conflict_handler,
     domain_validation_handler,
@@ -34,6 +33,7 @@ from tropek.modules.common.exceptions import (
     NotFoundError,
 )
 from tropek.modules.common.method_not_allowed import MethodNotAllowedMiddleware
+from tropek.modules.configuration.router import router as configuration_router
 from tropek.modules.datasource.router import router as datasource_router
 from tropek.modules.display_groups.router import router as display_groups_router
 from tropek.modules.quality_gate.router import router as quality_gate_router
@@ -134,8 +134,7 @@ def _inject_property_names_pattern(schema: Any) -> None:
                 property_names['pattern'] = key_regex
         else:
             _openapi_logger.warning(
-                'skipping propertyNames.pattern injection: multiple patternProperties '
-                'keys are ambiguous (keys=%s)',
+                'skipping propertyNames.pattern injection: multiple patternProperties keys are ambiguous (keys=%s)',
                 list(pattern_properties.keys()),
             )
     for value in schema.values():

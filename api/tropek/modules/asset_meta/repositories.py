@@ -57,10 +57,7 @@ class AssetMetaRepository:
             snapshot_id: UUID of the parent snapshot.
             entries: Sequence of (path, value) tuples where path is a list of hierarchy segments.
         """
-        value_rows = [
-            AssetMetaValue(snapshot_id=snapshot_id, path=path, value=value)
-            for path, value in entries
-        ]
+        value_rows = [AssetMetaValue(snapshot_id=snapshot_id, path=path, value=value) for path, value in entries]
         self._session.add_all(value_rows)
 
     async def insert_closures(self, snapshot_id: uuid.UUID, entries: Sequence[list[str]]) -> None:
@@ -70,10 +67,7 @@ class AssetMetaRepository:
             snapshot_id: UUID of the parent snapshot.
             entries: Sequence of paths, each path being a list of hierarchy segments.
         """
-        closure_rows = [
-            AssetMetaClosure(snapshot_id=snapshot_id, path=path)
-            for path in entries
-        ]
+        closure_rows = [AssetMetaClosure(snapshot_id=snapshot_id, path=path) for path in entries]
         self._session.add_all(closure_rows)
 
     async def load_snapshots_for_derivation(self, asset_id: uuid.UUID, until: datetime) -> list[SnapshotRow]:

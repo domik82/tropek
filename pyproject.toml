@@ -105,12 +105,16 @@ max-args = 8
 "observability_stack/**" = ["D", "S", "C901", "SIM115", "RUF002", "RUF003", "RUF005"]
 # FastAPI uses Depends() as a default argument — B008 (mutable default) is a false positive here
 "**/router.py" = ["B008", "PLR0913"]
+# Vendored Apache Otava engine — variable names (Q, V, H, A, B, C) follow the paper's notation
+"**/change_points/engine/*.py" = ["N802", "N806", "PLR2004"]
+"**/tests/change_points/**/test_*.py" = ["N806"]
 
 [tool.mypy]
 python_version = "3.13"
 strict = true
 ignore_missing_imports = true
 plugins = ["sqlalchemy.ext.mypy.plugin"]
+
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

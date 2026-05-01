@@ -4,18 +4,30 @@ from __future__ import annotations
 
 import numpy as np
 import pytest
-
 from tropek.modules.change_points.engine.analysis import TTestSignificanceTester, TTestStats, split
 from tropek.modules.change_points.engine.base import ChangePoint
 from tropek.modules.change_points.engine.calculator import PairDistanceCalculator
 from tropek.modules.change_points.engine.detector import ChangePointDetector
 from tropek.modules.change_points.engine.significance_test import PermutationsSignificanceTester
 
-SEQUENCE = np.array([
-    0.3, 2.4, 1.5, -0.9, -0.5,
-    99.7, 98.3, 99.1,
-    149.0, 149.7, 149.5, 149.1, 148.8, 150.0,
-])
+SEQUENCE = np.array(
+    [
+        0.3,
+        2.4,
+        1.5,
+        -0.9,
+        -0.5,
+        99.7,
+        98.3,
+        99.1,
+        149.0,
+        149.7,
+        149.5,
+        149.1,
+        148.8,
+        150.0,
+    ]
+)
 EXPECTED_CHANGE_POINT_INDICES = [5, 8]
 
 
@@ -28,7 +40,10 @@ def test_permutation_calculation() -> None:
 
     seed = 1
     tester = PermutationsSignificanceTester(
-        max_pvalue=0.05, permutations=1, calculator=PairDistanceCalculator, seed=seed,
+        max_pvalue=0.05,
+        permutations=1,
+        calculator=PairDistanceCalculator,
+        seed=seed,
     )
     change_point = tester.change_point(candidate=candidate, series=sequence, intervals=[whole_interval])
 
@@ -48,7 +63,10 @@ def test_permutation_test_finds_known_change_points() -> None:
     seed = 1
     sequence = SEQUENCE.copy()
     tester = PermutationsSignificanceTester(
-        max_pvalue=0.01, permutations=100, calculator=PairDistanceCalculator, seed=seed,
+        max_pvalue=0.01,
+        permutations=100,
+        calculator=PairDistanceCalculator,
+        seed=seed,
     )
     detector = ChangePointDetector(significance_tester=tester, calculator=PairDistanceCalculator)
     change_points = detector.get_change_points(series=sequence)

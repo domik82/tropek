@@ -30,6 +30,8 @@ by Matteson and James (https://doi.org/10.48550/arXiv.1306.4933).
 
 from __future__ import annotations
 
+from typing import Any
+
 import numpy as np
 from numpy.typing import NDArray
 
@@ -37,14 +39,15 @@ from tropek.modules.change_points.engine.base import Calculator, CandidateChange
 
 
 class PairDistanceCalculator(Calculator):
+    """Q-hat dissimilarity calculator using pairwise distances."""
 
-    def __init__(self, series: NDArray, power: float = 1.0) -> None:
+    def __init__(self, series: NDArray[np.floating[Any]], power: float = 1.0) -> None:
         super().__init__(series)
         assert 0 < power < 2, f'power={power} is not in (0, 2)'
         self.power = power
-        self.V: NDArray | None = None
-        self.H: NDArray | None = None
-        self.distances: NDArray | None = None
+        self.V: NDArray[np.floating[Any]] | None = None
+        self.H: NDArray[np.floating[Any]] | None = None
+        self.distances: NDArray[np.floating[Any]] | None = None
 
     def _calculate_pairwise_differences(self) -> None:
         """Precompute V (vertical) and H (horizontal) cumulative sums of the distance matrix.
@@ -55,13 +58,14 @@ class PairDistanceCalculator(Calculator):
         These are used by _get_Q_vals to compute the Q-hat function efficiently.
         """
         self.distances = np.power(
-            np.abs(self.series[:, None] - self.series[None, :]), self.power,
+            np.abs(self.series[:, None] - self.series[None, :]),
+            self.power,
         )
         triu = np.triu(self.distances, k=1)[:-1, 1:]
         self.V = triu.sum(axis=0)
         self.H = triu.cumsum(axis=1)
 
-    def _get_Q_vals(self, start: int, end: int) -> NDArray:
+    def _get_Q_vals(self, start: int, end: int) -> NDArray[np.floating[Any]]:
         """Compute the Q-hat matrix for series[start:end].
 
         Returns a matrix Q where Q[i, j] = QQ(series[start:τ], series[τ:κ])
@@ -72,8 +76,10 @@ class PairDistanceCalculator(Calculator):
         """
         if self.V is None or self.H is None:
             self._calculate_pairwise_differences()
+        if self.V is None or self.H is None or self.distances is None:
+            raise RuntimeError('pairwise differences were not computed')
 
-        V = self.V[start : end - 1] - self.distances[0 : start, start + 1 : end].sum(axis=0)
+        V = self.V[start : end - 1] - self.distances[0:start, start + 1 : end].sum(axis=0)
         H = self.H[start : end - 1, start : end - 1]
 
         taus = np.arange(start + 1, end)[:, None]

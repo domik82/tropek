@@ -2143,6 +2143,7 @@
         "type": "object"
       },
       "Direction": {
+        "description": "Whether a change point represents a regression or improvement.",
         "enum": [
           "regression",
           "improvement"

@@ -19,6 +19,10 @@ TYPE_VALIDATORS: dict[str, Callable[[str], bool]] = {
 }
 
 
+def _accept_any(value: str) -> bool:
+    return True
+
+
 def _is_float(value: str) -> bool:
     try:
         float(value)
@@ -56,9 +60,7 @@ class ConfigurationRepository:
 
     async def get_by_name(self, name: str) -> Configuration | None:
         """Return a single configuration entry by name."""
-        result = await self._session.execute(
-            select(Configuration).where(Configuration.name == name)
-        )
+        result = await self._session.execute(select(Configuration).where(Configuration.name == name))
         return result.scalar_one_or_none()
 
     async def update_value(self, name: str, value: str) -> Configuration | None:
@@ -70,7 +72,6 @@ class ConfigurationRepository:
         entry = await self.get_by_name(name)
         if entry is None:
             return None
-        _accept_any: Callable[[str], bool] = lambda v: True
         validator = TYPE_VALIDATORS.get(entry.value_type, _accept_any)
         if not validator(value):
             msg = f"value '{value}' is not a valid {entry.value_type}"
@@ -82,7 +83,4 @@ class ConfigurationRepository:
     async def get_change_point_defaults(self) -> dict[str, bool | int | float | str]:
         """Load all change_point.* settings as a typed dict."""
         rows = await self.get_all(prefix='change_point.')
-        return {
-            row.name.removeprefix('change_point.'): parse_typed_value(row.value, row.value_type)
-            for row in rows
-        }
+        return {row.name.removeprefix('change_point.'): parse_typed_value(row.value, row.value_type) for row in rows}

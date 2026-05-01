@@ -29,14 +29,14 @@ Regressions" by Fleming et al. (https://doi.org/10.1145/3578244.3583719).
 
 from __future__ import annotations
 
-from collections.abc import Sequence
-from typing import SupportsFloat, cast
+from typing import Any, cast
 
 import numpy as np
-from pydantic import BaseModel
+from numpy.typing import NDArray
 from scipy.stats import ttest_ind_from_stats
 
 from tropek.modules.change_points.engine.base import (
+    BaseStats,
     CandidateChangePoint,
     ChangePoint,
     SignificanceTester,
@@ -45,7 +45,7 @@ from tropek.modules.change_points.engine.calculator import PairDistanceCalculato
 from tropek.modules.change_points.engine.detector import ChangePointDetector
 
 
-class TTestStats(BaseModel):
+class TTestStats(BaseStats):
     """Statistics from a two-sided Student's t-test between two segments."""
 
     mean_1: float
@@ -67,9 +67,11 @@ class TTestStats(BaseModel):
         return self.mean_1 / self.mean_2 - 1.0
 
     def forward_change_percent(self) -> float:
+        """Forward relative change as a percentage."""
         return self.forward_rel_change() * 100.0
 
     def backward_change_percent(self) -> float:
+        """Backward relative change as a percentage."""
         return self.backward_rel_change() * 100.0
 
     def change_magnitude(self) -> float:
@@ -78,17 +80,17 @@ class TTestStats(BaseModel):
 
 
 class TTestSignificanceTester(SignificanceTester):
-    """Uses two-sided Student's t-test to decide if a candidate change point
-    splits the series into significantly different segments.
+    """Uses two-sided Student's t-test to decide if a candidate change point is significant.
 
     Works well even with small sample sizes (<10).
     """
 
     def compare(
         self,
-        left: Sequence[SupportsFloat],
-        right: Sequence[SupportsFloat],
+        left: NDArray[np.floating[Any]],
+        right: NDArray[np.floating[Any]],
     ) -> TTestStats:
+        """Compute t-test statistics between two segments."""
         if len(left) == 0 or len(right) == 0:
             raise ValueError
 
@@ -99,22 +101,29 @@ class TTestSignificanceTester(SignificanceTester):
 
         if len(left) + len(right) > 2:
             (_, pvalue) = ttest_ind_from_stats(
-                mean_left, std_left, len(left),
-                mean_right, std_right, len(right),
+                mean_left,
+                std_left,
+                len(left),
+                mean_right,
+                std_right,
+                len(right),
                 alternative='two-sided',
             )
         else:
             pvalue = 1.0
 
         return TTestStats(
-            mean_1=mean_left, mean_2=mean_right,
-            std_1=std_left, std_2=std_right, pvalue=float(pvalue),
+            mean_1=mean_left,
+            mean_2=mean_right,
+            std_1=std_left,
+            std_2=std_right,
+            pvalue=float(pvalue),
         )
 
     def change_point(
         self,
         candidate: CandidateChangePoint,
-        series: Sequence[SupportsFloat],
+        series: NDArray[np.floating[Any]],
         intervals: list[slice],
     ) -> ChangePoint:
         """Compute t-test statistics for a candidate change point.
@@ -128,17 +137,15 @@ class TTestSignificanceTester(SignificanceTester):
                 left_interval = interval
                 right_interval = intervals[i + 1]
                 break
-            if (
-                (interval.start is None or interval.start < candidate.index)
-                and (interval.stop is None or candidate.index < interval.stop)
+            if (interval.start is None or interval.start < candidate.index) and (
+                interval.stop is None or candidate.index < interval.stop
             ):
                 left_interval = slice(interval.start, candidate.index)
                 right_interval = slice(candidate.index, interval.stop)
                 break
         else:
             raise ValueError(
-                f'candidate change point at index={candidate.index} '
-                f'does not correspond to any interval in {intervals}'
+                f'candidate change point at index={candidate.index} does not correspond to any interval in {intervals}'
             )
         left = series[left_interval]
         right = series[right_interval]
@@ -152,7 +159,7 @@ def _ttest_stats(change_point: ChangePoint) -> TTestStats:
 
 def merge(
     change_points: list[ChangePoint],
-    series: Sequence[SupportsFloat],
+    series: NDArray[np.floating[Any]],
     max_pvalue: float,
     min_magnitude: float,
 ) -> list[ChangePoint]:
@@ -163,7 +170,8 @@ def merge(
         weakest = max(change_points, key=lambda c: c.stats.pvalue)
         if weakest.stats.pvalue < max_pvalue:
             weakest = min(
-                change_points, key=lambda c: _ttest_stats(c).change_magnitude(),
+                change_points,
+                key=lambda c: _ttest_stats(c).change_magnitude(),
             )
             if _ttest_stats(weakest).change_magnitude() > min_magnitude:
                 return change_points
@@ -182,7 +190,7 @@ def _recompute_neighbor(
     change_points: list[ChangePoint],
     index: int,
     tester: TTestSignificanceTester,
-    series: Sequence[SupportsFloat],
+    series: NDArray[np.floating[Any]],
     intervals: list[slice],
 ) -> None:
     """Recompute statistics for a neighbor after removing the weakest change point."""
@@ -193,7 +201,7 @@ def _recompute_neighbor(
 
 
 def split(
-    series: Sequence[SupportsFloat],
+    series: NDArray[np.floating[Any]],
     window_len: int = 30,
     max_pvalue: float = 0.001,
 ) -> list[ChangePoint]:

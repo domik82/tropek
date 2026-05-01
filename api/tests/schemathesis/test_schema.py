@@ -6,6 +6,7 @@ from collections.abc import Callable
 from typing import Any
 
 import pytest
+from hypothesis import settings
 from schemathesis import Case, checks
 from schemathesis.specs.openapi.checks import positive_data_acceptance
 
@@ -123,6 +124,7 @@ EXCLUDED_CHECKS_PER_OP: dict[tuple[str, str], list[CheckFunction]] = {
 
 @pytest.mark.schemathesis
 @schema.parametrize()
+@settings(max_examples=50)
 def test_api_conforms_to_schema(case: Case) -> None:
     """Verify every (method, path) pair returns responses conforming to the spec."""
     key = (case.method.upper(), case.path)

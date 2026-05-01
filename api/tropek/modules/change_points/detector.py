@@ -36,6 +36,8 @@ PVALUE_MODERATE_THRESHOLD = 0.5
 
 
 class Direction(StrEnum):
+    """Whether a change point represents a regression or improvement."""
+
     REGRESSION = 'regression'
     IMPROVEMENT = 'improvement'
 
@@ -97,7 +99,8 @@ def detect_change_points(  # noqa: PLR0913
         return []
 
     first_pass_pvalue = (
-        max_pvalue * 10 if max_pvalue < pvalue_strict_threshold
+        max_pvalue * 10
+        if max_pvalue < pvalue_strict_threshold
         else (max_pvalue * 2 if max_pvalue < pvalue_moderate_threshold else max_pvalue)
     )
     weak_change_points = split(series, effective_window, first_pass_pvalue)

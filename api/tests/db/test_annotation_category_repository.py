@@ -65,18 +65,14 @@ async def test_get_by_name_returns_category(db_session: AsyncSession) -> None:
 
 async def test_create_adds_row(db_session: AsyncSession) -> None:
     repo = AnnotationCategoryRepository(db_session)
-    created = await repo.create(
-        name='release', label='Release', color='green', show_on_graph=True
-    )
+    created = await repo.create(name='release', label='Release', color='green', show_on_graph=True)
     assert created.id is not None
     assert created.is_system is False
 
 
 async def test_update_modifies_fields(db_session: AsyncSession) -> None:
     repo = AnnotationCategoryRepository(db_session)
-    created = await repo.create(
-        name='incident', label='Incident', color='red', show_on_graph=True
-    )
+    created = await repo.create(name='incident', label='Incident', color='red', show_on_graph=True)
     updated = await repo.update(created.id, label='Inc', show_on_graph=False)
     assert updated.label == 'Inc'
     assert updated.show_on_graph is False
@@ -98,14 +94,10 @@ async def test_delete_rejects_system_rows(db_session: AsyncSession) -> None:
         await repo.delete(re_eval.id)
 
 
-async def test_delete_reassigns_referencing_annotations(
-    db_session: AsyncSession, seeded_run_id: uuid.UUID
-) -> None:
+async def test_delete_reassigns_referencing_annotations(db_session: AsyncSession, seeded_run_id: uuid.UUID) -> None:
     """Deleting a category with references must move them to 'info' and return the count."""
     repo = AnnotationCategoryRepository(db_session)
-    dummy = await repo.create(
-        name='temp', label='Temp', color='purple', show_on_graph=True
-    )
+    dummy = await repo.create(name='temp', label='Temp', color='purple', show_on_graph=True)
 
     ann_repo = AnnotationRepository(db_session)
     await ann_repo.add_run_annotation(
@@ -126,8 +118,6 @@ async def test_delete_reassigns_referencing_annotations(
 
 async def test_delete_returns_zero_when_unused(db_session: AsyncSession) -> None:
     repo = AnnotationCategoryRepository(db_session)
-    dummy = await repo.create(
-        name='unused', label='Unused', color='pink', show_on_graph=True
-    )
+    dummy = await repo.create(name='unused', label='Unused', color='pink', show_on_graph=True)
     reassigned = await repo.delete(dummy.id)
     assert reassigned == 0

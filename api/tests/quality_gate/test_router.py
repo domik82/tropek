@@ -1,9 +1,12 @@
 # api/tests/test_qg_router.py
 from __future__ import annotations
 
-from unittest.mock import AsyncMock, MagicMock, patch
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from tropek.db.session import get_session
 from tropek.main import app
@@ -47,10 +50,20 @@ def client():
     mock_pool = AsyncMock()
     app.dependency_overrides[get_session] = _mock_session
     app.dependency_overrides[get_arq_pool] = lambda: mock_pool
+
+    @asynccontextmanager
+    async def _test_lifespan(_app: FastAPI) -> AsyncIterator[None]:
+        _app.state.arq_pool = mock_pool
+        _app.state.cache = MagicMock()
+        yield
+
+    original_lifespan = app.router.lifespan_context
+    app.router.lifespan_context = _test_lifespan
     try:
-        with patch('tropek.main.create_arq_pool', return_value=mock_pool), TestClient(app) as c:
+        with TestClient(app) as c:
             yield c
     finally:
+        app.router.lifespan_context = original_lifespan
         app.dependency_overrides.clear()
 
 

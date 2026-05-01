@@ -109,12 +109,14 @@ async def test_dedup_respects_hidden_status(db_session: AsyncSession) -> None:
     asset_id = await _create_asset(db_session)
     repo = ChangePointRepository(db_session)
 
-    db_session.add(_make_change_point(
-        asset_id,
-        metric_name='latency',
-        period_start=_BASE + timedelta(hours=5),
-        status='hidden',
-    ))
+    db_session.add(
+        _make_change_point(
+            asset_id,
+            metric_name='latency',
+            period_start=_BASE + timedelta(hours=5),
+            status='hidden',
+        )
+    )
     await db_session.flush()
 
     nearby_timestamps = [_BASE + timedelta(hours=h) for h in [4, 5, 6]]
@@ -136,11 +138,13 @@ async def test_dedup_blocks_different_direction_at_same_position(
     asset_id = await _create_asset(db_session)
     repo = ChangePointRepository(db_session)
 
-    db_session.add(_make_change_point(
-        asset_id,
-        period_start=_BASE + timedelta(hours=2),
-        direction='regression',
-    ))
+    db_session.add(
+        _make_change_point(
+            asset_id,
+            period_start=_BASE + timedelta(hours=2),
+            direction='regression',
+        )
+    )
     await db_session.flush()
 
     nearby_timestamps = [_BASE + timedelta(hours=h) for h in [1, 2, 3, 4]]
@@ -228,15 +232,17 @@ async def test_get_config_for_objective_returns_row(db_session: AsyncSession) ->
     objective = await _create_objective(db_session)
     repo = ChangePointRepository(db_session)
 
-    db_session.add(ChangePointConfig(
-        slo_objective_id=objective.id,
-        enabled=True,
-        higher_is_better=False,
-        window_size=40,
-        max_pvalue=0.005,
-        min_magnitude=0.01,
-        min_sample_size=12,
-    ))
+    db_session.add(
+        ChangePointConfig(
+            slo_objective_id=objective.id,
+            enabled=True,
+            higher_is_better=False,
+            window_size=40,
+            max_pvalue=0.005,
+            min_magnitude=0.01,
+            min_sample_size=12,
+        )
+    )
     await db_session.flush()
 
     config = await repo.get_config_for_objective(objective.id)
@@ -251,15 +257,17 @@ async def test_delete_config_for_objective(db_session: AsyncSession) -> None:
     objective = await _create_objective(db_session)
     repo = ChangePointRepository(db_session)
 
-    db_session.add(ChangePointConfig(
-        slo_objective_id=objective.id,
-        enabled=True,
-        higher_is_better=False,
-        window_size=30,
-        max_pvalue=0.001,
-        min_magnitude=0.0,
-        min_sample_size=10,
-    ))
+    db_session.add(
+        ChangePointConfig(
+            slo_objective_id=objective.id,
+            enabled=True,
+            higher_is_better=False,
+            window_size=30,
+            max_pvalue=0.001,
+            min_magnitude=0.0,
+            min_sample_size=10,
+        )
+    )
     await db_session.flush()
 
     assert await repo.delete_config_for_objective(objective.id) is True
@@ -280,15 +288,17 @@ async def test_resolve_from_objective_uses_config(db_session: AsyncSession) -> N
     """resolve_from_objective returns per-objective config when present."""
     objective = await _create_objective(db_session)
 
-    db_session.add(ChangePointConfig(
-        slo_objective_id=objective.id,
-        enabled=True,
-        higher_is_better=True,
-        window_size=60,
-        max_pvalue=0.01,
-        min_magnitude=0.05,
-        min_sample_size=20,
-    ))
+    db_session.add(
+        ChangePointConfig(
+            slo_objective_id=objective.id,
+            enabled=True,
+            higher_is_better=True,
+            window_size=60,
+            max_pvalue=0.01,
+            min_magnitude=0.05,
+            min_sample_size=20,
+        )
+    )
     await db_session.flush()
     await db_session.refresh(objective)
 

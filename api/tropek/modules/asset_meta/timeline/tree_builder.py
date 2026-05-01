@@ -69,7 +69,4 @@ def build_groups_wire(clipped_spans: list[ClippedSpan]) -> list[dict[str, Any]]:
     distinct_paths = collect_distinct_paths(clipped_spans)
     all_group_paths = expand_with_synthetic_ancestors(distinct_paths)
     children_map = compute_children_map(all_group_paths)
-    return [
-        build_group_entry(path, children_map)
-        for path in sort_groups_deterministically(all_group_paths)
-    ]
+    return [build_group_entry(path, children_map) for path in sort_groups_deterministically(all_group_paths)]

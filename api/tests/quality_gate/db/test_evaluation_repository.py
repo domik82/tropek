@@ -240,9 +240,7 @@ async def test_add_and_list_annotations(db_session: AsyncSession, info_category_
             slo_name='test-slo',
         )
     )
-    await ann_repo.add_annotation(
-        ev.id, content='Defender update applied', author='ops', category_id=info_category_id
-    )
+    await ann_repo.add_annotation(ev.id, content='Defender update applied', author='ops', category_id=info_category_id)
     fetched = await repo.get_by_id(ev.id)
     assert fetched is not None
     assert len(fetched.annotations) == 1
@@ -267,9 +265,7 @@ async def test_hide_annotation(db_session: AsyncSession, info_category_id: uuid.
             slo_name='test-slo',
         )
     )
-    ann = await ann_repo.add_annotation(
-        ev.id, content='wrong note', author='ops', category_id=info_category_id
-    )
+    ann = await ann_repo.add_annotation(ev.id, content='wrong note', author='ops', category_id=info_category_id)
     hidden = await ann_repo.hide_annotation(ann.id, reason='typo', author='admin')
     assert hidden is not None
     assert hidden.hidden_at is not None
@@ -307,9 +303,7 @@ async def test_list_with_counts_eager_loads_latest_annotation_category(
             slo_name='test-slo',
         )
     )
-    await ann_repo.add_annotation(
-        ev.id, content='recorded', author='ops', category_id=info_category_id
-    )
+    await ann_repo.add_annotation(ev.id, content='recorded', author='ops', category_id=info_category_id)
 
     _, _, _, latest_map = await repo.list_with_counts()
     latest = latest_map.get(ev.id)
