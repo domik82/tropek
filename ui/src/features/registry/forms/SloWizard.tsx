@@ -104,7 +104,7 @@ export function SloWizard({ editSlo, defaultKind, onClose }: SloWizardProps) {
   const isAggregatedSli = fullSli?.mode === 'aggregated'
   const aggregatedMethods = fullSli?.methods ?? []
   const sliMergedRef = useRef(false)
-  /* eslint-disable react-hooks/set-state-in-effect -- intentional merge from async fetch */
+  /* eslint-disable react-hooks/set-state-in-effect -- intentional one-time merge from async fetch, guarded by ref */
   useEffect(() => {
     if (sliMergedRef.current || !fullSli || !isEdit) return
     sliMergedRef.current = true
