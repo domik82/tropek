@@ -1,178 +1,136 @@
 # API Architecture
 
-The API is a FastAPI application serving the REST interface, evaluation trigger,
-and all registry CRUD operations.
+Concise overview of the TROPEK API backend. For domain-specific detail, see the
+linked documents.
 
-## Application Structure
+## Application Bootstrap
 
-```mermaid
-graph TD
-    App["FastAPI App<br/>v0.2.0"]
-    R1["assets_router"]
-    R2["datasource_router"]
-    R3["sli_router"]
-    R4["slo_router"]
-    R5["quality_gate_router"]
-    H["/health"]
+Entry point: `api/tropek/main.py`.
 
-    App --> R1
-    App --> R2
-    App --> R3
-    App --> R4
-    App --> R5
-    App --> H
-```
+The FastAPI app is created at module level (`app = FastAPI(title='TROPEK API', version='0.2.0')`).
+A `lifespan()` async context manager runs at startup:
 
-Routers are mounted with no URL prefix -- each router defines absolute paths.
-A single `/health` endpoint is defined at the app level.
+1. Validates required secrets via `settings.validate_required()` (checks `QG_DB_PASSWORD`,
+   `QG_REDIS_PASSWORD`, `QG_SECRET_KEY`)
+2. Configures structlog via `configure_logging()`
+3. Creates the arq Redis pool (`app.state.arq_pool`)
+4. Creates the cache Redis connection wrapped in `RedisCache` (`app.state.cache`)
+
+On shutdown, both Redis connections are closed.
+
+## Middleware Stack
+
+Applied in reverse order (outermost runs first):
+
+| Order | Middleware | File | Purpose |
+|-------|-----------|------|---------|
+| 1 | `MethodNotAllowedMiddleware` | `modules/common/method_not_allowed.py` | Returns 405 for known paths hit with unsupported methods. Solves Starlette's greedy parameterised route matching. |
+| 2 | `SessionMiddleware` | `db/middleware.py` | Creates per-request `AsyncSession`, auto-commits on 2xx, auto-rollbacks on 4xx/5xx or exception, closes in `finally`. |
+
+## Exception Handlers
+
+| Exception | HTTP Status | Source |
+|-----------|-------------|--------|
+| `NotFoundError` | 404 | `modules/common/exceptions.py` |
+| `ConflictError` | 409 | `modules/common/exceptions.py` |
+| `DomainValidationError` | 422 | `modules/common/exceptions.py` |
+| `IntegrityError` (SQLAlchemy) | 409 | Safety net for uncaught DB constraint violations |
+
+All domain exceptions follow structured formatting: `NotFoundError(entity, name)`,
+`ConflictError(entity, name, reason)`. Messages are lowercase, no trailing period.
+
+## Configuration System
+
+Two-tier config: YAML for non-secrets, environment variables for secrets.
+
+- `config.yaml` loaded at module import time into `_yaml` dict
+- Secrets use `QG_` prefix (e.g., `QG_DB_PASSWORD`)
+- `get_settings()` returns a `@lru_cache` singleton
+
+| Settings Class | Env Prefix | Key Properties |
+|----------------|-----------|----------------|
+| `DatabaseSettings` | `QG_DB_` | `host`, `port`, `name`, `pool_size`, `max_overflow`, `async_url` |
+| `CacheSettings` | `QG_REDIS_` | `backend`, `host`, `port`, `url`, `ttl` (per-endpoint TTLs) |
+| `QueueSettings` | -- | `max_jobs`, `max_retries`, `job_timeout_seconds`, sweeper config |
+| `ReliabilitySettings` | -- | `adapter_timeout_seconds`, `adapter_retry_attempts`, `stuck_job_threshold_seconds` |
+| `AdaptersSettings` | -- | `max_concurrent_queries_per_adapter`, `prometheus` instance |
+| `EvaluationSettings` | -- | `async_threshold_metrics` |
+| `UISettings` | -- | `max_evaluations`, `page_size`, `data_start_date` |
+
+Full configuration reference: [`docs/architecture/configuration.md`](../../docs/architecture/configuration.md)
+
+## Service Topology
+
+| Service | Port | Role |
+|---------|------|------|
+| `api` | 8080 | FastAPI REST API |
+| `worker` | -- | arq job workers (x4) for async evaluation |
+| `adapter-prometheus` | 8081 | Prometheus query adapter |
+| `timescaledb` | 5432 | PostgreSQL + TimescaleDB |
+| `redis` | 6379 | Job queue + response cache |
+| `ui` | 5173 | React SPA (Vite dev server) |
+
+System overview: [`docs/architecture/system-overview.md`](../../docs/architecture/system-overview.md)
 
 ## Module Layout
 
-Every domain module follows the same three-file structure:
+Every domain module follows a consistent structure:
 
 ```
 modules/{domain}/
   router.py       -- FastAPI endpoint handlers
   repository.py   -- Database access (async SQLAlchemy)
   schemas.py      -- Pydantic request/response models
+  params.py       -- Inter-layer Pydantic param objects (optional)
+  service.py      -- Cross-entity orchestration (optional)
 ```
 
-| Module | URL Prefix | Responsibility |
-|--------|------------|----------------|
-| `assets` | `/asset-types`, `/assets`, `/asset-groups` | Asset inventory, groups, SLO bindings |
-| `datasource` | `/datasources` | Data source registration (adapter pointers) |
-| `sli_registry` | `/sli-definitions` | Versioned SLI definition CRUD |
-| `slo_registry` | `/slo-definitions` | Versioned SLO definition CRUD + validate + test |
-| `quality_gate` | `/evaluations`, `/trend` | Evaluation lifecycle, annotations, trend queries |
-| `common` | -- | Shared error helpers, `PagedResponse[T]` |
+| Module | URL Prefix | Detail Doc |
+|--------|------------|------------|
+| `assets` | `/asset-types`, `/assets`, `/asset-groups` | [`docs/modules/assets.md`](../../docs/modules/assets.md) |
+| `assignments` | `/assets/{name}/slo-assignments`, `/asset-groups/{name}/slo-*-assignments` | [`docs/modules/evaluations.md`](../../docs/modules/evaluations.md) |
+| `datasource` | `/datasources` | [`docs/modules/datasources.md`](../../docs/modules/datasources.md) |
+| `sli_registry` | `/sli-definitions` | [`docs/modules/registries.md`](../../docs/modules/registries.md) |
+| `slo_registry` | `/slo-definitions` | [`docs/modules/registries.md`](../../docs/modules/registries.md) |
+| `slo_groups` | `/slo-groups` | [`docs/modules/slo-groups.md`](../../docs/modules/slo-groups.md) |
+| `display_groups` | `/slo-display-groups` | -- |
+| `quality_gate` | `/evaluations`, `/evaluation/{id}`, `/note-categories` | [workflows.md](workflows.md), [repositories.md](repositories.md), [schemas.md](schemas.md) |
+| `asset_meta` | `/assets/{id}/meta/*` | -- |
+| `common` | -- | Shared exceptions, `PagedResponse[T]`, `StrictInput`, null-byte validators |
+
+Routers are mounted with no URL prefix -- each router defines absolute paths.
 
 ## Dependency Injection
 
-All routers share the same pattern:
+Repositories are instantiated per-request in endpoint functions:
 
 ```python
-@router.get("/evaluations")
-async def list_evaluations(
-    session: AsyncSession = Depends(get_session),
-) -> PagedResponse[EvaluationSummary]:
-    repo = EvaluationRepository(session)
-    ...
+repo = SLORepository(session, cache=cache)
 ```
 
-`get_session()` is an async context manager that yields a session, auto-commits on
-success, and rolls back on exception. Repositories are instantiated per-request.
+- `get_session(request)` -- extracts session from `request.state` (set by middleware)
+- `get_cache(request)` -- returns `RedisCache` from `app.state.cache`
+- `get_arq_pool(request)` -- returns arq pool from `app.state.arq_pool`
 
-## Repository Pattern
+The `quality_gate` module bundles 14 repositories into a single `QualityGateRepos`
+dataclass via `Depends(get_qg_repos)`. See [workflows.md](workflows.md) for details.
 
-```mermaid
-graph TD
-    Router["Router (handler)"]
-    Session["AsyncSession<br/>(Depends injection)"]
-    Repo["Repository"]
-    ORM["SQLAlchemy Model"]
-    DB[(TimescaleDB)]
+Worker jobs receive dependencies via `ctx` dict (arq pattern), not FastAPI `Depends()`.
 
-    Router -->|instantiates| Repo
-    Session -->|injected into| Repo
-    Repo -->|uses| ORM
-    ORM -->|maps to| DB
-    Router -->|returns| Schema["Pydantic Schema"]
-```
+## Logging
 
-### Repository Index
+`api/tropek/logging_config.py` -- structlog routed through stdlib logging:
 
-| Repository | Module | Tables |
-|------------|--------|--------|
-| `AssetTypeRepository` | assets | `asset_types` |
-| `AssetRepository` | assets | `assets` |
-| `AssetGroupRepository` | assets | `asset_groups`, `asset_group_members`, `asset_group_links` |
-| `AssetSLOLinkRepository` | assets | `asset_slo_links` |
-| `AssetGroupSLOLinkRepository` | assets | `asset_group_slo_links` |
-| `DataSourceRepository` | datasource | `data_sources` |
-| `SLORepository` | slo_registry | `slo_definitions`, `slo_objectives` |
-| `SLIRepository` | sli_registry | `sli_definitions` |
-| `EvaluationRepository` | quality_gate | `evaluations`, `evaluation_annotations`, `sli_values` |
+- Stderr handler at INFO (console or JSON renderer)
+- Optional rotating file handler via `LOG_DIR` env var (10 MB x 100 files, DEBUG level)
+- Idempotent: safe to call multiple times
 
-## Common Patterns
+## Related Documentation
 
-- **Pagination**: list endpoints return `PagedResponse[T]` with `items` and `total`
-- **Error handling**: domain exceptions (`NotFoundError` -> 404, `ConflictError` -> 409, `DomainValidationError` -> 422) with centralized handlers in `main.py`
-- **Schema validation**: Pydantic v2 models with `model_validate()` for ORM -> response
-- **Naming**: all lookups by human-readable `name`, not UUID (UUIDs are internal PKs)
-- **Versioning**: SLO/SLI auto-increment via `SELECT ... FOR UPDATE`
-
-## Endpoint Reference
-
-### Assets Module
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/asset-types` | List all asset types |
-| POST | `/asset-types` | Create asset type |
-| PATCH | `/asset-types/{name}/set-default` | Set default type |
-| DELETE | `/asset-types/{name}` | Delete type (409 if in use) |
-| GET | `/assets` | List assets (filter: type_name, label_key, label_val) |
-| POST | `/assets` | Create asset |
-| GET | `/assets/{name}` | Get by name |
-| PATCH | `/assets/{name}` | Update asset |
-| GET | `/assets/{name}/slo-links` | List SLO bindings |
-| POST | `/assets/{name}/slo-links` | Bind SLO+SLI+DataSource |
-| DELETE | `/assets/{name}/slo-links/{link}` | Remove binding |
-| GET | `/asset-groups` | List all groups |
-| GET | `/asset-groups/tree` | Full hierarchy tree |
-| POST | `/asset-groups` | Create group |
-| GET | `/asset-groups/{name}` | Get group detail |
-| PATCH | `/asset-groups/{name}` | Update group |
-| DELETE | `/asset-groups/{name}` | Delete group |
-| POST | `/asset-groups/{name}/members` | Add asset to group |
-| DELETE | `/asset-groups/{name}/members/{id}` | Remove from group |
-| POST | `/asset-groups/{name}/subgroups` | Add child group |
-| DELETE | `/asset-groups/{name}/subgroups/{id}` | Remove child group |
-| GET | `/asset-groups/{name}/slo-links` | List group SLO bindings |
-| POST | `/asset-groups/{name}/slo-links` | Bind SLO to group |
-| DELETE | `/asset-groups/{name}/slo-links/{link}` | Remove binding |
-
-### DataSource Module
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/datasources` | List (filter: adapter_type) |
-| POST | `/datasources` | Register adapter instance |
-| GET | `/datasources/{name}` | Get by name |
-| PATCH | `/datasources/{name}` | Update URL/labels |
-
-### SLO Registry
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/slo-definitions` | List latest active versions |
-| POST | `/slo-definitions` | Create or bump version |
-| POST | `/slo-definitions/validate` | Dry-run validation |
-| POST | `/slo-definitions/test` | Dry-run evaluation with mock metrics |
-| GET | `/slo-definitions/{name}` | Get latest active |
-| GET | `/slo-definitions/{name}/versions` | All versions |
-| DELETE | `/slo-definitions/{name}` | Deactivate all versions |
-
-### SLI Registry
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/sli-definitions` | List latest active (filter: adapter_type) |
-| POST | `/sli-definitions` | Create or bump version |
-| GET | `/sli-definitions/{name}` | Get latest active |
-| GET | `/sli-definitions/{name}/versions` | All versions |
-| DELETE | `/sli-definitions/{name}` | Deactivate all versions |
-
-### Quality Gate
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/evaluations` | List (filters: asset_name, slo_name, result, date, group_name, from/to) |
-| GET | `/evaluations/{id}` | Full detail + annotations + indicator results |
-| PATCH | `/evaluations/{id}/invalidate` | Mark as invalid |
-| PATCH | `/evaluations/{id}/restore` | Clear invalidation |
-| GET | `/evaluations/{id}/annotations` | List annotations |
-| POST | `/evaluations/{id}/annotations` | Add annotation |
-| PATCH | `/evaluations/{id}/annotations/{ann_id}` | Update annotation |
-| DELETE | `/evaluations/{id}/annotations/{ann_id}` | Delete annotation |
-| GET | `/trend` | Time-series data (eval_id or asset_name+slo_name) |
+- **Database layer**: [database-layer.md](database-layer.md) -- models, sessions, migrations
+- **Workflows**: [workflows.md](workflows.md) -- trigger, execution, re-evaluation, presentation
+- **Repositories**: [repositories.md](repositories.md) -- quality gate data access patterns
+- **Schemas**: [schemas.md](schemas.md) -- API request/response contracts
+- **Evaluation engine**: [`docs/modules/evaluation-internals.md`](../../docs/modules/evaluation-internals.md) -- pure scoring logic
+- **Data model**: [`docs/architecture/data-model.md`](../../docs/architecture/data-model.md) -- ER diagrams and table descriptions
+- **Evaluation lifecycle**: [`docs/architecture/evaluation-lifecycle.md`](../../docs/architecture/evaluation-lifecycle.md)

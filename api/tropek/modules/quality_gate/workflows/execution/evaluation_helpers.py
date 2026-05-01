@@ -27,8 +27,8 @@ def build_eval_variables(
 ) -> dict[str, str]:
     """Build merged variables for query substitution.
 
-    Merge priority (lowest → highest):
-      reserved < asset.variables < asset.tags < slo.variables < eval.variables
+    Priority (highest wins):
+      eval.variables > slo.variables > reserved > asset.variables > asset.tags
     """
     variables = build_variables(
         metadata={},
