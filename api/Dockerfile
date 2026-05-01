@@ -12,6 +12,11 @@ RUN uv sync --no-dev --no-install-project
 COPY tropek/ tropek/
 COPY alembic/ alembic/
 COPY alembic.ini ./
+
+# Default config — CI copies config.yaml into build context before building.
+# Users can override via volume mount: -v ./config.yaml:/app/config.yaml:ro
+COPY config.yaml* ./
+
 RUN uv sync --no-dev
 
 EXPOSE 8080
