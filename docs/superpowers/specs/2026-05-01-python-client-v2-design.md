@@ -59,7 +59,17 @@ clients/python/
 │   ├── test_drift.py            # Contract tests: models vs openapi.json
 │   ├── test_integration.py      # End-to-end tests against running API (mark: integration)
 │   ├── test_manifest.py         # Manifest reconciler tests
-│   └── test_cli.py              # CLI tests
+│   ├── test_cli.py              # CLI tests
+│   └── fixtures/                # Captured JSON responses from real API
+│       ├── assets/              # list.json, get.json, create.json
+│       ├── evaluations/         # list.json, detail.json, heatmap.json, trend.json
+│       ├── slos/                # list.json, get.json, create.json
+│       ├── slis/                # list.json, get.json
+│       ├── datasources/        # list.json, get.json
+│       ├── annotations/        # list.json, create.json
+│       └── errors/              # not_found.json, conflict.json, validation.json
+├── scripts/
+│   └── capture-fixtures.py      # Hits every endpoint on a running instance, saves responses
 └── pyproject.toml
 ```
 
@@ -378,11 +388,26 @@ logging.getLogger("tropek_client").setLevel(logging.DEBUG)
 
 ### Unit tests (`tests/test_client.py`, `tests/test_models.py`)
 
-Every client method gets at least one test. HTTP is mocked via `respx` (httpx mock library):
+Every client method gets at least one test. HTTP is mocked via `respx` (httpx mock library), using **captured JSON fixtures** from a real running instance as mock response data.
 
-- **Per-method tests:** Each sub-resource method has a test that verifies correct URL, HTTP method, request body serialization, query parameters, and response deserialization into the right model type.
-- **Error handling tests:** Each exception type (404, 409, 422, 500, connection error) is tested with realistic API error bodies, verifying the parsed fields (`entity`, `name`, `reason`, `errors`).
-- **Model round-trip tests:** Every model can be constructed, serialized to JSON, and deserialized back without data loss.
+#### Fixture capture workflow
+
+A script (`scripts/capture-fixtures.py`) uses the client itself against a running instance (`just dev` + bootstrap_mock) to hit every endpoint and save the JSON responses to `tests/fixtures/`. This ensures test data matches real API output — not hand-crafted guesses.
+
+```bash
+# Populate instance, then capture
+just dev                          # start API
+just bootstrap                    # seed data
+uv run python scripts/capture-fixtures.py   # save all responses
+```
+
+Re-run the capture script whenever the API changes to refresh fixtures.
+
+#### Test coverage
+
+- **Per-method tests:** Each sub-resource method has a test that loads the corresponding fixture, mocks the HTTP response with it, calls the client method, and verifies correct URL, HTTP method, request body serialization, query parameters, and response deserialization into the right model type.
+- **Error handling tests:** Each exception type (404, 409, 422, 500, connection error) is tested with captured error fixtures (`fixtures/errors/`), verifying the parsed fields (`entity`, `name`, `reason`, `errors`).
+- **Model round-trip tests:** Every model can be constructed, serialized to JSON, and deserialized back without data loss. Fixtures serve as the "known good" input.
 - **Edge cases:** Empty lists, null optional fields, pagination boundaries.
 
 This is the "hundreds of tests" layer — one per method × scenario.
