@@ -1,0 +1,24 @@
+name: UI Checks
+
+on:
+  workflow_call:
+
+jobs:
+  ui:
+    name: lint + typecheck + test
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ui
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-ui
+
+      - name: ESLint
+        run: pnpm exec eslint src/
+
+      - name: TypeScript compile check
+        run: pnpm exec tsc --noEmit -p tsconfig.app.json
+
+      - name: Vitest
+        run: pnpm exec vitest run
