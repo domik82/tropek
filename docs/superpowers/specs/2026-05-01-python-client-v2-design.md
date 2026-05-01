@@ -53,9 +53,11 @@ clients/python/
 │   ├── cli.py                   # Click CLI (existing, unchanged)
 │   └── py.typed                 # PEP 561 marker
 ├── tests/
-│   ├── test_models.py           # Model serialization/deserialization tests
-│   ├── test_client.py           # Client method tests (mocked HTTP)
+│   ├── test_models.py           # Model serialization/deserialization round-trip tests
+│   ├── test_client.py           # Client method tests (mocked HTTP via respx)
+│   ├── test_errors.py           # Error parsing and exception hierarchy tests
 │   ├── test_drift.py            # Contract tests: models vs openapi.json
+│   ├── test_integration.py      # End-to-end tests against running API (mark: integration)
 │   ├── test_manifest.py         # Manifest reconciler tests
 │   └── test_cli.py              # CLI tests
 └── pyproject.toml
@@ -371,6 +373,61 @@ Standard `logging` module under the `tropek_client` logger name.
 import logging
 logging.getLogger("tropek_client").setLevel(logging.DEBUG)
 ```
+
+## Testing
+
+### Unit tests (`tests/test_client.py`, `tests/test_models.py`)
+
+Every client method gets at least one test. HTTP is mocked via `respx` (httpx mock library):
+
+- **Per-method tests:** Each sub-resource method has a test that verifies correct URL, HTTP method, request body serialization, query parameters, and response deserialization into the right model type.
+- **Error handling tests:** Each exception type (404, 409, 422, 500, connection error) is tested with realistic API error bodies, verifying the parsed fields (`entity`, `name`, `reason`, `errors`).
+- **Model round-trip tests:** Every model can be constructed, serialized to JSON, and deserialized back without data loss.
+- **Edge cases:** Empty lists, null optional fields, pagination boundaries.
+
+This is the "hundreds of tests" layer — one per method × scenario.
+
+### Integration tests (`tests/test_integration.py`)
+
+End-to-end tests against a running TROPEK instance (`just dev`). These verify the client actually works against the real API, not just mocked responses.
+
+**Pattern: create → get → verify**
+
+```python
+@pytest.mark.integration
+def test_asset_lifecycle(client: TropekClient):
+    created = client.assets.create(AssetCreate(name="test-svc", type_name="service"))
+    fetched = client.assets.get("test-svc")
+    assert fetched.name == created.name
+    assert fetched.id == created.id
+    assert isinstance(fetched.created_at, datetime)
+
+    updated = client.assets.update("test-svc", AssetUpdate(display_name="Test Service"))
+    refetched = client.assets.get("test-svc")
+    assert refetched.display_name == "Test Service"
+
+    client.assets.delete("test-svc")
+    with pytest.raises(TropekNotFoundError):
+        client.assets.get("test-svc")
+```
+
+Every create/update is followed by a `get` to verify the real response deserializes correctly into the model. This catches type mismatches that unit tests with mocked responses cannot.
+
+**Coverage:**
+- Full CRUD lifecycle for every resource type (assets, asset types, SLOs, SLIs, datasources, etc.)
+- Evaluation trigger → wait → get detail → verify indicator results
+- Heatmap/trend/timeline responses after evaluations exist
+- Error scenarios: duplicate create (409), get nonexistent (404), invalid body (422)
+- Annotation create/update/hide/delete lifecycle
+- SLO assignment and group workflows
+
+**Running:**
+```bash
+# Requires `just dev` running
+just test-client-int      # integration tests only
+```
+
+These are essentially the bootstrap_mock manifest flow, but decomposed into individual test cases that each verify a specific API interaction.
 
 ## Drift Tests
 
