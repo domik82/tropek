@@ -11,6 +11,13 @@ on:
       - 'ui/pnpm-lock.yaml'
   push:
     branches: [main]
+    paths:
+      - 'api/tropek/**/*.py'
+      - 'ui/src/generated/**'
+      - 'api/openapi.json'
+      - 'scripts/export-schema.py'
+      - 'ui/package.json'
+      - 'ui/pnpm-lock.yaml'
 
 jobs:
   freshness:
