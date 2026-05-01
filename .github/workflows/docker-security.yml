@@ -1,0 +1,68 @@
+name: Docker Security
+
+on:
+  pull_request:
+    paths:
+      - '**/Dockerfile'
+      - '**/pyproject.toml'
+      - 'ui/pnpm-lock.yaml'
+      - '.github/workflows/docker-security.yml'
+  push:
+    branches: [main]
+    tags: ['v*']
+
+jobs:
+  hadolint:
+    name: Hadolint (Dockerfile lint)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Lint api/Dockerfile
+        uses: hadolint/hadolint-action@v3.1.0
+        with:
+          dockerfile: api/Dockerfile
+
+      - name: Lint ui/Dockerfile
+        uses: hadolint/hadolint-action@v3.1.0
+        with:
+          dockerfile: ui/Dockerfile
+
+      - name: Lint adapters/prometheus/Dockerfile
+        uses: hadolint/hadolint-action@v3.1.0
+        with:
+          dockerfile: adapters/prometheus/Dockerfile
+
+  trivy:
+    name: Trivy (${{ matrix.image }})
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - context: api
+            image: tropek-api
+            config_copy: true
+          - context: ui
+            image: tropek-ui
+            config_copy: false
+          - context: adapters/prometheus
+            image: tropek-adapter-prometheus
+            config_copy: false
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Copy config.yaml into API build context
+        if: matrix.config_copy
+        run: cp config.yaml api/config.yaml
+
+      - name: Build image
+        run: docker build -t ${{ matrix.image }}:scan ${{ matrix.context }}
+
+      - name: Trivy vulnerability scan
+        uses: aquasecurity/trivy-action@0.30.0
+        with:
+          image-ref: ${{ matrix.image }}:scan
+          format: table
+          exit-code: 1
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
