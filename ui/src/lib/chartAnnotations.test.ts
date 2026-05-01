@@ -40,6 +40,7 @@ function mkPoint(evalId: string, i: number): TrendPoint {
     evaluationName: null,
     targets: null,
     overridden: false,
+    changePoint: null,
   }
 }
 

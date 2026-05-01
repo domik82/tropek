@@ -144,7 +144,7 @@ export function AssetPanelHeatmapView({
           tabGroup: c.tab_group ?? null,
           value: c.value ?? 0,
           comparedValue: c.compared_value ?? null,
-          changeAbsolute: null,
+          changeAbsolute: c.change_absolute ?? null,
           changeRelativePct: c.change_relative_pct ?? null,
           aggregation: c.aggregation ?? '',
           status: c.result as 'pass' | 'warning' | 'fail',
@@ -161,6 +161,12 @@ export function AssetPanelHeatmapView({
             targetValue: t.target_value,
             violated: t.violated,
           })),
+          changePoint: c.change_point
+            ? {
+                direction: c.change_point.direction as 'regression' | 'improvement',
+                changeRelativePct: c.change_point.change_relative_pct,
+              }
+            : null,
         }))
       const result = summary?.invalidated
         ? 'invalidated'

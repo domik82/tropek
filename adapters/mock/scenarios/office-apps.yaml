@@ -5,7 +5,7 @@ metrics:
   process_cpu_pct:
     baseline: 5.0
     phases:
-      - duration_hours: 8
+      - duration_hours: 32
         pattern: stable
         jitter_pct: 10
       - duration_hours: 9
@@ -28,7 +28,7 @@ metrics:
   process_memory_mb:
     baseline: 120.0
     phases:
-      - duration_hours: 8
+      - duration_hours: 32
         pattern: stable
         jitter_pct: 8
       - duration_hours: 9
@@ -55,14 +55,14 @@ metrics:
   process_handles:
     baseline: 200.0
     phases:
-      - duration_hours: 48
+      - duration_hours: 72
         pattern: stable
         jitter_pct: 8
   process_io_bytes:
     baseline: 5000.0
     phases:
-      - duration_hours: 48
+      - duration_hours: 72
         pattern: stable
         jitter_pct: 10
 interval_minutes: 5
-start: "2026-03-15T00:00:00Z"
+start: "2026-03-14T00:00:00Z"

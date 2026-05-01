@@ -288,4 +288,33 @@ describe('sloGroupToMiniView expanded', () => {
       expect(cell.isSloHeader).toBe(true)
     }
   })
+
+  it('maps change_point from DTO to camelCase on indicator cells', () => {
+    const cellWithChangePoint: HeatmapCellGroupedDto = {
+      ...INDICATOR_A_M1,
+      change_point: { direction: 'regression', change_relative_pct: -12.5 },
+    }
+    const group = {
+      ...SLO_GROUP,
+      cells: [cellWithChangePoint, INDICATOR_A_M2, INDICATOR_B_M1, INDICATOR_B_M2],
+    }
+    const view = sloGroupToMiniView(group, MINI_COLUMNS, true)
+
+    const cellWithCp = view.cells.find(
+      c => c.columnKey === 'eval-a' && c.metricName === 'metric_one',
+    )
+    expect(cellWithCp?.changePoint).toEqual({
+      direction: 'regression',
+      changeRelativePct: -12.5,
+    })
+  })
+
+  it('leaves changePoint undefined when DTO has no change_point', () => {
+    const view = sloGroupToMiniView(SLO_GROUP, MINI_COLUMNS, true)
+
+    const cell = view.cells.find(
+      c => c.columnKey === 'eval-a' && c.metricName === 'metric_one',
+    )
+    expect(cell?.changePoint).toBeUndefined()
+  })
 })

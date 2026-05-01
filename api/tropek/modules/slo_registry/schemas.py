@@ -9,6 +9,7 @@ from typing import Annotated, Any, Literal
 from annotated_types import MinLen
 from pydantic import BaseModel, ConfigDict, Field, StrictBool, model_validator
 
+from tropek.modules.change_points.schemas import ChangePointConfigInput, ChangePointConfigRead
 from tropek.modules.common.schemas import (
     FloatNotBool,
     IdentifierKey,
@@ -74,8 +75,8 @@ class MethodCriteriaOverrideRead(BaseModel):
     key_sli: bool | None = None
 
 
-class SLOObjectiveIn(StrictInput):
-    """SLO objective for create/validate requests."""
+class _SLOObjectiveBase(StrictInput):
+    """Shared fields for SLO objective input and response schemas."""
 
     sli: SafeStr
     display_name: SafeStr = ''
@@ -85,10 +86,17 @@ class SLOObjectiveIn(StrictInput):
     key_sli: StrictBool = False
 
 
-class SLOObjectiveRead(SLOObjectiveIn):
+class SLOObjectiveIn(_SLOObjectiveBase):
+    """SLO objective for create/validate requests."""
+
+    change_point: ChangePointConfigInput | None = None
+
+
+class SLOObjectiveRead(_SLOObjectiveBase):
     """SLO objective in responses — includes sort_order for round-trip export."""
 
     sort_order: int
+    change_point: ChangePointConfigRead | None = None
 
     model_config = ConfigDict(from_attributes=True)
 

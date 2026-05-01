@@ -13,7 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from tropek.cache.redis_cache import RedisCache
 from tropek.config import Settings
-from tropek.db.models import DataSource, SLIDefinition, SLODefinition, SLOEvaluation
+from tropek.db.models import DataSource, EvaluationRun, SLIDefinition, SLODefinition, SLOEvaluation
 from tropek.modules.quality_gate.evaluation_engine.evaluator import evaluate
 from tropek.modules.quality_gate.evaluation_engine.result_models import EvaluationResult, IndicatorResult
 from tropek.modules.quality_gate.evaluation_engine.slo_models import SLO
@@ -30,6 +30,7 @@ from tropek.modules.quality_gate.workflows.execution.evaluation_helpers import (
 from tropek.modules.quality_gate.workflows.execution.evaluation_helpers import (
     build_slo_model,
     compute_baselines,
+    resolve_comparison_name,
 )
 from tropek.modules.quality_gate.workflows.presentation.heatmap_cache import HeatmapColumnCache
 from tropek.modules.quality_gate.workflows.presentation.presenter import build_column_fragment
@@ -57,6 +58,7 @@ class EvaluationSnapshot(BaseModel):
     asset_snapshot: dict[str, Any]
     asset_id: uuid.UUID
     variables: dict[str, Any]
+    compare_to: dict[str, str] | None = None
 
 
 class FetchAndEvaluateResult(BaseModel):
@@ -114,6 +116,7 @@ async def _resolve_baselines(
     slo: SLO,
     ev: SLOEvaluation | EvaluationSnapshot,
     indicator_names: list[str],
+    evaluation_name: str | None = None,
 ) -> tuple[dict[str, float | None], list[str]]:
     """Fetch baseline evaluations and aggregate per-metric values."""
     if slo.comparison.number_of_comparison_results <= 0:
@@ -125,6 +128,7 @@ async def _resolve_baselines(
         period_start_before=ev.period_start,
         include_result_with_score=slo.comparison.include_result_with_score.value,
         limit=slo.comparison.number_of_comparison_results,
+        evaluation_name=evaluation_name,
     )
     return compute_baselines(baseline_evals, slo.comparison.aggregate_function)
 
@@ -307,6 +311,8 @@ async def load_evaluation_snapshot(
         )
         return None
 
+    parent_run = await session.get(EvaluationRun, ev.evaluation_id)
+
     return EvaluationSnapshot(
         eval_id=ev.id,
         parent_run_id=ev.evaluation_id,
@@ -321,6 +327,7 @@ async def load_evaluation_snapshot(
         asset_snapshot=ev.asset_snapshot or {},
         asset_id=ev.asset_id,
         variables=ev.variables or {},
+        compare_to=parent_run.compare_to if parent_run else None,
     )
 
 
@@ -391,13 +398,15 @@ async def fetch_and_evaluate(
 
     _log_adapter_response(log, metrics_fetched, fetch_errors, sli_metadata)
 
-    # Resolve baselines (pin-aware) and evaluate
+    # Resolve baselines (pin-aware, scoped to comparison series)
     indicator_names = list(sli_def.indicators) if sli_def.mode == 'raw' else [obj.sli for obj in slo.objectives]
+    comparison_name = resolve_comparison_name(snapshot.compare_to, snapshot.evaluation_name)
     baselines, compared_eval_ids = await _resolve_baselines(
         baseline_repo=baseline_repo,
         slo=slo,
         ev=snapshot,
         indicator_names=indicator_names,
+        evaluation_name=comparison_name,
     )
     eval_result = evaluate(slo, metrics_fetched, baselines, compared_eval_ids)
 

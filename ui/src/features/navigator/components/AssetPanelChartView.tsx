@@ -160,6 +160,7 @@ export function AssetPanelChartView({
       keySli: false,
       passTargets: [],
       warningTargets: [],
+      changePoint: null,
     }))
   }, [heatmapData])
 

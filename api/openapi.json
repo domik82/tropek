@@ -96,6 +96,7 @@
           "label": {
             "maxLength": 12,
             "minLength": 1,
+            "pattern": "^[^\\x00]+$",
             "title": "Label",
             "type": "string"
           },
@@ -197,6 +198,7 @@
               {
                 "maxLength": 12,
                 "minLength": 1,
+                "pattern": "^[^\\x00]+$",
                 "type": "string"
               },
               {
@@ -1377,6 +1379,55 @@
         "title": "BatchPeriod",
         "type": "object"
       },
+      "BulkTriageRequest": {
+        "additionalProperties": false,
+        "description": "Request body for bulk-triaging change points.",
+        "properties": {
+          "ids": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "title": "Ids",
+            "type": "array"
+          },
+          "status": {
+            "pattern": "^[^\\x00]*$",
+            "title": "Status",
+            "type": "string"
+          },
+          "triage_author": {
+            "anyOf": [
+              {
+                "pattern": "^[^\\x00]*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Triage Author"
+          },
+          "triage_note": {
+            "anyOf": [
+              {
+                "pattern": "^[^\\x00]*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Triage Note"
+          }
+        },
+        "required": [
+          "ids",
+          "status"
+        ],
+        "title": "BulkTriageRequest",
+        "type": "object"
+      },
       "CategoryColor": {
         "description": "Allowed color tokens for an annotation category.",
         "enum": [
@@ -1391,6 +1442,289 @@
         ],
         "title": "CategoryColor",
         "type": "string"
+      },
+      "ChangePointConfigInput": {
+        "additionalProperties": false,
+        "description": "Optional overrides for change point detection \u2014 used in SLO YAML change_point: block.",
+        "properties": {
+          "enabled": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Enabled"
+          },
+          "higher_is_better": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Higher Is Better"
+          },
+          "max_pvalue": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Pvalue"
+          },
+          "min_magnitude": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Min Magnitude"
+          },
+          "min_sample_size": {
+            "anyOf": [
+              {
+                "maximum": 2147483647.0,
+                "minimum": -2147483648.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Min Sample Size"
+          },
+          "window_size": {
+            "anyOf": [
+              {
+                "maximum": 2147483647.0,
+                "minimum": -2147483648.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Window Size"
+          }
+        },
+        "title": "ChangePointConfigInput",
+        "type": "object"
+      },
+      "ChangePointConfigRead": {
+        "description": "Full resolved change point config for an objective.",
+        "properties": {
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "higher_is_better": {
+            "title": "Higher Is Better",
+            "type": "boolean"
+          },
+          "max_pvalue": {
+            "title": "Max Pvalue",
+            "type": "number"
+          },
+          "min_magnitude": {
+            "title": "Min Magnitude",
+            "type": "number"
+          },
+          "min_sample_size": {
+            "title": "Min Sample Size",
+            "type": "integer"
+          },
+          "slo_objective_id": {
+            "format": "uuid",
+            "title": "Slo Objective Id",
+            "type": "string"
+          },
+          "window_size": {
+            "title": "Window Size",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "slo_objective_id",
+          "enabled",
+          "higher_is_better",
+          "window_size",
+          "max_pvalue",
+          "min_magnitude",
+          "min_sample_size"
+        ],
+        "title": "ChangePointConfigRead",
+        "type": "object"
+      },
+      "ChangePointMarker": {
+        "description": "Lightweight marker attached to heatmap cells and trend points.",
+        "properties": {
+          "change_relative_pct": {
+            "title": "Change Relative Pct",
+            "type": "number"
+          },
+          "direction": {
+            "$ref": "#/components/schemas/Direction"
+          }
+        },
+        "required": [
+          "direction",
+          "change_relative_pct"
+        ],
+        "title": "ChangePointMarker",
+        "type": "object"
+      },
+      "ChangePointRead": {
+        "description": "Full change point detail for list views and detail endpoint.",
+        "properties": {
+          "asset_id": {
+            "format": "uuid",
+            "title": "Asset Id",
+            "type": "string"
+          },
+          "change_absolute": {
+            "title": "Change Absolute",
+            "type": "number"
+          },
+          "change_relative_pct": {
+            "title": "Change Relative Pct",
+            "type": "number"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "detector": {
+            "title": "Detector",
+            "type": "string"
+          },
+          "direction": {
+            "$ref": "#/components/schemas/Direction"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "linked_ticket": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Linked Ticket"
+          },
+          "metric_name": {
+            "title": "Metric Name",
+            "type": "string"
+          },
+          "period_start": {
+            "format": "date-time",
+            "title": "Period Start",
+            "type": "string"
+          },
+          "post_segment_mean": {
+            "title": "Post Segment Mean",
+            "type": "number"
+          },
+          "post_segment_std": {
+            "title": "Post Segment Std",
+            "type": "number"
+          },
+          "pre_segment_mean": {
+            "title": "Pre Segment Mean",
+            "type": "number"
+          },
+          "pvalue": {
+            "title": "Pvalue",
+            "type": "number"
+          },
+          "slo_name": {
+            "title": "Slo Name",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "triage_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Triage At"
+          },
+          "triage_author": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Triage Author"
+          },
+          "triage_note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Triage Note"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "asset_id",
+          "slo_name",
+          "metric_name",
+          "period_start",
+          "detector",
+          "direction",
+          "change_relative_pct",
+          "change_absolute",
+          "pvalue",
+          "pre_segment_mean",
+          "post_segment_mean",
+          "post_segment_std",
+          "status",
+          "triage_author",
+          "triage_note",
+          "triage_at",
+          "linked_ticket",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "ChangePointRead",
+        "type": "object"
       },
       "ComparisonConfig": {
         "description": "Per-SLO comparison configuration (input). All fields optional.",
@@ -1557,6 +1891,50 @@
           "compare_to"
         ],
         "title": "ComparisonRule",
+        "type": "object"
+      },
+      "ConfigurationRead": {
+        "description": "Response schema for a configuration entry.",
+        "properties": {
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "value": {
+            "title": "Value",
+            "type": "string"
+          },
+          "value_type": {
+            "title": "Value Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "value",
+          "value_type",
+          "description"
+        ],
+        "title": "ConfigurationRead",
+        "type": "object"
+      },
+      "ConfigurationUpdate": {
+        "additionalProperties": false,
+        "description": "Request body for updating a configuration value.",
+        "properties": {
+          "value": {
+            "title": "Value",
+            "type": "string"
+          }
+        },
+        "required": [
+          "value"
+        ],
+        "title": "ConfigurationUpdate",
         "type": "object"
       },
       "DataSourceCreate": {
@@ -1764,6 +2142,14 @@
         "title": "DataSourceUpdate",
         "type": "object"
       },
+      "Direction": {
+        "enum": [
+          "regression",
+          "improvement"
+        ],
+        "title": "Direction",
+        "type": "string"
+      },
       "DisplayGroupCreate": {
         "additionalProperties": false,
         "description": "Request body for creating a display group.",
@@ -1954,6 +2340,20 @@
             ],
             "title": "Asset Names"
           },
+          "compare_to": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Compare To"
+          },
           "eval_name": {
             "pattern": "^[^\\x00]*$",
             "title": "Eval Name",
@@ -2062,6 +2462,20 @@
             "pattern": "^[^\\x00]*$",
             "title": "Asset Name",
             "type": "string"
+          },
+          "compare_to": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Compare To"
           },
           "eval_name": {
             "pattern": "^[^\\x00]*$",
@@ -3014,6 +3428,27 @@
             ],
             "title": "Aggregation"
           },
+          "change_absolute": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Change Absolute"
+          },
+          "change_point": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ChangePointMarker"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "change_relative_pct": {
             "anyOf": [
               {
@@ -3337,6 +3772,16 @@
               }
             ],
             "title": "Change Absolute"
+          },
+          "change_point": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ChangePointMarker"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "change_relative_pct": {
             "anyOf": [
@@ -5545,6 +5990,16 @@
         "additionalProperties": false,
         "description": "SLO objective for create/validate requests.",
         "properties": {
+          "change_point": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ChangePointConfigInput"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "display_name": {
             "default": "",
             "pattern": "^[^\\x00]*$",
@@ -5595,6 +6050,16 @@
         "additionalProperties": false,
         "description": "SLO objective in responses \u2014 includes sort_order for round-trip export.",
         "properties": {
+          "change_point": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ChangePointConfigRead"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "display_name": {
             "default": "",
             "pattern": "^[^\\x00]*$",
@@ -6129,6 +6594,16 @@
             ],
             "title": "Baseline"
           },
+          "change_point": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ChangePointMarker"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "eval_id": {
             "format": "uuid",
             "title": "Eval Id",
@@ -6241,6 +6716,58 @@
           }
         },
         "title": "TrendTargets",
+        "type": "object"
+      },
+      "TriageRequest": {
+        "additionalProperties": false,
+        "description": "Request body for triaging a change point.",
+        "properties": {
+          "linked_ticket": {
+            "anyOf": [
+              {
+                "pattern": "^[^\\x00]*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Linked Ticket"
+          },
+          "status": {
+            "pattern": "^[^\\x00]*$",
+            "title": "Status",
+            "type": "string"
+          },
+          "triage_author": {
+            "anyOf": [
+              {
+                "pattern": "^[^\\x00]*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Triage Author"
+          },
+          "triage_note": {
+            "anyOf": [
+              {
+                "pattern": "^[^\\x00]*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Triage Note"
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "title": "TriageRequest",
         "type": "object"
       },
       "ValidationError": {
@@ -9128,6 +9655,639 @@
         "summary": "Put Asset Slo Group Assignment"
       }
     },
+    "/change-points": {
+      "get": {
+        "description": "List change points with optional filters.",
+        "operationId": "list_change_points_change_points_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "pattern": "^[^\\x00]*$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          },
+          {
+            "in": "query",
+            "name": "direction",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/Direction"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Direction"
+            }
+          },
+          {
+            "in": "query",
+            "name": "asset_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Asset Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "slo_name",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "pattern": "^[^\\x00]*$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Slo Name"
+            }
+          },
+          {
+            "in": "query",
+            "name": "metric",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "pattern": "^[^\\x00]*$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Metric"
+            }
+          },
+          {
+            "in": "query",
+            "name": "from_ts",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "From Ts"
+            }
+          },
+          {
+            "in": "query",
+            "name": "to_ts",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "To Ts"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 1000,
+              "minimum": 0,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "maximum": 1000000,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ChangePointRead"
+                  },
+                  "title": "Response List Change Points Change Points Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Error"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Change Points",
+        "tags": [
+          "change-points"
+        ]
+      }
+    },
+    "/change-points/bulk-triage": {
+      "patch": {
+        "description": "Bulk-update triage state for multiple change points.",
+        "operationId": "bulk_triage_change_points_bulk_triage_patch",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BulkTriageRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "integer"
+                  },
+                  "title": "Response Bulk Triage Change Points Bulk Triage Patch",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Error"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Error"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Bulk Triage",
+        "tags": [
+          "change-points"
+        ]
+      }
+    },
+    "/change-points/config/{objective_id}": {
+      "delete": {
+        "description": "Remove per-objective config override. Detection falls back to system defaults.",
+        "operationId": "delete_change_point_config_change_points_config__objective_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "objective_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Objective Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Error"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Error"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Change Point Config",
+        "tags": [
+          "change-points"
+        ]
+      },
+      "get": {
+        "description": "Get resolved change point config for an objective.",
+        "operationId": "get_change_point_config_change_points_config__objective_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "objective_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Objective Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChangePointConfigRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Error"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Change Point Config",
+        "tags": [
+          "change-points"
+        ]
+      },
+      "put": {
+        "description": "Create or update change point config for an objective.",
+        "operationId": "upsert_change_point_config_change_points_config__objective_id__put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "objective_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Objective Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangePointConfigInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChangePointConfigRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Error"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Error"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Upsert Change Point Config",
+        "tags": [
+          "change-points"
+        ]
+      }
+    },
+    "/change-points/{change_point_id}": {
+      "get": {
+        "description": "Get a single change point by ID.",
+        "operationId": "get_change_point_change_points__change_point_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "change_point_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Change Point Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChangePointRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Error"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Change Point",
+        "tags": [
+          "change-points"
+        ]
+      },
+      "patch": {
+        "description": "Update triage state of a change point.",
+        "operationId": "triage_change_point_change_points__change_point_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "change_point_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Change Point Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TriageRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChangePointRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Error"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Error"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Triage Change Point",
+        "tags": [
+          "change-points"
+        ]
+      }
+    },
     "/config/ui": {
       "get": {
         "description": "Return UI-facing configuration limits.",
@@ -9189,6 +10349,225 @@
           }
         },
         "summary": "Ui Config"
+      }
+    },
+    "/configuration": {
+      "get": {
+        "description": "List all configuration entries, optionally filtered by key prefix.",
+        "operationId": "list_configuration_configuration_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "prefix",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "pattern": "^[^\\x00]*$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Prefix"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ConfigurationRead"
+                  },
+                  "title": "Response List Configuration Configuration Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Error"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Configuration",
+        "tags": [
+          "configuration"
+        ]
+      }
+    },
+    "/configuration/{name}": {
+      "get": {
+        "description": "Get a single configuration entry by name.",
+        "operationId": "get_configuration_configuration__name__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "title": "Name",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConfigurationRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Error"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Configuration",
+        "tags": [
+          "configuration"
+        ]
+      },
+      "put": {
+        "description": "Update a configuration value. The entry must already exist (seeded by migration).",
+        "operationId": "update_configuration_configuration__name__put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "title": "Name",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConfigurationUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConfigurationRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Error"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Error"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Configuration",
+        "tags": [
+          "configuration"
+        ]
       }
     },
     "/datasources": {
@@ -10855,6 +12234,7 @@
             "required": false,
             "schema": {
               "default": 0,
+              "maximum": 1000000,
               "minimum": 0,
               "title": "Offset",
               "type": "integer"
@@ -11335,6 +12715,69 @@
           }
         },
         "summary": "Get Metric Heatmap New"
+      }
+    },
+    "/evaluations/heatmap/cache": {
+      "delete": {
+        "description": "Delete all cached heatmap column fragments, forcing a full rebuild on next request.",
+        "operationId": "flush_heatmap_cache_evaluations_heatmap_cache_delete",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "integer"
+                  },
+                  "title": "Response Flush Heatmap Cache Evaluations Heatmap Cache Delete",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Error"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Error"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Flush Heatmap Cache"
       }
     },
     "/evaluations/names": {

@@ -7,6 +7,7 @@ import { AssetsPage } from './pages/AssetsPage'
 import { AssetNavigatorPage } from './pages/AssetNavigatorPage'
 import { MetricExplorerPage } from './pages/MetricExplorerPage'
 import { CategoryManagementPage } from './features/note-categories/components/CategoryManagementPage'
+import { ChangePointsPage } from './features/change-points/components/ChangePointsPage'
 import { Button } from './components/ui/button'
 import { ThemeProvider, useTheme } from './lib/theme-context'
 import { TimeRangeProvider } from './lib/time-range-context'
@@ -18,6 +19,7 @@ const queryClient = new QueryClient({
 
 const NAV_ITEMS = [
   { to: '/navigator', label: 'Navigator' },
+  { to: '/change-points', label: 'Change Points' },
   { to: '/slos', label: 'SLOs' },
   { to: '/assets', label: 'Assets' },
 ]
@@ -105,6 +107,7 @@ export default function App() {
                   <Route path="/evaluations/:id" element={<EvaluationDetailPage />} />
                   <Route path="/slos" element={<SloRegistryPage />} />
                   <Route path="/assets" element={<AssetsPage />} />
+                  <Route path="/change-points" element={<ChangePointsPage />} />
                   <Route path="/settings/note-categories" element={<CategoryManagementPage />} />
                 </Routes>
               </ErrorBoundary>

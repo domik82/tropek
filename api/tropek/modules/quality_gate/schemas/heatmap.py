@@ -7,6 +7,7 @@ from datetime import datetime
 
 from pydantic import BaseModel
 
+from tropek.modules.change_points.schemas import ChangePointMarker
 from tropek.modules.quality_gate.schemas.evaluations import PassTarget, SliMetadata
 
 
@@ -66,6 +67,7 @@ class HeatmapCellGrouped(BaseModel):
     score: float
     value: float | None = None
     compared_value: float | None = None
+    change_absolute: float | None = None
     change_relative_pct: float | None = None
     weight: float = 1
     key_sli: bool = False
@@ -73,6 +75,7 @@ class HeatmapCellGrouped(BaseModel):
     warning_targets: list[PassTarget] | None = None
     tab_group: str | None = None
     aggregation: str | None = None
+    change_point: ChangePointMarker | None = None
 
 
 class HeatmapSloGroupSection(BaseModel):

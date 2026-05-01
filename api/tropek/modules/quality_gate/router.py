@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
-from typing import Annotated
+from typing import Annotated, Any
 
 from arq.connections import ArqRedis
 from fastapi import (  # HTTPException: BaselinePinConflictError dict detail
@@ -17,6 +17,9 @@ from fastapi import (  # HTTPException: BaselinePinConflictError dict detail
 from pydantic import AfterValidator
 
 from tropek.modules.assets.service import AssetService
+from tropek.modules.change_points.detector import Direction
+from tropek.modules.change_points.repository import ChangePointRepository
+from tropek.modules.change_points.schemas import ChangePointMarker
 from tropek.modules.common.exceptions import ConflictError, DomainValidationError, NotFoundError
 from tropek.modules.common.schemas import PagedResponse, SafeQueryStr, reject_null_bytes
 from tropek.modules.quality_gate.repositories.annotation_category import SystemCategoryError
@@ -104,7 +107,7 @@ async def trigger_evaluation_batch(
 
 
 @router.get('/evaluations', response_model=PagedResponse[EvaluationSummary])
-async def list_evaluations(  # noqa: PLR0913
+async def list_evaluations(
     asset_name: SafeQueryStr | None = None,
     slo_name: SafeQueryStr | None = None,
     evaluation_name: list[SafeQueryStr] | None = Query(default=None),
@@ -122,7 +125,7 @@ async def list_evaluations(  # noqa: PLR0913
         json_schema_extra={'anyOf': [{'format': 'date-time', 'type': 'string'}]},
     ),
     limit: int = Query(default=200, ge=0, le=500),
-    offset: int = Query(default=0, ge=0),
+    offset: int = Query(default=0, ge=0, le=1_000_000),
     repos: QualityGateRepos = Depends(get_qg_repos),
 ) -> PagedResponse[EvaluationSummary]:
     """List evaluations with optional filters."""
@@ -153,6 +156,34 @@ async def list_evaluations(  # noqa: PLR0913
         for ev in evals
     ]
     return PagedResponse(items=items, total=total)
+
+
+async def _enrich_heatmap_with_change_points(
+    repos: QualityGateRepos,
+    ordered_runs: list[Any],
+    response: GroupedMetricHeatmapResponse,
+) -> GroupedMetricHeatmapResponse:
+    if not ordered_runs:
+        return response
+    change_point_repo = ChangePointRepository(repos.session)
+    period_starts = [run.period_start for run in ordered_runs]
+    change_point_lookup = await change_point_repo.get_change_points_for_evaluations(
+        asset_id=ordered_runs[0].asset_id,
+        period_starts=period_starts,
+    )
+    if change_point_lookup:
+        eval_name_by_run_id = {run.id: run.eval_name for run in ordered_runs}
+        for group in response.groups:
+            for cell in group.cells:
+                run_eval_name = eval_name_by_run_id.get(cell.evaluation_id, '')
+                key = (cell.metric, cell.period_start, run_eval_name)
+                change_point = change_point_lookup.get(key)
+                if change_point is not None:
+                    cell.change_point = ChangePointMarker(
+                        direction=Direction(change_point.direction),
+                        change_relative_pct=change_point.change_relative_pct,
+                    )
+    return response
 
 
 @router.get('/evaluations/heatmap', response_model=GroupedMetricHeatmapResponse)
@@ -219,7 +250,22 @@ async def get_grouped_metric_heatmap_new(
             )
         )
 
-    return assemble_grouped_response(asset_name, ordered_fragments)
+    response = assemble_grouped_response(asset_name, ordered_fragments)
+
+    response = await _enrich_heatmap_with_change_points(repos, ordered_runs, response)
+
+    return response
+
+
+@router.delete('/evaluations/heatmap/cache', status_code=200)
+async def flush_heatmap_cache(
+    column_cache: HeatmapColumnCache | None = Depends(get_heatmap_column_cache),
+) -> dict[str, int]:
+    """Delete all cached heatmap column fragments, forcing a full rebuild on next request."""
+    if column_cache is None:
+        return {'deleted': 0}
+    deleted = await column_cache.flush_all()
+    return {'deleted': deleted}
 
 
 @router.get('/evaluations/heatmap/by-metric', response_model=MetricHeatmapResponse)
@@ -540,12 +586,21 @@ async def get_trend_by_asset_slo(
     asset = await repos.asset_repo.get_by_name(asset_name)
     if asset is None:
         raise NotFoundError('asset', asset_name)
+    change_point_repo = ChangePointRepository(repos.session)
+    change_point_lookup = await change_point_repo.get_change_points_for_range(
+        asset_id=asset.id,
+        slo_name=slo_name,
+        metric_name=metric,
+        from_ts=from_ts,
+        to_ts=to_ts,
+    )
     points = await repos.trend_repo.get_trend_by_domain(
         asset_id=asset.id,
         slo_name=slo_name,
         metric_name=metric,
         from_ts=from_ts,
         to_ts=to_ts,
+        change_point_lookup=change_point_lookup,
     )
     return [TrendPoint(**p) for p in points]
 
@@ -570,12 +625,21 @@ async def get_trend_by_evaluation(
         raise DomainValidationError('evaluation has no associated asset')
     if ev.slo_name is None:
         raise DomainValidationError('evaluation has no associated slo')
+    change_point_repo = ChangePointRepository(repos.session)
+    change_point_lookup = await change_point_repo.get_change_points_for_range(
+        asset_id=ev.asset_id,
+        slo_name=ev.slo_name,
+        metric_name=metric,
+        from_ts=from_ts,
+        to_ts=to_ts,
+    )
     points = await repos.trend_repo.get_trend_by_domain(
         asset_id=ev.asset_id,
         slo_name=ev.slo_name,
         metric_name=metric,
         from_ts=from_ts,
         to_ts=to_ts,
+        change_point_lookup=change_point_lookup,
     )
     return [TrendPoint(**p) for p in points]
 

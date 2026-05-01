@@ -187,6 +187,7 @@ export function sloGroupToMiniView(
       const column = columns[xi]
       const lookupKey = `${column.evaluation_id}\0${displayRow.metricName}`
       const indicatorCell = indicatorLookup.get(lookupKey)
+      const changePointDto = indicatorCell?.change_point
       cells.push({
         value: [xi, rowYIndex],
         result: indicatorCell ? normalizeResult(indicatorCell.result) : 'none',
@@ -199,6 +200,12 @@ export function sloGroupToMiniView(
         evalId: indicatorCell?.slo_evaluation_id,
         sloName: group.slo_name,
         metricName: displayRow.metricName,
+        changePoint: changePointDto
+          ? {
+              direction: changePointDto.direction as 'regression' | 'improvement',
+              changeRelativePct: changePointDto.change_relative_pct,
+            }
+          : undefined,
       })
     }
   }

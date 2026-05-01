@@ -23,17 +23,23 @@ spec:
       pass_threshold: [">0", "<500", "<=+10%"]
       warning_threshold: [">0", "<800", "<=+15%"]
       weight: 2
+      change_point:
+        max_pvalue: 0.01
     - sli: error_rate
       display_name: "Error Rate"
       pass_threshold: [">0", "<0.01", "<=+10%"]
       warning_threshold: [">0", "<0.05", "<=+15%"]
       weight: 3
       key_sli: true
+      change_point:
+        max_pvalue: 0.01
     - sli: availability
       display_name: "Availability"
       pass_threshold: [">=0.999"]
       warning_threshold: [">=0.99"]
       weight: 2
+      change_point:
+        higher_is_better: true
 ---
 api_version: tropek/v1
 kind: SLO

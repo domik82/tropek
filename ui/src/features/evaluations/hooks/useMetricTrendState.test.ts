@@ -35,6 +35,7 @@ function makeTrendPoint(overrides: Partial<TrendPoint> = {}): TrendPoint {
     evaluationName: null,
     targets: null,
     overridden: false,
+    changePoint: null,
     ...overrides,
   }
 }
@@ -55,6 +56,7 @@ function makeIndicator(overrides: Partial<Indicator> = {}): Indicator {
     keySli: false,
     passTargets: [],
     warningTargets: [],
+    changePoint: null,
     ...overrides,
   }
 }

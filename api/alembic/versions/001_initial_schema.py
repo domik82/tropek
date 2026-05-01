@@ -2,7 +2,7 @@
 
 Revision ID: 001
 Revises: 
-Create Date: 2026-04-17 08:26:39.372652
+Create Date: 2026-04-28 08:06:14.772956
 
 """
 from collections.abc import Sequence
@@ -53,6 +53,15 @@ def upgrade() -> None:
     )
     op.create_index('idx_asset_types_name', 'asset_types', ['name'], unique=False)
     op.create_index('uq_asset_types_default', 'asset_types', ['is_default'], unique=True, postgresql_where=sa.text('is_default = true'))
+    op.create_table('configuration',
+    sa.Column('name', sa.Text(), nullable=False),
+    sa.Column('value', sa.Text(), nullable=False),
+    sa.Column('value_type', sa.Text(), nullable=False),
+    sa.Column('description', sa.Text(), server_default='', nullable=False),
+    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.PrimaryKeyConstraint('name')
+    )
     op.create_table('data_sources',
     sa.Column('id', sa.UUID(), nullable=False),
     sa.Column('name', sa.Text(), nullable=False),
@@ -199,6 +208,7 @@ def upgrade() -> None:
     sa.Column('id', sa.UUID(), nullable=False),
     sa.Column('asset_id', sa.UUID(), nullable=False),
     sa.Column('eval_name', sa.Text(), nullable=False),
+    sa.Column('compare_to', postgresql.JSONB(astext_type=sa.Text()), nullable=True),
     sa.Column('period_start', sa.DateTime(timezone=True), nullable=False),
     sa.Column('period_end', sa.DateTime(timezone=True), nullable=False),
     sa.Column('status', sa.Text(), server_default=sa.text("'pending'"), nullable=False),
@@ -287,6 +297,21 @@ def upgrade() -> None:
     sa.UniqueConstraint('snapshot_id', 'path', name='uq_asset_meta_values_snapshot_path')
     )
     op.create_index('idx_asset_meta_values_snapshot', 'asset_meta_values', ['snapshot_id'], unique=False)
+    op.create_table('change_point_config',
+    sa.Column('id', sa.UUID(), nullable=False),
+    sa.Column('slo_objective_id', sa.UUID(), nullable=False),
+    sa.Column('enabled', sa.Boolean(), nullable=False),
+    sa.Column('higher_is_better', sa.Boolean(), nullable=False),
+    sa.Column('window_size', sa.Integer(), nullable=False),
+    sa.Column('max_pvalue', sa.Float(), nullable=False),
+    sa.Column('min_magnitude', sa.Float(), nullable=False),
+    sa.Column('min_sample_size', sa.Integer(), nullable=False),
+    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.ForeignKeyConstraint(['slo_objective_id'], ['slo_objectives.id'], ondelete='CASCADE'),
+    sa.PrimaryKeyConstraint('id'),
+    sa.UniqueConstraint('slo_objective_id')
+    )
     op.create_table('slo_evaluations',
     sa.Column('id', sa.UUID(), nullable=False),
     sa.Column('evaluation_id', sa.UUID(), nullable=False),
@@ -395,12 +420,50 @@ def upgrade() -> None:
     sa.PrimaryKeyConstraint('slo_evaluation_id', 'eval_start', 'metric_name', 'aggregation')
     )
     op.create_index('idx_sli_values_lookup', 'sli_values', ['evaluation_name', 'metric_name', 'eval_start'], unique=False)
+    op.create_table('change_points',
+    sa.Column('id', sa.UUID(), nullable=False),
+    sa.Column('indicator_result_id', sa.UUID(), nullable=True),
+    sa.Column('evaluation_run_id', sa.UUID(), nullable=True),
+    sa.Column('asset_id', sa.UUID(), nullable=False),
+    sa.Column('slo_name', sa.Text(), nullable=False),
+    sa.Column('metric_name', sa.Text(), nullable=False),
+    sa.Column('period_start', sa.DateTime(timezone=True), nullable=False),
+    sa.Column('detector', sa.Text(), server_default=sa.text("'e_divisive'"), nullable=False),
+    sa.Column('direction', sa.Text(), nullable=False),
+    sa.Column('change_relative_pct', sa.Float(), nullable=False),
+    sa.Column('change_absolute', sa.Float(), nullable=False),
+    sa.Column('pvalue', sa.Float(), nullable=False),
+    sa.Column('pre_segment_mean', sa.Float(), nullable=False),
+    sa.Column('post_segment_mean', sa.Float(), nullable=False),
+    sa.Column('post_segment_std', sa.Float(), server_default=sa.text('0'), nullable=False),
+    sa.Column('status', sa.Text(), server_default=sa.text("'unprocessed'"), nullable=False),
+    sa.Column('triage_author', sa.Text(), nullable=True),
+    sa.Column('triage_note', sa.Text(), nullable=True),
+    sa.Column('triage_at', sa.DateTime(timezone=True), nullable=True),
+    sa.Column('linked_ticket', sa.Text(), nullable=True),
+    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.ForeignKeyConstraint(['evaluation_run_id'], ['evaluations.id'], ondelete='SET NULL'),
+    sa.ForeignKeyConstraint(['indicator_result_id'], ['indicator_results.id'], ondelete='SET NULL'),
+    sa.PrimaryKeyConstraint('id')
+    )
+    op.create_index('idx_change_points_created', 'change_points', ['created_at'], unique=False)
+    op.create_index('idx_change_points_identity', 'change_points', ['asset_id', 'slo_name', 'metric_name', 'period_start'], unique=False)
+    op.create_index('idx_change_points_indicator', 'change_points', ['indicator_result_id'], unique=False)
+    op.create_index('idx_change_points_run', 'change_points', ['evaluation_run_id', 'metric_name', 'period_start'], unique=False)
+    op.create_index('idx_change_points_unprocessed', 'change_points', ['status'], unique=False, postgresql_where=sa.text("status = 'unprocessed'"))
     # ### end Alembic commands ###
 
 
 def downgrade() -> None:
     """Downgrade schema."""
     # ### commands auto generated by Alembic - please adjust! ###
+    op.drop_index('idx_change_points_unprocessed', table_name='change_points', postgresql_where=sa.text("status = 'unprocessed'"))
+    op.drop_index('idx_change_points_run', table_name='change_points')
+    op.drop_index('idx_change_points_indicator', table_name='change_points')
+    op.drop_index('idx_change_points_identity', table_name='change_points')
+    op.drop_index('idx_change_points_created', table_name='change_points')
+    op.drop_table('change_points')
     op.drop_index('idx_sli_values_lookup', table_name='sli_values')
     op.drop_table('sli_values')
     op.drop_index('idx_indicator_results_slo_evaluation', table_name='indicator_results')
@@ -420,6 +483,7 @@ def downgrade() -> None:
     op.drop_index('idx_slo_evaluations_baseline_lookup', table_name='slo_evaluations', postgresql_where=sa.text("status = 'completed' AND invalidated = false"))
     op.drop_index('idx_slo_evaluations_asset', table_name='slo_evaluations')
     op.drop_table('slo_evaluations')
+    op.drop_table('change_point_config')
     op.drop_index('idx_asset_meta_values_snapshot', table_name='asset_meta_values')
     op.drop_table('asset_meta_values')
     op.drop_index('idx_asset_meta_closures_snapshot', table_name='asset_meta_closures')
@@ -464,6 +528,7 @@ def downgrade() -> None:
     op.drop_table('sli_definitions')
     op.drop_index('idx_data_sources_name', table_name='data_sources')
     op.drop_table('data_sources')
+    op.drop_table('configuration')
     op.drop_index('uq_asset_types_default', table_name='asset_types', postgresql_where=sa.text('is_default = true'))
     op.drop_index('idx_asset_types_name', table_name='asset_types')
     op.drop_table('asset_types')

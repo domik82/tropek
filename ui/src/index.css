@@ -106,6 +106,9 @@
   --heatmap-cell-border:     var(--color-slate-950);
   --heatmap-text:            var(--color-slate-400);
   --heatmap-selection-ring:  #ffffff;
+  /* ── Change point markers ────────────────── */
+  --change-point-regression: #f85149;
+  --change-point-improvement: #3fb950;
   /* ── Chart ───────────────────────────────── */
   --chart-bg:                var(--color-slate-900);
   --chart-border:            var(--color-slate-700);
@@ -262,6 +265,9 @@
   --heatmap-cell-border:     var(--blue-2);
   --heatmap-text:            var(--slate-11);
   --heatmap-selection-ring:  #ffffff;
+  /* ── Change point markers ────────────────── */
+  --change-point-regression: #f85149;
+  --change-point-improvement: #3fb950;
   /* ── Chart ───────────────────────────────── */
   --chart-bg:                var(--blue-2);
   --chart-border:            var(--slate-6);

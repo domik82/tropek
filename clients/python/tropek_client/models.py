@@ -121,6 +121,7 @@ class SLOObjective(BaseModel):
     weight: int = 1
     key_sli: bool = False
     sort_order: int = 0
+    change_point: dict[str, Any] | None = None
 
 
 class SLODefinition(BaseModel):

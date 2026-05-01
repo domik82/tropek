@@ -257,6 +257,88 @@ class SLOObjective(Base):
     pass_threshold:     Mapped[list[str]]      = mapped_column(ARRAY(Text), nullable=False, server_default=text("'{}'"))
     warning_threshold:  Mapped[list[str]]      = mapped_column(ARRAY(Text), nullable=False, server_default=text("'{}'"))
     tab_group:         Mapped[str | None]     = mapped_column(Text, nullable=True)
+    change_point_config: Mapped[ChangePointConfig | None] = relationship(
+        'ChangePointConfig',
+        uselist=False,
+        cascade='all, delete-orphan',
+        lazy='joined',
+    )
+    # fmt: on
+
+
+class ChangePointConfig(Base):
+    """Per-objective Otava detection override — SPARSE table.
+
+    Rows exist ONLY to override the system defaults for a specific SLO objective.
+    Absence of a row = use system defaults from the configuration table.
+    """
+
+    __tablename__ = 'change_point_config'
+
+    # fmt: off
+    id:                Mapped[uuid.UUID] = mapped_column(UUID, primary_key=True, default=uuid.uuid4)
+    slo_objective_id:  Mapped[uuid.UUID] = mapped_column(UUID, ForeignKey('slo_objectives.id', ondelete='CASCADE'), nullable=False, unique=True)
+    enabled:           Mapped[bool]      = mapped_column(Boolean, nullable=False)
+    higher_is_better:  Mapped[bool]      = mapped_column(Boolean, nullable=False)
+    window_size:       Mapped[int]       = mapped_column(Integer, nullable=False)
+    max_pvalue:        Mapped[float]     = mapped_column(Float, nullable=False)
+    min_magnitude:     Mapped[float]     = mapped_column(Float, nullable=False)
+    min_sample_size:   Mapped[int]       = mapped_column(Integer, nullable=False)
+    created_at:        Mapped[datetime]  = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at:        Mapped[datetime]  = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    # fmt: on
+
+
+class Configuration(Base):
+    """System-wide key-value settings — general purpose."""
+
+    __tablename__ = 'configuration'
+
+    # fmt: off
+    name:        Mapped[str]      = mapped_column(Text, primary_key=True)
+    value:       Mapped[str]      = mapped_column(Text, nullable=False)
+    value_type:  Mapped[str]      = mapped_column(Text, nullable=False)
+    description: Mapped[str]      = mapped_column(Text, nullable=False, server_default='')
+    created_at:  Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at:  Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    # fmt: on
+
+
+class ChangePoint(Base):
+    """Detected distributional shift for a single metric — denormalized identity."""
+
+    __tablename__ = 'change_points'
+    __table_args__ = (
+        Index('idx_change_points_indicator', 'indicator_result_id'),
+        Index('idx_change_points_identity', 'asset_id', 'slo_name', 'metric_name', 'period_start'),
+        Index('idx_change_points_unprocessed', 'status', postgresql_where=text("status = 'unprocessed'")),
+        Index('idx_change_points_created', 'created_at'),
+        Index('idx_change_points_run', 'evaluation_run_id', 'metric_name', 'period_start'),
+    )
+
+    # fmt: off
+    id:                   Mapped[uuid.UUID]        = mapped_column(UUID, primary_key=True, default=uuid.uuid4)
+    indicator_result_id:  Mapped[uuid.UUID | None] = mapped_column(UUID, ForeignKey('indicator_results.id', ondelete='SET NULL'), nullable=True)
+    evaluation_run_id:    Mapped[uuid.UUID | None] = mapped_column(UUID, ForeignKey('evaluations.id', ondelete='SET NULL'), nullable=True)
+    asset_id:             Mapped[uuid.UUID]        = mapped_column(UUID, nullable=False)
+    slo_name:             Mapped[str]              = mapped_column(Text, nullable=False)
+    metric_name:          Mapped[str]              = mapped_column(Text, nullable=False)
+    period_start:         Mapped[datetime]         = mapped_column(DateTime(timezone=True), nullable=False)
+    detector:             Mapped[str]              = mapped_column(Text, nullable=False, server_default=text("'e_divisive'"))
+    direction:            Mapped[str]              = mapped_column(Text, nullable=False)
+    change_relative_pct:  Mapped[float]            = mapped_column(Float, nullable=False)
+    change_absolute:      Mapped[float]            = mapped_column(Float, nullable=False)
+    pvalue:               Mapped[float]            = mapped_column(Float, nullable=False)
+    pre_segment_mean:     Mapped[float]            = mapped_column(Float, nullable=False)
+    post_segment_mean:    Mapped[float]            = mapped_column(Float, nullable=False)
+    post_segment_std:     Mapped[float]            = mapped_column(Float, nullable=False, server_default=text("0"))
+    status:               Mapped[str]              = mapped_column(Text, nullable=False, server_default=text("'unprocessed'"))
+    triage_author:        Mapped[str | None]       = mapped_column(Text, nullable=True)
+    triage_note:          Mapped[str | None]       = mapped_column(Text, nullable=True)
+    triage_at:            Mapped[datetime | None]  = mapped_column(DateTime(timezone=True), nullable=True)
+    linked_ticket:        Mapped[str | None]       = mapped_column(Text, nullable=True)
+    created_at:           Mapped[datetime]         = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at:           Mapped[datetime]         = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
     # fmt: on
 
 
@@ -699,6 +781,7 @@ class EvaluationRun(Base):
     id:              Mapped[uuid.UUID]      = mapped_column(UUID, primary_key=True, default=uuid.uuid4)
     asset_id:        Mapped[uuid.UUID]      = mapped_column(UUID, ForeignKey('assets.id', ondelete='RESTRICT'), nullable=False)
     eval_name:       Mapped[str]            = mapped_column(Text, nullable=False)
+    compare_to:      Mapped[dict[str, str] | None] = mapped_column(JSONB, nullable=True)
     period_start:    Mapped[datetime]       = mapped_column(DateTime(timezone=True), nullable=False)
     period_end:      Mapped[datetime]       = mapped_column(DateTime(timezone=True), nullable=False)
     status:          Mapped[str]            = mapped_column(Text, nullable=False, server_default=text("'pending'"), default='pending')

@@ -8,6 +8,7 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
+from tropek.modules.change_points.schemas import ChangePointMarker
 from tropek.modules.quality_gate.schemas.annotations import AnnotationRead
 
 
@@ -66,6 +67,7 @@ class IndicatorResult(BaseModel):
     key_sli: bool
     pass_targets: list[PassTarget] | None
     warning_targets: list[PassTarget] | None
+    change_point: ChangePointMarker | None = None
 
 
 class EvaluationSummary(BaseModel):
@@ -159,3 +161,4 @@ class TrendPoint(BaseModel):
     baseline: float | None
     evaluation_name: str | None = None
     targets: TrendTargets | None = None
+    change_point: ChangePointMarker | None = None

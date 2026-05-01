@@ -8,7 +8,7 @@ metrics:
   cpu_usage:
     baseline: 12.0
     phases:
-      - duration_hours: 18
+      - duration_hours: 42
         pattern: stable
         jitter_pct: 15
       - duration_hours: 6
@@ -23,7 +23,7 @@ metrics:
   memory_usage:
     baseline: 420000000
     phases:
-      - duration_hours: 18
+      - duration_hours: 42
         pattern: stable
         jitter_pct: 3
       - duration_hours: 6
@@ -34,4 +34,4 @@ metrics:
         pattern: stable
         jitter_pct: 3
 interval_minutes: 5
-start: "2026-03-15T00:00:00Z"
+start: "2026-03-14T00:00:00Z"
