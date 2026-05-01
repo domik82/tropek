@@ -33,8 +33,8 @@ def _trend_change_point(
     if change_point is None:
         return None
     return {
-        "direction": change_point.direction,
-        "change_relative_pct": change_point.change_relative_pct,
+        'direction': change_point.direction,
+        'change_relative_pct': change_point.change_relative_pct,
     }
 
 
@@ -292,7 +292,10 @@ class TrendRepository:
                 'evaluation_name': r.evaluation_name,
                 'targets': r.targets,
                 'change_point': _trend_change_point(
-                    change_point_lookup, metric_name, r.period_start, r.evaluation_name,
+                    change_point_lookup,
+                    metric_name,
+                    r.period_start,
+                    r.evaluation_name,
                 ),
             }
             for r in rows

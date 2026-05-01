@@ -97,17 +97,22 @@ class ChangePointRepository:
             ChangePoint.period_start.in_(nearby_timestamps),
         )
         if evaluation_name is not None:
-            query = query.join(
-                IndicatorResultRow,
-                ChangePoint.indicator_result_id == IndicatorResultRow.id,
-            ).join(
-                SLOEvaluation,
-                IndicatorResultRow.slo_evaluation_id == SLOEvaluation.id,
-            ).join(
-                EvaluationRun,
-                SLOEvaluation.evaluation_id == EvaluationRun.id,
-            ).where(
-                EvaluationRun.eval_name == evaluation_name,
+            query = (
+                query.join(
+                    IndicatorResultRow,
+                    ChangePoint.indicator_result_id == IndicatorResultRow.id,
+                )
+                .join(
+                    SLOEvaluation,
+                    IndicatorResultRow.slo_evaluation_id == SLOEvaluation.id,
+                )
+                .join(
+                    EvaluationRun,
+                    SLOEvaluation.evaluation_id == EvaluationRun.id,
+                )
+                .where(
+                    EvaluationRun.eval_name == evaluation_name,
+                )
             )
         query = query.limit(1)
         result = await self._session.execute(query)
@@ -122,26 +127,28 @@ class ChangePointRepository:
         evaluation_name: str | None = None,
     ) -> ChangePoint | None:
         """Return the most recent change point for this metric, if any."""
-        query = (
-            select(ChangePoint)
-            .where(
-                ChangePoint.asset_id == asset_id,
-                ChangePoint.slo_name == slo_name,
-                ChangePoint.metric_name == metric_name,
-            )
+        query = select(ChangePoint).where(
+            ChangePoint.asset_id == asset_id,
+            ChangePoint.slo_name == slo_name,
+            ChangePoint.metric_name == metric_name,
         )
         if evaluation_name is not None:
-            query = query.join(
-                IndicatorResultRow,
-                ChangePoint.indicator_result_id == IndicatorResultRow.id,
-            ).join(
-                SLOEvaluation,
-                IndicatorResultRow.slo_evaluation_id == SLOEvaluation.id,
-            ).join(
-                EvaluationRun,
-                SLOEvaluation.evaluation_id == EvaluationRun.id,
-            ).where(
-                EvaluationRun.eval_name == evaluation_name,
+            query = (
+                query.join(
+                    IndicatorResultRow,
+                    ChangePoint.indicator_result_id == IndicatorResultRow.id,
+                )
+                .join(
+                    SLOEvaluation,
+                    IndicatorResultRow.slo_evaluation_id == SLOEvaluation.id,
+                )
+                .join(
+                    EvaluationRun,
+                    SLOEvaluation.evaluation_id == EvaluationRun.id,
+                )
+                .where(
+                    EvaluationRun.eval_name == evaluation_name,
+                )
             )
         query = query.order_by(ChangePoint.period_start.desc()).limit(1)
         result = await self._session.execute(query)
@@ -177,9 +184,7 @@ class ChangePointRepository:
 
     async def get_by_id(self, change_point_id: uuid.UUID) -> ChangePoint | None:
         """Return a single change point by ID."""
-        result = await self._session.execute(
-            select(ChangePoint).where(ChangePoint.id == change_point_id)
-        )
+        result = await self._session.execute(select(ChangePoint).where(ChangePoint.id == change_point_id))
         return result.scalar_one_or_none()
 
     async def triage(
@@ -384,7 +389,8 @@ class ChangePointRepository:
         return cursor.rowcount > 0
 
     async def get_config_for_objective(
-        self, slo_objective_id: uuid.UUID,
+        self,
+        slo_objective_id: uuid.UUID,
     ) -> ChangePointConfig | None:
         """Return change point config for an objective, if any."""
         result = await self._session.execute(

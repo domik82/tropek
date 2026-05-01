@@ -17,11 +17,7 @@ def clip_spans(
     window_to: datetime,
 ) -> list[ClippedSpan]:
     """Clip every span to [window_from, window_to], drop ones outside."""
-    return [
-        clipped
-        for span in spans
-        if (clipped := clip_one_span(span, window_from, window_to)) is not None
-    ]
+    return [clipped for span in spans if (clipped := clip_one_span(span, window_from, window_to)) is not None]
 
 
 def clip_one_span(

@@ -340,7 +340,10 @@ def build_column_fragment(
                     tab_group=objective.tab_group,
                     aggregation=sli_metadata.get(metric_name, {}).get('mode'),
                     change_point=_resolve_change_point_marker(
-                        change_point_lookup, metric_name, run.period_start, run.eval_name,
+                        change_point_lookup,
+                        metric_name,
+                        run.period_start,
+                        run.eval_name,
                     ),
                 )
             )

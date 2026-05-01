@@ -156,18 +156,14 @@ class TestResolveMultiSourceConflicts:
         result = resolve_multi_source_conflicts([span], ASSET_ID, logger)
         assert result == [span]
 
-    def test_two_source_conflict_drops_loser_emits_warning(
-        self, caplog: pytest.LogCaptureFixture
-    ) -> None:
+    def test_two_source_conflict_drops_loser_emits_warning(self, caplog: pytest.LogCaptureFixture) -> None:
         logger = logging.getLogger('test.resolve_conflict')
         # cicd has older data (T1), deploy has newer (T2) — deploy wins
         span_cicd = make_span(source='cicd', path=['app'], end=T1)
         span_deploy = make_span(source='deploy', path=['app'], end=T2)
 
         with caplog.at_level(logging.WARNING, logger='test.resolve_conflict'):
-            result = resolve_multi_source_conflicts(
-                [span_cicd, span_deploy], ASSET_ID, logger
-            )
+            result = resolve_multi_source_conflicts([span_cicd, span_deploy], ASSET_ID, logger)
 
         assert result == [span_deploy]
         assert len(caplog.records) == 1
@@ -180,9 +176,7 @@ class TestResolveMultiSourceConflicts:
         # 'monitoring' has an open span → sentinel beats any closed end
         span_open = make_span(source='monitoring', path=['app'], end=None, end_reason='open')
 
-        result = resolve_multi_source_conflicts(
-            [span_old, span_mid, span_open], ASSET_ID, logger
-        )
+        result = resolve_multi_source_conflicts([span_old, span_mid, span_open], ASSET_ID, logger)
 
         assert len(result) == 1
         assert result[0].source == 'monitoring'

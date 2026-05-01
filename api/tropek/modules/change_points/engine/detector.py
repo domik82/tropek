@@ -86,8 +86,6 @@ class ChangePointDetector:
         # Both locations are needed: split() is the primary entry point,
         # but this filter protects direct callers of ChangePointDetector.
         effective_end = end if end is not None else (start or 0) + len(series)
-        change_points = [
-            cp for cp in change_points if cp.index < effective_end
-        ]
+        change_points = [cp for cp in change_points if cp.index < effective_end]
 
         return change_points

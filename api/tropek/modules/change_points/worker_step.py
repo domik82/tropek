@@ -69,7 +69,7 @@ async def gather_metric_series(
         asset_id=asset_id,
         slo_name=slo_name,
         period_start_before=period_end,
-        include_result_with_score="all",
+        include_result_with_score='all',
         limit=window_size,
         evaluation_name=evaluation_name,
     )
@@ -116,17 +116,13 @@ async def run_change_point_detection(
 
     if comparison_name != snapshot.evaluation_name:
         log.debug(
-            "skipping change point detection for cross-series comparison",
+            'skipping change point detection for cross-series comparison',
             evaluation_name=snapshot.evaluation_name,
             comparison_name=comparison_name,
         )
         return
 
-    indicator_lookup = {
-        row.objective.sli: row
-        for row in indicator_rows
-        if row.objective
-    }
+    indicator_lookup = {row.objective.sli: row for row in indicator_rows if row.objective}
 
     config_repo = ConfigurationRepository(session)
     system_defaults = await config_repo.get_change_point_defaults()
@@ -156,7 +152,7 @@ async def run_change_point_detection(
 
             if len(series.values) < resolved.min_sample_size:
                 log.debug(
-                    "insufficient history for change point detection",
+                    'insufficient history for change point detection',
                     metric=objective.sli,
                     sample_count=len(series.values),
                     min_required=resolved.min_sample_size,
@@ -188,7 +184,7 @@ async def run_change_point_detection(
                 )
         except (OSError, ValueError, TypeError, RuntimeError, LookupError):
             log.warning(
-                "change point detection failed for metric",
+                'change point detection failed for metric',
                 metric=objective.sli,
                 exc_info=True,
             )
@@ -219,10 +215,7 @@ async def _persist_change_points(
             max(0, detection_index - 1),
             min(len(timestamps), detection_index + 2),
         )
-        nearby_timestamps = [
-            timestamps[i] for i in nearby_indices
-            if timestamps[i] not in batch_timestamps
-        ]
+        nearby_timestamps = [timestamps[i] for i in nearby_indices if timestamps[i] not in batch_timestamps]
 
         has_existing = bool(nearby_timestamps) and await change_point_repo.has_nearby_change_point(
             asset_id=snapshot.asset_id,
@@ -234,7 +227,7 @@ async def _persist_change_points(
         )
 
         if has_existing:
-            log.debug("change point deduped", metric=metric_name, position=candidate.position)
+            log.debug('change point deduped', metric=metric_name, position=candidate.position)
             continue
 
         previous_cp = await change_point_repo.get_latest_change_point(
@@ -253,7 +246,7 @@ async def _persist_change_points(
             )
         ):
             log.debug(
-                "change point suppressed — same regime as previous",
+                'change point suppressed — same regime as previous',
                 metric=metric_name,
                 previous_mean=previous_cp.post_segment_mean,
                 previous_std=previous_cp.post_segment_std,
@@ -282,7 +275,7 @@ async def _persist_change_points(
 
         batch_timestamps.add(candidate.timestamp)
         log.info(
-            "change point detected",
+            'change point detected',
             metric=metric_name,
             direction=candidate.direction,
             magnitude_pct=candidate.change_relative_pct,

@@ -134,8 +134,7 @@ def _inject_property_names_pattern(schema: Any) -> None:
                 property_names['pattern'] = key_regex
         else:
             _openapi_logger.warning(
-                'skipping propertyNames.pattern injection: multiple patternProperties '
-                'keys are ambiguous (keys=%s)',
+                'skipping propertyNames.pattern injection: multiple patternProperties keys are ambiguous (keys=%s)',
                 list(pattern_properties.keys()),
             )
     for value in schema.values():

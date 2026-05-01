@@ -101,16 +101,23 @@ class TTestSignificanceTester(SignificanceTester):
 
         if len(left) + len(right) > 2:
             (_, pvalue) = ttest_ind_from_stats(
-                mean_left, std_left, len(left),
-                mean_right, std_right, len(right),
+                mean_left,
+                std_left,
+                len(left),
+                mean_right,
+                std_right,
+                len(right),
                 alternative='two-sided',
             )
         else:
             pvalue = 1.0
 
         return TTestStats(
-            mean_1=mean_left, mean_2=mean_right,
-            std_1=std_left, std_2=std_right, pvalue=float(pvalue),
+            mean_1=mean_left,
+            mean_2=mean_right,
+            std_1=std_left,
+            std_2=std_right,
+            pvalue=float(pvalue),
         )
 
     def change_point(
@@ -130,17 +137,15 @@ class TTestSignificanceTester(SignificanceTester):
                 left_interval = interval
                 right_interval = intervals[i + 1]
                 break
-            if (
-                (interval.start is None or interval.start < candidate.index)
-                and (interval.stop is None or candidate.index < interval.stop)
+            if (interval.start is None or interval.start < candidate.index) and (
+                interval.stop is None or candidate.index < interval.stop
             ):
                 left_interval = slice(interval.start, candidate.index)
                 right_interval = slice(candidate.index, interval.stop)
                 break
         else:
             raise ValueError(
-                f'candidate change point at index={candidate.index} '
-                f'does not correspond to any interval in {intervals}'
+                f'candidate change point at index={candidate.index} does not correspond to any interval in {intervals}'
             )
         left = series[left_interval]
         right = series[right_interval]
@@ -165,7 +170,8 @@ def merge(
         weakest = max(change_points, key=lambda c: c.stats.pvalue)
         if weakest.stats.pvalue < max_pvalue:
             weakest = min(
-                change_points, key=lambda c: _ttest_stats(c).change_magnitude(),
+                change_points,
+                key=lambda c: _ttest_stats(c).change_magnitude(),
             )
             if _ttest_stats(weakest).change_magnitude() > min_magnitude:
                 return change_points

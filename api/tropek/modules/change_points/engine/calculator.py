@@ -56,7 +56,8 @@ class PairDistanceCalculator(Calculator):
         These are used by _get_Q_vals to compute the Q-hat function efficiently.
         """
         self.distances = np.power(
-            np.abs(self.series[:, None] - self.series[None, :]), self.power,
+            np.abs(self.series[:, None] - self.series[None, :]),
+            self.power,
         )
         triu = np.triu(self.distances, k=1)[:-1, 1:]
         self.V = triu.sum(axis=0)
@@ -74,7 +75,7 @@ class PairDistanceCalculator(Calculator):
         if self.V is None or self.H is None:
             self._calculate_pairwise_differences()
 
-        V = self.V[start : end - 1] - self.distances[0 : start, start + 1 : end].sum(axis=0)
+        V = self.V[start : end - 1] - self.distances[0:start, start + 1 : end].sum(axis=0)
         H = self.H[start : end - 1, start : end - 1]
 
         taus = np.arange(start + 1, end)[:, None]

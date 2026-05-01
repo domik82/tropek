@@ -61,11 +61,7 @@ def close_cascade(
 
     Idempotent: if no open span matches, this is a silent no-op.
     """
-    keys_to_close = [
-        key
-        for key in open_spans
-        if key[0] == source and is_prefix(ancestor, key[1])
-    ]
+    keys_to_close = [key for key in open_spans if key[0] == source and is_prefix(ancestor, key[1])]
     for key in keys_to_close:
         open_span = open_spans.pop(key)
         emitted.append(
@@ -87,9 +83,7 @@ def apply_snapshot(
 ) -> None:
     """Apply one snapshot. Closures run BEFORE values (close-and-reopen determinism)."""
     for closure_path in snapshot.closures:
-        close_cascade(
-            open_spans, snapshot.source, tuple(closure_path), snapshot.observed_at, emitted
-        )
+        close_cascade(open_spans, snapshot.source, tuple(closure_path), snapshot.observed_at, emitted)
     for path, value in snapshot.values:
         apply_value(open_spans, snapshot.source, tuple(path), value, snapshot.observed_at, emitted)
 

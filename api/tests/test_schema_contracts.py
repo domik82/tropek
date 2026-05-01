@@ -354,7 +354,14 @@ class TestAnnotationCategorySchemaContract:
         """ui/src/features/note-categories/palette.ts defines exactly these eight
         tokens. Adding or removing one without updating the UI breaks rendering."""
         assert {c.value for c in CategoryColor} == {
-            'sky', 'green', 'amber', 'red', 'purple', 'pink', 'slate', 'gray',
+            'sky',
+            'green',
+            'amber',
+            'red',
+            'purple',
+            'pink',
+            'slate',
+            'gray',
         }
 
     def test_category_create_rejects_unknown_fields(self) -> None:
@@ -381,10 +388,7 @@ class TestTrendAnnotationsRoute:
         assert '/evaluations/trend-annotations' in paths
 
     def test_route_accepts_asset_and_slo_query_params(self) -> None:
-        route = next(
-            r for r in app.routes
-            if isinstance(r, APIRoute) and r.path == '/evaluations/trend-annotations'
-        )
+        route = next(r for r in app.routes if isinstance(r, APIRoute) and r.path == '/evaluations/trend-annotations')
         param_names = set(inspect.signature(route.endpoint).parameters)
         assert {'asset_name', 'slo_name'} <= param_names
 

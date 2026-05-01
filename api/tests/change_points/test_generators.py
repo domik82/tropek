@@ -20,14 +20,13 @@ HALF = SERIES_LEN // 2
 
 
 class TestStableGenerator:
-
     def test_produces_correct_count(self) -> None:
-        gen = StableGenerator(dist=norm, params={"loc": 100, "scale": 5}, seed=42)
+        gen = StableGenerator(dist=norm, params={'loc': 100, 'scale': 5}, seed=42)
         series = gen.generate(50)
         assert len(series) == 50
 
     def test_no_false_positives(self) -> None:
-        gen = StableGenerator(dist=norm, params={"loc": 100, "scale": 5}, seed=42)
+        gen = StableGenerator(dist=norm, params={'loc': 100, 'scale': 5}, seed=42)
         series = gen.generate(SERIES_LEN)
         results = detect_change_points(
             values=series,
@@ -37,18 +36,17 @@ class TestStableGenerator:
         assert results == []
 
     def test_deterministic_with_seed(self) -> None:
-        gen1 = StableGenerator(dist=norm, params={"loc": 100, "scale": 5}, seed=42)
-        gen2 = StableGenerator(dist=norm, params={"loc": 100, "scale": 5}, seed=42)
+        gen1 = StableGenerator(dist=norm, params={'loc': 100, 'scale': 5}, seed=42)
+        gen2 = StableGenerator(dist=norm, params={'loc': 100, 'scale': 5}, seed=42)
         assert gen1.generate(20) == gen2.generate(20)
 
 
 class TestStepChangeGenerator:
-
     def test_detector_finds_step_change(self) -> None:
         gen = StepChangeGenerator(
             dist=norm,
-            before={"loc": 100, "scale": 5},
-            after={"loc": 150, "scale": 5},
+            before={'loc': 100, 'scale': 5},
+            after={'loc': 150, 'scale': 5},
             changepoint=HALF,
             seed=42,
         )
@@ -70,9 +68,12 @@ class TestStepChangeGenerator:
         dedicated variance detector (Levene's test) would be needed.
         """
         gen = VarianceChangeGenerator(
-            dist=norm, loc=100,
-            scale_before=5, scale_after=15,
-            changepoint=HALF, seed=17,
+            dist=norm,
+            loc=100,
+            scale_before=5,
+            scale_after=15,
+            changepoint=HALF,
+            seed=17,
         )
         series = gen.generate(SERIES_LEN)
         results = detect_change_points(
@@ -84,12 +85,11 @@ class TestStepChangeGenerator:
 
 
 class TestDriftGenerator:
-
     def test_gradual_drift_series_shape(self) -> None:
         gen = DriftGenerator(
             dist=norm,
-            before={"loc": 100, "scale": 3},
-            after={"loc": 130, "scale": 3},
+            before={'loc': 100, 'scale': 3},
+            after={'loc': 130, 'scale': 3},
             changepoint=30,
             steps=40,
             seed=42,
@@ -103,8 +103,8 @@ class TestDriftGenerator:
     def test_slow_drift_may_evade_edivisive(self) -> None:
         gen = DriftGenerator(
             dist=norm,
-            before={"loc": 100, "scale": 5},
-            after={"loc": 110, "scale": 5},
+            before={'loc': 100, 'scale': 5},
+            after={'loc': 110, 'scale': 5},
             changepoint=30,
             steps=50,
             seed=42,
@@ -119,14 +119,13 @@ class TestDriftGenerator:
 
 
 class TestMultipleChangePointGenerator:
-
     def test_three_segments(self) -> None:
         gen = MultipleChangePointGenerator(
             dist=norm,
             segments=[
-                (0, {"loc": 100, "scale": 3}),
-                (35, {"loc": 150, "scale": 3}),
-                (70, {"loc": 80, "scale": 3}),
+                (0, {'loc': 100, 'scale': 3}),
+                (35, {'loc': 150, 'scale': 3}),
+                (70, {'loc': 80, 'scale': 3}),
             ],
             seed=42,
         )
@@ -143,7 +142,6 @@ class TestMultipleChangePointGenerator:
 
 
 class TestMakeTimestamps:
-
     def test_correct_count_and_spacing(self) -> None:
         timestamps = make_timestamps(10)
         assert len(timestamps) == 10

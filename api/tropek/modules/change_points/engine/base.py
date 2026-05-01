@@ -69,7 +69,9 @@ class ChangePoint:
 
     @classmethod
     def from_candidate(
-        cls, candidate: CandidateChangePoint, stats: BaseStats,
+        cls,
+        candidate: CandidateChangePoint,
+        stats: BaseStats,
     ) -> ChangePoint:
         """Construct from a candidate and computed significance statistics."""
         return cls(index=candidate.index, qhat=candidate.qhat, stats=stats)
@@ -87,10 +89,9 @@ class SignificanceTester:
 
     def get_intervals(self, change_points: list[ChangePoint]) -> list[slice]:
         """Return slices of the series defined by sorted change points."""
-        assert all(
-            change_points[i].index <= change_points[i + 1].index
-            for i in range(len(change_points) - 1)
-        ), 'change points must be sorted by index'
+        assert all(change_points[i].index <= change_points[i + 1].index for i in range(len(change_points) - 1)), (
+            'change points must be sorted by index'
+        )
         intervals = [
             slice(
                 0 if i == 0 else change_points[i - 1].index,

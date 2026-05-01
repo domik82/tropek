@@ -110,28 +110,22 @@ async def upsert_change_point_config(
     repo = ChangePointRepository(session)
     config = await repo.upsert_config_for_objective(
         slo_objective_id=objective_id,
-        enabled=(
-            body.enabled if body.enabled is not None
-            else bool(system_defaults.get('enabled', True))
-        ),
+        enabled=(body.enabled if body.enabled is not None else bool(system_defaults.get('enabled', True))),
         higher_is_better=(
-            body.higher_is_better if body.higher_is_better is not None
+            body.higher_is_better
+            if body.higher_is_better is not None
             else bool(system_defaults.get('higher_is_better', False))
         ),
-        window_size=(
-            body.window_size if body.window_size is not None
-            else int(system_defaults.get('window_size', 30))
-        ),
+        window_size=(body.window_size if body.window_size is not None else int(system_defaults.get('window_size', 30))),
         max_pvalue=(
-            body.max_pvalue if body.max_pvalue is not None
-            else float(system_defaults.get('max_pvalue', 0.001))
+            body.max_pvalue if body.max_pvalue is not None else float(system_defaults.get('max_pvalue', 0.001))
         ),
         min_magnitude=(
-            body.min_magnitude if body.min_magnitude is not None
-            else float(system_defaults.get('min_magnitude', 0.0))
+            body.min_magnitude if body.min_magnitude is not None else float(system_defaults.get('min_magnitude', 0.0))
         ),
         min_sample_size=(
-            body.min_sample_size if body.min_sample_size is not None
+            body.min_sample_size
+            if body.min_sample_size is not None
             else int(system_defaults.get('min_sample_size', 10))
         ),
     )

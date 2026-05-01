@@ -136,33 +136,41 @@ class SLORepository(TagQueryMixin):
             system_defaults: System-level default values from the configuration table.
         """
         if cp_input is not None:
-            self._session.add(ChangePointConfig(
-                slo_objective_id=orm_obj.id,
-                enabled=cp_input.enabled if cp_input.enabled is not None
+            self._session.add(
+                ChangePointConfig(
+                    slo_objective_id=orm_obj.id,
+                    enabled=cp_input.enabled
+                    if cp_input.enabled is not None
                     else bool(system_defaults.get('enabled', True)),
-                higher_is_better=cp_input.higher_is_better
+                    higher_is_better=cp_input.higher_is_better
                     if cp_input.higher_is_better is not None
                     else bool(system_defaults.get('higher_is_better', False)),
-                window_size=cp_input.window_size if cp_input.window_size is not None
+                    window_size=cp_input.window_size
+                    if cp_input.window_size is not None
                     else int(system_defaults.get('window_size', 30)),
-                max_pvalue=cp_input.max_pvalue if cp_input.max_pvalue is not None
+                    max_pvalue=cp_input.max_pvalue
+                    if cp_input.max_pvalue is not None
                     else float(system_defaults.get('max_pvalue', 0.001)),
-                min_magnitude=cp_input.min_magnitude if cp_input.min_magnitude is not None
+                    min_magnitude=cp_input.min_magnitude
+                    if cp_input.min_magnitude is not None
                     else float(system_defaults.get('min_magnitude', 0.0)),
-                min_sample_size=cp_input.min_sample_size
+                    min_sample_size=cp_input.min_sample_size
                     if cp_input.min_sample_size is not None
                     else int(system_defaults.get('min_sample_size', 10)),
-            ))
+                )
+            )
         elif previous_config is not None:
-            self._session.add(ChangePointConfig(
-                slo_objective_id=orm_obj.id,
-                enabled=previous_config.enabled,
-                higher_is_better=previous_config.higher_is_better,
-                window_size=previous_config.window_size,
-                max_pvalue=previous_config.max_pvalue,
-                min_magnitude=previous_config.min_magnitude,
-                min_sample_size=previous_config.min_sample_size,
-            ))
+            self._session.add(
+                ChangePointConfig(
+                    slo_objective_id=orm_obj.id,
+                    enabled=previous_config.enabled,
+                    higher_is_better=previous_config.higher_is_better,
+                    window_size=previous_config.window_size,
+                    max_pvalue=previous_config.max_pvalue,
+                    min_magnitude=previous_config.min_magnitude,
+                    min_sample_size=previous_config.min_sample_size,
+                )
+            )
 
     async def get_latest(self, name: str) -> SLODefinition | None:
         """Return the highest version of a named SLO, or None if not found or deleted.

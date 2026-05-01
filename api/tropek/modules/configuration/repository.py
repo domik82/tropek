@@ -60,9 +60,7 @@ class ConfigurationRepository:
 
     async def get_by_name(self, name: str) -> Configuration | None:
         """Return a single configuration entry by name."""
-        result = await self._session.execute(
-            select(Configuration).where(Configuration.name == name)
-        )
+        result = await self._session.execute(select(Configuration).where(Configuration.name == name))
         return result.scalar_one_or_none()
 
     async def update_value(self, name: str, value: str) -> Configuration | None:
@@ -85,7 +83,4 @@ class ConfigurationRepository:
     async def get_change_point_defaults(self) -> dict[str, bool | int | float | str]:
         """Load all change_point.* settings as a typed dict."""
         rows = await self.get_all(prefix='change_point.')
-        return {
-            row.name.removeprefix('change_point.'): parse_typed_value(row.value, row.value_type)
-            for row in rows
-        }
+        return {row.name.removeprefix('change_point.'): parse_typed_value(row.value, row.value_type) for row in rows}
