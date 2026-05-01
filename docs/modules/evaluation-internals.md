@@ -1,259 +1,332 @@
-# Evaluation Internals
+# Evaluation Engine Internals
 
-## Purpose
+The evaluation engine is a pure-function scoring library with zero I/O. It lives in
+`api/tropek/modules/quality_gate/evaluation_engine/` and is ported from Keptn's Go
+`lighthouse-service`. Every function receives its inputs as arguments and returns
+structured results -- no database, network, or filesystem access.
 
-How TROPEK's worker pipeline executes evaluations end to end. For the API consumer
-perspective, see [evaluations.md](evaluations.md). For the full lifecycle including
-scoring rules and baseline comparison, see
+For the full trigger-to-finalization lifecycle (worker phases, DB transactions,
+finalization, sweeper), see
 [../architecture/evaluation-lifecycle.md](../architecture/evaluation-lifecycle.md).
 
 
-## Entity Hierarchy
+## Module Map
 
 ```
-EvaluationRun (table: evaluations)
-  |-- 1:N ---> SLOEvaluation (table: slo_evaluations)
-                  |-- 1:N ---> IndicatorResultRow (table: indicator_results)
-                  |-- 1:N ---> SLIValue (table: sli_values, TimescaleDB hypertable)
+evaluation_engine/
+  evaluator.py       -- evaluate() entry point
+  scoring.py         -- score_objective(), calculate_total_score()
+  criteria.py        -- parse_criteria_string(), evaluate_criteria(), aggregate_values()
+  slo_parser.py      -- build_slo() constructor
+  slo_models.py      -- SLO, SLOObjective, SLOComparison, SLOTotalScore (Pydantic)
+  result_models.py   -- EvaluationResult, IndicatorResult, ObjectiveResult, etc. (Pydantic)
+  variables.py       -- substitute_variables(), build_variables()
+  constants.py       -- StrEnum constants (CriteriaType, IndicatorStatus, EvaluationOutcome, ...)
 ```
 
-**EvaluationRun** is the parent row, one per `(asset, eval_name, period)` trigger.
-Its `result` is the worst-case of its children; `achieved_points` and `total_points`
-are sums across children.
 
-**SLOEvaluation** is one SLO scored against one asset for a given run. Carries the
-full execution state: `status` (pending/running/completed/failed/partial),
-`result` (pass/warning/fail/error), `score`, `job_stats`, `asset_snapshot`, and
-baseline pin/override/invalidation metadata.
+## Entry Point: `evaluate()`
 
-**IndicatorResultRow** stores one scored indicator per SLO objective per evaluation.
-Columns include `value`, `compared_value`, `change_absolute`, `change_relative_pct`,
-`status`, `score`, and `targets`. Linked to `SLOObjective` via FK for display name
-and weight lookup.
+**File:** `evaluator.py`
 
-**SLIValue** is a denormalized TimescaleDB hypertable row for Grafana time-series
-queries. Partitioned by `eval_start`. Composite PK: `(slo_evaluation_id, eval_start,
-metric_name, aggregation)`. Intentionally has no ORM relationship to SLOEvaluation to
-prevent accidental lazy-loading of potentially thousands of rows.
+```python
+def evaluate(
+    slo: SLO,
+    metrics: dict[str, float | None],
+    baselines: dict[str, float | None],
+    compared_evaluation_ids: list[str] | None = None,
+) -> EvaluationResult:
+```
 
+For each `SLOObjective` in the SLO:
 
-## Worker Pipeline Phases
+1. Look up the metric value and baseline by `objective.sli` key (missing key becomes `None`).
+2. Call `score_objective()` to determine status and score.
+3. Build pass and warning `CriteriaTarget` lists via `_build_targets()` (parses each
+   criteria string, computes the target value, and checks violation).
+4. Construct an `IndicatorResult` with the value, baseline, status, score, targets, and
+   change deltas.
 
-The worker executes each evaluation as a sequence of micro-transactions. The core
-invariant is: **no DB transaction spans an HTTP call**. Each phase opens a fresh
-`AsyncSession` via `session_factory()`, does its work, commits, and closes.
+After all objectives, call `calculate_total_score()` and return an `EvaluationResult`
+with the score rounded to 2 decimal places.
 
-Source: `api/tropek/queue.py` function `run_evaluation_job`.
+### Change deltas
 
-### Phase 1 -- Mark Running + Snapshot
+When both `value` and `baseline` are present:
 
-Opens a session, calls `EvaluationRepository.mark_running()` to set status to
-`running` with a `started_at` timestamp and worker ID, then loads the full ORM row
-and builds an `EvaluationSnapshot`. Commits immediately.
+- `change_absolute = value - baseline`
+- `change_relative_pct = ((value / baseline) - 1) * 100` (only when `baseline != 0`)
 
-If the evaluation is not found or already processed (status not pending/running),
-returns `None` and the job exits.
 
-### Phase 2a -- Load Definitions
+## Criteria Syntax
 
-Opens a short read session. Loads the versioned `SLODefinition` and `SLIDefinition`
-by name+version from the snapshot, plus the `DataSource` by name. Commits and closes.
+**File:** `criteria.py`, function `parse_criteria_string()`
 
-On any missing definition, marks the evaluation as failed via `_mark_failed` (separate
-session) and exits.
+A criteria string has the form:
 
-### Phase 2b -- HTTP Query + Evaluate
+```
+<operator>[sign]<value>[%]
+```
 
-Opens a read session for baseline resolution. Performs:
+| Component | Options | Notes |
+|-----------|---------|-------|
+| operator | `<`, `<=`, `=`, `>=`, `>` | Longest-match in regex prevents `<` matching before `<=` |
+| sign | `+`, `-`, absent | Presence of a sign marks the criterion as RELATIVE |
+| value | integer or decimal | e.g. `600`, `10.5` |
+| `%` suffix | present or absent | Marks relative-percentage mode |
 
-1. Builds the `SLO` engine model from the SLO definition.
-2. Merges variables (priority: reserved < asset.variables < asset.tags < slo.variables
-   < eval.variables).
-3. For raw-mode SLIs, substitutes variables into indicator query templates. For
-   aggregated-mode SLIs, passes the query template and methods to the adapter.
-4. Queries the adapter over HTTP via `HttpAdapterClient.query()`.
-5. Resolves baselines: fetches up to `comparison.number_of_comparison_results`
-   previous completed, non-invalidated evaluations for the same asset+SLO, ordered
-   by `period_start DESC`. Aggregates per-metric baseline values using the configured
-   aggregate function (avg, p90, etc.).
-6. Calls the pure `evaluate()` engine function with metrics, baselines, and compared
-   evaluation IDs.
+### Type determination
 
-If the adapter call raises a connection/timeout/HTTP error, marks failed and exits.
+- No sign, no `%` (e.g. `<600`) -- **FIXED**: compare value directly against the threshold.
+- `%` present (e.g. `<=+10%`) -- **RELATIVE**: compare against `baseline +/- (baseline * pct / 100)`.
+- Sign present without `%` (e.g. `<=+50`) -- **RELATIVE absolute**: same formula, matching
+  Keptn Go behaviour. The `%` suffix controls display semantics but both forms use the same
+  percentage-based computation internally.
 
-### Phase 3a -- Write Results
+### Examples
 
-Opens a session. Calls `EvaluationRepository.mark_completed()` with result, score,
-achieved/total points, job stats, and compared evaluation IDs. Then bulk-inserts
-`IndicatorResultRow` records (one per objective). Commits.
+| Criteria | Type | Meaning |
+|----------|------|---------|
+| `<600` | Fixed | value must be less than 600 |
+| `<=600` | Fixed | value must be at most 600 |
+| `=0` | Fixed | value must equal 0 |
+| `>=10` | Fixed | value must be at least 10 |
+| `<=+10%` | Relative | value must be at most baseline * 1.10 |
+| `>=-5%` | Relative | value must be at least baseline * 0.95 |
+| `<=+50` | Relative | value must be at most baseline + (baseline * 50 / 100) |
 
-On completion, invalidates the baseline cache key (`baseline:{asset_id}:{slo_name}`)
-and deletes the heatmap column cache fragment for the parent run.
+### Whitespace
 
-### Phase 3b -- Write SLI Values
+All whitespace is stripped before parsing (`''.join(raw.split())`), so
+`"  <=+10   %"` is equivalent to `"<=+10%"`.
 
-Opens a **separate session** from 3a. Builds SLI value rows and writes them to the
-`sli_values` TimescaleDB hypertable. Commits.
+### `ParsedCriteria` model
 
-This is deliberately a separate transaction to avoid deadlocks: TimescaleDB takes
-`ShareUpdateExclusiveLock` on chunk creation, which conflicts with FK locks from
-`mark_completed` on `slo_evaluations`. Splitting the writes eliminates this conflict.
+The parsed result is a Pydantic model with fields: `raw`, `operator`, `type`
+(`CriteriaType.FIXED` or `CriteriaType.RELATIVE`), `threshold`, `relative_pct`,
+and `relative_direction` (`+` or `-`).
 
-### Finalize Enqueue
+The method `compute_target_value(baseline)` resolves the concrete comparison value:
 
-After phase 3b, the job enqueues a `finalize_run_job` for the parent run. Each child
-enqueues its own finalize attempt. The job intentionally does **not** use a fixed
-`_job_id` for deduplication -- arq persists a result key after the first execution,
-so if the first finalize runs before all children complete, later children would be
-unable to re-enqueue it, leaving the parent run stuck.
+- **FIXED**: returns `threshold` (ignores baseline).
+- **RELATIVE with baseline**: returns `baseline + (baseline * pct / 100)` or
+  `baseline - (baseline * pct / 100)`.
+- **RELATIVE without baseline**: returns `0.0`.
 
 
-## EvaluationSnapshot
+## Scoring Algorithm
 
-`EvaluationSnapshot` is a Pydantic model defined in
-`api/tropek/modules/quality_gate/workflows/execution/evaluation_executor.py`. It
-carries all data needed for phases 2 and 3 without holding a DB session open:
+**File:** `scoring.py`
 
-- `eval_id`, `parent_run_id` -- identity
-- `slo_name`, `slo_version`, `sli_name`, `sli_version`, `data_source_name` --
-  definition coordinates
-- `evaluation_name`, `period_start`, `period_end` -- time window
-- `asset_snapshot`, `asset_id` -- frozen asset state at trigger time
-- `variables` -- per-run variable overrides
+### Per-objective: `score_objective()`
 
-The snapshot exists because the pipeline must release the phase 1 DB session before
-making HTTP calls in phase 2. Without it, the session would be held open across the
-adapter query, violating the no-transaction-across-HTTP invariant.
+Evaluates a single `SLOObjective` against a metric value and optional baseline.
+Returns an `ObjectiveResult` with status, score, and flags.
 
+Status is determined in strict priority order (waterfall):
 
-## Trigger Flow
+| Priority | Condition | Status | Score | Notes |
+|----------|-----------|--------|-------|-------|
+| 1 | `pass_threshold` is empty | `INFO` | 0 | Does not contribute to total |
+| 2 | Value is `None` | `ERROR` | 0 | `key_sli_failed` set if `key_sli=True` |
+| 3 | All `pass_threshold` criteria pass | `PASS` | `weight` | Full weight |
+| 4 | `warning_threshold` exists and all pass | `WARNING` | `0.5 * weight` | Half weight |
+| 5 | Otherwise | `FAIL` | 0 | `key_sli_failed` set if `key_sli=True` |
 
-Source: `api/tropek/modules/quality_gate/workflows/trigger/trigger_service.py`.
+**AND logic within each block**: multiple criteria in `pass_threshold` or `warning_threshold`
+are combined with AND -- all must pass. OR logic was deliberately removed from the Keptn port.
 
-### Single Trigger (`POST /evaluations`)
+**Warning scoring**: a warning objective receives exactly half its weight. There is no
+graduated scale between pass and fail.
 
-1. Resolves the asset by name.
-2. Finds all SLO assignments for the asset (direct + via asset groups).
-3. Creates one `EvaluationRun` (parent) row in pending status.
-4. For each assigned SLO, resolves the full trigger context (SLO version, linked SLI,
-   datasource) and creates one `SLOEvaluation` (child) row in pending status. SLOs
-   that fail resolution (missing SLI, missing datasource) are silently skipped.
-5. Commits the entire batch in one transaction.
-6. Enqueues one `run_evaluation_job` per child SLOEvaluation ID to the arq queue.
+### Total score: `calculate_total_score()`
 
-The response returns immediately with the `evaluation_id` (parent run UUID) and the
-list of `slo_evaluation_ids`.
+Aggregates all `ObjectiveResult`s into a `TotalScore`:
 
-### Batch Trigger
+1. `maximum = sum(weight)` for all objectives where `contributes_to_score` is True
+   (excludes INFO objectives).
+2. If `maximum == 0` (all objectives are informational): return PASS at 100%.
+3. `achieved = sum(score)` for all results.
+4. `pct = 100.0 * achieved / maximum`
+5. **Key SLI veto**: if any objective has `key_sli_failed=True`, the result is forced
+   to FAIL regardless of the score percentage.
+6. `pct >= pass_threshold` (default 90.0) -- PASS.
+7. `pct >= warning_threshold` (default 75.0) -- WARNING.
+8. Otherwise -- FAIL.
 
-Two modes:
+The score is still computed and reported even when the key SLI veto fires. This allows
+the UI to show "scored 85% but failed because error_rate was a key SLI".
 
-- **`by_date`**: one asset, multiple time periods. Calls `trigger_evaluate` once per
-  period, producing one `EvaluationRun` per period.
-- **`by_asset`**: multiple assets, one time period. Calls `trigger_evaluate` once per
-  asset, producing one `EvaluationRun` per asset.
+### Worked example
 
-Both modes return the collected run IDs and SLO evaluation IDs.
+Given three objectives with weights 2, 3, 1:
 
+| Objective | Weight | Status | Score |
+|-----------|--------|--------|-------|
+| response_time | 2 | PASS | 2.0 |
+| error_rate (key_sli) | 3 | WARNING | 1.5 |
+| throughput | 1 | FAIL | 0.0 |
 
-## Finalization
+- `maximum = 2 + 3 + 1 = 6`
+- `achieved = 2.0 + 1.5 + 0.0 = 3.5`
+- `pct = 100 * 3.5 / 6 = 58.33`
+- No key SLI veto (error_rate is WARNING, not FAIL)
+- 58.33 < 75.0 -- result is **FAIL**
 
-Source: `api/tropek/queue.py` function `finalize_run_job`, repository method
-`EvaluationRunRepository.finalize_if_all_done`.
 
-When a `finalize_run_job` fires, it:
+## Variable Substitution
 
-1. Loads all child `SLOEvaluation` rows for the parent run.
-2. Checks if any child is still in a non-terminal status (pending, running, partial).
-   If so, returns `None` -- the parent is not ready.
-3. Computes the worst-case result across children using `RESULT_RANK` ordering.
-4. Sums `achieved_points` and `total_points` across children.
-5. Updates the parent `EvaluationRun` to `completed` with the aggregated values.
+**File:** `variables.py`
 
-The method is idempotent: multiple finalize jobs for the same run are safe. If the
-parent is already completed, subsequent calls are no-ops (all children are terminal,
-so the update is a harmless re-write).
+SLI query templates can contain `$variable` tokens that are replaced at evaluation time.
 
-After successful finalization, the job warms the heatmap column cache by building a
-`HeatmapColumnFragment` from the run and storing it in Redis. This is fire-and-forget:
-failures are logged and swallowed. The `has_notes` flag is pinned to `False` because
-a freshly completed run has no annotations; the read path overlays notes from a fresh
-query at assembly time.
+### `substitute_variables(template, variables)`
 
+Regex-based replacement. Pattern matches `$` followed by a Python identifier
+(`[a-zA-Z_][a-zA-Z0-9_]*`). A bare `$` not followed by an identifier (e.g. `$5`)
+is left as-is.
 
-## Sweeper
+Raises `UnresolvedVariableError` if a matched `$variable` has no corresponding key
+in the variables dict.
 
-Source: `api/tropek/queue.py` function `finalize_sweeper_job`, repository method
-`EvaluationRunRepository.find_finalizable_pending_ids`.
+### `build_variables(metadata, asset_name, evaluation_name, start, end)`
 
-The sweeper is a periodic reconciler that catches parent runs the fast-path finalize
-missed. It runs as an arq cron job at a configurable interval (default: every 30
-seconds, must be a divisor of 60).
+Merges variable sources into a single dict. Metadata is copied first, then reserved
+variables are added via `setdefault()` (so metadata wins if there is a conflict):
 
-Each tick:
+| Reserved variable | Source |
+|-------------------|--------|
+| `$asset_name` | `asset_name` parameter |
+| `$evaluation_name` | `evaluation_name` parameter |
+| `$test_name` | Alias for `evaluation_name` (backward compat) |
+| `$start` | ISO timestamp for period start |
+| `$end` | ISO timestamp for period end |
 
-1. Scans for parent runs whose status is not `completed`, that have at least one
-   child, and whose children are all in terminal status. Ordered by `period_end ASC`
-   so the oldest stuck runs are rescued first. Limited to a configurable batch size
-   (default: 100).
-2. For each candidate, calls `finalize_if_all_done` in a fresh session.
-3. Logs the number of runs scanned and rescued per tick.
+**Priority**: metadata keys take precedence over reserved variables because `dict(metadata)`
+is copied first and `setdefault()` does not overwrite existing keys.
 
-The sweeper is deadlock-safe: it never updates child rows, so it never holds
-`FOR KEY SHARE` on the parent. Its parent `UPDATE` takes `FOR NO KEY UPDATE`, which
-does not conflict with live child transactions' `FOR KEY SHARE` locks.
+Note: the full variable merge in the worker pipeline (which layers asset tags, SLO variables,
+and evaluation overrides on top) happens in `evaluation_helpers.py`, outside the engine.
+The engine's `build_variables()` handles only the metadata + reserved layer.
 
 
-## Predecessor Deferral
+## Baseline Aggregation
 
-Source: `api/tropek/queue.py`, constant `_MAX_PREDECESSOR_DEFERS = 60`.
+**File:** `criteria.py`, function `aggregate_values()`
 
-When a batch trigger creates evaluations for multiple time periods of the same
-asset+SLO, the baseline for period N depends on the completed result of period N-1.
-Without ordering, a later period might execute first and see stale or missing baselines.
+Aggregates a list of baseline values from previous evaluations into a single scalar.
+Called by the worker pipeline, not by `evaluate()` itself.
 
-The deferral mechanism:
+| Function | Algorithm |
+|----------|-----------|
+| `avg` | Arithmetic mean |
+| `p50` | 50th percentile (floor-index) |
+| `p90` | 90th percentile (floor-index) |
+| `p95` | 95th percentile (floor-index) |
+| `p99` | 99th percentile (floor-index) |
 
-1. Before phase 1, the worker calls `has_pending_predecessor()`, which checks whether
-   any `SLOEvaluation` for the same `(asset_id, slo_name)` with an earlier
-   `period_start` is still in `pending` or `running` status.
-2. If a predecessor exists and `defer_count < 60`, the job re-enqueues itself with
-   `_defer_by=timedelta(seconds=2)` and an incremented defer count, then exits.
-3. After 60 deferrals (2 minutes of waiting), the evaluation proceeds anyway to avoid
-   infinite stalls.
-4. If the predecessor check itself fails (DB error), the job proceeds normally to
-   avoid blocking on transient issues.
+The percentile implementation uses floor-index: `idx = int(len * pct / 100)`, clamped to
+`len - 1`. This matches Go's Keptn `calculatePercentile` but does **not** interpolate.
+For small datasets, this gives coarse results (e.g. p90 of 10 values returns the maximum).
 
+Raises `ValueError` on an empty list.
 
-## Performance Design
 
-**Concurrency:** Workers run with `max_jobs` concurrent tasks (default: 10,
-configurable via `config.yaml`). The arq pool uses a shared `httpx.AsyncClient` with
-connection limits (20 max connections, 10 keepalive) initialized once at worker
-startup.
+## SLO Construction
 
-**Deadlock prevention:** Phase 3a (evaluation result + indicator rows) and phase 3b
-(SLI hypertable values) use separate transactions. TimescaleDB's chunk-level
-`ShareUpdateExclusiveLock` on the `sli_values` hypertable would conflict with FK
-locks from `mark_completed` writing to `slo_evaluations` if both happened in the
-same transaction.
+**File:** `slo_parser.py`, function `build_slo()`
 
-**Duplicate prevention:** A partial unique index
-`uq_slo_evaluations_identity(asset_id, slo_name, evaluation_name, period_start,
-period_end) WHERE status != 'failed'` prevents duplicate evaluations. Failed
-evaluations are excluded so retries can create fresh rows.
+```python
+def build_slo(
+    objectives: list[dict[str, Any]],
+    total_score_pass_threshold: float = 90.0,
+    total_score_warning_threshold: float = 75.0,
+    comparison: dict[str, Any] | None = None,
+) -> SLO:
+```
 
-**Stuck job detection:** The `find_stuck()` method on `EvaluationRepository` finds
-evaluations in `running` status whose `started_at` exceeds a configurable threshold.
-A partial index `idx_slo_evaluations_stuck` on `(status, started_at) WHERE status =
-'running'` makes this scan efficient. The sweeper handles stuck parent runs; stuck
-children require external watchdog integration.
+Constructs a validated `SLO` from raw dicts. Each objective dict is validated through
+`SLOObjective.model_validate()`, and the comparison config through
+`SLOComparison.model_validate()`. Wraps Pydantic `ValidationError` in `SLOParseError`.
+Rejects an empty objectives list.
 
-**Cache invalidation:** Every mutation that changes a run's presented state
-(mark_completed, invalidate, restore, override_status, pin/unpin baseline) invalidates
-both the baseline cache (`baseline:{asset_id}:{slo_name}`) and the heatmap column
-cache fragment for the parent run. Cache operations are fire-and-forget and never
-block the primary transaction.
 
-**Adapter timeout:** Configurable via `reliability.adapter_timeout_seconds` (default:
-90 seconds). Applied to the shared `httpx.AsyncClient` at worker startup.
+## Domain Models
+
+### Input models (`slo_models.py`)
+
+| Model | Key fields | Defaults |
+|-------|------------|----------|
+| `SLOObjective` | `sli`, `display_name`, `pass_threshold`, `warning_threshold`, `weight`, `key_sli` | weight=1, key_sli=False |
+| `SLOComparison` | `compare_with`, `number_of_comparison_results`, `include_result_with_score`, `aggregate_function`, `scope_tags` | compare_with=SINGLE_RESULT, aggregate_function=AVG |
+| `SLOTotalScore` | `pass_threshold`, `warning_threshold` | 90.0, 75.0 |
+| `SLO` | `objectives`, `comparison`, `total_score` | -- |
+
+Note: `SLOComparison` is carried on the SLO model but the engine's `evaluate()` function
+does not read it. The caller uses it to decide how to query baselines before calling the
+engine.
+
+### Output models (`result_models.py`)
+
+| Model | Key fields |
+|-------|------------|
+| `ObjectiveResult` | `objective` (SLOObjective), `status` (IndicatorStatus), `score`, `contributes_to_score`, `key_sli_failed` |
+| `TotalScore` | `result` (EvaluationOutcome), `score` (0-100) |
+| `CriteriaTarget` | `criteria` (raw string), `target_value`, `violated` (bool) |
+| `IndicatorResult` | `metric`, `display_name`, `value`, `compared_value`, `status` (str), `score`, `weight`, `key_sli`, `pass_targets`, `warning_targets`, `change_absolute`, `change_relative_pct` |
+| `EvaluationResult` | `result` (EvaluationOutcome), `score`, `indicator_results`, `compared_evaluation_ids` |
+
+### Constants (`constants.py`)
+
+| Enum | Values |
+|------|--------|
+| `CriteriaType` | `fixed`, `relative` |
+| `IndicatorStatus` | `pass`, `warning`, `fail`, `info`, `error` |
+| `EvaluationOutcome` | `pass`, `warning`, `fail` |
+| `CompareWith` | `single_result`, `several_results` |
+| `IncludeResultWithScore` | `all`, `pass_or_warn`, `pass` |
+| `AggregateFunction` | `avg`, `p50`, `p90`, `p95`, `p99` |
+| `EvaluationStatus` | `pending`, `running`, `completed`, `failed`, `partial` |
+
+`RESULT_RANK` is a severity ordering dict: `{'pass': 0, 'warning': 1, 'fail': 2,
+'error': 3, 'invalidated': 4}`. Used outside the engine (finalization, presentation)
+for worst-case comparisons. The `invalidated` key has no corresponding enum member --
+it exists only for the persistence layer where results can be manually invalidated.
+
+
+## Error Handling
+
+All engine exceptions inherit from `ValueError`:
+
+| Exception | Raised by | Trigger |
+|-----------|-----------|---------|
+| `SLOParseError` | `build_slo()` | Empty objectives, invalid structure |
+| `UnresolvedVariableError` | `substitute_variables()` | `$variable` with no matching key |
+| `ValueError` | `aggregate_values()` | Empty values list or unknown function |
+| `ValueError` | `parse_criteria_string()` | Unparseable criteria string |
+
+
+## Edge Cases and Known Limitations
+
+**Relative criteria with no baseline always pass.** On the first evaluation (no history),
+relative criteria like `<=+10%` are automatically satisfied. This avoids penalizing the
+first run.
+
+**Relative criteria with negative baselines.** With `<=+10%` and baseline=-100, the target
+becomes -110. A value of -90 (less negative, objectively "better") fails because -90 > -110.
+This matches Go behaviour and is documented by tests but has no special handling.
+
+**Pass/warning ordering is not validated.** The engine does not check that pass criteria
+are stricter than warning criteria. If warning is stricter than pass (e.g. pass: `<=+20%`,
+warning: `<=+5%`), the warning band becomes unreachable -- anything satisfying warning
+also satisfies pass. Correct usage: pass is the strict gate, warning catches
+degraded-but-acceptable values.
+
+**`IndicatorResult.status` is typed as `str`**, not `IndicatorStatus`, even though it is
+populated from `IndicatorStatus.value`. Consumers must compare against raw strings.
+
+**Score rounding** happens only at the final output boundary in `evaluate()` (2 decimal
+places). `calculate_total_score()` itself does not round.
+
+**Stateless and thread-safe.** No module-level state, no singletons, no caching. Every
+call to `evaluate()` is independent and safe for concurrent use.
