@@ -1,13 +1,13 @@
 # Configuration
 
 TROPEK uses a two-layer configuration system: `config.yaml` for non-secret settings
-and `QG_*` environment variables for credentials.
+and `TK_*` environment variables for credentials.
 
 ## Loading Priority
 
 ```
 HashiCorp Vault (highest priority)
-  -> QG_* environment variables
+  -> TK_* environment variables
     -> .env file
       -> config.yaml defaults (lowest priority)
 ```
@@ -45,8 +45,8 @@ graph TD
 
 | Class | Env Prefix | Key Fields |
 |-------|------------|------------|
-| `DatabaseSettings` | `QG_DB_` | host, port, name, pool_size, max_overflow, user, password |
-| `CacheSettings` | `QG_REDIS_` | backend, host, port, db, password |
+| `DatabaseSettings` | `TK_DB_` | host, port, name, pool_size, max_overflow, user, password |
+| `CacheSettings` | `TK_REDIS_` | backend, host, port, db, password |
 | `CacheTTLSettings` | -- | trend (60s), evaluation_list (30s), evaluation_detail (300s), slo_definition (600s), heatmap_column (7 days) |
 | `QueueSettings` | -- | db_index (1), max_jobs (10), max_retries (3), retry_delay_seconds (10), job_timeout_seconds (120), keep_result_seconds (3600), finalize_sweeper_interval_seconds (30), finalize_sweeper_batch_limit (100) |
 | `ReliabilitySettings` | -- | adapter_timeout_seconds (90), adapter_retry_attempts (3), adapter_retry_backoff_seconds (2), watchdog_interval_seconds (60), stuck_job_threshold_seconds (180) |
@@ -73,11 +73,11 @@ The `config.yaml` file is safe to commit. It contains:
 
 | Variable | Purpose |
 |----------|---------|
-| `QG_DB_USER` | PostgreSQL username |
-| `QG_DB_PASSWORD` | PostgreSQL password |
-| `QG_REDIS_PASSWORD` | Redis authentication |
-| `QG_SECRET_KEY` | API secret key |
-| `QG_CONFIG_PATH` | Path to config.yaml (default: `config.yaml`) |
+| `TK_DB_USER` | PostgreSQL username |
+| `TK_DB_PASSWORD` | PostgreSQL password |
+| `TK_REDIS_PASSWORD` | Redis authentication |
+| `TK_SECRET_KEY` | API secret key |
+| `TK_CONFIG_PATH` | Path to config.yaml (default: `config.yaml`) |
 
 ## Environment Files
 

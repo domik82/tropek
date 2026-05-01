@@ -29,7 +29,7 @@ from sqlalchemy.ext.asyncio import (
 )
 from tropek.db.models import AnnotationCategory, Base
 
-# Load .env.test (repo root) so TEST_DATABASE_URL and QG_DB_* are available.
+# Load .env.test (repo root) so TEST_DATABASE_URL and TK_DB_* are available.
 # override=False: shell env vars take precedence if already set.
 # Must come after imports but before fixtures — pydantic-settings reads env vars
 # lazily when settings objects are instantiated inside test fixtures, not here.

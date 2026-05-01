@@ -69,7 +69,7 @@ fi
 # ── Override DB host: docker-compose maps 5432 → localhost ───────────────────
 # Migrations run from the HOST (via uv), so the DB host is localhost even
 # when the DB is inside a container.
-export QG_DB_HOST=localhost
+export TK_DB_HOST=localhost
 
 # ── Check mode ────────────────────────────────────────────────────────────────
 if [[ "${CHECK_ONLY}" == "true" ]]; then
@@ -90,7 +90,7 @@ uv run --directory "${REPO_ROOT}/api" alembic current
 echo ""
 echo "==> Validating seed data ..."
 
-DB_URL="postgresql://${QG_DB_USER}:${QG_DB_PASSWORD}@localhost:5432/tropek"
+DB_URL="postgresql://${TK_DB_USER}:${TK_DB_PASSWORD}@localhost:5432/tropek"
 
 PASS=true
 

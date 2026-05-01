@@ -63,7 +63,7 @@ docker compose --profile test up timescaledb-test -d
 
 ```
 Vault (highest priority)
-  -> QG_* environment variables
+  -> TK_* environment variables
     -> .env file
       -> config.yaml (lowest priority, non-secrets)
 ```

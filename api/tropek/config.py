@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 
 
 def _load_yaml() -> dict[str, Any]:
-    path = Path(os.environ.get('QG_CONFIG_PATH', 'config.yaml'))
+    path = Path(os.environ.get('TK_CONFIG_PATH', 'config.yaml'))
     if not path.exists():
         return {}
     try:
@@ -44,7 +44,7 @@ _yaml: dict[str, Any] = _load_yaml()
 class DatabaseSettings(BaseSettings):
     """PostgreSQL / TimescaleDB connection settings.
 
-    Credentials (user, password) are loaded from QG_DB_USER / QG_DB_PASSWORD env vars.
+    Credentials (user, password) are loaded from TK_DB_USER / TK_DB_PASSWORD env vars.
     """
 
     host: str = _yaml.get('database', {}).get('host', 'localhost')
@@ -55,7 +55,7 @@ class DatabaseSettings(BaseSettings):
     user: str = ''
     password: SecretStr = SecretStr('')
 
-    model_config = SettingsConfigDict(env_prefix='QG_DB_')
+    model_config = SettingsConfigDict(env_prefix='TK_DB_')
 
     @property
     def async_url(self) -> str:
@@ -78,7 +78,7 @@ class CacheTTLSettings:
 class CacheSettings(BaseSettings):
     """Redis cache connection settings.
 
-    Password is loaded from QG_REDIS_PASSWORD env var.
+    Password is loaded from TK_REDIS_PASSWORD env var.
     """
 
     backend: str = _yaml.get('cache', {}).get('backend', 'redis')
@@ -87,7 +87,7 @@ class CacheSettings(BaseSettings):
     db: int = _yaml.get('cache', {}).get('db', 0)
     password: SecretStr = SecretStr('')
 
-    model_config = SettingsConfigDict(env_prefix='QG_REDIS_')
+    model_config = SettingsConfigDict(env_prefix='TK_REDIS_')
 
     @property
     def ttl(self) -> CacheTTLSettings:
@@ -191,22 +191,22 @@ class FileIngestionSettings(BaseSettings):
 class Settings(BaseSettings):
     """Root settings object — access all config sections through properties.
 
-    Secret key is loaded from QG_SECRET_KEY env var.
+    Secret key is loaded from TK_SECRET_KEY env var.
     """
 
     secret_key: SecretStr = SecretStr('')
 
-    model_config = SettingsConfigDict(env_prefix='QG_')
+    model_config = SettingsConfigDict(env_prefix='TK_')
 
     def validate_required(self) -> None:
         """Raise on missing required secrets. Call at startup."""
         missing = []
         if not self.database.password.get_secret_value():
-            missing.append('QG_DB_PASSWORD')
+            missing.append('TK_DB_PASSWORD')
         if not self.cache.password.get_secret_value():
-            missing.append('QG_REDIS_PASSWORD')
+            missing.append('TK_REDIS_PASSWORD')
         if not self.secret_key.get_secret_value():
-            missing.append('QG_SECRET_KEY')
+            missing.append('TK_SECRET_KEY')
         if missing:
             raise RuntimeError(f'required secrets not set: {", ".join(missing)}')
 

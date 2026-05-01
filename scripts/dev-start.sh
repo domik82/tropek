@@ -71,16 +71,16 @@ echo "=== Starting DB + Redis (ports $DB_PORT, $REDIS_PORT) ==="
 docker compose --profile e2e up timescaledb-e2e redis-e2e -d --wait
 
 echo "=== Applying migrations ==="
-export QG_DB_USER=tropek_e2e
-export QG_DB_PASSWORD=tropek_e2e
-export QG_DB_HOST=localhost
-export QG_DB_PORT=$DB_PORT
-export QG_DB_NAME=tropek_e2e
-export QG_REDIS_PASSWORD=e2e_redis
-export QG_REDIS_HOST=localhost
-export QG_REDIS_PORT=$REDIS_PORT
-export QG_SECRET_KEY=e2e-test-key
-export QG_CONFIG_PATH=config.yaml
+export TK_DB_USER=tropek_e2e
+export TK_DB_PASSWORD=tropek_e2e
+export TK_DB_HOST=localhost
+export TK_DB_PORT=$DB_PORT
+export TK_DB_NAME=tropek_e2e
+export TK_REDIS_PASSWORD=e2e_redis
+export TK_REDIS_HOST=localhost
+export TK_REDIS_PORT=$REDIS_PORT
+export TK_SECRET_KEY=e2e-test-key
+export TK_CONFIG_PATH=config.yaml
 export MOCK_DATA_DIR=data  # relative to adapters/mock/ (the adapter's --directory CWD)
 export LOG_DIR="$LOG_DIR_LOCAL"
 
