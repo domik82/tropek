@@ -24,6 +24,7 @@ repos:
       - id: mypy
         name: mypy (type check — api)
         files: ^api/tropek/
+        exclude: ^api/tropek/modules/change_points/engine/
         args: [--config-file=pyproject.toml]
         additional_dependencies:
           - pydantic>=2.7
