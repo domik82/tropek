@@ -11,6 +11,12 @@ on:
       - 'pyproject.toml'
   push:
     branches: [main]
+    paths:
+      - 'api/**'
+      - 'adapters/**'
+      - 'scripts/schemathesis-run.sh'
+      - 'uv.lock'
+      - 'pyproject.toml'
 
 jobs:
   schemathesis:

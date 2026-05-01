@@ -6,8 +6,34 @@ on:
     branches: [main]
 
 jobs:
+  changes:
+    name: Detect changes
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: read
+    outputs:
+      python: ${{ steps.filter.outputs.python }}
+      ui: ${{ steps.filter.outputs.ui }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            python:
+              - 'api/**'
+              - 'adapters/**'
+              - 'pyproject.toml'
+              - 'uv.lock'
+              - '.github/workflows/ci.yml'
+            ui:
+              - 'ui/**'
+              - '.github/workflows/ci.yml'
+
   python:
     name: Python (lint + typecheck + test)
+    needs: changes
+    if: needs.changes.outputs.python == 'true' || github.event_name == 'push'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -35,6 +61,8 @@ jobs:
 
   ui:
     name: UI (lint + typecheck + test)
+    needs: changes
+    if: needs.changes.outputs.ui == 'true' || github.event_name == 'push'
     runs-on: ubuntu-latest
     defaults:
       run:
