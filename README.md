@@ -352,7 +352,7 @@ tropek/
 - Multi-phase arq worker pipeline (max_jobs=10)
 - Contract testing (OpenAPI codegen + Schemathesis)
 - React SPA with trend charts, SLI breakdown, theme system
-- Change point detection via [Apache OTAVA](https://github.com/apache/otava) (on branch)
+- Change point detection via [Apache OTAVA](https://github.com/apache/otava)
 
 ### Next
 
