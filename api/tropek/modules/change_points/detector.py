@@ -103,8 +103,8 @@ def detect_change_points(  # noqa: PLR0913
         if max_pvalue < pvalue_strict_threshold
         else (max_pvalue * 2 if max_pvalue < pvalue_moderate_threshold else max_pvalue)
     )
-    weak_change_points = split(series, effective_window, first_pass_pvalue)  # type: ignore[arg-type]
-    detected = merge(weak_change_points, series, max_pvalue, min_magnitude)  # type: ignore[arg-type]
+    weak_change_points = split(series, effective_window, first_pass_pvalue)
+    detected = merge(weak_change_points, series, max_pvalue, min_magnitude)
 
     results: list[ChangePointResult] = []
     for change_point in detected:

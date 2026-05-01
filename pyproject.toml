@@ -115,16 +115,6 @@ strict = true
 ignore_missing_imports = true
 plugins = ["sqlalchemy.ext.mypy.plugin"]
 
-# Vendored Apache Otava engine — numpy/Sequence typing is incompatible with strict mode
-[[tool.mypy.overrides]]
-module = "tropek.modules.change_points.engine.*"
-ignore_errors = true
-
-# Wrapper calls engine functions with ndarray where Sequence[SupportsFloat] is declared;
-# type: ignore is needed in full-codebase CI but appears unused in per-file pre-commit
-[[tool.mypy.overrides]]
-module = "tropek.modules.change_points.detector"
-warn_unused_ignores = false
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

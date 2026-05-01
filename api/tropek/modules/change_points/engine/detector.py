@@ -27,9 +27,10 @@ Stops when no significant candidate remains.
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import SupportsFloat
+from typing import Any, SupportsFloat
 
 import numpy as np
+from numpy.typing import NDArray
 
 from tropek.modules.change_points.engine.base import (
     Calculator,
@@ -51,7 +52,7 @@ class ChangePointDetector:
 
     def get_change_points(
         self,
-        series: Sequence[SupportsFloat],
+        series: Sequence[SupportsFloat] | NDArray[np.floating[Any]],
         start: int | None = None,
         end: int | None = None,
     ) -> list[ChangePoint]:
@@ -59,11 +60,13 @@ class ChangePointDetector:
         if start is not None or end is not None:
             series = series[start:end]
         if not isinstance(series, np.ndarray):
-            series = np.array(series, dtype=np.float64)
-        if not np.issubdtype(series.dtype, np.floating):
-            series = series.astype(np.float64, copy=False)
+            array: NDArray[np.floating[Any]] = np.array(series, dtype=np.float64)
+        elif not np.issubdtype(series.dtype, np.floating):
+            array = series.astype(np.float64, copy=False)
+        else:
+            array = series
 
-        calc = self.calculator(series)
+        calc = self.calculator(array)
         change_points: list[ChangePoint] = []
 
         while True:
@@ -71,7 +74,7 @@ class ChangePointDetector:
             candidate = calc.get_next_candidate(intervals)
             if candidate is None:
                 break
-            change_point = self.tester.change_point(candidate, series, intervals)
+            change_point = self.tester.change_point(candidate, array, intervals)
             if self.tester.is_significant(change_point):
                 change_points.append(change_point)
                 change_points.sort(key=lambda point: point.index)
@@ -85,7 +88,7 @@ class ChangePointDetector:
         # Belt-and-suspenders for the boundary fix also applied in split().
         # Both locations are needed: split() is the primary entry point,
         # but this filter protects direct callers of ChangePointDetector.
-        effective_end = end if end is not None else (start or 0) + len(series)
+        effective_end = end if end is not None else (start or 0) + len(array)
         change_points = [cp for cp in change_points if cp.index < effective_end]
 
         return change_points
