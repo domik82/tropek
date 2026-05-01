@@ -9,18 +9,35 @@ FastAPI REST service providing the evaluation engine, registries, and trend quer
 - Runs the pure-function evaluation engine (ported from Keptn's lighthouse-service)
 - Persists results to TimescaleDB with time-series SLI values
 
-## Running
+## Documentation
+
+### API internals (`api/docs/`)
+
+- [Architecture overview](docs/architecture.md) -- app bootstrap, middleware, config, and module layout
+- [Database layer](docs/database-layer.md) -- ORM models, session lifecycle, and migrations
+- [Evaluation workflows](docs/workflows.md) -- trigger, execution, re-evaluation, and presentation
+- [Repository patterns](docs/repositories.md) -- data access layer and query patterns
+- [API contracts](docs/schemas.md) -- Pydantic schemas and request/response shapes
+- [Test patterns](docs/testing.md) -- unit and integration test conventions
+- [Known issues](docs/known-issues.md) -- technical debt and open questions
+
+### Module guides (`docs/modules/`)
+
+- [Evaluation internals](../docs/modules/evaluation-internals.md) -- scoring engine algorithm (criteria, scoring, variables)
+- [Evaluations](../docs/modules/evaluations.md) -- evaluation module from trigger to result
+- [SLO/SLI registries](../docs/modules/registries.md) -- versioned SLO and SLI definition CRUD
+- [Datasources](../docs/modules/datasources.md) -- datasource (adapter) management
+- [Assets](../docs/modules/assets.md) -- asset and asset group management
+- [SLO groups](../docs/modules/slo-groups.md) -- SLO grouping and bulk operations
+- [Timeline](../docs/modules/timeline.md) -- timeline pipeline for trend views
+
+## Quick Start
 
 ### Development (host-based)
 
 ```bash
-# Start infrastructure
 docker compose up timescaledb redis -d
-
-# Apply migrations
 uv run --directory api alembic upgrade head
-
-# Start the API
 uv run --directory api uvicorn tropek.main:app --reload --port 8080
 ```
 
@@ -34,7 +51,6 @@ docker compose up api --build
 
 ```bash
 curl http://localhost:8080/health
-# {"status": "ok"}
 ```
 
 ## Testing
@@ -43,10 +59,7 @@ curl http://localhost:8080/health
 # Unit tests (no infrastructure needed)
 uv run --directory api pytest tests/ -m "not integration" -q
 
-# Single test
-uv run --directory api pytest tests/engine/test_evaluator.py::TestName -v
-
-# Integration tests (requires test DB)
+# Integration tests (requires test DB on port 5433)
 just test-env
 uv run --directory api pytest tests/ -m integration -v
 just test-env-down
@@ -63,22 +76,7 @@ uv run mypy api/tropek
 ## Migrations
 
 ```bash
-# Dev database
-uv run --directory api alembic upgrade head
-
-# Test database
-ENV_FILE=.env.test uv run --directory api alembic upgrade head
-
-# Regenerate migrations from models (drops and recreates test DB)
-./scripts/db-regen-migrations.sh
+uv run --directory api alembic upgrade head                        # dev database
+ENV_FILE=.env.test uv run --directory api alembic upgrade head     # test database
+./scripts/db-regen-migrations.sh                                   # regenerate from models
 ```
-
-## Architecture
-
-See [docs/architecture.md](docs/architecture.md) for API layer architecture,
-[docs/architecture/evaluation-lifecycle.md](../docs/architecture/evaluation-lifecycle.md) for the
-scoring engine and evaluation lifecycle, and
-[docs/database-layer.md](docs/database-layer.md) for the database schema and repository pattern.
-
-For module documentation see [`docs/modules/`](../docs/modules/).
-For architecture see [`docs/architecture/`](../docs/architecture/).

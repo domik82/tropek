@@ -1,11 +1,11 @@
 # Data Model
 
-TROPEK uses PostgreSQL 16 with the TimescaleDB extension. 24 ORM model classes organized into
+TROPEK uses PostgreSQL 16 with the TimescaleDB extension. 23 ORM model classes organized into
 six groups.
 
 ## Table Overview
 
-24 tables in six groups. ORM model class names map to tables in `api/tropek/db/models.py`.
+23 tables in six groups. ORM model class names map to tables in `api/tropek/db/models.py`.
 
 | Group | ORM Class | Table | Depends On (cross-group) |
 |-------|-----------|-------|--------------------------|
