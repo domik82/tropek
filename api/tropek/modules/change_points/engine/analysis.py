@@ -29,14 +29,14 @@ Regressions" by Fleming et al. (https://doi.org/10.1145/3578244.3583719).
 
 from __future__ import annotations
 
-from collections.abc import Sequence
-from typing import SupportsFloat, cast
+from typing import Any, cast
 
 import numpy as np
-from pydantic import BaseModel
+from numpy.typing import NDArray
 from scipy.stats import ttest_ind_from_stats
 
 from tropek.modules.change_points.engine.base import (
+    BaseStats,
     CandidateChangePoint,
     ChangePoint,
     SignificanceTester,
@@ -45,7 +45,7 @@ from tropek.modules.change_points.engine.calculator import PairDistanceCalculato
 from tropek.modules.change_points.engine.detector import ChangePointDetector
 
 
-class TTestStats(BaseModel):
+class TTestStats(BaseStats):
     """Statistics from a two-sided Student's t-test between two segments."""
 
     mean_1: float
@@ -87,8 +87,8 @@ class TTestSignificanceTester(SignificanceTester):
 
     def compare(
         self,
-        left: Sequence[SupportsFloat],
-        right: Sequence[SupportsFloat],
+        left: NDArray[np.floating[Any]],
+        right: NDArray[np.floating[Any]],
     ) -> TTestStats:
         """Compute t-test statistics between two segments."""
         if len(left) == 0 or len(right) == 0:
@@ -123,7 +123,7 @@ class TTestSignificanceTester(SignificanceTester):
     def change_point(
         self,
         candidate: CandidateChangePoint,
-        series: Sequence[SupportsFloat],
+        series: NDArray[np.floating[Any]],
         intervals: list[slice],
     ) -> ChangePoint:
         """Compute t-test statistics for a candidate change point.
@@ -159,7 +159,7 @@ def _ttest_stats(change_point: ChangePoint) -> TTestStats:
 
 def merge(
     change_points: list[ChangePoint],
-    series: Sequence[SupportsFloat],
+    series: NDArray[np.floating[Any]],
     max_pvalue: float,
     min_magnitude: float,
 ) -> list[ChangePoint]:
@@ -190,7 +190,7 @@ def _recompute_neighbor(
     change_points: list[ChangePoint],
     index: int,
     tester: TTestSignificanceTester,
-    series: Sequence[SupportsFloat],
+    series: NDArray[np.floating[Any]],
     intervals: list[slice],
 ) -> None:
     """Recompute statistics for a neighbor after removing the weakest change point."""
@@ -201,7 +201,7 @@ def _recompute_neighbor(
 
 
 def split(
-    series: Sequence[SupportsFloat],
+    series: NDArray[np.floating[Any]],
     window_len: int = 30,
     max_pvalue: float = 0.001,
 ) -> list[ChangePoint]:

@@ -26,6 +26,8 @@ on normally-distributed data, see TTestSignificanceTester in analysis.py.
 
 from __future__ import annotations
 
+from typing import Any
+
 import numpy as np
 from numpy.typing import NDArray
 from pydantic import ConfigDict
@@ -44,7 +46,7 @@ class PermutationStats(BaseStats):
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
-    permuted_qhats: NDArray
+    permuted_qhats: NDArray[np.floating[Any]]
     extreme_qhat_perm: int
     n_perm: int
 
@@ -68,7 +70,7 @@ class PermutationsSignificanceTester(SignificanceTester):
     def change_point(
         self,
         candidate: CandidateChangePoint,
-        series: NDArray,
+        series: NDArray[np.floating[Any]],
         intervals: list[slice],
     ) -> ChangePoint:
         """Perform permutation test within candidate cluster."""
@@ -80,6 +82,8 @@ class PermutationsSignificanceTester(SignificanceTester):
                 self.rng.shuffle(segment)
             rand_calc = self.calculator(rand_series)
             rand_candidate = rand_calc.get_next_candidate(intervals)
+            if rand_candidate is None:
+                continue
             qhats[i] = rand_candidate.qhat
 
         extreme_qhat_perm = int(np.sum(qhats >= candidate.qhat))
