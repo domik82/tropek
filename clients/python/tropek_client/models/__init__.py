@@ -1,3 +1,12 @@
+from tropek_client.models.annotations import (
+    AnnotationCategoryCreate,
+    AnnotationCategoryRead,
+    AnnotationCategoryUpdate,
+    AnnotationCreate,
+    AnnotationHide,
+    AnnotationRead,
+    AnnotationUpdate,
+)
 from tropek_client.models.asset_groups import (
     AddMemberRequest,
     AddSubgroupRequest,
@@ -22,6 +31,10 @@ from tropek_client.models.assets import (
     AssetSnapshot,
     AssetUpdate,
 )
+from tropek_client.models.change_points import (
+    ChangePointMarker,
+    ChangePointRead,
+)
 from tropek_client.models.common import (
     AggregateFunction,
     AggregationMethod,
@@ -30,6 +43,10 @@ from tropek_client.models.common import (
     ErrorMessage,
     TagKeyCount,
     TagValueCount,
+)
+from tropek_client.models.configuration import (
+    ConfigurationRead,
+    ConfigurationUpdate,
 )
 from tropek_client.models.datasources import (
     DataSourceCreate,
@@ -65,11 +82,42 @@ from tropek_client.models.evaluations import (
     SloSelector,
     TriageRequest,
 )
+from tropek_client.models.heatmap import (
+    GroupedMetricHeatmapResponse,
+    HeatmapCell,
+    HeatmapCellGrouped,
+    HeatmapMetric,
+    HeatmapSloGroupSection,
+    HeatmapSummaryCell,
+    MetricHeatmapResponse,
+)
+from tropek_client.models.meta import (
+    MetaClosureInput,
+    MetaSnapshotCreate,
+    MetaSnapshotCreated,
+    MetaValueInput,
+)
 from tropek_client.models.pagination import PagedResponse
 from tropek_client.models.slis import (
     SLIDefinitionCreate,
     SLIDefinitionRead,
     SliMetadata,
+)
+from tropek_client.models.slo_assignments import (
+    SLOAssignmentRead,
+    SLOAssignmentUpgrade,
+    SLOAssignmentUpsert,
+)
+from tropek_client.models.slo_groups import (
+    DisplayGroupCreate,
+    DisplayGroupMemberAdd,
+    DisplayGroupRead,
+    ExtractRequest,
+    SLOGroupAssignmentRead,
+    SLOGroupAssignmentUpsert,
+    SLOGroupCreate,
+    SLOGroupRead,
+    SLOGroupUpdate,
 )
 from tropek_client.models.slos import (
     BaselineConfig,
@@ -91,24 +139,60 @@ from tropek_client.models.slos import (
     SLOValidationError,
     SLOValidationResult,
 )
+from tropek_client.models.timeline import (
+    TimelineGroup,
+    TimelineItem,
+    TimelineResponse,
+    TimelineSummaryResponse,
+)
+from tropek_client.models.trend import (
+    TrendPoint,
+    TrendTargetEntry,
+    TrendTargets,
+)
+
+# Backward-compatible aliases used by the existing client.py
+Annotation = AnnotationRead
+Asset = AssetRead
+AssetGroup = AssetGroupRead
+AssetGroupTree = AssetGroupTreeResponse
+AssetType = AssetTypeRead
+DataSource = DataSourceRead
+SLIDefinition = SLIDefinitionRead
+SLOAssignment = SLOAssignmentRead
+SLODefinition = SLODefinitionRead
+SLOGroup = SLOGroupRead
+SLOGroupAssignment = SLOGroupAssignmentRead
 
 __all__ = [
     'AddMemberRequest',
     'AddSubgroupRequest',
     'AggregateFunction',
     'AggregationMethod',
+    'Annotation',
+    'AnnotationCategoryCreate',
+    'AnnotationCategoryRead',
+    'AnnotationCategoryUpdate',
+    'AnnotationCreate',
+    'AnnotationHide',
+    'AnnotationRead',
+    'AnnotationUpdate',
+    'Asset',
     'AssetCreate',
+    'AssetGroup',
     'AssetGroupCreate',
     'AssetGroupMemberCreate',
     'AssetGroupMemberRead',
     'AssetGroupRead',
     'AssetGroupSubgroupCreate',
     'AssetGroupSubgroupRead',
+    'AssetGroupTree',
     'AssetGroupTreeResponse',
     'AssetGroupUpdate',
     'AssetRead',
     'AssetScope',
     'AssetSnapshot',
+    'AssetType',
     'AssetTypeCreate',
     'AssetTypeRead',
     'AssetTypeUpdate',
@@ -119,14 +203,22 @@ __all__ = [
     'CategoryColor',
     'ChangePointConfigInput',
     'ChangePointConfigRead',
+    'ChangePointMarker',
+    'ChangePointRead',
     'CompareToValue',
     'ComparisonConfig',
     'ComparisonConfigRead',
     'ComparisonRule',
+    'ConfigurationRead',
+    'ConfigurationUpdate',
+    'DataSource',
     'DataSourceCreate',
     'DataSourceRead',
     'DataSourceUpdate',
     'Direction',
+    'DisplayGroupCreate',
+    'DisplayGroupMemberAdd',
+    'DisplayGroupRead',
     'ErrorMessage',
     'EvalNamesSelector',
     'EvaluateBatchRequest',
@@ -137,12 +229,24 @@ __all__ = [
     'EvaluationDetail',
     'EvaluationNameEntry',
     'EvaluationSummary',
+    'ExtractRequest',
     'FailingIndicator',
     'GroupScope',
+    'GroupedMetricHeatmapResponse',
+    'HeatmapCell',
+    'HeatmapCellGrouped',
+    'HeatmapMetric',
+    'HeatmapSloGroupSection',
+    'HeatmapSummaryCell',
     'IndicatorResult',
     'InvalidateRequest',
+    'MetaClosureInput',
+    'MetaSnapshotCreate',
+    'MetaSnapshotCreated',
+    'MetaValueInput',
     'MethodCriteriaOverride',
     'MethodCriteriaOverrideRead',
+    'MetricHeatmapResponse',
     'OverrideStatusRequest',
     'PagedResponse',
     'PassTarget',
@@ -153,10 +257,23 @@ __all__ = [
     'ReEvaluateFromDateRequest',
     'ReEvaluateFromEvaluationRequest',
     'ReEvaluateResponse',
+    'SLIDefinition',
     'SLIDefinitionCreate',
     'SLIDefinitionRead',
+    'SLOAssignment',
+    'SLOAssignmentRead',
+    'SLOAssignmentUpgrade',
+    'SLOAssignmentUpsert',
+    'SLODefinition',
     'SLODefinitionCreate',
     'SLODefinitionRead',
+    'SLOGroup',
+    'SLOGroupAssignment',
+    'SLOGroupAssignmentRead',
+    'SLOGroupAssignmentUpsert',
+    'SLOGroupCreate',
+    'SLOGroupRead',
+    'SLOGroupUpdate',
     'SLOObjectiveIn',
     'SLOObjectiveRead',
     'SLOTestRequest',
@@ -169,5 +286,12 @@ __all__ = [
     'SloSelector',
     'TagKeyCount',
     'TagValueCount',
+    'TimelineGroup',
+    'TimelineItem',
+    'TimelineResponse',
+    'TimelineSummaryResponse',
+    'TrendPoint',
+    'TrendTargetEntry',
+    'TrendTargets',
     'TriageRequest',
 ]
