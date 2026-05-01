@@ -16,20 +16,20 @@ jobs:
     name: Hadolint (Dockerfile lint)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Lint api/Dockerfile
-        uses: hadolint/hadolint-action@v3.1.0
+        uses: hadolint/hadolint-action@v3.3.0
         with:
           dockerfile: api/Dockerfile
 
       - name: Lint ui/Dockerfile
-        uses: hadolint/hadolint-action@v3.1.0
+        uses: hadolint/hadolint-action@v3.3.0
         with:
           dockerfile: ui/Dockerfile
 
       - name: Lint adapters/prometheus/Dockerfile
-        uses: hadolint/hadolint-action@v3.1.0
+        uses: hadolint/hadolint-action@v3.3.0
         with:
           dockerfile: adapters/prometheus/Dockerfile
 
@@ -49,7 +49,7 @@ jobs:
             image: tropek-adapter-prometheus
             config_copy: false
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Copy config.yaml into API build context
         if: matrix.config_copy
