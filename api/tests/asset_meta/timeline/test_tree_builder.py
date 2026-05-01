@@ -5,8 +5,6 @@ from __future__ import annotations
 import json
 from datetime import UTC, datetime
 
-import pytest
-
 from tropek.modules.asset_meta.timeline.tree_builder import (
     build_group_entry,
     build_groups_wire,
@@ -23,14 +21,14 @@ _WINDOW_END = datetime(2026, 4, 30, tzinfo=UTC)
 
 
 def make_clipped(path: list[str] | None = None, **kwargs: object) -> ClippedSpan:
-    defaults: dict = dict(
-        source='cicd',
-        path=path or ['app'],
-        value='1.0',
-        start=_WINDOW_START,
-        end=_WINDOW_END,
-        className='meta-span',
-    )
+    defaults: dict = {
+        'source': 'cicd',
+        'path': path or ['app'],
+        'value': '1.0',
+        'start': _WINDOW_START,
+        'end': _WINDOW_END,
+        'className': 'meta-span',
+    }
     defaults.update(kwargs)
     return ClippedSpan(**defaults)
 

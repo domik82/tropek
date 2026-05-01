@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from tropek.db.models import SLOAssignment as SLOAssignmentModel
 from tropek.db.models import SLOGroupAssignment as SLOGroupAssignmentModel
 from tropek.db.session import get_session
+from tropek.modules.assets.comparison_rules import ComparisonRule
 from tropek.modules.assets.repository import AssetGroupRepository, AssetRepository
 from tropek.modules.assignments.repository import AssignmentRepository
 from tropek.modules.assignments.schemas import (
@@ -20,7 +21,6 @@ from tropek.modules.assignments.schemas import (
     SLOGroupAssignmentRead,
     SLOGroupAssignmentUpsert,
 )
-from tropek.modules.assets.comparison_rules import ComparisonRule
 from tropek.modules.common.exceptions import DomainValidationError, NotFoundError
 from tropek.modules.datasource.repository import DataSourceRepository
 from tropek.modules.slo_groups.repository import SLOGroupRepository

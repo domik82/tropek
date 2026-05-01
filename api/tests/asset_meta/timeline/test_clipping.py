@@ -5,7 +5,6 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 
 import pytest
-
 from tropek.modules.asset_meta.timeline.clipping import clip_one_span, clip_spans, compute_span_classes
 from tropek.modules.asset_meta.timeline.types import ClippedSpan, RawSpan
 
@@ -31,7 +30,7 @@ def make_span(
 
 
 # ---------------------------------------------------------------------------
-# compute_span_classes — exhaustive 2×3×2 = 12 parametrized cases
+# compute_span_classes — exhaustive 2x3x2 = 12 parametrized cases
 # ---------------------------------------------------------------------------
 
 # Each case is a tuple of:

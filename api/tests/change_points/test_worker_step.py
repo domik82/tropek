@@ -7,7 +7,6 @@ from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-
 from tropek.modules.change_points.detector import ChangePointResult
 from tropek.modules.change_points.repository import ResolvedConfig
 from tropek.modules.change_points.worker_step import _same_regime, run_change_point_detection
@@ -74,11 +73,11 @@ def _default_config(*, enabled: bool = True) -> ResolvedConfig:
 class TestWorkerStep:
     """Tests for the fault-isolated worker step."""
 
-    @pytest.fixture()
+    @pytest.fixture
     def snapshot(self) -> MagicMock:
         return _make_snapshot()
 
-    @pytest.fixture()
+    @pytest.fixture
     def slo_def(self) -> MagicMock:
         return _make_slo_def()
 
@@ -312,11 +311,11 @@ class TestSameRegime:
 class TestRegimeConsolidation:
     """Tests that same-regime change points are suppressed."""
 
-    @pytest.fixture()
+    @pytest.fixture
     def snapshot(self) -> MagicMock:
         return _make_snapshot()
 
-    @pytest.fixture()
+    @pytest.fixture
     def slo_def(self) -> MagicMock:
         return _make_slo_def()
 

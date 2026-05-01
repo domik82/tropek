@@ -67,9 +67,11 @@ class TTestStats(BaseModel):
         return self.mean_1 / self.mean_2 - 1.0
 
     def forward_change_percent(self) -> float:
+        """Forward relative change as a percentage."""
         return self.forward_rel_change() * 100.0
 
     def backward_change_percent(self) -> float:
+        """Backward relative change as a percentage."""
         return self.backward_rel_change() * 100.0
 
     def change_magnitude(self) -> float:
@@ -78,8 +80,7 @@ class TTestStats(BaseModel):
 
 
 class TTestSignificanceTester(SignificanceTester):
-    """Uses two-sided Student's t-test to decide if a candidate change point
-    splits the series into significantly different segments.
+    """Uses two-sided Student's t-test to decide if a candidate change point is significant.
 
     Works well even with small sample sizes (<10).
     """
@@ -89,6 +90,7 @@ class TTestSignificanceTester(SignificanceTester):
         left: Sequence[SupportsFloat],
         right: Sequence[SupportsFloat],
     ) -> TTestStats:
+        """Compute t-test statistics between two segments."""
         if len(left) == 0 or len(right) == 0:
             raise ValueError
 

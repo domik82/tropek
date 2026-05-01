@@ -50,6 +50,7 @@ class PermutationStats(BaseStats):
 
 
 class PermutationsSignificanceTester(SignificanceTester):
+    """Permutation-based significance tester using random shuffles."""
 
     def __init__(
         self,

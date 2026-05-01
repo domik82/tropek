@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import numpy as np
 from scipy.stats import norm
+from tropek.modules.change_points.detector import detect_change_points
 
 from tests.change_points.generators import (
     DriftGenerator,
@@ -13,7 +14,6 @@ from tests.change_points.generators import (
     VarianceChangeGenerator,
     make_timestamps,
 )
-from tropek.modules.change_points.detector import detect_change_points
 
 SERIES_LEN = 100
 HALF = SERIES_LEN // 2

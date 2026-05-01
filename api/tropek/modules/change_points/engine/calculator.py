@@ -37,6 +37,7 @@ from tropek.modules.change_points.engine.base import Calculator, CandidateChange
 
 
 class PairDistanceCalculator(Calculator):
+    """Q-hat dissimilarity calculator using pairwise distances."""
 
     def __init__(self, series: NDArray, power: float = 1.0) -> None:
         super().__init__(series)

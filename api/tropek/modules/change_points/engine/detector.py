@@ -39,6 +39,7 @@ from tropek.modules.change_points.engine.base import (
 
 
 class ChangePointDetector:
+    """Recursive E-Divisive change point detector."""
 
     def __init__(
         self,

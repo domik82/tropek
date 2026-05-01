@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import numpy as np
-
 from tropek.modules.change_points.engine.analysis import (
     TTestSignificanceTester,
     merge,

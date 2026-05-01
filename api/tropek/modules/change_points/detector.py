@@ -36,6 +36,8 @@ PVALUE_MODERATE_THRESHOLD = 0.5
 
 
 class Direction(StrEnum):
+    """Whether a change point represents a regression or improvement."""
+
     REGRESSION = 'regression'
     IMPROVEMENT = 'improvement'
 
