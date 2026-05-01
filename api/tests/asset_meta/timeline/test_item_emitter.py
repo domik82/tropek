@@ -4,22 +4,20 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
-import pytest
-
 from tropek.modules.asset_meta.timeline.item_emitter import build_items_wire, item_from_span
 from tropek.modules.asset_meta.timeline.tree_builder import encode_path_as_group_id
 from tropek.modules.asset_meta.timeline.types import ClippedSpan
 
 
 def make_clipped(path=None, **overrides):
-    defaults = dict(
-        source='cicd',
-        path=path or ['app'],
-        value='1.0',
-        start=datetime(2026, 4, 1, tzinfo=UTC),
-        end=datetime(2026, 4, 30, tzinfo=UTC),
-        className='meta-span',
-    )
+    defaults = {
+        'source': 'cicd',
+        'path': path or ['app'],
+        'value': '1.0',
+        'start': datetime(2026, 4, 1, tzinfo=UTC),
+        'end': datetime(2026, 4, 30, tzinfo=UTC),
+        'className': 'meta-span',
+    }
     defaults.update(overrides)
     return ClippedSpan(**defaults)
 

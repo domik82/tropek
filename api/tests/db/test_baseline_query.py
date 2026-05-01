@@ -38,20 +38,22 @@ async def test_get_evaluation_baselines_filters_by_evaluation_name(
     eval_repo = EvaluationRepository(db_session)
 
     for i, eval_name in enumerate(['load-test', 'load-test', 'prod-validation']):
-        await eval_repo.create_pending(EvalCreateParams(
-            evaluation_id=uuid.uuid4(),
-            evaluation_name=eval_name,
-            period_start=datetime(2026, 3, 15, i * 4, tzinfo=UTC),
-            period_end=datetime(2026, 3, 15, i * 4 + 1, tzinfo=UTC),
-            ingestion_mode='pull',
-            asset_snapshot={},
-            asset_id=seed_asset.id,
-            slo_name=slo_name,
-        ))
+        await eval_repo.create_pending(
+            EvalCreateParams(
+                evaluation_id=uuid.uuid4(),
+                evaluation_name=eval_name,
+                period_start=datetime(2026, 3, 15, i * 4, tzinfo=UTC),
+                period_end=datetime(2026, 3, 15, i * 4 + 1, tzinfo=UTC),
+                ingestion_mode='pull',
+                asset_snapshot={},
+                asset_id=seed_asset.id,
+                slo_name=slo_name,
+            )
+        )
 
-    for evaluation in (await db_session.execute(
-        select(SLOEvaluation).where(SLOEvaluation.slo_name == slo_name)
-    )).scalars():
+    for evaluation in (
+        await db_session.execute(select(SLOEvaluation).where(SLOEvaluation.slo_name == slo_name))
+    ).scalars():
         evaluation.status = 'completed'
         evaluation.result = 'pass'
     await db_session.flush()

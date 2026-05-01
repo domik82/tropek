@@ -61,9 +61,7 @@ def _check_test_database_reachable() -> None:
         with socket.create_connection((host, port), timeout=2):
             pass
     except OSError as exc:
-        raise RuntimeError(
-            f"test database not reachable at {host}:{port} — run 'just test-env' first"
-        ) from exc
+        raise RuntimeError(f"test database not reachable at {host}:{port} — run 'just test-env' first") from exc
 
 
 _check_test_database_reachable()

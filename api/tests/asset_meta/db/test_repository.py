@@ -22,12 +22,12 @@ pytestmark = pytest.mark.integration
 @pytest_asyncio.fixture()
 async def test_asset(db_session: AsyncSession) -> Asset:
     """Create a minimal asset for FK satisfaction."""
-    asset_type = AssetType(id=uuid.uuid4(), name=f"vm-{uuid.uuid4().hex[:8]}")
+    asset_type = AssetType(id=uuid.uuid4(), name=f'vm-{uuid.uuid4().hex[:8]}')
     db_session.add(asset_type)
     await db_session.flush()
     asset = Asset(
         id=uuid.uuid4(),
-        name=f"test-asset-{uuid.uuid4().hex[:8]}",
+        name=f'test-asset-{uuid.uuid4().hex[:8]}',
         type_name=asset_type.name,
     )
     db_session.add(asset)
@@ -45,13 +45,13 @@ async def test_insert_snapshot_returns_row_with_generated_id(
 
     snapshot = await repository.insert_snapshot(
         asset_id=test_asset.id,
-        source="prometheus",
+        source='prometheus',
         observed_at=observed,
     )
 
     assert snapshot.id is not None
     assert snapshot.asset_id == test_asset.id
-    assert snapshot.source == "prometheus"
+    assert snapshot.source == 'prometheus'
     assert snapshot.observed_at == observed
 
 
@@ -64,21 +64,19 @@ async def test_insert_values_persists_all_entries(
     observed = datetime(2026, 4, 16, 10, 0, 0, tzinfo=UTC)
     snapshot = await repository.insert_snapshot(
         asset_id=test_asset.id,
-        source="prometheus",
+        source='prometheus',
         observed_at=observed,
     )
 
     entries = [
-        (["hardware", "cpu", "model"], "Intel Xeon"),
-        (["hardware", "cpu", "cores"], "16"),
-        (["hardware", "memory", "total_gb"], "64"),
+        (['hardware', 'cpu', 'model'], 'Intel Xeon'),
+        (['hardware', 'cpu', 'cores'], '16'),
+        (['hardware', 'memory', 'total_gb'], '64'),
     ]
     await repository.insert_values(snapshot.id, entries)
     await db_session.flush()
 
-    persisted_values = await db_session.execute(
-        select(AssetMetaValue).where(AssetMetaValue.snapshot_id == snapshot.id)
-    )
+    persisted_values = await db_session.execute(select(AssetMetaValue).where(AssetMetaValue.snapshot_id == snapshot.id))
     rows = list(persisted_values.scalars().all())
     assert len(rows) == 3
 
@@ -92,13 +90,13 @@ async def test_insert_closures_persists_all_entries(
     observed = datetime(2026, 4, 16, 10, 0, 0, tzinfo=UTC)
     snapshot = await repository.insert_snapshot(
         asset_id=test_asset.id,
-        source="prometheus",
+        source='prometheus',
         observed_at=observed,
     )
 
     closure_paths = [
-        ["hardware", "cpu"],
-        ["hardware", "memory"],
+        ['hardware', 'cpu'],
+        ['hardware', 'memory'],
     ]
     await repository.insert_closures(snapshot.id, closure_paths)
     await db_session.flush()
@@ -120,9 +118,9 @@ async def test_load_snapshots_for_derivation_respects_until_bound(
     time_one = time_zero + timedelta(hours=1)
     time_two = time_zero + timedelta(hours=2)
 
-    await repository.insert_snapshot(asset_id=test_asset.id, source="src", observed_at=time_zero)
-    await repository.insert_snapshot(asset_id=test_asset.id, source="src", observed_at=time_one)
-    await repository.insert_snapshot(asset_id=test_asset.id, source="src", observed_at=time_two)
+    await repository.insert_snapshot(asset_id=test_asset.id, source='src', observed_at=time_zero)
+    await repository.insert_snapshot(asset_id=test_asset.id, source='src', observed_at=time_one)
+    await repository.insert_snapshot(asset_id=test_asset.id, source='src', observed_at=time_two)
 
     loaded_snapshots = await repository.load_snapshots_for_derivation(
         asset_id=test_asset.id,
@@ -142,12 +140,12 @@ async def test_load_snapshots_for_derivation_orders_by_observed_then_id(
 
     snapshot_alpha = await repository.insert_snapshot(
         asset_id=test_asset.id,
-        source="alpha",
+        source='alpha',
         observed_at=same_timestamp,
     )
     snapshot_beta = await repository.insert_snapshot(
         asset_id=test_asset.id,
-        source="beta",
+        source='beta',
         observed_at=same_timestamp,
     )
 
@@ -162,8 +160,8 @@ async def test_load_snapshots_for_derivation_orders_by_observed_then_id(
     )
 
     assert len(loaded_snapshots) == 2
-    assert loaded_snapshots[0]["source"] == expected_order[0].source
-    assert loaded_snapshots[1]["source"] == expected_order[1].source
+    assert loaded_snapshots[0]['source'] == expected_order[0].source
+    assert loaded_snapshots[1]['source'] == expected_order[1].source
 
 
 async def test_load_snapshots_for_derivation_hydrates_values_and_closures(
@@ -175,17 +173,17 @@ async def test_load_snapshots_for_derivation_hydrates_values_and_closures(
     observed = datetime(2026, 4, 16, 10, 0, 0, tzinfo=UTC)
     snapshot = await repository.insert_snapshot(
         asset_id=test_asset.id,
-        source="prometheus",
+        source='prometheus',
         observed_at=observed,
     )
 
     value_entries = [
-        (["hardware", "cpu", "model"], "Intel Xeon"),
-        (["hardware", "memory", "total_gb"], "64"),
+        (['hardware', 'cpu', 'model'], 'Intel Xeon'),
+        (['hardware', 'memory', 'total_gb'], '64'),
     ]
     await repository.insert_values(snapshot.id, value_entries)
 
-    closure_paths = [["hardware", "cpu"]]
+    closure_paths = [['hardware', 'cpu']]
     await repository.insert_closures(snapshot.id, closure_paths)
     await db_session.flush()
 
@@ -196,8 +194,8 @@ async def test_load_snapshots_for_derivation_hydrates_values_and_closures(
 
     assert len(loaded_snapshots) == 1
     hydrated_snapshot = loaded_snapshots[0]
-    assert len(hydrated_snapshot["values"]) == 2
-    assert len(hydrated_snapshot["closures"]) == 1
+    assert len(hydrated_snapshot['values']) == 2
+    assert len(hydrated_snapshot['closures']) == 1
 
 
 async def test_cascade_delete_when_asset_removed(
@@ -209,17 +207,17 @@ async def test_cascade_delete_when_asset_removed(
     observed = datetime(2026, 4, 16, 10, 0, 0, tzinfo=UTC)
     snapshot = await repository.insert_snapshot(
         asset_id=test_asset.id,
-        source="prometheus",
+        source='prometheus',
         observed_at=observed,
     )
 
     await repository.insert_values(
         snapshot.id,
-        [(["hardware", "cpu", "cores"], "16")],
+        [(['hardware', 'cpu', 'cores'], '16')],
     )
     await repository.insert_closures(
         snapshot.id,
-        [["hardware", "cpu"]],
+        [['hardware', 'cpu']],
     )
     await db_session.flush()
 
@@ -231,9 +229,7 @@ async def test_cascade_delete_when_asset_removed(
     )
     assert list(remaining_snapshots.scalars().all()) == []
 
-    remaining_values = await db_session.execute(
-        select(AssetMetaValue).where(AssetMetaValue.snapshot_id == snapshot.id)
-    )
+    remaining_values = await db_session.execute(select(AssetMetaValue).where(AssetMetaValue.snapshot_id == snapshot.id))
     assert list(remaining_values.scalars().all()) == []
 
     remaining_closures = await db_session.execute(

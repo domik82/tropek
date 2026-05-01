@@ -26,9 +26,11 @@ detector, analysis, and calculator modules build on.
 
 from __future__ import annotations
 
-from collections.abc import Sequence
-from typing import SupportsFloat
+from abc import abstractmethod
+from collections.abc import MutableSequence
+from typing import Any
 
+import numpy as np
 from numpy.typing import NDArray
 from pydantic import BaseModel
 
@@ -69,8 +71,11 @@ class ChangePoint:
 
     @classmethod
     def from_candidate(
-        cls, candidate: CandidateChangePoint, stats: BaseStats,
+        cls,
+        candidate: CandidateChangePoint,
+        stats: BaseStats,
     ) -> ChangePoint:
+        """Construct from a candidate and computed significance statistics."""
         return cls(index=candidate.index, qhat=candidate.qhat, stats=stats)
 
     def to_candidate(self) -> CandidateChangePoint:
@@ -86,10 +91,9 @@ class SignificanceTester:
 
     def get_intervals(self, change_points: list[ChangePoint]) -> list[slice]:
         """Return slices of the series defined by sorted change points."""
-        assert all(
-            change_points[i].index <= change_points[i + 1].index
-            for i in range(len(change_points) - 1)
-        ), 'change points must be sorted by index'
+        assert all(change_points[i].index <= change_points[i + 1].index for i in range(len(change_points) - 1)), (
+            'change points must be sorted by index'
+        )
         intervals = [
             slice(
                 0 if i == 0 else change_points[i - 1].index,
@@ -103,10 +107,11 @@ class SignificanceTester:
         """Compare change point p-value to the significance threshold."""
         return point.stats.pvalue <= self.max_pvalue
 
+    @abstractmethod
     def change_point(
         self,
         candidate: CandidateChangePoint,
-        series: NDArray,
+        series: NDArray[np.floating[Any]],
         intervals: list[slice],
     ) -> ChangePoint:
         """Compute stats for a candidate and wrap it into a ChangePoint."""
@@ -116,7 +121,7 @@ class SignificanceTester:
 class Calculator:
     """Abstract calculator — provides the interface for finding best CP candidates."""
 
-    def __init__(self, series: NDArray) -> None:
+    def __init__(self, series: NDArray[np.floating[Any]]) -> None:
         self.series = series
 
     def get_next_candidate(self, intervals: list[slice]) -> CandidateChangePoint | None:
@@ -130,14 +135,15 @@ class Calculator:
             return None
         return max(candidates, key=lambda point: point.qhat)
 
+    @abstractmethod
     def get_candidate_change_point(self, interval: slice) -> CandidateChangePoint:
         """Given a slice, return the best candidate change point within it."""
         ...
 
 
-def fill_missing(data: Sequence[SupportsFloat]) -> None:
+def fill_missing(data: MutableSequence[float | None]) -> None:
     """Forward-fill None values, then back-fill any remaining leading Nones."""
-    prev = None
+    prev: float | None = None
     for i in range(len(data)):
         if data[i] is None and prev is not None:
             data[i] = prev

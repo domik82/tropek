@@ -37,6 +37,7 @@ dev = [
     "sqlalchemy[mypy]>=2.0",
     "fakeredis>=2.21",
     "schemathesis>=3.36",
+    "pytest-xdist>=3.5",
 ]
 
 [build-system]

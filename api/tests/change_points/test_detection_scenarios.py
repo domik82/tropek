@@ -35,6 +35,7 @@ from tropek.modules.change_points.worker_step import (
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _config(
     *,
     min_sample_size: int = 10,
@@ -121,10 +122,7 @@ class _FakeChangePointRepo:
         nearby_timestamps = kwargs.get('nearby_timestamps', [])
 
         for existing in self.inserts:
-            if (
-                existing.metric_name == metric_name
-                and existing.period_start in nearby_timestamps
-            ):
+            if existing.metric_name == metric_name and existing.period_start in nearby_timestamps:
                 return True
         return False
 
@@ -148,7 +146,9 @@ async def _run_pipeline(
 ) -> list[Any]:
     """Run the gather → detect → persist pipeline and return inserted CPs."""
     history = _make_history(
-        values, metric=metric, evaluation_name=evaluation_name,
+        values,
+        metric=metric,
+        evaluation_name=evaluation_name,
     )
     baseline_repo = MagicMock()
     baseline_repo.get_evaluation_baselines = AsyncMock(return_value=history)
@@ -229,6 +229,7 @@ async def _run(
 #   so the regression is saved.
 # ---------------------------------------------------------------------------
 
+
 class TestStepRegression:
     """Detect a simple step-up in latency."""
 
@@ -259,9 +260,7 @@ class TestStepRegression:
                 snap=snap,
             )
 
-        assert len(cp_repo.inserts) == 1, (
-            f'expected 1 insert (second run deduped), got {len(cp_repo.inserts)}'
-        )
+        assert len(cp_repo.inserts) == 1, f'expected 1 insert (second run deduped), got {len(cp_repo.inserts)}'
 
 
 # ---------------------------------------------------------------------------
@@ -271,6 +270,7 @@ class TestStepRegression:
 #   expect:  1 improvement CP near position 12
 #   (lower_is_better=True by default → decrease = improvement)
 # ---------------------------------------------------------------------------
+
 
 class TestStepImprovement:
     """Detect a step-down (improvement for lower-is-better metric)."""
@@ -296,6 +296,7 @@ class TestStepImprovement:
 #   the improvement: direction-blind dedup and direction-blind regime
 #   suppression.
 # ---------------------------------------------------------------------------
+
 
 class TestSpikeAndRecovery:
     """The critical scenario: temporary spike then return to baseline."""
@@ -377,6 +378,7 @@ class TestSpikeAndRecovery:
 #   saved. Dedup prevents re-insertion on subsequent evals.
 # ---------------------------------------------------------------------------
 
+
 class TestHistoricalCpDetection:
     """CPs are saved regardless of position in the series."""
 
@@ -394,6 +396,7 @@ class TestHistoricalCpDetection:
 #   If the previous stored CP has post_segment_mean ≈ the new CP's
 #   post_segment_mean (within 2x std), the new CP is noise, not a real shift.
 # ---------------------------------------------------------------------------
+
 
 class TestRegimeSuppression:
     """Verify that same-regime CPs are suppressed."""
@@ -444,6 +447,7 @@ class TestRegimeSuppression:
 # Scenario 6: Insufficient history
 # ---------------------------------------------------------------------------
 
+
 class TestInsufficientHistory:
     """Skip detection when not enough data points."""
 
@@ -468,6 +472,7 @@ class TestInsufficientHistory:
 #   names produce independent histories. This test verifies the parameter
 #   is passed through correctly.
 # ---------------------------------------------------------------------------
+
 
 class TestEvalNameScoping:
     """Verify evaluation_name is passed to baseline repo."""

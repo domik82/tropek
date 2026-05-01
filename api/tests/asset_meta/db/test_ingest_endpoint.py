@@ -159,24 +159,18 @@ async def test_post_snapshot_persists_values_and_closures_to_db(
     assert response.status_code == 201
 
     snapshot_count_result = await db_session.execute(
-        select(func.count())
-        .select_from(AssetMetaSnapshot)
-        .where(AssetMetaSnapshot.asset_id == test_asset_id),
+        select(func.count()).select_from(AssetMetaSnapshot).where(AssetMetaSnapshot.asset_id == test_asset_id),
     )
     assert snapshot_count_result.scalar() == 1
 
     snapshot_id = uuid.UUID(response.json()['snapshot_id'])
 
     value_count_result = await db_session.execute(
-        select(func.count())
-        .select_from(AssetMetaValue)
-        .where(AssetMetaValue.snapshot_id == snapshot_id),
+        select(func.count()).select_from(AssetMetaValue).where(AssetMetaValue.snapshot_id == snapshot_id),
     )
     assert value_count_result.scalar() == 2
 
     closure_count_result = await db_session.execute(
-        select(func.count())
-        .select_from(AssetMetaClosure)
-        .where(AssetMetaClosure.snapshot_id == snapshot_id),
+        select(func.count()).select_from(AssetMetaClosure).where(AssetMetaClosure.snapshot_id == snapshot_id),
     )
     assert closure_count_result.scalar() == 1

@@ -26,23 +26,17 @@ class AnnotationCategoryRepository:
 
     async def list_all(self) -> list[AnnotationCategory]:
         """Return every category, sorted alphabetically by name."""
-        result = await self._session.execute(
-            select(AnnotationCategory).order_by(AnnotationCategory.name)
-        )
+        result = await self._session.execute(select(AnnotationCategory).order_by(AnnotationCategory.name))
         return list(result.scalars().all())
 
     async def get_by_id(self, category_id: uuid.UUID) -> AnnotationCategory | None:
         """Return the category with the given id, or None."""
-        result = await self._session.execute(
-            select(AnnotationCategory).where(AnnotationCategory.id == category_id)
-        )
+        result = await self._session.execute(select(AnnotationCategory).where(AnnotationCategory.id == category_id))
         return result.scalar_one_or_none()
 
     async def get_by_name(self, name: str) -> AnnotationCategory | None:
         """Return the category with the given unique name, or None."""
-        result = await self._session.execute(
-            select(AnnotationCategory).where(AnnotationCategory.name == name)
-        )
+        result = await self._session.execute(select(AnnotationCategory).where(AnnotationCategory.name == name))
         return result.scalar_one_or_none()
 
     async def create(
@@ -93,9 +87,7 @@ class AnnotationCategoryRepository:
             values['show_on_graph'] = show_on_graph
         if values:
             await self._session.execute(
-                update(AnnotationCategory)
-                .where(AnnotationCategory.id == category_id)
-                .values(**values)
+                update(AnnotationCategory).where(AnnotationCategory.id == category_id).values(**values)
             )
             await self._session.flush()
         refreshed = await self.get_by_id(category_id)
@@ -122,9 +114,7 @@ class AnnotationCategoryRepository:
             .where(EvaluationAnnotation.category_id == category_id)
             .values(category_id=info.id)
         )
-        await self._session.execute(
-            delete(AnnotationCategory).where(AnnotationCategory.id == category_id)
-        )
+        await self._session.execute(delete(AnnotationCategory).where(AnnotationCategory.id == category_id))
         await self._session.flush()
         rowcount = getattr(reassigned_result, 'rowcount', 0)
         return int(rowcount or 0)

@@ -14,13 +14,13 @@ Exit codes:
     0 — success (all completed runs cached)
     1 — partial failure (some fragments failed to build; re-run safely)
 
-Environment: reads QG_* env vars the same way the API does. Example against
+Environment: reads TK_* env vars the same way the API does. Example against
 a local dev environment:
 
-    QG_DB_USER=tropek QG_DB_PASSWORD=tropek \\
-      QG_DB_HOST=localhost QG_DB_PORT=5432 QG_DB_NAME=tropek \\
-      QG_REDIS_PASSWORD=redis_password QG_REDIS_HOST=localhost QG_REDIS_PORT=6379 \\
-      QG_SECRET_KEY=dev-key QG_CONFIG_PATH=config.yaml \\
+    TK_DB_USER=tropek TK_DB_PASSWORD=tropek \\
+      TK_DB_HOST=localhost TK_DB_PORT=5432 TK_DB_NAME=tropek \\
+      TK_REDIS_PASSWORD=redis_password TK_REDIS_HOST=localhost TK_REDIS_PORT=6379 \\
+      TK_SECRET_KEY=dev-key TK_CONFIG_PATH=config.yaml \\
       uv run --directory api python ../scripts/perf/warm-heatmap-cache.py
 """
 

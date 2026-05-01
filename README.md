@@ -1,5 +1,7 @@
 # TROPEK
 
+[![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
+
 **Trend Reporting and Objective Evaluation toolkit**
 
 A standalone quality gate and performance test evaluation platform. Evaluates SLI/SLO metrics from Prometheus, CSV files, JMeter results, or any source that can POST JSON -- and decides pass / warning / fail.
@@ -78,6 +80,31 @@ just up               # docker compose up --build
 # 5. Check health
 curl http://localhost:8080/health
 ```
+
+---
+
+## Deploy (pre-built images)
+
+Run TROPEK without cloning the repo — just download the compose file and start:
+
+```bash
+# 1. Download deployment files
+curl -LO https://github.com/domik82/tropek/releases/latest/download/docker-compose.yml
+curl -LO https://github.com/domik82/tropek/releases/latest/download/.env.example
+
+# 2. Configure
+cp .env.example .env
+# Edit .env — set TK_DB_PASSWORD, TK_REDIS_PASSWORD, TK_SECRET_KEY, PROMETHEUS_URL
+
+# 3. Start
+docker compose up -d
+
+# 4. Open
+# UI:       http://localhost:3000
+# API docs: http://localhost:8080/docs
+```
+
+For the full deployment guide see [docs/getting-started.md](docs/getting-started.md).
 
 ---
 
@@ -364,6 +391,17 @@ tropek/
 
 ---
 
+## Python client
+
+A typed Python client with CLI is available (not yet on PyPI):
+
+```bash
+pip install git+https://github.com/domik82/tropek.git#subdirectory=clients/python
+tropek --help
+```
+
+---
+
 ## Contributing
 
 This project is open source. PRs welcome.
@@ -383,3 +421,9 @@ just test-all         # all tests (unit + UI)
 - **Guides**: [docs/guides/](docs/guides/) -- adapter protocol, contract testing
 - **API internals**: [api/docs/](api/docs/) -- API layer, evaluation engine, database layer
 - **UI internals**: [ui/docs/](ui/docs/) -- frontend architecture, features, mock system
+
+---
+
+## License
+
+Apache License 2.0 — see [LICENSE](LICENSE) for details.

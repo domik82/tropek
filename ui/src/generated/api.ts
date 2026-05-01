@@ -2629,6 +2629,7 @@ export interface components {
         };
         /**
          * Direction
+         * @description Whether a change point represents a regression or improvement.
          * @enum {string}
          */
         Direction: "regression" | "improvement";

@@ -32,7 +32,7 @@ if [[ ${#ARGS[@]} -eq 0 ]]; then
 fi
 
 if [[ "$TAIL_LINES" -gt 0 ]]; then
-  uv run --directory api pytest tests/ "${ARGS[@]}" 2>&1 | tail -n "$TAIL_LINES"
+  uv run --directory api pytest tests/ --ignore=tests/schemathesis "${ARGS[@]}" 2>&1 | tail -n "$TAIL_LINES"
 else
-  exec uv run --directory api pytest tests/ "${ARGS[@]}"
+  exec uv run --directory api pytest tests/ --ignore=tests/schemathesis "${ARGS[@]}"
 fi

@@ -5,7 +5,6 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 
 import pytest
-
 from tropek.modules.asset_meta.timeline.clipping import clip_one_span, clip_spans, compute_span_classes
 from tropek.modules.asset_meta.timeline.types import ClippedSpan, RawSpan
 
@@ -31,7 +30,7 @@ def make_span(
 
 
 # ---------------------------------------------------------------------------
-# compute_span_classes — exhaustive 2×3×2 = 12 parametrized cases
+# compute_span_classes — exhaustive 2x3x2 = 12 parametrized cases
 # ---------------------------------------------------------------------------
 
 # Each case is a tuple of:
@@ -45,73 +44,97 @@ _ONE_HOUR = timedelta(hours=1)
 _COMPUTE_CLASSES_CASES = [
     # --- not clipped left, end=None, not closed ---
     pytest.param(
-        False, 'none', 'value_change',
+        False,
+        'none',
+        'value_change',
         ['meta-span', 'meta-span-open'],
         id='not_left__open__not_closed',
     ),
     # --- not clipped left, end=None, closed (unusual but logically possible) ---
     pytest.param(
-        False, 'none', 'closed',
+        False,
+        'none',
+        'closed',
         ['meta-span', 'meta-span-open', 'meta-span-closed'],
         id='not_left__open__closed',
     ),
     # --- not clipped left, end beyond window, not closed ---
     pytest.param(
-        False, 'beyond', 'value_change',
+        False,
+        'beyond',
+        'value_change',
         ['meta-span', 'meta-span-clipped-right'],
         id='not_left__beyond__not_closed',
     ),
     # --- not clipped left, end beyond window, closed ---
     pytest.param(
-        False, 'beyond', 'closed',
+        False,
+        'beyond',
+        'closed',
         ['meta-span', 'meta-span-clipped-right', 'meta-span-closed'],
         id='not_left__beyond__closed',
     ),
     # --- not clipped left, end within window, not closed ---
     pytest.param(
-        False, 'within', 'value_change',
+        False,
+        'within',
+        'value_change',
         ['meta-span'],
         id='not_left__within__not_closed',
     ),
     # --- not clipped left, end within window, closed ---
     pytest.param(
-        False, 'within', 'closed',
+        False,
+        'within',
+        'closed',
         ['meta-span', 'meta-span-closed'],
         id='not_left__within__closed',
     ),
     # --- clipped left, end=None, not closed ---
     pytest.param(
-        True, 'none', 'value_change',
+        True,
+        'none',
+        'value_change',
         ['meta-span', 'meta-span-clipped-left', 'meta-span-open'],
         id='clipped_left__open__not_closed',
     ),
     # --- clipped left, end=None, closed ---
     pytest.param(
-        True, 'none', 'closed',
+        True,
+        'none',
+        'closed',
         ['meta-span', 'meta-span-clipped-left', 'meta-span-open', 'meta-span-closed'],
         id='clipped_left__open__closed',
     ),
     # --- clipped left, end beyond window, not closed ---
     pytest.param(
-        True, 'beyond', 'value_change',
+        True,
+        'beyond',
+        'value_change',
         ['meta-span', 'meta-span-clipped-left', 'meta-span-clipped-right'],
         id='clipped_left__beyond__not_closed',
     ),
     # --- clipped left, end beyond window, closed ---
     pytest.param(
-        True, 'beyond', 'closed',
+        True,
+        'beyond',
+        'closed',
         ['meta-span', 'meta-span-clipped-left', 'meta-span-clipped-right', 'meta-span-closed'],
         id='clipped_left__beyond__closed',
     ),
     # --- clipped left, end within window, not closed ---
     pytest.param(
-        True, 'within', 'value_change',
+        True,
+        'within',
+        'value_change',
         ['meta-span', 'meta-span-clipped-left'],
         id='clipped_left__within__not_closed',
     ),
     # --- clipped left, end within window, closed ---
     pytest.param(
-        True, 'within', 'closed',
+        True,
+        'within',
+        'closed',
         ['meta-span', 'meta-span-clipped-left', 'meta-span-closed'],
         id='clipped_left__within__closed',
     ),

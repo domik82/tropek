@@ -1,0 +1,134 @@
+services:
+  timescaledb:
+    image: timescale/timescaledb:latest-pg16
+    environment:
+      POSTGRES_USER: ${TK_DB_USER}
+      POSTGRES_PASSWORD: ${TK_DB_PASSWORD}
+      POSTGRES_DB: ${TK_DB_NAME:-tropek}
+    ports:
+      - "5432:5432"
+    volumes:
+      - timescaledb_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${TK_DB_USER} -d ${TK_DB_NAME:-tropek}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    command: redis-server --appendonly yes --requirepass ${TK_REDIS_PASSWORD}
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${TK_REDIS_PASSWORD}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  api-migrate:
+    image: ghcr.io/domik82/tropek-api:${TROPEK_VERSION:-latest}
+    command: ["uv", "run", "alembic", "upgrade", "head"]
+    environment:
+      TK_DB_HOST: timescaledb
+      TK_DB_PORT: "5432"
+      TK_DB_NAME: ${TK_DB_NAME:-tropek}
+      TK_DB_USER: ${TK_DB_USER}
+      TK_DB_PASSWORD: ${TK_DB_PASSWORD}
+      TK_REDIS_HOST: redis
+      TK_REDIS_PORT: "6379"
+      TK_REDIS_PASSWORD: ${TK_REDIS_PASSWORD}
+      TK_SECRET_KEY: ${TK_SECRET_KEY}
+      TK_CONFIG_PATH: /app/config.yaml
+    depends_on:
+      timescaledb:
+        condition: service_healthy
+    restart: "no"
+
+  api:
+    image: ghcr.io/domik82/tropek-api:${TROPEK_VERSION:-latest}
+    ports:
+      - "8080:8080"
+    environment:
+      TK_DB_HOST: timescaledb
+      TK_DB_PORT: "5432"
+      TK_DB_NAME: ${TK_DB_NAME:-tropek}
+      TK_DB_USER: ${TK_DB_USER}
+      TK_DB_PASSWORD: ${TK_DB_PASSWORD}
+      TK_REDIS_HOST: redis
+      TK_REDIS_PORT: "6379"
+      TK_REDIS_PASSWORD: ${TK_REDIS_PASSWORD}
+      TK_SECRET_KEY: ${TK_SECRET_KEY}
+      TK_CONFIG_PATH: /app/config.yaml
+    volumes:
+      - results_data:/data/results
+    depends_on:
+      api-migrate:
+        condition: service_completed_successfully
+      timescaledb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8080/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  worker:
+    image: ghcr.io/domik82/tropek-api:${TROPEK_VERSION:-latest}
+    command: ["uv", "run", "arq", "tropek.queue.WorkerSettings"]
+    environment:
+      TK_DB_HOST: timescaledb
+      TK_DB_PORT: "5432"
+      TK_DB_NAME: ${TK_DB_NAME:-tropek}
+      TK_DB_USER: ${TK_DB_USER}
+      TK_DB_PASSWORD: ${TK_DB_PASSWORD}
+      TK_REDIS_HOST: redis
+      TK_REDIS_PORT: "6379"
+      TK_REDIS_PASSWORD: ${TK_REDIS_PASSWORD}
+      TK_SECRET_KEY: ${TK_SECRET_KEY}
+      TK_CONFIG_PATH: /app/config.yaml
+    volumes:
+      - results_data:/data/results
+    depends_on:
+      api-migrate:
+        condition: service_completed_successfully
+      timescaledb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  adapter-prometheus:
+    image: ghcr.io/domik82/tropek-adapter-prometheus:${TROPEK_VERSION:-latest}
+    ports:
+      - "8081:8080"
+    environment:
+      PROMETHEUS_URL: ${PROMETHEUS_URL:-http://prometheus:9090}
+      REDIS_URL: redis://:${TK_REDIS_PASSWORD}@redis:6379/1
+      TK_ADAPTER_PROMETHEUS_USERNAME: ${TK_ADAPTER_PROMETHEUS_USERNAME:-}
+      TK_ADAPTER_PROMETHEUS_PASSWORD: ${TK_ADAPTER_PROMETHEUS_PASSWORD:-}
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  ui:
+    image: ghcr.io/domik82/tropek-ui:${TROPEK_VERSION:-latest}
+    ports:
+      - "3000:80"
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  timescaledb_data:
+  redis_data:
+  results_data:

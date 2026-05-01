@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import pytest
 from pydantic import BaseModel, ValidationError
-
 from tropek.modules.common.schemas import IdentifierKey, TagKey, Tags, TagValue
 
 

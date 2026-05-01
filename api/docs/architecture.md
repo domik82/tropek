@@ -10,8 +10,8 @@ Entry point: `api/tropek/main.py`.
 The FastAPI app is created at module level (`app = FastAPI(title='TROPEK API', version='0.2.0')`).
 A `lifespan()` async context manager runs at startup:
 
-1. Validates required secrets via `settings.validate_required()` (checks `QG_DB_PASSWORD`,
-   `QG_REDIS_PASSWORD`, `QG_SECRET_KEY`)
+1. Validates required secrets via `settings.validate_required()` (checks `TK_DB_PASSWORD`,
+   `TK_REDIS_PASSWORD`, `TK_SECRET_KEY`)
 2. Configures structlog via `configure_logging()`
 3. Creates the arq Redis pool (`app.state.arq_pool`)
 4. Creates the cache Redis connection wrapped in `RedisCache` (`app.state.cache`)
@@ -44,13 +44,13 @@ All domain exceptions follow structured formatting: `NotFoundError(entity, name)
 Two-tier config: YAML for non-secrets, environment variables for secrets.
 
 - `config.yaml` loaded at module import time into `_yaml` dict
-- Secrets use `QG_` prefix (e.g., `QG_DB_PASSWORD`)
+- Secrets use `TK_` prefix (e.g., `TK_DB_PASSWORD`)
 - `get_settings()` returns a `@lru_cache` singleton
 
 | Settings Class | Env Prefix | Key Properties |
 |----------------|-----------|----------------|
-| `DatabaseSettings` | `QG_DB_` | `host`, `port`, `name`, `pool_size`, `max_overflow`, `async_url` |
-| `CacheSettings` | `QG_REDIS_` | `backend`, `host`, `port`, `url`, `ttl` (per-endpoint TTLs) |
+| `DatabaseSettings` | `TK_DB_` | `host`, `port`, `name`, `pool_size`, `max_overflow`, `async_url` |
+| `CacheSettings` | `TK_REDIS_` | `backend`, `host`, `port`, `url`, `ttl` (per-endpoint TTLs) |
 | `QueueSettings` | -- | `max_jobs`, `max_retries`, `job_timeout_seconds`, sweeper config |
 | `ReliabilitySettings` | -- | `adapter_timeout_seconds`, `adapter_retry_attempts`, `stuck_job_threshold_seconds` |
 | `AdaptersSettings` | -- | `max_concurrent_queries_per_adapter`, `prometheus` instance |

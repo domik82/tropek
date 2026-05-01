@@ -5,6 +5,9 @@ from __future__ import annotations
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
+_HTTP_OK_MIN = 200
+_HTTP_OK_MAX = 300
+
 
 class SessionMiddleware:
     """Create a DB session per HTTP request, commit before the response is sent.
@@ -39,7 +42,7 @@ class SessionMiddleware:
 
         async def _finalise_then_send(message: Message) -> None:
             if message['type'] == 'http.response.start':
-                if 200 <= message['status'] < 300:
+                if _HTTP_OK_MIN <= message['status'] < _HTTP_OK_MAX:
                     await session.commit()
                 else:
                     await session.rollback()

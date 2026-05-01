@@ -68,10 +68,12 @@ class TestScenario01SingleValue:
 
 class TestScenario02IdenticalValues:
     def test_collapses_to_one_item(self) -> None:
-        result = build([
-            snap(observed_at=T0, values=[(['app'], 'v1')]),
-            snap(observed_at=T1, values=[(['app'], 'v1')]),
-        ])
+        result = build(
+            [
+                snap(observed_at=T0, values=[(['app'], 'v1')]),
+                snap(observed_at=T1, values=[(['app'], 'v1')]),
+            ]
+        )
 
         assert len(result['items']) == 1
 
@@ -83,18 +85,22 @@ class TestScenario02IdenticalValues:
 
 class TestScenario03DifferentValues:
     def test_two_items(self) -> None:
-        result = build([
-            snap(observed_at=T0, values=[(['app'], 'v1')]),
-            snap(observed_at=T1, values=[(['app'], 'v2')]),
-        ])
+        result = build(
+            [
+                snap(observed_at=T0, values=[(['app'], 'v1')]),
+                snap(observed_at=T1, values=[(['app'], 'v2')]),
+            ]
+        )
 
         assert len(result['items']) == 2
 
     def test_first_has_end_reason_style(self) -> None:
-        result = build([
-            snap(observed_at=T0, values=[(['app'], 'v1')]),
-            snap(observed_at=T1, values=[(['app'], 'v2')]),
-        ])
+        result = build(
+            [
+                snap(observed_at=T0, values=[(['app'], 'v1')]),
+                snap(observed_at=T1, values=[(['app'], 'v2')]),
+            ]
+        )
         first_item = next(item for item in result['items'] if item['content'] == 'v1')
         second_item = next(item for item in result['items'] if item['content'] == 'v2')
 
@@ -109,10 +115,12 @@ class TestScenario03DifferentValues:
 
 class TestScenario04ExplicitClosure:
     def test_closed_class(self) -> None:
-        result = build([
-            snap(observed_at=T0, values=[(['app'], 'v1')]),
-            snap(observed_at=T1, closures=[['app']]),
-        ])
+        result = build(
+            [
+                snap(observed_at=T0, values=[(['app'], 'v1')]),
+                snap(observed_at=T1, closures=[['app']]),
+            ]
+        )
 
         assert len(result['items']) == 1
         assert 'meta-span-closed' in result['items'][0]['className']
@@ -125,17 +133,19 @@ class TestScenario04ExplicitClosure:
 
 class TestScenario05CascadingClosure:
     def test_three_items_all_closed(self) -> None:
-        result = build([
-            snap(
-                observed_at=T0,
-                values=[
-                    (['app'], 'v1'),
-                    (['app', 'plug-1'], 'p1'),
-                    (['app', 'plug-2'], 'p2'),
-                ],
-            ),
-            snap(observed_at=T1, closures=[['app']]),
-        ])
+        result = build(
+            [
+                snap(
+                    observed_at=T0,
+                    values=[
+                        (['app'], 'v1'),
+                        (['app', 'plug-1'], 'p1'),
+                        (['app', 'plug-2'], 'p2'),
+                    ],
+                ),
+                snap(observed_at=T1, closures=[['app']]),
+            ]
+        )
 
         assert len(result['items']) == 3
         for item in result['items']:
@@ -149,11 +159,13 @@ class TestScenario05CascadingClosure:
 
 class TestScenario06CascadingClosureSourceScoped:
     def test_other_source_span_still_open(self) -> None:
-        result = build([
-            snap(source='source-a', observed_at=T0, values=[(['app'], 'v1')]),
-            snap(source='source-b', observed_at=T0, values=[(['app'], 'b1')]),
-            snap(source='source-a', observed_at=T1, closures=[['app']]),
-        ])
+        result = build(
+            [
+                snap(source='source-a', observed_at=T0, values=[(['app'], 'v1')]),
+                snap(source='source-b', observed_at=T0, values=[(['app'], 'b1')]),
+                snap(source='source-a', observed_at=T1, closures=[['app']]),
+            ]
+        )
 
         # Conflict resolution keeps only the winner for path ['app'].
         # source-a has an explicit closure (ends at T1), source-b has an open span.
@@ -172,19 +184,23 @@ class TestScenario06CascadingClosureSourceScoped:
 
 class TestScenario07CloseAndReopen:
     def test_two_items_for_path(self) -> None:
-        result = build([
-            snap(observed_at=T0, values=[(['foo'], 'old')]),
-            snap(observed_at=T1, closures=[['foo']], values=[(['foo'], 'new')]),
-        ])
+        result = build(
+            [
+                snap(observed_at=T0, values=[(['foo'], 'old')]),
+                snap(observed_at=T1, closures=[['foo']], values=[(['foo'], 'new')]),
+            ]
+        )
 
         foo_items = [item for item in result['items'] if item['content'] in ('old', 'new')]
         assert len(foo_items) == 2
 
     def test_first_closed_second_open(self) -> None:
-        result = build([
-            snap(observed_at=T0, values=[(['foo'], 'old')]),
-            snap(observed_at=T1, closures=[['foo']], values=[(['foo'], 'new')]),
-        ])
+        result = build(
+            [
+                snap(observed_at=T0, values=[(['foo'], 'old')]),
+                snap(observed_at=T1, closures=[['foo']], values=[(['foo'], 'new')]),
+            ]
+        )
 
         old_item = next(item for item in result['items'] if item['content'] == 'old')
         new_item = next(item for item in result['items'] if item['content'] == 'new')
@@ -200,11 +216,13 @@ class TestScenario07CloseAndReopen:
 
 class TestScenario08CollectionGap:
     def test_source_a_one_continuous_span(self) -> None:
-        result = build([
-            snap(source='source-a', observed_at=T0, values=[(['svc'], 'v1')]),
-            snap(source='source-b', observed_at=T1, values=[(['other'], 'b1')]),
-            snap(source='source-a', observed_at=T2, values=[(['svc'], 'v1')]),
-        ])
+        result = build(
+            [
+                snap(source='source-a', observed_at=T0, values=[(['svc'], 'v1')]),
+                snap(source='source-b', observed_at=T1, values=[(['other'], 'b1')]),
+                snap(source='source-a', observed_at=T2, values=[(['svc'], 'v1')]),
+            ]
+        )
 
         source_a_items = [item for item in result['items'] if item['source'] == 'source-a']
         assert len(source_a_items) == 1
@@ -217,10 +235,7 @@ class TestScenario08CollectionGap:
 
 class TestScenario09DailyHeartbeat:
     def test_collapses_to_one_item(self) -> None:
-        snapshots = [
-            snap(observed_at=T0 + timedelta(days=day), values=[(['app'], 'v1')])
-            for day in range(30)
-        ]
+        snapshots = [snap(observed_at=T0 + timedelta(days=day), values=[(['app'], 'v1')]) for day in range(30)]
         result = build(snapshots)
 
         assert len(result['items']) == 1
@@ -235,10 +250,12 @@ class TestScenario10MultiSourceConflict:
     def test_only_winner_items(self) -> None:
         # Both sources produce open spans (end=None → sentinel future).
         # Tiebreaker: alphabetical max → 'source-b' > 'source-a' → source-b wins.
-        result = build([
-            snap(source='source-a', observed_at=T0, values=[(['app'], 'old')]),
-            snap(source='source-b', observed_at=T1, values=[(['app'], 'new')]),
-        ])
+        result = build(
+            [
+                snap(source='source-a', observed_at=T0, values=[(['app'], 'old')]),
+                snap(source='source-b', observed_at=T1, values=[(['app'], 'new')]),
+            ]
+        )
 
         for item in result['items']:
             assert item['source'] == 'source-b'
@@ -267,9 +284,11 @@ class TestScenario10MultiSourceConflict:
 
 class TestScenario11SyntheticIntermediates:
     def test_three_groups_from_leaf_only(self) -> None:
-        result = build([
-            snap(values=[(['app-A', 'plug-1', 'alpha'], 'v1')]),
-        ])
+        result = build(
+            [
+                snap(values=[(['app-A', 'plug-1', 'alpha'], 'v1')]),
+            ]
+        )
 
         assert len(result['groups']) == 3
         group_contents = [group['content'] for group in result['groups']]
@@ -330,10 +349,12 @@ class TestScenario13RightEdgeClipping:
 
     def test_span_closed_within_window_gets_closed_class(self) -> None:
         """Span ends within window with closure → 'meta-span-closed'."""
-        result = build([
-            snap(observed_at=T0, values=[(['app'], 'v1')]),
-            snap(observed_at=T1, closures=[['app']]),
-        ])
+        result = build(
+            [
+                snap(observed_at=T0, values=[(['app'], 'v1')]),
+                snap(observed_at=T1, closures=[['app']]),
+            ]
+        )
 
         assert 'meta-span-closed' in result['items'][0]['className']
 
@@ -362,10 +383,12 @@ class TestScenario14EmptyAsset:
 
 class TestScenario16ClosedOnlyTerminates:
     def test_one_item_closed(self) -> None:
-        result = build([
-            snap(observed_at=T0, values=[(['legacy'], 'v1')]),
-            snap(observed_at=T1, closures=[['legacy']]),
-        ])
+        result = build(
+            [
+                snap(observed_at=T0, values=[(['legacy'], 'v1')]),
+                snap(observed_at=T1, closures=[['legacy']]),
+            ]
+        )
 
         assert len(result['items']) == 1
         assert 'meta-span-closed' in result['items'][0]['className']
@@ -378,11 +401,13 @@ class TestScenario16ClosedOnlyTerminates:
 
 class TestScenario17DoubleClose:
     def test_exactly_one_item(self) -> None:
-        result = build([
-            snap(observed_at=T0, values=[(['foo'], 'v1')]),
-            snap(observed_at=T1, closures=[['foo']]),
-            snap(observed_at=T2, closures=[['foo']]),
-        ])
+        result = build(
+            [
+                snap(observed_at=T0, values=[(['foo'], 'v1')]),
+                snap(observed_at=T1, closures=[['foo']]),
+                snap(observed_at=T2, closures=[['foo']]),
+            ]
+        )
 
         assert len(result['items']) == 1
         # The span should run from T0 to T1
@@ -411,17 +436,19 @@ class TestScenario18CloseNeverOpened:
 
 class TestScenario19ClosedOnlyCascading:
     def test_three_items_all_closed_at_t1(self) -> None:
-        result = build([
-            snap(
-                observed_at=T0,
-                values=[
-                    (['app'], 'v1'),
-                    (['app', 'plug-1'], 'p1'),
-                    (['app', 'plug-2'], 'p2'),
-                ],
-            ),
-            snap(observed_at=T1, values=[], closures=[['app']]),
-        ])
+        result = build(
+            [
+                snap(
+                    observed_at=T0,
+                    values=[
+                        (['app'], 'v1'),
+                        (['app', 'plug-1'], 'p1'),
+                        (['app', 'plug-2'], 'p2'),
+                    ],
+                ),
+                snap(observed_at=T1, values=[], closures=[['app']]),
+            ]
+        )
 
         assert len(result['items']) == 3
         for item in result['items']:

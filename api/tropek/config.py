@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 
 
 def _load_yaml() -> dict[str, Any]:
-    path = Path(os.environ.get('QG_CONFIG_PATH', 'config.yaml'))
+    path = Path(os.environ.get('TK_CONFIG_PATH', 'config.yaml'))
     if not path.exists():
         return {}
     try:
@@ -44,7 +44,7 @@ _yaml: dict[str, Any] = _load_yaml()
 class DatabaseSettings(BaseSettings):
     """PostgreSQL / TimescaleDB connection settings.
 
-    Credentials (user, password) are loaded from QG_DB_USER / QG_DB_PASSWORD env vars.
+    Credentials (user, password) are loaded from TK_DB_USER / TK_DB_PASSWORD env vars.
     """
 
     host: str = _yaml.get('database', {}).get('host', 'localhost')
@@ -55,11 +55,14 @@ class DatabaseSettings(BaseSettings):
     user: str = ''
     password: SecretStr = SecretStr('')
 
-    model_config = SettingsConfigDict(env_prefix='QG_DB_')
+    model_config = SettingsConfigDict(env_prefix='TK_DB_')
 
     @property
     def async_url(self) -> str:
-        """Construct the asyncpg connection URL from individual settings."""
+        """Return the database URL, preferring TK_DATABASE_URL if set."""
+        explicit_url = os.environ.get('TK_DATABASE_URL')
+        if explicit_url:
+            return explicit_url
         pw = self.password.get_secret_value()
         return f'postgresql+asyncpg://{self.user}:{pw}@{self.host}:{self.port}/{self.name}'
 
@@ -78,7 +81,7 @@ class CacheTTLSettings:
 class CacheSettings(BaseSettings):
     """Redis cache connection settings.
 
-    Password is loaded from QG_REDIS_PASSWORD env var.
+    Password is loaded from TK_REDIS_PASSWORD env var.
     """
 
     backend: str = _yaml.get('cache', {}).get('backend', 'redis')
@@ -87,7 +90,7 @@ class CacheSettings(BaseSettings):
     db: int = _yaml.get('cache', {}).get('db', 0)
     password: SecretStr = SecretStr('')
 
-    model_config = SettingsConfigDict(env_prefix='QG_REDIS_')
+    model_config = SettingsConfigDict(env_prefix='TK_REDIS_')
 
     @property
     def ttl(self) -> CacheTTLSettings:
@@ -96,7 +99,10 @@ class CacheSettings(BaseSettings):
 
     @property
     def url(self) -> str:
-        """Construct the Redis connection URL including auth if password is set."""
+        """Return the Redis URL, preferring TK_REDIS_URL if set."""
+        explicit_url = os.environ.get('TK_REDIS_URL')
+        if explicit_url:
+            return explicit_url
         pw = self.password.get_secret_value()
         auth = f':{pw}@' if pw else ''
         return f'redis://{auth}{self.host}:{self.port}/{self.db}'
@@ -191,22 +197,27 @@ class FileIngestionSettings(BaseSettings):
 class Settings(BaseSettings):
     """Root settings object — access all config sections through properties.
 
-    Secret key is loaded from QG_SECRET_KEY env var.
+    Secret key is loaded from TK_SECRET_KEY env var.
     """
 
     secret_key: SecretStr = SecretStr('')
 
-    model_config = SettingsConfigDict(env_prefix='QG_')
+    model_config = SettingsConfigDict(env_prefix='TK_')
 
     def validate_required(self) -> None:
-        """Raise on missing required secrets. Call at startup."""
+        """Raise on missing required secrets. Call at startup.
+
+        Either TK_DATABASE_URL or TK_DB_PASSWORD must be set.
+        Either TK_REDIS_URL or TK_REDIS_PASSWORD must be set.
+        TK_SECRET_KEY is always required.
+        """
         missing = []
-        if not self.database.password.get_secret_value():
-            missing.append('QG_DB_PASSWORD')
-        if not self.cache.password.get_secret_value():
-            missing.append('QG_REDIS_PASSWORD')
+        if not os.environ.get('TK_DATABASE_URL') and not self.database.password.get_secret_value():
+            missing.append('TK_DB_PASSWORD (or TK_DATABASE_URL)')
+        if not os.environ.get('TK_REDIS_URL') and not self.cache.password.get_secret_value():
+            missing.append('TK_REDIS_PASSWORD (or TK_REDIS_URL)')
         if not self.secret_key.get_secret_value():
-            missing.append('QG_SECRET_KEY')
+            missing.append('TK_SECRET_KEY')
         if missing:
             raise RuntimeError(f'required secrets not set: {", ".join(missing)}')
 

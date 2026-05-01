@@ -318,9 +318,7 @@ async def test_trend_annotations_keyed_by_slo_evaluation_id(
     )
     assert resp.status_code == 200
     body = resp.json()
-    assert str(slo_eval_id) in body, (
-        f'expected slo_evaluation_id as key, got keys: {list(body.keys())}'
-    )
+    assert str(slo_eval_id) in body, f'expected slo_evaluation_id as key, got keys: {list(body.keys())}'
     assert str(run_id) not in body
     contents = sorted(ann['content'] for ann in body[str(slo_eval_id)])
     assert contents == ['run-level note', 'slo-level note']

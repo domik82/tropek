@@ -5,8 +5,6 @@ from __future__ import annotations
 import json
 from datetime import UTC, datetime
 
-import pytest
-
 from tropek.modules.asset_meta.timeline.tree_builder import (
     build_group_entry,
     build_groups_wire,
@@ -23,14 +21,14 @@ _WINDOW_END = datetime(2026, 4, 30, tzinfo=UTC)
 
 
 def make_clipped(path: list[str] | None = None, **kwargs: object) -> ClippedSpan:
-    defaults: dict = dict(
-        source='cicd',
-        path=path or ['app'],
-        value='1.0',
-        start=_WINDOW_START,
-        end=_WINDOW_END,
-        className='meta-span',
-    )
+    defaults: dict = {
+        'source': 'cicd',
+        'path': path or ['app'],
+        'value': '1.0',
+        'start': _WINDOW_START,
+        'end': _WINDOW_END,
+        'className': 'meta-span',
+    }
     defaults.update(kwargs)
     return ClippedSpan(**defaults)
 
@@ -183,9 +181,7 @@ class TestSortGroupsDeterministically:
     def test_same_input_different_orderings_produce_identical_output(self) -> None:
         paths_set_a: set[tuple[str, ...]] = {('b',), ('a',), ('a', 'z'), ('a', 'y')}
         paths_set_b: set[tuple[str, ...]] = {('a', 'y'), ('b',), ('a', 'z'), ('a',)}
-        assert sort_groups_deterministically(paths_set_a) == sort_groups_deterministically(
-            paths_set_b
-        )
+        assert sort_groups_deterministically(paths_set_a) == sort_groups_deterministically(paths_set_b)
 
     def test_roots_before_depth_two(self) -> None:
         paths: set[tuple[str, ...]] = {('a',), ('b',), ('a', 'x'), ('b', 'y')}
@@ -230,10 +226,12 @@ class TestBuildGroupEntry:
             ('app',): [('app', 'svc'), ('app', 'db')],
         }
         entry = build_group_entry(('app',), children_map)
-        expected_ids = sorted([
-            encode_path_as_group_id(('app', 'svc')),
-            encode_path_as_group_id(('app', 'db')),
-        ])
+        expected_ids = sorted(
+            [
+                encode_path_as_group_id(('app', 'svc')),
+                encode_path_as_group_id(('app', 'db')),
+            ]
+        )
         assert entry['nestedGroups'] == expected_ids
 
     def test_nested_groups_are_sorted_deterministically(self) -> None:
