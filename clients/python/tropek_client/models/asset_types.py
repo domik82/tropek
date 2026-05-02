@@ -25,3 +25,4 @@ class AssetTypeUpdate(BaseModel):
     """Asset type update request."""
 
     name: str | None = None
+    is_default: bool | None = None
