@@ -21,6 +21,8 @@ class MetaClosureInput(BaseModel):
 class MetaSnapshotCreate(BaseModel):
     """Input model for creating a metadata snapshot."""
 
+    source: str
+    observed_at: str
     values: list[MetaValueInput] | None = None
     closed: list[MetaClosureInput] | None = None
 

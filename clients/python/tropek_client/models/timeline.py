@@ -39,4 +39,6 @@ class TimelineResponse(BaseModel):
 class TimelineSummaryResponse(BaseModel):
     """Summary response with a count of timeline items."""
 
-    item_count: int
+    model_config = ConfigDict(populate_by_name=True)
+
+    item_count: int = Field(alias='itemCount')
