@@ -98,7 +98,9 @@ async def update_datasource(
 ) -> DataSourceRead:
     """Update mutable datasource fields."""
     repo = DataSourceRepository(session)
-    ds = await repo.update(name, **body.model_dump(exclude_none=True))
+    fields = body.model_dump(exclude_none=True)
+    new_name = fields.pop('name', None)
+    ds = await repo.update(name, new_name=new_name, **fields)
     if ds is None:
         raise NotFoundError('datasource', name)
     return _ds_read(ds)
