@@ -151,6 +151,14 @@ from tropek_client.models.trend import (
     TrendTargets,
 )
 
+EvaluationSummary.model_rebuild()
+EvaluationDetail.model_rebuild()
+IndicatorResult.model_rebuild()
+HeatmapCellGrouped.model_rebuild()
+HeatmapSummaryCell.model_rebuild()
+TrendPoint.model_rebuild()
+SLOTestResult.model_rebuild()
+
 __all__ = [
     'AddMemberRequest',
     'AddSubgroupRequest',
