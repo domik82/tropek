@@ -8,6 +8,23 @@ from typing import Any
 import yaml
 from pydantic import BaseModel, Field
 
+from tropek_client.models import (
+    AddMemberRequest,
+    AddSubgroupRequest,
+    AssetCreate,
+    AssetGroupCreate,
+    AssetTypeCreate,
+    AssetUpdate,
+    DataSourceCreate,
+    DataSourceUpdate,
+    SLIDefinitionCreate,
+    SLOAssignmentUpsert,
+    SLODefinitionCreate,
+    SLOGroupAssignmentUpsert,
+    SLOGroupCreate,
+    SLOGroupUpdate,
+)
+
 # Processing order — dependencies must come first
 _KIND_ORDER = [
     'AssetType',
@@ -304,8 +321,8 @@ def _lookup(client: Any, doc: ManifestDocument) -> Any | None:  # noqa: C901, PL
     try:
         match doc.kind:
             case 'AssetType':
-                types = client.asset_types.list()
-                return next((t for t in types if t.name == name), None)
+                paged_types = client.asset_types.list()
+                return next((t for t in paged_types.items if t.name == name), None)
             case 'Asset':
                 return client.assets.get(name)
             case 'AssetGroup':
@@ -313,9 +330,9 @@ def _lookup(client: Any, doc: ManifestDocument) -> Any | None:  # noqa: C901, PL
             case 'DataSource':
                 return client.datasources.get(name)
             case 'SLI':
-                return client.sli_definitions.get(name)
+                return client.slis.get(name)
             case 'SLO':
-                return client.slo_definitions.get(name)
+                return client.slos.get(name)
             case 'SLOAssignment':
                 return _lookup_slo_assignment(client, doc)
             case 'SLOGroup':
@@ -394,7 +411,7 @@ def _diff_reason(doc: ManifestDocument, existing: Any) -> str:
 
 def _resolve_slo_definition_id(client: Any, slo_name: str) -> str:
     """Resolve an SLO name to its latest definition ID."""
-    slo = client.slo_definitions.get(slo_name)
+    slo = client.slos.get(slo_name)
     return str(slo.id)
 
 
@@ -404,9 +421,13 @@ def _create_slo_assignment(client: Any, spec: dict[str, Any]) -> None:
     target_name = spec['target_name']
     slo_definition_id = _resolve_slo_definition_id(client, spec['slo_name'])
     if target_type == 'asset':
-        client.slo_assignments.create_for_asset(target_name, slo_definition_id, spec['data_source_name'])
+        client.slo_assignments.create_for_asset(
+            target_name, slo_definition_id, SLOAssignmentUpsert(data_source_name=spec['data_source_name'])
+        )
     else:
-        client.slo_assignments.create_for_group(target_name, slo_definition_id, spec['data_source_name'])
+        client.slo_assignments.create_for_group(
+            target_name, slo_definition_id, SLOAssignmentUpsert(data_source_name=spec['data_source_name'])
+        )
 
 
 def _delete_slo_assignment(client: Any, spec: dict[str, Any], existing: Any) -> None:
@@ -422,13 +443,15 @@ def _delete_slo_assignment(client: Any, spec: dict[str, Any], existing: Any) -> 
 def _create_slo_group(client: Any, name: str, spec: dict[str, Any]) -> None:
     """Create an SLO group."""
     client.slo_groups.create(
-        name,
-        template_slo_name=spec['template_slo_name'],
-        template_slo_version=spec['template_slo_version'],
-        gen_variables=spec['gen_variables'],
-        display_name=spec.get('display_name'),
-        tags=spec.get('tags'),
-        author=spec.get('author'),
+        SLOGroupCreate(
+            name=name,
+            template_slo_name=spec['template_slo_name'],
+            template_slo_version=spec['template_slo_version'],
+            gen_variables=spec['gen_variables'],
+            display_name=spec.get('display_name'),
+            tags=spec.get('tags'),
+            author=spec.get('author'),
+        )
     )
 
 
@@ -438,11 +461,15 @@ def _create_slo_group_assignment(client: Any, spec: dict[str, Any]) -> None:
     target_name = spec['target_name']
     if target_type == 'asset':
         client.slo_group_assignments.create_for_asset(
-            target_name, spec['slo_group_name'], spec['data_source_name'],
+            target_name,
+            spec['slo_group_name'],
+            SLOGroupAssignmentUpsert(data_source_name=spec['data_source_name']),
         )
     else:
         client.slo_group_assignments.create_for_group(
-            target_name, spec['slo_group_name'], spec['data_source_name'],
+            target_name,
+            spec['slo_group_name'],
+            SLOGroupAssignmentUpsert(data_source_name=spec['data_source_name']),
         )
 
 
@@ -464,13 +491,15 @@ def _create_asset_group(
     display_name: str | None = None,
 ) -> None:
     """Create an asset group with members and subgroups."""
-    client.asset_groups.create(name, display_name=display_name)
+    client.asset_groups.create(AssetGroupCreate(name=name, display_name=display_name))
     for member in spec.get('members', []):
         asset = client.assets.get(member['asset_name'])
-        client.asset_groups.add_member(name, str(asset.id), weight=member.get('weight', 1.0))
+        client.asset_groups.add_member(name, AddMemberRequest(asset_id=asset.id, weight=member.get('weight', 1.0)))
     for subgroup in spec.get('subgroups', []):
         child = client.asset_groups.get(subgroup['group_name'])
-        client.asset_groups.add_subgroup(name, str(child.id), weight=subgroup.get('weight', 1.0))
+        client.asset_groups.add_subgroup(
+            name, AddSubgroupRequest(child_group_id=child.id, weight=subgroup.get('weight', 1.0))
+        )
 
 
 def _create(client: Any, doc: ManifestDocument) -> None:
@@ -478,54 +507,62 @@ def _create(client: Any, doc: ManifestDocument) -> None:
     name = doc.metadata['name']
     match doc.kind:
         case 'AssetType':
-            client.asset_types.create(name, is_default=doc.spec.get('is_default', False))
+            client.asset_types.create(AssetTypeCreate(name=name, is_default=doc.spec.get('is_default', False)))
         case 'Asset':
             client.assets.create(
-                name,
-                type_name=doc.spec.get('type_name', 'vm'),
-                display_name=doc.metadata.get('display_name'),
-                tags=doc.metadata.get('tags'),
-                variables=doc.metadata.get('variables'),
+                AssetCreate(
+                    name=name,
+                    type_name=doc.spec.get('type_name', 'vm'),
+                    display_name=doc.metadata.get('display_name'),
+                    tags=doc.metadata.get('tags'),
+                    variables=doc.metadata.get('variables'),
+                )
             )
         case 'AssetGroup':
             _create_asset_group(client, name, doc.spec, display_name=doc.metadata.get('display_name'))
         case 'DataSource':
             client.datasources.create(
-                name,
-                adapter_type=doc.spec['adapter_type'],
-                adapter_url=doc.spec['adapter_url'],
-                display_name=doc.metadata.get('display_name'),
-                tags=doc.metadata.get('tags'),
+                DataSourceCreate(
+                    name=name,
+                    adapter_type=doc.spec['adapter_type'],
+                    adapter_url=doc.spec['adapter_url'],
+                    display_name=doc.metadata.get('display_name'),
+                    tags=doc.metadata.get('tags'),
+                )
             )
         case 'SLI':
-            client.sli_definitions.create(
-                name,
-                indicators=doc.spec.get('indicators', {}),
-                adapter_type=doc.spec.get('adapter_type', 'prometheus'),
-                display_name=doc.metadata.get('display_name'),
-                notes=doc.metadata.get('notes'),
-                author=doc.metadata.get('author'),
-                mode=doc.spec.get('mode', 'raw'),
-                query_template=doc.spec.get('query_template'),
-                interval=doc.spec.get('interval'),
-                methods=doc.spec.get('methods'),
+            client.slis.create(
+                SLIDefinitionCreate(
+                    name=name,
+                    indicators=doc.spec.get('indicators', {}),
+                    adapter_type=doc.spec.get('adapter_type', 'prometheus'),
+                    display_name=doc.metadata.get('display_name'),
+                    notes=doc.metadata.get('notes'),
+                    author=doc.metadata.get('author'),
+                    mode=doc.spec.get('mode', 'raw'),
+                    query_template=doc.spec.get('query_template'),
+                    interval=doc.spec.get('interval'),
+                    methods=doc.spec.get('methods'),
+                )
             )
         case 'SLO':
             total = doc.spec.get('total_score', {})
-            client.slo_definitions.create(
-                name,
-                objectives=doc.spec['objectives'],
-                total_score_pass_threshold=total.get('pass_threshold', 90.0),
-                total_score_warning_threshold=total.get('warning_threshold', 75.0),
-                comparison=doc.spec.get('comparison', {}),
-                display_name=doc.metadata.get('display_name'),
-                notes=doc.metadata.get('notes'),
-                author=doc.metadata.get('author'),
-                sli_name=doc.spec.get('sli_name'),
-                sli_version=doc.spec.get('sli_version'),
-                kind=doc.spec.get('kind', 'standard'),
-                variables=doc.spec.get('variables', {}),
-                method_criteria=doc.spec.get('method_criteria'),
+            client.slos.create(
+                SLODefinitionCreate(
+                    name=name,
+                    objectives=doc.spec['objectives'],
+                    total_score_pass_threshold=total.get('pass_threshold', 90.0),
+                    total_score_warning_threshold=total.get('warning_threshold', 75.0),
+                    comparison=doc.spec.get('comparison'),
+                    display_name=doc.metadata.get('display_name'),
+                    notes=doc.metadata.get('notes'),
+                    author=doc.metadata.get('author'),
+                    sli_name=doc.spec.get('sli_name'),
+                    sli_version=doc.spec.get('sli_version'),
+                    kind=doc.spec.get('kind', 'standard'),
+                    variables=doc.spec.get('variables'),
+                    method_criteria=doc.spec.get('method_criteria'),
+                )
             )
         case 'SLOAssignment':
             _create_slo_assignment(client, doc.spec)
@@ -544,57 +581,67 @@ def _update(client: Any, doc: ManifestDocument) -> None:
         case 'Asset':
             client.assets.update(
                 name,
-                display_name=doc.metadata.get('display_name'),
-                tags=doc.metadata.get('tags'),
-                variables=doc.metadata.get('variables'),
+                AssetUpdate(
+                    display_name=doc.metadata.get('display_name'),
+                    tags=doc.metadata.get('tags'),
+                    variables=doc.metadata.get('variables'),
+                ),
             )
         case 'AssetGroup':
             pass
         case 'DataSource':
             client.datasources.update(
                 name,
-                display_name=doc.metadata.get('display_name'),
-                adapter_url=doc.spec.get('adapter_url'),
-                tags=doc.metadata.get('tags'),
+                DataSourceUpdate(
+                    display_name=doc.metadata.get('display_name'),
+                    adapter_url=doc.spec.get('adapter_url'),
+                    tags=doc.metadata.get('tags'),
+                ),
             )
         case 'SLI':
             # Creates new version
-            client.sli_definitions.create(
-                name,
-                indicators=doc.spec.get('indicators', {}),
-                adapter_type=doc.spec.get('adapter_type', 'prometheus'),
-                display_name=doc.metadata.get('display_name'),
-                notes=doc.metadata.get('notes'),
-                author=doc.metadata.get('author'),
-                mode=doc.spec.get('mode', 'raw'),
-                query_template=doc.spec.get('query_template'),
-                interval=doc.spec.get('interval'),
-                methods=doc.spec.get('methods'),
+            client.slis.create(
+                SLIDefinitionCreate(
+                    name=name,
+                    indicators=doc.spec.get('indicators', {}),
+                    adapter_type=doc.spec.get('adapter_type', 'prometheus'),
+                    display_name=doc.metadata.get('display_name'),
+                    notes=doc.metadata.get('notes'),
+                    author=doc.metadata.get('author'),
+                    mode=doc.spec.get('mode', 'raw'),
+                    query_template=doc.spec.get('query_template'),
+                    interval=doc.spec.get('interval'),
+                    methods=doc.spec.get('methods'),
+                )
             )
         case 'SLO':
             # Creates new version
             total = doc.spec.get('total_score', {})
-            client.slo_definitions.create(
-                name,
-                objectives=doc.spec['objectives'],
-                total_score_pass_threshold=total.get('pass_threshold', 90.0),
-                total_score_warning_threshold=total.get('warning_threshold', 75.0),
-                comparison=doc.spec.get('comparison', {}),
-                display_name=doc.metadata.get('display_name'),
-                notes=doc.metadata.get('notes'),
-                author=doc.metadata.get('author'),
-                sli_name=doc.spec.get('sli_name'),
-                sli_version=doc.spec.get('sli_version'),
-                kind=doc.spec.get('kind', 'standard'),
-                variables=doc.spec.get('variables', {}),
-                method_criteria=doc.spec.get('method_criteria'),
+            client.slos.create(
+                SLODefinitionCreate(
+                    name=name,
+                    objectives=doc.spec['objectives'],
+                    total_score_pass_threshold=total.get('pass_threshold', 90.0),
+                    total_score_warning_threshold=total.get('warning_threshold', 75.0),
+                    comparison=doc.spec.get('comparison'),
+                    display_name=doc.metadata.get('display_name'),
+                    notes=doc.metadata.get('notes'),
+                    author=doc.metadata.get('author'),
+                    sli_name=doc.spec.get('sli_name'),
+                    sli_version=doc.spec.get('sli_version'),
+                    kind=doc.spec.get('kind', 'standard'),
+                    variables=doc.spec.get('variables'),
+                    method_criteria=doc.spec.get('method_criteria'),
+                )
             )
         case 'SLOGroup':
             client.slo_groups.update(
                 name,
-                template_slo_name=doc.spec.get('template_slo_name'),
-                template_slo_version=doc.spec.get('template_slo_version'),
-                gen_variables=doc.spec.get('gen_variables'),
-                display_name=doc.spec.get('display_name'),
-                tags=doc.spec.get('tags'),
+                SLOGroupUpdate(
+                    template_slo_name=doc.spec.get('template_slo_name'),
+                    template_slo_version=doc.spec.get('template_slo_version'),
+                    gen_variables=doc.spec.get('gen_variables'),
+                    display_name=doc.spec.get('display_name'),
+                    tags=doc.spec.get('tags'),
+                ),
             )

@@ -15,6 +15,8 @@ from tropek_client.manifest import (
 from tropek_client.manifest import (
     apply as do_apply,
 )
+from tropek_client.models import AssetTypeCreate
+from tropek_client.models.pagination import PagedResponse
 
 
 def test_load_single_document(tmp_path):
@@ -134,7 +136,7 @@ spec:
 def test_dry_run_creates_plan():
     """dry_run produces CREATE actions for missing entities."""
     client = MagicMock()
-    client.asset_types.list.return_value = []  # no existing types
+    client.asset_types.list.return_value = PagedResponse(items=[], total=0)  # no existing types
 
     docs = [
         ManifestDocument(
@@ -153,7 +155,7 @@ def test_dry_run_creates_plan():
 def test_apply_creates_entity():
     """apply calls create on the client for CREATE actions."""
     client = MagicMock()
-    client.asset_types.list.return_value = []  # triggers CREATE
+    client.asset_types.list.return_value = PagedResponse(items=[], total=0)  # triggers CREATE
 
     docs = [
         ManifestDocument(
@@ -166,7 +168,7 @@ def test_apply_creates_entity():
     result = do_apply(client, docs)
     assert result.created == 1
     assert result.failed == 0
-    client.asset_types.create.assert_called_once_with('vm', is_default=True)
+    client.asset_types.create.assert_called_once_with(AssetTypeCreate(name='vm', is_default=True))
 
 
 def test_apply_plan_is_pydantic_model() -> None:
