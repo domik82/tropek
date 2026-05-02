@@ -7,6 +7,7 @@ from tropek_client import TropekClient
 from tropek_client.exceptions import TropekNotFoundError
 from tropek_client.models import (
     AddMemberRequest,
+    AnnotationCategoryCreate,
     AnnotationCreate,
     AnnotationRead,
     AssetCreate,
@@ -407,6 +408,33 @@ class TestAnnotations:
         assert b'"content":"Deployed v1.2"' in route.calls[0].request.content
 
 
+class TestAnnotationCategories:
+    @respx.mock
+    def test_list(self, client):
+        respx.get(f'{BASE_URL}/note-categories').mock(
+            return_value=httpx.Response(200, json=[_ANNOTATION_CATEGORY_JSON])
+        )
+        result = client.annotation_categories.list()
+        assert len(result) == 1
+        assert result[0].name == 'deployment'
+
+    @respx.mock
+    def test_create(self, client):
+        route = respx.post(f'{BASE_URL}/note-categories').mock(
+            return_value=httpx.Response(201, json=_ANNOTATION_CATEGORY_JSON)
+        )
+        result = client.annotation_categories.create(
+            AnnotationCategoryCreate(name='deployment', label='Deployment', color='green')
+        )
+        assert result.name == 'deployment'
+        assert b'"name":"deployment"' in route.calls[0].request.content
+
+    @respx.mock
+    def test_delete(self, client):
+        respx.delete(f'{BASE_URL}/note-categories/{_UUID}').mock(return_value=httpx.Response(204))
+        client.annotation_categories.delete(_UUID)
+
+
 class TestTrend:
     @respx.mock
     def test_by_eval(self, client):
@@ -478,6 +506,22 @@ class TestConfiguration:
         result = client.configuration.get('max_comparison_results')
         assert isinstance(result, ConfigurationRead)
         assert result.value == '5'
+
+    @respx.mock
+    def test_update(self, client):
+        config_json = {
+            'name': 'change_point.window_size',
+            'value': '50',
+            'value_type': 'int',
+            'description': 'sliding window length',
+        }
+        route = respx.put(f'{BASE_URL}/configuration/change_point.window_size').mock(
+            return_value=httpx.Response(200, json=config_json)
+        )
+        result = client.configuration.update('change_point.window_size', '50')
+        assert isinstance(result, ConfigurationRead)
+        assert result.value == '50'
+        assert b'"value":"50"' in route.calls[0].request.content
 
 
 class TestMeta:
