@@ -25,6 +25,7 @@ from tropek_client.models import (
     AssetTypeRead,
     AssetTypeUpdate,
     AssetUpdate,
+    ComparisonConfig,
     ConfigurationRead,
     DataSourceCreate,
     DataSourceRead,
@@ -44,6 +45,7 @@ from tropek_client.models import (
     InvalidateRequest,
     MetaSnapshotCreate,
     MetaSnapshotCreated,
+    MethodCriteriaOverride,
     MetricHeatmapResponse,
     OverrideStatusRequest,
     PagedResponse,
@@ -64,6 +66,7 @@ from tropek_client.models import (
     SLOGroupCreate,
     SLOGroupRead,
     SLOGroupUpdate,
+    SLOObjectiveIn,
     SLOTestRequest,
     SLOTestResult,
     SLOValidateRequest,
@@ -336,6 +339,49 @@ class _SLOs:
     def test(self, body: SLOTestRequest) -> SLOTestResult:
         response = self._http.post('/slo-definitions/test', json=body.model_dump(mode='json', exclude_none=True))
         return SLOTestResult.model_validate(response.json())
+
+    def new_version(self, name: str, **overrides: Any) -> SLODefinitionRead:
+        current = self.get(name)
+        objectives_for_create = [
+            SLOObjectiveIn.model_validate(
+                objective.model_dump(exclude={'sort_order', 'change_point'})
+                | (
+                    {'change_point': objective.change_point.model_dump(exclude={'slo_objective_id'})}
+                    if objective.change_point
+                    else {}
+                )
+            )
+            for objective in current.objectives
+        ]
+        comparison_for_create = (
+            ComparisonConfig.model_validate(current.comparison.model_dump()) if current.comparison else None
+        )
+        method_criteria_for_create = (
+            {
+                key: MethodCriteriaOverride.model_validate(override.model_dump())
+                for key, override in current.method_criteria.items()
+            }
+            if current.method_criteria
+            else None
+        )
+        base = SLODefinitionCreate(
+            name=current.name,
+            display_name=current.display_name,
+            objectives=objectives_for_create,
+            total_score_pass_threshold=current.total_score_pass_threshold,
+            total_score_warning_threshold=current.total_score_warning_threshold,
+            comparison=comparison_for_create,
+            notes=current.notes,
+            author=current.author,
+            tags=dict(current.tags) if current.tags else None,
+            variables=dict(current.variables) if current.variables else None,
+            kind=current.kind,
+            sli_name=current.sli_name,
+            sli_version=current.sli_version,
+            method_criteria=method_criteria_for_create,
+        )
+        body = base.model_copy(update=overrides)
+        return self.create(body)
 
 
 class _Evaluations:
