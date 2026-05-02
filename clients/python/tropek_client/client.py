@@ -8,6 +8,9 @@ from tropek_client._http import HttpSession
 from tropek_client.models import (
     AddMemberRequest,
     AddSubgroupRequest,
+    AnnotationCategoryCreate,
+    AnnotationCategoryRead,
+    AnnotationCategoryUpdate,
     AnnotationCreate,
     AnnotationHide,
     AnnotationRead,
@@ -23,7 +26,6 @@ from tropek_client.models import (
     AssetTypeUpdate,
     AssetUpdate,
     ConfigurationRead,
-    ConfigurationUpdate,
     DataSourceCreate,
     DataSourceRead,
     DataSourceUpdate,
@@ -459,6 +461,28 @@ class _Annotations:
         return AnnotationRead.model_validate(response.json())
 
 
+class _AnnotationCategories:
+    def __init__(self, http: HttpSession) -> None:
+        self._http = http
+
+    def list(self) -> list[AnnotationCategoryRead]:
+        response = self._http.get('/note-categories')
+        return [AnnotationCategoryRead.model_validate(c) for c in response.json()]
+
+    def create(self, body: AnnotationCategoryCreate) -> AnnotationCategoryRead:
+        response = self._http.post('/note-categories', json=body.model_dump(mode='json', exclude_none=True))
+        return AnnotationCategoryRead.model_validate(response.json())
+
+    def update(self, category_id: str, body: AnnotationCategoryUpdate) -> AnnotationCategoryRead:
+        response = self._http.patch(
+            f'/note-categories/{category_id}', json=body.model_dump(mode='json', exclude_none=True)
+        )
+        return AnnotationCategoryRead.model_validate(response.json())
+
+    def delete(self, category_id: str) -> None:
+        self._http.delete(f'/note-categories/{category_id}')
+
+
 class _Trend:
     def __init__(self, http: HttpSession) -> None:
         self._http = http
@@ -677,8 +701,8 @@ class _Configuration:
         response = self._http.get(f'/config/{name}')
         return ConfigurationRead.model_validate(response.json())
 
-    def update(self, name: str, body: ConfigurationUpdate) -> ConfigurationRead:
-        response = self._http.put(f'/config/{name}', json=body.model_dump(mode='json'))
+    def update(self, name: str, value: str) -> ConfigurationRead:
+        response = self._http.put(f'/configuration/{name}', json={'value': value})
         return ConfigurationRead.model_validate(response.json())
 
 
@@ -723,6 +747,7 @@ class TropekClient:
         self.slo_group_assignments = _SLOGroupAssignments(self._http)
         self.evaluations = _Evaluations(self._http)
         self.annotations = _Annotations(self._http)
+        self.annotation_categories = _AnnotationCategories(self._http)
         self.trend = _Trend(self._http)
         self.heatmap = _Heatmap(self._http)
         self.timeline = _Timeline(self._http)
