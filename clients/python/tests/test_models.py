@@ -1,18 +1,18 @@
 from __future__ import annotations
 
-from tropek_client.models import Asset, AssetType, SLODefinition, SLOTestRequest
+from tropek_client.models import AssetRead, AssetTypeRead, SLODefinitionRead, SLOTestRequest
 
 _UUID = '00000000-0000-0000-0000-000000000123'
 
 
 def test_asset_type_from_dict():
-    at = AssetType.model_validate({'id': _UUID, 'name': 'vm', 'is_default': True})
+    at = AssetTypeRead.model_validate({'id': _UUID, 'name': 'vm', 'is_default': True})
     assert at.name == 'vm'
     assert at.is_default is True
 
 
 def test_asset_from_dict():
-    a = Asset.model_validate(
+    a = AssetRead.model_validate(
         {
             'id': _UUID,
             'name': 'vm-01',
@@ -27,7 +27,7 @@ def test_asset_from_dict():
 
 
 def test_slo_definition_from_dict():
-    slo = SLODefinition.model_validate(
+    slo = SLODefinitionRead.model_validate(
         {
             'id': _UUID,
             'name': 'my-slo',

@@ -151,25 +151,11 @@ from tropek_client.models.trend import (
     TrendTargets,
 )
 
-# Backward-compatible aliases used by the existing client.py
-Annotation = AnnotationRead
-Asset = AssetRead
-AssetGroup = AssetGroupRead
-AssetGroupTree = AssetGroupTreeResponse
-AssetType = AssetTypeRead
-DataSource = DataSourceRead
-SLIDefinition = SLIDefinitionRead
-SLOAssignment = SLOAssignmentRead
-SLODefinition = SLODefinitionRead
-SLOGroup = SLOGroupRead
-SLOGroupAssignment = SLOGroupAssignmentRead
-
 __all__ = [
     'AddMemberRequest',
     'AddSubgroupRequest',
     'AggregateFunction',
     'AggregationMethod',
-    'Annotation',
     'AnnotationCategoryCreate',
     'AnnotationCategoryRead',
     'AnnotationCategoryUpdate',
@@ -177,22 +163,18 @@ __all__ = [
     'AnnotationHide',
     'AnnotationRead',
     'AnnotationUpdate',
-    'Asset',
     'AssetCreate',
-    'AssetGroup',
     'AssetGroupCreate',
     'AssetGroupMemberCreate',
     'AssetGroupMemberRead',
     'AssetGroupRead',
     'AssetGroupSubgroupCreate',
     'AssetGroupSubgroupRead',
-    'AssetGroupTree',
     'AssetGroupTreeResponse',
     'AssetGroupUpdate',
     'AssetRead',
     'AssetScope',
     'AssetSnapshot',
-    'AssetType',
     'AssetTypeCreate',
     'AssetTypeRead',
     'AssetTypeUpdate',
@@ -211,7 +193,6 @@ __all__ = [
     'ComparisonRule',
     'ConfigurationRead',
     'ConfigurationUpdate',
-    'DataSource',
     'DataSourceCreate',
     'DataSourceRead',
     'DataSourceUpdate',
@@ -257,18 +238,13 @@ __all__ = [
     'ReEvaluateFromDateRequest',
     'ReEvaluateFromEvaluationRequest',
     'ReEvaluateResponse',
-    'SLIDefinition',
     'SLIDefinitionCreate',
     'SLIDefinitionRead',
-    'SLOAssignment',
     'SLOAssignmentRead',
     'SLOAssignmentUpgrade',
     'SLOAssignmentUpsert',
-    'SLODefinition',
     'SLODefinitionCreate',
     'SLODefinitionRead',
-    'SLOGroup',
-    'SLOGroupAssignment',
     'SLOGroupAssignmentRead',
     'SLOGroupAssignmentUpsert',
     'SLOGroupCreate',
