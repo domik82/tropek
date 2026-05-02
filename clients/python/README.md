@@ -99,29 +99,31 @@ Returns API health status.
 | `tag_keys()` | `list[dict]` | Distinct tag keys |
 | `tag_values(key)` | `list[dict]` | Values for a tag key |
 
-### SLI Definitions — `client.sli_definitions`
+### SLI Definitions — `client.slis`
 
 | Method | Returns | Description |
 |---|---|---|
 | `list()` | `PagedResponse[SLIDefinition]` | List all SLIs |
-| `create(name, indicators, **kwargs)` | `SLIDefinition` | Create (or new version) |
+| `create(body)` | `SLIDefinition` | Create (or new version) |
 | `get(name)` | `SLIDefinition` | Get latest version |
 | `versions(name)` | `list[SLIDefinition]` | All versions |
 | `delete(name)` | `None` | Delete an SLI |
+| `new_version(name, **overrides)` | `SLIDefinition` | Create new version with overrides |
 | `tag_keys()` | `list[dict]` | Distinct tag keys |
 | `tag_values(key)` | `list[dict]` | Values for a tag key |
 
-### SLO Definitions — `client.slo_definitions`
+### SLO Definitions — `client.slos`
 
 | Method | Returns | Description |
 |---|---|---|
 | `list()` | `PagedResponse[SLODefinition]` | List all SLOs |
-| `create(name, objectives, pass_threshold=90.0, warning_threshold=75.0, *, comparison=, **kwargs)` | `SLODefinition` | Create (or new version) |
+| `create(body)` | `SLODefinition` | Create (or new version) |
 | `get(name)` | `SLODefinition` | Get latest version |
 | `versions(name)` | `list[SLODefinition]` | All versions |
 | `delete(name)` | `None` | Delete an SLO |
-| `validate(slo_yaml)` | `SLOValidationResult` | Validate YAML without saving |
-| `test(request)` | `SLOTestResult` | Dry-run evaluation |
+| `new_version(name, **overrides)` | `SLODefinition` | Create new version with overrides |
+| `validate(body)` | `SLOValidationResult` | Validate without saving |
+| `test(body)` | `SLOTestResult` | Dry-run evaluation |
 | `tag_keys()` | `list[dict]` | Distinct tag keys |
 | `tag_values(key)` | `list[dict]` | Values for a tag key |
 
@@ -308,6 +310,12 @@ tropek export -f backup.yaml --base-url http://localhost:8080 --api-key my-key
 
 Exports all resources (asset types, datasources, assets, SLIs, SLOs, groups,
 assignments) as a multi-document YAML manifest.
+
+## Known Limitations
+
+- **Asset names are globally unique.** There is no per-group scoping — two groups
+  cannot each contain an asset named `load_test`. Assets are identified by name
+  across the entire TROPEK instance.
 
 ## Error Handling
 
