@@ -140,6 +140,7 @@ class AssetRepository(TagQueryMixin):
             type_name=params.type_name,
             tags=params.tags,
             variables=params.variables,
+            heatmap_config=params.heatmap_config,
         )
         self._session.add(asset)
         await self._session.flush()

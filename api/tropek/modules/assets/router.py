@@ -143,6 +143,7 @@ async def create_asset(
             color=body.color,
             tags=body.tags or {},
             variables=body.variables or {},
+            heatmap_config=body.heatmap_config,
         ),
     )
     return AssetRead.model_validate(asset)

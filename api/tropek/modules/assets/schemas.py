@@ -49,6 +49,7 @@ class AssetCreate(StrictInput):
     tags: Tags = {}
     variables: dict[IdentifierKey, SafeStr] = {}
     color: SafeStr | None = None
+    heatmap_config: SafeJsonAny | None = None
 
 
 class AssetUpdate(StrictInput):
