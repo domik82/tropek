@@ -4,91 +4,107 @@ from __future__ import annotations
 
 from typing import Any
 
-import httpx
-
-from tropek_client.exceptions import (
-    TropekAPIError,
-    TropekConflictError,
-    TropekNotFoundError,
-    TropekValidationError,
-)
+from tropek_client._http import HttpSession
 from tropek_client.models import (
-    Annotation,
-    Asset,
-    AssetGroup,
-    AssetGroupTree,
-    AssetType,
-    DataSource,
+    AddMemberRequest,
+    AddSubgroupRequest,
+    AnnotationCreate,
+    AnnotationHide,
+    AnnotationRead,
+    AnnotationUpdate,
+    AssetCreate,
+    AssetGroupCreate,
+    AssetGroupRead,
+    AssetGroupTreeResponse,
+    AssetGroupUpdate,
+    AssetRead,
+    AssetTypeCreate,
+    AssetTypeRead,
+    AssetTypeUpdate,
+    AssetUpdate,
+    ConfigurationRead,
+    ConfigurationUpdate,
+    DataSourceCreate,
+    DataSourceRead,
+    DataSourceUpdate,
+    DisplayGroupCreate,
+    DisplayGroupMemberAdd,
+    DisplayGroupRead,
+    EvaluateBatchRequest,
+    EvaluateBatchResponse,
+    EvaluateSingleRequest,
+    EvaluateSingleResponse,
     EvaluationDetail,
+    EvaluationNameEntry,
     EvaluationSummary,
+    ExtractRequest,
+    GroupedMetricHeatmapResponse,
+    InvalidateRequest,
+    MetaSnapshotCreate,
+    MetaSnapshotCreated,
+    MetricHeatmapResponse,
+    OverrideStatusRequest,
     PagedResponse,
-    SLIDefinition,
-    SLOAssignment,
-    SLODefinition,
-    SLOGroup,
-    SLOGroupAssignment,
+    PinBaselineRequest,
+    ReEvaluateFromBaselineRequest,
+    ReEvaluateFromDateRequest,
+    ReEvaluateFromEvaluationRequest,
+    ReEvaluateResponse,
+    SLIDefinitionCreate,
+    SLIDefinitionRead,
+    SLOAssignmentRead,
+    SLOAssignmentUpgrade,
+    SLOAssignmentUpsert,
+    SLODefinitionCreate,
+    SLODefinitionRead,
+    SLOGroupAssignmentRead,
+    SLOGroupAssignmentUpsert,
+    SLOGroupCreate,
+    SLOGroupRead,
+    SLOGroupUpdate,
+    SLOTestRequest,
     SLOTestResult,
+    SLOValidateRequest,
     SLOValidationResult,
+    TagKeyCount,
+    TagValueCount,
+    TimelineResponse,
+    TimelineSummaryResponse,
     TrendPoint,
+    TriageRequest,
 )
-
-
-def _raise_for_status(resp: httpx.Response) -> None:
-    """Raise typed exception for non-2xx responses."""
-    if resp.is_success:
-        return
-    try:
-        data = resp.json()
-        detail = data.get('detail', resp.text) if isinstance(data, dict) else resp.text
-    except ValueError:
-        detail = resp.text
-    match resp.status_code:
-        case 404:
-            raise TropekNotFoundError(detail)
-        case 409:
-            raise TropekConflictError(detail)
-        case 422:
-            raise TropekValidationError(detail)
-        case _:
-            raise TropekAPIError(resp.status_code, detail)
 
 
 class _AssetTypes:
-    def __init__(self, http: httpx.Client) -> None:
+    def __init__(self, http: HttpSession) -> None:
         self._http = http
 
-    def list(self) -> list[AssetType]:
-        """List all asset types."""
-        resp = self._http.get('/asset-types')
-        _raise_for_status(resp)
-        return [AssetType.model_validate(i) for i in resp.json()['items']]
+    def list(self) -> PagedResponse[AssetTypeRead]:
+        response = self._http.get('/asset-types')
+        data = response.json()
+        return PagedResponse(
+            items=[AssetTypeRead.model_validate(i) for i in data['items']],
+            total=data['total'],
+        )
 
-    def create(self, name: str, *, is_default: bool = False) -> AssetType:
-        """Create an asset type."""
-        resp = self._http.post('/asset-types', json={'name': name, 'is_default': is_default})
-        _raise_for_status(resp)
-        return AssetType.model_validate(resp.json())
+    def create(self, body: AssetTypeCreate) -> AssetTypeRead:
+        response = self._http.post('/asset-types', json=body.model_dump(exclude_none=True))
+        return AssetTypeRead.model_validate(response.json())
 
-    def set_default(self, name: str) -> AssetType:
-        """Set an asset type as the default."""
-        resp = self._http.patch(f'/asset-types/{name}/set-default')
-        _raise_for_status(resp)
-        return AssetType.model_validate(resp.json())
+    def set_default(self, name: str) -> AssetTypeRead:
+        response = self._http.patch(f'/asset-types/{name}/set-default')
+        return AssetTypeRead.model_validate(response.json())
 
-    def rename(self, name: str, new_name: str) -> AssetType:
-        """Rename an asset type."""
-        resp = self._http.patch(f'/asset-types/{name}', json={'name': new_name})
-        _raise_for_status(resp)
-        return AssetType.model_validate(resp.json())
+    def rename(self, name: str, body: AssetTypeUpdate) -> AssetTypeRead:
+        response = self._http.patch(f'/asset-types/{name}', json=body.model_dump(exclude_none=True))
+        return AssetTypeRead.model_validate(response.json())
 
     def delete(self, name: str) -> None:
-        """Delete an asset type."""
-        resp = self._http.delete(f'/asset-types/{name}')
-        _raise_for_status(resp)
+        self._http.delete(f'/asset-types/{name}')
 
 
 class _Assets:
-    def __init__(self, http: httpx.Client) -> None:
+    def __init__(self, http: HttpSession) -> None:
         self._http = http
 
     def list(
@@ -97,8 +113,7 @@ class _Assets:
         type_name: str | None = None,
         tag_key: str | None = None,
         tag_val: str | None = None,
-    ) -> PagedResponse[Asset]:
-        """List assets with optional filters."""
+    ) -> PagedResponse[AssetRead]:
         params: dict[str, str] = {}
         if type_name:
             params['type_name'] = type_name
@@ -106,326 +121,201 @@ class _Assets:
             params['tag_key'] = tag_key
         if tag_val:
             params['tag_val'] = tag_val
-        resp = self._http.get('/assets', params=params)
-        _raise_for_status(resp)
-        data = resp.json()
+        response = self._http.get('/assets', params=params)
+        data = response.json()
         return PagedResponse(
-            items=[Asset.model_validate(i) for i in data['items']],
+            items=[AssetRead.model_validate(i) for i in data['items']],
             total=data['total'],
         )
 
-    def create(
-        self,
-        name: str,
-        type_name: str = 'vm',
-        *,
-        display_name: str | None = None,
-        tags: dict[str, str] | None = None,
-        variables: dict[str, str] | None = None,
-    ) -> Asset:
-        """Create an asset."""
-        body: dict[str, Any] = {'name': name, 'type_name': type_name}
-        if display_name is not None:
-            body['display_name'] = display_name
-        if tags is not None:
-            body['tags'] = tags
-        if variables is not None:
-            body['variables'] = variables
-        resp = self._http.post('/assets', json=body)
-        _raise_for_status(resp)
-        return Asset.model_validate(resp.json())
+    def create(self, body: AssetCreate) -> AssetRead:
+        response = self._http.post('/assets', json=body.model_dump(exclude_none=True))
+        return AssetRead.model_validate(response.json())
 
-    def get(self, name: str) -> Asset:
-        """Get an asset by name."""
-        resp = self._http.get(f'/assets/{name}')
-        _raise_for_status(resp)
-        return Asset.model_validate(resp.json())
+    def get(self, name: str) -> AssetRead:
+        response = self._http.get(f'/assets/{name}')
+        return AssetRead.model_validate(response.json())
 
-    def update(self, name: str, **kwargs: Any) -> Asset:
-        """Update an asset."""
-        resp = self._http.patch(f'/assets/{name}', json=kwargs)
-        _raise_for_status(resp)
-        return Asset.model_validate(resp.json())
+    def update(self, name: str, body: AssetUpdate) -> AssetRead:
+        response = self._http.patch(f'/assets/{name}', json=body.model_dump(exclude_none=True))
+        return AssetRead.model_validate(response.json())
 
     def delete(self, name: str) -> None:
-        """Delete an asset."""
-        resp = self._http.delete(f'/assets/{name}')
-        _raise_for_status(resp)
+        self._http.delete(f'/assets/{name}')
 
-    def tag_keys(self) -> list[dict[str, Any]]:
-        """Get all distinct tag keys across assets with counts."""
-        resp = self._http.get('/assets/tag-keys')
-        _raise_for_status(resp)
-        return resp.json()  # type: ignore[no-any-return]
+    def tag_keys(self) -> list[TagKeyCount]:
+        response = self._http.get('/assets/tag-keys')
+        return [TagKeyCount.model_validate(i) for i in response.json()]
 
-    def tag_values(self, key: str) -> list[dict[str, Any]]:
-        """Get values and counts for a tag key."""
-        resp = self._http.get('/assets/tag-values', params={'key': key})
-        _raise_for_status(resp)
-        return resp.json()  # type: ignore[no-any-return]
+    def tag_values(self, key: str) -> list[TagValueCount]:
+        response = self._http.get('/assets/tag-values', params={'key': key})
+        return [TagValueCount.model_validate(i) for i in response.json()]
 
 
 class _AssetGroups:
-    def __init__(self, http: httpx.Client) -> None:
+    def __init__(self, http: HttpSession) -> None:
         self._http = http
 
-    def list(self) -> PagedResponse[AssetGroup]:
-        """List all asset groups."""
-        resp = self._http.get('/asset-groups')
-        _raise_for_status(resp)
-        data = resp.json()
+    def list(self) -> PagedResponse[AssetGroupRead]:
+        response = self._http.get('/asset-groups')
+        data = response.json()
         return PagedResponse(
-            items=[AssetGroup.model_validate(i) for i in data['items']],
+            items=[AssetGroupRead.model_validate(i) for i in data['items']],
             total=data['total'],
         )
 
-    def tree(self) -> AssetGroupTree:
-        """Get the asset group tree."""
-        resp = self._http.get('/asset-groups/tree')
-        _raise_for_status(resp)
-        return AssetGroupTree.model_validate(resp.json())
+    def tree(self) -> AssetGroupTreeResponse:
+        response = self._http.get('/asset-groups/tree')
+        return AssetGroupTreeResponse.model_validate(response.json())
 
-    def create(
-        self,
-        name: str,
-        *,
-        display_name: str | None = None,
-        members: list[dict[str, Any]] | None = None,
-        subgroups: list[dict[str, Any]] | None = None,
-    ) -> AssetGroup:
-        """Create an asset group."""
-        body: dict[str, Any] = {'name': name}
-        if display_name is not None:
-            body['display_name'] = display_name
-        if members is not None:
-            body['members'] = members
-        if subgroups is not None:
-            body['subgroups'] = subgroups
-        resp = self._http.post('/asset-groups', json=body)
-        _raise_for_status(resp)
-        return AssetGroup.model_validate(resp.json())
+    def create(self, body: AssetGroupCreate) -> AssetGroupRead:
+        response = self._http.post('/asset-groups', json=body.model_dump(exclude_none=True))
+        return AssetGroupRead.model_validate(response.json())
 
-    def get(self, name: str) -> AssetGroup:
-        """Get an asset group by name."""
-        resp = self._http.get(f'/asset-groups/{name}')
-        _raise_for_status(resp)
-        return AssetGroup.model_validate(resp.json())
+    def get(self, name: str) -> AssetGroupRead:
+        response = self._http.get(f'/asset-groups/{name}')
+        return AssetGroupRead.model_validate(response.json())
 
-    def add_member(self, group_name: str, asset_id: str, weight: float = 1.0) -> AssetGroup:
-        """Add a member to an asset group."""
-        resp = self._http.post(
-            f'/asset-groups/{group_name}/members',
-            json={'asset_id': asset_id, 'weight': weight},
-        )
-        _raise_for_status(resp)
-        return AssetGroup.model_validate(resp.json())
+    def update(self, name: str, body: AssetGroupUpdate) -> AssetGroupRead:
+        response = self._http.patch(f'/asset-groups/{name}', json=body.model_dump(exclude_none=True))
+        return AssetGroupRead.model_validate(response.json())
+
+    def add_member(self, group_name: str, body: AddMemberRequest) -> AssetGroupRead:
+        response = self._http.post(f'/asset-groups/{group_name}/members', json=body.model_dump(exclude_none=True))
+        return AssetGroupRead.model_validate(response.json())
 
     def remove_member(self, group_name: str, asset_id: str) -> None:
-        """Remove a member from an asset group."""
-        resp = self._http.delete(f'/asset-groups/{group_name}/members/{asset_id}')
-        _raise_for_status(resp)
+        self._http.delete(f'/asset-groups/{group_name}/members/{asset_id}')
 
-    def add_subgroup(self, group_name: str, child_group_id: str, weight: float = 1.0) -> AssetGroup:
-        """Add a subgroup to an asset group."""
-        resp = self._http.post(
-            f'/asset-groups/{group_name}/subgroups',
-            json={'child_group_id': child_group_id, 'weight': weight},
-        )
-        _raise_for_status(resp)
-        return AssetGroup.model_validate(resp.json())
+    def add_subgroup(self, group_name: str, body: AddSubgroupRequest) -> AssetGroupRead:
+        response = self._http.post(f'/asset-groups/{group_name}/subgroups', json=body.model_dump(exclude_none=True))
+        return AssetGroupRead.model_validate(response.json())
 
     def remove_subgroup(self, group_name: str, child_group_id: str) -> None:
-        """Remove a subgroup from an asset group."""
-        resp = self._http.delete(f'/asset-groups/{group_name}/subgroups/{child_group_id}')
-        _raise_for_status(resp)
+        self._http.delete(f'/asset-groups/{group_name}/subgroups/{child_group_id}')
 
 
 class _DataSources:
-    def __init__(self, http: httpx.Client) -> None:
+    def __init__(self, http: HttpSession) -> None:
         self._http = http
 
-    def list(self, *, adapter_type: str | None = None) -> PagedResponse[DataSource]:
-        """List data sources."""
+    def list(self, *, adapter_type: str | None = None) -> PagedResponse[DataSourceRead]:
         params: dict[str, str] = {}
         if adapter_type:
             params['adapter_type'] = adapter_type
-        resp = self._http.get('/datasources', params=params)
-        _raise_for_status(resp)
-        data = resp.json()
+        response = self._http.get('/datasources', params=params)
+        data = response.json()
         return PagedResponse(
-            items=[DataSource.model_validate(i) for i in data['items']],
+            items=[DataSourceRead.model_validate(i) for i in data['items']],
             total=data['total'],
         )
 
-    def create(self, name: str, adapter_type: str, adapter_url: str, **kwargs: Any) -> DataSource:
-        """Create a data source."""
-        body = {'name': name, 'adapter_type': adapter_type, 'adapter_url': adapter_url, **kwargs}
-        resp = self._http.post('/datasources', json=body)
-        _raise_for_status(resp)
-        return DataSource.model_validate(resp.json())
+    def create(self, body: DataSourceCreate) -> DataSourceRead:
+        response = self._http.post('/datasources', json=body.model_dump(exclude_none=True))
+        return DataSourceRead.model_validate(response.json())
 
-    def get(self, name: str) -> DataSource:
-        """Get a data source by name."""
-        resp = self._http.get(f'/datasources/{name}')
-        _raise_for_status(resp)
-        return DataSource.model_validate(resp.json())
+    def get(self, name: str) -> DataSourceRead:
+        response = self._http.get(f'/datasources/{name}')
+        return DataSourceRead.model_validate(response.json())
 
-    def update(self, name: str, **kwargs: Any) -> DataSource:
-        """Update a data source."""
-        resp = self._http.patch(f'/datasources/{name}', json=kwargs)
-        _raise_for_status(resp)
-        return DataSource.model_validate(resp.json())
+    def update(self, name: str, body: DataSourceUpdate) -> DataSourceRead:
+        response = self._http.patch(f'/datasources/{name}', json=body.model_dump(exclude_none=True))
+        return DataSourceRead.model_validate(response.json())
 
     def delete(self, name: str) -> None:
-        """Delete a data source."""
-        resp = self._http.delete(f'/datasources/{name}')
-        _raise_for_status(resp)
+        self._http.delete(f'/datasources/{name}')
 
-    def tag_keys(self) -> list[dict[str, Any]]:
-        """Get all distinct tag keys across data sources with counts."""
-        resp = self._http.get('/datasources/tag-keys')
-        _raise_for_status(resp)
-        return resp.json()  # type: ignore[no-any-return]
+    def tag_keys(self) -> list[TagKeyCount]:
+        response = self._http.get('/datasources/tag-keys')
+        return [TagKeyCount.model_validate(i) for i in response.json()]
 
-    def tag_values(self, key: str) -> list[dict[str, Any]]:
-        """Get values and counts for a tag key."""
-        resp = self._http.get('/datasources/tag-values', params={'key': key})
-        _raise_for_status(resp)
-        return resp.json()  # type: ignore[no-any-return]
+    def tag_values(self, key: str) -> list[TagValueCount]:
+        response = self._http.get('/datasources/tag-values', params={'key': key})
+        return [TagValueCount.model_validate(i) for i in response.json()]
 
 
-class _SLIDefinitions:
-    def __init__(self, http: httpx.Client) -> None:
+class _SLIs:
+    def __init__(self, http: HttpSession) -> None:
         self._http = http
 
-    def list(self) -> PagedResponse[SLIDefinition]:
-        """List all SLI definitions."""
-        resp = self._http.get('/sli-definitions')
-        _raise_for_status(resp)
-        data = resp.json()
+    def list(self) -> PagedResponse[SLIDefinitionRead]:
+        response = self._http.get('/sli-definitions')
+        data = response.json()
         return PagedResponse(
-            items=[SLIDefinition.model_validate(i) for i in data['items']],
+            items=[SLIDefinitionRead.model_validate(i) for i in data['items']],
             total=data['total'],
         )
 
-    def create(self, name: str, indicators: dict[str, str], **kwargs: Any) -> SLIDefinition:
-        """Create an SLI definition."""
-        body = {'name': name, 'indicators': indicators, **kwargs}
-        resp = self._http.post('/sli-definitions', json=body)
-        _raise_for_status(resp)
-        return SLIDefinition.model_validate(resp.json())
+    def create(self, body: SLIDefinitionCreate) -> SLIDefinitionRead:
+        response = self._http.post('/sli-definitions', json=body.model_dump(exclude_none=True))
+        return SLIDefinitionRead.model_validate(response.json())
 
-    def get(self, name: str) -> SLIDefinition:
-        """Get an SLI definition by name."""
-        resp = self._http.get(f'/sli-definitions/{name}')
-        _raise_for_status(resp)
-        return SLIDefinition.model_validate(resp.json())
+    def get(self, name: str) -> SLIDefinitionRead:
+        response = self._http.get(f'/sli-definitions/{name}')
+        return SLIDefinitionRead.model_validate(response.json())
 
-    def versions(self, name: str) -> list[SLIDefinition]:
-        """Get all versions of an SLI definition."""
-        resp = self._http.get(f'/sli-definitions/{name}/versions')
-        _raise_for_status(resp)
-        return [SLIDefinition.model_validate(v) for v in resp.json()]
+    def versions(self, name: str) -> list[SLIDefinitionRead]:
+        response = self._http.get(f'/sli-definitions/{name}/versions')
+        return [SLIDefinitionRead.model_validate(v) for v in response.json()]
 
     def delete(self, name: str) -> None:
-        """Delete an SLI definition."""
-        resp = self._http.delete(f'/sli-definitions/{name}')
-        _raise_for_status(resp)
+        self._http.delete(f'/sli-definitions/{name}')
 
-    def tag_keys(self) -> list[dict[str, Any]]:
-        """Get all distinct tag keys across SLI definitions with counts."""
-        resp = self._http.get('/sli-definitions/tag-keys')
-        _raise_for_status(resp)
-        return resp.json()  # type: ignore[no-any-return]
+    def tag_keys(self) -> list[TagKeyCount]:
+        response = self._http.get('/sli-definitions/tag-keys')
+        return [TagKeyCount.model_validate(i) for i in response.json()]
 
-    def tag_values(self, key: str) -> list[dict[str, Any]]:
-        """Get values and counts for a tag key."""
-        resp = self._http.get('/sli-definitions/tag-values', params={'key': key})
-        _raise_for_status(resp)
-        return resp.json()  # type: ignore[no-any-return]
+    def tag_values(self, key: str) -> list[TagValueCount]:
+        response = self._http.get('/sli-definitions/tag-values', params={'key': key})
+        return [TagValueCount.model_validate(i) for i in response.json()]
 
 
-class _SLODefinitions:
-    def __init__(self, http: httpx.Client) -> None:
+class _SLOs:
+    def __init__(self, http: HttpSession) -> None:
         self._http = http
 
-    def list(self) -> PagedResponse[SLODefinition]:
-        """List all SLO definitions."""
-        resp = self._http.get('/slo-definitions')
-        _raise_for_status(resp)
-        data = resp.json()
+    def list(self) -> PagedResponse[SLODefinitionRead]:
+        response = self._http.get('/slo-definitions')
+        data = response.json()
         return PagedResponse(
-            items=[SLODefinition.model_validate(i) for i in data['items']],
+            items=[SLODefinitionRead.model_validate(i) for i in data['items']],
             total=data['total'],
         )
 
-    def create(
-        self,
-        name: str,
-        objectives: list[dict],
-        total_score_pass_threshold: float = 90.0,
-        total_score_warning_threshold: float = 75.0,
-        *,
-        comparison: dict | None = None,
-        **kwargs: Any,
-    ) -> SLODefinition:
-        """Create an SLO definition."""
-        body = {
-            'name': name,
-            'objectives': objectives,
-            'total_score_pass_threshold': total_score_pass_threshold,
-            'total_score_warning_threshold': total_score_warning_threshold,
-            'comparison': comparison or {},
-            **kwargs,
-        }
-        resp = self._http.post('/slo-definitions', json=body)
-        _raise_for_status(resp)
-        return SLODefinition.model_validate(resp.json())
+    def create(self, body: SLODefinitionCreate) -> SLODefinitionRead:
+        response = self._http.post('/slo-definitions', json=body.model_dump(exclude_none=True))
+        return SLODefinitionRead.model_validate(response.json())
 
-    def get(self, name: str) -> SLODefinition:
-        """Get an SLO definition by name."""
-        resp = self._http.get(f'/slo-definitions/{name}')
-        _raise_for_status(resp)
-        return SLODefinition.model_validate(resp.json())
+    def get(self, name: str) -> SLODefinitionRead:
+        response = self._http.get(f'/slo-definitions/{name}')
+        return SLODefinitionRead.model_validate(response.json())
 
-    def versions(self, name: str) -> list[SLODefinition]:
-        """Get all versions of an SLO definition."""
-        resp = self._http.get(f'/slo-definitions/{name}/versions')
-        _raise_for_status(resp)
-        return [SLODefinition.model_validate(v) for v in resp.json()]
+    def versions(self, name: str) -> list[SLODefinitionRead]:
+        response = self._http.get(f'/slo-definitions/{name}/versions')
+        return [SLODefinitionRead.model_validate(v) for v in response.json()]
 
     def delete(self, name: str) -> None:
-        """Delete an SLO definition."""
-        resp = self._http.delete(f'/slo-definitions/{name}')
-        _raise_for_status(resp)
+        self._http.delete(f'/slo-definitions/{name}')
 
-    def tag_keys(self) -> list[dict[str, Any]]:
-        """Get all distinct tag keys across SLO definitions with counts."""
-        resp = self._http.get('/slo-definitions/tag-keys')
-        _raise_for_status(resp)
-        return resp.json()  # type: ignore[no-any-return]
+    def tag_keys(self) -> list[TagKeyCount]:
+        response = self._http.get('/slo-definitions/tag-keys')
+        return [TagKeyCount.model_validate(i) for i in response.json()]
 
-    def tag_values(self, key: str) -> list[dict[str, Any]]:
-        """Get values and counts for a tag key."""
-        resp = self._http.get('/slo-definitions/tag-values', params={'key': key})
-        _raise_for_status(resp)
-        return resp.json()  # type: ignore[no-any-return]
+    def tag_values(self, key: str) -> list[TagValueCount]:
+        response = self._http.get('/slo-definitions/tag-values', params={'key': key})
+        return [TagValueCount.model_validate(i) for i in response.json()]
 
-    def validate(self, slo_yaml: str) -> SLOValidationResult:
-        """Validate an SLO YAML without saving."""
-        resp = self._http.post('/slo-definitions/validate', json={'slo_yaml': slo_yaml})
-        _raise_for_status(resp)
-        return SLOValidationResult.model_validate(resp.json())
+    def validate(self, body: SLOValidateRequest) -> SLOValidationResult:
+        response = self._http.post('/slo-definitions/validate', json=body.model_dump(exclude_none=True))
+        return SLOValidationResult.model_validate(response.json())
 
-    def test(self, request: dict[str, Any]) -> SLOTestResult:
-        """Run a test evaluation with an SLO."""
-        resp = self._http.post('/slo-definitions/test', json=request)
-        _raise_for_status(resp)
-        return SLOTestResult.model_validate(resp.json())
+    def test(self, body: SLOTestRequest) -> SLOTestResult:
+        response = self._http.post('/slo-definitions/test', json=body.model_dump(exclude_none=True))
+        return SLOTestResult.model_validate(response.json())
 
 
 class _Evaluations:
-    def __init__(self, http: httpx.Client) -> None:
+    def __init__(self, http: HttpSession) -> None:
         self._http = http
 
     def list(  # noqa: PLR0913
@@ -457,256 +347,106 @@ class _Evaluations:
             params['from'] = from_
         if to is not None:
             params['to'] = to
-        resp = self._http.get('/evaluations', params=params)
-        _raise_for_status(resp)
-        data = resp.json()
+        response = self._http.get('/evaluations', params=params)
+        data = response.json()
         return PagedResponse(
             items=[EvaluationSummary.model_validate(i) for i in data['items']],
             total=data['total'],
         )
 
     def get(self, eval_id: str) -> EvaluationDetail:
-        """Get a full evaluation by ID."""
-        resp = self._http.get(f'/evaluation/{eval_id}')
-        _raise_for_status(resp)
-        return EvaluationDetail.model_validate(resp.json())
+        response = self._http.get(f'/evaluation/{eval_id}')
+        return EvaluationDetail.model_validate(response.json())
 
-    def invalidate(self, eval_id: str, note: str) -> EvaluationSummary:
-        """Invalidate an evaluation."""
-        resp = self._http.patch(
-            f'/evaluation/{eval_id}/invalidate',
-            json={'invalidation_note': note},
-        )
-        _raise_for_status(resp)
-        return EvaluationSummary.model_validate(resp.json())
+    def trigger(self, body: EvaluateSingleRequest) -> EvaluateSingleResponse:
+        response = self._http.post('/evaluations', json=body.model_dump(exclude_none=True))
+        return EvaluateSingleResponse.model_validate(response.json())
+
+    def trigger_batch(self, body: EvaluateBatchRequest) -> EvaluateBatchResponse:
+        response = self._http.post('/evaluations/batch', json=body.model_dump(exclude_none=True))
+        return EvaluateBatchResponse.model_validate(response.json())
+
+    def invalidate(self, eval_id: str, body: InvalidateRequest) -> EvaluationSummary:
+        response = self._http.patch(f'/evaluation/{eval_id}/invalidate', json=body.model_dump())
+        return EvaluationSummary.model_validate(response.json())
 
     def restore(self, eval_id: str) -> EvaluationSummary:
-        """Restore an invalidated evaluation."""
-        resp = self._http.patch(f'/evaluation/{eval_id}/restore')
-        _raise_for_status(resp)
-        return EvaluationSummary.model_validate(resp.json())
+        response = self._http.patch(f'/evaluation/{eval_id}/restore')
+        return EvaluationSummary.model_validate(response.json())
 
-    def evaluate(
-        self,
-        asset_name: str,
-        eval_name: str,
-        period_start: str,
-        period_end: str,
-        *,
-        compare_to: dict[str, str] | None = None,
-        variables: dict[str, str] | None = None,
-    ) -> dict[str, Any]:
-        """POST /evaluations — trigger all SLOs for an asset."""
-        body: dict[str, Any] = {
-            'asset_name': asset_name,
-            'eval_name': eval_name,
-            'period_start': period_start,
-            'period_end': period_end,
-            'variables': variables or {},
-        }
-        if compare_to is not None:
-            body['compare_to'] = compare_to
-        resp = self._http.post('/evaluations', json=body)
-        _raise_for_status(resp)
-        return resp.json()  # type: ignore[no-any-return]
-
-    def evaluate_batch(  # noqa: PLR0913
-        self,
-        mode: str,
-        eval_name: str,
-        *,
-        asset_name: str | None = None,
-        periods: list[dict] | None = None,
-        asset_names: list[str] | None = None,
-        period_start: str | None = None,
-        period_end: str | None = None,
-        compare_to: dict[str, str] | None = None,
-        variables: dict[str, str] | None = None,
-    ) -> dict[str, Any]:
-        """POST /evaluations/batch — by_date or by_asset batch trigger."""
-        payload: dict[str, Any] = {'mode': mode, 'eval_name': eval_name, 'variables': variables or {}}
-        if compare_to is not None:
-            payload['compare_to'] = compare_to
-        if mode == 'by_date':
-            payload['asset_name'] = asset_name
-            payload['periods'] = periods or []
-        elif mode == 'by_asset':
-            payload['asset_names'] = asset_names or []
-            payload['period_start'] = period_start
-            payload['period_end'] = period_end
-        resp = self._http.post('/evaluations/batch', json=payload)
-        _raise_for_status(resp)
-        return resp.json()  # type: ignore[no-any-return]
-
-    def pin_baseline(self, eval_id: str, reason: str, author: str) -> EvaluationDetail:
-        """Pin an evaluation as baseline."""
-        resp = self._http.patch(
-            f'/evaluation/{eval_id}/pin-baseline',
-            json={'reason': reason, 'author': author},
-        )
-        _raise_for_status(resp)
-        return EvaluationDetail.model_validate(resp.json())
+    def pin_baseline(self, eval_id: str, body: PinBaselineRequest) -> EvaluationDetail:
+        response = self._http.patch(f'/evaluation/{eval_id}/pin-baseline', json=body.model_dump())
+        return EvaluationDetail.model_validate(response.json())
 
     def unpin_baseline(self, eval_id: str) -> EvaluationDetail:
-        """Remove baseline pin from an evaluation."""
-        resp = self._http.patch(f'/evaluation/{eval_id}/unpin-baseline')
-        _raise_for_status(resp)
-        return EvaluationDetail.model_validate(resp.json())
+        response = self._http.patch(f'/evaluation/{eval_id}/unpin-baseline')
+        return EvaluationDetail.model_validate(response.json())
 
-    def override_status(self, eval_id: str, new_result: str, reason: str, author: str) -> EvaluationDetail:
-        """Override evaluation result."""
-        resp = self._http.patch(
-            f'/evaluation/{eval_id}/override-status',
-            json={'new_result': new_result, 'reason': reason, 'author': author},
-        )
-        _raise_for_status(resp)
-        return EvaluationDetail.model_validate(resp.json())
+    def override_status(self, eval_id: str, body: OverrideStatusRequest) -> EvaluationDetail:
+        response = self._http.patch(f'/evaluation/{eval_id}/override-status', json=body.model_dump())
+        return EvaluationDetail.model_validate(response.json())
 
     def restore_override(self, eval_id: str) -> EvaluationDetail:
-        """Restore original evaluation result."""
-        resp = self._http.patch(f'/evaluation/{eval_id}/restore-override')
-        _raise_for_status(resp)
-        return EvaluationDetail.model_validate(resp.json())
+        response = self._http.patch(f'/evaluation/{eval_id}/restore-override')
+        return EvaluationDetail.model_validate(response.json())
 
-    def re_evaluate_from_date(
-        self,
-        scope: dict[str, Any],
-        from_date: str,
-        *,
-        selector: dict[str, Any] | None = None,
-        slo_version: int | None = None,
-        dry_run: bool = False,
-        pin_strategy: str | None = None,
-    ) -> dict[str, Any]:
-        """Re-evaluate from a date — POST /evaluations/re-evaluate/from-date.
+    def re_evaluate_from_date(self, body: ReEvaluateFromDateRequest) -> ReEvaluateResponse:
+        response = self._http.post('/evaluations/re-evaluate/from-date', json=body.model_dump(exclude_none=True))
+        return ReEvaluateResponse.model_validate(response.json())
 
-        ``scope`` must be an asset or group scope dict:
-        ``{'kind': 'asset', 'asset_name': '...'}`` or
-        ``{'kind': 'group', 'group_name': '...'}``.
-        ``selector`` filters by SLO or evaluation names (optional).
-        ``from_date`` is required (ISO datetime string).
-        ``pin_strategy`` resolves baseline-pin conflicts: ``'skip_to_pin'``
-        snaps ``from_date`` to the pin date; ``'ignore_pin'`` bypasses the pin.
-        """
-        body: dict[str, Any] = {'scope': scope, 'from_date': from_date}
-        if selector is not None:
-            body['selector'] = selector
-        if slo_version is not None:
-            body['slo_version'] = slo_version
-        if dry_run:
-            body['dry_run'] = True
-        if pin_strategy is not None:
-            body['pin_strategy'] = pin_strategy
-        resp = self._http.post('/evaluations/re-evaluate/from-date', json=body)
-        _raise_for_status(resp)
-        return resp.json()  # type: ignore[no-any-return]
-
-    def re_evaluate_from_baseline(
-        self,
-        scope: dict[str, Any],
-        *,
-        selector: dict[str, Any] | None = None,
-        slo_version: int | None = None,
-        dry_run: bool = False,
-        pin_strategy: str | None = None,
-    ) -> dict[str, Any]:
-        """Re-evaluate from the pinned baseline — POST /evaluations/re-evaluate/from-baseline.
-
-        ``scope`` must be an asset or group scope dict:
-        ``{'kind': 'asset', 'asset_name': '...'}`` or
-        ``{'kind': 'group', 'group_name': '...'}``.
-        ``selector`` filters by SLO or evaluation names (optional).
-        """
-        body: dict[str, Any] = {'scope': scope}
-        if selector is not None:
-            body['selector'] = selector
-        if slo_version is not None:
-            body['slo_version'] = slo_version
-        if dry_run:
-            body['dry_run'] = True
-        if pin_strategy is not None:
-            body['pin_strategy'] = pin_strategy
-        resp = self._http.post('/evaluations/re-evaluate/from-baseline', json=body)
-        _raise_for_status(resp)
-        return resp.json()  # type: ignore[no-any-return]
+    def re_evaluate_from_baseline(self, body: ReEvaluateFromBaselineRequest) -> ReEvaluateResponse:
+        response = self._http.post('/evaluations/re-evaluate/from-baseline', json=body.model_dump(exclude_none=True))
+        return ReEvaluateResponse.model_validate(response.json())
 
     def re_evaluate_from_evaluation(
-        self,
-        evaluation_id: str,
-        scope: dict[str, Any],
-        *,
-        selector: dict[str, Any] | None = None,
-        slo_version: int | None = None,
-        dry_run: bool = False,
-        pin_strategy: str | None = None,
-    ) -> dict[str, Any]:
-        """Re-evaluate from a reference evaluation — POST /evaluations/re-evaluate/from-evaluation/{id}.
+        self, evaluation_id: str, body: ReEvaluateFromEvaluationRequest
+    ) -> ReEvaluateResponse:
+        response = self._http.post(
+            f'/evaluations/re-evaluate/from-evaluation/{evaluation_id}',
+            json=body.model_dump(exclude_none=True),
+        )
+        return ReEvaluateResponse.model_validate(response.json())
 
-        ``evaluation_id`` is the source evaluation whose SLI values are the baseline.
-        The source evaluation's ``period_start`` defines the re-evaluation start date.
-        ``scope`` must be an asset or group scope dict:
-        ``{'kind': 'asset', 'asset_name': '...'}`` or
-        ``{'kind': 'group', 'group_name': '...'}``.
-        ``selector`` filters by SLO or evaluation names (optional).
-        ``pin_strategy`` resolves baseline-pin conflicts: ``'skip_to_pin'`` or
-        ``'ignore_pin'`` (optional).
-        """
-        body: dict[str, Any] = {'scope': scope}
-        if selector is not None:
-            body['selector'] = selector
-        if slo_version is not None:
-            body['slo_version'] = slo_version
-        if dry_run:
-            body['dry_run'] = True
-        if pin_strategy is not None:
-            body['pin_strategy'] = pin_strategy
-        resp = self._http.post(f'/evaluations/re-evaluate/from-evaluation/{evaluation_id}', json=body)
-        _raise_for_status(resp)
-        return resp.json()  # type: ignore[no-any-return]
+    def names(self, asset_name: str) -> list[EvaluationNameEntry]:
+        response = self._http.get(f'/assets/{asset_name}/evaluation-names')
+        return [EvaluationNameEntry.model_validate(e) for e in response.json()]
+
+    def triage(self, change_point_id: str, body: TriageRequest) -> None:
+        self._http.patch(f'/change-points/{change_point_id}/triage', json=body.model_dump(exclude_none=True))
 
 
 class _Annotations:
-    def __init__(self, http: httpx.Client) -> None:
+    def __init__(self, http: HttpSession) -> None:
         self._http = http
 
-    def list(self, eval_id: str) -> list[Annotation]:
-        """List annotations for an evaluation."""
-        resp = self._http.get(f'/evaluation/{eval_id}/annotations')
-        _raise_for_status(resp)
-        return [Annotation.model_validate(a) for a in resp.json()]
+    def list(self, eval_id: str) -> list[AnnotationRead]:
+        response = self._http.get(f'/evaluation/{eval_id}/annotations')
+        return [AnnotationRead.model_validate(a) for a in response.json()]
 
-    def create(self, eval_id: str, content: str, **kwargs: Any) -> Annotation:
-        """Create an SLO-level annotation on an SLOEvaluation."""
-        body = {'content': content, **kwargs}
-        resp = self._http.post(f'/evaluation/{eval_id}/annotations', json=body)
-        _raise_for_status(resp)
-        return Annotation.model_validate(resp.json())
+    def create(self, eval_id: str, body: AnnotationCreate) -> AnnotationRead:
+        response = self._http.post(f'/evaluation/{eval_id}/annotations', json=body.model_dump(exclude_none=True))
+        return AnnotationRead.model_validate(response.json())
 
-    def create_for_run(self, run_id: str, content: str, **kwargs: Any) -> Annotation:
-        """Create a run-level (column-level) annotation on an EvaluationRun."""
-        body = {'content': content, **kwargs}
-        resp = self._http.post(f'/evaluation-run/{run_id}/annotations', json=body)
-        _raise_for_status(resp)
-        return Annotation.model_validate(resp.json())
+    def create_for_run(self, run_id: str, body: AnnotationCreate) -> AnnotationRead:
+        response = self._http.post(f'/evaluation-run/{run_id}/annotations', json=body.model_dump(exclude_none=True))
+        return AnnotationRead.model_validate(response.json())
 
-    def update(self, eval_id: str, ann_id: str, **kwargs: Any) -> Annotation:
-        """Update an annotation."""
-        resp = self._http.patch(f'/evaluation/{eval_id}/annotations/{ann_id}', json=kwargs)
-        _raise_for_status(resp)
-        return Annotation.model_validate(resp.json())
+    def update(self, eval_id: str, ann_id: str, body: AnnotationUpdate) -> AnnotationRead:
+        response = self._http.patch(
+            f'/evaluation/{eval_id}/annotations/{ann_id}', json=body.model_dump(exclude_none=True)
+        )
+        return AnnotationRead.model_validate(response.json())
 
-    def hide(self, eval_id: str, ann_id: str, reason: str, author: str | None = None) -> Annotation:
-        """Soft-delete (hide) an annotation."""
-        body: dict[str, Any] = {'reason': reason}
-        if author:
-            body['author'] = author
-        resp = self._http.post(f'/evaluation/{eval_id}/annotations/{ann_id}/hide', json=body)
-        _raise_for_status(resp)
-        return Annotation.model_validate(resp.json())
+    def hide(self, eval_id: str, ann_id: str, body: AnnotationHide) -> AnnotationRead:
+        response = self._http.post(
+            f'/evaluation/{eval_id}/annotations/{ann_id}/hide',
+            json=body.model_dump(exclude_none=True),
+        )
+        return AnnotationRead.model_validate(response.json())
 
 
 class _Trend:
-    def __init__(self, http: httpx.Client) -> None:
+    def __init__(self, http: HttpSession) -> None:
         self._http = http
 
     def by_eval(
@@ -717,18 +457,11 @@ class _Trend:
         *,
         to: str | None = None,
     ) -> list[TrendPoint]:
-        """Get trend data points for a metric by evaluation ID.
-
-        ``from_`` (ISO datetime) is required — the start of the time window.
-        ``to`` is optional; omit to get all points up to now.
-        The ``limit`` parameter is removed — the server controls result size.
-        """
         params: dict[str, str] = {'metric': metric, 'from': from_}
         if to is not None:
             params['to'] = to
-        resp = self._http.get(f'/evaluation/{eval_id}/trend', params=params)
-        _raise_for_status(resp)
-        return [TrendPoint.model_validate(p) for p in resp.json()]
+        response = self._http.get(f'/evaluation/{eval_id}/trend', params=params)
+        return [TrendPoint.model_validate(p) for p in response.json()]
 
     def by_asset(
         self,
@@ -739,261 +472,252 @@ class _Trend:
         *,
         to: str | None = None,
     ) -> list[TrendPoint]:
-        """Get trend data points for a metric by asset and SLO.
-
-        ``from_`` (ISO datetime) is required — the start of the time window.
-        ``to`` is optional; omit to get all points up to now.
-        The ``limit`` parameter is removed — the server controls result size.
-        """
         params: dict[str, str] = {'metric': metric, 'from': from_}
         if to is not None:
             params['to'] = to
-        resp = self._http.get(f'/assets/{asset_name}/slos/{slo_name}/trend', params=params)
-        _raise_for_status(resp)
-        return [TrendPoint.model_validate(p) for p in resp.json()]
+        response = self._http.get(f'/assets/{asset_name}/slos/{slo_name}/trend', params=params)
+        return [TrendPoint.model_validate(p) for p in response.json()]
+
+
+class _Heatmap:
+    def __init__(self, http: HttpSession) -> None:
+        self._http = http
+
+    def grouped(
+        self,
+        asset_name: str,
+        *,
+        eval_name: str | None = None,
+        limit: int | None = None,
+    ) -> GroupedMetricHeatmapResponse:
+        params: dict[str, Any] = {}
+        if eval_name:
+            params['eval_name'] = eval_name
+        if limit is not None:
+            params['limit'] = limit
+        response = self._http.get(f'/assets/{asset_name}/heatmap', params=params)
+        return GroupedMetricHeatmapResponse.model_validate(response.json())
+
+    def flat(
+        self,
+        asset_name: str,
+        *,
+        eval_name: str | None = None,
+        limit: int | None = None,
+    ) -> MetricHeatmapResponse:
+        params: dict[str, Any] = {}
+        if eval_name:
+            params['eval_name'] = eval_name
+        if limit is not None:
+            params['limit'] = limit
+        response = self._http.get(f'/assets/{asset_name}/heatmap/flat', params=params)
+        return MetricHeatmapResponse.model_validate(response.json())
+
+
+class _Timeline:
+    def __init__(self, http: HttpSession) -> None:
+        self._http = http
+
+    def get(self, asset_name: str, *, from_: str, to: str) -> TimelineResponse:
+        response = self._http.get(f'/assets/{asset_name}/timeline', params={'from': from_, 'to': to})
+        return TimelineResponse.model_validate(response.json())
+
+    def summary(self, asset_name: str, *, from_: str, to: str) -> TimelineSummaryResponse:
+        response = self._http.get(f'/assets/{asset_name}/timeline/summary', params={'from': from_, 'to': to})
+        return TimelineSummaryResponse.model_validate(response.json())
 
 
 class _SLOAssignments:
-    """SLO assignment CRUD — pins asset/group to a specific SLO definition version."""
-
-    def __init__(self, http: httpx.Client) -> None:
+    def __init__(self, http: HttpSession) -> None:
         self._http = http
 
-    def create_for_asset(
-        self, asset_name: str, slo_definition_id: str, data_source_name: str,
-        *, comparison_rules: list[dict[str, Any]] | None = None,
-    ) -> SLOAssignment:
-        """Upsert an SLO assignment for an asset pinned to a specific SLO definition."""
-        body: dict[str, Any] = {'data_source_name': data_source_name}
-        if comparison_rules is not None:
-            body['comparison_rules'] = comparison_rules
-        resp = self._http.put(
-            f'/assets/{asset_name}/slo-definitions/{slo_definition_id}', json=body
+    def create_for_asset(self, asset_name: str, slo_definition_id: str, body: SLOAssignmentUpsert) -> SLOAssignmentRead:
+        response = self._http.put(
+            f'/assets/{asset_name}/slo-definitions/{slo_definition_id}',
+            json=body.model_dump(exclude_none=True),
         )
-        _raise_for_status(resp)
-        return SLOAssignment.model_validate(resp.json())
+        return SLOAssignmentRead.model_validate(response.json())
 
-    def create_for_group(
-        self, group_name: str, slo_definition_id: str, data_source_name: str,
-        *, comparison_rules: list[dict[str, Any]] | None = None,
-    ) -> SLOAssignment:
-        """Upsert an SLO assignment for an asset group pinned to a specific SLO definition."""
-        body: dict[str, Any] = {'data_source_name': data_source_name}
-        if comparison_rules is not None:
-            body['comparison_rules'] = comparison_rules
-        resp = self._http.put(
-            f'/asset-groups/{group_name}/slo-definitions/{slo_definition_id}', json=body
+    def create_for_group(self, group_name: str, slo_definition_id: str, body: SLOAssignmentUpsert) -> SLOAssignmentRead:
+        response = self._http.put(
+            f'/asset-groups/{group_name}/slo-definitions/{slo_definition_id}',
+            json=body.model_dump(exclude_none=True),
         )
-        _raise_for_status(resp)
-        return SLOAssignment.model_validate(resp.json())
+        return SLOAssignmentRead.model_validate(response.json())
 
-    def list_for_asset(self, asset_name: str) -> list[SLOAssignment]:
-        """List SLO assignments for an asset."""
-        resp = self._http.get(f'/assets/{asset_name}/slo-assignments')
-        _raise_for_status(resp)
-        return [SLOAssignment.model_validate(a) for a in resp.json()]
+    def list_for_asset(self, asset_name: str) -> list[SLOAssignmentRead]:
+        response = self._http.get(f'/assets/{asset_name}/slo-assignments')
+        return [SLOAssignmentRead.model_validate(a) for a in response.json()]
 
-    def list_for_group(self, group_name: str) -> list[SLOAssignment]:
-        """List SLO assignments for an asset group."""
-        resp = self._http.get(f'/asset-groups/{group_name}/slo-assignments')
-        _raise_for_status(resp)
-        return [SLOAssignment.model_validate(a) for a in resp.json()]
+    def list_for_group(self, group_name: str) -> list[SLOAssignmentRead]:
+        response = self._http.get(f'/asset-groups/{group_name}/slo-assignments')
+        return [SLOAssignmentRead.model_validate(a) for a in response.json()]
+
+    def upgrade(self, assignment_id: str, body: SLOAssignmentUpgrade) -> SLOAssignmentRead:
+        response = self._http.patch(f'/slo-assignments/{assignment_id}/upgrade', json=body.model_dump())
+        return SLOAssignmentRead.model_validate(response.json())
 
     def delete_for_asset(self, asset_name: str, slo_definition_id: str) -> None:
-        """Delete an SLO assignment by asset + SLO definition target."""
-        resp = self._http.delete(
-            f'/assets/{asset_name}/slo-definitions/{slo_definition_id}'
-        )
-        _raise_for_status(resp)
+        self._http.delete(f'/assets/{asset_name}/slo-definitions/{slo_definition_id}')
 
     def delete_for_group(self, group_name: str, slo_definition_id: str) -> None:
-        """Delete an SLO assignment by asset group + SLO definition target."""
-        resp = self._http.delete(
-            f'/asset-groups/{group_name}/slo-definitions/{slo_definition_id}'
-        )
-        _raise_for_status(resp)
+        self._http.delete(f'/asset-groups/{group_name}/slo-definitions/{slo_definition_id}')
 
 
 class _SLOGroups:
-    """SLO group CRUD."""
-
-    def __init__(self, http: httpx.Client) -> None:
+    def __init__(self, http: HttpSession) -> None:
         self._http = http
 
-    def create(
-        self,
-        name: str,
-        template_slo_name: str,
-        template_slo_version: int,
-        gen_variables: dict[str, list[str]],
-        *,
-        display_name: str | None = None,
-        tags: dict[str, Any] | None = None,
-        author: str | None = None,
-    ) -> SLOGroup:
-        """Create an SLO group."""
-        body: dict[str, Any] = {
-            'name': name,
-            'template_slo_name': template_slo_name,
-            'template_slo_version': template_slo_version,
-            'gen_variables': gen_variables,
-        }
-        if display_name is not None:
-            body['display_name'] = display_name
-        if tags is not None:
-            body['tags'] = tags
-        if author is not None:
-            body['author'] = author
-        resp = self._http.post('/slo-groups', json=body)
-        _raise_for_status(resp)
-        return SLOGroup.model_validate(resp.json())
-
-    def get(self, name: str) -> SLOGroup:
-        """Get an SLO group by name."""
-        resp = self._http.get(f'/slo-groups/{name}')
-        _raise_for_status(resp)
-        return SLOGroup.model_validate(resp.json())
-
-    def list(self, *, tag_key: str | None = None, tag_val: str | None = None) -> list[SLOGroup]:
-        """List SLO groups."""
+    def list(self, *, tag_key: str | None = None, tag_val: str | None = None) -> PagedResponse[SLOGroupRead]:
         params: dict[str, str] = {}
         if tag_key:
             params['tag_key'] = tag_key
         if tag_val:
             params['tag_val'] = tag_val
-        resp = self._http.get('/slo-groups', params=params)
-        _raise_for_status(resp)
-        data = resp.json()
-        items = data.get('items', data) if isinstance(data, dict) else data
-        return [SLOGroup.model_validate(g) for g in items]
+        response = self._http.get('/slo-groups', params=params)
+        data = response.json()
+        return PagedResponse(
+            items=[SLOGroupRead.model_validate(g) for g in data['items']],
+            total=data['total'],
+        )
 
-    def update(
-        self,
-        name: str,
-        *,
-        template_slo_name: str | None = None,
-        template_slo_version: int | None = None,
-        gen_variables: dict[str, list[str]] | None = None,
-        display_name: str | None = None,
-        tags: dict[str, Any] | None = None,
-    ) -> SLOGroup:
-        """Update an SLO group (triggers regeneration)."""
-        body: dict[str, Any] = {}
-        if template_slo_name is not None:
-            body['template_slo_name'] = template_slo_name
-        if template_slo_version is not None:
-            body['template_slo_version'] = template_slo_version
-        if gen_variables is not None:
-            body['gen_variables'] = gen_variables
-        if display_name is not None:
-            body['display_name'] = display_name
-        if tags is not None:
-            body['tags'] = tags
-        resp = self._http.put(f'/slo-groups/{name}', json=body)
-        _raise_for_status(resp)
-        return SLOGroup.model_validate(resp.json())
+    def create(self, body: SLOGroupCreate) -> SLOGroupRead:
+        response = self._http.post('/slo-groups', json=body.model_dump(exclude_none=True))
+        return SLOGroupRead.model_validate(response.json())
+
+    def get(self, name: str) -> SLOGroupRead:
+        response = self._http.get(f'/slo-groups/{name}')
+        return SLOGroupRead.model_validate(response.json())
+
+    def update(self, name: str, body: SLOGroupUpdate) -> SLOGroupRead:
+        response = self._http.put(f'/slo-groups/{name}', json=body.model_dump(exclude_none=True))
+        return SLOGroupRead.model_validate(response.json())
 
     def delete(self, name: str) -> None:
-        """Delete (deactivate) an SLO group."""
-        resp = self._http.delete(f'/slo-groups/{name}')
-        _raise_for_status(resp)
+        self._http.delete(f'/slo-groups/{name}')
 
-    def extract(self, group_name: str, slo_name: str, new_name: str) -> None:
-        """Extract a generated SLO to standalone."""
-        resp = self._http.post(
-            f'/slo-groups/{group_name}/extract',
-            json={'slo_name': slo_name, 'new_name': new_name},
+    def extract(self, group_name: str, body: ExtractRequest) -> None:
+        self._http.post(f'/slo-groups/{group_name}/extract', json=body.model_dump())
+
+    def display_groups(self, group_name: str) -> list[DisplayGroupRead]:
+        response = self._http.get(f'/slo-groups/{group_name}/display-groups')
+        return [DisplayGroupRead.model_validate(d) for d in response.json()]
+
+    def create_display_group(self, group_name: str, body: DisplayGroupCreate) -> DisplayGroupRead:
+        response = self._http.post(f'/slo-groups/{group_name}/display-groups', json=body.model_dump(exclude_none=True))
+        return DisplayGroupRead.model_validate(response.json())
+
+    def add_display_group_member(self, group_name: str, display_group_id: str, body: DisplayGroupMemberAdd) -> None:
+        self._http.post(
+            f'/slo-groups/{group_name}/display-groups/{display_group_id}/members',
+            json=body.model_dump(),
         )
-        _raise_for_status(resp)
 
 
 class _SLOGroupAssignments:
-    """SLO group assignment CRUD — asset/group to SLO group (always-latest semantics)."""
-
-    def __init__(self, http: httpx.Client) -> None:
+    def __init__(self, http: HttpSession) -> None:
         self._http = http
 
     def create_for_asset(
-        self, asset_name: str, slo_group_name: str, data_source_name: str,
-    ) -> SLOGroupAssignment:
-        """Upsert an SLO group assignment for an asset pinned to a specific SLO group."""
-        resp = self._http.put(
-            f'/assets/{asset_name}/slo-groups/{slo_group_name}',
-            json={'data_source_name': data_source_name},
-        )
-        _raise_for_status(resp)
-        return SLOGroupAssignment.model_validate(resp.json())
+        self, asset_name: str, slo_group_name: str, body: SLOGroupAssignmentUpsert
+    ) -> SLOGroupAssignmentRead:
+        response = self._http.put(f'/assets/{asset_name}/slo-groups/{slo_group_name}', json=body.model_dump())
+        return SLOGroupAssignmentRead.model_validate(response.json())
 
     def create_for_group(
-        self, group_name: str, slo_group_name: str, data_source_name: str,
-    ) -> SLOGroupAssignment:
-        """Upsert an SLO group assignment for an asset group pinned to a specific SLO group."""
-        resp = self._http.put(
-            f'/asset-groups/{group_name}/slo-groups/{slo_group_name}',
-            json={'data_source_name': data_source_name},
-        )
-        _raise_for_status(resp)
-        return SLOGroupAssignment.model_validate(resp.json())
+        self, group_name: str, slo_group_name: str, body: SLOGroupAssignmentUpsert
+    ) -> SLOGroupAssignmentRead:
+        response = self._http.put(f'/asset-groups/{group_name}/slo-groups/{slo_group_name}', json=body.model_dump())
+        return SLOGroupAssignmentRead.model_validate(response.json())
 
-    def list_for_asset(self, asset_name: str) -> list[SLOGroupAssignment]:
-        """List SLO group assignments for an asset."""
-        resp = self._http.get(f'/assets/{asset_name}/slo-group-assignments')
-        _raise_for_status(resp)
-        return [SLOGroupAssignment.model_validate(a) for a in resp.json()]
+    def list_for_asset(self, asset_name: str) -> list[SLOGroupAssignmentRead]:
+        response = self._http.get(f'/assets/{asset_name}/slo-group-assignments')
+        return [SLOGroupAssignmentRead.model_validate(a) for a in response.json()]
 
-    def list_for_group(self, group_name: str) -> list[SLOGroupAssignment]:
-        """List SLO group assignments for an asset group."""
-        resp = self._http.get(f'/asset-groups/{group_name}/slo-group-assignments')
-        _raise_for_status(resp)
-        return [SLOGroupAssignment.model_validate(a) for a in resp.json()]
+    def list_for_group(self, group_name: str) -> list[SLOGroupAssignmentRead]:
+        response = self._http.get(f'/asset-groups/{group_name}/slo-group-assignments')
+        return [SLOGroupAssignmentRead.model_validate(a) for a in response.json()]
 
     def delete_for_asset(self, asset_name: str, slo_group_name: str) -> None:
-        """Delete an SLO group assignment by asset + SLO group target."""
-        resp = self._http.delete(f'/assets/{asset_name}/slo-groups/{slo_group_name}')
-        _raise_for_status(resp)
+        self._http.delete(f'/assets/{asset_name}/slo-groups/{slo_group_name}')
 
     def delete_for_group(self, group_name: str, slo_group_name: str) -> None:
-        """Delete an SLO group assignment by asset group + SLO group target."""
-        resp = self._http.delete(
-            f'/asset-groups/{group_name}/slo-groups/{slo_group_name}',
-        )
-        _raise_for_status(resp)
+        self._http.delete(f'/asset-groups/{group_name}/slo-groups/{slo_group_name}')
+
+
+class _Configuration:
+    def __init__(self, http: HttpSession) -> None:
+        self._http = http
+
+    def list(self) -> list[ConfigurationRead]:
+        response = self._http.get('/config')
+        return [ConfigurationRead.model_validate(c) for c in response.json()]
+
+    def get(self, name: str) -> ConfigurationRead:
+        response = self._http.get(f'/config/{name}')
+        return ConfigurationRead.model_validate(response.json())
+
+    def update(self, name: str, body: ConfigurationUpdate) -> ConfigurationRead:
+        response = self._http.put(f'/config/{name}', json=body.model_dump())
+        return ConfigurationRead.model_validate(response.json())
+
+
+class _Meta:
+    def __init__(self, http: HttpSession) -> None:
+        self._http = http
+
+    def create_snapshot(self, asset_name: str, body: MetaSnapshotCreate) -> MetaSnapshotCreated:
+        response = self._http.post(f'/assets/{asset_name}/meta/snapshots', json=body.model_dump(exclude_none=True))
+        return MetaSnapshotCreated.model_validate(response.json())
 
 
 class TropekClient:
     """Typed Python client for the TROPEK API."""
 
-    def __init__(self, base_url: str, *, api_key: str | None = None) -> None:
-        self._http = httpx.Client(base_url=base_url, timeout=30.0)
-        if api_key:
-            self._http.headers['Authorization'] = f'Bearer {api_key}'
+    def __init__(
+        self,
+        base_url: str,
+        *,
+        api_key: str | None = None,
+        timeout: float = 30.0,
+        headers: dict[str, str] | None = None,
+        verify: bool = True,
+    ) -> None:
+        self._http = HttpSession(
+            base_url=base_url,
+            api_key=api_key,
+            timeout=timeout,
+            headers=headers,
+            verify=verify,
+        )
         self.asset_types = _AssetTypes(self._http)
         self.assets = _Assets(self._http)
         self.asset_groups = _AssetGroups(self._http)
         self.datasources = _DataSources(self._http)
-        self.sli_definitions = _SLIDefinitions(self._http)
-        self.slo_definitions = _SLODefinitions(self._http)
+        self.slis = _SLIs(self._http)
+        self.slos = _SLOs(self._http)
         self.slo_assignments = _SLOAssignments(self._http)
         self.slo_groups = _SLOGroups(self._http)
         self.slo_group_assignments = _SLOGroupAssignments(self._http)
         self.evaluations = _Evaluations(self._http)
         self.annotations = _Annotations(self._http)
         self.trend = _Trend(self._http)
+        self.heatmap = _Heatmap(self._http)
+        self.timeline = _Timeline(self._http)
+        self.configuration = _Configuration(self._http)
+        self.meta = _Meta(self._http)
 
     def health(self) -> dict[str, str]:
         """Check API health."""
-        resp = self._http.get('/health')
-        _raise_for_status(resp)
-        return resp.json()  # type: ignore[no-any-return]
+        response = self._http.get('/health')
+        return response.json()  # type: ignore[no-any-return]
 
     def close(self) -> None:
-        """Close the HTTP client."""
+        """Close the underlying HTTP session."""
         self._http.close()
 
     def __enter__(self) -> TropekClient:
-        """Enter context manager."""
         return self
 
     def __exit__(self, *args: Any) -> None:
-        """Exit context manager."""
         self.close()
