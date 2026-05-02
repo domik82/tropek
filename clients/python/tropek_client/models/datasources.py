@@ -35,7 +35,9 @@ class DataSourceRead(BaseModel):
 class DataSourceUpdate(BaseModel):
     """Request body for updating a datasource."""
 
+    name: str | None = None
     display_name: str | None = None
+    adapter_type: str | None = None
     adapter_url: str | None = None
     tags: dict[str, str] | None = None
     token: str | None = None

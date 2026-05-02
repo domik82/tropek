@@ -46,6 +46,7 @@ class SLOGroupUpdate(BaseModel):
     gen_variables: dict[str, Any] | None = None
     display_name: str | None = None
     tags: dict[str, str] | None = None
+    author: str | None = None
 
 
 class SLOGroupAssignmentRead(BaseModel):

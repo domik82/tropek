@@ -16,6 +16,7 @@ class AssetCreate(BaseModel):
     tags: dict[str, Any] | None = None
     variables: dict[str, Any] | None = None
     color: str | None = None
+    heatmap_config: dict[str, Any] | None = None
 
 
 class AssetRead(BaseModel):
