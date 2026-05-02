@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from tropek.cache.redis_cache import RedisCache
+from tropek.db.models import AssetType
 from tropek.db.session import get_cache, get_session
 from tropek.modules.assets.params import AssetCreateParams, AssetGroupCreateParams
 from tropek.modules.assets.repository import (
@@ -29,7 +30,7 @@ from tropek.modules.assets.schemas import (
     AssetTypeUpdate,
     AssetUpdate,
 )
-from tropek.modules.common.exceptions import DomainValidationError, NotFoundError
+from tropek.modules.common.exceptions import NotFoundError
 from tropek.modules.common.schemas import PagedResponse, SafeQueryStr, StrictQueryBool, TagKeyCount, TagValueCount
 
 router = APIRouter()
@@ -95,19 +96,33 @@ async def delete_asset_type(
 
 
 @router.patch('/asset-types/{name}', response_model=AssetTypeRead)
-async def rename_asset_type(
+async def update_asset_type(
     name: str,
     body: AssetTypeUpdate,
     session: AsyncSession = Depends(get_session),
 ) -> AssetTypeRead:
-    """Rename an asset type."""
-    if body.name is None:
-        raise DomainValidationError('name is required')
+    """Update an asset type (rename and/or set as default)."""
     repo = AssetTypeRepository(session)
-    at = await repo.rename(name, body.name)
-    if at is None:
-        raise NotFoundError('asset type', name)
-    return AssetTypeRead.model_validate(at)
+    result_at: AssetType | None = None
+
+    if body.is_default is True:
+        result_at = await repo.set_default(name)
+        if result_at is None:
+            raise NotFoundError('asset type', name)
+
+    if body.name is not None:
+        effective_name = result_at.name if result_at else name
+        result_at = await repo.rename(effective_name, body.name)
+        if result_at is None:
+            raise NotFoundError('asset type', name)
+
+    if result_at is None:
+        existing = await repo.get_by_name(name)
+        if existing is None:
+            raise NotFoundError('asset type', name)
+        result_at = existing
+
+    return AssetTypeRead.model_validate(result_at)
 
 
 # ---- Assets ----
