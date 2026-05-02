@@ -275,6 +275,24 @@ class _SLIs:
         response = self._http.get('/sli-definitions/tag-values', params={'key': key})
         return [TagValueCount.model_validate(i) for i in response.json()]
 
+    def new_version(self, name: str, **overrides: Any) -> SLIDefinitionRead:
+        current = self.get(name)
+        base = SLIDefinitionCreate(
+            name=current.name,
+            adapter_type=current.adapter_type,
+            display_name=current.display_name,
+            mode=current.mode,
+            indicators=current.indicators or None,
+            query_template=current.query_template,
+            interval=current.interval,
+            methods=current.methods,
+            notes=current.notes,
+            author=current.author,
+            tags=dict(current.tags) if current.tags else None,
+        )
+        body = base.model_copy(update=overrides)
+        return self.create(body)
+
 
 class _SLOs:
     def __init__(self, http: HttpSession) -> None:
