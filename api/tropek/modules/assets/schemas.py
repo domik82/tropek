@@ -21,9 +21,10 @@ class AssetTypeCreate(StrictInput):
 
 
 class AssetTypeUpdate(StrictInput):
-    """Request body for renaming an asset type."""
+    """Request body for updating an asset type."""
 
     name: SafeStr | None = None
+    is_default: bool | None = None
 
 
 class AssetTypeRead(BaseModel):
