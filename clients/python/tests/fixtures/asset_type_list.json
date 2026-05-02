@@ -1,0 +1,41 @@
+{
+  "items": [
+    {
+      "id": "86c88379-043e-4abc-abf4-679c25d09d9e",
+      "name": "container",
+      "is_default": false,
+      "asset_count": 0
+    },
+    {
+      "id": "66b2120f-3341-410d-832b-e08d9fda898b",
+      "name": "database",
+      "is_default": false,
+      "asset_count": 1
+    },
+    {
+      "id": "60c955c5-637b-4d1f-b8cb-49510064198f",
+      "name": "endpoint",
+      "is_default": false,
+      "asset_count": 2
+    },
+    {
+      "id": "2462178d-e35c-484a-863a-3ab45206087b",
+      "name": "load-test",
+      "is_default": false,
+      "asset_count": 0
+    },
+    {
+      "id": "bade80a4-d2b6-41e8-8c0a-b935c6fa33e8",
+      "name": "service",
+      "is_default": false,
+      "asset_count": 8
+    },
+    {
+      "id": "01060dbb-ba1e-48ef-b793-6feebb66027f",
+      "name": "vm",
+      "is_default": false,
+      "asset_count": 2
+    }
+  ],
+  "total": 6
+}

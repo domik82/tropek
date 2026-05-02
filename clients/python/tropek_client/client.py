@@ -481,8 +481,13 @@ class _Evaluations:
         )
         return ReEvaluateResponse.model_validate(response.json())
 
-    def names(self, asset_name: str) -> list[EvaluationNameEntry]:
-        response = self._http.get(f'/assets/{asset_name}/evaluation-names')
+    def names(self, *, asset_name: str | None = None, group_name: str | None = None) -> list[EvaluationNameEntry]:
+        params: dict[str, str] = {}
+        if asset_name:
+            params['asset_name'] = asset_name
+        if group_name:
+            params['group_name'] = group_name
+        response = self._http.get('/evaluations/names', params=params)
         return [EvaluationNameEntry.model_validate(e) for e in response.json()]
 
     def triage(self, change_point_id: str, body: TriageRequest) -> None:
@@ -590,14 +595,17 @@ class _Heatmap:
         asset_name: str,
         *,
         eval_name: str | None = None,
-        limit: int | None = None,
+        from_: str | None = None,
+        to: str | None = None,
     ) -> GroupedMetricHeatmapResponse:
-        params: dict[str, Any] = {}
+        params: dict[str, Any] = {'asset_name': asset_name}
         if eval_name:
-            params['eval_name'] = eval_name
-        if limit is not None:
-            params['limit'] = limit
-        response = self._http.get(f'/assets/{asset_name}/heatmap', params=params)
+            params['evaluation_name'] = eval_name
+        if from_ is not None:
+            params['from'] = from_
+        if to is not None:
+            params['to'] = to
+        response = self._http.get('/evaluations/heatmap', params=params)
         return GroupedMetricHeatmapResponse.model_validate(response.json())
 
     def flat(
@@ -605,14 +613,17 @@ class _Heatmap:
         asset_name: str,
         *,
         eval_name: str | None = None,
-        limit: int | None = None,
+        from_: str | None = None,
+        to: str | None = None,
     ) -> MetricHeatmapResponse:
-        params: dict[str, Any] = {}
+        params: dict[str, Any] = {'asset_name': asset_name}
         if eval_name:
-            params['eval_name'] = eval_name
-        if limit is not None:
-            params['limit'] = limit
-        response = self._http.get(f'/assets/{asset_name}/heatmap/flat', params=params)
+            params['evaluation_name'] = eval_name
+        if from_ is not None:
+            params['from'] = from_
+        if to is not None:
+            params['to'] = to
+        response = self._http.get('/evaluations/heatmap/by-metric', params=params)
         return MetricHeatmapResponse.model_validate(response.json())
 
 
@@ -620,12 +631,12 @@ class _Timeline:
     def __init__(self, http: HttpSession) -> None:
         self._http = http
 
-    def get(self, asset_name: str, *, from_: str, to: str) -> TimelineResponse:
-        response = self._http.get(f'/assets/{asset_name}/timeline', params={'from': from_, 'to': to})
+    def get(self, asset_id: str, *, from_: str, to: str) -> TimelineResponse:
+        response = self._http.get(f'/assets/{asset_id}/meta/timeline', params={'from': from_, 'to': to})
         return TimelineResponse.model_validate(response.json())
 
-    def summary(self, asset_name: str, *, from_: str, to: str) -> TimelineSummaryResponse:
-        response = self._http.get(f'/assets/{asset_name}/timeline/summary', params={'from': from_, 'to': to})
+    def summary(self, asset_id: str, *, from_: str, to: str) -> TimelineSummaryResponse:
+        response = self._http.get(f'/assets/{asset_id}/meta/timeline/summary', params={'from': from_, 'to': to})
         return TimelineSummaryResponse.model_validate(response.json())
 
 
@@ -701,21 +712,34 @@ class _SLOGroups:
     def extract(self, group_name: str, body: ExtractRequest) -> None:
         self._http.post(f'/slo-groups/{group_name}/extract', json=body.model_dump(mode='json'))
 
-    def display_groups(self, group_name: str) -> list[DisplayGroupRead]:
-        response = self._http.get(f'/slo-groups/{group_name}/display-groups')
+
+class _DisplayGroups:
+    def __init__(self, http: HttpSession) -> None:
+        self._http = http
+
+    def list(self) -> list[DisplayGroupRead]:
+        response = self._http.get('/slo-display-groups')
         return [DisplayGroupRead.model_validate(d) for d in response.json()]
 
-    def create_display_group(self, group_name: str, body: DisplayGroupCreate) -> DisplayGroupRead:
-        response = self._http.post(
-            f'/slo-groups/{group_name}/display-groups', json=body.model_dump(mode='json', exclude_none=True)
-        )
+    def create(self, body: DisplayGroupCreate) -> DisplayGroupRead:
+        response = self._http.post('/slo-display-groups', json=body.model_dump(mode='json', exclude_none=True))
         return DisplayGroupRead.model_validate(response.json())
 
-    def add_display_group_member(self, group_name: str, display_group_id: str, body: DisplayGroupMemberAdd) -> None:
+    def delete(self, name: str) -> None:
+        self._http.delete(f'/slo-display-groups/{name}')
+
+    def list_members(self, name: str) -> list[str]:
+        response = self._http.get(f'/slo-display-groups/{name}/members')
+        return response.json()
+
+    def add_member(self, name: str, body: DisplayGroupMemberAdd) -> None:
         self._http.post(
-            f'/slo-groups/{group_name}/display-groups/{display_group_id}/members',
+            f'/slo-display-groups/{name}/members',
             json=body.model_dump(mode='json'),
         )
+
+    def remove_member(self, name: str, slo_name: str) -> None:
+        self._http.delete(f'/slo-display-groups/{name}/members/{slo_name}')
 
 
 class _SLOGroupAssignments:
@@ -758,11 +782,11 @@ class _Configuration:
         self._http = http
 
     def list(self) -> list[ConfigurationRead]:
-        response = self._http.get('/config')
+        response = self._http.get('/configuration')
         return [ConfigurationRead.model_validate(c) for c in response.json()]
 
     def get(self, name: str) -> ConfigurationRead:
-        response = self._http.get(f'/config/{name}')
+        response = self._http.get(f'/configuration/{name}')
         return ConfigurationRead.model_validate(response.json())
 
     def update(self, name: str, value: str) -> ConfigurationRead:
@@ -774,9 +798,9 @@ class _Meta:
     def __init__(self, http: HttpSession) -> None:
         self._http = http
 
-    def create_snapshot(self, asset_name: str, body: MetaSnapshotCreate) -> MetaSnapshotCreated:
+    def create_snapshot(self, asset_id: str, body: MetaSnapshotCreate) -> MetaSnapshotCreated:
         response = self._http.post(
-            f'/assets/{asset_name}/meta/snapshots', json=body.model_dump(mode='json', exclude_none=True)
+            f'/assets/{asset_id}/meta/snapshots', json=body.model_dump(mode='json', exclude_none=True)
         )
         return MetaSnapshotCreated.model_validate(response.json())
 
@@ -809,6 +833,7 @@ class TropekClient:
         self.slo_assignments = _SLOAssignments(self._http)
         self.slo_groups = _SLOGroups(self._http)
         self.slo_group_assignments = _SLOGroupAssignments(self._http)
+        self.display_groups = _DisplayGroups(self._http)
         self.evaluations = _Evaluations(self._http)
         self.annotations = _Annotations(self._http)
         self.annotation_categories = _AnnotationCategories(self._http)

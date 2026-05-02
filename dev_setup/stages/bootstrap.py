@@ -1,6 +1,6 @@
 """Apply bootstrap manifests to a running TROPEK API.
 
-Usage: uv run --directory clients/python python ../../scripts/bootstrap.py <api_url>
+Usage: uv run --directory clients/python python ../../dev_setup/stages/bootstrap.py <api_url>
 """
 
 from __future__ import annotations
@@ -11,7 +11,7 @@ from pathlib import Path
 from tropek_client import TropekClient
 from tropek_client.manifest import apply, load_manifests
 
-MANIFESTS_DIR = Path(__file__).resolve().parent.parent / 'bootstrap_mock' / 'manifests'
+MANIFESTS_DIR = Path(__file__).resolve().parent.parent / 'mock'
 
 
 def main() -> None:

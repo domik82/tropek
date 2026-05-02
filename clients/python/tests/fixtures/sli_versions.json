@@ -1,0 +1,24 @@
+[
+  {
+    "id": "3e07172b-ce78-44cd-ba82-55878cf83c69",
+    "name": "http-service-sli",
+    "adapter_type": "prometheus",
+    "display_name": "HTTP Service Indicators",
+    "version": 1,
+    "comparable_from_version": 1,
+    "indicators": {
+      "error_rate": "rate(http_requests_total{job=\"$job\",namespace=\"$namespace\",status=~\"5..\"}[5m]) / rate(http_requests_total{job=\"$job\",namespace=\"$namespace\"}[5m])",
+      "availability": "avg_over_time(up{job=\"$job\",namespace=\"$namespace\"}[5m])",
+      "response_time_p99": "histogram_quantile(0.99, rate(http_request_duration_seconds_bucket{job=\"$job\",namespace=\"$namespace\"}[5m]))"
+    },
+    "notes": "Standard latency, error-rate and availability indicators for HTTP services.",
+    "author": "bootstrap",
+    "tags": {},
+    "mode": "raw",
+    "query_template": null,
+    "interval": null,
+    "methods": null,
+    "active": true,
+    "created_at": "2026-05-02T21:12:50.354931Z"
+  }
+]

@@ -1,0 +1,33 @@
+{
+  "id": "5cad1583-613b-4766-ac8d-b0a910ac0ef7",
+  "name": "core-services",
+  "display_name": "Core Services",
+  "description": null,
+  "color": "#8B949E",
+  "members": [
+    {
+      "asset_id": "94e5be5c-6f6f-44a8-a4f0-8e5aae3032cc",
+      "asset_name": "checkout-api",
+      "asset_display_name": "Checkout API",
+      "asset_type_name": "service",
+      "weight": 1.0
+    },
+    {
+      "asset_id": "26d220d4-2dde-40ec-8cc1-a0fcce8416a4",
+      "asset_name": "product-catalog",
+      "asset_display_name": "Product Catalog Service",
+      "asset_type_name": "service",
+      "weight": 1.0
+    },
+    {
+      "asset_id": "4cb12b63-b230-4248-90cc-58ef6d1bb1a7",
+      "asset_name": "user-service",
+      "asset_display_name": "User & Auth Service",
+      "asset_type_name": "service",
+      "weight": 1.0
+    }
+  ],
+  "subgroups": [],
+  "created_at": "2026-05-02T21:12:50.626572Z",
+  "updated_at": "2026-05-02T21:12:50.626572Z"
+}

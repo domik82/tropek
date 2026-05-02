@@ -1,0 +1,24 @@
+{
+  "id": "335171df-b388-488f-bf8f-b21fc25583d1",
+  "name": "app-x-plugins",
+  "display_name": "App-X Plugin Monitoring",
+  "template_slo_name": "plugin/$__gen_process_name",
+  "template_slo_version": 1,
+  "template_slo_definition_id": "e1615967-34a6-48a7-92a1-1a5f68829573",
+  "gen_variables": {
+    "process_name": [
+      "auth",
+      "cache",
+      "db"
+    ]
+  },
+  "tags": {
+    "app": "app-x"
+  },
+  "author": null,
+  "version": 1,
+  "active": true,
+  "created_at": "2026-05-02T21:12:50.833403Z",
+  "updated_at": "2026-05-02T21:12:50.833403Z",
+  "generated_slo_count": 3
+}
