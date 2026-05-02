@@ -291,6 +291,29 @@ class TestSLIs:
         assert isinstance(result, SLIDefinitionRead)
         assert b'"name":"response-time"' in route.calls[0].request.content
 
+    @respx.mock
+    def test_new_version(self, client):
+        current_sli = {
+            **_SLI_JSON,
+            'display_name': 'Response Time P95',
+            'notes': 'original notes',
+            'author': 'alice',
+        }
+        created_sli = {**current_sli, 'version': 2, 'id': _UUID2}
+
+        respx.get(f'{BASE_URL}/sli-definitions/response-time').mock(return_value=httpx.Response(200, json=current_sli))
+        route = respx.post(f'{BASE_URL}/sli-definitions').mock(return_value=httpx.Response(201, json=created_sli))
+
+        result = client.slis.new_version(
+            'response-time',
+            indicators={'p99': 'new_query(rate(http_duration[5m]))'},
+        )
+        assert result.version == 2
+        body = route.calls[0].request.content
+        assert b'"p99"' in body
+        assert b'"new_query' in body
+        assert b'"response-time"' in body
+
 
 class TestSLOs:
     @respx.mock
