@@ -286,10 +286,10 @@ export interface paths {
         options?: never;
         head?: never;
         /**
-         * Rename Asset Type
-         * @description Rename an asset type.
+         * Update Asset Type
+         * @description Update an asset type (rename and/or set as default).
          */
-        patch: operations["rename_asset_type_asset_types__name__patch"];
+        patch: operations["update_asset_type_asset_types__name__patch"];
         trace?: never;
     };
     "/asset-types/{name}/set-default": {
@@ -2013,6 +2013,10 @@ export interface components {
             color?: string | null;
             /** Display Name */
             display_name?: string | null;
+            /** Heatmap Config */
+            heatmap_config?: {
+                [key: string]: unknown;
+            } | null;
             /** Name */
             name: string;
             /**
@@ -2286,9 +2290,11 @@ export interface components {
         };
         /**
          * AssetTypeUpdate
-         * @description Request body for renaming an asset type.
+         * @description Request body for updating an asset type.
          */
         AssetTypeUpdate: {
+            /** Is Default */
+            is_default?: boolean | null;
             /** Name */
             name?: string | null;
         };
@@ -2616,10 +2622,14 @@ export interface components {
          * @description Request body for updating a datasource.
          */
         DataSourceUpdate: {
+            /** Adapter Type */
+            adapter_type?: string | null;
             /** Adapter Url */
             adapter_url?: string | null;
             /** Display Name */
             display_name?: string | null;
+            /** Name */
+            name?: string | null;
             /** Tags */
             tags?: {
                 [key: string]: string;
@@ -3962,6 +3972,8 @@ export interface components {
          * @description Request body for updating an SLO group (triggers regeneration).
          */
         SLOGroupUpdate: {
+            /** Author */
+            author?: string | null;
             /** Display Name */
             display_name?: string | null;
             /** Gen Variables */
@@ -5401,7 +5413,7 @@ export interface operations {
             };
         };
     };
-    rename_asset_type_asset_types__name__patch: {
+    update_asset_type_asset_types__name__patch: {
         parameters: {
             query?: never;
             header?: never;
