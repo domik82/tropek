@@ -88,7 +88,7 @@ class _AssetTypes:
         )
 
     def create(self, body: AssetTypeCreate) -> AssetTypeRead:
-        response = self._http.post('/asset-types', json=body.model_dump(exclude_none=True))
+        response = self._http.post('/asset-types', json=body.model_dump(mode='json', exclude_none=True))
         return AssetTypeRead.model_validate(response.json())
 
     def set_default(self, name: str) -> AssetTypeRead:
@@ -96,7 +96,7 @@ class _AssetTypes:
         return AssetTypeRead.model_validate(response.json())
 
     def rename(self, name: str, body: AssetTypeUpdate) -> AssetTypeRead:
-        response = self._http.patch(f'/asset-types/{name}', json=body.model_dump(exclude_none=True))
+        response = self._http.patch(f'/asset-types/{name}', json=body.model_dump(mode='json', exclude_none=True))
         return AssetTypeRead.model_validate(response.json())
 
     def delete(self, name: str) -> None:
@@ -129,7 +129,7 @@ class _Assets:
         )
 
     def create(self, body: AssetCreate) -> AssetRead:
-        response = self._http.post('/assets', json=body.model_dump(exclude_none=True))
+        response = self._http.post('/assets', json=body.model_dump(mode='json', exclude_none=True))
         return AssetRead.model_validate(response.json())
 
     def get(self, name: str) -> AssetRead:
@@ -137,7 +137,7 @@ class _Assets:
         return AssetRead.model_validate(response.json())
 
     def update(self, name: str, body: AssetUpdate) -> AssetRead:
-        response = self._http.patch(f'/assets/{name}', json=body.model_dump(exclude_none=True))
+        response = self._http.patch(f'/assets/{name}', json=body.model_dump(mode='json', exclude_none=True))
         return AssetRead.model_validate(response.json())
 
     def delete(self, name: str) -> None:
@@ -169,7 +169,7 @@ class _AssetGroups:
         return AssetGroupTreeResponse.model_validate(response.json())
 
     def create(self, body: AssetGroupCreate) -> AssetGroupRead:
-        response = self._http.post('/asset-groups', json=body.model_dump(exclude_none=True))
+        response = self._http.post('/asset-groups', json=body.model_dump(mode='json', exclude_none=True))
         return AssetGroupRead.model_validate(response.json())
 
     def get(self, name: str) -> AssetGroupRead:
@@ -177,18 +177,22 @@ class _AssetGroups:
         return AssetGroupRead.model_validate(response.json())
 
     def update(self, name: str, body: AssetGroupUpdate) -> AssetGroupRead:
-        response = self._http.patch(f'/asset-groups/{name}', json=body.model_dump(exclude_none=True))
+        response = self._http.patch(f'/asset-groups/{name}', json=body.model_dump(mode='json', exclude_none=True))
         return AssetGroupRead.model_validate(response.json())
 
     def add_member(self, group_name: str, body: AddMemberRequest) -> AssetGroupRead:
-        response = self._http.post(f'/asset-groups/{group_name}/members', json=body.model_dump(exclude_none=True))
+        response = self._http.post(
+            f'/asset-groups/{group_name}/members', json=body.model_dump(mode='json', exclude_none=True)
+        )
         return AssetGroupRead.model_validate(response.json())
 
     def remove_member(self, group_name: str, asset_id: str) -> None:
         self._http.delete(f'/asset-groups/{group_name}/members/{asset_id}')
 
     def add_subgroup(self, group_name: str, body: AddSubgroupRequest) -> AssetGroupRead:
-        response = self._http.post(f'/asset-groups/{group_name}/subgroups', json=body.model_dump(exclude_none=True))
+        response = self._http.post(
+            f'/asset-groups/{group_name}/subgroups', json=body.model_dump(mode='json', exclude_none=True)
+        )
         return AssetGroupRead.model_validate(response.json())
 
     def remove_subgroup(self, group_name: str, child_group_id: str) -> None:
@@ -211,7 +215,7 @@ class _DataSources:
         )
 
     def create(self, body: DataSourceCreate) -> DataSourceRead:
-        response = self._http.post('/datasources', json=body.model_dump(exclude_none=True))
+        response = self._http.post('/datasources', json=body.model_dump(mode='json', exclude_none=True))
         return DataSourceRead.model_validate(response.json())
 
     def get(self, name: str) -> DataSourceRead:
@@ -219,7 +223,7 @@ class _DataSources:
         return DataSourceRead.model_validate(response.json())
 
     def update(self, name: str, body: DataSourceUpdate) -> DataSourceRead:
-        response = self._http.patch(f'/datasources/{name}', json=body.model_dump(exclude_none=True))
+        response = self._http.patch(f'/datasources/{name}', json=body.model_dump(mode='json', exclude_none=True))
         return DataSourceRead.model_validate(response.json())
 
     def delete(self, name: str) -> None:
@@ -247,7 +251,7 @@ class _SLIs:
         )
 
     def create(self, body: SLIDefinitionCreate) -> SLIDefinitionRead:
-        response = self._http.post('/sli-definitions', json=body.model_dump(exclude_none=True))
+        response = self._http.post('/sli-definitions', json=body.model_dump(mode='json', exclude_none=True))
         return SLIDefinitionRead.model_validate(response.json())
 
     def get(self, name: str) -> SLIDefinitionRead:
@@ -283,7 +287,7 @@ class _SLOs:
         )
 
     def create(self, body: SLODefinitionCreate) -> SLODefinitionRead:
-        response = self._http.post('/slo-definitions', json=body.model_dump(exclude_none=True))
+        response = self._http.post('/slo-definitions', json=body.model_dump(mode='json', exclude_none=True))
         return SLODefinitionRead.model_validate(response.json())
 
     def get(self, name: str) -> SLODefinitionRead:
@@ -306,11 +310,11 @@ class _SLOs:
         return [TagValueCount.model_validate(i) for i in response.json()]
 
     def validate(self, body: SLOValidateRequest) -> SLOValidationResult:
-        response = self._http.post('/slo-definitions/validate', json=body.model_dump(exclude_none=True))
+        response = self._http.post('/slo-definitions/validate', json=body.model_dump(mode='json', exclude_none=True))
         return SLOValidationResult.model_validate(response.json())
 
     def test(self, body: SLOTestRequest) -> SLOTestResult:
-        response = self._http.post('/slo-definitions/test', json=body.model_dump(exclude_none=True))
+        response = self._http.post('/slo-definitions/test', json=body.model_dump(mode='json', exclude_none=True))
         return SLOTestResult.model_validate(response.json())
 
 
@@ -359,15 +363,15 @@ class _Evaluations:
         return EvaluationDetail.model_validate(response.json())
 
     def trigger(self, body: EvaluateSingleRequest) -> EvaluateSingleResponse:
-        response = self._http.post('/evaluations', json=body.model_dump(exclude_none=True))
+        response = self._http.post('/evaluations', json=body.model_dump(mode='json', exclude_none=True))
         return EvaluateSingleResponse.model_validate(response.json())
 
     def trigger_batch(self, body: EvaluateBatchRequest) -> EvaluateBatchResponse:
-        response = self._http.post('/evaluations/batch', json=body.model_dump(exclude_none=True))
+        response = self._http.post('/evaluations/batch', json=body.model_dump(mode='json', exclude_none=True))
         return EvaluateBatchResponse.model_validate(response.json())
 
     def invalidate(self, eval_id: str, body: InvalidateRequest) -> EvaluationSummary:
-        response = self._http.patch(f'/evaluation/{eval_id}/invalidate', json=body.model_dump())
+        response = self._http.patch(f'/evaluation/{eval_id}/invalidate', json=body.model_dump(mode='json'))
         return EvaluationSummary.model_validate(response.json())
 
     def restore(self, eval_id: str) -> EvaluationSummary:
@@ -375,7 +379,7 @@ class _Evaluations:
         return EvaluationSummary.model_validate(response.json())
 
     def pin_baseline(self, eval_id: str, body: PinBaselineRequest) -> EvaluationDetail:
-        response = self._http.patch(f'/evaluation/{eval_id}/pin-baseline', json=body.model_dump())
+        response = self._http.patch(f'/evaluation/{eval_id}/pin-baseline', json=body.model_dump(mode='json'))
         return EvaluationDetail.model_validate(response.json())
 
     def unpin_baseline(self, eval_id: str) -> EvaluationDetail:
@@ -383,7 +387,7 @@ class _Evaluations:
         return EvaluationDetail.model_validate(response.json())
 
     def override_status(self, eval_id: str, body: OverrideStatusRequest) -> EvaluationDetail:
-        response = self._http.patch(f'/evaluation/{eval_id}/override-status', json=body.model_dump())
+        response = self._http.patch(f'/evaluation/{eval_id}/override-status', json=body.model_dump(mode='json'))
         return EvaluationDetail.model_validate(response.json())
 
     def restore_override(self, eval_id: str) -> EvaluationDetail:
@@ -391,11 +395,15 @@ class _Evaluations:
         return EvaluationDetail.model_validate(response.json())
 
     def re_evaluate_from_date(self, body: ReEvaluateFromDateRequest) -> ReEvaluateResponse:
-        response = self._http.post('/evaluations/re-evaluate/from-date', json=body.model_dump(exclude_none=True))
+        response = self._http.post(
+            '/evaluations/re-evaluate/from-date', json=body.model_dump(mode='json', exclude_none=True)
+        )
         return ReEvaluateResponse.model_validate(response.json())
 
     def re_evaluate_from_baseline(self, body: ReEvaluateFromBaselineRequest) -> ReEvaluateResponse:
-        response = self._http.post('/evaluations/re-evaluate/from-baseline', json=body.model_dump(exclude_none=True))
+        response = self._http.post(
+            '/evaluations/re-evaluate/from-baseline', json=body.model_dump(mode='json', exclude_none=True)
+        )
         return ReEvaluateResponse.model_validate(response.json())
 
     def re_evaluate_from_evaluation(
@@ -403,7 +411,7 @@ class _Evaluations:
     ) -> ReEvaluateResponse:
         response = self._http.post(
             f'/evaluations/re-evaluate/from-evaluation/{evaluation_id}',
-            json=body.model_dump(exclude_none=True),
+            json=body.model_dump(mode='json', exclude_none=True),
         )
         return ReEvaluateResponse.model_validate(response.json())
 
@@ -412,7 +420,9 @@ class _Evaluations:
         return [EvaluationNameEntry.model_validate(e) for e in response.json()]
 
     def triage(self, change_point_id: str, body: TriageRequest) -> None:
-        self._http.patch(f'/change-points/{change_point_id}/triage', json=body.model_dump(exclude_none=True))
+        self._http.patch(
+            f'/change-points/{change_point_id}/triage', json=body.model_dump(mode='json', exclude_none=True)
+        )
 
 
 class _Annotations:
@@ -424,23 +434,27 @@ class _Annotations:
         return [AnnotationRead.model_validate(a) for a in response.json()]
 
     def create(self, eval_id: str, body: AnnotationCreate) -> AnnotationRead:
-        response = self._http.post(f'/evaluation/{eval_id}/annotations', json=body.model_dump(exclude_none=True))
+        response = self._http.post(
+            f'/evaluation/{eval_id}/annotations', json=body.model_dump(mode='json', exclude_none=True)
+        )
         return AnnotationRead.model_validate(response.json())
 
     def create_for_run(self, run_id: str, body: AnnotationCreate) -> AnnotationRead:
-        response = self._http.post(f'/evaluation-run/{run_id}/annotations', json=body.model_dump(exclude_none=True))
+        response = self._http.post(
+            f'/evaluation-run/{run_id}/annotations', json=body.model_dump(mode='json', exclude_none=True)
+        )
         return AnnotationRead.model_validate(response.json())
 
     def update(self, eval_id: str, ann_id: str, body: AnnotationUpdate) -> AnnotationRead:
         response = self._http.patch(
-            f'/evaluation/{eval_id}/annotations/{ann_id}', json=body.model_dump(exclude_none=True)
+            f'/evaluation/{eval_id}/annotations/{ann_id}', json=body.model_dump(mode='json', exclude_none=True)
         )
         return AnnotationRead.model_validate(response.json())
 
     def hide(self, eval_id: str, ann_id: str, body: AnnotationHide) -> AnnotationRead:
         response = self._http.post(
             f'/evaluation/{eval_id}/annotations/{ann_id}/hide',
-            json=body.model_dump(exclude_none=True),
+            json=body.model_dump(mode='json', exclude_none=True),
         )
         return AnnotationRead.model_validate(response.json())
 
@@ -534,14 +548,14 @@ class _SLOAssignments:
     def create_for_asset(self, asset_name: str, slo_definition_id: str, body: SLOAssignmentUpsert) -> SLOAssignmentRead:
         response = self._http.put(
             f'/assets/{asset_name}/slo-definitions/{slo_definition_id}',
-            json=body.model_dump(exclude_none=True),
+            json=body.model_dump(mode='json', exclude_none=True),
         )
         return SLOAssignmentRead.model_validate(response.json())
 
     def create_for_group(self, group_name: str, slo_definition_id: str, body: SLOAssignmentUpsert) -> SLOAssignmentRead:
         response = self._http.put(
             f'/asset-groups/{group_name}/slo-definitions/{slo_definition_id}',
-            json=body.model_dump(exclude_none=True),
+            json=body.model_dump(mode='json', exclude_none=True),
         )
         return SLOAssignmentRead.model_validate(response.json())
 
@@ -554,7 +568,7 @@ class _SLOAssignments:
         return [SLOAssignmentRead.model_validate(a) for a in response.json()]
 
     def upgrade(self, assignment_id: str, body: SLOAssignmentUpgrade) -> SLOAssignmentRead:
-        response = self._http.patch(f'/slo-assignments/{assignment_id}/upgrade', json=body.model_dump())
+        response = self._http.patch(f'/slo-assignments/{assignment_id}/upgrade', json=body.model_dump(mode='json'))
         return SLOAssignmentRead.model_validate(response.json())
 
     def delete_for_asset(self, asset_name: str, slo_definition_id: str) -> None:
@@ -582,7 +596,7 @@ class _SLOGroups:
         )
 
     def create(self, body: SLOGroupCreate) -> SLOGroupRead:
-        response = self._http.post('/slo-groups', json=body.model_dump(exclude_none=True))
+        response = self._http.post('/slo-groups', json=body.model_dump(mode='json', exclude_none=True))
         return SLOGroupRead.model_validate(response.json())
 
     def get(self, name: str) -> SLOGroupRead:
@@ -590,27 +604,29 @@ class _SLOGroups:
         return SLOGroupRead.model_validate(response.json())
 
     def update(self, name: str, body: SLOGroupUpdate) -> SLOGroupRead:
-        response = self._http.put(f'/slo-groups/{name}', json=body.model_dump(exclude_none=True))
+        response = self._http.put(f'/slo-groups/{name}', json=body.model_dump(mode='json', exclude_none=True))
         return SLOGroupRead.model_validate(response.json())
 
     def delete(self, name: str) -> None:
         self._http.delete(f'/slo-groups/{name}')
 
     def extract(self, group_name: str, body: ExtractRequest) -> None:
-        self._http.post(f'/slo-groups/{group_name}/extract', json=body.model_dump())
+        self._http.post(f'/slo-groups/{group_name}/extract', json=body.model_dump(mode='json'))
 
     def display_groups(self, group_name: str) -> list[DisplayGroupRead]:
         response = self._http.get(f'/slo-groups/{group_name}/display-groups')
         return [DisplayGroupRead.model_validate(d) for d in response.json()]
 
     def create_display_group(self, group_name: str, body: DisplayGroupCreate) -> DisplayGroupRead:
-        response = self._http.post(f'/slo-groups/{group_name}/display-groups', json=body.model_dump(exclude_none=True))
+        response = self._http.post(
+            f'/slo-groups/{group_name}/display-groups', json=body.model_dump(mode='json', exclude_none=True)
+        )
         return DisplayGroupRead.model_validate(response.json())
 
     def add_display_group_member(self, group_name: str, display_group_id: str, body: DisplayGroupMemberAdd) -> None:
         self._http.post(
             f'/slo-groups/{group_name}/display-groups/{display_group_id}/members',
-            json=body.model_dump(),
+            json=body.model_dump(mode='json'),
         )
 
 
@@ -621,13 +637,17 @@ class _SLOGroupAssignments:
     def create_for_asset(
         self, asset_name: str, slo_group_name: str, body: SLOGroupAssignmentUpsert
     ) -> SLOGroupAssignmentRead:
-        response = self._http.put(f'/assets/{asset_name}/slo-groups/{slo_group_name}', json=body.model_dump())
+        response = self._http.put(
+            f'/assets/{asset_name}/slo-groups/{slo_group_name}', json=body.model_dump(mode='json')
+        )
         return SLOGroupAssignmentRead.model_validate(response.json())
 
     def create_for_group(
         self, group_name: str, slo_group_name: str, body: SLOGroupAssignmentUpsert
     ) -> SLOGroupAssignmentRead:
-        response = self._http.put(f'/asset-groups/{group_name}/slo-groups/{slo_group_name}', json=body.model_dump())
+        response = self._http.put(
+            f'/asset-groups/{group_name}/slo-groups/{slo_group_name}', json=body.model_dump(mode='json')
+        )
         return SLOGroupAssignmentRead.model_validate(response.json())
 
     def list_for_asset(self, asset_name: str) -> list[SLOGroupAssignmentRead]:
@@ -658,7 +678,7 @@ class _Configuration:
         return ConfigurationRead.model_validate(response.json())
 
     def update(self, name: str, body: ConfigurationUpdate) -> ConfigurationRead:
-        response = self._http.put(f'/config/{name}', json=body.model_dump())
+        response = self._http.put(f'/config/{name}', json=body.model_dump(mode='json'))
         return ConfigurationRead.model_validate(response.json())
 
 
@@ -667,7 +687,9 @@ class _Meta:
         self._http = http
 
     def create_snapshot(self, asset_name: str, body: MetaSnapshotCreate) -> MetaSnapshotCreated:
-        response = self._http.post(f'/assets/{asset_name}/meta/snapshots', json=body.model_dump(exclude_none=True))
+        response = self._http.post(
+            f'/assets/{asset_name}/meta/snapshots', json=body.model_dump(mode='json', exclude_none=True)
+        )
         return MetaSnapshotCreated.model_validate(response.json())
 
 
