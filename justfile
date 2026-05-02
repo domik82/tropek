@@ -105,9 +105,25 @@ infra:
 up:
     docker compose up --build
 
+# Start full stack in Docker, bootstrap + seed + test from outside
+dev-docker:
+    ./scripts/stack-start.sh
+
 # Run e2e integration test suite
 e2e:
     ./scripts/integration-test.sh
+
+# Capture API responses as test fixtures (requires running dev environment)
+capture-fixtures api_url='http://localhost:9080':
+    uv run --directory clients/python python ../../dev_setup/stages/capture_responses.py {{api_url}}
+
+# Run client fixture-based tests
+test-fixtures *args='-v':
+    uv run --directory clients/python pytest tests/test_client_fixtures.py {{args}}
+
+# Run all client tests (unit + fixtures)
+test-client *args='-q':
+    uv run --directory clients/python pytest tests/ {{args}}
 
 # ─── Contract Testing ─────────────────────────────────────────────────
 

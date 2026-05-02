@@ -1,0 +1,6 @@
+{
+  "name": "change_point.enabled",
+  "value": "true",
+  "value_type": "bool",
+  "description": "enable change point detection globally"
+}

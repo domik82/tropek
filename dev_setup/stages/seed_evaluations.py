@@ -9,7 +9,7 @@ Evaluations are triggered window-by-window (chronological order) and each
 window must complete before the next is triggered. This guarantees that
 baseline comparisons always have completed predecessors available.
 
-Usage: uv run --directory clients/python python ../../scripts/seed_evaluations.py <api_url>
+Usage: uv run --directory clients/python python ../../dev_setup/stages/seed_evaluations.py <api_url>
 """
 
 from __future__ import annotations
@@ -21,7 +21,7 @@ from datetime import datetime, timedelta
 from typing import Any
 
 from tropek_client import TropekClient
-from tropek_client.models import EvaluationSummary
+from tropek_client.models import AnnotationCreate, EvaluateSingleRequest, EvaluationSummary
 
 TERMINAL_STATUSES = {'completed', 'failed', 'partial'}
 
@@ -89,6 +89,7 @@ OPTIMIZATION_TESTING_SCHEDULE = [
 # Evaluation pattern definition
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class EvalPattern:
     """A named evaluation pattern with schedule and optional cross-series comparison."""
@@ -135,6 +136,7 @@ ALL_ASSETS = ECOMMERCE_ASSETS + VM_ASSETS + LAPTOP_ASSETS
 # ---------------------------------------------------------------------------
 # Execution helpers
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class ScheduledJob:
@@ -206,8 +208,15 @@ def _seed_lab_monitor(client: TropekClient) -> list[str]:
         end_str = end.strftime('%Y-%m-%dT%H:%M:%SZ')
 
         print(f'  lab-monitor day {day + 1}/{LAB_DAYS} ({start_str})', end='\r', flush=True)
-        result = client.evaluations.evaluate('lab-monitor-01', 'daily-lab', start_str, end_str)
-        slo_ids = result['slo_evaluation_ids']
+        result = client.evaluations.trigger(
+            EvaluateSingleRequest(
+                asset_name='lab-monitor-01',
+                eval_name='daily-lab',
+                period_start=start_str,
+                period_end=end_str,
+            )
+        )
+        slo_ids = [str(sid) for sid in result.slo_evaluation_ids]
         _wait_for_ids(client, slo_ids, f'lab day {day + 1}')
         all_ids.extend(slo_ids)
 
@@ -219,13 +228,14 @@ def _seed_lab_monitor(client: TropekClient) -> list[str]:
 # Annotations
 # ---------------------------------------------------------------------------
 
+
 def _seed_example_annotations(
-    client: TropekClient, results: list[EvaluationSummary],
+    client: TropekClient,
+    results: list[EvaluationSummary],
 ) -> None:
     """Attach annotations across visible categories so trend charts show pins in dev."""
-    categories_resp = client._http.get('/note-categories')
-    categories_resp.raise_for_status()
-    categories_by_name: dict[str, Any] = {c['name']: c['id'] for c in categories_resp.json()}
+    categories = client.annotation_categories.list()
+    categories_by_name: dict[str, Any] = {category.name: str(category.id) for category in categories}
     required = ['info', 'failure', 'investigation']
     if not all(name in categories_by_name for name in required):
         print('skipping annotation seeding: required default categories missing')
@@ -253,7 +263,8 @@ def _seed_example_annotations(
     ]
     for run_id, content, category_id in annotations:
         client.annotations.create_for_run(
-            run_id, content, author='seed', category_id=category_id,
+            run_id,
+            AnnotationCreate(content=content, author='seed', category_id=category_id),
         )
     print(f'seeded {len(annotations)} example annotations across info/investigation/failure')
 
@@ -261,6 +272,7 @@ def _seed_example_annotations(
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
+
 
 def main() -> None:
     """Trigger evaluations window-by-window to ensure baselines are available."""
@@ -279,14 +291,16 @@ def main() -> None:
 
         window_slo_ids: list[str] = []
         for job in jobs:
-            result = client.evaluations.evaluate(
-                job.asset_name,
-                job.eval_name,
-                job.start,
-                job.end,
-                compare_to=job.compare_to,
+            result = client.evaluations.trigger(
+                EvaluateSingleRequest(
+                    asset_name=job.asset_name,
+                    eval_name=job.eval_name,
+                    period_start=job.start,
+                    period_end=job.end,
+                    compare_to=job.compare_to,
+                )
             )
-            window_slo_ids.extend(result['slo_evaluation_ids'])
+            window_slo_ids.extend(str(sid) for sid in result.slo_evaluation_ids)
 
         _wait_for_ids(client, window_slo_ids, f'window {group_index + 1}')
         all_slo_eval_ids.extend(window_slo_ids)

@@ -317,6 +317,14 @@ assignments) as a multi-document YAML manifest.
   cannot each contain an asset named `load_test`. Assets are identified by name
   across the entire TROPEK instance.
 
+- **Display groups (`client.display_groups`) are half-baked.** The API exposes
+  `/slo-display-groups` as a standalone CRUD resource for organizing generated SLOs
+  into named visual buckets, but the feature is incomplete: no FK linking display
+  groups to the SLO group they belong to, no validation that member SLO names
+  exist, and no UI consumer. The client wraps the routes but they are untested
+  against real workflows. This will likely be redesigned when SLO group navigation
+  is revisited.
+
 ## Error Handling
 
 All API errors raise typed exceptions:

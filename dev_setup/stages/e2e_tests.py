@@ -1,6 +1,6 @@
 """End-to-end integration tests run against a live TROPEK API.
 
-Usage: uv run --directory clients/python python ../../scripts/e2e_tests.py <api_url>
+Usage: uv run --directory clients/python python ../../dev_setup/stages/e2e_tests.py <api_url>
 
 Bootstrap manifests must be applied before running (see scripts/bootstrap.py).
 
@@ -320,8 +320,8 @@ def test_annotations(client: TropekClient) -> None:
     slo_eval_id = str(evals.items[0].id)
     run_id = str(evals.items[0].evaluation_id)
 
-    categories_resp = client._http.get('/note-categories')
-    categories_by_name = {c['name']: c['id'] for c in categories_resp.json()}
+    categories = client.annotation_categories.list()
+    categories_by_name = {category.name: category.id for category in categories}
     info_id = categories_by_name['info']
     investigation_id = categories_by_name['investigation']
 

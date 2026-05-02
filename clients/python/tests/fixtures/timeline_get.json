@@ -1,0 +1,261 @@
+{
+  "groups": [
+    {
+      "id": "[\"checkout-api\"]",
+      "content": "checkout-api",
+      "nestedGroups": [
+        "[\"checkout-api\",\"payment-gateway\"]",
+        "[\"checkout-api\",\"plugin-pkg\"]"
+      ],
+      "showNested": false
+    },
+    {
+      "id": "[\"cpu-cores\"]",
+      "content": "cpu-cores",
+      "nestedGroups": null,
+      "showNested": null
+    },
+    {
+      "id": "[\"feature-flags\"]",
+      "content": "feature-flags",
+      "nestedGroups": [
+        "[\"feature-flags\",\"enable-new-checkout\"]"
+      ],
+      "showNested": false
+    },
+    {
+      "id": "[\"memory-gb\"]",
+      "content": "memory-gb",
+      "nestedGroups": null,
+      "showNested": null
+    },
+    {
+      "id": "[\"version\"]",
+      "content": "version",
+      "nestedGroups": null,
+      "showNested": null
+    },
+    {
+      "id": "[\"checkout-api\",\"payment-gateway\"]",
+      "content": "payment-gateway",
+      "nestedGroups": null,
+      "showNested": null
+    },
+    {
+      "id": "[\"checkout-api\",\"plugin-pkg\"]",
+      "content": "plugin-pkg",
+      "nestedGroups": [
+        "[\"checkout-api\",\"plugin-pkg\",\"auth-plugin\"]",
+        "[\"checkout-api\",\"plugin-pkg\",\"cache-plugin\"]",
+        "[\"checkout-api\",\"plugin-pkg\",\"legacy-plugin\"]"
+      ],
+      "showNested": false
+    },
+    {
+      "id": "[\"feature-flags\",\"enable-new-checkout\"]",
+      "content": "enable-new-checkout",
+      "nestedGroups": null,
+      "showNested": null
+    },
+    {
+      "id": "[\"checkout-api\",\"plugin-pkg\",\"auth-plugin\"]",
+      "content": "auth-plugin",
+      "nestedGroups": null,
+      "showNested": null
+    },
+    {
+      "id": "[\"checkout-api\",\"plugin-pkg\",\"cache-plugin\"]",
+      "content": "cache-plugin",
+      "nestedGroups": null,
+      "showNested": null
+    },
+    {
+      "id": "[\"checkout-api\",\"plugin-pkg\",\"legacy-plugin\"]",
+      "content": "legacy-plugin",
+      "nestedGroups": null,
+      "showNested": null
+    }
+  ],
+  "items": [
+    {
+      "id": "s0",
+      "group": "[\"checkout-api\",\"plugin-pkg\",\"auth-plugin\"]",
+      "content": "0.8.0",
+      "start": "2026-02-10T00:00:00+00:00",
+      "end": "2026-02-17T00:00:00+00:00",
+      "type": "range",
+      "className": "meta-span",
+      "source": "cicd"
+    },
+    {
+      "id": "s1",
+      "group": "[\"checkout-api\",\"plugin-pkg\",\"auth-plugin\"]",
+      "content": "0.9.0",
+      "start": "2026-02-17T00:00:00+00:00",
+      "end": "2026-02-24T00:00:00+00:00",
+      "type": "range",
+      "className": "meta-span",
+      "source": "cicd"
+    },
+    {
+      "id": "s2",
+      "group": "[\"checkout-api\",\"plugin-pkg\",\"auth-plugin\"]",
+      "content": "1.0.0",
+      "start": "2026-02-24T00:00:00+00:00",
+      "end": "2026-03-10T00:00:00+00:00",
+      "type": "range",
+      "className": "meta-span",
+      "source": "cicd"
+    },
+    {
+      "id": "s3",
+      "group": "[\"checkout-api\",\"plugin-pkg\",\"auth-plugin\"]",
+      "content": "1.1.0",
+      "start": "2026-03-10T00:00:00+00:00",
+      "end": "2026-04-01T00:00:00+00:00",
+      "type": "range",
+      "className": "meta-span meta-span-open",
+      "source": "cicd"
+    },
+    {
+      "id": "s4",
+      "group": "[\"checkout-api\",\"plugin-pkg\",\"legacy-plugin\"]",
+      "content": "2.1.0",
+      "start": "2026-02-10T00:00:00+00:00",
+      "end": "2026-02-24T00:00:00+00:00",
+      "type": "range",
+      "className": "meta-span meta-span-closed",
+      "source": "cicd"
+    },
+    {
+      "id": "s5",
+      "group": "[\"checkout-api\"]",
+      "content": "1.0.0",
+      "start": "2026-02-10T00:00:00+00:00",
+      "end": "2026-02-24T00:00:00+00:00",
+      "type": "range",
+      "className": "meta-span",
+      "source": "cicd"
+    },
+    {
+      "id": "s6",
+      "group": "[\"checkout-api\"]",
+      "content": "2.0.0",
+      "start": "2026-02-24T00:00:00+00:00",
+      "end": "2026-03-10T00:00:00+00:00",
+      "type": "range",
+      "className": "meta-span",
+      "source": "cicd"
+    },
+    {
+      "id": "s7",
+      "group": "[\"checkout-api\"]",
+      "content": "3.0.0",
+      "start": "2026-03-10T00:00:00+00:00",
+      "end": "2026-04-01T00:00:00+00:00",
+      "type": "range",
+      "className": "meta-span meta-span-open",
+      "source": "cicd"
+    },
+    {
+      "id": "s8",
+      "group": "[\"checkout-api\",\"payment-gateway\"]",
+      "content": "stripe-v3",
+      "start": "2026-02-10T00:00:00+00:00",
+      "end": "2026-02-24T00:00:00+00:00",
+      "type": "range",
+      "className": "meta-span",
+      "source": "cicd"
+    },
+    {
+      "id": "s9",
+      "group": "[\"checkout-api\",\"payment-gateway\"]",
+      "content": "stripe-v4",
+      "start": "2026-02-24T00:00:00+00:00",
+      "end": "2026-04-01T00:00:00+00:00",
+      "type": "range",
+      "className": "meta-span meta-span-open",
+      "source": "cicd"
+    },
+    {
+      "id": "s10",
+      "group": "[\"cpu-cores\"]",
+      "content": "4",
+      "start": "2026-02-10T02:00:00+00:00",
+      "end": "2026-03-03T00:00:00+00:00",
+      "type": "range",
+      "className": "meta-span",
+      "source": "os-agent"
+    },
+    {
+      "id": "s11",
+      "group": "[\"cpu-cores\"]",
+      "content": "8",
+      "start": "2026-03-03T00:00:00+00:00",
+      "end": "2026-04-01T00:00:00+00:00",
+      "type": "range",
+      "className": "meta-span meta-span-open",
+      "source": "os-agent"
+    },
+    {
+      "id": "s12",
+      "group": "[\"memory-gb\"]",
+      "content": "16",
+      "start": "2026-02-10T02:00:00+00:00",
+      "end": "2026-03-03T00:00:00+00:00",
+      "type": "range",
+      "className": "meta-span",
+      "source": "os-agent"
+    },
+    {
+      "id": "s13",
+      "group": "[\"memory-gb\"]",
+      "content": "32",
+      "start": "2026-03-03T00:00:00+00:00",
+      "end": "2026-04-01T00:00:00+00:00",
+      "type": "range",
+      "className": "meta-span meta-span-open",
+      "source": "os-agent"
+    },
+    {
+      "id": "s14",
+      "group": "[\"checkout-api\",\"plugin-pkg\",\"cache-plugin\"]",
+      "content": "0.1.0",
+      "start": "2026-03-10T00:00:00+00:00",
+      "end": "2026-03-15T00:00:00+00:00",
+      "type": "range",
+      "className": "meta-span",
+      "source": "cicd"
+    },
+    {
+      "id": "s15",
+      "group": "[\"checkout-api\",\"plugin-pkg\",\"cache-plugin\"]",
+      "content": "0.2.0",
+      "start": "2026-03-15T00:00:00+00:00",
+      "end": "2026-04-01T00:00:00+00:00",
+      "type": "range",
+      "className": "meta-span meta-span-open",
+      "source": "cicd"
+    },
+    {
+      "id": "s16",
+      "group": "[\"feature-flags\",\"enable-new-checkout\"]",
+      "content": "true",
+      "start": "2026-03-15T00:00:00+00:00",
+      "end": "2026-04-01T00:00:00+00:00",
+      "type": "range",
+      "className": "meta-span meta-span-open",
+      "source": "cicd"
+    },
+    {
+      "id": "s17",
+      "group": "[\"version\"]",
+      "content": "v1.2.3",
+      "start": "2026-03-15T12:00:00+00:00",
+      "end": "2026-04-01T00:00:00+00:00",
+      "type": "range",
+      "className": "meta-span meta-span-open",
+      "source": "smoke-test"
+    }
+  ]
+}

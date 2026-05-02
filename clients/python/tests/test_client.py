@@ -518,7 +518,9 @@ class TestHeatmap:
             'groups': [],
             'composite': [],
         }
-        respx.get(f'{BASE_URL}/assets/vm-01/heatmap').mock(return_value=httpx.Response(200, json=heatmap_response))
+        respx.get(f'{BASE_URL}/evaluations/heatmap', params={'asset_name': 'vm-01'}).mock(
+            return_value=httpx.Response(200, json=heatmap_response)
+        )
         result = client.heatmap.grouped('vm-01')
         assert isinstance(result, GroupedMetricHeatmapResponse)
         assert result.asset_name == 'vm-01'
@@ -529,7 +531,10 @@ class TestTimeline:
     @respx.mock
     def test_get(self, client):
         timeline_response = {'groups': [], 'items': []}
-        respx.get(f'{BASE_URL}/assets/vm-01/timeline').mock(return_value=httpx.Response(200, json=timeline_response))
+        respx.get(
+            f'{BASE_URL}/assets/vm-01/meta/timeline',
+            params={'from': '2026-03-01T00:00:00Z', 'to': '2026-03-01T01:00:00Z'},
+        ).mock(return_value=httpx.Response(200, json=timeline_response))
         result = client.timeline.get('vm-01', from_='2026-03-01T00:00:00Z', to='2026-03-01T01:00:00Z')
         assert isinstance(result, TimelineResponse)
         assert result.groups == []
@@ -545,7 +550,7 @@ class TestConfiguration:
             'value_type': 'int',
             'description': 'Max results',
         }
-        respx.get(f'{BASE_URL}/config').mock(return_value=httpx.Response(200, json=[config_json]))
+        respx.get(f'{BASE_URL}/configuration').mock(return_value=httpx.Response(200, json=[config_json]))
         result = client.configuration.list()
         assert len(result) == 1
         assert isinstance(result[0], ConfigurationRead)
@@ -559,7 +564,9 @@ class TestConfiguration:
             'value_type': 'int',
             'description': 'Max results',
         }
-        respx.get(f'{BASE_URL}/config/max_comparison_results').mock(return_value=httpx.Response(200, json=config_json))
+        respx.get(f'{BASE_URL}/configuration/max_comparison_results').mock(
+            return_value=httpx.Response(200, json=config_json)
+        )
         result = client.configuration.get('max_comparison_results')
         assert isinstance(result, ConfigurationRead)
         assert result.value == '5'

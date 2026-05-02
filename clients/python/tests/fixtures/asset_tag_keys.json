@@ -1,0 +1,30 @@
+[
+  {
+    "key": "env",
+    "count": 9
+  },
+  {
+    "key": "team",
+    "count": 8
+  },
+  {
+    "key": "region",
+    "count": 6
+  },
+  {
+    "key": "purpose",
+    "count": 5
+  },
+  {
+    "key": "tier",
+    "count": 4
+  },
+  {
+    "key": "department",
+    "count": 2
+  },
+  {
+    "key": "role",
+    "count": 2
+  }
+]

@@ -104,7 +104,7 @@ class EvaluationDetail(EvaluationSummary):
 class GroupScope(BaseModel):
     """Scope targeting all assets within a named group."""
 
-    kind: Literal['group']
+    kind: Literal['group'] = 'group'
     group_name: str
 
 
@@ -114,14 +114,14 @@ Scope = AssetScope | GroupScope
 class SloSelector(BaseModel):
     """Selector that targets evaluations by SLO name."""
 
-    kind: Literal['slo']
+    kind: Literal['slo'] = 'slo'
     slo_name: str
 
 
 class EvalNamesSelector(BaseModel):
     """Selector that targets a specific set of evaluation names."""
 
-    kind: Literal['evaluation_names']
+    kind: Literal['evaluation_names'] = 'evaluation_names'
     evaluation_names: list[str]
 
 

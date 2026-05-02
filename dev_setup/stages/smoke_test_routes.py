@@ -3,7 +3,7 @@
 Assumes bootstrap manifests and seed_evaluations have already been applied.
 Creates ephemeral resources (prefixed 'smoke-') and cleans them up.
 
-Usage: uv run --directory clients/python python ../../scripts/smoke_test_routes.py <api_url>
+Usage: uv run --directory clients/python python ../../dev_setup/stages/smoke_test_routes.py <api_url>
 """
 
 from __future__ import annotations
@@ -33,8 +33,6 @@ from tropek_client.models import (
     AssetUpdate,
     DataSourceCreate,
     DataSourceUpdate,
-    DisplayGroupCreate,
-    DisplayGroupMemberAdd,
     InvalidateRequest,
     MetaSnapshotCreate,
     MetaValueInput,
@@ -215,7 +213,9 @@ def test_slis(client: TropekClient) -> None:
 def test_slos(client: TropekClient) -> None:
     """slos: list, create, get, versions, validate, new_version, delete, tag_keys, tag_values."""
     print('\n--- slos ---')
-    objectives = [SLOObjectiveIn(sli='p95', pass_threshold=['<600'], warning_threshold=['<800'])]
+    objectives = [
+        SLOObjectiveIn(sli='response_time_p99', pass_threshold=['<600'], warning_threshold=['<800']),
+    ]
     run('slos.list', lambda: client.slos.list())
     run('slos.validate', lambda: client.slos.validate(SLOValidateRequest(objectives=objectives)))
     run(
@@ -261,17 +261,15 @@ def test_slo_assignments(client: TropekClient) -> None:
 
 
 def test_slo_groups(client: TropekClient) -> None:
-    """slo_groups: list, create, get, update, display_groups, create_display_group, add_display_group_member, extract, delete."""
+    """slo_groups: list, create, get, update, delete."""
     print('\n--- slo_groups ---')
     run('slo_groups.list', lambda: client.slo_groups.list())
 
     existing = client.slo_groups.get('app-x-plugins')
     run('slo_groups.get', lambda: existing)
 
-    run('slo_groups.display_groups', lambda: client.slo_groups.display_groups('app-x-plugins'))
-
-    # Create a fresh group for update/extract/delete
-    template_slo = client.slos.get('http-availability-slo')
+    # Use the same template SLO pattern as bootstrap data
+    template_slo = client.slos.get('plugin/$__gen_process_name')
     run(
         'slo_groups.create',
         lambda: client.slo_groups.create(
@@ -279,7 +277,7 @@ def test_slo_groups(client: TropekClient) -> None:
                 name='smoke-slo-group',
                 template_slo_name=template_slo.name,
                 template_slo_version=template_slo.version,
-                gen_variables={'env': ['dev', 'staging']},
+                gen_variables={'process_name': ['smoke-a', 'smoke-b']},
             )
         ),
     )
@@ -287,27 +285,6 @@ def test_slo_groups(client: TropekClient) -> None:
         'slo_groups.update',
         lambda: client.slo_groups.update('smoke-slo-group', SLOGroupUpdate(display_name='Smoke Updated')),
     )
-
-    run(
-        'slo_groups.create_display_group',
-        lambda: client.slo_groups.create_display_group('smoke-slo-group', DisplayGroupCreate(name='smoke-display')),
-    )
-    display_groups = client.slo_groups.display_groups('smoke-slo-group')
-    if display_groups:
-        display_group_id = str(display_groups[0].id)
-        generated_slos = client.slos.list()
-        smoke_generated = [s for s in generated_slos.items if 'smoke-slo-group' in s.name]
-        if smoke_generated:
-            run(
-                'slo_groups.add_display_group_member',
-                lambda: client.slo_groups.add_display_group_member(
-                    'smoke-slo-group', display_group_id, DisplayGroupMemberAdd(slo_name=smoke_generated[0].name)
-                ),
-            )
-        else:
-            skip('slo_groups.add_display_group_member', 'no generated SLOs found')
-    else:
-        skip('slo_groups.add_display_group_member', 'no display groups')
 
     run('slo_groups.delete', lambda: client.slo_groups.delete('smoke-slo-group'))
 
@@ -345,7 +322,7 @@ def test_evaluations(client: TropekClient) -> None:
 
     eval_id = str(evals.items[0].id)
     run('evaluations.get', lambda: client.evaluations.get(eval_id))
-    run('evaluations.names', lambda: client.evaluations.names('checkout-api'))
+    run('evaluations.names', lambda: client.evaluations.names(asset_name='checkout-api'))
 
     # invalidate + restore
     run(
@@ -468,7 +445,7 @@ def test_annotation_categories(client: TropekClient) -> None:
     cat = run(
         'annotation_categories.create',
         lambda: client.annotation_categories.create(
-            AnnotationCategoryCreate(name='smoke-category', color='#FF0000', icon='flame')
+            AnnotationCategoryCreate(name='smoke-category', label='Smoke', color='red')
         ),
     )
     if cat is None:
@@ -476,7 +453,7 @@ def test_annotation_categories(client: TropekClient) -> None:
     cat_id = str(cat.id)
     run(
         'annotation_categories.update',
-        lambda: client.annotation_categories.update(cat_id, AnnotationCategoryUpdate(color='#00FF00')),
+        lambda: client.annotation_categories.update(cat_id, AnnotationCategoryUpdate(color='green')),
     )
     run('annotation_categories.delete', lambda: client.annotation_categories.delete(cat_id))
 
@@ -515,19 +492,20 @@ def test_heatmap(client: TropekClient) -> None:
     run('heatmap.grouped', lambda: client.heatmap.grouped('checkout-api'))
     run('heatmap.flat', lambda: client.heatmap.flat('checkout-api'))
     run('heatmap.grouped(eval_name)', lambda: client.heatmap.grouped('checkout-api', eval_name='load-test'))
-    run('heatmap.flat(limit)', lambda: client.heatmap.flat('checkout-api', limit=5))
 
 
 def test_timeline(client: TropekClient) -> None:
     """timeline: get, summary."""
     print('\n--- timeline ---')
+    asset = client.assets.get('checkout-api')
+    asset_id = str(asset.id)
     run(
         'timeline.get',
-        lambda: client.timeline.get('checkout-api', from_='2026-03-14T00:00:00Z', to='2026-03-17T00:00:00Z'),
+        lambda: client.timeline.get(asset_id, from_='2026-03-14T00:00:00Z', to='2026-03-17T00:00:00Z'),
     )
     run(
         'timeline.summary',
-        lambda: client.timeline.summary('checkout-api', from_='2026-03-14T00:00:00Z', to='2026-03-17T00:00:00Z'),
+        lambda: client.timeline.summary(asset_id, from_='2026-03-14T00:00:00Z', to='2026-03-17T00:00:00Z'),
     )
 
 
@@ -548,10 +526,12 @@ def test_configuration(client: TropekClient) -> None:
 def test_meta(client: TropekClient) -> None:
     """meta: create_snapshot."""
     print('\n--- meta ---')
+    asset = client.assets.get('checkout-api')
+    asset_id = str(asset.id)
     run(
         'meta.create_snapshot',
         lambda: client.meta.create_snapshot(
-            'checkout-api',
+            asset_id,
             MetaSnapshotCreate(
                 source='smoke-test',
                 observed_at='2026-03-15T12:00:00Z',

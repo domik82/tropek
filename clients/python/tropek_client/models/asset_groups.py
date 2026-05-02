@@ -1,6 +1,7 @@
 """Asset group models for TROPEK API."""
 
 from datetime import datetime
+from typing import Literal
 from uuid import UUID
 
 from pydantic import BaseModel
@@ -95,5 +96,5 @@ class AddSubgroupRequest(BaseModel):
 class AssetScope(BaseModel):
     """Asset scope for evaluations."""
 
-    kind: str
+    kind: Literal['asset'] = 'asset'
     asset_name: str

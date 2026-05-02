@@ -1,0 +1,13 @@
+{
+  "id": "663fa62e-c166-44ec-88c4-5b66a6f14201",
+  "name": "mock-dc-b",
+  "display_name": "Mock DC-B",
+  "adapter_type": "mock",
+  "adapter_url": "http://127.0.0.1:9082",
+  "tags": {
+    "env": "dev"
+  },
+  "has_token": false,
+  "created_at": "2026-05-02T21:12:50.298222Z",
+  "updated_at": "2026-05-02T21:12:50.298222Z"
+}

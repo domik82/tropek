@@ -1,4 +1,4 @@
-# bootstrap_mock
+# dev_setup/mock
 
 Demo infrastructure for TROPEK — a realistic e-commerce monitoring setup
 loaded entirely via real API calls using the typed Python client.
@@ -28,14 +28,14 @@ docker compose up api timescaledb redis -d
 ### Validate (no API calls)
 
 ```bash
-uv run --directory clients/python tropek validate -f bootstrap_mock/manifests/
+uv run --directory clients/python tropek validate -f dev_setup/mock/
 ```
 
 ### Dry-run (shows CREATE / UPDATE / SKIP per resource)
 
 ```bash
 uv run --directory clients/python tropek apply \
-  -f bootstrap_mock/manifests/ \
+  -f dev_setup/mock/ \
   --base-url http://localhost:8080 \
   --dry-run
 ```
@@ -44,7 +44,7 @@ uv run --directory clients/python tropek apply \
 
 ```bash
 uv run --directory clients/python tropek apply \
-  -f bootstrap_mock/manifests/ \
+  -f dev_setup/mock/ \
   --base-url http://localhost:8080
 ```
 

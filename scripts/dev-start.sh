@@ -119,17 +119,8 @@ for i in $(seq 1 15); do
 done
 curl -sf http://localhost:$API_PORT/health > /dev/null 2>&1 || { echo "ERROR: API did not start"; exit 1; }
 
-echo "=== Applying bootstrap manifests ==="
-uv run --directory clients/python python ../../scripts/bootstrap.py "http://localhost:$API_PORT"
-
-echo "=== Seeding historical evaluations (mock) ==="
-uv run --directory clients/python python ../../scripts/seed_evaluations.py "http://localhost:$API_PORT"
-
-echo "=== Seeding meta timeline data ==="
-uv run --directory clients/python python ../../scripts/seed_meta_timeline.py "http://localhost:$API_PORT"
-
-echo "=== Running e2e tests ==="
-uv run --directory clients/python python ../../scripts/e2e_tests.py "http://localhost:$API_PORT"
+echo "=== Running dev-setup pipeline (bootstrap, seed, e2e tests) ==="
+uv run --directory clients/python python ../../dev_setup/run.py "http://localhost:$API_PORT"
 
 echo "    waiting for Prometheus adapter health..."
 ADAPTER_HEALTHY=false
@@ -144,20 +135,8 @@ for i in $(seq 1 10); do
 done
 
 if [ "$ADAPTER_HEALTHY" = true ]; then
-  echo "=== Applying Prometheus bootstrap manifests ==="
-  BOOTSTRAP_PROMETHEUS_DIR="$(pwd)/bootstrap_prometheus/manifests"
-  uv run --directory clients/python python -c "
-import sys; sys.path.insert(0, '.')
-from tropek_client import TropekClient
-from tropek_client.manifest import apply, load_manifests
-client = TropekClient('http://localhost:$API_PORT')
-result = apply(client, load_manifests('$BOOTSTRAP_PROMETHEUS_DIR'))
-print(f'prometheus bootstrap: {result.created} created, {result.updated} updated, {result.skipped} skipped')
-if result.failed: print(f'  errors: {result.errors}')
-"
-
-  echo "=== Seeding Prometheus evaluations (7 days x 3 assets) ==="
-  uv run --directory clients/python python ../../scripts/seed_e2e_prometheus.py "http://localhost:$API_PORT"
+  echo "=== Running Prometheus pipeline (bootstrap + seed) ==="
+  uv run --directory clients/python python ../../dev_setup/run.py "http://localhost:$API_PORT" prometheus-bootstrap seed-prometheus
 else
   echo "    adapter unhealthy — Prometheus unreachable, skipping Prometheus bootstrap + seeding"
   echo "    (start the observability stack and re-run to get Prometheus data)"

@@ -1,12 +1,12 @@
 """Trigger 7 daily evaluations against the observability stack's Prometheus data.
 
 Resources (datasource, assets, SLI, SLO, bindings) are created by the bootstrap
-manifests in bootstrap_prometheus/manifests/. This script only triggers evaluations.
+manifests in dev_setup/prometheus/. This script only triggers evaluations.
 
 Timeline: observability stack quick-test.yaml covers 2026-03-14 to 2026-03-20 (7 days).
 Each evaluation covers a 30-minute window at noon. Day 7 overlaps with the outage at ~160h.
 
-Usage: uv run --directory clients/python python ../../scripts/seed_e2e_prometheus.py <api_url>
+Usage: uv run --directory clients/python python ../../dev_setup/stages/seed_e2e_prometheus.py <api_url>
 """
 
 from __future__ import annotations
@@ -15,8 +15,9 @@ import sys
 import time
 
 from tropek_client import TropekClient
+from tropek_client.models import EvaluateSingleRequest
 
-# Assets from bootstrap_prometheus manifests
+# Assets from dev_setup/prometheus manifests
 ASSETS = [
     'obs-api',
     'obs-frontend',
@@ -50,13 +51,15 @@ def main() -> None:
     eval_ids: list[str] = []
     for asset_name in ASSETS:
         for start, end in EVAL_WINDOWS:
-            result = client.evaluations.evaluate(
-                asset_name,
-                'daily-check',
-                start,
-                end,
+            result = client.evaluations.trigger(
+                EvaluateSingleRequest(
+                    asset_name=asset_name,
+                    eval_name='daily-check',
+                    period_start=start,
+                    period_end=end,
+                )
             )
-            eval_ids.extend(str(eid) for eid in result['slo_evaluation_ids'])
+            eval_ids.extend(str(eid) for eid in result.slo_evaluation_ids)
 
     print(f'Triggered {len(eval_ids)}, waiting for completion...')
     pending = set(eval_ids)

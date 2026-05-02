@@ -1,0 +1,44 @@
+[
+  {
+    "name": "change_point.enabled",
+    "value": "true",
+    "value_type": "bool",
+    "description": "enable change point detection globally"
+  },
+  {
+    "name": "change_point.max_pvalue",
+    "value": "0.001",
+    "value_type": "float",
+    "description": "significance threshold \u2014 change points above this are discarded"
+  },
+  {
+    "name": "change_point.min_magnitude",
+    "value": "0.0",
+    "value_type": "float",
+    "description": "minimum relative change (fraction) to keep a change point"
+  },
+  {
+    "name": "change_point.min_sample_size",
+    "value": "10",
+    "value_type": "int",
+    "description": "skip detection if fewer values than this"
+  },
+  {
+    "name": "change_point.pvalue_moderate_threshold",
+    "value": "0.5",
+    "value_type": "float",
+    "description": "first-pass relaxation boundary \u2014 moderate max_pvalue values get 2x relaxation"
+  },
+  {
+    "name": "change_point.pvalue_strict_threshold",
+    "value": "0.05",
+    "value_type": "float",
+    "description": "first-pass relaxation boundary \u2014 strict max_pvalue values get 10x relaxation"
+  },
+  {
+    "name": "change_point.window_size",
+    "value": "30",
+    "value_type": "int",
+    "description": "sliding window length for E-Divisive algorithm"
+  }
+]
