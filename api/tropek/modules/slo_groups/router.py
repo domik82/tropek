@@ -306,6 +306,7 @@ async def update_slo_group(
         gen_variables=eff_gen_vars,
         display_name=body.display_name if body.display_name is not None else group.display_name,
         tags=body.tags if body.tags is not None else None,
+        author=body.author if body.author is not None else group.author,
     )
     if updated_group is None:
         raise NotFoundError('slo group', name)

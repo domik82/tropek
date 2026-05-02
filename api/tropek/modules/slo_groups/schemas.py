@@ -31,6 +31,7 @@ class SLOGroupUpdate(StrictInput):
     gen_variables: dict[IdentifierKey, list[SafeStr]] | None = None
     display_name: SafeStr | None = None
     tags: Tags | None = None
+    author: SafeStr | None = None
 
 
 class SLOGroupRead(BaseModel):
