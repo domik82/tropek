@@ -19,6 +19,7 @@ class AssetCreateParams(StrictInput):
     color: str | None = None
     tags: dict[str, Any] = Field(default_factory=dict)
     variables: dict[str, Any] = Field(default_factory=dict)
+    heatmap_config: dict[str, Any] | None = None
 
 
 class AssetGroupCreateParams(StrictInput):
