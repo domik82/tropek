@@ -342,6 +342,40 @@ class TestSLOs:
         assert isinstance(result, SLOValidationResult)
         assert result.valid is True
 
+    @respx.mock
+    def test_new_version(self, client):
+        current_slo = {
+            **_SLO_JSON,
+            'display_name': 'My SLO',
+            'notes': 'original',
+            'author': 'alice',
+            'objectives': [
+                {
+                    'sli': 'response_time_p95',
+                    'display_name': 'P95 Latency',
+                    'pass_threshold': ['<600'],
+                    'warning_threshold': ['<800'],
+                    'weight': 1,
+                    'key_sli': False,
+                    'sort_order': 0,
+                },
+            ],
+        }
+        created_slo = {**current_slo, 'version': 2, 'id': _UUID2}
+
+        respx.get(f'{BASE_URL}/slo-definitions/my-slo').mock(return_value=httpx.Response(200, json=current_slo))
+        route = respx.post(f'{BASE_URL}/slo-definitions').mock(return_value=httpx.Response(201, json=created_slo))
+
+        result = client.slos.new_version(
+            'my-slo',
+            total_score_pass_threshold=95.0,
+        )
+        assert result.version == 2
+        body = route.calls[0].request.content
+        assert b'"total_score_pass_threshold":95.0' in body
+        assert b'"my-slo"' in body
+        assert b'sort_order' not in body
+
 
 class TestEvaluations:
     @respx.mock
