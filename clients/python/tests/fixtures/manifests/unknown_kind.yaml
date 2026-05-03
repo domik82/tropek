@@ -1,0 +1,9 @@
+api_version: tropek/v1
+kind: AssetSLOLink
+metadata:
+  name: my-link
+spec:
+  asset_name: my-asset
+  slo_name: my-slo
+  sli_name: my-sli
+  data_source_name: my-ds

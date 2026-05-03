@@ -1,0 +1,6 @@
+api_version: tropek/v1
+kind: AssetType
+metadata:
+  name: vm
+spec:
+  is_default: true
