@@ -1,7 +1,7 @@
 """Capture real API responses as JSON fixtures for client unit tests.
 
 Runs after bootstrap + seed + e2e stages against a live TROPEK API.
-Saves raw JSON responses to clients/python/tests/fixtures/ so they can
+Saves raw JSON responses to clients/python/tests/fixtures/api_responses/ so they can
 be used as respx mocks to verify client deserialization.
 
 Usage:
@@ -16,7 +16,7 @@ from pathlib import Path
 
 import httpx
 
-FIXTURES_DIR = Path(__file__).resolve().parents[2] / 'clients' / 'python' / 'tests' / 'fixtures'
+FIXTURES_DIR = Path(__file__).resolve().parents[2] / 'clients' / 'python' / 'tests' / 'fixtures' / 'api_responses'
 
 TIMEOUT = 30
 MIN_CLEAN_EVALS_FOR_STATE_CAPTURE = 2
