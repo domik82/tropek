@@ -10,7 +10,7 @@ against older versions will be considered on a case-by-case basis.
 **Please do not open a public GitHub issue for security vulnerabilities.**
 
 Use GitHub's [private vulnerability reporting](https://github.com/domik82/tropek/security/advisories/new)
-to submit a report. If that is unavailable, email domik82@users.noreply.github.com directly.
+to submit a report.
 
 Include:
 - Description of the vulnerability

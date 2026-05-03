@@ -1,3 +1,6 @@
+# Claude Code local settings (personal paths, hooks)
+.claude/settings.local.json
+
 # Superpowers brainstorming sessions
 .superpowers/
 
