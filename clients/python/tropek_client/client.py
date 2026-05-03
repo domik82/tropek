@@ -25,6 +25,7 @@ from tropek_client.models import (
     AssetTypeRead,
     AssetTypeUpdate,
     AssetUpdate,
+    ChangePointRead,
     ComparisonConfig,
     ConfigurationRead,
     DataSourceCreate,
@@ -184,6 +185,9 @@ class _AssetGroups:
     def update(self, name: str, body: AssetGroupUpdate) -> AssetGroupRead:
         response = self._http.patch(f'/asset-groups/{name}', json=body.model_dump(mode='json', exclude_none=True))
         return AssetGroupRead.model_validate(response.json())
+
+    def delete(self, name: str) -> None:
+        self._http.delete(f'/asset-groups/{name}')
 
     def add_member(self, group_name: str, body: AddMemberRequest) -> AssetGroupRead:
         response = self._http.post(
@@ -490,10 +494,11 @@ class _Evaluations:
         response = self._http.get('/evaluations/names', params=params)
         return [EvaluationNameEntry.model_validate(e) for e in response.json()]
 
-    def triage(self, change_point_id: str, body: TriageRequest) -> None:
-        self._http.patch(
-            f'/change-points/{change_point_id}/triage', json=body.model_dump(mode='json', exclude_none=True)
+    def triage(self, change_point_id: str, body: TriageRequest) -> ChangePointRead:
+        response = self._http.patch(
+            f'/change-points/{change_point_id}', json=body.model_dump(mode='json', exclude_none=True)
         )
+        return ChangePointRead.model_validate(response.json())
 
 
 class _Annotations:
@@ -666,8 +671,11 @@ class _SLOAssignments:
         response = self._http.get(f'/asset-groups/{group_name}/slo-assignments')
         return [SLOAssignmentRead.model_validate(a) for a in response.json()]
 
-    def upgrade(self, assignment_id: str, body: SLOAssignmentUpgrade) -> SLOAssignmentRead:
-        response = self._http.patch(f'/slo-assignments/{assignment_id}/upgrade', json=body.model_dump(mode='json'))
+    def upgrade(self, asset_name: str, assignment_id: str, body: SLOAssignmentUpgrade) -> SLOAssignmentRead:
+        response = self._http.patch(
+            f'/assets/{asset_name}/slo-assignments/{assignment_id}',
+            json=body.model_dump(mode='json'),
+        )
         return SLOAssignmentRead.model_validate(response.json())
 
     def delete_for_asset(self, asset_name: str, slo_definition_id: str) -> None:
