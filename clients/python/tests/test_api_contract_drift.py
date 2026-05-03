@@ -3,14 +3,16 @@
 import json
 import re
 from enum import Enum
-from pathlib import Path
 from typing import Any
 
 import pytest
 import tropek_client.models as client_models
 
-OPENAPI_PATH = Path(__file__).resolve().parents[3] / 'api' / 'openapi.json'
-CLIENT_PATH = Path(__file__).resolve().parents[1] / 'tropek_client' / 'client.py'
+from .conftest import find_workspace_root
+
+_ROOT = find_workspace_root()
+OPENAPI_PATH = _ROOT / 'api' / 'openapi.json'
+CLIENT_PATH = _ROOT / 'clients' / 'python' / 'tropek_client' / 'client.py'
 
 SKIP_SCHEMAS = {
     'HTTPValidationError',

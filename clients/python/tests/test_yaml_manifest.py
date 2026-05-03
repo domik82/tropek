@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from pathlib import Path
 from unittest.mock import MagicMock
 
 import pytest
@@ -18,7 +17,9 @@ from tropek_client.manifest import (
 from tropek_client.models import AssetTypeCreate
 from tropek_client.models.pagination import PagedResponse
 
-MANIFESTS_DIR = Path(__file__).parent / 'fixtures' / 'manifests'
+from .conftest import TESTS_DIR
+
+MANIFESTS_DIR = TESTS_DIR / 'fixtures' / 'manifests'
 
 
 def test_load_single_document():
