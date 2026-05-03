@@ -12,7 +12,7 @@ UUID1 = '00000000-0000-0000-0000-000000000001'
 UUID2 = '00000000-0000-0000-0000-000000000002'
 TIMESTAMP = '2026-03-01T00:00:00Z'
 
-FIXTURES_DIR = Path(__file__).parent / 'fixtures'
+FIXTURES_DIR = Path(__file__).parent / 'fixtures' / 'api_responses'
 
 
 def load_fixture(name: str) -> dict | list:
