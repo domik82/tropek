@@ -12,22 +12,11 @@ from __future__ import annotations
 
 import json
 import sys
-from pathlib import Path
 
 import httpx
+from _paths import PROJECT_ROOT
 
-
-def _find_project_root() -> Path:
-    current = Path(__file__).resolve().parent
-    while current != current.parent:
-        candidate = current / 'pyproject.toml'
-        if candidate.exists() and '[tool.uv.workspace]' in candidate.read_text():
-            return current
-        current = current.parent
-    raise FileNotFoundError('could not find workspace root (pyproject.toml with [tool.uv.workspace])')
-
-
-FIXTURES_DIR = _find_project_root() / 'clients' / 'python' / 'tests' / 'fixtures' / 'api_responses'
+FIXTURES_DIR = PROJECT_ROOT / 'clients' / 'python' / 'tests' / 'fixtures' / 'api_responses'
 
 TIMEOUT = 30
 MIN_CLEAN_EVALS_FOR_STATE_CAPTURE = 2

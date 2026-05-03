@@ -6,12 +6,12 @@ Usage: uv run --directory clients/python python ../../dev_setup/stages/bootstrap
 from __future__ import annotations
 
 import sys
-from pathlib import Path
 
+from _paths import PROJECT_ROOT
 from tropek_client import TropekClient
 from tropek_client.manifest import apply, load_manifests
 
-MANIFESTS_DIR = Path(__file__).resolve().parent.parent / 'mock'
+MANIFESTS_DIR = PROJECT_ROOT / 'dev_setup' / 'mock'
 
 
 def main() -> None:
