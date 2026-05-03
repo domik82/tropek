@@ -25,7 +25,9 @@ class DataSourceCreate(StrictInput):
 class DataSourceUpdate(StrictInput):
     """Request body for updating a datasource."""
 
+    name: SafeStr | None = None
     display_name: SafeStr | None = None
+    adapter_type: SafeStr | None = None
     adapter_url: SafeStr | None = None
     tags: Tags | None = None
     token: SafeStr | None = None

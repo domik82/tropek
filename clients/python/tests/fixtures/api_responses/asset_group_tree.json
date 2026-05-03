@@ -1,0 +1,364 @@
+{
+  "top_level": [
+    {
+      "id": "90fbbe2a-7a30-4db3-a19a-845a2e26c7a7",
+      "name": "binding-test-group",
+      "display_name": "Binding Test Group",
+      "description": null,
+      "color": "#DB61A2",
+      "members": [
+        {
+          "asset_id": "00e52889-6f48-438f-aa51-456ebfe73029",
+          "asset_name": "group-slo",
+          "asset_display_name": "Binding Test: Group SLO",
+          "asset_type_name": "service",
+          "weight": 1.0
+        }
+      ],
+      "subgroups": [],
+      "created_at": "2026-05-02T21:12:50.782105Z",
+      "updated_at": "2026-05-02T21:12:50.782105Z"
+    },
+    {
+      "id": "b4ba9943-fc31-45aa-b6f1-9b5774ea78b5",
+      "name": "ecommerce-prod",
+      "display_name": "E-Commerce Production",
+      "description": null,
+      "color": "#D4A032",
+      "members": [],
+      "subgroups": [
+        {
+          "group_id": "5cad1583-613b-4766-ac8d-b0a910ac0ef7",
+          "group_name": "core-services",
+          "weight": 1.0
+        },
+        {
+          "group_id": "d6e21d20-a960-4b7b-82c5-f0ae31a75da2",
+          "group_name": "data-tier",
+          "weight": 1.0
+        }
+      ],
+      "created_at": "2026-05-02T21:12:50.749336Z",
+      "updated_at": "2026-05-02T21:12:50.749336Z"
+    },
+    {
+      "id": "f8010815-300d-4f29-8520-8fc14ce567ff",
+      "name": "lab-monitors",
+      "display_name": "Lab Monitors",
+      "description": null,
+      "color": "#A371F7",
+      "members": [
+        {
+          "asset_id": "f415da1f-aff8-4906-96ef-608633d4e39d",
+          "asset_name": "lab-monitor-01",
+          "asset_display_name": "Lab Monitor 01",
+          "asset_type_name": "service",
+          "weight": 1.0
+        }
+      ],
+      "subgroups": [],
+      "created_at": "2026-05-02T21:12:50.816334Z",
+      "updated_at": "2026-05-02T21:12:50.816334Z"
+    },
+    {
+      "id": "1e8b7a24-811d-40b7-aa00-f34d026f46ad",
+      "name": "office-laptops",
+      "display_name": "Office Laptops",
+      "description": null,
+      "color": "#F85149",
+      "members": [
+        {
+          "asset_id": "c515b381-3268-4cf8-8a85-9aa118162f9a",
+          "asset_name": "laptop-user-01",
+          "asset_display_name": "User Laptop 01 (J.Smith)",
+          "asset_type_name": "endpoint",
+          "weight": 1.0
+        },
+        {
+          "asset_id": "f4bdbf96-0060-47ae-9842-b4b0da3ac332",
+          "asset_name": "laptop-user-02",
+          "asset_display_name": "User Laptop 02 (A.Johnson)",
+          "asset_type_name": "endpoint",
+          "weight": 1.0
+        }
+      ],
+      "subgroups": [],
+      "created_at": "2026-05-02T21:12:50.721425Z",
+      "updated_at": "2026-05-02T21:12:50.721425Z"
+    },
+    {
+      "id": "e14e4acb-d792-4c9e-a8d8-3300e4440ce9",
+      "name": "smoke-child-group",
+      "display_name": null,
+      "description": null,
+      "color": "#7DC540",
+      "members": [],
+      "subgroups": [],
+      "created_at": "2026-05-02T21:16:46.213964Z",
+      "updated_at": "2026-05-02T21:16:46.213964Z"
+    },
+    {
+      "id": "0d50c236-07b1-4aa1-84ae-96cfa7f85ab4",
+      "name": "smoke-group",
+      "display_name": "Smoke Group Updated",
+      "description": null,
+      "color": "#7DC540",
+      "members": [],
+      "subgroups": [],
+      "created_at": "2026-05-02T21:16:46.178320Z",
+      "updated_at": "2026-05-02T21:16:46.188398Z"
+    },
+    {
+      "id": "5e5ba0f2-e1c6-4587-a12b-332241375cc6",
+      "name": "template-test-group",
+      "display_name": "Template Test Group",
+      "description": null,
+      "color": "#8B949E",
+      "members": [
+        {
+          "asset_id": "c6178b47-0f18-48ec-8e28-073e298cf425",
+          "asset_name": "group-template",
+          "asset_display_name": "Binding Test: Group Template",
+          "asset_type_name": "service",
+          "weight": 1.0
+        }
+      ],
+      "subgroups": [],
+      "created_at": "2026-05-02T21:12:50.799250Z",
+      "updated_at": "2026-05-02T21:12:50.799250Z"
+    },
+    {
+      "id": "61e98e29-c322-4848-8dc8-f2677cc6d51a",
+      "name": "vm-prod-web",
+      "display_name": "Production Web VMs",
+      "description": null,
+      "color": "#A371F7",
+      "members": [
+        {
+          "asset_id": "fd37877e-3736-42a7-85a1-b1a0c3889b2a",
+          "asset_name": "vm-prod-web-01",
+          "asset_display_name": "Production Web VM 01",
+          "asset_type_name": "vm",
+          "weight": 1.0
+        },
+        {
+          "asset_id": "e7ebc41e-c853-4dd3-834c-1c38d4ce1512",
+          "asset_name": "vm-prod-web-02",
+          "asset_display_name": "Production Web VM 02",
+          "asset_type_name": "vm",
+          "weight": 1.0
+        }
+      ],
+      "subgroups": [],
+      "created_at": "2026-05-02T21:12:50.693653Z",
+      "updated_at": "2026-05-02T21:12:50.693653Z"
+    }
+  ],
+  "all_groups": [
+    {
+      "id": "90fbbe2a-7a30-4db3-a19a-845a2e26c7a7",
+      "name": "binding-test-group",
+      "display_name": "Binding Test Group",
+      "description": null,
+      "color": "#DB61A2",
+      "members": [
+        {
+          "asset_id": "00e52889-6f48-438f-aa51-456ebfe73029",
+          "asset_name": "group-slo",
+          "asset_display_name": "Binding Test: Group SLO",
+          "asset_type_name": "service",
+          "weight": 1.0
+        }
+      ],
+      "subgroups": [],
+      "created_at": "2026-05-02T21:12:50.782105Z",
+      "updated_at": "2026-05-02T21:12:50.782105Z"
+    },
+    {
+      "id": "5cad1583-613b-4766-ac8d-b0a910ac0ef7",
+      "name": "core-services",
+      "display_name": "Core Services",
+      "description": null,
+      "color": "#8B949E",
+      "members": [
+        {
+          "asset_id": "94e5be5c-6f6f-44a8-a4f0-8e5aae3032cc",
+          "asset_name": "checkout-api",
+          "asset_display_name": "Checkout API",
+          "asset_type_name": "service",
+          "weight": 1.0
+        },
+        {
+          "asset_id": "26d220d4-2dde-40ec-8cc1-a0fcce8416a4",
+          "asset_name": "product-catalog",
+          "asset_display_name": "Product Catalog Service",
+          "asset_type_name": "service",
+          "weight": 1.0
+        },
+        {
+          "asset_id": "4cb12b63-b230-4248-90cc-58ef6d1bb1a7",
+          "asset_name": "user-service",
+          "asset_display_name": "User & Auth Service",
+          "asset_type_name": "service",
+          "weight": 1.0
+        }
+      ],
+      "subgroups": [],
+      "created_at": "2026-05-02T21:12:50.626572Z",
+      "updated_at": "2026-05-02T21:12:50.626572Z"
+    },
+    {
+      "id": "d6e21d20-a960-4b7b-82c5-f0ae31a75da2",
+      "name": "data-tier",
+      "display_name": null,
+      "description": null,
+      "color": "#8B949E",
+      "members": [
+        {
+          "asset_id": "81092711-e9ba-4cdb-b1b0-7701c3ae7315",
+          "asset_name": "orders-db",
+          "asset_display_name": "Orders PostgreSQL",
+          "asset_type_name": "database",
+          "weight": 1.0
+        }
+      ],
+      "subgroups": [],
+      "created_at": "2026-05-02T21:12:50.676762Z",
+      "updated_at": "2026-05-02T21:12:50.676762Z"
+    },
+    {
+      "id": "b4ba9943-fc31-45aa-b6f1-9b5774ea78b5",
+      "name": "ecommerce-prod",
+      "display_name": "E-Commerce Production",
+      "description": null,
+      "color": "#D4A032",
+      "members": [],
+      "subgroups": [
+        {
+          "group_id": "5cad1583-613b-4766-ac8d-b0a910ac0ef7",
+          "group_name": "core-services",
+          "weight": 1.0
+        },
+        {
+          "group_id": "d6e21d20-a960-4b7b-82c5-f0ae31a75da2",
+          "group_name": "data-tier",
+          "weight": 1.0
+        }
+      ],
+      "created_at": "2026-05-02T21:12:50.749336Z",
+      "updated_at": "2026-05-02T21:12:50.749336Z"
+    },
+    {
+      "id": "f8010815-300d-4f29-8520-8fc14ce567ff",
+      "name": "lab-monitors",
+      "display_name": "Lab Monitors",
+      "description": null,
+      "color": "#A371F7",
+      "members": [
+        {
+          "asset_id": "f415da1f-aff8-4906-96ef-608633d4e39d",
+          "asset_name": "lab-monitor-01",
+          "asset_display_name": "Lab Monitor 01",
+          "asset_type_name": "service",
+          "weight": 1.0
+        }
+      ],
+      "subgroups": [],
+      "created_at": "2026-05-02T21:12:50.816334Z",
+      "updated_at": "2026-05-02T21:12:50.816334Z"
+    },
+    {
+      "id": "1e8b7a24-811d-40b7-aa00-f34d026f46ad",
+      "name": "office-laptops",
+      "display_name": "Office Laptops",
+      "description": null,
+      "color": "#F85149",
+      "members": [
+        {
+          "asset_id": "c515b381-3268-4cf8-8a85-9aa118162f9a",
+          "asset_name": "laptop-user-01",
+          "asset_display_name": "User Laptop 01 (J.Smith)",
+          "asset_type_name": "endpoint",
+          "weight": 1.0
+        },
+        {
+          "asset_id": "f4bdbf96-0060-47ae-9842-b4b0da3ac332",
+          "asset_name": "laptop-user-02",
+          "asset_display_name": "User Laptop 02 (A.Johnson)",
+          "asset_type_name": "endpoint",
+          "weight": 1.0
+        }
+      ],
+      "subgroups": [],
+      "created_at": "2026-05-02T21:12:50.721425Z",
+      "updated_at": "2026-05-02T21:12:50.721425Z"
+    },
+    {
+      "id": "e14e4acb-d792-4c9e-a8d8-3300e4440ce9",
+      "name": "smoke-child-group",
+      "display_name": null,
+      "description": null,
+      "color": "#7DC540",
+      "members": [],
+      "subgroups": [],
+      "created_at": "2026-05-02T21:16:46.213964Z",
+      "updated_at": "2026-05-02T21:16:46.213964Z"
+    },
+    {
+      "id": "0d50c236-07b1-4aa1-84ae-96cfa7f85ab4",
+      "name": "smoke-group",
+      "display_name": "Smoke Group Updated",
+      "description": null,
+      "color": "#7DC540",
+      "members": [],
+      "subgroups": [],
+      "created_at": "2026-05-02T21:16:46.178320Z",
+      "updated_at": "2026-05-02T21:16:46.188398Z"
+    },
+    {
+      "id": "5e5ba0f2-e1c6-4587-a12b-332241375cc6",
+      "name": "template-test-group",
+      "display_name": "Template Test Group",
+      "description": null,
+      "color": "#8B949E",
+      "members": [
+        {
+          "asset_id": "c6178b47-0f18-48ec-8e28-073e298cf425",
+          "asset_name": "group-template",
+          "asset_display_name": "Binding Test: Group Template",
+          "asset_type_name": "service",
+          "weight": 1.0
+        }
+      ],
+      "subgroups": [],
+      "created_at": "2026-05-02T21:12:50.799250Z",
+      "updated_at": "2026-05-02T21:12:50.799250Z"
+    },
+    {
+      "id": "61e98e29-c322-4848-8dc8-f2677cc6d51a",
+      "name": "vm-prod-web",
+      "display_name": "Production Web VMs",
+      "description": null,
+      "color": "#A371F7",
+      "members": [
+        {
+          "asset_id": "fd37877e-3736-42a7-85a1-b1a0c3889b2a",
+          "asset_name": "vm-prod-web-01",
+          "asset_display_name": "Production Web VM 01",
+          "asset_type_name": "vm",
+          "weight": 1.0
+        },
+        {
+          "asset_id": "e7ebc41e-c853-4dd3-834c-1c38d4ce1512",
+          "asset_name": "vm-prod-web-02",
+          "asset_display_name": "Production Web VM 02",
+          "asset_type_name": "vm",
+          "weight": 1.0
+        }
+      ],
+      "subgroups": [],
+      "created_at": "2026-05-02T21:12:50.693653Z",
+      "updated_at": "2026-05-02T21:12:50.693653Z"
+    }
+  ]
+}

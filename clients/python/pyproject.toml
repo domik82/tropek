@@ -17,6 +17,7 @@ tropek = "tropek_client.cli:cli"
 dev = [
     "pytest>=8.0",
     "pytest-httpx>=0.30",
+    "respx>=0.22",
 ]
 
 [build-system]

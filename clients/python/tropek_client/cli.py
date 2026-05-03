@@ -75,7 +75,7 @@ def _collect_documents(client: TropekClient) -> list[dict[str, Any]]:
             'metadata': {'name': at.name},
             'spec': {'is_default': at.is_default},
         }
-        for at in client.asset_types.list()
+        for at in client.asset_types.list().items
     )
     documents.extend(
         {
@@ -107,9 +107,9 @@ def _collect_documents(client: TropekClient) -> list[dict[str, Any]]:
             },
             'spec': {'indicators': s.indicators},
         }
-        for s in client.sli_definitions.list().items
+        for s in client.slis.list().items
     )
-    for slo in client.slo_definitions.list().items:
+    for slo in client.slos.list().items:
         objectives = [{k: v for k, v in o.model_dump().items() if k != 'sort_order'} for o in slo.objectives]
         documents.append(
             {

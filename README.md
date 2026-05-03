@@ -240,7 +240,7 @@ spec:
       weight: 2
 ```
 
-See `bootstrap_mock/manifests/` for complete working examples including template SLOs with `$__gen_` variable expansion and aggregated-mode SLIs.
+See `dev_setup/mock/` for complete working examples including template SLOs with `$__gen_` variable expansion and aggregated-mode SLIs.
 
 ### Criteria syntax
 

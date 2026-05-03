@@ -22,3 +22,13 @@ jobs:
 
       - name: Unit tests
         run: uv run --directory api pytest tests/ -m "not integration" -q --ignore=tests/schemathesis
+
+  client:
+    name: client tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: ./.github/actions/setup-python
+
+      - name: Client unit + fixture tests
+        run: uv run --directory clients/python pytest tests/ -q

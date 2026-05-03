@@ -1,0 +1,187 @@
+{
+  "items": [
+    {
+      "id": "335171df-b388-488f-bf8f-b21fc25583d1",
+      "name": "app-x-plugins",
+      "display_name": "App-X Plugin Monitoring",
+      "template_slo_name": "plugin/$__gen_process_name",
+      "template_slo_version": 1,
+      "template_slo_definition_id": "e1615967-34a6-48a7-92a1-1a5f68829573",
+      "gen_variables": {
+        "process_name": [
+          "auth",
+          "cache",
+          "db"
+        ]
+      },
+      "tags": {
+        "app": "app-x"
+      },
+      "author": null,
+      "version": 1,
+      "active": true,
+      "created_at": "2026-05-02T21:12:50.833403Z",
+      "updated_at": "2026-05-02T21:12:50.833403Z",
+      "generated_slo_count": 3
+    },
+    {
+      "id": "b59b9d69-3bf7-463b-a069-84440c356650",
+      "name": "dtmpl-health-group",
+      "display_name": "Direct Template Health Group",
+      "template_slo_name": "dtmpl-health/$__gen_process_name",
+      "template_slo_version": 1,
+      "template_slo_definition_id": "6cd87a36-7fdb-42f4-a99c-c30404ae2367",
+      "gen_variables": {
+        "process_name": [
+          "gamma",
+          "delta"
+        ]
+      },
+      "tags": {
+        "purpose": "binding-test"
+      },
+      "author": null,
+      "version": 1,
+      "active": true,
+      "created_at": "2026-05-02T21:12:50.927648Z",
+      "updated_at": "2026-05-02T21:12:50.927648Z",
+      "generated_slo_count": 2
+    },
+    {
+      "id": "17b8d8b4-fca2-4e4b-807c-937f503bbdf0",
+      "name": "lab-health-group",
+      "display_name": "Lab Health Monitoring",
+      "template_slo_name": "lab-health/$__gen_process_name",
+      "template_slo_version": 1,
+      "template_slo_definition_id": "30b9ee4e-8171-4321-886a-edad5d936f54",
+      "gen_variables": {
+        "process_name": [
+          "nginx",
+          "postgres",
+          "redis",
+          "kafka",
+          "etcd",
+          "vault",
+          "consul",
+          "grafana"
+        ]
+      },
+      "tags": {
+        "purpose": "scale-test"
+      },
+      "author": null,
+      "version": 1,
+      "active": true,
+      "created_at": "2026-05-02T21:12:50.950252Z",
+      "updated_at": "2026-05-02T21:12:50.950252Z",
+      "generated_slo_count": 8
+    },
+    {
+      "id": "747361e2-b27c-478d-9b5f-b31a240a9a4f",
+      "name": "lab-perf-group",
+      "display_name": "Lab Performance Monitoring",
+      "template_slo_name": "lab-perf/$__gen_process_name",
+      "template_slo_version": 1,
+      "template_slo_definition_id": "da88a54e-60b1-4a25-9d6d-eb634e3307f3",
+      "gen_variables": {
+        "process_name": [
+          "nginx",
+          "postgres",
+          "redis",
+          "kafka",
+          "etcd",
+          "vault",
+          "consul",
+          "grafana"
+        ]
+      },
+      "tags": {
+        "purpose": "scale-test"
+      },
+      "author": null,
+      "version": 1,
+      "active": true,
+      "created_at": "2026-05-02T21:12:51.021272Z",
+      "updated_at": "2026-05-02T21:12:51.021272Z",
+      "generated_slo_count": 8
+    },
+    {
+      "id": "82deb3bc-0355-4fe8-9590-4cd0bc547527",
+      "name": "lab-resource-group",
+      "display_name": "Lab Resource Monitoring",
+      "template_slo_name": "lab-resource/$__gen_process_name",
+      "template_slo_version": 1,
+      "template_slo_definition_id": "5ab0c2e2-72b4-4b3f-aca0-ffa9576f2ae2",
+      "gen_variables": {
+        "process_name": [
+          "nginx",
+          "postgres",
+          "redis",
+          "kafka",
+          "etcd",
+          "vault",
+          "consul",
+          "grafana"
+        ]
+      },
+      "tags": {
+        "purpose": "scale-test"
+      },
+      "author": null,
+      "version": 1,
+      "active": true,
+      "created_at": "2026-05-02T21:12:51.086459Z",
+      "updated_at": "2026-05-02T21:12:51.086459Z",
+      "generated_slo_count": 8
+    },
+    {
+      "id": "0dee5a07-c9e5-4d2d-87d4-7b03af31d810",
+      "name": "process-cpu-agg-group",
+      "display_name": "Process CPU Aggregated Monitoring",
+      "template_slo_name": "cpu-agg/$__gen_process_name",
+      "template_slo_version": 1,
+      "template_slo_definition_id": "441b75ef-4059-475a-becb-c8b1a3907c65",
+      "gen_variables": {
+        "process_name": [
+          "auth",
+          "cache",
+          "db",
+          "worker"
+        ]
+      },
+      "tags": {
+        "category": "cpu-aggregated"
+      },
+      "author": null,
+      "version": 1,
+      "active": true,
+      "created_at": "2026-05-02T21:12:50.869446Z",
+      "updated_at": "2026-05-02T21:12:50.869446Z",
+      "generated_slo_count": 4
+    },
+    {
+      "id": "0072fd01-78b8-4cdc-b8b0-027d9e9ea297",
+      "name": "tmpl-health-group",
+      "display_name": "Template Health Group",
+      "template_slo_name": "tmpl-health/$__gen_process_name",
+      "template_slo_version": 1,
+      "template_slo_definition_id": "14429897-c48c-4308-a8b6-9d46c969e2f4",
+      "gen_variables": {
+        "process_name": [
+          "alpha",
+          "beta"
+        ]
+      },
+      "tags": {
+        "purpose": "binding-test"
+      },
+      "author": null,
+      "version": 1,
+      "active": true,
+      "created_at": "2026-05-02T21:12:50.905247Z",
+      "updated_at": "2026-05-02T21:12:50.905247Z",
+      "generated_slo_count": 2
+    }
+  ],
+  "total": 7
+}

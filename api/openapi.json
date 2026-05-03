@@ -569,6 +569,18 @@
             ],
             "title": "Display Name"
           },
+          "heatmap_config": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Heatmap Config"
+          },
           "name": {
             "pattern": "^[^\\x00]*$",
             "title": "Name",
@@ -1190,8 +1202,19 @@
       },
       "AssetTypeUpdate": {
         "additionalProperties": false,
-        "description": "Request body for renaming an asset type.",
+        "description": "Request body for updating an asset type.",
         "properties": {
+          "is_default": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Default"
+          },
           "name": {
             "anyOf": [
               {
@@ -2077,6 +2100,18 @@
         "additionalProperties": false,
         "description": "Request body for updating a datasource.",
         "properties": {
+          "adapter_type": {
+            "anyOf": [
+              {
+                "pattern": "^[^\\x00]*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Adapter Type"
+          },
           "adapter_url": {
             "anyOf": [
               {
@@ -2100,6 +2135,18 @@
               }
             ],
             "title": "Display Name"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "pattern": "^[^\\x00]*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
           },
           "tags": {
             "anyOf": [
@@ -5897,6 +5944,18 @@
         "additionalProperties": false,
         "description": "Request body for updating an SLO group (triggers regeneration).",
         "properties": {
+          "author": {
+            "anyOf": [
+              {
+                "pattern": "^[^\\x00]*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Author"
+          },
           "display_name": {
             "anyOf": [
               {
@@ -8126,8 +8185,8 @@
         "summary": "Delete Asset Type"
       },
       "patch": {
-        "description": "Rename an asset type.",
-        "operationId": "rename_asset_type_asset_types__name__patch",
+        "description": "Update an asset type (rename and/or set as default).",
+        "operationId": "update_asset_type_asset_types__name__patch",
         "parameters": [
           {
             "in": "path",
@@ -8201,7 +8260,7 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Rename Asset Type"
+        "summary": "Update Asset Type"
       }
     },
     "/asset-types/{name}/set-default": {

@@ -1,0 +1,185 @@
+{
+  "id": "895403b0-0126-47ac-9440-7e0b7da1cc45",
+  "evaluation_id": "8973c9ae-3cd7-4fde-a5d1-f7a8b4f80389",
+  "evaluation_name": "agg-baseline-test",
+  "status": "completed",
+  "result": "fail",
+  "score": 100.0,
+  "period_start": "2026-03-16T16:00:00Z",
+  "period_end": "2026-03-16T16:30:00Z",
+  "slo_name": "agg-latency-slo",
+  "slo_version": 1,
+  "sli_name": "agg-latency-sli",
+  "sli_version": 1,
+  "data_source_name": "prometheus-local",
+  "ingestion_mode": "pull",
+  "adapter_used": "prometheus",
+  "invalidated": false,
+  "baseline_pinned_at": null,
+  "baseline_unpinned_at": null,
+  "baseline_pin_reason": null,
+  "baseline_pin_author": null,
+  "original_result": "pass",
+  "original_score": null,
+  "override_reason": "fixture capture",
+  "override_author": "capture-script",
+  "asset_snapshot": {
+    "asset_id": "94e5be5c-6f6f-44a8-a4f0-8e5aae3032cc",
+    "name": "checkout-api",
+    "display_name": "Checkout API",
+    "tags": {
+      "env": "production",
+      "team": "payments",
+      "tier": "critical",
+      "region": "eu-west-1"
+    },
+    "primary_version": null,
+    "build_ref": null
+  },
+  "variables": {
+    "env": "production",
+    "team": "payments",
+    "tier": "critical",
+    "region": "eu-west-1"
+  },
+  "annotation_count": 0,
+  "latest_annotation": null,
+  "top_failures": [],
+  "created_at": "2026-05-02T21:16:44.982213Z",
+  "invalidation_note": null,
+  "compared_evaluation_ids": [
+    "cd45514c-81bf-42a8-b7c8-e9287ff571e9",
+    "96f0ffd5-307d-4a42-baad-57c7e0e36e4f",
+    "0e440401-24fa-4ae0-9d1f-606bb1995620"
+  ],
+  "annotations": [],
+  "indicator_results": [
+    {
+      "metric": "agg-latency-sli.mean",
+      "display_name": "Mean Latency",
+      "tab_group": null,
+      "value": 349.609,
+      "compared_value": 351.30333333333334,
+      "change_absolute": -1.6943333333333612,
+      "change_relative_pct": -0.48229924756384435,
+      "aggregation": null,
+      "status": "pass",
+      "score": 2.0,
+      "weight": 2.0,
+      "key_sli": false,
+      "pass_targets": [
+        {
+          "criteria": "<500",
+          "target_value": 500.0,
+          "violated": false
+        }
+      ],
+      "warning_targets": [
+        {
+          "criteria": "<800",
+          "target_value": 800.0,
+          "violated": false
+        }
+      ],
+      "change_point": null
+    },
+    {
+      "metric": "agg-latency-sli.p95",
+      "display_name": "P95 Latency",
+      "tab_group": null,
+      "value": 699.218,
+      "compared_value": 702.6066666666667,
+      "change_absolute": -3.3886666666667224,
+      "change_relative_pct": -0.48229924756384435,
+      "aggregation": null,
+      "status": "pass",
+      "score": 2.0,
+      "weight": 2.0,
+      "key_sli": false,
+      "pass_targets": [
+        {
+          "criteria": "<1000",
+          "target_value": 1000.0,
+          "violated": false
+        }
+      ],
+      "warning_targets": [
+        {
+          "criteria": "<1500",
+          "target_value": 1500.0,
+          "violated": false
+        }
+      ],
+      "change_point": null
+    },
+    {
+      "metric": "agg-latency-sli.p99",
+      "display_name": "P99 Latency",
+      "tab_group": null,
+      "value": 804.101,
+      "compared_value": 807.9976666666666,
+      "change_absolute": -3.896666666666647,
+      "change_relative_pct": -0.48226211874373703,
+      "aggregation": null,
+      "status": "pass",
+      "score": 1.0,
+      "weight": 1.0,
+      "key_sli": false,
+      "pass_targets": [
+        {
+          "criteria": "<2000",
+          "target_value": 2000.0,
+          "violated": false
+        }
+      ],
+      "warning_targets": [
+        {
+          "criteria": "<3000",
+          "target_value": 3000.0,
+          "violated": false
+        }
+      ],
+      "change_point": null
+    },
+    {
+      "metric": "agg-latency-sli.max",
+      "display_name": "Max Latency",
+      "tab_group": null,
+      "value": 874.023,
+      "compared_value": 878.2583333333333,
+      "change_absolute": -4.235333333333301,
+      "change_relative_pct": -0.48224231670636053,
+      "aggregation": null,
+      "status": "pass",
+      "score": 1.0,
+      "weight": 1.0,
+      "key_sli": false,
+      "pass_targets": [
+        {
+          "criteria": "<5000",
+          "target_value": 5000.0,
+          "violated": false
+        }
+      ],
+      "warning_targets": [
+        {
+          "criteria": "<8000",
+          "target_value": 8000.0,
+          "violated": false
+        }
+      ],
+      "change_point": null
+    }
+  ],
+  "total_score_pass_threshold": 90.0,
+  "total_score_warning_threshold": 75.0,
+  "sli_metadata": {
+    "agg-latency-sli": {
+      "mode": "aggregated",
+      "expected_samples": 30,
+      "actual_samples": 26,
+      "missing_pct": 13.3,
+      "chunks_failed": 0
+    }
+  }
+}

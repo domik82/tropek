@@ -79,6 +79,7 @@ class SLOGroupRepository:
         gen_variables: dict[str, list[str]] | None = None,
         display_name: Any = _UNSET,
         tags: dict[str, Any] | None = None,
+        author: Any = _UNSET,
     ) -> SLOGroup | None:
         """Update mutable fields on an active group; bumps version. Returns None if not found."""
         group = await self.get_by_name(name)
@@ -92,6 +93,8 @@ class SLOGroupRepository:
             group.display_name = display_name
         if tags is not None:
             group.tags = tags
+        if author is not _UNSET:
+            group.author = author
         group.version += 1
         group.updated_at = datetime.now(UTC)
         await self._session.flush()

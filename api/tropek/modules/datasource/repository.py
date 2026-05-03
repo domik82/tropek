@@ -9,6 +9,7 @@ from sqlalchemy import delete, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from tropek.db.models import DataSource
+from tropek.modules.common.exceptions import ConflictError
 from tropek.modules.common.tag_mixin import TagQueryMixin
 from tropek.modules.datasource.params import DataSourceCreateParams
 
@@ -89,7 +90,9 @@ class DataSourceRepository(TagQueryMixin):
         self,
         name: str,
         *,
+        new_name: str | None = None,
         display_name: str | None = None,
+        adapter_type: str | None = None,
         adapter_url: str | None = None,
         tags: dict[str, Any] | None = None,
         token: str | None = None,
@@ -98,7 +101,9 @@ class DataSourceRepository(TagQueryMixin):
 
         Args:
             name: Unique datasource name to update.
+            new_name: New unique name, if renaming.
             display_name: New human-readable label, if changing.
+            adapter_type: New adapter kind, if changing.
             adapter_url: New adapter base URL, if changing.
             tags: New tags dict, if changing.
             token: New authentication token, if changing.
@@ -106,9 +111,18 @@ class DataSourceRepository(TagQueryMixin):
         Returns:
             Updated DataSource, or None if not found.
         """
+        if new_name is not None and new_name != name:
+            conflict = await self.get_by_name(new_name)
+            if conflict is not None:
+                raise ConflictError('datasource', new_name, 'already exists')
+
         values: dict[str, Any] = {}
+        if new_name is not None:
+            values['name'] = new_name
         if display_name is not None:
             values['display_name'] = display_name
+        if adapter_type is not None:
+            values['adapter_type'] = adapter_type
         if adapter_url is not None:
             values['adapter_url'] = adapter_url
         if tags is not None:
@@ -117,7 +131,7 @@ class DataSourceRepository(TagQueryMixin):
             values['token'] = token
         if values:
             await self._session.execute(update(DataSource).where(DataSource.name == name).values(**values))
-        return await self.get_by_name(name)
+        return await self.get_by_name(new_name or name)
 
     async def delete(self, datasource_id: uuid.UUID) -> None:
         """Hard-delete a datasource record.

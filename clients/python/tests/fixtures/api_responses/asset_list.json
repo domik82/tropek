@@ -1,0 +1,249 @@
+{
+  "items": [
+    {
+      "id": "94e5be5c-6f6f-44a8-a4f0-8e5aae3032cc",
+      "name": "checkout-api",
+      "display_name": "Checkout API",
+      "type_name": "service",
+      "tags": {
+        "env": "production",
+        "team": "payments",
+        "tier": "critical",
+        "region": "eu-west-1"
+      },
+      "variables": {
+        "job": "checkout-api",
+        "namespace": "ecommerce"
+      },
+      "heatmap_config": null,
+      "color": null,
+      "created_at": "2026-05-02T21:12:50.302518Z",
+      "updated_at": "2026-05-02T21:12:50.302518Z"
+    },
+    {
+      "id": "a7612fe7-2a0e-48e0-a762-58a3061c83d0",
+      "name": "direct-slo",
+      "display_name": "Binding Test: Direct SLO",
+      "type_name": "service",
+      "tags": {
+        "purpose": "binding-test"
+      },
+      "variables": {
+        "job": "direct-slo",
+        "namespace": "binding-test"
+      },
+      "heatmap_config": null,
+      "color": null,
+      "created_at": "2026-05-02T21:12:50.334891Z",
+      "updated_at": "2026-05-02T21:12:50.334891Z"
+    },
+    {
+      "id": "b39a99a1-6f10-42a9-b94e-90543f1ba679",
+      "name": "direct-template",
+      "display_name": "Binding Test: Direct Template",
+      "type_name": "service",
+      "tags": {
+        "purpose": "binding-test"
+      },
+      "variables": {
+        "job": "direct-template",
+        "namespace": "binding-test"
+      },
+      "heatmap_config": null,
+      "color": null,
+      "created_at": "2026-05-02T21:12:50.346211Z",
+      "updated_at": "2026-05-02T21:12:50.346211Z"
+    },
+    {
+      "id": "00e52889-6f48-438f-aa51-456ebfe73029",
+      "name": "group-slo",
+      "display_name": "Binding Test: Group SLO",
+      "type_name": "service",
+      "tags": {
+        "purpose": "binding-test"
+      },
+      "variables": {
+        "job": "group-slo",
+        "namespace": "binding-test"
+      },
+      "heatmap_config": null,
+      "color": null,
+      "created_at": "2026-05-02T21:12:50.338553Z",
+      "updated_at": "2026-05-02T21:12:50.338553Z"
+    },
+    {
+      "id": "c6178b47-0f18-48ec-8e28-073e298cf425",
+      "name": "group-template",
+      "display_name": "Binding Test: Group Template",
+      "type_name": "service",
+      "tags": {
+        "purpose": "binding-test"
+      },
+      "variables": {
+        "job": "group-template",
+        "namespace": "binding-test"
+      },
+      "heatmap_config": null,
+      "color": null,
+      "created_at": "2026-05-02T21:12:50.342284Z",
+      "updated_at": "2026-05-02T21:12:50.342284Z"
+    },
+    {
+      "id": "f415da1f-aff8-4906-96ef-608633d4e39d",
+      "name": "lab-monitor-01",
+      "display_name": "Lab Monitor 01",
+      "type_name": "service",
+      "tags": {
+        "env": "lab",
+        "purpose": "scale-test"
+      },
+      "variables": {
+        "job": "lab-monitor",
+        "namespace": "lab"
+      },
+      "heatmap_config": null,
+      "color": null,
+      "created_at": "2026-05-02T21:12:50.350241Z",
+      "updated_at": "2026-05-02T21:12:50.350241Z"
+    },
+    {
+      "id": "c515b381-3268-4cf8-8a85-9aa118162f9a",
+      "name": "laptop-user-01",
+      "display_name": "User Laptop 01 (J.Smith)",
+      "type_name": "endpoint",
+      "tags": {
+        "env": "production",
+        "team": "office",
+        "department": "finance"
+      },
+      "variables": {
+        "os": "windows-11",
+        "host": "laptop-user-01:9182"
+      },
+      "heatmap_config": null,
+      "color": null,
+      "created_at": "2026-05-02T21:12:50.327493Z",
+      "updated_at": "2026-05-02T21:12:50.327493Z"
+    },
+    {
+      "id": "f4bdbf96-0060-47ae-9842-b4b0da3ac332",
+      "name": "laptop-user-02",
+      "display_name": "User Laptop 02 (A.Johnson)",
+      "type_name": "endpoint",
+      "tags": {
+        "env": "production",
+        "team": "office",
+        "department": "marketing"
+      },
+      "variables": {
+        "os": "windows-11",
+        "host": "laptop-user-02:9182"
+      },
+      "heatmap_config": null,
+      "color": null,
+      "created_at": "2026-05-02T21:12:50.331184Z",
+      "updated_at": "2026-05-02T21:12:50.331184Z"
+    },
+    {
+      "id": "81092711-e9ba-4cdb-b1b0-7701c3ae7315",
+      "name": "orders-db",
+      "display_name": "Orders PostgreSQL",
+      "type_name": "database",
+      "tags": {
+        "env": "production",
+        "team": "payments",
+        "tier": "critical",
+        "region": "eu-west-1"
+      },
+      "variables": {
+        "runtime": "postgres-16",
+        "instance": "orders-db:5432"
+      },
+      "heatmap_config": null,
+      "color": null,
+      "created_at": "2026-05-02T21:12:50.315317Z",
+      "updated_at": "2026-05-02T21:12:50.315317Z"
+    },
+    {
+      "id": "26d220d4-2dde-40ec-8cc1-a0fcce8416a4",
+      "name": "product-catalog",
+      "display_name": "Product Catalog Service",
+      "type_name": "service",
+      "tags": {
+        "env": "production",
+        "team": "catalog",
+        "tier": "standard",
+        "region": "eu-west-1"
+      },
+      "variables": {
+        "job": "product-catalog",
+        "namespace": "ecommerce"
+      },
+      "heatmap_config": null,
+      "color": null,
+      "created_at": "2026-05-02T21:12:50.307537Z",
+      "updated_at": "2026-05-02T21:12:50.307537Z"
+    },
+    {
+      "id": "4cb12b63-b230-4248-90cc-58ef6d1bb1a7",
+      "name": "user-service",
+      "display_name": "User & Auth Service",
+      "type_name": "service",
+      "tags": {
+        "env": "production",
+        "team": "platform",
+        "tier": "critical",
+        "region": "eu-west-1"
+      },
+      "variables": {
+        "job": "user-service",
+        "namespace": "ecommerce"
+      },
+      "heatmap_config": null,
+      "color": null,
+      "created_at": "2026-05-02T21:12:50.311336Z",
+      "updated_at": "2026-05-02T21:12:50.311336Z"
+    },
+    {
+      "id": "fd37877e-3736-42a7-85a1-b1a0c3889b2a",
+      "name": "vm-prod-web-01",
+      "display_name": "Production Web VM 01",
+      "type_name": "vm",
+      "tags": {
+        "env": "production",
+        "role": "web",
+        "team": "infra",
+        "region": "eu-west-1"
+      },
+      "variables": {
+        "os": "ubuntu-22",
+        "instance": "vm-prod-web-01:9100"
+      },
+      "heatmap_config": null,
+      "color": null,
+      "created_at": "2026-05-02T21:12:50.319244Z",
+      "updated_at": "2026-05-02T21:12:50.319244Z"
+    },
+    {
+      "id": "e7ebc41e-c853-4dd3-834c-1c38d4ce1512",
+      "name": "vm-prod-web-02",
+      "display_name": "Production Web VM 02",
+      "type_name": "vm",
+      "tags": {
+        "env": "production",
+        "role": "web",
+        "team": "infra",
+        "region": "eu-west-1"
+      },
+      "variables": {
+        "os": "ubuntu-22",
+        "instance": "vm-prod-web-02:9100"
+      },
+      "heatmap_config": null,
+      "color": null,
+      "created_at": "2026-05-02T21:12:50.323524Z",
+      "updated_at": "2026-05-02T21:12:50.323524Z"
+    }
+  ],
+  "total": 13
+}

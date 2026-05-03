@@ -1,0 +1,79 @@
+{
+  "id": "82a2aa2d-f4cb-4aa0-a9a4-b6e49f632529",
+  "name": "http-availability-slo",
+  "display_name": "HTTP Availability SLO",
+  "version": 1,
+  "comparable_from_version": 1,
+  "active": true,
+  "objectives": [
+    {
+      "sli": "response_time_p99",
+      "display_name": "Response Time P99 (ms)",
+      "pass_threshold": [
+        ">0",
+        "<500",
+        "<=+10%"
+      ],
+      "warning_threshold": [
+        ">0",
+        "<800",
+        "<=+15%"
+      ],
+      "weight": 2,
+      "key_sli": false,
+      "sort_order": 0,
+      "change_point": null
+    },
+    {
+      "sli": "error_rate",
+      "display_name": "Error Rate",
+      "pass_threshold": [
+        ">0",
+        "<0.01",
+        "<=+10%"
+      ],
+      "warning_threshold": [
+        ">0",
+        "<0.05",
+        "<=+15%"
+      ],
+      "weight": 3,
+      "key_sli": true,
+      "sort_order": 1,
+      "change_point": null
+    },
+    {
+      "sli": "availability",
+      "display_name": "Availability",
+      "pass_threshold": [
+        ">=0.999"
+      ],
+      "warning_threshold": [
+        ">=0.99"
+      ],
+      "weight": 2,
+      "key_sli": false,
+      "sort_order": 2,
+      "change_point": null
+    }
+  ],
+  "total_score_pass_threshold": 90.0,
+  "total_score_warning_threshold": 75.0,
+  "comparison": {
+    "compare_with": "several_results",
+    "include_result_with_score": "pass_or_warn",
+    "number_of_comparison_results": 3,
+    "aggregate_function": "avg",
+    "scope_tags": null
+  },
+  "notes": "Covers P99 latency, error rate, and availability for HTTP services.",
+  "author": "bootstrap",
+  "tags": {},
+  "variables": {},
+  "kind": "standard",
+  "method_criteria": null,
+  "sli_definition_id": "3e07172b-ce78-44cd-ba82-55878cf83c69",
+  "sli_name": "http-service-sli",
+  "sli_version": 1,
+  "created_at": "2026-05-02T21:12:50.406982Z"
+}

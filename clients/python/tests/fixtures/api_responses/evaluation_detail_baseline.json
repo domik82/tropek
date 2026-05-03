@@ -1,0 +1,113 @@
+{
+  "id": "00bcd4d6-0bf5-440b-80f9-e8eff55f9fd3",
+  "evaluation_id": "8973c9ae-3cd7-4fde-a5d1-f7a8b4f80389",
+  "evaluation_name": "agg-baseline-test",
+  "status": "completed",
+  "result": "pass",
+  "score": 100.0,
+  "period_start": "2026-03-16T16:00:00Z",
+  "period_end": "2026-03-16T16:30:00Z",
+  "slo_name": "plugin/cache",
+  "slo_version": 1,
+  "sli_name": "plugin-metrics-sli",
+  "sli_version": 1,
+  "data_source_name": "prometheus-local",
+  "ingestion_mode": "pull",
+  "adapter_used": "prometheus",
+  "invalidated": false,
+  "baseline_pinned_at": "2026-05-02T21:16:46.977653Z",
+  "baseline_unpinned_at": "2026-05-02T21:16:47.042453Z",
+  "baseline_pin_reason": "smoke baseline",
+  "baseline_pin_author": "smoke",
+  "original_result": null,
+  "original_score": null,
+  "override_reason": null,
+  "override_author": null,
+  "asset_snapshot": {
+    "asset_id": "94e5be5c-6f6f-44a8-a4f0-8e5aae3032cc",
+    "name": "checkout-api",
+    "display_name": "Checkout API",
+    "tags": {
+      "env": "production",
+      "team": "payments",
+      "tier": "critical",
+      "region": "eu-west-1"
+    },
+    "primary_version": null,
+    "build_ref": null
+  },
+  "variables": {
+    "env": "production",
+    "team": "payments",
+    "tier": "critical",
+    "region": "eu-west-1"
+  },
+  "annotation_count": 0,
+  "latest_annotation": null,
+  "top_failures": [],
+  "created_at": "2026-05-02T21:16:44.982213Z",
+  "invalidation_note": null,
+  "compared_evaluation_ids": [
+    "2544a527-7b36-42d0-b9de-92890393f08e",
+    "aafe1c57-e6c3-4cc2-b3f1-ca61a9d7e010",
+    "f5a83964-e5a1-45ba-be8b-c7f19447a9db"
+  ],
+  "annotations": [],
+  "indicator_results": [
+    {
+      "metric": "cpu_usage",
+      "display_name": "",
+      "tab_group": null,
+      "value": 12.954349,
+      "compared_value": 13.405647666666667,
+      "change_absolute": -0.4512986666666663,
+      "change_relative_pct": -3.3664816343698667,
+      "aggregation": null,
+      "status": "pass",
+      "score": 1.0,
+      "weight": 1.0,
+      "key_sli": true,
+      "pass_targets": [
+        {
+          "criteria": "<80",
+          "target_value": 80.0,
+          "violated": false
+        }
+      ],
+      "warning_targets": [
+        {
+          "criteria": "<90",
+          "target_value": 90.0,
+          "violated": false
+        }
+      ],
+      "change_point": null
+    },
+    {
+      "metric": "memory_usage",
+      "display_name": "",
+      "tab_group": null,
+      "value": 760562358.166216,
+      "compared_value": 793600142.3428246,
+      "change_absolute": -33037784.176608562,
+      "change_relative_pct": -4.163026493301292,
+      "aggregation": null,
+      "status": "pass",
+      "score": 1.0,
+      "weight": 1.0,
+      "key_sli": false,
+      "pass_targets": [
+        {
+          "criteria": "<1073741824",
+          "target_value": 1073741824.0,
+          "violated": false
+        }
+      ],
+      "warning_targets": null,
+      "change_point": null
+    }
+  ],
+  "total_score_pass_threshold": 90.0,
+  "total_score_warning_threshold": 75.0,
+  "sli_metadata": null
+}

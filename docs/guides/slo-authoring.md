@@ -10,7 +10,7 @@ TROPEK's evaluation engine is inspired by
 [Keptn v1](https://keptn.sh)'s lighthouse-service and uses a similar criteria syntax,
 but the SLO format is **TROPEK's own**. SLOs are created via the REST API
 (`POST /slo-definitions`) as JSON, or provisioned via YAML manifests using the
-`tropek` Python client (see `bootstrap_mock/manifests/` for examples).
+`tropek` Python client (see `dev_setup/mock/` for examples).
 
 SLI queries are **not embedded** in the SLO — they live in a separate SLI registry
 and are referenced by `sli_name` and `sli_version`.

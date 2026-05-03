@@ -1,0 +1,42 @@
+[
+  {
+    "id": "45c59c91-ec1d-4e0e-af4b-a242b602cf27",
+    "name": "failure",
+    "label": "Failure",
+    "color": "red",
+    "show_on_graph": true,
+    "is_system": false,
+    "created_at": "2026-05-02T21:12:45.818701Z",
+    "updated_at": null
+  },
+  {
+    "id": "fb73ec4f-d736-43fe-82c2-d356b39c087a",
+    "name": "info",
+    "label": "Info",
+    "color": "sky",
+    "show_on_graph": true,
+    "is_system": false,
+    "created_at": "2026-05-02T21:12:45.818701Z",
+    "updated_at": null
+  },
+  {
+    "id": "895fbaf1-507d-48d9-a02a-29be9f5ac785",
+    "name": "investigation",
+    "label": "Investigation",
+    "color": "amber",
+    "show_on_graph": true,
+    "is_system": false,
+    "created_at": "2026-05-02T21:12:45.818701Z",
+    "updated_at": null
+  },
+  {
+    "id": "6ccaa2af-71f0-4335-8cfd-29135a6cad3f",
+    "name": "re-evaluation",
+    "label": "Re-eval",
+    "color": "gray",
+    "show_on_graph": false,
+    "is_system": true,
+    "created_at": "2026-05-02T21:12:45.818701Z",
+    "updated_at": null
+  }
+]

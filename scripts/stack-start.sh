@@ -55,30 +55,10 @@ curl -sf http://localhost:8080/health > /dev/null
 echo "  API healthy"
 
 if [ "$SEED" = true ]; then
-  # --- Bootstrap: create a temp manifests dir with docker adapter URLs ---
-  DOCKER_MANIFESTS=$(mktemp -d)
-  cp bootstrap_mock/manifests/*.yaml "$DOCKER_MANIFESTS/"
-  # Rewrite adapter URLs from localhost to docker-network names
-  sed -i 's|http://127.0.0.1:9082|http://adapter-mock:8082|g' "$DOCKER_MANIFESTS/datasources.yaml"
-
-  echo "=== Applying bootstrap manifests ==="
-  TROPEK_MANIFESTS_DIR="$DOCKER_MANIFESTS" \
-    uv run --directory clients/python python -c "
-import os, sys
-sys.path.insert(0, '.')
-from tropek_client import TropekClient
-from tropek_client.manifest import apply, load_manifests
-client = TropekClient('http://localhost:8080')
-docs = load_manifests(os.environ['TROPEK_MANIFESTS_DIR'])
-result = apply(client, docs)
-print(f'bootstrap: {result.created} created, {result.updated} updated, {result.skipped} skipped')
-if result.failed: raise RuntimeError(f'bootstrap failed: {result.errors}')
-"
-
-  rm -rf "$DOCKER_MANIFESTS"
-
-  echo "=== Seeding historical evaluations ==="
-  uv run --directory clients/python python ../../scripts/seed_evaluations.py "http://localhost:8080"
+  echo "=== Running dev-setup pipeline (bootstrap + seed) ==="
+  uv run --directory clients/python python ../../dev_setup/run.py "http://localhost:8080" \
+      --adapter-url http://adapter-mock:8082 \
+      bootstrap seed-evaluations
 fi
 
 echo ""
