@@ -1,6 +1,7 @@
-"""Drift tests: validate client models match the OpenAPI spec."""
+"""Drift tests: validate client models and routes match the OpenAPI spec."""
 
 import json
+import re
 from enum import Enum
 from pathlib import Path
 from typing import Any
@@ -9,6 +10,7 @@ import pytest
 import tropek_client.models as client_models
 
 OPENAPI_PATH = Path(__file__).resolve().parents[3] / 'api' / 'openapi.json'
+CLIENT_PATH = Path(__file__).resolve().parents[1] / 'tropek_client' / 'client.py'
 
 SKIP_SCHEMAS = {
     'HTTPValidationError',
@@ -90,3 +92,72 @@ class TestModelDrift:
 
         assert not missing_in_model, f'{schema_name}: fields in OpenAPI but not in model: {missing_in_model}'
         assert not extra_in_model, f'{schema_name}: fields in model but not in OpenAPI: {extra_in_model}'
+
+
+def _normalize_path(path: str) -> str:
+    """Normalize a path by replacing path params with {param} placeholder."""
+    return re.sub(r'\{[^}]+\}', '{param}', path)
+
+
+def _extract_client_routes() -> set[tuple[str, str]]:
+    """Parse client.py for all HTTP method calls, return set of (METHOD, normalized_path)."""
+    source = CLIENT_PATH.read_text()
+    pattern = re.compile(r"self\._http\.(get|post|put|patch|delete)\(\s*f?['\"]([^'\"]+)['\"]")
+    routes: set[tuple[str, str]] = set()
+    for match in pattern.finditer(source):
+        method = match.group(1).upper()
+        raw_path = match.group(2)
+        normalized = re.sub(r'\{[^}]*\}', '{param}', raw_path)
+        routes.add((method, normalized))
+    return routes
+
+
+def _extract_openapi_routes() -> set[tuple[str, str]]:
+    """Parse openapi.json for all routes, return set of (METHOD, normalized_path)."""
+    with open(OPENAPI_PATH) as f:
+        spec = json.load(f)
+    routes: set[tuple[str, str]] = set()
+    for path, methods in spec['paths'].items():
+        for method in ('get', 'post', 'put', 'patch', 'delete'):
+            if method in methods:
+                routes.add((method.upper(), _normalize_path(path)))
+    return routes
+
+
+ROUTES_NOT_IN_CLIENT = {
+    ('GET', '/health'),
+    ('GET', '/config/ui'),
+    ('GET', '/change-points'),
+    ('GET', '/change-points/{param}'),
+    ('PATCH', '/change-points/bulk-triage'),
+    ('GET', '/change-points/config/{param}'),
+    ('PUT', '/change-points/config/{param}'),
+    ('DELETE', '/change-points/config/{param}'),
+    ('GET', '/evaluations/column-annotations'),
+    ('GET', '/evaluations/trend-annotations'),
+    ('DELETE', '/evaluations/heatmap/cache'),
+    ('PATCH', '/asset-types/{param}/set-default'),
+    ('DELETE', '/note-categories/{param}'),
+    ('POST', '/evaluation-run/{param}/annotations'),
+    ('POST', '/evaluation/{param}/annotations/{param}/hide'),
+}
+
+
+class TestRouteDrift:
+    def test_client_routes_exist_in_openapi(self):
+        """Every route the client calls must exist in openapi.json."""
+        client_routes = _extract_client_routes()
+        openapi_routes = _extract_openapi_routes()
+        missing = client_routes - openapi_routes
+        if missing:
+            formatted = '\n'.join(f'  {m} {p}' for m, p in sorted(missing))
+            pytest.fail(f'Client routes not in OpenAPI spec:\n{formatted}')
+
+    def test_openapi_routes_covered_by_client(self):
+        """Every API route should be wrapped by the client (or explicitly skipped)."""
+        client_routes = _extract_client_routes()
+        openapi_routes = _extract_openapi_routes()
+        uncovered = openapi_routes - client_routes - ROUTES_NOT_IN_CLIENT
+        if uncovered:
+            formatted = '\n'.join(f'  {m} {p}' for m, p in sorted(uncovered))
+            pytest.fail(f'OpenAPI routes not covered by client (add to client or ROUTES_NOT_IN_CLIENT):\n{formatted}')
