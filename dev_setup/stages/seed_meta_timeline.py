@@ -95,8 +95,8 @@ def resolve_asset_id(client: httpx.Client, asset_name: str) -> str | None:
 BASE = datetime(2026, 2, 10, 0, 0, 0, tzinfo=UTC)
 
 
-def ts(days: int = 0, hours: int = 0) -> str:
-    """Return ISO timestamp relative to BASE."""
+def timestamp_at(days: int = 0, hours: int = 0) -> str:
+    """Return ISO timestamp offset from BASE by the given days/hours."""
     return (BASE + timedelta(days=days, hours=hours)).strftime('%Y-%m-%dT%H:%M:%SZ')
 
 
@@ -114,7 +114,7 @@ def seed_checkout_api(client: httpx.Client, asset_id: str) -> None:
         client,
         asset_id,
         'cicd',
-        ts(0),
+        timestamp_at(0),
         values=[
             {'path': ['checkout-api'], 'value': '1.0.0'},
             {'path': ['checkout-api', 'plugin-pkg', 'auth-plugin'], 'value': '0.8.0'},
@@ -126,7 +126,7 @@ def seed_checkout_api(client: httpx.Client, asset_id: str) -> None:
         client,
         asset_id,
         'os-agent',
-        ts(0, 2),
+        timestamp_at(0, 2),
         values=[
             {'path': ['cpu-cores'], 'value': '4'},
             {'path': ['memory-gb'], 'value': '16'},
@@ -138,7 +138,7 @@ def seed_checkout_api(client: httpx.Client, asset_id: str) -> None:
         client,
         asset_id,
         'cicd',
-        ts(7),
+        timestamp_at(7),
         values=[
             {'path': ['checkout-api'], 'value': '1.0.0'},
             {'path': ['checkout-api', 'plugin-pkg', 'auth-plugin'], 'value': '0.9.0'},
@@ -152,7 +152,7 @@ def seed_checkout_api(client: httpx.Client, asset_id: str) -> None:
         client,
         asset_id,
         'cicd',
-        ts(14),
+        timestamp_at(14),
         values=[
             {'path': ['checkout-api'], 'value': '2.0.0'},
             {'path': ['checkout-api', 'plugin-pkg', 'auth-plugin'], 'value': '1.0.0'},
@@ -168,7 +168,7 @@ def seed_checkout_api(client: httpx.Client, asset_id: str) -> None:
         client,
         asset_id,
         'os-agent',
-        ts(21),
+        timestamp_at(21),
         values=[
             {'path': ['cpu-cores'], 'value': '8'},
             {'path': ['memory-gb'], 'value': '32'},
@@ -180,7 +180,7 @@ def seed_checkout_api(client: httpx.Client, asset_id: str) -> None:
         client,
         asset_id,
         'cicd',
-        ts(28),
+        timestamp_at(28),
         values=[
             {'path': ['checkout-api'], 'value': '3.0.0'},
             {'path': ['checkout-api', 'plugin-pkg', 'auth-plugin'], 'value': '1.1.0'},
@@ -194,7 +194,7 @@ def seed_checkout_api(client: httpx.Client, asset_id: str) -> None:
         client,
         asset_id,
         'cicd',
-        ts(33),
+        timestamp_at(33),
         values=[
             {'path': ['checkout-api'], 'value': '3.0.0'},
             {'path': ['checkout-api', 'plugin-pkg', 'auth-plugin'], 'value': '1.1.0'},
@@ -219,7 +219,7 @@ def seed_vm_prod_web_01(client: httpx.Client, asset_id: str) -> None:
         client,
         asset_id,
         'os-agent',
-        ts(0),
+        timestamp_at(0),
         values=[
             {'path': ['os'], 'value': 'Ubuntu 22.04'},
             {'path': ['cpu-cores'], 'value': '16'},
@@ -233,7 +233,7 @@ def seed_vm_prod_web_01(client: httpx.Client, asset_id: str) -> None:
         client,
         asset_id,
         'cicd',
-        ts(1),
+        timestamp_at(1),
         values=[
             {'path': ['nginx'], 'value': '1.24.0'},
             {'path': ['app-server'], 'value': '4.2.1'},
@@ -246,7 +246,7 @@ def seed_vm_prod_web_01(client: httpx.Client, asset_id: str) -> None:
         client,
         asset_id,
         'os-agent',
-        ts(10),
+        timestamp_at(10),
         values=[
             {'path': ['os'], 'value': 'Ubuntu 22.04.1'},
             {'path': ['cpu-cores'], 'value': '16'},
@@ -260,7 +260,7 @@ def seed_vm_prod_web_01(client: httpx.Client, asset_id: str) -> None:
         client,
         asset_id,
         'cicd',
-        ts(20),
+        timestamp_at(20),
         values=[
             {'path': ['nginx'], 'value': '1.25.0'},
             {'path': ['app-server'], 'value': '5.0.0'},
@@ -273,7 +273,7 @@ def seed_vm_prod_web_01(client: httpx.Client, asset_id: str) -> None:
         client,
         asset_id,
         'cicd',
-        ts(30),
+        timestamp_at(30),
         closed=[
             {'path': ['app-server']},
         ],
@@ -284,7 +284,7 @@ def seed_vm_prod_web_01(client: httpx.Client, asset_id: str) -> None:
         client,
         asset_id,
         'cicd',
-        ts(31),
+        timestamp_at(31),
         values=[
             {'path': ['app-server'], 'value': '6.0.0-rc1'},
             {'path': ['app-server', 'worker-pool'], 'value': '32'},
@@ -306,7 +306,7 @@ def seed_laptop_user_01(client: httpx.Client, asset_id: str) -> None:
             client,
             asset_id,
             'os-agent',
-            ts(day),
+            timestamp_at(day),
             values=[
                 {'path': ['os'], 'value': 'Windows 11 Pro'},
                 {'path': ['cpu-model'], 'value': 'Intel i7-13700'},
@@ -320,7 +320,7 @@ def seed_laptop_user_01(client: httpx.Client, asset_id: str) -> None:
         client,
         asset_id,
         'os-agent',
-        ts(30),
+        timestamp_at(30),
         values=[
             {'path': ['os'], 'value': 'Windows 11 Pro'},
             {'path': ['cpu-model'], 'value': 'Intel i7-13700'},
@@ -340,8 +340,8 @@ def verify_asset(
     expected_min_items: int,
 ) -> bool:
     """Verify the timeline endpoint returns data and matches summary."""
-    from_dt = ts(-5)
-    to_dt = ts(40)
+    from_dt = timestamp_at(-5)
+    to_dt = timestamp_at(40)
 
     timeline = get_timeline(client, asset_id, from_dt, to_dt)
     summary = get_summary(client, asset_id, from_dt, to_dt)
