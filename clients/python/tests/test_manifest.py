@@ -18,125 +18,50 @@ from tropek_client.manifest import (
 from tropek_client.models import AssetTypeCreate
 from tropek_client.models.pagination import PagedResponse
 
+MANIFESTS_DIR = Path(__file__).parent / 'fixtures' / 'manifests'
 
-def test_load_single_document(tmp_path):
-    f = tmp_path / 'test.yaml'
-    f.write_text("""
-api_version: tropek/v1
-kind: AssetType
-metadata:
-  name: vm
-spec:
-  is_default: true
-""")
-    docs = load_manifests(str(f))
+
+def test_load_single_document():
+    docs = load_manifests(str(MANIFESTS_DIR / 'single_document.yaml'))
     assert len(docs) == 1
     assert docs[0].kind == 'AssetType'
     assert docs[0].metadata['name'] == 'vm'
     assert docs[0].spec['is_default'] is True
 
 
-def test_load_multi_document(tmp_path):
-    f = tmp_path / 'test.yaml'
-    f.write_text("""
-api_version: tropek/v1
-kind: AssetType
-metadata:
-  name: vm
-spec:
-  is_default: true
----
-api_version: tropek/v1
-kind: Asset
-metadata:
-  name: vm-01
-spec:
-  type_name: vm
-""")
-    docs = load_manifests(str(f))
+def test_load_multi_document():
+    docs = load_manifests(str(MANIFESTS_DIR / 'multi_document.yaml'))
     assert len(docs) == 2
     assert docs[0].kind == 'AssetType'
     assert docs[1].kind == 'Asset'
 
 
-def test_load_directory(tmp_path):
-    (tmp_path / 'a.yaml').write_text("""
-api_version: tropek/v1
-kind: AssetType
-metadata:
-  name: vm
-spec:
-  is_default: true
-""")
-    (tmp_path / 'b.yaml').write_text("""
-api_version: tropek/v1
-kind: Asset
-metadata:
-  name: vm-01
-spec:
-  type_name: vm
-""")
-    docs = load_manifests(str(tmp_path))
+def test_load_directory():
+    docs = load_manifests(str(MANIFESTS_DIR / 'directory'))
     assert len(docs) == 2
 
 
-def test_topological_sort(tmp_path):
-    f = tmp_path / 'test.yaml'
-    f.write_text("""
-api_version: tropek/v1
-kind: Asset
-metadata:
-  name: vm-01
-spec:
-  type_name: vm
----
-api_version: tropek/v1
-kind: AssetType
-metadata:
-  name: vm
-spec:
-  is_default: true
-""")
-    docs = load_manifests(str(f))
+def test_topological_sort():
+    docs = load_manifests(str(MANIFESTS_DIR / 'unsorted_dependencies.yaml'))
     kinds = [d.kind for d in docs]
     assert kinds.index('AssetType') < kinds.index('Asset')
 
 
-def test_rejects_missing_api_version(tmp_path):
-    f = tmp_path / 'test.yaml'
-    f.write_text("""
-kind: AssetType
-metadata:
-  name: vm
-spec:
-  is_default: true
-""")
+def test_rejects_missing_api_version():
     with pytest.raises(ValueError, match='api_version'):
-        load_manifests(str(f))
+        load_manifests(str(MANIFESTS_DIR / 'missing_api_version.yaml'))
 
 
-def test_unknown_kind_raises(tmp_path: Path) -> None:
+def test_unknown_kind_raises():
     """AssetSLOLink and AssetGroupSLOLink are no longer valid kinds."""
-    f = tmp_path / 'bad.yaml'
-    f.write_text("""
-api_version: tropek/v1
-kind: AssetSLOLink
-metadata:
-  name: my-link
-spec:
-  asset_name: my-asset
-  slo_name: my-slo
-  sli_name: my-sli
-  data_source_name: my-ds
-""")
     with pytest.raises(ValueError, match='unknown kind'):
-        load_manifests(str(tmp_path))
+        load_manifests(str(MANIFESTS_DIR / 'unknown_kind.yaml'))
 
 
 def test_dry_run_creates_plan():
     """dry_run produces CREATE actions for missing entities."""
     client = MagicMock()
-    client.asset_types.list.return_value = PagedResponse(items=[], total=0)  # no existing types
+    client.asset_types.list.return_value = PagedResponse(items=[], total=0)
 
     docs = [
         ManifestDocument(
@@ -155,7 +80,7 @@ def test_dry_run_creates_plan():
 def test_apply_creates_entity():
     """apply calls create on the client for CREATE actions."""
     client = MagicMock()
-    client.asset_types.list.return_value = PagedResponse(items=[], total=0)  # triggers CREATE
+    client.asset_types.list.return_value = PagedResponse(items=[], total=0)
 
     docs = [
         ManifestDocument(
@@ -171,7 +96,7 @@ def test_apply_creates_entity():
     client.asset_types.create.assert_called_once_with(AssetTypeCreate(name='vm', is_default=True))
 
 
-def test_apply_plan_is_pydantic_model() -> None:
+def test_apply_plan_is_pydantic_model():
     plan = ApplyPlan()
     assert isinstance(plan, BaseModel)
     plan.actions.append(PlanAction(operation='CREATE', kind='Asset', name='vm-01', reason='reason'))
