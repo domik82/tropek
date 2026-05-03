@@ -43,8 +43,9 @@ from pathlib import Path
 from tropek_client import TropekClient
 from tropek_client.manifest import apply, load_manifests
 
-STAGES_DIR = Path(__file__).resolve().parent / 'stages'
-PROMETHEUS_DIR = Path(__file__).resolve().parent / 'prometheus'
+DEV_SETUP_DIR = Path(__file__).resolve().parent
+STAGES_DIR = DEV_SETUP_DIR / 'stages'
+PROMETHEUS_DIR = DEV_SETUP_DIR / 'prometheus'
 
 STAGE_REGISTRY: list[tuple[str, str, str]] = [
     ('bootstrap', 'bootstrap', 'Apply mock bootstrap manifests'),
@@ -118,7 +119,7 @@ def run_stage(stage_name: str, api_url: str, adapter_url: str | None = None) -> 
     print(f'  STAGE: {label} — {description}')
     print(f'{"=" * 60}')
 
-    mock_dir = Path(__file__).resolve().parent / 'mock'
+    mock_dir = DEV_SETUP_DIR / 'mock'
     start = time.time()
     try:
         if module_name == 'bootstrap':
