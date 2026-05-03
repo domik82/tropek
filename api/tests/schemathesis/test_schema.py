@@ -75,9 +75,10 @@ EXCLUDED_OPERATIONS: set[tuple[str, str]] = {
 #   GET /evaluations — date and from/to query params are mutually exclusive.
 #       OpenAPI 3.1 has no `oneOf` for query parameter groups.
 #
-#   PATCH /assets/{name} — heatmap_config is an opaque dict[str, Any] with no
-#       UI consumer or agreed shape. Null bytes in deeply nested keys are
-#       rejected server-side but the constraint is not expressible in OpenAPI.
+#   POST /assets, PATCH /assets/{name} — heatmap_config is an opaque
+#       dict[str, Any] with no UI consumer or agreed shape. Null bytes in
+#       deeply nested keys are rejected server-side but the constraint is not
+#       expressible in OpenAPI.
 #
 #   POST /slo-display-groups — parent_id is a self-referential FK.
 #       Schemathesis generates random UUIDs that don't reference existing
@@ -113,6 +114,7 @@ EXCLUDED_CHECKS_PER_OP: dict[tuple[str, str], list[CheckFunction]] = {
     #       status values rejected by domain validation.
     ('PATCH', '/change-points/bulk-triage'): [positive_data_acceptance],
     ('GET', '/evaluations'): [positive_data_acceptance],
+    ('POST', '/assets'): [positive_data_acceptance],
     ('PATCH', '/assets/{name}'): [positive_data_acceptance],
     ('POST', '/slo-display-groups'): [positive_data_acceptance],
     ('PATCH', '/assets/{name}/slo-assignments/{assignment_id}'): [positive_data_acceptance],
