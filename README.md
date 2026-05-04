@@ -226,7 +226,8 @@ spec:
       warning_threshold: [">0", "<800", "<=+15%"]
       weight: 2
       change_point:
-        max_pvalue: 0.01
+        max_pvalue: 0.01              # more permissive than default (0.001)
+        min_magnitude: 0.05           # ignore changes smaller than 5%
     - sli: error_rate
       display_name: "Error Rate"
       pass_threshold: [">0", "<0.01", "<=+10%"]
@@ -238,6 +239,8 @@ spec:
       pass_threshold: [">=0.999"]
       warning_threshold: [">=0.99"]
       weight: 2
+      change_point:
+        higher_is_better: true        # decrease in availability = regression
 ```
 
 See `dev_setup/mock/` for complete working examples including template SLOs with `$__gen_` variable expansion and aggregated-mode SLIs.
@@ -255,6 +258,46 @@ See `dev_setup/mock/` for complete working examples including template SLOs with
 | `<=+50` | Relative | value <= baseline + 50 (absolute delta) |
 
 Relative criteria with no comparison history **always pass** -- no history means no penalty.
+
+### Change point detection (Apache OTAVA)
+
+TROPEK uses the [E-Divisive](https://github.com/apache/otava) algorithm to automatically detect statistically significant shifts in metric time series. Detection runs after each evaluation and results appear as markers on trend charts and heatmap cells.
+
+Configuration is per-objective via the `change_point:` block. All fields are optional — omitted fields inherit the global defaults shown below:
+
+```yaml
+objectives:
+  - sli: response_time_p99
+    pass_threshold: ["<500"]
+    change_point:
+      enabled: true            # default: true — set false to disable for this metric
+      higher_is_better: false  # default: false — false = increase is regression (latency)
+                               #                  true  = decrease is regression (throughput)
+      window_size: 30          # default: 30 — sliding window length for the algorithm
+      max_pvalue: 0.001        # default: 0.001 — significance threshold (lower = stricter)
+      min_magnitude: 0.0       # default: 0.0 — minimum relative change (%) to report
+      min_sample_size: 10      # default: 10 — skip detection with fewer data points
+```
+
+| Field | Default | Description |
+|---|---|---|
+| `enabled` | `true` | Enable/disable detection for this objective |
+| `higher_is_better` | `false` | Directionality: `false` for latency-like metrics (increase = bad), `true` for throughput-like metrics (decrease = bad) |
+| `window_size` | `30` | Number of data points in the sliding window. Larger = less sensitive to short-term noise |
+| `max_pvalue` | `0.001` | P-value threshold for the merge-phase t-test. A higher value (e.g. 0.01 vs 0.001) is more permissive — it accepts weaker statistical evidence, so it will detect more change points, including ones that might be noise. Lower values require stronger evidence and produce fewer, higher-confidence detections |
+| `min_magnitude` | `0.0` | Minimum relative change (as a fraction, e.g. `0.05` = 5%) to keep a detected change point. Filters out statistically significant but practically irrelevant shifts |
+| `min_sample_size` | `10` | Minimum number of evaluations before detection runs. Prevents false positives from small data sets |
+
+**When it runs:** Change point detection runs automatically after each evaluation completes, as a fault-isolated step in the worker pipeline. If detection fails (e.g. not enough data points), the evaluation result is still saved — detection is non-blocking.
+
+**Triage workflow:** New change points start with status `unprocessed`. You can triage them individually or in bulk via the API — set a status (e.g. `acknowledged`, `investigating`, `resolved`, `expected`), attach a note, and optionally link a ticket. Triage status is free-form text, so you can use whatever workflow labels fit your team.
+
+**Deduplication:** The E-Divisive algorithm re-analyzes the full time series on every evaluation, so it will repeatedly detect the same change point. TROPEK applies two layers of deduplication before persisting:
+
+1. **Positional dedup** — if a change point already exists within ±1 ordinal position in the time series, the new detection is skipped (same shift detected at a slightly different boundary).
+2. **Same-regime suppression** — if the new change point has the same direction (regression/improvement) as the most recent one for that metric, and the post-segment mean falls within 2 standard deviations of the previous change point's post-segment, it is suppressed. The metric hasn't meaningfully shifted to a new regime — it's just noise within the same level.
+
+Only genuinely new regime shifts are saved. Detected change points are classified as **regression** or **improvement** based on the `higher_is_better` setting and can be triaged (acknowledged, investigated, or linked to tickets) via the API.
 
 ---
 
