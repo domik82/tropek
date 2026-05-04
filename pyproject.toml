@@ -1,3 +1,9 @@
+[project]
+name = "tropek"
+version = "0.1.0"
+description = "TROPEK workspace root"
+requires-python = ">=3.13"
+
 [tool.uv]
 reinstall-package = ["tropek-api", "tropek-adapter-prometheus", "tropek-adapter-protocol"]
 
