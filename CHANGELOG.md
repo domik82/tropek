@@ -22,7 +22,7 @@ via Docker Compose without Kubernetes.
   - Configurable baseline comparison (single result, several results with aggregate)
   - Per-objective scoring with pass/warning/fail and weighted total score calculation
 - **Async evaluation pipeline** — FastAPI + arq (Redis) job queue with configurable concurrency (max_jobs=10)
-  - Three ingestion modes: pull from Prometheus, push metrics inline, or upload file (CSV/JMeter)
+  - Adapter-based data ingestion — pull metrics from Prometheus (shipped); custom adapters for other sources can be added
   - Multi-phase worker pipeline: fetch SLIs, evaluate, detect change points, store results
   - Evaluation batches — trigger evaluations for multiple assets in a single request
 - **Change point detection** — E-Divisive algorithm (vendored from Apache Otava)
