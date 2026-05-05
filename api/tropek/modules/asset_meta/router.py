@@ -13,6 +13,8 @@ from tropek.modules.asset_meta import service
 from tropek.modules.asset_meta.schemas import (
     MetaSnapshotCreate,
     MetaSnapshotCreated,
+    MetaSnapshotDetail,
+    MetaSnapshotSummary,
     TimelineResponse,
     TimelineSummaryResponse,
 )
@@ -39,6 +41,49 @@ async def create_snapshot(
 ) -> MetaSnapshotCreated:
     """Ingest a point-in-time metadata snapshot for an asset."""
     return await service.create_meta_snapshot(session, asset_id, payload)
+
+
+@router.get(
+    '/assets/{asset_id}/meta/snapshots',
+    response_model=list[MetaSnapshotSummary],
+)
+async def list_snapshots(
+    asset_id: uuid.UUID,
+    source: str | None = Query(default=None),
+    from_: datetime | None = Query(default=None, alias='from'),
+    to: datetime | None = Query(default=None),
+    session: AsyncSession = Depends(get_session),
+) -> list[MetaSnapshotSummary]:
+    """List meta snapshots for an asset, optionally filtered by source and time range."""
+    if from_ is not None and to is not None:
+        _validate_window_params(from_, to)
+    return await service.list_snapshots(session, asset_id, source=source, observed_from=from_, observed_to=to)
+
+
+@router.get(
+    '/assets/{asset_id}/meta/snapshots/{snapshot_id}',
+    response_model=MetaSnapshotDetail,
+)
+async def get_snapshot_detail(
+    asset_id: uuid.UUID,
+    snapshot_id: uuid.UUID,
+    session: AsyncSession = Depends(get_session),
+) -> MetaSnapshotDetail:
+    """Get full detail of a single meta snapshot."""
+    return await service.get_snapshot_detail(session, asset_id, snapshot_id)
+
+
+@router.delete(
+    '/assets/{asset_id}/meta/snapshots/{snapshot_id}',
+    status_code=204,
+)
+async def delete_snapshot(
+    asset_id: uuid.UUID,
+    snapshot_id: uuid.UUID,
+    session: AsyncSession = Depends(get_session),
+) -> None:
+    """Delete a meta snapshot and cascade to its values and closures."""
+    await service.delete_snapshot(session, asset_id, snapshot_id)
 
 
 @router.get(
