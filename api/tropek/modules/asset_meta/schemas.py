@@ -100,6 +100,41 @@ class MetaSnapshotCreated(BaseModel):
     snapshot_id: UUID
 
 
+class MetaValueOutput(BaseModel):
+    """A value entry in a snapshot detail response."""
+
+    label_path: list[str]
+    value: str
+
+
+class MetaClosureOutput(BaseModel):
+    """A closure entry in a snapshot detail response."""
+
+    label_path: list[str]
+
+
+class MetaSnapshotSummary(BaseModel):
+    """Summary of a snapshot for list responses."""
+
+    id: UUID
+    source: str
+    observed_at: AwareDatetime
+    value_count: int
+    closure_count: int
+    created_at: AwareDatetime
+
+
+class MetaSnapshotDetail(BaseModel):
+    """Full detail of a snapshot including values and closures."""
+
+    id: UUID
+    source: str
+    observed_at: AwareDatetime
+    created_at: AwareDatetime
+    values: list[MetaValueOutput]
+    closures: list[MetaClosureOutput]
+
+
 # --- Read-side response models (consumed by Chunk 4) ---
 
 
