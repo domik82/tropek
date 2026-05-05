@@ -2,7 +2,7 @@
 
 Revision ID: 001
 Revises: 
-Create Date: 2026-04-28 08:06:14.772956
+Create Date: 2026-05-05 19:02:37.716848
 
 """
 from collections.abc import Sequence
@@ -281,20 +281,20 @@ def upgrade() -> None:
     op.create_table('asset_meta_closures',
     sa.Column('id', sa.BigInteger(), autoincrement=True, nullable=False),
     sa.Column('snapshot_id', sa.UUID(), nullable=False),
-    sa.Column('path', sa.ARRAY(sa.Text()), nullable=False),
+    sa.Column('label_path', sa.ARRAY(sa.Text()), nullable=False),
     sa.ForeignKeyConstraint(['snapshot_id'], ['asset_meta_snapshots.id'], ondelete='CASCADE'),
     sa.PrimaryKeyConstraint('id'),
-    sa.UniqueConstraint('snapshot_id', 'path', name='uq_asset_meta_closures_snapshot_path')
+    sa.UniqueConstraint('snapshot_id', 'label_path', name='uq_asset_meta_closures_snapshot_label_path')
     )
     op.create_index('idx_asset_meta_closures_snapshot', 'asset_meta_closures', ['snapshot_id'], unique=False)
     op.create_table('asset_meta_values',
     sa.Column('id', sa.BigInteger(), autoincrement=True, nullable=False),
     sa.Column('snapshot_id', sa.UUID(), nullable=False),
-    sa.Column('path', sa.ARRAY(sa.Text()), nullable=False),
+    sa.Column('label_path', sa.ARRAY(sa.Text()), nullable=False),
     sa.Column('value', sa.Text(), nullable=False),
     sa.ForeignKeyConstraint(['snapshot_id'], ['asset_meta_snapshots.id'], ondelete='CASCADE'),
     sa.PrimaryKeyConstraint('id'),
-    sa.UniqueConstraint('snapshot_id', 'path', name='uq_asset_meta_values_snapshot_path')
+    sa.UniqueConstraint('snapshot_id', 'label_path', name='uq_asset_meta_values_snapshot_label_path')
     )
     op.create_index('idx_asset_meta_values_snapshot', 'asset_meta_values', ['snapshot_id'], unique=False)
     op.create_table('change_point_config',
