@@ -46,6 +46,8 @@ from tropek_client.models import (
     InvalidateRequest,
     MetaSnapshotCreate,
     MetaSnapshotCreated,
+    MetaSnapshotDetail,
+    MetaSnapshotSummary,
     MethodCriteriaOverride,
     MetricHeatmapResponse,
     OverrideStatusRequest,
@@ -811,6 +813,31 @@ class _Meta:
             f'/assets/{asset_id}/meta/snapshots', json=body.model_dump(mode='json', exclude_none=True)
         )
         return MetaSnapshotCreated.model_validate(response.json())
+
+    def list_snapshots(
+        self,
+        asset_id: str,
+        *,
+        source: str | None = None,
+        from_: str | None = None,
+        to: str | None = None,
+    ) -> list[MetaSnapshotSummary]:
+        params: dict[str, str] = {}
+        if source is not None:
+            params['source'] = source
+        if from_ is not None:
+            params['from'] = from_
+        if to is not None:
+            params['to'] = to
+        response = self._http.get(f'/assets/{asset_id}/meta/snapshots', params=params or None)
+        return [MetaSnapshotSummary.model_validate(item) for item in response.json()]
+
+    def get_snapshot(self, asset_id: str, snapshot_id: str) -> MetaSnapshotDetail:
+        response = self._http.get(f'/assets/{asset_id}/meta/snapshots/{snapshot_id}')
+        return MetaSnapshotDetail.model_validate(response.json())
+
+    def delete_snapshot(self, asset_id: str, snapshot_id: str) -> None:
+        self._http.delete(f'/assets/{asset_id}/meta/snapshots/{snapshot_id}')
 
 
 class TropekClient:
