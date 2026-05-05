@@ -44,7 +44,7 @@ async def test_round_trip_single_snapshot_shows_up_in_timeline(
     await post_snapshot(
         api_client,
         test_asset_id,
-        values=[{'path': ['app-A'], 'value': '2.3.0'}],
+        values=[{'label_path': ['app-A'], 'value': '2.3.0'}],
     )
 
     response = await api_client.get(
@@ -127,13 +127,13 @@ async def test_multi_source_spans_both_appear(
         api_client,
         test_asset_id,
         source='cicd',
-        values=[{'path': ['app-A'], 'value': '2.3.0'}],
+        values=[{'label_path': ['app-A'], 'value': '2.3.0'}],
     )
     await post_snapshot(
         api_client,
         test_asset_id,
         source='monitoring',
-        values=[{'path': ['cpu-usage'], 'value': '75%'}],
+        values=[{'label_path': ['cpu-usage'], 'value': '75%'}],
     )
 
     response = await api_client.get(
@@ -161,16 +161,16 @@ async def test_cascading_closure_round_trip(
         test_asset_id,
         observed_at=t0,
         values=[
-            {'path': ['app'], 'value': 'root'},
-            {'path': ['app', 'plug-1'], 'value': 'v1'},
-            {'path': ['app', 'plug-2'], 'value': 'v2'},
+            {'label_path': ['app'], 'value': 'root'},
+            {'label_path': ['app', 'plug-1'], 'value': 'v1'},
+            {'label_path': ['app', 'plug-2'], 'value': 'v2'},
         ],
     )
     await post_snapshot(
         api_client,
         test_asset_id,
         observed_at=t1,
-        closed=[{'path': ['app']}],
+        closed=[{'label_path': ['app']}],
     )
 
     response = await api_client.get(
@@ -194,7 +194,7 @@ async def test_large_snapshot_roundtrips(
     test_asset_id: uuid.UUID,
 ) -> None:
     """POST a snapshot with 500 values — all appear in the timeline."""
-    values = [{'path': [f'key-{i}'], 'value': f'v{i}'} for i in range(500)]
+    values = [{'label_path': [f'key-{i}'], 'value': f'v{i}'} for i in range(500)]
     await post_snapshot(
         api_client,
         test_asset_id,
@@ -226,7 +226,7 @@ async def test_window_clipping_left_and_open_right(
         api_client,
         test_asset_id,
         observed_at=sixty_days_ago,
-        values=[{'path': ['long-lived'], 'value': 'stable'}],
+        values=[{'label_path': ['long-lived'], 'value': 'stable'}],
     )
 
     response = await api_client.get(
@@ -257,13 +257,13 @@ async def test_closed_only_snapshot_round_trip(
         api_client,
         test_asset_id,
         observed_at=t0,
-        values=[{'path': ['legacy'], 'value': 'old'}],
+        values=[{'label_path': ['legacy'], 'value': 'old'}],
     )
     await post_snapshot(
         api_client,
         test_asset_id,
         observed_at=t1,
-        closed=[{'path': ['legacy']}],
+        closed=[{'label_path': ['legacy']}],
     )
 
     response = await api_client.get(

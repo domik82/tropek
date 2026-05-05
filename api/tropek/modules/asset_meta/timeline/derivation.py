@@ -40,7 +40,7 @@ def apply_value(
     emitted.append(
         RawSpan(
             source=source,
-            path=list(path),
+            label_path=list(path),
             value=existing.value,
             start=existing.span_start,
             end=observed_at,
@@ -67,7 +67,7 @@ def close_cascade(
         emitted.append(
             RawSpan(
                 source=key[0],
-                path=list(key[1]),
+                label_path=list(key[1]),
                 value=open_span.value,
                 start=open_span.span_start,
                 end=closed_at,
@@ -94,7 +94,7 @@ def finalize_open_spans(open_spans: OpenSpanMap, emitted: list[RawSpan]) -> None
         emitted.append(
             RawSpan(
                 source=source,
-                path=list(path_tuple),
+                label_path=list(path_tuple),
                 value=open_span.value,
                 start=open_span.span_start,
                 end=None,

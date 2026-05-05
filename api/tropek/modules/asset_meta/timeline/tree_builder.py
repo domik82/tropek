@@ -16,7 +16,7 @@ def encode_path_as_group_id(path: tuple[str, ...]) -> str:
 
 def collect_distinct_paths(spans: list[ClippedSpan]) -> set[tuple[str, ...]]:
     """Extract the set of distinct path tuples present in the clipped spans."""
-    return {tuple(span.path) for span in spans}
+    return {tuple(span.label_path) for span in spans}
 
 
 def expand_with_synthetic_ancestors(paths: set[tuple[str, ...]]) -> set[tuple[str, ...]]:

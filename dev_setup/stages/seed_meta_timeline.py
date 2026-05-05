@@ -116,10 +116,10 @@ def seed_checkout_api(client: httpx.Client, asset_id: str) -> None:
         'cicd',
         timestamp_at(0),
         values=[
-            {'path': ['checkout-api'], 'value': '1.0.0'},
-            {'path': ['checkout-api', 'plugin-pkg', 'auth-plugin'], 'value': '0.8.0'},
-            {'path': ['checkout-api', 'plugin-pkg', 'legacy-plugin'], 'value': '2.1.0'},
-            {'path': ['checkout-api', 'payment-gateway'], 'value': 'stripe-v3'},
+            {'label_path': ['checkout-api'], 'value': '1.0.0'},
+            {'label_path': ['checkout-api', 'plugin-pkg', 'auth-plugin'], 'value': '0.8.0'},
+            {'label_path': ['checkout-api', 'plugin-pkg', 'legacy-plugin'], 'value': '2.1.0'},
+            {'label_path': ['checkout-api', 'payment-gateway'], 'value': 'stripe-v3'},
         ],
     )
     post_snapshot(
@@ -128,8 +128,8 @@ def seed_checkout_api(client: httpx.Client, asset_id: str) -> None:
         'os-agent',
         timestamp_at(0, 2),
         values=[
-            {'path': ['cpu-cores'], 'value': '4'},
-            {'path': ['memory-gb'], 'value': '16'},
+            {'label_path': ['cpu-cores'], 'value': '4'},
+            {'label_path': ['memory-gb'], 'value': '16'},
         ],
     )
 
@@ -140,10 +140,10 @@ def seed_checkout_api(client: httpx.Client, asset_id: str) -> None:
         'cicd',
         timestamp_at(7),
         values=[
-            {'path': ['checkout-api'], 'value': '1.0.0'},
-            {'path': ['checkout-api', 'plugin-pkg', 'auth-plugin'], 'value': '0.9.0'},
-            {'path': ['checkout-api', 'plugin-pkg', 'legacy-plugin'], 'value': '2.1.0'},
-            {'path': ['checkout-api', 'payment-gateway'], 'value': 'stripe-v3'},
+            {'label_path': ['checkout-api'], 'value': '1.0.0'},
+            {'label_path': ['checkout-api', 'plugin-pkg', 'auth-plugin'], 'value': '0.9.0'},
+            {'label_path': ['checkout-api', 'plugin-pkg', 'legacy-plugin'], 'value': '2.1.0'},
+            {'label_path': ['checkout-api', 'payment-gateway'], 'value': 'stripe-v3'},
         ],
     )
 
@@ -154,12 +154,12 @@ def seed_checkout_api(client: httpx.Client, asset_id: str) -> None:
         'cicd',
         timestamp_at(14),
         values=[
-            {'path': ['checkout-api'], 'value': '2.0.0'},
-            {'path': ['checkout-api', 'plugin-pkg', 'auth-plugin'], 'value': '1.0.0'},
-            {'path': ['checkout-api', 'payment-gateway'], 'value': 'stripe-v4'},
+            {'label_path': ['checkout-api'], 'value': '2.0.0'},
+            {'label_path': ['checkout-api', 'plugin-pkg', 'auth-plugin'], 'value': '1.0.0'},
+            {'label_path': ['checkout-api', 'payment-gateway'], 'value': 'stripe-v4'},
         ],
         closed=[
-            {'path': ['checkout-api', 'plugin-pkg', 'legacy-plugin']},
+            {'label_path': ['checkout-api', 'plugin-pkg', 'legacy-plugin']},
         ],
     )
 
@@ -170,8 +170,8 @@ def seed_checkout_api(client: httpx.Client, asset_id: str) -> None:
         'os-agent',
         timestamp_at(21),
         values=[
-            {'path': ['cpu-cores'], 'value': '8'},
-            {'path': ['memory-gb'], 'value': '32'},
+            {'label_path': ['cpu-cores'], 'value': '8'},
+            {'label_path': ['memory-gb'], 'value': '32'},
         ],
     )
 
@@ -182,10 +182,10 @@ def seed_checkout_api(client: httpx.Client, asset_id: str) -> None:
         'cicd',
         timestamp_at(28),
         values=[
-            {'path': ['checkout-api'], 'value': '3.0.0'},
-            {'path': ['checkout-api', 'plugin-pkg', 'auth-plugin'], 'value': '1.1.0'},
-            {'path': ['checkout-api', 'plugin-pkg', 'cache-plugin'], 'value': '0.1.0'},
-            {'path': ['checkout-api', 'payment-gateway'], 'value': 'stripe-v4'},
+            {'label_path': ['checkout-api'], 'value': '3.0.0'},
+            {'label_path': ['checkout-api', 'plugin-pkg', 'auth-plugin'], 'value': '1.1.0'},
+            {'label_path': ['checkout-api', 'plugin-pkg', 'cache-plugin'], 'value': '0.1.0'},
+            {'label_path': ['checkout-api', 'payment-gateway'], 'value': 'stripe-v4'},
         ],
     )
 
@@ -196,11 +196,11 @@ def seed_checkout_api(client: httpx.Client, asset_id: str) -> None:
         'cicd',
         timestamp_at(33),
         values=[
-            {'path': ['checkout-api'], 'value': '3.0.0'},
-            {'path': ['checkout-api', 'plugin-pkg', 'auth-plugin'], 'value': '1.1.0'},
-            {'path': ['checkout-api', 'plugin-pkg', 'cache-plugin'], 'value': '0.2.0'},
-            {'path': ['checkout-api', 'payment-gateway'], 'value': 'stripe-v4'},
-            {'path': ['feature-flags', 'enable-new-checkout'], 'value': 'true'},
+            {'label_path': ['checkout-api'], 'value': '3.0.0'},
+            {'label_path': ['checkout-api', 'plugin-pkg', 'auth-plugin'], 'value': '1.1.0'},
+            {'label_path': ['checkout-api', 'plugin-pkg', 'cache-plugin'], 'value': '0.2.0'},
+            {'label_path': ['checkout-api', 'payment-gateway'], 'value': 'stripe-v4'},
+            {'label_path': ['feature-flags', 'enable-new-checkout'], 'value': 'true'},
         ],
     )
 
@@ -221,10 +221,10 @@ def seed_vm_prod_web_01(client: httpx.Client, asset_id: str) -> None:
         'os-agent',
         timestamp_at(0),
         values=[
-            {'path': ['os'], 'value': 'Ubuntu 22.04'},
-            {'path': ['cpu-cores'], 'value': '16'},
-            {'path': ['memory-gb'], 'value': '64'},
-            {'path': ['disk-type'], 'value': 'NVMe SSD'},
+            {'label_path': ['os'], 'value': 'Ubuntu 22.04'},
+            {'label_path': ['cpu-cores'], 'value': '16'},
+            {'label_path': ['memory-gb'], 'value': '64'},
+            {'label_path': ['disk-type'], 'value': 'NVMe SSD'},
         ],
     )
 
@@ -235,9 +235,9 @@ def seed_vm_prod_web_01(client: httpx.Client, asset_id: str) -> None:
         'cicd',
         timestamp_at(1),
         values=[
-            {'path': ['nginx'], 'value': '1.24.0'},
-            {'path': ['app-server'], 'value': '4.2.1'},
-            {'path': ['app-server', 'worker-pool'], 'value': '8'},
+            {'label_path': ['nginx'], 'value': '1.24.0'},
+            {'label_path': ['app-server'], 'value': '4.2.1'},
+            {'label_path': ['app-server', 'worker-pool'], 'value': '8'},
         ],
     )
 
@@ -248,10 +248,10 @@ def seed_vm_prod_web_01(client: httpx.Client, asset_id: str) -> None:
         'os-agent',
         timestamp_at(10),
         values=[
-            {'path': ['os'], 'value': 'Ubuntu 22.04.1'},
-            {'path': ['cpu-cores'], 'value': '16'},
-            {'path': ['memory-gb'], 'value': '64'},
-            {'path': ['disk-type'], 'value': 'NVMe SSD'},
+            {'label_path': ['os'], 'value': 'Ubuntu 22.04.1'},
+            {'label_path': ['cpu-cores'], 'value': '16'},
+            {'label_path': ['memory-gb'], 'value': '64'},
+            {'label_path': ['disk-type'], 'value': 'NVMe SSD'},
         ],
     )
 
@@ -262,9 +262,9 @@ def seed_vm_prod_web_01(client: httpx.Client, asset_id: str) -> None:
         'cicd',
         timestamp_at(20),
         values=[
-            {'path': ['nginx'], 'value': '1.25.0'},
-            {'path': ['app-server'], 'value': '5.0.0'},
-            {'path': ['app-server', 'worker-pool'], 'value': '16'},
+            {'label_path': ['nginx'], 'value': '1.25.0'},
+            {'label_path': ['app-server'], 'value': '5.0.0'},
+            {'label_path': ['app-server', 'worker-pool'], 'value': '16'},
         ],
     )
 
@@ -275,7 +275,7 @@ def seed_vm_prod_web_01(client: httpx.Client, asset_id: str) -> None:
         'cicd',
         timestamp_at(30),
         closed=[
-            {'path': ['app-server']},
+            {'label_path': ['app-server']},
         ],
     )
 
@@ -286,8 +286,8 @@ def seed_vm_prod_web_01(client: httpx.Client, asset_id: str) -> None:
         'cicd',
         timestamp_at(31),
         values=[
-            {'path': ['app-server'], 'value': '6.0.0-rc1'},
-            {'path': ['app-server', 'worker-pool'], 'value': '32'},
+            {'label_path': ['app-server'], 'value': '6.0.0-rc1'},
+            {'label_path': ['app-server', 'worker-pool'], 'value': '32'},
         ],
     )
 
@@ -308,10 +308,10 @@ def seed_laptop_user_01(client: httpx.Client, asset_id: str) -> None:
             'os-agent',
             timestamp_at(day),
             values=[
-                {'path': ['os'], 'value': 'Windows 11 Pro'},
-                {'path': ['cpu-model'], 'value': 'Intel i7-13700'},
-                {'path': ['memory-gb'], 'value': '32'},
-                {'path': ['office-suite'], 'value': 'Microsoft 365'},
+                {'label_path': ['os'], 'value': 'Windows 11 Pro'},
+                {'label_path': ['cpu-model'], 'value': 'Intel i7-13700'},
+                {'label_path': ['memory-gb'], 'value': '32'},
+                {'label_path': ['office-suite'], 'value': 'Microsoft 365'},
             ],
         )
 
@@ -322,10 +322,10 @@ def seed_laptop_user_01(client: httpx.Client, asset_id: str) -> None:
         'os-agent',
         timestamp_at(30),
         values=[
-            {'path': ['os'], 'value': 'Windows 11 Pro'},
-            {'path': ['cpu-model'], 'value': 'Intel i7-13700'},
-            {'path': ['memory-gb'], 'value': '32'},
-            {'path': ['office-suite'], 'value': 'Microsoft 365 v2'},
+            {'label_path': ['os'], 'value': 'Windows 11 Pro'},
+            {'label_path': ['cpu-model'], 'value': 'Intel i7-13700'},
+            {'label_path': ['memory-gb'], 'value': '32'},
+            {'label_path': ['office-suite'], 'value': 'Microsoft 365 v2'},
         ],
     )
 

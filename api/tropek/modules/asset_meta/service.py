@@ -120,9 +120,9 @@ async def _write_snapshot_rows(
         observed_at=payload.observed_at,
     )
     if payload.values:
-        value_entries = [(entry.path, entry.value) for entry in payload.values]
+        value_entries = [(entry.label_path, entry.value) for entry in payload.values]
         await repository.insert_values(snapshot.id, value_entries)
     if payload.closed:
-        closure_entries = [entry.path for entry in payload.closed]
+        closure_entries = [entry.label_path for entry in payload.closed]
         await repository.insert_closures(snapshot.id, closure_entries)
     return snapshot.id

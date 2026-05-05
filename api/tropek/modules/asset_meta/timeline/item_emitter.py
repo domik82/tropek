@@ -17,7 +17,7 @@ def item_from_span(span: ClippedSpan, index: int) -> dict[str, Any]:
     """Build one vis-timeline item dict from a clipped span."""
     return {
         'id': f's{index}',
-        'group': encode_path_as_group_id(tuple(span.path)),
+        'group': encode_path_as_group_id(tuple(span.label_path)),
         'content': span.value,
         'start': span.start.isoformat(),
         'end': span.end.isoformat(),

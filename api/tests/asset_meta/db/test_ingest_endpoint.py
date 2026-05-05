@@ -22,7 +22,7 @@ async def test_post_snapshot_values_only_returns_201(
         json={
             'source': 'cicd',
             'observed_at': '2026-04-16T10:00:00Z',
-            'values': [{'path': ['app-A'], 'value': '2.3.0'}],
+            'values': [{'label_path': ['app-A'], 'value': '2.3.0'}],
         },
     )
     assert response.status_code == 201
@@ -38,7 +38,7 @@ async def test_post_snapshot_closed_only_returns_201(
         json={
             'source': 'cicd',
             'observed_at': '2026-04-16T10:00:00Z',
-            'closed': [{'path': ['legacy']}],
+            'closed': [{'label_path': ['legacy']}],
         },
     )
     assert response.status_code == 201
@@ -70,7 +70,7 @@ async def test_post_snapshot_unknown_asset_returns_404(
         json={
             'source': 'cicd',
             'observed_at': '2026-04-16T10:00:00Z',
-            'values': [{'path': ['app'], 'value': '1.0'}],
+            'values': [{'label_path': ['app'], 'value': '1.0'}],
         },
     )
     assert response.status_code == 404
@@ -85,7 +85,7 @@ async def test_post_snapshot_invalid_source_returns_422(
         json={
             'source': 'has space',
             'observed_at': '2026-04-16T10:00:00Z',
-            'values': [{'path': ['app'], 'value': '1.0'}],
+            'values': [{'label_path': ['app'], 'value': '1.0'}],
         },
     )
     assert response.status_code == 422
@@ -100,7 +100,7 @@ async def test_post_snapshot_naive_datetime_returns_422(
         json={
             'source': 'cicd',
             'observed_at': '2026-04-16T10:00:00',
-            'values': [{'path': ['app'], 'value': '1.0'}],
+            'values': [{'label_path': ['app'], 'value': '1.0'}],
         },
     )
     assert response.status_code == 422
@@ -115,7 +115,7 @@ async def test_post_snapshot_path_too_deep_returns_422(
         json={
             'source': 'cicd',
             'observed_at': '2026-04-16T10:00:00Z',
-            'values': [{'path': ['a', 'b', 'c', 'd', 'e', 'f', 'g'], 'value': '1.0'}],
+            'values': [{'label_path': ['a', 'b', 'c', 'd', 'e', 'f', 'g'], 'value': '1.0'}],
         },
     )
     assert response.status_code == 422
@@ -131,8 +131,8 @@ async def test_post_snapshot_duplicate_path_in_values_returns_422(
             'source': 'cicd',
             'observed_at': '2026-04-16T10:00:00Z',
             'values': [
-                {'path': ['app'], 'value': '1.0'},
-                {'path': ['app'], 'value': '2.0'},
+                {'label_path': ['app'], 'value': '1.0'},
+                {'label_path': ['app'], 'value': '2.0'},
             ],
         },
     )
@@ -150,10 +150,10 @@ async def test_post_snapshot_persists_values_and_closures_to_db(
             'source': 'cicd',
             'observed_at': '2026-04-16T10:00:00Z',
             'values': [
-                {'path': ['app-A'], 'value': '2.3.0'},
-                {'path': ['cpu'], 'value': '4'},
+                {'label_path': ['app-A'], 'value': '2.3.0'},
+                {'label_path': ['cpu'], 'value': '4'},
             ],
-            'closed': [{'path': ['legacy']}],
+            'closed': [{'label_path': ['legacy']}],
         },
     )
     assert response.status_code == 201

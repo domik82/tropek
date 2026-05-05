@@ -30,7 +30,7 @@ def make_span(
 ) -> RawSpan:
     return RawSpan(
         source=source,
-        path=path or ['app'],
+        label_path=path or ['app'],
         value=value,
         start=start,
         end=end,
@@ -139,7 +139,7 @@ class TestLogSourceConflict:
         assert record.levelno == logging.WARNING
         assert record.message == 'asset_meta_timeline.multi_source_conflict'
         assert record.asset_id == str(asset_id)  # type: ignore[attr-defined]
-        assert record.path == ['app', 'plugin']  # type: ignore[attr-defined]
+        assert record.label_path == ['app', 'plugin']  # type: ignore[attr-defined]
         assert record.sources == ['cicd', 'deploy']  # type: ignore[attr-defined]
         assert record.winner == winner  # type: ignore[attr-defined]
 

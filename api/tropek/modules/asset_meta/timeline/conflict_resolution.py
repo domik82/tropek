@@ -39,7 +39,7 @@ def group_spans_by_path(spans: list[RawSpan]) -> dict[tuple[str, ...], list[RawS
     """Bucket spans by their path."""
     result: dict[tuple[str, ...], list[RawSpan]] = defaultdict(list)
     for span in spans:
-        result[tuple(span.path)].append(span)
+        result[tuple(span.label_path)].append(span)
     return result
 
 
@@ -73,7 +73,7 @@ def log_source_conflict(
         'asset_meta_timeline.multi_source_conflict',
         extra={
             'asset_id': str(asset_id),
-            'path': list(path),
+            'label_path': list(path),
             'sources': sorted(sources_latest.keys()),
             'winner': winner,
         },

@@ -55,9 +55,11 @@ class AssetMetaRepository:
 
         Args:
             snapshot_id: UUID of the parent snapshot.
-            entries: Sequence of (path, value) tuples where path is a list of hierarchy segments.
+            entries: Sequence of (label_path, value) tuples where label_path is a list of hierarchy segments.
         """
-        value_rows = [AssetMetaValue(snapshot_id=snapshot_id, path=path, value=value) for path, value in entries]
+        value_rows = [
+            AssetMetaValue(snapshot_id=snapshot_id, label_path=label_path, value=value) for label_path, value in entries
+        ]
         self._session.add_all(value_rows)
 
     async def insert_closures(self, snapshot_id: uuid.UUID, entries: Sequence[list[str]]) -> None:
@@ -65,9 +67,9 @@ class AssetMetaRepository:
 
         Args:
             snapshot_id: UUID of the parent snapshot.
-            entries: Sequence of paths, each path being a list of hierarchy segments.
+            entries: Sequence of label_paths, each label_path being a list of hierarchy segments.
         """
-        closure_rows = [AssetMetaClosure(snapshot_id=snapshot_id, path=path) for path in entries]
+        closure_rows = [AssetMetaClosure(snapshot_id=snapshot_id, label_path=label_path) for label_path in entries]
         self._session.add_all(closure_rows)
 
     async def load_snapshots_for_derivation(self, asset_id: uuid.UUID, until: datetime) -> list[SnapshotRow]:
@@ -104,11 +106,11 @@ class AssetMetaRepository:
 
         values_by_snapshot: dict[uuid.UUID, list[tuple[list[str], str]]] = defaultdict(list)
         for value_row in all_values:
-            values_by_snapshot[value_row.snapshot_id].append((value_row.path, value_row.value))
+            values_by_snapshot[value_row.snapshot_id].append((value_row.label_path, value_row.value))
 
         closures_by_snapshot: dict[uuid.UUID, list[list[str]]] = defaultdict(list)
         for closure_row in all_closures:
-            closures_by_snapshot[closure_row.snapshot_id].append(closure_row.path)
+            closures_by_snapshot[closure_row.snapshot_id].append(closure_row.label_path)
 
         return [
             SnapshotRow(
