@@ -1655,6 +1655,18 @@
             "title": "Metric Name",
             "type": "string"
           },
+          "period_end": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Period End"
+          },
           "period_start": {
             "format": "date-time",
             "title": "Period Start",

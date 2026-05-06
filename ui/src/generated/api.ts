@@ -2488,6 +2488,8 @@ export interface components {
             linked_ticket: string | null;
             /** Metric Name */
             metric_name: string;
+            /** Period End */
+            period_end?: string | null;
             /**
              * Period Start
              * Format: date-time
