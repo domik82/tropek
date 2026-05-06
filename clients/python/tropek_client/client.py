@@ -809,6 +809,7 @@ class _Meta:
         self._http = http
 
     def create_snapshot(self, asset_id: str, body: MetaSnapshotCreate) -> MetaSnapshotCreated:
+        """Ingest a point-in-time metadata snapshot for an asset."""
         response = self._http.post(
             f'/assets/{asset_id}/meta/snapshots', json=body.model_dump(mode='json', exclude_none=True)
         )
@@ -822,6 +823,7 @@ class _Meta:
         from_: str | None = None,
         to: str | None = None,
     ) -> list[MetaSnapshotSummary]:
+        """List meta snapshots for an asset, optionally filtered by source and time range."""
         params: dict[str, str] = {}
         if source is not None:
             params['source'] = source
@@ -833,10 +835,12 @@ class _Meta:
         return [MetaSnapshotSummary.model_validate(item) for item in response.json()]
 
     def get_snapshot(self, asset_id: str, snapshot_id: str) -> MetaSnapshotDetail:
+        """Get full detail of a single meta snapshot."""
         response = self._http.get(f'/assets/{asset_id}/meta/snapshots/{snapshot_id}')
         return MetaSnapshotDetail.model_validate(response.json())
 
     def delete_snapshot(self, asset_id: str, snapshot_id: str) -> None:
+        """Delete a meta snapshot and its associated values and closures."""
         self._http.delete(f'/assets/{asset_id}/meta/snapshots/{snapshot_id}')
 
 

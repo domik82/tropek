@@ -8,7 +8,7 @@ from typing import Any
 import yaml
 from pydantic import BaseModel, Field
 
-from tropek_client.manifest_meta import create_meta_snapshots
+from tropek_client.manifest_meta import _normalize_timestamp, create_meta_snapshots
 from tropek_client.models import (
     AddMemberRequest,
     AddSubgroupRequest,
@@ -318,6 +318,26 @@ def _lookup_slo_group_assignment(client: Any, doc: ManifestDocument) -> Any | No
     return next((a for a in assignments if a.slo_group_name == slo_group_name), None)
 
 
+def _lookup_meta_snapshots(client: Any, doc: ManifestDocument) -> bool | None:
+    """Check if all snapshots in a MetaSnapshot document already exist.
+
+    Returns True if all exist (→ SKIP), None if any are missing (→ CREATE).
+    """
+    asset_name = doc.metadata.get('asset', '')
+    try:
+        asset = client.assets.get(asset_name)
+    except Exception:  # noqa: BLE001
+        return None
+    asset_id = str(asset.id)
+    for snapshot_entry in doc.spec.get('snapshots', []):
+        source = snapshot_entry['source']
+        observed_at = _normalize_timestamp(snapshot_entry['observed_at'])
+        existing = client.meta.list_snapshots(asset_id, source=source, from_=observed_at, to=observed_at)
+        if not existing:
+            return None
+    return True
+
+
 def _lookup(client: Any, doc: ManifestDocument) -> Any | None:  # noqa: C901, PLR0911
     """Look up an existing entity by name via the client."""
     name = doc.metadata.get('name', doc.metadata.get('asset', ''))
@@ -343,7 +363,7 @@ def _lookup(client: Any, doc: ManifestDocument) -> Any | None:  # noqa: C901, PL
             case 'SLOGroupAssignment':
                 return _lookup_slo_group_assignment(client, doc)
             case 'MetaSnapshot':
-                return None  # always CREATE — per-snapshot idempotency handled in _create
+                return _lookup_meta_snapshots(client, doc)
             case _:
                 return None
     except Exception:  # noqa: BLE001

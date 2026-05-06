@@ -26,6 +26,7 @@ async def test_delete_snapshot_returns_204(api_client: AsyncClient, test_asset_i
 
     response = await api_client.delete(f'/assets/{test_asset_id}/meta/snapshots/{snapshot_id}')
     assert response.status_code == 204
+    assert response.content == b''
 
 
 async def test_delete_snapshot_cascades_children(

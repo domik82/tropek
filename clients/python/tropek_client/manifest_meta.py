@@ -2,12 +2,22 @@
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
 from tropek_client.models import MetaClosureInput, MetaSnapshotCreate, MetaValueInput
 
 if TYPE_CHECKING:
     from tropek_client.manifest import ManifestDocument
+
+
+def _normalize_timestamp(raw: str | datetime) -> str:
+    """Normalize a timestamp to ISO 8601 UTC string for consistent comparison."""
+    if isinstance(raw, datetime):
+        if raw.tzinfo is None:
+            raw = raw.replace(tzinfo=UTC)
+        return raw.isoformat()
+    return raw
 
 
 def create_meta_snapshots(client: Any, doc: ManifestDocument) -> None:
@@ -17,7 +27,7 @@ def create_meta_snapshots(client: Any, doc: ManifestDocument) -> None:
     asset_id = str(asset.id)
     for snapshot_entry in doc.spec.get('snapshots', []):
         source = snapshot_entry['source']
-        observed_at = snapshot_entry['observed_at']
+        observed_at = _normalize_timestamp(snapshot_entry['observed_at'])
         existing = client.meta.list_snapshots(asset_id, source=source, from_=observed_at, to=observed_at)
         if existing:
             continue

@@ -8,7 +8,7 @@ from collections.abc import Sequence
 from datetime import datetime
 from typing import TypedDict
 
-from sqlalchemy import func, select
+from sqlalchemy import func, literal, select, union_all
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from tropek.db.models import Asset, AssetMetaClosure, AssetMetaSnapshot, AssetMetaValue
@@ -181,23 +181,36 @@ class AssetMetaRepository:
         if not snapshot_ids:
             return {}
 
-        value_counts_query = (
-            select(AssetMetaValue.snapshot_id, func.count())
+        value_sub = (
+            select(
+                AssetMetaValue.snapshot_id,
+                func.count().label('value_count'),
+                literal(0).label('closure_count'),
+            )
             .where(AssetMetaValue.snapshot_id.in_(snapshot_ids))
             .group_by(AssetMetaValue.snapshot_id)
         )
-        value_result = await self._session.execute(value_counts_query)
-        value_counts: dict[uuid.UUID, int] = {row[0]: row[1] for row in value_result.all()}
-
-        closure_counts_query = (
-            select(AssetMetaClosure.snapshot_id, func.count())
+        closure_sub = (
+            select(
+                AssetMetaClosure.snapshot_id,
+                literal(0).label('value_count'),
+                func.count().label('closure_count'),
+            )
             .where(AssetMetaClosure.snapshot_id.in_(snapshot_ids))
             .group_by(AssetMetaClosure.snapshot_id)
         )
-        closure_result = await self._session.execute(closure_counts_query)
-        closure_counts: dict[uuid.UUID, int] = {row[0]: row[1] for row in closure_result.all()}
+        combined = union_all(value_sub, closure_sub).subquery()
+        query = select(
+            combined.c.snapshot_id,
+            func.sum(combined.c.value_count).label('value_count'),
+            func.sum(combined.c.closure_count).label('closure_count'),
+        ).group_by(combined.c.snapshot_id)
 
-        return {sid: (value_counts.get(sid, 0), closure_counts.get(sid, 0)) for sid in snapshot_ids}
+        result = await self._session.execute(query)
+        counts: dict[uuid.UUID, tuple[int, int]] = {
+            row.snapshot_id: (row.value_count, row.closure_count) for row in result.all()
+        }
+        return {sid: counts.get(sid, (0, 0)) for sid in snapshot_ids}
 
     async def asset_exists(self, asset_id: uuid.UUID) -> bool:
         """Check whether an asset with the given ID exists.

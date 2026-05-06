@@ -1,5 +1,6 @@
 """Asset metadata snapshot models."""
 
+from datetime import datetime
 from uuid import UUID
 
 from pydantic import BaseModel
@@ -51,10 +52,10 @@ class MetaSnapshotSummary(BaseModel):
 
     id: UUID
     source: str
-    observed_at: str
+    observed_at: datetime
     value_count: int
     closure_count: int
-    created_at: str
+    created_at: datetime
 
 
 class MetaSnapshotDetail(BaseModel):
@@ -62,7 +63,7 @@ class MetaSnapshotDetail(BaseModel):
 
     id: UUID
     source: str
-    observed_at: str
-    created_at: str
+    observed_at: datetime
+    created_at: datetime
     values: list[MetaValueOutput]
     closures: list[MetaClosureOutput]
