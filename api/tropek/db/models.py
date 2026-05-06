@@ -94,35 +94,35 @@ class AssetMetaSnapshot(Base):
 
 
 class AssetMetaValue(Base):
-    """One key-value leaf in a snapshot — path is a TEXT[] hierarchy, value is the leaf text."""
+    """One key-value leaf in a snapshot — label_path is a TEXT[] hierarchy, value is the leaf text."""
 
     __tablename__ = 'asset_meta_values'
     __table_args__ = (
-        UniqueConstraint('snapshot_id', 'path', name='uq_asset_meta_values_snapshot_path'),
+        UniqueConstraint('snapshot_id', 'label_path', name='uq_asset_meta_values_snapshot_label_path'),
         Index('idx_asset_meta_values_snapshot', 'snapshot_id'),
     )
 
     # fmt: off
     id:          Mapped[int]       = mapped_column(BigInteger, primary_key=True, autoincrement=True)
     snapshot_id: Mapped[uuid.UUID] = mapped_column(UUID, ForeignKey('asset_meta_snapshots.id', ondelete='CASCADE'), nullable=False)
-    path:        Mapped[list[str]] = mapped_column(ARRAY(Text), nullable=False)
+    label_path:  Mapped[list[str]] = mapped_column(ARRAY(Text), nullable=False)
     value:       Mapped[str]       = mapped_column(Text, nullable=False)
     # fmt: on
 
 
 class AssetMetaClosure(Base):
-    """Closure-table row for a snapshot — every ancestor path present in that snapshot."""
+    """Closure-table row for a snapshot — every ancestor label_path present in that snapshot."""
 
     __tablename__ = 'asset_meta_closures'
     __table_args__ = (
-        UniqueConstraint('snapshot_id', 'path', name='uq_asset_meta_closures_snapshot_path'),
+        UniqueConstraint('snapshot_id', 'label_path', name='uq_asset_meta_closures_snapshot_label_path'),
         Index('idx_asset_meta_closures_snapshot', 'snapshot_id'),
     )
 
     # fmt: off
     id:          Mapped[int]       = mapped_column(BigInteger, primary_key=True, autoincrement=True)
     snapshot_id: Mapped[uuid.UUID] = mapped_column(UUID, ForeignKey('asset_meta_snapshots.id', ondelete='CASCADE'), nullable=False)
-    path:        Mapped[list[str]] = mapped_column(ARRAY(Text), nullable=False)
+    label_path:  Mapped[list[str]] = mapped_column(ARRAY(Text), nullable=False)
     # fmt: on
 
 

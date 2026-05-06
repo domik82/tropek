@@ -57,9 +57,9 @@ async def test_summary_count_grows_with_distinct_paths(
         api_client,
         test_asset_id,
         values=[
-            {'path': ['key-a'], 'value': '1'},
-            {'path': ['key-b'], 'value': '2'},
-            {'path': ['key-c'], 'value': '3'},
+            {'label_path': ['key-a'], 'value': '1'},
+            {'label_path': ['key-b'], 'value': '2'},
+            {'label_path': ['key-c'], 'value': '3'},
         ],
     )
 
@@ -76,7 +76,7 @@ async def test_summary_count_grows_with_distinct_paths(
     await post_snapshot(
         api_client,
         test_asset_id,
-        values=[{'path': ['key-d'], 'value': '4'}],
+        values=[{'label_path': ['key-d'], 'value': '4'}],
         observed_at='2026-04-16T10:05:00Z',
     )
 
@@ -115,10 +115,10 @@ async def test_summary_and_timeline_count_parity(
         api_client,
         test_asset_id,
         values=[
-            {'path': ['alpha'], 'value': 'v1'},
-            {'path': ['beta'], 'value': 'v2'},
-            {'path': ['gamma'], 'value': 'v3'},
-            {'path': ['delta'], 'value': 'v4'},
+            {'label_path': ['alpha'], 'value': 'v1'},
+            {'label_path': ['beta'], 'value': 'v2'},
+            {'label_path': ['gamma'], 'value': 'v3'},
+            {'label_path': ['delta'], 'value': 'v4'},
         ],
     )
 

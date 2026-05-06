@@ -23,7 +23,7 @@ _WINDOW_END = datetime(2026, 4, 30, tzinfo=UTC)
 def make_clipped(path: list[str] | None = None, **kwargs: object) -> ClippedSpan:
     defaults: dict = {
         'source': 'cicd',
-        'path': path or ['app'],
+        'label_path': path or ['app'],
         'value': '1.0',
         'start': _WINDOW_START,
         'end': _WINDOW_END,

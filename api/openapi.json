@@ -3965,7 +3965,7 @@
         "additionalProperties": false,
         "description": "A path to close (end its current span) in the metadata timeline.",
         "properties": {
-          "path": {
+          "label_path": {
             "items": {
               "maxLength": 128,
               "minLength": 1,
@@ -3973,14 +3973,31 @@
             },
             "maxItems": 6,
             "minItems": 1,
-            "title": "Path",
+            "title": "Label Path",
             "type": "array"
           }
         },
         "required": [
-          "path"
+          "label_path"
         ],
         "title": "MetaClosureInput",
+        "type": "object"
+      },
+      "MetaClosureOutput": {
+        "description": "A closure entry in a snapshot detail response.",
+        "properties": {
+          "label_path": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Label Path",
+            "type": "array"
+          }
+        },
+        "required": [
+          "label_path"
+        ],
+        "title": "MetaClosureOutput",
         "type": "object"
       },
       "MetaSnapshotCreate": {
@@ -4062,11 +4079,101 @@
         "title": "MetaSnapshotCreated",
         "type": "object"
       },
+      "MetaSnapshotDetail": {
+        "description": "Full detail of a snapshot including values and closures.",
+        "properties": {
+          "closures": {
+            "items": {
+              "$ref": "#/components/schemas/MetaClosureOutput"
+            },
+            "title": "Closures",
+            "type": "array"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "observed_at": {
+            "format": "date-time",
+            "title": "Observed At",
+            "type": "string"
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          },
+          "values": {
+            "items": {
+              "$ref": "#/components/schemas/MetaValueOutput"
+            },
+            "title": "Values",
+            "type": "array"
+          }
+        },
+        "required": [
+          "id",
+          "source",
+          "observed_at",
+          "created_at",
+          "values",
+          "closures"
+        ],
+        "title": "MetaSnapshotDetail",
+        "type": "object"
+      },
+      "MetaSnapshotSummary": {
+        "description": "Summary of a snapshot for list responses.",
+        "properties": {
+          "closure_count": {
+            "title": "Closure Count",
+            "type": "integer"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "observed_at": {
+            "format": "date-time",
+            "title": "Observed At",
+            "type": "string"
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          },
+          "value_count": {
+            "title": "Value Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "source",
+          "observed_at",
+          "value_count",
+          "closure_count",
+          "created_at"
+        ],
+        "title": "MetaSnapshotSummary",
+        "type": "object"
+      },
       "MetaValueInput": {
         "additionalProperties": false,
         "description": "A single key-value pair to set in the metadata timeline.",
         "properties": {
-          "path": {
+          "label_path": {
             "items": {
               "maxLength": 128,
               "minLength": 1,
@@ -4074,7 +4181,7 @@
             },
             "maxItems": 6,
             "minItems": 1,
-            "title": "Path",
+            "title": "Label Path",
             "type": "array"
           },
           "value": {
@@ -4085,10 +4192,32 @@
           }
         },
         "required": [
-          "path",
+          "label_path",
           "value"
         ],
         "title": "MetaValueInput",
+        "type": "object"
+      },
+      "MetaValueOutput": {
+        "description": "A value entry in a snapshot detail response.",
+        "properties": {
+          "label_path": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Label Path",
+            "type": "array"
+          },
+          "value": {
+            "title": "Value",
+            "type": "string"
+          }
+        },
+        "required": [
+          "label_path",
+          "value"
+        ],
+        "title": "MetaValueOutput",
         "type": "object"
       },
       "MethodCriteriaOverride": {
@@ -8621,6 +8750,109 @@
       }
     },
     "/assets/{asset_id}/meta/snapshots": {
+      "get": {
+        "description": "List meta snapshots for an asset, optionally filtered by source and time range.",
+        "operationId": "list_snapshots_assets__asset_id__meta_snapshots_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "asset_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Asset Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "source",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Source"
+            }
+          },
+          {
+            "in": "query",
+            "name": "from",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                }
+              ],
+              "title": "From"
+            }
+          },
+          {
+            "in": "query",
+            "name": "to",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                }
+              ],
+              "title": "To"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/MetaSnapshotSummary"
+                  },
+                  "title": "Response List Snapshots Assets  Asset Id  Meta Snapshots Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Error"
+          },
+          "422": {
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Snapshots",
+        "tags": [
+          "asset-meta"
+        ]
+      },
       "post": {
         "description": "Ingest a point-in-time metadata snapshot for an asset.",
         "operationId": "create_snapshot_assets__asset_id__meta_snapshots_post",
@@ -8699,6 +8931,155 @@
           }
         },
         "summary": "Create Snapshot",
+        "tags": [
+          "asset-meta"
+        ]
+      }
+    },
+    "/assets/{asset_id}/meta/snapshots/{snapshot_id}": {
+      "delete": {
+        "description": "Delete a meta snapshot and cascade to its values and closures.",
+        "operationId": "delete_snapshot_assets__asset_id__meta_snapshots__snapshot_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "asset_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Asset Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "snapshot_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Snapshot Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Error"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Error"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Snapshot",
+        "tags": [
+          "asset-meta"
+        ]
+      },
+      "get": {
+        "description": "Get full detail of a single meta snapshot.",
+        "operationId": "get_snapshot_detail_assets__asset_id__meta_snapshots__snapshot_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "asset_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Asset Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "snapshot_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Snapshot Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MetaSnapshotDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Error"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Snapshot Detail",
         "tags": [
           "asset-meta"
         ]

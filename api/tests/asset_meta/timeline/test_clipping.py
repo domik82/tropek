@@ -20,7 +20,7 @@ def make_span(
 ) -> RawSpan:
     return RawSpan(
         source='cicd',
-        path=['app'],
+        label_path=['app'],
         value='1.0',
         start=start,
         end=end,
@@ -281,7 +281,7 @@ class TestClipOneSpan:
     def test_source_path_value_are_preserved(self) -> None:
         span = RawSpan(
             source='deploy',
-            path=['svc', 'plugin'],
+            label_path=['svc', 'plugin'],
             value='2.5',
             start=WINDOW_FROM + timedelta(days=1),
             end=WINDOW_TO - timedelta(days=1),
@@ -290,7 +290,7 @@ class TestClipOneSpan:
         result = clip_one_span(span, WINDOW_FROM, WINDOW_TO)
         assert result is not None
         assert result.source == 'deploy'
-        assert result.path == ['svc', 'plugin']
+        assert result.label_path == ['svc', 'plugin']
         assert result.value == '2.5'
 
 

@@ -10,8 +10,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from tropek.modules.asset_meta.repositories import AssetMetaRepository
 from tropek.modules.asset_meta.schemas import (
+    MetaClosureOutput,
     MetaSnapshotCreate,
     MetaSnapshotCreated,
+    MetaSnapshotDetail,
+    MetaSnapshotSummary,
+    MetaValueOutput,
     TimelineResponse,
     TimelineSummaryResponse,
 )
@@ -102,6 +106,74 @@ async def get_timeline_summary(
     return TimelineSummaryResponse.model_validate({'itemCount': item_count})
 
 
+async def list_snapshots(
+    session: AsyncSession,
+    asset_id: UUID,
+    *,
+    source: str | None = None,
+    observed_from: datetime | None = None,
+    observed_to: datetime | None = None,
+) -> list[MetaSnapshotSummary]:
+    """List snapshots for an asset with optional filters."""
+    repository = AssetMetaRepository(session)
+    await _ensure_asset_exists(repository, asset_id)
+    snapshots = await repository.list_snapshots(
+        asset_id, source=source, observed_from=observed_from, observed_to=observed_to
+    )
+    if not snapshots:
+        return []
+    snapshot_ids = [snapshot.id for snapshot in snapshots]
+    counts = await repository.count_values_and_closures(snapshot_ids)
+    return [
+        MetaSnapshotSummary(
+            id=snapshot.id,
+            source=snapshot.source,
+            observed_at=snapshot.observed_at,
+            value_count=counts.get(snapshot.id, (0, 0))[0],
+            closure_count=counts.get(snapshot.id, (0, 0))[1],
+            created_at=snapshot.created_at,
+        )
+        for snapshot in snapshots
+    ]
+
+
+async def get_snapshot_detail(
+    session: AsyncSession,
+    asset_id: UUID,
+    snapshot_id: UUID,
+) -> MetaSnapshotDetail:
+    """Get full detail of a single snapshot."""
+    repository = AssetMetaRepository(session)
+    await _ensure_asset_exists(repository, asset_id)
+    snapshot = await repository.get_snapshot(asset_id, snapshot_id)
+    if snapshot is None:
+        raise NotFoundError('snapshot', str(snapshot_id))
+    values = await repository.get_snapshot_values(snapshot_id)
+    closures = await repository.get_snapshot_closures(snapshot_id)
+    return MetaSnapshotDetail(
+        id=snapshot.id,
+        source=snapshot.source,
+        observed_at=snapshot.observed_at,
+        created_at=snapshot.created_at,
+        values=[MetaValueOutput(label_path=v.label_path, value=v.value) for v in values],
+        closures=[MetaClosureOutput(label_path=c.label_path) for c in closures],
+    )
+
+
+async def delete_snapshot(
+    session: AsyncSession,
+    asset_id: UUID,
+    snapshot_id: UUID,
+) -> None:
+    """Delete a snapshot. Raises NotFoundError if not found."""
+    repository = AssetMetaRepository(session)
+    await _ensure_asset_exists(repository, asset_id)
+    deleted = await repository.delete_snapshot(asset_id, snapshot_id)
+    if not deleted:
+        raise NotFoundError('snapshot', str(snapshot_id))
+    await session.commit()
+
+
 async def _ensure_asset_exists(repository: AssetMetaRepository, asset_id: UUID) -> None:
     """Raise NotFoundError if the asset does not exist."""
     if not await repository.asset_exists(asset_id):
@@ -120,9 +192,9 @@ async def _write_snapshot_rows(
         observed_at=payload.observed_at,
     )
     if payload.values:
-        value_entries = [(entry.path, entry.value) for entry in payload.values]
+        value_entries = [(entry.label_path, entry.value) for entry in payload.values]
         await repository.insert_values(snapshot.id, value_entries)
     if payload.closed:
-        closure_entries = [entry.path for entry in payload.closed]
+        closure_entries = [entry.label_path for entry in payload.closed]
         await repository.insert_closures(snapshot.id, closure_entries)
     return snapshot.id

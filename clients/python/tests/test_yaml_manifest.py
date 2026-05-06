@@ -102,3 +102,11 @@ def test_apply_plan_is_pydantic_model():
     assert isinstance(plan, BaseModel)
     plan.actions.append(PlanAction(operation='CREATE', kind='Asset', name='vm-01', reason='reason'))
     assert len(plan.actions) == 1
+
+
+def test_meta_snapshot_manifest_loads():
+    docs = load_manifests(str(MANIFESTS_DIR / 'meta_snapshot.yaml'))
+    meta_docs = [d for d in docs if d.kind == 'MetaSnapshot']
+    assert len(meta_docs) == 1
+    assert meta_docs[0].metadata['asset'] == 'checkout-api'
+    assert len(meta_docs[0].spec['snapshots']) == 1

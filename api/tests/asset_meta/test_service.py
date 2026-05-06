@@ -95,19 +95,19 @@ def test_schema_rejects_empty_values_and_closed() -> None:
 
 
 def test_schema_accepts_values_only() -> None:
-    payload = _make_payload(values=[MetaValueInput(path=['env'], value='prod')])
+    payload = _make_payload(values=[MetaValueInput(label_path=['env'], value='prod')])
     assert payload.values
 
 
 def test_schema_accepts_closed_only() -> None:
-    payload = _make_payload(closed=[MetaClosureInput(path=['env'])])
+    payload = _make_payload(closed=[MetaClosureInput(label_path=['env'])])
     assert payload.closed
 
 
 def test_schema_accepts_both_values_and_closed() -> None:
     payload = _make_payload(
-        values=[MetaValueInput(path=['env'], value='prod')],
-        closed=[MetaClosureInput(path=['region'])],
+        values=[MetaValueInput(label_path=['env'], value='prod')],
+        closed=[MetaClosureInput(label_path=['region'])],
     )
     assert payload.values
     assert payload.closed
@@ -136,7 +136,7 @@ async def test_ensure_asset_exists_silent_when_present() -> None:
 async def test_write_snapshot_rows_values_only() -> None:
     repository = FakeRepository()
     asset_id = uuid.uuid4()
-    payload = _make_payload(values=[MetaValueInput(path=['env'], value='prod')])
+    payload = _make_payload(values=[MetaValueInput(label_path=['env'], value='prod')])
 
     snapshot_id = await _write_snapshot_rows(repository, asset_id, payload)
 
@@ -156,7 +156,7 @@ async def test_write_snapshot_rows_values_only() -> None:
 async def test_write_snapshot_rows_closed_only() -> None:
     repository = FakeRepository()
     asset_id = uuid.uuid4()
-    payload = _make_payload(closed=[MetaClosureInput(path=['env'])])
+    payload = _make_payload(closed=[MetaClosureInput(label_path=['env'])])
 
     snapshot_id = await _write_snapshot_rows(repository, asset_id, payload)
 
@@ -175,8 +175,8 @@ async def test_write_snapshot_rows_both() -> None:
     repository = FakeRepository()
     asset_id = uuid.uuid4()
     payload = _make_payload(
-        values=[MetaValueInput(path=['env'], value='prod')],
-        closed=[MetaClosureInput(path=['region'])],
+        values=[MetaValueInput(label_path=['env'], value='prod')],
+        closed=[MetaClosureInput(label_path=['region'])],
     )
 
     snapshot_id = await _write_snapshot_rows(repository, asset_id, payload)

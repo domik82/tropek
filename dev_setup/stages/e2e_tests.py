@@ -34,6 +34,7 @@ from __future__ import annotations
 import sys
 import time
 
+from e2e_meta_snapshots import test_meta_snapshot_crud
 from tropek_client import TropekClient
 from tropek_client.exceptions import TropekAPIError
 from tropek_client.models import (
@@ -537,6 +538,7 @@ def main() -> None:
     test_asset_delete(client)
     test_label_autocomplete(client)
     test_aggregated_evaluation(client)
+    test_meta_snapshot_crud(client)
     test_asset_type_delete_with_assets(client)
 
     print('\n=== All integration tests passed ===')

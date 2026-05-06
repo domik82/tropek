@@ -42,7 +42,7 @@ def clip_one_span(
     )
     return ClippedSpan(
         source=span.source,
-        path=span.path,
+        label_path=span.label_path,
         value=span.value,
         start=clipped_start,
         end=clipped_end,

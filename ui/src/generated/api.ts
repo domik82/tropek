@@ -383,7 +383,11 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /**
+         * List Snapshots
+         * @description List meta snapshots for an asset, optionally filtered by source and time range.
+         */
+        get: operations["list_snapshots_assets__asset_id__meta_snapshots_get"];
         put?: never;
         /**
          * Create Snapshot
@@ -391,6 +395,30 @@ export interface paths {
          */
         post: operations["create_snapshot_assets__asset_id__meta_snapshots_post"];
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/assets/{asset_id}/meta/snapshots/{snapshot_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Snapshot Detail
+         * @description Get full detail of a single meta snapshot.
+         */
+        get: operations["get_snapshot_detail_assets__asset_id__meta_snapshots__snapshot_id__get"];
+        put?: never;
+        post?: never;
+        /**
+         * Delete Snapshot
+         * @description Delete a meta snapshot and cascade to its values and closures.
+         */
+        delete: operations["delete_snapshot_assets__asset_id__meta_snapshots__snapshot_id__delete"];
         options?: never;
         head?: never;
         patch?: never;
@@ -3285,8 +3313,16 @@ export interface components {
          * @description A path to close (end its current span) in the metadata timeline.
          */
         MetaClosureInput: {
-            /** Path */
-            path: string[];
+            /** Label Path */
+            label_path: string[];
+        };
+        /**
+         * MetaClosureOutput
+         * @description A closure entry in a snapshot detail response.
+         */
+        MetaClosureOutput: {
+            /** Label Path */
+            label_path: string[];
         };
         /**
          * MetaSnapshotCreate
@@ -3321,12 +3357,76 @@ export interface components {
             snapshot_id: string;
         };
         /**
+         * MetaSnapshotDetail
+         * @description Full detail of a snapshot including values and closures.
+         */
+        MetaSnapshotDetail: {
+            /** Closures */
+            closures: components["schemas"]["MetaClosureOutput"][];
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Observed At
+             * Format: date-time
+             */
+            observed_at: string;
+            /** Source */
+            source: string;
+            /** Values */
+            values: components["schemas"]["MetaValueOutput"][];
+        };
+        /**
+         * MetaSnapshotSummary
+         * @description Summary of a snapshot for list responses.
+         */
+        MetaSnapshotSummary: {
+            /** Closure Count */
+            closure_count: number;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Observed At
+             * Format: date-time
+             */
+            observed_at: string;
+            /** Source */
+            source: string;
+            /** Value Count */
+            value_count: number;
+        };
+        /**
          * MetaValueInput
          * @description A single key-value pair to set in the metadata timeline.
          */
         MetaValueInput: {
-            /** Path */
-            path: string[];
+            /** Label Path */
+            label_path: string[];
+            /** Value */
+            value: string;
+        };
+        /**
+         * MetaValueOutput
+         * @description A value entry in a snapshot detail response.
+         */
+        MetaValueOutput: {
+            /** Label Path */
+            label_path: string[];
             /** Value */
             value: string;
         };
@@ -5740,6 +5840,57 @@ export interface operations {
             };
         };
     };
+    list_snapshots_assets__asset_id__meta_snapshots_get: {
+        parameters: {
+            query?: {
+                source?: string | null;
+                from?: string;
+                to?: string;
+            };
+            header?: never;
+            path: {
+                asset_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MetaSnapshotSummary"][];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     create_snapshot_assets__asset_id__meta_snapshots_post: {
         parameters: {
             query?: never;
@@ -5763,6 +5914,113 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["MetaSnapshotCreated"];
                 };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_snapshot_detail_assets__asset_id__meta_snapshots__snapshot_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                asset_id: string;
+                snapshot_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MetaSnapshotDetail"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_snapshot_assets__asset_id__meta_snapshots__snapshot_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                asset_id: string;
+                snapshot_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Bad Request */
             400: {

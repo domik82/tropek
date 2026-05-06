@@ -1,0 +1,44 @@
+api_version: tropek/v1
+kind: MetaSnapshot
+metadata:
+  asset: checkout-api
+spec:
+  snapshots:
+    - source: cicd
+      observed_at: "2026-02-10T00:00:00Z"
+      values:
+        - label_path: [checkout-api]
+          value: "1.0.0"
+        - label_path: [checkout-api, plugin-pkg, auth-plugin]
+          value: "0.8.0"
+        - label_path: [checkout-api, plugin-pkg, legacy-plugin]
+          value: "2.1.0"
+        - label_path: [checkout-api, payment-gateway]
+          value: "stripe-v3"
+    - source: cicd
+      observed_at: "2026-02-17T00:00:00Z"
+      values:
+        - label_path: [checkout-api]
+          value: "2.0.0"
+        - label_path: [checkout-api, plugin-pkg, auth-plugin]
+          value: "1.0.0"
+        - label_path: [checkout-api, payment-gateway]
+          value: "stripe-v4"
+      closed:
+        - label_path: [checkout-api, plugin-pkg, legacy-plugin]
+---
+api_version: tropek/v1
+kind: MetaSnapshot
+metadata:
+  asset: vm-prod-web-01
+spec:
+  snapshots:
+    - source: os-agent
+      observed_at: "2026-02-10T00:00:00Z"
+      values:
+        - label_path: [os]
+          value: "Ubuntu 22.04"
+        - label_path: [cpu-cores]
+          value: "16"
+        - label_path: [memory-gb]
+          value: "64"

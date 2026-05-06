@@ -93,9 +93,13 @@ from tropek_client.models.heatmap import (
 )
 from tropek_client.models.meta import (
     MetaClosureInput,
+    MetaClosureOutput,
     MetaSnapshotCreate,
     MetaSnapshotCreated,
+    MetaSnapshotDetail,
+    MetaSnapshotSummary,
     MetaValueInput,
+    MetaValueOutput,
 )
 from tropek_client.models.pagination import PagedResponse
 from tropek_client.models.slis import (
@@ -230,9 +234,13 @@ __all__ = [
     'IndicatorResult',
     'InvalidateRequest',
     'MetaClosureInput',
+    'MetaClosureOutput',
     'MetaSnapshotCreate',
     'MetaSnapshotCreated',
+    'MetaSnapshotDetail',
+    'MetaSnapshotSummary',
     'MetaValueInput',
+    'MetaValueOutput',
     'MethodCriteriaOverride',
     'MethodCriteriaOverrideRead',
     'MetricHeatmapResponse',

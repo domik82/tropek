@@ -524,21 +524,35 @@ def test_configuration(client: TropekClient) -> None:
 
 
 def test_meta(client: TropekClient) -> None:
-    """meta: create_snapshot."""
+    """meta: create_snapshot, list_snapshots, get_snapshot, delete_snapshot."""
     print('\n--- meta ---')
     asset = client.assets.get('checkout-api')
     asset_id = str(asset.id)
-    run(
+    created = run(
         'meta.create_snapshot',
         lambda: client.meta.create_snapshot(
             asset_id,
             MetaSnapshotCreate(
                 source='smoke-test',
                 observed_at='2026-03-15T12:00:00Z',
-                values=[MetaValueInput(path=['version'], value='v1.2.3')],
+                values=[MetaValueInput(label_path=['version'], value='v1.2.3')],
             ),
         ),
     )
+    run(
+        'meta.list_snapshots',
+        lambda: client.meta.list_snapshots(asset_id),
+    )
+    snapshot_id = str(created.snapshot_id) if created else None
+    if snapshot_id:
+        run(
+            'meta.get_snapshot',
+            lambda: client.meta.get_snapshot(asset_id, snapshot_id),
+        )
+        run(
+            'meta.delete_snapshot',
+            lambda: client.meta.delete_snapshot(asset_id, snapshot_id),
+        )
 
 
 # ---------------------------------------------------------------------------

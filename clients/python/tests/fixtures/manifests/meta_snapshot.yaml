@@ -1,0 +1,11 @@
+api_version: tropek/v1
+kind: MetaSnapshot
+metadata:
+  asset: checkout-api
+spec:
+  snapshots:
+    - source: cicd
+      observed_at: "2026-02-10T00:00:00Z"
+      values:
+        - label_path: [checkout-api]
+          value: "1.0.0"
