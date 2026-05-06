@@ -54,7 +54,7 @@
     "globals": "^17.4.0",
     "happy-dom": "^20.9.0",
     "openapi-typescript": "^7.13.0",
-    "postcss": "^8.5.10",
+    "postcss": "^8.5.14",
     "tailwindcss": "^4.2.4",
     "typescript": "~5.9.3",
     "typescript-eslint": "^8.56.1",
