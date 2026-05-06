@@ -161,7 +161,7 @@ async def test_grouped_heatmap_has_notes_true_for_run_level_annotation(
     await db_session.flush()
 
     resp = await async_client.get(
-        '/evaluate/metric-heatmap',
+        '/evaluations/heatmap',
         params={'asset_name': asset_name},
     )
     assert resp.status_code == 200, resp.text

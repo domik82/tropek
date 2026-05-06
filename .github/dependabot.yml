@@ -19,6 +19,24 @@ updates:
         patterns:
           - "*"
 
+  - package-ecosystem: pip
+    directory: /observability_stack/integration-test/generator
+    schedule:
+      interval: monthly
+    groups:
+      all:
+        patterns:
+          - "*"
+
+  - package-ecosystem: pip
+    directory: /observability_stack/integration-test/grafana
+    schedule:
+      interval: monthly
+    groups:
+      all:
+        patterns:
+          - "*"
+
   - package-ecosystem: npm
     directory: /ui
     schedule:
