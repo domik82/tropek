@@ -55,7 +55,7 @@ export async function fetchEvaluations(filters: EvaluationFilters = {}): Promise
   const base = toParams(filters)
   const allItems: EvaluationSummaryDto[] = []
   const { maxEvaluations, pageSize } = getConfig()
-  let total = 0
+  let total!: number
   let offset = 0
 
   for (;;) {

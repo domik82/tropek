@@ -104,12 +104,11 @@ export function SloWizard({ editSlo, defaultKind, onClose }: SloWizardProps) {
   const isAggregatedSli = fullSli?.mode === 'aggregated'
   const aggregatedMethods = fullSli?.methods ?? []
   const sliMergedRef = useRef(false)
-  /* eslint-disable react-hooks/set-state-in-effect -- intentional merge from async fetch */
   useEffect(() => {
     if (sliMergedRef.current || !fullSli || !isEdit) return
     sliMergedRef.current = true
     // Update pickSli with full indicators from the SLI definition
-    setPickSli((prev) => ({
+    setPickSli((prev) => ({ // eslint-disable-line react-hooks/set-state-in-effect -- intentional merge from async fetch
       ...prev,
       sliVersion: fullSli.version,
       indicators: fullSli.indicators,
@@ -132,7 +131,6 @@ export function SloWizard({ editSlo, defaultKind, onClose }: SloWizardProps) {
       }),
     )
   }, [fullSli, isEdit])
-  /* eslint-enable react-hooks/set-state-in-effect */
 
   // Progressive disclosure: compute which steps are visible
   const showStep2 = identity.name.trim().length > 0
