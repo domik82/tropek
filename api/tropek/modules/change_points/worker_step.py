@@ -262,6 +262,7 @@ async def _persist_change_points(
                 slo_name=snapshot.slo_name,
                 metric_name=metric_name,
                 period_start=candidate.timestamp,
+                period_end=snapshot.period_end,
                 detector=candidate.detector,
                 direction=candidate.direction,
                 change_relative_pct=candidate.change_relative_pct,

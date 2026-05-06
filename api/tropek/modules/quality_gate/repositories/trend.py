@@ -18,18 +18,22 @@ from tropek.db.models import (
     SLOEvaluation,
     SLOObjective,
 )
+from tropek.modules.change_points.repository import ChangePointKey
 from tropek.modules.quality_gate.evaluation_engine.constants import EvaluationStatus
 
 
 def _trend_change_point(
-    lookup: dict[tuple[str, datetime, str], Any] | None,
+    lookup: dict[ChangePointKey, Any] | None,
+    slo_name: str,
     metric_name: str,
     period_start: datetime,
+    period_end: datetime | None,
     evaluation_name: str,
 ) -> dict[str, Any] | None:
     if not lookup:
         return None
-    change_point = lookup.get((metric_name, period_start, evaluation_name))
+    key = ChangePointKey(slo_name, metric_name, period_start, period_end, evaluation_name)
+    change_point = lookup.get(key)
     if change_point is None:
         return None
     return {
@@ -219,7 +223,7 @@ class TrendRepository:
         metric_name: str,
         from_ts: datetime,
         to_ts: datetime | None = None,
-        change_point_lookup: dict[tuple[str, datetime, str], Any] | None = None,
+        change_point_lookup: dict[ChangePointKey, Any] | None = None,
     ) -> list[dict[str, Any]]:
         """Return time-series trend points for a specific asset+SLO+metric combination.
 
@@ -242,6 +246,7 @@ class TrendRepository:
         inner = (
             select(
                 SLOEvaluation.period_start,
+                SLOEvaluation.period_end,
                 SLOEvaluation.evaluation_name,
                 SLIValue.value,
                 SLIValue.slo_evaluation_id,
@@ -293,8 +298,10 @@ class TrendRepository:
                 'targets': r.targets,
                 'change_point': _trend_change_point(
                     change_point_lookup,
+                    slo_name,
                     metric_name,
                     r.period_start,
+                    r.period_end,
                     r.evaluation_name,
                 ),
             }

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
-from typing import Any, cast
+from typing import Any, NamedTuple, cast
 
 from pydantic import BaseModel
 from sqlalchemy import delete, func, select, update
@@ -20,6 +20,16 @@ from tropek.db.models import (
     SLOObjective,
 )
 from tropek.modules.change_points.detector import Direction
+
+
+class ChangePointKey(NamedTuple):
+    """Hashable identity for O(1) change point lookup in heatmap/trend enrichment."""
+
+    slo_name: str
+    metric_name: str
+    period_start: datetime
+    period_end: datetime | None
+    eval_name: str
 
 
 class ResolvedConfig(BaseModel):
@@ -44,6 +54,7 @@ class ChangePointInsertParams(BaseModel):
     slo_name: str
     metric_name: str
     period_start: datetime
+    period_end: datetime | None = None
     detector: str
     direction: Direction
     change_relative_pct: float
@@ -242,11 +253,11 @@ class ChangePointRepository:
         asset_id: uuid.UUID,
         slo_name: str | None = None,
         period_starts: list[datetime],
-    ) -> dict[tuple[str, datetime, str], ChangePoint]:
+    ) -> dict[ChangePointKey, ChangePoint]:
         """Batch-load change points for a set of evaluation timestamps.
 
-        Returns a dict keyed by (metric_name, period_start, eval_name) for O(1)
-        lookup in the heatmap/trend presenters.
+        Returns a dict keyed by (slo_name, metric_name, period_start,
+        period_end, eval_name) for O(1) lookup in the heatmap/trend presenters.
         """
         if not period_starts:
             return {}
@@ -263,7 +274,13 @@ class ChangePointRepository:
             query = query.where(ChangePoint.slo_name == slo_name)
         result = await self._session.execute(query)
         return {
-            (row.ChangePoint.metric_name, row.ChangePoint.period_start, row.eval_name): row.ChangePoint
+            ChangePointKey(
+                row.ChangePoint.slo_name,
+                row.ChangePoint.metric_name,
+                row.ChangePoint.period_start,
+                row.ChangePoint.period_end,
+                row.eval_name,
+            ): row.ChangePoint
             for row in result.all()
         }
 
@@ -275,7 +292,7 @@ class ChangePointRepository:
         metric_name: str,
         from_ts: datetime,
         to_ts: datetime | None = None,
-    ) -> dict[tuple[str, datetime, str], ChangePoint]:
+    ) -> dict[ChangePointKey, ChangePoint]:
         """Load change points for a metric within a time range."""
         query = (
             select(ChangePoint, EvaluationRun.eval_name)
@@ -292,7 +309,13 @@ class ChangePointRepository:
             query = query.where(ChangePoint.period_start <= to_ts)
         result = await self._session.execute(query)
         return {
-            (row.ChangePoint.metric_name, row.ChangePoint.period_start, row.eval_name): row.ChangePoint
+            ChangePointKey(
+                row.ChangePoint.slo_name,
+                row.ChangePoint.metric_name,
+                row.ChangePoint.period_start,
+                row.ChangePoint.period_end,
+                row.eval_name,
+            ): row.ChangePoint
             for row in result.all()
         }
 

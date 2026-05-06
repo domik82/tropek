@@ -26,6 +26,7 @@ class ChangePointRead(BaseModel):
     slo_name: str
     metric_name: str
     period_start: datetime
+    period_end: datetime | None = None
     detector: str
     direction: Direction
     change_relative_pct: float
