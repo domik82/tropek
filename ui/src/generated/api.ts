@@ -5844,8 +5844,8 @@ export interface operations {
         parameters: {
             query?: {
                 source?: string | null;
-                from?: string | null;
-                to?: string | null;
+                from?: string;
+                to?: string;
             };
             header?: never;
             path: {

@@ -50,8 +50,15 @@ async def create_snapshot(
 async def list_snapshots(
     asset_id: uuid.UUID,
     source: str | None = Query(default=None),
-    from_: datetime | None = Query(default=None, alias='from'),
-    to: datetime | None = Query(default=None),
+    from_: datetime | None = Query(
+        default=None,
+        alias='from',
+        json_schema_extra={'anyOf': [{'format': 'date-time', 'type': 'string'}]},
+    ),
+    to: datetime | None = Query(
+        default=None,
+        json_schema_extra={'anyOf': [{'format': 'date-time', 'type': 'string'}]},
+    ),
     session: AsyncSession = Depends(get_session),
 ) -> list[MetaSnapshotSummary]:
     """List meta snapshots for an asset, optionally filtered by source and time range."""
