@@ -16,7 +16,7 @@ import { fmtSlot } from '@/lib/format'
 import { NoteIndicatorRow, type SlotNote, type ColumnPosition } from './NoteIndicatorRow'
 
 /** Grid padding shared between HeatmapChart and NoteIndicatorRow for alignment. */
-export const HEATMAP_GRID_LEFT = 210
+export const HEATMAP_GRID_LEFT = 230
 export const HEATMAP_GRID_RIGHT = 20
 import type { HeatmapEChartsCell } from '@/features/navigator/ui-types'
 
@@ -267,23 +267,28 @@ export function HeatmapChart({
         axisLabel: {
           fontSize: 14,
           color: ct.axisLabel,
-          width: 210,
+          width: HEATMAP_GRID_LEFT - 5,
           overflow: 'truncate' as const,
-          ...(headerRowIndices && headerRowIndices.size > 0
-            ? {
-                formatter: (value: string, index: number) =>
-                  headerRowIndices.has(index) ? `{sloHeader|${value}}` : value,
-                rich: {
-                  sloHeader: {
-                    color: '#58a6ff',
-                    fontSize: 14,
-                    fontWeight: 'bold',
-                    width: 210,
-                    overflow: 'truncate',
-                  },
-                },
-              }
-            : {}),
+          formatter: (value: string, index: number) => {
+            const maxChars = 45
+            const label = value.length > maxChars
+              ? value.slice(0, maxChars - 1) + '…'
+              : value
+            return headerRowIndices.has(index)
+              ? `{sloHeader|${label}}`
+              : `{normal|${label}}`
+          },
+          rich: {
+            sloHeader: {
+              color: '#58a6ff',
+              fontSize: 14,
+              fontWeight: 'bold',
+            },
+            normal: {
+              color: ct.axisLabel,
+              fontSize: 14,
+            },
+          },
         },
         axisLine: { lineStyle: { color: ct.grid } },
         splitLine: { lineStyle: { color: ct.bg } },

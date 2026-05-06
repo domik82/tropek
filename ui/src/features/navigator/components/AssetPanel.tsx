@@ -282,14 +282,12 @@ export function AssetPanel({ assetName, initialEvalId }: Props) {
 
   // Close any open action form when the user selects a different evaluation
   const prevEvalId = useRef(effectiveEvalId)
-  /* eslint-disable react-hooks/set-state-in-effect -- intentional reset on eval change */
   useEffect(() => {
     if (prevEvalId.current !== effectiveEvalId) {
-      setActiveAction(null)
+      setActiveAction(null) // eslint-disable-line react-hooks/set-state-in-effect -- intentional reset on eval change
       prevEvalId.current = effectiveEvalId
     }
   }, [effectiveEvalId])
-  /* eslint-enable react-hooks/set-state-in-effect */
 
   const isLoading = evalsLoading || heatmapLoading
 

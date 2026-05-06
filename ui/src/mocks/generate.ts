@@ -754,18 +754,22 @@ export function getGroupedMetricHeatmap(assetName: string): GroupedMetricHeatmap
     }
   })
 
-  const SLO_GROUPS = ['nginx', 'redis', 'postgres']
+  const SLO_GROUPS = [
+    'nginx',
+    'Load Test — Linux Performance Baseline v2',
+    'SuperLongUnbreakableServiceLevelObjectiveNameThatCannotWrap',
+  ]
   const SLO_METRICS: Record<string, Array<{ name: string; display_name: string }>> = {
-    nginx: [
+    'nginx': [
       { name: 'error_rate', display_name: 'Error Rate' },
       { name: 'p99_latency', display_name: 'P99 Latency' },
       { name: 'throughput_rps', display_name: 'Throughput' },
     ],
-    redis: [
+    'Load Test — Linux Performance Baseline v2': [
       { name: 'cache_hit_rate', display_name: 'Cache Hit Rate' },
       { name: 'latency_p99', display_name: 'Latency P99' },
     ],
-    postgres: [
+    'SuperLongUnbreakableServiceLevelObjectiveNameThatCannotWrap': [
       { name: 'query_p95', display_name: 'Query P95' },
       { name: 'connection_pool', display_name: 'Connection Pool' },
       { name: 'deadlocks', display_name: 'Deadlocks' },
