@@ -12,10 +12,11 @@ from tropek.db.models import (
     AssetType,
     ChangePoint,
     ChangePointConfig,
+    EvaluationRun,
     SLODefinition,
     SLOObjective,
 )
-from tropek.modules.change_points.repository import ChangePointRepository
+from tropek.modules.change_points.repository import ChangePointKey, ChangePointRepository
 
 _BASE = datetime(2026, 4, 1, 10, 0, 0, tzinfo=UTC)
 
@@ -343,3 +344,60 @@ async def test_resolve_from_objective_falls_back_to_defaults(
     assert resolved.max_pvalue == 0.001
     assert resolved.min_magnitude == 0.0
     assert resolved.min_sample_size == 10
+
+
+@pytest.mark.integration
+async def test_get_change_points_for_evaluations_keys_include_slo_and_period_end(
+    db_session: AsyncSession,
+) -> None:
+    """Repository lookup keys include slo_name and period_end so two SLOs
+    with the same metric are not collapsed into one entry."""
+    asset_id = await _create_asset(db_session)
+    period_start = _BASE
+    period_end = _BASE + timedelta(hours=1)
+
+    run = EvaluationRun(
+        asset_id=asset_id,
+        eval_name='daily',
+        period_start=period_start,
+        period_end=period_end,
+        status='completed',
+        result='pass',
+    )
+    db_session.add(run)
+    await db_session.flush()
+
+    cp_latency = _make_change_point(
+        asset_id,
+        slo_name='latency-slo',
+        metric_name='cpu-usage',
+        period_start=period_start,
+        period_end=period_end,
+        evaluation_run_id=run.id,
+    )
+    cp_throughput = _make_change_point(
+        asset_id,
+        slo_name='throughput-slo',
+        metric_name='cpu-usage',
+        period_start=period_start,
+        period_end=period_end,
+        evaluation_run_id=run.id,
+        direction='improvement',
+        change_relative_pct=5.0,
+    )
+    db_session.add_all([cp_latency, cp_throughput])
+    await db_session.flush()
+
+    repo = ChangePointRepository(db_session)
+    lookup = await repo.get_change_points_for_evaluations(
+        asset_id=asset_id,
+        period_starts=[period_start],
+    )
+
+    assert len(lookup) == 2
+    key_latency = ChangePointKey('latency-slo', 'cpu-usage', period_start, period_end, 'daily')
+    key_throughput = ChangePointKey('throughput-slo', 'cpu-usage', period_start, period_end, 'daily')
+    assert key_latency in lookup
+    assert key_throughput in lookup
+    assert lookup[key_latency].direction == 'regression'
+    assert lookup[key_throughput].direction == 'improvement'

@@ -22,6 +22,15 @@ def upgrade() -> None:
         'change_points',
         sa.Column('period_end', sa.DateTime(timezone=True), nullable=True),
     )
+    op.execute(
+        """
+        UPDATE change_points cp
+        SET period_end = e.period_end
+        FROM evaluations e
+        WHERE cp.evaluation_run_id = e.id
+          AND cp.period_end IS NULL
+        """
+    )
 
 
 def downgrade() -> None:

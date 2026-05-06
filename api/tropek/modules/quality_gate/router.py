@@ -178,9 +178,7 @@ async def _enrich_heatmap_with_change_points(
                 run = run_by_id.get(cell.evaluation_id)
                 if run is None:
                     continue
-                key = ChangePointKey(
-                    group.slo_name, cell.metric, cell.period_start, run.period_end, run.eval_name or ''
-                )
+                key = ChangePointKey(group.slo_name, cell.metric, cell.period_start, run.period_end, run.eval_name)
                 change_point = change_point_lookup.get(key)
                 if change_point is not None:
                     cell.change_point = ChangePointMarker(
