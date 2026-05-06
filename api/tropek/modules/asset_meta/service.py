@@ -122,18 +122,18 @@ async def list_snapshots(
     )
     if not snapshots:
         return []
-    snapshot_ids = [s.id for s in snapshots]
+    snapshot_ids = [snapshot.id for snapshot in snapshots]
     counts = await repository.count_values_and_closures(snapshot_ids)
     return [
         MetaSnapshotSummary(
-            id=s.id,
-            source=s.source,
-            observed_at=s.observed_at,
-            value_count=counts.get(s.id, (0, 0))[0],
-            closure_count=counts.get(s.id, (0, 0))[1],
-            created_at=s.created_at,
+            id=snapshot.id,
+            source=snapshot.source,
+            observed_at=snapshot.observed_at,
+            value_count=counts.get(snapshot.id, (0, 0))[0],
+            closure_count=counts.get(snapshot.id, (0, 0))[1],
+            created_at=snapshot.created_at,
         )
-        for s in snapshots
+        for snapshot in snapshots
     ]
 
 
