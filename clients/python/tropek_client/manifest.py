@@ -8,6 +8,7 @@ from typing import Any
 import yaml
 from pydantic import BaseModel, Field
 
+from tropek_client.manifest_meta import create_meta_snapshots
 from tropek_client.models import (
     AddMemberRequest,
     AddSubgroupRequest,
@@ -17,9 +18,6 @@ from tropek_client.models import (
     AssetUpdate,
     DataSourceCreate,
     DataSourceUpdate,
-    MetaClosureInput,
-    MetaSnapshotCreate,
-    MetaValueInput,
     SLIDefinitionCreate,
     SLOAssignmentUpsert,
     SLODefinitionCreate,
@@ -509,30 +507,6 @@ def _create_asset_group(
         )
 
 
-def _create_meta_snapshots(client: Any, doc: ManifestDocument) -> None:
-    """Create meta snapshots for an asset, skipping any that already exist."""
-    asset_name = doc.metadata['asset']
-    asset = client.assets.get(asset_name)
-    asset_id = str(asset.id)
-    for snapshot_entry in doc.spec.get('snapshots', []):
-        source = snapshot_entry['source']
-        observed_at = snapshot_entry['observed_at']
-        existing = client.meta.list_snapshots(asset_id, source=source, from_=observed_at, to=observed_at)
-        if existing:
-            continue
-        values = [
-            MetaValueInput(label_path=v['label_path'], value=v['value']) for v in snapshot_entry.get('values', [])
-        ]
-        closed = [MetaClosureInput(label_path=c['label_path']) for c in snapshot_entry.get('closed', [])]
-        body = MetaSnapshotCreate(
-            source=source,
-            observed_at=observed_at,
-            values=values if values else None,
-            closed=closed if closed else None,
-        )
-        client.meta.create_snapshot(asset_id, body)
-
-
 def _create(client: Any, doc: ManifestDocument) -> None:  # noqa: C901
     """Create a new entity via the client."""
     name = doc.metadata.get('name', doc.metadata.get('asset', ''))
@@ -602,7 +576,7 @@ def _create(client: Any, doc: ManifestDocument) -> None:  # noqa: C901
         case 'SLOGroupAssignment':
             _create_slo_group_assignment(client, doc.spec)
         case 'MetaSnapshot':
-            _create_meta_snapshots(client, doc)
+            create_meta_snapshots(client, doc)
 
 
 def _update(client: Any, doc: ManifestDocument) -> None:
