@@ -46,6 +46,7 @@ async def create_snapshot(
 @router.get(
     '/assets/{asset_id}/meta/snapshots',
     response_model=list[MetaSnapshotSummary],
+    responses={422: {'description': 'Validation Error'}},
 )
 async def list_snapshots(
     asset_id: uuid.UUID,

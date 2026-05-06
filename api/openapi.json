@@ -8845,13 +8845,6 @@
             "description": "Error"
           },
           "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
             "description": "Validation Error"
           }
         },
