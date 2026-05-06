@@ -55,8 +55,8 @@ async def list_snapshots(
     session: AsyncSession = Depends(get_session),
 ) -> list[MetaSnapshotSummary]:
     """List meta snapshots for an asset, optionally filtered by source and time range."""
-    if from_ is not None and to is not None:
-        _validate_window_params(from_, to)
+    if from_ is not None and to is not None and from_ > to:
+        raise DomainValidationError('from must be before or equal to to')
     return await service.list_snapshots(session, asset_id, source=source, observed_from=from_, observed_to=to)
 
 

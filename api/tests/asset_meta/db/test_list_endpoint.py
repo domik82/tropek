@@ -91,6 +91,23 @@ async def test_list_snapshots_filter_by_time_range(api_client: AsyncClient, test
     assert len(items) == 1
 
 
+async def test_list_snapshots_point_in_time_query(api_client: AsyncClient, test_asset_id: uuid.UUID) -> None:
+    await api_client.post(
+        f'/assets/{test_asset_id}/meta/snapshots',
+        json={
+            'source': 'cicd',
+            'observed_at': '2026-04-16T10:00:00Z',
+            'values': [{'label_path': ['app'], 'value': '1.0'}],
+        },
+    )
+    response = await api_client.get(
+        f'/assets/{test_asset_id}/meta/snapshots',
+        params={'from': '2026-04-16T10:00:00Z', 'to': '2026-04-16T10:00:00Z'},
+    )
+    assert response.status_code == 200
+    assert len(response.json()) == 1
+
+
 async def test_list_snapshots_invalid_window_returns_422(api_client: AsyncClient, test_asset_id: uuid.UUID) -> None:
     response = await api_client.get(
         f'/assets/{test_asset_id}/meta/snapshots',
