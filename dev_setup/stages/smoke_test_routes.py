@@ -493,6 +493,31 @@ def test_heatmap(client: TropekClient) -> None:
     run('heatmap.flat', lambda: client.heatmap.flat('checkout-api'))
     run('heatmap.grouped(eval_name)', lambda: client.heatmap.grouped('checkout-api', eval_name='load-test'))
 
+    def _assert_change_points_scoped_per_slo() -> None:
+        """Verify that SLOs sharing the same metric get independent CP sets.
+
+        laptop-user-01 has 4 Office SLOs (Word/Excel/PowerPoint/Outlook) that
+        all evaluate process_cpu_pct, process_memory_mb, process_handles.
+        Before the fix for #15, every SLO received an identical, collapsed CP
+        set.  This check ensures the CP markers differ across SLO groups.
+        """
+        heatmap = client.heatmap.grouped('laptop-user-01')
+        groups_with_cps = {
+            g.slo_name: [c.change_point for c in g.cells if c.change_point is not None] for g in heatmap.groups
+        }
+        groups_with_cps = {k: v for k, v in groups_with_cps.items() if v}
+        min_groups_for_comparison = 2
+        if len(groups_with_cps) < min_groups_for_comparison:
+            return
+        cp_sets = list(groups_with_cps.values())
+        all_identical = all(s == cp_sets[0] for s in cp_sets[1:])
+        assert not all_identical, (
+            f'All {len(cp_sets)} SLO groups on laptop-user-01 have byte-identical '
+            f'change point sets — CP lookup is likely not scoped by slo_name'
+        )
+
+    run('heatmap.cp_scoped_per_slo', _assert_change_points_scoped_per_slo)
+
 
 def test_timeline(client: TropekClient) -> None:
     """timeline: get, summary."""
