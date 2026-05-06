@@ -12,7 +12,7 @@ dependencies = [
 ]
 
 [dependency-groups]
-dev = ["pytest>=8.0"]
+dev = ["pytest>=9.0.3"]
 
 [project.optional-dependencies]
 influxdb = ["influxdb-client>=1.41"]
