@@ -12,14 +12,14 @@ from tropek.modules.asset_meta.timeline.types import (
 def test_raw_span_fields() -> None:
     span = RawSpan(
         source='cicd',
-        path=['app'],
+        label_path=['app'],
         value='1.0',
         start=datetime(2026, 1, 1, tzinfo=UTC),
         end=None,
         end_reason='open',
     )
     assert span.source == 'cicd'
-    assert span.path == ['app']
+    assert span.label_path == ['app']
     assert span.value == '1.0'
     assert span.start == datetime(2026, 1, 1, tzinfo=UTC)
     assert span.end is None
@@ -29,14 +29,14 @@ def test_raw_span_fields() -> None:
 def test_clipped_span_fields() -> None:
     span = ClippedSpan(
         source='deploy',
-        path=['svc', 'env'],
+        label_path=['svc', 'env'],
         value='2.0',
         start=datetime(2026, 1, 1, tzinfo=UTC),
         end=datetime(2026, 1, 2, tzinfo=UTC),
         className='pass',
     )
     assert span.source == 'deploy'
-    assert span.path == ['svc', 'env']
+    assert span.label_path == ['svc', 'env']
     assert span.value == '2.0'
     assert span.start == datetime(2026, 1, 1, tzinfo=UTC)
     assert span.end == datetime(2026, 1, 2, tzinfo=UTC)

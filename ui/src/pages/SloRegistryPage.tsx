@@ -98,10 +98,10 @@ export function SloRegistryPage() {
   const handleNavigate = useCallback(
     (node: SelectedNode) => {
       // Switch mode based on target type
-      let targetMode: RegistryMode = mode
-      if (node.type === 'slo' || node.type === 'sli') targetMode = 'slo'
-      else if (node.type === 'datasource') targetMode = 'datasource'
-      else targetMode = 'asset'
+      const targetMode: RegistryMode =
+        node.type === 'slo' || node.type === 'sli' ? 'slo'
+        : node.type === 'datasource' ? 'datasource'
+        : 'asset'
 
       updateParams({
         mode: targetMode,
@@ -111,7 +111,7 @@ export function SloRegistryPage() {
       })
       setWizardOpen(false)
     },
-    [mode, updateParams],
+    [updateParams],
   )
 
   const handleCreateAction = useCallback(

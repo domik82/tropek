@@ -8,14 +8,14 @@ from collections.abc import Sequence
 from datetime import datetime
 from typing import TypedDict
 
-from sqlalchemy import select
+from sqlalchemy import func, literal, select, union_all
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from tropek.db.models import Asset, AssetMetaClosure, AssetMetaSnapshot, AssetMetaValue
 
 
 class SnapshotRow(TypedDict):
-    """Grouped snapshot with its associated values and closure paths."""
+    """Grouped snapshot with its associated values and closure label paths."""
 
     source: str
     observed_at: datetime
@@ -55,9 +55,11 @@ class AssetMetaRepository:
 
         Args:
             snapshot_id: UUID of the parent snapshot.
-            entries: Sequence of (path, value) tuples where path is a list of hierarchy segments.
+            entries: Sequence of (label_path, value) tuples where label_path is a list of hierarchy segments.
         """
-        value_rows = [AssetMetaValue(snapshot_id=snapshot_id, path=path, value=value) for path, value in entries]
+        value_rows = [
+            AssetMetaValue(snapshot_id=snapshot_id, label_path=label_path, value=value) for label_path, value in entries
+        ]
         self._session.add_all(value_rows)
 
     async def insert_closures(self, snapshot_id: uuid.UUID, entries: Sequence[list[str]]) -> None:
@@ -65,9 +67,9 @@ class AssetMetaRepository:
 
         Args:
             snapshot_id: UUID of the parent snapshot.
-            entries: Sequence of paths, each path being a list of hierarchy segments.
+            entries: Sequence of label_paths, each label_path being a list of hierarchy segments.
         """
-        closure_rows = [AssetMetaClosure(snapshot_id=snapshot_id, path=path) for path in entries]
+        closure_rows = [AssetMetaClosure(snapshot_id=snapshot_id, label_path=label_path) for label_path in entries]
         self._session.add_all(closure_rows)
 
     async def load_snapshots_for_derivation(self, asset_id: uuid.UUID, until: datetime) -> list[SnapshotRow]:
@@ -104,11 +106,11 @@ class AssetMetaRepository:
 
         values_by_snapshot: dict[uuid.UUID, list[tuple[list[str], str]]] = defaultdict(list)
         for value_row in all_values:
-            values_by_snapshot[value_row.snapshot_id].append((value_row.path, value_row.value))
+            values_by_snapshot[value_row.snapshot_id].append((value_row.label_path, value_row.value))
 
         closures_by_snapshot: dict[uuid.UUID, list[list[str]]] = defaultdict(list)
         for closure_row in all_closures:
-            closures_by_snapshot[closure_row.snapshot_id].append(closure_row.path)
+            closures_by_snapshot[closure_row.snapshot_id].append(closure_row.label_path)
 
         return [
             SnapshotRow(
@@ -119,6 +121,96 @@ class AssetMetaRepository:
             )
             for snapshot in snapshots
         ]
+
+    async def list_snapshots(
+        self,
+        asset_id: uuid.UUID,
+        *,
+        source: str | None = None,
+        observed_from: datetime | None = None,
+        observed_to: datetime | None = None,
+    ) -> list[AssetMetaSnapshot]:
+        """Return snapshots for an asset, newest first, with optional filters."""
+        query = (
+            select(AssetMetaSnapshot)
+            .where(AssetMetaSnapshot.asset_id == asset_id)
+            .order_by(AssetMetaSnapshot.observed_at.desc())
+        )
+        if source is not None:
+            query = query.where(AssetMetaSnapshot.source == source)
+        if observed_from is not None:
+            query = query.where(AssetMetaSnapshot.observed_at >= observed_from)
+        if observed_to is not None:
+            query = query.where(AssetMetaSnapshot.observed_at <= observed_to)
+        result = await self._session.execute(query)
+        return list(result.scalars().all())
+
+    async def get_snapshot(self, asset_id: uuid.UUID, snapshot_id: uuid.UUID) -> AssetMetaSnapshot | None:
+        """Return a single snapshot by ID, scoped to the given asset, or None if not found."""
+        query = (
+            select(AssetMetaSnapshot)
+            .where(AssetMetaSnapshot.id == snapshot_id)
+            .where(AssetMetaSnapshot.asset_id == asset_id)
+        )
+        result = await self._session.execute(query)
+        return result.scalar_one_or_none()
+
+    async def get_snapshot_values(self, snapshot_id: uuid.UUID) -> list[AssetMetaValue]:
+        """Return all value rows belonging to a snapshot."""
+        query = select(AssetMetaValue).where(AssetMetaValue.snapshot_id == snapshot_id)
+        result = await self._session.execute(query)
+        return list(result.scalars().all())
+
+    async def get_snapshot_closures(self, snapshot_id: uuid.UUID) -> list[AssetMetaClosure]:
+        """Return all closure rows belonging to a snapshot."""
+        query = select(AssetMetaClosure).where(AssetMetaClosure.snapshot_id == snapshot_id)
+        result = await self._session.execute(query)
+        return list(result.scalars().all())
+
+    async def delete_snapshot(self, asset_id: uuid.UUID, snapshot_id: uuid.UUID) -> bool:
+        """Delete a snapshot scoped to the given asset. Returns True if deleted, False if not found."""
+        snapshot = await self.get_snapshot(asset_id, snapshot_id)
+        if snapshot is None:
+            return False
+        await self._session.delete(snapshot)
+        await self._session.flush()
+        return True
+
+    async def count_values_and_closures(self, snapshot_ids: list[uuid.UUID]) -> dict[uuid.UUID, tuple[int, int]]:
+        """Return a mapping of snapshot_id to (value_count, closure_count) for the given IDs."""
+        if not snapshot_ids:
+            return {}
+
+        value_sub = (
+            select(
+                AssetMetaValue.snapshot_id,
+                func.count().label('value_count'),
+                literal(0).label('closure_count'),
+            )
+            .where(AssetMetaValue.snapshot_id.in_(snapshot_ids))
+            .group_by(AssetMetaValue.snapshot_id)
+        )
+        closure_sub = (
+            select(
+                AssetMetaClosure.snapshot_id,
+                literal(0).label('value_count'),
+                func.count().label('closure_count'),
+            )
+            .where(AssetMetaClosure.snapshot_id.in_(snapshot_ids))
+            .group_by(AssetMetaClosure.snapshot_id)
+        )
+        combined = union_all(value_sub, closure_sub).subquery()
+        query = select(
+            combined.c.snapshot_id,
+            func.sum(combined.c.value_count).label('value_count'),
+            func.sum(combined.c.closure_count).label('closure_count'),
+        ).group_by(combined.c.snapshot_id)
+
+        result = await self._session.execute(query)
+        counts: dict[uuid.UUID, tuple[int, int]] = {
+            row.snapshot_id: (row.value_count, row.closure_count) for row in result.all()
+        }
+        return {sid: counts.get(sid, (0, 0)) for sid in snapshot_ids}
 
     async def asset_exists(self, asset_id: uuid.UUID) -> bool:
         """Check whether an asset with the given ID exists.

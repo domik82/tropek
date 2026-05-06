@@ -8,6 +8,7 @@ from typing import Any
 import yaml
 from pydantic import BaseModel, Field
 
+from tropek_client.manifest_meta import _normalize_timestamp, create_meta_snapshots
 from tropek_client.models import (
     AddMemberRequest,
     AddSubgroupRequest,
@@ -36,6 +37,7 @@ _KIND_ORDER = [
     'SLOGroup',
     'SLOAssignment',
     'SLOGroupAssignment',
+    'MetaSnapshot',
 ]
 
 
@@ -186,7 +188,8 @@ def validate_manifests(path: str) -> list[str]:
     # Cross-reference validation (warnings, not errors — refs may exist in API)
     names_by_kind: dict[str, set[str]] = {}
     for doc in docs:
-        names_by_kind.setdefault(doc.kind, set()).add(doc.metadata['name'])
+        identifier = doc.metadata.get('name', doc.metadata.get('asset', ''))
+        names_by_kind.setdefault(doc.kind, set()).add(identifier)
 
     for doc in docs:
         _validate_doc_refs(doc, names_by_kind, errors)
@@ -198,7 +201,7 @@ def dry_run(client: Any, manifests: list[ManifestDocument]) -> ApplyPlan:
     """Compare manifests against API state and return planned actions."""
     plan = ApplyPlan()
     for doc in manifests:
-        name = doc.metadata.get('name', 'unknown')
+        name = doc.metadata.get('name', doc.metadata.get('asset', 'unknown'))
         try:
             existing = _lookup(client, doc)
             if existing is None:
@@ -234,7 +237,7 @@ def apply(client: Any, manifests: list[ManifestDocument]) -> ApplyResult:
     blocked_kinds: set[str] = set()
 
     for action, doc in zip(plan.actions, manifests, strict=False):
-        name = doc.metadata.get('name', 'unknown')
+        name = doc.metadata.get('name', doc.metadata.get('asset', 'unknown'))
         if action.operation == 'SKIP':
             result.skipped += 1
             continue
@@ -262,7 +265,7 @@ def apply(client: Any, manifests: list[ManifestDocument]) -> ApplyResult:
 _KIND_DEPS: dict[str, set[str]] = {
     'AssetType': {'Asset'},
     'DataSource': {'SLOAssignment', 'SLOGroupAssignment'},
-    'Asset': {'AssetGroup', 'SLOAssignment', 'SLOGroupAssignment'},
+    'Asset': {'AssetGroup', 'SLOAssignment', 'SLOGroupAssignment', 'MetaSnapshot'},
     'SLO': {'SLOAssignment', 'SLOGroup'},
     'AssetGroup': {'SLOAssignment', 'SLOGroupAssignment'},
     'SLOGroup': {'SLOGroupAssignment'},
@@ -315,9 +318,29 @@ def _lookup_slo_group_assignment(client: Any, doc: ManifestDocument) -> Any | No
     return next((a for a in assignments if a.slo_group_name == slo_group_name), None)
 
 
+def _lookup_meta_snapshots(client: Any, doc: ManifestDocument) -> bool | None:
+    """Check if all snapshots in a MetaSnapshot document already exist.
+
+    Returns True if all exist (→ SKIP), None if any are missing (→ CREATE).
+    """
+    asset_name = doc.metadata.get('asset', '')
+    try:
+        asset = client.assets.get(asset_name)
+    except Exception:  # noqa: BLE001
+        return None
+    asset_id = str(asset.id)
+    for snapshot_entry in doc.spec.get('snapshots', []):
+        source = snapshot_entry['source']
+        observed_at = _normalize_timestamp(snapshot_entry['observed_at'])
+        existing = client.meta.list_snapshots(asset_id, source=source, from_=observed_at, to=observed_at)
+        if not existing:
+            return None
+    return True
+
+
 def _lookup(client: Any, doc: ManifestDocument) -> Any | None:  # noqa: C901, PLR0911
     """Look up an existing entity by name via the client."""
-    name = doc.metadata['name']
+    name = doc.metadata.get('name', doc.metadata.get('asset', ''))
     try:
         match doc.kind:
             case 'AssetType':
@@ -339,6 +362,8 @@ def _lookup(client: Any, doc: ManifestDocument) -> Any | None:  # noqa: C901, PL
                 return _lookup_slo_group(client, doc)
             case 'SLOGroupAssignment':
                 return _lookup_slo_group_assignment(client, doc)
+            case 'MetaSnapshot':
+                return _lookup_meta_snapshots(client, doc)
             case _:
                 return None
     except Exception:  # noqa: BLE001
@@ -502,9 +527,9 @@ def _create_asset_group(
         )
 
 
-def _create(client: Any, doc: ManifestDocument) -> None:
+def _create(client: Any, doc: ManifestDocument) -> None:  # noqa: C901
     """Create a new entity via the client."""
-    name = doc.metadata['name']
+    name = doc.metadata.get('name', doc.metadata.get('asset', ''))
     match doc.kind:
         case 'AssetType':
             client.asset_types.create(AssetTypeCreate(name=name, is_default=doc.spec.get('is_default', False)))
@@ -570,11 +595,13 @@ def _create(client: Any, doc: ManifestDocument) -> None:
             _create_slo_group(client, name, doc.spec)
         case 'SLOGroupAssignment':
             _create_slo_group_assignment(client, doc.spec)
+        case 'MetaSnapshot':
+            create_meta_snapshots(client, doc)
 
 
 def _update(client: Any, doc: ManifestDocument) -> None:
     """Update an existing entity via the client."""
-    name = doc.metadata['name']
+    name = doc.metadata.get('name', doc.metadata.get('asset', ''))
     match doc.kind:
         case 'AssetType':
             client.asset_types.set_default(name) if doc.spec.get('is_default') else None

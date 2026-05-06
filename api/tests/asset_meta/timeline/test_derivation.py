@@ -82,7 +82,7 @@ class TestApplyValue:
         assert len(emitted) == 1
         closed_span = emitted[0]
         assert closed_span.source == 'cicd'
-        assert closed_span.path == ['app']
+        assert closed_span.label_path == ['app']
         assert closed_span.value == 'v1'
         assert closed_span.start == T0
         assert closed_span.end == T1
@@ -106,7 +106,7 @@ class TestCloseCascade:
         close_cascade(open_spans, 'cicd', ('app',), T1, emitted)
 
         assert len(emitted) == 1
-        assert emitted[0].path == ['app']
+        assert emitted[0].label_path == ['app']
         assert emitted[0].end == T1
         assert emitted[0].end_reason == 'closed'
         assert ('cicd', ('app',)) not in open_spans
@@ -255,7 +255,7 @@ class TestDeriveRawSpans:
 
         assert len(spans) == 1
         assert spans[0].source == 'cicd'
-        assert spans[0].path == ['app']
+        assert spans[0].label_path == ['app']
         assert spans[0].value == 'v1'
         assert spans[0].start == T0
         assert spans[0].end is None
@@ -338,7 +338,7 @@ class TestDeriveRawSpans:
             assert span.end_reason == 'closed'
             assert span.start == T0
 
-        paths = [tuple(span.path) for span in spans]
+        paths = [tuple(span.label_path) for span in spans]
         assert ('app',) in paths
         assert ('app', 'plug') in paths
         assert ('app', 'plug', 'alpha') in paths

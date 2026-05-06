@@ -7,7 +7,7 @@ from tropek.modules.asset_meta.timeline.types import ClippedSpan
 def make_clipped(path):
     return ClippedSpan(
         source='cicd',
-        path=path,
+        label_path=path,
         value='1.0',
         start=datetime(2026, 4, 1, tzinfo=UTC),
         end=datetime(2026, 4, 30, tzinfo=UTC),

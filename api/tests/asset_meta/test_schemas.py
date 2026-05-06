@@ -16,7 +16,7 @@ class TestSourceValidation:
         snapshot = MetaSnapshotCreate(
             source='cicd',
             observed_at=datetime(2026, 1, 1, tzinfo=UTC),
-            values=[MetaValueInput(path=['app'], value='1.0')],
+            values=[MetaValueInput(label_path=['app'], value='1.0')],
         )
         assert snapshot.source == 'cicd'
 
@@ -52,7 +52,7 @@ class TestSourceValidation:
         snapshot = MetaSnapshotCreate(
             source='my.source_name-1',
             observed_at=datetime(2026, 1, 1, tzinfo=UTC),
-            values=[MetaValueInput(path=['app'], value='1.0')],
+            values=[MetaValueInput(label_path=['app'], value='1.0')],
         )
         assert snapshot.source == 'my.source_name-1'
 
@@ -67,7 +67,7 @@ class TestObservedAtValidation:
         snapshot = MetaSnapshotCreate(
             source='cicd',
             observed_at=datetime(2026, 1, 1, tzinfo=UTC),
-            values=[MetaValueInput(path=['app'], value='1.0')],
+            values=[MetaValueInput(label_path=['app'], value='1.0')],
         )
         assert snapshot.observed_at.tzinfo is not None
 
@@ -87,27 +87,27 @@ class TestObservedAtValidation:
 
 class TestValuesPathValidation:
     def test_empty_path_rejected(self) -> None:
-        with pytest.raises(ValidationError, match='path'):
-            MetaValueInput(path=[], value='1.0')
+        with pytest.raises(ValidationError, match='label_path'):
+            MetaValueInput(label_path=[], value='1.0')
 
     def test_seven_entry_path_rejected(self) -> None:
-        with pytest.raises(ValidationError, match='path'):
-            MetaValueInput(path=['a', 'b', 'c', 'd', 'e', 'f', 'g'], value='1.0')
+        with pytest.raises(ValidationError, match='label_path'):
+            MetaValueInput(label_path=['a', 'b', 'c', 'd', 'e', 'f', 'g'], value='1.0')
 
     def test_empty_string_entry_rejected(self) -> None:
         with pytest.raises(ValidationError, match='at least 1 character'):
-            MetaValueInput(path=[''], value='1.0')
+            MetaValueInput(label_path=[''], value='1.0')
 
     def test_entry_exceeding_128_chars_rejected(self) -> None:
         with pytest.raises(ValidationError, match='at most 128 characters'):
-            MetaValueInput(path=['x' * 129], value='1.0')
+            MetaValueInput(label_path=['x' * 129], value='1.0')
 
     def test_valid_six_entry_path_accepted(self) -> None:
         meta_value = MetaValueInput(
-            path=['a', 'b', 'c', 'd', 'e', 'f'],
+            label_path=['a', 'b', 'c', 'd', 'e', 'f'],
             value='1.0',
         )
-        assert len(meta_value.path) == 6
+        assert len(meta_value.label_path) == 6
 
 
 # ---------------------------------------------------------------------------
@@ -117,12 +117,12 @@ class TestValuesPathValidation:
 
 class TestValuesValueValidation:
     def test_empty_string_accepted(self) -> None:
-        meta_value = MetaValueInput(path=['app'], value='')
+        meta_value = MetaValueInput(label_path=['app'], value='')
         assert meta_value.value == ''
 
     def test_value_exceeding_1024_chars_rejected(self) -> None:
         with pytest.raises(ValidationError, match='value'):
-            MetaValueInput(path=['app'], value='x' * 1025)
+            MetaValueInput(label_path=['app'], value='x' * 1025)
 
 
 # ---------------------------------------------------------------------------
@@ -132,24 +132,24 @@ class TestValuesValueValidation:
 
 class TestClosedPathValidation:
     def test_empty_path_rejected(self) -> None:
-        with pytest.raises(ValidationError, match='path'):
-            MetaClosureInput(path=[])
+        with pytest.raises(ValidationError, match='label_path'):
+            MetaClosureInput(label_path=[])
 
     def test_seven_entry_path_rejected(self) -> None:
-        with pytest.raises(ValidationError, match='path'):
-            MetaClosureInput(path=['a', 'b', 'c', 'd', 'e', 'f', 'g'])
+        with pytest.raises(ValidationError, match='label_path'):
+            MetaClosureInput(label_path=['a', 'b', 'c', 'd', 'e', 'f', 'g'])
 
     def test_empty_string_entry_rejected(self) -> None:
         with pytest.raises(ValidationError, match='at least 1 character'):
-            MetaClosureInput(path=[''])
+            MetaClosureInput(label_path=[''])
 
     def test_entry_exceeding_128_chars_rejected(self) -> None:
         with pytest.raises(ValidationError, match='at most 128 characters'):
-            MetaClosureInput(path=['x' * 129])
+            MetaClosureInput(label_path=['x' * 129])
 
     def test_valid_path_accepted(self) -> None:
-        closure = MetaClosureInput(path=['env', 'version'])
-        assert closure.path == ['env', 'version']
+        closure = MetaClosureInput(label_path=['env', 'version'])
+        assert closure.label_path == ['env', 'version']
 
 
 # ---------------------------------------------------------------------------
@@ -159,34 +159,34 @@ class TestClosedPathValidation:
 
 class TestStructuralValidation:
     def test_duplicate_path_in_values_rejected(self) -> None:
-        with pytest.raises(ValidationError, match='duplicate path in values'):
+        with pytest.raises(ValidationError, match='duplicate label_path in values'):
             MetaSnapshotCreate(
                 source='cicd',
                 observed_at=datetime(2026, 1, 1, tzinfo=UTC),
                 values=[
-                    MetaValueInput(path=['app'], value='1.0'),
-                    MetaValueInput(path=['app'], value='2.0'),
+                    MetaValueInput(label_path=['app'], value='1.0'),
+                    MetaValueInput(label_path=['app'], value='2.0'),
                 ],
             )
 
     def test_duplicate_path_in_closed_rejected(self) -> None:
-        with pytest.raises(ValidationError, match='duplicate path in closed'):
+        with pytest.raises(ValidationError, match='duplicate label_path in closed'):
             MetaSnapshotCreate(
                 source='cicd',
                 observed_at=datetime(2026, 1, 1, tzinfo=UTC),
                 closed=[
-                    MetaClosureInput(path=['app']),
-                    MetaClosureInput(path=['app']),
+                    MetaClosureInput(label_path=['app']),
+                    MetaClosureInput(label_path=['app']),
                 ],
             )
 
     def test_same_path_in_values_and_closed_accepted(self) -> None:
-        """Close-and-reopen: same path appearing in both values and closed is valid."""
+        """Close-and-reopen: same label_path appearing in both values and closed is valid."""
         snapshot = MetaSnapshotCreate(
             source='cicd',
             observed_at=datetime(2026, 1, 1, tzinfo=UTC),
-            values=[MetaValueInput(path=['app'], value='2.0')],
-            closed=[MetaClosureInput(path=['app'])],
+            values=[MetaValueInput(label_path=['app'], value='2.0')],
+            closed=[MetaClosureInput(label_path=['app'])],
         )
         assert len(snapshot.values) == 1
         assert len(snapshot.closed) == 1

@@ -24,14 +24,14 @@ PathEntry = Annotated[str, StringConstraints(min_length=1, max_length=128), Afte
 class MetaValueInput(StrictInput):
     """A single key-value pair to set in the metadata timeline."""
 
-    path: list[PathEntry] = Field(min_length=1, max_length=6)
+    label_path: list[PathEntry] = Field(min_length=1, max_length=6)
     value: SafeStr = Field(max_length=1024)
 
 
 class MetaClosureInput(StrictInput):
     """A path to close (end its current span) in the metadata timeline."""
 
-    path: list[PathEntry] = Field(min_length=1, max_length=6)
+    label_path: list[PathEntry] = Field(min_length=1, max_length=6)
 
 
 class MetaSnapshotCreate(StrictInput):
@@ -69,9 +69,9 @@ class MetaSnapshotCreate(StrictInput):
     def _unique_value_paths(cls, entries: list[MetaValueInput]) -> list[MetaValueInput]:
         seen: set[tuple[str, ...]] = set()
         for entry in entries:
-            path_key = tuple(entry.path)
+            path_key = tuple(entry.label_path)
             if path_key in seen:
-                raise ValueError(f'duplicate path in values: {entry.path}')
+                raise ValueError(f'duplicate label_path in values: {entry.label_path}')
             seen.add(path_key)
         return entries
 
@@ -80,9 +80,9 @@ class MetaSnapshotCreate(StrictInput):
     def _unique_closed_paths(cls, entries: list[MetaClosureInput]) -> list[MetaClosureInput]:
         seen: set[tuple[str, ...]] = set()
         for entry in entries:
-            path_key = tuple(entry.path)
+            path_key = tuple(entry.label_path)
             if path_key in seen:
-                raise ValueError(f'duplicate path in closed: {entry.path}')
+                raise ValueError(f'duplicate label_path in closed: {entry.label_path}')
             seen.add(path_key)
         return entries
 
@@ -98,6 +98,41 @@ class MetaSnapshotCreated(BaseModel):
     """Response body after creating a metadata snapshot."""
 
     snapshot_id: UUID
+
+
+class MetaValueOutput(BaseModel):
+    """A value entry in a snapshot detail response."""
+
+    label_path: list[str]
+    value: str
+
+
+class MetaClosureOutput(BaseModel):
+    """A closure entry in a snapshot detail response."""
+
+    label_path: list[str]
+
+
+class MetaSnapshotSummary(BaseModel):
+    """Summary of a snapshot for list responses."""
+
+    id: UUID
+    source: str
+    observed_at: AwareDatetime
+    value_count: int
+    closure_count: int
+    created_at: AwareDatetime
+
+
+class MetaSnapshotDetail(BaseModel):
+    """Full detail of a snapshot including values and closures."""
+
+    id: UUID
+    source: str
+    observed_at: AwareDatetime
+    created_at: AwareDatetime
+    values: list[MetaValueOutput]
+    closures: list[MetaClosureOutput]
 
 
 # --- Read-side response models (consumed by Chunk 4) ---

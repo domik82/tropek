@@ -12,7 +12,7 @@ class RawSpan:
     """A single continuous span of a metadata value from one snapshot source."""
 
     source: str
-    path: list[str]
+    label_path: list[str]
     value: str
     start: datetime
     end: datetime | None
@@ -24,7 +24,7 @@ class ClippedSpan:
     """A RawSpan clipped to a query window, ready for vis-timeline rendering."""
 
     source: str
-    path: list[str]
+    label_path: list[str]
     value: str
     start: datetime
     end: datetime

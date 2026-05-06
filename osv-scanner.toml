@@ -1,0 +1,4 @@
+[[IgnoredVulns]]
+# False positive: local slo-generator package (0.1.0) is not Google's slo-generator on PyPI
+id = "GHSA-j28r-j54m-gpc4"
+reason = "Name collision — our local slo-generator is unrelated to the PyPI package"
