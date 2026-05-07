@@ -1635,6 +1635,18 @@
           "direction": {
             "$ref": "#/components/schemas/Direction"
           },
+          "found_by_evaluation_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Found By Evaluation Id"
+          },
           "id": {
             "format": "uuid",
             "title": "Id",

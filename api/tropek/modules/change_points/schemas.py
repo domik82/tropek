@@ -40,6 +40,7 @@ class ChangePointRead(BaseModel):
     triage_note: str | None
     triage_at: datetime | None
     linked_ticket: str | None
+    found_by_evaluation_id: uuid.UUID | None = None
     created_at: datetime
     updated_at: datetime
 

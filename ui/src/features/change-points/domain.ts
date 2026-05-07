@@ -18,6 +18,7 @@ export interface ChangePoint {
   triageNote: string | null
   triageAt: Date | null
   linkedTicket: string | null
+  foundByEvaluationId: string | null
   createdAt: Date
 }
 

@@ -50,6 +50,7 @@ class ChangePointInsertParams(BaseModel):
 
     indicator_result_id: uuid.UUID | None
     evaluation_run_id: uuid.UUID | None
+    found_by_evaluation_id: uuid.UUID | None = None
     asset_id: uuid.UUID
     slo_name: str
     metric_name: str

@@ -320,6 +320,7 @@ class ChangePoint(Base):
     id:                   Mapped[uuid.UUID]        = mapped_column(UUID, primary_key=True, default=uuid.uuid4)
     indicator_result_id:  Mapped[uuid.UUID | None] = mapped_column(UUID, ForeignKey('indicator_results.id', ondelete='SET NULL'), nullable=True)
     evaluation_run_id:    Mapped[uuid.UUID | None] = mapped_column(UUID, ForeignKey('evaluations.id', ondelete='SET NULL'), nullable=True)
+    found_by_evaluation_id: Mapped[uuid.UUID | None] = mapped_column(UUID, ForeignKey('evaluations.id', ondelete='SET NULL'), nullable=True)
     asset_id:             Mapped[uuid.UUID]        = mapped_column(UUID, nullable=False)
     slo_name:             Mapped[str]              = mapped_column(Text, nullable=False)
     metric_name:          Mapped[str]              = mapped_column(Text, nullable=False)

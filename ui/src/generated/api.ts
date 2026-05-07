@@ -2479,6 +2479,8 @@ export interface components {
             /** Detector */
             detector: string;
             direction: components["schemas"]["Direction"];
+            /** Found By Evaluation Id */
+            found_by_evaluation_id?: string | null;
             /**
              * Id
              * Format: uuid

@@ -35,6 +35,7 @@ class MetricSeries(BaseModel):
 
     values: list[float]
     timestamps: list[datetime]
+    period_ends: list[datetime | None]
 
 
 def _same_regime(
@@ -76,15 +77,17 @@ async def gather_metric_series(
 
     values: list[float] = []
     timestamps: list[datetime] = []
+    period_ends: list[datetime | None] = []
 
     for evaluation in sorted(history_evals, key=lambda ev: ev.period_start):
         for row in evaluation.indicator_rows or []:
             if row.objective and row.objective.sli == metric_name and row.value is not None:
                 values.append(float(row.value))
                 timestamps.append(evaluation.period_start)
+                period_ends.append(evaluation.period_end)
                 break
 
-    return MetricSeries(values=values, timestamps=timestamps)
+    return MetricSeries(values=values, timestamps=timestamps, period_ends=period_ends)
 
 
 async def run_change_point_detection(
@@ -176,7 +179,7 @@ async def run_change_point_detection(
                     log=log,
                     change_point_repo=change_point_repo,
                     detected=detected,
-                    timestamps=series.timestamps,
+                    series=series,
                     snapshot=snapshot,
                     metric_name=objective.sli,
                     indicator_result_id=indicator_row.id,
@@ -195,7 +198,7 @@ async def _persist_change_points(
     log: Any,
     change_point_repo: ChangePointRepository,
     detected: list[ChangePointResult],
-    timestamps: list[datetime],
+    series: MetricSeries,
     snapshot: EvaluationSnapshot,
     metric_name: str,
     indicator_result_id: uuid.UUID,
@@ -207,6 +210,7 @@ async def _persist_change_points(
     and suppresses same-regime duplicates where the metric hasn't meaningfully shifted
     from the previous change point's post-segment.
     """
+    timestamps = series.timestamps
     batch_timestamps: set[datetime] = set()
 
     for candidate in detected:
@@ -254,15 +258,20 @@ async def _persist_change_points(
             )
             continue
 
+        candidate_period_end = (
+            series.period_ends[detection_index] if detection_index < len(series.period_ends) else snapshot.period_end
+        )
+
         await change_point_repo.insert_change_point(
             ChangePointInsertParams(
                 indicator_result_id=indicator_result_id,
                 evaluation_run_id=snapshot.parent_run_id,
+                found_by_evaluation_id=snapshot.parent_run_id,
                 asset_id=snapshot.asset_id,
                 slo_name=snapshot.slo_name,
                 metric_name=metric_name,
                 period_start=candidate.timestamp,
-                period_end=snapshot.period_end,
+                period_end=candidate_period_end,
                 detector=candidate.detector,
                 direction=candidate.direction,
                 change_relative_pct=candidate.change_relative_pct,
