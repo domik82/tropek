@@ -82,7 +82,10 @@ def _run_stage_module(module_name: str, api_url: str) -> None:
     if not module_path.exists():
         raise FileNotFoundError(f'stage module not found: {module_path}')
     original_argv = sys.argv
+    stages_str = str(STAGES_DIR)
     sys.argv = [str(module_path), api_url]
+    if stages_str not in sys.path:
+        sys.path.insert(0, stages_str)
     try:
         spec = importlib.util.spec_from_file_location(module_name, module_path)
         module = importlib.util.module_from_spec(spec)
