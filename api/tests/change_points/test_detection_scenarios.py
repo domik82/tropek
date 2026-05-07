@@ -189,7 +189,7 @@ async def _run_pipeline(
             log=structlog.get_logger(),
             change_point_repo=cp_repo,  # type: ignore[arg-type]
             detected=detected,
-            timestamps=series.timestamps,
+            series=series,
             snapshot=snap,
             metric_name=metric,
             indicator_result_id=uuid.uuid4(),
