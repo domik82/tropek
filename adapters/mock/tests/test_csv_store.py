@@ -66,6 +66,84 @@ def test_missing_metric_goes_to_errors() -> None:
         assert 'missing_metric' in result.errors
 
 
+def _write_csv_with_variables(directory: Path, namespace: str, rows: list[dict[str, str]]) -> None:
+    """Write test CSV data with variable_key column."""
+    ns_dir = directory / namespace
+    ns_dir.mkdir(parents=True, exist_ok=True)
+    path = ns_dir / 'metrics.csv'
+    with path.open('w', newline='') as f:
+        writer = csv.DictWriter(f, fieldnames=['timestamp', 'metric_name', 'value', 'variable_key'])
+        writer.writeheader()
+        writer.writerows(rows)
+
+
+def test_variable_key_filters_to_matching_rows() -> None:
+    with tempfile.TemporaryDirectory() as tmpdir:
+        data_dir = Path(tmpdir)
+        _write_csv_with_variables(
+            data_dir,
+            'test-ns',
+            [
+                {
+                    'timestamp': '2026-03-15T08:00:00Z',
+                    'metric_name': 'cpu',
+                    'value': '10.0',
+                    'variable_key': 'process_name=WORD',
+                },
+                {
+                    'timestamp': '2026-03-15T08:00:00Z',
+                    'metric_name': 'cpu',
+                    'value': '20.0',
+                    'variable_key': 'process_name=EXCEL',
+                },
+                {'timestamp': '2026-03-15T08:00:00Z', 'metric_name': 'cpu', 'value': '99.0', 'variable_key': ''},
+            ],
+        )
+        store = CsvStore(data_dir)
+        result_word = store.query(
+            namespace='test-ns',
+            queries={'cpu': 'q'},
+            variables={'process_name': 'WORD'},
+            start=datetime(2026, 3, 15, 7, 0, tzinfo=UTC),
+            end=datetime(2026, 3, 15, 9, 0, tzinfo=UTC),
+        )
+        result_excel = store.query(
+            namespace='test-ns',
+            queries={'cpu': 'q'},
+            variables={'process_name': 'EXCEL'},
+            start=datetime(2026, 3, 15, 7, 0, tzinfo=UTC),
+            end=datetime(2026, 3, 15, 9, 0, tzinfo=UTC),
+        )
+        assert result_word.values == {'cpu': 10.0}
+        assert result_excel.values == {'cpu': 20.0}
+
+
+def test_no_variables_returns_unkeyed_rows() -> None:
+    with tempfile.TemporaryDirectory() as tmpdir:
+        data_dir = Path(tmpdir)
+        _write_csv_with_variables(
+            data_dir,
+            'test-ns',
+            [
+                {
+                    'timestamp': '2026-03-15T08:00:00Z',
+                    'metric_name': 'cpu',
+                    'value': '10.0',
+                    'variable_key': 'process_name=WORD',
+                },
+                {'timestamp': '2026-03-15T08:00:00Z', 'metric_name': 'cpu', 'value': '50.0', 'variable_key': ''},
+            ],
+        )
+        store = CsvStore(data_dir)
+        result = store.query(
+            namespace='test-ns',
+            queries={'cpu': 'q'},
+            start=datetime(2026, 3, 15, 7, 0, tzinfo=UTC),
+            end=datetime(2026, 3, 15, 9, 0, tzinfo=UTC),
+        )
+        assert result.values == {'cpu': 50.0}
+
+
 def test_unknown_namespace_all_errors() -> None:
     with tempfile.TemporaryDirectory() as tmpdir:
         store = CsvStore(Path(tmpdir))

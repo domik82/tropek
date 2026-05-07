@@ -118,6 +118,7 @@ async def query_metrics(
             result = _store.query(
                 namespace=x_datasource_name,
                 queries={name: query},
+                variables=body.variables,
                 start=body.start,
                 end=body.end,
             )
@@ -155,6 +156,7 @@ def _handle_aggregated(
     csv_result = _store.query(
         namespace=namespace,
         queries={name: name},
+        variables=body.variables,
         start=body.start,
         end=body.end,
     )

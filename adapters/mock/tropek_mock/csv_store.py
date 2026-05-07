@@ -28,6 +28,7 @@ class CsvStore:
         *,
         namespace: str,
         queries: dict[str, str],
+        variables: dict[str, str] | None = None,
         start: datetime,
         end: datetime,
     ) -> QueryResult:
@@ -35,6 +36,8 @@ class CsvStore:
 
         For each requested metric, finds all CSV rows in the namespace directory
         where start <= timestamp <= end and returns the last (most recent) value.
+        When variables are provided, rows with a matching variable_key are
+        preferred over unkeyed rows.
         """
         ns_dir = self._data_dir / namespace
         if not ns_dir.is_dir():
@@ -42,23 +45,29 @@ class CsvStore:
                 errors=dict.fromkeys(queries, f"namespace '{namespace}' not found"),
             )
 
-        # Load all CSV rows from the namespace (cached after first read)
         rows = self._cache.get(namespace)
         if rows is None:
             rows = self._load_namespace(ns_dir)
             rows.sort(key=lambda r: r['timestamp'])
             self._cache[namespace] = rows
 
+        variable_keys = _build_variable_keys(variables or {})
+
         result = QueryResult()
         for metric_name in queries:
             matching = [
                 r for r in rows if r['metric_name'] == metric_name and start <= _parse_ts(r['timestamp']) <= end
             ]
-            if matching:
-                # Take the last value in the range (rows already sorted by timestamp)
-                result.values[metric_name] = float(matching[-1]['value'])
-            else:
+            if not matching:
                 result.errors[metric_name] = f"no data for '{metric_name}' in range"
+                continue
+
+            keyed = [r for r in matching if r.get('variable_key', '') in variable_keys] if variable_keys else []
+            best = keyed if keyed else [r for r in matching if not r.get('variable_key', '')]
+            if best:
+                result.values[metric_name] = float(best[-1]['value'])
+            else:
+                result.values[metric_name] = float(matching[-1]['value'])
 
         return result
 
@@ -70,6 +79,11 @@ class CsvStore:
                 reader = csv.DictReader(f)
                 rows.extend(reader)
         return rows
+
+
+def _build_variable_keys(variables: dict[str, str]) -> set[str]:
+    """Build the set of variable_key strings to match against CSV rows."""
+    return {f'{k}={v}' for k, v in variables.items()} if variables else set()
 
 
 def _parse_ts(ts_str: str) -> datetime:

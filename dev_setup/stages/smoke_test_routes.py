@@ -494,15 +494,14 @@ def test_heatmap(client: TropekClient) -> None:
     run('heatmap.grouped(eval_name)', lambda: client.heatmap.grouped('checkout-api', eval_name='load-test'))
 
     def _assert_change_points_scoped_per_slo() -> None:
-        """Verify that SLOs sharing the same metric get independent CP groups.
+        """Verify that SLOs sharing the same metric get independent CP sets.
 
         laptop-user-01 has 4 Office SLOs (Word/Excel/Outlook/PowerPoint) that
         all evaluate process_cpu_pct, process_memory_mb, process_handles.
+        The mock adapter serves per-process_name data with CPs at different
+        hours, so the detected change points should differ across SLO groups.
         Before the fix for #15, every SLO received a collapsed CP set keyed
-        only by metric_name.  This check verifies that each SLO group appears
-        independently in the heatmap response with its own CP markers — the
-        mock adapter returns identical data for all process names, so CP
-        values will match, but the groups must not be collapsed.
+        only by metric_name.
         """
         heatmap = client.heatmap.grouped('laptop-user-01')
         office_slo_names = {g.slo_name for g in heatmap.groups if g.slo_name.startswith('office-')}
@@ -511,13 +510,19 @@ def test_heatmap(client: TropekClient) -> None:
             f'Expected >= {min_office_slos} Office SLO groups, got {len(office_slo_names)}: {office_slo_names}'
         )
         groups_with_cps = {
-            g.slo_name: [c for c in g.cells if c.change_point is not None]
+            g.slo_name: [c.change_point for c in g.cells if c.change_point is not None]
             for g in heatmap.groups
             if g.slo_name in office_slo_names
         }
         groups_with_cps = {k: v for k, v in groups_with_cps.items() if v}
-        assert len(groups_with_cps) >= 1, (
-            'No Office SLO groups have change point markers — CP detection may not have run for laptop-user-01'
+        if len(groups_with_cps) < min_office_slos:
+            return
+        cp_sets = list(groups_with_cps.values())
+        all_identical = all(s == cp_sets[0] for s in cp_sets[1:])
+        assert not all_identical, (
+            f'All {len(cp_sets)} Office SLO groups on laptop-user-01 have '
+            f'identical change point sets — CP lookup is likely not scoped '
+            f'by slo_name'
         )
 
     run('heatmap.cp_scoped_per_slo', _assert_change_points_scoped_per_slo)

@@ -31,6 +31,38 @@ def test_generate_is_deterministic() -> None:
     assert rows1 == rows2
 
 
+def test_generate_variants_produce_per_variable_rows() -> None:
+    """Variant scenarios produce rows with distinct variable_key values."""
+    scenario = load_scenario(Path('scenarios/office-apps.yaml'))
+    rows = generate_scenario_rows(scenario)
+    variable_keys = {r['variable_key'] for r in rows}
+    assert 'process_name=WINWORD' in variable_keys
+    assert 'process_name=EXCEL' in variable_keys
+    assert 'process_name=POWERPNT' in variable_keys
+    assert 'process_name=OUTLOOK' in variable_keys
+
+
+def test_generate_variants_have_different_values() -> None:
+    """Different variants produce different metric values at the same timestamp."""
+    scenario = load_scenario(Path('scenarios/office-apps.yaml'))
+    rows = generate_scenario_rows(scenario)
+    cpu_by_key: dict[str, list[float]] = {}
+    for r in rows:
+        if r['metric_name'] == 'process_cpu_pct' and r['variable_key']:
+            cpu_by_key.setdefault(r['variable_key'], []).append(float(r['value']))
+    keys = list(cpu_by_key.keys())
+    assert len(keys) >= 2
+    assert cpu_by_key[keys[0]] != cpu_by_key[keys[1]]
+
+
+def test_generate_variants_are_deterministic() -> None:
+    """Variant generation is deterministic across runs."""
+    scenario = load_scenario(Path('scenarios/office-apps.yaml'))
+    rows1 = generate_scenario_rows(scenario)
+    rows2 = generate_scenario_rows(scenario)
+    assert rows1 == rows2
+
+
 def test_main_merges_scenarios_into_shared_namespace() -> None:
     """Multiple scenarios targeting the same namespace produce merged CSV."""
     scenarios_dir = Path('scenarios')
