@@ -270,6 +270,8 @@ def _resolve_change_point_marker(
         return None
     key = ChangePointKey(slo_name, metric_name, period_start, period_end, eval_name)
     change_point = lookup.get(key)
+    if change_point is None and period_end is not None:
+        change_point = lookup.get(ChangePointKey(slo_name, metric_name, period_start, None, eval_name))
     if change_point is None:
         return None
     return ChangePointMarker(

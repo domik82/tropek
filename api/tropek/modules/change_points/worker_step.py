@@ -265,6 +265,8 @@ async def _persist_change_points(
         await change_point_repo.insert_change_point(
             ChangePointInsertParams(
                 indicator_result_id=indicator_result_id,
+                # evaluation_run_id: eval that triggered detection (today same as found_by;
+                # will diverge once re-evaluation assigns the CP to the shifted eval)
                 evaluation_run_id=snapshot.parent_run_id,
                 found_by_evaluation_id=snapshot.parent_run_id,
                 asset_id=snapshot.asset_id,

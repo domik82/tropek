@@ -60,7 +60,7 @@ function DirectionIndicator({ direction }: { direction: ChangePointDirection }) 
 }
 
 export function ChangePointsPage() {
-  const [statusFilter, setStatusFilter] = useState<ChangePointStatus | ''>('')
+  const [statusFilter, setStatusFilter] = useState<ChangePointStatus | ''>('unprocessed')
   const [directionFilter, setDirectionFilter] = useState<ChangePointDirection | ''>('')
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [triageNote, setTriageNote] = useState('')
