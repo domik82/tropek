@@ -77,6 +77,8 @@ def _make_history(
 
         evaluation = MagicMock()
         evaluation.period_start = start + interval * i
+        evaluation.period_end = start + interval * i + interval
+        evaluation.evaluation_id = uuid.uuid4()
         evaluation.indicator_rows = [row]
         evaluation.evaluation_name = evaluation_name
         evals.append(evaluation)

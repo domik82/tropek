@@ -195,6 +195,7 @@ class TestWorkerStep:
             eval_mock = MagicMock()
             eval_mock.period_start = datetime(2026, 4, i + 1, 12, 0, tzinfo=UTC)
             eval_mock.period_end = datetime(2026, 4, i + 1, 12, 30, tzinfo=UTC)
+            eval_mock.evaluation_id = uuid.uuid4()
             row_mock = MagicMock()
             row_mock.objective = MagicMock()
             row_mock.objective.sli = 'response_time_p95'
@@ -297,6 +298,7 @@ class TestRegimeConsolidation:
             eval_mock = MagicMock()
             eval_mock.period_start = datetime(2026, 4, i + 1, 12, 0, tzinfo=UTC)
             eval_mock.period_end = datetime(2026, 4, i + 1, 12, 30, tzinfo=UTC)
+            eval_mock.evaluation_id = uuid.uuid4()
             row_mock = MagicMock()
             row_mock.objective = MagicMock()
             row_mock.objective.sli = 'response_time_p95'
@@ -363,6 +365,7 @@ class TestRegimeConsolidation:
             eval_mock = MagicMock()
             eval_mock.period_start = datetime(2026, 4, i + 1, 12, 0, tzinfo=UTC)
             eval_mock.period_end = datetime(2026, 4, i + 1, 12, 30, tzinfo=UTC)
+            eval_mock.evaluation_id = uuid.uuid4()
             row_mock = MagicMock()
             row_mock.objective = MagicMock()
             row_mock.objective.sli = 'response_time_p95'

@@ -36,6 +36,7 @@ class MetricSeries(BaseModel):
     values: list[float]
     timestamps: list[datetime]
     period_ends: list[datetime | None]
+    evaluation_run_ids: list[uuid.UUID]
 
 
 def _same_regime(
@@ -78,6 +79,7 @@ async def gather_metric_series(
     values: list[float] = []
     timestamps: list[datetime] = []
     period_ends: list[datetime | None] = []
+    evaluation_run_ids: list[uuid.UUID] = []
 
     for evaluation in sorted(history_evals, key=lambda ev: ev.period_start):
         for row in evaluation.indicator_rows or []:
@@ -85,9 +87,15 @@ async def gather_metric_series(
                 values.append(float(row.value))
                 timestamps.append(evaluation.period_start)
                 period_ends.append(evaluation.period_end)
+                evaluation_run_ids.append(evaluation.evaluation_id)
                 break
 
-    return MetricSeries(values=values, timestamps=timestamps, period_ends=period_ends)
+    return MetricSeries(
+        values=values,
+        timestamps=timestamps,
+        period_ends=period_ends,
+        evaluation_run_ids=evaluation_run_ids,
+    )
 
 
 async def run_change_point_detection(
@@ -261,13 +269,16 @@ async def _persist_change_points(
         candidate_period_end = (
             series.period_ends[detection_index] if detection_index < len(series.period_ends) else snapshot.period_end
         )
+        shifted_eval_run_id = (
+            series.evaluation_run_ids[detection_index]
+            if detection_index < len(series.evaluation_run_ids)
+            else snapshot.parent_run_id
+        )
 
         await change_point_repo.insert_change_point(
             ChangePointInsertParams(
                 indicator_result_id=indicator_result_id,
-                # evaluation_run_id: eval that triggered detection (today same as found_by;
-                # will diverge once re-evaluation assigns the CP to the shifted eval)
-                evaluation_run_id=snapshot.parent_run_id,
+                evaluation_run_id=shifted_eval_run_id,
                 found_by_evaluation_id=snapshot.parent_run_id,
                 asset_id=snapshot.asset_id,
                 slo_name=snapshot.slo_name,
