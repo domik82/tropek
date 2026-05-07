@@ -2,7 +2,7 @@
 # Original: https://github.com/codyrioux/pydata2015seattle
 # Based on Netflix's real-time analytics change detection approach.
 
-"""Distribution-based time series generators for testing change point detectors.
+"""Distribution-based time series generators for testing.
 
 Each generator produces a sequence of floats from scipy distributions,
 with configurable change points, drift, and variance shifts. Useful for

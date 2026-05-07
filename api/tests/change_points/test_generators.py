@@ -6,7 +6,7 @@ import numpy as np
 from scipy.stats import norm
 from tropek.modules.change_points.detector import detect_change_points
 
-from tests.change_points.generators import (
+from tests.common.data_generators import (
     DriftGenerator,
     MultipleChangePointGenerator,
     StableGenerator,
