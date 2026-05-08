@@ -92,8 +92,13 @@ class CsvStore:
 
 
 def _build_variable_keys(variables: dict[str, str]) -> set[str]:
-    """Build the set of variable_key strings to match against CSV rows."""
-    return {f'{k}={v}' for k, v in variables.items()} if variables else set()
+    """Convert caller's variable dict into the flat string format stored in CSV rows.
+
+    The caller passes variables as a dict (e.g. {"process_name": "WINWORD"})
+    but CSV rows store them as a single string column "process_name=WINWORD".
+    This builds the set of those strings so we can do O(1) membership checks.
+    """
+    return {f'{name}={value}' for name, value in variables.items()} if variables else set()
 
 
 def _parse_ts(ts_str: str) -> datetime:
