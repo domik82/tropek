@@ -124,7 +124,11 @@ def generate_from_phases(
 
 
 class StableGenerator:
-    """Generates values from a single unchanging distribution."""
+    """Generates values from a single unchanging distribution.
+
+    Useful as a control — running detectors against this should produce
+    no change points (testing false positive rate).
+    """
 
     def __init__(
         self,
@@ -141,7 +145,11 @@ class StableGenerator:
 
 
 class StepChangeGenerator:
-    """Generates values from one distribution, then abruptly switches to another."""
+    """Generates values from one distribution, then abruptly switches to another.
+
+    The changepoint index is where the switch happens: values[:changepoint]
+    come from `before`, values[changepoint:] come from `after`.
+    """
 
     def __init__(
         self,
@@ -166,7 +174,13 @@ class StepChangeGenerator:
 
 
 class DriftGenerator:
-    """Generates values that gradually drift from one distribution to another."""
+    """Generates values that gradually drift from one distribution to another.
+
+    Before the changepoint: pure `before` distribution.
+    During drift (changepoint to changepoint + steps): linear interpolation
+    between `before` and `after` samples using beta in [0, 1].
+    After drift completes: pure `after` distribution.
+    """
 
     def __init__(
         self,
@@ -202,7 +216,11 @@ class DriftGenerator:
 
 
 class VarianceChangeGenerator:
-    """Generates values where the mean stays the same but variance changes."""
+    """Generates values where the mean stays the same but variance changes.
+
+    Useful for testing detectors that catch instability — E-Divisive may miss
+    this, but Levene's test or variance-aware detectors should catch it.
+    """
 
     def __init__(
         self,
@@ -229,7 +247,10 @@ class VarianceChangeGenerator:
 
 
 class MultipleChangePointGenerator:
-    """Generates values with multiple step changes at known positions."""
+    """Generates values with multiple step changes at known positions.
+
+    Each segment uses the same distribution family but different parameters.
+    """
 
     def __init__(
         self,

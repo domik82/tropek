@@ -1,4 +1,4 @@
-"""add period_end column to change_points.
+"""add period_end and found_by_evaluation_id to change_points.
 
 Revision ID: 004
 Revises: 003
@@ -32,6 +32,19 @@ def upgrade() -> None:
         """
     )
 
+    op.add_column(
+        'change_points',
+        sa.Column('found_by_evaluation_id', sa.UUID(), sa.ForeignKey('evaluations.id', ondelete='SET NULL'), nullable=True),
+    )
+    op.execute(
+        """
+        UPDATE change_points
+        SET found_by_evaluation_id = evaluation_run_id
+        WHERE found_by_evaluation_id IS NULL
+        """
+    )
+
 
 def downgrade() -> None:
+    op.drop_column('change_points', 'found_by_evaluation_id')
     op.drop_column('change_points', 'period_end')
