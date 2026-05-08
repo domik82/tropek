@@ -55,19 +55,29 @@ class CsvStore:
 
         result = QueryResult()
         for metric_name in queries:
-            matching = [
-                r for r in rows if r['metric_name'] == metric_name and start <= _parse_ts(r['timestamp']) <= end
+            rows_in_range = [
+                row for row in rows if row['metric_name'] == metric_name and start <= _parse_ts(row['timestamp']) <= end
             ]
-            if not matching:
+            if not rows_in_range:
                 result.errors[metric_name] = f"no data for '{metric_name}' in range"
                 continue
 
-            keyed = [r for r in matching if r.get('variable_key', '') in variable_keys] if variable_keys else []
-            best = keyed if keyed else [r for r in matching if not r.get('variable_key', '')]
-            if best:
-                result.values[metric_name] = float(best[-1]['value'])
+            # Variable-key resolution: CSV rows can carry a variable_key column
+            # (e.g. "env=prod") that scopes them to a specific variable binding.
+            # When the caller passes variables, we prefer rows whose key matches;
+            # otherwise we fall back to unkeyed (global) rows, and finally to
+            # any row at all so we never silently drop data.
+            rows_matching_variable_key = (
+                [row for row in rows_in_range if row.get('variable_key', '') in variable_keys] if variable_keys else []
+            )
+            rows_without_variable_key = [row for row in rows_in_range if not row.get('variable_key', '')]
+
+            # Priority: variable-keyed rows > unkeyed rows > any row
+            preferred_rows = rows_matching_variable_key or rows_without_variable_key
+            if preferred_rows:
+                result.values[metric_name] = float(preferred_rows[-1]['value'])
             else:
-                result.values[metric_name] = float(matching[-1]['value'])
+                result.values[metric_name] = float(rows_in_range[-1]['value'])
 
         return result
 
