@@ -9,6 +9,8 @@ from pathlib import Path
 
 import yaml
 
+CSV_FIELDNAMES = ['timestamp', 'metric_name', 'value', 'variable_key']
+
 
 def load_scenario(path: Path) -> dict:
     """Load a scenario YAML file."""
@@ -16,56 +18,116 @@ def load_scenario(path: Path) -> dict:
         return yaml.safe_load(f)
 
 
+def _generate_metric_rows(
+    metric_name: str,
+    metric_def: dict,
+    *,
+    start: datetime,
+    interval: timedelta,
+    rng: random.Random,
+    variable_key: str = '',
+) -> list[dict[str, str]]:
+    """Generate rows for a single metric from its phase definition."""
+    rows: list[dict[str, str]] = []
+    baseline = metric_def['baseline']
+    current_time = start
+
+    for phase in metric_def['phases']:
+        duration = timedelta(hours=phase['duration_hours'])
+        phase_end = current_time + duration
+        jitter_pct = phase['jitter_pct'] / 100.0
+        pattern = phase['pattern']
+        target = phase.get('target', baseline)
+        phase_start_time = current_time
+
+        while current_time < phase_end:
+            if pattern == 'stable':
+                value = baseline * (1.0 + rng.uniform(-jitter_pct, jitter_pct))
+            elif pattern == 'ramp':
+                progress = (current_time - phase_start_time) / duration
+                value = baseline + (target - baseline) * progress
+                value *= 1.0 + rng.uniform(-jitter_pct, jitter_pct)
+            elif pattern == 'spike':
+                mid = phase_start_time + duration / 2
+                if current_time < mid:
+                    progress = (current_time - phase_start_time) / (duration / 2)
+                    value = baseline + (target - baseline) * progress
+                else:
+                    progress = (current_time - mid) / (duration / 2)
+                    value = target + (baseline - target) * progress
+                value *= 1.0 + rng.uniform(-jitter_pct, jitter_pct)
+            else:
+                value = baseline
+
+            rows.append(
+                {
+                    'timestamp': current_time.isoformat(),
+                    'metric_name': metric_name,
+                    'value': f'{value:.6f}',
+                    'variable_key': variable_key,
+                }
+            )
+            current_time += interval
+
+        if pattern == 'ramp':
+            baseline = target
+
+    return rows
+
+
 def generate_scenario_rows(scenario: dict) -> list[dict[str, str]]:
     """Generate time-series rows from a scenario definition.
 
     Uses the scenario name as the random seed for deterministic output.
-    Returns rows without writing — caller is responsible for merging and writing.
+    When a scenario defines `variants`, produces per-variable rows with
+    a `variable_key` column (e.g. "process_name=WINWORD"). Metrics not
+    overridden by a variant use the default `metrics` definition with an
+    empty variable_key.
     """
-    rng = random.Random(scenario['name'])  # noqa: S311
     interval = timedelta(minutes=scenario['interval_minutes'])
     start = datetime.fromisoformat(scenario['start'].replace('Z', '+00:00'))
 
     all_rows: list[dict[str, str]] = []
-    for metric_name, metric_def in scenario['metrics'].items():
-        baseline = metric_def['baseline']
-        current_time = start
-        for phase in metric_def['phases']:
-            duration = timedelta(hours=phase['duration_hours'])
-            phase_end = current_time + duration
-            jitter_pct = phase['jitter_pct'] / 100.0
-            pattern = phase['pattern']
-            target = phase.get('target', baseline)
-            phase_start_time = current_time
-            while current_time < phase_end:
-                if pattern == 'stable':
-                    value = baseline * (1.0 + rng.uniform(-jitter_pct, jitter_pct))
-                elif pattern == 'ramp':
-                    progress = (current_time - phase_start_time) / duration
-                    value = baseline + (target - baseline) * progress
-                    value *= 1.0 + rng.uniform(-jitter_pct, jitter_pct)
-                elif pattern == 'spike':
-                    mid = phase_start_time + duration / 2
-                    if current_time < mid:
-                        progress = (current_time - phase_start_time) / (duration / 2)
-                        value = baseline + (target - baseline) * progress
-                    else:
-                        progress = (current_time - mid) / (duration / 2)
-                        value = target + (baseline - target) * progress
-                    value *= 1.0 + rng.uniform(-jitter_pct, jitter_pct)
-                else:
-                    value = baseline
-                all_rows.append(
-                    {
-                        'timestamp': current_time.isoformat(),
-                        'metric_name': metric_name,
-                        'value': f'{value:.6f}',
-                    }
+    variants = scenario.get('variants')
+
+    if variants:
+        variable_name = variants['variable']
+        variant_metric_names: set[str] = set()
+        for var_metrics in variants['entries'].values():
+            variant_metric_names.update(var_metrics.keys())
+
+        for var_value, var_metrics in variants['entries'].items():
+            variable_key = f'{variable_name}={var_value}'
+            rng = random.Random(f'{scenario["name"]}:{variable_key}')  # noqa: S311
+            for metric_name, metric_def in var_metrics.items():
+                all_rows.extend(
+                    _generate_metric_rows(
+                        metric_name,
+                        metric_def,
+                        start=start,
+                        interval=interval,
+                        rng=rng,
+                        variable_key=variable_key,
+                    )
                 )
-                current_time += interval
-            # Update baseline for next phase (ramp endpoint becomes new baseline)
-            if pattern == 'ramp':
-                baseline = target
+
+        default_metrics = {
+            name: defn for name, defn in scenario.get('metrics', {}).items() if name not in variant_metric_names
+        }
+    else:
+        default_metrics = scenario.get('metrics', {})
+
+    rng = random.Random(scenario['name'])  # noqa: S311
+    for metric_name, metric_def in default_metrics.items():
+        all_rows.extend(
+            _generate_metric_rows(
+                metric_name,
+                metric_def,
+                start=start,
+                interval=interval,
+                rng=rng,
+            )
+        )
 
     return all_rows
 
@@ -92,10 +154,10 @@ def main() -> None:
     for ns, rows in ns_rows.items():
         ns_dir = data_dir / ns
         ns_dir.mkdir(parents=True, exist_ok=True)
-        rows.sort(key=lambda r: (r['timestamp'], r['metric_name']))
+        rows.sort(key=lambda r: (r['timestamp'], r['metric_name'], r['variable_key']))
         csv_path = ns_dir / 'metrics.csv'
         with csv_path.open('w', newline='') as f:
-            writer = csv.DictWriter(f, fieldnames=['timestamp', 'metric_name', 'value'])
+            writer = csv.DictWriter(f, fieldnames=CSV_FIELDNAMES)
             writer.writeheader()
             writer.writerows(rows)
         sources = ', '.join(ns_sources[ns])

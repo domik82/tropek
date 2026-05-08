@@ -8,6 +8,7 @@ from typing import Any, NamedTuple
 
 from tropek.db.models import ChangePoint, EvaluationRun, IndicatorResultRow, SLOEvaluation
 from tropek.modules.change_points.detector import Direction
+from tropek.modules.change_points.repository import ChangePointKey
 from tropek.modules.change_points.schemas import ChangePointMarker
 from tropek.modules.quality_gate.evaluation_engine.constants import RESULT_RANK
 from tropek.modules.quality_gate.evaluation_engine.criteria import ParsedCriteria, parse_criteria_string
@@ -210,7 +211,7 @@ def build_grouped_heatmap_response(
     asset_name: str,
     runs: list[EvaluationRun],
     noted_run_ids: set[uuid.UUID] | None = None,
-    change_point_lookup: dict[tuple[str, datetime, str], ChangePoint] | None = None,
+    change_point_lookup: dict[ChangePointKey, ChangePoint] | None = None,
 ) -> GroupedMetricHeatmapResponse:
     """Build GroupedMetricHeatmapResponse by delegating to fragment builder + assembler.
 
@@ -258,14 +259,19 @@ def _parse_objective_criteria(objective: Any) -> _ParsedObjectiveCriteria:
 
 
 def _resolve_change_point_marker(
-    lookup: dict[tuple[str, datetime, str], ChangePoint] | None,
+    lookup: dict[ChangePointKey, ChangePoint] | None,
+    slo_name: str,
     metric_name: str,
     period_start: datetime,
+    period_end: datetime | None,
     eval_name: str,
 ) -> ChangePointMarker | None:
     if not lookup:
         return None
-    change_point = lookup.get((metric_name, period_start, eval_name))
+    key = ChangePointKey(slo_name, metric_name, period_start, period_end, eval_name)
+    change_point = lookup.get(key)
+    if change_point is None and period_end is not None:
+        change_point = lookup.get(ChangePointKey(slo_name, metric_name, period_start, None, eval_name))
     if change_point is None:
         return None
     return ChangePointMarker(
@@ -278,7 +284,7 @@ def build_column_fragment(
     run: EvaluationRun,
     *,
     has_notes: bool,
-    change_point_lookup: dict[tuple[str, datetime, str], ChangePoint] | None = None,
+    change_point_lookup: dict[ChangePointKey, ChangePoint] | None = None,
 ) -> HeatmapColumnFragment:
     """Build one heatmap column fragment for a single EvaluationRun.
 
@@ -341,8 +347,10 @@ def build_column_fragment(
                     aggregation=sli_metadata.get(metric_name, {}).get('mode'),
                     change_point=_resolve_change_point_marker(
                         change_point_lookup,
+                        slo_eval.slo_name,
                         metric_name,
                         run.period_start,
+                        run.period_end,
                         run.eval_name,
                     ),
                 )

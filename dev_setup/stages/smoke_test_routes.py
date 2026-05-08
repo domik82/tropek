@@ -493,6 +493,45 @@ def test_heatmap(client: TropekClient) -> None:
     run('heatmap.flat', lambda: client.heatmap.flat('checkout-api'))
     run('heatmap.grouped(eval_name)', lambda: client.heatmap.grouped('checkout-api', eval_name='load-test'))
 
+    def _assert_change_points_scoped_per_slo() -> None:
+        """Verify that SLOs sharing the same metric get independent CP sets.
+
+        laptop-user-01 has 4 Office SLOs (Word/Excel/Outlook/PowerPoint) that
+        all evaluate process_cpu_pct, process_memory_mb, process_handles.
+        The mock adapter serves per-process_name data with CPs at different
+        hours, so the detected change points should differ across SLO groups.
+        Before the fix for #15, every SLO received a collapsed CP set keyed
+        only by metric_name.
+        """
+        heatmap = client.heatmap.grouped('laptop-user-01')
+        office_slo_names = {group.slo_name for group in heatmap.groups if group.slo_name.startswith('office-')}
+        min_office_slos = 2
+        assert len(office_slo_names) >= min_office_slos, (
+            f'Expected >= {min_office_slos} Office SLO groups, got {len(office_slo_names)}: {office_slo_names}'
+        )
+        # Collect change points per Office SLO group, then drop groups with none
+        change_points_by_slo = {
+            group.slo_name: [cell.change_point for cell in group.cells if cell.change_point is not None]
+            for group in heatmap.groups
+            if group.slo_name in office_slo_names
+        }
+        change_points_by_slo = {
+            slo_name: change_points for slo_name, change_points in change_points_by_slo.items() if change_points
+        }
+        if len(change_points_by_slo) < min_office_slos:
+            return
+        # Each SLO should have its own distinct CP set — if they're all
+        # identical, the lookup is collapsing across SLOs (the #15 bug).
+        per_slo_change_points = list(change_points_by_slo.values())
+        all_identical = all(cp_set == per_slo_change_points[0] for cp_set in per_slo_change_points[1:])
+        assert not all_identical, (
+            f'All {len(per_slo_change_points)} Office SLO groups on laptop-user-01 have '
+            f'identical change point sets — CP lookup is likely not scoped '
+            f'by slo_name'
+        )
+
+    run('heatmap.cp_scoped_per_slo', _assert_change_points_scoped_per_slo)
+
 
 def test_timeline(client: TropekClient) -> None:
     """timeline: get, summary."""

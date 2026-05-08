@@ -18,7 +18,7 @@ from pydantic import AfterValidator
 
 from tropek.modules.assets.service import AssetService
 from tropek.modules.change_points.detector import Direction
-from tropek.modules.change_points.repository import ChangePointRepository
+from tropek.modules.change_points.repository import ChangePointKey, ChangePointRepository
 from tropek.modules.change_points.schemas import ChangePointMarker
 from tropek.modules.common.exceptions import ConflictError, DomainValidationError, NotFoundError
 from tropek.modules.common.schemas import PagedResponse, SafeQueryStr, reject_null_bytes
@@ -172,11 +172,13 @@ async def _enrich_heatmap_with_change_points(
         period_starts=period_starts,
     )
     if change_point_lookup:
-        eval_name_by_run_id = {run.id: run.eval_name for run in ordered_runs}
+        run_by_id = {run.id: run for run in ordered_runs}
         for group in response.groups:
             for cell in group.cells:
-                run_eval_name = eval_name_by_run_id.get(cell.evaluation_id, '')
-                key = (cell.metric, cell.period_start, run_eval_name)
+                run = run_by_id.get(cell.evaluation_id)
+                if run is None:
+                    continue
+                key = ChangePointKey(group.slo_name, cell.metric, cell.period_start, run.period_end, run.eval_name)
                 change_point = change_point_lookup.get(key)
                 if change_point is not None:
                     cell.change_point = ChangePointMarker(

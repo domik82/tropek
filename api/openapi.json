@@ -1635,6 +1635,18 @@
           "direction": {
             "$ref": "#/components/schemas/Direction"
           },
+          "found_by_evaluation_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Found By Evaluation Id"
+          },
           "id": {
             "format": "uuid",
             "title": "Id",
@@ -1654,6 +1666,18 @@
           "metric_name": {
             "title": "Metric Name",
             "type": "string"
+          },
+          "period_end": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Period End"
           },
           "period_start": {
             "format": "date-time",

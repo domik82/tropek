@@ -2479,6 +2479,8 @@ export interface components {
             /** Detector */
             detector: string;
             direction: components["schemas"]["Direction"];
+            /** Found By Evaluation Id */
+            found_by_evaluation_id?: string | null;
             /**
              * Id
              * Format: uuid
@@ -2488,6 +2490,8 @@ export interface components {
             linked_ticket: string | null;
             /** Metric Name */
             metric_name: string;
+            /** Period End */
+            period_end?: string | null;
             /**
              * Period Start
              * Format: date-time

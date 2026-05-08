@@ -77,6 +77,8 @@ def _make_history(
 
         evaluation = MagicMock()
         evaluation.period_start = start + interval * i
+        evaluation.period_end = start + interval * i + interval
+        evaluation.evaluation_id = uuid.uuid4()
         evaluation.indicator_rows = [row]
         evaluation.evaluation_name = evaluation_name
         evals.append(evaluation)
@@ -189,7 +191,7 @@ async def _run_pipeline(
             log=structlog.get_logger(),
             change_point_repo=cp_repo,  # type: ignore[arg-type]
             detected=detected,
-            timestamps=series.timestamps,
+            series=series,
             snapshot=snap,
             metric_name=metric,
             indicator_result_id=uuid.uuid4(),

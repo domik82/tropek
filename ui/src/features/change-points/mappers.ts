@@ -21,6 +21,7 @@ export function dtoToChangePoint(dto: ChangePointReadDto): ChangePoint {
     triageNote: dto.triage_note,
     triageAt: dto.triage_at ? new Date(dto.triage_at) : null,
     linkedTicket: dto.linked_ticket,
+    foundByEvaluationId: dto.found_by_evaluation_id ?? null,
     createdAt: new Date(dto.created_at),
   }
 }

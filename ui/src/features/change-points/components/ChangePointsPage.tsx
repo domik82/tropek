@@ -1,6 +1,7 @@
-import { useState, useCallback } from 'react'
-import { Diamond, Check, EyeOff } from 'lucide-react'
+import { useState, useCallback, useMemo } from 'react'
+import { Diamond, Check, EyeOff, ChevronLeft, ChevronRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { useAssets } from '@/features/assets/hooks'
 import {
   useChangePoints,
   useTriageChangePoint,
@@ -63,16 +64,26 @@ export function ChangePointsPage() {
   const [directionFilter, setDirectionFilter] = useState<ChangePointDirection | ''>('')
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [triageNote, setTriageNote] = useState('')
+  const [page, setPage] = useState(0)
+
+  const pageSize = 50
 
   const filters: ChangePointFilters = {
     status: statusFilter || undefined,
     direction: directionFilter || undefined,
-    limit: 100,
+    limit: pageSize,
+    offset: page * pageSize,
   }
 
   const { data: changePoints, isLoading, error } = useChangePoints(filters)
+  const { data: assets } = useAssets()
   const triageMutation = useTriageChangePoint()
   const bulkTriageMutation = useBulkTriageChangePoints()
+
+  const assetNameById = useMemo(() => {
+    if (!assets) return new Map<string, string>()
+    return new Map(assets.map(asset => [asset.id, asset.displayName ?? asset.name]))
+  }, [assets])
 
   const toggleSelect = useCallback((id: string) => {
     setSelectedIds(prev => {
@@ -129,7 +140,7 @@ export function ChangePointsPage() {
       <div className="flex items-center gap-3 mb-4">
         <select
           value={statusFilter}
-          onChange={e => setStatusFilter(e.target.value as ChangePointStatus | '')}
+          onChange={e => { setStatusFilter(e.target.value as ChangePointStatus | ''); setPage(0) }}
           className="bg-popover border border-border rounded px-3 py-1.5 text-sm text-foreground"
         >
           {STATUS_OPTIONS.map(opt => (
@@ -138,7 +149,7 @@ export function ChangePointsPage() {
         </select>
         <select
           value={directionFilter}
-          onChange={e => setDirectionFilter(e.target.value as ChangePointDirection | '')}
+          onChange={e => { setDirectionFilter(e.target.value as ChangePointDirection | ''); setPage(0) }}
           className="bg-popover border border-border rounded px-3 py-1.5 text-sm text-foreground"
         >
           {DIRECTION_OPTIONS.map(opt => (
@@ -201,6 +212,7 @@ export function ChangePointsPage() {
                 </th>
                 <th className="px-3 py-2 text-left text-muted-foreground font-medium">Status</th>
                 <th className="px-3 py-2 text-left text-muted-foreground font-medium">Direction</th>
+                <th className="px-3 py-2 text-left text-muted-foreground font-medium">Asset</th>
                 <th className="px-3 py-2 text-left text-muted-foreground font-medium">Metric</th>
                 <th className="px-3 py-2 text-left text-muted-foreground font-medium">SLO</th>
                 <th className="px-3 py-2 text-right text-muted-foreground font-medium">Magnitude</th>
@@ -214,6 +226,7 @@ export function ChangePointsPage() {
                 <ChangePointRow
                   key={cp.id}
                   changePoint={cp}
+                  assetName={assetNameById.get(cp.assetId)}
                   selected={selectedIds.has(cp.id)}
                   onToggleSelect={toggleSelect}
                   onTriage={handleTriage}
@@ -224,18 +237,51 @@ export function ChangePointsPage() {
           </table>
         </div>
       )}
+
+      {/* Pagination */}
+      {changePoints && (
+        <div className="flex items-center justify-between mt-4">
+          <span className="text-sm text-muted-foreground">
+            {changePoints.length === 0
+              ? 'No results'
+              : `Showing ${page * pageSize + 1}–${page * pageSize + changePoints.length}`}
+          </span>
+          <div className="flex items-center gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setPage(prev => prev - 1)}
+              disabled={page === 0}
+            >
+              <ChevronLeft className="w-4 h-4" />
+              Previous
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setPage(prev => prev + 1)}
+              disabled={changePoints.length < pageSize}
+            >
+              Next
+              <ChevronRight className="w-4 h-4" />
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
 
 function ChangePointRow({
   changePoint,
+  assetName,
   selected,
   onToggleSelect,
   onTriage,
   isPending,
 }: {
   changePoint: ChangePoint
+  assetName: string | undefined
   selected: boolean
   onToggleSelect: (id: string) => void
   onTriage: (id: string, status: 'acknowledged' | 'hidden') => void
@@ -257,6 +303,7 @@ function ChangePointRow({
       <td className="px-3 py-2">
         <DirectionIndicator direction={changePoint.direction} />
       </td>
+      <td className="px-3 py-2 font-mono text-xs">{assetName ?? changePoint.assetId.slice(0, 8)}</td>
       <td className="px-3 py-2 font-mono text-xs">{changePoint.metricName}</td>
       <td className="px-3 py-2 font-mono text-xs">{changePoint.sloName}</td>
       <td className="px-3 py-2 text-right tabular-nums">

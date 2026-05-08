@@ -1,55 +1,21 @@
 name: office-apps
 namespaces:
   - prometheus-local
+interval_minutes: 5
+start: "2026-03-14T00:00:00Z"
+
+# Default metrics — used when no variant matches (backwards compat)
 metrics:
   process_cpu_pct:
     baseline: 5.0
     phases:
-      - duration_hours: 32
+      - duration_hours: 72
         pattern: stable
         jitter_pct: 10
-      - duration_hours: 9
-        pattern: ramp
-        target: 22.0
-        jitter_pct: 5
-      - duration_hours: 7
-        pattern: stable
-        jitter_pct: 8
-      - duration_hours: 8
-        pattern: stable
-        jitter_pct: 10
-      - duration_hours: 9
-        pattern: ramp
-        target: 25.0
-        jitter_pct: 5
-      - duration_hours: 7
-        pattern: stable
-        jitter_pct: 8
   process_memory_mb:
     baseline: 120.0
     phases:
-      - duration_hours: 32
-        pattern: stable
-        jitter_pct: 8
-      - duration_hours: 9
-        pattern: ramp
-        target: 450.0
-        jitter_pct: 5
-      - duration_hours: 7
-        pattern: stable
-        jitter_pct: 6
-      - duration_hours: 8
-        pattern: stable
-        jitter_pct: 8
-      - duration_hours: 6
-        pattern: ramp
-        target: 480.0
-        jitter_pct: 5
-      - duration_hours: 2
-        pattern: spike
-        target: 850.0
-        jitter_pct: 3
-      - duration_hours: 8
+      - duration_hours: 72
         pattern: stable
         jitter_pct: 8
   process_handles:
@@ -64,5 +30,113 @@ metrics:
       - duration_hours: 72
         pattern: stable
         jitter_pct: 10
-interval_minutes: 5
-start: "2026-03-14T00:00:00Z"
+
+# Per-process variants — each gets a distinct CP position so change point
+# detection fires at different evaluation windows per SLO.
+variants:
+  variable: process_name
+  entries:
+    WINWORD:
+      process_cpu_pct:
+        baseline: 5.0
+        phases:
+          - duration_hours: 20
+            pattern: stable
+            jitter_pct: 10
+          - duration_hours: 4
+            pattern: ramp
+            target: 22.0
+            jitter_pct: 5
+          - duration_hours: 48
+            pattern: stable
+            jitter_pct: 8
+      process_memory_mb:
+        baseline: 130.0
+        phases:
+          - duration_hours: 20
+            pattern: stable
+            jitter_pct: 8
+          - duration_hours: 4
+            pattern: ramp
+            target: 420.0
+            jitter_pct: 5
+          - duration_hours: 48
+            pattern: stable
+            jitter_pct: 6
+
+    EXCEL:
+      process_cpu_pct:
+        baseline: 8.0
+        phases:
+          - duration_hours: 36
+            pattern: stable
+            jitter_pct: 10
+          - duration_hours: 4
+            pattern: ramp
+            target: 28.0
+            jitter_pct: 5
+          - duration_hours: 32
+            pattern: stable
+            jitter_pct: 8
+      process_memory_mb:
+        baseline: 180.0
+        phases:
+          - duration_hours: 36
+            pattern: stable
+            jitter_pct: 8
+          - duration_hours: 4
+            pattern: ramp
+            target: 520.0
+            jitter_pct: 5
+          - duration_hours: 32
+            pattern: stable
+            jitter_pct: 6
+
+    POWERPNT:
+      process_cpu_pct:
+        baseline: 4.0
+        phases:
+          - duration_hours: 48
+            pattern: stable
+            jitter_pct: 10
+          - duration_hours: 4
+            pattern: ramp
+            target: 19.0
+            jitter_pct: 5
+          - duration_hours: 20
+            pattern: stable
+            jitter_pct: 8
+      process_memory_mb:
+        baseline: 100.0
+        phases:
+          - duration_hours: 72
+            pattern: stable
+            jitter_pct: 8
+
+    OUTLOOK:
+      process_cpu_pct:
+        baseline: 6.0
+        phases:
+          - duration_hours: 56
+            pattern: stable
+            jitter_pct: 10
+          - duration_hours: 4
+            pattern: ramp
+            target: 24.0
+            jitter_pct: 5
+          - duration_hours: 12
+            pattern: stable
+            jitter_pct: 8
+      process_memory_mb:
+        baseline: 200.0
+        phases:
+          - duration_hours: 48
+            pattern: stable
+            jitter_pct: 8
+          - duration_hours: 6
+            pattern: ramp
+            target: 600.0
+            jitter_pct: 5
+          - duration_hours: 18
+            pattern: stable
+            jitter_pct: 6

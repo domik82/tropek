@@ -2,13 +2,12 @@
 # Original: https://github.com/codyrioux/pydata2015seattle
 # Based on Netflix's real-time analytics change detection approach.
 
-"""Distribution-based time series generators for testing change point detectors.
+"""Time series generators for testing.
 
-Each generator produces a sequence of floats from scipy distributions,
-with configurable change points, drift, and variance shifts. Useful for
-creating controlled test data where the ground truth is known.
+Two complementary approaches:
 
-Usage::
+**Distribution-based** (scipy) — precise control over statistical properties.
+Useful for testing detector accuracy against known ground truth::
 
     from scipy.stats import norm
     gen = StepChangeGenerator(
@@ -16,16 +15,112 @@ Usage::
         after={"loc": 120, "scale": 5}, changepoint=50,
     )
     series = gen.generate(100)
-    # series[:50] ~ N(100, 5), series[50:] ~ N(120, 5)
+
+**Phase-based** (YAML-compatible) — same schema as mock adapter scenarios.
+Useful for generating realistic metric shapes (stable/ramp/spike) from
+scenario definitions::
+
+    series, timestamps = generate_from_phases(
+        baseline=5.0,
+        phases=[
+            {"duration_hours": 20, "pattern": "stable", "jitter_pct": 10},
+            {"duration_hours": 4, "pattern": "ramp", "target": 22.0, "jitter_pct": 5},
+            {"duration_hours": 48, "pattern": "stable", "jitter_pct": 8},
+        ],
+        interval_minutes=5,
+        seed=42,
+    )
+
+Phase definitions use the same format as ``adapters/mock/scenarios/*.yaml``
+so YAML files can be loaded directly::
+
+    import yaml
+    with open("scenarios/office-apps.yaml") as f:
+        scenario = yaml.safe_load(f)
+    metric_def = scenario["metrics"]["process_cpu_pct"]
+    series, timestamps = generate_from_phases(**metric_def, seed=42)
 """
 
 from __future__ import annotations
 
+import random
 from collections.abc import Sequence
 from datetime import UTC, datetime, timedelta
+from typing import Any
 
 import numpy as np
 from scipy.stats import rv_continuous
+
+# ---------------------------------------------------------------------------
+# Phase-based generation (YAML-compatible with mock adapter scenarios)
+# ---------------------------------------------------------------------------
+
+
+def generate_from_phases(
+    baseline: float,
+    phases: list[dict[str, Any]],
+    *,
+    interval_minutes: int = 5,
+    start: datetime | None = None,
+    seed: int | str | None = None,
+) -> tuple[list[float], list[datetime]]:
+    """Generate a time series from phase definitions.
+
+    Uses the same schema as ``adapters/mock/scenarios/*.yaml`` metric
+    definitions, so YAML files can drive test data generation directly.
+
+    Returns (values, timestamps) where both lists have the same length.
+    """
+    if start is None:
+        start = datetime(2026, 1, 1, tzinfo=UTC)
+
+    rng = random.Random(seed)  # noqa: S311
+    interval = timedelta(minutes=interval_minutes)
+    values: list[float] = []
+    timestamps: list[datetime] = []
+    current_baseline = baseline
+    current_time = start
+
+    for phase in phases:
+        duration = timedelta(hours=phase['duration_hours'])
+        phase_end = current_time + duration
+        jitter_pct = phase['jitter_pct'] / 100.0
+        pattern = phase['pattern']
+        target = phase.get('target', current_baseline)
+        phase_start_time = current_time
+
+        while current_time < phase_end:
+            if pattern == 'stable':
+                value = current_baseline * (1.0 + rng.uniform(-jitter_pct, jitter_pct))
+            elif pattern == 'ramp':
+                progress = (current_time - phase_start_time) / duration
+                value = current_baseline + (target - current_baseline) * progress
+                value *= 1.0 + rng.uniform(-jitter_pct, jitter_pct)
+            elif pattern == 'spike':
+                mid = phase_start_time + duration / 2
+                if current_time < mid:
+                    progress = (current_time - phase_start_time) / (duration / 2)
+                    value = current_baseline + (target - current_baseline) * progress
+                else:
+                    progress = (current_time - mid) / (duration / 2)
+                    value = target + (current_baseline - target) * progress
+                value *= 1.0 + rng.uniform(-jitter_pct, jitter_pct)
+            else:
+                value = current_baseline
+
+            values.append(value)
+            timestamps.append(current_time)
+            current_time += interval
+
+        if pattern == 'ramp':
+            current_baseline = target
+
+    return values, timestamps
+
+
+# ---------------------------------------------------------------------------
+# Distribution-based generation (scipy)
+# ---------------------------------------------------------------------------
 
 
 class StableGenerator:
@@ -176,6 +271,11 @@ class MultipleChangePointGenerator:
             params = self._segments[segment_idx][1]
             series.append(float(self._dist.rvs(**params, random_state=self._rng)))
         return series
+
+
+# ---------------------------------------------------------------------------
+# Timestamp helpers
+# ---------------------------------------------------------------------------
 
 
 def make_timestamps(

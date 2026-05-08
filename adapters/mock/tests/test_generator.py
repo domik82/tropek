@@ -31,6 +31,38 @@ def test_generate_is_deterministic() -> None:
     assert rows1 == rows2
 
 
+def test_generate_variants_produce_per_variable_rows() -> None:
+    """Variant scenarios produce rows with distinct variable_key values."""
+    scenario = load_scenario(Path('scenarios/office-apps.yaml'))
+    rows = generate_scenario_rows(scenario)
+    variable_keys = {row['variable_key'] for row in rows}
+    assert 'process_name=WINWORD' in variable_keys
+    assert 'process_name=EXCEL' in variable_keys
+    assert 'process_name=POWERPNT' in variable_keys
+    assert 'process_name=OUTLOOK' in variable_keys
+
+
+def test_generate_variants_have_different_values() -> None:
+    """Different variants produce different metric values at the same timestamp."""
+    scenario = load_scenario(Path('scenarios/office-apps.yaml'))
+    rows = generate_scenario_rows(scenario)
+    cpu_by_key: dict[str, list[float]] = {}
+    for row in rows:
+        if row['metric_name'] == 'process_cpu_pct' and row['variable_key']:
+            cpu_by_key.setdefault(row['variable_key'], []).append(float(row['value']))
+    variable_key_names = list(cpu_by_key.keys())
+    assert len(variable_key_names) >= 2
+    assert cpu_by_key[variable_key_names[0]] != cpu_by_key[variable_key_names[1]]
+
+
+def test_generate_variants_are_deterministic() -> None:
+    """Variant generation is deterministic across runs."""
+    scenario = load_scenario(Path('scenarios/office-apps.yaml'))
+    rows1 = generate_scenario_rows(scenario)
+    rows2 = generate_scenario_rows(scenario)
+    assert rows1 == rows2
+
+
 def test_main_merges_scenarios_into_shared_namespace() -> None:
     """Multiple scenarios targeting the same namespace produce merged CSV."""
     scenarios_dir = Path('scenarios')
@@ -51,5 +83,5 @@ def test_main_merges_scenarios_into_shared_namespace() -> None:
             ns_rows.setdefault(ns, []).extend(rows)
 
     for ns, rows in ns_rows.items():
-        metric_names = {r['metric_name'] for r in rows}
+        metric_names = {row['metric_name'] for row in rows}
         assert expected[ns] == metric_names, f'namespace {ns}: expected {expected[ns]}, got {metric_names}'
