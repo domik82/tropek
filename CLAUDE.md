@@ -1,3 +1,7 @@
+# Coding rules
+
+- **No cryptic variable names.** Never use single-letter or abbreviated variable names like `r`, `cp`, `ev`, `e`, `val`, `stmt`, `subq`, `col`, `res`, `tmp`, `cb`. Name variables after what they represent: `row` not `r`, `change_point` not `cp`, `evaluation` not `ev`. This applies everywhere including list comprehensions and lambdas. Only `i`, `x`, `db`, `id` are acceptable short names.
+
 {
   "permissions": {
     "allow": [
