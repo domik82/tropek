@@ -3,6 +3,7 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "packageManager": "pnpm@11.0.8",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
@@ -65,20 +66,5 @@
     "workerDirectory": [
       "public"
     ]
-  },
-  "pnpm": {
-    "onlyBuiltDependencies": [
-      "msw"
-    ],
-    "overrides": {
-      "hono": ">=4.12.14",
-      "@hono/node-server": ">=1.19.13",
-      "path-to-regexp@>=8.0.0 <8.4.0": "8.4.2",
-      "flatted": ">=3.4.2",
-      "brace-expansion@<1.1.13": "1.1.14",
-      "brace-expansion@>=4 <5.0.5": "5.0.5",
-      "uuid@>=13.0.0 <13.0.1": "13.0.2",
-      "ip-address": ">=10.1.1"
-    }
   }
 }

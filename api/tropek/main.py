@@ -57,7 +57,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     await app.state.arq_pool.close()
 
 
-app = FastAPI(title='TROPEK API', version='0.2.0', lifespan=lifespan)
+app = FastAPI(title='TROPEK API', version='0.1.1', lifespan=lifespan)
 app.add_middleware(SessionMiddleware, session_factory=get_session_factory())
 
 # Domain exception handlers — convert domain errors to HTTP responses

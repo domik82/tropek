@@ -77,10 +77,10 @@ tables in your database.
 By default, the compose file uses the `latest` image tag. To pin to a specific release:
 
 ```bash
-TROPEK_VERSION=v0.1.0-alpha docker compose up -d
+TROPEK_VERSION=v0.1.1-alpha docker compose up -d
 ```
 
-Or set `TROPEK_VERSION=v0.1.0-alpha` in your `.env` file.
+Or set `TROPEK_VERSION=v0.1.1-alpha` in your `.env` file.
 
 ## Connecting a Prometheus datasource
 
