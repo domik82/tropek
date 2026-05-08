@@ -504,23 +504,28 @@ def test_heatmap(client: TropekClient) -> None:
         only by metric_name.
         """
         heatmap = client.heatmap.grouped('laptop-user-01')
-        office_slo_names = {g.slo_name for g in heatmap.groups if g.slo_name.startswith('office-')}
+        office_slo_names = {group.slo_name for group in heatmap.groups if group.slo_name.startswith('office-')}
         min_office_slos = 2
         assert len(office_slo_names) >= min_office_slos, (
             f'Expected >= {min_office_slos} Office SLO groups, got {len(office_slo_names)}: {office_slo_names}'
         )
-        groups_with_cps = {
-            g.slo_name: [c.change_point for c in g.cells if c.change_point is not None]
-            for g in heatmap.groups
-            if g.slo_name in office_slo_names
+        # Collect change points per Office SLO group, then drop groups with none
+        change_points_by_slo = {
+            group.slo_name: [cell.change_point for cell in group.cells if cell.change_point is not None]
+            for group in heatmap.groups
+            if group.slo_name in office_slo_names
         }
-        groups_with_cps = {k: v for k, v in groups_with_cps.items() if v}
-        if len(groups_with_cps) < min_office_slos:
+        change_points_by_slo = {
+            slo_name: change_points for slo_name, change_points in change_points_by_slo.items() if change_points
+        }
+        if len(change_points_by_slo) < min_office_slos:
             return
-        cp_sets = list(groups_with_cps.values())
-        all_identical = all(s == cp_sets[0] for s in cp_sets[1:])
+        # Each SLO should have its own distinct CP set — if they're all
+        # identical, the lookup is collapsing across SLOs (the #15 bug).
+        per_slo_change_points = list(change_points_by_slo.values())
+        all_identical = all(cp_set == per_slo_change_points[0] for cp_set in per_slo_change_points[1:])
         assert not all_identical, (
-            f'All {len(cp_sets)} Office SLO groups on laptop-user-01 have '
+            f'All {len(per_slo_change_points)} Office SLO groups on laptop-user-01 have '
             f'identical change point sets — CP lookup is likely not scoped '
             f'by slo_name'
         )

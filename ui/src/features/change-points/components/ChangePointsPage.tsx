@@ -82,7 +82,7 @@ export function ChangePointsPage() {
 
   const assetNameById = useMemo(() => {
     if (!assets) return new Map<string, string>()
-    return new Map(assets.map(a => [a.id, a.displayName ?? a.name]))
+    return new Map(assets.map(asset => [asset.id, asset.displayName ?? asset.name]))
   }, [assets])
 
   const toggleSelect = useCallback((id: string) => {
@@ -250,7 +250,7 @@ export function ChangePointsPage() {
             <Button
               size="sm"
               variant="outline"
-              onClick={() => setPage(p => p - 1)}
+              onClick={() => setPage(prev => prev - 1)}
               disabled={page === 0}
             >
               <ChevronLeft className="w-4 h-4" />
@@ -259,7 +259,7 @@ export function ChangePointsPage() {
             <Button
               size="sm"
               variant="outline"
-              onClick={() => setPage(p => p + 1)}
+              onClick={() => setPage(prev => prev + 1)}
               disabled={changePoints.length < pageSize}
             >
               Next

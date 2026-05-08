@@ -287,25 +287,25 @@ class TrendRepository:
         )
         return [
             {
-                'timestamp': r.period_start.isoformat(),
-                'value': r.value,
+                'timestamp': row.period_start.isoformat(),
+                'value': row.value,
                 # Percentage contribution: stacks to 100% when all indicators pass
-                'score': round(r.score / r.total_weight * 100, 2) if r.total_weight else 0,
-                'eval_id': str(r.slo_evaluation_id),
-                'result': r.result,
-                'baseline': r.compared_value,
-                'evaluation_name': r.evaluation_name,
-                'targets': r.targets,
+                'score': round(row.score / row.total_weight * 100, 2) if row.total_weight else 0,
+                'eval_id': str(row.slo_evaluation_id),
+                'result': row.result,
+                'baseline': row.compared_value,
+                'evaluation_name': row.evaluation_name,
+                'targets': row.targets,
                 'change_point': _trend_change_point(
                     change_point_lookup,
                     slo_name,
                     metric_name,
-                    r.period_start,
-                    r.period_end,
-                    r.evaluation_name,
+                    row.period_start,
+                    row.period_end,
+                    row.evaluation_name,
                 ),
             }
-            for r in rows
+            for row in rows
         ]
 
     async def get_trend(
@@ -357,10 +357,10 @@ class TrendRepository:
         rows = await self._session.execute(q)
         return [
             {
-                'timestamp': r.eval_start.isoformat(),
-                'value': r.value,
-                'eval_id': str(r.slo_evaluation_id),
-                'result': r.result,
+                'timestamp': row.eval_start.isoformat(),
+                'value': row.value,
+                'eval_id': str(row.slo_evaluation_id),
+                'result': row.result,
             }
-            for r in rows
+            for row in rows
         ]
