@@ -27,8 +27,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Changed
 
+- **pnpm 10 → 11** — upgraded package manager; overrides moved from `package.json` to `pnpm-workspace.yaml` per pnpm 11 migration
+- **`@types/node` 24 → 25** — TypeScript type definitions for Node.js
 - **`path` renamed to `label_path`** — across meta snapshot schemas, pipeline, models, and tests (migration 003)
 - **Data generators moved** — `tests/change_points/generators.py` relocated to `tests/helpers/data_generators.py` with added phase-based generation API compatible with mock adapter YAML scenarios
+- **Zero npm audit vulnerabilities** — added `fast-uri` and `ip-address` overrides to patch remaining high/moderate findings
 
 ## [0.1.0-alpha] - 2026-05-01
 
