@@ -8,6 +8,9 @@ A standalone quality gate and performance test evaluation platform. Evaluates SL
 
 Tropek decides if the collected data is pass / warning / fail based on historical trends and SLO criteria.
 
+![TROPEK UI](docs/tropek-ui/TROPEK-Main.png)
+
+[More UI screenshots and description →](docs/tropek-ui/UI-description.md)
 
 Inspired by [Keptn v1](https://keptn.sh)'s lighthouse-service, [Apache OTAVA](https://github.com/apache/otava) for change point detection, and the Nurkio project. Runs in Docker Compose. No Kubernetes required.
 
