@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "TROPEK adapter contract — shared request/response models for data source adapters"
 requires-python = ">=3.13"
 dependencies = [
-    "pydantic>=2.7",
+    "pydantic>=2.13.4",
 ]
 
 [dependency-groups]
