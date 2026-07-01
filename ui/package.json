@@ -59,8 +59,8 @@
     "tailwindcss": "^4.2.4",
     "typescript": "~5.9.3",
     "typescript-eslint": "^8.59.2",
-    "vite": "^8.0.10",
-    "vitest": "^4.1.5"
+    "vite": "^8.1.2",
+    "vitest": "^4.1.9"
   },
   "msw": {
     "workerDirectory": [
