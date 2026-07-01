@@ -2,7 +2,7 @@
 name = "tropek-client"
 version = "0.1.1"
 description = "Typed Python client for the TROPEK quality gate API"
-requires-python = ">=3.13"
+requires-python = ">=3.12"
 dependencies = [
     "httpx>=0.27",
     "pydantic>=2.7",
