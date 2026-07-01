@@ -1,0 +1,65 @@
+name: Publish tropek-client to PyPI
+
+# Releases the Python client (clients/python) to PyPI on the same `v*` tags
+# that release the rest of the binaries. The published version is derived from
+# the tag (e.g. v0.1.1-alpha -> 0.1.1a0), not from the static version in
+# pyproject.toml. Uses PyPI Trusted Publishing (OIDC) — no API token needed.
+on:
+  push:
+    tags: ['v*']
+  # Manual trigger to publish an already-pushed tag (e.g. the current
+  # v0.1.1-alpha, which was tagged before this workflow existed).
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Existing tag to publish (e.g. v0.1.1-alpha)'
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    name: Build and publish tropek-client
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      id-token: write  # required for Trusted Publishing (OIDC)
+      contents: read
+    steps:
+      - name: Resolve tag
+        id: tag
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "ref=${{ inputs.tag }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "ref=${{ github.ref_name }}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ steps.tag.outputs.ref }}
+
+      - name: Derive PyPI version from tag
+        id: version
+        run: |
+          tag='${{ steps.tag.outputs.ref }}'
+          echo "value=${tag#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+
+      - name: Set package version from tag
+        working-directory: clients/python
+        run: |
+          uv version '${{ steps.version.outputs.value }}'
+          echo "publishing tropek-client $(uv version --short)"
+
+      - name: Build sdist and wheel
+        working-directory: clients/python
+        run: uv build -o dist
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: clients/python/dist
