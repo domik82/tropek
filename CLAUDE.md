@@ -6,78 +6,81 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **TROPEK** = Trend Reporting and Objective Evaluation toolKit — a standalone quality gate and performance test evaluation platform. It is a Python rewrite/extraction of Keptn's `lighthouse-service`, deployable without Kubernetes via Docker Compose.
 
-Stack: Python 3.13, FastAPI, PostgreSQL + TimescaleDB, Redis (arq job queue), uv (package manager).
+Stack: Python 3.13, FastAPI, PostgreSQL + TimescaleDB, Redis (arq job queue), uv (package manager); React + Vite + pnpm (UI).
 
 ## Common Commands
 
+The root `justfile` is the canonical task runner — run `just` to list all recipes. Prefer recipes over raw commands.
+
 ```bash
-# Dependencies
-uv sync                                               # Install all workspace dependencies
-
-# Run unit tests (no infrastructure required)
-uv run pytest api/tests/ -m "not integration" -q
-
-# Run a single test
-uv run pytest api/tests/engine/test_evaluator.py::TestName -v
-
-# Lint and format
-uv run ruff check api/ adapters/
-uv run ruff format api/ adapters/
-uv run mypy api/app adapters/prometheus/app
-
-# Start infrastructure only (dev)
-docker compose up timescaledb redis -d
-
-# Apply DB migrations (dev)
-uv run --directory api alembic upgrade head
-
-# Apply DB migrations (test DB — single command, no chaining needed)
-ENV_FILE=.env.test uv run --directory api alembic upgrade head
-
-# Start all services
-docker compose up --build
+just install        # uv sync + pnpm install (ui)
+just test           # API unit tests (no infrastructure; excludes integration + schemathesis)
+just test-int       # API integration tests (requires test-env — see below)
+just test-one <path> # a specific API test file or test
+just test-ui        # UI component tests (vitest)
+just check          # lint + lint-ui + fmt-check + typecheck
+just infra          # start dev DB + Redis only
+just migrate        # apply migrations to dev DB
+just dev            # full dev environment
+just export-schema  # regenerate api/openapi.json from FastAPI
+just codegen        # regenerate ui/src/generated/api.ts from openapi.json
 ```
+
+Raw equivalents when a recipe doesn't fit (always single commands, never chained):
+
+```bash
+uv run --directory api pytest tests/ -m "not integration" --ignore=tests/schemathesis -q
+uv run --directory api pytest tests/engine/test_evaluator.py::TestName -v
+uv run ruff check api/ adapters/
+uv run mypy api/tropek adapters/prometheus/tropek_prometheus
+```
+
+## Shell Command Discipline
+
+Compound shell commands (pipes, `&&`, `;`, subshells, redirects) cannot be auto-approved — each one forces a manual permission prompt. A PreToolUse hook auto-approves simple single commands and known-safe project scripts.
+
+- One command per Bash call — never chain with `&&`, `|`, `;`
+- Use the Read/Grep/Glob tools for file access — not `cat`, `grep`, `find`, `ls`
+- Use `--directory`/`-C` flags instead of `cd`: `uv run --directory api ...`, `git -C <path> ...`
+- If a compound is unavoidable, wrap it in a script under `scripts/` — known scripts are auto-approved
+- Test runners with summary-only output (auto-approved): `./scripts/api-test.sh --tail 20`, `./scripts/ui-test.sh --tail 20`, `./scripts/ui-lint.sh --tail 20`
+
+## Environment Quirks
+
+- Bare `python`/`python3` is denied by permissions — use `uv run python -c '...'` (add `--no-project` outside the workspace)
+- The system default Python is 3.11 — always pass `--python 3.13` to `uv venv` (3.12 when testing `tropek-client`), or the workspace won't resolve
+- The installed `gh` is old: `gh release edit` and other newer subcommands don't exist — use `gh api` instead; `gh` commands that infer the repo need cwd inside the repo
+- Right after publishing to PyPI, `uv pip install` may report the version as unsatisfiable — that's uv's per-package index cache, not propagation delay; pass `--refresh`
+
+## Migrations — Regen Workflow
+
+**Never hand-write Alembic migration files.** The project squashes and regenerates:
+
+1. Change the ORM models (`api/tropek/db/models.py`)
+2. Run `just migrate-regen` (wraps `./scripts/db-regen-migrations.sh`) — it tears down the test DB, autogenerates `001_initial_schema.py` from the models, restores the manual `002_timescaledb_hypertable_and_seed_data.py`, and verifies both apply cleanly
+3. Never create incremental migration files; delete any that a plan asks you to write
 
 ## Integration Tests — REQUIRED STEPS
 
 Integration tests require a **dedicated test database** on port 5433 — completely separate from the
 dev database (port 5432). **Never run integration tests against the dev database.**
 
-### First-time setup
-
-```bash
-cp .env.test.example .env.test   # fill in values (defaults match the test container)
-```
-
-### Running integration tests
-
 Each step is a separate command — do NOT chain them or prefix env vars inline:
 
 ```bash
-# Step 1: Start test infrastructure (idempotent — safe to re-run)
-./start_test_infra.sh
-
-# Step 2: Run integration tests (.env.test is loaded automatically by pytest-dotenv)
-uv run pytest api/tests/ -m integration -v
-
-# Step 3: Tear down when done (removes container + volume)
-./stop_test_infra.sh
+just test-env        # Step 1: start test infrastructure + migrations (idempotent; wraps ./scripts/start-test-infra.sh)
+just test-int        # Step 2: run integration tests
+just test-env-down   # Step 3: tear down when done (removes container + volume)
 ```
 
-`api/tests/db/conftest.py` loads `.env.test` via `python-dotenv` when the DB fixtures are imported —
-scoped to integration tests only, so unit tests are not affected. **Never** pass
-`TEST_DATABASE_URL` or `QG_*` vars as shell prefixes or inline exports.
+`api/tests/db/conftest.py` loads `.env.test` (repo root, committed with local defaults) via `python-dotenv` —
+scoped to integration tests only. **Never** pass `TEST_DATABASE_URL` or `TK_*` vars as shell prefixes or inline exports.
 
-### Re-running migrations only (container already running)
-
-If the container is already up and you only need to re-apply migrations:
+Re-applying migrations only (container already running) — a single command, `alembic/env.py` loads `ENV_FILE` internally:
 
 ```bash
-ENV_FILE=.env.test uv run --directory api alembic upgrade head
+ENV_FILE=.env.test uv run --directory api alembic upgrade head   # or: just migrate-test
 ```
-
-This is a single command — `alembic/env.py` uses `python-dotenv` to load `ENV_FILE` internally.
-Never use `set -a && source .env.test && set +a` or any bash chaining for this purpose.
 
 ## Architecture
 
@@ -86,11 +89,14 @@ Never use `set -a && source .env.test && set +a` or any bash chaining for this p
 | Service | Port | Role |
 |---|---|---|
 | `api` | 8080 | FastAPI REST API |
-| `worker` | — | arq job workers (×2) for async evaluation |
+| `worker` | — | arq job workers for async evaluation |
 | `adapter-prometheus` | 8081 | Prometheus query adapter |
-| `timescaledb` | 5432 | PostgreSQL + TimescaleDB (metrics, evaluations, SLOs) |
+| `adapter-mock` | 8082 | Mock adapter (generated data) |
+| `timescaledb` | 5432 | PostgreSQL + TimescaleDB (dev) |
 | `redis` | 6379 | Job queue + response cache |
-| `ui` | 3000 | React SPA (Phase 1, in progress) |
+| `ui` | 3000 | React SPA |
+| `timescaledb-test` | 5433 | Test DB (integration tests) |
+| `timescaledb-e2e` / `redis-e2e` | 5434 / 6380 | e2e stack (`just e2e`) |
 
 ### Evaluation Flow
 
@@ -101,7 +107,7 @@ Never use `set -a && source .env.test && set +a` or any bash chaining for this p
 5. Results written to TimescaleDB, cached in Redis
 6. Client fetches result via GET
 
-### Core Evaluation Engine (`api/app/modules/quality_gate/engine/`)
+### Core Evaluation Engine (`api/tropek/modules/quality_gate/evaluation_engine/`)
 
 Zero-I/O pure Python logic ported from Keptn's Go lighthouse-service. All unit-testable without database or network:
 
@@ -110,26 +116,31 @@ Zero-I/O pure Python logic ported from Keptn's Go lighthouse-service. All unit-t
 - `criteria.py` — Parse criteria strings, evaluate pass/warning/fail conditions
 - `scoring.py` — Per-objective scoring and total score calculation
 - `variables.py` — Template variable substitution in SLI queries
+- `slo_models.py` / `result_models.py` — Pydantic models for SLO specs and results
 
 ### Workspace Layout
 
 ```
 tropek/
-├── api/                          # FastAPI app, worker, DB models, repositories
-│   ├── app/
-│   │   ├── modules/
-│   │   │   ├── quality_gate/     # Evaluation router + engine
-│   │   │   └── slo_registry/     # Versioned SLO CRUD
-│   │   └── ...
-│   ├── tests/
-│   │   ├── engine/               # Pure unit tests
-│   │   ├── db/                   # Integration tests (mark: integration)
-│   │   └── data/slo/             # YAML fixtures for engine tests
-│   └── pyproject.toml
-├── adapters/prometheus/          # Standalone Prometheus query adapter (separate package)
+├── api/                          # FastAPI app + worker
+│   ├── tropek/                   # Python package: modules/, db/, cache/, config.py, queue.py
+│   │   └── modules/              # asset_meta, assets, assignments, change_points, common,
+│   │                             # configuration, datasource, display_groups, quality_gate,
+│   │                             # sli_registry, slo_groups, slo_registry
+│   ├── tests/                    # engine/ (pure unit), db/ (mark: integration), schemathesis/
+│   └── alembic/                  # migrations — regen workflow only, see Migrations
+├── adapters/
+│   ├── prometheus/               # Prometheus query adapter (tropek_prometheus)
+│   ├── mock/                     # Mock adapter + phase-based data generator (tropek_mock)
+│   └── protocol/                 # Shared adapter protocol package
+├── clients/python/               # tropek-client — published to PyPI (see Releases)
+├── ui/                           # React SPA (Vite, pnpm, vitest, eslint)
+├── scripts/                      # Helper scripts (auto-approve friendly wrappers)
+├── justfile                      # Canonical task runner
+├── observability_stack/          # Test-data/observability env (has its own CLAUDE.md)
+├── docs/superpowers/             # plans/, specs/, discovery docs
 ├── config.yaml                   # Non-secret runtime config template
-├── .env.example                  # Secrets template (DB, Redis, API key)
-└── pyproject.toml                # UV workspace root + ruff/mypy/pytest config
+└── pyproject.toml                # uv workspace root + ruff/mypy/pytest config
 ```
 
 ### SLO File Format
@@ -138,20 +149,38 @@ TROPEK's SLO format is a superset of Keptn 1.0: **SLI queries are embedded** in 
 
 ### Repository/Database Layer
 
-SQLAlchemy async ORM (asyncpg driver) with Alembic migrations. Repositories in `api/app/modules/*/repositories.py` wrap DB access. Integration tests hit a real database — no mocks for DB layer.
+SQLAlchemy async ORM (asyncpg driver) with Alembic migrations. Repositories in `api/tropek/modules/*/repositories.py` (or `repositories/`) wrap DB access. Integration tests hit a real database — no mocks for DB layer.
+
+## UI Conventions
+
+- **Layering (DTO → Domain → Mapper):** spec at `docs/superpowers/specs/2026-04-12-ui-layering-design.md`. Never import `@/generated/api` outside `features/*/api.ts` and `features/*/mappers.ts` (ESLint-enforced). The React Query cache stores domain types, never DTOs; mappers are sync, invoked inside `queryFn` fetch functions.
+- **Runtime config:** every tunable UI value (limits, page sizes, thresholds) goes in `ui/public/config.json`, read via `getConfig()` — never hardcoded.
+- **Contract freshness:** after changing API schemas, run `just export-schema` then `just codegen` and commit both outputs — CI fails on staleness (`just check-schema-fresh`).
+
+## Releases
+
+Pushing a `v*` tag (e.g. `v0.1.2-alpha`) triggers two workflows:
+
+- `.github/workflows/release.yml` — Docker images + GitHub Release
+- `.github/workflows/publish-client-pypi.yml` — publishes `tropek-client` to PyPI via Trusted Publishing (OIDC, no token). The version is **derived from the tag** (PEP 440: `v0.1.1-alpha` → `0.1.1a0`); the static version in `clients/python/pyproject.toml` is a placeholder.
+
+Versioning convention: **one alpha per base version** — bump the base (`0.1.1` → `0.1.2`), don't number alphas. Suffixes like `-alpha.1` are reserved for packaging-only re-releases. `tropek-client` intentionally supports Python `>=3.12` while the monorepo targets 3.13 — do not "align" it back.
 
 ## Code Conventions
 
-- Python 3.13, strict MyPy, ruff with rules: E, W, F, I, N, UP, B, SIM, D, S, DTZ, RUF, PT, C90, PERF, TRY
-- Line length: 100 chars
+- Python 3.13, strict MyPy. Ruff rule selection lives in the root `pyproject.toml` — don't duplicate it here; run `just lint`
+- Line length: 120 chars; single quotes (enforced by ruff format); f-strings over `.format()`/concatenation
+- All imports at the top of the file — never inside functions, methods, or test bodies
+- Pydantic models (not dataclasses) for parameter objects and DTOs, in `models.py` files
+- Never silence lint/type/test failures (`# noqa`, `# type: ignore`, `skip`) — fix at the source; ask first if a suppression genuinely seems right
 - Pytest: `asyncio_mode = auto`, mark infra-requiring tests with `@pytest.mark.integration`
 - Error messages: lowercase, no trailing period, prefer `"could not ..."` phrasing
-- Pre-commit runs ruff (lint + format) and mypy automatically
+- Pre-commit runs ruff (lint + format), mypy (api + prometheus adapter), and eslint (`ui/src`)
 
 ## Configuration
 
 - Non-secret config: `config.yaml` (server, DB pool, cache TTLs, queue settings, adapter URLs, logging)
-- Secrets: environment variables prefixed `QG_` (e.g., `QG_DB_PASSWORD`, `QG_REDIS_PASSWORD`, `QG_SECRET_KEY`)
+- Secrets: environment variables prefixed `TK_` (e.g., `TK_DB_PASSWORD`, `TK_REDIS_PASSWORD`)
 
 # Coding rules
 
