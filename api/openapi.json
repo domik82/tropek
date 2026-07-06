@@ -1402,6 +1402,58 @@
         "title": "BatchPeriod",
         "type": "object"
       },
+      "BulkActionResponse": {
+        "description": "Response for every bulk evaluation-action endpoint.\n\n``not_found`` collects ids that were not applied \u2014 either unknown, or\nskipped because a precondition (e.g. status must be completed) was not met.",
+        "properties": {
+          "not_found": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "title": "Not Found",
+            "type": "array"
+          },
+          "results": {
+            "items": {
+              "$ref": "#/components/schemas/BulkActionResult"
+            },
+            "title": "Results",
+            "type": "array"
+          },
+          "updated": {
+            "title": "Updated",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "results",
+          "updated",
+          "not_found"
+        ],
+        "title": "BulkActionResponse",
+        "type": "object"
+      },
+      "BulkActionResult": {
+        "description": "Outcome for a single evaluation id in a bulk action.",
+        "properties": {
+          "evaluation_id": {
+            "format": "uuid",
+            "title": "Evaluation Id",
+            "type": "string"
+          },
+          "status": {
+            "const": "success",
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "evaluation_id",
+          "status"
+        ],
+        "title": "BulkActionResult",
+        "type": "object"
+      },
       "BulkTriageRequest": {
         "additionalProperties": false,
         "description": "Request body for bulk-triaging change points.",
@@ -3969,6 +4021,31 @@
         "title": "IndicatorResult",
         "type": "object"
       },
+      "InvalidateManyRequest": {
+        "additionalProperties": false,
+        "description": "Request body for PATCH /evaluations/invalidate.",
+        "properties": {
+          "evaluation_ids": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "title": "Evaluation Ids",
+            "type": "array"
+          },
+          "note": {
+            "pattern": "^[^\\x00]*$",
+            "title": "Note",
+            "type": "string"
+          }
+        },
+        "required": [
+          "evaluation_ids",
+          "note"
+        ],
+        "title": "InvalidateManyRequest",
+        "type": "object"
+      },
       "InvalidateRequest": {
         "additionalProperties": false,
         "description": "Request body for invalidating an evaluation.",
@@ -4447,6 +4524,43 @@
         "title": "MetricHeatmapResponse",
         "type": "object"
       },
+      "OverrideStatusManyRequest": {
+        "additionalProperties": false,
+        "description": "Request body for PATCH /evaluations/override-status.",
+        "properties": {
+          "author": {
+            "pattern": "^[^\\x00]*$",
+            "title": "Author",
+            "type": "string"
+          },
+          "evaluation_ids": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "title": "Evaluation Ids",
+            "type": "array"
+          },
+          "new_result": {
+            "pattern": "^[^\\x00]*$",
+            "title": "New Result",
+            "type": "string"
+          },
+          "reason": {
+            "pattern": "^[^\\x00]*$",
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "evaluation_ids",
+          "new_result",
+          "reason",
+          "author"
+        ],
+        "title": "OverrideStatusManyRequest",
+        "type": "object"
+      },
       "OverrideStatusRequest": {
         "additionalProperties": false,
         "description": "Request body for overriding evaluation result.",
@@ -4665,6 +4779,37 @@
           "violated"
         ],
         "title": "PassTarget",
+        "type": "object"
+      },
+      "PinBaselineManyRequest": {
+        "additionalProperties": false,
+        "description": "Request body for PATCH /evaluations/pin-baseline.",
+        "properties": {
+          "author": {
+            "pattern": "^[^\\x00]*$",
+            "title": "Author",
+            "type": "string"
+          },
+          "evaluation_ids": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "title": "Evaluation Ids",
+            "type": "array"
+          },
+          "reason": {
+            "pattern": "^[^\\x00]*$",
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "evaluation_ids",
+          "reason",
+          "author"
+        ],
+        "title": "PinBaselineManyRequest",
         "type": "object"
       },
       "PinBaselineRequest": {
@@ -5044,6 +5189,44 @@
           "results"
         ],
         "title": "ReEvaluateResponse",
+        "type": "object"
+      },
+      "RestoreManyRequest": {
+        "additionalProperties": false,
+        "description": "Request body for PATCH /evaluations/restore.",
+        "properties": {
+          "evaluation_ids": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "title": "Evaluation Ids",
+            "type": "array"
+          }
+        },
+        "required": [
+          "evaluation_ids"
+        ],
+        "title": "RestoreManyRequest",
+        "type": "object"
+      },
+      "RestoreOverrideManyRequest": {
+        "additionalProperties": false,
+        "description": "Request body for PATCH /evaluations/restore-override.",
+        "properties": {
+          "evaluation_ids": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "title": "Evaluation Ids",
+            "type": "array"
+          }
+        },
+        "required": [
+          "evaluation_ids"
+        ],
+        "title": "RestoreOverrideManyRequest",
         "type": "object"
       },
       "SLIDefinitionCreate": {
@@ -6983,6 +7166,25 @@
         "title": "TriageRequest",
         "type": "object"
       },
+      "UnpinBaselineManyRequest": {
+        "additionalProperties": false,
+        "description": "Request body for PATCH /evaluations/unpin-baseline.",
+        "properties": {
+          "evaluation_ids": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "title": "Evaluation Ids",
+            "type": "array"
+          }
+        },
+        "required": [
+          "evaluation_ids"
+        ],
+        "title": "UnpinBaselineManyRequest",
+        "type": "object"
+      },
       "ValidationError": {
         "properties": {
           "ctx": {
@@ -7046,16 +7248,6 @@
             },
             "description": "Successful Response"
           },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorMessage"
-                }
-              }
-            },
-            "description": "Bad Request"
-          },
           "404": {
             "content": {
               "application/json": {
@@ -7102,16 +7294,6 @@
               }
             },
             "description": "Successful Response"
-          },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorMessage"
-                }
-              }
-            },
-            "description": "Bad Request"
           },
           "404": {
             "content": {
@@ -7161,16 +7343,6 @@
               }
             },
             "description": "Successful Response"
-          },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorMessage"
-                }
-              }
-            },
-            "description": "Bad Request"
           },
           "404": {
             "content": {
@@ -7224,16 +7396,6 @@
         "responses": {
           "204": {
             "description": "Successful Response"
-          },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorMessage"
-                }
-              }
-            },
-            "description": "Bad Request"
           },
           "404": {
             "content": {
@@ -7293,16 +7455,6 @@
             },
             "description": "Successful Response"
           },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorMessage"
-                }
-              }
-            },
-            "description": "Bad Request"
-          },
           "404": {
             "content": {
               "application/json": {
@@ -7360,16 +7512,6 @@
               }
             },
             "description": "Successful Response"
-          },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorMessage"
-                }
-              }
-            },
-            "description": "Bad Request"
           },
           "404": {
             "content": {
@@ -7441,16 +7583,6 @@
             },
             "description": "Successful Response"
           },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorMessage"
-                }
-              }
-            },
-            "description": "Bad Request"
-          },
           "404": {
             "content": {
               "application/json": {
@@ -7513,16 +7645,6 @@
         "responses": {
           "204": {
             "description": "Successful Response"
-          },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorMessage"
-                }
-              }
-            },
-            "description": "Bad Request"
           },
           "404": {
             "content": {
@@ -7588,16 +7710,6 @@
             },
             "description": "Successful Response"
           },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorMessage"
-                }
-              }
-            },
-            "description": "Bad Request"
-          },
           "404": {
             "content": {
               "application/json": {
@@ -7650,16 +7762,6 @@
         "responses": {
           "204": {
             "description": "Successful Response"
-          },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorMessage"
-                }
-              }
-            },
-            "description": "Bad Request"
           },
           "404": {
             "content": {
@@ -7739,16 +7841,6 @@
             },
             "description": "Successful Response"
           },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorMessage"
-                }
-              }
-            },
-            "description": "Bad Request"
-          },
           "404": {
             "content": {
               "application/json": {
@@ -7813,16 +7905,6 @@
             },
             "description": "Successful Response"
           },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorMessage"
-                }
-              }
-            },
-            "description": "Bad Request"
-          },
           "404": {
             "content": {
               "application/json": {
@@ -7874,16 +7956,6 @@
         "responses": {
           "204": {
             "description": "Successful Response"
-          },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorMessage"
-                }
-              }
-            },
-            "description": "Bad Request"
           },
           "404": {
             "content": {
@@ -7962,16 +8034,6 @@
             },
             "description": "Successful Response"
           },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorMessage"
-                }
-              }
-            },
-            "description": "Bad Request"
-          },
           "404": {
             "content": {
               "application/json": {
@@ -8042,16 +8104,6 @@
             },
             "description": "Successful Response"
           },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorMessage"
-                }
-              }
-            },
-            "description": "Bad Request"
-          },
           "404": {
             "content": {
               "application/json": {
@@ -8115,16 +8167,6 @@
           "204": {
             "description": "Successful Response"
           },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorMessage"
-                }
-              }
-            },
-            "description": "Bad Request"
-          },
           "404": {
             "content": {
               "application/json": {
@@ -8174,16 +8216,6 @@
             },
             "description": "Successful Response"
           },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorMessage"
-                }
-              }
-            },
-            "description": "Bad Request"
-          },
           "404": {
             "content": {
               "application/json": {
@@ -8230,16 +8262,6 @@
               }
             },
             "description": "Successful Response"
-          },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorMessage"
-                }
-              }
-            },
-            "description": "Bad Request"
           },
           "404": {
             "content": {
@@ -8293,16 +8315,6 @@
         "responses": {
           "204": {
             "description": "Successful Response"
-          },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorMessage"
-                }
-              }
-            },
-            "description": "Bad Request"
           },
           "404": {
             "content": {
@@ -8372,16 +8384,6 @@
             },
             "description": "Successful Response"
           },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorMessage"
-                }
-              }
-            },
-            "description": "Bad Request"
-          },
           "404": {
             "content": {
               "application/json": {
@@ -8441,16 +8443,6 @@
               }
             },
             "description": "Successful Response"
-          },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorMessage"
-                }
-              }
-            },
-            "description": "Bad Request"
           },
           "404": {
             "content": {
@@ -8554,16 +8546,6 @@
             },
             "description": "Successful Response"
           },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorMessage"
-                }
-              }
-            },
-            "description": "Bad Request"
-          },
           "404": {
             "content": {
               "application/json": {
@@ -8610,16 +8592,6 @@
               }
             },
             "description": "Successful Response"
-          },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorMessage"
-                }
-              }
-            },
-            "description": "Bad Request"
           },
           "404": {
             "content": {
@@ -8673,16 +8645,6 @@
               }
             },
             "description": "Successful Response"
-          },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorMessage"
-                }
-              }
-            },
-            "description": "Bad Request"
           },
           "404": {
             "content": {
@@ -8738,16 +8700,6 @@
               }
             },
             "description": "Successful Response"
-          },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorMessage"
-                }
-              }
-            },
-            "description": "Bad Request"
           },
           "404": {
             "content": {
@@ -8848,16 +8800,6 @@
             },
             "description": "Successful Response"
           },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorMessage"
-                }
-              }
-            },
-            "description": "Bad Request"
-          },
           "404": {
             "content": {
               "application/json": {
@@ -8912,16 +8854,6 @@
               }
             },
             "description": "Successful Response"
-          },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorMessage"
-                }
-              }
-            },
-            "description": "Bad Request"
           },
           "404": {
             "content": {
@@ -8989,16 +8921,6 @@
         "responses": {
           "204": {
             "description": "Successful Response"
-          },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorMessage"
-                }
-              }
-            },
-            "description": "Bad Request"
           },
           "404": {
             "content": {
@@ -9071,16 +8993,6 @@
               }
             },
             "description": "Successful Response"
-          },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorMessage"
-                }
-              }
-            },
-            "description": "Bad Request"
           },
           "404": {
             "content": {
@@ -9156,16 +9068,6 @@
             },
             "description": "Successful Response"
           },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorMessage"
-                }
-              }
-            },
-            "description": "Bad Request"
-          },
           "404": {
             "content": {
               "application/json": {
@@ -9239,16 +9141,6 @@
               }
             },
             "description": "Successful Response"
-          },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorMessage"
-                }
-              }
-            },
-            "description": "Bad Request"
           },
           "404": {
             "content": {
@@ -9349,16 +9241,6 @@
             },
             "description": "Successful Response"
           },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorMessage"
-                }
-              }
-            },
-            "description": "Bad Request"
-          },
           "404": {
             "content": {
               "application/json": {
@@ -9401,16 +9283,6 @@
         "responses": {
           "204": {
             "description": "Successful Response"
-          },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorMessage"
-                }
-              }
-            },
-            "description": "Bad Request"
           },
           "404": {
             "content": {
@@ -9470,16 +9342,6 @@
             },
             "description": "Successful Response"
           },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorMessage"
-                }
-              }
-            },
-            "description": "Bad Request"
-          },
           "404": {
             "content": {
               "application/json": {
@@ -9537,16 +9399,6 @@
               }
             },
             "description": "Successful Response"
-          },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorMessage"
-                }
-              }
-            },
-            "description": "Bad Request"
           },
           "404": {
             "content": {
@@ -9611,16 +9463,6 @@
               }
             },
             "description": "Successful Response"
-          },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorMessage"
-                }
-              }
-            },
-            "description": "Bad Request"
           },
           "404": {
             "content": {
@@ -9692,16 +9534,6 @@
             },
             "description": "Successful Response"
           },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorMessage"
-                }
-              }
-            },
-            "description": "Bad Request"
-          },
           "404": {
             "content": {
               "application/json": {
@@ -9764,16 +9596,6 @@
         "responses": {
           "204": {
             "description": "Successful Response"
-          },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorMessage"
-                }
-              }
-            },
-            "description": "Bad Request"
           },
           "404": {
             "content": {
@@ -9853,16 +9675,6 @@
             },
             "description": "Successful Response"
           },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorMessage"
-                }
-              }
-            },
-            "description": "Bad Request"
-          },
           "404": {
             "content": {
               "application/json": {
@@ -9927,16 +9739,6 @@
             },
             "description": "Successful Response"
           },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorMessage"
-                }
-              }
-            },
-            "description": "Bad Request"
-          },
           "404": {
             "content": {
               "application/json": {
@@ -9988,16 +9790,6 @@
         "responses": {
           "204": {
             "description": "Successful Response"
-          },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorMessage"
-                }
-              }
-            },
-            "description": "Bad Request"
           },
           "404": {
             "content": {
@@ -10075,16 +9867,6 @@
               }
             },
             "description": "Successful Response"
-          },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorMessage"
-                }
-              }
-            },
-            "description": "Bad Request"
           },
           "404": {
             "content": {
@@ -10283,16 +10065,6 @@
             },
             "description": "Successful Response"
           },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorMessage"
-                }
-              }
-            },
-            "description": "Bad Request"
-          },
           "404": {
             "content": {
               "application/json": {
@@ -10348,16 +10120,6 @@
               }
             },
             "description": "Successful Response"
-          },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorMessage"
-                }
-              }
-            },
-            "description": "Bad Request"
           },
           "404": {
             "content": {
@@ -10415,16 +10177,6 @@
         "responses": {
           "204": {
             "description": "Successful Response"
-          },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorMessage"
-                }
-              }
-            },
-            "description": "Bad Request"
           },
           "404": {
             "content": {
@@ -10488,16 +10240,6 @@
             },
             "description": "Successful Response"
           },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorMessage"
-                }
-              }
-            },
-            "description": "Bad Request"
-          },
           "404": {
             "content": {
               "application/json": {
@@ -10559,16 +10301,6 @@
               }
             },
             "description": "Successful Response"
-          },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorMessage"
-                }
-              }
-            },
-            "description": "Bad Request"
           },
           "404": {
             "content": {
@@ -10634,16 +10366,6 @@
             },
             "description": "Successful Response"
           },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorMessage"
-                }
-              }
-            },
-            "description": "Bad Request"
-          },
           "404": {
             "content": {
               "application/json": {
@@ -10705,16 +10427,6 @@
               }
             },
             "description": "Successful Response"
-          },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorMessage"
-                }
-              }
-            },
-            "description": "Bad Request"
           },
           "404": {
             "content": {
@@ -10782,16 +10494,6 @@
             },
             "description": "Successful Response"
           },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorMessage"
-                }
-              }
-            },
-            "description": "Bad Request"
-          },
           "404": {
             "content": {
               "application/json": {
@@ -10854,16 +10556,6 @@
             },
             "description": "Successful Response"
           },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorMessage"
-                }
-              }
-            },
-            "description": "Bad Request"
-          },
           "404": {
             "content": {
               "application/json": {
@@ -10916,16 +10608,6 @@
               }
             },
             "description": "Successful Response"
-          },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorMessage"
-                }
-              }
-            },
-            "description": "Bad Request"
           },
           "404": {
             "content": {
@@ -10987,16 +10669,6 @@
               }
             },
             "description": "Successful Response"
-          },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorMessage"
-                }
-              }
-            },
-            "description": "Bad Request"
           },
           "404": {
             "content": {
@@ -11103,16 +10775,6 @@
             },
             "description": "Successful Response"
           },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorMessage"
-                }
-              }
-            },
-            "description": "Bad Request"
-          },
           "404": {
             "content": {
               "application/json": {
@@ -11159,16 +10821,6 @@
               }
             },
             "description": "Successful Response"
-          },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorMessage"
-                }
-              }
-            },
-            "description": "Bad Request"
           },
           "404": {
             "content": {
@@ -11222,16 +10874,6 @@
               }
             },
             "description": "Successful Response"
-          },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorMessage"
-                }
-              }
-            },
-            "description": "Bad Request"
           },
           "404": {
             "content": {
@@ -11288,16 +10930,6 @@
             },
             "description": "Successful Response"
           },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorMessage"
-                }
-              }
-            },
-            "description": "Bad Request"
-          },
           "404": {
             "content": {
               "application/json": {
@@ -11340,16 +10972,6 @@
         "responses": {
           "204": {
             "description": "Successful Response"
-          },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorMessage"
-                }
-              }
-            },
-            "description": "Bad Request"
           },
           "404": {
             "content": {
@@ -11409,16 +11031,6 @@
             },
             "description": "Successful Response"
           },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorMessage"
-                }
-              }
-            },
-            "description": "Bad Request"
-          },
           "404": {
             "content": {
               "application/json": {
@@ -11476,16 +11088,6 @@
               }
             },
             "description": "Successful Response"
-          },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorMessage"
-                }
-              }
-            },
-            "description": "Bad Request"
           },
           "404": {
             "content": {
@@ -11558,16 +11160,6 @@
             },
             "description": "Successful Response"
           },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorMessage"
-                }
-              }
-            },
-            "description": "Bad Request"
-          },
           "404": {
             "content": {
               "application/json": {
@@ -11629,16 +11221,6 @@
             },
             "description": "Successful Response"
           },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorMessage"
-                }
-              }
-            },
-            "description": "Bad Request"
-          },
           "404": {
             "content": {
               "application/json": {
@@ -11693,16 +11275,6 @@
               }
             },
             "description": "Successful Response"
-          },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorMessage"
-                }
-              }
-            },
-            "description": "Bad Request"
           },
           "404": {
             "content": {
@@ -11762,16 +11334,6 @@
               }
             },
             "description": "Successful Response"
-          },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorMessage"
-                }
-              }
-            },
-            "description": "Bad Request"
           },
           "404": {
             "content": {
@@ -11854,16 +11416,6 @@
             },
             "description": "Successful Response"
           },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorMessage"
-                }
-              }
-            },
-            "description": "Bad Request"
-          },
           "404": {
             "content": {
               "application/json": {
@@ -11945,16 +11497,6 @@
             },
             "description": "Successful Response"
           },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorMessage"
-                }
-              }
-            },
-            "description": "Bad Request"
-          },
           "404": {
             "content": {
               "application/json": {
@@ -12025,16 +11567,6 @@
               }
             },
             "description": "Successful Response"
-          },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorMessage"
-                }
-              }
-            },
-            "description": "Bad Request"
           },
           "404": {
             "content": {
@@ -12107,16 +11639,6 @@
             },
             "description": "Successful Response"
           },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorMessage"
-                }
-              }
-            },
-            "description": "Bad Request"
-          },
           "404": {
             "content": {
               "application/json": {
@@ -12188,16 +11710,6 @@
             },
             "description": "Successful Response"
           },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorMessage"
-                }
-              }
-            },
-            "description": "Bad Request"
-          },
           "404": {
             "content": {
               "application/json": {
@@ -12259,16 +11771,6 @@
             },
             "description": "Successful Response"
           },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorMessage"
-                }
-              }
-            },
-            "description": "Bad Request"
-          },
           "404": {
             "content": {
               "application/json": {
@@ -12329,16 +11831,6 @@
               }
             },
             "description": "Successful Response"
-          },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorMessage"
-                }
-              }
-            },
-            "description": "Bad Request"
           },
           "404": {
             "content": {
@@ -12438,16 +11930,6 @@
             },
             "description": "Successful Response"
           },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorMessage"
-                }
-              }
-            },
-            "description": "Bad Request"
-          },
           "404": {
             "content": {
               "application/json": {
@@ -12498,16 +11980,6 @@
               }
             },
             "description": "Successful Response"
-          },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorMessage"
-                }
-              }
-            },
-            "description": "Bad Request"
           },
           "404": {
             "content": {
@@ -12717,16 +12189,6 @@
             },
             "description": "Successful Response"
           },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorMessage"
-                }
-              }
-            },
-            "description": "Bad Request"
-          },
           "404": {
             "content": {
               "application/json": {
@@ -12773,16 +12235,6 @@
               }
             },
             "description": "Successful Response"
-          },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorMessage"
-                }
-              }
-            },
-            "description": "Bad Request"
           },
           "404": {
             "content": {
@@ -12842,16 +12294,6 @@
               }
             },
             "description": "Successful Response"
-          },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorMessage"
-                }
-              }
-            },
-            "description": "Bad Request"
           },
           "404": {
             "content": {
@@ -12917,16 +12359,6 @@
               }
             },
             "description": "Successful Response"
-          },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorMessage"
-                }
-              }
-            },
-            "description": "Bad Request"
           },
           "404": {
             "content": {
@@ -13039,16 +12471,6 @@
             },
             "description": "Successful Response"
           },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorMessage"
-                }
-              }
-            },
-            "description": "Bad Request"
-          },
           "404": {
             "content": {
               "application/json": {
@@ -13148,16 +12570,6 @@
             },
             "description": "Successful Response"
           },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorMessage"
-                }
-              }
-            },
-            "description": "Bad Request"
-          },
           "404": {
             "content": {
               "application/json": {
@@ -13201,16 +12613,6 @@
             },
             "description": "Successful Response"
           },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorMessage"
-                }
-              }
-            },
-            "description": "Bad Request"
-          },
           "404": {
             "content": {
               "application/json": {
@@ -13243,6 +12645,65 @@
           }
         },
         "summary": "Flush Heatmap Cache"
+      }
+    },
+    "/evaluations/invalidate": {
+      "patch": {
+        "description": "Invalidate a batch of evaluations in a single atomic statement.",
+        "operationId": "invalidate_evaluations_bulk_evaluations_invalidate_patch",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InvalidateManyRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BulkActionResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Error"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Error"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Invalidate Evaluations Bulk"
       }
     },
     "/evaluations/names": {
@@ -13300,16 +12761,6 @@
             },
             "description": "Successful Response"
           },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorMessage"
-                }
-              }
-            },
-            "description": "Bad Request"
-          },
           "404": {
             "content": {
               "application/json": {
@@ -13332,6 +12783,124 @@
           }
         },
         "summary": "List Evaluation Names"
+      }
+    },
+    "/evaluations/override-status": {
+      "patch": {
+        "description": "Override the result of a batch of completed evaluations.",
+        "operationId": "override_status_evaluations_bulk_evaluations_override_status_patch",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OverrideStatusManyRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BulkActionResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Error"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Error"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Override Status Evaluations Bulk"
+      }
+    },
+    "/evaluations/pin-baseline": {
+      "patch": {
+        "description": "Pin a batch of completed, non-invalidated evaluations as baselines.",
+        "operationId": "pin_baseline_evaluations_bulk_evaluations_pin_baseline_patch",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PinBaselineManyRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BulkActionResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Error"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Error"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Pin Baseline Evaluations Bulk"
       }
     },
     "/evaluations/re-evaluate/from-baseline": {
@@ -13358,16 +12927,6 @@
               }
             },
             "description": "Successful Response"
-          },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorMessage"
-                }
-              }
-            },
-            "description": "Bad Request"
           },
           "404": {
             "content": {
@@ -13427,16 +12986,6 @@
               }
             },
             "description": "Successful Response"
-          },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorMessage"
-                }
-              }
-            },
-            "description": "Bad Request"
           },
           "404": {
             "content": {
@@ -13509,16 +13058,6 @@
             },
             "description": "Successful Response"
           },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorMessage"
-                }
-              }
-            },
-            "description": "Bad Request"
-          },
           "404": {
             "content": {
               "application/json": {
@@ -13551,6 +13090,124 @@
           }
         },
         "summary": "Re Evaluate From Evaluation Endpoint"
+      }
+    },
+    "/evaluations/restore": {
+      "patch": {
+        "description": "Clear the invalidation flag on a batch of evaluations.",
+        "operationId": "restore_evaluations_bulk_evaluations_restore_patch",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RestoreManyRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BulkActionResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Error"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Error"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Restore Evaluations Bulk"
+      }
+    },
+    "/evaluations/restore-override": {
+      "patch": {
+        "description": "Restore the original result on a batch of overridden evaluations.",
+        "operationId": "restore_override_evaluations_bulk_evaluations_restore_override_patch",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RestoreOverrideManyRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BulkActionResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Error"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Error"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Restore Override Evaluations Bulk"
       }
     },
     "/evaluations/trend-annotations": {
@@ -13597,16 +13254,6 @@
             },
             "description": "Successful Response"
           },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorMessage"
-                }
-              }
-            },
-            "description": "Bad Request"
-          },
           "404": {
             "content": {
               "application/json": {
@@ -13631,6 +13278,65 @@
         "summary": "Get Trend Annotations"
       }
     },
+    "/evaluations/unpin-baseline": {
+      "patch": {
+        "description": "Remove the baseline pin from a batch of evaluations.",
+        "operationId": "unpin_baseline_evaluations_bulk_evaluations_unpin_baseline_patch",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UnpinBaselineManyRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BulkActionResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Error"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Error"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Unpin Baseline Evaluations Bulk"
+      }
+    },
     "/health": {
       "get": {
         "description": "Return service health status.",
@@ -13649,16 +13355,6 @@
               }
             },
             "description": "Successful Response"
-          },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorMessage"
-                }
-              }
-            },
-            "description": "Bad Request"
           },
           "404": {
             "content": {
@@ -13702,16 +13398,6 @@
               }
             },
             "description": "Successful Response"
-          },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorMessage"
-                }
-              }
-            },
-            "description": "Bad Request"
           },
           "404": {
             "content": {
@@ -13759,16 +13445,6 @@
               }
             },
             "description": "Successful Response"
-          },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorMessage"
-                }
-              }
-            },
-            "description": "Bad Request"
           },
           "404": {
             "content": {
@@ -13823,16 +13499,6 @@
         "responses": {
           "204": {
             "description": "Successful Response"
-          },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorMessage"
-                }
-              }
-            },
-            "description": "Bad Request"
           },
           "404": {
             "content": {
@@ -13902,16 +13568,6 @@
               }
             },
             "description": "Successful Response"
-          },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorMessage"
-                }
-              }
-            },
-            "description": "Bad Request"
           },
           "404": {
             "content": {
@@ -14015,16 +13671,6 @@
             },
             "description": "Successful Response"
           },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorMessage"
-                }
-              }
-            },
-            "description": "Bad Request"
-          },
           "404": {
             "content": {
               "application/json": {
@@ -14071,16 +13717,6 @@
               }
             },
             "description": "Successful Response"
-          },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorMessage"
-                }
-              }
-            },
-            "description": "Bad Request"
           },
           "404": {
             "content": {
@@ -14134,16 +13770,6 @@
               }
             },
             "description": "Successful Response"
-          },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorMessage"
-                }
-              }
-            },
-            "description": "Bad Request"
           },
           "404": {
             "content": {
@@ -14200,16 +13826,6 @@
             },
             "description": "Successful Response"
           },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorMessage"
-                }
-              }
-            },
-            "description": "Bad Request"
-          },
           "404": {
             "content": {
               "application/json": {
@@ -14252,16 +13868,6 @@
         "responses": {
           "204": {
             "description": "Successful Response"
-          },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorMessage"
-                }
-              }
-            },
-            "description": "Bad Request"
           },
           "404": {
             "content": {
@@ -14321,16 +13927,6 @@
             },
             "description": "Successful Response"
           },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorMessage"
-                }
-              }
-            },
-            "description": "Bad Request"
-          },
           "404": {
             "content": {
               "application/json": {
@@ -14384,16 +13980,6 @@
               }
             },
             "description": "Successful Response"
-          },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorMessage"
-                }
-              }
-            },
-            "description": "Bad Request"
           },
           "404": {
             "content": {
@@ -14487,16 +14073,6 @@
             },
             "description": "Successful Response"
           },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorMessage"
-                }
-              }
-            },
-            "description": "Bad Request"
-          },
           "404": {
             "content": {
               "application/json": {
@@ -14543,16 +14119,6 @@
               }
             },
             "description": "Successful Response"
-          },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorMessage"
-                }
-              }
-            },
-            "description": "Bad Request"
           },
           "404": {
             "content": {
@@ -14606,16 +14172,6 @@
               }
             },
             "description": "Successful Response"
-          },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorMessage"
-                }
-              }
-            },
-            "description": "Bad Request"
           },
           "404": {
             "content": {
@@ -14672,16 +14228,6 @@
             },
             "description": "Successful Response"
           },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorMessage"
-                }
-              }
-            },
-            "description": "Bad Request"
-          },
           "404": {
             "content": {
               "application/json": {
@@ -14730,16 +14276,6 @@
               }
             },
             "description": "Successful Response"
-          },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorMessage"
-                }
-              }
-            },
-            "description": "Bad Request"
           },
           "404": {
             "content": {
@@ -14800,16 +14336,6 @@
             },
             "description": "Successful Response"
           },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorMessage"
-                }
-              }
-            },
-            "description": "Bad Request"
-          },
           "404": {
             "content": {
               "application/json": {
@@ -14862,16 +14388,6 @@
         "responses": {
           "204": {
             "description": "Successful Response"
-          },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorMessage"
-                }
-              }
-            },
-            "description": "Bad Request"
           },
           "404": {
             "content": {
@@ -14931,16 +14447,6 @@
             },
             "description": "Successful Response"
           },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorMessage"
-                }
-              }
-            },
-            "description": "Bad Request"
-          },
           "404": {
             "content": {
               "application/json": {
@@ -14995,16 +14501,6 @@
             },
             "description": "Successful Response"
           },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorMessage"
-                }
-              }
-            },
-            "description": "Bad Request"
-          },
           "404": {
             "content": {
               "application/json": {
@@ -15047,16 +14543,6 @@
               }
             },
             "description": "Successful Response"
-          },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorMessage"
-                }
-              }
-            },
-            "description": "Bad Request"
           },
           "404": {
             "content": {
@@ -15104,16 +14590,6 @@
               }
             },
             "description": "Successful Response"
-          },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorMessage"
-                }
-              }
-            },
-            "description": "Bad Request"
           },
           "404": {
             "content": {
@@ -15167,16 +14643,6 @@
         "responses": {
           "204": {
             "description": "Successful Response"
-          },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorMessage"
-                }
-              }
-            },
-            "description": "Bad Request"
           },
           "404": {
             "content": {
@@ -15242,16 +14708,6 @@
             },
             "description": "Successful Response"
           },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorMessage"
-                }
-              }
-            },
-            "description": "Bad Request"
-          },
           "404": {
             "content": {
               "application/json": {
@@ -15302,16 +14758,6 @@
         "responses": {
           "204": {
             "description": "Successful Response"
-          },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorMessage"
-                }
-              }
-            },
-            "description": "Bad Request"
           },
           "404": {
             "content": {
@@ -15374,16 +14820,6 @@
         "responses": {
           "204": {
             "description": "Successful Response"
-          },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorMessage"
-                }
-              }
-            },
-            "description": "Bad Request"
           },
           "404": {
             "content": {
@@ -15470,16 +14906,6 @@
             },
             "description": "Successful Response"
           },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorMessage"
-                }
-              }
-            },
-            "description": "Bad Request"
-          },
           "404": {
             "content": {
               "application/json": {
@@ -15526,16 +14952,6 @@
               }
             },
             "description": "Successful Response"
-          },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorMessage"
-                }
-              }
-            },
-            "description": "Bad Request"
           },
           "404": {
             "content": {
@@ -15589,16 +15005,6 @@
         "responses": {
           "204": {
             "description": "Successful Response"
-          },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorMessage"
-                }
-              }
-            },
-            "description": "Bad Request"
           },
           "404": {
             "content": {
@@ -15658,16 +15064,6 @@
             },
             "description": "Successful Response"
           },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorMessage"
-                }
-              }
-            },
-            "description": "Bad Request"
-          },
           "404": {
             "content": {
               "application/json": {
@@ -15725,16 +15121,6 @@
               }
             },
             "description": "Successful Response"
-          },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorMessage"
-                }
-              }
-            },
-            "description": "Bad Request"
           },
           "404": {
             "content": {
@@ -15805,16 +15191,6 @@
               }
             },
             "description": "Successful Response"
-          },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorMessage"
-                }
-              }
-            },
-            "description": "Bad Request"
           },
           "404": {
             "content": {

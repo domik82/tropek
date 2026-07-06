@@ -149,6 +149,57 @@ class ReliabilitySettings(BaseSettings):
     adapter_retry_backoff_seconds: int = _yaml.get('reliability', {}).get('adapter_retry_backoff_seconds', 2)
     watchdog_interval_seconds: int = _yaml.get('reliability', {}).get('watchdog_interval_seconds', 60)
     stuck_job_threshold_seconds: int = _yaml.get('reliability', {}).get('stuck_job_threshold_seconds', 180)
+    max_stuck_job_retries: int = _yaml.get('reliability', {}).get('max_stuck_job_retries', 3)
+
+    @field_validator('watchdog_interval_seconds')
+    @classmethod
+    def _validate_watchdog_interval(cls, v: int) -> int:
+        allowed = {5, 10, 15, 20, 30, 60}
+        if v not in allowed:
+            msg = f'watchdog_interval_seconds must be one of {sorted(allowed)} (divisors of 60), got {v}'
+            raise ValueError(msg)
+        return v
+
+    @field_validator('max_stuck_job_retries')
+    @classmethod
+    def _validate_max_stuck_job_retries(cls, v: int) -> int:
+        if v < 1:
+            msg = f'max_stuck_job_retries must be >= 1, got {v}'
+            raise ValueError(msg)
+        return v
+
+
+class QualityGateInvalidateSettings(BaseSettings):
+    """Deadlock retry settings for evaluation mutation actions (invalidate/restore/etc.)."""
+
+    max_retries: int = _yaml.get('quality_gate', {}).get('invalidate', {}).get('max_retries', 5)
+    base_backoff_ms: int = _yaml.get('quality_gate', {}).get('invalidate', {}).get('base_backoff_ms', 25)
+    max_backoff_ms: int = _yaml.get('quality_gate', {}).get('invalidate', {}).get('max_backoff_ms', 500)
+
+    @field_validator('max_retries')
+    @classmethod
+    def _validate_max_retries(cls, v: int) -> int:
+        if v < 0:
+            msg = f'max_retries must be >= 0, got {v}'
+            raise ValueError(msg)
+        return v
+
+    @field_validator('base_backoff_ms', 'max_backoff_ms')
+    @classmethod
+    def _validate_backoff(cls, v: int) -> int:
+        if v <= 0:
+            msg = f'backoff milliseconds must be > 0, got {v}'
+            raise ValueError(msg)
+        return v
+
+
+class QualityGateSettings(BaseSettings):
+    """Quality gate behaviour settings."""
+
+    @property
+    def invalidate(self) -> QualityGateInvalidateSettings:
+        """Deadlock retry settings for evaluation mutation actions."""
+        return QualityGateInvalidateSettings()
 
 
 class AdapterInstanceSettings:
@@ -250,6 +301,11 @@ class Settings(BaseSettings):
     def evaluation(self) -> EvaluationSettings:
         """Evaluation job behaviour settings."""
         return EvaluationSettings()
+
+    @property
+    def quality_gate(self) -> QualityGateSettings:
+        """Quality gate behaviour settings."""
+        return QualityGateSettings()
 
     @property
     def ui(self) -> UISettings:

@@ -7,6 +7,7 @@ from tropek_client.models import (
     AnnotationCategoryRead,
     AnnotationCreate,
     AnnotationRead,
+    BulkActionResponse,
     EvaluateBatchRequest,
     EvaluateBatchResponse,
     EvaluateSingleRequest,
@@ -14,7 +15,10 @@ from tropek_client.models import (
     EvaluationDetail,
     EvaluationNameEntry,
     EvaluationSummary,
+    InvalidateManyRequest,
+    OverrideStatusManyRequest,
     PagedResponse,
+    RestoreManyRequest,
     TrendPoint,
 )
 
@@ -125,6 +129,56 @@ class TestEvaluations:
         )
         assert isinstance(result, EvaluateBatchResponse)
         assert b'"eval_name":"nightly"' in route.calls[0].request.content
+
+
+class TestBulkActions:
+    @respx.mock
+    def test_invalidate_many(self, client):
+        route = respx.patch(f'{BASE_URL}/evaluations/invalidate').mock(
+            return_value=httpx.Response(
+                200,
+                json={
+                    'results': [{'evaluation_id': UUID1, 'status': 'success'}],
+                    'updated': 1,
+                    'not_found': [UUID2],
+                },
+            )
+        )
+        result = client.evaluations.invalidate_many(
+            InvalidateManyRequest(evaluation_ids=[UUID1, UUID2], note='bad window')
+        )
+        assert isinstance(result, BulkActionResponse)
+        assert result.updated == 1
+        assert str(result.not_found[0]) == UUID2
+        assert len(route.calls) == 1
+        assert b'"note":"bad window"' in route.calls[0].request.content
+
+    @respx.mock
+    def test_restore_many(self, client):
+        route = respx.patch(f'{BASE_URL}/evaluations/restore').mock(
+            return_value=httpx.Response(
+                200,
+                json={'results': [{'evaluation_id': UUID1, 'status': 'success'}], 'updated': 1, 'not_found': []},
+            )
+        )
+        result = client.evaluations.restore_many(RestoreManyRequest(evaluation_ids=[UUID1]))
+        assert isinstance(result, BulkActionResponse)
+        assert result.updated == 1
+        assert len(route.calls) == 1
+
+    @respx.mock
+    def test_override_status_many(self, client):
+        route = respx.patch(f'{BASE_URL}/evaluations/override-status').mock(
+            return_value=httpx.Response(
+                200,
+                json={'results': [{'evaluation_id': UUID1, 'status': 'success'}], 'updated': 1, 'not_found': []},
+            )
+        )
+        result = client.evaluations.override_status_many(
+            OverrideStatusManyRequest(evaluation_ids=[UUID1], new_result='pass', reason='r', author='a')
+        )
+        assert isinstance(result, BulkActionResponse)
+        assert b'"new_result":"pass"' in route.calls[0].request.content
 
 
 class TestAnnotations:

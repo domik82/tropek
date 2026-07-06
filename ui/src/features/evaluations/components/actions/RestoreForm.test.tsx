@@ -10,7 +10,7 @@ vi.mock('../../api', async () => {
   const actual = await vi.importActual<typeof import('../../api')>('../../api')
   return {
     ...actual,
-    restoreEvaluation: (...args: unknown[]) => restoreSpy(...args),
+    restoreEvaluations: (...args: unknown[]) => restoreSpy(...args),
   }
 })
 
@@ -30,7 +30,7 @@ function makeScope(): SloScopeResult {
 let queryClient: QueryClient
 beforeEach(() => {
   restoreSpy.mockReset()
-  restoreSpy.mockResolvedValue({ ok: true })
+  restoreSpy.mockResolvedValue({ succeeded: ['eid-a', 'eid-b'], notFound: [], updated: 2 })
   queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
 })
 afterEach(() => {
@@ -48,20 +48,16 @@ function renderForm(scope: SloScopeResult) {
 }
 
 describe('RestoreForm (multi-SLO)', () => {
-  it('fans out to all selected SLOs', async () => {
+  it('issues one batch call with all selected SLO ids', async () => {
     const user = userEvent.setup()
     renderForm(makeScope())
     await user.click(screen.getByRole('button', { name: /confirm/i }))
-    await waitFor(() => expect(restoreSpy).toHaveBeenCalledTimes(2))
-    const calls = restoreSpy.mock.calls.map(call => call[0])
-    expect(calls).toEqual(expect.arrayContaining(['eid-a', 'eid-b']))
+    await waitFor(() => expect(restoreSpy).toHaveBeenCalledTimes(1))
+    expect(restoreSpy.mock.calls[0][0]).toEqual(expect.arrayContaining(['eid-a', 'eid-b']))
   })
 
-  it('partial failure surfaces Retry failed button', async () => {
-    restoreSpy.mockImplementation(async (evalId: string) => {
-      if (evalId === 'eid-b') throw new Error('not found')
-      return { ok: true }
-    })
+  it('partial failure (id in not_found) surfaces Retry failed button', async () => {
+    restoreSpy.mockResolvedValue({ succeeded: ['eid-a'], notFound: ['eid-b'], updated: 1 })
     const user = userEvent.setup()
     renderForm(makeScope())
     await user.click(screen.getByRole('button', { name: /confirm/i }))

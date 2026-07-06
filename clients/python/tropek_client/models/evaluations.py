@@ -195,6 +195,63 @@ class PinBaselineRequest(BaseModel):
     author: str
 
 
+class InvalidateManyRequest(BaseModel):
+    """Request body to invalidate a batch of evaluations."""
+
+    evaluation_ids: list[UUID]
+    note: str
+
+
+class RestoreManyRequest(BaseModel):
+    """Request body to restore a batch of evaluations."""
+
+    evaluation_ids: list[UUID]
+
+
+class OverrideStatusManyRequest(BaseModel):
+    """Request body to override the result of a batch of evaluations."""
+
+    evaluation_ids: list[UUID]
+    new_result: str
+    reason: str
+    author: str
+
+
+class RestoreOverrideManyRequest(BaseModel):
+    """Request body to restore the original result of a batch of overridden evaluations."""
+
+    evaluation_ids: list[UUID]
+
+
+class PinBaselineManyRequest(BaseModel):
+    """Request body to pin a batch of evaluations as baselines."""
+
+    evaluation_ids: list[UUID]
+    reason: str
+    author: str
+
+
+class UnpinBaselineManyRequest(BaseModel):
+    """Request body to unpin the baseline on a batch of evaluations."""
+
+    evaluation_ids: list[UUID]
+
+
+class BulkActionResult(BaseModel):
+    """Outcome for a single evaluation id in a bulk action."""
+
+    evaluation_id: UUID
+    status: Literal['success']
+
+
+class BulkActionResponse(BaseModel):
+    """Response from every bulk evaluation-action endpoint."""
+
+    results: list[BulkActionResult]
+    updated: int
+    not_found: list[UUID]
+
+
 class ReEvaluateFromBaselineRequest(BaseModel):
     """Request body to re-evaluate using pinned baselines."""
 

@@ -4,8 +4,9 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
+from typing import Any, cast
 
-from sqlalchemy import exists, select, update
+from sqlalchemy import CursorResult, exists, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from tropek.db.models import EvaluationRun, SLOEvaluation
@@ -74,9 +75,23 @@ class EvaluationRunRepository:
     async def finalize_if_all_done(self, run_id: uuid.UUID) -> EvaluationRun | None:
         """Finalize parent run by aggregating child results.
 
-        Returns the updated EvaluationRun if finalized, None if children
-        are still in progress.
+        Every child job enqueues its own finalize attempt, so this runs ~once per
+        child. It stays correct but avoids the redundant work / hot-row lock
+        contention that all-children-finalize-at-once would otherwise cause:
+
+        - early-out if the parent is already COMPLETED (skips the child scan);
+        - the finalizing UPDATE is guarded by ``status != COMPLETED`` so only the
+          first attempt to win the row lock writes — concurrent duplicates match
+          zero rows and produce no WAL write.
+
+        Returns the updated EvaluationRun only for the attempt that actually
+        finalized it; None otherwise (already done, still in progress, or it lost
+        the race to a concurrent finalize).
         """
+        existing = await self._session.get(EvaluationRun, run_id)
+        if existing is None or existing.status == EvaluationStatus.COMPLETED:
+            return None
+
         q = select(SLOEvaluation).where(SLOEvaluation.evaluation_id == run_id)
         result = await self._session.execute(q)
         children = list(result.scalars().all())
@@ -85,7 +100,7 @@ class EvaluationRunRepository:
             return None
 
         pending_statuses = {EvaluationStatus.PENDING, EvaluationStatus.RUNNING, EvaluationStatus.PARTIAL}
-        if any(c.status in pending_statuses for c in children):
+        if any(child.status in pending_statuses for child in children):
             return None
 
         worst_result: str | None = None
@@ -99,20 +114,26 @@ class EvaluationRunRepository:
             achieved += child.achieved_points or 0
             total += child.total_points or 0
 
-        await self._session.execute(
-            update(EvaluationRun)
-            .where(EvaluationRun.id == run_id)
-            .values(
-                status=EvaluationStatus.COMPLETED,
-                result=worst_result,
-                achieved_points=achieved or None,
-                total_points=total or None,
-            )
+        # execute() is typed as Result, but a Core UPDATE yields a CursorResult
+        # exposing rowcount — cast so mypy sees the runtime type.
+        update_result = cast(
+            'CursorResult[Any]',
+            await self._session.execute(
+                update(EvaluationRun)
+                .where(EvaluationRun.id == run_id)
+                .where(EvaluationRun.status != EvaluationStatus.COMPLETED)
+                .values(
+                    status=EvaluationStatus.COMPLETED,
+                    result=worst_result,
+                    achieved_points=achieved or None,
+                    total_points=total or None,
+                )
+            ),
         )
-        # Expire the cached instance so get_by_id re-fetches updated values.
-        existing = await self._session.get(EvaluationRun, run_id)
-        if existing is not None:
-            await self._session.refresh(existing)
+        if update_result.rowcount == 0:
+            # A concurrent finalize completed the run between our read and update.
+            return None
+        await self._session.refresh(existing)
         return existing
 
     async def find_finalizable_pending_ids(self, *, limit: int) -> list[uuid.UUID]:

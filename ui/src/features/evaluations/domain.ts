@@ -230,6 +230,15 @@ export interface OverrideStatusInput {
   author: string
 }
 
+// Result of a bulk evaluation action (invalidate/restore/override/pin). The
+// backend applies the batch atomically and reports which ids were applied and
+// which were skipped (unknown id, or a precondition such as "not completed").
+export interface BulkActionOutcome {
+  succeeded: string[]
+  notFound: string[]
+  updated: number
+}
+
 export interface AnnotationCreateInput {
   content: string
   categoryId: string

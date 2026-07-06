@@ -16,6 +16,8 @@ from fastapi import (  # HTTPException: BaselinePinConflictError dict detail
 )
 from pydantic import AfterValidator
 
+from tropek.config import get_settings
+from tropek.db.retry import run_with_deadlock_retry
 from tropek.modules.assets.service import AssetService
 from tropek.modules.change_points.detector import Direction
 from tropek.modules.change_points.repository import ChangePointKey, ChangePointRepository
@@ -31,6 +33,8 @@ from tropek.modules.quality_gate.schemas import (
     AnnotationHide,
     AnnotationRead,
     AnnotationUpdate,
+    BulkActionResponse,
+    BulkActionResult,
     EvaluateBatchRequest,
     EvaluateBatchResponse,
     EvaluateSingleRequest,
@@ -41,11 +45,17 @@ from tropek.modules.quality_gate.schemas import (
     GroupedMetricHeatmapResponse,
     HeatmapCell,
     HeatmapMetric,
+    InvalidateManyRequest,
     InvalidateRequest,
     MetricHeatmapResponse,
+    OverrideStatusManyRequest,
     OverrideStatusRequest,
+    PinBaselineManyRequest,
     PinBaselineRequest,
+    RestoreManyRequest,
+    RestoreOverrideManyRequest,
     TrendPoint,
+    UnpinBaselineManyRequest,
 )
 from tropek.modules.quality_gate.schemas.heatmap import HeatmapColumnFragment
 from tropek.modules.quality_gate.schemas.re_evaluation import (
@@ -665,6 +675,116 @@ async def get_evaluation_singular(
     return build_detail(ev)
 
 
+# ---- Bulk (batch) evaluation actions ----
+
+
+def _bulk_response(requested_ids: list[uuid.UUID], affected_rows: list[Any]) -> BulkActionResponse:
+    """Build a BulkActionResponse from the requested ids and the affected rows.
+
+    Ids that were not applied (unknown, or skipped by a precondition such as
+    "not completed") are reported in ``not_found``; they do not fail the batch.
+    """
+    affected_ids = {row.id for row in affected_rows}
+    results = [BulkActionResult(evaluation_id=row.id, status='success') for row in affected_rows]
+    not_found = [eval_id for eval_id in requested_ids if eval_id not in affected_ids]
+    return BulkActionResponse(results=results, updated=len(results), not_found=not_found)
+
+
+@router.patch('/evaluations/invalidate', response_model=BulkActionResponse)
+async def invalidate_evaluations_bulk(
+    body: InvalidateManyRequest,
+    repos: QualityGateRepos = Depends(get_qg_repos),
+) -> BulkActionResponse:
+    """Invalidate a batch of evaluations in a single atomic statement."""
+    rows = await run_with_deadlock_retry(
+        repos.session,
+        lambda: repos.eval_repo.invalidate_many(body.evaluation_ids, note=body.note),
+        settings=get_settings().quality_gate.invalidate,
+    )
+    return _bulk_response(body.evaluation_ids, rows)
+
+
+@router.patch('/evaluations/restore', response_model=BulkActionResponse)
+async def restore_evaluations_bulk(
+    body: RestoreManyRequest,
+    repos: QualityGateRepos = Depends(get_qg_repos),
+) -> BulkActionResponse:
+    """Clear the invalidation flag on a batch of evaluations."""
+    rows = await run_with_deadlock_retry(
+        repos.session,
+        lambda: repos.eval_repo.restore_many(body.evaluation_ids),
+        settings=get_settings().quality_gate.invalidate,
+    )
+    return _bulk_response(body.evaluation_ids, rows)
+
+
+@router.patch('/evaluations/override-status', response_model=BulkActionResponse)
+async def override_status_evaluations_bulk(
+    body: OverrideStatusManyRequest,
+    repos: QualityGateRepos = Depends(get_qg_repos),
+) -> BulkActionResponse:
+    """Override the result of a batch of completed evaluations."""
+    if body.new_result not in ('pass', 'warning', 'fail'):
+        raise DomainValidationError('new_result must be pass, warning, or fail')
+    rows = await run_with_deadlock_retry(
+        repos.session,
+        lambda: repos.eval_repo.override_status_many(
+            body.evaluation_ids,
+            new_result=body.new_result,
+            reason=body.reason,
+            author=body.author,
+        ),
+        settings=get_settings().quality_gate.invalidate,
+    )
+    return _bulk_response(body.evaluation_ids, rows)
+
+
+@router.patch('/evaluations/restore-override', response_model=BulkActionResponse)
+async def restore_override_evaluations_bulk(
+    body: RestoreOverrideManyRequest,
+    repos: QualityGateRepos = Depends(get_qg_repos),
+) -> BulkActionResponse:
+    """Restore the original result on a batch of overridden evaluations."""
+    rows = await run_with_deadlock_retry(
+        repos.session,
+        lambda: repos.eval_repo.restore_override_many(body.evaluation_ids),
+        settings=get_settings().quality_gate.invalidate,
+    )
+    return _bulk_response(body.evaluation_ids, rows)
+
+
+@router.patch('/evaluations/pin-baseline', response_model=BulkActionResponse)
+async def pin_baseline_evaluations_bulk(
+    body: PinBaselineManyRequest,
+    repos: QualityGateRepos = Depends(get_qg_repos),
+) -> BulkActionResponse:
+    """Pin a batch of completed, non-invalidated evaluations as baselines."""
+    rows = await run_with_deadlock_retry(
+        repos.session,
+        lambda: repos.eval_repo.pin_baseline_many(
+            body.evaluation_ids,
+            reason=body.reason,
+            author=body.author,
+        ),
+        settings=get_settings().quality_gate.invalidate,
+    )
+    return _bulk_response(body.evaluation_ids, rows)
+
+
+@router.patch('/evaluations/unpin-baseline', response_model=BulkActionResponse)
+async def unpin_baseline_evaluations_bulk(
+    body: UnpinBaselineManyRequest,
+    repos: QualityGateRepos = Depends(get_qg_repos),
+) -> BulkActionResponse:
+    """Remove the baseline pin from a batch of evaluations."""
+    rows = await run_with_deadlock_retry(
+        repos.session,
+        lambda: repos.eval_repo.unpin_baseline_many(body.evaluation_ids),
+        settings=get_settings().quality_gate.invalidate,
+    )
+    return _bulk_response(body.evaluation_ids, rows)
+
+
 @router.patch('/evaluation/{eval_id}/invalidate', response_model=EvaluationSummary)
 async def invalidate_evaluation_singular(
     eval_id: uuid.UUID,
@@ -672,7 +792,11 @@ async def invalidate_evaluation_singular(
     repos: QualityGateRepos = Depends(get_qg_repos),
 ) -> EvaluationSummary:
     """Mark an evaluation as invalidated (new singular URL)."""
-    ev = await repos.eval_repo.invalidate(eval_id, note=body.invalidation_note)
+    ev = await run_with_deadlock_retry(
+        repos.session,
+        lambda: repos.eval_repo.invalidate(eval_id, note=body.invalidation_note),
+        settings=get_settings().quality_gate.invalidate,
+    )
     if ev is None:
         raise NotFoundError('evaluation', str(eval_id))
     return build_summary(ev, annotation_count=0, latest_ann=None)
@@ -684,7 +808,11 @@ async def restore_evaluation_singular(
     repos: QualityGateRepos = Depends(get_qg_repos),
 ) -> EvaluationSummary:
     """Clear invalidation flag on an evaluation (new singular URL)."""
-    ev = await repos.eval_repo.restore(eval_id)
+    ev = await run_with_deadlock_retry(
+        repos.session,
+        lambda: repos.eval_repo.restore(eval_id),
+        settings=get_settings().quality_gate.invalidate,
+    )
     if ev is None:
         raise NotFoundError('evaluation', str(eval_id))
     return build_summary(ev, annotation_count=0, latest_ann=None)

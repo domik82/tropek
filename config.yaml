@@ -39,11 +39,25 @@ reliability:
   adapter_timeout_seconds: 30
   adapter_retry_attempts: 3
   adapter_retry_backoff_seconds: 2
+  # Watchdog: recovers evaluations orphaned in 'running' (crashed/killed jobs). Interval
+  # must divide 60: 5, 10, 15, 20, 30, or 60.
   watchdog_interval_seconds: 60
+  # An eval 'running' longer than this is considered dead (must exceed job_timeout_seconds).
   stuck_job_threshold_seconds: 180
+  # Recovered evals are re-enqueued up to this many times, then marked failed.
+  max_stuck_job_retries: 3
 
 evaluation:
   async_threshold_metrics: 10
+
+quality_gate:
+  # Deadlock retry for evaluation mutation actions (invalidate/restore/override/pin
+  # and their batch variants). A Postgres deadlock (SQLSTATE 40P01) aborts the whole
+  # transaction; the handler rolls back and re-runs with jittered exponential backoff.
+  invalidate:
+    max_retries: 5           # additional attempts after the first
+    base_backoff_ms: 25
+    max_backoff_ms: 500
 
 adapters:
   prometheus:

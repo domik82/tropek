@@ -1,12 +1,13 @@
 import { useState, useCallback } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import { overrideStatus } from '../../api'
+import { overrideStatusMany } from '../../api'
 import { ActionFormShell } from './ActionFormShell'
 import { ReasonAuthorFields } from './ReasonAuthorFields'
 import { useReasonAuthor } from './useReasonAuthor'
 import { SloScopeField } from './slo-scope/SloScopeField'
 import { SloScopeModal } from './slo-scope/SloScopeModal'
 import { invalidateColumnQueries } from './invalidate-column-queries'
+import { runBatch, type BatchTarget } from './run-batch'
 import type { SloScopeResult } from './slo-scope/types'
 
 type Outcome = 'pass' | 'warning' | 'fail'
@@ -57,34 +58,29 @@ export function OverrideForm({ scope, columnEvalId, onComplete }: Props) {
       }
     })
 
-    const rowResults: RowResult[] = []
-    await Promise.all(
-      targets.map(async sloTarget => {
-        if (sloTarget.currentResult === target) {
-          rowResults.push({
-            sloName: sloTarget.sloName,
-            sloEvaluationId: sloTarget.sloEvaluationId,
-            status: 'skipped',
-          })
-          return
-        }
-        try {
-          await overrideStatus(sloTarget.sloEvaluationId, { outcome: target, reason, author })
-          rowResults.push({
-            sloName: sloTarget.sloName,
-            sloEvaluationId: sloTarget.sloEvaluationId,
-            status: 'success',
-          })
-        } catch (err) {
-          rowResults.push({
-            sloName: sloTarget.sloName,
-            sloEvaluationId: sloTarget.sloEvaluationId,
-            status: 'failed',
-            error: err instanceof Error ? err.message : 'unknown error',
-          })
-        }
-      }),
-    )
+    // Rows already at the target result are skipped client-side; the rest go
+    // through one batch call.
+    const skipped: RowResult[] = []
+    const toApply: BatchTarget[] = []
+    for (const sloTarget of targets) {
+      if (sloTarget.currentResult === target) {
+        skipped.push({
+          sloName: sloTarget.sloName,
+          sloEvaluationId: sloTarget.sloEvaluationId,
+          status: 'skipped',
+        })
+      } else {
+        toApply.push({ sloName: sloTarget.sloName, sloEvaluationId: sloTarget.sloEvaluationId })
+      }
+    }
+
+    // When every selected SLO is already at the target, there is nothing to
+    // apply — skip the request entirely rather than PATCH an empty id list.
+    const applied =
+      toApply.length > 0
+        ? await runBatch(toApply, ids => overrideStatusMany(ids, { outcome: target, reason, author }))
+        : []
+    const rowResults: RowResult[] = [...skipped, ...applied]
 
     invalidateColumnQueries(
       queryClient,

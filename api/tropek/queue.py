@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import time
 import uuid
-from datetime import timedelta
+from datetime import UTC, datetime, timedelta
 from typing import Any, ClassVar, cast
 
 import httpx
@@ -52,10 +52,13 @@ async def _has_pending_predecessor(session_factory: Any, eval_id: uuid.UUID) -> 
             ev = await repo.get_by_id(eval_id)
             if ev is None or ev.status not in ('pending', 'running'):
                 return False
+            threshold = get_settings().reliability.stuck_job_threshold_seconds
+            stale_cutoff = datetime.now(tz=UTC) - timedelta(seconds=threshold)
             return await repo.has_pending_predecessor(
                 asset_id=ev.asset_id,
                 slo_name=ev.slo_name,
                 period_start=ev.period_start,
+                stale_running_cutoff=stale_cutoff,
             )
     except (OSError, ValueError, AttributeError):
         logger.warning('predecessor check failed, proceeding', evaluation_id=str(eval_id))
@@ -354,6 +357,51 @@ async def finalize_sweeper_job(ctx: dict[str, Any]) -> None:
     )
 
 
+async def watchdog_stuck_evaluations_job(ctx: dict[str, Any]) -> None:
+    """Periodic watchdog — recover evaluations orphaned in 'running'.
+
+    A ``run_evaluation_job`` that marks its eval 'running' (Phase 1) then dies hard
+    — timeout kill, OOM, worker restart — leaves the row stuck in 'running' forever.
+    Because evals for the same (asset, SLO) chain on their predecessor, one orphan
+    blocks every later day for that SLO. This finds evals running past
+    ``stuck_job_threshold_seconds`` and re-enqueues them (up to ``max_stuck_job_retries``),
+    marking them failed once the cap is hit. The threshold is deliberately larger than
+    ``job_timeout_seconds`` so only genuinely-dead jobs are recovered.
+    """
+    settings = get_settings()
+    threshold = settings.reliability.stuck_job_threshold_seconds
+    max_attempts = settings.reliability.max_stuck_job_retries
+    session_factory = get_session_factory()
+    pool: ArqRedis = ctx['redis']
+    log = logger.bind(job='stuck_job_watchdog')
+
+    async with session_factory() as session:
+        stuck = await EvaluationRepository(session).find_stuck(threshold)
+
+    requeued = 0
+    failed = 0
+    for stuck_eval in stuck:
+        attempts = int((stuck_eval.job_stats or {}).get('stuck_job_retries', 0))
+        async with session_factory() as session:
+            repo = EvaluationRepository(session)
+            if attempts >= max_attempts:
+                await repo.mark_failed(
+                    stuck_eval.id,
+                    job_stats={'stuck_job_retries': attempts, 'error': 'exceeded max stuck-job retries'},
+                )
+                await session.commit()
+                failed += 1
+                log.warning('watchdog_marked_failed', evaluation_id=str(stuck_eval.id), stuck_job_retries=attempts)
+                continue
+            await repo.requeue_stuck(stuck_eval.id, stuck_job_retries=attempts + 1)
+            await session.commit()
+        await pool.enqueue_job('run_evaluation_job', str(stuck_eval.id))
+        requeued += 1
+        log.info('watchdog_requeued', evaluation_id=str(stuck_eval.id), stuck_job_retries=attempts + 1)
+
+    log.info('watchdog_tick', stuck=len(stuck), requeued=requeued, failed=failed)
+
+
 class WorkerSettings:
     """arq worker configuration — discovered by `arq tropek.queue.WorkerSettings`."""
 
@@ -361,11 +409,17 @@ class WorkerSettings:
         run_evaluation_job,
         finalize_run_job,
         finalize_sweeper_job,
+        watchdog_stuck_evaluations_job,
     ]
     cron_jobs: ClassVar[list[Any]] = [
         cron(
             finalize_sweeper_job,
             second=_sweeper_cron_seconds(get_settings().queue.finalize_sweeper_interval_seconds),
+            run_at_startup=False,
+        ),
+        cron(
+            watchdog_stuck_evaluations_job,
+            second=_sweeper_cron_seconds(get_settings().reliability.watchdog_interval_seconds),
             run_at_startup=False,
         ),
     ]

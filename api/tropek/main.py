@@ -11,6 +11,7 @@ import redis.asyncio as aioredis
 from fastapi import FastAPI
 from fastapi.openapi.utils import get_openapi
 from sqlalchemy.exc import IntegrityError
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from tropek.cache.redis_cache import RedisCache
 from tropek.config import get_settings
@@ -22,6 +23,7 @@ from tropek.modules.assets.router import router as assets_router
 from tropek.modules.assignments.router import router as assignments_router
 from tropek.modules.change_points.router import router as change_points_router
 from tropek.modules.common.exception_handlers import (
+    body_parse_error_handler,
     conflict_handler,
     domain_validation_handler,
     integrity_error_handler,
@@ -65,6 +67,7 @@ app.add_exception_handler(NotFoundError, not_found_handler)  # type: ignore[arg-
 app.add_exception_handler(ConflictError, conflict_handler)  # type: ignore[arg-type]
 app.add_exception_handler(DomainValidationError, domain_validation_handler)  # type: ignore[arg-type]
 app.add_exception_handler(IntegrityError, integrity_error_handler)  # type: ignore[arg-type]
+app.add_exception_handler(StarletteHTTPException, body_parse_error_handler)  # type: ignore[arg-type]
 
 # No prefix= — every router defines full absolute paths
 app.include_router(asset_meta_router)
@@ -174,10 +177,6 @@ def _custom_openapi() -> dict[str, Any]:
         'description': 'Validation Error',
         'content': {'application/json': {'schema': _HTTP_VALIDATION_ERROR}},
     }
-    bad_request_response = {
-        'description': 'Bad Request',
-        'content': {'application/json': {'schema': error_message_ref}},
-    }
     mutating_methods = {'post', 'put', 'patch', 'delete'}
     for path_item in schema.get('paths', {}).values():
         for method, operation in path_item.items():
@@ -192,8 +191,6 @@ def _custom_openapi() -> dict[str, Any]:
             # 409: integrity / conflict from DB or domain logic
             if method in mutating_methods:
                 responses.setdefault('409', error_message_response)
-            # 400: FastAPI returns 400 for malformed JSON bodies (not 422)
-            responses.setdefault('400', bad_request_response)
     _inject_property_names_pattern(schema)
     app.openapi_schema = schema
     return schema

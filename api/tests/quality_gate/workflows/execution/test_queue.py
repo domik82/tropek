@@ -7,6 +7,7 @@ from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from tropek.config import get_settings
 from tropek.modules.quality_gate.workflows.execution.evaluation_executor import DefinitionLoadError, EvaluationSnapshot
 from tropek.queue import (
     WorkerSettings,
@@ -14,6 +15,7 @@ from tropek.queue import (
     finalize_run_job,
     finalize_sweeper_job,
     run_evaluation_job,
+    watchdog_stuck_evaluations_job,
 )
 
 
@@ -375,3 +377,79 @@ def test_sweeper_cron_seconds_rejects_non_divisor() -> None:
 def test_worker_settings_registers_sweeper_job() -> None:
     assert finalize_sweeper_job in WorkerSettings.functions
     assert any(getattr(cj, 'coroutine', None) is finalize_sweeper_job for cj in WorkerSettings.cron_jobs)
+
+
+# --- Stuck-evaluation watchdog ---
+
+
+def _stuck_eval(stuck_job_retries: int) -> MagicMock:
+    """A minimal stand-in for a stuck SLOEvaluation row."""
+    stuck = MagicMock()
+    stuck.id = uuid.uuid4()
+    stuck.job_stats = {'stuck_job_retries': stuck_job_retries} if stuck_job_retries else {}
+    return stuck
+
+
+def _watchdog_ctx(pool: AsyncMock) -> dict:
+    return {'redis': pool}
+
+
+async def test_watchdog_requeues_stuck_eval_below_cap() -> None:
+    """A stuck eval below the retry cap is requeued and re-enqueued, not failed."""
+    stuck = _stuck_eval(stuck_job_retries=0)
+    repo = AsyncMock()
+    repo.find_stuck = AsyncMock(return_value=[stuck])
+    mock_pool = AsyncMock()
+    factory = _session_factory_from_list([_mock_session(), _mock_session()])
+
+    with (
+        patch('tropek.queue.get_session_factory', return_value=factory),
+        patch('tropek.queue.EvaluationRepository', return_value=repo),
+    ):
+        await watchdog_stuck_evaluations_job(_watchdog_ctx(mock_pool))
+
+    repo.requeue_stuck.assert_awaited_once_with(stuck.id, stuck_job_retries=1)
+    repo.mark_failed.assert_not_awaited()
+    mock_pool.enqueue_job.assert_awaited_once_with('run_evaluation_job', str(stuck.id))
+
+
+async def test_watchdog_marks_failed_at_cap() -> None:
+    """A stuck eval that has hit max_stuck_job_retries is marked failed, not requeued."""
+    stuck = _stuck_eval(stuck_job_retries=get_settings().reliability.max_stuck_job_retries)
+    repo = AsyncMock()
+    repo.find_stuck = AsyncMock(return_value=[stuck])
+    mock_pool = AsyncMock()
+    factory = _session_factory_from_list([_mock_session(), _mock_session()])
+
+    with (
+        patch('tropek.queue.get_session_factory', return_value=factory),
+        patch('tropek.queue.EvaluationRepository', return_value=repo),
+    ):
+        await watchdog_stuck_evaluations_job(_watchdog_ctx(mock_pool))
+
+    repo.mark_failed.assert_awaited_once()
+    repo.requeue_stuck.assert_not_awaited()
+    mock_pool.enqueue_job.assert_not_awaited()
+
+
+async def test_watchdog_noop_when_nothing_stuck() -> None:
+    """No stuck evals -> no requeue, no failed, no enqueue."""
+    repo = AsyncMock()
+    repo.find_stuck = AsyncMock(return_value=[])
+    mock_pool = AsyncMock()
+    factory = _session_factory_from_list([_mock_session()])
+
+    with (
+        patch('tropek.queue.get_session_factory', return_value=factory),
+        patch('tropek.queue.EvaluationRepository', return_value=repo),
+    ):
+        await watchdog_stuck_evaluations_job(_watchdog_ctx(mock_pool))
+
+    repo.requeue_stuck.assert_not_awaited()
+    repo.mark_failed.assert_not_awaited()
+    mock_pool.enqueue_job.assert_not_awaited()
+
+
+def test_worker_settings_registers_watchdog_job() -> None:
+    assert watchdog_stuck_evaluations_job in WorkerSettings.functions
+    assert any(getattr(cj, 'coroutine', None) is watchdog_stuck_evaluations_job for cj in WorkerSettings.cron_jobs)

@@ -10,7 +10,7 @@ vi.mock('../../api', async () => {
   const actual = await vi.importActual<typeof import('../../api')>('../../api')
   return {
     ...actual,
-    invalidateEvaluation: (...args: unknown[]) => invalidateSpy(...args),
+    invalidateEvaluations: (...args: unknown[]) => invalidateSpy(...args),
   }
 })
 
@@ -30,7 +30,7 @@ function makeScope(): SloScopeResult {
 let queryClient: QueryClient
 beforeEach(() => {
   invalidateSpy.mockReset()
-  invalidateSpy.mockResolvedValue({ ok: true })
+  invalidateSpy.mockResolvedValue({ succeeded: ['eid-a', 'eid-b'], notFound: [], updated: 2 })
   queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
 })
 afterEach(() => {
@@ -48,15 +48,14 @@ function renderForm(scope: SloScopeResult) {
 }
 
 describe('InvalidateForm (multi-SLO)', () => {
-  it('fans out to all selected SLOs', async () => {
+  it('issues one batch call with all selected SLO ids', async () => {
     const user = userEvent.setup()
     renderForm(makeScope())
     await user.type(screen.getByPlaceholderText(/reason/i), 'bad data')
     await user.type(screen.getByPlaceholderText(/author/i), 'domik')
     await user.click(screen.getByRole('button', { name: /confirm/i }))
-    await waitFor(() => expect(invalidateSpy).toHaveBeenCalledTimes(2))
-    const calls = invalidateSpy.mock.calls.map(call => call[0])
-    expect(calls).toEqual(expect.arrayContaining(['eid-a', 'eid-b']))
+    await waitFor(() => expect(invalidateSpy).toHaveBeenCalledTimes(1))
+    expect(invalidateSpy.mock.calls[0][0]).toEqual(expect.arrayContaining(['eid-a', 'eid-b']))
   })
 
   it('passes reason as the note argument', async () => {
@@ -69,11 +68,8 @@ describe('InvalidateForm (multi-SLO)', () => {
     expect(invalidateSpy.mock.calls[0][1]).toBe('specific note text')
   })
 
-  it('partial failure surfaces Retry failed button', async () => {
-    invalidateSpy.mockImplementation(async (evalId: string) => {
-      if (evalId === 'eid-b') throw new Error('db error')
-      return { ok: true }
-    })
+  it('partial failure (id in not_found) surfaces Retry failed button', async () => {
+    invalidateSpy.mockResolvedValue({ succeeded: ['eid-a'], notFound: ['eid-b'], updated: 1 })
     const user = userEvent.setup()
     renderForm(makeScope())
     await user.type(screen.getByPlaceholderText(/reason/i), 'cleanup')

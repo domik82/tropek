@@ -1,12 +1,13 @@
 import { useState, useCallback } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import { invalidateEvaluation } from '../../api'
+import { invalidateEvaluations } from '../../api'
 import { ActionFormShell } from './ActionFormShell'
 import { ReasonAuthorFields } from './ReasonAuthorFields'
 import { useReasonAuthor } from './useReasonAuthor'
 import { SloScopeField } from './slo-scope/SloScopeField'
 import { SloScopeModal } from './slo-scope/SloScopeModal'
 import { invalidateColumnQueries } from './invalidate-column-queries'
+import { runBatch } from './run-batch'
 import type { SloScopeResult } from './slo-scope/types'
 
 interface Props {
@@ -53,26 +54,7 @@ export function InvalidateForm({ scope, columnEvalId, onComplete }: Props) {
       }
     })
 
-    const rowResults: RowResult[] = []
-    await Promise.all(
-      targets.map(async sloTarget => {
-        try {
-          await invalidateEvaluation(sloTarget.sloEvaluationId, reason)
-          rowResults.push({
-            sloName: sloTarget.sloName,
-            sloEvaluationId: sloTarget.sloEvaluationId,
-            status: 'success',
-          })
-        } catch (err) {
-          rowResults.push({
-            sloName: sloTarget.sloName,
-            sloEvaluationId: sloTarget.sloEvaluationId,
-            status: 'failed',
-            error: err instanceof Error ? err.message : 'unknown error',
-          })
-        }
-      }),
-    )
+    const rowResults = await runBatch(targets, ids => invalidateEvaluations(ids, reason))
 
     invalidateColumnQueries(
       queryClient,

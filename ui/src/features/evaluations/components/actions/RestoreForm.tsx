@@ -1,10 +1,11 @@
 import { useCallback, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import { restoreEvaluation } from '../../api'
+import { restoreEvaluations } from '../../api'
 import { ActionFormShell } from './ActionFormShell'
 import { SloScopeField } from './slo-scope/SloScopeField'
 import { SloScopeModal } from './slo-scope/SloScopeModal'
 import { invalidateColumnQueries } from './invalidate-column-queries'
+import { runBatch } from './run-batch'
 import type { SloScopeResult } from './slo-scope/types'
 
 interface Props {
@@ -50,22 +51,7 @@ export function RestoreForm({ scope, columnEvalId, onComplete }: Props) {
       }
     })
 
-    const rowResults: RowResult[] = []
-    await Promise.all(
-      targets.map(async target => {
-        try {
-          await restoreEvaluation(target.sloEvaluationId)
-          rowResults.push({ sloName: target.sloName, sloEvaluationId: target.sloEvaluationId, status: 'success' })
-        } catch (err) {
-          rowResults.push({
-            sloName: target.sloName,
-            sloEvaluationId: target.sloEvaluationId,
-            status: 'failed',
-            error: err instanceof Error ? err.message : 'unknown error',
-          })
-        }
-      }),
-    )
+    const rowResults = await runBatch(targets, ids => restoreEvaluations(ids))
 
     invalidateColumnQueries(
       queryClient,

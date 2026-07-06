@@ -3,6 +3,7 @@ import { getConfig } from '@/lib/config'
 import type {
   Annotation,
   AnnotationCreateInput,
+  BulkActionOutcome,
   Evaluation,
   EvaluationDetail,
   EvaluationFilters,
@@ -18,6 +19,7 @@ import type {
 import {
   annotationCreateInputToDto,
   dtoToAnnotation,
+  dtoToBulkActionOutcome,
   dtoToEvaluationDetail,
   dtoToEvaluationList,
   dtoToEvaluationNameEntry,
@@ -28,6 +30,7 @@ import {
   reEvaluateInputToDto,
   triggerEvaluationInputToDto,
   type AnnotationDto,
+  type BulkActionResponseDto,
   type EvaluationDetailDto,
   type EvaluationNameEntryDto,
   type EvaluationSummaryDto,
@@ -204,6 +207,61 @@ export async function pinBaseline(
   if (!res.ok) throw new Error(`pinBaseline: ${res.status}`)
   const body: EvaluationDetailDto = await res.json()
   return dtoToEvaluationDetail(body)
+}
+
+// --- Bulk (batch) actions: one request per action over a list of ids ---
+
+export async function invalidateEvaluations(
+  ids: string[],
+  note: string,
+): Promise<BulkActionOutcome> {
+  const res = await fetch(`${BASE}/evaluations/invalidate`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ evaluation_ids: ids, note }),
+  })
+  if (!res.ok) throw new Error(`invalidateEvaluations: ${res.status}`)
+  const body: BulkActionResponseDto = await res.json()
+  return dtoToBulkActionOutcome(body)
+}
+
+export async function restoreEvaluations(ids: string[]): Promise<BulkActionOutcome> {
+  const res = await fetch(`${BASE}/evaluations/restore`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ evaluation_ids: ids }),
+  })
+  if (!res.ok) throw new Error(`restoreEvaluations: ${res.status}`)
+  const body: BulkActionResponseDto = await res.json()
+  return dtoToBulkActionOutcome(body)
+}
+
+export async function overrideStatusMany(
+  ids: string[],
+  input: OverrideStatusInput,
+): Promise<BulkActionOutcome> {
+  const res = await fetch(`${BASE}/evaluations/override-status`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ evaluation_ids: ids, ...overrideStatusInputToDto(input) }),
+  })
+  if (!res.ok) throw new Error(`overrideStatusMany: ${res.status}`)
+  const body: BulkActionResponseDto = await res.json()
+  return dtoToBulkActionOutcome(body)
+}
+
+export async function pinBaselineMany(
+  ids: string[],
+  payload: { reason: string; author: string },
+): Promise<BulkActionOutcome> {
+  const res = await fetch(`${BASE}/evaluations/pin-baseline`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ evaluation_ids: ids, ...payload }),
+  })
+  if (!res.ok) throw new Error(`pinBaselineMany: ${res.status}`)
+  const body: BulkActionResponseDto = await res.json()
+  return dtoToBulkActionOutcome(body)
 }
 
 export async function fetchTrendAnnotations(

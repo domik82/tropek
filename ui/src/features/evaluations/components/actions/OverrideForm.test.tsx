@@ -11,7 +11,7 @@ vi.mock('../../api', async () => {
   const actual = await vi.importActual<typeof import('../../api')>('../../api')
   return {
     ...actual,
-    overrideStatus: (...args: unknown[]) => overrideStatusSpy(...args),
+    overrideStatusMany: (...args: unknown[]) => overrideStatusSpy(...args),
   }
 })
 
@@ -34,7 +34,7 @@ function makeScope(overrides: Partial<SloScopeResult> = {}): SloScopeResult {
 let queryClient: QueryClient
 beforeEach(() => {
   overrideStatusSpy.mockReset()
-  overrideStatusSpy.mockResolvedValue({ ok: true })
+  overrideStatusSpy.mockResolvedValue({ succeeded: ['eid-a', 'eid-b', 'eid-c'], notFound: [], updated: 3 })
   queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
 })
 afterEach(() => {
@@ -52,18 +52,18 @@ function renderForm(scope: SloScopeResult, onComplete = vi.fn()) {
 }
 
 describe('OverrideForm (multi-SLO)', () => {
-  it('radio target fans out to all selected SLOs that need a change', async () => {
+  it('one batch call carries only the SLOs that need a change', async () => {
     const user = userEvent.setup()
     renderForm(makeScope())
     await user.click(screen.getByRole('radio', { name: /^fail$/i }))
     await user.type(screen.getByPlaceholderText(/reason/i), 'noise')
     await user.type(screen.getByPlaceholderText(/author/i), 'domik')
     await user.click(screen.getByRole('button', { name: /confirm/i }))
-    // SLO 'a' is already fail (skipped). 'b'=pass and 'c'=warning each get one call.
-    await waitFor(() => expect(overrideStatusSpy).toHaveBeenCalledTimes(2))
-    const evalIdsCalled = overrideStatusSpy.mock.calls.map(call => call[0])
-    expect(evalIdsCalled).toEqual(expect.arrayContaining(['eid-b', 'eid-c']))
-    expect(evalIdsCalled).not.toContain('eid-a')
+    // SLO 'a' is already fail (skipped client-side). 'b'=pass and 'c'=warning are batched.
+    await waitFor(() => expect(overrideStatusSpy).toHaveBeenCalledTimes(1))
+    const idsCalled = overrideStatusSpy.mock.calls[0][0]
+    expect(idsCalled).toEqual(expect.arrayContaining(['eid-b', 'eid-c']))
+    expect(idsCalled).not.toContain('eid-a')
   })
 
   it('skipped SLOs are reported in the result list', async () => {
@@ -76,11 +76,21 @@ describe('OverrideForm (multi-SLO)', () => {
     await waitFor(() => expect(screen.getByText(/1 skipped/i)).toBeInTheDocument())
   })
 
-  it('partial failure surfaces the Retry failed button', async () => {
-    overrideStatusSpy.mockImplementation(async (evalId: string) => {
-      if (evalId === 'eid-b') throw new Error('conflict')
-      return { ok: true }
-    })
+  it('fires no request when every selected SLO is already at the target', async () => {
+    const user = userEvent.setup()
+    // 'b' is already 'pass'; selecting only it and targeting 'pass' leaves nothing to apply.
+    renderForm(makeScope({ selected: new Set(['b']) }))
+    await user.click(screen.getByRole('radio', { name: /^pass$/i }))
+    await user.type(screen.getByPlaceholderText(/reason/i), 'noop')
+    await user.type(screen.getByPlaceholderText(/author/i), 'domik')
+    await user.click(screen.getByRole('button', { name: /confirm/i }))
+    await waitFor(() => expect(screen.getByText(/1 skipped/i)).toBeInTheDocument())
+    expect(overrideStatusSpy).not.toHaveBeenCalled()
+  })
+
+  it('partial failure (id in not_found) surfaces the Retry failed button', async () => {
+    // target=fail applies to 'b' and 'c'; 'b' comes back in not_found.
+    overrideStatusSpy.mockResolvedValue({ succeeded: ['eid-c'], notFound: ['eid-b'], updated: 1 })
     const user = userEvent.setup()
     renderForm(makeScope())
     await user.click(screen.getByRole('radio', { name: /^fail$/i }))

@@ -414,11 +414,11 @@ def _build_composite_summary_for_run(run: EvaluationRun) -> HeatmapSummaryCell:
     achieved_points = run.achieved_points
     run_score = round(achieved_points / total_points * 100, 2) if total_points and achieved_points is not None else 0.0
     slo_evaluations = run.slo_evaluations or []
-    all_invalidated = bool(slo_evaluations) and all(slo_eval.invalidated for slo_eval in slo_evaluations)
+    any_invalidated = bool(slo_evaluations) and any(slo_eval.invalidated for slo_eval in slo_evaluations)
     return HeatmapSummaryCell(
         evaluation_id=run.id,
         period_start=run.period_start,
-        result='invalidated' if all_invalidated else (run.result or 'none'),
+        result='invalidated' if any_invalidated else (run.result or 'none'),
         score=run_score,
     )
 

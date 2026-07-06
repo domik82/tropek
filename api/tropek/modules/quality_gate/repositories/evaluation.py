@@ -7,7 +7,8 @@ from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from asyncpg import UniqueViolationError
-from sqlalchemy import String, func, select, update
+from sqlalchemy import ColumnElement, String, and_, cast, func, or_, select, tuple_, update
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -53,6 +54,34 @@ class EvaluationRepository:
         if run_id is None or self._heatmap_cache is None:
             return
         await self._heatmap_cache.delete(run_id)
+
+    async def _invalidate_caches_for(self, rows: list[SLOEvaluation]) -> None:
+        """Invalidate baseline + heatmap caches once for a batch of affected rows.
+
+        Collects the distinct ``(asset_id, slo_name)`` pairs and parent
+        ``evaluation_id`` run ids from the affected rows and invalidates each
+        cache once — one delete per key, not one per row.
+
+        This runs inside the request handler, so the delete happens *before*
+        ``SessionMiddleware`` commits the transaction: a concurrent reader in
+        that narrow window could repopulate a key with pre-commit data. The
+        cache is opportunistic (Redis failures are dropped; entries carry a
+        TTL), so a transient stale key self-heals on the next read or write —
+        the same pre-existing behaviour as the singular mutation methods.
+        """
+        baseline_keys = {(row.asset_id, row.slo_name) for row in rows}
+        for asset_id, slo_name in baseline_keys:
+            await self._invalidate_baseline_cache(asset_id, slo_name)
+        run_ids = {row.evaluation_id for row in rows if row.evaluation_id is not None}
+        if run_ids and self._heatmap_cache is not None:
+            await self._heatmap_cache.delete_many(run_ids)
+
+    async def _fetch_by_ids(self, eval_ids: list[uuid.UUID]) -> list[SLOEvaluation]:
+        """Return the SLO evaluations for the given ids (no eager loads)."""
+        if not eval_ids:
+            return []
+        result = await self._session.execute(select(SLOEvaluation).where(SLOEvaluation.id.in_(eval_ids)))
+        return list(result.scalars().all())
 
     async def create_pending(self, params: EvalCreateParams) -> SLOEvaluation:
         """Create a new evaluation record in pending status.
@@ -161,12 +190,23 @@ class EvaluationRepository:
         asset_id: uuid.UUID,
         slo_name: str,
         period_start: datetime,
+        stale_running_cutoff: datetime | None = None,
     ) -> bool:
         """Check whether an earlier evaluation for the same asset+SLO is still pending or running.
 
         Used by the worker to defer processing until predecessors complete,
         ensuring baselines are available in chronological order.
+
+        When ``stale_running_cutoff`` is given, a predecessor stuck in ``running``
+        since before that time is treated as dead (crashed job) and does NOT count
+        as pending, so successors stop deferring even before the watchdog recovers it.
         """
+        running_predecessor: ColumnElement[bool] = SLOEvaluation.status == EvaluationStatus.RUNNING
+        if stale_running_cutoff is not None:
+            running_predecessor = and_(
+                SLOEvaluation.status == EvaluationStatus.RUNNING,
+                SLOEvaluation.started_at >= stale_running_cutoff,
+            )
         q = (
             select(func.count())
             .select_from(SLOEvaluation)
@@ -174,11 +214,32 @@ class EvaluationRepository:
                 SLOEvaluation.asset_id == asset_id,
                 SLOEvaluation.slo_name == slo_name,
                 SLOEvaluation.period_start < period_start,
-                SLOEvaluation.status.in_([EvaluationStatus.PENDING, EvaluationStatus.RUNNING]),
+                or_(SLOEvaluation.status == EvaluationStatus.PENDING, running_predecessor),
             )
         )
         result = await self._session.execute(q)
         return (result.scalar() or 0) > 0
+
+    async def requeue_stuck(self, eval_id: uuid.UUID, *, stuck_job_retries: int) -> None:
+        """Reset a stuck ``running`` evaluation to ``pending`` for re-execution.
+
+        Records the stuck-job retry count in ``job_stats`` so the watchdog can cap
+        retries. ``started_at`` is cleared so a re-run stamps it fresh via
+        ``mark_running``.
+
+        Args:
+            eval_id: Evaluation to requeue.
+            stuck_job_retries: Number of times the watchdog has now recovered this evaluation.
+        """
+        await self._session.execute(
+            update(SLOEvaluation)
+            .where(SLOEvaluation.id == eval_id)
+            .values(
+                status=EvaluationStatus.PENDING,
+                started_at=None,
+                job_stats={'stuck_job_retries': stuck_job_retries},
+            )
+        )
 
     async def mark_running(self, eval_id: uuid.UUID, worker_id: str | None = None) -> None:
         """Transition evaluation to running status, recording worker and start time.
@@ -187,13 +248,19 @@ class EvaluationRepository:
             eval_id: Evaluation to update.
             worker_id: Identifier of the worker process claiming this job.
         """
+        new_stats = {'worker_id': worker_id} if worker_id else {}
         await self._session.execute(
             update(SLOEvaluation)
             .where(SLOEvaluation.id == eval_id)
             .values(
                 status=EvaluationStatus.RUNNING,
                 started_at=datetime.now(tz=UTC),
-                job_stats={'worker_id': worker_id} if worker_id else {},
+                # Merge (JSONB ``||``) rather than replace so the watchdog's
+                # ``stuck_job_retries`` counter survives the requeue → rerun
+                # cycle. A wholesale overwrite here reset the counter to 0 every
+                # rerun, so a hard-crashing job requeued forever and never hit
+                # the cap.
+                job_stats=SLOEvaluation.job_stats.op('||')(cast(new_stats, JSONB)),
             )
         )
 
@@ -437,28 +504,28 @@ class EvaluationRepository:
         return evals, total, count_map, latest_map
 
     async def invalidate(self, eval_id: uuid.UUID, *, note: str) -> SLOEvaluation | None:
-        """Mark an evaluation and all its siblings in the same run as invalidated."""
+        """Mark a single evaluation as invalidated.
+
+        Per-SLO: only this row drops out of baselines; its siblings in the same
+        run keep feeding them.
+        """
         ev = await self.get_by_id(eval_id)
         if ev is None:
             return None
         await self._session.execute(
-            update(SLOEvaluation)
-            .where(SLOEvaluation.evaluation_id == ev.evaluation_id)
-            .values(invalidated=True, invalidation_note=note)
+            update(SLOEvaluation).where(SLOEvaluation.id == eval_id).values(invalidated=True, invalidation_note=note)
         )
         await self._invalidate_baseline_cache(ev.asset_id, ev.slo_name)
         await self._invalidate_heatmap_column(ev.evaluation_id)
         return await self.get_by_id(eval_id)
 
     async def restore(self, eval_id: uuid.UUID) -> SLOEvaluation | None:
-        """Clear invalidation flag on an evaluation and all its siblings in the same run."""
+        """Clear the invalidation flag on a single evaluation (per-SLO)."""
         ev = await self.get_by_id(eval_id)
         if ev is None:
             return None
         await self._session.execute(
-            update(SLOEvaluation)
-            .where(SLOEvaluation.evaluation_id == ev.evaluation_id)
-            .values(invalidated=False, invalidation_note=None)
+            update(SLOEvaluation).where(SLOEvaluation.id == eval_id).values(invalidated=False, invalidation_note=None)
         )
         await self._invalidate_baseline_cache(ev.asset_id, ev.slo_name)
         await self._invalidate_heatmap_column(ev.evaluation_id)
@@ -564,6 +631,186 @@ class EvaluationRepository:
         await self._invalidate_baseline_cache(ev.asset_id, ev.slo_name)
         await self._invalidate_heatmap_column(ev.evaluation_id)
         return await self.get_by_id(eval_id)
+
+    async def invalidate_many(self, eval_ids: list[uuid.UUID], *, note: str) -> list[SLOEvaluation]:
+        """Invalidate the selected evaluations in a single set-based statement.
+
+        Per-SLO: only the selected rows drop out of baselines. Returns the
+        affected rows (existing ids); unknown ids are simply not returned.
+        """
+        if not eval_ids:
+            return []
+        await self._session.execute(
+            update(SLOEvaluation)
+            .where(SLOEvaluation.id.in_(eval_ids))
+            .values(invalidated=True, invalidation_note=note)
+            .execution_options(synchronize_session='fetch')
+        )
+        rows = await self._fetch_by_ids(eval_ids)
+        await self._invalidate_caches_for(rows)
+        return rows
+
+    async def restore_many(self, eval_ids: list[uuid.UUID]) -> list[SLOEvaluation]:
+        """Clear the invalidation flag on the selected evaluations (per-SLO)."""
+        if not eval_ids:
+            return []
+        await self._session.execute(
+            update(SLOEvaluation)
+            .where(SLOEvaluation.id.in_(eval_ids))
+            .values(invalidated=False, invalidation_note=None)
+            .execution_options(synchronize_session='fetch')
+        )
+        rows = await self._fetch_by_ids(eval_ids)
+        await self._invalidate_caches_for(rows)
+        return rows
+
+    async def override_status_many(
+        self,
+        eval_ids: list[uuid.UUID],
+        *,
+        new_result: str,
+        reason: str,
+        author: str,
+    ) -> list[SLOEvaluation]:
+        """Override the result of the selected completed evaluations.
+
+        Preserves ``original_result`` only where currently NULL via
+        ``COALESCE(original_result, result)`` so "first override wins" holds in a
+        single UPDATE. Non-completed rows are left untouched (reported as skipped
+        by the caller).
+        """
+        if not eval_ids:
+            return []
+        eligible = await self._session.execute(
+            select(SLOEvaluation.id).where(
+                SLOEvaluation.id.in_(eval_ids),
+                SLOEvaluation.status == EvaluationStatus.COMPLETED,
+            )
+        )
+        eligible_ids = list(eligible.scalars().all())
+        if not eligible_ids:
+            return []
+        await self._session.execute(
+            update(SLOEvaluation)
+            .where(SLOEvaluation.id.in_(eligible_ids))
+            .values(
+                result=new_result,
+                override_reason=reason,
+                override_author=author,
+                original_result=func.coalesce(SLOEvaluation.original_result, SLOEvaluation.result),
+            )
+            .execution_options(synchronize_session='fetch')
+        )
+        rows = await self._fetch_by_ids(eligible_ids)
+        await self._invalidate_caches_for(rows)
+        return rows
+
+    async def restore_override_many(self, eval_ids: list[uuid.UUID]) -> list[SLOEvaluation]:
+        """Restore the original result on the selected overridden evaluations.
+
+        Only rows with a non-NULL ``original_result`` are affected.
+        """
+        if not eval_ids:
+            return []
+        eligible = await self._session.execute(
+            select(SLOEvaluation.id).where(
+                SLOEvaluation.id.in_(eval_ids),
+                SLOEvaluation.original_result.is_not(None),
+            )
+        )
+        eligible_ids = list(eligible.scalars().all())
+        if not eligible_ids:
+            return []
+        await self._session.execute(
+            update(SLOEvaluation)
+            .where(SLOEvaluation.id.in_(eligible_ids))
+            .values(
+                result=SLOEvaluation.original_result,
+                original_result=None,
+                override_reason=None,
+                override_author=None,
+            )
+            .execution_options(synchronize_session='fetch')
+        )
+        rows = await self._fetch_by_ids(eligible_ids)
+        await self._invalidate_caches_for(rows)
+        return rows
+
+    async def pin_baseline_many(
+        self,
+        eval_ids: list[uuid.UUID],
+        *,
+        reason: str,
+        author: str,
+    ) -> list[SLOEvaluation]:
+        """Pin the selected completed, non-invalidated evaluations as baselines.
+
+        For each affected ``(asset_id, slo_name)`` group the current active pin is
+        unpinned first, so at most one active pin survives per group. When two
+        selected ids share a group, only the one with the newest ``period_start``
+        is pinned (the others are dropped) to keep that invariant.
+        """
+        if not eval_ids:
+            return []
+        eligible = await self._session.execute(
+            select(SLOEvaluation).where(
+                SLOEvaluation.id.in_(eval_ids),
+                SLOEvaluation.status == EvaluationStatus.COMPLETED,
+                SLOEvaluation.invalidated.is_(False),
+            )
+        )
+        eligible_rows = list(eligible.scalars().all())
+        if not eligible_rows:
+            return []
+        # Dedupe to one row per (asset_id, slo_name), keeping the newest period_start.
+        newest_per_group: dict[tuple[uuid.UUID | None, str | None], SLOEvaluation] = {}
+        for row in eligible_rows:
+            group_key = (row.asset_id, row.slo_name)
+            current = newest_per_group.get(group_key)
+            if current is None or row.period_start > current.period_start:
+                newest_per_group[group_key] = row
+        pin_ids = [row.id for row in newest_per_group.values()]
+        # Unpin the current active pin for each affected (asset, slo) group.
+        affected_groups = select(SLOEvaluation.asset_id, SLOEvaluation.slo_name).where(SLOEvaluation.id.in_(pin_ids))
+        await self._session.execute(
+            update(SLOEvaluation)
+            .where(
+                tuple_(SLOEvaluation.asset_id, SLOEvaluation.slo_name).in_(affected_groups),
+                SLOEvaluation.baseline_pinned_at.is_not(None),
+                SLOEvaluation.baseline_unpinned_at.is_(None),
+            )
+            .values(baseline_unpinned_at=func.now())
+            .execution_options(synchronize_session='fetch')
+        )
+        # Pin the selected rows (reset unpinned_at in case previously unpinned).
+        await self._session.execute(
+            update(SLOEvaluation)
+            .where(SLOEvaluation.id.in_(pin_ids))
+            .values(
+                baseline_pinned_at=func.now(),
+                baseline_unpinned_at=None,
+                baseline_pin_reason=reason,
+                baseline_pin_author=author,
+            )
+            .execution_options(synchronize_session='fetch')
+        )
+        rows = await self._fetch_by_ids(pin_ids)
+        await self._invalidate_caches_for(rows)
+        return rows
+
+    async def unpin_baseline_many(self, eval_ids: list[uuid.UUID]) -> list[SLOEvaluation]:
+        """Remove the baseline pin from the selected evaluations."""
+        if not eval_ids:
+            return []
+        await self._session.execute(
+            update(SLOEvaluation)
+            .where(SLOEvaluation.id.in_(eval_ids))
+            .values(baseline_unpinned_at=func.now())
+            .execution_options(synchronize_session='fetch')
+        )
+        rows = await self._fetch_by_ids(eval_ids)
+        await self._invalidate_caches_for(rows)
+        return rows
 
     async def get_by_run_id(self, run_id: uuid.UUID) -> list[SLOEvaluation]:
         """Fetch all SLO evaluations for a parent run, with annotations eagerly loaded."""

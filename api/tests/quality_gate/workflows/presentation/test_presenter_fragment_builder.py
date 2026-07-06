@@ -118,6 +118,40 @@ def test_build_column_fragment_invalidated_slo_collapses_result_to_invalidated()
     assert fragment.per_slo[0].cells[0].result == 'invalidated'
 
 
+def test_composite_summary_any_invalidated_marks_result_invalidated() -> None:
+    """Overall Score reads 'invalidated' when ANY SLO is invalidated (any-semantics)."""
+    objective = _objective('latency', ['<600'], ['<800'])
+    slo_a = _slo_eval('slo-a', [_indicator_row(objective, 500, 400)])
+    slo_b = _slo_eval('slo-b', [_indicator_row(objective, 500, 400)])
+    slo_a.invalidated = True  # only one of two invalidated
+    run = _run([slo_a, slo_b])
+    fragment = presenter.build_column_fragment(run, has_notes=False)
+    assert fragment.composite_summary.result == 'invalidated'
+
+
+def test_composite_summary_no_invalidated_keeps_run_result() -> None:
+    objective = _objective('latency', ['<600'], ['<800'])
+    run = _run(
+        [
+            _slo_eval('slo-a', [_indicator_row(objective, 500, 400)]),
+            _slo_eval('slo-b', [_indicator_row(objective, 500, 400)]),
+        ]
+    )
+    fragment = presenter.build_column_fragment(run, has_notes=False)
+    assert fragment.composite_summary.result == 'pass'
+
+
+def test_composite_summary_score_unchanged_by_invalidation() -> None:
+    """Invalidation flips only the result label — the score number is untouched."""
+    objective = _objective('latency', ['<600'], ['<800'])
+    slo_a = _slo_eval('slo-a', [_indicator_row(objective, 500, 400)])
+    slo_b = _slo_eval('slo-b', [_indicator_row(objective, 500, 400)])
+    run = _run([slo_a, slo_b])
+    baseline_score = presenter.build_column_fragment(run, has_notes=False).composite_summary.score
+    slo_a.invalidated = True
+    assert presenter.build_column_fragment(run, has_notes=False).composite_summary.score == baseline_score
+
+
 def test_build_column_fragment_preserves_slo_and_sli_versions() -> None:
     """Regression guard: HeatmapSummaryCell.slo_version and sli_version must be
     populated by the fragment builder, or the cached path returns null for both

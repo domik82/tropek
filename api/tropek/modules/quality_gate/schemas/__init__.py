@@ -21,6 +21,16 @@ from tropek.modules.quality_gate.schemas.baseline import (
     OverrideStatusRequest,
     PinBaselineRequest,
 )
+from tropek.modules.quality_gate.schemas.bulk_actions import (
+    BulkActionResponse,
+    BulkActionResult,
+    InvalidateManyRequest,
+    OverrideStatusManyRequest,
+    PinBaselineManyRequest,
+    RestoreManyRequest,
+    RestoreOverrideManyRequest,
+    UnpinBaselineManyRequest,
+)
 from tropek.modules.quality_gate.schemas.evaluations import (
     EvaluationDetail,
     EvaluationNameEntry,
@@ -62,6 +72,8 @@ __all__ = [
     'AnnotationUpdate',
     'BaselinePinConflictError',
     'BatchPeriod',
+    'BulkActionResponse',
+    'BulkActionResult',
     'CategoryColor',
     'EvaluateBatchRequest',
     'EvaluateBatchResponse',
@@ -79,11 +91,17 @@ __all__ = [
     'HeatmapSloGroupSection',
     'HeatmapSummaryCell',
     'IndicatorResult',
+    'InvalidateManyRequest',
     'InvalidateRequest',
     'MetricHeatmapResponse',
+    'OverrideStatusManyRequest',
     'OverrideStatusRequest',
+    'PinBaselineManyRequest',
     'PinBaselineRequest',
     'ReEvalResultItem',
     'ReEvaluateResponse',
+    'RestoreManyRequest',
+    'RestoreOverrideManyRequest',
     'TrendPoint',
+    'UnpinBaselineManyRequest',
 ]
