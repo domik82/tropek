@@ -42,6 +42,50 @@ function isRelative(criteria: string): boolean {
   return /[%]/.test(criteria) || /^[<>=]+=?\s*[+-]/.test(criteria)
 }
 
+/** Fraction of the data range padded above and below the auto Y bounds (Grafana default). */
+const Y_AXIS_PAD = 0.1
+
+/** Pick a "nice" round tick step (1/2/2.5/5 × 10^n) so auto bounds land on clean numbers. */
+function niceStep(span: number): number {
+  if (span <= 0) return 1
+  const rawStep = span / 5
+  const magnitude = Math.pow(10, Math.floor(Math.log10(rawStep)))
+  const normalized = rawStep / magnitude
+  const niceNormalized =
+    normalized >= 5 ? 5 : normalized >= 2.5 ? 2.5 : normalized >= 2 ? 2 : 1
+  return niceNormalized * magnitude
+}
+
+/** Strip floating-point drift (e.g. 0.0032500000000000003 → 0.00325) while keeping real digits. */
+function roundBound(value: number): number {
+  return Number(value.toPrecision(12))
+}
+
+/**
+ * Grafana-style auto Y bound: pad the data extent by Y_AXIS_PAD, then snap outward
+ * to a clean tick boundary. Guards against a flat series (zero span collapsing the axis).
+ */
+function paddedAxisBound(
+  dataMin: number,
+  dataMax: number,
+  side: 'min' | 'max',
+): number {
+  let span = dataMax - dataMin
+  if (span <= 0) span = Math.abs(dataMax) * Y_AXIS_PAD || 1
+  const step = niceStep(span * (1 + 2 * Y_AXIS_PAD))
+  if (side === 'min') {
+    return roundBound(Math.floor((dataMin - span * Y_AXIS_PAD) / step) * step)
+  }
+  return roundBound(Math.ceil((dataMax + span * Y_AXIS_PAD) / step) * step)
+}
+
+/** Parse a manual axis-bound string; null means "no usable number → auto-frame". */
+function resolveManualBound(raw: string): number | null {
+  if (raw === '') return null
+  const parsed = parseFloat(raw)
+  return Number.isFinite(parsed) ? parsed : null
+}
+
 interface DiscoveredTarget {
   key: string
   level: 'pass' | 'warn'
@@ -457,6 +501,14 @@ export function buildChartRender(input: ChartOptionInput): { option: object; lab
     notesVisible,
   )
 
+  let manualYMin = resolveManualBound(yMin)
+  let manualYMax = resolveManualBound(yMax)
+  // Inverted or degenerate manual bounds (min >= max) are meaningless — auto-frame both instead.
+  if (manualYMin !== null && manualYMax !== null && manualYMin >= manualYMax) {
+    manualYMin = null
+    manualYMax = null
+  }
+
   const option = {
     animation: false,
     backgroundColor: 'transparent',
@@ -505,8 +557,15 @@ export function buildChartRender(input: ChartOptionInput): { option: object; lab
     },
     yAxis: {
       type: 'value',
-      min: yMin !== '' ? parseFloat(yMin) : undefined,
-      max: yMax !== '' ? parseFloat(yMax) : undefined,
+      // Manual value wins per bound; blank/invalid bounds auto-frame the data (Grafana-style).
+      min:
+        manualYMin ??
+        (({ min, max }: { min: number; max: number }) =>
+          paddedAxisBound(min, max, 'min')),
+      max:
+        manualYMax ??
+        (({ min, max }: { min: number; max: number }) =>
+          paddedAxisBound(min, max, 'max')),
       axisLabel: {
         color: ct.axisLabel,
         fontSize: Math.round(10 * fontScale),

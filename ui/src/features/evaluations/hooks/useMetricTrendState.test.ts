@@ -198,11 +198,62 @@ describe('buildChartOption', () => {
     expect(yAxis.max).toBe(500)
   })
 
-  it('leaves yAxis min/max undefined when empty', () => {
-    const option = buildChartOption(baseInput()) as Record<string, unknown>
+  // ── Auto Y-axis framing (blank bounds) ──────────────────────────────────────
+
+  function autoBounds(
+    input: Record<string, unknown>,
+    extent: { min: number; max: number },
+  ): { min: number; max: number } {
+    const option = buildChartOption(baseInput(input)) as Record<string, unknown>
+    const yAxis = option.yAxis as {
+      min: (extent: { min: number; max: number }) => number
+      max: (extent: { min: number; max: number }) => number
+    }
+    expect(typeof yAxis.min).toBe('function')
+    expect(typeof yAxis.max).toBe('function')
+    return { min: yAxis.min(extent), max: yAxis.max(extent) }
+  }
+
+  it('auto-frames data with padded nice bounds when yMin/yMax blank', () => {
+    expect(autoBounds({}, { min: 100, max: 200 })).toEqual({ min: 80, max: 220 })
+  })
+
+  it('auto-frames a flat non-zero series without collapsing the axis', () => {
+    expect(autoBounds({}, { min: 500, max: 500 })).toEqual({ min: 490, max: 510 })
+  })
+
+  it('auto-frames a flat zero series', () => {
+    expect(autoBounds({}, { min: 0, max: 0 })).toEqual({ min: -0.2, max: 0.2 })
+  })
+
+  it('auto-frames all-negative data', () => {
+    expect(autoBounds({}, { min: -500, max: -100 })).toEqual({ min: -550, max: -50 })
+  })
+
+  it('rounds away floating-point noise in auto bounds', () => {
+    // Without rounding the max lands on 0.0032500000000000003.
+    expect(autoBounds({}, { min: 0.001, max: 0.003 }).max).toBe(0.00325)
+  })
+
+  it('auto-frames when a manual bound is non-numeric', () => {
+    const option = buildChartOption(baseInput({ yMin: 'abc', yMax: '' })) as Record<string, unknown>
     const yAxis = option.yAxis as { min: unknown; max: unknown }
-    expect(yAxis.min).toBeUndefined()
-    expect(yAxis.max).toBeUndefined()
+    expect(typeof yAxis.min).toBe('function')
+    expect(typeof yAxis.max).toBe('function')
+  })
+
+  it('ignores inverted manual bounds (min >= max) and auto-frames both', () => {
+    const option = buildChartOption(baseInput({ yMin: '500', yMax: '10' })) as Record<string, unknown>
+    const yAxis = option.yAxis as { min: unknown; max: unknown }
+    expect(typeof yAxis.min).toBe('function')
+    expect(typeof yAxis.max).toBe('function')
+  })
+
+  it('keeps a valid manual bound while auto-framing the blank one', () => {
+    const option = buildChartOption(baseInput({ yMin: '0', yMax: '' })) as Record<string, unknown>
+    const yAxis = option.yAxis as { min: unknown; max: unknown }
+    expect(yAxis.min).toBe(0)
+    expect(typeof yAxis.max).toBe('function')
   })
 
   it('handles empty data points', () => {
