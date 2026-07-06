@@ -1,5 +1,5 @@
 // ui/src/features/evaluations/hooks/useMetricTrendState.ts
-import { useState, useMemo, useCallback } from 'react'
+import { useState, useMemo } from 'react'
 import { useTheme } from '@/lib/theme-context'
 import { RESULT_COLOUR, CHART_THEME } from '@/lib/theme'
 import { buildNoteAnnotations, escapeHtml, type MarkLineOption, type MarkPointOption } from '@/lib/chartAnnotations'
@@ -32,8 +32,6 @@ export interface MetricTrendState {
   targets: TargetToggle[]
   chartOption: object
   labelBandPx: number
-  notesVisible: boolean
-  toggleNotes: () => void
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -170,12 +168,12 @@ export function useMetricTrendState(
   annotations?: Map<string, Annotation[]>,
   categories?: NoteCategory[],
   chartWidth?: number,
+  notesVisible = true,
+  chartType: 'line' | 'bar' = 'line',
 ): MetricTrendState {
   const [yMin, setYMin] = useState('')
   const [yMax, setYMax] = useState('')
   const [visibility, setVisibility] = useState<Record<string, boolean>>({})
-  const [notesVisible, setNotesVisible] = useState(true)
-  const toggleNotes = useCallback(() => setNotesVisible(v => !v), [])
 
   const { theme, fontSize } = useTheme()
   const colours = RESULT_COLOUR[theme]
@@ -252,6 +250,7 @@ export function useMetricTrendState(
         categories,
         chartWidth,
         notesVisible,
+        chartType,
       }),
     [
       trendData,
@@ -269,6 +268,7 @@ export function useMetricTrendState(
       categories,
       chartWidth,
       notesVisible,
+      chartType,
     ],
   )
 
@@ -280,8 +280,6 @@ export function useMetricTrendState(
     targets,
     chartOption: chartResult.option,
     labelBandPx: chartResult.labelBandPx,
-    notesVisible,
-    toggleNotes,
   }
 }
 
