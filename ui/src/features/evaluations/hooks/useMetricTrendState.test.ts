@@ -3,7 +3,8 @@ import { renderHook, act } from '@testing-library/react'
 import { buildChartOption, useMetricTrendState } from './useMetricTrendState'
 import type { ChartTarget } from './useMetricTrendState'
 import { RESULT_COLOUR, CHART_THEME } from '@/lib/theme'
-import type { TrendPoint, Indicator } from '../domain'
+import type { TrendPoint, Indicator, Annotation } from '../domain'
+import type { NoteCategory } from '@/features/note-categories'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -57,6 +58,41 @@ function makeIndicator(overrides: Partial<Indicator> = {}): Indicator {
     passTargets: [],
     warningTargets: [],
     changePoint: null,
+    ...overrides,
+  }
+}
+
+function makeCategory(overrides: Partial<NoteCategory> = {}): NoteCategory {
+  return {
+    id: 'cat-1',
+    name: 'deploy',
+    label: 'Deploy',
+    color: 'sky',
+    showOnGraph: true,
+    isSystem: false,
+    createdAt: new Date('2026-01-01T00:00:00Z'),
+    updatedAt: null,
+    ...overrides,
+  }
+}
+
+function makeAnnotation(overrides: Partial<Annotation> = {}): Annotation {
+  return {
+    id: 'note-1',
+    sloEvaluationId: null,
+    evaluationRunId: null,
+    content: 'note content',
+    author: null,
+    categoryId: 'cat-1',
+    category: makeCategory(),
+    tags: {},
+    noteGroupId: null,
+    noteGroupName: null,
+    hiddenAt: null,
+    hiddenBy: null,
+    hiddenReason: null,
+    createdAt: new Date('2026-01-01T00:00:00Z'),
+    updatedAt: null,
     ...overrides,
   }
 }
@@ -284,6 +320,29 @@ describe('buildChartOption', () => {
     const option = buildChartOption(baseInput()) as Record<string, unknown>
     const series = option.series as Array<Record<string, unknown>>
     expect(series[0].cursor).toBe('default')
+  })
+
+  it('appends showOnGraph notes to the tooltip and escapes their content', () => {
+    const shown = makeAnnotation({
+      content: 'deploy <v2>',
+      category: makeCategory({ label: 'Deploy', showOnGraph: true, color: 'sky' }),
+    })
+    const hidden = makeAnnotation({
+      id: 'note-2',
+      content: 'internal only',
+      category: makeCategory({ id: 'cat-2', label: 'Internal', showOnGraph: false, color: 'gray' }),
+    })
+    const annotations = new Map<string, Annotation[]>([['eval-1', [shown, hidden]]])
+    const trend = [makeTrendPoint({ evalId: 'eval-1' })]
+
+    const option = buildChartOption(baseInput({ trend, annotations })) as Record<string, unknown>
+    const tooltip = option.tooltip as { formatter: (params: unknown) => string }
+    const html = tooltip.formatter([{ dataIndex: 0 }])
+
+    expect(html).toContain('Deploy')
+    expect(html).toContain('deploy &lt;v2&gt;') // HTML-escaped
+    expect(html).not.toContain('internal only') // hidden category excluded
+    expect(html).not.toContain('Internal')
   })
 })
 

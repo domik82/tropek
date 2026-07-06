@@ -2,7 +2,8 @@
 import { useState, useMemo, useCallback } from 'react'
 import { useTheme } from '@/lib/theme-context'
 import { RESULT_COLOUR, CHART_THEME } from '@/lib/theme'
-import { buildNoteAnnotations, type MarkLineOption, type MarkPointOption } from '@/lib/chartAnnotations'
+import { buildNoteAnnotations, escapeHtml, type MarkLineOption, type MarkPointOption } from '@/lib/chartAnnotations'
+import { paletteOf } from '@/features/note-categories'
 import type { Annotation, TrendPoint, Indicator, TrendTargetEntry } from '../domain'
 import type { NoteCategory } from '@/features/note-categories'
 
@@ -527,19 +528,31 @@ export function buildChartRender(input: ChartOptionInput): { option: object; lab
           | { dataIndex?: number }
           | undefined
         const idx = first?.dataIndex
-        const p = idx != null ? trend[idx] : undefined
-        if (!p) return ''
+        const point = idx != null ? trend[idx] : undefined
+        if (!point) return ''
         const lines = [
-          `<b style="color:#58a6ff">${p.evaluationName ?? '(no evaluation_name)'}</b>`,
+          `<b style="color:#58a6ff">${point.evaluationName ?? '(no evaluation_name)'}</b>`,
           `<b>${times[idx as number]}</b>`,
-          `value: <b>${p.value}</b>`,
-          `result: <b style="color:${colours[p.outcome as keyof typeof colours] ?? '#6b7280'}">${p.outcome.toUpperCase()}</b>`,
+          `value: <b>${point.value}</b>`,
+          `result: <b style="color:${colours[point.outcome as keyof typeof colours] ?? '#6b7280'}">${point.outcome.toUpperCase()}</b>`,
         ]
-        if (p.overridden) lines.push(`<span style="color:${ct.axisLabel}">(override)</span>`)
-        if (p.changePoint) {
-          const cpColor = p.changePoint.direction === 'regression' ? 'var(--change-point-regression)' : 'var(--change-point-improvement)'
-          const pctSign = p.changePoint.changeRelativePct > 0 ? '+' : ''
-          lines.push(`<span style="color:${cpColor}">◆ ${p.changePoint.direction} (${pctSign}${p.changePoint.changeRelativePct.toFixed(1)}%)</span>`)
+        if (point.overridden) lines.push(`<span style="color:${ct.axisLabel}">(override)</span>`)
+        if (point.changePoint) {
+          const cpColor = point.changePoint.direction === 'regression' ? 'var(--change-point-regression)' : 'var(--change-point-improvement)'
+          const pctSign = point.changePoint.changeRelativePct > 0 ? '+' : ''
+          lines.push(`<span style="color:${cpColor}">◆ ${point.changePoint.direction} (${pctSign}${point.changePoint.changeRelativePct.toFixed(1)}%)</span>`)
+        }
+        // Always reveal showOnGraph notes on hover, even when pill display is toggled off —
+        // matches the pill rule (only showOnGraph categories ever surface on the graph).
+        const pointNotes = (annotations?.get(point.evalId) ?? []).filter(note => note.category.showOnGraph)
+        if (pointNotes.length > 0) {
+          lines.push(`<div style="margin-top:4px;border-top:1px solid ${ct.border}"></div>`)
+          for (const note of pointNotes) {
+            const noteColor = paletteOf(note.category.color).fg
+            lines.push(
+              `<div><b style="color:${noteColor}">${escapeHtml(note.category.label)}</b>: ${escapeHtml(note.content)}</div>`,
+            )
+          }
         }
         return lines.join('<br/>')
       },
