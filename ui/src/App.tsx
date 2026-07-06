@@ -11,6 +11,7 @@ import { ChangePointsPage } from './features/change-points/components/ChangePoin
 import { Button } from './components/ui/button'
 import { ThemeProvider, useTheme } from './lib/theme-context'
 import { TimeRangeProvider } from './lib/time-range-context'
+import { ChartPreferencesProvider } from './lib/chart-preferences-context'
 import { ErrorBoundary } from './components/ErrorBoundary'
 
 const queryClient = new QueryClient({
@@ -80,8 +81,9 @@ export default function App() {
   return (
     <ThemeProvider>
       <TimeRangeProvider>
-        <QueryClientProvider client={queryClient}>
-          <BrowserRouter>
+        <ChartPreferencesProvider>
+          <QueryClientProvider client={queryClient}>
+            <BrowserRouter>
           <div className="min-h-screen bg-background text-foreground">
             <nav className="border-b border-border px-6 py-3 flex items-center gap-6">
               <span className="font-bold text-sm tracking-widest" style={{ color: 'var(--tropek-logo)' }}>TROPEK</span>
@@ -113,8 +115,9 @@ export default function App() {
               </ErrorBoundary>
             </main>
           </div>
-        </BrowserRouter>
-        </QueryClientProvider>
+            </BrowserRouter>
+          </QueryClientProvider>
+        </ChartPreferencesProvider>
       </TimeRangeProvider>
     </ThemeProvider>
   )
