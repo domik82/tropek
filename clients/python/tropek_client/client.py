@@ -25,6 +25,7 @@ from tropek_client.models import (
     AssetTypeRead,
     AssetTypeUpdate,
     AssetUpdate,
+    BulkActionResponse,
     ChangePointRead,
     ComparisonConfig,
     ConfigurationRead,
@@ -43,6 +44,7 @@ from tropek_client.models import (
     EvaluationSummary,
     ExtractRequest,
     GroupedMetricHeatmapResponse,
+    InvalidateManyRequest,
     InvalidateRequest,
     MetaSnapshotCreate,
     MetaSnapshotCreated,
@@ -50,13 +52,17 @@ from tropek_client.models import (
     MetaSnapshotSummary,
     MethodCriteriaOverride,
     MetricHeatmapResponse,
+    OverrideStatusManyRequest,
     OverrideStatusRequest,
     PagedResponse,
+    PinBaselineManyRequest,
     PinBaselineRequest,
     ReEvaluateFromBaselineRequest,
     ReEvaluateFromDateRequest,
     ReEvaluateFromEvaluationRequest,
     ReEvaluateResponse,
+    RestoreManyRequest,
+    RestoreOverrideManyRequest,
     SLIDefinitionCreate,
     SLIDefinitionRead,
     SLOAssignmentRead,
@@ -80,6 +86,7 @@ from tropek_client.models import (
     TimelineSummaryResponse,
     TrendPoint,
     TriageRequest,
+    UnpinBaselineManyRequest,
 )
 
 
@@ -465,6 +472,30 @@ class _Evaluations:
     def restore_override(self, eval_id: str) -> EvaluationDetail:
         response = self._http.patch(f'/evaluation/{eval_id}/restore-override')
         return EvaluationDetail.model_validate(response.json())
+
+    def invalidate_many(self, body: InvalidateManyRequest) -> BulkActionResponse:
+        response = self._http.patch('/evaluations/invalidate', json=body.model_dump(mode='json'))
+        return BulkActionResponse.model_validate(response.json())
+
+    def restore_many(self, body: RestoreManyRequest) -> BulkActionResponse:
+        response = self._http.patch('/evaluations/restore', json=body.model_dump(mode='json'))
+        return BulkActionResponse.model_validate(response.json())
+
+    def override_status_many(self, body: OverrideStatusManyRequest) -> BulkActionResponse:
+        response = self._http.patch('/evaluations/override-status', json=body.model_dump(mode='json'))
+        return BulkActionResponse.model_validate(response.json())
+
+    def restore_override_many(self, body: RestoreOverrideManyRequest) -> BulkActionResponse:
+        response = self._http.patch('/evaluations/restore-override', json=body.model_dump(mode='json'))
+        return BulkActionResponse.model_validate(response.json())
+
+    def pin_baseline_many(self, body: PinBaselineManyRequest) -> BulkActionResponse:
+        response = self._http.patch('/evaluations/pin-baseline', json=body.model_dump(mode='json'))
+        return BulkActionResponse.model_validate(response.json())
+
+    def unpin_baseline_many(self, body: UnpinBaselineManyRequest) -> BulkActionResponse:
+        response = self._http.patch('/evaluations/unpin-baseline', json=body.model_dump(mode='json'))
+        return BulkActionResponse.model_validate(response.json())
 
     def re_evaluate_from_date(self, body: ReEvaluateFromDateRequest) -> ReEvaluateResponse:
         response = self._http.post(

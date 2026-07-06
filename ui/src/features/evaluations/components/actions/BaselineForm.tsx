@@ -1,12 +1,13 @@
 import { useCallback, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import { pinBaseline } from '../../api'
+import { pinBaselineMany } from '../../api'
 import { ActionFormShell } from './ActionFormShell'
 import { ReasonAuthorFields } from './ReasonAuthorFields'
 import { useReasonAuthor } from './useReasonAuthor'
 import { SloScopeField } from './slo-scope/SloScopeField'
 import { SloScopeModal } from './slo-scope/SloScopeModal'
 import { invalidateColumnQueries } from './invalidate-column-queries'
+import { runBatch } from './run-batch'
 import type { SloScopeResult } from './slo-scope/types'
 
 interface Props {
@@ -55,22 +56,7 @@ export function BaselineForm({ scope, columnEvalId, onComplete }: Props) {
       }
     })
 
-    const rowResults: RowResult[] = []
-    await Promise.all(
-      targets.map(async target => {
-        try {
-          await pinBaseline(target.sloEvaluationId, { reason, author })
-          rowResults.push({ sloName: target.sloName, sloEvaluationId: target.sloEvaluationId, status: 'success' })
-        } catch (err) {
-          rowResults.push({
-            sloName: target.sloName,
-            sloEvaluationId: target.sloEvaluationId,
-            status: 'failed',
-            error: err instanceof Error ? err.message : 'unknown error',
-          })
-        }
-      }),
-    )
+    const rowResults = await runBatch(targets, ids => pinBaselineMany(ids, { reason, author }))
 
     invalidateColumnQueries(
       queryClient,

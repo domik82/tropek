@@ -1239,6 +1239,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/evaluations/invalidate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Invalidate Evaluations Bulk
+         * @description Invalidate a batch of evaluations in a single atomic statement.
+         */
+        patch: operations["invalidate_evaluations_bulk_evaluations_invalidate_patch"];
+        trace?: never;
+    };
     "/evaluations/names": {
         parameters: {
             query?: never;
@@ -1257,6 +1277,46 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/evaluations/override-status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Override Status Evaluations Bulk
+         * @description Override the result of a batch of completed evaluations.
+         */
+        patch: operations["override_status_evaluations_bulk_evaluations_override_status_patch"];
+        trace?: never;
+    };
+    "/evaluations/pin-baseline": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Pin Baseline Evaluations Bulk
+         * @description Pin a batch of completed, non-invalidated evaluations as baselines.
+         */
+        patch: operations["pin_baseline_evaluations_bulk_evaluations_pin_baseline_patch"];
         trace?: never;
     };
     "/evaluations/re-evaluate/from-baseline": {
@@ -1319,6 +1379,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/evaluations/restore": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Restore Evaluations Bulk
+         * @description Clear the invalidation flag on a batch of evaluations.
+         */
+        patch: operations["restore_evaluations_bulk_evaluations_restore_patch"];
+        trace?: never;
+    };
+    "/evaluations/restore-override": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Restore Override Evaluations Bulk
+         * @description Restore the original result on a batch of overridden evaluations.
+         */
+        patch: operations["restore_override_evaluations_bulk_evaluations_restore_override_patch"];
+        trace?: never;
+    };
     "/evaluations/trend-annotations": {
         parameters: {
             query?: never;
@@ -1341,6 +1441,26 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/evaluations/unpin-baseline": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Unpin Baseline Evaluations Bulk
+         * @description Remove the baseline pin from a batch of evaluations.
+         */
+        patch: operations["unpin_baseline_evaluations_bulk_evaluations_unpin_baseline_patch"];
         trace?: never;
     };
     "/health": {
@@ -2388,6 +2508,37 @@ export interface components {
             period_start: string;
         };
         /**
+         * BulkActionResponse
+         * @description Response for every bulk evaluation-action endpoint.
+         *
+         *     ``not_found`` collects ids that were not applied — either unknown, or
+         *     skipped because a precondition (e.g. status must be completed) was not met.
+         */
+        BulkActionResponse: {
+            /** Not Found */
+            not_found: string[];
+            /** Results */
+            results: components["schemas"]["BulkActionResult"][];
+            /** Updated */
+            updated: number;
+        };
+        /**
+         * BulkActionResult
+         * @description Outcome for a single evaluation id in a bulk action.
+         */
+        BulkActionResult: {
+            /**
+             * Evaluation Id
+             * Format: uuid
+             */
+            evaluation_id: string;
+            /**
+             * Status
+             * @constant
+             */
+            status: "success";
+        };
+        /**
          * BulkTriageRequest
          * @description Request body for bulk-triaging change points.
          */
@@ -3305,6 +3456,16 @@ export interface components {
             weight: number;
         };
         /**
+         * InvalidateManyRequest
+         * @description Request body for PATCH /evaluations/invalidate.
+         */
+        InvalidateManyRequest: {
+            /** Evaluation Ids */
+            evaluation_ids: string[];
+            /** Note */
+            note: string;
+        };
+        /**
          * InvalidateRequest
          * @description Request body for invalidating an evaluation.
          */
@@ -3495,6 +3656,20 @@ export interface components {
             slots: string[];
         };
         /**
+         * OverrideStatusManyRequest
+         * @description Request body for PATCH /evaluations/override-status.
+         */
+        OverrideStatusManyRequest: {
+            /** Author */
+            author: string;
+            /** Evaluation Ids */
+            evaluation_ids: string[];
+            /** New Result */
+            new_result: string;
+            /** Reason */
+            reason: string;
+        };
+        /**
          * OverrideStatusRequest
          * @description Request body for overriding evaluation result.
          */
@@ -3573,6 +3748,18 @@ export interface components {
             target_value: number;
             /** Violated */
             violated: boolean;
+        };
+        /**
+         * PinBaselineManyRequest
+         * @description Request body for PATCH /evaluations/pin-baseline.
+         */
+        PinBaselineManyRequest: {
+            /** Author */
+            author: string;
+            /** Evaluation Ids */
+            evaluation_ids: string[];
+            /** Reason */
+            reason: string;
         };
         /**
          * PinBaselineRequest
@@ -3692,6 +3879,22 @@ export interface components {
             results: components["schemas"]["ReEvalResultItem"][];
             /** Slo Version Used */
             slo_version_used: number | null;
+        };
+        /**
+         * RestoreManyRequest
+         * @description Request body for PATCH /evaluations/restore.
+         */
+        RestoreManyRequest: {
+            /** Evaluation Ids */
+            evaluation_ids: string[];
+        };
+        /**
+         * RestoreOverrideManyRequest
+         * @description Request body for PATCH /evaluations/restore-override.
+         */
+        RestoreOverrideManyRequest: {
+            /** Evaluation Ids */
+            evaluation_ids: string[];
         };
         /**
          * SLIDefinitionCreate
@@ -4433,6 +4636,14 @@ export interface components {
             /** Triage Note */
             triage_note?: string | null;
         };
+        /**
+         * UnpinBaselineManyRequest
+         * @description Request body for PATCH /evaluations/unpin-baseline.
+         */
+        UnpinBaselineManyRequest: {
+            /** Evaluation Ids */
+            evaluation_ids: string[];
+        };
         /** ValidationError */
         ValidationError: {
             /** Context */
@@ -4471,15 +4682,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PagedResponse_AssetGroupRead_"];
-                };
-            };
-            /** @description Bad Request */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorMessage"];
                 };
             };
             /** @description Error */
@@ -4522,15 +4724,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AssetGroupRead"];
-                };
-            };
-            /** @description Bad Request */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorMessage"];
                 };
             };
             /** @description Error */
@@ -4580,15 +4773,6 @@ export interface operations {
                     "application/json": components["schemas"]["AssetGroupTreeResponse"];
                 };
             };
-            /** @description Bad Request */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorMessage"];
-                };
-            };
             /** @description Error */
             404: {
                 headers: {
@@ -4627,15 +4811,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AssetGroupRead"];
-                };
-            };
-            /** @description Bad Request */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorMessage"];
                 };
             };
             /** @description Error */
@@ -4677,15 +4852,6 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
-            };
-            /** @description Bad Request */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorMessage"];
-                };
             };
             /** @description Error */
             404: {
@@ -4738,15 +4904,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AssetGroupRead"];
-                };
-            };
-            /** @description Bad Request */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorMessage"];
                 };
             };
             /** @description Error */
@@ -4802,15 +4959,6 @@ export interface operations {
                     "application/json": components["schemas"]["AssetGroupRead"];
                 };
             };
-            /** @description Bad Request */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorMessage"];
-                };
-            };
             /** @description Error */
             404: {
                 headers: {
@@ -4858,15 +5006,6 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
-            };
-            /** @description Bad Request */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorMessage"];
-                };
             };
             /** @description Error */
             404: {
@@ -4917,15 +5056,6 @@ export interface operations {
                     "application/json": components["schemas"]["SLOAssignmentRead"][];
                 };
             };
-            /** @description Bad Request */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorMessage"];
-                };
-            };
             /** @description Error */
             404: {
                 headers: {
@@ -4969,15 +5099,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SLOAssignmentRead"];
-                };
-            };
-            /** @description Bad Request */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorMessage"];
                 };
             };
             /** @description Error */
@@ -5028,15 +5149,6 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Bad Request */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorMessage"];
-                };
-            };
             /** @description Error */
             404: {
                 headers: {
@@ -5086,15 +5198,6 @@ export interface operations {
                     "application/json": components["schemas"]["SLOGroupAssignmentRead"][];
                 };
             };
-            /** @description Bad Request */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorMessage"];
-                };
-            };
             /** @description Error */
             404: {
                 headers: {
@@ -5138,15 +5241,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SLOGroupAssignmentRead"];
-                };
-            };
-            /** @description Bad Request */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorMessage"];
                 };
             };
             /** @description Error */
@@ -5196,15 +5290,6 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
-            };
-            /** @description Bad Request */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorMessage"];
-                };
             };
             /** @description Error */
             404: {
@@ -5259,15 +5344,6 @@ export interface operations {
                     "application/json": components["schemas"]["AssetGroupRead"];
                 };
             };
-            /** @description Bad Request */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorMessage"];
-                };
-            };
             /** @description Error */
             404: {
                 headers: {
@@ -5316,15 +5392,6 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Bad Request */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorMessage"];
-                };
-            };
             /** @description Error */
             404: {
                 headers: {
@@ -5372,15 +5439,6 @@ export interface operations {
                     "application/json": components["schemas"]["PagedResponse_AssetTypeRead_"];
                 };
             };
-            /** @description Bad Request */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorMessage"];
-                };
-            };
             /** @description Error */
             404: {
                 headers: {
@@ -5421,15 +5479,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AssetTypeRead"];
-                };
-            };
-            /** @description Bad Request */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorMessage"];
                 };
             };
             /** @description Error */
@@ -5478,15 +5527,6 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
-            };
-            /** @description Bad Request */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorMessage"];
-                };
             };
             /** @description Error */
             404: {
@@ -5541,15 +5581,6 @@ export interface operations {
                     "application/json": components["schemas"]["AssetTypeRead"];
                 };
             };
-            /** @description Bad Request */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorMessage"];
-                };
-            };
             /** @description Error */
             404: {
                 headers: {
@@ -5597,15 +5628,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AssetTypeRead"];
-                };
-            };
-            /** @description Bad Request */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorMessage"];
                 };
             };
             /** @description Error */
@@ -5659,15 +5681,6 @@ export interface operations {
                     "application/json": components["schemas"]["PagedResponse_AssetRead_"];
                 };
             };
-            /** @description Bad Request */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorMessage"];
-                };
-            };
             /** @description Error */
             404: {
                 headers: {
@@ -5708,15 +5721,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AssetRead"];
-                };
-            };
-            /** @description Bad Request */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorMessage"];
                 };
             };
             /** @description Error */
@@ -5766,15 +5770,6 @@ export interface operations {
                     "application/json": components["schemas"]["TagKeyCount"][];
                 };
             };
-            /** @description Bad Request */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorMessage"];
-                };
-            };
             /** @description Error */
             404: {
                 headers: {
@@ -5813,15 +5808,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TagValueCount"][];
-                };
-            };
-            /** @description Bad Request */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorMessage"];
                 };
             };
             /** @description Error */
@@ -5868,15 +5854,6 @@ export interface operations {
                     "application/json": components["schemas"]["MetaSnapshotSummary"][];
                 };
             };
-            /** @description Bad Request */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorMessage"];
-                };
-            };
             /** @description Error */
             404: {
                 headers: {
@@ -5917,15 +5894,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MetaSnapshotCreated"];
-                };
-            };
-            /** @description Bad Request */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorMessage"];
                 };
             };
             /** @description Error */
@@ -5978,15 +5946,6 @@ export interface operations {
                     "application/json": components["schemas"]["MetaSnapshotDetail"];
                 };
             };
-            /** @description Bad Request */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorMessage"];
-                };
-            };
             /** @description Error */
             404: {
                 headers: {
@@ -6025,15 +5984,6 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
-            };
-            /** @description Bad Request */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorMessage"];
-                };
             };
             /** @description Error */
             404: {
@@ -6087,15 +6037,6 @@ export interface operations {
                     "application/json": components["schemas"]["TimelineResponse"];
                 };
             };
-            /** @description Bad Request */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorMessage"];
-                };
-            };
             /** @description Error */
             404: {
                 headers: {
@@ -6137,15 +6078,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TimelineSummaryResponse"];
-                };
-            };
-            /** @description Bad Request */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorMessage"];
                 };
             };
             /** @description Error */
@@ -6193,15 +6125,6 @@ export interface operations {
                     "application/json": components["schemas"]["TrendPoint"][];
                 };
             };
-            /** @description Bad Request */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorMessage"];
-                };
-            };
             /** @description Error */
             404: {
                 headers: {
@@ -6242,15 +6165,6 @@ export interface operations {
                     "application/json": components["schemas"]["AssetRead"];
                 };
             };
-            /** @description Bad Request */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorMessage"];
-                };
-            };
             /** @description Error */
             404: {
                 headers: {
@@ -6288,15 +6202,6 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
-            };
-            /** @description Bad Request */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorMessage"];
-                };
             };
             /** @description Error */
             404: {
@@ -6351,15 +6256,6 @@ export interface operations {
                     "application/json": components["schemas"]["AssetRead"];
                 };
             };
-            /** @description Bad Request */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorMessage"];
-                };
-            };
             /** @description Error */
             404: {
                 headers: {
@@ -6409,15 +6305,6 @@ export interface operations {
                     "application/json": components["schemas"]["SLOAssignmentRead"][];
                 };
             };
-            /** @description Bad Request */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorMessage"];
-                };
-            };
             /** @description Error */
             404: {
                 headers: {
@@ -6461,15 +6348,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SLOAssignmentRead"];
-                };
-            };
-            /** @description Bad Request */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorMessage"];
                 };
             };
             /** @description Error */
@@ -6526,15 +6404,6 @@ export interface operations {
                     "application/json": components["schemas"]["SLOAssignmentRead"];
                 };
             };
-            /** @description Bad Request */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorMessage"];
-                };
-            };
             /** @description Error */
             404: {
                 headers: {
@@ -6582,15 +6451,6 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
-            };
-            /** @description Bad Request */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorMessage"];
-                };
             };
             /** @description Error */
             404: {
@@ -6641,15 +6501,6 @@ export interface operations {
                     "application/json": components["schemas"]["SLOGroupAssignmentRead"][];
                 };
             };
-            /** @description Bad Request */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorMessage"];
-                };
-            };
             /** @description Error */
             404: {
                 headers: {
@@ -6693,15 +6544,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SLOGroupAssignmentRead"];
-                };
-            };
-            /** @description Bad Request */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorMessage"];
                 };
             };
             /** @description Error */
@@ -6751,15 +6593,6 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
-            };
-            /** @description Bad Request */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorMessage"];
-                };
             };
             /** @description Error */
             404: {
@@ -6818,15 +6651,6 @@ export interface operations {
                     "application/json": components["schemas"]["ChangePointRead"][];
                 };
             };
-            /** @description Bad Request */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorMessage"];
-                };
-            };
             /** @description Error */
             404: {
                 headers: {
@@ -6869,15 +6693,6 @@ export interface operations {
                     "application/json": {
                         [key: string]: number;
                     };
-                };
-            };
-            /** @description Bad Request */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorMessage"];
                 };
             };
             /** @description Error */
@@ -6929,15 +6744,6 @@ export interface operations {
                     "application/json": components["schemas"]["ChangePointConfigRead"];
                 };
             };
-            /** @description Bad Request */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorMessage"];
-                };
-            };
             /** @description Error */
             404: {
                 headers: {
@@ -6980,15 +6786,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ChangePointConfigRead"];
-                };
-            };
-            /** @description Bad Request */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorMessage"];
                 };
             };
             /** @description Error */
@@ -7037,15 +6834,6 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
-            };
-            /** @description Bad Request */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorMessage"];
-                };
             };
             /** @description Error */
             404: {
@@ -7096,15 +6884,6 @@ export interface operations {
                     "application/json": components["schemas"]["ChangePointRead"];
                 };
             };
-            /** @description Bad Request */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorMessage"];
-                };
-            };
             /** @description Error */
             404: {
                 headers: {
@@ -7147,15 +6926,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ChangePointRead"];
-                };
-            };
-            /** @description Bad Request */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorMessage"];
                 };
             };
             /** @description Error */
@@ -7207,15 +6977,6 @@ export interface operations {
                     };
                 };
             };
-            /** @description Bad Request */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorMessage"];
-                };
-            };
             /** @description Error */
             404: {
                 headers: {
@@ -7256,15 +7017,6 @@ export interface operations {
                     "application/json": components["schemas"]["ConfigurationRead"][];
                 };
             };
-            /** @description Bad Request */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorMessage"];
-                };
-            };
             /** @description Error */
             404: {
                 headers: {
@@ -7303,15 +7055,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ConfigurationRead"];
-                };
-            };
-            /** @description Bad Request */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorMessage"];
                 };
             };
             /** @description Error */
@@ -7356,15 +7099,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ConfigurationRead"];
-                };
-            };
-            /** @description Bad Request */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorMessage"];
                 };
             };
             /** @description Error */
@@ -7418,15 +7152,6 @@ export interface operations {
                     "application/json": components["schemas"]["PagedResponse_DataSourceRead_"];
                 };
             };
-            /** @description Bad Request */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorMessage"];
-                };
-            };
             /** @description Error */
             404: {
                 headers: {
@@ -7467,15 +7192,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DataSourceRead"];
-                };
-            };
-            /** @description Bad Request */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorMessage"];
                 };
             };
             /** @description Error */
@@ -7525,15 +7241,6 @@ export interface operations {
                     "application/json": components["schemas"]["TagKeyCount"][];
                 };
             };
-            /** @description Bad Request */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorMessage"];
-                };
-            };
             /** @description Error */
             404: {
                 headers: {
@@ -7572,15 +7279,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TagValueCount"][];
-                };
-            };
-            /** @description Bad Request */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorMessage"];
                 };
             };
             /** @description Error */
@@ -7623,15 +7321,6 @@ export interface operations {
                     "application/json": components["schemas"]["DataSourceRead"];
                 };
             };
-            /** @description Bad Request */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorMessage"];
-                };
-            };
             /** @description Error */
             404: {
                 headers: {
@@ -7669,15 +7358,6 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
-            };
-            /** @description Bad Request */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorMessage"];
-                };
             };
             /** @description Error */
             404: {
@@ -7730,15 +7410,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DataSourceRead"];
-                };
-            };
-            /** @description Bad Request */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorMessage"];
                 };
             };
             /** @description Error */
@@ -7794,15 +7465,6 @@ export interface operations {
                     "application/json": components["schemas"]["AnnotationRead"];
                 };
             };
-            /** @description Bad Request */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorMessage"];
-                };
-            };
             /** @description Error */
             404: {
                 headers: {
@@ -7852,15 +7514,6 @@ export interface operations {
                     "application/json": components["schemas"]["EvaluationDetail"];
                 };
             };
-            /** @description Bad Request */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorMessage"];
-                };
-            };
             /** @description Error */
             404: {
                 headers: {
@@ -7899,15 +7552,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AnnotationRead"][];
-                };
-            };
-            /** @description Bad Request */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorMessage"];
                 };
             };
             /** @description Error */
@@ -7952,15 +7596,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AnnotationRead"];
-                };
-            };
-            /** @description Bad Request */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorMessage"];
                 };
             };
             /** @description Error */
@@ -8017,15 +7652,6 @@ export interface operations {
                     "application/json": components["schemas"]["AnnotationRead"];
                 };
             };
-            /** @description Bad Request */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorMessage"];
-                };
-            };
             /** @description Error */
             404: {
                 headers: {
@@ -8078,15 +7704,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AnnotationRead"];
-                };
-            };
-            /** @description Bad Request */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorMessage"];
                 };
             };
             /** @description Error */
@@ -8142,15 +7759,6 @@ export interface operations {
                     "application/json": components["schemas"]["EvaluationSummary"];
                 };
             };
-            /** @description Bad Request */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorMessage"];
-                };
-            };
             /** @description Error */
             404: {
                 headers: {
@@ -8202,15 +7810,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["EvaluationDetail"];
-                };
-            };
-            /** @description Bad Request */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorMessage"];
                 };
             };
             /** @description Error */
@@ -8266,15 +7865,6 @@ export interface operations {
                     "application/json": components["schemas"]["EvaluationDetail"];
                 };
             };
-            /** @description Bad Request */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorMessage"];
-                };
-            };
             /** @description Error */
             404: {
                 headers: {
@@ -8324,15 +7914,6 @@ export interface operations {
                     "application/json": components["schemas"]["EvaluationSummary"];
                 };
             };
-            /** @description Bad Request */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorMessage"];
-                };
-            };
             /** @description Error */
             404: {
                 headers: {
@@ -8380,15 +7961,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["EvaluationDetail"];
-                };
-            };
-            /** @description Bad Request */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorMessage"];
                 };
             };
             /** @description Error */
@@ -8444,15 +8016,6 @@ export interface operations {
                     "application/json": components["schemas"]["TrendPoint"][];
                 };
             };
-            /** @description Bad Request */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorMessage"];
-                };
-            };
             /** @description Error */
             404: {
                 headers: {
@@ -8491,15 +8054,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["EvaluationDetail"];
-                };
-            };
-            /** @description Bad Request */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorMessage"];
                 };
             };
             /** @description Error */
@@ -8560,15 +8114,6 @@ export interface operations {
                     "application/json": components["schemas"]["PagedResponse_EvaluationSummary_"];
                 };
             };
-            /** @description Bad Request */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorMessage"];
-                };
-            };
             /** @description Error */
             404: {
                 headers: {
@@ -8609,15 +8154,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["EvaluateSingleResponse"];
-                };
-            };
-            /** @description Bad Request */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorMessage"];
                 };
             };
             /** @description Error */
@@ -8671,15 +8207,6 @@ export interface operations {
                     "application/json": components["schemas"]["EvaluateBatchResponse"];
                 };
             };
-            /** @description Bad Request */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorMessage"];
-                };
-            };
             /** @description Error */
             404: {
                 headers: {
@@ -8729,15 +8256,6 @@ export interface operations {
                     "application/json": components["schemas"]["AnnotationRead"][];
                 };
             };
-            /** @description Bad Request */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorMessage"];
-                };
-            };
             /** @description Error */
             404: {
                 headers: {
@@ -8783,15 +8301,6 @@ export interface operations {
                     "application/json": components["schemas"]["GroupedMetricHeatmapResponse"];
                 };
             };
-            /** @description Bad Request */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorMessage"];
-                };
-            };
             /** @description Error */
             404: {
                 headers: {
@@ -8835,15 +8344,6 @@ export interface operations {
                     "application/json": components["schemas"]["MetricHeatmapResponse"];
                 };
             };
-            /** @description Bad Request */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorMessage"];
-                };
-            };
             /** @description Error */
             404: {
                 headers: {
@@ -8884,13 +8384,55 @@ export interface operations {
                     };
                 };
             };
-            /** @description Bad Request */
-            400: {
+            /** @description Error */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
                     "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    invalidate_evaluations_bulk_evaluations_invalidate_patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InvalidateManyRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BulkActionResponse"];
                 };
             };
             /** @description Error */
@@ -8943,8 +8485,50 @@ export interface operations {
                     "application/json": components["schemas"]["EvaluationNameEntry"][];
                 };
             };
-            /** @description Bad Request */
-            400: {
+            /** @description Error */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    override_status_evaluations_bulk_evaluations_override_status_patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OverrideStatusManyRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BulkActionResponse"];
+                };
+            };
+            /** @description Error */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -8953,7 +8537,58 @@ export interface operations {
                 };
             };
             /** @description Error */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    pin_baseline_evaluations_bulk_evaluations_pin_baseline_patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PinBaselineManyRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BulkActionResponse"];
+                };
+            };
+            /** @description Error */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -8992,15 +8627,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ReEvaluateResponse"];
-                };
-            };
-            /** @description Bad Request */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorMessage"];
                 };
             };
             /** @description Error */
@@ -9052,15 +8678,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ReEvaluateResponse"];
-                };
-            };
-            /** @description Bad Request */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorMessage"];
                 };
             };
             /** @description Error */
@@ -9116,13 +8733,106 @@ export interface operations {
                     "application/json": components["schemas"]["ReEvaluateResponse"];
                 };
             };
-            /** @description Bad Request */
-            400: {
+            /** @description Error */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
                     "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    restore_evaluations_bulk_evaluations_restore_patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RestoreManyRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BulkActionResponse"];
+                };
+            };
+            /** @description Error */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    restore_override_evaluations_bulk_evaluations_restore_override_patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RestoreOverrideManyRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BulkActionResponse"];
                 };
             };
             /** @description Error */
@@ -9177,8 +8887,50 @@ export interface operations {
                     };
                 };
             };
-            /** @description Bad Request */
-            400: {
+            /** @description Error */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    unpin_baseline_evaluations_bulk_evaluations_unpin_baseline_patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UnpinBaselineManyRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BulkActionResponse"];
+                };
+            };
+            /** @description Error */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -9187,7 +8939,7 @@ export interface operations {
                 };
             };
             /** @description Error */
-            404: {
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -9226,15 +8978,6 @@ export interface operations {
                     };
                 };
             };
-            /** @description Bad Request */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorMessage"];
-                };
-            };
             /** @description Error */
             404: {
                 headers: {
@@ -9271,15 +9014,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AnnotationCategoryRead"][];
-                };
-            };
-            /** @description Bad Request */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorMessage"];
                 };
             };
             /** @description Error */
@@ -9322,15 +9056,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AnnotationCategoryRead"];
-                };
-            };
-            /** @description Bad Request */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorMessage"];
                 };
             };
             /** @description Error */
@@ -9379,15 +9104,6 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
-            };
-            /** @description Bad Request */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorMessage"];
-                };
             };
             /** @description Error */
             404: {
@@ -9442,15 +9158,6 @@ export interface operations {
                     "application/json": components["schemas"]["AnnotationCategoryRead"];
                 };
             };
-            /** @description Bad Request */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorMessage"];
-                };
-            };
             /** @description Error */
             404: {
                 headers: {
@@ -9502,15 +9209,6 @@ export interface operations {
                     "application/json": components["schemas"]["PagedResponse_SLIDefinitionRead_"];
                 };
             };
-            /** @description Bad Request */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorMessage"];
-                };
-            };
             /** @description Error */
             404: {
                 headers: {
@@ -9551,15 +9249,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SLIDefinitionRead"];
-                };
-            };
-            /** @description Bad Request */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorMessage"];
                 };
             };
             /** @description Error */
@@ -9609,15 +9298,6 @@ export interface operations {
                     "application/json": components["schemas"]["TagKeyCount"][];
                 };
             };
-            /** @description Bad Request */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorMessage"];
-                };
-            };
             /** @description Error */
             404: {
                 headers: {
@@ -9656,15 +9336,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TagValueCount"][];
-                };
-            };
-            /** @description Bad Request */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorMessage"];
                 };
             };
             /** @description Error */
@@ -9707,15 +9378,6 @@ export interface operations {
                     "application/json": components["schemas"]["SLIDefinitionRead"];
                 };
             };
-            /** @description Bad Request */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorMessage"];
-                };
-            };
             /** @description Error */
             404: {
                 headers: {
@@ -9753,15 +9415,6 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
-            };
-            /** @description Bad Request */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorMessage"];
-                };
             };
             /** @description Error */
             404: {
@@ -9812,15 +9465,6 @@ export interface operations {
                     "application/json": components["schemas"]["SLIDefinitionRead"][];
                 };
             };
-            /** @description Bad Request */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorMessage"];
-                };
-            };
             /** @description Error */
             404: {
                 headers: {
@@ -9863,15 +9507,6 @@ export interface operations {
                     "application/json": components["schemas"]["PagedResponse_SLODefinitionRead_"];
                 };
             };
-            /** @description Bad Request */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorMessage"];
-                };
-            };
             /** @description Error */
             404: {
                 headers: {
@@ -9912,15 +9547,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SLODefinitionRead"];
-                };
-            };
-            /** @description Bad Request */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorMessage"];
                 };
             };
             /** @description Error */
@@ -9970,15 +9596,6 @@ export interface operations {
                     "application/json": components["schemas"]["TagKeyCount"][];
                 };
             };
-            /** @description Bad Request */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorMessage"];
-                };
-            };
             /** @description Error */
             404: {
                 headers: {
@@ -10017,15 +9634,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TagValueCount"][];
-                };
-            };
-            /** @description Bad Request */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorMessage"];
                 };
             };
             /** @description Error */
@@ -10068,15 +9676,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SLOTestResult"];
-                };
-            };
-            /** @description Bad Request */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorMessage"];
                 };
             };
             /** @description Error */
@@ -10130,15 +9729,6 @@ export interface operations {
                     "application/json": components["schemas"]["SLOValidationResult"];
                 };
             };
-            /** @description Bad Request */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorMessage"];
-                };
-            };
             /** @description Error */
             404: {
                 headers: {
@@ -10188,15 +9778,6 @@ export interface operations {
                     "application/json": components["schemas"]["SLODefinitionRead"];
                 };
             };
-            /** @description Bad Request */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorMessage"];
-                };
-            };
             /** @description Error */
             404: {
                 headers: {
@@ -10234,15 +9815,6 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
-            };
-            /** @description Bad Request */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorMessage"];
-                };
             };
             /** @description Error */
             404: {
@@ -10293,15 +9865,6 @@ export interface operations {
                     "application/json": components["schemas"]["SLODefinitionRead"][];
                 };
             };
-            /** @description Bad Request */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorMessage"];
-                };
-            };
             /** @description Error */
             404: {
                 headers: {
@@ -10338,15 +9901,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DisplayGroupRead"][];
-                };
-            };
-            /** @description Bad Request */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorMessage"];
                 };
             };
             /** @description Error */
@@ -10389,15 +9943,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DisplayGroupRead"];
-                };
-            };
-            /** @description Bad Request */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorMessage"];
                 };
             };
             /** @description Error */
@@ -10446,15 +9991,6 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
-            };
-            /** @description Bad Request */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorMessage"];
-                };
             };
             /** @description Error */
             404: {
@@ -10505,15 +10041,6 @@ export interface operations {
                     "application/json": string[];
                 };
             };
-            /** @description Bad Request */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorMessage"];
-                };
-            };
             /** @description Error */
             404: {
                 headers: {
@@ -10555,15 +10082,6 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
-            };
-            /** @description Bad Request */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorMessage"];
-                };
             };
             /** @description Error */
             404: {
@@ -10612,15 +10130,6 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
-            };
-            /** @description Bad Request */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorMessage"];
-                };
             };
             /** @description Error */
             404: {
@@ -10672,15 +10181,6 @@ export interface operations {
                     "application/json": components["schemas"]["PagedResponse_SLOGroupRead_"];
                 };
             };
-            /** @description Bad Request */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorMessage"];
-                };
-            };
             /** @description Error */
             404: {
                 headers: {
@@ -10721,15 +10221,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SLOGroupRead"];
-                };
-            };
-            /** @description Bad Request */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorMessage"];
                 };
             };
             /** @description Error */
@@ -10781,15 +10272,6 @@ export interface operations {
                     "application/json": components["schemas"]["SLOGroupRead"];
                 };
             };
-            /** @description Bad Request */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorMessage"];
-                };
-            };
             /** @description Error */
             404: {
                 headers: {
@@ -10832,15 +10314,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SLOGroupRead"];
-                };
-            };
-            /** @description Bad Request */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorMessage"];
                 };
             };
             /** @description Error */
@@ -10889,15 +10362,6 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
-            };
-            /** @description Bad Request */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorMessage"];
-                };
             };
             /** @description Error */
             404: {
@@ -10950,15 +10414,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SLOGroupRead"];
-                };
-            };
-            /** @description Bad Request */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorMessage"];
                 };
             };
             /** @description Error */

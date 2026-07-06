@@ -13,6 +13,7 @@ import type {
   AnnotationCreateInput,
   AssetSnapshot,
   BaselinePin,
+  BulkActionOutcome,
   Evaluation,
   EvaluationDetail,
   EvaluationList,
@@ -52,6 +53,7 @@ export type EvaluateSingleRequestDto = components['schemas']['EvaluateSingleRequ
 export type OverrideStatusRequestDto = components['schemas']['OverrideStatusRequest']
 export type EvaluateSingleResponseDto = components['schemas']['EvaluateSingleResponse']
 export type AnnotationCreateDto = components['schemas']['AnnotationCreate']
+export type BulkActionResponseDto = components['schemas']['BulkActionResponse']
 
 // --- Helpers --------------------------------------------------------------
 
@@ -419,6 +421,14 @@ const _reEvaluateResponseExhaustive: _ReEvaluateResponseCoverage extends never
 void _reEvaluateResponseExhaustive
 
 // --- Read-side mappers (tasks 5-8) and write-side mappers (task 9) -----------
+
+export function dtoToBulkActionOutcome(dto: BulkActionResponseDto): BulkActionOutcome {
+  return {
+    succeeded: dto.results.map((result) => result.evaluation_id),
+    notFound: dto.not_found,
+    updated: dto.updated,
+  }
+}
 
 export function dtoToEvaluationSummary(dto: EvaluationSummaryDto): Evaluation {
   return {

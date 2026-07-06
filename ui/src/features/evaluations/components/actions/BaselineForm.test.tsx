@@ -10,7 +10,7 @@ vi.mock('../../api', async () => {
   const actual = await vi.importActual<typeof import('../../api')>('../../api')
   return {
     ...actual,
-    pinBaseline: (...args: unknown[]) => pinSpy(...args),
+    pinBaselineMany: (...args: unknown[]) => pinSpy(...args),
   }
 })
 
@@ -33,7 +33,7 @@ function makeScope(count: number): SloScopeResult {
 let queryClient: QueryClient
 beforeEach(() => {
   pinSpy.mockReset()
-  pinSpy.mockResolvedValue({ ok: true })
+  pinSpy.mockResolvedValue({ succeeded: ['eid-0', 'eid-1', 'eid-2'], notFound: [], updated: 3 })
   queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
 })
 afterEach(() => {
@@ -51,13 +51,14 @@ function renderForm(scope: SloScopeResult) {
 }
 
 describe('BaselineForm (multi-SLO)', () => {
-  it('fans out to all selected SLOs', async () => {
+  it('issues one batch call with all selected SLO ids', async () => {
     const user = userEvent.setup()
     renderForm(makeScope(3))
     await user.type(screen.getByPlaceholderText(/reason/i), 'release')
     await user.type(screen.getByPlaceholderText(/author/i), 'domik')
     await user.click(screen.getByRole('button', { name: /confirm/i }))
-    await waitFor(() => expect(pinSpy).toHaveBeenCalledTimes(3))
+    await waitFor(() => expect(pinSpy).toHaveBeenCalledTimes(1))
+    expect(pinSpy.mock.calls[0][0]).toEqual(expect.arrayContaining(['eid-0', 'eid-1', 'eid-2']))
   })
 
   it('shows the inline count warning when scope > 5', () => {
@@ -70,20 +71,13 @@ describe('BaselineForm (multi-SLO)', () => {
     expect(screen.queryByText(/baseline pins/i)).not.toBeInTheDocument()
   })
 
-  it('409 pin conflict shows up in the result list', async () => {
-    pinSpy.mockImplementation(async (evalId: string) => {
-      if (evalId === 'eid-1') {
-        const err = new Error('conflict')
-        ;(err as Error & { status?: number }).status = 409
-        throw err
-      }
-      return { ok: true }
-    })
+  it('an id skipped by the backend (not_found) is reported as failed', async () => {
+    pinSpy.mockResolvedValue({ succeeded: ['eid-0', 'eid-2'], notFound: ['eid-1'], updated: 2 })
     const user = userEvent.setup()
     renderForm(makeScope(3))
     await user.type(screen.getByPlaceholderText(/reason/i), 'release')
     await user.type(screen.getByPlaceholderText(/author/i), 'domik')
     await user.click(screen.getByRole('button', { name: /confirm/i }))
-    await waitFor(() => expect(screen.getByText('conflict')).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByText(/1 failed/i)).toBeInTheDocument())
   })
 })
