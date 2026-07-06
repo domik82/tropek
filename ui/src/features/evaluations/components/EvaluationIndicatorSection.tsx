@@ -4,6 +4,8 @@ import { useTabState } from '../hooks/useTabState'
 import { SLIBreakdownTable } from './SLIBreakdownTable'
 import { MetricTrendBlock } from './MetricTrendBlock'
 import { EvaluationTabs, tabLabel } from './EvaluationTabs'
+import { ChartViewControls } from '@/components/charts/ChartViewControls'
+import { useChartPreferences } from '@/lib/chart-preferences-context'
 import type { EvaluationDetail } from '../domain'
 
 interface Props {
@@ -18,6 +20,8 @@ interface Props {
 export function EvaluationIndicatorSection({ evaluation: ev, onMetricClick, assetDisplayName, sloDisplayName }: Props) {
   const { availableGroups, counts, activeTab, setActiveTab, tabIndicators } =
     useTabState(ev.indicators)
+
+  const { columns } = useChartPreferences()
 
   const sliMetadata = ev.sliMetadata
 
@@ -68,13 +72,16 @@ export function EvaluationIndicatorSection({ evaluation: ev, onMetricClick, asse
 
       {/* Trend charts */}
       <div className="space-y-4">
-        <p className="text-xs text-muted-foreground">
-          30-day trend for{' '}
-          <strong className="text-foreground">{activeTab === 'all' ? 'All' : tabLabel(activeTab)}</strong>{' '}
-          metrics on <strong className="text-foreground">{ev.assetSnapshot.displayName ?? assetDisplayName ?? ev.assetSnapshot.name}</strong>.
-          Dot colour reflects each metric's own pass/warn/fail result.
-        </p>
-        <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+        <div className="flex items-start justify-between gap-3">
+          <p className="text-xs text-muted-foreground">
+            30-day trend for{' '}
+            <strong className="text-foreground">{activeTab === 'all' ? 'All' : tabLabel(activeTab)}</strong>{' '}
+            metrics on <strong className="text-foreground">{ev.assetSnapshot.displayName ?? assetDisplayName ?? ev.assetSnapshot.name}</strong>.
+            Dot colour reflects each metric's own pass/warn/fail result.
+          </p>
+          <ChartViewControls />
+        </div>
+        <div className={columns === 1 ? 'grid grid-cols-1 gap-4' : 'grid grid-cols-1 xl:grid-cols-2 gap-4'}>
           {tabIndicators.map(ind => (
             <MetricTrendBlock
               key={ind.metric}

@@ -5,6 +5,8 @@ import { ViewToggle } from '@/components/charts/ViewToggle'
 import type { ViewMode } from '@/components/charts/ViewToggle'
 import { AssetScoreChart } from './AssetScoreChart'
 import { MetricGroupFilter } from './MetricGroupFilter'
+import { ChartViewControls } from '@/components/charts/ChartViewControls'
+import { useChartPreferences } from '@/lib/chart-preferences-context'
 import type { Evaluation, Indicator } from '@/features/evaluations'
 import type { GroupedMetricHeatmapResponseDto } from '../mappers'
 import type { TimeSlotSelection } from './AssetHeatmap'
@@ -36,6 +38,7 @@ export function AssetPanelChartView({
   mode, setMode, explorerButton,
 }: Props) {
   const [metricGroupFilter, setMetricGroupFilter] = useState<string>('all')
+  const { columns } = useChartPreferences()
 
   // One point per EvaluationRun using the composite (aggregated) score.
   // Without this, evals has N entries per run (one per SLO), producing N× too many points.
@@ -190,14 +193,17 @@ export function AssetPanelChartView({
 
       {effectiveEvalId && (
         <div className="space-y-4">
-          <MetricGroupFilter
-            allIndicators={allIndicators}
-            metricGroups={metricGroups}
-            activeFilter={metricGroupFilter}
-            onFilterChange={setMetricGroupFilter}
-          />
+          <div className="flex items-start justify-between gap-3">
+            <MetricGroupFilter
+              allIndicators={allIndicators}
+              metricGroups={metricGroups}
+              activeFilter={metricGroupFilter}
+              onFilterChange={setMetricGroupFilter}
+            />
+            <ChartViewControls />
+          </div>
 
-          <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+          <div className={columns === 1 ? 'grid grid-cols-1 gap-4' : 'grid grid-cols-1 xl:grid-cols-2 gap-4'}>
             {chartIndicators.map(ind => (
               <MetricTrendBlock key={ind.metric} assetName={assetName} sloName={metricSloMap.get(ind.metric) ?? ''} sloDisplayName={metricSloDisplayMap.get(ind.metric)} selectedEvalId={effectiveEvalId} selectedEvalIds={selectedColumnSloEvalIds} selectedPeriodStart={selectedPeriodStart} indicator={ind} onEvalSelect={handleTrendClick} />
             ))}

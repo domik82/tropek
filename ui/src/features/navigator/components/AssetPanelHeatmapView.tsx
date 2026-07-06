@@ -11,6 +11,8 @@ import type { TimeSlotSelection } from './AssetHeatmap'
 import type { GroupedMetricHeatmapResponseDto } from '../mappers'
 import type { Indicator, SliMetadata } from '@/features/evaluations'
 import { MetaTimelineSection } from '@/features/meta_timeline'
+import { ChartViewControls } from '@/components/charts/ChartViewControls'
+import { useChartPreferences } from '@/lib/chart-preferences-context'
 
 interface Props {
   assetName: string
@@ -49,6 +51,7 @@ export function AssetPanelHeatmapView({
 }: Props) {
   const sliTableRef = useRef<HTMLDivElement>(null)
   const heatmapRef = useRef<HTMLDivElement>(null)
+  const { columns } = useChartPreferences()
 
   // Scope-qualified id builders. Same metric may appear in multiple SLOs
   // (e.g. "http.response_time" under a latency SLO and a throughput SLO),
@@ -223,6 +226,7 @@ export function AssetPanelHeatmapView({
           <div className="flex items-center justify-between mb-2">
             <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Metric Heatmap</h2>
             <div className="flex items-center gap-3">
+              <ChartViewControls />
               <ViewToggle mode={mode} setMode={setMode} />
               {explorerButton}
             </div>
@@ -313,7 +317,7 @@ export function AssetPanelHeatmapView({
                 </button>
                 {g.indicators.length > 0 && expanded && (
                   <div className="border border-t-0 border-border rounded-b p-4">
-                    <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+                    <div className={columns === 1 ? 'grid grid-cols-1 gap-4' : 'grid grid-cols-1 xl:grid-cols-2 gap-4'}>
                       {g.indicators.map(ind => (
                         <MetricTrendBlock
                           key={ind.metric}
