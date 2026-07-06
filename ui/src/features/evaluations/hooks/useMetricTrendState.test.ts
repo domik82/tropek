@@ -344,6 +344,36 @@ describe('buildChartOption', () => {
     expect(html).not.toContain('internal only') // hidden category excluded
     expect(html).not.toContain('Internal')
   })
+
+  it('emits a bar main series when chartType is bar (no line-only props)', () => {
+    const trend = [makeTrendPoint({ value: 100 })]
+    const option = buildChartOption(baseInput({ trend, chartType: 'bar' })) as Record<string, unknown>
+    const series = option.series as Array<Record<string, unknown>>
+    expect(series[0].type).toBe('bar')
+    expect(series[0].symbolSize).toBeUndefined()
+    expect(series[0].lineStyle).toBeUndefined()
+  })
+
+  it('emits a line main series by default', () => {
+    const option = buildChartOption(baseInput({ trend: [makeTrendPoint()] })) as Record<string, unknown>
+    const series = option.series as Array<Record<string, unknown>>
+    expect(series[0].type).toBe('line')
+  })
+
+  it('keeps thresholds and change-points alongside a bar main series', () => {
+    const trend = [
+      makeTrendPoint({ value: 100, changePoint: { direction: 'regression', changeRelativePct: 12 } }),
+    ]
+    const option = buildChartOption(baseInput({
+      trend,
+      chartType: 'bar',
+      targets: [{ key: 'pass:<=600', level: 'pass', criteria: '<=600', visible: true }],
+    })) as Record<string, unknown>
+    const series = option.series as Array<Record<string, unknown>>
+    expect(series[0].type).toBe('bar')
+    expect(series.some(s => s.type === 'scatter')).toBe(true) // change-point series
+    expect(series.length).toBeGreaterThanOrEqual(3) // main + target + change-point
+  })
 })
 
 // ── useMetricTrendState ───────────────────────────────────────────────────────

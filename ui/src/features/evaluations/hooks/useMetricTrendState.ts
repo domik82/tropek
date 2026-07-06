@@ -316,6 +316,7 @@ interface ChartOptionInput {
   categories?: NoteCategory[]
   chartWidth?: number
   notesVisible?: boolean
+  chartType?: 'line' | 'bar'
 }
 
 type TargetColours = ChartOptionInput['colours']
@@ -418,6 +419,7 @@ export function buildChartRender(input: ChartOptionInput): { option: object; lab
     categories,
     chartWidth,
     notesVisible = true,
+    chartType = 'line',
   } = input
 
   const fontScale = fontSize / 14
@@ -587,18 +589,19 @@ export function buildChartRender(input: ChartOptionInput): { option: object; lab
     },
     series: [
       {
-        type: 'line',
+        type: chartType,
         data: chartData,
         cursor: onEvalSelect ? 'pointer' : 'default',
-        symbol: 'circle',
-        symbolSize: (
-          _val: unknown,
-          params: { dataIndex: number },
-        ) => {
-          const p = trend[params.dataIndex]
-          return p && isSelected(p) ? 10 : 6
-        },
-        lineStyle: { color: ct.line, width: 1.5 },
+        ...(chartType === 'line'
+          ? {
+              symbol: 'circle',
+              symbolSize: (_val: unknown, params: { dataIndex: number }) => {
+                const point = trend[params.dataIndex]
+                return point && isSelected(point) ? 10 : 6
+              },
+              lineStyle: { color: ct.line, width: 1.5 },
+            }
+          : { barMaxWidth: 32 }),
         ...(markLine ? { markLine } : {}),
         ...(markPoint ? { markPoint } : {}),
       },
