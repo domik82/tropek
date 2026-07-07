@@ -33,6 +33,7 @@ import { AssetPanelHeatmapView } from './AssetPanelHeatmapView'
 import { AssetPanelChartView } from './AssetPanelChartView'
 import { TruncationWarning } from '@/features/evaluations/components/TruncationWarning'
 import { TimeRangePicker } from '@/components/TimeRangePicker'
+import { ChartViewControls } from '@/components/charts/ChartViewControls'
 
 interface Props {
   assetName: string
@@ -472,7 +473,12 @@ export function AssetPanel({ assetName, initialEvalId }: Props) {
         score={hasColumn ? columnInfo.score : undefined}
         passPct={columnInfo?.passPct}
         warningPct={columnInfo?.warningPct}
-        toolbar={<TimeRangePicker />}
+        toolbar={
+          <div className="flex items-start gap-2">
+            {!isLoading && evals.length > 0 && <ChartViewControls variant="panel" />}
+            <TimeRangePicker />
+          </div>
+        }
         metadata={hasColumn ? (
           <>
             <div className="flex flex-wrap gap-x-6 gap-y-1 text-sm text-muted-foreground">

@@ -11,24 +11,24 @@ describe('chart-preferences-context', () => {
     localStorage.clear()
   })
 
-  it('defaults to 2 columns, notes on, line charts', () => {
+  it('defaults to 1 column, notes on, line charts', () => {
     const { result } = renderHook(useCtx, { wrapper: ChartPreferencesProvider })
-    expect(result.current.columns).toBe(2)
+    expect(result.current.columns).toBe(1)
     expect(result.current.notesMaster).toBe(true)
     expect(result.current.chartTypeMaster).toBe('line')
   })
 
   it('persists columns to localStorage', () => {
     const { result } = renderHook(useCtx, { wrapper: ChartPreferencesProvider })
-    act(() => result.current.setColumns(1))
-    expect(result.current.columns).toBe(1)
-    expect(localStorage.getItem('tropek.chartColumns')).toBe('1')
+    act(() => result.current.setColumns(2))
+    expect(result.current.columns).toBe(2)
+    expect(localStorage.getItem('tropek.chartColumns')).toBe('2')
   })
 
   it('reads persisted columns on mount', () => {
-    localStorage.setItem('tropek.chartColumns', '1')
+    localStorage.setItem('tropek.chartColumns', '2')
     const { result } = renderHook(useCtx, { wrapper: ChartPreferencesProvider })
-    expect(result.current.columns).toBe(1)
+    expect(result.current.columns).toBe(2)
   })
 
   it('toggles notesMaster, persists it, and bumps notesGeneration', () => {

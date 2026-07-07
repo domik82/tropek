@@ -226,7 +226,6 @@ export function AssetPanelHeatmapView({
           <div className="flex items-center justify-between mb-2">
             <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Metric Heatmap</h2>
             <div className="flex items-center gap-3">
-              <ChartViewControls />
               <ViewToggle mode={mode} setMode={setMode} />
               {explorerButton}
             </div>
@@ -273,9 +272,12 @@ export function AssetPanelHeatmapView({
       {/* Metric Trend Charts — SLO-grouped */}
       {trendGroups.length > 0 && (
         <div className="space-y-4">
-          <p className="text-xs text-muted-foreground">
-            30-day trend for <strong className="text-foreground">{assetName}</strong>.
-          </p>
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-xs text-muted-foreground">
+              30-day trend for <strong className="text-foreground">{assetName}</strong>.
+            </p>
+            <ChartViewControls />
+          </div>
           {trendGroups.map(g => {
             const expanded = sloExpandState.get(g.slo_name) ?? false
             const label = g.slo_display_name ?? g.slo_name

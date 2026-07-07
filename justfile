@@ -109,6 +109,10 @@ up:
 dev-docker:
     ./scripts/stack-start.sh
 
+# Same as dev-docker but drops volumes first for a clean re-seed (avoids 409 duplicates)
+dev-docker-clean:
+    ./scripts/stack-start.sh --clean
+
 # Run e2e integration test suite
 e2e:
     ./scripts/integration-test.sh

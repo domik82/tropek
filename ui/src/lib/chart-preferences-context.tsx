@@ -24,7 +24,8 @@ interface ChartPreferencesCtx {
 const Ctx = createContext<ChartPreferencesCtx | null>(null)
 
 function loadColumns(): ChartColumns {
-  return localStorage.getItem(COLUMNS_KEY) === '1' ? 1 : 2
+  // default: 1 chart per row (full-width, more legible); opt into 2-up explicitly
+  return localStorage.getItem(COLUMNS_KEY) === '2' ? 2 : 1
 }
 
 function loadNotesMaster(): boolean {
