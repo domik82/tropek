@@ -125,3 +125,80 @@ describe('tooltipWatchdog', () => {
     expect(hideActions(chartA)).toEqual(['hideTip', 'downplay'])
   })
 })
+
+describe('tooltipWatchdog listener lifecycle', () => {
+  let addSpy: ReturnType<typeof vi.spyOn>
+  let removeSpy: ReturnType<typeof vi.spyOn>
+  let chartA: FakeChart
+  let chartB: FakeChart
+  let containerA: HTMLElement
+  let containerB: HTMLElement
+  let outside: HTMLElement
+
+  // Net count of document 'pointermove' listeners currently attached
+  // (adds minus removes). The watchdog must keep this at most 1.
+  function pointerMoveListenerBalance(): number {
+    const added = addSpy.mock.calls.filter(call => call[0] === 'pointermove').length
+    const removed = removeSpy.mock.calls.filter(call => call[0] === 'pointermove').length
+    return added - removed
+  }
+
+  beforeEach(() => {
+    addSpy = vi.spyOn(document, 'addEventListener')
+    removeSpy = vi.spyOn(document, 'removeEventListener')
+    chartA = makeChart()
+    chartB = makeChart()
+    containerA = makeContainer()
+    containerB = makeContainer()
+    outside = makeContainer()
+  })
+
+  afterEach(() => {
+    releaseTooltip(chartA)
+    releaseTooltip(chartB)
+    addSpy.mockRestore()
+    removeSpy.mockRestore()
+    document.body.innerHTML = ''
+  })
+
+  it('attaches the pointermove listener when a tooltip becomes active', () => {
+    trackTooltip(chartA, containerA)
+
+    expect(pointerMoveListenerBalance()).toBe(1)
+  })
+
+  it('detaches the pointermove listener once the tooltip is hidden', () => {
+    trackTooltip(chartA, containerA)
+    movePointerOver(outside)
+
+    expect(pointerMoveListenerBalance()).toBe(0)
+  })
+
+  it('detaches the pointermove listener on releaseTooltip (unmount path)', () => {
+    trackTooltip(chartA, containerA)
+    releaseTooltip(chartA)
+
+    expect(pointerMoveListenerBalance()).toBe(0)
+  })
+
+  it('does not accumulate listeners when the same chart re-tracks', () => {
+    trackTooltip(chartA, containerA)
+    trackTooltip(chartA, containerA)
+    trackTooltip(chartA, containerA)
+
+    const pointerMoveAdds = addSpy.mock.calls.filter(call => call[0] === 'pointermove').length
+    expect(pointerMoveAdds).toBe(1)
+    expect(pointerMoveListenerBalance()).toBe(1)
+  })
+
+  it('keeps at most one pointermove listener while ownership passes between charts', () => {
+    trackTooltip(chartA, containerA)
+    expect(pointerMoveListenerBalance()).toBe(1)
+
+    trackTooltip(chartB, containerB)
+    expect(pointerMoveListenerBalance()).toBe(1)
+
+    movePointerOver(outside)
+    expect(pointerMoveListenerBalance()).toBe(0)
+  })
+})
