@@ -14,6 +14,7 @@ import { RESULT_COLOUR, CHART_THEME } from '@/lib/theme'
 import type { ResultColours } from '@/lib/theme'
 import { fmtSlot } from '@/lib/format'
 import { NoteIndicatorRow, type SlotNote, type ColumnPosition } from './NoteIndicatorRow'
+import { trackTooltip, releaseTooltip, type TooltipChart } from './tooltipWatchdog'
 
 /** Grid padding shared between HeatmapChart and NoteIndicatorRow for alignment. */
 export const HEATMAP_GRID_LEFT = 230
@@ -140,6 +141,7 @@ export function HeatmapChart({
   const ct = CHART_THEME[theme]
   const chartRef = useRef<ReactECharts>(null)
   const containerRef = useRef<HTMLDivElement>(null)
+  const trackedChartRef = useRef<TooltipChart | null>(null)
   const [columnPositions, setColumnPositions] = useState<ColumnPosition[]>([])
   const [containerReady, setContainerReady] = useState(false)
 
@@ -424,7 +426,25 @@ export function HeatmapChart({
     finished: () => {
       if (hasNotes) computeColumnPositions()
     },
+    // Register this chart's tooltip with the page-level watchdog. Boundary
+    // events (pointerout/mouseout) are skipped by Chrome on fast mouse
+    // movement across stacked charts, so ECharts' own hide path cannot be
+    // relied on — the watchdog hides the tooltip from document-level
+    // pointermove instead, and hides any other chart's tooltip immediately.
+    showtip: () => {
+      const instance = chartRef.current?.getEchartsInstance()
+      if (instance && containerRef.current) {
+        trackedChartRef.current = instance
+        trackTooltip(instance, containerRef.current)
+      }
+    },
   }), [onCellClick, hasNotes, computeColumnPositions])
+
+  // On unmount, stop tracking without dispatching — the chart (and its
+  // tooltip DOM) is being disposed, so there is nothing left to hide.
+  useEffect(() => () => {
+    if (trackedChartRef.current) releaseTooltip(trackedChartRef.current)
+  }, [])
 
   const handleMouseLeave = useCallback(() => {
     const instance = chartRef.current?.getEchartsInstance()

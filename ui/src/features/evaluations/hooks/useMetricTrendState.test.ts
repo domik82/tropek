@@ -3,7 +3,8 @@ import { renderHook, act } from '@testing-library/react'
 import { buildChartOption, useMetricTrendState } from './useMetricTrendState'
 import type { ChartTarget } from './useMetricTrendState'
 import { RESULT_COLOUR, CHART_THEME } from '@/lib/theme'
-import type { TrendPoint, Indicator } from '../domain'
+import type { TrendPoint, Indicator, Annotation } from '../domain'
+import type { NoteCategory } from '@/features/note-categories'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -57,6 +58,41 @@ function makeIndicator(overrides: Partial<Indicator> = {}): Indicator {
     passTargets: [],
     warningTargets: [],
     changePoint: null,
+    ...overrides,
+  }
+}
+
+function makeCategory(overrides: Partial<NoteCategory> = {}): NoteCategory {
+  return {
+    id: 'cat-1',
+    name: 'deploy',
+    label: 'Deploy',
+    color: 'sky',
+    showOnGraph: true,
+    isSystem: false,
+    createdAt: new Date('2026-01-01T00:00:00Z'),
+    updatedAt: null,
+    ...overrides,
+  }
+}
+
+function makeAnnotation(overrides: Partial<Annotation> = {}): Annotation {
+  return {
+    id: 'note-1',
+    sloEvaluationId: null,
+    evaluationRunId: null,
+    content: 'note content',
+    author: null,
+    categoryId: 'cat-1',
+    category: makeCategory(),
+    tags: {},
+    noteGroupId: null,
+    noteGroupName: null,
+    hiddenAt: null,
+    hiddenBy: null,
+    hiddenReason: null,
+    createdAt: new Date('2026-01-01T00:00:00Z'),
+    updatedAt: null,
     ...overrides,
   }
 }
@@ -198,11 +234,62 @@ describe('buildChartOption', () => {
     expect(yAxis.max).toBe(500)
   })
 
-  it('leaves yAxis min/max undefined when empty', () => {
-    const option = buildChartOption(baseInput()) as Record<string, unknown>
+  // ── Auto Y-axis framing (blank bounds) ──────────────────────────────────────
+
+  function autoBounds(
+    input: Record<string, unknown>,
+    extent: { min: number; max: number },
+  ): { min: number; max: number } {
+    const option = buildChartOption(baseInput(input)) as Record<string, unknown>
+    const yAxis = option.yAxis as {
+      min: (extent: { min: number; max: number }) => number
+      max: (extent: { min: number; max: number }) => number
+    }
+    expect(typeof yAxis.min).toBe('function')
+    expect(typeof yAxis.max).toBe('function')
+    return { min: yAxis.min(extent), max: yAxis.max(extent) }
+  }
+
+  it('auto-frames data with padded nice bounds when yMin/yMax blank', () => {
+    expect(autoBounds({}, { min: 100, max: 200 })).toEqual({ min: 80, max: 220 })
+  })
+
+  it('auto-frames a flat non-zero series without collapsing the axis', () => {
+    expect(autoBounds({}, { min: 500, max: 500 })).toEqual({ min: 490, max: 510 })
+  })
+
+  it('auto-frames a flat zero series', () => {
+    expect(autoBounds({}, { min: 0, max: 0 })).toEqual({ min: -0.2, max: 0.2 })
+  })
+
+  it('auto-frames all-negative data', () => {
+    expect(autoBounds({}, { min: -500, max: -100 })).toEqual({ min: -550, max: -50 })
+  })
+
+  it('rounds away floating-point noise in auto bounds', () => {
+    // Without rounding the max lands on 0.0032500000000000003.
+    expect(autoBounds({}, { min: 0.001, max: 0.003 }).max).toBe(0.00325)
+  })
+
+  it('auto-frames when a manual bound is non-numeric', () => {
+    const option = buildChartOption(baseInput({ yMin: 'abc', yMax: '' })) as Record<string, unknown>
     const yAxis = option.yAxis as { min: unknown; max: unknown }
-    expect(yAxis.min).toBeUndefined()
-    expect(yAxis.max).toBeUndefined()
+    expect(typeof yAxis.min).toBe('function')
+    expect(typeof yAxis.max).toBe('function')
+  })
+
+  it('ignores inverted manual bounds (min >= max) and auto-frames both', () => {
+    const option = buildChartOption(baseInput({ yMin: '500', yMax: '10' })) as Record<string, unknown>
+    const yAxis = option.yAxis as { min: unknown; max: unknown }
+    expect(typeof yAxis.min).toBe('function')
+    expect(typeof yAxis.max).toBe('function')
+  })
+
+  it('keeps a valid manual bound while auto-framing the blank one', () => {
+    const option = buildChartOption(baseInput({ yMin: '0', yMax: '' })) as Record<string, unknown>
+    const yAxis = option.yAxis as { min: unknown; max: unknown }
+    expect(yAxis.min).toBe(0)
+    expect(typeof yAxis.max).toBe('function')
   })
 
   it('handles empty data points', () => {
@@ -233,6 +320,59 @@ describe('buildChartOption', () => {
     const option = buildChartOption(baseInput()) as Record<string, unknown>
     const series = option.series as Array<Record<string, unknown>>
     expect(series[0].cursor).toBe('default')
+  })
+
+  it('appends showOnGraph notes to the tooltip and escapes their content', () => {
+    const shown = makeAnnotation({
+      content: 'deploy <v2>',
+      category: makeCategory({ label: 'Deploy', showOnGraph: true, color: 'sky' }),
+    })
+    const hidden = makeAnnotation({
+      id: 'note-2',
+      content: 'internal only',
+      category: makeCategory({ id: 'cat-2', label: 'Internal', showOnGraph: false, color: 'gray' }),
+    })
+    const annotations = new Map<string, Annotation[]>([['eval-1', [shown, hidden]]])
+    const trend = [makeTrendPoint({ evalId: 'eval-1' })]
+
+    const option = buildChartOption(baseInput({ trend, annotations })) as Record<string, unknown>
+    const tooltip = option.tooltip as { formatter: (params: unknown) => string }
+    const html = tooltip.formatter([{ dataIndex: 0 }])
+
+    expect(html).toContain('Deploy')
+    expect(html).toContain('deploy &lt;v2&gt;') // HTML-escaped
+    expect(html).not.toContain('internal only') // hidden category excluded
+    expect(html).not.toContain('Internal')
+  })
+
+  it('emits a bar main series when chartType is bar (no line-only props)', () => {
+    const trend = [makeTrendPoint({ value: 100 })]
+    const option = buildChartOption(baseInput({ trend, chartType: 'bar' })) as Record<string, unknown>
+    const series = option.series as Array<Record<string, unknown>>
+    expect(series[0].type).toBe('bar')
+    expect(series[0].symbolSize).toBeUndefined()
+    expect(series[0].lineStyle).toBeUndefined()
+  })
+
+  it('emits a line main series by default', () => {
+    const option = buildChartOption(baseInput({ trend: [makeTrendPoint()] })) as Record<string, unknown>
+    const series = option.series as Array<Record<string, unknown>>
+    expect(series[0].type).toBe('line')
+  })
+
+  it('keeps thresholds and change-points alongside a bar main series', () => {
+    const trend = [
+      makeTrendPoint({ value: 100, changePoint: { direction: 'regression', changeRelativePct: 12 } }),
+    ]
+    const option = buildChartOption(baseInput({
+      trend,
+      chartType: 'bar',
+      targets: [{ key: 'pass:<=600', level: 'pass', criteria: '<=600', visible: true }],
+    })) as Record<string, unknown>
+    const series = option.series as Array<Record<string, unknown>>
+    expect(series[0].type).toBe('bar')
+    expect(series.some(s => s.type === 'scatter')).toBe(true) // change-point series
+    expect(series.length).toBeGreaterThanOrEqual(3) // main + target + change-point
   })
 })
 

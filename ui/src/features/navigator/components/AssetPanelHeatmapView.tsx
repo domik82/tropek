@@ -11,6 +11,8 @@ import type { TimeSlotSelection } from './AssetHeatmap'
 import type { GroupedMetricHeatmapResponseDto } from '../mappers'
 import type { Indicator, SliMetadata } from '@/features/evaluations'
 import { MetaTimelineSection } from '@/features/meta_timeline'
+import { ChartViewControls } from '@/components/charts/ChartViewControls'
+import { useChartPreferences } from '@/lib/chart-preferences-context'
 
 interface Props {
   assetName: string
@@ -49,6 +51,7 @@ export function AssetPanelHeatmapView({
 }: Props) {
   const sliTableRef = useRef<HTMLDivElement>(null)
   const heatmapRef = useRef<HTMLDivElement>(null)
+  const { columns } = useChartPreferences()
 
   // Scope-qualified id builders. Same metric may appear in multiple SLOs
   // (e.g. "http.response_time" under a latency SLO and a throughput SLO),
@@ -269,9 +272,12 @@ export function AssetPanelHeatmapView({
       {/* Metric Trend Charts — SLO-grouped */}
       {trendGroups.length > 0 && (
         <div className="space-y-4">
-          <p className="text-xs text-muted-foreground">
-            30-day trend for <strong className="text-foreground">{assetName}</strong>.
-          </p>
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-xs text-muted-foreground">
+              30-day trend for <strong className="text-foreground">{assetName}</strong>.
+            </p>
+            <ChartViewControls />
+          </div>
           {trendGroups.map(g => {
             const expanded = sloExpandState.get(g.slo_name) ?? false
             const label = g.slo_display_name ?? g.slo_name
@@ -313,7 +319,7 @@ export function AssetPanelHeatmapView({
                 </button>
                 {g.indicators.length > 0 && expanded && (
                   <div className="border border-t-0 border-border rounded-b p-4">
-                    <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+                    <div className={columns === 1 ? 'grid grid-cols-1 gap-4' : 'grid grid-cols-1 xl:grid-cols-2 gap-4'}>
                       {g.indicators.map(ind => (
                         <MetricTrendBlock
                           key={ind.metric}

@@ -10,6 +10,7 @@ set -euo pipefail
 #   ./scripts/stack-start.sh               # full stack with seeded data
 #   ./scripts/stack-start.sh --no-seed     # stack only, no bootstrap/seed
 #   ./scripts/stack-start.sh --build-only  # build images, don't start
+#   ./scripts/stack-start.sh --clean       # drop volumes first, then seed fresh
 #
 # Prerequisites: docker compose, uv (for bootstrap/seed scripts)
 # Stop with: ./scripts/stack-stop.sh
@@ -18,10 +19,12 @@ cd "$(dirname "$0")/.."
 
 SEED=true
 BUILD_ONLY=false
+CLEAN=false
 for arg in "$@"; do
   case $arg in
     --no-seed) SEED=false ;;
     --build-only) BUILD_ONLY=true ;;
+    --clean) CLEAN=true ;;
     *) echo "Unknown argument: $arg"; exit 1 ;;
   esac
 done
@@ -44,6 +47,12 @@ docker compose build
 if [ "$BUILD_ONLY" = true ]; then
   echo "=== Build complete (--build-only) ==="
   exit 0
+fi
+
+# --- Optional clean slate: drop containers + volumes so the seed runs fresh ---
+if [ "$CLEAN" = true ]; then
+  echo "=== Removing existing containers and volumes (--clean) ==="
+  docker compose down -v
 fi
 
 # --- Start infra + app ---

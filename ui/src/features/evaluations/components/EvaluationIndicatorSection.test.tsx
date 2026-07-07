@@ -1,7 +1,16 @@
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import { EvaluationIndicatorSection } from './EvaluationIndicatorSection'
+import { ChartPreferencesProvider } from '@/lib/chart-preferences-context'
 import type { EvaluationDetail, Indicator } from '../domain'
+
+function renderSection(ev: EvaluationDetail) {
+  return render(
+    <ChartPreferencesProvider>
+      <EvaluationIndicatorSection evaluation={ev} />
+    </ChartPreferencesProvider>,
+  )
+}
 
 vi.mock('@/lib/theme-context', () => ({
   useTheme: () => ({ theme: 'current' as const, fontSize: 14 }),
@@ -82,7 +91,7 @@ function makeEval(indicators: Indicator[]): EvaluationDetail {
 describe('EvaluationIndicatorSection', () => {
   it('renders SLI Breakdown heading', () => {
     const ev = makeEval([makeIndicator()])
-    render(<EvaluationIndicatorSection evaluation={ev} />)
+    renderSection(ev)
     expect(screen.getByText('SLI Breakdown')).toBeInTheDocument()
   })
 
@@ -92,7 +101,7 @@ describe('EvaluationIndicatorSection', () => {
       makeIndicator({ metric: 'b', tabGroup: 'throughput', displayName: 'Throughput B' }),
     ]
     const ev = makeEval(indicators)
-    render(<EvaluationIndicatorSection evaluation={ev} />)
+    renderSection(ev)
     // "All" appears in both the tab bar and the trend description — use getAllByText
     expect(screen.getAllByText('All').length).toBeGreaterThanOrEqual(1)
     expect(screen.getByText('Latency')).toBeInTheDocument()
@@ -105,7 +114,7 @@ describe('EvaluationIndicatorSection', () => {
       makeIndicator({ metric: 'b', displayName: 'Metric B' }),
     ]
     const ev = makeEval(indicators)
-    render(<EvaluationIndicatorSection evaluation={ev} />)
+    renderSection(ev)
     expect(screen.getByText('Metric A')).toBeInTheDocument()
     expect(screen.getByText('Metric B')).toBeInTheDocument()
   })
@@ -116,7 +125,7 @@ describe('EvaluationIndicatorSection', () => {
       makeIndicator({ metric: 'b', tabGroup: 'throughput', displayName: 'Throughput B' }),
     ]
     const ev = makeEval(indicators)
-    render(<EvaluationIndicatorSection evaluation={ev} />)
+    renderSection(ev)
 
     // Click the Latency tab
     fireEvent.click(screen.getByText('Latency'))
@@ -135,7 +144,7 @@ describe('EvaluationIndicatorSection', () => {
       makeIndicator({ metric: 'b', displayName: 'Metric B' }),
     ]
     const ev = makeEval(indicators)
-    render(<EvaluationIndicatorSection evaluation={ev} />)
+    renderSection(ev)
     expect(screen.getByText('Metric A')).toBeInTheDocument()
     expect(screen.getByText('Metric B')).toBeInTheDocument()
   })
@@ -146,7 +155,7 @@ describe('EvaluationIndicatorSection', () => {
       makeIndicator({ metric: 'tp', displayName: 'Throughput' }),
     ]
     const ev = makeEval(indicators)
-    render(<EvaluationIndicatorSection evaluation={ev} />)
+    renderSection(ev)
     expect(screen.getByTestId('trend-rt')).toBeInTheDocument()
     expect(screen.getByTestId('trend-tp')).toBeInTheDocument()
   })

@@ -164,7 +164,7 @@ function dominantCategory(visible: Annotation[]): NoteCategory {
   return sorted[0].category
 }
 
-function escapeHtml(s: string): string {
+export function escapeHtml(s: string): string {
   return s.replace(
     /[&<>"']/g,
     ch =>

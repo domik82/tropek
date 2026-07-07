@@ -1,8 +1,9 @@
 // ui/src/features/evaluations/hooks/useMetricTrendState.ts
-import { useState, useMemo, useCallback } from 'react'
+import { useState, useMemo } from 'react'
 import { useTheme } from '@/lib/theme-context'
 import { RESULT_COLOUR, CHART_THEME } from '@/lib/theme'
-import { buildNoteAnnotations, type MarkLineOption, type MarkPointOption } from '@/lib/chartAnnotations'
+import { buildNoteAnnotations, escapeHtml, type MarkLineOption, type MarkPointOption } from '@/lib/chartAnnotations'
+import { paletteOf } from '@/features/note-categories'
 import type { Annotation, TrendPoint, Indicator, TrendTargetEntry } from '../domain'
 import type { NoteCategory } from '@/features/note-categories'
 
@@ -31,8 +32,6 @@ export interface MetricTrendState {
   targets: TargetToggle[]
   chartOption: object
   labelBandPx: number
-  notesVisible: boolean
-  toggleNotes: () => void
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -40,6 +39,50 @@ export interface MetricTrendState {
 /** Returns true if a criteria string is relative (contains % or explicit +/- sign). */
 function isRelative(criteria: string): boolean {
   return /[%]/.test(criteria) || /^[<>=]+=?\s*[+-]/.test(criteria)
+}
+
+/** Fraction of the data range padded above and below the auto Y bounds (Grafana default). */
+const Y_AXIS_PAD = 0.1
+
+/** Pick a "nice" round tick step (1/2/2.5/5 × 10^n) so auto bounds land on clean numbers. */
+function niceStep(span: number): number {
+  if (span <= 0) return 1
+  const rawStep = span / 5
+  const magnitude = Math.pow(10, Math.floor(Math.log10(rawStep)))
+  const normalized = rawStep / magnitude
+  const niceNormalized =
+    normalized >= 5 ? 5 : normalized >= 2.5 ? 2.5 : normalized >= 2 ? 2 : 1
+  return niceNormalized * magnitude
+}
+
+/** Strip floating-point drift (e.g. 0.0032500000000000003 → 0.00325) while keeping real digits. */
+function roundBound(value: number): number {
+  return Number(value.toPrecision(12))
+}
+
+/**
+ * Grafana-style auto Y bound: pad the data extent by Y_AXIS_PAD, then snap outward
+ * to a clean tick boundary. Guards against a flat series (zero span collapsing the axis).
+ */
+function paddedAxisBound(
+  dataMin: number,
+  dataMax: number,
+  side: 'min' | 'max',
+): number {
+  let span = dataMax - dataMin
+  if (span <= 0) span = Math.abs(dataMax) * Y_AXIS_PAD || 1
+  const step = niceStep(span * (1 + 2 * Y_AXIS_PAD))
+  if (side === 'min') {
+    return roundBound(Math.floor((dataMin - span * Y_AXIS_PAD) / step) * step)
+  }
+  return roundBound(Math.ceil((dataMax + span * Y_AXIS_PAD) / step) * step)
+}
+
+/** Parse a manual axis-bound string; null means "no usable number → auto-frame". */
+function resolveManualBound(raw: string): number | null {
+  if (raw === '') return null
+  const parsed = parseFloat(raw)
+  return Number.isFinite(parsed) ? parsed : null
 }
 
 interface DiscoveredTarget {
@@ -125,12 +168,12 @@ export function useMetricTrendState(
   annotations?: Map<string, Annotation[]>,
   categories?: NoteCategory[],
   chartWidth?: number,
+  notesVisible = true,
+  chartType: 'line' | 'bar' = 'line',
 ): MetricTrendState {
   const [yMin, setYMin] = useState('')
   const [yMax, setYMax] = useState('')
   const [visibility, setVisibility] = useState<Record<string, boolean>>({})
-  const [notesVisible, setNotesVisible] = useState(true)
-  const toggleNotes = useCallback(() => setNotesVisible(v => !v), [])
 
   const { theme, fontSize } = useTheme()
   const colours = RESULT_COLOUR[theme]
@@ -207,6 +250,7 @@ export function useMetricTrendState(
         categories,
         chartWidth,
         notesVisible,
+        chartType,
       }),
     [
       trendData,
@@ -224,6 +268,7 @@ export function useMetricTrendState(
       categories,
       chartWidth,
       notesVisible,
+      chartType,
     ],
   )
 
@@ -235,8 +280,6 @@ export function useMetricTrendState(
     targets,
     chartOption: chartResult.option,
     labelBandPx: chartResult.labelBandPx,
-    notesVisible,
-    toggleNotes,
   }
 }
 
@@ -271,6 +314,7 @@ interface ChartOptionInput {
   categories?: NoteCategory[]
   chartWidth?: number
   notesVisible?: boolean
+  chartType?: 'line' | 'bar'
 }
 
 type TargetColours = ChartOptionInput['colours']
@@ -373,6 +417,7 @@ export function buildChartRender(input: ChartOptionInput): { option: object; lab
     categories,
     chartWidth,
     notesVisible = true,
+    chartType = 'line',
   } = input
 
   const fontScale = fontSize / 14
@@ -457,6 +502,14 @@ export function buildChartRender(input: ChartOptionInput): { option: object; lab
     notesVisible,
   )
 
+  let manualYMin = resolveManualBound(yMin)
+  let manualYMax = resolveManualBound(yMax)
+  // Inverted or degenerate manual bounds (min >= max) are meaningless — auto-frame both instead.
+  if (manualYMin !== null && manualYMax !== null && manualYMin >= manualYMax) {
+    manualYMin = null
+    manualYMax = null
+  }
+
   const option = {
     animation: false,
     backgroundColor: 'transparent',
@@ -475,19 +528,31 @@ export function buildChartRender(input: ChartOptionInput): { option: object; lab
           | { dataIndex?: number }
           | undefined
         const idx = first?.dataIndex
-        const p = idx != null ? trend[idx] : undefined
-        if (!p) return ''
+        const point = idx != null ? trend[idx] : undefined
+        if (!point) return ''
         const lines = [
-          `<b style="color:#58a6ff">${p.evaluationName ?? '(no evaluation_name)'}</b>`,
+          `<b style="color:#58a6ff">${point.evaluationName ?? '(no evaluation_name)'}</b>`,
           `<b>${times[idx as number]}</b>`,
-          `value: <b>${p.value}</b>`,
-          `result: <b style="color:${colours[p.outcome as keyof typeof colours] ?? '#6b7280'}">${p.outcome.toUpperCase()}</b>`,
+          `value: <b>${point.value}</b>`,
+          `result: <b style="color:${colours[point.outcome as keyof typeof colours] ?? '#6b7280'}">${point.outcome.toUpperCase()}</b>`,
         ]
-        if (p.overridden) lines.push(`<span style="color:${ct.axisLabel}">(override)</span>`)
-        if (p.changePoint) {
-          const cpColor = p.changePoint.direction === 'regression' ? 'var(--change-point-regression)' : 'var(--change-point-improvement)'
-          const pctSign = p.changePoint.changeRelativePct > 0 ? '+' : ''
-          lines.push(`<span style="color:${cpColor}">◆ ${p.changePoint.direction} (${pctSign}${p.changePoint.changeRelativePct.toFixed(1)}%)</span>`)
+        if (point.overridden) lines.push(`<span style="color:${ct.axisLabel}">(override)</span>`)
+        if (point.changePoint) {
+          const cpColor = point.changePoint.direction === 'regression' ? 'var(--change-point-regression)' : 'var(--change-point-improvement)'
+          const pctSign = point.changePoint.changeRelativePct > 0 ? '+' : ''
+          lines.push(`<span style="color:${cpColor}">◆ ${point.changePoint.direction} (${pctSign}${point.changePoint.changeRelativePct.toFixed(1)}%)</span>`)
+        }
+        // Always reveal showOnGraph notes on hover, even when pill display is toggled off —
+        // matches the pill rule (only showOnGraph categories ever surface on the graph).
+        const pointNotes = (annotations?.get(point.evalId) ?? []).filter(note => note.category.showOnGraph)
+        if (pointNotes.length > 0) {
+          lines.push(`<div style="margin-top:4px;border-top:1px solid ${ct.border}"></div>`)
+          for (const note of pointNotes) {
+            const noteColor = paletteOf(note.category.color).fg
+            lines.push(
+              `<div><b style="color:${noteColor}">${escapeHtml(note.category.label)}</b>: ${escapeHtml(note.content)}</div>`,
+            )
+          }
         }
         return lines.join('<br/>')
       },
@@ -505,8 +570,15 @@ export function buildChartRender(input: ChartOptionInput): { option: object; lab
     },
     yAxis: {
       type: 'value',
-      min: yMin !== '' ? parseFloat(yMin) : undefined,
-      max: yMax !== '' ? parseFloat(yMax) : undefined,
+      // Manual value wins per bound; blank/invalid bounds auto-frame the data (Grafana-style).
+      min:
+        manualYMin ??
+        (({ min, max }: { min: number; max: number }) =>
+          paddedAxisBound(min, max, 'min')),
+      max:
+        manualYMax ??
+        (({ min, max }: { min: number; max: number }) =>
+          paddedAxisBound(min, max, 'max')),
       axisLabel: {
         color: ct.axisLabel,
         fontSize: Math.round(10 * fontScale),
@@ -515,18 +587,19 @@ export function buildChartRender(input: ChartOptionInput): { option: object; lab
     },
     series: [
       {
-        type: 'line',
+        type: chartType,
         data: chartData,
         cursor: onEvalSelect ? 'pointer' : 'default',
-        symbol: 'circle',
-        symbolSize: (
-          _val: unknown,
-          params: { dataIndex: number },
-        ) => {
-          const p = trend[params.dataIndex]
-          return p && isSelected(p) ? 10 : 6
-        },
-        lineStyle: { color: ct.line, width: 1.5 },
+        ...(chartType === 'line'
+          ? {
+              symbol: 'circle',
+              symbolSize: (_val: unknown, params: { dataIndex: number }) => {
+                const point = trend[params.dataIndex]
+                return point && isSelected(point) ? 10 : 6
+              },
+              lineStyle: { color: ct.line, width: 1.5 },
+            }
+          : { barMaxWidth: 32 }),
         ...(markLine ? { markLine } : {}),
         ...(markPoint ? { markPoint } : {}),
       },

@@ -1,12 +1,14 @@
 // src/features/evaluations/components/MetricTrendBlock.tsx
 import ReactECharts from 'echarts-for-react'
 import { useCallback, useMemo, useState, useRef, useEffect } from 'react'
-import { MessageSquareWarning, Sheet, Tags } from 'lucide-react'
+import { MessageSquareWarning, Sheet, Tags, LineChart, BarChart3 } from 'lucide-react'
 import { useTrend, useTrendAnnotations } from '../hooks'
 import { useNoteCategories } from '@/features/note-categories'
 import { STATUS_TEXT } from '@/lib/status'
 import { useChartAreaClick } from '@/lib/useChartAreaClick'
 import { useMetricTrendState } from '../hooks/useMetricTrendState'
+import { useChartPreferences } from '@/lib/chart-preferences-context'
+import { useMasterOverride } from '../hooks/useMasterOverride'
 import type { Indicator } from '../domain'
 
 interface Props {
@@ -103,6 +105,10 @@ export function MetricTrendBlock({
   const { data: annotations } = useTrendAnnotations(assetName, sloName)
   const { data: categories } = useNoteCategories()
 
+  const { notesMaster, notesGeneration, chartTypeMaster, chartTypeGeneration } = useChartPreferences()
+  const [notesVisible, setNotesOverride] = useMasterOverride(notesMaster, notesGeneration)
+  const [chartType, setChartTypeOverride] = useMasterOverride(chartTypeMaster, chartTypeGeneration)
+
   const [containerWidth, setContainerWidth] = useState(0)
   const observerRef = useRef<ResizeObserver | null>(null)
   // Callback ref attaches the ResizeObserver as soon as the container element
@@ -139,8 +145,6 @@ export function MetricTrendBlock({
     targets,
     chartOption,
     labelBandPx,
-    notesVisible,
-    toggleNotes,
   } = useMetricTrendState(
     trend,
     selectedEvalId ?? '',
@@ -151,6 +155,8 @@ export function MetricTrendBlock({
     annotations,
     categories,
     containerWidth,
+    notesVisible,
+    chartType,
   )
 
   const onEvents = useMemo(
@@ -205,7 +211,7 @@ export function MetricTrendBlock({
             </span>
             <div className="flex items-center gap-1 ml-auto text-xs">
               <button
-                onClick={toggleNotes}
+                onClick={() => setNotesOverride(!notesVisible)}
                 className={`p-1 rounded border transition-colors ${
                   notesVisible
                     ? 'border-primary/40 text-primary'
@@ -215,6 +221,14 @@ export function MetricTrendBlock({
                 aria-label="Toggle notes on chart"
               >
                 <MessageSquareWarning className="size-3.5" />
+              </button>
+              <button
+                onClick={() => setChartTypeOverride(chartType === 'line' ? 'bar' : 'line')}
+                className="p-1 rounded border border-border text-muted-foreground/60 transition-colors"
+                title={chartType === 'line' ? 'Show as bars' : 'Show as line'}
+                aria-label="Toggle chart type"
+              >
+                {chartType === 'line' ? <BarChart3 className="size-3.5" /> : <LineChart className="size-3.5" />}
               </button>
               <TargetDropdown targets={targets} />
             </div>
