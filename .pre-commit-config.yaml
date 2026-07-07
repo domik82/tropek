@@ -7,6 +7,13 @@ repos:
         language: script
         files: ^ui/src/.*\.(ts|tsx)$
 
+      - id: tsc
+        name: tsc (UI — type check)
+        entry: ./scripts/pre-commit-tsc.sh
+        language: script
+        files: ^ui/src/.*\.(ts|tsx)$
+        pass_filenames: false
+
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.15.5
     hooks:

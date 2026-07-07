@@ -71,8 +71,12 @@ fmt:
 typecheck:
     uv run mypy api/tropek adapters/prometheus/tropek_prometheus
 
+# Run UI type checker (matches CI ui-checks.yml)
+typecheck-ui:
+    cd ui && pnpm exec tsc --noEmit -p tsconfig.app.json
+
 # Run all checks (lint + format check + typecheck)
-check: lint lint-ui fmt-check typecheck
+check: lint lint-ui fmt-check typecheck typecheck-ui
 
 # ─── Development ──────────────────────────────────────────────────────
 
