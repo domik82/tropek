@@ -11,6 +11,10 @@ import { useState } from 'react'
  * The reset runs during render (React's "adjust state when a prop changes"
  * pattern) rather than in an effect, so the cleared value takes effect on the
  * same render — no transient frame where a stale override lingers.
+ *
+ * `T` must not include `null`/`undefined` as a legitimate value: `null` is the
+ * "no override" sentinel, so an override of `null` would be indistinguishable
+ * from "follow master". Current callers use `boolean` and `'line' | 'bar'`.
  */
 export function useMasterOverride<T>(master: T, generation: number): [T, (value: T) => void] {
   const [override, setOverride] = useState<T | null>(null)

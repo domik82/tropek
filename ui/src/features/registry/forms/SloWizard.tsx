@@ -108,6 +108,8 @@ export function SloWizard({ editSlo, defaultKind, onClose }: SloWizardProps) {
     if (sliMergedRef.current || !fullSli || !isEdit) return
     sliMergedRef.current = true
     // Update pickSli with full indicators from the SLI definition
+    // TODO: eslint reports the disable below as unused under the current eslint-plugin-react-hooks
+    // version (the rule no longer fires here). Reconcile — drop the directive or restore the rule — when versions settle.
     setPickSli((prev) => ({ // eslint-disable-line react-hooks/set-state-in-effect -- intentional merge from async fetch
       ...prev,
       sliVersion: fullSli.version,

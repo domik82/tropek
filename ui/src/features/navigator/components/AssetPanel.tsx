@@ -285,6 +285,8 @@ export function AssetPanel({ assetName, initialEvalId }: Props) {
   const prevEvalId = useRef(effectiveEvalId)
   useEffect(() => {
     if (prevEvalId.current !== effectiveEvalId) {
+      // TODO: eslint reports the disable below as unused under the current eslint-plugin-react-hooks
+      // version (the rule no longer fires here). Reconcile — drop the directive or restore the rule — when versions settle.
       setActiveAction(null) // eslint-disable-line react-hooks/set-state-in-effect -- intentional reset on eval change
       prevEvalId.current = effectiveEvalId
     }

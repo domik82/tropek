@@ -40,9 +40,16 @@ vi.mock('@/features/evaluations/components/EvaluationHeader', () => ({
     <div data-testid="eval-header" data-title={props.title}>
       {props.title}
       {props.score != null && <span data-testid="header-score">{props.score}</span>}
+      {props.toolbar}
       {props.actions}
     </div>
   ),
+}))
+
+// The header toolbar renders a real TimeRangePicker; stub it so these tests don't
+// need the TimeRangeProvider (the real ChartViewControls is exercised, not this).
+vi.mock('@/components/TimeRangePicker', () => ({
+  TimeRangePicker: () => <div data-testid="time-range-picker" />,
 }))
 
 vi.mock('@/features/evaluations/components/AnnotationForm', () => ({
@@ -277,6 +284,7 @@ beforeEach(() => {
 
   mockUseMetricHeatmap.mockReturnValue({ data: undefined, isLoading: false })
   mockUseColumnAnnotations.mockReturnValue({ data: [] })
+  localStorage.clear() // ChartPreferencesProvider (via TestWrapper) reads persisted prefs on mount
 })
 
 // ── Tests ──────────────────────────────────────────────────────────────────────
@@ -353,6 +361,40 @@ describe('AssetPanel', () => {
     renderPanel('catalog-db')
 
     expect(screen.getByTestId('heatmap-asset')).toHaveTextContent('catalog-db')
+  })
+
+  describe('graphs toolbar controls', () => {
+    // The panel-variant ChartViewControls lives in the header toolbar, gated on
+    // `!isLoading && evals.length > 0`. It calls useChartPreferences(), so this also
+    // asserts the shared ChartPreferencesProvider is wired into TestWrapper.
+    const notesButtonName = 'Toggle notes on all charts'
+
+    it('renders the graphs controls when evaluations are loaded', () => {
+      mockUseAssetEvaluations.mockReturnValue({ data: [makeSummary()], isLoading: false })
+
+      renderPanel('catalog-db')
+
+      expect(screen.getByRole('button', { name: notesButtonName })).toBeInTheDocument()
+      expect(screen.getByText('Graphs')).toBeInTheDocument()
+    })
+
+    it('hides the graphs controls while data is loading', () => {
+      // Evaluations are present but the heatmap is still loading → isLoading is true.
+      mockUseAssetEvaluations.mockReturnValue({ data: [makeSummary()], isLoading: false })
+      mockUseMetricHeatmap.mockReturnValue({ data: undefined, isLoading: true })
+
+      renderPanel('catalog-db')
+
+      expect(screen.queryByRole('button', { name: notesButtonName })).not.toBeInTheDocument()
+    })
+
+    it('hides the graphs controls when there are no evaluations', () => {
+      mockUseAssetEvaluations.mockReturnValue({ data: [], isLoading: false })
+
+      renderPanel('catalog-db')
+
+      expect(screen.queryByRole('button', { name: notesButtonName })).not.toBeInTheDocument()
+    })
   })
 
   describe('SLO scope defaults', () => {
