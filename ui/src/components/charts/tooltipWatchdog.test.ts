@@ -138,8 +138,8 @@ describe('tooltipWatchdog listener lifecycle', () => {
   // Net count of document 'pointermove' listeners currently attached
   // (adds minus removes). The watchdog must keep this at most 1.
   function pointerMoveListenerBalance(): number {
-    const added = addSpy.mock.calls.filter(call => call[0] === 'pointermove').length
-    const removed = removeSpy.mock.calls.filter(call => call[0] === 'pointermove').length
+    const added = addSpy.mock.calls.filter((call: unknown[]) => call[0] === 'pointermove').length
+    const removed = removeSpy.mock.calls.filter((call: unknown[]) => call[0] === 'pointermove').length
     return added - removed
   }
 
@@ -186,7 +186,7 @@ describe('tooltipWatchdog listener lifecycle', () => {
     trackTooltip(chartA, containerA)
     trackTooltip(chartA, containerA)
 
-    const pointerMoveAdds = addSpy.mock.calls.filter(call => call[0] === 'pointermove').length
+    const pointerMoveAdds = addSpy.mock.calls.filter((call: unknown[]) => call[0] === 'pointermove').length
     expect(pointerMoveAdds).toBe(1)
     expect(pointerMoveListenerBalance()).toBe(1)
   })
