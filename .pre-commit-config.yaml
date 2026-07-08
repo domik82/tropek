@@ -36,7 +36,7 @@ repos:
           - pydantic>=2.7
           - pydantic-settings>=2.3
           - sqlalchemy[asyncio]>=2.0
-          - fastapi>=0.115
+          - fastapi>=0.138
           - types-pyyaml
           - types-redis
       - id: mypy
@@ -45,6 +45,6 @@ repos:
         args: [--config-file=pyproject.toml]
         additional_dependencies:
           - pydantic>=2.7
-          - fastapi>=0.115
+          - fastapi>=0.138
           - types-pyyaml
           - sqlalchemy[asyncio]>=2.0

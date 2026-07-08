@@ -18,6 +18,11 @@ import type { DateRange } from '@/lib/dateRange'
 // 'error' so cell colouring degrades gracefully.
 export type Outcome = 'pass' | 'warning' | 'fail' | 'error' | 'invalidated'
 
+// The subset of outcomes a manual override can target. `error` and
+// `invalidated` are system-produced states, not override targets, and the
+// backend rejects them (`new_result` is a pass/warning/fail enum).
+export type OverridableOutcome = 'pass' | 'warning' | 'fail'
+
 export interface AssetSnapshot {
   assetId: string | null
   name: string
@@ -225,7 +230,7 @@ export interface TriggerEvaluationInput {
 }
 
 export interface OverrideStatusInput {
-  outcome: Outcome
+  outcome: OverridableOutcome
   reason: string
   author: string
 }

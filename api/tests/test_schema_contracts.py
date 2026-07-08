@@ -7,7 +7,7 @@ updated, these tests document the expected contract.
 
 import inspect
 
-from fastapi.routing import APIRoute
+from fastapi.routing import APIRoute, iter_route_contexts
 from pydantic import BaseModel
 from tropek.main import app
 from tropek.modules.assets.schemas import AssetCreate, AssetRead
@@ -50,6 +50,16 @@ from tropek.modules.slo_registry.schemas import (
 def _field_names(model: type[BaseModel]) -> set[str]:
     """Return the set of field names declared on a Pydantic model."""
     return set(model.model_fields.keys())
+
+
+def _api_routes() -> list[APIRoute]:
+    """Return every registered APIRoute, flattening included routers.
+
+    Since FastAPI 0.136 ``app.routes`` holds opaque ``_IncludedRouter`` entries
+    rather than the routes added via ``include_router``; ``iter_route_contexts``
+    is the supported way to walk the flattened route list.
+    """
+    return [context.route for context in iter_route_contexts(app.routes) if isinstance(context.route, APIRoute)]
 
 
 # -- Assets ------------------------------------------------------------------
@@ -384,11 +394,11 @@ class TestTrendAnnotationsRoute:
     once per (asset, slo) pair; loss of this route silently drops chart pins."""
 
     def test_route_registered(self) -> None:
-        paths = {route.path for route in app.routes if isinstance(route, APIRoute)}
+        paths = {route.path for route in _api_routes()}
         assert '/evaluations/trend-annotations' in paths
 
     def test_route_accepts_asset_and_slo_query_params(self) -> None:
-        route = next(r for r in app.routes if isinstance(r, APIRoute) and r.path == '/evaluations/trend-annotations')
+        route = next(route for route in _api_routes() if route.path == '/evaluations/trend-annotations')
         param_names = set(inspect.signature(route.endpoint).parameters)
         assert {'asset_name', 'slo_name'} <= param_names
 
@@ -399,9 +409,7 @@ class TestTrendAnnotationsRoute:
 def _collect_body_models() -> list[tuple[str, type[BaseModel]]]:
     """Walk all API routes and collect Pydantic models used as request bodies."""
     models: list[tuple[str, type[BaseModel]]] = []
-    for route in app.routes:
-        if not isinstance(route, APIRoute):
-            continue
+    for route in _api_routes():
         sig = inspect.signature(route.endpoint)
         for name, param in sig.parameters.items():
             annotation = param.annotation

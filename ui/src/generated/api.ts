@@ -3664,8 +3664,11 @@ export interface components {
             author: string;
             /** Evaluation Ids */
             evaluation_ids: string[];
-            /** New Result */
-            new_result: string;
+            /**
+             * New Result
+             * @enum {string}
+             */
+            new_result: "pass" | "warning" | "fail";
             /** Reason */
             reason: string;
         };
@@ -3676,8 +3679,11 @@ export interface components {
         OverrideStatusRequest: {
             /** Author */
             author: string;
-            /** New Result */
-            new_result: string;
+            /**
+             * New Result
+             * @enum {string}
+             */
+            new_result: "pass" | "warning" | "fail";
             /** Reason */
             reason: string;
         };

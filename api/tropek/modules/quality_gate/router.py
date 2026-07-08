@@ -724,8 +724,6 @@ async def override_status_evaluations_bulk(
     repos: QualityGateRepos = Depends(get_qg_repos),
 ) -> BulkActionResponse:
     """Override the result of a batch of completed evaluations."""
-    if body.new_result not in ('pass', 'warning', 'fail'):
-        raise DomainValidationError('new_result must be pass, warning, or fail')
     rows = await run_with_deadlock_retry(
         repos.session,
         lambda: repos.eval_repo.override_status_many(
@@ -865,8 +863,6 @@ async def override_status_singular(
         raise NotFoundError('evaluation', str(eval_id))
     if ev.status != 'completed':
         raise ConflictError('evaluation', str(eval_id), 'only completed evaluations can be overridden')
-    if body.new_result not in ('pass', 'warning', 'fail'):
-        raise DomainValidationError('new_result must be pass, warning, or fail')
     updated = await repos.eval_repo.override_status(
         eval_id, new_result=body.new_result, reason=body.reason, author=body.author
     )

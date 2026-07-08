@@ -352,10 +352,4 @@ describe('overrideStatusInputToDto', () => {
     expect(dto.reason).toBe('flaky infra')
     expect(dto.author).toBe('alice')
   })
-
-  it('rejects invalidated outcome (not a valid override target)', () => {
-    expect(() =>
-      overrideStatusInputToDto({ outcome: 'invalidated', reason: 'x', author: 'y' }),
-    ).toThrow(/cannot override to invalidated/)
-  })
 })
