@@ -58,7 +58,7 @@ class ChangePointInsertParams(BaseModel):
     period_end: datetime | None = None
     detector: str
     direction: Direction
-    change_relative_pct: float
+    change_relative_pct: float | None
     change_absolute: float
     pvalue: float
     pre_segment_mean: float
