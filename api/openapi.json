@@ -1645,16 +1645,32 @@
         "description": "Lightweight marker attached to heatmap cells and trend points.",
         "properties": {
           "change_relative_pct": {
-            "title": "Change Relative Pct",
-            "type": "number"
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Change Relative Pct"
           },
           "direction": {
             "$ref": "#/components/schemas/Direction"
+          },
+          "transition": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Transition"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": [
-          "direction",
-          "change_relative_pct"
+          "direction"
         ],
         "title": "ChangePointMarker",
         "type": "object"
@@ -1672,8 +1688,15 @@
             "type": "number"
           },
           "change_relative_pct": {
-            "title": "Change Relative Pct",
-            "type": "number"
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Change Relative Pct"
           },
           "created_at": {
             "format": "date-time",
@@ -1759,6 +1782,16 @@
           "status": {
             "title": "Status",
             "type": "string"
+          },
+          "transition": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Transition"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "triage_at": {
             "anyOf": [
@@ -6983,6 +7016,15 @@
         ],
         "title": "TimelineSummaryResponse",
         "type": "object"
+      },
+      "Transition": {
+        "description": "A segment mean of exactly zero \u2014 no meaningful relative change can be reported.",
+        "enum": [
+          "appeared",
+          "vanished"
+        ],
+        "title": "Transition",
+        "type": "string"
       },
       "TrendPoint": {
         "description": "A single point in a metric trend time series.",

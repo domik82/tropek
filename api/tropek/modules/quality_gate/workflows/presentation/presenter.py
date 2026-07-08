@@ -7,7 +7,7 @@ from datetime import datetime
 from typing import Any, NamedTuple
 
 from tropek.db.models import ChangePoint, EvaluationRun, IndicatorResultRow, SLOEvaluation
-from tropek.modules.change_points.detector import Direction
+from tropek.modules.change_points.detector import Direction, Transition
 from tropek.modules.change_points.repository import ChangePointKey
 from tropek.modules.change_points.schemas import ChangePointMarker
 from tropek.modules.quality_gate.evaluation_engine.constants import RESULT_RANK
@@ -272,13 +272,12 @@ def _resolve_change_point_marker(
     change_point = lookup.get(key)
     if change_point is None and period_end is not None:
         change_point = lookup.get(ChangePointKey(slo_name, metric_name, period_start, None, eval_name))
-    if change_point is None or change_point.change_relative_pct is None:
-        # Transition (appear/vanish) change points have no relative pct — ChangePointMarker
-        # doesn't carry a transition field yet, so surface no marker rather than a misleading value.
+    if change_point is None:
         return None
     return ChangePointMarker(
         direction=Direction(change_point.direction),
         change_relative_pct=change_point.change_relative_pct,
+        transition=Transition(change_point.transition) if change_point.transition is not None else None,
     )
 
 

@@ -7,7 +7,7 @@ from datetime import datetime
 
 from pydantic import BaseModel, StrictBool
 
-from tropek.modules.change_points.detector import Direction
+from tropek.modules.change_points.detector import Direction, Transition
 from tropek.modules.common.schemas import FloatNotBool, IntNotBool, SafeStr, StrictInput
 
 
@@ -15,7 +15,8 @@ class ChangePointMarker(BaseModel):
     """Lightweight marker attached to heatmap cells and trend points."""
 
     direction: Direction
-    change_relative_pct: float
+    change_relative_pct: float | None = None
+    transition: Transition | None = None
 
 
 class ChangePointRead(BaseModel):
@@ -29,7 +30,8 @@ class ChangePointRead(BaseModel):
     period_end: datetime | None = None
     detector: str
     direction: Direction
-    change_relative_pct: float
+    change_relative_pct: float | None
+    transition: Transition | None = None
     change_absolute: float
     pvalue: float
     pre_segment_mean: float
