@@ -190,7 +190,9 @@ async def _enrich_heatmap_with_change_points(
                     continue
                 key = ChangePointKey(group.slo_name, cell.metric, cell.period_start, run.period_end, run.eval_name)
                 change_point = change_point_lookup.get(key)
-                if change_point is not None:
+                # Transition (appear/vanish) change points have no relative pct — ChangePointMarker
+                # doesn't carry a transition field yet, so surface no marker rather than a misleading value.
+                if change_point is not None and change_point.change_relative_pct is not None:
                     cell.change_point = ChangePointMarker(
                         direction=Direction(change_point.direction),
                         change_relative_pct=change_point.change_relative_pct,

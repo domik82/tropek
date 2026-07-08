@@ -7,8 +7,8 @@ from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from tropek.modules.change_points.detector import ChangePointResult
-from tropek.modules.change_points.repository import ResolvedConfig
+from tropek.modules.change_points.detector import ChangePointResult, Transition
+from tropek.modules.change_points.repository import ChangePointInsertParams, ResolvedConfig
 from tropek.modules.change_points.worker_step import _same_regime, run_change_point_detection
 
 _SYSTEM_DEFAULTS = {
@@ -273,6 +273,15 @@ class TestSameRegime:
         # std=5, 2*5=10 → 515 is 15 away, exceeds band
         assert _same_regime(500.0, 5.0, 515.0) is False
 
+    def test_local_segment_scale_rejects_large_jump(self) -> None:
+        """With local-segment (not full-series) stats, a small std must not absorb a large jump.
+
+        Regression guard: post_segment_mean/std now carry ADJACENT-segment semantics — a
+        previous change point with a tight local post-segment (mean=11.5M, std=1000.0) must
+        not suppress a later candidate whose post-segment mean has shifted to 13.3M.
+        """
+        assert _same_regime(11_500_000.0, 1000.0, 13_300_000.0) is False
+
 
 class TestRegimeConsolidation:
     """Tests that same-regime change points are suppressed."""
@@ -418,3 +427,84 @@ class TestRegimeConsolidation:
             )
 
             mock_repo.insert_change_point.assert_called_once()
+
+
+class TestTransitionPersistence:
+    """A transition candidate (appeared/vanished, no relative pct) must persist correctly."""
+
+    @pytest.fixture
+    def snapshot(self) -> MagicMock:
+        return _make_snapshot()
+
+    @pytest.fixture
+    def slo_def(self) -> MagicMock:
+        return _make_slo_def()
+
+    async def test_transition_candidate_persists_transition_and_null_pct(
+        self, snapshot: MagicMock, slo_def: MagicMock
+    ) -> None:
+        """A candidate with change_relative_pct=None and transition=APPEARED flows through intact."""
+        session = AsyncMock()
+        indicator_row = MagicMock()
+        indicator_row.objective = MagicMock()
+        indicator_row.objective.sli = 'response_time_p95'
+        indicator_row.id = uuid.uuid4()
+
+        baseline_evals = []
+        for i in range(15):
+            eval_mock = MagicMock()
+            eval_mock.period_start = datetime(2026, 4, i + 1, 12, 0, tzinfo=UTC)
+            eval_mock.period_end = datetime(2026, 4, i + 1, 12, 30, tzinfo=UTC)
+            eval_mock.evaluation_id = uuid.uuid4()
+            row_mock = MagicMock()
+            row_mock.objective = MagicMock()
+            row_mock.objective.sli = 'response_time_p95'
+            row_mock.value = 0.0 if i < 10 else 100.0
+            eval_mock.indicator_rows = [row_mock]
+            baseline_evals.append(eval_mock)
+
+        with (
+            patch('tropek.modules.change_points.worker_step.ChangePointRepository') as mock_repo_cls,
+            patch('tropek.modules.change_points.worker_step.ConfigurationRepository') as mock_config_cls,
+            patch('tropek.modules.change_points.worker_step.BaselineRepository') as mock_baseline_cls,
+            patch('tropek.modules.change_points.worker_step.detect_change_points') as mock_detect,
+        ):
+            mock_config = mock_config_cls.return_value
+            mock_config.get_change_point_defaults = AsyncMock(return_value=_SYSTEM_DEFAULTS)
+            mock_repo_cls.resolve_from_objective = MagicMock(return_value=_default_config())
+            mock_repo = mock_repo_cls.return_value
+            mock_repo.has_nearby_change_point = AsyncMock(return_value=False)
+            mock_repo.get_latest_change_point = AsyncMock(return_value=None)
+            mock_repo.insert_change_point = AsyncMock()
+
+            mock_baseline = mock_baseline_cls.return_value
+            mock_baseline.get_evaluation_baselines = AsyncMock(return_value=baseline_evals)
+
+            mock_detect.return_value = [
+                ChangePointResult(
+                    position=13,
+                    timestamp=datetime(2026, 4, 14, 12, 0, tzinfo=UTC),
+                    detector='e_divisive',
+                    direction='regression',
+                    change_relative_pct=None,
+                    change_absolute=100.0,
+                    pvalue=0.0001,
+                    pre_segment_mean=0.0,
+                    post_segment_mean=100.0,
+                    post_segment_std=0.0,
+                    transition=Transition.APPEARED,
+                )
+            ]
+
+            await run_change_point_detection(
+                session=session,
+                snapshot=snapshot,
+                slo_def=slo_def,
+                indicator_rows=[indicator_row],
+            )
+
+            mock_repo.insert_change_point.assert_called_once()
+            inserted_params = mock_repo.insert_change_point.call_args.args[0]
+            assert isinstance(inserted_params, ChangePointInsertParams)
+            assert inserted_params.change_relative_pct is None
+            assert inserted_params.transition == Transition.APPEARED

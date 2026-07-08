@@ -293,6 +293,7 @@ async def _persist_change_points(
                 pre_segment_mean=candidate.pre_segment_mean,
                 post_segment_mean=candidate.post_segment_mean,
                 post_segment_std=candidate.post_segment_std,
+                transition=candidate.transition,
             )
         )
 

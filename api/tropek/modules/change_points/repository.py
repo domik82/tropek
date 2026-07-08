@@ -19,7 +19,7 @@ from tropek.db.models import (
     SLOEvaluation,
     SLOObjective,
 )
-from tropek.modules.change_points.detector import Direction
+from tropek.modules.change_points.detector import Direction, Transition
 
 
 class ChangePointKey(NamedTuple):
@@ -64,6 +64,7 @@ class ChangePointInsertParams(BaseModel):
     pre_segment_mean: float
     post_segment_mean: float
     post_segment_std: float
+    transition: Transition | None = None
 
 
 class ChangePointListParams(BaseModel):

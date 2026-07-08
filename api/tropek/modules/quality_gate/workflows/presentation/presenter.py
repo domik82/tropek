@@ -272,7 +272,9 @@ def _resolve_change_point_marker(
     change_point = lookup.get(key)
     if change_point is None and period_end is not None:
         change_point = lookup.get(ChangePointKey(slo_name, metric_name, period_start, None, eval_name))
-    if change_point is None:
+    if change_point is None or change_point.change_relative_pct is None:
+        # Transition (appear/vanish) change points have no relative pct — ChangePointMarker
+        # doesn't carry a transition field yet, so surface no marker rather than a misleading value.
         return None
     return ChangePointMarker(
         direction=Direction(change_point.direction),
