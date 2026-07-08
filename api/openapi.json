@@ -4542,7 +4542,11 @@
             "type": "array"
           },
           "new_result": {
-            "pattern": "^[^\\x00]*$",
+            "enum": [
+              "pass",
+              "warning",
+              "fail"
+            ],
             "title": "New Result",
             "type": "string"
           },
@@ -4571,7 +4575,11 @@
             "type": "string"
           },
           "new_result": {
-            "pattern": "^[^\\x00]*$",
+            "enum": [
+              "pass",
+              "warning",
+              "fail"
+            ],
             "title": "New Result",
             "type": "string"
           },

@@ -22,22 +22,28 @@ through to the normal router, which returns the appropriate 404.
 from __future__ import annotations
 
 import re
-from collections.abc import Iterable
+from collections.abc import Sequence
 
 from fastapi.responses import JSONResponse
-from starlette.routing import Route
+from fastapi.routing import iter_route_contexts
+from starlette.routing import BaseRoute, Route
 from starlette.types import ASGIApp, Receive, Scope, Send
 
 
 class MethodNotAllowedMiddleware:
     """ASGI middleware that returns 405 Method Not Allowed for recognised paths called with an unsupported method."""
 
-    def __init__(self, app: ASGIApp, routes: Iterable[object]) -> None:
+    def __init__(self, app: ASGIApp, routes: Sequence[BaseRoute]) -> None:
         self.app = app
         self._literal_allowed_methods: dict[str, set[str]] = {}
         self._parameterized_routes: list[tuple[re.Pattern[str], set[str]]] = []
 
-        for route in routes:
+        # Since FastAPI 0.136 ``app.routes`` holds opaque ``_IncludedRouter``
+        # entries rather than the flattened routes from ``include_router``;
+        # ``iter_route_contexts`` walks them in registration order, which the
+        # first-matching-regex logic below relies on.
+        for context in iter_route_contexts(routes):
+            route = context.route
             if not isinstance(route, Route) or route.methods is None:
                 continue
             if '{' in route.path:

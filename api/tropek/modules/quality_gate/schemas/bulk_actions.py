@@ -33,7 +33,7 @@ class OverrideStatusManyRequest(StrictInput):
     """Request body for PATCH /evaluations/override-status."""
 
     evaluation_ids: list[uuid.UUID]
-    new_result: SafeStr
+    new_result: Literal['pass', 'warning', 'fail']
     reason: SafeStr
     author: SafeStr
 

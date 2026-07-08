@@ -681,9 +681,6 @@ export function reEvaluateInputToDto(input: ReEvaluateInput): ReEvaluateDto {
 export function overrideStatusInputToDto(
   input: OverrideStatusInput,
 ): OverrideStatusRequestDto {
-  if (input.outcome === 'invalidated') {
-    throw new Error('cannot override to invalidated — use invalidateEvaluation instead')
-  }
   return { new_result: input.outcome, reason: input.reason, author: input.author }
 }
 

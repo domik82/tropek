@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Literal
+
 from tropek.modules.common.schemas import SafeStr, StrictInput
 
 
@@ -21,6 +23,6 @@ class PinBaselineRequest(StrictInput):
 class OverrideStatusRequest(StrictInput):
     """Request body for overriding evaluation result."""
 
-    new_result: SafeStr
+    new_result: Literal['pass', 'warning', 'fail']
     reason: SafeStr
     author: SafeStr
