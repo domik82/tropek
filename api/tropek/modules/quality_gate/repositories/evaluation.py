@@ -10,7 +10,7 @@ from asyncpg import UniqueViolationError
 from sqlalchemy import ColumnElement, String, and_, cast, func, or_, select, tuple_, update
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import raiseload, selectinload
 
 from tropek.cache.redis_cache import RedisCache
 from tropek.db.models import Asset, EvaluationAnnotation, EvaluationRun, IndicatorResultRow, SLOEvaluation
@@ -814,12 +814,19 @@ class EvaluationRepository:
 
     async def get_by_run_id(self, run_id: uuid.UUID) -> list[SLOEvaluation]:
         """Fetch all SLO evaluations for a parent run, with annotations eagerly loaded."""
-        q = (
+        query = (
             select(SLOEvaluation)
-            .options(selectinload(SLOEvaluation.annotations).selectinload(EvaluationAnnotation.category))
+            .options(
+                selectinload(SLOEvaluation.annotations).selectinload(EvaluationAnnotation.category),
+                # SLOEvaluation.indicator_rows is lazy='selectin' on the mapper, so without this
+                # the caller pays an extra query for rows column-annotations never reads.
+                # raiseload rather than noload: reading them here should fail loudly, not silently
+                # yield an empty list.
+                raiseload(SLOEvaluation.indicator_rows),
+            )
             .where(SLOEvaluation.evaluation_id == run_id)
         )
-        result = await self._session.execute(q)
+        result = await self._session.execute(query)
         return list(result.scalars().all())
 
     async def list_evaluation_names(
