@@ -5,14 +5,15 @@ from uuid import UUID
 
 from pydantic import BaseModel
 
-from tropek_client.models.common import Direction
+from tropek_client.models.common import Direction, Transition
 
 
 class ChangePointMarker(BaseModel):
     """Marker indicating a change point on a metric."""
 
     direction: Direction
-    change_relative_pct: float | int
+    change_relative_pct: float | int | None = None
+    transition: Transition | None = None
 
 
 class ChangePointRead(BaseModel):
@@ -26,7 +27,8 @@ class ChangePointRead(BaseModel):
     period_end: datetime | None = None
     detector: str
     direction: Direction
-    change_relative_pct: float | int
+    change_relative_pct: float | int | None
+    transition: Transition | None = None
     change_absolute: float | int
     pvalue: float | int
     pre_segment_mean: float | int

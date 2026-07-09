@@ -6,9 +6,12 @@ from tropek_client.models import (
     AssetCreate,
     AssetRead,
     AssetTypeRead,
+    ChangePointMarker,
+    ChangePointRead,
     EvaluationSummary,
     FailingIndicator,
     PagedResponse,
+    Transition,
 )
 from tropek_client.models.assets import AssetSnapshot
 
@@ -198,3 +201,56 @@ class TestPagedResponse:
         at = AssetTypeRead.model_validate({'id': _UUID, 'name': 'vm', 'is_default': True})
         paged: PagedResponse[AssetTypeRead] = PagedResponse(items=[at], total=1)
         assert paged.items[0].is_default is True
+
+
+class TestChangePointMarker:
+    def test_with_transition_and_nullable_pct(self):
+        marker = ChangePointMarker.model_validate(
+            {
+                'direction': 'regression',
+                'transition': 'appeared',
+                'change_relative_pct': None,
+            }
+        )
+        assert marker.direction == 'regression'
+        assert marker.transition == Transition.APPEARED
+        assert marker.change_relative_pct is None
+
+    def test_with_pct_no_transition(self):
+        marker = ChangePointMarker.model_validate(
+            {
+                'direction': 'improvement',
+                'change_relative_pct': 15.5,
+            }
+        )
+        assert marker.direction == 'improvement'
+        assert marker.change_relative_pct == 15.5
+        assert marker.transition is None
+
+
+class TestChangePointRead:
+    def test_with_transition_and_nullable_pct(self):
+        data = {
+            'id': _UUID,
+            'asset_id': _UUID2,
+            'slo_name': 'api-latency',
+            'metric_name': 'latency_ms',
+            'period_start': _TS,
+            'detector': 'edivisive',
+            'direction': 'regression',
+            'change_relative_pct': None,
+            'transition': 'vanished',
+            'change_absolute': 0.0,
+            'pvalue': 0.001,
+            'pre_segment_mean': 50.0,
+            'post_segment_mean': 0.0,
+            'post_segment_std': 5.0,
+            'status': 'unreviewed',
+            'created_at': _TS,
+            'updated_at': _TS,
+        }
+        change_point = ChangePointRead.model_validate(data)
+        assert change_point.direction == 'regression'
+        assert change_point.transition == Transition.VANISHED
+        assert change_point.change_relative_pct is None
+        assert change_point.post_segment_mean == 0.0

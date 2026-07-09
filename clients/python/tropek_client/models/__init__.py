@@ -43,6 +43,7 @@ from tropek_client.models.common import (
     ErrorMessage,
     TagKeyCount,
     TagValueCount,
+    Transition,
 )
 from tropek_client.models.configuration import (
     ConfigurationRead,
@@ -297,6 +298,7 @@ __all__ = [
     'TimelineItem',
     'TimelineResponse',
     'TimelineSummaryResponse',
+    'Transition',
     'TrendPoint',
     'TrendTargetEntry',
     'TrendTargets',

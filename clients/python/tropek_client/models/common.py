@@ -12,6 +12,13 @@ class Direction(StrEnum):
     IMPROVEMENT = 'improvement'
 
 
+class Transition(StrEnum):
+    """A segment mean of exactly zero — no meaningful relative change can be reported."""
+
+    APPEARED = 'appeared'
+    VANISHED = 'vanished'
+
+
 class AggregateFunction(StrEnum):
     """Aggregation function for SLI values."""
 
