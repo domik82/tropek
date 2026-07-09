@@ -49,10 +49,12 @@ describe('TimeRangePicker', () => {
 
 describe('TimeRangePicker calendar initialization', () => {
   it('initializes the absolute inputs from the active context range', () => {
-    renderPicker('/?from=2026-04-01T00:00:00.000Z&to=2026-04-25T23:59:59.999Z')
+    const fromEpoch = Date.UTC(2026, 3, 1, 0, 0, 0)
+    const toEpoch = Date.UTC(2026, 3, 25, 23, 59, 59)
+    renderPicker(`/?from=${fromEpoch}&to=${toEpoch}`)
     fireEvent.click(screen.getByRole('button'))
-    const expectedFrom = toDateInputValue(new Date('2026-04-01T00:00:00.000Z'))
-    const expectedTo = toDateInputValue(new Date('2026-04-25T23:59:59.999Z'))
+    const expectedFrom = toDateInputValue(new Date(fromEpoch))
+    const expectedTo = toDateInputValue(new Date(toEpoch))
     expect(screen.getByText(expectedFrom)).toBeInTheDocument()
     expect(screen.getByText(expectedTo)).toBeInTheDocument()
   })
