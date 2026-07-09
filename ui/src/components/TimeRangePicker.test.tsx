@@ -1,14 +1,17 @@
 // ui/src/components/TimeRangePicker.test.tsx
 import { describe, it, expect, beforeEach } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
+import { MemoryRouter } from 'react-router-dom'
 import { TimeRangePicker } from './TimeRangePicker'
-import { TimeRangeProvider } from '@/lib/time-range-context'
+import { TimeRangeProvider, toDateInputValue, isoToCalendarDate } from '@/lib/time-range-context'
 
-function renderPicker() {
+function renderPicker(initialEntry = '/') {
   return render(
-    <TimeRangeProvider>
-      <TimeRangePicker />
-    </TimeRangeProvider>,
+    <MemoryRouter initialEntries={[initialEntry]}>
+      <TimeRangeProvider>
+        <TimeRangePicker />
+      </TimeRangeProvider>
+    </MemoryRouter>,
   )
 }
 
@@ -41,5 +44,18 @@ describe('TimeRangePicker', () => {
     fireEvent.click(screen.getByRole('button'))
     fireEvent.click(screen.getByText('Last 7 days'))
     expect(screen.getByRole('button')).toHaveTextContent('Last 7 days')
+  })
+})
+
+describe('TimeRangePicker calendar initialization', () => {
+  it('initializes the absolute inputs from the active context range', () => {
+    const fromEpoch = Date.UTC(2026, 3, 1, 0, 0, 0)
+    const toEpoch = Date.UTC(2026, 3, 25, 23, 59, 59)
+    renderPicker(`/?from=${fromEpoch}&to=${toEpoch}`)
+    fireEvent.click(screen.getByRole('button'))
+    const expectedFrom = toDateInputValue(isoToCalendarDate(new Date(fromEpoch).toISOString()))
+    const expectedTo = toDateInputValue(isoToCalendarDate(new Date(toEpoch).toISOString()))
+    expect(screen.getByText(expectedFrom)).toBeInTheDocument()
+    expect(screen.getByText(expectedTo)).toBeInTheDocument()
   })
 })

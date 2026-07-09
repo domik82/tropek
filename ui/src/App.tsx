@@ -80,45 +80,45 @@ function NavControls() {
 export default function App() {
   return (
     <ThemeProvider>
-      <TimeRangeProvider>
-        <ChartPreferencesProvider>
-          <QueryClientProvider client={queryClient}>
-            <BrowserRouter>
-          <div className="min-h-screen bg-background text-foreground">
-            <nav className="border-b border-border px-6 py-3 flex items-center gap-6">
-              <span className="font-bold text-sm tracking-widest" style={{ color: 'var(--tropek-logo)' }}>TROPEK</span>
-              {NAV_ITEMS.map(item => (
-                <NavLink
-                  key={item.to}
-                  to={item.to}
-                  className={({ isActive }) =>
-                    `text-sm transition-colors ${isActive ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'}`
-                  }
-                >
-                  {item.label}
-                </NavLink>
-              ))}
-              <NavControls />
-            </nav>
-            <main>
-              <ErrorBoundary>
-                <Routes>
-                  <Route path="/" element={<Navigate to="/navigator" replace />} />
-                  <Route path="/navigator" element={<AssetNavigatorPage />} />
-                  <Route path="/explorer" element={<MetricExplorerPage />} />
-                  <Route path="/evaluations/:id" element={<EvaluationDetailPage />} />
-                  <Route path="/slos" element={<SloRegistryPage />} />
-                  <Route path="/assets" element={<AssetsPage />} />
-                  <Route path="/change-points" element={<ChangePointsPage />} />
-                  <Route path="/settings/note-categories" element={<CategoryManagementPage />} />
-                </Routes>
-              </ErrorBoundary>
-            </main>
-          </div>
-            </BrowserRouter>
-          </QueryClientProvider>
-        </ChartPreferencesProvider>
-      </TimeRangeProvider>
+      <ChartPreferencesProvider>
+        <QueryClientProvider client={queryClient}>
+          <BrowserRouter>
+            <TimeRangeProvider>
+              <div className="min-h-screen bg-background text-foreground">
+                <nav className="border-b border-border px-6 py-3 flex items-center gap-6">
+                  <span className="font-bold text-sm tracking-widest" style={{ color: 'var(--tropek-logo)' }}>TROPEK</span>
+                  {NAV_ITEMS.map(item => (
+                    <NavLink
+                      key={item.to}
+                      to={item.to}
+                      className={({ isActive }) =>
+                        `text-sm transition-colors ${isActive ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'}`
+                      }
+                    >
+                      {item.label}
+                    </NavLink>
+                  ))}
+                  <NavControls />
+                </nav>
+                <main>
+                  <ErrorBoundary>
+                    <Routes>
+                      <Route path="/" element={<Navigate to="/navigator" replace />} />
+                      <Route path="/navigator" element={<AssetNavigatorPage />} />
+                      <Route path="/explorer" element={<MetricExplorerPage />} />
+                      <Route path="/evaluations/:id" element={<EvaluationDetailPage />} />
+                      <Route path="/slos" element={<SloRegistryPage />} />
+                      <Route path="/assets" element={<AssetsPage />} />
+                      <Route path="/change-points" element={<ChangePointsPage />} />
+                      <Route path="/settings/note-categories" element={<CategoryManagementPage />} />
+                    </Routes>
+                  </ErrorBoundary>
+                </main>
+              </div>
+            </TimeRangeProvider>
+          </BrowserRouter>
+        </QueryClientProvider>
+      </ChartPreferencesProvider>
     </ThemeProvider>
   )
 }

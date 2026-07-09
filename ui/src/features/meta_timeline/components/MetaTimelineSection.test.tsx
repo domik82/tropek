@@ -1,6 +1,7 @@
 import { cleanup, render, screen, fireEvent } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { MemoryRouter } from 'react-router-dom'
 import { TimeRangeProvider } from '@/lib/time-range-context'
 import { MetaTimelineSection } from './MetaTimelineSection'
 
@@ -39,11 +40,13 @@ describe('MetaTimelineSection', () => {
 
   function renderSection() {
     return render(
-      <QueryClientProvider client={queryClient}>
-        <TimeRangeProvider>
-          <MetaTimelineSection assetId="asset-123" focusEval={focusEval} />
-        </TimeRangeProvider>
-      </QueryClientProvider>,
+      <MemoryRouter>
+        <QueryClientProvider client={queryClient}>
+          <TimeRangeProvider>
+            <MetaTimelineSection assetId="asset-123" focusEval={focusEval} />
+          </TimeRangeProvider>
+        </QueryClientProvider>
+      </MemoryRouter>,
     )
   }
 
