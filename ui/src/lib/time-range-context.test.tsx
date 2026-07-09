@@ -2,7 +2,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import { MemoryRouter, useLocation } from 'react-router-dom'
-import { computeFromDate, toDateInputValue, PRESETS, parseTimeParams, TimeRangeProvider, useTimeRange } from './time-range-context'
+import { computeFromDate, toDateInputValue, PRESETS, parseTimeParams, TimeRangeProvider, useTimeRange, calendarDateToIso, isoToCalendarDate } from './time-range-context'
 
 describe('computeFromDate', () => {
   beforeEach(() => {
@@ -256,5 +256,26 @@ describe('TimeRangeProvider URL persistence', () => {
   it('labels an unknown preset-day URL with the actual day count', () => {
     renderProvider('/?from=now-45d')
     expect(screen.getByTestId('label')).toHaveTextContent('Last 45 days')
+  })
+})
+
+describe('calendarDateToIso', () => {
+  it('maps a picked calendar day to UTC midnight of that day (no day drift)', () => {
+    expect(calendarDateToIso(new Date(2025, 0, 1), false)).toBe('2025-01-01T00:00:00.000Z')
+  })
+
+  it('maps an end-of-day to UTC 23:59:59.999 of that day', () => {
+    expect(calendarDateToIso(new Date(2026, 6, 31), true)).toBe('2026-07-31T23:59:59.999Z')
+  })
+})
+
+describe('isoToCalendarDate', () => {
+  it('reads a UTC ISO back to the same calendar day', () => {
+    expect(toDateInputValue(isoToCalendarDate('2025-01-01T00:00:00.000Z'))).toBe('2025-01-01')
+  })
+
+  it('round-trips a picked day without drifting', () => {
+    const iso = calendarDateToIso(new Date(2025, 0, 1), false)
+    expect(toDateInputValue(isoToCalendarDate(iso))).toBe('2025-01-01')
   })
 })

@@ -3,7 +3,7 @@ import { describe, it, expect, beforeEach } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { TimeRangePicker } from './TimeRangePicker'
-import { TimeRangeProvider, toDateInputValue } from '@/lib/time-range-context'
+import { TimeRangeProvider, toDateInputValue, isoToCalendarDate } from '@/lib/time-range-context'
 
 function renderPicker(initialEntry = '/') {
   return render(
@@ -53,8 +53,8 @@ describe('TimeRangePicker calendar initialization', () => {
     const toEpoch = Date.UTC(2026, 3, 25, 23, 59, 59)
     renderPicker(`/?from=${fromEpoch}&to=${toEpoch}`)
     fireEvent.click(screen.getByRole('button'))
-    const expectedFrom = toDateInputValue(new Date(fromEpoch))
-    const expectedTo = toDateInputValue(new Date(toEpoch))
+    const expectedFrom = toDateInputValue(isoToCalendarDate(new Date(fromEpoch).toISOString()))
+    const expectedTo = toDateInputValue(isoToCalendarDate(new Date(toEpoch).toISOString()))
     expect(screen.getByText(expectedFrom)).toBeInTheDocument()
     expect(screen.getByText(expectedTo)).toBeInTheDocument()
   })

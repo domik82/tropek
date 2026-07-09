@@ -4,7 +4,7 @@ import { Calendar as CalendarIcon, ChevronDown, TriangleAlert } from 'lucide-rea
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover'
 import { Button } from '@/components/ui/button'
 import { Calendar } from '@/components/ui/calendar'
-import { useTimeRange, PRESETS, toDateInputValue } from '@/lib/time-range-context'
+import { useTimeRange, PRESETS, toDateInputValue, calendarDateToIso, isoToCalendarDate } from '@/lib/time-range-context'
 import { SANS_SERIF } from '@/lib/fonts'
 import { getConfig } from '@/lib/config'
 
@@ -27,8 +27,8 @@ export function TimeRangePicker() {
   // Which date field is being edited: null = collapsed, 'from'/'to' = show calendar
   const [editing, setEditing] = useState<'from' | 'to' | null>(null)
 
-  const [fromDate, setFromDate] = useState<Date | undefined>(() => new Date(from))
-  const [toDate, setToDate] = useState<Date | undefined>(() => (to ? new Date(to) : undefined))
+  const [fromDate, setFromDate] = useState<Date | undefined>(() => isoToCalendarDate(from))
+  const [toDate, setToDate] = useState<Date | undefined>(() => (to ? isoToCalendarDate(to) : undefined))
 
   function handlePreset(days: number) {
     setDays(days)
@@ -51,14 +51,8 @@ export function TimeRangePicker() {
 
   function handleApply() {
     if (!fromDate || rangeInvalid) return
-    const fromIso = new Date(
-      fromDate.getFullYear(), fromDate.getMonth(), fromDate.getDate()
-    ).toISOString()
-    const toIso = toDate
-      ? new Date(
-          toDate.getFullYear(), toDate.getMonth(), toDate.getDate(), 23, 59, 59
-        ).toISOString()
-      : undefined
+    const fromIso = calendarDateToIso(fromDate, false)
+    const toIso = toDate ? calendarDateToIso(toDate, true) : undefined
     setAbsoluteRange(fromIso, toIso)
     setEditing(null)
     setOpen(false)

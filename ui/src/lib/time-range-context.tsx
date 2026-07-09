@@ -39,6 +39,22 @@ export function toDateInputValue(d: Date): string {
   return `${y}-${m}-${day}`
 }
 
+/** Convert a calendar Date (its local Y/M/D is the picked day) to a UTC ISO instant for that day. */
+// eslint-disable-next-line react-refresh/only-export-components
+export function calendarDateToIso(date: Date, endOfDay: boolean): string {
+  const millis = endOfDay
+    ? Date.UTC(date.getFullYear(), date.getMonth(), date.getDate(), 23, 59, 59, 999)
+    : Date.UTC(date.getFullYear(), date.getMonth(), date.getDate(), 0, 0, 0, 0)
+  return new Date(millis).toISOString()
+}
+
+/** Convert a UTC ISO instant to a local-midnight Date whose local Y/M/D equals the instant's UTC day. */
+// eslint-disable-next-line react-refresh/only-export-components
+export function isoToCalendarDate(iso: string): Date {
+  const instant = new Date(iso)
+  return new Date(instant.getUTCFullYear(), instant.getUTCMonth(), instant.getUTCDate())
+}
+
 type RangeMode = 'preset' | 'absolute'
 
 interface StoredRange {
