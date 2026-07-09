@@ -20,15 +20,15 @@ function daysBetween(a: Date, b: Date): number {
 }
 
 export function TimeRangePicker() {
-  const { label, mode, preset, setDays, setAbsoluteRange } = useTimeRange()
+  const { label, mode, preset, from, to, setDays, setAbsoluteRange } = useTimeRange()
   const [open, setOpen] = useState(false)
   const slowThreshold = getConfig().heatmapSlowThresholdDays
 
   // Which date field is being edited: null = collapsed, 'from'/'to' = show calendar
   const [editing, setEditing] = useState<'from' | 'to' | null>(null)
 
-  const [fromDate, setFromDate] = useState<Date | undefined>(() => presetFromDate(30))
-  const [toDate, setToDate] = useState<Date | undefined>(undefined)
+  const [fromDate, setFromDate] = useState<Date | undefined>(() => new Date(from))
+  const [toDate, setToDate] = useState<Date | undefined>(() => (to ? new Date(to) : undefined))
 
   function handlePreset(days: number) {
     setDays(days)
