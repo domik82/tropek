@@ -2604,9 +2604,12 @@ export interface components {
          * @description Lightweight marker attached to heatmap cells and trend points.
          */
         ChangePointMarker: {
+            /** Change Absolute */
+            change_absolute?: number | null;
             /** Change Relative Pct */
-            change_relative_pct: number;
+            change_relative_pct?: number | null;
             direction: components["schemas"]["Direction"];
+            transition?: components["schemas"]["Transition"] | null;
         };
         /**
          * ChangePointRead
@@ -2621,7 +2624,7 @@ export interface components {
             /** Change Absolute */
             change_absolute: number;
             /** Change Relative Pct */
-            change_relative_pct: number;
+            change_relative_pct: number | null;
             /**
              * Created At
              * Format: date-time
@@ -2660,6 +2663,7 @@ export interface components {
             slo_name: string;
             /** Status */
             status: string;
+            transition?: components["schemas"]["Transition"] | null;
             /** Triage At */
             triage_at: string | null;
             /** Triage Author */
@@ -4578,6 +4582,12 @@ export interface components {
             /** Itemcount */
             itemCount: number;
         };
+        /**
+         * Transition
+         * @description How a metric crossed zero at a change point — appeared (from 0) or vanished (to 0); relative percent is null for these.
+         * @enum {string}
+         */
+        Transition: "appeared" | "vanished";
         /**
          * TrendPoint
          * @description A single point in a metric trend time series.

@@ -100,11 +100,21 @@ Methods: `forward_rel_change()`, `backward_rel_change()`, `change_magnitude()` (
 absolute forward/backward).
 
 **`ChangePointResult`** -- output of the detector wrapper. Fields: `position`, `timestamp`,
-`detector` ("e_divisive"), `direction` (REGRESSION/IMPROVEMENT), `change_relative_pct`,
-`change_absolute`, `pvalue`, `pre_segment_mean`, `post_segment_mean`, `post_segment_std`.
+`detector` ("e_divisive"), `direction` (REGRESSION/IMPROVEMENT), `change_relative_pct`
+(nullable), `change_absolute`, `pvalue`, `pre_segment_mean`, `post_segment_mean`,
+`post_segment_std`, `transition` (nullable). `change_relative_pct` is computed from the
+adjacent segment means (`pre_segment_mean`, `post_segment_mean`) around the change point --
+not the full series before/after. When `pre_segment_mean` is exactly 0, the percentage is
+undefined (division by zero); `change_relative_pct` is set to `None` and `transition` is set
+to `APPEARED`. When `post_segment_mean` is exactly 0, `transition` is `VANISHED` instead.
+`min_magnitude` gates on these same adjacent segment means via `change_magnitude()`, not a
+full-series comparison.
 
 **`Direction`** (StrEnum) -- `REGRESSION`, `IMPROVEMENT`. Determined by `higher_is_better`
 combined with the sign of the change.
+
+**`Transition`** (StrEnum) -- `APPEARED`, `VANISHED`. Set only when a segment mean is exactly
+zero and `change_relative_pct` cannot be computed; `None` otherwise.
 
 ## Detector Layer
 
@@ -204,8 +214,9 @@ For each candidate CP:
 
 ### Key Schemas
 
-- **ChangePointMarker** -- lightweight `{direction, change_relative_pct}` used on heatmap cells,
-  indicator results, and trend points across all three response surfaces.
+- **ChangePointMarker** -- lightweight `{direction, change_relative_pct, transition}` used on
+  heatmap cells, indicator results, and trend points across all three response surfaces.
+  `change_relative_pct` is nullable (null when `transition` is set).
 - **ChangePointRead** -- full detail with identity, stats, triage fields, timestamps.
 - **TriageRequest** (StrictInput) -- `status`, optional `triage_note`, `linked_ticket`, `triage_author`.
 - **BulkTriageRequest** (StrictInput) -- `ids: list[UUID]`, `status`, optional note/author.
@@ -229,8 +240,10 @@ Stores detected distributional shifts with denormalized identity for fast querie
 | period_start | DateTime(tz) | NOT NULL |
 | detector | Text | default 'e_divisive' |
 | direction | Text | 'regression' or 'improvement' |
-| change_relative_pct, change_absolute, pvalue | Float | NOT NULL |
+| change_relative_pct | Float | nullable -- null when `transition` is set (segment mean of 0) |
+| change_absolute, pvalue | Float | NOT NULL |
 | pre_segment_mean, post_segment_mean, post_segment_std | Float | NOT NULL |
+| transition | Text | nullable -- 'appeared' or 'vanished'; set when a segment mean is exactly 0 and `change_relative_pct` is null |
 | status | Text | default 'unprocessed' |
 | triage_author, triage_note, linked_ticket | Text | nullable |
 | triage_at, created_at, updated_at | DateTime(tz) | |
@@ -313,7 +326,8 @@ StableGenerator, StepChangeGenerator, DriftGenerator, MultipleChangePointGenerat
 make_timestamps. Tests validate detector behavior against each pattern.
 
 **Integration tests** (`db/test_repository.py`) -- real database: dedup (nearby, distant,
-hidden status, different direction), config CRUD, resolve_from_objective with/without override.
+hidden status, different direction), config CRUD, resolve_from_objective with/without override,
+insert/read round-trip for a null `change_relative_pct` with a `transition` value.
 
 ## Known Issues & Limitations
 

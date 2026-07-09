@@ -157,3 +157,23 @@ spec:
     gc_pause_ms: 'process_gc_pause_seconds_total{job="$job",process="$process_name"} * 1000'
     heap_mb: 'process_heap_bytes{job="$job",process="$process_name"} / 1048576'
     open_files: 'process_open_fds{job="$job",process="$process_name"}'
+---
+# ---- Change Point Transition Demo SLI (issue #64) ----
+
+api_version: tropek/v1
+kind: SLI
+metadata:
+  name: cp-transition-sli
+  display_name: Change Point Transition Indicators
+  author: bootstrap
+  notes: >-
+    Demonstrates the change-point magnitude fix from issue #64 — appear/vanish
+    transitions for zero-mean segments and the local adjacent-segment percent
+    for non-zero shifts. Backed by
+    adapters/mock/scenarios/change-point-transitions.yaml.
+spec:
+  adapter_type: prometheus
+  indicators:
+    errors_zero_origin_appear: 'rate(demo_errors_total{job="$job"}[5m])'
+    throughput_vanish: 'rate(demo_requests_total{job="$job"}[5m])'
+    memory_diluted_shift: 'process_resident_memory_bytes{job="$job"}'

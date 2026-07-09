@@ -27,7 +27,12 @@ export interface HeatmapEChartsCell {
   isSloHeader?: boolean
   sloName?: string
   metricName?: string
-  changePoint?: { direction: 'regression' | 'improvement'; changeRelativePct: number }
+  changePoint?: {
+    direction: 'regression' | 'improvement'
+    changeRelativePct: number | null
+    transition: 'appeared' | 'vanished' | null
+    changeAbsolute: number | null
+  }
 }
 
 // Emitted by the asset heatmap when a user clicks a cell — describes which

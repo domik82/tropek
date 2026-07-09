@@ -19,7 +19,7 @@ from pydantic import AfterValidator
 from tropek.config import get_settings
 from tropek.db.retry import run_with_deadlock_retry
 from tropek.modules.assets.service import AssetService
-from tropek.modules.change_points.detector import Direction
+from tropek.modules.change_points.detector import Direction, Transition
 from tropek.modules.change_points.repository import ChangePointKey, ChangePointRepository
 from tropek.modules.change_points.schemas import ChangePointMarker
 from tropek.modules.common.exceptions import ConflictError, DomainValidationError, NotFoundError
@@ -194,6 +194,8 @@ async def _enrich_heatmap_with_change_points(
                     cell.change_point = ChangePointMarker(
                         direction=Direction(change_point.direction),
                         change_relative_pct=change_point.change_relative_pct,
+                        transition=Transition(change_point.transition) if change_point.transition is not None else None,
+                        change_absolute=change_point.change_absolute,
                     )
     return response
 

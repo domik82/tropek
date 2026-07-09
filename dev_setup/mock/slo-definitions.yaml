@@ -635,6 +635,50 @@ spec:
       warning_threshold: ["<120"]
       weight: 1
 ---
+# ---- Change Point Transition Demo SLO (issue #64) ----
+
+api_version: tropek/v1
+kind: SLO
+metadata:
+  name: cp-transition-slo
+  display_name: "Change Point Transitions Demo"
+  author: bootstrap
+  notes: >-
+    Demonstrates the change-point magnitude fix from issue #64. See
+    adapters/mock/scenarios/change-point-transitions.yaml for the expected
+    per-metric shapes and tooltip output.
+spec:
+  sli_name: cp-transition-sli
+  sli_version: 1
+  kind: standard
+  total_score:
+    pass_threshold: 90.0
+    warning_threshold: 75.0
+  objectives:
+    - sli: errors_zero_origin_appear
+      display_name: "Errors (zero-origin appear)"
+      pass_threshold: ["<600"]
+      warning_threshold: ["<800"]
+      weight: 1
+      key_sli: true
+      change_point:
+        max_pvalue: 0.01
+    - sli: throughput_vanish
+      display_name: "Throughput (vanish)"
+      pass_threshold: [">50"]
+      warning_threshold: [">10"]
+      weight: 1
+      change_point:
+        max_pvalue: 0.01
+        higher_is_better: true
+    - sli: memory_diluted_shift
+      display_name: "Memory (diluted shift)"
+      pass_threshold: ["<15000000"]
+      warning_threshold: ["<16000000"]
+      weight: 1
+      change_point:
+        max_pvalue: 0.01
+---
 api_version: tropek/v1
 kind: SLO
 metadata:

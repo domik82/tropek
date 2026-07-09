@@ -7,7 +7,7 @@ from datetime import datetime
 from typing import Any, NamedTuple
 
 from tropek.db.models import ChangePoint, EvaluationRun, IndicatorResultRow, SLOEvaluation
-from tropek.modules.change_points.detector import Direction
+from tropek.modules.change_points.detector import Direction, Transition
 from tropek.modules.change_points.repository import ChangePointKey
 from tropek.modules.change_points.schemas import ChangePointMarker
 from tropek.modules.quality_gate.evaluation_engine.constants import RESULT_RANK
@@ -277,6 +277,8 @@ def _resolve_change_point_marker(
     return ChangePointMarker(
         direction=Direction(change_point.direction),
         change_relative_pct=change_point.change_relative_pct,
+        transition=Transition(change_point.transition) if change_point.transition is not None else None,
+        change_absolute=change_point.change_absolute,
     )
 
 

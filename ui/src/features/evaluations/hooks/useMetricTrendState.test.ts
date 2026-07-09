@@ -362,7 +362,7 @@ describe('buildChartOption', () => {
 
   it('keeps thresholds and change-points alongside a bar main series', () => {
     const trend = [
-      makeTrendPoint({ value: 100, changePoint: { direction: 'regression', changeRelativePct: 12 } }),
+      makeTrendPoint({ value: 100, changePoint: { direction: 'regression', changeRelativePct: 12, transition: null, changeAbsolute: null } }),
     ]
     const option = buildChartOption(baseInput({
       trend,

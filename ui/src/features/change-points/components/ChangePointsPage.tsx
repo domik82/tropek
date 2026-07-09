@@ -1,6 +1,7 @@
 import { useState, useCallback, useMemo } from 'react'
 import { Diamond, Check, EyeOff, ChevronLeft, ChevronRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { formatChangePointPct } from '@/lib/format'
 import { useAssets } from '@/features/assets/hooks'
 import {
   useChangePoints,
@@ -26,11 +27,6 @@ const DIRECTION_OPTIONS: Array<{ value: ChangePointDirection | ''; label: string
   { value: 'regression', label: 'Regression' },
   { value: 'improvement', label: 'Improvement' },
 ]
-
-function formatPct(pct: number): string {
-  const sign = pct > 0 ? '+' : ''
-  return `${sign}${pct.toFixed(1)}%`
-}
 
 function formatDate(date: Date): string {
   return date.toISOString().slice(0, 16).replace('T', ' ')
@@ -308,10 +304,7 @@ function ChangePointRow({
       <td className="px-3 py-2 font-mono text-xs">{changePoint.sloName}</td>
       <td className="px-3 py-2 text-right tabular-nums">
         <span className={changePoint.direction === 'regression' ? 'text-red-400' : 'text-green-400'}>
-          {formatPct(changePoint.changeRelativePct)}
-        </span>
-        <span className="text-muted-foreground ml-1 text-xs">
-          ({changePoint.changeAbsolute.toFixed(2)})
+          {formatChangePointPct(changePoint.changeRelativePct, changePoint.transition, changePoint.changeAbsolute)}
         </span>
       </td>
       <td className="px-3 py-2 text-xs text-muted-foreground tabular-nums">

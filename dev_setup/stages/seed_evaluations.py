@@ -225,6 +225,47 @@ def _seed_lab_monitor(client: TropekClient) -> list[str]:
 
 
 # ---------------------------------------------------------------------------
+# Change point transitions demo (issue #64, separate from the main schedule)
+# ---------------------------------------------------------------------------
+
+CP_TRANSITION_START = datetime.fromisoformat('2026-04-01T00:00:00+00:00')
+CP_TRANSITION_DAYS = 61
+CP_TRANSITION_WINDOW_MINUTES = 30
+
+
+def _seed_cp_transition_monitor(client: TropekClient) -> list[str]:
+    """Seed daily evaluations for cp-transition-monitor across the demo window.
+
+    Drives one evaluation per day over the change-point-transitions mock
+    scenario (adapters/mock/scenarios/change-point-transitions.yaml) so the
+    stored change-point rows show the appeared/vanished transitions and the
+    local adjacent-segment recovery percent described there.
+    """
+    all_ids: list[str] = []
+    for day in range(CP_TRANSITION_DAYS):
+        start = CP_TRANSITION_START + timedelta(days=day)
+        end = start + timedelta(minutes=CP_TRANSITION_WINDOW_MINUTES)
+        start_str = start.strftime('%Y-%m-%dT%H:%M:%SZ')
+        end_str = end.strftime('%Y-%m-%dT%H:%M:%SZ')
+
+        print(f'  cp-transition-monitor day {day + 1}/{CP_TRANSITION_DAYS} ({start_str})', end='\r', flush=True)
+        result = client.evaluations.trigger(
+            EvaluateSingleRequest(
+                asset_name='cp-transition-monitor',
+                eval_name='daily-cp-transition',
+                period_start=start_str,
+                period_end=end_str,
+            )
+        )
+        slo_ids = [str(sid) for sid in result.slo_evaluation_ids]
+        _wait_for_ids(client, slo_ids, f'cp-transition day {day + 1}')
+        all_ids.extend(slo_ids)
+
+    print()
+    return all_ids
+
+
+# ---------------------------------------------------------------------------
 # Annotations
 # ---------------------------------------------------------------------------
 
@@ -309,6 +350,11 @@ def main() -> None:
     print('Seeding lab-monitor-01 (90 days)...')
     lab_ids = _seed_lab_monitor(client)
     all_slo_eval_ids.extend(lab_ids)
+
+    # Seed cp-transition-monitor with 61 daily evaluations (issue #64 demo)
+    print('Seeding cp-transition-monitor (61 days)...')
+    cp_transition_ids = _seed_cp_transition_monitor(client)
+    all_slo_eval_ids.extend(cp_transition_ids)
 
     # Final summary (on individual SLO evaluations)
     results = [client.evaluations.get(str(eid)) for eid in all_slo_eval_ids]

@@ -38,7 +38,9 @@ export interface HeatmapMetric {
 
 export interface ChangePointMarker {
   direction: 'regression' | 'improvement'
-  changeRelativePct: number
+  changeRelativePct: number | null
+  transition: 'appeared' | 'vanished' | null
+  changeAbsolute: number | null
 }
 
 export interface HeatmapIndicatorCell {

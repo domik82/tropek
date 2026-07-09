@@ -20,6 +20,33 @@ export function fmtPct(v: number | null | undefined): string {
   return `${v.toFixed(1)}%`
 }
 
+/** Signed, compact absolute number: "+1.80M", "-13.30M", "—" when null. */
+export function fmtSignedAbs(v: number | null | undefined): string {
+  if (v == null) return '—'
+  const sign = v >= 0 ? '+' : ''
+  return `${sign}${fmt(v)}`
+}
+
+/**
+ * Format a change point's magnitude for display: `(primary, absolute)`, where
+ * `primary` is the relative percent, or — for appear/vanish transitions, where a
+ * percent has no meaning — the transition word. `changeAbsolute` is appended
+ * whenever present; when it's null (defensive, older data), falls back to just
+ * the primary part, matching the pre-existing behavior.
+ */
+export function formatChangePointPct(
+  changeRelativePct: number | null,
+  transition: 'appeared' | 'vanished' | null,
+  changeAbsolute: number | null,
+): string {
+  const primary = transition ?? (changeRelativePct == null
+    ? null
+    : `${changeRelativePct > 0 ? '+' : ''}${changeRelativePct.toFixed(1)}%`)
+  if (primary == null) return '—'
+  if (changeAbsolute == null) return primary
+  return `${primary}, ${fmtSignedAbs(changeAbsolute)}`
+}
+
 /** Compact heatmap X-axis label: "MM-DD HH:MM" */
 export function fmtSlot(slot: string): string {
   if (!slot) return '—'

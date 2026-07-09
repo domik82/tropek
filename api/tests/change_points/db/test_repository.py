@@ -16,7 +16,9 @@ from tropek.db.models import (
     SLODefinition,
     SLOObjective,
 )
-from tropek.modules.change_points.repository import ChangePointKey, ChangePointRepository
+from tropek.modules.change_points.detector import Transition
+from tropek.modules.change_points.repository import ChangePointInsertParams, ChangePointKey, ChangePointRepository
+from tropek.modules.change_points.schemas import ChangePointRead
 
 _BASE = datetime(2026, 4, 1, 10, 0, 0, tzinfo=UTC)
 
@@ -401,3 +403,42 @@ async def test_get_change_points_for_evaluations_keys_include_slo_and_period_end
     assert key_throughput in lookup
     assert lookup[key_latency].direction == 'regression'
     assert lookup[key_throughput].direction == 'improvement'
+
+
+@pytest.mark.integration
+async def test_insert_change_point_with_null_pct_and_transition(db_session: AsyncSession) -> None:
+    """A change point with change_relative_pct=None and transition=APPEARED round-trips
+    correctly through insert and read, including through ChangePointRead.model_validate."""
+    asset_id = await _create_asset(db_session)
+    repo = ChangePointRepository(db_session)
+
+    params = ChangePointInsertParams(
+        indicator_result_id=None,
+        evaluation_run_id=None,
+        asset_id=asset_id,
+        slo_name='perf-slo',
+        metric_name='error_rate',
+        period_start=_BASE,
+        detector='e_divisive',
+        direction='regression',
+        change_relative_pct=None,
+        change_absolute=5.0,
+        pvalue=0.001,
+        pre_segment_mean=0.0,
+        post_segment_mean=5.0,
+        post_segment_std=0.5,
+        transition=Transition.APPEARED,
+    )
+    inserted = await repo.insert_change_point(params)
+
+    assert inserted.change_relative_pct is None
+    assert inserted.transition == Transition.APPEARED
+
+    fetched = await repo.get_by_id(inserted.id)
+    assert fetched is not None
+    assert fetched.change_relative_pct is None
+    assert fetched.transition == Transition.APPEARED
+
+    change_point_read = ChangePointRead.model_validate(fetched)
+    assert change_point_read.change_relative_pct is None
+    assert change_point_read.transition == Transition.APPEARED

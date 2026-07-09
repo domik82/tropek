@@ -12,6 +12,13 @@ class Direction(StrEnum):
     IMPROVEMENT = 'improvement'
 
 
+class Transition(StrEnum):
+    """How a metric crossed zero at a change point — appeared (from 0) or vanished (to 0); relative percent is null for these."""
+
+    APPEARED = 'appeared'
+    VANISHED = 'vanished'
+
+
 class AggregateFunction(StrEnum):
     """Aggregation function for SLI values."""
 

@@ -13,13 +13,14 @@ from __future__ import annotations
 from collections.abc import Sequence
 from datetime import datetime
 from enum import StrEnum
-from statistics import mean, stdev
+from typing import cast
 
 import numpy as np
 import structlog
 from pydantic import BaseModel
 
 from tropek.modules.change_points.engine import merge, split
+from tropek.modules.change_points.engine.analysis import TTestStats
 
 logger = structlog.get_logger()
 
@@ -30,7 +31,6 @@ DEFAULT_MIN_MAGNITUDE = 0.0
 DEFAULT_MIN_SAMPLE_SIZE = 10
 
 MIN_EFFECTIVE_WINDOW = 4
-MIN_STDEV_SAMPLES = 2
 PVALUE_STRICT_THRESHOLD = 0.05
 PVALUE_MODERATE_THRESHOLD = 0.5
 
@@ -42,6 +42,13 @@ class Direction(StrEnum):
     IMPROVEMENT = 'improvement'
 
 
+class Transition(StrEnum):
+    """How a metric crossed zero at a change point — appeared (from 0) or vanished (to 0); relative percent is null for these."""
+
+    APPEARED = 'appeared'
+    VANISHED = 'vanished'
+
+
 class ChangePointResult(BaseModel):
     """A single detected change point with direction and magnitude."""
 
@@ -49,12 +56,13 @@ class ChangePointResult(BaseModel):
     timestamp: datetime
     detector: str
     direction: Direction
-    change_relative_pct: float
+    change_relative_pct: float | None
     change_absolute: float
     pvalue: float
     pre_segment_mean: float
     post_segment_mean: float
     post_segment_std: float
+    transition: Transition | None = None
 
 
 def detect_change_points(  # noqa: PLR0913
@@ -112,13 +120,21 @@ def detect_change_points(  # noqa: PLR0913
         if position <= 0 or position >= len(values):
             continue
 
-        pre_values = list(values[:position])
-        post_values = list(values[position:])
-        pre_mean = mean(pre_values)
-        post_mean = mean(post_values)
-        post_std = stdev(post_values) if len(post_values) >= MIN_STDEV_SAMPLES else 0.0
+        stats = cast('TTestStats', change_point.stats)
+        pre_mean = stats.mean_1
+        post_mean = stats.mean_2
+        post_std = stats.std_2
         absolute_change = post_mean - pre_mean
-        relative_change = (absolute_change / pre_mean * 100) if pre_mean != 0 else 0.0
+
+        if pre_mean == 0:
+            transition: Transition | None = Transition.APPEARED
+            relative_change: float | None = None
+        elif post_mean == 0:
+            transition = Transition.VANISHED
+            relative_change = None
+        else:
+            transition = None
+            relative_change = absolute_change / pre_mean * 100
 
         if higher_is_better:
             direction = Direction.REGRESSION if post_mean < pre_mean else Direction.IMPROVEMENT
@@ -131,12 +147,13 @@ def detect_change_points(  # noqa: PLR0913
                 timestamp=timestamps[position],
                 detector='e_divisive',
                 direction=direction,
-                change_relative_pct=round(relative_change, 2),
+                change_relative_pct=round(relative_change, 2) if relative_change is not None else None,
                 change_absolute=round(absolute_change, 4),
                 pvalue=round(change_point.stats.pvalue, 6),
                 pre_segment_mean=round(pre_mean, 4),
                 post_segment_mean=round(post_mean, 4),
                 post_segment_std=round(post_std, 4),
+                transition=transition,
             )
         )
 

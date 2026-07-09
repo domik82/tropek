@@ -362,7 +362,9 @@ export function AssetPanel({ assetName, initialEvalId }: Props) {
         changePoint: cell.change_point
           ? {
               direction: cell.change_point.direction as 'regression' | 'improvement',
-              changeRelativePct: cell.change_point.change_relative_pct,
+              changeRelativePct: cell.change_point.change_relative_pct ?? null,
+              transition: cell.change_point.transition ?? null,
+              changeAbsolute: cell.change_point.change_absolute ?? null,
             }
           : null,
       }))

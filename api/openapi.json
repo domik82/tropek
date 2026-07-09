@@ -1644,17 +1644,44 @@
       "ChangePointMarker": {
         "description": "Lightweight marker attached to heatmap cells and trend points.",
         "properties": {
+          "change_absolute": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Change Absolute"
+          },
           "change_relative_pct": {
-            "title": "Change Relative Pct",
-            "type": "number"
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Change Relative Pct"
           },
           "direction": {
             "$ref": "#/components/schemas/Direction"
+          },
+          "transition": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Transition"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": [
-          "direction",
-          "change_relative_pct"
+          "direction"
         ],
         "title": "ChangePointMarker",
         "type": "object"
@@ -1672,8 +1699,15 @@
             "type": "number"
           },
           "change_relative_pct": {
-            "title": "Change Relative Pct",
-            "type": "number"
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Change Relative Pct"
           },
           "created_at": {
             "format": "date-time",
@@ -1759,6 +1793,16 @@
           "status": {
             "title": "Status",
             "type": "string"
+          },
+          "transition": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Transition"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "triage_at": {
             "anyOf": [
@@ -6983,6 +7027,15 @@
         ],
         "title": "TimelineSummaryResponse",
         "type": "object"
+      },
+      "Transition": {
+        "description": "How a metric crossed zero at a change point \u2014 appeared (from 0) or vanished (to 0); relative percent is null for these.",
+        "enum": [
+          "appeared",
+          "vanished"
+        ],
+        "title": "Transition",
+        "type": "string"
       },
       "TrendPoint": {
         "description": "A single point in a metric trend time series.",

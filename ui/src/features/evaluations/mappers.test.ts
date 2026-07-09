@@ -167,6 +167,60 @@ describe('dtoToIndicator', () => {
     expect(domain.warningTargets[0].targetValue).toBe(440)
   })
 
+  it('maps a change point with a local relative pct and no transition', () => {
+    const dto: IndicatorResultDto = {
+      metric: 'latency_p95',
+      display_name: 'P95 Latency',
+      tab_group: null,
+      value: 412.3,
+      compared_value: 400,
+      change_absolute: 12.3,
+      change_relative_pct: 3.075,
+      aggregation: 'p95',
+      status: 'pass',
+      score: 95,
+      weight: 1,
+      key_sli: true,
+      pass_targets: [],
+      warning_targets: [],
+      change_point: { direction: 'regression', change_relative_pct: 15.7, change_absolute: 12.3 },
+    }
+    const domain = dtoToIndicator(dto)
+    expect(domain.changePoint).toEqual({
+      direction: 'regression',
+      changeRelativePct: 15.7,
+      transition: null,
+      changeAbsolute: 12.3,
+    })
+  })
+
+  it('maps a change point with a null pct and an appeared transition', () => {
+    const dto: IndicatorResultDto = {
+      metric: 'latency_p95',
+      display_name: 'P95 Latency',
+      tab_group: null,
+      value: 412.3,
+      compared_value: 400,
+      change_absolute: 12.3,
+      change_relative_pct: 3.075,
+      aggregation: 'p95',
+      status: 'pass',
+      score: 95,
+      weight: 1,
+      key_sli: true,
+      pass_targets: [],
+      warning_targets: [],
+      change_point: { direction: 'regression', change_relative_pct: null, transition: 'appeared', change_absolute: 500 },
+    }
+    const domain = dtoToIndicator(dto)
+    expect(domain.changePoint).toEqual({
+      direction: 'regression',
+      changeRelativePct: null,
+      transition: 'appeared',
+      changeAbsolute: 500,
+    })
+  })
+
   it('normalizes null pass_targets / warning_targets to empty arrays', () => {
     const dto: IndicatorResultDto = {
       metric: 'm',
@@ -248,6 +302,26 @@ describe('dtoToTrendPoint', () => {
     expect(domain.outcome).toBe('warning')
     expect(domain.targets?.pass[0].targetValue).toBe(100)
     expect(domain.targets?.warn).toEqual([])
+  })
+
+  it('maps a vanished-transition change point with a null pct', () => {
+    const dto: TrendPointDto = {
+      timestamp: '2026-03-15T12:00:00Z',
+      value: 0,
+      score: 0,
+      eval_id: 'eval-1',
+      result: 'fail',
+      baseline: 100,
+      evaluation_name: 'perf',
+      change_point: { direction: 'regression', change_relative_pct: null, transition: 'vanished', change_absolute: -13_300_000 },
+    }
+    const domain = dtoToTrendPoint(dto)
+    expect(domain.changePoint).toEqual({
+      direction: 'regression',
+      changeRelativePct: null,
+      transition: 'vanished',
+      changeAbsolute: -13_300_000,
+    })
   })
 })
 

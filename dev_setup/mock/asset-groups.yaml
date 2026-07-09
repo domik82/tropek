@@ -93,3 +93,15 @@ spec:
   members:
     - asset_name: lab-monitor-01
       weight: 1.0
+---
+# ---- Functional test assets (deterministic scenarios exercising specific features) ----
+
+api_version: tropek/v1
+kind: AssetGroup
+metadata:
+  name: functional-tests
+  display_name: Functional Tests
+spec:
+  members:
+    - asset_name: cp-transition-monitor
+      weight: 1.0

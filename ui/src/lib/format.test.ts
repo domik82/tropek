@@ -1,6 +1,6 @@
 // src/lib/format.test.ts
 import { describe, it, expect } from 'vitest'
-import { fmt, fmtPct, fmtSlot, fmtDateTime, fmtDate } from './format'
+import { fmt, fmtPct, fmtSlot, fmtDateTime, fmtDate, formatChangePointPct } from './format'
 
 describe('fmt', () => {
   it('returns em-dash for null', () => expect(fmt(null)).toBe('—'))
@@ -22,6 +22,45 @@ describe('fmtPct', () => {
   it('returns em-dash for null', () => expect(fmtPct(null)).toBe('—'))
   it('appends percent sign', () => expect(fmtPct(99.9)).toBe('99.9%'))
   it('formats to one decimal', () => expect(fmtPct(0.123)).toBe('0.1%'))
+})
+
+describe('formatChangePointPct', () => {
+  it('formats a positive pct with a leading plus sign, no absolute', () => {
+    expect(formatChangePointPct(15.7, null, null)).toBe('+15.7%')
+  })
+  it('formats a negative pct without an extra sign, no absolute', () => {
+    expect(formatChangePointPct(-2.9, null, null)).toBe('-2.9%')
+  })
+  it('rounds to one decimal place', () => {
+    expect(formatChangePointPct(15.749, null, null)).toBe('+15.7%')
+  })
+  it('returns "appeared" when transition is appeared, ignoring pct, no absolute', () => {
+    expect(formatChangePointPct(null, 'appeared', null)).toBe('appeared')
+  })
+  it('returns "vanished" when transition is vanished, ignoring pct, no absolute', () => {
+    expect(formatChangePointPct(null, 'vanished', null)).toBe('vanished')
+  })
+  it('returns em-dash when pct, transition, and absolute are all null', () => {
+    expect(formatChangePointPct(null, null, null)).toBe('—')
+  })
+  it('formats zero without a leading plus sign', () => {
+    expect(formatChangePointPct(0, null, null)).toBe('0.0%')
+  })
+  it('appends the absolute change for a transition', () => {
+    expect(formatChangePointPct(null, 'appeared', 500)).toBe('appeared, +500.00')
+  })
+  it('appends a negative compact absolute change for a transition', () => {
+    expect(formatChangePointPct(null, 'vanished', -13_300_000)).toBe('vanished, -13.30M')
+  })
+  it('appends the absolute change for a non-transition point', () => {
+    expect(formatChangePointPct(15.7, null, 1_800_000)).toBe('+15.7%, +1.80M')
+  })
+  it('falls back to percent-only when absolute is null', () => {
+    expect(formatChangePointPct(15.7, null, null)).toBe('+15.7%')
+  })
+  it('falls back to word-only for a transition when absolute is null', () => {
+    expect(formatChangePointPct(null, 'appeared', null)).toBe('appeared')
+  })
 })
 
 describe('fmtSlot', () => {

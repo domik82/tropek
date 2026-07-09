@@ -159,3 +159,16 @@ spec:
   target_name: binding-test-group
   slo_name: group-health-slo
   data_source_name: prometheus-local
+
+# ---- Change Point Transition Demo Assignment (issue #64) ----
+
+---
+api_version: tropek/v1
+kind: SLOAssignment
+metadata:
+  name: cp-transition-monitor-assignment
+spec:
+  target_type: asset
+  target_name: cp-transition-monitor
+  slo_name: cp-transition-slo
+  data_source_name: prometheus-local

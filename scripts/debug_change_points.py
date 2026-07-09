@@ -11,16 +11,16 @@ from __future__ import annotations
 import asyncio
 import os
 
-from sqlalchemy import select, text
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
+from sqlalchemy import text
+from sqlalchemy.ext.asyncio import create_async_engine
 
-DB_USER = os.environ.get("TK_DB_USER", "tropek_e2e")
-DB_PASS = os.environ.get("TK_DB_PASSWORD", "tropek_e2e")
-DB_HOST = os.environ.get("TK_DB_HOST", "localhost")
-DB_PORT = os.environ.get("TK_DB_PORT", "5434")
-DB_NAME = os.environ.get("TK_DB_NAME", "tropek_e2e")
+DB_USER = os.environ.get('TK_DB_USER', 'tropek_e2e')
+DB_PASS = os.environ.get('TK_DB_PASSWORD', 'tropek_e2e')
+DB_HOST = os.environ.get('TK_DB_HOST', 'localhost')
+DB_PORT = os.environ.get('TK_DB_PORT', '5434')
+DB_NAME = os.environ.get('TK_DB_NAME', 'tropek_e2e')
 
-DATABASE_URL = f"postgresql+asyncpg://{DB_USER}:{DB_PASS}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+DATABASE_URL = f'postgresql+asyncpg://{DB_USER}:{DB_PASS}@{DB_HOST}:{DB_PORT}/{DB_NAME}'
 
 QUERY = text("""
     SELECT
@@ -28,6 +28,7 @@ QUERY = text("""
         cp.period_start                   AS cp_timestamp,
         cp.direction,
         cp.change_relative_pct,
+        cp.transition,
         cp.pre_segment_mean,
         cp.post_segment_mean,
         cp.created_at                     AS cp_created_at,
@@ -48,32 +49,38 @@ QUERY = text("""
 
 
 async def main() -> None:
+    """Query and print error_rate change points with their creating evaluation context."""
     engine = create_async_engine(DATABASE_URL)
     async with engine.begin() as conn:
         result = await conn.execute(QUERY)
         rows = result.fetchall()
 
     if not rows:
-        print("No error_rate change points found.")
+        print('No error_rate change points found.')
         return
 
-    print(f"{'CP timestamp':<28} {'Dir':<12} {'%change':>8}  "
-          f"{'pre_mean':>10} {'post_mean':>10}  "
-          f"{'Created by eval_name':<25} {'Creating eval period_start':<28}")
-    print("-" * 160)
+    print(
+        f'{"CP timestamp":<28} {"Dir":<12} {"%change":>8}  '
+        f'{"pre_mean":>10} {"post_mean":>10}  '
+        f'{"Created by eval_name":<25} {"Creating eval period_start":<28}'
+    )
+    print('-' * 160)
 
     for row in rows:
+        percent_display = (
+            f'{row.change_relative_pct:>8.2f}' if row.change_relative_pct is not None else f'{row.transition or "-":>8}'
+        )
         print(
-            f"{str(row.cp_timestamp):<28} "
-            f"{row.direction:<12} "
-            f"{row.change_relative_pct:>8.2f}  "
-            f"{row.pre_segment_mean:>10.6f} {row.post_segment_mean:>10.6f}  "
-            f"{(row.creating_eval_name or '???'):<25} "
-            f"{str(row.creating_eval_period_start or '???'):<28}"
+            f'{row.cp_timestamp!s:<28} '
+            f'{row.direction:<12} '
+            f'{percent_display}  '
+            f'{row.pre_segment_mean:>10.6f} {row.post_segment_mean:>10.6f}  '
+            f'{(row.creating_eval_name or "???"):<25} '
+            f'{row.creating_eval_period_start or "???"!s:<28}'
         )
 
     engine.dispose()
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     asyncio.run(main())
