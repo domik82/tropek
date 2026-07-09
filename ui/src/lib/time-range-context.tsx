@@ -1,6 +1,7 @@
 // src/lib/time-range-context.tsx
 import { createContext, useContext, useMemo, useCallback, useEffect, type ReactNode } from 'react'
 import { useSearchParams } from 'react-router-dom'
+import { withTimeParamsLast } from '@/lib/search-params'
 
 export interface TimePreset {
   label: string
@@ -184,7 +185,7 @@ export function TimeRangeProvider({ children }: { children: ReactNode }) {
       search.set('from', params.from)
       if (params.to) search.set('to', params.to)
       else search.delete('to')
-      return search
+      return withTimeParamsLast(search)
     }, options)
   }, [setSearchParams])
 

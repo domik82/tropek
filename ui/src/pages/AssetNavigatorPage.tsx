@@ -1,5 +1,6 @@
 // ui/src/pages/AssetNavigatorPage.tsx
 import { useSearchParams } from 'react-router-dom'
+import { withTimeParamsLast } from '@/lib/search-params'
 import { AssetTree } from '@/components/AssetTree'
 import { GroupPanel, AssetPanel } from '@/features/navigator'
 import { AllEvaluationsPanel } from '@/features/navigator/components/AllEvaluationsPanel'
@@ -17,7 +18,7 @@ export function AssetNavigatorPage() {
       next.delete('asset')
       next.delete('eval')
       if (name) next.set('group', name)
-      return next
+      return withTimeParamsLast(next)
     })
   }
 
@@ -31,7 +32,7 @@ export function AssetNavigatorPage() {
       else next.delete('group')
       next.set('asset', name)
       if (evalId) next.set('eval', evalId)
-      return next
+      return withTimeParamsLast(next)
     })
   }
 

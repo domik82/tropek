@@ -214,4 +214,12 @@ describe('AssetNavigatorPage', () => {
     expect(mockParams.get('from')).toBe('now-7d')
     expect(mockParams.get('group')).toBe('infra-production')
   })
+
+  it('keeps from/to as the last two params after selecting a group', async () => {
+    mockParams = new URLSearchParams('from=now-7d&to=20260101&group=old')
+    render(<TestWrapper><AssetNavigatorPage /></TestWrapper>)
+    await userEvent.click(screen.getByTestId('select-group-infra'))
+    const keys = [...mockParams.keys()]
+    expect(keys.slice(-2)).toEqual(['from', 'to'])
+  })
 })

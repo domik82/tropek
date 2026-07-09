@@ -1,6 +1,7 @@
 // src/pages/AssetsPage.tsx
 import { useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
+import { withTimeParamsLast } from '@/lib/search-params'
 import { AssetTree } from '@/components/AssetTree'
 import { GroupDetailPanel, AllAssetsPanel, AssetCreateDialog } from '@/features/assets'
 
@@ -21,7 +22,7 @@ export function AssetsPage() {
           next.delete('group')
           next.delete('asset')
           if (name) next.set('group', name)
-          return next
+          return withTimeParamsLast(next)
         })}
         onSelectAsset={(name, groupName) => setParams(prev => {
           const next = new URLSearchParams(prev)
@@ -29,7 +30,7 @@ export function AssetsPage() {
           next.delete('asset')
           if (groupName) next.set('group', groupName)
           next.set('asset', name)
-          return next
+          return withTimeParamsLast(next)
         })}
         width={260}
         onAddAsset={() => setCreateAssetOpen(true)}
@@ -42,7 +43,7 @@ export function AssetsPage() {
               const next = new URLSearchParams(prev)
               next.delete('asset')
               next.set('group', name)
-              return next
+              return withTimeParamsLast(next)
             })}
             selectedAsset={selectedAsset}
           />

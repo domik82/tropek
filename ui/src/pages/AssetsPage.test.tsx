@@ -118,4 +118,16 @@ describe('AssetsPage', () => {
     expect(mockParams.get('asset')).toBe('orders-db')
     expect(mockParams.get('group')).toBe('data-tier')
   })
+
+  it('keeps from/to as the last two params after selecting an asset', () => {
+    mockParams = new URLSearchParams('from=now-7d&to=20260101')
+    render(
+      <TestWrapper>
+        <AssetsPage />
+      </TestWrapper>,
+    )
+    capturedTreeProps.onSelectAsset('orders-db', 'data-tier')
+    const keys = [...mockParams.keys()]
+    expect(keys.slice(-2)).toEqual(['from', 'to'])
+  })
 })
