@@ -7,7 +7,7 @@
 // added later) should prefer the standard fetch-boundary pattern.
 
 import type { components } from '@/generated/api'
-import type { HeatmapResult, MiniHeatmapView } from './domain'
+import type { ChangePointMarker, HeatmapResult, MiniHeatmapView } from './domain'
 import type { HeatmapEChartsCell } from './ui-types'
 
 // --- DTO aliases -----------------------------------------------------------
@@ -16,6 +16,7 @@ export type GroupedMetricHeatmapResponseDto =
   components['schemas']['GroupedMetricHeatmapResponse']
 export type HeatmapCellGroupedDto = components['schemas']['HeatmapCellGrouped']
 export type HeatmapSummaryCellDto = components['schemas']['HeatmapSummaryCell']
+export type ChangePointMarkerDto = components['schemas']['ChangePointMarker']
 
 // --- Exhaustiveness check for the top-level response ----------------------
 
@@ -63,6 +64,25 @@ function normalizeResult(raw: string | null | undefined): HeatmapResult {
       // Unknown backend value — surface as 'error' so colouring degrades
       // gracefully rather than crashing on the switch in theme.ts.
       return 'error'
+  }
+}
+
+// --- changePointToMarker ----------------------------------------------------
+
+/**
+ * Maps the change_point DTO attached to heatmap cells (and trend points) to
+ * the domain ChangePointMarker. Single mapping point shared by the mini-view
+ * mapper and the AssetPanel/AssetPanelHeatmapView useMemo call sites.
+ */
+export function changePointToMarker(
+  changePointDto: ChangePointMarkerDto | null | undefined,
+): ChangePointMarker | null {
+  if (!changePointDto) return null
+  return {
+    direction: changePointDto.direction,
+    changeRelativePct: changePointDto.change_relative_pct ?? null,
+    transition: changePointDto.transition ?? null,
+    changeAbsolute: changePointDto.change_absolute ?? null,
   }
 }
 
@@ -187,7 +207,6 @@ export function sloGroupToMiniView(
       const column = columns[xi]
       const lookupKey = `${column.evaluation_id}\0${displayRow.metricName}`
       const indicatorCell = indicatorLookup.get(lookupKey)
-      const changePointDto = indicatorCell?.change_point
       cells.push({
         value: [xi, rowYIndex],
         result: indicatorCell ? normalizeResult(indicatorCell.result) : 'none',
@@ -200,14 +219,7 @@ export function sloGroupToMiniView(
         evalId: indicatorCell?.slo_evaluation_id,
         sloName: group.slo_name,
         metricName: displayRow.metricName,
-        changePoint: changePointDto
-          ? {
-              direction: changePointDto.direction as 'regression' | 'improvement',
-              changeRelativePct: changePointDto.change_relative_pct ?? null,
-              transition: changePointDto.transition ?? null,
-              changeAbsolute: changePointDto.change_absolute ?? null,
-            }
-          : undefined,
+        changePoint: changePointToMarker(indicatorCell?.change_point) ?? undefined,
       })
     }
   }

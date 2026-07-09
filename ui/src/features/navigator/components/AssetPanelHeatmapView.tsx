@@ -8,6 +8,7 @@ import type { SloBreakdownGroup } from '@/features/evaluations/components/SLIBre
 import { ViewToggle } from '@/components/charts/ViewToggle'
 import type { ViewMode } from '@/components/charts/ViewToggle'
 import type { TimeSlotSelection } from './AssetHeatmap'
+import { changePointToMarker } from '../mappers'
 import type { GroupedMetricHeatmapResponseDto } from '../mappers'
 import type { Indicator, SliMetadata } from '@/features/evaluations'
 import { MetaTimelineSection } from '@/features/meta_timeline'
@@ -164,14 +165,7 @@ export function AssetPanelHeatmapView({
             targetValue: t.target_value,
             violated: t.violated,
           })),
-          changePoint: c.change_point
-            ? {
-                direction: c.change_point.direction as 'regression' | 'improvement',
-                changeRelativePct: c.change_point.change_relative_pct ?? null,
-                transition: c.change_point.transition ?? null,
-                changeAbsolute: c.change_point.change_absolute ?? null,
-              }
-            : null,
+          changePoint: changePointToMarker(c.change_point),
         }))
       const result = summary?.invalidated
         ? 'invalidated'
