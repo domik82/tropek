@@ -203,7 +203,8 @@ export function sloGroupToMiniView(
         changePoint: changePointDto
           ? {
               direction: changePointDto.direction as 'regression' | 'improvement',
-              changeRelativePct: changePointDto.change_relative_pct,
+              changeRelativePct: changePointDto.change_relative_pct ?? null,
+              transition: changePointDto.transition ?? null,
             }
           : undefined,
       })

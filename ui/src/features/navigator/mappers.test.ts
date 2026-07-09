@@ -306,6 +306,28 @@ describe('sloGroupToMiniView expanded', () => {
     expect(cellWithCp?.changePoint).toEqual({
       direction: 'regression',
       changeRelativePct: -12.5,
+      transition: null,
+    })
+  })
+
+  it('maps a transition change point (appeared) with null pct', () => {
+    const cellWithChangePoint: HeatmapCellGroupedDto = {
+      ...INDICATOR_A_M1,
+      change_point: { direction: 'regression', change_relative_pct: null, transition: 'appeared' },
+    }
+    const group = {
+      ...SLO_GROUP,
+      cells: [cellWithChangePoint, INDICATOR_A_M2, INDICATOR_B_M1, INDICATOR_B_M2],
+    }
+    const view = sloGroupToMiniView(group, MINI_COLUMNS, true)
+
+    const cellWithCp = view.cells.find(
+      c => c.columnKey === 'eval-a' && c.metricName === 'metric_one',
+    )
+    expect(cellWithCp?.changePoint).toEqual({
+      direction: 'regression',
+      changeRelativePct: null,
+      transition: 'appeared',
     })
   })
 

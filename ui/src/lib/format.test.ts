@@ -1,6 +1,6 @@
 // src/lib/format.test.ts
 import { describe, it, expect } from 'vitest'
-import { fmt, fmtPct, fmtSlot, fmtDateTime, fmtDate } from './format'
+import { fmt, fmtPct, fmtSlot, fmtDateTime, fmtDate, formatChangePointPct } from './format'
 
 describe('fmt', () => {
   it('returns em-dash for null', () => expect(fmt(null)).toBe('—'))
@@ -22,6 +22,27 @@ describe('fmtPct', () => {
   it('returns em-dash for null', () => expect(fmtPct(null)).toBe('—'))
   it('appends percent sign', () => expect(fmtPct(99.9)).toBe('99.9%'))
   it('formats to one decimal', () => expect(fmtPct(0.123)).toBe('0.1%'))
+})
+
+describe('formatChangePointPct', () => {
+  it('formats a positive pct with a leading plus sign', () => {
+    expect(formatChangePointPct(15.7, null)).toBe('+15.7%')
+  })
+  it('formats a negative pct without an extra sign', () => {
+    expect(formatChangePointPct(-2.9, null)).toBe('-2.9%')
+  })
+  it('rounds to one decimal place', () => {
+    expect(formatChangePointPct(15.749, null)).toBe('+15.7%')
+  })
+  it('returns "appeared" when transition is appeared, ignoring pct', () => {
+    expect(formatChangePointPct(null, 'appeared')).toBe('appeared')
+  })
+  it('returns "vanished" when transition is vanished, ignoring pct', () => {
+    expect(formatChangePointPct(null, 'vanished')).toBe('vanished')
+  })
+  it('returns em-dash when both pct and transition are null', () => {
+    expect(formatChangePointPct(null, null)).toBe('—')
+  })
 })
 
 describe('fmtSlot', () => {

@@ -2605,8 +2605,9 @@ export interface components {
          */
         ChangePointMarker: {
             /** Change Relative Pct */
-            change_relative_pct: number;
+            change_relative_pct?: number | null;
             direction: components["schemas"]["Direction"];
+            transition?: components["schemas"]["Transition"] | null;
         };
         /**
          * ChangePointRead
@@ -2621,7 +2622,7 @@ export interface components {
             /** Change Absolute */
             change_absolute: number;
             /** Change Relative Pct */
-            change_relative_pct: number;
+            change_relative_pct: number | null;
             /**
              * Created At
              * Format: date-time
@@ -2660,6 +2661,7 @@ export interface components {
             slo_name: string;
             /** Status */
             status: string;
+            transition?: components["schemas"]["Transition"] | null;
             /** Triage At */
             triage_at: string | null;
             /** Triage Author */
@@ -4578,6 +4580,12 @@ export interface components {
             /** Itemcount */
             itemCount: number;
         };
+        /**
+         * Transition
+         * @description A segment mean of exactly zero — no meaningful relative change can be reported.
+         * @enum {string}
+         */
+        Transition: "appeared" | "vanished";
         /**
          * TrendPoint
          * @description A single point in a metric trend time series.

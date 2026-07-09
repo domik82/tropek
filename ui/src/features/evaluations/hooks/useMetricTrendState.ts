@@ -3,6 +3,7 @@ import { useState, useMemo } from 'react'
 import { useTheme } from '@/lib/theme-context'
 import { RESULT_COLOUR, CHART_THEME } from '@/lib/theme'
 import { buildNoteAnnotations, escapeHtml, type MarkLineOption, type MarkPointOption } from '@/lib/chartAnnotations'
+import { formatChangePointPct } from '@/lib/format'
 import { paletteOf } from '@/features/note-categories'
 import type { Annotation, TrendPoint, Indicator, TrendTargetEntry } from '../domain'
 import type { NoteCategory } from '@/features/note-categories'
@@ -539,8 +540,8 @@ export function buildChartRender(input: ChartOptionInput): { option: object; lab
         if (point.overridden) lines.push(`<span style="color:${ct.axisLabel}">(override)</span>`)
         if (point.changePoint) {
           const cpColor = point.changePoint.direction === 'regression' ? 'var(--change-point-regression)' : 'var(--change-point-improvement)'
-          const pctSign = point.changePoint.changeRelativePct > 0 ? '+' : ''
-          lines.push(`<span style="color:${cpColor}">◆ ${point.changePoint.direction} (${pctSign}${point.changePoint.changeRelativePct.toFixed(1)}%)</span>`)
+          const label = formatChangePointPct(point.changePoint.changeRelativePct, point.changePoint.transition)
+          lines.push(`<span style="color:${cpColor}">◆ ${point.changePoint.direction} (${label})</span>`)
         }
         // Always reveal showOnGraph notes on hover, even when pill display is toggled off —
         // matches the pill rule (only showOnGraph categories ever surface on the graph).

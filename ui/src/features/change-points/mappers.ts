@@ -12,6 +12,7 @@ export function dtoToChangePoint(dto: ChangePointReadDto): ChangePoint {
     periodStart: new Date(dto.period_start),
     direction: dto.direction as ChangePointDirection,
     changeRelativePct: dto.change_relative_pct,
+    transition: dto.transition ?? null,
     changeAbsolute: dto.change_absolute,
     preSegmentMean: dto.pre_segment_mean,
     postSegmentMean: dto.post_segment_mean,

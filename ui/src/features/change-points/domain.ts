@@ -8,7 +8,8 @@ export interface ChangePoint {
   metricName: string
   periodStart: Date
   direction: ChangePointDirection
-  changeRelativePct: number
+  changeRelativePct: number | null
+  transition: 'appeared' | 'vanished' | null
   changeAbsolute: number
   preSegmentMean: number
   postSegmentMean: number

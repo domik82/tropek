@@ -20,6 +20,21 @@ export function fmtPct(v: number | null | undefined): string {
   return `${v.toFixed(1)}%`
 }
 
+/**
+ * Format a change point's local magnitude for display. When the metric appeared
+ * from or vanished to zero, `changeRelativePct` is null and `transition` carries
+ * the reason instead — a percent has no meaning in that case.
+ */
+export function formatChangePointPct(
+  changeRelativePct: number | null,
+  transition: 'appeared' | 'vanished' | null,
+): string {
+  if (transition != null) return transition
+  if (changeRelativePct == null) return '—'
+  const sign = changeRelativePct > 0 ? '+' : ''
+  return `${sign}${changeRelativePct.toFixed(1)}%`
+}
+
 /** Compact heatmap X-axis label: "MM-DD HH:MM" */
 export function fmtSlot(slot: string): string {
   if (!slot) return '—'

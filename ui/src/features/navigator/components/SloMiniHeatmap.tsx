@@ -1,7 +1,7 @@
 import { useCallback } from 'react'
 import { useTheme } from '@/lib/theme-context'
 import { RESULT_COLOUR } from '@/lib/theme'
-import { fmtDateTime } from '@/lib/format'
+import { fmtDateTime, formatChangePointPct } from '@/lib/format'
 import { HeatmapChart } from '@/components/charts/HeatmapChart'
 import type { SlotNote } from '@/components/charts/NoteIndicatorRow'
 import type { HeatmapEChartsCell } from '../ui-types'
@@ -50,7 +50,7 @@ export function SloMiniHeatmap({
       ].join('<br/>')
     }
     const changePointLine = cell.changePoint
-      ? `<span style="color:${cell.changePoint.direction === 'regression' ? '#f85149' : '#3fb950'}">◆ Change point: ${cell.changePoint.direction} (${cell.changePoint.changeRelativePct > 0 ? '+' : ''}${cell.changePoint.changeRelativePct.toFixed(1)}%)</span>`
+      ? `<span style="color:${cell.changePoint.direction === 'regression' ? '#f85149' : '#3fb950'}">◆ Change point: ${cell.changePoint.direction} (${formatChangePointPct(cell.changePoint.changeRelativePct, cell.changePoint.transition)})</span>`
       : ''
     return [
       cell.evaluation_name ? `<span style="color:#94a3b8">${cell.evaluation_name}</span>` : '',
