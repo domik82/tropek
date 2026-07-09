@@ -78,8 +78,8 @@ export function parseTimeParams(from: string | null, to?: string | null): Stored
   const fromIso = parseDateToken(from, false)
   if (!fromIso) return null
 
-  const toIso = to ? parseDateToken(to, true) : null
-  return { mode: 'absolute', from: fromIso, to: toIso ?? undefined }
+  const toIso = to ? (parseDateToken(to, true) ?? undefined) : undefined
+  return { mode: 'absolute', from: fromIso, to: toIso }
 }
 
 interface TimeRangeCtx {
@@ -133,8 +133,13 @@ export function TimeRangeProvider({ children }: { children: ReactNode }) {
   // Deps are honest: after seeding, `urlFrom` becomes set and the guard short-circuits,
   // so no loop; returning to a bare `/navigator` correctly re-seeds.
   useEffect(() => {
-    if (urlFrom) return
-    const params = rangeToParams(loadRange())
+    if (urlFrom) {
+      // Range arrived from the URL (e.g. a shared link). Mirror it into localStorage so
+      // navigating to a bare path re-seeds this range, not the viewer's previous one.
+      saveRange(range)
+      return
+    }
+    const params = rangeToParams(range)
     setSearchParams(prev => {
       const next = new URLSearchParams(prev)
       next.set('from', params.from)
@@ -142,7 +147,7 @@ export function TimeRangeProvider({ children }: { children: ReactNode }) {
       else next.delete('to')
       return next
     }, { replace: true })
-  }, [urlFrom, setSearchParams])
+  }, [urlFrom, range, setSearchParams])
 
   const setDays = useCallback((days: number) => {
     saveRange({ mode: 'preset', days })
@@ -180,8 +185,10 @@ export function TimeRangeProvider({ children }: { children: ReactNode }) {
       const toLabel = range.to ? range.to.slice(0, 10) : 'now'
       return `${fromLabel} to ${toLabel}`
     }
-    return preset.label
-  }, [range, preset])
+    const days = range.days ?? DEFAULT_DAYS
+    const knownPreset = PRESETS.find(candidate => candidate.days === days)
+    return knownPreset ? knownPreset.label : `Last ${days} days`
+  }, [range])
 
   return (
     <Ctx.Provider value={{ mode: range.mode, preset, label, from, to, setDays, setAbsoluteRange }}>

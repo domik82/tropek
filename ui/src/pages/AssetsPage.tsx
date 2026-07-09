@@ -18,13 +18,15 @@ export function AssetsPage() {
         selectedAsset={selectedAsset}
         onSelectGroup={name => setParams(prev => {
           const next = new URLSearchParams(prev)
-          next.delete('group'); next.delete('asset')
+          next.delete('group')
+          next.delete('asset')
           if (name) next.set('group', name)
           return next
         })}
         onSelectAsset={(name, groupName) => setParams(prev => {
           const next = new URLSearchParams(prev)
-          next.delete('group'); next.delete('asset')
+          next.delete('group')
+          next.delete('asset')
           if (groupName) next.set('group', groupName)
           next.set('asset', name)
           return next

@@ -208,4 +208,28 @@ describe('TimeRangeProvider URL persistence', () => {
     expect(search).toContain('from=2026-04-01')
     expect(search).toContain('to=2026-04-25')
   })
+
+  it('mirrors a URL-supplied absolute range into localStorage (shared link survives navigation)', () => {
+    renderProvider('/?from=2026-01-01T00:00:00.000Z&to=2026-02-01T23:59:59.999Z')
+    const stored = JSON.parse(localStorage.getItem('tropek-time-range') ?? '{}')
+    expect(stored.mode).toBe('absolute')
+    expect(stored.from).toBe('2026-01-01T00:00:00.000Z')
+    expect(stored.to).toBe('2026-02-01T23:59:59.999Z')
+  })
+
+  it('re-seeds a bare URL from the mirrored range', () => {
+    localStorage.setItem(
+      'tropek-time-range',
+      JSON.stringify({ mode: 'absolute', from: '2026-01-01T00:00:00.000Z', to: '2026-02-01T23:59:59.999Z' }),
+    )
+    renderProvider('/')
+    const search = screen.getByTestId('search').textContent ?? ''
+    expect(search).toContain('from=2026-01-01')
+    expect(search).toContain('to=2026-02-01')
+  })
+
+  it('labels an unknown preset-day URL with the actual day count', () => {
+    renderProvider('/?from=now-45d')
+    expect(screen.getByTestId('label')).toHaveTextContent('Last 45 days')
+  })
 })

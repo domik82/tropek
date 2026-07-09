@@ -13,7 +13,9 @@ export function AssetNavigatorPage() {
   const selectGroup = (name: string | null) => {
     setParams(prev => {
       const next = new URLSearchParams(prev)
-      next.delete('group'); next.delete('asset'); next.delete('eval')
+      next.delete('group')
+      next.delete('asset')
+      next.delete('eval')
       if (name) next.set('group', name)
       return next
     })
@@ -22,7 +24,8 @@ export function AssetNavigatorPage() {
   const selectAsset = (name: string, groupName?: string, evalId?: string) => {
     setParams(prev => {
       const next = new URLSearchParams(prev)
-      next.delete('asset'); next.delete('eval')
+      next.delete('asset')
+      next.delete('eval')
       const group = groupName ?? selectedGroup
       if (group) next.set('group', group)
       else next.delete('group')
