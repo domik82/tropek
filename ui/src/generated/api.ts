@@ -4582,7 +4582,7 @@ export interface components {
         };
         /**
          * Transition
-         * @description A segment mean of exactly zero — no meaningful relative change can be reported.
+         * @description How a metric crossed zero at a change point — appeared (from 0) or vanished (to 0); relative percent is null for these.
          * @enum {string}
          */
         Transition: "appeared" | "vanished";

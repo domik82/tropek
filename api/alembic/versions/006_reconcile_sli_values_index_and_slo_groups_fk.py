@@ -55,4 +55,6 @@ def upgrade() -> None:
 def downgrade() -> None:
     """Downgrade schema."""
     op.drop_constraint('fk_slo_groups_template_slo_definition_id', 'slo_groups', type_='foreignkey')
+    # Best-effort reconstruction of TimescaleDB's create_hypertable auto-index (migration 002) —
+    # there is no authoritative prior migration defining this index to restore verbatim.
     op.create_index(op.f('sli_values_eval_start_idx'), 'sli_values', [sa.literal_column('eval_start DESC')], unique=False)

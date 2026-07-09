@@ -64,6 +64,11 @@ def test_displayed_magnitude_never_below_gate() -> None:
     change point passed the gate on the backward magnitude — so this test checks the same
     max(|forward|, |backward|) quantity the gate itself uses, computed from the adjacent
     segment means, rather than asserting the displayed percentage alone.
+
+    The reconstruction below deliberately re-derives the gate quantity from the ROUNDED
+    displayed values (2-decimal pct, 4-decimal means) rather than the raw pre-rounding
+    floats — exact enough at these fixture magnitudes, and it exercises the same values a
+    caller reading the API response would see.
     """
     for scenario in ALL_SCENARIOS:
         min_magnitude = _scenario_min_magnitude(scenario)

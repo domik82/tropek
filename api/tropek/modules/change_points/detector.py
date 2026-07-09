@@ -43,7 +43,7 @@ class Direction(StrEnum):
 
 
 class Transition(StrEnum):
-    """A segment mean of exactly zero — no meaningful relative change can be reported."""
+    """How a metric crossed zero at a change point — appeared (from 0) or vanished (to 0); relative percent is null for these."""
 
     APPEARED = 'appeared'
     VANISHED = 'vanished'

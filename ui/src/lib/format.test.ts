@@ -43,6 +43,9 @@ describe('formatChangePointPct', () => {
   it('returns em-dash when both pct and transition are null', () => {
     expect(formatChangePointPct(null, null)).toBe('—')
   })
+  it('formats zero without a leading plus sign', () => {
+    expect(formatChangePointPct(0, null)).toBe('0.0%')
+  })
 })
 
 describe('fmtSlot', () => {

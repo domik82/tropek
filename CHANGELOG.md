@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+
+- **Change point magnitude is now the local adjacent-segment shift, not the diluted full-series split** — the change-point percentage shown in tooltips (SLI breakdown badge, mini heatmap), the Change Points page, and the asset panel was computed from a full-series split, which diluted the value, made it unstable as more history accumulated, sometimes reported the wrong direction, and always showed `0.00%` for appear/vanish transitions; it now reports the same local pre/post segment shift that the `min_magnitude` gate itself uses (Otava/Nyrkiö behavior). The Δ% column in the SLI breakdown table (value vs. baseline) was unaffected — it's a different field and was always correct (#64)
+- **Same-regime dedup could suppress real change points** — the dedup check previously compared the same diluted full-series values described above, so it could treat two genuinely different regimes as "the same" and drop a real change point; it now compares the corrected local segment values
+- **`change_relative_pct` is now null for appear/vanish transitions** — a new `transition` field (`appeared` / `vanished`) replaces the previous `0.00%` placeholder for changes from/to a zero segment mean
+
+### Changed
+
+- **Change point migrations are now incremental** — migration `005` adds the `transition` column and makes `change_relative_pct` nullable; migration `006` reconciles pre-existing drift between `models.py` and migration history (`sli_values` eval-time index, `slo_groups` template FK) unrelated to this fix but discovered alongside it. Previously stored change points keep their old (pre-fix) values; only new detections use the corrected computation
+
 ## [0.1.1-alpha] - 2026-05-08
 
 ### Fixed

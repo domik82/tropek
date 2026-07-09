@@ -7018,7 +7018,7 @@
         "type": "object"
       },
       "Transition": {
-        "description": "A segment mean of exactly zero \u2014 no meaningful relative change can be reported.",
+        "description": "How a metric crossed zero at a change point \u2014 appeared (from 0) or vanished (to 0); relative percent is null for these.",
         "enum": [
           "appeared",
           "vanished"
