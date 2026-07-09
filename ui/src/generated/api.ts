@@ -6646,7 +6646,7 @@ export interface operations {
                 direction?: components["schemas"]["Direction"] | null;
                 asset_id?: string | null;
                 slo_name?: string | null;
-                metric?: string | null;
+                metric_name?: string | null;
                 from_ts?: string | null;
                 to_ts?: string | null;
                 limit?: number;

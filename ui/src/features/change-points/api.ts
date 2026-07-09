@@ -14,7 +14,7 @@ export async function fetchChangePoints(
   if (filters.direction) params.set('direction', filters.direction)
   if (filters.assetId) params.set('asset_id', filters.assetId)
   if (filters.sloName) params.set('slo_name', filters.sloName)
-  if (filters.metric) params.set('metric', filters.metric)
+  if (filters.metric) params.set('metric_name', filters.metric)
   if (filters.limit != null) params.set('limit', String(filters.limit))
   if (filters.offset != null) params.set('offset', String(filters.offset))
 
