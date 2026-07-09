@@ -41,7 +41,11 @@ depends_on: str | Sequence[str] | None = None
 
 def upgrade() -> None:
     """Upgrade schema."""
-    op.drop_index(op.f('sli_values_eval_start_idx'), table_name='sli_values')
+    # Use a raw DROP INDEX IF EXISTS instead of op.drop_index(): some pre-squash dev
+    # databases never had this auto-created index in the first place (e.g. it was
+    # already dropped by hand, or create_hypertable() behavior varied), and
+    # op.drop_index() raises when the index is absent.
+    op.execute('DROP INDEX IF EXISTS sli_values_eval_start_idx')
     op.create_foreign_key(
         'fk_slo_groups_template_slo_definition_id',
         'slo_groups',
