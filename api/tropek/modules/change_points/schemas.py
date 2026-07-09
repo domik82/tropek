@@ -17,6 +17,7 @@ class ChangePointMarker(BaseModel):
     direction: Direction
     change_relative_pct: float | None = None
     transition: Transition | None = None
+    change_absolute: float | None = None
 
 
 class ChangePointRead(BaseModel):

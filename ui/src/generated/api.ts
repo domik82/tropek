@@ -2604,6 +2604,8 @@ export interface components {
          * @description Lightweight marker attached to heatmap cells and trend points.
          */
         ChangePointMarker: {
+            /** Change Absolute */
+            change_absolute?: number | null;
             /** Change Relative Pct */
             change_relative_pct?: number | null;
             direction: components["schemas"]["Direction"];

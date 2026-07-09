@@ -183,13 +183,14 @@ describe('dtoToIndicator', () => {
       key_sli: true,
       pass_targets: [],
       warning_targets: [],
-      change_point: { direction: 'regression', change_relative_pct: 15.7 },
+      change_point: { direction: 'regression', change_relative_pct: 15.7, change_absolute: 12.3 },
     }
     const domain = dtoToIndicator(dto)
     expect(domain.changePoint).toEqual({
       direction: 'regression',
       changeRelativePct: 15.7,
       transition: null,
+      changeAbsolute: 12.3,
     })
   })
 
@@ -209,13 +210,14 @@ describe('dtoToIndicator', () => {
       key_sli: true,
       pass_targets: [],
       warning_targets: [],
-      change_point: { direction: 'regression', change_relative_pct: null, transition: 'appeared' },
+      change_point: { direction: 'regression', change_relative_pct: null, transition: 'appeared', change_absolute: 500 },
     }
     const domain = dtoToIndicator(dto)
     expect(domain.changePoint).toEqual({
       direction: 'regression',
       changeRelativePct: null,
       transition: 'appeared',
+      changeAbsolute: 500,
     })
   })
 
@@ -311,13 +313,14 @@ describe('dtoToTrendPoint', () => {
       result: 'fail',
       baseline: 100,
       evaluation_name: 'perf',
-      change_point: { direction: 'regression', change_relative_pct: null, transition: 'vanished' },
+      change_point: { direction: 'regression', change_relative_pct: null, transition: 'vanished', change_absolute: -13_300_000 },
     }
     const domain = dtoToTrendPoint(dto)
     expect(domain.changePoint).toEqual({
       direction: 'regression',
       changeRelativePct: null,
       transition: 'vanished',
+      changeAbsolute: -13_300_000,
     })
   })
 })

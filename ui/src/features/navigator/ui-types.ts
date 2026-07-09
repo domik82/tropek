@@ -31,6 +31,7 @@ export interface HeatmapEChartsCell {
     direction: 'regression' | 'improvement'
     changeRelativePct: number | null
     transition: 'appeared' | 'vanished' | null
+    changeAbsolute: number | null
   }
 }
 

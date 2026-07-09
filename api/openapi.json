@@ -1644,6 +1644,17 @@
       "ChangePointMarker": {
         "description": "Lightweight marker attached to heatmap cells and trend points.",
         "properties": {
+          "change_absolute": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Change Absolute"
+          },
           "change_relative_pct": {
             "anyOf": [
               {

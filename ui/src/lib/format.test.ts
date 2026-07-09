@@ -25,26 +25,41 @@ describe('fmtPct', () => {
 })
 
 describe('formatChangePointPct', () => {
-  it('formats a positive pct with a leading plus sign', () => {
-    expect(formatChangePointPct(15.7, null)).toBe('+15.7%')
+  it('formats a positive pct with a leading plus sign, no absolute', () => {
+    expect(formatChangePointPct(15.7, null, null)).toBe('+15.7%')
   })
-  it('formats a negative pct without an extra sign', () => {
-    expect(formatChangePointPct(-2.9, null)).toBe('-2.9%')
+  it('formats a negative pct without an extra sign, no absolute', () => {
+    expect(formatChangePointPct(-2.9, null, null)).toBe('-2.9%')
   })
   it('rounds to one decimal place', () => {
-    expect(formatChangePointPct(15.749, null)).toBe('+15.7%')
+    expect(formatChangePointPct(15.749, null, null)).toBe('+15.7%')
   })
-  it('returns "appeared" when transition is appeared, ignoring pct', () => {
-    expect(formatChangePointPct(null, 'appeared')).toBe('appeared')
+  it('returns "appeared" when transition is appeared, ignoring pct, no absolute', () => {
+    expect(formatChangePointPct(null, 'appeared', null)).toBe('appeared')
   })
-  it('returns "vanished" when transition is vanished, ignoring pct', () => {
-    expect(formatChangePointPct(null, 'vanished')).toBe('vanished')
+  it('returns "vanished" when transition is vanished, ignoring pct, no absolute', () => {
+    expect(formatChangePointPct(null, 'vanished', null)).toBe('vanished')
   })
-  it('returns em-dash when both pct and transition are null', () => {
-    expect(formatChangePointPct(null, null)).toBe('—')
+  it('returns em-dash when pct, transition, and absolute are all null', () => {
+    expect(formatChangePointPct(null, null, null)).toBe('—')
   })
   it('formats zero without a leading plus sign', () => {
-    expect(formatChangePointPct(0, null)).toBe('0.0%')
+    expect(formatChangePointPct(0, null, null)).toBe('0.0%')
+  })
+  it('appends the absolute change for a transition', () => {
+    expect(formatChangePointPct(null, 'appeared', 500)).toBe('appeared, +500.00')
+  })
+  it('appends a negative compact absolute change for a transition', () => {
+    expect(formatChangePointPct(null, 'vanished', -13_300_000)).toBe('vanished, -13.30M')
+  })
+  it('appends the absolute change for a non-transition point', () => {
+    expect(formatChangePointPct(15.7, null, 1_800_000)).toBe('+15.7%, +1.80M')
+  })
+  it('falls back to percent-only when absolute is null', () => {
+    expect(formatChangePointPct(15.7, null, null)).toBe('+15.7%')
+  })
+  it('falls back to word-only for a transition when absolute is null', () => {
+    expect(formatChangePointPct(null, 'appeared', null)).toBe('appeared')
   })
 })
 

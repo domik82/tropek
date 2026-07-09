@@ -292,7 +292,7 @@ describe('sloGroupToMiniView expanded', () => {
   it('maps change_point from DTO to camelCase on indicator cells', () => {
     const cellWithChangePoint: HeatmapCellGroupedDto = {
       ...INDICATOR_A_M1,
-      change_point: { direction: 'regression', change_relative_pct: -12.5 },
+      change_point: { direction: 'regression', change_relative_pct: -12.5, change_absolute: -1_800_000 },
     }
     const group = {
       ...SLO_GROUP,
@@ -307,13 +307,14 @@ describe('sloGroupToMiniView expanded', () => {
       direction: 'regression',
       changeRelativePct: -12.5,
       transition: null,
+      changeAbsolute: -1_800_000,
     })
   })
 
   it('maps a transition change point (appeared) with null pct', () => {
     const cellWithChangePoint: HeatmapCellGroupedDto = {
       ...INDICATOR_A_M1,
-      change_point: { direction: 'regression', change_relative_pct: null, transition: 'appeared' },
+      change_point: { direction: 'regression', change_relative_pct: null, transition: 'appeared', change_absolute: 500 },
     }
     const group = {
       ...SLO_GROUP,
@@ -328,6 +329,7 @@ describe('sloGroupToMiniView expanded', () => {
       direction: 'regression',
       changeRelativePct: null,
       transition: 'appeared',
+      changeAbsolute: 500,
     })
   })
 

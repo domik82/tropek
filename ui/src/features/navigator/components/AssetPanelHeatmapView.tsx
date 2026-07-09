@@ -169,6 +169,7 @@ export function AssetPanelHeatmapView({
                 direction: c.change_point.direction as 'regression' | 'improvement',
                 changeRelativePct: c.change_point.change_relative_pct ?? null,
                 transition: c.change_point.transition ?? null,
+                changeAbsolute: c.change_point.change_absolute ?? null,
               }
             : null,
         }))

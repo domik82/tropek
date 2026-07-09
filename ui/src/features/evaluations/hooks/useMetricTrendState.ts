@@ -540,7 +540,7 @@ export function buildChartRender(input: ChartOptionInput): { option: object; lab
         if (point.overridden) lines.push(`<span style="color:${ct.axisLabel}">(override)</span>`)
         if (point.changePoint) {
           const cpColor = point.changePoint.direction === 'regression' ? 'var(--change-point-regression)' : 'var(--change-point-improvement)'
-          const label = formatChangePointPct(point.changePoint.changeRelativePct, point.changePoint.transition)
+          const label = formatChangePointPct(point.changePoint.changeRelativePct, point.changePoint.transition, point.changePoint.changeAbsolute)
           lines.push(`<span style="color:${cpColor}">◆ ${point.changePoint.direction} (${label})</span>`)
         }
         // Always reveal showOnGraph notes on hover, even when pill display is toggled off —

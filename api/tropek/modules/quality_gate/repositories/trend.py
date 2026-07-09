@@ -40,6 +40,7 @@ def _trend_change_point(
         'direction': change_point.direction,
         'change_relative_pct': change_point.change_relative_pct,
         'transition': change_point.transition,
+        'change_absolute': change_point.change_absolute,
     }
 
 

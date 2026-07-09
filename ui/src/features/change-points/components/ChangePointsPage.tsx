@@ -304,10 +304,7 @@ function ChangePointRow({
       <td className="px-3 py-2 font-mono text-xs">{changePoint.sloName}</td>
       <td className="px-3 py-2 text-right tabular-nums">
         <span className={changePoint.direction === 'regression' ? 'text-red-400' : 'text-green-400'}>
-          {formatChangePointPct(changePoint.changeRelativePct, changePoint.transition)}
-        </span>
-        <span className="text-muted-foreground ml-1 text-xs">
-          ({changePoint.changeAbsolute.toFixed(2)})
+          {formatChangePointPct(changePoint.changeRelativePct, changePoint.transition, changePoint.changeAbsolute)}
         </span>
       </td>
       <td className="px-3 py-2 text-xs text-muted-foreground tabular-nums">

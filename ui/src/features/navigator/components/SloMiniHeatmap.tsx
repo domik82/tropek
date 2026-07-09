@@ -50,7 +50,7 @@ export function SloMiniHeatmap({
       ].join('<br/>')
     }
     const changePointLine = cell.changePoint
-      ? `<span style="color:${cell.changePoint.direction === 'regression' ? '#f85149' : '#3fb950'}">◆ Change point: ${cell.changePoint.direction} (${formatChangePointPct(cell.changePoint.changeRelativePct, cell.changePoint.transition)})</span>`
+      ? `<span style="color:${cell.changePoint.direction === 'regression' ? '#f85149' : '#3fb950'}">◆ Change point: ${cell.changePoint.direction} (${formatChangePointPct(cell.changePoint.changeRelativePct, cell.changePoint.transition, cell.changePoint.changeAbsolute)})</span>`
       : ''
     return [
       cell.evaluation_name ? `<span style="color:#94a3b8">${cell.evaluation_name}</span>` : '',

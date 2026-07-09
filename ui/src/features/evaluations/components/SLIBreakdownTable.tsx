@@ -1,7 +1,7 @@
 // src/features/evaluations/components/SLIBreakdownTable.tsx
 import { useState } from 'react'
 import { ChevronDown, ChevronRight, ChartLine, Diamond } from 'lucide-react'
-import { fmt, formatChangePointPct } from '@/lib/format'
+import { fmt, fmtSignedAbs, formatChangePointPct } from '@/lib/format'
 import { STATUS_TEXT } from '@/lib/status'
 import { DataTable, DataTableHeader } from '@/components/ui/data-table'
 import type { Indicator, SliMetadata } from '../domain'
@@ -10,12 +10,6 @@ function fmtPct(v: number | null | undefined): string {
   if (v == null) return '—'
   const sign = v >= 0 ? '+' : ''
   return `${sign}${v.toFixed(2)}%`
-}
-
-function fmtSignedAbs(v: number | null | undefined): string {
-  if (v == null) return '—'
-  const sign = v >= 0 ? '+' : ''
-  return `${sign}${fmt(v)}`
 }
 
 const LOW_CONFIDENCE_THRESHOLD = 20
@@ -278,7 +272,7 @@ function IndicatorRow({ ind, idx, isSelected, onClick, onIndicatorClick, display
           {ind.changePoint && (
             <span
               className={ind.changePoint.direction === 'regression' ? 'text-red-400' : 'text-green-400'}
-              title={`Change point: ${ind.changePoint.direction} (${formatChangePointPct(ind.changePoint.changeRelativePct, ind.changePoint.transition)})`}
+              title={`Change point: ${ind.changePoint.direction} (${formatChangePointPct(ind.changePoint.changeRelativePct, ind.changePoint.transition, ind.changePoint.changeAbsolute)})`}
             >
               <Diamond className="size-3.5" fill="currentColor" />
             </span>

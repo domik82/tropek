@@ -513,6 +513,7 @@ export function dtoToIndicator(dto: IndicatorResultDto): Indicator {
           direction: changePointDto.direction as 'regression' | 'improvement',
           changeRelativePct: changePointDto.change_relative_pct ?? null,
           transition: changePointDto.transition ?? null,
+          changeAbsolute: changePointDto.change_absolute ?? null,
         }
       : null,
   }
@@ -555,6 +556,7 @@ export function dtoToTrendPoint(dto: TrendPointDto): TrendPoint {
           direction: changePointDto.direction as 'regression' | 'improvement',
           changeRelativePct: changePointDto.change_relative_pct ?? null,
           transition: changePointDto.transition ?? null,
+          changeAbsolute: changePointDto.change_absolute ?? null,
         }
       : null,
   }

@@ -210,11 +210,13 @@ class TestChangePointMarker:
                 'direction': 'regression',
                 'transition': 'appeared',
                 'change_relative_pct': None,
+                'change_absolute': 500,
             }
         )
         assert marker.direction == 'regression'
         assert marker.transition == Transition.APPEARED
         assert marker.change_relative_pct is None
+        assert marker.change_absolute == 500
 
     def test_with_pct_no_transition(self):
         marker = ChangePointMarker.model_validate(
@@ -226,6 +228,7 @@ class TestChangePointMarker:
         assert marker.direction == 'improvement'
         assert marker.change_relative_pct == 15.5
         assert marker.transition is None
+        assert marker.change_absolute is None
 
 
 class TestChangePointRead:

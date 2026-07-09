@@ -195,6 +195,7 @@ async def _enrich_heatmap_with_change_points(
                         direction=Direction(change_point.direction),
                         change_relative_pct=change_point.change_relative_pct,
                         transition=Transition(change_point.transition) if change_point.transition is not None else None,
+                        change_absolute=change_point.change_absolute,
                     )
     return response
 
