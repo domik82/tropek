@@ -1,5 +1,6 @@
 // src/lib/time-range-context.tsx
-import { createContext, useContext, useState, useMemo, useCallback, type ReactNode } from 'react'
+import { createContext, useContext, useMemo, useCallback, useEffect, type ReactNode } from 'react'
+import { useSearchParams } from 'react-router-dom'
 
 export interface TimePreset {
   label: string
@@ -111,22 +112,60 @@ function saveRange(range: StoredRange) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(range))
 }
 
-export function TimeRangeProvider({ children }: { children: ReactNode }) {
-  const [range, setRange] = useState<StoredRange>(loadRange)
+/** Serialize a StoredRange to the URL params the provider writes. */
+function rangeToParams(range: StoredRange): { from: string; to?: string } {
+  if (range.mode === 'preset') {
+    return { from: `now-${range.days ?? DEFAULT_DAYS}d` }
+  }
+  return { from: range.from ?? computeFromDate(DEFAULT_DAYS), to: range.to }
+}
 
-  const setDays = useCallback((d: number) => {
-    const next: StoredRange = { mode: 'preset', days: d }
-    setRange(next)
-    saveRange(next)
-  }, [])
+export function TimeRangeProvider({ children }: { children: ReactNode }) {
+  const [searchParams, setSearchParams] = useSearchParams()
+  const urlFrom = searchParams.get('from')
+  const urlTo = searchParams.get('to')
+
+  // URL is the source of truth; fall back to localStorage, then the hardcoded default.
+  const range: StoredRange = useMemo(() => parseTimeParams(urlFrom, urlTo) ?? loadRange(), [urlFrom, urlTo])
+
+  // When the URL has no `from`, seed it from the resolved fallback so the address bar
+  // reflects the active range and is shareable. `replace` avoids a back-button trap.
+  // Deps are honest: after seeding, `urlFrom` becomes set and the guard short-circuits,
+  // so no loop; returning to a bare `/navigator` correctly re-seeds.
+  useEffect(() => {
+    if (urlFrom) return
+    const params = rangeToParams(loadRange())
+    setSearchParams(prev => {
+      const next = new URLSearchParams(prev)
+      next.set('from', params.from)
+      if (params.to) next.set('to', params.to)
+      else next.delete('to')
+      return next
+    }, { replace: true })
+  }, [urlFrom, setSearchParams])
+
+  const setDays = useCallback((days: number) => {
+    saveRange({ mode: 'preset', days })
+    setSearchParams(prev => {
+      const next = new URLSearchParams(prev)
+      next.set('from', `now-${days}d`)
+      next.delete('to')
+      return next
+    })
+  }, [setSearchParams])
 
   const setAbsoluteRange = useCallback((from: string, to: string | undefined) => {
-    const next: StoredRange = { mode: 'absolute', from, to }
-    setRange(next)
-    saveRange(next)
-  }, [])
+    saveRange({ mode: 'absolute', from, to })
+    setSearchParams(prev => {
+      const next = new URLSearchParams(prev)
+      next.set('from', from)
+      if (to) next.set('to', to)
+      else next.delete('to')
+      return next
+    })
+  }, [setSearchParams])
 
-  const preset = PRESETS.find(p => p.days === range.days) ?? PRESETS[2]
+  const preset = PRESETS.find(candidate => candidate.days === range.days) ?? PRESETS[2]
 
   const from = useMemo(() => {
     if (range.mode === 'absolute' && range.from) return range.from
@@ -137,9 +176,9 @@ export function TimeRangeProvider({ children }: { children: ReactNode }) {
 
   const label = useMemo(() => {
     if (range.mode === 'absolute' && range.from) {
-      const f = range.from.slice(0, 10)
-      const t = range.to ? range.to.slice(0, 10) : 'now'
-      return `${f} to ${t}`
+      const fromLabel = range.from.slice(0, 10)
+      const toLabel = range.to ? range.to.slice(0, 10) : 'now'
+      return `${fromLabel} to ${toLabel}`
     }
     return preset.label
   }, [range, preset])

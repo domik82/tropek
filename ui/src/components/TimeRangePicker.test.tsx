@@ -1,14 +1,17 @@
 // ui/src/components/TimeRangePicker.test.tsx
 import { describe, it, expect, beforeEach } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
+import { MemoryRouter } from 'react-router-dom'
 import { TimeRangePicker } from './TimeRangePicker'
 import { TimeRangeProvider } from '@/lib/time-range-context'
 
-function renderPicker() {
+function renderPicker(initialEntry = '/') {
   return render(
-    <TimeRangeProvider>
-      <TimeRangePicker />
-    </TimeRangeProvider>,
+    <MemoryRouter initialEntries={[initialEntry]}>
+      <TimeRangeProvider>
+        <TimeRangePicker />
+      </TimeRangeProvider>
+    </MemoryRouter>,
   )
 }
 

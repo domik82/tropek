@@ -1,6 +1,8 @@
 // ui/src/lib/time-range-context.test.tsx
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { computeFromDate, toDateInputValue, PRESETS, parseTimeParams } from './time-range-context'
+import { render, screen, fireEvent } from '@testing-library/react'
+import { MemoryRouter, useLocation } from 'react-router-dom'
+import { computeFromDate, toDateInputValue, PRESETS, parseTimeParams, TimeRangeProvider, useTimeRange } from './time-range-context'
 
 describe('computeFromDate', () => {
   beforeEach(() => {
@@ -120,5 +122,90 @@ describe('parseTimeParams', () => {
       from: '2026-04-01T00:00:00.000Z',
       to: undefined,
     })
+  })
+})
+
+function Probe() {
+  const { mode, from, to, label } = useTimeRange()
+  return (
+    <div>
+      <span data-testid="mode">{mode}</span>
+      <span data-testid="from">{from}</span>
+      <span data-testid="to">{to ?? 'now'}</span>
+      <span data-testid="label">{label}</span>
+    </div>
+  )
+}
+
+function LocationProbe() {
+  const location = useLocation()
+  return <span data-testid="search">{location.search}</span>
+}
+
+function SetterButtons() {
+  const { setDays, setAbsoluteRange } = useTimeRange()
+  return (
+    <div>
+      <button onClick={() => setDays(7)}>set-7d</button>
+      <button onClick={() => setAbsoluteRange('2026-04-01T00:00:00.000Z', '2026-04-25T23:59:59.999Z')}>set-abs</button>
+    </div>
+  )
+}
+
+function renderProvider(initialEntry: string) {
+  return render(
+    <MemoryRouter initialEntries={[initialEntry]}>
+      <TimeRangeProvider>
+        <Probe />
+        <LocationProbe />
+        <SetterButtons />
+      </TimeRangeProvider>
+    </MemoryRouter>,
+  )
+}
+
+describe('TimeRangeProvider URL persistence', () => {
+  beforeEach(() => localStorage.clear())
+
+  it('reads a preset from the URL', () => {
+    renderProvider('/?from=now-90d')
+    expect(screen.getByTestId('mode')).toHaveTextContent('preset')
+    expect(screen.getByTestId('label')).toHaveTextContent('Last 90 days')
+  })
+
+  it('reads an absolute range from the URL', () => {
+    renderProvider('/?from=2026-04-01T00:00:00.000Z&to=2026-04-25T23:59:59.999Z')
+    expect(screen.getByTestId('mode')).toHaveTextContent('absolute')
+    expect(screen.getByTestId('from')).toHaveTextContent('2026-04-01T00:00:00.000Z')
+    expect(screen.getByTestId('to')).toHaveTextContent('2026-04-25T23:59:59.999Z')
+  })
+
+  it('lets the URL win over localStorage', () => {
+    localStorage.setItem('tropek-time-range', JSON.stringify({ mode: 'preset', days: 7 }))
+    renderProvider('/?from=now-90d')
+    expect(screen.getByTestId('label')).toHaveTextContent('Last 90 days')
+  })
+
+  it('falls back to localStorage and seeds the URL when from is absent', () => {
+    localStorage.setItem('tropek-time-range', JSON.stringify({ mode: 'preset', days: 14 }))
+    renderProvider('/')
+    expect(screen.getByTestId('label')).toHaveTextContent('Last 14 days')
+    expect(screen.getByTestId('search')).toHaveTextContent('from=now-14d')
+  })
+
+  it('writes a relative preset to the URL on setDays', () => {
+    renderProvider('/?from=now-30d')
+    fireEvent.click(screen.getByText('set-7d'))
+    const search = screen.getByTestId('search').textContent ?? ''
+    expect(search).toContain('from=now-7d')
+    expect(search).not.toContain('to=')
+  })
+
+  it('writes an absolute range to the URL on setAbsoluteRange', () => {
+    renderProvider('/?from=now-30d')
+    fireEvent.click(screen.getByText('set-abs'))
+    const search = screen.getByTestId('search').textContent ?? ''
+    expect(search).toContain('from=2026-04-01')
+    expect(search).toContain('to=2026-04-25')
   })
 })
