@@ -47,6 +47,40 @@ interface StoredRange {
   to?: string
 }
 
+const PRESET_PATTERN = /^now-(\d+)d$/
+const DATE_ONLY_PATTERN = /^\d{4}-\d{2}-\d{2}$/
+
+/** Normalize one date token (full ISO or bare YYYY-MM-DD) to an ISO string, or null if invalid. */
+function parseDateToken(token: string, endOfDay: boolean): string | null {
+  if (DATE_ONLY_PATTERN.test(token)) {
+    return endOfDay ? `${token}T23:59:59.999Z` : `${token}T00:00:00.000Z`
+  }
+  const parsed = new Date(token)
+  if (Number.isNaN(parsed.getTime())) return null
+  return parsed.toISOString()
+}
+
+/**
+ * Parse URL `from`/`to` search params into a StoredRange.
+ * Returns null when `from` is absent or unparseable so the caller can fall back
+ * to localStorage / the hardcoded default. Never throws.
+ */
+// eslint-disable-next-line react-refresh/only-export-components
+export function parseTimeParams(from: string | null, to?: string | null): StoredRange | null {
+  if (!from) return null
+
+  const presetMatch = PRESET_PATTERN.exec(from)
+  if (presetMatch) {
+    return { mode: 'preset', days: Number(presetMatch[1]) }
+  }
+
+  const fromIso = parseDateToken(from, false)
+  if (!fromIso) return null
+
+  const toIso = to ? parseDateToken(to, true) : null
+  return { mode: 'absolute', from: fromIso, to: toIso ?? undefined }
+}
+
 interface TimeRangeCtx {
   mode: RangeMode
   /** Currently selected preset (only meaningful when mode === 'preset') */

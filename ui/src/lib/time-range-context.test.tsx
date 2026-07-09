@@ -1,6 +1,6 @@
 // ui/src/lib/time-range-context.test.tsx
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { computeFromDate, toDateInputValue, PRESETS } from './time-range-context'
+import { computeFromDate, toDateInputValue, PRESETS, parseTimeParams } from './time-range-context'
 
 describe('computeFromDate', () => {
   beforeEach(() => {
@@ -65,5 +65,60 @@ describe('PRESETS', () => {
     for (const p of PRESETS) {
       expect(p.days).toBeGreaterThan(0)
     }
+  })
+})
+
+describe('parseTimeParams', () => {
+  it('returns null when from is absent or empty', () => {
+    expect(parseTimeParams(null)).toBeNull()
+    expect(parseTimeParams('')).toBeNull()
+  })
+
+  it('parses a preset expression', () => {
+    expect(parseTimeParams('now-30d')).toEqual({ mode: 'preset', days: 30 })
+  })
+
+  it('parses a full ISO absolute range', () => {
+    expect(parseTimeParams('2026-04-01T00:00:00.000Z', '2026-04-25T23:59:59.999Z')).toEqual({
+      mode: 'absolute',
+      from: '2026-04-01T00:00:00.000Z',
+      to: '2026-04-25T23:59:59.999Z',
+    })
+  })
+
+  it('parses an open-ended absolute range (no to)', () => {
+    expect(parseTimeParams('2026-04-01T00:00:00.000Z')).toEqual({
+      mode: 'absolute',
+      from: '2026-04-01T00:00:00.000Z',
+      to: undefined,
+    })
+  })
+
+  it('expands a date-only from to midnight UTC', () => {
+    expect(parseTimeParams('2026-04-01')).toEqual({
+      mode: 'absolute',
+      from: '2026-04-01T00:00:00.000Z',
+      to: undefined,
+    })
+  })
+
+  it('expands a date-only to to end-of-day UTC', () => {
+    expect(parseTimeParams('2026-04-01', '2026-04-25')).toEqual({
+      mode: 'absolute',
+      from: '2026-04-01T00:00:00.000Z',
+      to: '2026-04-25T23:59:59.999Z',
+    })
+  })
+
+  it('returns null for unparseable from', () => {
+    expect(parseTimeParams('not-a-date')).toBeNull()
+  })
+
+  it('drops an unparseable to and stays open-ended', () => {
+    expect(parseTimeParams('2026-04-01', 'garbage')).toEqual({
+      mode: 'absolute',
+      from: '2026-04-01T00:00:00.000Z',
+      to: undefined,
+    })
   })
 })
