@@ -79,10 +79,13 @@ vi.mock('@/features/navigator/components/AllEvaluationsPanel', () => ({
 // ── URL param management ───────────────────────────────────────────────────────
 
 let mockParams = new URLSearchParams()
-const mockSetParams = vi.fn((next: Record<string, string> | URLSearchParams) => {
-  // Simulate real setSearchParams behavior: replaces all params
-  mockParams = next instanceof URLSearchParams ? next : new URLSearchParams(next)
-})
+const mockSetParams = vi.fn(
+  (next: ((prev: URLSearchParams) => URLSearchParams) | Record<string, string> | URLSearchParams) => {
+    // Mirror real setSearchParams: support the functional-updater form too.
+    if (typeof next === 'function') mockParams = next(mockParams)
+    else mockParams = next instanceof URLSearchParams ? next : new URLSearchParams(next)
+  },
+)
 
 vi.mock('react-router-dom', async () => {
   const actual = await vi.importActual('react-router-dom')
@@ -130,7 +133,8 @@ describe('AssetNavigatorPage', () => {
     await userEvent.click(screen.getByTestId('select-asset-catalog-db'))
 
     // setParams should have been called with asset + preserved group
-    expect(mockSetParams).toHaveBeenCalledWith({ asset: 'catalog-db', group: 'infra-production' })
+    expect(mockParams.get('asset')).toBe('catalog-db')
+    expect(mockParams.get('group')).toBe('infra-production')
 
     // Re-render with updated params (simulating URL update)
     mockParams = new URLSearchParams({ asset: 'catalog-db' })
@@ -152,10 +156,8 @@ describe('AssetNavigatorPage', () => {
     await userEvent.click(screen.getByTestId('select-asset-catalog-db'))
 
     // The group should be preserved alongside the asset in the URL params
-    const calledWith = mockSetParams.mock.calls[0][0]
-    expect(calledWith).toEqual(
-      expect.objectContaining({ asset: 'catalog-db', group: 'infra-production' }),
-    )
+    expect(mockParams.get('asset')).toBe('catalog-db')
+    expect(mockParams.get('group')).toBe('infra-production')
   })
 
   // ── BUG: AssetPanel must remount (reset state) when asset changes ────────
@@ -186,5 +188,30 @@ describe('AssetNavigatorPage', () => {
     // AssetTree should receive both selectedGroup and selectedAsset
     expect(screen.getByTestId('selected-group')).toHaveTextContent('infra-production')
     expect(screen.getByTestId('selected-asset')).toHaveTextContent('catalog-db')
+  })
+
+  it('preserves from/to when selecting an asset from the tree', async () => {
+    mockParams = new URLSearchParams({
+      group: 'infra-production',
+      from: 'now-7d',
+      to: '2026-04-25T23:59:59.999Z',
+    })
+    render(<TestWrapper><AssetNavigatorPage /></TestWrapper>)
+
+    await userEvent.click(screen.getByTestId('select-asset-catalog-db'))
+
+    expect(mockParams.get('from')).toBe('now-7d')
+    expect(mockParams.get('to')).toBe('2026-04-25T23:59:59.999Z')
+    expect(mockParams.get('asset')).toBe('catalog-db')
+  })
+
+  it('preserves from when selecting a group from the tree', async () => {
+    mockParams = new URLSearchParams({ from: 'now-7d' })
+    render(<TestWrapper><AssetNavigatorPage /></TestWrapper>)
+
+    await userEvent.click(screen.getByTestId('select-group-infra'))
+
+    expect(mockParams.get('from')).toBe('now-7d')
+    expect(mockParams.get('group')).toBe('infra-production')
   })
 })

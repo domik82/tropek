@@ -16,8 +16,19 @@ export function AssetsPage() {
         mode="assets"
         selectedGroup={selectedGroup}
         selectedAsset={selectedAsset}
-        onSelectGroup={name => name ? setParams({ group: name }) : setParams({})}
-        onSelectAsset={(name, groupName) => setParams({ group: groupName, asset: name })}
+        onSelectGroup={name => setParams(prev => {
+          const next = new URLSearchParams(prev)
+          next.delete('group'); next.delete('asset')
+          if (name) next.set('group', name)
+          return next
+        })}
+        onSelectAsset={(name, groupName) => setParams(prev => {
+          const next = new URLSearchParams(prev)
+          next.delete('group'); next.delete('asset')
+          if (groupName) next.set('group', groupName)
+          next.set('asset', name)
+          return next
+        })}
         width={260}
         onAddAsset={() => setCreateAssetOpen(true)}
       />
@@ -25,7 +36,12 @@ export function AssetsPage() {
         {selectedGroup && selectedGroup !== '__ungrouped__' && (
           <GroupDetailPanel
             groupName={selectedGroup}
-            onSelectGroup={name => setParams({ group: name })}
+            onSelectGroup={name => setParams(prev => {
+              const next = new URLSearchParams(prev)
+              next.delete('asset')
+              next.set('group', name)
+              return next
+            })}
             selectedAsset={selectedAsset}
           />
         )}

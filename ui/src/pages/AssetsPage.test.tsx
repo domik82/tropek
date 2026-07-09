@@ -22,7 +22,12 @@ vi.mock('@/features/assets/components/AssetCreateDialog', () => ({
 }))
 
 let mockParams = new URLSearchParams()
-const mockSetParams = vi.fn()
+const mockSetParams = vi.fn(
+  (next: ((prev: URLSearchParams) => URLSearchParams) | Record<string, string> | URLSearchParams) => {
+    if (typeof next === 'function') mockParams = next(mockParams)
+    else mockParams = next instanceof URLSearchParams ? next : new URLSearchParams(next)
+  },
+)
 vi.mock('react-router-dom', async () => {
   const actual = await vi.importActual('react-router-dom')
   return { ...actual, useSearchParams: () => [mockParams, mockSetParams] }
@@ -95,6 +100,22 @@ describe('AssetsPage', () => {
     // Simulate clicking a leaf asset — the tree passes (name, groupName)
     capturedTreeProps.onSelectAsset('orders-db', 'data-tier')
 
-    expect(mockSetParams).toHaveBeenCalledWith({ group: 'data-tier', asset: 'orders-db' })
+    expect(mockParams.get('group')).toBe('data-tier')
+    expect(mockParams.get('asset')).toBe('orders-db')
+  })
+
+  it('preserves an existing from param when selecting an asset', () => {
+    mockParams = new URLSearchParams({ from: 'now-7d' })
+    render(
+      <TestWrapper>
+        <AssetsPage />
+      </TestWrapper>,
+    )
+
+    capturedTreeProps.onSelectAsset('orders-db', 'data-tier')
+
+    expect(mockParams.get('from')).toBe('now-7d')
+    expect(mockParams.get('asset')).toBe('orders-db')
+    expect(mockParams.get('group')).toBe('data-tier')
   })
 })

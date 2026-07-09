@@ -10,11 +10,26 @@ export function AssetNavigatorPage() {
   const selectedAsset = params.get('asset') ?? null
   const selectedEvalId = params.get('eval') ?? undefined
 
-  const handleSelectAsset = (name: string, groupName?: string) => {
-    const next: Record<string, string> = { asset: name }
-    const group = groupName ?? selectedGroup
-    if (group) next.group = group
-    setParams(next)
+  const selectGroup = (name: string | null) => {
+    setParams(prev => {
+      const next = new URLSearchParams(prev)
+      next.delete('group'); next.delete('asset'); next.delete('eval')
+      if (name) next.set('group', name)
+      return next
+    })
+  }
+
+  const selectAsset = (name: string, groupName?: string, evalId?: string) => {
+    setParams(prev => {
+      const next = new URLSearchParams(prev)
+      next.delete('asset'); next.delete('eval')
+      const group = groupName ?? selectedGroup
+      if (group) next.set('group', group)
+      else next.delete('group')
+      next.set('asset', name)
+      if (evalId) next.set('eval', evalId)
+      return next
+    })
   }
 
   return (
@@ -23,8 +38,8 @@ export function AssetNavigatorPage() {
         mode="navigator"
         selectedGroup={selectedGroup}
         selectedAsset={selectedAsset}
-        onSelectGroup={name => name ? setParams({ group: name }) : setParams({})}
-        onSelectAsset={handleSelectAsset}
+        onSelectGroup={selectGroup}
+        onSelectAsset={(name, groupName) => selectAsset(name, groupName)}
         width={260}
       />
       <div className="flex-1 overflow-y-auto">
@@ -32,21 +47,12 @@ export function AssetNavigatorPage() {
         {!selectedAsset && selectedGroup && (
           <GroupPanel
             groupName={selectedGroup}
-            onSelectAsset={(name: string, evalId?: string) => {
-              const next: Record<string, string> = { asset: name }
-              if (selectedGroup) next.group = selectedGroup
-              if (evalId) next.eval = evalId
-              setParams(next)
-            }}
+            onSelectAsset={(name: string, evalId?: string) => selectAsset(name, selectedGroup, evalId)}
           />
         )}
         {!selectedAsset && !selectedGroup && (
           <AllEvaluationsPanel
-            onSelectAsset={(name: string, evalId?: string) => {
-              const next: Record<string, string> = { asset: name }
-              if (evalId) next.eval = evalId
-              setParams(next)
-            }}
+            onSelectAsset={(name: string, evalId?: string) => selectAsset(name, undefined, evalId)}
           />
         )}
       </div>
