@@ -63,6 +63,53 @@ def test_generate_variants_are_deterministic() -> None:
     assert rows1 == rows2
 
 
+def test_generate_change_point_transitions_zero_origin_appear_shape() -> None:
+    """errors_zero_origin_appear steps from 0.0 to 500.0 with no gradual samples."""
+    scenario = load_scenario(Path('scenarios/change-point-transitions.yaml'))
+    rows = generate_scenario_rows(scenario)
+    values = [float(row['value']) for row in rows if row['metric_name'] == 'errors_zero_origin_appear']
+
+    assert len(values) == 47
+    assert values[:24] == [0.0] * 24
+    assert values[24:] == [500.0] * 23
+
+
+def test_generate_change_point_transitions_throughput_vanish_shape() -> None:
+    """throughput_vanish steps from 500.0 to 0.0 with no gradual samples."""
+    scenario = load_scenario(Path('scenarios/change-point-transitions.yaml'))
+    rows = generate_scenario_rows(scenario)
+    values = [float(row['value']) for row in rows if row['metric_name'] == 'throughput_vanish']
+
+    assert len(values) == 47
+    assert values[:24] == [500.0] * 24
+    assert values[24:] == [0.0] * 23
+
+
+def test_generate_change_point_transitions_memory_diluted_shift_shape() -> None:
+    """memory_diluted_shift dips then recovers to a value +15.65% above the dip."""
+    scenario = load_scenario(Path('scenarios/change-point-transitions.yaml'))
+    rows = generate_scenario_rows(scenario)
+    values = [float(row['value']) for row in rows if row['metric_name'] == 'memory_diluted_shift']
+
+    assert len(values) == 61
+    assert values[:40] == [13600000.0] * 40
+    assert values[40:48] == [11500000.0] * 8
+    assert values[48:] == [13300000.0] * 13
+
+    dip_value = values[40]
+    recovery_value = values[48]
+    recovery_pct = (recovery_value - dip_value) / dip_value * 100
+    assert round(recovery_pct, 2) == 15.65
+
+
+def test_generate_change_point_transitions_is_deterministic() -> None:
+    """Zero jitter means the same scenario produces identical rows across runs."""
+    scenario = load_scenario(Path('scenarios/change-point-transitions.yaml'))
+    rows1 = generate_scenario_rows(scenario)
+    rows2 = generate_scenario_rows(scenario)
+    assert rows1 == rows2
+
+
 def test_main_merges_scenarios_into_shared_namespace() -> None:
     """Multiple scenarios targeting the same namespace produce merged CSV."""
     scenarios_dir = Path('scenarios')

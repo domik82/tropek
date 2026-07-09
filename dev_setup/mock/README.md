@@ -87,3 +87,14 @@ spec:
 
 See `manifests/slo-definitions.yaml` for the SLO YAML embedding pattern
 (`spec.slo_yaml` is a YAML literal block string).
+
+## Change point transitions demo (issue #64)
+
+`cp-transition-monitor` (SLI `cp-transition-sli`, SLO `cp-transition-slo`)
+exercises the change-point magnitude fix: appeared/vanished transitions for
+zero-mean segments and the local adjacent-segment percent for non-zero
+shifts. The mock data is defined in
+`adapters/mock/scenarios/change-point-transitions.yaml` — see that file's
+header comment for the full how-to-run steps, including regenerating the
+CSVs and driving the 61 daily evaluations via
+`dev_setup/stages/seed_evaluations.py`.

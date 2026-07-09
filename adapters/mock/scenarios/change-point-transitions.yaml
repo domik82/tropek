@@ -1,0 +1,112 @@
+# E2E demo scenario for issue #64 (change-point magnitude fix).
+#
+# One point per day (interval_minutes: 1440), jitter 0 — fully deterministic
+# so the change-point detector output is reproducible run to run. Each metric
+# demonstrates one facet of the fix:
+#
+#   errors_zero_origin_appear
+#     0.0 for 24 days, then an instant step to 500.0, held for 23 days.
+#     The pre-segment mean is exactly 0 -> the detector emits a Transition
+#     with transition='appeared', change_relative_pct=null, and
+#     change_absolute=500.0 (direction=regression, higher_is_better=false).
+#
+#   throughput_vanish
+#     500.0 for 24 days, then an instant step to 0.0, held for 23 days.
+#     The post-segment mean is exactly 0 -> transition='vanished',
+#     change_relative_pct=null, change_absolute=-500.0
+#     (direction=regression, higher_is_better=true — a drop in throughput
+#     is the regression).
+#
+#   memory_diluted_shift
+#     13600000.0 for 40 days, drops to 11500000.0 for 8 days, then
+#     recovers to 13300000.0 for 13 days. Both segments are non-zero, so
+#     the recovery change point is a normal (non-transition) result. The
+#     displayed percent is the LOCAL adjacent-segment shift
+#     (13300000-11500000)/11500000 = +15.65% — this is the case the bug
+#     fix addresses: the old code diluted this against the far earlier
+#     13.6M baseline and showed +0.38%.
+#
+# The "instant step" phases use a zero-duration `ramp` phase: with
+# duration_hours: 0 the phase-generation loop emits no rows for that phase,
+# but the post-loop `baseline = target` reassignment still runs (see
+# generate.py::_generate_metric_rows), so the very next `stable` phase
+# starts immediately at the new value with no gradual ramp samples.
+#
+# How to run this scenario in the full docker-compose stack:
+#   1. Regenerate CSVs from scenario YAML — adapters/mock/data/ is
+#      bind-mounted read-only into adapter-mock and .gitignored (generated,
+#      not committed), so this must run locally before (re)starting the
+#      container: uv run --directory adapters/mock python generate.py
+#   2. docker compose up api worker timescaledb redis adapter-mock -d
+#      (or `docker compose restart adapter-mock` if it was already running —
+#      CsvStore caches rows per namespace on first query, so a running
+#      container won't pick up regenerated CSVs without a restart).
+#   3. Bootstrap the SLI/SLO/Asset/SLOAssignment wiring:
+#      uv run --directory clients/python tropek apply -f dev_setup/mock/ \
+#        --base-url http://localhost:8080
+#   4. Drive daily evaluations across the window the same way
+#      dev_setup/stages/seed_evaluations.py drives lab-monitor-01
+#      (_seed_cp_transition_monitor, 61 daily 30-minute windows starting
+#      2026-04-01T00:00:00Z):
+#      uv run --directory clients/python python \
+#        ../../dev_setup/stages/seed_evaluations.py http://localhost:8080
+#   5. In the UI, open the SLO heatmap for "Change Point Transition
+#      Monitor" (or the Change Points page) and hover the column around
+#      2026-04-25 (errors/throughput step) and 2026-05-19 (memory
+#      recovery). Expect tooltip labels "appeared" / "vanished" with no
+#      percent shown, and "+15.65%" on the memory recovery point.
+name: change-point-transitions
+namespaces:
+  - prometheus-local
+interval_minutes: 1440
+start: "2026-04-01T00:00:00Z"
+
+metrics:
+  errors_zero_origin_appear:
+    baseline: 0.0
+    phases:
+      - duration_hours: 576 # 24 days at 0.0
+        pattern: stable
+        jitter_pct: 0
+      - duration_hours: 0 # instant step, no samples emitted
+        pattern: ramp
+        target: 500.0
+        jitter_pct: 0
+      - duration_hours: 552 # 23 days at 500.0
+        pattern: stable
+        jitter_pct: 0
+
+  throughput_vanish:
+    baseline: 500.0
+    phases:
+      - duration_hours: 576 # 24 days at 500.0
+        pattern: stable
+        jitter_pct: 0
+      - duration_hours: 0 # instant step, no samples emitted
+        pattern: ramp
+        target: 0.0
+        jitter_pct: 0
+      - duration_hours: 552 # 23 days at 0.0
+        pattern: stable
+        jitter_pct: 0
+
+  memory_diluted_shift:
+    baseline: 13600000.0
+    phases:
+      - duration_hours: 960 # 40 days at 13,600,000.0
+        pattern: stable
+        jitter_pct: 0
+      - duration_hours: 0 # instant step, no samples emitted
+        pattern: ramp
+        target: 11500000.0
+        jitter_pct: 0
+      - duration_hours: 192 # 8 days at 11,500,000.0
+        pattern: stable
+        jitter_pct: 0
+      - duration_hours: 0 # instant step, no samples emitted
+        pattern: ramp
+        target: 13300000.0
+        jitter_pct: 0
+      - duration_hours: 312 # 13 days at 13,300,000.0
+        pattern: stable
+        jitter_pct: 0

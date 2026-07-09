@@ -195,3 +195,18 @@ metadata:
     namespace: lab
 spec:
   type_name: service
+---
+# ---- Change Point Transition Demo Asset (issue #64) ----
+
+api_version: tropek/v1
+kind: Asset
+metadata:
+  name: cp-transition-monitor
+  display_name: "Change Point Transition Monitor"
+  tags:
+    purpose: cp-transition-demo
+    env: lab
+  variables:
+    job: cp-transition-monitor
+spec:
+  type_name: service
