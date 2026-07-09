@@ -26,6 +26,9 @@ from tropek_client.models import (
     AssetTypeUpdate,
     AssetUpdate,
     BulkActionResponse,
+    BulkTriageRequest,
+    ChangePointConfigInput,
+    ChangePointConfigRead,
     ChangePointRead,
     ComparisonConfig,
     ConfigurationRead,
@@ -398,8 +401,9 @@ class _SLOs:
 
 
 class _Evaluations:
-    def __init__(self, http: HttpSession) -> None:
+    def __init__(self, http: HttpSession, change_points: _ChangePoints) -> None:
         self._http = http
+        self._change_points = change_points
 
     def list(  # noqa: PLR0913
         self,
@@ -528,10 +532,75 @@ class _Evaluations:
         return [EvaluationNameEntry.model_validate(e) for e in response.json()]
 
     def triage(self, change_point_id: str, body: TriageRequest) -> ChangePointRead:
+        """Deprecated alias for client.change_points.triage."""
+        return self._change_points.triage(change_point_id, body)
+
+
+class _ChangePoints:
+    def __init__(self, http: HttpSession) -> None:
+        self._http = http
+
+    def list(  # noqa: PLR0913
+        self,
+        *,
+        status: str | None = None,
+        direction: str | None = None,
+        asset_id: str | None = None,
+        slo_name: str | None = None,
+        metric_name: str | None = None,
+        from_ts: str | None = None,
+        to_ts: str | None = None,
+        limit: int | None = None,
+        offset: int | None = None,
+    ) -> list[ChangePointRead]:
+        params: dict[str, str] = {}
+        if status:
+            params['status'] = status
+        if direction:
+            params['direction'] = direction
+        if asset_id:
+            params['asset_id'] = asset_id
+        if slo_name:
+            params['slo_name'] = slo_name
+        if metric_name:
+            params['metric_name'] = metric_name
+        if from_ts:
+            params['from_ts'] = from_ts
+        if to_ts:
+            params['to_ts'] = to_ts
+        if limit is not None:
+            params['limit'] = str(limit)
+        if offset is not None:
+            params['offset'] = str(offset)
+        response = self._http.get('/change-points', params=params)
+        return [ChangePointRead.model_validate(row) for row in response.json()]
+
+    def get(self, change_point_id: str) -> ChangePointRead:
+        response = self._http.get(f'/change-points/{change_point_id}')
+        return ChangePointRead.model_validate(response.json())
+
+    def triage(self, change_point_id: str, body: TriageRequest) -> ChangePointRead:
         response = self._http.patch(
             f'/change-points/{change_point_id}', json=body.model_dump(mode='json', exclude_none=True)
         )
         return ChangePointRead.model_validate(response.json())
+
+    def bulk_triage(self, body: BulkTriageRequest) -> dict[str, int]:
+        response = self._http.patch('/change-points/bulk-triage', json=body.model_dump(mode='json', exclude_none=True))
+        return response.json()  # type: ignore[no-any-return]
+
+    def get_config(self, objective_id: str) -> ChangePointConfigRead:
+        response = self._http.get(f'/change-points/config/{objective_id}')
+        return ChangePointConfigRead.model_validate(response.json())
+
+    def set_config(self, objective_id: str, body: ChangePointConfigInput) -> ChangePointConfigRead:
+        response = self._http.put(
+            f'/change-points/config/{objective_id}', json=body.model_dump(mode='json', exclude_none=True)
+        )
+        return ChangePointConfigRead.model_validate(response.json())
+
+    def delete_config(self, objective_id: str) -> None:
+        self._http.delete(f'/change-points/config/{objective_id}')
 
 
 class _Annotations:
@@ -904,7 +973,8 @@ class TropekClient:
         self.slo_groups = _SLOGroups(self._http)
         self.slo_group_assignments = _SLOGroupAssignments(self._http)
         self.display_groups = _DisplayGroups(self._http)
-        self.evaluations = _Evaluations(self._http)
+        self.change_points = _ChangePoints(self._http)
+        self.evaluations = _Evaluations(self._http, self.change_points)
         self.annotations = _Annotations(self._http)
         self.annotation_categories = _AnnotationCategories(self._http)
         self.trend = _Trend(self._http)

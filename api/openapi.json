@@ -10037,7 +10037,7 @@
           },
           {
             "in": "query",
-            "name": "metric",
+            "name": "metric_name",
             "required": false,
             "schema": {
               "anyOf": [
@@ -10049,7 +10049,7 @@
                   "type": "null"
                 }
               ],
-              "title": "Metric"
+              "title": "Metric Name"
             }
           },
           {

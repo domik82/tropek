@@ -129,12 +129,6 @@ def _extract_openapi_routes() -> set[tuple[str, str]]:
 ROUTES_NOT_IN_CLIENT = {
     ('GET', '/health'),
     ('GET', '/config/ui'),
-    ('GET', '/change-points'),
-    ('GET', '/change-points/{param}'),
-    ('PATCH', '/change-points/bulk-triage'),
-    ('GET', '/change-points/config/{param}'),
-    ('PUT', '/change-points/config/{param}'),
-    ('DELETE', '/change-points/config/{param}'),
     ('GET', '/evaluations/column-annotations'),
     ('GET', '/evaluations/trend-annotations'),
     ('DELETE', '/evaluations/heatmap/cache'),
