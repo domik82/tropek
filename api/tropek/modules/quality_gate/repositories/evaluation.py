@@ -813,11 +813,21 @@ class EvaluationRepository:
         return rows
 
     async def get_by_run_id(self, run_id: uuid.UUID) -> list[SLOEvaluation]:
-        """Fetch all SLO evaluations for a parent run, with annotations eagerly loaded."""
+        """Fetch a run's SLO evaluations, each carrying only its non-hidden annotations.
+
+        Read-only. The `annotations` collections come back deliberately partial (hidden
+        rows are excluded in SQL), so these objects must never be used on a write path:
+        `annotations` cascades delete-orphan, and mutating a partially loaded
+        delete-orphan collection is unsafe.
+        """
         query = (
             select(SLOEvaluation)
             .options(
-                selectinload(SLOEvaluation.annotations).selectinload(EvaluationAnnotation.category),
+                # Filter hidden notes in SQL rather than in the caller, matching
+                # AnnotationRepository.list_for_run — one place decides what 'visible' means.
+                selectinload(SLOEvaluation.annotations.and_(EvaluationAnnotation.hidden_at.is_(None))).selectinload(
+                    EvaluationAnnotation.category
+                ),
                 # SLOEvaluation.indicator_rows is lazy='selectin' on the mapper, so without this
                 # the caller pays an extra query for rows column-annotations never reads.
                 # raiseload rather than noload: reading them here should fail loudly, not silently
