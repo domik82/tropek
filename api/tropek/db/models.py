@@ -664,6 +664,7 @@ class SLOEvaluation(Base):
 
     __tablename__ = 'slo_evaluations'
     __table_args__ = (
+        Index('idx_slo_evaluations_evaluation_id', 'evaluation_id'),
         Index('idx_slo_evaluations_evaluation_name', 'evaluation_name'),
         Index('idx_slo_evaluations_asset', 'asset_id'),
         Index('idx_slo_evaluations_result', 'result'),

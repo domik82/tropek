@@ -515,8 +515,9 @@ async def get_column_annotations(
     slo_evals = await repos.eval_repo.get_by_run_id(evaluation_id)
     run_annotations = await repos.annotation_repo.list_for_run(evaluation_id)
     merged = list(run_annotations)
-    merged.extend(ann for slo_eval in slo_evals for ann in slo_eval.annotations if ann.hidden_at is None)
-    merged.sort(key=lambda a: a.created_at)
+    # Both sources already exclude hidden notes in SQL.
+    merged.extend(ann for slo_eval in slo_evals for ann in slo_eval.annotations)
+    merged.sort(key=lambda annotation: annotation.created_at)
     return [AnnotationRead.model_validate(ann) for ann in merged]
 
 
