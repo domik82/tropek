@@ -55,6 +55,12 @@ const DATE_ONLY_PATTERN = /^(\d{4})(\d{2})(\d{2})$/
 const DATE_TIME_PATTERN = /^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})$/
 const EPOCH_MILLIS_PATTERN = /^\d+$/
 
+/** Validate a constructed ISO string, returning the normalized ISO or null if the date is invalid. */
+function isoOrNull(iso: string): string | null {
+  const parsed = new Date(iso)
+  return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString()
+}
+
 /**
  * Resolve one Grafana absolute time token to an ISO string, or null if unrecognized.
  * Accepts compact date-time (YYYYMMDDTHHmmss), date-only (YYYYMMDD), and epoch millis.
@@ -65,12 +71,12 @@ function parseAbsoluteToken(token: string, endOfDay: boolean): string | null {
   const dateTimeMatch = DATE_TIME_PATTERN.exec(token)
   if (dateTimeMatch) {
     const [, year, month, day, hour, minute, second] = dateTimeMatch
-    return `${year}-${month}-${day}T${hour}:${minute}:${second}.000Z`
+    return isoOrNull(`${year}-${month}-${day}T${hour}:${minute}:${second}.000Z`)
   }
   const dateOnlyMatch = DATE_ONLY_PATTERN.exec(token)
   if (dateOnlyMatch) {
     const [, year, month, day] = dateOnlyMatch
-    return endOfDay ? `${year}-${month}-${day}T23:59:59.999Z` : `${year}-${month}-${day}T00:00:00.000Z`
+    return isoOrNull(endOfDay ? `${year}-${month}-${day}T23:59:59.999Z` : `${year}-${month}-${day}T00:00:00.000Z`)
   }
   if (EPOCH_MILLIS_PATTERN.test(token)) {
     const parsed = new Date(Number(token))

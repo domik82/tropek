@@ -131,6 +131,10 @@ describe('parseTimeParams', () => {
     expect(parseTimeParams('not-a-date')).toBeNull()
   })
 
+  it('returns null for a malformed compact date-time token', () => {
+    expect(parseTimeParams('20250228T990000')).toBeNull()
+  })
+
   it('drops an unparseable to and stays open-ended', () => {
     expect(parseTimeParams('20250228', 'garbage')).toEqual({
       mode: 'absolute',
