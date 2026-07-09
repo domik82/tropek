@@ -69,9 +69,9 @@ def test_generate_change_point_transitions_zero_origin_appear_shape() -> None:
     rows = generate_scenario_rows(scenario)
     values = [float(row['value']) for row in rows if row['metric_name'] == 'errors_zero_origin_appear']
 
-    assert len(values) == 47
+    assert len(values) == 61
     assert values[:24] == [0.0] * 24
-    assert values[24:] == [500.0] * 23
+    assert values[24:] == [500.0] * 37
 
 
 def test_generate_change_point_transitions_throughput_vanish_shape() -> None:
@@ -80,9 +80,9 @@ def test_generate_change_point_transitions_throughput_vanish_shape() -> None:
     rows = generate_scenario_rows(scenario)
     values = [float(row['value']) for row in rows if row['metric_name'] == 'throughput_vanish']
 
-    assert len(values) == 47
+    assert len(values) == 61
     assert values[:24] == [500.0] * 24
-    assert values[24:] == [0.0] * 23
+    assert values[24:] == [0.0] * 37
 
 
 def test_generate_change_point_transitions_memory_diluted_shift_shape() -> None:

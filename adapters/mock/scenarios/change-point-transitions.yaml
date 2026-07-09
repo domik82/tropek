@@ -5,13 +5,13 @@
 # demonstrates one facet of the fix:
 #
 #   errors_zero_origin_appear
-#     0.0 for 24 days, then an instant step to 500.0, held for 23 days.
+#     0.0 for 24 days, then an instant step to 500.0, held for 37 days.
 #     The pre-segment mean is exactly 0 -> the detector emits a Transition
 #     with transition='appeared', change_relative_pct=null, and
 #     change_absolute=500.0 (direction=regression, higher_is_better=false).
 #
 #   throughput_vanish
-#     500.0 for 24 days, then an instant step to 0.0, held for 23 days.
+#     500.0 for 24 days, then an instant step to 0.0, held for 37 days.
 #     The post-segment mean is exactly 0 -> transition='vanished',
 #     change_relative_pct=null, change_absolute=-500.0
 #     (direction=regression, higher_is_better=true — a drop in throughput
@@ -72,7 +72,7 @@ metrics:
         pattern: ramp
         target: 500.0
         jitter_pct: 0
-      - duration_hours: 552 # 23 days at 500.0
+      - duration_hours: 888 # 37 days at 500.0
         pattern: stable
         jitter_pct: 0
 
@@ -86,7 +86,7 @@ metrics:
         pattern: ramp
         target: 0.0
         jitter_pct: 0
-      - duration_hours: 552 # 23 days at 0.0
+      - duration_hours: 888 # 37 days at 0.0
         pattern: stable
         jitter_pct: 0
 
