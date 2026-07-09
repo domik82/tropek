@@ -19,6 +19,7 @@ import { useSloScope } from '@/features/evaluations/components/actions/slo-scope
 import type { SloScopeInitialMode } from '@/features/evaluations/components/actions/slo-scope/types'
 import type { ActionKind, Outcome } from '@/features/evaluations'
 import type { TimeSlotSelection } from './AssetHeatmap'
+import { changePointToMarker } from '../mappers'
 import type {
   GroupedMetricHeatmap,
   HeatmapResult,
@@ -359,14 +360,7 @@ export function AssetPanel({ assetName, initialEvalId }: Props) {
         warningTargets: cell.warning_targets ?? null,
         tabGroup: cell.tab_group ?? null,
         aggregation: cell.aggregation ?? null,
-        changePoint: cell.change_point
-          ? {
-              direction: cell.change_point.direction as 'regression' | 'improvement',
-              changeRelativePct: cell.change_point.change_relative_pct ?? null,
-              transition: cell.change_point.transition ?? null,
-              changeAbsolute: cell.change_point.change_absolute ?? null,
-            }
-          : null,
+        changePoint: changePointToMarker(cell.change_point),
       }))
       const summary: HeatmapSummaryCell[] = group.summary.map(summaryCell => ({
         evaluationId: summaryCell.evaluation_id,

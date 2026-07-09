@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { overallScoreToMiniView, sloGroupToMiniView } from './mappers'
+import { changePointToMarker, overallScoreToMiniView, sloGroupToMiniView } from './mappers'
 import type { HeatmapSummaryCellDto, HeatmapCellGroupedDto } from './mappers'
 
 // ---------------------------------------------------------------------------
@@ -92,6 +92,44 @@ const SLO_GROUP = {
   cells: [INDICATOR_A_M1, INDICATOR_A_M2, INDICATOR_B_M1, INDICATOR_B_M2],
   summary: [SUMMARY_SLO_A, SUMMARY_SLO_B],
 }
+
+// ---------------------------------------------------------------------------
+// changePointToMarker
+// ---------------------------------------------------------------------------
+
+describe('changePointToMarker', () => {
+  it('maps a fully populated change point to camelCase', () => {
+    const marker = changePointToMarker({
+      direction: 'regression',
+      change_relative_pct: -12.5,
+      transition: 'vanished',
+      change_absolute: -1_800_000,
+    })
+
+    expect(marker).toEqual({
+      direction: 'regression',
+      changeRelativePct: -12.5,
+      transition: 'vanished',
+      changeAbsolute: -1_800_000,
+    })
+  })
+
+  it('defaults omitted optional fields to null', () => {
+    const marker = changePointToMarker({ direction: 'improvement' })
+
+    expect(marker).toEqual({
+      direction: 'improvement',
+      changeRelativePct: null,
+      transition: null,
+      changeAbsolute: null,
+    })
+  })
+
+  it('returns null for null and undefined input', () => {
+    expect(changePointToMarker(null)).toBeNull()
+    expect(changePointToMarker(undefined)).toBeNull()
+  })
+})
 
 // ---------------------------------------------------------------------------
 // overallScoreToMiniView
