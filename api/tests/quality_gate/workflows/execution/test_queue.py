@@ -11,6 +11,7 @@ from tropek.config import get_settings
 from tropek.modules.quality_gate.workflows.execution.evaluation_executor import DefinitionLoadError, EvaluationSnapshot
 from tropek.queue import (
     WorkerSettings,
+    _run_change_point_phase,
     _sweeper_cron_seconds,
     finalize_run_job,
     finalize_sweeper_job,
@@ -452,4 +453,41 @@ async def test_watchdog_noop_when_nothing_stuck() -> None:
 
 def test_worker_settings_registers_watchdog_job() -> None:
     assert watchdog_stuck_evaluations_job in WorkerSettings.functions
+
+
+async def test_change_point_phase_decouples_read_compute_write() -> None:
+    """Read fetch and write inserts run in separate sessions; compute holds none."""
+    read_session = AsyncMock()
+    write_session = AsyncMock()
+
+    class _FactoryCM:
+        def __init__(self, session: AsyncMock) -> None:
+            self._session = session
+
+        async def __aenter__(self) -> AsyncMock:
+            return self._session
+
+        async def __aexit__(self, *args: object) -> bool:
+            return False
+
+    sessions = [read_session, write_session]
+    session_factory = MagicMock(side_effect=lambda: _FactoryCM(sessions.pop(0)))
+
+    snapshot = MagicMock()
+    snapshot.eval_id = uuid.uuid4()
+    fake_inputs = MagicMock()
+    fake_batches = [MagicMock()]
+
+    with (
+        patch('tropek.queue.IndicatorRepository') as mock_indicator_cls,
+        patch('tropek.queue.load_change_point_inputs', new=AsyncMock(return_value=fake_inputs)) as mock_load,
+        patch('tropek.queue.detect_change_points_for_objectives', return_value=fake_batches) as mock_detect,
+        patch('tropek.queue.persist_detected_change_points', new=AsyncMock()) as mock_persist,
+    ):
+        mock_indicator_cls.return_value.get_for_evaluation = AsyncMock(return_value=[])
+        await _run_change_point_phase(session_factory, snapshot, MagicMock(), None, MagicMock())
+
+    assert mock_load.await_args.kwargs['session'] is read_session
+    assert mock_persist.await_args.kwargs['session'] is write_session
+    assert 'session' not in mock_detect.call_args.kwargs
     assert any(getattr(cj, 'coroutine', None) is watchdog_stuck_evaluations_job for cj in WorkerSettings.cron_jobs)

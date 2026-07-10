@@ -92,9 +92,18 @@ class EvaluationRunRepository:
         if existing is None or existing.status == EvaluationStatus.COMPLETED:
             return None
 
-        q = select(SLOEvaluation).where(SLOEvaluation.evaluation_id == run_id)
+        # Column-only select: finalize needs just these fields. Selecting the ORM entity
+        # would trigger the lazy='selectin' load of every child's indicator_rows (unused
+        # here) — a heavy over-fetch that ran ~once per child and held the parent-run row
+        # lock across it. Rows expose the columns by name, so the aggregation below is unchanged.
+        q = select(
+            SLOEvaluation.status,
+            SLOEvaluation.result,
+            SLOEvaluation.achieved_points,
+            SLOEvaluation.total_points,
+        ).where(SLOEvaluation.evaluation_id == run_id)
         result = await self._session.execute(q)
-        children = list(result.scalars().all())
+        children = list(result.all())
 
         if not children:
             return None

@@ -6,7 +6,7 @@ import uuid
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -77,7 +77,7 @@ class BaselineRepository:
         q = q.options(
             selectinload(SLOEvaluation.indicator_rows).joinedload(IndicatorResultRow.objective),
         )
-        q = await self._apply_pin_filter(q, asset_id=asset_id, slo_name=slo_name)
+        q = self._apply_pin_filter(q, asset_id=asset_id, slo_name=slo_name)
         q = q.order_by(SLOEvaluation.period_start.desc()).limit(limit)
         rows = await self._session.execute(q)
         return list(rows.scalars().all())
@@ -140,7 +140,7 @@ class BaselineRepository:
                 q = q.where(SLOEvaluation.variables[key].astext == value)
 
         if not skip_pin_filter:
-            q = await self._apply_pin_filter(q, asset_id=asset_id, slo_name=slo_name)
+            q = self._apply_pin_filter(q, asset_id=asset_id, slo_name=slo_name)
         q = q.order_by(SLOEvaluation.period_start.desc()).limit(limit)
         rows = await self._session.execute(q)
         return list(rows.scalars().all())
@@ -170,25 +170,35 @@ class BaselineRepository:
             q = q.where(SLOEvaluation.result.in_(['pass', 'warning']))
         return q
 
-    async def _apply_pin_filter(
+    def _apply_pin_filter(
         self,
         q: Any,
         *,
         asset_id: uuid.UUID,
         slo_name: str,
     ) -> Any:
-        """Restrict baseline window to evaluations after the active pin, if any."""
-        pin_q = select(SLOEvaluation.period_start).where(
-            SLOEvaluation.asset_id == asset_id,
-            SLOEvaluation.slo_name == slo_name,
-            SLOEvaluation.baseline_pinned_at.is_not(None),
-            SLOEvaluation.baseline_unpinned_at.is_(None),
+        """Restrict baseline window to evaluations at/after the active pin, if any.
+
+        Folded into the main query as a scalar subquery (not a separate SELECT), so a
+        baseline fetch is a single round-trip. When no active pin exists the subquery is
+        NULL and the OR keeps every row (no restriction).
+        """
+        active_pin_start = (
+            select(func.max(SLOEvaluation.period_start))
+            .where(
+                SLOEvaluation.asset_id == asset_id,
+                SLOEvaluation.slo_name == slo_name,
+                SLOEvaluation.baseline_pinned_at.is_not(None),
+                SLOEvaluation.baseline_unpinned_at.is_(None),
+            )
+            .scalar_subquery()
         )
-        pin_row = await self._session.execute(pin_q)
-        pin_start = pin_row.scalar_one_or_none()
-        if pin_start is not None:
-            q = q.where(SLOEvaluation.period_start >= pin_start)
-        return q
+        return q.where(
+            or_(
+                active_pin_start.is_(None),
+                SLOEvaluation.period_start >= active_pin_start,
+            )
+        )
 
     async def load_evaluations_for_reeval(
         self,

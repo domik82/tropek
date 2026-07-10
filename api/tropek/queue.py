@@ -18,7 +18,11 @@ from tropek.cache.redis_cache import RedisCache
 from tropek.config import get_settings
 from tropek.db.session import get_session_factory
 from tropek.logging_config import configure_logging
-from tropek.modules.change_points.worker_step import run_change_point_detection
+from tropek.modules.change_points.worker_step import (
+    detect_change_points_for_objectives,
+    load_change_point_inputs,
+    persist_detected_change_points,
+)
 from tropek.modules.datasource.repository import DataSourceRepository
 from tropek.modules.quality_gate.repositories.baseline import BaselineRepository
 from tropek.modules.quality_gate.repositories.evaluation import EvaluationRepository
@@ -126,18 +130,43 @@ async def _run_change_point_phase(
     cache: RedisCache | None,
     log: Any,
 ) -> None:
-    """Phase 4: Change point detection (fault-isolated, separate txn)."""
+    """Phase 4: Change point detection — decoupled read / compute / write.
+
+    Read (short session) loads baseline history once per SLO, compute runs the
+    CPU-bound detection holding no DB connection, and write (short session)
+    persists results. Fault-isolated: detection failure is non-fatal.
+    """
     try:
+        # READ (short session)
         async with session_factory() as session:
             indicator_rows = await IndicatorRepository(session).get_for_evaluation(
                 snapshot.eval_id,
             )
-            await run_change_point_detection(
+            cp_inputs = await load_change_point_inputs(
                 session=session,
                 snapshot=snapshot,
                 slo_def=slo_def,
                 indicator_rows=indicator_rows,
                 cache=cache,
+            )
+            await session.commit()
+
+        if cp_inputs is None:
+            return
+
+        # COMPUTE (no session) — CPU-bound, holds zero DB connections
+        detected_batches = detect_change_points_for_objectives(cp_inputs, log=log)
+        if not detected_batches:
+            return
+
+        # WRITE (short session)
+        async with session_factory() as session:
+            await persist_detected_change_points(
+                session=session,
+                snapshot=snapshot,
+                comparison_name=cp_inputs.comparison_name,
+                detected_batches=detected_batches,
+                log=log,
             )
             await session.commit()
     except (OSError, ValueError, TypeError, RuntimeError, LookupError):

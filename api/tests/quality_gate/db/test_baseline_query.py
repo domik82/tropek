@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import UTC, datetime, timedelta
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -95,3 +96,46 @@ async def test_baselines_return_pass_only(db_session: AsyncSession) -> None:
     )
     assert all(b.result == 'pass' for b in baselines)
     assert len(baselines) == 1
+
+
+async def test_get_evaluation_baselines_is_single_round_trip() -> None:
+    """Pin filtering is folded into the main query — one execute, not a separate pin SELECT."""
+    session = AsyncMock()
+    query_result = MagicMock()
+    query_result.scalars.return_value.all.return_value = []
+    session.execute = AsyncMock(return_value=query_result)
+
+    repo = BaselineRepository(session)
+    await repo.get_evaluation_baselines(
+        asset_id=uuid.uuid4(),
+        slo_name='test-slo',
+        period_start_before=_BASE,
+        include_result_with_score='all',
+        limit=10,
+    )
+    assert session.execute.await_count == 1
+
+
+@pytest.mark.integration
+async def test_baselines_respect_active_pin(db_session: AsyncSession) -> None:
+    """An active baseline pin restricts baselines to evaluations at/after the pin."""
+    asset_id = await _create_asset(db_session, 'bl-pin')
+    repo = EvaluationRepository(db_session)
+    bl_repo = BaselineRepository(db_session)
+
+    ev0 = await _create_eval(db_session, repo, asset_id, result='pass', offset_hours=0)
+    ev1 = await _create_eval(db_session, repo, asset_id, result='pass', offset_hours=1)  # pin here
+    ev2 = await _create_eval(db_session, repo, asset_id, result='pass', offset_hours=2)
+    await repo.pin_baseline(ev1, reason='baseline floor', author='test')
+
+    baselines = await bl_repo.get_evaluation_baselines(
+        asset_id=asset_id,
+        slo_name='test-slo',
+        period_start_before=_BASE + timedelta(hours=5),
+        include_result_with_score='all',
+        limit=10,
+    )
+    ids = [b.id for b in baselines]
+    assert ev0 not in ids  # before the pin — excluded
+    assert ev1 in ids  # at the pin — included
+    assert ev2 in ids  # after the pin — included

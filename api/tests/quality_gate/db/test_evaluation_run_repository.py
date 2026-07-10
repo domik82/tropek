@@ -4,6 +4,8 @@ import uuid
 from datetime import UTC, datetime
 
 import pytest
+from sqlalchemy import event
+from sqlalchemy.engine import Engine
 from tropek.db.models import Asset, AssetType, SLOEvaluation
 from tropek.modules.quality_gate.repositories.evaluation_run import (
     EvaluationRunRepository,
@@ -77,6 +79,55 @@ async def test_finalize_worst_case_result(db_session, asset):
     assert rolled_up.result == 'warning'
     assert rolled_up.achieved_points == 18
     assert rolled_up.total_points == 20
+
+
+@pytest.mark.integration
+async def test_finalize_does_not_load_indicator_rows(db_session, asset):
+    """The child scan reads only status/points columns — it must NOT selectin-load indicator_rows.
+
+    Finalize runs ~once per child (~45x/run); loading each child's indicator_rows there is a
+    heavy, unused over-fetch that dominated slow-query time and held the parent-row lock.
+    """
+    repo = EvaluationRunRepository(db_session)
+    start = datetime(2026, 1, 15, tzinfo=UTC)
+    end = datetime(2026, 1, 16, tzinfo=UTC)
+    run = await repo.create(asset_id=asset.id, eval_name='daily', period_start=start, period_end=end)
+    await db_session.flush()
+    for i in range(3):
+        db_session.add(
+            SLOEvaluation(
+                evaluation_id=run.id,
+                evaluation_name='daily',
+                asset_id=asset.id,
+                asset_snapshot={},
+                period_start=start,
+                period_end=end,
+                slo_name=f'slo-{i}',
+                ingestion_mode='pull',
+                status='completed',
+                result='pass',
+                score=10.0,
+                achieved_points=10,
+                total_points=10,
+            )
+        )
+    await db_session.flush()
+
+    statements: list[str] = []
+
+    def _capture(conn, cursor, statement, parameters, context, executemany):
+        statements.append(statement)
+
+    event.listen(Engine, 'before_cursor_execute', _capture)
+    try:
+        rolled_up = await repo.finalize_if_all_done(run.id)
+    finally:
+        event.remove(Engine, 'before_cursor_execute', _capture)
+
+    assert rolled_up is not None
+    assert rolled_up.achieved_points == 30
+    offending = [statement for statement in statements if 'indicator_results' in statement]
+    assert not offending, f'finalize must not load indicator_results; got: {offending}'
 
 
 @pytest.mark.integration

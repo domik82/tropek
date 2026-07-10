@@ -11,7 +11,7 @@ Each scenario documents:
   - What the worker step saves after filtering (expected behaviour)
   - WHY — so we can reason about edge cases
 
-The gather_metric_series + detect_change_points + _persist_change_points
+The extract_metric_series + detect_change_points + _persist_change_points
 pipeline is the unit under test. We mock only the async repos (baseline
 history, change_point store) — the detector runs for real.
 """
@@ -28,7 +28,7 @@ from tropek.modules.change_points.detector import detect_change_points
 from tropek.modules.change_points.repository import ResolvedConfig
 from tropek.modules.change_points.worker_step import (
     _persist_change_points,
-    gather_metric_series,
+    extract_metric_series,
 )
 
 # ---------------------------------------------------------------------------
@@ -163,13 +163,17 @@ async def _run_pipeline(
 
     resolved = config or _config()
 
-    series = await gather_metric_series(
-        baseline_repo=baseline_repo,
+    history_evals = await baseline_repo.get_evaluation_baselines(
         asset_id=snap.asset_id,
         slo_name=snap.slo_name,
-        metric_name=metric,
-        period_end=snap.period_end,
+        period_start_before=snap.period_end,
+        include_result_with_score='all',
+        limit=resolved.window_size,
         evaluation_name=evaluation_name,
+    )
+    series = extract_metric_series(
+        history_evals=history_evals,
+        metric_name=metric,
         window_size=resolved.window_size,
     )
 
@@ -467,38 +471,5 @@ class TestInsufficientHistory:
         assert len(inserts) >= 1
 
 
-# ---------------------------------------------------------------------------
-# Scenario 7: Eval-name scoping
-#
-#   The comparison_name scopes which history is fetched. Two different eval
-#   names produce independent histories. This test verifies the parameter
-#   is passed through correctly.
-# ---------------------------------------------------------------------------
-
-
-class TestEvalNameScoping:
-    """Verify evaluation_name is passed to baseline repo."""
-
-    async def test_comparison_name_passed_to_baseline_query(self) -> None:
-        """The baseline repo receives the evaluation_name for scoping."""
-        history = _make_history(
-            [350.0] * 10 + [700.0] * 3,
-            evaluation_name='prod-validation',
-        )
-        baseline_repo = MagicMock()
-        baseline_repo.get_evaluation_baselines = AsyncMock(return_value=history)
-
-        snap = _snapshot(evaluation_name='prod-validation')
-
-        await gather_metric_series(
-            baseline_repo=baseline_repo,
-            asset_id=snap.asset_id,
-            slo_name=snap.slo_name,
-            metric_name='response_time_p95',
-            period_end=snap.period_end,
-            evaluation_name='prod-validation',
-            window_size=30,
-        )
-
-        call_kwargs = baseline_repo.get_evaluation_baselines.call_args.kwargs
-        assert call_kwargs['evaluation_name'] == 'prod-validation'
+# Eval-name scoping (that evaluation_name is passed to the baseline query) is
+# covered by tests/change_points/test_worker_step.py::TestLoadChangePointInputs.

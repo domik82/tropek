@@ -11,11 +11,16 @@ from datetime import datetime
 from typing import Any
 
 import structlog
-from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from tropek.db.models import IndicatorResultRow, SLODefinition
 from tropek.modules.change_points.detector import ChangePointResult, detect_change_points
+from tropek.modules.change_points.models import (
+    ChangePointInputs,
+    DetectedBatch,
+    EnabledObjective,
+    MetricSeries,
+)
 from tropek.modules.change_points.repository import (
     ChangePointInsertParams,
     ChangePointRepository,
@@ -28,15 +33,6 @@ from tropek.modules.quality_gate.workflows.execution.evaluation_helpers import r
 logger = structlog.get_logger()
 
 REGIME_STD_MULTIPLIER = 2.0
-
-
-class MetricSeries(BaseModel):
-    """Time-ordered metric values extracted from evaluation history."""
-
-    values: list[float]
-    timestamps: list[datetime]
-    period_ends: list[datetime | None]
-    evaluation_run_ids: list[uuid.UUID]
 
 
 def _same_regime(
@@ -56,32 +52,26 @@ def _same_regime(
     return abs(current_mean - previous_mean) < REGIME_STD_MULTIPLIER * previous_std
 
 
-async def gather_metric_series(
+def extract_metric_series(
     *,
-    baseline_repo: BaselineRepository,
-    asset_id: uuid.UUID,
-    slo_name: str,
+    history_evals: list[Any],
     metric_name: str,
-    period_end: datetime,
-    evaluation_name: str,
     window_size: int,
 ) -> MetricSeries:
-    """Query evaluation history and extract a single metric's time series."""
-    history_evals = await baseline_repo.get_evaluation_baselines(
-        asset_id=asset_id,
-        slo_name=slo_name,
-        period_start_before=period_end,
-        include_result_with_score='all',
-        limit=window_size,
-        evaluation_name=evaluation_name,
-    )
+    """Extract one metric's time series from pre-loaded baseline history.
+
+    ``history_evals`` is ordered period_start DESC (as returned by
+    ``get_evaluation_baselines``). Take the most-recent ``window_size``
+    evaluations, order them ascending, and pull the matching metric value.
+    """
+    windowed = history_evals[:window_size]
 
     values: list[float] = []
     timestamps: list[datetime] = []
     period_ends: list[datetime | None] = []
     evaluation_run_ids: list[uuid.UUID] = []
 
-    for evaluation in sorted(history_evals, key=lambda ev: ev.period_start):
+    for evaluation in sorted(windowed, key=lambda evaluation: evaluation.period_start):
         for row in evaluation.indicator_rows or []:
             if row.objective and row.objective.sli == metric_name and row.value is not None:
                 values.append(float(row.value))
@@ -98,107 +88,114 @@ async def gather_metric_series(
     )
 
 
-async def run_change_point_detection(
+async def load_change_point_inputs(
     *,
     session: AsyncSession,
     snapshot: EvaluationSnapshot,
     slo_def: SLODefinition,
     indicator_rows: list[IndicatorResultRow],
     cache: Any | None = None,
-) -> None:
-    """Run Otava change point detection for each enabled metric.
+) -> ChangePointInputs | None:
+    """Read phase: resolve enabled objectives and fetch baseline history once.
 
-    Called as a fault-isolated step after evaluation scoring. Iterates over
-    each SLO objective, gathers the metric's historical time series, runs
-    E-Divisive detection, and persists any new change points with dedup.
-
-    Skips detection entirely when compare_to points to a different evaluation
-    series, since cross-series change points are not statistically meaningful.
+    Returns None for a cross-series comparison or when no objective is enabled.
     """
-    log = logger.bind(
-        evaluation_id=str(snapshot.eval_id),
-        slo_name=snapshot.slo_name,
-    )
-
-    comparison_name = resolve_comparison_name(
-        snapshot.compare_to,
-        snapshot.evaluation_name,
-    )
-
+    comparison_name = resolve_comparison_name(snapshot.compare_to, snapshot.evaluation_name)
     if comparison_name != snapshot.evaluation_name:
-        log.debug(
-            'skipping change point detection for cross-series comparison',
-            evaluation_name=snapshot.evaluation_name,
-            comparison_name=comparison_name,
-        )
-        return
+        return None
 
     indicator_lookup = {row.objective.sli: row for row in indicator_rows if row.objective}
 
     config_repo = ConfigurationRepository(session)
     system_defaults = await config_repo.get_change_point_defaults()
 
-    change_point_repo = ChangePointRepository(session)
-    baseline_repo = BaselineRepository(session, cache=cache)
-
+    enabled_objectives: list[EnabledObjective] = []
     for objective in slo_def.objectives:
         indicator_row = indicator_lookup.get(objective.sli)
         if not indicator_row:
             continue
-
         resolved = ChangePointRepository.resolve_from_objective(objective, system_defaults)
         if not resolved.enabled:
             continue
-
-        try:
-            series = await gather_metric_series(
-                baseline_repo=baseline_repo,
-                asset_id=snapshot.asset_id,
-                slo_name=snapshot.slo_name,
+        enabled_objectives.append(
+            EnabledObjective(
                 metric_name=objective.sli,
-                period_end=snapshot.period_end,
-                evaluation_name=comparison_name,
-                window_size=resolved.window_size,
+                resolved=resolved,
+                indicator_result_id=indicator_row.id,
             )
+        )
 
-            if len(series.values) < resolved.min_sample_size:
+    if not enabled_objectives:
+        return None
+
+    max_window = max(objective.resolved.window_size for objective in enabled_objectives)
+    baseline_repo = BaselineRepository(session, cache=cache)
+    shared_history = await baseline_repo.get_evaluation_baselines(
+        asset_id=snapshot.asset_id,
+        slo_name=snapshot.slo_name,
+        period_start_before=snapshot.period_end,
+        include_result_with_score='all',
+        limit=max_window,
+        evaluation_name=comparison_name,
+    )
+
+    return ChangePointInputs(
+        comparison_name=comparison_name,
+        enabled_objectives=enabled_objectives,
+        shared_history=list(shared_history),
+    )
+
+
+def detect_change_points_for_objectives(
+    cp_inputs: ChangePointInputs,
+    *,
+    log: Any,
+) -> list[DetectedBatch]:
+    """Compute phase: run detection per objective. Pure — holds no DB session."""
+    batches: list[DetectedBatch] = []
+    for objective in cp_inputs.enabled_objectives:
+        try:
+            series = extract_metric_series(
+                history_evals=cp_inputs.shared_history,
+                metric_name=objective.metric_name,
+                window_size=objective.resolved.window_size,
+            )
+            if len(series.values) < objective.resolved.min_sample_size:
                 log.debug(
                     'insufficient history for change point detection',
-                    metric=objective.sli,
+                    metric=objective.metric_name,
                     sample_count=len(series.values),
-                    min_required=resolved.min_sample_size,
+                    min_required=objective.resolved.min_sample_size,
                 )
                 continue
 
             detected = detect_change_points(
                 values=series.values,
                 timestamps=series.timestamps,
-                higher_is_better=resolved.higher_is_better,
-                window_size=resolved.window_size,
-                max_pvalue=resolved.max_pvalue,
-                min_magnitude=resolved.min_magnitude,
-                min_sample_size=resolved.min_sample_size,
-                pvalue_strict_threshold=resolved.pvalue_strict_threshold,
-                pvalue_moderate_threshold=resolved.pvalue_moderate_threshold,
+                higher_is_better=objective.resolved.higher_is_better,
+                window_size=objective.resolved.window_size,
+                max_pvalue=objective.resolved.max_pvalue,
+                min_magnitude=objective.resolved.min_magnitude,
+                min_sample_size=objective.resolved.min_sample_size,
+                pvalue_strict_threshold=objective.resolved.pvalue_strict_threshold,
+                pvalue_moderate_threshold=objective.resolved.pvalue_moderate_threshold,
             )
-
             if detected:
-                await _persist_change_points(
-                    log=log,
-                    change_point_repo=change_point_repo,
-                    detected=detected,
-                    series=series,
-                    snapshot=snapshot,
-                    metric_name=objective.sli,
-                    indicator_result_id=indicator_row.id,
-                    comparison_name=comparison_name,
+                batches.append(
+                    DetectedBatch(
+                        metric_name=objective.metric_name,
+                        indicator_result_id=objective.indicator_result_id,
+                        series=series,
+                        detected=detected,
+                    )
                 )
         except (OSError, ValueError, TypeError, RuntimeError, LookupError):
             log.warning(
                 'change point detection failed for metric',
-                metric=objective.sli,
+                metric=objective.metric_name,
                 exc_info=True,
             )
+    return batches
 
 
 async def _persist_change_points(
@@ -303,4 +300,27 @@ async def _persist_change_points(
             metric=metric_name,
             direction=candidate.direction,
             magnitude_pct=candidate.change_relative_pct,
+        )
+
+
+async def persist_detected_change_points(
+    *,
+    session: AsyncSession,
+    snapshot: EvaluationSnapshot,
+    comparison_name: str,
+    detected_batches: list[DetectedBatch],
+    log: Any,
+) -> None:
+    """Write phase: dedup and insert detected change points, one batch per metric."""
+    change_point_repo = ChangePointRepository(session)
+    for batch in detected_batches:
+        await _persist_change_points(
+            log=log,
+            change_point_repo=change_point_repo,
+            detected=batch.detected,
+            series=batch.series,
+            snapshot=snapshot,
+            metric_name=batch.metric_name,
+            indicator_result_id=batch.indicator_result_id,
+            comparison_name=comparison_name,
         )

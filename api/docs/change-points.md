@@ -135,29 +135,40 @@ Module constants: `DEFAULT_WINDOW_SIZE=30`, `DEFAULT_MAX_PVALUE=0.001`,
 
 ## Worker Step
 
-`run_change_point_detection()` runs as **Phase 4** of the evaluation job, fault-isolated so
-detection failure never blocks evaluation completion.
+The change-point phase runs as **Phase 4** of the evaluation job, fault-isolated so detection
+failure never blocks evaluation completion. It is split into three decoupled steps, each in its
+own short DB session (orchestrated by `_run_change_point_phase()` in `queue.py`): a **read** that
+loads baseline history once per SLO, a **compute** that runs detection holding no DB connection,
+and a **write** that persists results. This keeps the phase from pinning one connection
+idle-in-transaction across the CPU-bound detection, and collapses the per-objective history
+loads into a single query per SLO.
 
-**Lifecycle:**
+**Read** (`load_change_point_inputs()`):
 
 1. **Resolve comparison_name** from `snapshot.compare_to` via `resolve_comparison_name()`.
-   If `comparison_name != evaluation_name` (cross-series comparison), skip entirely -- CPs
+   If `comparison_name != evaluation_name` (cross-series comparison), return `None` -- CPs
    across different series are not statistically meaningful.
 2. **Load system defaults** from `ConfigurationRepository.get_change_point_defaults()` (reads
    `change_point.*` entries from the `configuration` table).
-3. **For each SLO objective:**
-   a. Skip if no matching indicator row in `indicator_lookup`.
-   b. Resolve config via `ChangePointRepository.resolve_from_objective()` -- per-objective
-      override merged with system defaults. Algorithm tuning params (`pvalue_strict_threshold`,
-      `pvalue_moderate_threshold`) always come from system defaults.
-   c. Skip if `enabled=False`.
-   d. Call `gather_metric_series()` -- queries `BaselineRepository.get_evaluation_baselines()`
-      for historical values, scoped by `evaluation_name`.
-   e. Skip if insufficient history (`< min_sample_size`).
-   f. Run `detect_change_points()`.
-   g. Call `_persist_change_points()` if any detected.
-4. **Error handling**: each metric is wrapped in `try/except` catching
-   `(OSError, ValueError, TypeError, RuntimeError, LookupError)`. Failure is non-fatal.
+3. **Resolve enabled objectives**: for each SLO objective with a matching indicator row,
+   `ChangePointRepository.resolve_from_objective()` merges the per-objective override with system
+   defaults (algorithm tuning params `pvalue_strict_threshold`/`pvalue_moderate_threshold` always
+   come from system defaults); objectives with `enabled=False` are dropped. Returns `None` if
+   none are enabled.
+4. **Fetch baseline history once** via `BaselineRepository.get_evaluation_baselines()` with
+   `limit = max(window_size)` across the enabled objectives, scoped by `evaluation_name` -- one
+   query per SLO instead of one per objective.
+
+**Compute** (`detect_change_points_for_objectives()`) -- pure, holds no DB session:
+
+For each enabled objective, `extract_metric_series()` slices the shared history to that
+objective's `window_size` (the most-recent N, ordered ascending) and pulls the metric's values;
+skip if insufficient history (`< min_sample_size`); run `detect_change_points()`. Each objective
+is wrapped in `try/except` catching `(OSError, ValueError, TypeError, RuntimeError, LookupError)`
+so one metric's failure never aborts the others.
+
+**Write** (`persist_detected_change_points()`): runs `_persist_change_points()` for each detected
+batch in the write session.
 
 **Persistence pipeline** (`_persist_change_points()`):
 
@@ -276,8 +287,9 @@ The `SLOObjective` model has a `change_point_config` relationship (`uselist=Fals
 `resolve_comparison_name()` derives the target series name for both baseline queries (Phase 2)
 and CP detection (Phase 4).
 
-**Worker queue** -- Phase 4 of `run_evaluation_job()` calls `run_change_point_detection()` in
-a separate transaction with blanket exception handling. Re-loads indicator rows via
+**Worker queue** -- Phase 4 of `run_evaluation_job()` is `_run_change_point_phase()`, which
+orchestrates the read / compute / write steps across two short sessions (compute holds none)
+with blanket exception handling. The read session re-loads indicator rows via
 `IndicatorRepository.get_for_evaluation()`.
 
 **Presenter** -- `build_column_fragment()` accepts an optional `change_point_lookup` dict and
