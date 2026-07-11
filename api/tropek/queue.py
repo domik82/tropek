@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import time
 import uuid
 from datetime import UTC, datetime, timedelta
@@ -94,6 +95,23 @@ async def create_arq_pool() -> ArqRedis:
     return await create_pool(_redis_settings())
 
 
+async def _event_loop_lag_monitor(interval_seconds: float = 0.5, warn_threshold_seconds: float = 1.0) -> None:
+    """Detect event-loop blocking: sleep a fixed interval, measure actual elapsed, warn on overrun.
+
+    The worker runs many jobs as coroutines on ONE event loop. A synchronous / non-awaiting
+    operation (e.g. CPU-bound work not offloaded to an executor) freezes the whole loop, so every
+    concurrent job stalls together for the same span. A large ``lag_s`` here is the fingerprint of
+    that — it localises "random 60s stalls" to loop-blocking rather than DB waits or slow queries.
+    """
+    log = logger.bind(monitor='event_loop_lag')
+    while True:
+        started = time.perf_counter()
+        await asyncio.sleep(interval_seconds)
+        lag_seconds = time.perf_counter() - started - interval_seconds
+        if lag_seconds > warn_threshold_seconds:
+            log.warning('event loop stalled', lag_s=round(lag_seconds, 2))
+
+
 async def _worker_startup(ctx: dict[str, Any]) -> None:
     """Initialize Redis cache, httpx client, and logging for worker processes."""
     configure_logging(service_name='worker')
@@ -104,10 +122,14 @@ async def _worker_startup(ctx: dict[str, Any]) -> None:
         timeout=settings.reliability.adapter_timeout_seconds,
         limits=httpx.Limits(max_connections=20, max_keepalive_connections=10),
     )
+    ctx['lag_monitor'] = asyncio.create_task(_event_loop_lag_monitor())
 
 
 async def _worker_shutdown(ctx: dict[str, Any]) -> None:
     """Close Redis cache and httpx client connections."""
+    lag_monitor: asyncio.Task[None] | None = ctx.get('lag_monitor')
+    if lag_monitor is not None:
+        lag_monitor.cancel()
     cache: RedisCache | None = ctx.get('cache')
     if cache and cache._redis:
         await cache._redis.close()
@@ -138,6 +160,7 @@ async def _run_change_point_phase(
     """
     try:
         # READ (short session)
+        cp_started = time.perf_counter()
         async with session_factory() as session:
             indicator_rows = await IndicatorRepository(session).get_for_evaluation(
                 snapshot.eval_id,
@@ -150,16 +173,29 @@ async def _run_change_point_phase(
                 cache=cache,
             )
             await session.commit()
+        log.info('cp phase timing', step='read', elapsed_s=round(time.perf_counter() - cp_started, 3))
 
         if cp_inputs is None:
             return
 
-        # COMPUTE (no session) — CPU-bound, holds zero DB connections
-        detected_batches = detect_change_points_for_objectives(cp_inputs, log=log)
+        # COMPUTE (no session) — CPU-bound, holds zero DB connections. Offloaded to a worker thread so it
+        # never blocks the event loop: a synchronous detect here would starve other concurrent evals'
+        # coroutines from committing, holding their transactions (and row locks) open and stalling the
+        # whole worker (observed: worker core pegged at 100% with 7 evals stuck 'idle in transaction').
+        cp_started = time.perf_counter()
+        detected_batches = await asyncio.to_thread(detect_change_points_for_objectives, cp_inputs, log=log)
+        log.info(
+            'cp phase timing',
+            step='compute',
+            elapsed_s=round(time.perf_counter() - cp_started, 3),
+            objectives=len(cp_inputs.enabled_objectives),
+            history=len(cp_inputs.shared_history),
+        )
         if not detected_batches:
             return
 
         # WRITE (short session)
+        cp_started = time.perf_counter()
         async with session_factory() as session:
             await persist_detected_change_points(
                 session=session,
@@ -169,6 +205,7 @@ async def _run_change_point_phase(
                 log=log,
             )
             await session.commit()
+        log.info('cp phase timing', step='write', elapsed_s=round(time.perf_counter() - cp_started, 3))
     except (OSError, ValueError, TypeError, RuntimeError, LookupError):
         log.warning('change point detection step failed, skipping', exc_info=True)
 

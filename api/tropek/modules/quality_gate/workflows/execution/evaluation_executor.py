@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import time
 import uuid
 from datetime import datetime
 from typing import Any
@@ -490,6 +491,7 @@ async def write_sli_values_phase(
 
     Caller should COMMIT after this returns.
     """
+    phase_started = time.perf_counter()
     sli_rows = _build_sli_rows(
         eval_id=snapshot.eval_id,
         ev=snapshot,
@@ -500,6 +502,11 @@ async def write_sli_values_phase(
     if sli_rows:
         sli_repo = SLIValueRepository(session)
         await sli_repo.write_sli_values(sli_rows)
+    logger.bind(evaluation_id=str(snapshot.eval_id)).info(
+        'phase 3b: sli values written',
+        rows=len(sli_rows),
+        elapsed_s=round(time.perf_counter() - phase_started, 3),
+    )
 
 
 async def warm_heatmap_column_cache(
