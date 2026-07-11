@@ -351,14 +351,28 @@ class TrendRepository:
         """Build trend fragments for the given SLO-evaluations from the DB."""
         if not slo_evaluation_ids:
             return []
-        total_weight_subquery = (
-            select(func.coalesce(func.sum(SLOObjective.weight), 1))
-            .join(IndicatorResultRow, IndicatorResultRow.slo_objective_id == SLOObjective.id)
-            .where(IndicatorResultRow.slo_evaluation_id == SLOEvaluation.id)
-            .correlate(SLOEvaluation)
-            .scalar_subquery()
-            .label('total_weight')
+        # Total objective weight per SLO-evaluation, computed once via a grouped
+        # aggregate rather than a per-row correlated subquery. The correlated form
+        # re-executed for every (indicator x run) row returned by the main query
+        # (~metrics x runs per SLO) and dominated query time at scale — a single
+        # SLO's batched fetch hit multiple seconds. Summing the weight of every
+        # objective that produced an indicator result for the evaluation (whether
+        # or not each metric has an SLI value) keeps the normalized-score
+        # denominator byte-for-byte identical to ``get_trend_by_domain``.
+        total_weight_query = (
+            select(
+                IndicatorResultRow.slo_evaluation_id.label('slo_evaluation_id'),
+                func.coalesce(func.sum(SLOObjective.weight), 1).label('total_weight'),
+            )
+            .join(SLOObjective, IndicatorResultRow.slo_objective_id == SLOObjective.id)
+            .where(IndicatorResultRow.slo_evaluation_id.in_(slo_evaluation_ids))
+            .group_by(IndicatorResultRow.slo_evaluation_id)
         )
+        total_weight_result = await self._session.execute(total_weight_query)
+        total_weight_by_evaluation: dict[uuid.UUID, float] = {
+            row.slo_evaluation_id: row.total_weight for row in total_weight_result.all()
+        }
+
         query = (
             select(
                 SLOEvaluation.id.label('slo_evaluation_id'),
@@ -371,7 +385,6 @@ class TrendRepository:
                 IndicatorResultRow.compared_value,
                 IndicatorResultRow.score,
                 IndicatorResultRow.targets.label('targets'),
-                total_weight_subquery,
             )
             .join(SLOEvaluation, SLIValue.slo_evaluation_id == SLOEvaluation.id)
             .join(IndicatorResultRow, IndicatorResultRow.slo_evaluation_id == SLOEvaluation.id)
@@ -393,7 +406,7 @@ class TrendRepository:
                     'period_start': row.period_start,
                     'period_end': row.period_end,
                     'evaluation_name': row.evaluation_name,
-                    'total_weight': row.total_weight,
+                    'total_weight': total_weight_by_evaluation.get(row.slo_evaluation_id, 1),
                     'rows': [],
                 },
             )
