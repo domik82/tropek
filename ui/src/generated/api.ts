@@ -484,6 +484,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/assets/{asset_name}/slos/{slo_name}/trends": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Slo Trends
+         * @description Return every indicator's trend series for one asset+SLO in a single response.
+         */
+        get: operations["get_slo_trends_assets__asset_name__slos__slo_name__trends_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/assets/{name}": {
         parameters: {
             query?: never;
@@ -4509,6 +4529,13 @@ export interface components {
             slo_name: string;
         };
         /**
+         * SloTrendsResponse
+         * @description Batched trend response: metric name -> that indicator's ordered points.
+         */
+        SloTrendsResponse: {
+            [key: string]: components["schemas"]["TrendPoint"][];
+        };
+        /**
          * TagKeyCount
          * @description A tag key with its usage count.
          */
@@ -6139,6 +6166,52 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TrendPoint"][];
+                };
+            };
+            /** @description Error */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_slo_trends_assets__asset_name__slos__slo_name__trends_get: {
+        parameters: {
+            query: {
+                from: string;
+                to?: string;
+                /** @description When false, bypass the Redis trend fragment cache entirely (debugging / parity test). */
+                cache?: boolean;
+            };
+            header?: never;
+            path: {
+                asset_name: string;
+                slo_name: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SloTrendsResponse"];
                 };
             };
             /** @description Error */

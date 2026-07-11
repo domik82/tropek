@@ -8,6 +8,7 @@ import {
   fetchEvaluations,
   fetchEvaluationDetail,
   fetchTrend,
+  fetchSloTrends,
   fetchColumnAnnotations,
   fetchTrendAnnotations,
   addAnnotation,
@@ -91,6 +92,21 @@ export function useTrend(assetName: string, sloName: string, metric: string) {
     queryKey: evaluationKeys.trend(assetName, sloName, metric, dateRange),
     queryFn: () => fetchTrend(assetName, sloName, metric, dateRange),
     enabled: !!assetName && !!sloName && !!metric,
+    staleTime: Infinity,
+  })
+}
+
+export function useSloTrends(
+  assetName: string,
+  sloName: string,
+  options?: { enabled?: boolean },
+) {
+  const { from, to } = useTimeRange()
+  const dateRange = { from, ...(to ? { to } : {}) }
+  return useQuery({
+    queryKey: evaluationKeys.sloTrends(assetName, sloName, dateRange),
+    queryFn: () => fetchSloTrends(assetName, sloName, dateRange),
+    enabled: (options?.enabled ?? true) && !!assetName && !!sloName,
     staleTime: Infinity,
   })
 }

@@ -25,6 +25,7 @@ import {
   dtoToEvaluationNameEntry,
   dtoToEvaluationSummary,
   dtoToReEvaluateResponse,
+  dtoToSloTrends,
   dtoToTrendPoint,
   overrideStatusInputToDto,
   reEvaluateInputToDto,
@@ -36,6 +37,7 @@ import {
   type EvaluationSummaryDto,
   type EvaluateSingleResponseDto,
   type ReEvaluateResponseDto,
+  type SloTrendsResponseDto,
   type TrendPointDto,
 } from './mappers'
 
@@ -102,6 +104,22 @@ export async function fetchTrend(
   if (!res.ok) throw new Error(`fetchTrend: ${res.status}`)
   const body: TrendPointDto[] = await res.json()
   return body.map(dtoToTrendPoint)
+}
+
+export async function fetchSloTrends(
+  assetName: string,
+  sloName: string,
+  dateRange?: { from?: string; to?: string },
+): Promise<Record<string, TrendPoint[]>> {
+  const params = new URLSearchParams()
+  if (dateRange?.from) params.set('from', dateRange.from)
+  if (dateRange?.to) params.set('to', dateRange.to)
+  const res = await fetch(
+    `${BASE}/assets/${encodeURIComponent(assetName)}/slos/${encodeURIComponent(sloName)}/trends?${params}`,
+  )
+  if (!res.ok) throw new Error(`fetchSloTrends: ${res.status}`)
+  const body: SloTrendsResponseDto = await res.json()
+  return dtoToSloTrends(body)
 }
 
 export async function triggerEvaluation(

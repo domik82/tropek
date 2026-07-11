@@ -14,6 +14,7 @@ import {
   dtoToIndicator,
   dtoToAnnotation,
   dtoToTrendPoint,
+  dtoToSloTrends,
   dtoToEvaluationNameEntry,
   dtoToReEvaluateResponse,
   triggerEvaluationInputToDto,
@@ -322,6 +323,27 @@ describe('dtoToTrendPoint', () => {
       transition: 'vanished',
       changeAbsolute: -13_300_000,
     })
+  })
+})
+
+describe('dtoToSloTrends', () => {
+  it('maps each metric to domain TrendPoints', () => {
+    const dto = {
+      cpu_time: [
+        {
+          timestamp: '2026-01-01T12:00:00Z',
+          value: 1.5,
+          score: 42,
+          eval_id: '11111111-1111-1111-1111-111111111111',
+          result: 'pass',
+          baseline: 1,
+        },
+      ],
+    }
+    const domain = dtoToSloTrends(dto)
+    expect(Object.keys(domain)).toEqual(['cpu_time'])
+    expect(domain.cpu_time[0].value).toBe(1.5)
+    expect(domain.cpu_time[0].evalId).toBe('11111111-1111-1111-1111-111111111111')
   })
 })
 

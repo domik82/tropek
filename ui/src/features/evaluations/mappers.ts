@@ -44,6 +44,7 @@ export type PassTargetDto = components['schemas']['PassTarget']
 export type FailingIndicatorDto = components['schemas']['FailingIndicator']
 export type SliMetadataDto = components['schemas']['SliMetadata']
 export type TrendPointDto = components['schemas']['TrendPoint']
+export type SloTrendsResponseDto = components['schemas']['SloTrendsResponse']
 export type TrendTargetsDto = components['schemas']['TrendTargets']
 export type TrendTargetEntryDto = components['schemas']['TrendTargetEntry']
 export type EvaluationNameEntryDto = components['schemas']['EvaluationNameEntry']
@@ -560,6 +561,14 @@ export function dtoToTrendPoint(dto: TrendPointDto): TrendPoint {
         }
       : null,
   }
+}
+
+export function dtoToSloTrends(dto: SloTrendsResponseDto): Record<string, TrendPoint[]> {
+  const trendPointsByMetric: Record<string, TrendPoint[]> = {}
+  for (const [metric, points] of Object.entries(dto)) {
+    trendPointsByMetric[metric] = points.map(dtoToTrendPoint)
+  }
+  return trendPointsByMetric
 }
 
 export function dtoToEvaluationNameEntry(

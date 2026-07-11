@@ -22,6 +22,8 @@ export const evaluationKeys = {
   allTrends: ['trend'] as const,
   trend: (assetName: string, sloName: string, metric: string, dateRange?: Record<string, string | undefined>) =>
     ['trend', assetName, sloName, metric, dateRange] as const,
+  sloTrends: (assetName: string, sloName: string, dateRange?: Record<string, string | undefined>) =>
+    ['slo-trends', assetName, sloName, dateRange] as const,
   allHeatmaps: ['metric-heatmap'] as const,
   heatmap: (assetName: string, filters?: Record<string, string | undefined>, evalNames?: string[]) =>
     evalNames?.length
