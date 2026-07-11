@@ -20,6 +20,7 @@ cache:
     evaluation_detail: 300
     slo_definition: 600
     heatmap_column: 604800  # 7 days — safety net, invalidation is the primary mechanism
+    trend_column: 604800  # 7 days — per-SLO trend fragment cache backstop
 
 queue:
   backend: "redis"

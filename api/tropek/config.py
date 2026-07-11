@@ -76,6 +76,7 @@ class CacheTTLSettings:
         self.evaluation_detail: int = data.get('evaluation_detail', 300)
         self.slo_definition: int = data.get('slo_definition', 600)
         self.heatmap_column: int = data.get('heatmap_column', 7 * 24 * 60 * 60)
+        self.trend_column: int = data.get('trend_column', 7 * 24 * 60 * 60)
 
 
 class CacheSettings(BaseSettings):
