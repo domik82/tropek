@@ -20,6 +20,8 @@ from tropek.db.models import (
 )
 from tropek.modules.change_points.repository import ChangePointKey
 from tropek.modules.quality_gate.evaluation_engine.constants import EvaluationStatus
+from tropek.modules.quality_gate.schemas.trend import TrendColumnFragment
+from tropek.modules.quality_gate.workflows.presentation.trend_assembler import TrendRow, build_trend_fragment
 
 
 def _trend_change_point(
@@ -308,6 +310,114 @@ class TrendRepository:
                 ),
             }
             for row in rows
+        ]
+
+    async def list_slo_evaluation_ids_for_trend(
+        self,
+        *,
+        asset_id: uuid.UUID,
+        slo_name: str,
+        from_ts: datetime,
+        to_ts: datetime | None = None,
+    ) -> list[uuid.UUID]:
+        """Return SLO-evaluation ids for a trend range, oldest first.
+
+        Same filter set as ``get_trend_by_domain`` so the batched endpoint covers
+        exactly the same evaluations as the single-metric endpoint.
+        """
+        query = (
+            select(SLOEvaluation.id)
+            .where(
+                SLOEvaluation.asset_id == asset_id,
+                SLOEvaluation.slo_name == slo_name,
+                SLOEvaluation.invalidated == False,  # noqa: E712
+                SLOEvaluation.result.is_not(None),
+                SLOEvaluation.period_start >= from_ts,
+            )
+            .order_by(SLOEvaluation.period_start)
+        )
+        if to_ts:
+            query = query.where(SLOEvaluation.period_start <= to_ts)
+        result = await self._session.execute(query)
+        return [row[0] for row in result.all()]
+
+    async def get_trend_fragment_rows(
+        self,
+        *,
+        asset_id: uuid.UUID,
+        slo_name: str,
+        slo_evaluation_ids: list[uuid.UUID],
+    ) -> list[TrendColumnFragment]:
+        """Build trend fragments for the given SLO-evaluations from the DB."""
+        if not slo_evaluation_ids:
+            return []
+        total_weight_subquery = (
+            select(func.coalesce(func.sum(SLOObjective.weight), 1))
+            .join(IndicatorResultRow, IndicatorResultRow.slo_objective_id == SLOObjective.id)
+            .where(IndicatorResultRow.slo_evaluation_id == SLOEvaluation.id)
+            .correlate(SLOEvaluation)
+            .scalar_subquery()
+            .label('total_weight')
+        )
+        query = (
+            select(
+                SLOEvaluation.id.label('slo_evaluation_id'),
+                SLOEvaluation.period_start,
+                SLOEvaluation.period_end,
+                SLOEvaluation.evaluation_name,
+                SLIValue.value,
+                SLIValue.metric_name,
+                IndicatorResultRow.status.label('result'),
+                IndicatorResultRow.compared_value,
+                IndicatorResultRow.score,
+                IndicatorResultRow.targets.label('targets'),
+                total_weight_subquery,
+            )
+            .join(SLOEvaluation, SLIValue.slo_evaluation_id == SLOEvaluation.id)
+            .join(IndicatorResultRow, IndicatorResultRow.slo_evaluation_id == SLOEvaluation.id)
+            .join(SLOObjective, IndicatorResultRow.slo_objective_id == SLOObjective.id)
+            .where(
+                SLOEvaluation.asset_id == asset_id,
+                SLOEvaluation.id.in_(slo_evaluation_ids),
+                SLOObjective.sli == SLIValue.metric_name,
+            )
+            .order_by(SLOEvaluation.period_start, SLIValue.metric_name)
+        )
+        result = await self._session.execute(query)
+        grouped: dict[uuid.UUID, dict[str, Any]] = {}
+        for row in result.all():
+            entry = grouped.setdefault(
+                row.slo_evaluation_id,
+                {
+                    'slo_name': slo_name,
+                    'period_start': row.period_start,
+                    'period_end': row.period_end,
+                    'evaluation_name': row.evaluation_name,
+                    'total_weight': row.total_weight,
+                    'rows': [],
+                },
+            )
+            entry['rows'].append(
+                TrendRow(
+                    metric=row.metric_name,
+                    value=row.value,
+                    raw_score=row.score,
+                    result=row.result,
+                    compared_value=row.compared_value,
+                    targets=row.targets,
+                )
+            )
+        return [
+            build_trend_fragment(
+                slo_evaluation_id=slo_evaluation_id,
+                slo_name=entry['slo_name'],
+                period_start=entry['period_start'],
+                period_end=entry['period_end'],
+                evaluation_name=entry['evaluation_name'],
+                total_weight=entry['total_weight'],
+                rows=entry['rows'],
+            )
+            for slo_evaluation_id, entry in grouped.items()
         ]
 
     async def get_trend(

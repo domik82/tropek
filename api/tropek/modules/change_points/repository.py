@@ -321,6 +321,39 @@ class ChangePointRepository:
             for row in result.all()
         }
 
+    async def get_change_points_for_slo_range(
+        self,
+        *,
+        asset_id: uuid.UUID,
+        slo_name: str,
+        from_ts: datetime,
+        to_ts: datetime | None = None,
+    ) -> dict[ChangePointKey, ChangePoint]:
+        """Load change points for every metric of an SLO within a time range."""
+        query = (
+            select(ChangePoint, EvaluationRun.eval_name)
+            .join(EvaluationRun, ChangePoint.evaluation_run_id == EvaluationRun.id)
+            .where(
+                ChangePoint.asset_id == asset_id,
+                ChangePoint.slo_name == slo_name,
+                ChangePoint.period_start >= from_ts,
+                ChangePoint.status != 'hidden',
+            )
+        )
+        if to_ts is not None:
+            query = query.where(ChangePoint.period_start <= to_ts)
+        result = await self._session.execute(query)
+        return {
+            ChangePointKey(
+                row.ChangePoint.slo_name,
+                row.ChangePoint.metric_name,
+                row.ChangePoint.period_start,
+                row.ChangePoint.period_end,
+                row.eval_name,
+            ): row.ChangePoint
+            for row in result.all()
+        }
+
     @staticmethod
     def resolve_from_objective(
         objective: SLOObjective,
