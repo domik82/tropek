@@ -1,14 +1,24 @@
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
+import { MemoryRouter } from 'react-router-dom'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { EvaluationIndicatorSection } from './EvaluationIndicatorSection'
 import { ChartPreferencesProvider } from '@/lib/chart-preferences-context'
+import { TimeRangeProvider } from '@/lib/time-range-context'
 import type { EvaluationDetail, Indicator } from '../domain'
 
 function renderSection(ev: EvaluationDetail) {
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
-    <ChartPreferencesProvider>
-      <EvaluationIndicatorSection evaluation={ev} />
-    </ChartPreferencesProvider>,
+    <MemoryRouter>
+      <QueryClientProvider client={queryClient}>
+        <TimeRangeProvider>
+          <ChartPreferencesProvider>
+            <EvaluationIndicatorSection evaluation={ev} />
+          </ChartPreferencesProvider>
+        </TimeRangeProvider>
+      </QueryClientProvider>
+    </MemoryRouter>,
   )
 }
 

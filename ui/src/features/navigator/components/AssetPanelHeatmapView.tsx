@@ -14,6 +14,8 @@ import type { Indicator, SliMetadata } from '@/features/evaluations'
 import { MetaTimelineSection } from '@/features/meta_timeline'
 import { ChartViewControls } from '@/components/charts/ChartViewControls'
 import { useChartPreferences } from '@/lib/chart-preferences-context'
+import { useSloTrends } from '@/features/evaluations/hooks'
+import { useInViewport } from '../hooks/useInViewport'
 
 interface Props {
   assetName: string
@@ -42,6 +44,52 @@ interface Props {
   focusPeriodEnd: string | undefined
   /** Stable evaluation id for the meta-timeline focus marker. */
   focusEvalId: string | undefined
+}
+
+// Owns the lazy per-SLO trend fetch for one expanded group: this component
+// is only ever mounted while its group is expanded (see the call site below),
+// so the batched useSloTrends call just needs to gate on the container having
+// scrolled into view for collapsed/offscreen groups to never fire a request.
+// Each indicator's MetricTrendBlock receives its own metric slice from the
+// single batched response instead of fetching individually.
+function SloTrendGroup(props: {
+  assetName: string
+  group: SloBreakdownGroup
+  selectedEvalId: string | undefined
+  selectedColumnSloEvalIds: ReadonlySet<string>
+  selectedPeriodStart: string | undefined
+  columns: number
+  onEvalSelect: (evalId: string) => void
+  trendIdFor: (sloName: string, metric: string) => string
+  scrollToRow: (sloName: string, metric: string) => void
+}) {
+  const { ref, inView } = useInViewport<HTMLDivElement>()
+  const { data: trendsByMetric, isLoading } = useSloTrends(
+    props.assetName, props.group.slo_name, { enabled: inView },
+  )
+  return (
+    <div ref={ref} className="border border-t-0 border-border rounded-b p-4">
+      <div className={props.columns === 1 ? 'grid grid-cols-1 gap-4' : 'grid grid-cols-1 xl:grid-cols-2 gap-4'}>
+        {props.group.indicators.map(indicator => (
+          <MetricTrendBlock
+            key={indicator.metric}
+            assetName={props.assetName}
+            sloName={props.group.slo_name}
+            sloDisplayName={props.group.slo_display_name}
+            selectedEvalId={props.selectedEvalId}
+            selectedEvalIds={props.selectedColumnSloEvalIds}
+            selectedPeriodStart={props.selectedPeriodStart}
+            indicator={indicator}
+            trend={trendsByMetric?.[indicator.metric]}
+            isLoading={isLoading}
+            onEvalSelect={props.onEvalSelect}
+            blockId={props.trendIdFor(props.group.slo_name, indicator.metric)}
+            onScrollToTable={() => props.scrollToRow(props.group.slo_name, indicator.metric)}
+          />
+        ))}
+      </div>
+    </div>
+  )
 }
 
 export function AssetPanelHeatmapView({
@@ -274,14 +322,14 @@ export function AssetPanelHeatmapView({
             </p>
             <ChartViewControls />
           </div>
-          {trendGroups.map(g => {
-            const expanded = sloExpandState.get(g.slo_name) ?? false
-            const label = g.slo_display_name ?? g.slo_name
+          {trendGroups.map(indicatorGroup => {
+            const expanded = sloExpandState.get(indicatorGroup.slo_name) ?? false
+            const label = indicatorGroup.slo_display_name ?? indicatorGroup.slo_name
             return (
-              <div key={g.slo_name}>
+              <div key={indicatorGroup.slo_name}>
                 <button
                   type="button"
-                  onClick={() => onSloToggle(g.slo_name)}
+                  onClick={() => onSloToggle(indicatorGroup.slo_name)}
                   className="relative w-full flex items-center gap-2 px-3 py-2 rounded-t border border-border bg-surface-sunken hover:bg-state-hover-bg transition-colors text-left"
                 >
                   {expanded ? (
@@ -307,32 +355,24 @@ export function AssetPanelHeatmapView({
                     <Grid3X3 className="size-5" />
                   </span>
                   <span className="flex-1" />
-                  {g.result !== 'none' && (
-                    <span className={`text-xs font-bold uppercase ${resultColour(g.result)}`}>
-                      {g.result}
+                  {indicatorGroup.result !== 'none' && (
+                    <span className={`text-xs font-bold uppercase ${resultColour(indicatorGroup.result)}`}>
+                      {indicatorGroup.result}
                     </span>
                   )}
                 </button>
-                {g.indicators.length > 0 && expanded && (
-                  <div className="border border-t-0 border-border rounded-b p-4">
-                    <div className={columns === 1 ? 'grid grid-cols-1 gap-4' : 'grid grid-cols-1 xl:grid-cols-2 gap-4'}>
-                      {g.indicators.map(ind => (
-                        <MetricTrendBlock
-                          key={ind.metric}
-                          assetName={assetName}
-                          sloName={g.slo_name}
-                          sloDisplayName={g.slo_display_name}
-                          selectedEvalId={effectiveEvalId}
-                          selectedEvalIds={selectedColumnSloEvalIds}
-                          selectedPeriodStart={selectedPeriodStart}
-                          indicator={ind}
-                          onEvalSelect={handleTrendClick}
-                          blockId={trendIdFor(g.slo_name, ind.metric)}
-                          onScrollToTable={() => scrollToRow(g.slo_name, ind.metric)}
-                        />
-                      ))}
-                    </div>
-                  </div>
+                {indicatorGroup.indicators.length > 0 && expanded && (
+                  <SloTrendGroup
+                    assetName={assetName}
+                    group={indicatorGroup}
+                    selectedEvalId={effectiveEvalId}
+                    selectedColumnSloEvalIds={selectedColumnSloEvalIds}
+                    selectedPeriodStart={selectedPeriodStart}
+                    columns={columns}
+                    onEvalSelect={handleTrendClick}
+                    trendIdFor={trendIdFor}
+                    scrollToRow={scrollToRow}
+                  />
                 )}
               </div>
             )

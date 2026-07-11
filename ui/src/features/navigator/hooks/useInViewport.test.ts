@@ -1,4 +1,5 @@
 // ui/src/features/navigator/hooks/useInViewport.test.ts
+import { test, beforeEach, expect, vi } from 'vitest'
 import { renderHook, act } from '@testing-library/react'
 import { useInViewport } from './useInViewport'
 

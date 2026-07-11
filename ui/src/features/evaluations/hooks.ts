@@ -176,6 +176,7 @@ export function useInvalidateEvaluation(evalId: string) {
       qc.invalidateQueries({ queryKey: evaluationKeys.allNames })
       qc.invalidateQueries({ queryKey: evaluationKeys.allHeatmaps })
       qc.invalidateQueries({ queryKey: evaluationKeys.allTrends })
+      qc.invalidateQueries({ queryKey: evaluationKeys.allSloTrends })
     },
   })
 }
@@ -190,6 +191,7 @@ export function useRestoreEvaluation(evalId: string) {
       qc.invalidateQueries({ queryKey: evaluationKeys.allNames })
       qc.invalidateQueries({ queryKey: evaluationKeys.allHeatmaps })
       qc.invalidateQueries({ queryKey: evaluationKeys.allTrends })
+      qc.invalidateQueries({ queryKey: evaluationKeys.allSloTrends })
     },
   })
 }
@@ -203,6 +205,7 @@ export function useOverrideStatus(evalId: string) {
       qc.invalidateQueries({ queryKey: evaluationKeys.all })
       qc.invalidateQueries({ queryKey: evaluationKeys.allHeatmaps })
       qc.invalidateQueries({ queryKey: evaluationKeys.allTrends })
+      qc.invalidateQueries({ queryKey: evaluationKeys.allSloTrends })
     },
   })
 }
@@ -216,6 +219,7 @@ export function usePinBaseline(evalId: string) {
       qc.invalidateQueries({ queryKey: evaluationKeys.detail(evalId) })
       qc.invalidateQueries({ queryKey: evaluationKeys.all })
       qc.invalidateQueries({ queryKey: evaluationKeys.allTrends })
+      qc.invalidateQueries({ queryKey: evaluationKeys.allSloTrends })
     },
   })
 }
@@ -229,6 +233,7 @@ export function useReEvaluate() {
       qc.invalidateQueries({ queryKey: evaluationKeys.allNames })
       qc.invalidateQueries({ queryKey: evaluationKeys.allHeatmaps })
       qc.invalidateQueries({ queryKey: evaluationKeys.allTrends })
+      qc.invalidateQueries({ queryKey: evaluationKeys.allSloTrends })
     },
   })
 }

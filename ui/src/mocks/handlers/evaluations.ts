@@ -90,6 +90,22 @@ export const evaluationHandlers = [
     return HttpResponse.json(getTrend(params.assetName as string, metric))
   }),
 
+  // Batched per-SLO trends — mirrors the /trend handler above but returns all
+  // of an SLO's metrics keyed by metric name in one response (SloTrendsResponse).
+  http.get('/api/assets/:assetName/slos/:sloName/trends', async ({ params }) => {
+    const { getGroupedMetricHeatmap, getTrend } = await gen()
+    const assetName = params.assetName as string
+    const sloName = params.sloName as string
+    const heatmap = getGroupedMetricHeatmap(assetName)
+    const group = heatmap.groups.find(candidate => candidate.slo_name === sloName)
+    const metricNames = group ? group.metrics.map(metric => metric.name) : []
+    const trendsByMetric: Record<string, unknown> = {}
+    for (const metricName of metricNames) {
+      trendsByMetric[metricName] = getTrend(assetName, metricName)
+    }
+    return HttpResponse.json(trendsByMetric)
+  }),
+
   http.post('/api/evaluations', async ({ request }) => {
     const body = await request.json() as Record<string, unknown>
     return HttpResponse.json(

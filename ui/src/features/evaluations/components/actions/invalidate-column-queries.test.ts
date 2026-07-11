@@ -15,6 +15,7 @@ describe('invalidateColumnQueries', () => {
     expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: evaluationKeys.all })
     expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: evaluationKeys.allHeatmaps })
     expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: evaluationKeys.allTrends })
+    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: evaluationKeys.allSloTrends })
   })
 
   it('handles empty id list by only invalidating list-level keys', () => {
