@@ -131,8 +131,8 @@ async def _worker_shutdown(ctx: dict[str, Any]) -> None:
     if lag_monitor is not None:
         lag_monitor.cancel()
     cache: RedisCache | None = ctx.get('cache')
-    if cache and cache._redis:
-        await cache._redis.close()
+    if cache and cache.client:
+        await cache.client.close()
     http_client: httpx.AsyncClient | None = ctx.get('http_client')
     if http_client:
         await http_client.aclose()
@@ -292,9 +292,9 @@ async def run_evaluation_job(ctx: dict[str, Any], eval_id_str: str, defer_count:
     # Phase 3a: Write evaluation result + indicator rows (COMMIT immediately)
     settings = get_settings()
     heatmap_column_cache: HeatmapColumnCache | None = None
-    if cache is not None and cache._redis is not None:
+    if cache is not None and cache.client is not None:
         heatmap_column_cache = HeatmapColumnCache(
-            cache._redis,
+            cache.client,
             ttl_seconds=settings.cache.ttl.heatmap_column,
         )
     async with session_factory() as session:

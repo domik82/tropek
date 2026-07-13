@@ -41,6 +41,7 @@ def _make_repos() -> QualityGateRepos:
         category_repo=AsyncMock(),
         sli_repo=AsyncMock(),
         trend_repo=AsyncMock(),
+        heatmap_repo=AsyncMock(),
         baseline_repo=AsyncMock(),
         asset_repo=AsyncMock(),
         asset_group_repo=AsyncMock(),

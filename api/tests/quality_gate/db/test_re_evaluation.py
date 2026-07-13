@@ -19,6 +19,7 @@ from tropek.modules.quality_gate.repositories.annotation_category import (
 from tropek.modules.quality_gate.repositories.baseline import BaselineRepository
 from tropek.modules.quality_gate.repositories.evaluation import EvaluationRepository
 from tropek.modules.quality_gate.repositories.evaluation_run import EvaluationRunRepository
+from tropek.modules.quality_gate.repositories.heatmap import HeatmapRepository
 from tropek.modules.quality_gate.repositories.indicator import IndicatorRepository
 from tropek.modules.quality_gate.repositories.sli_value import SLIValueRepository
 from tropek.modules.quality_gate.repositories.trend import TrendRepository
@@ -43,6 +44,7 @@ def _build_repos(session: AsyncSession) -> QualityGateRepos:
         category_repo=AnnotationCategoryRepository(session),
         sli_repo=SLIValueRepository(session),
         trend_repo=TrendRepository(session),
+        heatmap_repo=HeatmapRepository(session),
         baseline_repo=BaselineRepository(session),
         asset_repo=AssetRepository(session),
         asset_group_repo=AssetGroupRepository(session),

@@ -1,4 +1,4 @@
-"""Trend repository — DB access for trend queries and metric heatmaps."""
+"""Trend repository — DB access for per-metric and per-SLO trend queries."""
 
 from __future__ import annotations
 
@@ -8,18 +8,14 @@ from typing import Any
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
 
 from tropek.db.models import (
-    EvaluationAnnotation,
-    EvaluationRun,
     IndicatorResultRow,
     SLIValue,
     SLOEvaluation,
     SLOObjective,
 )
 from tropek.modules.change_points.repository import ChangePointKey
-from tropek.modules.quality_gate.evaluation_engine.constants import EvaluationStatus
 from tropek.modules.quality_gate.schemas.trend import TrendColumnFragment
 from tropek.modules.quality_gate.workflows.presentation.trend_assembler import TrendRow, build_trend_fragment
 
@@ -47,177 +43,10 @@ def _trend_change_point(
 
 
 class TrendRepository:
-    """Data access layer for trend queries and metric heatmaps."""
+    """Data access layer for per-metric and per-SLO trend queries."""
 
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
-
-    async def get_metric_heatmap(
-        self,
-        *,
-        asset_id: uuid.UUID,
-        evaluation_name: list[str] | None = None,
-        from_ts: datetime | None = None,
-        to_ts: datetime | None = None,
-    ) -> list[SLOEvaluation]:
-        """Fetch completed evaluations for an asset within a date range.
-
-        When no date range is provided, falls back to the most recent 500
-        evaluations as a safety cap.
-        """
-        q = (
-            select(SLOEvaluation)
-            .options(
-                selectinload(SLOEvaluation.indicator_rows).joinedload(IndicatorResultRow.objective),
-            )
-            .where(
-                SLOEvaluation.asset_id == asset_id,
-                SLOEvaluation.status == EvaluationStatus.COMPLETED,
-            )
-            .order_by(SLOEvaluation.period_start.desc())
-        )
-        if evaluation_name:
-            q = q.where(SLOEvaluation.evaluation_name.in_(evaluation_name))
-        if from_ts:
-            q = q.where(SLOEvaluation.period_start >= from_ts)
-        if to_ts:
-            q = q.where(SLOEvaluation.period_start <= to_ts)
-        if not from_ts and not to_ts:
-            q = q.limit(500)
-        result = await self._session.execute(q)
-        return list(result.scalars().all())
-
-    async def get_grouped_metric_heatmap(
-        self,
-        *,
-        asset_id: uuid.UUID,
-        eval_name: list[str] | None = None,
-        from_ts: datetime | None = None,
-        to_ts: datetime | None = None,
-        run_id_filter: list[uuid.UUID] | None = None,
-    ) -> list[EvaluationRun]:
-        """Fetch completed EvaluationRun rows with all child SLO evaluations and indicator results.
-
-        Returns rows ordered period_start DESC (caller reverses to oldest-first for display).
-        When no date range is provided, falls back to the most recent 100 runs as a safety cap.
-
-        When ``run_id_filter`` is provided, only runs whose id is in that list are
-        returned (and the 100-run safety cap is skipped — the caller already decided
-        which ids to load). This is how the cached read path refetches exactly the
-        columns that missed the Redis column cache.
-        """
-        q = (
-            select(EvaluationRun)
-            .options(
-                selectinload(EvaluationRun.slo_evaluations)
-                .selectinload(SLOEvaluation.indicator_rows)
-                .joinedload(IndicatorResultRow.objective),
-            )
-            .where(
-                EvaluationRun.asset_id == asset_id,
-                EvaluationRun.status == EvaluationStatus.COMPLETED,
-            )
-            .order_by(EvaluationRun.period_start.desc())
-        )
-        if eval_name:
-            q = q.where(EvaluationRun.eval_name.in_(eval_name))
-        if from_ts:
-            q = q.where(EvaluationRun.period_start >= from_ts)
-        if to_ts:
-            q = q.where(EvaluationRun.period_start <= to_ts)
-        if run_id_filter is not None:
-            q = q.where(EvaluationRun.id.in_(run_id_filter))
-        elif not from_ts and not to_ts:
-            q = q.limit(100)
-        result = await self._session.execute(q)
-        return list(result.scalars().all())
-
-    async def get_run_with_slo_evaluations(self, run_id: uuid.UUID) -> EvaluationRun | None:
-        """Return one ``EvaluationRun`` with all relationships needed by the fragment builder.
-
-        Eagerly loads ``slo_evaluations`` and their ``indicator_rows`` joined to
-        ``SLOObjective``, mirroring the loader chain in
-        :meth:`get_grouped_metric_heatmap` so the worker warm path produces an
-        identical fragment to the read path's rebuild.
-        """
-        query = (
-            select(EvaluationRun)
-            .options(
-                selectinload(EvaluationRun.slo_evaluations)
-                .selectinload(SLOEvaluation.indicator_rows)
-                .joinedload(IndicatorResultRow.objective),
-            )
-            .where(EvaluationRun.id == run_id)
-        )
-        result = await self._session.execute(query)
-        return result.scalar_one_or_none()
-
-    async def list_runs_for_heatmap(
-        self,
-        *,
-        asset_id: uuid.UUID,
-        eval_name: list[str] | None = None,
-        from_ts: datetime | None = None,
-        to_ts: datetime | None = None,
-    ) -> list[EvaluationRun]:
-        """Return completed EvaluationRun rows in the window with no joined relationships.
-
-        This is the lightweight cache-key inventory query for the grouped heatmap
-        read path: cheaper than ``get_grouped_metric_heatmap`` because it skips
-        the JOIN to ``slo_evaluations`` / ``indicator_rows`` / ``slo_objectives``.
-        Rows are ordered period_start DESC to match the heavy query, so the
-        caller can treat the two as returning the same run set for the same
-        window. When no date range is provided, falls back to the most recent
-        100 runs as a safety cap — again mirroring ``get_grouped_metric_heatmap``.
-        """
-        q = (
-            select(EvaluationRun)
-            .where(
-                EvaluationRun.asset_id == asset_id,
-                EvaluationRun.status == EvaluationStatus.COMPLETED,
-            )
-            .order_by(EvaluationRun.period_start.desc())
-        )
-        if eval_name:
-            q = q.where(EvaluationRun.eval_name.in_(eval_name))
-        if from_ts:
-            q = q.where(EvaluationRun.period_start >= from_ts)
-        if to_ts:
-            q = q.where(EvaluationRun.period_start <= to_ts)
-        if not from_ts and not to_ts:
-            q = q.limit(100)
-        result = await self._session.execute(q)
-        return list(result.scalars().all())
-
-    async def get_run_ids_with_notes(self, run_ids: list[uuid.UUID]) -> set[uuid.UUID]:
-        """Return the subset of `run_ids` with at least one non-hidden annotation.
-
-        Annotations attach polymorphically (XOR) to either a child SLOEvaluation
-        (re-eval deltas, per-SLO notes) or directly to the EvaluationRun
-        (column-level notes created from the UI). Both forms must count toward
-        the heatmap's note indicator, so this runs a UNION: SLO-level hits
-        resolved via `slo_evaluations.evaluation_id`, run-level hits resolved
-        directly from `evaluation_annotations.evaluation_run_id`.
-        """
-        if not run_ids:
-            return set()
-        slo_level_hits = (
-            select(SLOEvaluation.evaluation_id.label('run_id'))
-            .join(
-                EvaluationAnnotation,
-                EvaluationAnnotation.slo_evaluation_id == SLOEvaluation.id,
-            )
-            .where(
-                SLOEvaluation.evaluation_id.in_(run_ids),
-                EvaluationAnnotation.hidden_at.is_(None),
-            )
-        )
-        run_level_hits = select(EvaluationAnnotation.evaluation_run_id.label('run_id')).where(
-            EvaluationAnnotation.evaluation_run_id.in_(run_ids),
-            EvaluationAnnotation.hidden_at.is_(None),
-        )
-        result = await self._session.execute(slo_level_hits.union(run_level_hits))
-        return {row[0] for row in result.all()}
 
     async def get_trend_by_domain(
         self,
@@ -238,7 +67,7 @@ class TrendRepository:
         """
         # Scalar subquery: total weight of all objectives for the same evaluation.
         # Used to convert raw weighted score → percentage that stacks to 100%.
-        total_weight_sq = (
+        total_weight_subquery = (
             select(func.coalesce(func.sum(SLOObjective.weight), 1))
             .join(IndicatorResultRow, IndicatorResultRow.slo_objective_id == SLOObjective.id)
             .where(IndicatorResultRow.slo_evaluation_id == SLOEvaluation.id)
@@ -247,7 +76,7 @@ class TrendRepository:
             .label('total_weight')
         )
 
-        inner = (
+        base_query = (
             select(
                 SLOEvaluation.period_start,
                 SLOEvaluation.period_end,
@@ -258,7 +87,7 @@ class TrendRepository:
                 IndicatorResultRow.compared_value,
                 IndicatorResultRow.score,
                 IndicatorResultRow.targets.label('targets'),
-                total_weight_sq,
+                total_weight_subquery,
             )
             .join(SLOEvaluation, SLIValue.slo_evaluation_id == SLOEvaluation.id)
             .join(
@@ -279,15 +108,17 @@ class TrendRepository:
             )
             .order_by(SLOEvaluation.period_start.desc())
         )
-        inner = inner.where(SLOEvaluation.period_start >= from_ts)
+        base_query = base_query.where(SLOEvaluation.period_start >= from_ts)
         if to_ts:
-            inner = inner.where(SLOEvaluation.period_start <= to_ts)
-        inner_sq = inner.subquery()
+            base_query = base_query.where(SLOEvaluation.period_start <= to_ts)
+        windowed_subquery = base_query.subquery()
         # Secondary sort on evaluation_name so points sharing a period_start
         # arrive in a deterministic order — must match the heatmap column
         # tie-breaker so x-indices align across every chart.
         rows = await self._session.execute(
-            select(inner_sq).order_by(inner_sq.c.period_start, inner_sq.c.evaluation_name)
+            select(windowed_subquery).order_by(
+                windowed_subquery.c.period_start, windowed_subquery.c.evaluation_name
+            )
         )
         return [
             {
@@ -456,7 +287,7 @@ class TrendRepository:
         Returns:
             List of {timestamp, value, eval_id, result} dicts, ordered by time ascending.
         """
-        q = (
+        query = (
             select(
                 SLIValue.eval_start,
                 SLIValue.value,
@@ -471,15 +302,15 @@ class TrendRepository:
             )
         )
         if asset_name:
-            q = q.where(SLIValue.asset_name == asset_name)
+            query = query.where(SLIValue.asset_name == asset_name)
         if from_:
-            q = q.where(SLIValue.eval_start >= from_)
+            query = query.where(SLIValue.eval_start >= from_)
         if to:
-            q = q.where(SLIValue.eval_start <= to)
+            query = query.where(SLIValue.eval_start <= to)
         if result_filter:
-            q = q.where(SLOEvaluation.result.in_(result_filter))
-        q = q.order_by(SLIValue.eval_start)
-        rows = await self._session.execute(q)
+            query = query.where(SLOEvaluation.result.in_(result_filter))
+        query = query.order_by(SLIValue.eval_start)
+        rows = await self._session.execute(query)
         return [
             {
                 'timestamp': row.eval_start.isoformat(),

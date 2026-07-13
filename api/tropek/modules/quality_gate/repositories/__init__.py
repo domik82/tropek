@@ -4,6 +4,7 @@ from tropek.modules.quality_gate.repositories.annotation import AnnotationReposi
 from tropek.modules.quality_gate.repositories.baseline import BaselineRepository
 from tropek.modules.quality_gate.repositories.evaluation import EvaluationRepository
 from tropek.modules.quality_gate.repositories.evaluation_run import EvaluationRunRepository
+from tropek.modules.quality_gate.repositories.heatmap import HeatmapRepository
 from tropek.modules.quality_gate.repositories.indicator import (
     IndicatorRepository,
     build_indicator_row_dicts,
@@ -16,6 +17,7 @@ __all__ = [
     'BaselineRepository',
     'EvaluationRepository',
     'EvaluationRunRepository',
+    'HeatmapRepository',
     'IndicatorRepository',
     'SLIValueRepository',
     'TrendRepository',

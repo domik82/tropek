@@ -233,7 +233,7 @@ async def get_grouped_metric_heatmap_new(
     if asset is None:
         raise NotFoundError('asset', asset_name)
 
-    candidate_runs = await repos.trend_repo.list_runs_for_heatmap(
+    candidate_runs = await repos.heatmap_repo.list_runs_for_heatmap(
         asset_id=asset.id,
         eval_name=evaluation_name,
         from_ts=from_ts,
@@ -248,14 +248,14 @@ async def get_grouped_metric_heatmap_new(
 
     missing_ids = [run_id for run_id in candidate_run_ids if str(run_id) not in fragments_by_id]
     if missing_ids:
-        missing_runs = await repos.trend_repo.get_grouped_metric_heatmap(asset_id=asset.id, run_id_filter=missing_ids)
+        missing_runs = await repos.heatmap_repo.get_grouped_metric_heatmap(asset_id=asset.id, run_id_filter=missing_ids)
         rebuilt_fragments = [build_column_fragment(run, has_notes=False) for run in missing_runs]
         for fragment in rebuilt_fragments:
             fragments_by_id[str(fragment.evaluation_run_id)] = fragment
         if active_cache is not None:
             await active_cache.set_many(rebuilt_fragments)
 
-    noted_run_ids = await repos.trend_repo.get_run_ids_with_notes(candidate_run_ids)
+    noted_run_ids = await repos.heatmap_repo.get_run_ids_with_notes(candidate_run_ids)
 
     ordered_runs = sorted(candidate_runs, key=lambda r: (r.period_start, r.eval_name or ''))
     ordered_fragments: list[HeatmapColumnFragment] = []
@@ -305,7 +305,7 @@ async def get_metric_heatmap_new(
     asset = await repos.asset_repo.get_by_name(asset_name)
     if asset is None:
         raise NotFoundError('asset', asset_name)
-    evals = await repos.trend_repo.get_metric_heatmap(
+    evals = await repos.heatmap_repo.get_metric_heatmap(
         asset_id=asset.id,
         evaluation_name=evaluation_name,
         from_ts=from_ts,

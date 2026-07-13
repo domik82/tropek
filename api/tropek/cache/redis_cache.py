@@ -12,6 +12,16 @@ class RedisCache:
     def __init__(self, redis: Any) -> None:
         self._redis = redis
 
+    @property
+    def client(self) -> Any:
+        """The underlying ``redis.asyncio`` client.
+
+        Exposed so cache-fragment helpers (heatmap/trend column caches) and the
+        worker warm path can share the single client this ``RedisCache`` owns,
+        without reaching through the private attribute.
+        """
+        return self._redis
+
     async def get_or_load(
         self,
         key: str,

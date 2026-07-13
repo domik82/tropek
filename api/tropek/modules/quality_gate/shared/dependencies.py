@@ -23,6 +23,7 @@ from tropek.modules.quality_gate.repositories.annotation_category import (
 from tropek.modules.quality_gate.repositories.baseline import BaselineRepository
 from tropek.modules.quality_gate.repositories.evaluation import EvaluationRepository
 from tropek.modules.quality_gate.repositories.evaluation_run import EvaluationRunRepository
+from tropek.modules.quality_gate.repositories.heatmap import HeatmapRepository
 from tropek.modules.quality_gate.repositories.sli_value import SLIValueRepository
 from tropek.modules.quality_gate.repositories.trend import TrendRepository
 from tropek.modules.quality_gate.workflows.presentation.heatmap_cache import HeatmapColumnCache
@@ -48,7 +49,7 @@ async def get_heatmap_column_cache(request: Request) -> HeatmapColumnCache | Non
         return None
     settings = get_settings()
     return HeatmapColumnCache(
-        redis_cache._redis,
+        redis_cache.client,
         ttl_seconds=settings.cache.ttl.heatmap_column,
     )
 
@@ -59,7 +60,7 @@ async def get_trend_column_cache(request: Request) -> TrendColumnCache | None:
     if redis_cache is None:
         return None
     settings = get_settings()
-    return TrendColumnCache(redis_cache._redis, ttl_seconds=settings.cache.ttl.trend_column)
+    return TrendColumnCache(redis_cache.client, ttl_seconds=settings.cache.ttl.trend_column)
 
 
 @dataclass
@@ -72,6 +73,7 @@ class QualityGateRepos:
     category_repo: AnnotationCategoryRepository
     sli_repo: SLIValueRepository
     trend_repo: TrendRepository
+    heatmap_repo: HeatmapRepository
     baseline_repo: BaselineRepository
     asset_repo: AssetRepository
     asset_group_repo: AssetGroupRepository
@@ -100,6 +102,7 @@ async def get_qg_repos(
         category_repo=AnnotationCategoryRepository(session),
         sli_repo=SLIValueRepository(session),
         trend_repo=TrendRepository(session),
+        heatmap_repo=HeatmapRepository(session),
         baseline_repo=BaselineRepository(session, cache=cache),
         asset_repo=AssetRepository(session, cache=cache),
         asset_group_repo=AssetGroupRepository(session),

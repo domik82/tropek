@@ -51,7 +51,7 @@ async def test_resolve_baselines_no_comparisons() -> None:
     ev = _make_ev()
     baseline_repo = AsyncMock()
 
-    baselines, ids = await _resolve_baselines(baseline_repo, slo, ev, ['rt'])
+    baselines, ids = await _resolve_baselines(baseline_repo, slo, ev)
 
     assert baselines == {}
     assert ids == []
@@ -73,7 +73,6 @@ async def test_resolve_baselines_aggregates_per_metric() -> None:
         baseline_repo,
         slo,
         ev,
-        ['rt', 'err'],
     )
 
     assert ids == ['ev1', 'ev2']
@@ -95,7 +94,6 @@ async def test_resolve_baselines_skips_none_values() -> None:
         baseline_repo,
         slo,
         ev,
-        ['rt', 'err'],
     )
 
     assert baselines['rt'] == 100.0
@@ -117,7 +115,6 @@ async def test_resolve_baselines_returns_compared_ids() -> None:
         baseline_repo,
         slo,
         ev,
-        ['rt'],
     )
 
     assert ids == ['aaa', 'bbb']

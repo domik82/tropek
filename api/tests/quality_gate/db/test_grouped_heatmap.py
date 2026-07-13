@@ -13,7 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from tropek.db.models import Asset, AssetType
 from tropek.modules.quality_gate.repositories.evaluation import EvaluationRepository
 from tropek.modules.quality_gate.repositories.evaluation_run import EvaluationRunRepository
-from tropek.modules.quality_gate.repositories.trend import TrendRepository
+from tropek.modules.quality_gate.repositories.heatmap import HeatmapRepository
 from tropek.modules.quality_gate.shared.params import EvalCreateParams
 
 from .conftest import SeededAsset
@@ -37,7 +37,7 @@ async def test_grouped_heatmap_returns_completed_runs(db_session: AsyncSession) 
     asset_id = await _create_asset(db_session, 'grouped-hm-asset')
     run_repo = EvaluationRunRepository(db_session)
     eval_repo = EvaluationRepository(db_session)
-    trend_repo = TrendRepository(db_session)
+    heatmap_repo = HeatmapRepository(db_session)
 
     # Create 3 parent EvaluationRuns
     for i in range(3):
@@ -69,7 +69,7 @@ async def test_grouped_heatmap_returns_completed_runs(db_session: AsyncSession) 
             total_points=10,
         )
 
-    runs = await trend_repo.get_grouped_metric_heatmap(asset_id=asset_id)
+    runs = await heatmap_repo.get_grouped_metric_heatmap(asset_id=asset_id)
     assert len(runs) == 3
 
 
@@ -78,7 +78,7 @@ async def test_grouped_heatmap_excludes_pending_runs(db_session: AsyncSession) -
     """Pending EvaluationRun rows do not appear in the heatmap."""
     asset_id = await _create_asset(db_session, 'grouped-hm-pending-asset')
     run_repo = EvaluationRunRepository(db_session)
-    trend_repo = TrendRepository(db_session)
+    heatmap_repo = HeatmapRepository(db_session)
 
     await run_repo.create(
         asset_id=asset_id,
@@ -87,7 +87,7 @@ async def test_grouped_heatmap_excludes_pending_runs(db_session: AsyncSession) -
         period_end=_BASE + timedelta(hours=1),
     )
 
-    runs = await trend_repo.get_grouped_metric_heatmap(asset_id=asset_id)
+    runs = await heatmap_repo.get_grouped_metric_heatmap(asset_id=asset_id)
     assert len(runs) == 0
 
 
@@ -96,7 +96,7 @@ async def test_grouped_heatmap_eval_name_filter(db_session: AsyncSession) -> Non
     """eval_name filter restricts which EvaluationRuns are returned."""
     asset_id = await _create_asset(db_session, 'grouped-hm-filter-asset')
     run_repo = EvaluationRunRepository(db_session)
-    trend_repo = TrendRepository(db_session)
+    heatmap_repo = HeatmapRepository(db_session)
 
     for name in ('daily', 'weekly'):
         run = await run_repo.create(
@@ -107,7 +107,7 @@ async def test_grouped_heatmap_eval_name_filter(db_session: AsyncSession) -> Non
         )
         await run_repo.mark_completed(run.id, result='pass', achieved_points=10, total_points=10)
 
-    runs = await trend_repo.get_grouped_metric_heatmap(asset_id=asset_id, eval_name=['daily'])
+    runs = await heatmap_repo.get_grouped_metric_heatmap(asset_id=asset_id, eval_name=['daily'])
     assert len(runs) == 1
     assert runs[0].eval_name == 'daily'
 
