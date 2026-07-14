@@ -116,9 +116,7 @@ class TrendRepository:
         # arrive in a deterministic order — must match the heatmap column
         # tie-breaker so x-indices align across every chart.
         rows = await self._session.execute(
-            select(windowed_subquery).order_by(
-                windowed_subquery.c.period_start, windowed_subquery.c.evaluation_name
-            )
+            select(windowed_subquery).order_by(windowed_subquery.c.period_start, windowed_subquery.c.evaluation_name)
         )
         return [
             {

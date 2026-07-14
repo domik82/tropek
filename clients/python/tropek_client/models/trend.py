@@ -6,7 +6,7 @@ from datetime import datetime
 from typing import TYPE_CHECKING
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, RootModel
 
 if TYPE_CHECKING:
     from tropek_client.models.change_points import ChangePointMarker
@@ -39,3 +39,7 @@ class TrendPoint(BaseModel):
     evaluation_name: str | None = None
     targets: TrendTargets | None = None
     change_point: ChangePointMarker | None = None
+
+
+class SloTrendsResponse(RootModel[dict[str, list[TrendPoint]]]):
+    """Batched trend response: metric name -> that indicator's ordered points."""

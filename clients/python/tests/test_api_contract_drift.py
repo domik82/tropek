@@ -7,6 +7,7 @@ from typing import Any
 
 import pytest
 import tropek_client.models as client_models
+from pydantic import RootModel
 
 from .conftest import find_workspace_root
 
@@ -76,6 +77,11 @@ class TestModelDrift:
 
         schema = openapi_schemas[schema_name]
         model = SCHEMA_MODEL_MAP[schema_name]
+
+        if issubclass(model, RootModel):
+            # RootModel wraps a bare mapping/collection (OpenAPI additionalProperties) and has no
+            # named properties to compare — its sole 'root' field has no schema-property analogue.
+            pytest.skip(f'{schema_name} is a RootModel with no named fields')
 
         schema_field_names = set(schema.get('properties', {}).keys())
         model_field_names = _model_field_aliases(model)

@@ -159,6 +159,7 @@ from tropek_client.models.timeline import (
     TimelineSummaryResponse,
 )
 from tropek_client.models.trend import (
+    SloTrendsResponse,
     TrendPoint,
     TrendTargetEntry,
     TrendTargets,
@@ -170,6 +171,7 @@ IndicatorResult.model_rebuild()
 HeatmapCellGrouped.model_rebuild()
 HeatmapSummaryCell.model_rebuild()
 TrendPoint.model_rebuild()
+SloTrendsResponse.model_rebuild()
 SLOTestResult.model_rebuild()
 
 __all__ = [
@@ -292,6 +294,7 @@ __all__ = [
     'Scope',
     'SliMetadata',
     'SloSelector',
+    'SloTrendsResponse',
     'TagKeyCount',
     'TagValueCount',
     'TimelineGroup',
