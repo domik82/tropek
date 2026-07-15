@@ -203,8 +203,11 @@ describe('AssetPanelHeatmapView — lazy per-SLO trend fetch', () => {
     // Trend block for the expanded group should be present (expanded by
     // default in this test), but its batched-trends fetch must not have
     // fired yet — the group's viewport ref has not intersected.
-    expect(await screen.findByTestId('trend-block-latency-p95')).toBeInTheDocument()
+    const trendBlock = await screen.findByTestId('trend-block-latency-p95')
+    expect(trendBlock).toBeInTheDocument()
     expect(trendsRequestCount).toBe(0)
+    // No data yet: the block receives an undefined trend until the batch arrives.
+    expect(trendBlock).toHaveAttribute('data-point-count', 'undefined')
 
     // Simulate the group's container entering the viewport.
     expect(MockIntersectionObserver.instances.length).toBeGreaterThan(0)
@@ -214,6 +217,13 @@ describe('AssetPanelHeatmapView — lazy per-SLO trend fetch', () => {
 
     // The fetch should now have fired exactly once for this (asset, slo).
     await vi.waitFor(() => expect(trendsRequestCount).toBe(1))
+
+    // The batched response's per-metric slice must actually reach the block:
+    // the 1-point series keyed 'latency-p95' flows through useSloTrends →
+    // trendsByMetric[indicator.metric] into the block's `trend` prop.
+    await vi.waitFor(() =>
+      expect(screen.getByTestId('trend-block-latency-p95')).toHaveAttribute('data-point-count', '1'),
+    )
 
     // Triggering intersection again (e.g. a second observer callback) must
     // not cause a second network request — useSloTrends caches with

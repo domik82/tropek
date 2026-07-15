@@ -16,6 +16,7 @@ import { ChartViewControls } from '@/components/charts/ChartViewControls'
 import { useChartPreferences } from '@/lib/chart-preferences-context'
 import { useSloTrends } from '@/features/evaluations/hooks'
 import { useInViewport } from '../hooks/useInViewport'
+import { getConfig } from '@/lib/config'
 
 interface Props {
   assetName: string
@@ -63,7 +64,9 @@ function SloTrendGroup(props: {
   trendIdFor: (sloName: string, metric: string) => string
   scrollToRow: (sloName: string, metric: string) => void
 }) {
-  const { ref, inView } = useInViewport<HTMLDivElement>()
+  const { ref, inView } = useInViewport<HTMLDivElement>({
+    rootMargin: `${getConfig().trendPrefetchMarginPx}px`,
+  })
   const { data: trendsByMetric, isLoading } = useSloTrends(
     props.assetName, props.group.slo_name, { enabled: inView },
   )

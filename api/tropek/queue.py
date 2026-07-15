@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import time
 import uuid
 from datetime import UTC, datetime, timedelta
@@ -122,7 +123,12 @@ async def _worker_startup(ctx: dict[str, Any]) -> None:
         timeout=settings.reliability.adapter_timeout_seconds,
         limits=httpx.Limits(max_connections=20, max_keepalive_connections=10),
     )
-    ctx['lag_monitor'] = asyncio.create_task(_event_loop_lag_monitor())
+    ctx['lag_monitor'] = asyncio.create_task(
+        _event_loop_lag_monitor(
+            interval_seconds=settings.reliability.event_loop_lag_check_interval_seconds,
+            warn_threshold_seconds=settings.reliability.event_loop_lag_warn_threshold_seconds,
+        )
+    )
 
 
 async def _worker_shutdown(ctx: dict[str, Any]) -> None:
@@ -130,6 +136,10 @@ async def _worker_shutdown(ctx: dict[str, Any]) -> None:
     lag_monitor: asyncio.Task[None] | None = ctx.get('lag_monitor')
     if lag_monitor is not None:
         lag_monitor.cancel()
+        # Await the cancellation so the task is fully torn down before the loop
+        # closes — otherwise asyncio logs a "Task was destroyed but it is pending".
+        with contextlib.suppress(asyncio.CancelledError):
+            await lag_monitor
     cache: RedisCache | None = ctx.get('cache')
     if cache and cache.client:
         await cache.client.close()

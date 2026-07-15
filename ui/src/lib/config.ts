@@ -6,6 +6,8 @@ interface UIConfig {
   heatmapSlowThresholdDays: number
   /** Earliest date with data in the DB (ISO date string, e.g. "2024-01-01"). */
   dataStartDate: string
+  /** Pixels before the viewport at which a lazy trend group starts fetching. */
+  trendPrefetchMarginPx: number
 }
 
 const DEFAULTS: UIConfig = {
@@ -14,6 +16,7 @@ const DEFAULTS: UIConfig = {
   heatmapSloGroupsExpandedByDefault: true,
   heatmapSlowThresholdDays: 30,
   dataStartDate: '2024-01-01',
+  trendPrefetchMarginPx: 200,
 }
 
 let config: UIConfig = DEFAULTS

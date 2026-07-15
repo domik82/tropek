@@ -47,6 +47,10 @@ reliability:
   stuck_job_threshold_seconds: 180
   # Recovered evals are re-enqueued up to this many times, then marked failed.
   max_stuck_job_retries: 3
+  # Event-loop lag monitor (worker diagnostic): sleep this interval, warn when the
+  # measured overrun exceeds the threshold — the fingerprint of loop-blocking work.
+  event_loop_lag_check_interval_seconds: 0.5
+  event_loop_lag_warn_threshold_seconds: 1.0
 
 evaluation:
   async_threshold_metrics: 10
@@ -79,6 +83,9 @@ ui:
   page_size: 200
   heatmap_slo_groups_expanded_by_default: true
   data_start_date: "2024-01-01"
+  # Lazy-loaded trend groups start fetching this many pixels before entering the
+  # viewport, so data is usually ready by the time the group scrolls into view.
+  trend_prefetch_margin_px: 200
 
 logging:
   level: "INFO"
