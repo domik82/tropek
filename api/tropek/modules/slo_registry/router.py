@@ -147,7 +147,15 @@ async def validate_slo(body: SLOValidateRequest) -> SLOValidationResult:  # noqa
     return SLOValidationResult(valid=True, errors=[], objectives=body.objectives)
 
 
-@router.post('/slo-definitions/test', response_model=SLOTestResult)
+@router.post(
+    '/slo-definitions/test',
+    response_model=SLOTestResult,
+    responses={
+        400: {'description': 'adapter url is invalid'},
+        502: {'description': 'could not reach adapter'},
+        504: {'description': 'adapter query timed out'},
+    },
+)
 async def test_slo(
     body: SLOTestRequest,
     session: AsyncSession = Depends(get_session),  # noqa: PT028

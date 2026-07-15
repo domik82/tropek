@@ -14444,6 +14444,9 @@
             },
             "description": "Successful Response"
           },
+          "400": {
+            "description": "adapter url is invalid"
+          },
           "404": {
             "content": {
               "application/json": {
@@ -14473,6 +14476,12 @@
               }
             },
             "description": "Validation Error"
+          },
+          "502": {
+            "description": "could not reach adapter"
+          },
+          "504": {
+            "description": "adapter query timed out"
           }
         },
         "summary": "Test Slo"

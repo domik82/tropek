@@ -9767,6 +9767,13 @@ export interface operations {
                     "application/json": components["schemas"]["SLOTestResult"];
                 };
             };
+            /** @description adapter url is invalid */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description Error */
             404: {
                 headers: {
@@ -9793,6 +9800,20 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
                 };
+            };
+            /** @description could not reach adapter */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description adapter query timed out */
+            504: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
