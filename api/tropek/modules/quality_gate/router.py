@@ -54,6 +54,7 @@ from tropek.modules.quality_gate.schemas import (
     PinBaselineRequest,
     RestoreManyRequest,
     RestoreOverrideManyRequest,
+    SloTrendsResponse,
     TrendPoint,
     UnpinBaselineManyRequest,
 )
@@ -64,6 +65,7 @@ from tropek.modules.quality_gate.schemas.re_evaluation import (
     ReEvaluateFromEvaluationRequest,
     ReEvaluateResponse,
 )
+from tropek.modules.quality_gate.schemas.trend import TrendColumnFragment
 from tropek.modules.quality_gate.shared.dependencies import (
     QualityGateRepos,
     get_heatmap_column_cache,
@@ -77,6 +79,7 @@ from tropek.modules.quality_gate.workflows.presentation.presenter import (
     build_detail,
     build_summary,
 )
+from tropek.modules.quality_gate.workflows.presentation.trend_assembler import assemble_slo_trends
 from tropek.modules.quality_gate.workflows.re_evaluation.re_evaluation_service import (
     re_evaluate_from_baseline,
     re_evaluate_from_date,
@@ -230,7 +233,7 @@ async def get_grouped_metric_heatmap_new(
     if asset is None:
         raise NotFoundError('asset', asset_name)
 
-    candidate_runs = await repos.trend_repo.list_runs_for_heatmap(
+    candidate_runs = await repos.heatmap_repo.list_runs_for_heatmap(
         asset_id=asset.id,
         eval_name=evaluation_name,
         from_ts=from_ts,
@@ -245,14 +248,14 @@ async def get_grouped_metric_heatmap_new(
 
     missing_ids = [run_id for run_id in candidate_run_ids if str(run_id) not in fragments_by_id]
     if missing_ids:
-        missing_runs = await repos.trend_repo.get_grouped_metric_heatmap(asset_id=asset.id, run_id_filter=missing_ids)
+        missing_runs = await repos.heatmap_repo.get_grouped_metric_heatmap(asset_id=asset.id, run_id_filter=missing_ids)
         rebuilt_fragments = [build_column_fragment(run, has_notes=False) for run in missing_runs]
         for fragment in rebuilt_fragments:
             fragments_by_id[str(fragment.evaluation_run_id)] = fragment
         if active_cache is not None:
             await active_cache.set_many(rebuilt_fragments)
 
-    noted_run_ids = await repos.trend_repo.get_run_ids_with_notes(candidate_run_ids)
+    noted_run_ids = await repos.heatmap_repo.get_run_ids_with_notes(candidate_run_ids)
 
     ordered_runs = sorted(candidate_runs, key=lambda r: (r.period_start, r.eval_name or ''))
     ordered_fragments: list[HeatmapColumnFragment] = []
@@ -302,7 +305,7 @@ async def get_metric_heatmap_new(
     asset = await repos.asset_repo.get_by_name(asset_name)
     if asset is None:
         raise NotFoundError('asset', asset_name)
-    evals = await repos.trend_repo.get_metric_heatmap(
+    evals = await repos.heatmap_repo.get_metric_heatmap(
         asset_id=asset.id,
         evaluation_name=evaluation_name,
         from_ts=from_ts,
@@ -622,6 +625,64 @@ async def get_trend_by_asset_slo(
         change_point_lookup=change_point_lookup,
     )
     return [TrendPoint(**p) for p in points]
+
+
+@router.get('/assets/{asset_name}/slos/{slo_name:path}/trends', response_model=SloTrendsResponse)
+async def get_slo_trends(
+    asset_name: str,
+    slo_name: str,
+    from_ts: datetime = Query(alias='from'),
+    to_ts: datetime | None = Query(
+        default=None,
+        alias='to',
+        json_schema_extra={'anyOf': [{'format': 'date-time', 'type': 'string'}]},
+    ),
+    cache: bool = Query(
+        default=True,
+        description='When false, bypass the Redis trend fragment cache entirely (debugging / parity test).',
+    ),
+    repos: QualityGateRepos = Depends(get_qg_repos),
+) -> SloTrendsResponse:
+    """Return every indicator's trend series for one asset+SLO in a single response."""
+    asset = await repos.asset_repo.get_by_name(asset_name)
+    if asset is None:
+        raise NotFoundError('asset', asset_name)
+
+    slo_evaluation_ids = await repos.trend_repo.list_slo_evaluation_ids_for_trend(
+        asset_id=asset.id,
+        slo_name=slo_name,
+        from_ts=from_ts,
+        to_ts=to_ts,
+    )
+
+    active_cache = repos.trend_cache if cache else None
+    fragments_by_id: dict[str, TrendColumnFragment] = {}
+    if active_cache is not None:
+        fragments_by_id = await active_cache.get_many(slo_evaluation_ids)
+
+    missing_ids = [
+        slo_evaluation_id for slo_evaluation_id in slo_evaluation_ids if str(slo_evaluation_id) not in fragments_by_id
+    ]
+    if missing_ids:
+        rebuilt = await repos.trend_repo.get_trend_fragment_rows(
+            asset_id=asset.id,
+            slo_name=slo_name,
+            slo_evaluation_ids=missing_ids,
+        )
+        if active_cache is not None:
+            await active_cache.set_many(rebuilt)
+        for fragment in rebuilt:
+            fragments_by_id[str(fragment.slo_evaluation_id)] = fragment
+
+    change_point_repo = ChangePointRepository(repos.session)
+    change_point_lookup = await change_point_repo.get_change_points_for_slo_range(
+        asset_id=asset.id,
+        slo_name=slo_name,
+        from_ts=from_ts,
+        to_ts=to_ts,
+    )
+    by_metric = assemble_slo_trends(list(fragments_by_id.values()), change_point_lookup)
+    return SloTrendsResponse(by_metric)
 
 
 @router.get('/evaluation/{eval_id}/trend', response_model=list[TrendPoint])

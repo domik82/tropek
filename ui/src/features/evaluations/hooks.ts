@@ -8,6 +8,7 @@ import {
   fetchEvaluations,
   fetchEvaluationDetail,
   fetchTrend,
+  fetchSloTrends,
   fetchColumnAnnotations,
   fetchTrendAnnotations,
   addAnnotation,
@@ -95,6 +96,21 @@ export function useTrend(assetName: string, sloName: string, metric: string) {
   })
 }
 
+export function useSloTrends(
+  assetName: string,
+  sloName: string,
+  options?: { enabled?: boolean },
+) {
+  const { from, to } = useTimeRange()
+  const dateRange = { from, ...(to ? { to } : {}) }
+  return useQuery({
+    queryKey: evaluationKeys.sloTrends(assetName, sloName, dateRange),
+    queryFn: () => fetchSloTrends(assetName, sloName, dateRange),
+    enabled: (options?.enabled ?? true) && !!assetName && !!sloName,
+    staleTime: Infinity,
+  })
+}
+
 // ── Mutations ─────────────────────────────────────────────────────────────────
 
 export function useAddAnnotation(evalId: string) {
@@ -160,6 +176,7 @@ export function useInvalidateEvaluation(evalId: string) {
       qc.invalidateQueries({ queryKey: evaluationKeys.allNames })
       qc.invalidateQueries({ queryKey: evaluationKeys.allHeatmaps })
       qc.invalidateQueries({ queryKey: evaluationKeys.allTrends })
+      qc.invalidateQueries({ queryKey: evaluationKeys.allSloTrends })
     },
   })
 }
@@ -174,6 +191,7 @@ export function useRestoreEvaluation(evalId: string) {
       qc.invalidateQueries({ queryKey: evaluationKeys.allNames })
       qc.invalidateQueries({ queryKey: evaluationKeys.allHeatmaps })
       qc.invalidateQueries({ queryKey: evaluationKeys.allTrends })
+      qc.invalidateQueries({ queryKey: evaluationKeys.allSloTrends })
     },
   })
 }
@@ -187,6 +205,7 @@ export function useOverrideStatus(evalId: string) {
       qc.invalidateQueries({ queryKey: evaluationKeys.all })
       qc.invalidateQueries({ queryKey: evaluationKeys.allHeatmaps })
       qc.invalidateQueries({ queryKey: evaluationKeys.allTrends })
+      qc.invalidateQueries({ queryKey: evaluationKeys.allSloTrends })
     },
   })
 }
@@ -200,6 +219,7 @@ export function usePinBaseline(evalId: string) {
       qc.invalidateQueries({ queryKey: evaluationKeys.detail(evalId) })
       qc.invalidateQueries({ queryKey: evaluationKeys.all })
       qc.invalidateQueries({ queryKey: evaluationKeys.allTrends })
+      qc.invalidateQueries({ queryKey: evaluationKeys.allSloTrends })
     },
   })
 }
@@ -213,6 +233,7 @@ export function useReEvaluate() {
       qc.invalidateQueries({ queryKey: evaluationKeys.allNames })
       qc.invalidateQueries({ queryKey: evaluationKeys.allHeatmaps })
       qc.invalidateQueries({ queryKey: evaluationKeys.allTrends })
+      qc.invalidateQueries({ queryKey: evaluationKeys.allSloTrends })
     },
   })
 }

@@ -2,7 +2,7 @@
 import ReactECharts from 'echarts-for-react'
 import { useCallback, useMemo, useState, useRef, useEffect } from 'react'
 import { MessageSquareWarning, Sheet, Tags, LineChart, BarChart3 } from 'lucide-react'
-import { useTrend, useTrendAnnotations } from '../hooks'
+import { useTrendAnnotations } from '../hooks'
 import { useNoteCategories } from '@/features/note-categories'
 import { STATUS_TEXT } from '@/lib/status'
 import { useChartAreaClick } from '@/lib/useChartAreaClick'
@@ -10,6 +10,7 @@ import { useMetricTrendState } from '../hooks/useMetricTrendState'
 import { useChartPreferences } from '@/lib/chart-preferences-context'
 import { useMasterOverride } from '../hooks/useMasterOverride'
 import type { Indicator } from '../domain'
+import type { TrendPoint } from '@/features/evaluations'
 
 interface Props {
   assetName: string
@@ -19,6 +20,8 @@ interface Props {
   selectedEvalIds?: ReadonlySet<string>
   selectedPeriodStart?: string
   indicator: Indicator
+  trend?: TrendPoint[]
+  isLoading?: boolean
   onEvalSelect?: (evalId: string) => void
   onScrollToTable?: () => void
   blockId?: string
@@ -96,12 +99,13 @@ export function MetricTrendBlock({
   selectedEvalIds,
   selectedPeriodStart,
   indicator,
+  trend,
+  isLoading = false,
   onEvalSelect,
   onScrollToTable,
   blockId,
 }: Props) {
   const sloLabel = sloDisplayName ?? (sloName || null)
-  const { data: trend, isLoading } = useTrend(assetName, sloName, indicator.metric)
   const { data: annotations } = useTrendAnnotations(assetName, sloName)
   const { data: categories } = useNoteCategories()
 

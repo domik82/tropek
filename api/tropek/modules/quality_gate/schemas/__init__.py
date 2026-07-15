@@ -53,6 +53,12 @@ from tropek.modules.quality_gate.schemas.re_evaluation import (
     ReEvalResultItem,
     ReEvaluateResponse,
 )
+from tropek.modules.quality_gate.schemas.trend import (
+    TREND_FRAGMENT_SCHEMA_VERSION,
+    SloTrendsResponse,
+    TrendColumnFragment,
+    TrendFragmentPoint,
+)
 from tropek.modules.quality_gate.schemas.trigger import (
     BatchPeriod,
     EvaluateBatchRequest,
@@ -63,6 +69,7 @@ from tropek.modules.quality_gate.schemas.trigger import (
 from tropek.modules.quality_gate.shared.exceptions import BaselinePinConflictError
 
 __all__ = [
+    'TREND_FRAGMENT_SCHEMA_VERSION',
     'AnnotationCategoryCreate',
     'AnnotationCategoryRead',
     'AnnotationCategoryUpdate',
@@ -102,6 +109,9 @@ __all__ = [
     'ReEvaluateResponse',
     'RestoreManyRequest',
     'RestoreOverrideManyRequest',
+    'SloTrendsResponse',
+    'TrendColumnFragment',
+    'TrendFragmentPoint',
     'TrendPoint',
     'UnpinBaselineManyRequest',
 ]

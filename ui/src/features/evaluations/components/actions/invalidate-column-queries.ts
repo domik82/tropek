@@ -12,4 +12,5 @@ export function invalidateColumnQueries(
   queryClient.invalidateQueries({ queryKey: evaluationKeys.allNames })
   queryClient.invalidateQueries({ queryKey: evaluationKeys.allHeatmaps })
   queryClient.invalidateQueries({ queryKey: evaluationKeys.allTrends })
+  queryClient.invalidateQueries({ queryKey: evaluationKeys.allSloTrends })
 }

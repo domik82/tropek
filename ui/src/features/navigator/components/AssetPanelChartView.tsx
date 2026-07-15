@@ -7,9 +7,41 @@ import { AssetScoreChart } from './AssetScoreChart'
 import { MetricGroupFilter } from './MetricGroupFilter'
 import { ChartViewControls } from '@/components/charts/ChartViewControls'
 import { useChartPreferences } from '@/lib/chart-preferences-context'
+import { useTrend } from '@/features/evaluations/hooks'
 import type { Evaluation, Indicator } from '@/features/evaluations'
 import type { GroupedMetricHeatmapResponseDto } from '../mappers'
 import type { TimeSlotSelection } from './AssetHeatmap'
+
+// MetricTrendBlock no longer fetches its own trend (Task 10 moved that to a
+// batched per-SLO fetch for the heatmap view) — the chart-mode view still
+// renders one trend chart per indicator individually, so each block fetches
+// its own series directly via useTrend.
+function IndicatorTrendBlock(props: {
+  assetName: string
+  sloName: string
+  sloDisplayName?: string
+  selectedEvalId: string | undefined
+  selectedEvalIds: ReadonlySet<string>
+  selectedPeriodStart: string | undefined
+  indicator: Indicator
+  onEvalSelect: (evalId: string) => void
+}) {
+  const { data: trend, isLoading } = useTrend(props.assetName, props.sloName, props.indicator.metric)
+  return (
+    <MetricTrendBlock
+      assetName={props.assetName}
+      sloName={props.sloName}
+      sloDisplayName={props.sloDisplayName}
+      selectedEvalId={props.selectedEvalId}
+      selectedEvalIds={props.selectedEvalIds}
+      selectedPeriodStart={props.selectedPeriodStart}
+      indicator={props.indicator}
+      trend={trend}
+      isLoading={isLoading}
+      onEvalSelect={props.onEvalSelect}
+    />
+  )
+}
 
 interface Props {
   assetName: string
@@ -205,7 +237,7 @@ export function AssetPanelChartView({
 
           <div className={columns === 1 ? 'grid grid-cols-1 gap-4' : 'grid grid-cols-1 xl:grid-cols-2 gap-4'}>
             {chartIndicators.map(ind => (
-              <MetricTrendBlock key={ind.metric} assetName={assetName} sloName={metricSloMap.get(ind.metric) ?? ''} sloDisplayName={metricSloDisplayMap.get(ind.metric)} selectedEvalId={effectiveEvalId} selectedEvalIds={selectedColumnSloEvalIds} selectedPeriodStart={selectedPeriodStart} indicator={ind} onEvalSelect={handleTrendClick} />
+              <IndicatorTrendBlock key={ind.metric} assetName={assetName} sloName={metricSloMap.get(ind.metric) ?? ''} sloDisplayName={metricSloDisplayMap.get(ind.metric)} selectedEvalId={effectiveEvalId} selectedEvalIds={selectedColumnSloEvalIds} selectedPeriodStart={selectedPeriodStart} indicator={ind} onEvalSelect={handleTrendClick} />
             ))}
           </div>
         </div>

@@ -13,6 +13,7 @@ from tropek.queue import (
     WorkerSettings,
     _run_change_point_phase,
     _sweeper_cron_seconds,
+    detect_change_points_for_objectives,
     finalize_run_job,
     finalize_sweeper_job,
     run_evaluation_job,
@@ -491,3 +492,41 @@ async def test_change_point_phase_decouples_read_compute_write() -> None:
     assert mock_persist.await_args.kwargs['session'] is write_session
     assert 'session' not in mock_detect.call_args.kwargs
     assert any(getattr(cj, 'coroutine', None) is watchdog_stuck_evaluations_job for cj in WorkerSettings.cron_jobs)
+
+
+@pytest.mark.asyncio
+async def test_change_point_compute_is_offloaded_off_the_event_loop() -> None:
+    """Detection is CPU-bound; it must run via ``asyncio.to_thread`` so it never blocks the worker's
+    event loop (a blocked loop holds other evals' transactions open and stalls the whole worker)."""
+    read_session = AsyncMock()
+    write_session = AsyncMock()
+
+    class _FactoryCM:
+        def __init__(self, session: AsyncMock) -> None:
+            self._session = session
+
+        async def __aenter__(self) -> AsyncMock:
+            return self._session
+
+        async def __aexit__(self, *args: object) -> bool:
+            return False
+
+    sessions = [read_session, write_session]
+    session_factory = MagicMock(side_effect=lambda: _FactoryCM(sessions.pop(0)))
+
+    snapshot = MagicMock()
+    snapshot.eval_id = uuid.uuid4()
+    fake_inputs = MagicMock()
+    fake_batches = [MagicMock()]
+
+    with (
+        patch('tropek.queue.IndicatorRepository') as mock_indicator_cls,
+        patch('tropek.queue.load_change_point_inputs', new=AsyncMock(return_value=fake_inputs)),
+        patch('tropek.queue.persist_detected_change_points', new=AsyncMock()),
+        patch('tropek.queue.asyncio.to_thread', new_callable=AsyncMock, return_value=fake_batches) as mock_to_thread,
+    ):
+        mock_indicator_cls.return_value.get_for_evaluation = AsyncMock(return_value=[])
+        await _run_change_point_phase(session_factory, snapshot, MagicMock(), None, MagicMock())
+
+    # The detection function is dispatched to a worker thread, not called inline on the loop.
+    assert mock_to_thread.await_args.args[0] is detect_change_points_for_objectives

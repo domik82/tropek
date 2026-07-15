@@ -38,6 +38,7 @@ from tropek.modules.quality_gate.shared.dependencies import QualityGateRepos
 from tropek.modules.quality_gate.shared.exceptions import BaselinePinConflictError
 from tropek.modules.quality_gate.workflows.execution.evaluation_helpers import build_slo_model, compute_baselines
 from tropek.modules.quality_gate.workflows.presentation.heatmap_cache import HeatmapColumnCache
+from tropek.modules.quality_gate.workflows.presentation.trend_cache import TrendColumnCache
 from tropek.modules.quality_gate.workflows.trigger.trigger_resolver import resolve_all_slos_for_asset
 from tropek.modules.sli_registry.repository import SLIRepository
 
@@ -168,16 +169,43 @@ async def _update_evaluation_row(
     await session.execute(update(SLOEvaluation).where(SLOEvaluation.id == fresh_ev.id).values(**values))
 
 
-async def _invalidate_caches(
-    fresh_ev: SLOEvaluation,
-    cache: RedisCache | None,
-    heatmap_cache: HeatmapColumnCache | None,
-) -> None:
-    """Drop stale baseline and heatmap caches tied to the re-scored evaluation."""
-    if cache:
-        await cache.invalidate(f'baseline:{fresh_ev.asset_id}:{fresh_ev.slo_name}')
-    if heatmap_cache is not None:
-        await heatmap_cache.delete(fresh_ev.evaluation_id)
+class _PendingCacheInvalidations:
+    """Cache keys made stale by re-scoring, dropped only AFTER the transaction commits.
+
+    Invalidating inside the still-open request transaction is unsafe:
+    ``SessionMiddleware`` commits only after the handler returns, so a concurrent
+    reader landing between the Redis delete and the commit rebuilds the fragment
+    from the pre-commit (old) committed state and re-caches it — the stale entry
+    then survives to its TTL. Recording targets here and flushing them after the
+    commit closes that window, and keeps every Redis round-trip out from under the
+    row locks the open transaction still holds.
+    """
+
+    def __init__(self) -> None:
+        self.baseline_keys: set[str] = set()
+        self.heatmap_evaluation_ids: set[uuid.UUID] = set()
+        self.trend_evaluation_ids: set[uuid.UUID] = set()
+
+    def record(self, evaluation: SLOEvaluation) -> None:
+        """Record every cache entry made stale by re-scoring ``evaluation``."""
+        self.baseline_keys.add(f'baseline:{evaluation.asset_id}:{evaluation.slo_name}')
+        self.heatmap_evaluation_ids.add(evaluation.evaluation_id)
+        self.trend_evaluation_ids.add(evaluation.id)
+
+    async def flush(
+        self,
+        cache: RedisCache | None,
+        heatmap_cache: HeatmapColumnCache | None,
+        trend_cache: TrendColumnCache | None,
+    ) -> None:
+        """Drop the recorded baseline, heatmap, and trend cache entries."""
+        if cache:
+            for baseline_key in self.baseline_keys:
+                await cache.invalidate(baseline_key)
+        if heatmap_cache is not None and self.heatmap_evaluation_ids:
+            await heatmap_cache.delete_many(self.heatmap_evaluation_ids)
+        if trend_cache is not None and self.trend_evaluation_ids:
+            await trend_cache.delete_many(self.trend_evaluation_ids)
 
 
 async def _add_reeval_annotation(  # noqa: PLR0913
@@ -243,9 +271,12 @@ async def _persist_reeval_result(  # noqa: PLR0913
     re_eval_category_id: uuid.UUID,
     note_group_id: uuid.UUID,
     note_group_name: str,
-    heatmap_cache: HeatmapColumnCache | None = None,
 ) -> None:
-    """Overwrite evaluation result from re-evaluation, preserving original on first call."""
+    """Overwrite evaluation result from re-evaluation, preserving original on first call.
+
+    Cache invalidation is NOT done here: it is recorded by the caller and flushed
+    after the transaction commits (see ``_PendingCacheInvalidations``).
+    """
     fresh_ev = await _load_fresh_evaluation(session, ev.id)
     if fresh_ev is None:
         return
@@ -259,7 +290,6 @@ async def _persist_reeval_result(  # noqa: PLR0913
         old_score=old_score,
         slo_version=slo_version,
     )
-    await _invalidate_caches(fresh_ev, cache, heatmap_cache)
     await _add_reeval_annotation(
         session,
         evaluation_id=ev.id,
@@ -301,7 +331,7 @@ async def _rescore_single(  # noqa: PLR0913
     skip_pin_filter: bool = False,
     note_group_id: uuid.UUID | None = None,
     note_group_name: str | None = None,
-    heatmap_cache: HeatmapColumnCache | None = None,
+    pending_invalidations: _PendingCacheInvalidations | None = None,
 ) -> ReEvalResultItem:
     """Re-score a single evaluation and optionally persist the update."""
     metrics = _metrics_from_indicator_rows(ev.indicator_rows)
@@ -342,8 +372,10 @@ async def _rescore_single(  # noqa: PLR0913
             re_eval_category_id=re_eval_category_id,
             note_group_id=note_group_id,
             note_group_name=note_group_name,
-            heatmap_cache=heatmap_cache,
         )
+        # Record — not execute — the cache drops; they are flushed after commit.
+        if pending_invalidations is not None:
+            pending_invalidations.record(ev)
 
     return ReEvalResultItem(
         id=ev.id,
@@ -368,6 +400,7 @@ async def _re_evaluate_single_slo(
     re_eval_category_id: uuid.UUID,
     note_group_id: uuid.UUID,
     note_group_name: str,
+    pending_invalidations: _PendingCacheInvalidations,
 ) -> tuple[int, list[ReEvalResultItem]]:
     """Re-evaluate all evaluations for a single SLO. Returns (slo_version, results)."""
     session = repos.session
@@ -376,7 +409,6 @@ async def _re_evaluate_single_slo(
     eval_repo = repos.eval_repo
     baseline_repo = repos.baseline_repo
     cache = repos.cache
-    heatmap_cache = repos.heatmap_cache
 
     # Load SLO definition (specified version or latest)
     if request.slo_version is not None:
@@ -440,7 +472,7 @@ async def _re_evaluate_single_slo(
             skip_pin_filter=skip_pin,
             note_group_id=note_group_id,
             note_group_name=note_group_name,
-            heatmap_cache=heatmap_cache,
+            pending_invalidations=pending_invalidations,
         )
         eligible_ids.append(ev.id)
         results.append(item)
@@ -503,6 +535,7 @@ async def re_evaluate(
         raise RuntimeError(f"seeded '{RE_EVALUATION_CATEGORY_NAME}' category missing")
 
     # Re-evaluate each SLO
+    pending_invalidations = _PendingCacheInvalidations()
     all_results: list[ReEvalResultItem] = []
     single_slo_version: int | None = None
     for slo_name in slo_names:
@@ -514,10 +547,19 @@ async def re_evaluate(
             re_eval_category_id=re_eval_category.id,
             note_group_id=note_group_id,
             note_group_name=note_group_name,
+            pending_invalidations=pending_invalidations,
         )
         all_results.extend(results)
         if len(slo_names) == 1:
             single_slo_version = slo_version
+
+    # Commit the re-scored rows BEFORE touching Redis so a concurrent reader can
+    # never rebuild a fragment from pre-commit state and re-cache it stale, and
+    # so the cache round-trips run after the row locks are released. The
+    # per-request SessionMiddleware commit that follows is then a no-op.
+    if not request.dry_run:
+        await repos.session.commit()
+        await pending_invalidations.flush(repos.cache, repos.heatmap_cache, repos.trend_cache)
 
     return ReEvaluateResponse(
         affected_evaluations=len(all_results),

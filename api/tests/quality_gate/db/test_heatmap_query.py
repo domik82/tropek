@@ -9,7 +9,7 @@ import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 from tropek.db.models import Asset, AssetType
 from tropek.modules.quality_gate.repositories.evaluation import EvaluationRepository
-from tropek.modules.quality_gate.repositories.trend import TrendRepository
+from tropek.modules.quality_gate.repositories.heatmap import HeatmapRepository
 from tropek.modules.quality_gate.shared.params import EvalCreateParams
 
 _BASE = datetime(2026, 3, 15, 10, 0, 0, tzinfo=UTC)
@@ -29,7 +29,7 @@ async def _create_asset(session: AsyncSession, name: str) -> uuid.UUID:
 async def test_heatmap_returns_completed_evals(db_session: AsyncSession) -> None:
     asset_id = await _create_asset(db_session, 'heatmap-asset')
     eval_repo = EvaluationRepository(db_session)
-    trend_repo = TrendRepository(db_session)
+    heatmap_repo = HeatmapRepository(db_session)
 
     for i in range(3):
         start = _BASE + timedelta(hours=i)
@@ -48,7 +48,7 @@ async def test_heatmap_returns_completed_evals(db_session: AsyncSession) -> None
         )
         await eval_repo.mark_completed(ev.id, result='pass', score=90.0, slo_name='test-slo')
 
-    evals = await trend_repo.get_metric_heatmap(asset_id=asset_id)
+    evals = await heatmap_repo.get_metric_heatmap(asset_id=asset_id)
     assert len(evals) == 3
 
 
@@ -57,7 +57,7 @@ async def test_heatmap_includes_invalidated_completed(db_session: AsyncSession) 
     """The repository query returns invalidated evals (router handles display)."""
     asset_id = await _create_asset(db_session, 'hm-inv-asset')
     eval_repo = EvaluationRepository(db_session)
-    trend_repo = TrendRepository(db_session)
+    heatmap_repo = HeatmapRepository(db_session)
 
     ev = await eval_repo.create_pending(
         EvalCreateParams(
@@ -75,6 +75,6 @@ async def test_heatmap_includes_invalidated_completed(db_session: AsyncSession) 
     await eval_repo.mark_completed(ev.id, result='pass', score=90.0, slo_name='test-slo')
     await eval_repo.invalidate(ev.id, note='bad data')
 
-    evals = await trend_repo.get_metric_heatmap(asset_id=asset_id)
+    evals = await heatmap_repo.get_metric_heatmap(asset_id=asset_id)
     # Repository returns it — router transforms result to "invalidated"
     assert len(evals) == 1

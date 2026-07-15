@@ -76,6 +76,7 @@ class CacheTTLSettings:
         self.evaluation_detail: int = data.get('evaluation_detail', 300)
         self.slo_definition: int = data.get('slo_definition', 600)
         self.heatmap_column: int = data.get('heatmap_column', 7 * 24 * 60 * 60)
+        self.trend_column: int = data.get('trend_column', 7 * 24 * 60 * 60)
 
 
 class CacheSettings(BaseSettings):
@@ -150,6 +151,12 @@ class ReliabilitySettings(BaseSettings):
     watchdog_interval_seconds: int = _yaml.get('reliability', {}).get('watchdog_interval_seconds', 60)
     stuck_job_threshold_seconds: int = _yaml.get('reliability', {}).get('stuck_job_threshold_seconds', 180)
     max_stuck_job_retries: int = _yaml.get('reliability', {}).get('max_stuck_job_retries', 3)
+    event_loop_lag_check_interval_seconds: float = _yaml.get('reliability', {}).get(
+        'event_loop_lag_check_interval_seconds', 0.5
+    )
+    event_loop_lag_warn_threshold_seconds: float = _yaml.get('reliability', {}).get(
+        'event_loop_lag_warn_threshold_seconds', 1.0
+    )
 
     @field_validator('watchdog_interval_seconds')
     @classmethod
@@ -236,6 +243,7 @@ class UISettings(BaseSettings):
         'heatmap_slo_groups_expanded_by_default', True
     )
     data_start_date: str = _yaml.get('ui', {}).get('data_start_date', '2024-01-01')
+    trend_prefetch_margin_px: int = _yaml.get('ui', {}).get('trend_prefetch_margin_px', 200)
 
 
 class FileIngestionSettings(BaseSettings):

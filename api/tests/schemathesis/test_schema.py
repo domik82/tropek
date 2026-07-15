@@ -8,7 +8,7 @@ from typing import Any
 import pytest
 from hypothesis import settings
 from schemathesis import Case, checks
-from schemathesis.specs.openapi.checks import positive_data_acceptance
+from schemathesis.specs.openapi.checks import negative_data_rejection, positive_data_acceptance
 
 from tests.schemathesis.conftest import schema
 
@@ -125,6 +125,21 @@ EXCLUDED_CHECKS_PER_OP: dict[tuple[str, str], list[CheckFunction]] = {
     #   GET /configuration — null-byte prefix values in fuzzed query params crash
     #       the asyncpg driver. No user-facing query params to validate.
     ('GET', '/configuration'): [positive_data_acceptance],
+    #   PATCH /evaluations/{restore,restore-override,unpin-baseline} — the request
+    #       body is a single {"evaluation_ids": [uuid]} object (additionalProperties:
+    #       false). In coverage mode schemathesis emits a case tagged "violates
+    #       additionalProperties" whose *serialized* JSON body degenerates to a valid
+    #       payload (the intended extra property is dropped for this minimal shape), so
+    #       the app rightly returns 200 and negative_data_rejection false-positives —
+    #       flaky, since coverage-case generation is time-budgeted (see conftest). The
+    #       framework's own FP guard (_body_negation_becomes_valid_after_serialization)
+    #       only covers stringifying media types, not JSON. The runtime DOES reject
+    #       unknown fields (StrictInput → extra='forbid'; verified: an extra key → 422),
+    #       and the richer bulk bodies (invalidate/override-status/pin-baseline) keep
+    #       exercising negative_data_rejection, so coverage of that behavior is retained.
+    ('PATCH', '/evaluations/restore'): [negative_data_rejection],
+    ('PATCH', '/evaluations/restore-override'): [negative_data_rejection],
+    ('PATCH', '/evaluations/unpin-baseline'): [negative_data_rejection],
 }
 
 

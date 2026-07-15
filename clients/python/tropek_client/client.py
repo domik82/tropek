@@ -81,6 +81,7 @@ from tropek_client.models import (
     SLOObjectiveIn,
     SLOTestRequest,
     SLOTestResult,
+    SloTrendsResponse,
     SLOValidateRequest,
     SLOValidationResult,
     TagKeyCount,
@@ -691,6 +692,21 @@ class _Trend:
             params['to'] = to
         response = self._http.get(f'/assets/{asset_name}/slos/{slo_name}/trend', params=params)
         return [TrendPoint.model_validate(p) for p in response.json()]
+
+    def all_metrics_by_asset(
+        self,
+        asset_name: str,
+        slo_name: str,
+        from_: str,
+        *,
+        to: str | None = None,
+    ) -> dict[str, list[TrendPoint]]:
+        """Return every indicator's trend series for one asset+SLO in a single batched call."""
+        params: dict[str, str] = {'from': from_}
+        if to is not None:
+            params['to'] = to
+        response = self._http.get(f'/assets/{asset_name}/slos/{slo_name}/trends', params=params)
+        return SloTrendsResponse.model_validate(response.json()).root
 
 
 class _Heatmap:

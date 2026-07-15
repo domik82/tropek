@@ -6858,6 +6858,17 @@
         "title": "SloSelector",
         "type": "object"
       },
+      "SloTrendsResponse": {
+        "additionalProperties": {
+          "items": {
+            "$ref": "#/components/schemas/TrendPoint"
+          },
+          "type": "array"
+        },
+        "description": "Batched trend response: metric name -> that indicator's ordered points.",
+        "title": "SloTrendsResponse",
+        "type": "object"
+      },
       "TagKeyCount": {
         "description": "A tag key with its usage count.",
         "properties": {
@@ -9324,6 +9335,101 @@
           }
         },
         "summary": "Get Trend By Asset Slo"
+      }
+    },
+    "/assets/{asset_name}/slos/{slo_name}/trends": {
+      "get": {
+        "description": "Return every indicator's trend series for one asset+SLO in a single response.",
+        "operationId": "get_slo_trends_assets__asset_name__slos__slo_name__trends_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "asset_name",
+            "required": true,
+            "schema": {
+              "title": "Asset Name",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "slo_name",
+            "required": true,
+            "schema": {
+              "title": "Slo Name",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "from",
+            "required": true,
+            "schema": {
+              "format": "date-time",
+              "title": "From",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "to",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                }
+              ],
+              "title": "To"
+            }
+          },
+          {
+            "description": "When false, bypass the Redis trend fragment cache entirely (debugging / parity test).",
+            "in": "query",
+            "name": "cache",
+            "required": false,
+            "schema": {
+              "default": true,
+              "description": "When false, bypass the Redis trend fragment cache entirely (debugging / parity test).",
+              "title": "Cache",
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SloTrendsResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Error"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Slo Trends"
       }
     },
     "/assets/{name}": {
@@ -14338,6 +14444,9 @@
             },
             "description": "Successful Response"
           },
+          "400": {
+            "description": "adapter url is invalid"
+          },
           "404": {
             "content": {
               "application/json": {
@@ -14367,6 +14476,12 @@
               }
             },
             "description": "Validation Error"
+          },
+          "502": {
+            "description": "could not reach adapter"
+          },
+          "504": {
+            "description": "adapter query timed out"
           }
         },
         "summary": "Test Slo"

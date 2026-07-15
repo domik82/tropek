@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import time
 from typing import Any
 
 import httpx
@@ -81,7 +82,9 @@ class HttpAdapterClient:
         }
         headers = {'X-Datasource-Name': datasource_name}
 
+        request_started = time.perf_counter()
         resp = await self._post_with_retry(url, headers=headers, payload=payload)
+        request_elapsed_s = round(time.perf_counter() - request_started, 3)
 
         resp.raise_for_status()
         parsed = AdapterQueryResponse.model_validate(resp.json())
@@ -91,6 +94,7 @@ class HttpAdapterClient:
         logger.info(
             'adapter response',
             url=url,
+            elapsed_s=request_elapsed_s,
             values_count=len(metrics_fetched),
             errors_count=len(fetch_errors),
             values=metrics_fetched,

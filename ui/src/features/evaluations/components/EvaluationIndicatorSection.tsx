@@ -6,7 +6,8 @@ import { MetricTrendBlock } from './MetricTrendBlock'
 import { EvaluationTabs, tabLabel } from './EvaluationTabs'
 import { ChartViewControls } from '@/components/charts/ChartViewControls'
 import { useChartPreferences } from '@/lib/chart-preferences-context'
-import type { EvaluationDetail } from '../domain'
+import { useTrend } from '../hooks'
+import type { EvaluationDetail, Indicator } from '../domain'
 
 interface Props {
   evaluation: EvaluationDetail
@@ -15,6 +16,33 @@ interface Props {
   assetDisplayName?: string
   /** Human-readable SLO name passed through to each trend block. */
   sloDisplayName?: string
+}
+
+// MetricTrendBlock no longer fetches its own trend (Task 10 moved that to a
+// batched per-SLO fetch for the heatmap view) — this page still renders one
+// trend chart per indicator individually, so each block fetches its own
+// series directly via useTrend.
+function IndicatorTrendBlock(props: {
+  assetName: string
+  sloName: string
+  sloDisplayName?: string
+  selectedEvalId: string
+  indicator: Indicator
+  onScrollToTable: () => void
+}) {
+  const { data: trend, isLoading } = useTrend(props.assetName, props.sloName, props.indicator.metric)
+  return (
+    <MetricTrendBlock
+      assetName={props.assetName}
+      sloName={props.sloName}
+      sloDisplayName={props.sloDisplayName}
+      selectedEvalId={props.selectedEvalId}
+      indicator={props.indicator}
+      trend={trend}
+      isLoading={isLoading}
+      onScrollToTable={props.onScrollToTable}
+    />
+  )
 }
 
 export function EvaluationIndicatorSection({ evaluation: ev, onMetricClick, assetDisplayName, sloDisplayName }: Props) {
@@ -83,7 +111,7 @@ export function EvaluationIndicatorSection({ evaluation: ev, onMetricClick, asse
         </div>
         <div className={columns === 1 ? 'grid grid-cols-1 gap-4' : 'grid grid-cols-1 xl:grid-cols-2 gap-4'}>
           {tabIndicators.map(ind => (
-            <MetricTrendBlock
+            <IndicatorTrendBlock
               key={ind.metric}
               assetName={ev.assetSnapshot.name}
               sloName={ev.sloName ?? ''}

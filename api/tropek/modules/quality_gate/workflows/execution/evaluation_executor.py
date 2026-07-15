@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import time
 import uuid
 from datetime import datetime
 from typing import Any
@@ -20,9 +21,9 @@ from tropek.modules.quality_gate.evaluation_engine.slo_models import SLO
 from tropek.modules.quality_gate.evaluation_engine.variables import substitute_variables
 from tropek.modules.quality_gate.repositories.baseline import BaselineRepository
 from tropek.modules.quality_gate.repositories.evaluation import EvaluationRepository
+from tropek.modules.quality_gate.repositories.heatmap import HeatmapRepository
 from tropek.modules.quality_gate.repositories.indicator import IndicatorRepository, build_indicator_row_dicts
 from tropek.modules.quality_gate.repositories.sli_value import SLIValueRepository
-from tropek.modules.quality_gate.repositories.trend import TrendRepository
 from tropek.modules.quality_gate.workflows.execution.adapter_client import HttpAdapterClient
 from tropek.modules.quality_gate.workflows.execution.evaluation_helpers import (
     build_eval_variables as _build_eval_variables_shared,
@@ -80,14 +81,14 @@ class DefinitionLoadError(Exception):
 
 async def _load_definitions(
     session: AsyncSession,
-    ev: SLOEvaluation | EvaluationSnapshot,
+    evaluation: SLOEvaluation | EvaluationSnapshot,
     cache: RedisCache | None = None,
 ) -> tuple[SLODefinition, SLIDefinition]:
     """Load SLO and SLI definitions for the evaluation.
 
     Args:
         session: Active async DB session.
-        ev: Evaluation row or snapshot providing slo_name/version and sli_name/version.
+        evaluation: Evaluation row or snapshot providing slo_name/version and sli_name/version.
         cache: Optional Redis cache for definition lookups.
 
     Returns:
@@ -96,17 +97,17 @@ async def _load_definitions(
     Raises:
         DefinitionLoadError: If any required definition is missing.
     """
-    if ev.slo_name is None or ev.slo_version is None:
+    if evaluation.slo_name is None or evaluation.slo_version is None:
         raise DefinitionLoadError('evaluation has no slo_name or slo_version')
-    slo_def = await SLORepository(session, cache=cache).get_version(ev.slo_name, ev.slo_version)
+    slo_def = await SLORepository(session, cache=cache).get_version(evaluation.slo_name, evaluation.slo_version)
     if slo_def is None:
-        raise DefinitionLoadError(f"slo '{ev.slo_name}' v{ev.slo_version} not found")
+        raise DefinitionLoadError(f"slo '{evaluation.slo_name}' v{evaluation.slo_version} not found")
 
-    if ev.sli_name is None or ev.sli_version is None:
+    if evaluation.sli_name is None or evaluation.sli_version is None:
         raise DefinitionLoadError('evaluation has no sli_name or sli_version')
-    sli_def = await SLIRepository(session, cache=cache).get_version(ev.sli_name, ev.sli_version)
+    sli_def = await SLIRepository(session, cache=cache).get_version(evaluation.sli_name, evaluation.sli_version)
     if sli_def is None:
-        raise DefinitionLoadError(f"sli '{ev.sli_name}' v{ev.sli_version} not found")
+        raise DefinitionLoadError(f"sli '{evaluation.sli_name}' v{evaluation.sli_version} not found")
 
     return slo_def, sli_def
 
@@ -114,8 +115,7 @@ async def _load_definitions(
 async def _resolve_baselines(
     baseline_repo: BaselineRepository,
     slo: SLO,
-    ev: SLOEvaluation | EvaluationSnapshot,
-    indicator_names: list[str],
+    evaluation: SLOEvaluation | EvaluationSnapshot,
     evaluation_name: str | None = None,
 ) -> tuple[dict[str, float | None], list[str]]:
     """Fetch baseline evaluations and aggregate per-metric values."""
@@ -123,9 +123,9 @@ async def _resolve_baselines(
         return {}, []
 
     baseline_evals = await baseline_repo.get_evaluation_baselines(
-        asset_id=ev.asset_id,
-        slo_name=ev.slo_name,
-        period_start_before=ev.period_start,
+        asset_id=evaluation.asset_id,
+        slo_name=evaluation.slo_name,
+        period_start_before=evaluation.period_start,
         include_result_with_score=slo.comparison.include_result_with_score.value,
         limit=slo.comparison.number_of_comparison_results,
         evaluation_name=evaluation_name,
@@ -134,7 +134,7 @@ async def _resolve_baselines(
 
 
 def _build_eval_variables(
-    ev: SLOEvaluation | EvaluationSnapshot,
+    evaluation: SLOEvaluation | EvaluationSnapshot,
     asset_snapshot: dict[str, Any],
     slo_def: SLODefinition,
 ) -> dict[str, str]:
@@ -144,13 +144,13 @@ def _build_eval_variables(
     """
     return _build_eval_variables_shared(
         asset_name=asset_snapshot.get('name'),
-        evaluation_name=ev.evaluation_name,
-        start=ev.period_start.isoformat(),
-        end=ev.period_end.isoformat(),
+        evaluation_name=evaluation.evaluation_name,
+        start=evaluation.period_start.isoformat(),
+        end=evaluation.period_end.isoformat(),
         asset_variables=asset_snapshot.get('variables'),
         asset_tags=asset_snapshot.get('tags'),
         slo_variables=slo_def.variables,
-        eval_variables=ev.variables,
+        eval_variables=evaluation.variables,
     )
 
 
@@ -184,11 +184,11 @@ async def _write_indicator_rows(
 ) -> None:
     """Write indicator results to the normalized indicator_results table."""
     indicator_repo = IndicatorRepository(session)
-    obj_lookup = {obj.sli: obj.id for obj in slo_def.objectives}
+    objective_lookup = {objective.sli: objective.id for objective in slo_def.objectives}
     rows = build_indicator_row_dicts(
         evaluation_id=slo_evaluation_id,
         indicator_results=indicator_results,
-        obj_lookup=obj_lookup,
+        obj_lookup=objective_lookup,
     )
     if rows:
         await indicator_repo.bulk_insert(slo_evaluation_id, rows)
@@ -197,26 +197,26 @@ async def _write_indicator_rows(
 def _build_sli_rows(
     *,
     eval_id: uuid.UUID,
-    ev: SLOEvaluation | EvaluationSnapshot,
+    evaluation: SLOEvaluation | EvaluationSnapshot,
     sli_def: SLIDefinition,
     indicator_results: list[IndicatorResult],
     asset_snapshot: dict[str, Any],
 ) -> list[dict[str, Any]]:
     """Build SLI value rows for TimescaleDB hypertable."""
     rows: list[dict[str, Any]] = []
-    for ir in indicator_results:
+    for indicator_result in indicator_results:
         aggregation = 'raw'
-        if sli_def.mode == 'aggregated' and '.' in ir.metric:
-            aggregation = ir.metric.rsplit('.', 1)[1]
+        if sli_def.mode == 'aggregated' and '.' in indicator_result.metric:
+            aggregation = indicator_result.metric.rsplit('.', 1)[1]
         rows.append(
             {
                 'slo_evaluation_id': eval_id,
-                'eval_start': ev.period_start,
-                'metric_name': ir.metric,
+                'eval_start': evaluation.period_start,
+                'metric_name': indicator_result.metric,
                 'aggregation': aggregation,
-                'value': ir.value if ir.value is not None else 0.0,
+                'value': indicator_result.value if indicator_result.value is not None else 0.0,
                 'asset_name': asset_snapshot.get('name'),
-                'evaluation_name': ev.evaluation_name,
+                'evaluation_name': evaluation.evaluation_name,
                 'os_tag': asset_snapshot.get('tags', {}).get('os') or asset_snapshot.get('variables', {}).get('os'),
             }
         )
@@ -252,15 +252,15 @@ def _log_eval_result(
     baselines: dict[str, float | None],
 ) -> None:
     """Log per-indicator results and final score."""
-    for ir in eval_result.indicator_results:
+    for indicator_result in eval_result.indicator_results:
         log.info(
             'indicator result',
-            metric=ir.metric,
-            value=ir.value,
-            status=ir.status,
-            score=ir.score,
-            compared_value=ir.compared_value,
-            change_pct=ir.change_relative_pct,
+            metric=indicator_result.metric,
+            value=indicator_result.value,
+            status=indicator_result.status,
+            score=indicator_result.score,
+            compared_value=indicator_result.compared_value,
+            change_pct=indicator_result.change_relative_pct,
         )
     log.info(
         'evaluation scored',
@@ -298,35 +298,35 @@ async def load_evaluation_snapshot(
     repo = EvaluationRepository(session)
     await repo.mark_running(eval_id, worker_id)
 
-    ev = await repo.get_by_id(eval_id)
-    if ev is None:
+    evaluation = await repo.get_by_id(eval_id)
+    if evaluation is None:
         log.error('evaluation not found, cannot proceed')
         return None
 
     # Deduplication guard — skip if already processed
-    if ev.status not in ('pending', 'running'):
+    if evaluation.status not in ('pending', 'running'):
         log.warning(
             'evaluation already processed, skipping',
-            status=ev.status,
+            status=evaluation.status,
         )
         return None
 
-    parent_run = await session.get(EvaluationRun, ev.evaluation_id)
+    parent_run = await session.get(EvaluationRun, evaluation.evaluation_id)
 
     return EvaluationSnapshot(
-        eval_id=ev.id,
-        parent_run_id=ev.evaluation_id,
-        slo_name=ev.slo_name,
-        slo_version=ev.slo_version,
-        sli_name=ev.sli_name,
-        sli_version=ev.sli_version,
-        data_source_name=ev.data_source_name,
-        evaluation_name=ev.evaluation_name,
-        period_start=ev.period_start,
-        period_end=ev.period_end,
-        asset_snapshot=ev.asset_snapshot or {},
-        asset_id=ev.asset_id,
-        variables=ev.variables or {},
+        eval_id=evaluation.id,
+        parent_run_id=evaluation.evaluation_id,
+        slo_name=evaluation.slo_name,
+        slo_version=evaluation.slo_version,
+        sli_name=evaluation.sli_name,
+        sli_version=evaluation.sli_version,
+        data_source_name=evaluation.data_source_name,
+        evaluation_name=evaluation.evaluation_name,
+        period_start=evaluation.period_start,
+        period_end=evaluation.period_end,
+        asset_snapshot=evaluation.asset_snapshot or {},
+        asset_id=evaluation.asset_id,
+        variables=evaluation.variables or {},
         compare_to=parent_run.compare_to if parent_run else None,
     )
 
@@ -399,13 +399,11 @@ async def fetch_and_evaluate(
     _log_adapter_response(log, metrics_fetched, fetch_errors, sli_metadata)
 
     # Resolve baselines (pin-aware, scoped to comparison series)
-    indicator_names = list(sli_def.indicators) if sli_def.mode == 'raw' else [obj.sli for obj in slo.objectives]
     comparison_name = resolve_comparison_name(snapshot.compare_to, snapshot.evaluation_name)
     baselines, compared_eval_ids = await _resolve_baselines(
         baseline_repo=baseline_repo,
         slo=slo,
-        ev=snapshot,
-        indicator_names=indicator_names,
+        evaluation=snapshot,
         evaluation_name=comparison_name,
     )
     eval_result = evaluate(slo, metrics_fetched, baselines, compared_eval_ids)
@@ -442,8 +440,8 @@ async def write_results(
     log = logger.bind(evaluation_id=str(snapshot.eval_id))
     eval_result = fetch_result.eval_result
 
-    achieved_points = sum(round(ir.score) for ir in eval_result.indicator_results)
-    total_points = sum(int(obj.weight) for obj in slo_def.objectives)
+    achieved_points = sum(round(indicator_result.score) for indicator_result in eval_result.indicator_results)
+    total_points = sum(int(objective.weight) for objective in slo_def.objectives)
     repo = EvaluationRepository(session, cache=cache, heatmap_cache=heatmap_cache)
     await repo.mark_completed(
         snapshot.eval_id,
@@ -490,9 +488,10 @@ async def write_sli_values_phase(
 
     Caller should COMMIT after this returns.
     """
+    phase_started = time.perf_counter()
     sli_rows = _build_sli_rows(
         eval_id=snapshot.eval_id,
-        ev=snapshot,
+        evaluation=snapshot,
         sli_def=sli_def,
         indicator_results=fetch_result.eval_result.indicator_results,
         asset_snapshot=snapshot.asset_snapshot,
@@ -500,6 +499,11 @@ async def write_sli_values_phase(
     if sli_rows:
         sli_repo = SLIValueRepository(session)
         await sli_repo.write_sli_values(sli_rows)
+    logger.bind(evaluation_id=str(snapshot.eval_id)).info(
+        'phase 3b: sli values written',
+        rows=len(sli_rows),
+        elapsed_s=round(time.perf_counter() - phase_started, 3),
+    )
 
 
 async def warm_heatmap_column_cache(
@@ -522,24 +526,23 @@ async def warm_heatmap_column_cache(
     assembly time, so later annotations correct the response without needing
     to mutate the cached fragment.
 
-    The ``redis_cache._redis`` reach-through matches the pattern in
-    ``get_heatmap_column_cache`` (shared/dependencies.py): one redis client
-    owned by ``RedisCache``, shared between the read path and the warm path.
-    When that wiring is refactored, both call sites are updated together.
+    Uses ``RedisCache.client`` (the single redis client owned by ``RedisCache``)
+    so the warm path shares the same client as the read path in
+    ``get_heatmap_column_cache`` (shared/dependencies.py).
     """
-    if redis_cache is None or redis_cache._redis is None:
+    if redis_cache is None or redis_cache.client is None:
         return
     try:
-        trend_repo = TrendRepository(session)
-        run = await trend_repo.get_run_with_slo_evaluations(run_id)
+        heatmap_repo = HeatmapRepository(session)
+        run = await heatmap_repo.get_run_with_slo_evaluations(run_id)
         if run is None:
             logger.warning('heatmap warm skipped: run not found', evaluation_id=str(run_id))
             return
         fragment = build_column_fragment(run, has_notes=False)
         column_cache = HeatmapColumnCache(
-            redis_cache._redis,
+            redis_cache.client,
             ttl_seconds=settings.cache.ttl.heatmap_column,
         )
         await column_cache.set_many([fragment])
-    except Exception as exc:  # noqa: BLE001 - warm path must never block eval completion
-        logger.warning('heatmap warm failed', evaluation_id=str(run_id), error=str(exc))
+    except Exception as error:  # noqa: BLE001 - warm path must never block eval completion
+        logger.warning('heatmap warm failed', evaluation_id=str(run_id), error=str(error))
