@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.1.3-alpha] - 2026-07-15
+
+### Added
+
+- **Batched per-SLO trends with viewport-lazy loading** — `GET /assets/{asset_name}/slos/{slo_name}/trends` returns every metric's trend series for an SLO in one Redis-cached call, replacing the previous per-indicator fetch pattern that fired all ~439 trend queries at once on page mount. The UI's `useSloTrends` hook lazy-loads each SLO group only once it's expanded and enters the viewport (via the new `useInViewport` hook) (#73)
+
+### Fixed
+
+- **Batched trend queries computed each SLO-evaluation's objective weight via a per-row correlated subquery** — replaced with a single `GROUP BY` aggregate; a cold heavy-SLO `/trends` call on real-scale data (win10-toolset: 415 runs × ~7 indicators per SLO) dropped from 3-9s to ~0.12s server-side (#73)
+- **Batched-trend cache wasn't invalidated on mutation** — the batched-trend query key root (`slo-trends`) was disjoint from `allTrends` (`trend`), so the 6 mutation success handlers that invalidate `allTrends` (override, invalidate, restore, pin, re-evaluate) left the batched cache stale with `staleTime: Infinity`. Added `evaluationKeys.allSloTrends`, invalidated alongside `allTrends` at every site (#73)
+
+### Changed
+
+- **Heatmap repository split out of `TrendRepository`** — the 5 heatmap methods and a shared `_apply_window_filters()` helper now live in `repositories/heatmap.py`; `trend.py` holds only trend queries. `RedisCache.client` property replaces direct `._redis` access at 3 call sites. Cryptic locals renamed repo-wide (`ev`→`evaluation`, `ir`→`indicator_result`, `obj`→`objective`, `exc`→`error`); dead `indicator_names` parameter removed from `_resolve_baselines` (#73)
+
 ## [0.1.2-alpha] - 2026-07-09
 
 ### Added
