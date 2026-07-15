@@ -56,6 +56,7 @@ jobs:
           push: true
           tags: |
             ${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ matrix.image }}:${{ steps.version.outputs.tag }}
+            ${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ matrix.image }}:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
 

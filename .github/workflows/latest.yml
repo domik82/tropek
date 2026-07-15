@@ -1,14 +1,10 @@
 name: Latest Images
 
-# Manual trigger — run from GitHub Actions UI when main is stable.
+# release.yml already re-tags :latest alongside the version tag on every
+# `v*` release, so this workflow is a break-glass fallback only — e.g.
+# rebuilding :latest from main without cutting a version tag.
 on:
   workflow_dispatch:
-
-# Uncomment below (and remove workflow_dispatch above) to auto-push latest on every
-# merge to main, once branch protection is in place:
-# on:
-#   push:
-#     branches: [main]
 
 permissions:
   packages: write
