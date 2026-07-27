@@ -310,6 +310,7 @@
       <div class="controls">
         <span><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></span><span>move</span>
         <span><kbd>Mouse</kbd></span><span>look · <kbd>L-Click</kbd> fire</span>
+        <span><kbd>&larr;</kbd><kbd>&rarr;</kbd> / <kbd>Q</kbd><kbd>E</kbd></span><span>turn (if the mouse won't lock, move it to steer)</span>
         <span><kbd>R</kbd></span><span>reload</span>
         <span><kbd>1</kbd><kbd>2</kbd><kbd>3</kbd></span><span>knife · pistol · rifle</span>
         <span><kbd>B</kbd></span><span>buy menu</span>
@@ -565,7 +566,12 @@
     enemies: [],
     lastTime: 0,
     keys: {},
+    pointerLocked: false,   // true when the browser granted pointer lock
+    fallback: false,        // true when we fall back to mouse-steer (locked pointer refused)
+    aimX: 0, aimY: 0,       // normalized cursor offset from center (-1..1) in fallback mode
+    cursorActive: false,    // cursor is currently over the play area
   };
+  function clampRange(value, lo, hi) { return value < lo ? lo : value > hi ? hi : value; }
   // per-weapon ammo bookkeeping
   function grantWeapon(id) {
     const spec = WEAPONS[id];
@@ -1042,26 +1048,63 @@
   });
   document.addEventListener('keyup', (event) => { keys[event.key.toLowerCase()] = false; });
 
-  // mouse look via pointer lock
+  // ---- look controls: pointer lock when allowed, mouse-steer fallback otherwise ----
+  function enableFallback() {
+    if (state.fallback) return;
+    state.fallback = true;
+    state.pointerLocked = false;
+    view.style.cursor = 'crosshair';
+    toast('Mouse-steer mode — move the mouse to turn, click to fire');
+  }
+  function requestLook() {
+    if (state.fallback) return;                    // already committed to no-lock mode
+    let settled = false;
+    const onChange = () => { settled = true; };
+    document.addEventListener('pointerlockchange', onChange, { once: true });
+    try {
+      const promise = view.requestPointerLock();
+      if (promise && promise.then) promise.then(() => { settled = true; }).catch(enableFallback);
+    } catch (err) { enableFallback(); }
+    // if neither a lock nor an error lands (e.g. blocked by an iframe policy), fall back
+    setTimeout(() => { if (!settled && document.pointerLockElement !== view) enableFallback(); }, 500);
+  }
+
   view.addEventListener('mousedown', (event) => {
     if (!state.running) return;
-    if (document.pointerLockElement !== view) { view.requestPointerLock(); return; }
+    if (state.fallback) { if (event.button === 0) state.firing = true; return; }
+    if (document.pointerLockElement !== view) { requestLook(); return; }
     if (event.button === 0) state.firing = true;
   });
   window.addEventListener('mouseup', (event) => { if (event.button === 0) state.firing = false; });
+
   document.addEventListener('mousemove', (event) => {
-    if (document.pointerLockElement !== view) return;
-    const sens = 0.0022;
-    rotatePlayer(-event.movementX * sens);
-    player.pitch = Math.max(-120, Math.min(120, player.pitch - event.movementY * 0.9));
+    if (document.pointerLockElement === view) {           // locked: relative look
+      const sens = 0.0022;
+      rotatePlayer(-event.movementX * sens);
+      player.pitch = clampRange(player.pitch - event.movementY * 0.9, -140, 140);
+      return;
+    }
+    if (state.fallback && state.running) {                 // unlocked: position steering
+      const rect = view.getBoundingClientRect();
+      const normX = (event.clientX - rect.left) / rect.width;
+      const normY = (event.clientY - rect.top) / rect.height;
+      state.cursorActive = normX >= 0 && normX <= 1 && normY >= 0 && normY <= 1;
+      state.aimX = clampRange((normX - 0.5) * 2, -1, 1);
+      state.aimY = clampRange((normY - 0.5) * 2, -1, 1);
+    }
   });
+  view.addEventListener('mouseleave', () => { state.cursorActive = false; });
+
   document.addEventListener('pointerlockchange', () => {
-    if (document.pointerLockElement !== view && state.running && !buyOpen &&
+    state.pointerLocked = document.pointerLockElement === view;
+    if (state.pointerLocked) { state.fallback = false; view.style.cursor = 'none'; }
+    else if (state.running && !buyOpen && !state.fallback &&
         document.getElementById('round-screen').classList.contains('hidden') &&
         document.getElementById('over-screen').classList.contains('hidden')) {
       state.firing = false;
     }
   });
+  document.addEventListener('pointerlockerror', enableFallback);
 
   function rotatePlayer(rot) {
     const oldDirX = player.dirX;
@@ -1073,13 +1116,18 @@
   }
 
   function movePlayer(dt) {
+    // keyboard turning (works with no mouse at all)
+    const turn = 2.2 * dt;
+    if (keys['arrowleft']  || keys['q']) rotatePlayer(turn);
+    if (keys['arrowright'] || keys['e']) rotatePlayer(-turn);
+
     const walk = keys['shift'] ? 0.5 : 1;
     const speed = 3.2 * walk * dt;
     let mx = 0, my = 0;
-    if (keys['w'] || keys['arrowup'])    { mx += player.dirX; my += player.dirY; }
-    if (keys['s'] || keys['arrowdown'])  { mx -= player.dirX; my -= player.dirY; }
-    if (keys['d'] || keys['arrowright']) { mx += player.planeX; my += player.planeY; }
-    if (keys['a'] || keys['arrowleft'])  { mx -= player.planeX; my -= player.planeY; }
+    if (keys['w'] || keys['arrowup'])   { mx += player.dirX; my += player.dirY; }
+    if (keys['s'] || keys['arrowdown']) { mx -= player.dirX; my -= player.dirY; }
+    if (keys['d']) { mx += player.planeX; my += player.planeY; }
+    if (keys['a']) { mx -= player.planeX; my -= player.planeY; }
     const mag = Math.hypot(mx, my);
     player.moveSpeedNow = Math.min(1, mag);
     if (mag > 0) {
@@ -1113,7 +1161,7 @@
   function closeBuy() {
     buyOpen = false;
     document.getElementById('buymenu').classList.add('hidden');
-    if (state.running) view.requestPointerLock();
+    if (state.running && !state.fallback) requestLook();
   }
   function renderBuy() {
     document.getElementById('buy-balance').textContent = player.money;
@@ -1237,7 +1285,7 @@
     resetGame();
     state.running = true;
     startWave(1);
-    view.requestPointerLock();
+    requestLook();
   }
 
   // ======================================================================
@@ -1250,7 +1298,14 @@
     if (state.running && !buyOpen &&
         document.getElementById('round-screen').classList.contains('hidden')) {
       movePlayer(dt);
-      if (state.firing && document.pointerLockElement === view) tryFire();
+      // mouse-steer (fallback) look: cursor offset from center drives turn + pitch
+      if (state.fallback && state.cursorActive) {
+        const deadZone = 0.14;
+        const steer = Math.abs(state.aimX) < deadZone ? 0 : state.aimX;
+        rotatePlayer(-steer * 2.8 * dt);
+        player.pitch = clampRange(-state.aimY * 120, -140, 140);
+      }
+      if (state.firing && (state.pointerLocked || state.fallback)) tryFire();
       if (state.fireCooldown > 0) state.fireCooldown -= dt;
       if (state.reloading > 0) { state.reloading -= dt; if (state.reloading <= 0) finishReload(); }
       if (state.muzzle > 0) state.muzzle -= dt;
