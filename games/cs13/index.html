@@ -737,10 +737,18 @@
 
     if (weapon.melee) sfx.knife(); else { sfx.fire(weaponSoundKind()); state.muzzle = 0.06; player.recoil = Math.min(1, player.recoil + 0.35); }
 
-    // aim ray = view direction plus a little spread
+    // aim base: view center normally, or through the reticle in free-aim mode
+    let baseAimX = player.dirX, baseAimY = player.dirY;
+    if (state.fallback) {
+      baseAimX = player.dirX + player.planeX * state.aimX;
+      baseAimY = player.dirY + player.planeY * state.aimX;
+      const aimLen = Math.hypot(baseAimX, baseAimY) || 1;
+      baseAimX /= aimLen; baseAimY /= aimLen;
+    }
+    // add a little spread
     const spread = (Math.random() - 0.5) * weapon.spread * 2;
-    const aimX = player.dirX * Math.cos(spread) - player.dirY * Math.sin(spread);
-    const aimY = player.dirX * Math.sin(spread) + player.dirY * Math.cos(spread);
+    const aimX = baseAimX * Math.cos(spread) - baseAimY * Math.sin(spread);
+    const aimY = baseAimX * Math.sin(spread) + baseAimY * Math.cos(spread);
 
     // wall distance straight ahead limits melee/range
     const wallDist = castWall(player.posX, player.posY, aimX, aimY);
@@ -1049,12 +1057,14 @@
   document.addEventListener('keyup', (event) => { keys[event.key.toLowerCase()] = false; });
 
   // ---- look controls: pointer lock when allowed, mouse-steer fallback otherwise ----
+  const crosshair = document.getElementById('crosshair');
+  function centerReticle() { crosshair.style.left = '50%'; crosshair.style.top = '50%'; }
   function enableFallback() {
     if (state.fallback) return;
     state.fallback = true;
     state.pointerLocked = false;
-    view.style.cursor = 'crosshair';
-    toast('Mouse-steer mode — move the mouse to turn, click to fire');
+    view.style.cursor = 'none';
+    toast('Free-aim mode — the reticle follows your mouse; push the left/right edge to turn');
   }
   function requestLook() {
     if (state.fallback) return;                    // already committed to no-lock mode
@@ -1080,24 +1090,26 @@
   document.addEventListener('mousemove', (event) => {
     if (document.pointerLockElement === view) {           // locked: relative look
       const sens = 0.0022;
-      rotatePlayer(-event.movementX * sens);
+      rotatePlayer(event.movementX * sens);               // mouse right -> look right
       player.pitch = clampRange(player.pitch - event.movementY * 0.9, -140, 140);
       return;
     }
-    if (state.fallback && state.running) {                 // unlocked: position steering
+    if (state.fallback && state.running) {                 // unlocked: free-aim reticle + edge steer
       const rect = view.getBoundingClientRect();
       const normX = (event.clientX - rect.left) / rect.width;
       const normY = (event.clientY - rect.top) / rect.height;
       state.cursorActive = normX >= 0 && normX <= 1 && normY >= 0 && normY <= 1;
       state.aimX = clampRange((normX - 0.5) * 2, -1, 1);
       state.aimY = clampRange((normY - 0.5) * 2, -1, 1);
+      crosshair.style.left = event.clientX + 'px';        // the one reticle follows the cursor
+      crosshair.style.top = event.clientY + 'px';
     }
   });
   view.addEventListener('mouseleave', () => { state.cursorActive = false; });
 
   document.addEventListener('pointerlockchange', () => {
     state.pointerLocked = document.pointerLockElement === view;
-    if (state.pointerLocked) { state.fallback = false; view.style.cursor = 'none'; }
+    if (state.pointerLocked) { state.fallback = false; view.style.cursor = 'none'; centerReticle(); }
     else if (state.running && !buyOpen && !state.fallback &&
         document.getElementById('round-screen').classList.contains('hidden') &&
         document.getElementById('over-screen').classList.contains('hidden')) {
@@ -1300,9 +1312,11 @@
       movePlayer(dt);
       // mouse-steer (fallback) look: cursor offset from center drives turn + pitch
       if (state.fallback && state.cursorActive) {
-        const deadZone = 0.14;
-        const steer = Math.abs(state.aimX) < deadZone ? 0 : state.aimX;
-        rotatePlayer(-steer * 2.8 * dt);
+        const edge = 0.5;                                          // free-aim near center, turn past the edge
+        if (Math.abs(state.aimX) > edge) {
+          const past = (Math.abs(state.aimX) - edge) / (1 - edge); // 0..1 toward the edge
+          rotatePlayer(Math.sign(state.aimX) * past * 3.4 * dt);   // push right -> turn right
+        }
         player.pitch = clampRange(-state.aimY * 120, -140, 140);
       }
       if (state.firing && (state.pointerLocked || state.fallback)) tryFire();
