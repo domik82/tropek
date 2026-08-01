@@ -34,7 +34,7 @@ dev = [
     "ruff>=0.4",
     "types-pyyaml",
     "types-redis",
-    "sqlalchemy[mypy]>=2.0",
+    "sqlalchemy[mypy]>=2.0.51",
     "fakeredis>=2.21",
     "schemathesis>=3.36",
     "pytest-xdist>=3.5",
