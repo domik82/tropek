@@ -120,18 +120,6 @@ class TestAggregatedModeValidation:
                 methods=['mean', 'invalid_method'],
             )
 
-    def test_aggregated_mode_with_indicators_rejected(self) -> None:
-        with pytest.raises(ValidationError, match='indicators'):
-            SLIDefinitionCreate(
-                name='test',
-                adapter_type='prometheus',
-                mode='aggregated',
-                query_template='rate(cpu[$interval])',
-                interval='1m',
-                methods=['mean'],
-                indicators={'cpu': 'rate(cpu[5m])'},
-            )
-
     def test_aggregated_mode_all_methods_valid(self) -> None:
         sli = SLIDefinitionCreate(
             name='test',
@@ -154,3 +142,61 @@ class TestAggregatedModeValidation:
 
     def test_enum_has_ten_members(self) -> None:
         assert len(AggregationMethod) == 10
+
+
+class TestAggregatedMultiIndicator:
+    def test_aggregated_mode_with_indicators_valid(self) -> None:
+        sli = SLIDefinitionCreate(
+            name='test',
+            adapter_type='prometheus',
+            mode='aggregated',
+            interval='5m',
+            methods=[AggregationMethod.MEAN, AggregationMethod.MAX],
+            indicators={'cpu': 'rate(cpu[$interval])', 'mem': 'mem_bytes'},
+        )
+        assert sli.indicators == {'cpu': 'rate(cpu[$interval])', 'mem': 'mem_bytes'}
+        assert sli.query_template is None
+
+    def test_aggregated_mode_with_both_indicators_and_template_rejected(self) -> None:
+        with pytest.raises(ValidationError, match='not both'):
+            SLIDefinitionCreate(
+                name='test',
+                adapter_type='prometheus',
+                mode='aggregated',
+                interval='5m',
+                methods=[AggregationMethod.MEAN],
+                indicators={'cpu': 'rate(cpu[$interval])'},
+                query_template='rate(cpu[$interval])',
+            )
+
+    def test_aggregated_mode_with_neither_rejected(self) -> None:
+        with pytest.raises(ValidationError, match='indicators or query_template'):
+            SLIDefinitionCreate(
+                name='test',
+                adapter_type='prometheus',
+                mode='aggregated',
+                interval='5m',
+                methods=[AggregationMethod.MEAN],
+            )
+
+    def test_aggregated_mode_indicators_still_require_methods(self) -> None:
+        with pytest.raises(ValidationError, match='methods'):
+            SLIDefinitionCreate(
+                name='test',
+                adapter_type='prometheus',
+                mode='aggregated',
+                interval='5m',
+                indicators={'cpu': 'rate(cpu[$interval])'},
+            )
+
+    def test_aggregated_mode_single_template_still_valid(self) -> None:
+        sli = SLIDefinitionCreate(
+            name='test',
+            adapter_type='prometheus',
+            mode='aggregated',
+            interval='1m',
+            methods=[AggregationMethod.MEAN],
+            query_template='http_request_duration_seconds',
+        )
+        assert sli.query_template == 'http_request_duration_seconds'
+        assert sli.indicators == {}

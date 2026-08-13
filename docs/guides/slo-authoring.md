@@ -433,6 +433,40 @@ aggregations (`methods`) over it. The SLO objectives reference the SLI as
 }
 ```
 
+### Aggregated mode with multiple indicators
+
+An aggregated SLI can carry `indicators` instead of a single `query_template`. Each
+indicator is reduced independently over the evaluation window, and objectives reference
+`<indicator>.<method>`:
+
+```json
+{
+  "name": "plugin-metrics-agg-sli",
+  "mode": "aggregated",
+  "adapter_type": "prometheus",
+  "interval": "5m",
+  "methods": ["mean", "max"],
+  "indicators": {
+    "cpu_usage": "rate(process_cpu_seconds_total{process_name='$process_name'}[$interval])",
+    "memory_usage": "process_resident_memory_bytes{process_name='$process_name'}"
+  }
+}
+```
+
+Objectives then reference `cpu_usage.mean`, `cpu_usage.max`, `memory_usage.mean`,
+`memory_usage.max`. Set `indicators` **or** `query_template`, never both.
+
+**Tooling limits:** the registry UI displays multi-indicator aggregated SLIs but cannot
+yet create or re-version them, and `POST /slo-definitions/test` rejects aggregated SLIs
+outright (dry runs issue raw queries only). Author these via the API or a bootstrap
+manifest, and verify them with a real evaluation.
+
+**Warning:** converting an existing aggregated SLI between the two forms renames every
+metric key (from `<sli_name>.<method>` to `<indicator>.<method>`, or back), which orphans
+every SLO objective referencing the old keys. Baselines are matched by objective name
+(`api/tropek/modules/quality_gate/workflows/execution/evaluation_helpers.py:105-108`), so the
+baseline history behind the old keys ends at the same time.
+
 ### Available aggregation methods
 
 | Method | Description |

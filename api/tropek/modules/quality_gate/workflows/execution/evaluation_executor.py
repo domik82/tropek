@@ -35,6 +35,7 @@ from tropek.modules.quality_gate.workflows.execution.evaluation_helpers import (
 )
 from tropek.modules.quality_gate.workflows.presentation.heatmap_cache import HeatmapColumnCache
 from tropek.modules.quality_gate.workflows.presentation.presenter import build_column_fragment
+from tropek.modules.sli_registry.keys import build_aggregated_templates
 from tropek.modules.sli_registry.repository import SLIRepository
 from tropek.modules.slo_registry.repository import SLORepository
 
@@ -160,17 +161,25 @@ def _build_query_specs(
 ) -> dict[str, dict[str, Any]]:
     """Build adapter query specs from the SLI definition.
 
-    For raw mode: wraps each resolved query string into {mode: raw, query: ...}.
-    For aggregated mode: builds a single {mode: aggregated, ...} spec.
+    Raw mode wraps each resolved query into ``{mode: raw, query: ...}``.
+    Aggregated mode emits one ``{mode: aggregated, ...}`` spec per key returned by
+    :func:`build_aggregated_templates` — one per indicator, or a single key for the
+    single ``query_template`` form. Adapters key their results ``<spec_key>.<method>``,
+    which is what :func:`build_indicator_keys` predicts at SLO creation time.
     """
     if sli_def.mode == 'aggregated':
+        # Templates go to the adapter unsubstituted: $interval has to resolve against
+        # each spec's own interval, so the adapter substitutes using the variables the
+        # worker sends alongside. resolved_queries is empty in this branch.
+        templates_by_spec_key = build_aggregated_templates(sli_def)
         return {
-            sli_def.name: {
+            spec_key: {
                 'mode': 'aggregated',
-                'query_template': sli_def.query_template,
+                'query_template': query_template,
                 'interval': sli_def.interval,
                 'methods': sli_def.methods,
             }
+            for spec_key, query_template in templates_by_spec_key.items()
         }
     return {name: {'mode': 'raw', 'query': query} for name, query in resolved_queries.items()}
 

@@ -172,3 +172,16 @@ spec:
   target_name: cp-transition-monitor
   slo_name: cp-transition-slo
   data_source_name: prometheus-local
+
+# ---- Multi-indicator aggregated SLO assignment ----
+
+---
+api_version: tropek/v1
+kind: SLOAssignment
+metadata:
+  name: checkout-api-plugin-agg-assignment
+spec:
+  target_type: asset
+  target_name: checkout-api
+  slo_name: plugin-metrics-agg-slo
+  data_source_name: prometheus-local

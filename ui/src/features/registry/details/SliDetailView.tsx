@@ -52,6 +52,11 @@ export function SliDetailView({ name, onNavigate, onNewVersion }: SliDetailViewP
     s.objectives.some(obj => obj.sli === sli.name)
   )
 
+  // Aggregated SLIs carry either indicators (one query template each) or a single
+  // queryTemplate — show whichever the definition actually uses.
+  const isRawMode = (sli.mode ?? 'raw') === 'raw'
+  const hasIndicators = Object.keys(sli.indicators).length > 0
+
   function handleDeactivate() {
     deleteMutation.mutate(sli!.name)
     setShowDeleteConfirm(false)
@@ -135,10 +140,10 @@ export function SliDetailView({ name, onNavigate, onNewVersion }: SliDetailViewP
         </div>
 
         {/* Mode-specific content */}
-        {(sli.mode ?? 'raw') === 'raw' ? (
+        {(isRawMode || hasIndicators) && (
           <div>
             <p className="text-xs text-muted-foreground mb-2">Indicators</p>
-            {Object.keys(sli.indicators).length === 0 ? (
+            {!hasIndicators ? (
               <p className="text-xs text-muted-foreground">No indicators defined.</p>
             ) : (
               <div className="overflow-x-auto">
@@ -169,14 +174,17 @@ export function SliDetailView({ name, onNavigate, onNewVersion }: SliDetailViewP
               </div>
             )}
           </div>
-        ) : (
+        )}
+        {!isRawMode && (
           <div className="space-y-3">
-            <div>
-              <p className="text-xs text-muted-foreground mb-1">Query Template</p>
-              <p className="text-sm font-mono text-foreground break-all">
-                {sli.queryTemplate ? highlightVariables(sli.queryTemplate) : '—'}
-              </p>
-            </div>
+            {!hasIndicators && (
+              <div>
+                <p className="text-xs text-muted-foreground mb-1">Query Template</p>
+                <p className="text-sm font-mono text-foreground break-all">
+                  {sli.queryTemplate ? highlightVariables(sli.queryTemplate) : '—'}
+                </p>
+              </div>
+            )}
             <div className="flex gap-6">
               <div>
                 <p className="text-xs text-muted-foreground mb-1">Interval</p>

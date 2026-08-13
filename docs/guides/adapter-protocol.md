@@ -44,6 +44,11 @@ Accepts an `AdapterQueryRequest` body, returns an `AdapterQueryResponse`.
 | `raw` | `mode`, `query` | One scalar per metric |
 | `aggregated` | `mode`, `query_template`, `interval`, `methods` | One scalar per metric.method pair |
 
+An SLI may declare aggregated mode with **many indicators**. TROPEK then sends one
+aggregated spec per indicator, each keyed by the indicator name, so an adapter needs no
+special handling — it already receives independent specs and keys results
+`<spec_key>.<method>`.
+
 **Template variables** — the `variables` map is substituted into query strings before
 execution. TROPEK always injects `TROPEK_ASSET`, `TROPEK_EVALUATION`, and the time
 range. Additional variables come from the SLO definition.

@@ -1,6 +1,11 @@
 # Claude Code local settings (personal paths, hooks)
 .claude/settings.local.json
 
+# Local Compose overrides — Compose auto-loads this file, so it is the per-developer
+# customization slot (host port remapping, extra mounts). Shared compose config belongs
+# in docker-compose.yml, or a distinctly named file passed explicitly with -f.
+docker-compose.override.yml
+
 # Superpowers brainstorming sessions
 .superpowers/
 

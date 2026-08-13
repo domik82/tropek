@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- Aggregated-mode SLIs can declare multiple `indicators` instead of a single
+  `query_template`. The engine sends one aggregated spec per indicator, so a single
+  SLI/SLO pair can score many metrics. Objectives reference `<indicator>.<method>`.
+  No adapter changes and no migration are required; the single-`query_template` form
+  is unchanged. Multi-indicator aggregated SLIs are authored via the API or YAML
+  manifests only in this increment — the registry UI displays them but cannot yet
+  create or re-version them.
+
+### Changed
+
+- `POST /slo-definitions/test` now rejects aggregated-mode SLIs with 422 instead of
+  returning a dry-run result. It issues raw queries only, so the adapter answered with
+  indicator names while the objectives were named `<indicator>.<method>` — every metric
+  came back missing and the result looked computed.
+
 ## [0.1.3-alpha] - 2026-07-15
 
 ### Added

@@ -36,6 +36,7 @@ class SLOTestService:
         """Fetch metrics, evaluate against SLO, return result without persisting."""
         slo = self._parse_slo(body)
         sli_def = await self._resolve_sli(body.sli_name)
+        self._reject_aggregated_mode(sli_def)
         ds = await self._resolve_datasource(body.data_source_name)
         asset = await self._resolve_asset(body.asset_name)
 
@@ -84,6 +85,18 @@ class SLOTestService:
         if sli_def is None:
             raise NotFoundError('sli definition', sli_name)
         return sli_def
+
+    def _reject_aggregated_mode(self, sli_def: SLIDefinition) -> None:
+        """Refuse to dry-run an aggregated-mode SLI.
+
+        A dry run posts plain ``{name: query}`` pairs, which every adapter reads as raw
+        mode, so the metrics come back keyed by indicator name while the objectives are
+        named ``<indicator>.<method>``. The evaluation would report every metric missing;
+        failing up front says so instead of returning a result that looks computed.
+        """
+        if sli_def.mode == 'aggregated':
+            msg = f"could not test sli '{sli_def.name}': dry runs support raw mode only, not aggregated mode"
+            raise DomainValidationError(msg)
 
     async def _resolve_datasource(self, data_source_name: str) -> DataSource:
         """Look up a datasource by name."""

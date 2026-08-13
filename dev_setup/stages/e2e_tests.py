@@ -27,6 +27,11 @@ are easy to identify in the heatmap and logs.
                                             with method-keyed indicators and
                                             baseline comparison (finds the
                                             agg-latency-slo eval by name).
+
+  multi-agg-test      POST /evaluate        Exercises a multi-indicator
+                                            aggregated SLI — one adapter query
+                                            spec per indicator (finds the
+                                            plugin-metrics-agg-slo eval).
 """
 
 from __future__ import annotations
@@ -47,6 +52,7 @@ from tropek_client.models import (
     AssetTypeUpdate,
     EvaluateBatchRequest,
     EvaluateSingleRequest,
+    EvaluationDetail,
     OverrideStatusRequest,
     PinBaselineRequest,
     ReEvaluateFromBaselineRequest,
@@ -62,7 +68,7 @@ def step(name: str) -> None:
     print(f'\n=== {name} ===')
 
 
-def poll_eval(client: TropekClient, eval_id: str, timeout: int = 30) -> object:
+def poll_eval(client: TropekClient, eval_id: str, timeout: int = 30) -> EvaluationDetail:
     """Poll an evaluation until it reaches a terminal status."""
     for _ in range(timeout):
         ev = client.evaluations.get(eval_id)
@@ -500,6 +506,63 @@ def test_aggregated_evaluation(client: TropekClient) -> None:
     print('PASS: aggregated-mode evaluation with baselines')
 
 
+def test_multi_indicator_aggregated(client: TropekClient) -> None:
+    """Verify a multi-indicator aggregated SLI sends one adapter query spec per indicator.
+
+    The indicator-name set alone is not sufficient evidence: `evaluate()` builds one
+    IndicatorResult per SLO objective (metric=obj.sli) unconditionally, so metric_names
+    always matches the SLO YAML's declared objectives regardless of what the adapter
+    returned. The distinguishing signal is `sli_metadata`, which the adapter writes keyed
+    by the query spec key it actually received — 'cpu_usage' and 'memory_usage' here. If
+    `_build_query_specs` regressed to sending one spec keyed by the SLI name, that dict
+    would contain {'plugin-metrics-agg-sli'} instead.
+    """
+    step('Step 21b: Multi-indicator aggregated evaluation')
+
+    # 2026-03-15T10:00 sits in plugin-health's 42h stable phase (scenario starts
+    # 2026-03-14T00:00), so values are predictable and thresholds pass.
+    result = client.evaluations.trigger(
+        EvaluateSingleRequest(
+            asset_name='checkout-api',
+            eval_name='multi-agg-test',
+            period_start='2026-03-15T10:00:00Z',
+            period_end='2026-03-15T10:30:00Z',
+        )
+    )
+
+    evaluation = None
+    for slo_eval_id in result.slo_evaluation_ids:
+        candidate = poll_eval(client, str(slo_eval_id))
+        if candidate.slo_name == 'plugin-metrics-agg-slo':
+            evaluation = candidate
+            break
+    assert evaluation is not None, f'plugin-metrics-agg-slo not found among {result.slo_evaluation_ids}'
+
+    print(f'status={evaluation.status} result={evaluation.result} score={evaluation.score}')
+    assert evaluation.status == 'completed', f'expected completed, got {evaluation.status}'
+
+    metric_names = {indicator.metric for indicator in evaluation.indicator_results}
+    expected = {'cpu_usage.mean', 'cpu_usage.max', 'memory_usage.mean', 'memory_usage.max'}
+    assert expected <= metric_names, f'missing {sorted(expected - metric_names)}, got {sorted(metric_names)}'
+
+    # Non-tautological check: sli_metadata is keyed by the adapter query spec key it
+    # actually received, not by the SLO's declared objective names. This is what proves
+    # one spec per indicator was sent, rather than one spec for the whole SLI.
+    metadata_keys = set(evaluation.sli_metadata) if evaluation.sli_metadata else set()
+    expected_metadata_keys = {'cpu_usage', 'memory_usage'}
+    print(f'sli_metadata keys: {sorted(metadata_keys)}')
+    assert metadata_keys == expected_metadata_keys, (
+        f'expected adapter metadata keyed by indicator name {sorted(expected_metadata_keys)}, '
+        f'got {sorted(metadata_keys)} — one query spec per indicator was not sent to the adapter'
+    )
+
+    for indicator in evaluation.indicator_results:
+        print(f'  {indicator.metric}: value={indicator.value}')
+        assert indicator.value is not None, f'expected a value for {indicator.metric}, got None'
+
+    print('PASS: multi-indicator aggregated evaluation')
+
+
 def test_asset_type_delete_with_assets(client: TropekClient) -> None:
     """Verify that deleting a type with assets raises 409 Conflict."""
     step('Step 22: Delete type with assets (expect 409)')
@@ -538,6 +601,7 @@ def main() -> None:
     test_asset_delete(client)
     test_label_autocomplete(client)
     test_aggregated_evaluation(client)
+    test_multi_indicator_aggregated(client)
     test_meta_snapshot_crud(client)
     test_asset_type_delete_with_assets(client)
 
