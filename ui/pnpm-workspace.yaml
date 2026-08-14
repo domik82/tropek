@@ -2,12 +2,6 @@ allowBuilds:
   msw: true
 
 overrides:
-  "path-to-regexp@>=8.0.0 <8.4.0": "8.4.2"
-  flatted: ">=3.4.2"
-  "brace-expansion@<1.1.13": "1.1.14"
-  "brace-expansion@>=4 <5.0.5": "5.0.5"
-  "uuid@>=13.0.0 <13.0.1": "13.0.2"
-  fast-uri: ">=3.1.2"
   # @redocly/openapi-core (via openapi-typescript) hard-pins js-yaml to an exact
   # 4.2.0, so only an override can reach the patched release.
   # Bounded to <5: an unbounded range resolves to js-yaml 5.x, whose API change breaks openapi-core.
