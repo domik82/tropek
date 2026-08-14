@@ -15,6 +15,7 @@ overrides:
   ip-address: 10.1.1
   fast-uri: '>=3.1.2'
   size-sensor: 1.0.3
+  echarts-for-react: 3.0.6
 
 importers:
 
@@ -51,7 +52,7 @@ importers:
         specifier: ^6.0.0
         version: 6.1.0
       echarts-for-react:
-        specifier: ^3.0.6
+        specifier: 3.0.6
         version: 3.0.6(echarts@6.1.0)(react@19.2.7)
       lucide-react:
         specifier: ^1.23.0

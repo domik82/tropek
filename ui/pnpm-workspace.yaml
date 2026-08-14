@@ -11,4 +11,9 @@ overrides:
   "uuid@>=13.0.0 <13.0.1": "13.0.2"
   ip-address: "10.1.1"
   fast-uri: ">=3.1.2"
-  size-sensor: "1.0.3" # pin: versions 1.0.4, 1.1.4, 1.2.4 are malicious (Mini Shai-Hulud supply chain attack, 2026-05-19)
+  # Supply-chain pins — 2026-05-19 compromise of npm account `atool <i@hust.cc>`,
+  # which maintains both packages below. npm unpublished the later malicious versions
+  # but left the first of each pair installable, and no clean +1 release was ever cut,
+  # so semver ranges still resolve to malicious code. These pins are the only mitigation.
+  size-sensor: "1.0.3" # 1.0.4 (STILL INSTALLABLE), 1.1.4, 1.2.4 are malicious — MAL-2026-4153
+  echarts-for-react: "3.0.6" # 3.0.7 (STILL INSTALLABLE), 3.1.7, 3.2.7 are malicious — MAL-2026-4132
