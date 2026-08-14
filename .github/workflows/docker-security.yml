@@ -66,3 +66,5 @@ jobs:
           exit-code: 1
           severity: CRITICAL,HIGH
           ignore-unfixed: true
+          # Suppressions are justified per-entry in the file; see its header before adding.
+          trivyignores: .trivyignore.yaml

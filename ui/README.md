@@ -71,6 +71,25 @@ just test-ui src/features/...   # specific file
 just lint-ui                    # ESLint
 ```
 
+## Adding a shadcn/ui Component
+
+shadcn/ui primitives are **vendored** — the CLI copies component source into
+`src/components/ui/`, where it is committed and maintained as our own code. The CLI is
+therefore a one-off scaffolding tool, not a runtime dependency, and is intentionally
+**not** in `package.json`. Run it on demand:
+
+```bash
+just ui-add button              # from the repo root
+cd ui && pnpm dlx shadcn@latest add button   # equivalent, run directly
+```
+
+`pnpm dlx` fetches the CLI into a temporary store, runs it, and discards it — nothing is
+installed into `node_modules`. It reads `ui/components.json` for style and path aliases
+exactly as a locally installed CLI would.
+
+Review the generated file before committing: it lands as ordinary project source and is
+subject to the same lint, type, and test rules as everything else.
+
 ## Directory Structure
 
 ```

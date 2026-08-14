@@ -2,13 +2,13 @@ allowBuilds:
   msw: true
 
 overrides:
-  hono: ">=4.12.14"
-  "@hono/node-server": ">=1.19.13"
-  "path-to-regexp@>=8.0.0 <8.4.0": "8.4.2"
-  flatted: ">=3.4.2"
-  "brace-expansion@<1.1.13": "1.1.14"
-  "brace-expansion@>=4 <5.0.5": "5.0.5"
-  "uuid@>=13.0.0 <13.0.1": "13.0.2"
-  ip-address: "10.1.1"
-  fast-uri: ">=3.1.2"
-  size-sensor: "1.0.3" # pin: versions 1.0.4, 1.1.4, 1.2.4 are malicious (Mini Shai-Hulud supply chain attack, 2026-05-19)
+  # @redocly/openapi-core (via openapi-typescript) hard-pins js-yaml to an exact
+  # 4.2.0, so only an override can reach the patched release.
+  # Bounded to <5: an unbounded range resolves to js-yaml 5.x, whose API change breaks openapi-core.
+  js-yaml: ">=4.3.1 <5" # 4.2.0 is vulnerable to GHSA-52cp-r559-cp3m and GHSA-5p4m-2wfm-xmqj (both 7.5)
+  # Supply-chain pins — 2026-05-19 compromise of npm account `atool <i@hust.cc>`,
+  # which maintains both packages below. npm unpublished the later malicious versions
+  # but left the first of each pair installable, and no clean +1 release was ever cut,
+  # so semver ranges still resolve to malicious code. These pins are the only mitigation.
+  size-sensor: "1.0.3" # 1.0.4 (STILL INSTALLABLE), 1.1.4, 1.2.4 are malicious — MAL-2026-4153
+  echarts-for-react: "3.0.6" # 3.0.7 (STILL INSTALLABLE), 3.1.7, 3.2.7 are malicious — MAL-2026-4132

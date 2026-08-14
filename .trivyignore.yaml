@@ -1,0 +1,31 @@
+# Trivy suppressions — each entry must state why the finding is not reachable.
+#
+# Scope: this file is for findings that are provably unexploitable in our images.
+# It is NOT a place to defer real work. If a finding is reachable, fix it — bump the
+# dependency, change the base image, or drop the package. Anything added here needs a
+# justification specific enough that a reviewer can independently check it.
+
+vulnerabilities:
+  - id: GHSA-6v7p-g79w-8964
+    statement: >-
+      msgpack 1.1.2, reported against the python:3.13-slim base image. Not a project
+      dependency — it does not appear in uv.lock, adapters/mock/uv.lock, or
+      observability_stack/integration-test/generator/uv.lock. It exists only inside pip's
+      vendored bundle at /usr/local/lib/python3.13/site-packages/pip/_vendor/msgpack,
+      where it backs pip's HTTP cache. Our images install and run everything through uv:
+      dependencies are resolved by `uv sync` into /app/.venv and the entrypoint is
+      `uv run uvicorn ...`, so pip is never invoked at build or run time and the vendored
+      copy is never imported. The advisory requires an attacker-controlled payload reaching
+      Unpacker on a reused instance, which needs pip to be making cached HTTP requests.
+      No upgrade path exists: pip 26.2.1 is current and still vendors 1.1.2.
+
+  - id: CVE-2025-47273
+    statement: >-
+      setuptools 70.3.0, reported against the python:3.13-slim base image. Same root cause
+      as GHSA-6v7p-g79w-8964 — this is pip's vendored pkg_resources
+      (/usr/local/lib/python3.13/site-packages/pip/_vendor/pkg_resources), which Trivy
+      attributes to setuptools. There is no top-level setuptools install in the image and
+      setuptools is not in any of our lockfiles. The vulnerability is a path traversal in
+      setuptools' PackageIndex, which is only reachable when pip resolves packages from an
+      index — a code path our images never execute, since uv performs all resolution.
+      No upgrade path exists: pip 26.2.1 is current and still vendors this version.
