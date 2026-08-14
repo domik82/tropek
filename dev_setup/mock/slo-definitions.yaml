@@ -576,6 +576,42 @@ spec:
       warning_threshold: ["<150"]
       weight: 1
 ---
+# ---- Multi-indicator aggregated SLO ----
+# Objectives reference <indicator>.<method>. Thresholds are set to pass in the
+# plugin-health scenario's stable window (cpu baseline 12.0, max multiplier 2.5).
+api_version: tropek/v1
+kind: SLO
+metadata:
+  name: plugin-metrics-agg-slo
+  display_name: Plugin Metrics (Aggregated)
+spec:
+  kind: standard
+  sli_name: plugin-metrics-agg-sli
+  variables:
+    process_name: auth-plugin
+  total_score:
+    pass_threshold: 90.0
+    warning_threshold: 75.0
+  objectives:
+    - sli: cpu_usage.mean
+      display_name: CPU mean
+      pass_threshold: ["<80"]
+      warning_threshold: ["<90"]
+      weight: 1
+      key_sli: true
+    - sli: cpu_usage.max
+      display_name: CPU max
+      pass_threshold: ["<150"]
+      weight: 1
+    - sli: memory_usage.mean
+      display_name: Memory mean
+      pass_threshold: ["<1073741824"]
+      weight: 1
+    - sli: memory_usage.max
+      display_name: Memory max
+      pass_threshold: ["<2147483648"]
+      weight: 1
+---
 api_version: tropek/v1
 kind: SLO
 metadata:

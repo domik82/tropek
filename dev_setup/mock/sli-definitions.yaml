@@ -177,3 +177,31 @@ spec:
     errors_zero_origin_appear: 'rate(demo_errors_total{job="$job"}[5m])'
     throughput_vanish: 'rate(demo_requests_total{job="$job"}[5m])'
     memory_diluted_shift: 'process_resident_memory_bytes{job="$job"}'
+---
+# ---- Multi-indicator aggregated SLI ----
+# Several indicators, each reduced over the evaluation window by the adapter.
+# Carries the same indicators as plugin-metrics-sli (raw) so the two modes can be
+# compared over identical queries. The registry UI can display both but cannot yet
+# create or re-version an aggregated multi-indicator SLI — author it here.
+api_version: tropek/v1
+kind: SLI
+metadata:
+  name: plugin-metrics-agg-sli
+  display_name: Plugin Metrics (Aggregated, multi-indicator)
+  author: bootstrap
+  notes: >-
+    Aggregated-mode SLI carrying multiple indicators. The engine sends one
+    aggregated spec per indicator and the adapter returns <indicator>.<method>.
+  tags:
+    domain: endpoint-monitoring
+    mode: aggregated
+spec:
+  adapter_type: prometheus
+  mode: aggregated
+  interval: '5m'
+  methods:
+    - mean
+    - max
+  indicators:
+    cpu_usage: "rate(process_cpu_seconds_total{process_name='$process_name'}[$interval])"
+    memory_usage: "process_resident_memory_bytes{process_name='$process_name'}"

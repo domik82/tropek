@@ -14,6 +14,7 @@ from tropek.modules.common.schemas import PagedResponse, SafeQueryStr, TagKeyCou
 from tropek.modules.quality_gate.evaluation_engine.criteria import parse_criteria_string
 from tropek.modules.quality_gate.evaluation_engine.slo_models import SLOParseError
 from tropek.modules.quality_gate.evaluation_engine.slo_parser import build_slo
+from tropek.modules.sli_registry.keys import build_indicator_keys
 from tropek.modules.sli_registry.repository import SLIRepository
 from tropek.modules.slo_registry.params import SLOCreateParams, SLOObjectiveParams
 from tropek.modules.slo_registry.repository import SLORepository
@@ -63,10 +64,7 @@ async def create_slo_definition(
             sli_def = await sli_repo.get_latest(body.sli_name)
         if sli_def is None:
             raise DomainValidationError(f"sli definition '{body.sli_name}' version {body.sli_version} not found")
-        if sli_def.mode == 'aggregated' and sli_def.methods:
-            indicator_keys = {f'{body.sli_name}.{m}' for m in sli_def.methods}
-        else:
-            indicator_keys = set(sli_def.indicators.keys())
+        indicator_keys = build_indicator_keys(sli_def)
         for obj in body.objectives:
             if obj.sli not in indicator_keys:
                 raise DomainValidationError(

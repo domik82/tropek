@@ -222,4 +222,63 @@ describe('SliDetailView', () => {
     expect(screen.getByText('env: prod')).toBeInTheDocument()
     expect(screen.getByText('team: platform')).toBeInTheDocument()
   })
+
+  describe('aggregated mode', () => {
+    it('renders the query template with interval and methods for a single-template SLI', () => {
+      const singleTemplateSli: Sli = {
+        ...mockSli,
+        mode: 'aggregated',
+        indicators: {},
+        queryTemplate: 'http_request_duration_seconds{service="$service"}',
+        interval: '30s',
+        methods: ['mean', 'p95'],
+      }
+      vi.mocked(useSliDetail).mockReturnValue({
+        data: singleTemplateSli,
+        isLoading: false,
+        isError: false,
+      } as ReturnType<typeof useSliDetail>)
+
+      render(
+        <SliDetailView name="http-error-rate" onNavigate={vi.fn()} onNewVersion={vi.fn()} />,
+        { wrapper: Wrapper }
+      )
+      expect(screen.getByText('Query Template')).toBeInTheDocument()
+      expect(screen.getByText('30s')).toBeInTheDocument()
+      expect(screen.getByText('mean')).toBeInTheDocument()
+      expect(screen.getByText('p95')).toBeInTheDocument()
+      expect(screen.queryByText('Indicators')).not.toBeInTheDocument()
+    })
+
+    it('renders the indicators table for a multi-indicator SLI', () => {
+      const multiIndicatorSli: Sli = {
+        ...mockSli,
+        mode: 'aggregated',
+        indicators: {
+          cpu_usage: 'rate(process_cpu_seconds_total[$interval])',
+          memory_usage: 'process_resident_memory_bytes',
+        },
+        queryTemplate: null,
+        interval: '5m',
+        methods: ['mean', 'max'],
+      }
+      vi.mocked(useSliDetail).mockReturnValue({
+        data: multiIndicatorSli,
+        isLoading: false,
+        isError: false,
+      } as ReturnType<typeof useSliDetail>)
+
+      render(
+        <SliDetailView name="http-error-rate" onNavigate={vi.fn()} onNewVersion={vi.fn()} />,
+        { wrapper: Wrapper }
+      )
+      // Indicators carry the queries in this form, so a "Query Template" row would
+      // only ever render an em dash.
+      expect(screen.getByText('cpu_usage')).toBeInTheDocument()
+      expect(screen.getByText('memory_usage')).toBeInTheDocument()
+      expect(screen.queryByText('Query Template')).not.toBeInTheDocument()
+      expect(screen.getByText('5m')).toBeInTheDocument()
+      expect(screen.getByText('max')).toBeInTheDocument()
+    })
+  })
 })

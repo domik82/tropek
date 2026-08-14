@@ -45,11 +45,11 @@ def _validate_raw_mode(sli: SLIDefinitionCreate) -> None:
 
 
 def _validate_aggregated_mode(sli: SLIDefinitionCreate) -> None:
-    if sli.indicators:
-        msg = 'indicators must be empty for mode aggregated'
+    if not sli.indicators and not sli.query_template:
+        msg = 'aggregated mode requires indicators or query_template'
         raise ValueError(msg)
-    if not sli.query_template:
-        msg = 'query_template is required for mode aggregated'
+    if sli.indicators and sli.query_template:
+        msg = 'aggregated mode accepts indicators or query_template, not both'
         raise ValueError(msg)
     if not sli.interval:
         msg = 'interval is required for mode aggregated'
@@ -67,10 +67,11 @@ class SLIDefinitionCreate(StrictInput):
     display_name: SafeStr | None = None
     mode: SafeStr = 'raw'
 
-    # Raw mode fields
+    # Raw mode: indicator name -> query. Aggregated mode: indicator name -> query template
+    # (mutually exclusive with query_template below).
     indicators: dict[IdentifierKey, SafeStr] = {}
 
-    # Aggregated mode fields
+    # Aggregated mode fields (query_template is the single-indicator alternative to indicators)
     query_template: SafeStr | None = None
     interval: SafeStr | None = None
     methods: list[AggregationMethod] | None = None
