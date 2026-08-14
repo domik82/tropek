@@ -89,6 +89,10 @@ install:
     uv sync
     cd ui && pnpm install
 
+# Add a shadcn/ui primitive to ui/src/components/ui (scaffolds source into the repo)
+ui-add component:
+    cd ui && pnpm dlx shadcn@latest add {{component}}
+
 # Apply database migrations (dev)
 migrate:
     uv run --directory api alembic upgrade head
