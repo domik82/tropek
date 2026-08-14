@@ -24,6 +24,45 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   indicator names while the objectives were named `<indicator>.<method>` — every metric
   came back missing and the result looked computed.
 
+### Removed
+
+- **`shadcn` CLI dropped from `ui/package.json`** — the package is the scaffolding tool
+  that copies component source into `src/components/ui/`; it was never imported from
+  `src/`, yet sat in `dependencies` and pulled 232 packages into the production graph.
+  It was the sole root of 16 npm advisories, reaching `hono` (11 advisories) and
+  `ip-address` through `@modelcontextprotocol/sdk`, and `js-yaml` through `cosmiconfig`
+  and `@dotenvx/dotenvx`. All 16 shadcn/ui primitives are already vendored and tracked
+  in git, so nothing already built depends on the CLI. Adding a *new* component is
+  unchanged apart from invocation — `just ui-add <component>` wraps
+  `pnpm dlx shadcn@latest add <component>`, which requires no install and reads
+  `ui/components.json` identically. Documented in `ui/README.md` (#87)
+
+### Security
+
+- **All 43 OSV findings cleared** — the dependency audit reported 43 known
+  vulnerabilities across 17 packages and had been red since at least 2026-07-20; it now
+  reports no issues. Dependency versions changed: `postcss` → 8.5.26 (pulling `nanoid`
+  → 3.3.18), `react-router-dom` → 7.18.2, `brace-expansion` → 2.1.4 and 5.0.9,
+  `js-yaml` → 4.3.1, `cryptography` → 50.0.0, and `click` → 8.4.2 across all three
+  lockfiles. The `js-yaml` bump needs a pnpm override because `@redocly/openapi-core`
+  hard-pins an exact `"4.2.0"` that no update can move (#87)
+- **`echarts-for-react` pinned to 3.0.6 — 3.0.7 is malicious and still installable** —
+  the npm account maintaining both `size-sensor` and `echarts-for-react` was compromised
+  on 2026-05-19 and used to publish malicious versions of each, seconds apart
+  (MAL-2026-4153, MAL-2026-4132). npm unpublished the later versions but left
+  `size-sensor` 1.0.4 and `echarts-for-react` 3.0.7 installable, and neither package
+  ever received a clean follow-up release. Because dist-tags do not constrain semver
+  resolution, the declared `^3.0.6` range resolved to the malicious 3.0.7 on any fresh
+  install. `size-sensor` was already pinned; `echarts-for-react` was not. Pinning is the
+  only available mitigation for both. No malicious code was ever installed — the
+  lockfile was holding 3.0.6 (#87)
+- **Eight redundant pnpm overrides pruned** — each was added when a transitive dependency
+  was stuck on a vulnerable version, and upstream has since caught up; removing them
+  produces zero resolution changes. `ip-address: "10.1.1"` was worse than stale: an exact
+  pin actively holding a vulnerable version (7.7) with no way to move. `ui/pnpm-workspace.yaml`
+  now carries only what is load-bearing — the two supply-chain pins and the `js-yaml`
+  override (#87)
+
 ## [0.1.3-alpha] - 2026-07-15
 
 ### Added
