@@ -15,7 +15,7 @@ tropek = "tropek_client.cli:cli"
 
 [dependency-groups]
 dev = [
-    "pytest>=8.0",
+    "pytest>=9.1.1",
     "pytest-httpx>=0.30",
     "respx>=0.22",
 ]
