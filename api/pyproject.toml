@@ -5,7 +5,7 @@ description = "TROPEK — Trend Reporting and Objective Evaluation toolKit — A
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
-    "fastapi>=0.138.2",
+    "fastapi>=0.141.1",
     "uvicorn[standard]>=0.52.0",
     "pydantic>=2.7",
     "pydantic-settings>=2.14.2",
