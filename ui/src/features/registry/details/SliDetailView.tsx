@@ -47,10 +47,10 @@ export function SliDetailView({ name, onNavigate, onNewVersion }: SliDetailViewP
     )
   }
 
-  // Find SLOs that reference this SLI in their objectives
-  const usedBySlos = (slos ?? []).filter(s =>
-    s.objectives.some(obj => obj.sli === sli.name)
-  )
+  // Find SLOs bound to this SLI. Objectives name metrics the SLI produces
+  // (e.g. `total_time.mean`), never the SLI's own registry name, so the
+  // binding must be checked via the SLO's `sliName`, not its objectives.
+  const usedBySlos = (slos ?? []).filter(s => s.sliName === sli.name)
 
   // Aggregated SLIs carry either indicators (one query template each) or a single
   // queryTemplate — show whichever the definition actually uses.

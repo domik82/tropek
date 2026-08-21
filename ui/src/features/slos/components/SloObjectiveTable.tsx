@@ -26,6 +26,21 @@ interface Props {
   indicators?: Record<string, string>
 }
 
+// Raw-mode objectives name an indicator directly (`cpu_time`). Multi-indicator
+// aggregated-mode objectives name `<indicator>.<method>` (`cpu_time.mean`) — the
+// indicator itself, not the method suffix, is the key into `indicators`.
+// Indicator names can't contain '.' (enforced server-side), so this is unambiguous.
+function resolveIndicatorQuery(
+  objectiveSli: string,
+  indicators: Record<string, string> | undefined,
+): string | undefined {
+  if (!indicators) return undefined
+  if (objectiveSli in indicators) return indicators[objectiveSli]
+  const lastDotIndex = objectiveSli.lastIndexOf('.')
+  if (lastDotIndex === -1) return undefined
+  return indicators[objectiveSli.slice(0, lastDotIndex)]
+}
+
 export function SloObjectiveTable({ slo, indicators }: Props) {
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
 
@@ -56,7 +71,7 @@ export function SloObjectiveTable({ slo, indicators }: Props) {
         </DataTableHeader>
         <tbody className="divide-y divide-border">
           {slo.objectives.map((obj, idx) => {
-            const query = indicators?.[obj.sli]
+            const query = resolveIndicatorQuery(obj.sli, indicators)
             const isExpanded = expanded.has(obj.sli)
 
             return (
