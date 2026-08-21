@@ -35,6 +35,7 @@ _KIND_ORDER = [
     'SLO',
     'AssetGroup',
     'SLOGroup',
+    'SLODisplayGroup',
     'SLOAssignment',
     'SLOGroupAssignment',
     'MetaSnapshot',
@@ -266,7 +267,7 @@ _KIND_DEPS: dict[str, set[str]] = {
     'AssetType': {'Asset'},
     'DataSource': {'SLOAssignment', 'SLOGroupAssignment'},
     'Asset': {'AssetGroup', 'SLOAssignment', 'SLOGroupAssignment', 'MetaSnapshot'},
-    'SLO': {'SLOAssignment', 'SLOGroup'},
+    'SLO': {'SLOAssignment', 'SLOGroup', 'SLODisplayGroup'},
     'AssetGroup': {'SLOAssignment', 'SLOGroupAssignment'},
     'SLOGroup': {'SLOGroupAssignment'},
 }
@@ -338,7 +339,21 @@ def _lookup_meta_snapshots(client: Any, doc: ManifestDocument) -> bool | None:
     return True
 
 
-def _lookup(client: Any, doc: ManifestDocument) -> Any | None:  # noqa: C901, PLR0911
+def _lookup_display_group(client: Any, doc: ManifestDocument) -> Any | None:
+    """Look up an existing SLO display group by name.
+
+    Unlike `asset_groups`/`slo_groups`, the client has no `get(name)` — only `list()` — so this
+    filters client-side, the same way `_lookup` already does for `AssetType` (client.asset_types.list()
+    + next(...)).
+    """
+    name = doc.metadata['name']
+    try:
+        return next((group for group in client.display_groups.list() if group.name == name), None)
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def _lookup(client: Any, doc: ManifestDocument) -> Any | None:  # noqa: C901, PLR0911, PLR0912
     """Look up an existing entity by name via the client."""
     name = doc.metadata.get('name', doc.metadata.get('asset', ''))
     try:
@@ -360,6 +375,8 @@ def _lookup(client: Any, doc: ManifestDocument) -> Any | None:  # noqa: C901, PL
                 return _lookup_slo_assignment(client, doc)
             case 'SLOGroup':
                 return _lookup_slo_group(client, doc)
+            case 'SLODisplayGroup':
+                return _lookup_display_group(client, doc)
             case 'SLOGroupAssignment':
                 return _lookup_slo_group_assignment(client, doc)
             case 'MetaSnapshot':
@@ -370,7 +387,7 @@ def _lookup(client: Any, doc: ManifestDocument) -> Any | None:  # noqa: C901, PL
         return None
 
 
-def _has_diff(doc: ManifestDocument, existing: Any) -> bool:  # noqa: PLR0911
+def _has_diff(doc: ManifestDocument, existing: Any) -> bool:  # noqa: C901, PLR0911
     """Check if the manifest differs from the existing entity."""
     match doc.kind:
         case 'AssetType':
@@ -417,6 +434,10 @@ def _has_diff(doc: ManifestDocument, existing: Any) -> bool:  # noqa: PLR0911
             return doc.spec.get('gen_variables') != getattr(existing, 'gen_variables', None) or doc.spec.get(
                 'template_slo_version'
             ) != getattr(existing, 'template_slo_version', None)
+        case 'SLODisplayGroup':
+            # Member sync not implemented yet, mirroring 'AssetGroup' above — members are set once,
+            # at creation, and never reconciled on later applies.
+            return False
         case 'SLOGroupAssignment':
             return False  # group assignments are immutable — delete + recreate
         case _:

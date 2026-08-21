@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import uuid
+from datetime import UTC, datetime
 from unittest.mock import MagicMock
 
 import pytest
@@ -14,7 +16,7 @@ from tropek_client.manifest import (
 from tropek_client.manifest import (
     apply as do_apply,
 )
-from tropek_client.models import AssetTypeCreate
+from tropek_client.models import AssetTypeCreate, DisplayGroupRead
 from tropek_client.models.pagination import PagedResponse
 
 from .conftest import TESTS_DIR
@@ -46,6 +48,14 @@ def test_topological_sort():
     docs = load_manifests(str(MANIFESTS_DIR / 'unsorted_dependencies.yaml'))
     kinds = [d.kind for d in docs]
     assert kinds.index('AssetType') < kinds.index('Asset')
+
+
+def test_slo_display_group_kind_loads_and_sorts_after_slo():
+    """SLODisplayGroup is a recognized kind and is sorted after SLO (it references SLO names)."""
+    docs = load_manifests(str(MANIFESTS_DIR / 'slo_display_group_order.yaml'))
+    kinds = [d.kind for d in docs]
+    assert 'SLODisplayGroup' in kinds
+    assert kinds.index('SLO') < kinds.index('SLODisplayGroup')
 
 
 def test_rejects_missing_api_version():
@@ -110,3 +120,48 @@ def test_meta_snapshot_manifest_loads():
     assert len(meta_docs) == 1
     assert meta_docs[0].metadata['asset'] == 'checkout-api'
     assert len(meta_docs[0].spec['snapshots']) == 1
+
+
+def test_dry_run_creates_display_group_when_missing():
+    """A SLODisplayGroup not yet in Tropek plans as CREATE."""
+    client = MagicMock()
+    client.display_groups.list.return_value = []
+
+    docs = [
+        ManifestDocument(
+            api_version='tropek/v1',
+            kind='SLODisplayGroup',
+            metadata={'name': 'web-tier'},
+            spec={'members': ['checkout-api/latency']},
+        )
+    ]
+    plan = dry_run(client, docs)
+    assert len(plan.actions) == 1
+    assert plan.actions[0].operation == 'CREATE'
+    assert plan.actions[0].name == 'web-tier'
+
+
+def test_dry_run_skips_existing_display_group():
+    """An existing SLODisplayGroup always plans as SKIP — member sync is not implemented."""
+    client = MagicMock()
+    existing = DisplayGroupRead(
+        id=uuid.UUID('00000000-0000-0000-0000-000000000001'),
+        name='web-tier',
+        display_name=None,
+        parent_id=None,
+        sort_order=0,
+        created_at=datetime.now(UTC),
+    )
+    client.display_groups.list.return_value = [existing]
+
+    docs = [
+        ManifestDocument(
+            api_version='tropek/v1',
+            kind='SLODisplayGroup',
+            metadata={'name': 'web-tier'},
+            spec={'members': ['checkout-api/latency', 'checkout-api/error-rate']},
+        )
+    ]
+    plan = dry_run(client, docs)
+    assert plan.actions[0].operation == 'SKIP'
+    assert plan.actions[0].reason == 'already exists, no changes'

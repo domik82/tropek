@@ -1,0 +1,15 @@
+kind: SLODisplayGroup
+api_version: tropek/v1
+metadata:
+  name: web-tier
+spec:
+  members:
+    - checkout-api/latency
+---
+api_version: tropek/v1
+kind: SLO
+metadata:
+  name: checkout-api/latency
+spec:
+  objectives: []
+  sli_name: latency
