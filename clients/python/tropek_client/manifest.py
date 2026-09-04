@@ -16,14 +16,18 @@ from tropek_client.models import (
     AssetGroupCreate,
     AssetTypeCreate,
     AssetUpdate,
+    ComparisonConfig,
     DataSourceCreate,
     DataSourceUpdate,
+    DisplayGroupCreate,
+    DisplayGroupMemberAdd,
     SLIDefinitionCreate,
     SLOAssignmentUpsert,
     SLODefinitionCreate,
     SLOGroupAssignmentUpsert,
     SLOGroupCreate,
     SLOGroupUpdate,
+    SLOObjectiveIn,
 )
 
 # Processing order — dependencies must come first
@@ -164,6 +168,18 @@ def _validate_doc_refs(  # noqa: C901
             errors.append(
                 f"WARNING: SLOGroup '{doc_name}' references SLO '{tpl_name}' not found in manifest (may exist in API)"
             )
+    elif doc.kind == 'SLODisplayGroup':
+        parent_name = doc.spec.get('parent_name')
+        if parent_name and parent_name not in names_by_kind.get('SLODisplayGroup', set()):
+            errors.append(
+                f"WARNING: SLODisplayGroup '{doc_name}' references parent SLODisplayGroup "
+                f"'{parent_name}' not found in manifest (may exist in API)"
+            )
+        errors.extend(
+            f"WARNING: SLODisplayGroup '{doc_name}' references SLO '{slo_name}' not found in manifest (may exist in API)"
+            for slo_name in doc.spec.get('members', [])
+            if slo_name not in names_by_kind.get('SLO', set())
+        )
     elif doc.kind == 'SLOGroupAssignment':
         for ref_field, ref_kind in [
             ('slo_group_name', 'SLOGroup'),
@@ -387,6 +403,72 @@ def _lookup(client: Any, doc: ManifestDocument) -> Any | None:  # noqa: C901, PL
         return None
 
 
+# Objective fields that exist only on the read side, or cannot be compared across the
+# input/read boundary at all. ``sort_order`` is API-assigned.
+#
+# ``change_point`` is excluded because the read side has nothing to compare against: the ORM
+# attribute is named ``change_point_config`` (api/tropek/db/models.py) but the response schema field
+# is ``change_point`` (api/tropek/modules/slo_registry/schemas.py), with ``from_attributes=True`` and
+# nothing bridging the name mismatch -- so ``SLOObjectiveRead.change_point`` is structurally always
+# ``None`` on every response, regardless of what was configured. Comparing a manifest's change_point
+# block against that permanent ``None`` would make every SLO report a diff again, since
+# ``library_config.yaml``'s ``slo_defaults`` sets ``change_point.enabled: true`` for every SLO. This
+# is a *narrower* exclusion than ``_SLOs.new_version`` (client.py), which does have a real read value
+# to work with and projects it (dropping only ``slo_objective_id``) rather than dropping the whole
+# field -- see ``_normalized_objectives`` for the resulting limitation this leaves in the diff.
+_OBJECTIVE_DIFF_EXCLUDED = frozenset({'sort_order', 'change_point'})
+
+# The defaults ``_create``/``_update`` themselves send when a manifest omits the block. Comparing
+# against ``None`` instead reported a diff for every manifest that simply left total_score out.
+_DEFAULT_TOTAL_SCORE_PASS = 90.0
+_DEFAULT_TOTAL_SCORE_WARNING = 75.0
+
+
+def _normalized_objectives(objectives: Any) -> list[dict[str, Any]]:
+    """Project objectives from either side of the API boundary onto one comparable shape.
+
+    Manifest objectives are raw YAML dicts with omitted keys; API objectives are ``SLOObjectiveRead``
+    models with every default filled and read-only fields added. Round-tripping both through
+    ``SLOObjectiveIn`` fills the same defaults on each side, so a manifest that omits ``key_sli``
+    stops reading as a change against an API response that always includes it.
+
+    **Known limitation:** ``change_point`` is dropped entirely (see ``_OBJECTIVE_DIFF_EXCLUDED``) and
+    is never compared. A manifest edit that only changes an objective's ``change_point`` config
+    (``enabled``, ``window_size``, ``max_pvalue``, etc.) will not be detected as a diff and will not
+    create a new SLO version -- until the read path is fixed to actually populate
+    ``SLOObjectiveRead.change_point`` (currently always ``None`` due to the ``change_point_config``
+    ORM attribute / ``change_point`` schema field mismatch), such a change needs a manual version
+    bump. Revisit this exclusion once that's fixed.
+
+    :param Any objectives: A list of raw dicts or of objective models, or ``None``.
+    :returns: One normalized dict per objective, in the order given.
+    :rtype: list[dict[str, Any]]
+    """
+    normalized: list[dict[str, Any]] = []
+    for objective in objectives or []:
+        raw = objective if isinstance(objective, dict) else objective.model_dump()
+        kept = {key: value for key, value in raw.items() if key not in _OBJECTIVE_DIFF_EXCLUDED}
+        normalized.append(SLOObjectiveIn.model_validate(kept).model_dump(exclude={'change_point'}))
+    return normalized
+
+
+def _normalized_comparison(value: Any) -> dict[str, Any]:
+    """Project a comparison config from either side onto one comparable dict.
+
+    ``existing.comparison`` is a non-optional ``ComparisonConfigRead`` model while the manifest side is
+    a plain dict or absent. Pydantic returns ``NotImplemented`` when comparing a model to a dict, so
+    the raw comparison was never equal -- on its own enough to make every SLO report a diff.
+
+    :param Any value: A raw dict, a comparison model, or ``None``.
+    :returns: The normalized mapping; ``{}`` becomes a defaulted config so both sides agree.
+    :rtype: dict[str, Any]
+    """
+    if value is None:
+        return ComparisonConfig().model_dump(mode='json')
+    raw = value if isinstance(value, dict) else value.model_dump(mode='json')
+    return ComparisonConfig.model_validate(raw).model_dump(mode='json')
+
+
 def _has_diff(doc: ManifestDocument, existing: Any) -> bool:  # noqa: C901, PLR0911
     """Check if the manifest differs from the existing entity."""
     match doc.kind:
@@ -416,17 +498,16 @@ def _has_diff(doc: ManifestDocument, existing: Any) -> bool:  # noqa: C901, PLR0
                 or doc.spec.get('methods') != getattr(existing, 'methods', None)
             )
         case 'SLO':
-            existing_objectives = [
-                {k: v for k, v in o.model_dump().items() if k != 'sort_order'}
-                for o in (existing.objectives if hasattr(existing, 'objectives') else [])
-            ]
+            total_score = doc.spec.get('total_score') or {}
             return (
-                doc.spec.get('objectives') != existing_objectives
-                or doc.spec.get('total_score', {}).get('pass_threshold')
-                != getattr(existing, 'total_score_pass_threshold', None)
-                or doc.spec.get('total_score', {}).get('warning_threshold')
-                != getattr(existing, 'total_score_warning_threshold', None)
-                or doc.spec.get('comparison', {}) != getattr(existing, 'comparison', {})
+                _normalized_objectives(doc.spec.get('objectives'))
+                != _normalized_objectives(getattr(existing, 'objectives', []))
+                or total_score.get('pass_threshold', _DEFAULT_TOTAL_SCORE_PASS)
+                != getattr(existing, 'total_score_pass_threshold', _DEFAULT_TOTAL_SCORE_PASS)
+                or total_score.get('warning_threshold', _DEFAULT_TOTAL_SCORE_WARNING)
+                != getattr(existing, 'total_score_warning_threshold', _DEFAULT_TOTAL_SCORE_WARNING)
+                or _normalized_comparison(doc.spec.get('comparison'))
+                != _normalized_comparison(getattr(existing, 'comparison', None))
             )
         case 'SLOAssignment':
             return False  # assignments are immutable — delete + recreate
@@ -529,6 +610,50 @@ def _delete_slo_group_assignment(client: Any, spec: dict[str, Any], existing: An
         client.slo_group_assignments.delete_for_group(target_name, existing.id)
 
 
+def _create_display_group(
+    client: Any,
+    name: str,
+    spec: dict[str, Any],
+    *,
+    display_name: str | None = None,
+) -> None:
+    """Create an SLO display group, resolving its parent by name, then adding initial members.
+
+    The parent must already exist. `_topological_sort` only orders documents BETWEEN kinds — it
+    preserves whatever order they arrived in within one kind — so nothing here orders one
+    `SLODisplayGroup` document relative to another. It is the CALLER's responsibility to apply
+    parents before children, in whatever order it feeds documents to `apply`/`apply_files`: build the
+    document list with the parentless group(s) first, or otherwise pre-sort by `spec.parent_name`
+    before calling. A caller that instead relies on this module's own dependency-order sort will find
+    `SLODisplayGroup` documents applied in file/list order and this call raising for any child whose
+    parent hasn't been created yet.
+
+    Not atomic: this issues the group creation and one `add_member` call per name in
+    `spec['members']` as separate requests. If a later `add_member` call fails, the group is left
+    behind partially populated — and because `_has_diff` always returns `False` for `SLODisplayGroup`
+    (membership is never reconciled after creation, see its docstring), no future `apply` will ever
+    finish populating it. Recovery is deleting the group via the API and re-applying so it is created
+    fresh with its complete member list.
+    """
+    parent_id = None
+    parent_name = spec.get('parent_name')
+    if parent_name:
+        parent = next((group for group in client.display_groups.list() if group.name == parent_name), None)
+        if parent is None:
+            raise ValueError(f"SLODisplayGroup parent '{parent_name}' not found — apply parents before children")
+        parent_id = parent.id
+    client.display_groups.create(
+        DisplayGroupCreate(
+            name=name,
+            display_name=display_name,
+            parent_id=parent_id,
+            sort_order=spec.get('sort_order', 0),
+        )
+    )
+    for slo_name in spec.get('members', []):
+        client.display_groups.add_member(name, DisplayGroupMemberAdd(slo_name=slo_name))
+
+
 def _create_asset_group(
     client: Any,
     name: str,
@@ -614,6 +739,8 @@ def _create(client: Any, doc: ManifestDocument) -> None:  # noqa: C901
             _create_slo_assignment(client, doc.spec)
         case 'SLOGroup':
             _create_slo_group(client, name, doc.spec)
+        case 'SLODisplayGroup':
+            _create_display_group(client, name, doc.spec, display_name=doc.metadata.get('display_name'))
         case 'SLOGroupAssignment':
             _create_slo_group_assignment(client, doc.spec)
         case 'MetaSnapshot':
@@ -636,6 +763,8 @@ def _update(client: Any, doc: ManifestDocument) -> None:
                 ),
             )
         case 'AssetGroup':
+            pass
+        case 'SLODisplayGroup':
             pass
         case 'DataSource':
             client.datasources.update(
