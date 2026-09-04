@@ -16,6 +16,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   is unchanged. Multi-indicator aggregated SLIs are authored via the API or YAML
   manifests only in this increment — the registry UI displays them but cannot yet
   create or re-version them.
+- **`SLODisplayGroup` manifests can be applied by the Python client** — the kind was already
+  known to `_KIND_ORDER` and `_lookup`, but `_create`/`_update`/`_validate_doc_refs` were not,
+  so a `SLODisplayGroup` document was planned and then silently unhandled. `apply` now creates
+  the group, resolves `spec.parent_name` to a parent id (a missing parent is a reported failure,
+  not a silent `parent_id=None`), and adds each `spec.members` SLO; `_validate_doc_refs` warns
+  when a member SLO or the named parent is absent from the manifest set. Updates are a
+  deliberate no-op, mirroring `AssetGroup` — membership is not reconciled after creation. Two
+  caveats are documented on `_create_display_group` rather than solved: `_topological_sort`
+  orders only *between* kinds, so callers must feed parents before children; and group creation
+  plus each `add_member` are separate requests, so a mid-way failure leaves a partially
+  populated group that no later apply will finish (recovery is delete + re-apply) (#100)
 
 ### Changed
 
@@ -36,6 +47,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   unchanged apart from invocation — `just ui-add <component>` wraps
   `pnpm dlx shadcn@latest add <component>`, which requires no install and reads
   `ui/components.json` identically. Documented in `ui/README.md` (#87)
+
+### Fixed
+
+- **Every manifest `apply` minted a new SLO version even when nothing had changed** — three
+  independently sufficient causes in `_has_diff`: the `comparison` block compared a raw dict
+  against a pydantic model (Pydantic returns `NotImplemented`, so never equal), manifest
+  objectives were never round-tripped through `SLOObjectiveIn` so every omitted key such as
+  `key_sli` read as a change, and `total_score` defaulted to `None` against the API's own
+  `90.0`/`75.0`. Both sides of the API boundary are now projected onto one comparable shape.
+  Re-planning an identical manifest folder reports `0 to create, 0 to update, 296 unchanged` —
+  previously 80 spurious SLO updates. `change_point` is excluded from the objective diff as a
+  known limitation: `SLOObjectiveRead.change_point` is structurally always `None` (response
+  schema field `change_point` vs ORM attribute `change_point_config`, with nothing bridging the
+  names), so a change-point-only edit needs a manual version bump until the read path is
+  fixed (#100)
+- **The UI's Assets page returned 403** — the SPA fallback's `$uri/` probe made the `/assets`
+  route collide with the Vite build's own `assets/` directory, so nginx redirected to
+  `/assets/`, found no `index.html` inside and refused the request. Directory-index probing is
+  meaningless for a SPA; without it `/assets` falls through to `index.html` and routes
+  client-side, while real files under `/assets/` still match `$uri` (#100)
+- **UI redirects dropped the published port** — nginx builds absolute redirect Locations from
+  the container's own listen port (80), so any deployment publishing on a different host port
+  (the reference compose uses `3000:80`) sent the browser to an address nothing listens on.
+  `absolute_redirect off` emits relative Locations, which preserve scheme, host and port (#100)
+- **`/api/` calls returned 502 until the `ui` container was also restarted** — a hostname in a
+  literal `proxy_pass` is resolved once at config load and cached for the worker's life, so
+  restarting the `api` container left the proxy pointed at a dead Docker IP. The SPA itself
+  still loaded, so the symptom read as missing data: "0 assets", an empty group tree and "no
+  evaluations found". The upstream now goes through a variable, deferring resolution to request
+  time (#100)
 
 ### Security
 

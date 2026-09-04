@@ -48,7 +48,7 @@ const mockSlos: Slo[] = [
     displayName: 'API SLO',
     kind: 'standard',
     sliDefinitionId: null,
-    sliName: null,
+    sliName: 'http-error-rate',
     sliVersion: null,
     author: null,
     notes: null,
@@ -58,7 +58,7 @@ const mockSlos: Slo[] = [
     active: true,
     objectives: [
       {
-        sli: 'http-error-rate',
+        sli: 'error_rate',
         displayName: 'Error Rate',
         passThreshold: ['<1%'],
         warningThreshold: ['<5%'],
@@ -80,7 +80,7 @@ const mockSlos: Slo[] = [
     displayName: 'DB SLO',
     kind: 'standard',
     sliDefinitionId: null,
-    sliName: null,
+    sliName: 'db-latency-sli',
     sliVersion: null,
     author: null,
     notes: null,
@@ -197,7 +197,8 @@ describe('SliDetailView', () => {
       <SliDetailView name="http-error-rate" onNavigate={onNavigate} onNewVersion={vi.fn()} />,
       { wrapper: Wrapper }
     )
-    // api-slo uses http-error-rate; db-slo uses db-latency, not this SLI
+    // api-slo is bound to http-error-rate (via sliName); db-slo is bound to
+    // db-latency-sli. Neither SLO's objectives name the SLI itself.
     const sloLink = screen.getByText('api-slo')
     expect(sloLink).toBeInTheDocument()
     expect(screen.queryByText('db-slo')).not.toBeInTheDocument()
@@ -279,6 +280,48 @@ describe('SliDetailView', () => {
       expect(screen.queryByText('Query Template')).not.toBeInTheDocument()
       expect(screen.getByText('5m')).toBeInTheDocument()
       expect(screen.getByText('max')).toBeInTheDocument()
+    })
+
+    it('shows a bound SLO in "Used by" even though its objectives name indicator.method keys, not the SLI name', () => {
+      const multiIndicatorSli: Sli = {
+        ...mockSli,
+        name: 'plugin-metrics-agg-sli',
+        mode: 'aggregated',
+        indicators: {
+          cpu_usage: 'rate(process_cpu_seconds_total[$interval])',
+          memory_usage: 'process_resident_memory_bytes',
+        },
+        queryTemplate: null,
+        interval: '5m',
+        methods: ['mean', 'max'],
+      }
+      const boundSlo: Slo = {
+        ...mockSlos[0],
+        name: 'plugin-metrics-agg-slo',
+        sliName: 'plugin-metrics-agg-sli',
+        objectives: [
+          { sli: 'cpu_usage.mean', displayName: 'CPU mean', passThreshold: ['<80'], warningThreshold: [], weight: 1, keySli: true, sortOrder: 0 },
+          { sli: 'cpu_usage.max', displayName: 'CPU max', passThreshold: ['<150'], warningThreshold: [], weight: 1, keySli: false, sortOrder: 1 },
+        ],
+      }
+      vi.mocked(useSliDetail).mockReturnValue({
+        data: multiIndicatorSli,
+        isLoading: false,
+        isError: false,
+      } as ReturnType<typeof useSliDetail>)
+      vi.mocked(useSlos).mockReturnValue({
+        data: [boundSlo],
+        isLoading: false,
+        isError: false,
+      } as ReturnType<typeof useSlos>)
+
+      render(
+        <SliDetailView name="plugin-metrics-agg-sli" onNavigate={vi.fn()} onNewVersion={vi.fn()} />,
+        { wrapper: Wrapper }
+      )
+      expect(screen.getByText('Used by (1 SLO)')).toBeInTheDocument()
+      expect(screen.getByText('plugin-metrics-agg-slo')).toBeInTheDocument()
+      expect(screen.queryByText('No SLOs use this SLI.')).not.toBeInTheDocument()
     })
   })
 })
