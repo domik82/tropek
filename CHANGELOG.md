@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.1.4-alpha] - 2026-09-04
+
 ### Added
 
 - Aggregated-mode SLIs can declare multiple `indicators` instead of a single
