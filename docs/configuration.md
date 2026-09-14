@@ -49,8 +49,45 @@ Environment variables always take precedence over `config.yaml` values.
 | Variable | Default | Description |
 |---|---|---|
 | `PROMETHEUS_URL` | `http://prometheus:9090` | Prometheus server URL |
-| `TK_ADAPTER_PROMETHEUS_USERNAME` | — | Basic auth username (optional) |
-| `TK_ADAPTER_PROMETHEUS_PASSWORD` | — | Basic auth password (optional) |
+| `PROMETHEUS_USERNAME` | — | Basic auth username (optional; both halves required) |
+| `PROMETHEUS_PASSWORD` | — | Basic auth password (optional; both halves required) |
+
+Prometheus itself authenticates incoming requests with basic auth or TLS client certificates only
+— it has no bearer-token support — so basic auth is what the adapter implements. Managed services
+that issue an "API token" generally expect it as the basic-auth *password*; set `PROMETHEUS_USERNAME`
+to the account or instance id those services document. Setting only one of the pair logs a warning
+and sends no credentials at all, rather than half a header.
+
+#### Serving more than one Prometheus
+
+An adapter process targets exactly one Prometheus, fixed at startup. To evaluate against two
+instances — separate labs, or separate monitored environments — run the adapter twice and register each as
+its own datasource, pointing `adapter_url` at the matching container. Each service block is its own
+env namespace, so both use the same container-side variable names while drawing different values,
+and a credential leak is contained to one upstream:
+
+```yaml
+services:
+  adapter-prometheus-lab:
+    image: ghcr.io/domik82/tropek-adapter-prometheus:${TROPEK_VERSION:-latest}
+    environment:
+      PROMETHEUS_URL: ${PROM_LAB_URL}
+      PROMETHEUS_USERNAME: ${PROM_LAB_USERNAME:-}
+      PROMETHEUS_PASSWORD: ${PROM_LAB_PASSWORD:-}
+      REDIS_URL: redis://:${TK_REDIS_PASSWORD}@redis:6379/1
+
+  adapter-prometheus-prod:
+    image: ghcr.io/domik82/tropek-adapter-prometheus:${TROPEK_VERSION:-latest}
+    environment:
+      PROMETHEUS_URL: ${PROM_PROD_URL}
+      PROMETHEUS_USERNAME: ${PROM_PROD_USERNAME:-}
+      PROMETHEUS_PASSWORD: ${PROM_PROD_PASSWORD:-}
+      REDIS_URL: redis://:${TK_REDIS_PASSWORD}@redis:6379/2
+```
+
+Give each instance its own Redis database index, as above, so their job queues stay separate. The
+`X-Datasource-Name` header the API sends is recorded in the adapter's logs for correlation; it does
+not select an upstream.
 
 ## config.yaml Reference
 
