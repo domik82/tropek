@@ -14,6 +14,10 @@ class Settings(BaseSettings):
     redis_url: str = 'redis://localhost:6379/0'
     redis_key_prefix: str = 'prom-sli:'
 
+    # Shared secret the caller must present as `Authorization: Bearer <token>` on the query
+    # endpoints. Unset leaves them unauthenticated, which is the pre-existing behaviour.
+    adapter_auth_token: str | None = None
+
     max_concurrent_queries: int = 10
     max_concurrent_jobs: int = 3
     max_queue_depth: int = 100

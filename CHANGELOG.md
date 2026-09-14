@@ -7,6 +7,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Security
+
+- **The adapter's query endpoints answered anyone who could reach the port.** `POST /query` and the
+  `/api/v1/query-jobs` routes execute caller-supplied queries against live data and had no
+  authentication of any kind, while the adapter's port is published on all interfaces in both
+  composes. The datasource `token` that `docs/guides/adapter-protocol.md` documented as a "Bearer
+  token sent to the adapter" was never sent: `adapter_client` set only `X-Datasource-Name`, so the
+  token sat in the database doing nothing and `has_token: true` in the API response meant nothing.
+  Both ends are now wired: TROPEK presents the datasource token as `Authorization: Bearer <token>`
+  on every query — from the evaluation path and from the SLO dry-run, which called the adapter
+  directly and would otherwise have started failing with 401 — and the Prometheus adapter rejects a
+  missing or mismatched token with `401` plus `WWW-Authenticate: Bearer`, comparing with
+  `secrets.compare_digest` so the token cannot be recovered by timing. The guard is attached to the
+  routers rather than to individual routes, so a route added later is protected by default, and
+  guarding the job API too closes what would otherwise have been an equivalent way in.
+
+  Configure it with `ADAPTER_AUTH_TOKEN` on the adapter and the matching `token` on the datasource.
+  **An adapter with no token configured stays permissive**, so existing deployments keep working —
+  startup now logs a warning saying the query endpoints are open and naming the Prometheus they
+  reach. `/health` stays unauthenticated for container healthchecks and TROPEK's reachability probe.
+
+  Note this raises the value of the credentials the adapter holds: with basic auth to Prometheus now
+  working, an unauthenticated adapter is a confused deputy for an authenticated Prometheus. Binding
+  the published port to `127.0.0.1` is a worthwhile additional step wherever TROPEK is the only
+  caller.
+
+### Fixed
+
+- **The adapter protocol guide promised encryption that does not exist** — the datasource `token`
+  column is plain `Text` and there is no encryption code in the API. The guide now describes what
+  actually happens and says to treat the value as a secret at rest, rather than implying TROPEK
+  protects it.
+
 ## [0.1.4-alpha] - 2026-09-04
 
 ### Added

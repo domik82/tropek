@@ -49,8 +49,15 @@ Environment variables always take precedence over `config.yaml` values.
 | Variable | Default | Description |
 |---|---|---|
 | `PROMETHEUS_URL` | `http://prometheus:9090` | Prometheus server URL |
-| `TK_ADAPTER_PROMETHEUS_USERNAME` | — | Basic auth username (optional) |
-| `TK_ADAPTER_PROMETHEUS_PASSWORD` | — | Basic auth password (optional) |
+| `TK_ADAPTER_PROMETHEUS_USERNAME` | — | Basic auth username for Prometheus (optional) |
+| `TK_ADAPTER_PROMETHEUS_PASSWORD` | — | Basic auth password for Prometheus (optional) |
+| `ADAPTER_AUTH_TOKEN` | — | Shared secret required on the adapter's own query endpoints |
+
+`ADAPTER_AUTH_TOKEN` guards the adapter, not Prometheus. The query endpoints run caller-supplied
+queries against live data, so anyone who can reach the adapter's port can read metrics while it is
+unset — which is the default, and what the startup log warns about. Set it to the same value as the
+`token` on the datasource registered for this adapter; TROPEK then presents it as
+`Authorization: Bearer <token>`. `/health` stays open so container healthchecks keep working.
 
 ## config.yaml Reference
 

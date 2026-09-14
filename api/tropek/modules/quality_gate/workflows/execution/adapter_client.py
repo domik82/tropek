@@ -42,6 +42,7 @@ class HttpAdapterClient:
         variables: dict[str, str],
         start: str,
         end: str,
+        token: str | None = None,
     ) -> tuple[dict[str, float | None], dict[str, str], dict[str, Any]]:
         """Send metric queries to the adapter and return (values, errors, metadata).
 
@@ -55,6 +56,8 @@ class HttpAdapterClient:
             variables: Variable dict forwarded to the adapter for substitution.
             start: ISO timestamp for the evaluation period start.
             end: ISO timestamp for the evaluation period end.
+            token: Datasource token, presented as `Authorization: Bearer`. Adapters that
+                configure no token accept requests without it.
 
         Returns:
             Tuple of (metrics_fetched, fetch_errors, metadata).
@@ -81,6 +84,8 @@ class HttpAdapterClient:
             'end': end,
         }
         headers = {'X-Datasource-Name': datasource_name}
+        if token:
+            headers['Authorization'] = f'Bearer {token}'
 
         request_started = time.perf_counter()
         resp = await self._post_with_retry(url, headers=headers, payload=payload)

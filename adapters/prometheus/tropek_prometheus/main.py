@@ -13,8 +13,9 @@ from typing import Any
 
 import httpx
 import redis.asyncio as aioredis
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 
+from tropek_prometheus.api.auth import require_bearer_token
 from tropek_prometheus.api.routes import router as api_router
 from tropek_prometheus.api.routes import sync_router
 from tropek_prometheus.config import Settings
@@ -94,6 +95,12 @@ def create_app(use_fakeredis: bool = False) -> FastAPI:
             settings.prometheus_url,
             settings.redis_url,
         )
+        if not settings.adapter_auth_token:
+            logger.warning(
+                'ADAPTER_AUTH_TOKEN is not set — the query endpoints accept unauthenticated '
+                'requests, so anyone who can reach this port can run queries against %s',
+                settings.prometheus_url,
+            )
 
         redis_client: aioredis.Redis[Any]
         if use_fakeredis:
@@ -158,9 +165,14 @@ def create_app(use_fakeredis: bool = False) -> FastAPI:
         logger.info('adapter shut down')
 
     app = FastAPI(title='Prometheus SLI Adapter', lifespan=lifespan)
+    # Set outside the lifespan so the guard is armed even for callers that skip startup.
+    app.state.auth_token = settings.adapter_auth_token
+    # `health` stays open for container healthchecks and the API's reachability probe, which carry
+    # no credentials. Guarding the routers rather than individual routes means a route added later
+    # is protected by default.
     app.include_router(health_router)
-    app.include_router(api_router)
-    app.include_router(sync_router)
+    app.include_router(api_router, dependencies=[Depends(require_bearer_token)])
+    app.include_router(sync_router, dependencies=[Depends(require_bearer_token)])
     return app
 
 
