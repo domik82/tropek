@@ -27,6 +27,8 @@ jobs:
               - 'clients/python/**'
               - 'pyproject.toml'
               - 'uv.lock'
+              - 'justfile'
+              - '.env.test'
               - '.github/workflows/ci.yml'
               - '.github/workflows/python-checks.yml'
               - '.github/actions/setup-python/**'

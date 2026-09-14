@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+
+- **CI never ran the integration or adapter tests** — only `python-checks.yml` invoked pytest, and
+  it ran `-m "not integration"` with no database, so the ~349 DB-backed tests executed in no
+  workflow at all; the adapter suites (86 Prometheus, 16 mock) were linted and typechecked but
+  never run. `just test-int` and `just test-all` were defined and documented, and simply never
+  called. `python-checks.yml` now runs both adapter suites (`-m "not e2e"`) and gains an
+  `integration` job with a `timescale/timescaledb` service container on 5433, mirroring the block
+  `schemathesis.yml` already used — GitHub Actions service containers are native sidecars, so no
+  Docker-in-Docker is involved. Connection details come from the committed `.env.test`, which the
+  DB conftest loads, and `justfile`/`.env.test` were added to the `python` paths filter so edits to
+  either retrigger the suite.
+- **`test_reevaluation_persist_deletes_cached_fragment` had been failing since 2026-07-15**,
+  unnoticed because integration tests ran nowhere. `perf(trend): batch per-SLO trends + fragment
+  cache + viewport-lazy loading` (#73) moved heatmap invalidation out of `_persist_reeval_result`
+  and into `_PendingCacheInvalidations`, flushed after the transaction commits — deleting inside
+  the still-open transaction let a concurrent reader re-cache pre-commit state. The test still
+  passed the removed `heatmap_cache=` argument and asserted the old design. It now exercises the
+  real record-then-flush path and pins both halves of the contract: the fragment survives the
+  persist, and is gone after the flush.
+
 ## [0.1.4-alpha] - 2026-09-04
 
 ### Added
