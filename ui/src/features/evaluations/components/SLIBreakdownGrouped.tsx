@@ -14,6 +14,13 @@ export interface SloBreakdownGroup {
   total_points: number
   slo_version?: number | null
   sli_version?: number | null
+  /**
+   * Per-SLI sample metadata for THIS SLO, keyed by indicator name. Must not be
+   * shared between groups: indicator names are unique only within an SLO, so two
+   * SLOs on the same asset may declare the same one. A map spanning groups would
+   * render one SLO's sample counts beside another SLO's values.
+   */
+  sliMetadata?: Record<string, SliMetadata>
 }
 
 function CopySloButton({ text }: { text: string }) {
@@ -48,7 +55,6 @@ interface Props {
   groups: SloBreakdownGroup[]
   expandState: Map<string, boolean>
   onToggle: (sloName: string) => void
-  sliMetadata?: Record<string, SliMetadata>
   onIndicatorClick?: (metric: string, sloName: string) => void
   onScrollToHeatmap?: () => void
   /**
@@ -64,7 +70,6 @@ export function SLIBreakdownGrouped({
   groups,
   expandState,
   onToggle,
-  sliMetadata,
   onIndicatorClick,
   onScrollToHeatmap,
   rowIdPrefixBuilder,
@@ -140,7 +145,7 @@ export function SLIBreakdownGrouped({
               <div className={`border border-t-0 border-border rounded-b mb-2 ${expanded ? '' : 'hidden'}`}>
                 <SLIBreakdownTable
                   indicators={g.indicators}
-                  sliMetadata={sliMetadata}
+                  sliMetadata={g.sliMetadata}
                   onIndicatorClick={
                     onIndicatorClick
                       ? (metric) => onIndicatorClick(metric, g.slo_name)

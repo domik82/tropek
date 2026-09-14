@@ -88,6 +88,45 @@ class TestAggregatedModeValidation:
                 methods=['mean'],
             )
 
+    @pytest.mark.parametrize('interval', ['5s', '10s', '15s', '1m', '5m', '4h', '1d'])
+    def test_aggregated_mode_accepts_a_whole_number_and_one_unit(self, interval: str) -> None:
+        sli = SLIDefinitionCreate(
+            name='test',
+            adapter_type='prometheus',
+            mode='aggregated',
+            query_template='rate(cpu[$interval])',
+            interval=interval,
+            methods=['mean'],
+        )
+        assert sli.interval == interval
+
+    @pytest.mark.parametrize(
+        'interval',
+        [
+            '1m30s',  # compound — Prometheus allows it, the adapters do not
+            '90',  # bare number — the mock adapter silently read this as 540s
+            '0s',  # zero step — divides by zero and stalls the adapter's chunk loop
+            '500ms',  # sub-second — the adapters compute in whole seconds
+            '1w',  # unsupported unit
+            'abc',
+            '',
+            'm',
+            '-1m',
+            '1.5m',
+        ],
+    )
+    def test_aggregated_mode_rejects_intervals_the_adapters_cannot_parse(self, interval: str) -> None:
+        """Reject at creation rather than letting the adapter fail mid-job on an unparseable step."""
+        with pytest.raises(ValidationError, match='interval'):
+            SLIDefinitionCreate(
+                name='test',
+                adapter_type='prometheus',
+                mode='aggregated',
+                query_template='rate(cpu[$interval])',
+                interval=interval,
+                methods=['mean'],
+            )
+
     def test_aggregated_mode_without_methods_rejected(self) -> None:
         with pytest.raises(ValidationError, match='methods'):
             SLIDefinitionCreate(
