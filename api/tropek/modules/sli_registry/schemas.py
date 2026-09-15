@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 import uuid
 from datetime import datetime
 from enum import StrEnum
@@ -12,6 +13,14 @@ from pydantic import BaseModel, ConfigDict, model_validator
 from tropek.modules.common.schemas import IdentifierKey, SafeStr, StrictInput, Tags
 
 ALLOWED_MODES = frozenset(['raw', 'aggregated'])
+
+# A whole number of seconds, minutes, hours or days — the grammar every adapter can parse.
+# Deliberately narrower than Prometheus, which also accepts compound durations ('1m30s') and
+# 'ms'/'w'/'y': an interval is a step aligned to a scrape interval, the adapters compute sample
+# expectations in whole seconds, and one canonical spelling keeps those counts comparable.
+# Kept in step with _parse_duration_seconds in the Prometheus adapter and _parse_interval in the
+# mock adapter; widening it here means widening it there too.
+_INTERVAL_RE = re.compile(r'^[1-9]\d*[smhd]$')
 
 
 class AggregationMethod(StrEnum):
@@ -53,6 +62,12 @@ def _validate_aggregated_mode(sli: SLIDefinitionCreate) -> None:
         raise ValueError(msg)
     if not sli.interval:
         msg = 'interval is required for mode aggregated'
+        raise ValueError(msg)
+    if not _INTERVAL_RE.match(sli.interval):
+        msg = (
+            f'interval must be a whole number above zero followed by s, m, h or d '
+            f'(for example 30s, 1m, 4h) — got {sli.interval!r}'
+        )
         raise ValueError(msg)
     if not sli.methods:
         msg = 'methods must be non-empty for mode aggregated'

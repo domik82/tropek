@@ -23,6 +23,43 @@ jobs:
       - name: Unit tests
         run: uv run --directory api pytest tests/ -m "not integration" -q --ignore=tests/schemathesis
 
+      - name: Prometheus adapter tests
+        run: uv run --directory adapters/prometheus pytest tests/ -m "not e2e" -q
+
+      - name: Mock adapter tests
+        run: uv run --directory adapters/mock pytest tests/ -q
+
+  integration:
+    name: integration tests
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: timescale/timescaledb:latest-pg16
+        env:
+          POSTGRES_USER: tropek
+          POSTGRES_PASSWORD: tropek_test
+          POSTGRES_DB: tropek_test
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd "pg_isready -U tropek -d tropek_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup-python
+
+      - name: Install just
+        uses: extractions/setup-just@v4
+
+      # Connection details come from the committed .env.test, which the db conftest loads.
+      - name: Apply test DB migrations
+        run: just migrate-test
+
+      - name: Integration tests
+        run: just test-int -q
+
   client:
     name: client tests
     runs-on: ubuntu-latest

@@ -2,7 +2,9 @@
 
 import pytest
 from httpx import ASGITransport, AsyncClient
+from tropek_prometheus.config import Settings
 from tropek_prometheus.main import create_app
+from tropek_prometheus.redis.repository import JobRepository
 
 
 @pytest.fixture
@@ -77,18 +79,30 @@ async def test_cancel_job(client: AsyncClient):
 
 
 @pytest.mark.asyncio
-async def test_queue_full_returns_503(client: AsyncClient):
-    # Submit max_queue_depth + 1 jobs
-    for i in range(101):
-        resp = await client.post(
-            '/api/v1/query-jobs',
-            json={
-                'queries': {f'm{i}': {'mode': 'raw', 'query': 'up'}},
-                'start': '2026-01-15T10:00:00Z',
-                'end': '2026-01-15T10:05:00Z',
-            },
-        )
-        if resp.status_code == 503:
-            assert 'Retry-After' in resp.headers
-            return
-    pytest.fail('Expected 503 but queue never filled')
+async def test_queue_full_returns_503(client: AsyncClient, monkeypatch: pytest.MonkeyPatch):
+    """A submission against a full queue is refused with 503 and a Retry-After hint.
+
+    The depth is reported as full rather than reached by submitting: the coordinator drains the
+    queue concurrently, so racing it to ``max_queue_depth`` is timing-dependent and fails whenever
+    the drain wins. The real depth accounting is covered by
+    ``test_job_manager.py::test_submit_rejects_when_queue_full``, which uses a manager with no
+    coordinator attached.
+    """
+    full_depth = Settings().max_queue_depth
+
+    async def _report_full(self: JobRepository) -> int:
+        return full_depth
+
+    monkeypatch.setattr(JobRepository, 'queue_depth', _report_full)
+
+    resp = await client.post(
+        '/api/v1/query-jobs',
+        json={
+            'queries': {'cpu': {'mode': 'raw', 'query': 'up'}},
+            'start': '2026-01-15T10:00:00Z',
+            'end': '2026-01-15T10:05:00Z',
+        },
+    )
+
+    assert resp.status_code == 503
+    assert 'Retry-After' in resp.headers

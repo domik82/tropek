@@ -18,7 +18,7 @@ from fastapi import Depends, FastAPI
 from tropek_prometheus.api.auth import require_bearer_token
 from tropek_prometheus.api.routes import router as api_router
 from tropek_prometheus.api.routes import sync_router
-from tropek_prometheus.config import Settings
+from tropek_prometheus.config import Settings, resolve_basic_auth
 from tropek_prometheus.core.coordinator import Coordinator
 from tropek_prometheus.core.job_manager import JobManager
 from tropek_prometheus.core.prometheus_client import PrometheusClient
@@ -130,9 +130,7 @@ def create_app(use_fakeredis: bool = False) -> FastAPI:
 
         repo = JobRepository(redis_client, prefix=settings.redis_key_prefix)
 
-        auth = None
-        if settings.prometheus_username and settings.prometheus_password:
-            auth = (settings.prometheus_username, settings.prometheus_password)
+        auth = resolve_basic_auth(settings)
 
         prom_client = PrometheusClient(
             base_url=settings.prometheus_url,
