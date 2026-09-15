@@ -28,6 +28,82 @@ class Coordinator:
         self._job_semaphore = asyncio.Semaphore(settings.max_concurrent_jobs)
         self._running = False
 
+    async def _run_query(
+        self,
+        *,
+        job_id: str,
+        sli_name: str,
+        query_spec: dict[str, Any],
+        variables: dict[str, str],
+        start: str,
+        end: str,
+    ) -> None:
+        """Execute one SLI's query and record its results.
+
+        Failures are recorded against this SLI rather than raised, so that one malformed spec
+        cannot abandon its sibling queries or leave the job stuck in ``running``.
+
+        :param str job_id: Job the query belongs to.
+        :param str sli_name: Name of the SLI being queried.
+        :param dict[str, Any] query_spec: The SLI's query specification.
+        :param dict[str, str] variables: Variables available for substitution.
+        :param str start: Evaluation window start.
+        :param str end: Evaluation window end.
+        """
+        query_executed = query_spec.get('query', query_spec.get('query_template', ''))
+        mode = query_spec.get('mode', 'raw')
+        strategy = self._strategies.get(mode)
+        if strategy is None:
+            await self._repo.write_result(
+                job_id,
+                sli_name,
+                value=None,
+                success=False,
+                message=f'unsupported mode: {mode}',
+            )
+            return
+
+        async with self._semaphore:
+            # Check cancellation before executing
+            current = await self._repo.get_status(job_id)
+            if current and current['status'] == 'cancelled':
+                return
+
+            try:
+                values, errors, metadata = await strategy.execute(
+                    sli_name=sli_name,
+                    query_spec=query_spec,
+                    variables=variables,
+                    start=start,
+                    end=end,
+                )
+            except Exception as exc:
+                # A malformed spec must cost its own SLI, not the whole job: an exception escaping
+                # here would abandon every sibling query and leave the job running.
+                logger.exception('query failed: job=%s sli=%s', job_id, sli_name)
+                await self._repo.write_result(
+                    job_id,
+                    sli_name,
+                    value=None,
+                    success=False,
+                    message=f'{type(exc).__name__}: {exc}',
+                    query_executed=query_executed,
+                )
+                return
+
+            for name, value in values.items():
+                await self._repo.write_result(
+                    job_id,
+                    name,
+                    value=value,
+                    success=name not in errors,
+                    message=errors.get(name, ''),
+                    query_executed=query_executed,
+                )
+
+            if metadata is not None:
+                await self._repo.write_metadata(job_id, sli_name, metadata)
+
     async def process_one(self) -> bool:
         """Process a single job from the queue. Returns True if a job was processed."""
         job_id = await self._repo.dequeue()
@@ -52,49 +128,23 @@ class Coordinator:
             end,
         )
 
-        async def _run_query(sli_name: str, query_spec: dict[str, Any]) -> None:
-            mode = query_spec.get('mode', 'raw')
-            strategy = self._strategies.get(mode)
-            if strategy is None:
-                await self._repo.write_result(
-                    job_id,
-                    sli_name,
-                    value=None,
-                    success=False,
-                    message=f'unsupported mode: {mode}',
-                )
-                return
-
-            async with self._semaphore:
-                # Check cancellation before executing
-                current = await self._repo.get_status(job_id)
-                if current and current['status'] == 'cancelled':
-                    return
-
-                values, errors, metadata = await strategy.execute(
-                    sli_name=sli_name,
-                    query_spec=query_spec,
-                    variables=variables,
-                    start=start,
-                    end=end,
-                )
-
-                for name, value in values.items():
-                    error_msg = errors.get(name, '')
-                    await self._repo.write_result(
-                        job_id,
-                        name,
-                        value=value,
-                        success=name not in errors,
-                        message=error_msg,
-                        query_executed=query_spec.get('query', query_spec.get('query_template', '')),
-                    )
-
-                if metadata is not None:
-                    await self._repo.write_metadata(job_id, sli_name, metadata)
-
-        tasks = [_run_query(name, spec) for name, spec in queries.items()]
-        await asyncio.gather(*tasks)
+        tasks = [
+            self._run_query(
+                job_id=job_id,
+                sli_name=name,
+                query_spec=spec,
+                variables=variables,
+                start=start,
+                end=end,
+            )
+            for name, spec in queries.items()
+        ]
+        # return_exceptions keeps one unexpected escape from cancelling its siblings mid-flight;
+        # _run_query already records per-SLI failures, so anything arriving here is a bug worth logging.
+        outcomes = await asyncio.gather(*tasks, return_exceptions=True)
+        for sli_name, outcome in zip(queries, outcomes, strict=True):
+            if isinstance(outcome, BaseException):
+                logger.error('unhandled query error: job=%s sli=%s error=%r', job_id, sli_name, outcome)
 
         # Check if cancelled during processing
         final_status = await self._repo.get_status(job_id)

@@ -7,6 +7,55 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+
+- **`interval` is now validated when an aggregated SLI is created**, as a whole number above
+  zero followed by `s`, `m`, `h` or `d` (for example `30s`, `1m`, `4h`); anything else is a 422
+  instead of a job that fails once the adapter runs it. This is deliberately narrower than
+  Prometheus, which also accepts compound durations (`1m30s`) and `ms`/`w`/`y`: an interval is a
+  step aligned to a scrape interval, the adapters size sample expectations in whole seconds, and
+  one canonical spelling keeps those counts comparable across SLIs. Existing definitions are not
+  re-validated, and every interval in use (`5s`, `10s`, `15s`, `1m`, `5m`) is unaffected.
+
+### Fixed
+
+- **Aggregated SLIs reported wildly negative `missing_pct`** — `expected_samples` counted the
+  points of a *single* series while `actual_samples` counted every series' points concatenated
+  together, so any query without an aggregation operator (one series per instance or label
+  combination) measured itself against a fraction of its own data: two series at full coverage
+  reported `-100%`, four reported `-300%`. The expectation is now scaled by the fan-out actually
+  returned, with a query matching no series still expecting one series' worth of points so that
+  an empty result reads as fully missing rather than as a vacuous 0/0. `PrometheusClient` gained
+  `range_query_series()` to preserve the series boundaries the flat `range_query()` discards.
+- **Chunked windows counted their chunk boundaries twice** — each chunk's `query_range` evaluates
+  at both endpoints and the next chunk started *on* the previous chunk's end, so the shared
+  instant came back in both. An 8h window at 1m resolution measured 482 samples against 481.
+  Chunks now begin one step past the boundary, which also stops that instant being
+  double-weighted in every mean and percentile computed over a chunked window.
+- **One SLO's sample counts were rendered beside another SLO's values** — the asset heatmap built
+  a single metric-keyed metadata map across every SLO group, and since all SLOs on an asset share
+  one `evaluation_id` and indicator names are unique only within an SLO, later groups overwrote
+  earlier ones. Sample metadata now travels on the group it was measured for. A group whose
+  summary carries no `sli_metadata` renders its indicators flat rather than borrowing a sibling's
+  numbers.
+- **A single malformed SLI stranded its whole job in `running`** — an exception from one query
+  escaped `asyncio.gather`, abandoning every sibling query mid-flight and leaving the job to be
+  logged and dropped without ever reaching a terminal state. A failing query is now recorded
+  against its own SLI and the job completes; `gather` additionally collects exceptions so no
+  future escape can cancel siblings.
+- **An inverted evaluation window reported perfect coverage** — with `end` before `start` the
+  sample expectation went negative and clamped to 1, dressing a nonsensical window up as a
+  coverage figure. It is now rejected before any query is issued.
+- **A zero or unparseable `interval` failed after querying Prometheus, or not at all** — a zero
+  step divided by zero while sizing the expectation and left the chunk loop unable to advance,
+  and durations Prometheus accepts but the adapter does not (`1m30s`) crashed on the bookkeeping
+  line after the fetch had already succeeded. Durations are validated before any request is made.
+- **The mock adapter disagreed with the real one about sample counts** — it omitted the
+  both-endpoints `+1` (reporting 5 expected samples where the Prometheus adapter reports 6) and
+  its interval parser guessed rather than rejected, silently reading a bare `90` as 540 seconds.
+  Both now match the real adapter, and an interval it cannot parse fails that SLI alone instead
+  of surfacing as a 500 for the whole request.
+
 ## [0.1.4-alpha] - 2026-09-04
 
 ### Added

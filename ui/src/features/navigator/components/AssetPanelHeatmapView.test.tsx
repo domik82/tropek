@@ -161,9 +161,11 @@ function makeHeatmapData(): GroupedMetricHeatmapResponseDto {
   } as unknown as GroupedMetricHeatmapResponseDto
 }
 
-function renderHeatmapView() {
+function renderHeatmapView(
+  heatmapData: GroupedMetricHeatmapResponseDto = makeHeatmapData(),
+  sloExpandState: Map<string, boolean> = new Map([['latency-slo', true]]),
+) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-  const sloExpandState = new Map([['latency-slo', true]])
   return render(
     <MemoryRouter>
       <QueryClientProvider client={queryClient}>
@@ -172,7 +174,7 @@ function renderHeatmapView() {
             <ChartPreferencesProvider>
               <AssetPanelHeatmapView
                 assetName="catalog-db"
-                heatmapData={makeHeatmapData()}
+                heatmapData={heatmapData}
                 selectedColumnEvalId="col-1"
                 effectiveEvalId="sloeval-latency"
                 selectedColumnSloEvalIds={new Set(['sloeval-latency'])}
@@ -232,5 +234,99 @@ describe('AssetPanelHeatmapView — lazy per-SLO trend fetch', () => {
       MockIntersectionObserver.instances[0].trigger(true)
     })
     expect(trendsRequestCount).toBe(1)
+  })
+})
+
+// Every SLO on an asset is evaluated under one shared `evaluation_id`, and
+// indicator names are unique only within an SLO, so two SLOs on the same asset
+// may declare the same one. Sample metadata must therefore stay scoped to the
+// SLO it was measured for; a flat metric-name map lets the last group in the
+// response overwrite every other group's counts.
+function makeSharedMetricHeatmapData(): GroupedMetricHeatmapResponseDto {
+  const cell = (sloEvalId: string) => ({
+    evaluation_id: 'col-1',
+    slo_evaluation_id: sloEvalId,
+    period_start: '2026-03-15T10:00:00Z',
+    metric: 'memory_bytes.mean',
+    display_name: 'memory_bytes.mean',
+    result: 'pass',
+    score: 100,
+    value: 23_990_000,
+    compared_value: null,
+    change_relative_pct: null,
+    weight: 1,
+    key_sli: false,
+    pass_targets: null,
+    warning_targets: null,
+    tab_group: null,
+    aggregation: null,
+  })
+  const summary = (sampleMetadata: Record<string, unknown>) => ({
+    evaluation_id: 'col-1',
+    period_start: '2026-03-15T10:00:00Z',
+    result: 'pass',
+    score: 100,
+    total_score_pass_threshold: 90,
+    total_score_warning_threshold: 75,
+    invalidated: false,
+    sli_metadata: sampleMetadata,
+    invalidation_note: null,
+  })
+  const metadata = (actual: number, missingPct: number) => ({
+    memory_bytes: {
+      mode: 'aggregated',
+      expected_samples: 27,
+      actual_samples: actual,
+      missing_pct: missingPct,
+      chunks_failed: 0,
+    },
+  })
+
+  return {
+    asset_name: 'catalog-db',
+    columns: [
+      {
+        evaluation_id: 'col-1',
+        period_start: '2026-03-15T10:00:00Z',
+        period_end: '2026-03-15T10:30:00Z',
+        eval_name: 'nightly',
+        has_notes: false,
+      },
+    ],
+    groups: [
+      {
+        slo_name: 'web-tier',
+        slo_display_name: 'Web tier',
+        metrics: [{ name: 'memory_bytes.mean', display_name: 'memory_bytes.mean' }],
+        cells: [cell('sloeval-cx-dec')],
+        summary: [summary(metadata(27, 0.0))],
+      },
+      {
+        // Listed last, so a flat map keyed only by metric name ends up
+        // showing this group's "no data" counts for every group above it.
+        slo_name: 'worker-tier',
+        slo_display_name: 'Worker tier',
+        metrics: [{ name: 'memory_bytes.mean', display_name: 'memory_bytes.mean' }],
+        cells: [cell('sloeval-python')],
+        summary: [summary(metadata(0, 100.0))],
+      },
+    ],
+    composite: [summary(metadata(27, 0.0))],
+  } as unknown as GroupedMetricHeatmapResponseDto
+}
+
+describe('AssetPanelHeatmapView — SLI sample metadata scoping', () => {
+  it('shows each SLO its own sample counts when two SLOs share an indicator name', async () => {
+    const { container } = renderHeatmapView(
+      makeSharedMetricHeatmapData(),
+      new Map([['web-tier', true], ['worker-tier', true]]),
+    )
+
+    await screen.findAllByText('Web tier')
+
+    expect(container.textContent).toContain('27/27 samples (0.0% missing)')
+    expect(container.textContent).toContain('0/27 samples (100.0% missing)')
+    // Only the group that really had no data is flagged.
+    expect(screen.getAllByText('low confidence')).toHaveLength(1)
   })
 })

@@ -1,12 +1,14 @@
 """Tests for AggregatedQueryStrategy."""
 
+from datetime import datetime
 from urllib.parse import parse_qs, unquote, urlparse
 
+import httpx
 import pytest
 import respx
 from httpx import Response
 from tropek_prometheus.core.prometheus_client import PrometheusClient
-from tropek_prometheus.core.strategies.aggregated import AggregatedQueryStrategy
+from tropek_prometheus.core.strategies.aggregated import AggregatedQueryStrategy, _parse_duration_seconds
 
 
 def _matrix_response(values: list[list]) -> Response:
@@ -21,6 +23,47 @@ def _matrix_response(values: list[list]) -> Response:
             },
         },
     )
+
+
+def _series_matrix_response(series: list[list[list]]) -> Response:
+    """Build a Prometheus matrix response holding one entry per series."""
+    return Response(
+        200,
+        json={
+            'status': 'success',
+            'data': {
+                'resultType': 'matrix',
+                'result': [
+                    {'metric': {'instance': f'host-{idx}'}, 'values': values} for idx, values in enumerate(series)
+                ],
+            },
+        },
+    )
+
+
+def _simulated_prometheus(series_count: int = 1):
+    """Respond like a real ``query_range``: evaluate at every step from ``start`` to ``end``, inclusive.
+
+    Mirrors Prometheus' own ``for ts := start; ts <= end; ts += step`` iteration so that sample
+    counts asserted in tests are the counts a live server would actually return.
+
+    :param int series_count: Number of series the query fans out to.
+    :returns: A respx side-effect callable.
+    """
+
+    def _respond(request: httpx.Request) -> Response:
+        params = parse_qs(urlparse(str(request.url)).query)
+        start = datetime.fromisoformat(unquote(params['start'][0])).timestamp()
+        end = datetime.fromisoformat(unquote(params['end'][0])).timestamp()
+        step = _parse_duration_seconds(params['step'][0])
+        stamps: list[float] = []
+        timestamp = start
+        while timestamp <= end:
+            stamps.append(timestamp)
+            timestamp += step
+        return _series_matrix_response([[[ts, '1.0'] for ts in stamps] for _ in range(series_count)])
+
+    return _respond
 
 
 @pytest.fixture
@@ -212,10 +255,37 @@ async def test_aggregated_metadata_sample_counts(
         end='2026-01-15T10:05:00Z',
     )
     assert metadata is not None
-    assert metadata['expected_samples'] == 5
+    assert metadata['expected_samples'] == 6
     assert metadata['actual_samples'] == 3
-    assert metadata['missing_pct'] == pytest.approx(40.0)
+    assert metadata['missing_pct'] == pytest.approx(50.0)
     assert metadata['chunks_failed'] == 0
+
+
+@respx.mock
+@pytest.mark.asyncio
+async def test_aggregated_full_coverage_reports_zero_missing(
+    strategy: AggregatedQueryStrategy,
+) -> None:
+    """query_range includes both endpoints, so a fully covered window is 0% missing, never negative."""
+    respx.get('http://prom:9090/api/v1/query_range').mock(
+        return_value=_matrix_response([[1705312800 + 60 * i, '1.0'] for i in range(6)])
+    )
+    _values, _errors, metadata = await strategy.execute(
+        sli_name='cpu',
+        query_spec={
+            'mode': 'aggregated',
+            'query_template': 'rate(cpu[$interval])',
+            'interval': '1m',
+            'methods': ['mean'],
+        },
+        variables={},
+        start='2026-01-15T10:00:00Z',
+        end='2026-01-15T10:05:00Z',
+    )
+    assert metadata is not None
+    assert metadata['expected_samples'] == 6
+    assert metadata['actual_samples'] == 6
+    assert metadata['missing_pct'] == pytest.approx(0.0)
 
 
 @respx.mock
@@ -360,3 +430,174 @@ async def test_aggregated_short_window_no_chunking() -> None:
         end='2026-01-15T10:30:00Z',
     )
     assert len(route.calls) == 1
+
+
+@respx.mock
+@pytest.mark.asyncio
+async def test_aggregated_multi_series_full_coverage_reports_zero_missing(
+    strategy: AggregatedQueryStrategy,
+) -> None:
+    """A query that fans out to several series is fully covered, not several hundred percent over."""
+    respx.get('http://prom:9090/api/v1/query_range').mock(side_effect=_simulated_prometheus(series_count=3))
+    _values, _errors, metadata = await strategy.execute(
+        sli_name='cpu',
+        query_spec={
+            'mode': 'aggregated',
+            'query_template': 'rate(cpu[$interval])',
+            'interval': '1m',
+            'methods': ['mean'],
+        },
+        variables={},
+        start='2026-01-15T10:00:00Z',
+        end='2026-01-15T10:05:00Z',
+    )
+    assert metadata is not None
+    assert metadata['expected_samples'] == 18
+    assert metadata['actual_samples'] == 18
+    assert metadata['missing_pct'] == pytest.approx(0.0)
+
+
+@respx.mock
+@pytest.mark.asyncio
+async def test_aggregated_multi_series_partial_coverage(strategy: AggregatedQueryStrategy) -> None:
+    """One series missing half its points is 25% missing across two series, not 0%."""
+    respx.get('http://prom:9090/api/v1/query_range').mock(
+        return_value=_series_matrix_response(
+            [
+                [[1705312800 + 60 * i, '1.0'] for i in range(6)],
+                [[1705312800 + 60 * i, '1.0'] for i in range(3)],
+            ]
+        )
+    )
+    _values, _errors, metadata = await strategy.execute(
+        sli_name='cpu',
+        query_spec={
+            'mode': 'aggregated',
+            'query_template': 'rate(cpu[$interval])',
+            'interval': '1m',
+            'methods': ['mean'],
+        },
+        variables={},
+        start='2026-01-15T10:00:00Z',
+        end='2026-01-15T10:05:00Z',
+    )
+    assert metadata is not None
+    assert metadata['expected_samples'] == 12
+    assert metadata['actual_samples'] == 9
+    assert metadata['missing_pct'] == pytest.approx(25.0)
+
+
+@respx.mock
+@pytest.mark.asyncio
+async def test_aggregated_empty_matrix_reports_fully_missing(strategy: AggregatedQueryStrategy) -> None:
+    """A query matching no series reports 100% missing against one series' worth of points."""
+    respx.get('http://prom:9090/api/v1/query_range').mock(side_effect=_simulated_prometheus(series_count=0))
+    _values, _errors, metadata = await strategy.execute(
+        sli_name='cpu',
+        query_spec={
+            'mode': 'aggregated',
+            'query_template': 'rate(cpu[$interval])',
+            'interval': '1m',
+            'methods': ['mean'],
+        },
+        variables={},
+        start='2026-01-15T10:00:00Z',
+        end='2026-01-15T10:05:00Z',
+    )
+    assert metadata is not None
+    assert metadata['expected_samples'] == 6
+    assert metadata['actual_samples'] == 0
+    assert metadata['missing_pct'] == pytest.approx(100.0)
+
+
+@respx.mock
+@pytest.mark.asyncio
+async def test_aggregated_chunked_window_does_not_double_count_boundaries(
+    strategy: AggregatedQueryStrategy,
+) -> None:
+    """Adjacent chunks must not both return the instant they share, which would over-count samples."""
+    respx.get('http://prom:9090/api/v1/query_range').mock(side_effect=_simulated_prometheus())
+    _values, _errors, metadata = await strategy.execute(
+        sli_name='cpu',
+        query_spec={
+            'mode': 'aggregated',
+            'query_template': 'rate(cpu[$interval])',
+            'interval': '1m',
+            'methods': ['mean'],
+        },
+        variables={},
+        start='2026-01-15T10:00:00Z',
+        end='2026-01-15T18:00:00Z',
+    )
+    assert metadata is not None
+    assert metadata['expected_samples'] == 481
+    assert metadata['actual_samples'] == 481
+    assert metadata['missing_pct'] == pytest.approx(0.0)
+
+
+@respx.mock
+@pytest.mark.asyncio
+async def test_aggregated_chunked_window_covers_a_final_boundary_instant(
+    strategy: AggregatedQueryStrategy,
+) -> None:
+    """Stepping past a chunk boundary can land exactly on the window end; that instant still counts.
+
+    A 4h1m window with a 4h chunk leaves one lone timestamp after the first chunk. Advancing the
+    loop past it instead of covering it loses a real sample and reports the window as incomplete.
+    """
+    respx.get('http://prom:9090/api/v1/query_range').mock(side_effect=_simulated_prometheus())
+    _values, _errors, metadata = await strategy.execute(
+        sli_name='cpu',
+        query_spec={
+            'mode': 'aggregated',
+            'query_template': 'rate(cpu[$interval])',
+            'interval': '1m',
+            'methods': ['mean'],
+        },
+        variables={},
+        start='2026-01-15T10:00:00Z',
+        end='2026-01-15T14:01:00Z',
+    )
+    assert metadata is not None
+    assert metadata['expected_samples'] == 242
+    assert metadata['actual_samples'] == 242
+    assert metadata['missing_pct'] == pytest.approx(0.0)
+
+
+def test_parse_duration_rejects_zero() -> None:
+    """A zero step is meaningless: it divides by zero and makes the chunk loop never advance."""
+    with pytest.raises(ValueError, match='must be greater than zero'):
+        _parse_duration_seconds('0s')
+
+
+def test_parse_duration_rejects_zero_hours() -> None:
+    """Zero is rejected whatever unit spells it."""
+    with pytest.raises(ValueError, match='must be greater than zero'):
+        _parse_duration_seconds('0h')
+
+
+@respx.mock
+@pytest.mark.asyncio
+async def test_aggregated_rejects_inverted_window(strategy: AggregatedQueryStrategy) -> None:
+    """An end before its start is an error, not a window to report coverage for.
+
+    Prometheus refuses an inverted range outright, and the adapter's own expectation goes negative
+    and clamps to 1 — so the failure used to surface as a sample-coverage figure instead of an error.
+    """
+    route = respx.get('http://prom:9090/api/v1/query_range').mock(side_effect=_simulated_prometheus())
+    values, errors, metadata = await strategy.execute(
+        sli_name='cpu',
+        query_spec={
+            'mode': 'aggregated',
+            'query_template': 'rate(cpu[$interval])',
+            'interval': '1m',
+            'methods': ['mean'],
+        },
+        variables={},
+        start='2026-01-15T10:05:00Z',
+        end='2026-01-15T10:00:00Z',
+    )
+    assert values == {'cpu.mean': None}
+    assert 'cpu.mean' in errors
+    assert metadata is None
+    assert route.call_count == 0
