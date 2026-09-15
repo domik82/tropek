@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.1.5-alpha] - 2026-09-15
 
 ### Added
 
@@ -34,6 +35,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- **SLI sample coverage was shown even when nothing was missing** — the breakdown table rendered a
+  coverage line for every indicator that carried metadata, so a fully covered window still drew
+  attention to itself. It now appears only when the counts say a gap exists: `actual < expected`, or
+  a failed chunk. The decision is made on the counts rather than `missing_pct` because the adapter
+  rounds that percentage to one decimal, so a real gap of 2000/2001 points arrives as `0.0` and a
+  `=== 0` test would hide it; going by counts also suppresses the negative percentages that scrape
+  jitter produces when a series returns more points than the window's step predicted (#107)
 - **Aggregated SLIs reported wildly negative `missing_pct`** — `expected_samples` counted the
   points of a *single* series while `actual_samples` counted every series' points concatenated
   together, so any query without an aggregation operator (one series per instance or label
