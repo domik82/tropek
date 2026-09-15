@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 import os
 import random
+import re
 import sys
 from datetime import datetime
 from logging.handlers import RotatingFileHandler
@@ -52,6 +53,8 @@ DATA_DIR = Path(os.getenv('MOCK_DATA_DIR', '/app/data'))
 _store = CsvStore(DATA_DIR)
 
 _INTERVAL_UNITS = {'s': 1, 'm': 60, 'h': 3600, 'd': 86400}
+# Same grammar the real adapters accept, so mock and live data report matching sample coverage.
+_INTERVAL_RE = re.compile(r'^([1-9]\d*)([smhd])$')
 
 _METHOD_MULTIPLIERS = {
     'min': 0.3,
@@ -148,9 +151,20 @@ def _handle_aggregated(
 ) -> None:
     """Generate mock aggregated-mode results using CSV data when available."""
     methods = spec.get('methods', ['mean'])
-    interval_seconds = _parse_interval(spec.get('interval', '1m'))
+    try:
+        interval_seconds = _parse_interval(spec.get('interval', '1m'))
+    except ValueError as exc:
+        # Report against this SLI only. Raising would surface as a 500 for the whole request and
+        # take down every other SLI in it.
+        logger.warning('  aggregated: %s', exc)
+        for method in methods:
+            values[f'{name}.{method}'] = None
+            errors[f'{name}.{method}'] = str(exc)
+        return
     window = (body.end - body.start).total_seconds()
-    expected = max(1, int(window / interval_seconds))
+    # query_range evaluates at both endpoints, so an N-step window yields N+1 points. Kept in step
+    # with the real Prometheus adapter so coverage reads the same against mock and live data.
+    expected = max(1, int(window / interval_seconds) + 1)
 
     # Check CSV store for the SLI metric — mirrors real adapter behaviour
     csv_result = _store.query(
@@ -202,8 +216,19 @@ def _handle_aggregated(
 
 
 def _parse_interval(interval: str) -> int:
-    """Parse Prometheus duration to seconds (e.g. '1m' -> 60)."""
-    return int(interval[:-1]) * _INTERVAL_UNITS.get(interval[-1], 60)
+    """Parse a duration to seconds (e.g. ``1m`` -> 60).
+
+    :param str interval: A whole number above zero followed by ``s``, ``m``, ``h`` or ``d``.
+    :returns: The interval in seconds.
+    :rtype: int
+    :raises ValueError: If the spelling is outside that grammar. Guessing instead would silently
+        disagree with the real adapter — a bare ``90`` once parsed as 540 seconds.
+    """
+    match = _INTERVAL_RE.match(interval)
+    if not match:
+        msg = f'interval must be a whole number above zero followed by s, m, h or d — got {interval!r}'
+        raise ValueError(msg)
+    return int(match.group(1)) * _INTERVAL_UNITS[match.group(2)]
 
 
 @app.get('/health')

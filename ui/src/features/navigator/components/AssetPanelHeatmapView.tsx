@@ -221,6 +221,19 @@ export function AssetPanelHeatmapView({
       const result = summary?.invalidated
         ? 'invalidated'
         : (summary?.result ?? 'none')
+      // Sample metadata stays scoped to its own SLO. Every SLO on an asset shares one
+      // `evaluation_id`, and indicator names are unique only within an SLO, so a map
+      // keyed only by metric name would show one SLO's counts under another SLO's values.
+      const sliMetadata: Record<string, SliMetadata> = {}
+      for (const [metricName, dto] of Object.entries(summary?.sli_metadata ?? {})) {
+        sliMetadata[metricName] = {
+          mode: dto.mode,
+          expectedSamples: dto.expected_samples,
+          actualSamples: dto.actual_samples,
+          missingPct: dto.missing_pct,
+          chunksFailed: dto.chunks_failed,
+        }
+      }
       return {
         slo_name: g.slo_name,
         slo_display_name: g.slo_display_name ?? undefined,
@@ -231,29 +244,9 @@ export function AssetPanelHeatmapView({
         total_points: indicators.reduce((sum, ind) => sum + ind.weight, 0),
         slo_version: summary?.slo_version ?? null,
         sli_version: summary?.sli_version ?? null,
+        sliMetadata: Object.keys(sliMetadata).length > 0 ? sliMetadata : undefined,
       }
     })
-  }, [heatmapData, selectedColumnEvalId])
-
-  // Build sliMetadata from heatmap summary cells
-  const sliMetadata = useMemo((): Record<string, SliMetadata> | undefined => {
-    if (!heatmapData || !selectedColumnEvalId) return undefined
-    const meta: Record<string, SliMetadata> = {}
-    for (const g of heatmapData.groups) {
-      const summary = g.summary.find(s => s.evaluation_id === selectedColumnEvalId)
-      if (summary?.sli_metadata) {
-        for (const [metricName, dto] of Object.entries(summary.sli_metadata)) {
-          meta[metricName] = {
-            mode: dto.mode,
-            expectedSamples: dto.expected_samples,
-            actualSamples: dto.actual_samples,
-            missingPct: dto.missing_pct,
-            chunksFailed: dto.chunks_failed,
-          }
-        }
-      }
-    }
-    return Object.keys(meta).length > 0 ? meta : undefined
   }, [heatmapData, selectedColumnEvalId])
 
   // Trend chart sections use all breakdown groups — headers always visible
@@ -308,7 +301,6 @@ export function AssetPanelHeatmapView({
             groups={breakdownGroups}
             expandState={sloExpandState}
             onToggle={onSloToggle}
-            sliMetadata={sliMetadata}
             onScrollToHeatmap={handleScrollToHeatmap}
             onIndicatorClick={(metric, sloName) => scrollToTrend(sloName, metric)}
             rowIdPrefixBuilder={rowIdPrefixFor}

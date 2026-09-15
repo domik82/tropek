@@ -48,25 +48,47 @@ class PrometheusClient:
     ) -> list[float]:
         """Execute a range query and return a flat list of float values.
 
-        All series in the matrix result are concatenated into a single list.
+        All series in the matrix result are concatenated into a single list. Callers that need to
+        know how many series the query fanned out to should use :meth:`range_query_series` instead.
         NaN/Inf values are preserved (caller is responsible for filtering).
 
         Raises PrometheusQueryError on any failure.
         """
+        series = await self.range_query_series(query, start=start, end=end, step=step)
+        return [value for bucket in series for value in bucket]
+
+    async def range_query_series(
+        self,
+        query: str,
+        *,
+        start: str,
+        end: str,
+        step: str,
+    ) -> list[list[float]]:
+        """Execute a range query and return one list of float values per series.
+
+        Preserving the series boundaries lets callers reason about sample coverage: a query that
+        fans out to N series returns N buckets, each holding that series' own points.
+        NaN/Inf values are preserved (caller is responsible for filtering).
+
+        :param str query: PromQL query to evaluate.
+        :param str start: Range start, as accepted by the Prometheus API.
+        :param str end: Range end, as accepted by the Prometheus API.
+        :param str step: Query resolution step.
+        :returns: One list of values per series in the matrix result.
+        :rtype: list[list[float]]
+        :raises PrometheusQueryError: On transport failure, a non-200 response, or a non-matrix result.
+        """
         params = {'query': query, 'start': start, 'end': end, 'step': step}
         data = await self._get('/api/v1/query_range', params)
-        return self._extract_matrix(data)
+        return self._extract_matrix_series(data)
 
-    def _extract_matrix(self, data: dict[str, Any]) -> list[float]:
+    def _extract_matrix_series(self, data: dict[str, Any]) -> list[list[float]]:
         result_type = data['resultType']
         if result_type != 'matrix':
             raise PrometheusQueryError(f'expected matrix result type, got: {result_type}')
 
-        values: list[float] = []
-        for series in data['result']:
-            for _ts, raw in series['values']:
-                values.append(float(raw))
-        return values
+        return [[float(raw) for _ts, raw in series['values']] for series in data['result']]
 
     async def _get(self, path: str, params: dict[str, str]) -> dict[str, Any]:
         url = f'{self._base_url}{path}'
