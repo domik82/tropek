@@ -299,7 +299,8 @@ function makeSharedMetricHeatmapData(): GroupedMetricHeatmapResponseDto {
         slo_display_name: 'Web tier',
         metrics: [{ name: 'memory_bytes.mean', display_name: 'memory_bytes.mean' }],
         cells: [cell('sloeval-cx-dec')],
-        summary: [summary(metadata(27, 0.0))],
+        // A small gap, below the low-confidence threshold: the counts render, the badge does not.
+        summary: [summary(metadata(25, 7.4))],
       },
       {
         // Listed last, so a flat map keyed only by metric name ends up
@@ -324,7 +325,7 @@ describe('AssetPanelHeatmapView — SLI sample metadata scoping', () => {
 
     await screen.findAllByText('Web tier')
 
-    expect(container.textContent).toContain('27/27 samples (0.0% missing)')
+    expect(container.textContent).toContain('25/27 samples (7.4% missing)')
     expect(container.textContent).toContain('0/27 samples (100.0% missing)')
     // Only the group that really had no data is flagged.
     expect(screen.getAllByText('low confidence')).toHaveLength(1)

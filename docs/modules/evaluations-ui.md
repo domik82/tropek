@@ -79,8 +79,10 @@ A table listing every indicator in the evaluation:
 Indicators can be filtered by tab group using the tab bar above the table (All,
 Performance, Reliability, etc.). Each tab shows its indicator count.
 
-For aggregated SLIs (metrics computed from multiple samples), the table shows sample
-counts and a "low confidence" badge when more than 20% of data points are missing.
+For aggregated SLIs (metrics computed from multiple samples), the table shows sample counts
+only when coverage is incomplete — fewer samples than expected, or a failed chunk fetch. A
+fully covered SLI shows nothing, so the counts that do appear always mean a real gap. A "low
+confidence" badge is added when more than 20% of data points are missing.
 
 Clicking the trend icon next to an indicator scrolls down to its trend chart.
 
