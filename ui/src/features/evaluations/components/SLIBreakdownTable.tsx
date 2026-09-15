@@ -14,6 +14,19 @@ function fmtPct(v: number | null | undefined): string {
 
 const LOW_CONFIDENCE_THRESHOLD = 20
 
+/**
+ * Sample coverage is only worth showing when something is actually missing.
+ * The counts, not `missingPct`, decide it: the adapter rounds the percentage to one decimal,
+ * so a real gap of 2000/2001 points arrives as 0.0 and a `=== 0` test would hide it. Going by
+ * counts also suppresses the negative percentages scrape jitter produces when a series returns
+ * more points than the window's step size predicted.
+ */
+function hasCoverageGap(meta: SliMetadata): boolean {
+  if (meta.chunksFailed > 0) return true
+  if (meta.expectedSamples <= 0) return false
+  return meta.actualSamples < meta.expectedSamples
+}
+
 
 interface SliGroup {
   prefix: string
@@ -201,7 +214,7 @@ function GroupRows({ group, collapsed, lowConfidence, onToggle, selectedMetric, 
               : <ChevronDown className="size-3.5 text-muted-foreground" />
             }
             <span className="text-foreground">{group.prefix}</span>
-            {meta && (
+            {meta && hasCoverageGap(meta) && (
               <span className="text-xs text-muted-foreground font-mono">
                 {meta.actualSamples}/{meta.expectedSamples} samples ({meta.missingPct.toFixed(1)}% missing)
               </span>

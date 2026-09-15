@@ -238,6 +238,48 @@ describe('SLIBreakdownTable grouped display', () => {
     expect(screen.getByText(/low confidence/i)).toBeInTheDocument()
   })
 
+  it('hides the sample counts when coverage is complete', () => {
+    const complete: Record<string, SliMetadata> = {
+      cpu: { ...sliMetadata.cpu, actualSamples: 1440, missingPct: 0 },
+    }
+    render(
+      <SLIBreakdownTable
+        indicators={aggregatedIndicators}
+        sliMetadata={complete}
+      />,
+    )
+    expect(screen.queryByText(/samples/)).not.toBeInTheDocument()
+    // The group itself still renders — only the coverage note is suppressed.
+    expect(screen.getByText('cpu')).toBeInTheDocument()
+    expect(screen.getByText('mean')).toBeInTheDocument()
+  })
+
+  it('still shows the counts when a gap rounds to 0.0%', () => {
+    const roundsToZero: Record<string, SliMetadata> = {
+      cpu: { ...sliMetadata.cpu, expectedSamples: 2001, actualSamples: 2000, missingPct: 0.0 },
+    }
+    render(
+      <SLIBreakdownTable
+        indicators={aggregatedIndicators}
+        sliMetadata={roundsToZero}
+      />,
+    )
+    expect(screen.getByText(/2000\/2001 samples \(0\.0% missing\)/)).toBeInTheDocument()
+  })
+
+  it('still shows the counts when a chunk failed despite complete coverage', () => {
+    const chunkFailed: Record<string, SliMetadata> = {
+      cpu: { ...sliMetadata.cpu, actualSamples: 1440, missingPct: 0, chunksFailed: 1 },
+    }
+    render(
+      <SLIBreakdownTable
+        indicators={aggregatedIndicators}
+        sliMetadata={chunkFailed}
+      />,
+    )
+    expect(screen.getByText(/1440\/1440 samples/)).toBeInTheDocument()
+  })
+
   it('works without sliMetadata (backward compatible)', () => {
     render(<SLIBreakdownTable indicators={aggregatedIndicators} />)
     expect(screen.getByText('cpu.mean')).toBeInTheDocument()
