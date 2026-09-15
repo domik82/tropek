@@ -36,6 +36,7 @@ from tropek.modules.quality_gate.workflows.execution.evaluation_executor import 
 )
 from tropek.modules.quality_gate.workflows.presentation import heatmap_cache
 from tropek.modules.quality_gate.workflows.re_evaluation.re_evaluation_service import (
+    _PendingCacheInvalidations,
     _persist_reeval_result,
 )
 
@@ -418,15 +419,18 @@ async def test_baseline_pin_mutation_deletes_cached_fragment(
 
 
 @pytest.mark.integration
-async def test_reevaluation_persist_deletes_cached_fragment(
+async def test_reevaluation_invalidates_cached_fragment_after_commit(
     redis_client,
     db_session,
     seed_asset_with_indicators: Callable[..., Coroutine[Any, Any, SeededAsset]],
 ) -> None:
-    """``_persist_reeval_result`` must delete the cached fragment for the
-    mutated run. Re-evaluate is the batch-mutation flavor; each call within
-    the batch invalidates exactly one run fragment without a per-call SELECT
-    because the caller already holds the ``SLOEvaluation`` row.
+    """Re-scoring must drop the mutated run's cached fragment — but only after the commit.
+
+    ``_persist_reeval_result`` deliberately does not invalidate: deleting inside the still-open
+    request transaction lets a concurrent reader rebuild the fragment from pre-commit state and
+    re-cache it, so the stale entry would survive to its TTL. The caller records the target and
+    ``_PendingCacheInvalidations.flush`` drops it once the transaction has committed. Both halves
+    are asserted here: the entry survives the persist, and is gone after the flush.
     """
     seeded = await seed_asset_with_indicators(cell_count=1)
 
@@ -441,6 +445,7 @@ async def test_reevaluation_persist_deletes_cached_fragment(
     re_eval_category = await category_repo.get_by_name('re-evaluation')
     assert re_eval_category is not None
 
+    pending = _PendingCacheInvalidations()
     await _persist_reeval_result(
         db_session,
         ev=child_eval,
@@ -456,11 +461,21 @@ async def test_reevaluation_persist_deletes_cached_fragment(
         re_eval_category_id=re_eval_category.id,
         note_group_id=uuid.uuid4(),
         note_group_name='test-reeval-group',
-        heatmap_cache=column_cache,
+    )
+    pending.record(child_eval)
+
+    hits_before_flush = await column_cache.get_many([run_id])
+    assert str(run_id) in hits_before_flush, (
+        f'persist dropped the fragment for run {run_id} inside the open transaction, which reopens '
+        f'the stale-recache window _PendingCacheInvalidations exists to close'
     )
 
-    hits_after = await column_cache.get_many([run_id])
-    assert str(run_id) not in hits_after, f're-evaluation persist did not invalidate the fragment for run {run_id}'
+    await pending.flush(None, column_cache, None)
+
+    hits_after_flush = await column_cache.get_many([run_id])
+    assert str(run_id) not in hits_after_flush, (
+        f're-evaluation did not invalidate the fragment for run {run_id} after commit'
+    )
 
 
 # ---------------------------------------------------------------------------
