@@ -34,12 +34,12 @@ describe('SloObjectiveTable', () => {
         { sli: 'cpu_time', displayName: 'cpu_time', passThreshold: ['>=0'], warningThreshold: [], weight: 1, keySli: false, sortOrder: 0 },
       ],
     }
-    render(<SloObjectiveTable slo={slo} indicators={{ cpu_time: "SELECT mean FROM tanium_summary WHERE metric_name = 'cpu_time'" }} />)
+    render(<SloObjectiveTable slo={slo} indicators={{ cpu_time: "SELECT mean FROM metrics_summary WHERE metric_name = 'cpu_time'" }} />)
 
     const expandButton = screen.getByRole('button')
     expect(expandButton).toBeInTheDocument()
     fireEvent.click(expandButton)
-    expect(screen.getByText(/SELECT mean FROM tanium_summary/)).toBeInTheDocument()
+    expect(screen.getByText(/SELECT mean FROM metrics_summary/)).toBeInTheDocument()
   })
 
   it('shows the expand button and query for a multi-indicator aggregated objective keyed as <indicator>.<method>', () => {
@@ -54,8 +54,8 @@ describe('SloObjectiveTable', () => {
       <SloObjectiveTable
         slo={slo}
         indicators={{
-          usage_percent: 'round(sum(rate(tanium_cx_core_system_cpu_seconds_total[$interval])) * 100, .01)',
-          total_time: 'rate(tanium_cx_core_system_cpu_seconds_total[$interval]) > -Inf',
+          usage_percent: 'round(sum(rate(service_cpu_seconds_total[$interval])) * 100, .01)',
+          total_time: 'rate(service_cpu_seconds_total[$interval]) > -Inf',
         }}
       />
     )
