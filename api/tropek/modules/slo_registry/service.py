@@ -154,6 +154,9 @@ class SLOTestService:
         metrics_fetched: dict[str, float] = {}
         fetch_errors: dict[str, str] = {}
         adapter_timeout = get_settings().reliability.adapter_timeout_seconds
+        # The dry-run hits the same guarded endpoint as an evaluation, so it presents the same
+        # credential; without it this returns 401 against an adapter that configures a token.
+        headers = {'Authorization': f'Bearer {ds.token}'} if ds.token else {}
         try:
             async with httpx.AsyncClient(timeout=adapter_timeout) as http_client:
                 adapter_resp = await http_client.post(
@@ -163,6 +166,7 @@ class SLOTestService:
                         'start': body.period_start.isoformat(),
                         'end': body.period_end.isoformat(),
                     },
+                    headers=headers,
                 )
                 adapter_resp.raise_for_status()
                 adapter_data = adapter_resp.json()

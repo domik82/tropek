@@ -148,9 +148,25 @@ Content-Type: application/json
 | `adapter_url` | yes | Base URL of the adapter — TROPEK appends `/query` and `/health` |
 | `display_name` | no | Human-readable label shown in the UI |
 | `tags` | no | Arbitrary key-value metadata |
-| `token` | no | Bearer token sent to the adapter (stored encrypted) |
+| `token` | no | Shared secret sent to the adapter as `Authorization: Bearer <token>` |
 
 After registration, reference the datasource by `name` in SLO YAML files.
+
+### Authenticating the adapter
+
+An adapter's `/query` executes caller-supplied queries against live data, so it should not answer
+anonymously. Adapters SHOULD require `Authorization: Bearer <token>` on their query endpoints and
+compare it against a secret supplied out of band (`ADAPTER_AUTH_TOKEN` for the bundled Prometheus
+adapter), rejecting a mismatch with `401` and `WWW-Authenticate: Bearer`. Use a constant-time
+comparison. TROPEK presents the datasource's `token` on every query, including the SLO dry-run.
+
+`/health` SHOULD stay open: container healthchecks and TROPEK's reachability probe send no
+credentials, and it exposes no metric data.
+
+An adapter with no secret configured should keep accepting unauthenticated requests so that
+existing deployments keep working, and say so in its startup log. The datasource `token` is stored
+as given — the database column is not encrypted — so treat it as a secret at rest and rotate it by
+updating the datasource and the adapter together.
 
 ## Testing conformance
 

@@ -49,8 +49,9 @@ Environment variables always take precedence over `config.yaml` values.
 | Variable | Default | Description |
 |---|---|---|
 | `PROMETHEUS_URL` | `http://prometheus:9090` | Prometheus server URL |
-| `PROMETHEUS_USERNAME` | — | Basic auth username (optional; both halves required) |
-| `PROMETHEUS_PASSWORD` | — | Basic auth password (optional; both halves required) |
+| `PROMETHEUS_USERNAME` | — | Basic auth username for Prometheus (optional; both halves required) |
+| `PROMETHEUS_PASSWORD` | — | Basic auth password for Prometheus (optional; both halves required) |
+| `ADAPTER_AUTH_TOKEN` | — | Shared secret required on the adapter's own query endpoints |
 
 Prometheus itself authenticates incoming requests with basic auth or TLS client certificates only
 — it has no bearer-token support — so basic auth is what the adapter implements. Managed services
@@ -58,13 +59,19 @@ that issue an "API token" generally expect it as the basic-auth *password*; set 
 to the account or instance id those services document. Setting only one of the pair logs a warning
 and sends no credentials at all, rather than half a header.
 
+`ADAPTER_AUTH_TOKEN` guards the adapter, not Prometheus. The query endpoints run caller-supplied
+queries against live data, so anyone who can reach the adapter's port can read metrics while it is
+unset — which is the default, and what the startup log warns about. Set it to the same value as the
+`token` on the datasource registered for this adapter; TROPEK then presents it as
+`Authorization: Bearer <token>`. `/health` stays open so container healthchecks keep working.
+
 #### Serving more than one Prometheus
 
 An adapter process targets exactly one Prometheus, fixed at startup. To evaluate against two
-instances — separate labs, or separate monitored environments — run the adapter twice and register each as
-its own datasource, pointing `adapter_url` at the matching container. Each service block is its own
-env namespace, so both use the same container-side variable names while drawing different values,
-and a credential leak is contained to one upstream:
+instances — separate labs, or separate monitored environments — run the adapter twice and register
+each as its own datasource, pointing `adapter_url` at the matching container. Each service block is
+its own env namespace, so both use the same container-side variable names while drawing different
+values, and a credential leak is contained to one upstream:
 
 ```yaml
 services:
@@ -74,6 +81,7 @@ services:
       PROMETHEUS_URL: ${PROM_LAB_URL}
       PROMETHEUS_USERNAME: ${PROM_LAB_USERNAME:-}
       PROMETHEUS_PASSWORD: ${PROM_LAB_PASSWORD:-}
+      ADAPTER_AUTH_TOKEN: ${PROM_LAB_ADAPTER_TOKEN:-}
       REDIS_URL: redis://:${TK_REDIS_PASSWORD}@redis:6379/1
 
   adapter-prometheus-prod:
@@ -82,12 +90,14 @@ services:
       PROMETHEUS_URL: ${PROM_PROD_URL}
       PROMETHEUS_USERNAME: ${PROM_PROD_USERNAME:-}
       PROMETHEUS_PASSWORD: ${PROM_PROD_PASSWORD:-}
+      ADAPTER_AUTH_TOKEN: ${PROM_PROD_ADAPTER_TOKEN:-}
       REDIS_URL: redis://:${TK_REDIS_PASSWORD}@redis:6379/2
 ```
 
-Give each instance its own Redis database index, as above, so their job queues stay separate. The
-`X-Datasource-Name` header the API sends is recorded in the adapter's logs for correlation; it does
-not select an upstream.
+Give each instance its own Redis database index, as above, so their job queues stay separate, and
+its own `ADAPTER_AUTH_TOKEN` matching that datasource's `token` — sharing one secret across both
+adapters means a leak from either reaches both upstreams. The `X-Datasource-Name` header the API
+sends is recorded in the adapter's logs for correlation; it does not select an upstream.
 
 ## config.yaml Reference
 
