@@ -89,8 +89,8 @@ GET /health -> {"status": "ok", "datasource": "prometheus"}
 | Variable | Default | Purpose |
 |----------|---------|---------|
 | `PROMETHEUS_URL` | `http://prometheus:9090` | Prometheus server URL |
-| `TK_ADAPTER_PROMETHEUS_USERNAME` | -- | Optional basic auth |
-| `TK_ADAPTER_PROMETHEUS_PASSWORD` | -- | Optional basic auth |
+| `PROMETHEUS_USERNAME` | -- | Optional basic auth (both halves required) |
+| `PROMETHEUS_PASSWORD` | -- | Optional basic auth (both halves required) |
 
 ## Adapter Contract
 

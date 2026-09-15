@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+
+### Added
+
+- **A regression test that reads the shipped compose files and asserts every environment key passed
+  to `adapter-prometheus` is one `Settings` actually binds.** This is the check that would have
+  caught the credential drift above: a key matching no field is silently ignored, so nothing else
+  fails when the composes and `Settings` diverge.
+- **Documented how to serve more than one Prometheus** (`docs/configuration.md`) — an adapter
+  process targets exactly one upstream, fixed at startup, so two instances means running the
+  adapter twice and registering each as its own datasource with a matching `adapter_url`. Includes a
+  worked two-service compose with per-instance credentials and separate Redis database indices, and
+  notes that the `X-Datasource-Name` header is logged for correlation but does not select an
+  upstream. Also records that Prometheus authenticates incoming requests with basic auth or mTLS
+  only, and that managed services issuing an "API token" expect it as the basic-auth password.
+
 ### Changed
 
 - **`interval` is now validated when an aggregated SLI is created**, as a whole number above
@@ -55,6 +70,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   its interval parser guessed rather than rejected, silently reading a bare `90` as 540 seconds.
   Both now match the real adapter, and an interval it cannot parse fails that SLI alone instead
   of surfacing as a 500 for the whole request.
+- **The Prometheus adapter's basic-auth credentials were passed under a name nothing read** — every
+  compose file, `.env.example` and doc set `TK_ADAPTER_PROMETHEUS_USERNAME` / `_PASSWORD`, but
+  `Settings` declares no `env_prefix`, so each field binds to its own name and only
+  `PROMETHEUS_USERNAME` / `PROMETHEUS_PASSWORD` are ever read. The adapter therefore started with no
+  credentials and sent no `Authorization` header, while an operator could see the values plainly set
+  in `.env` — surfacing against an authenticated Prometheus as every query failing with 401, or as
+  empty results. Renamed in all six locations (both composes, both `.env.example`s,
+  `docs/configuration.md`, `adapters/prometheus/docs/architecture.md`); the old names were inert, so
+  nothing that worked before changes. **Operators with `TK_ADAPTER_PROMETHEUS_*` in their `.env`
+  must rename those keys for authentication to begin working.**
+- **Setting only one half of the credential pair silently disabled authentication** — startup
+  required both values to be truthy and otherwise fell through to unauthenticated requests with no
+  diagnostic. `resolve_basic_auth` now logs a warning naming the missing variable; the adapter still
+  starts, matching how an unreachable Prometheus is handled.
+- **Adapter config tests were not hermetic** — `pytest-dotenv` loads the repo-root `.env` into
+  `os.environ` for every run with no `env_files` setting, so `test_default_settings` asserted a
+  developer's own deployment values as defaults and failed locally for anyone who had a `.env`
+  (it passed in CI only because `.env` is git-ignored and absent there). The defaults test now
+  clears every env var that binds to a `Settings` field before constructing it.
 
 ## [0.1.4-alpha] - 2026-09-04
 
