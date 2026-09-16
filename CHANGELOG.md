@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.1.5-alpha.1] - 2026-09-16
+
 ### Fixed
 
 - **A new SLO version was created but nothing was ever pointed at it, so it scored nothing.** An SLO
