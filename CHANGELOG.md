@@ -7,6 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+
+- **A new SLO version was created but nothing was ever pointed at it, so it scored nothing.** An SLO
+  assignment binds an asset to one SLO *version*, fixed when the assignment was created. Applying a
+  changed SLO creates a new version and left the assignment pinned to the old one — while `apply`
+  reported success and a following `plan` agreed nothing was pending, because by then both halves
+  were self-consistent at the wrong version. Observed in practice: an SLO reached v2 with its
+  assignment left on v1, so every evaluation afterwards scored v1 and that v2 never scored anything.
+  Two independent causes, either of which alone reproduces the bug:
+  `_has_diff` returned `False` for every `SLOAssignment` (assignments are immutable, which is a
+  reason to *repoint* rather than a reason to report no difference), and `apply` computed its whole
+  plan up front — `_KIND_DEPS` orders SLOs before the assignments referencing them, so an assignment
+  goes stale *during* a run, but at plan time it still correctly pointed at the old version and was
+  recorded `SKIP`. `_has_diff` now compares the pinned definition against the SLO's latest and
+  `_update` repoints via the assignments upgrade endpoint, which swaps the pinned definition while
+  keeping the assignment's identity so its history survives; and `apply` decides per document
+  against state as it is when that document is reached. `dry_run` is unchanged and remains the
+  preview — "what would change from here" is a different question, and `SKIP` is its honest answer
+  for an assignment that only goes stale later in the run. Group assignments have no upgrade
+  endpoint so they are deleted and recreated, deleting first so the stale one cannot keep scoring
+  alongside the new one.
+
+  Note this makes a version take effect; it does not give an SLO a *lifetime*. After it runs every
+  evaluation scores against the newest version, including a re-import of a build that predates it.
+  The full fix is a temporal field on `SLOAssignment` so the engine selects by evaluation period,
+  which would also remove the need for downstream tooling that repoints assignments after the fact.
+
 ## [0.1.5-alpha] - 2026-09-15
 
 ### Added
