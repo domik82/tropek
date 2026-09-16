@@ -481,3 +481,113 @@ def test_a_change_point_edit_is_not_detected_while_the_read_path_returns_null():
     )
     plan = dry_run(client, [changed])
     assert plan.actions[0].operation == 'SKIP'
+
+
+# SLOAssignmentUpgrade.new_slo_definition_id is a UUID field, so these must be real uuids rather
+# than readable placeholders.
+_DEF_V1 = str(uuid.uuid4())
+_DEF_V2 = str(uuid.uuid4())
+
+
+def _assignment_doc(slo_name: str = 'powershell — host-a', asset: str = 'host-a') -> ManifestDocument:
+    """Build an asset-targeted SLOAssignment document.
+
+    :param str slo_name: SLO the assignment binds.
+    :param str asset: Asset it binds to.
+    :returns: The document.
+    :rtype: ManifestDocument
+    """
+    return ManifestDocument(
+        api_version='tropek/v1',
+        kind='SLOAssignment',
+        metadata={'name': f'{slo_name} -> {asset}'},
+        spec={
+            'target_type': 'asset',
+            'target_name': asset,
+            'slo_name': slo_name,
+            'data_source_name': 'prometheus-main',
+        },
+    )
+
+
+def _assignment_client(pinned_definition_id: str, latest_definition_id: str) -> MagicMock:
+    """Client whose asset has one assignment pinned to ``pinned_definition_id``.
+
+    :param str pinned_definition_id: Definition id the existing assignment points at.
+    :param str latest_definition_id: Definition id ``slos.get`` resolves to (the latest).
+    :returns: The configured mock.
+    :rtype: MagicMock
+    """
+    client = MagicMock()
+    assignment = MagicMock()
+    assignment.id = 'assignment-1'
+    assignment.slo_name = 'powershell — host-a'
+    assignment.slo_definition_id = pinned_definition_id
+    assignment.slo_version = 1
+    client.slo_assignments.list_for_asset.return_value = [assignment]
+    client.slos.get.return_value = MagicMock(id=latest_definition_id)
+    return client
+
+
+def test_dry_run_reports_assignment_pinned_to_an_older_slo_version():
+    """A stale assignment is an UPDATE, not a SKIP.
+
+    Regression: this reported SKIP because `_has_diff` returned False for every SLOAssignment, so an
+    SLO whose objectives changed got a new version that nothing was ever pointed at.
+    """
+    client = _assignment_client(pinned_definition_id=_DEF_V1, latest_definition_id=_DEF_V2)
+    plan = dry_run(client, [_assignment_doc()])
+    assert [a.operation for a in plan.actions] == ['UPDATE']
+    assert 'pinned to SLO v1' in plan.actions[0].reason
+
+
+def test_dry_run_skips_assignment_already_on_the_latest_version():
+    """An assignment on the latest version still reports SKIP, so routine applies stay no-ops."""
+    client = _assignment_client(pinned_definition_id=_DEF_V2, latest_definition_id=_DEF_V2)
+    plan = dry_run(client, [_assignment_doc()])
+    assert [a.operation for a in plan.actions] == ['SKIP']
+
+
+def test_apply_repoints_a_stale_assignment_via_the_upgrade_endpoint():
+    """The repoint uses `upgrade`, preserving the assignment's identity and its history."""
+    client = _assignment_client(pinned_definition_id=_DEF_V1, latest_definition_id=_DEF_V2)
+    result = do_apply(client, [_assignment_doc()])
+    assert (result.updated, result.failed) == (1, 0)
+    args = client.slo_assignments.upgrade.call_args.args
+    assert args[0] == 'host-a'
+    assert args[1] == 'assignment-1'
+    assert str(args[2].new_slo_definition_id) == _DEF_V2
+    client.slo_assignments.delete_for_asset.assert_not_called()
+
+
+def test_apply_repoints_an_assignment_made_stale_by_an_earlier_doc_in_the_same_run():
+    """The ordering half of the bug, which a `_has_diff` fix alone does not cover.
+
+    `apply` used to compute its whole plan up front. At plan time the SLO is still v1 and the
+    assignment correctly points at v1, so the assignment is recorded SKIP -- and the v2 it should
+    have been repointed to is created moments later by the SLO document in the same run. The apply
+    reported success, a following `dry_run` agreed nothing was pending, and the new version scored
+    nothing. So the decision has to be made per document, against state as it is by then.
+    """
+    client = _assignment_client(pinned_definition_id=_DEF_V1, latest_definition_id=_DEF_V1)
+
+    slo_doc = ManifestDocument(
+        api_version='tropek/v1',
+        kind='SLO',
+        metadata={'name': 'powershell — host-a'},
+        spec={'objectives': [{'sli': 'cpu_time.mean', 'pass_threshold': []}], 'total_score': {}},
+    )
+
+    # Applying the SLO creates v2; from then on `slos.get` resolves to the new definition, exactly
+    # as the server would behave.
+    def _create_new_version(*_args, **_kwargs):
+        client.slos.get.return_value = MagicMock(id=_DEF_V2)
+
+    client.slos.create.side_effect = _create_new_version
+
+    result = do_apply(client, [slo_doc, _assignment_doc()])
+
+    assert result.failed == 0, result.errors
+    # The SLO's new version, plus the assignment repointed at it.
+    assert result.updated == 2
+    assert str(client.slo_assignments.upgrade.call_args.args[2].new_slo_definition_id) == _DEF_V2

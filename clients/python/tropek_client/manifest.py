@@ -22,6 +22,7 @@ from tropek_client.models import (
     DisplayGroupCreate,
     DisplayGroupMemberAdd,
     SLIDefinitionCreate,
+    SLOAssignmentUpgrade,
     SLOAssignmentUpsert,
     SLODefinitionCreate,
     SLOGroupAssignmentUpsert,
@@ -230,8 +231,8 @@ def dry_run(client: Any, manifests: list[ManifestDocument]) -> ApplyPlan:
                         reason='not found in current state',
                     )
                 )
-            elif _has_diff(doc, existing):
-                reason = _diff_reason(doc, existing)
+            elif _has_diff(client, doc, existing):
+                reason = _diff_reason(client, doc, existing)
                 plan.actions.append(PlanAction(operation='UPDATE', kind=doc.kind, name=name, reason=reason))
             else:
                 plan.actions.append(
@@ -248,25 +249,41 @@ def dry_run(client: Any, manifests: list[ManifestDocument]) -> ApplyPlan:
 
 
 def apply(client: Any, manifests: list[ManifestDocument]) -> ApplyResult:
-    """Apply manifests using desired-state reconciliation."""
-    plan = dry_run(client, manifests)
+    """Apply manifests using desired-state reconciliation.
+
+    Each document is compared against CURRENT state at the moment it is applied, rather than against
+    a plan computed once before anything changed. That distinction is the whole correctness of this
+    function for dependent kinds:
+
+    ``_KIND_DEPS`` orders SLOs before the assignments that reference them, so applying a changed SLO
+    creates a new version and the assignment that points at the old one becomes stale DURING this
+    run. A plan built up front cannot see that -- at plan time the SLO is still v1 and the assignment
+    correctly points at v1, so the assignment is recorded SKIP, and the new version it should have
+    been repointed to is created moments later. The apply then reports success while the change is
+    inert, and a following `dry_run` agrees that nothing is pending, because by then both halves
+    are self-consistent again at the wrong version.
+
+    :func:`dry_run` is unchanged and remains the way to preview: it answers "what would change from
+    here", which is a different and still-useful question.
+    """
     result = ApplyResult()
     blocked_kinds: set[str] = set()
 
-    for action, doc in zip(plan.actions, manifests, strict=False):
+    for doc in manifests:
         name = doc.metadata.get('name', doc.metadata.get('asset', 'unknown'))
-        if action.operation == 'SKIP':
-            result.skipped += 1
-            continue
         if doc.kind in blocked_kinds:
             result.failed += 1
             result.errors.append(ApplyError(kind=doc.kind, name=name, error='blocked by prior error'))
             continue
         try:
-            if action.operation == 'CREATE':
+            existing = _lookup(client, doc)
+            if existing is not None and not _has_diff(client, doc, existing):
+                result.skipped += 1
+                continue
+            if existing is None:
                 _create(client, doc)
                 result.created += 1
-            elif action.operation == 'UPDATE':
+            else:
                 _update(client, doc)
                 result.updated += 1
         except Exception as e:  # noqa: BLE001
@@ -469,8 +486,13 @@ def _normalized_comparison(value: Any) -> dict[str, Any]:
     return ComparisonConfig.model_validate(raw).model_dump(mode='json')
 
 
-def _has_diff(doc: ManifestDocument, existing: Any) -> bool:  # noqa: C901, PLR0911
-    """Check if the manifest differs from the existing entity."""
+def _has_diff(client: Any, doc: ManifestDocument, existing: Any) -> bool:  # noqa: C901, PLR0911
+    """Check if the manifest differs from the existing entity.
+
+    Takes ``client`` because not every comparison is answerable from the document and the existing
+    row alone: an ``SLOAssignment`` pins an SLO VERSION, and deciding whether it is stale means
+    asking what the latest version of that SLO now is.
+    """
     match doc.kind:
         case 'AssetType':
             return doc.spec.get('is_default') != getattr(existing, 'is_default', None)
@@ -510,7 +532,21 @@ def _has_diff(doc: ManifestDocument, existing: Any) -> bool:  # noqa: C901, PLR0
                 != _normalized_comparison(getattr(existing, 'comparison', None))
             )
         case 'SLOAssignment':
-            return False  # assignments are immutable — delete + recreate
+            # An assignment binds an asset to ONE SLO version, chosen when it was created. Applying a
+            # changed SLO creates a NEW version (the 'SLO' branch above -> client.slos.create) and
+            # leaves the assignment pinned to the old one, so the new version scores nothing.
+            #
+            # This returned False unconditionally, on the grounds that assignments are immutable. The
+            # immutability is real, but it is a reason to REPOINT rather than a reason to report no
+            # difference: an assignment on v1 when the SLO's latest is v2 genuinely differs from the
+            # desired state. `_update` repoints it via the assignments upgrade endpoint.
+            #
+            # Observed in practice: an SLO reached v2, its assignment stayed on v1, and every
+            # evaluation afterwards scored v1 while `apply` and `plan` both reported success. The
+            # v2 never scored anything.
+            return str(getattr(existing, 'slo_definition_id', '')) != _resolve_slo_definition_id(
+                client, doc.spec.get('slo_name', '')
+            )
         case 'SLOGroup':
             return doc.spec.get('gen_variables') != getattr(existing, 'gen_variables', None) or doc.spec.get(
                 'template_slo_version'
@@ -525,9 +561,14 @@ def _has_diff(doc: ManifestDocument, existing: Any) -> bool:  # noqa: C901, PLR0
             return False
 
 
-def _diff_reason(doc: ManifestDocument, existing: Any) -> str:
+def _diff_reason(client: Any, doc: ManifestDocument, existing: Any) -> str:
     """Generate a human-readable diff reason."""
     match doc.kind:
+        case 'SLOAssignment':
+            # Name both versions: "UPDATE SLOAssignment <name>" on its own reads as a spec change,
+            # when what actually happens is a repoint that changes which version scores.
+            pinned = getattr(existing, 'slo_version', None)
+            return f'assignment pinned to SLO v{pinned}, latest is newer (will be repointed)'
         case 'SLI':
             return 'indicators differ (new version will be created)'
         case 'SLO':
@@ -747,6 +788,38 @@ def _create(client: Any, doc: ManifestDocument) -> None:  # noqa: C901
             create_meta_snapshots(client, doc)
 
 
+def _repoint_slo_assignment(client: Any, doc: ManifestDocument, name: str) -> None:
+    """Repoint a stale SLO assignment at its SLO's latest version.
+
+    The assignment row is immutable, which is what the upgrade endpoint exists for: it swaps the
+    pinned definition while keeping the assignment's identity, so the history attached to it survives.
+
+    Only reached when :func:`_has_diff` found the pinned version behind the latest, so a routine
+    apply over an unchanged folder still touches nothing.
+
+    :param Any client: Tropek client.
+    :param ManifestDocument doc: The ``SLOAssignment`` document being applied.
+    :param str name: The document's name, for error messages.
+    :raises ValueError: If the assignment has disappeared since it was looked up.
+    """
+    existing = _lookup_slo_assignment(client, doc)
+    if existing is None:
+        raise ValueError(f'could not repoint SLO assignment for {name!r}: it no longer exists')
+    latest_id = _resolve_slo_definition_id(client, doc.spec.get('slo_name', ''))
+    if doc.spec.get('target_type') == 'asset':
+        client.slo_assignments.upgrade(
+            doc.spec['target_name'],
+            str(existing.id),
+            SLOAssignmentUpgrade(new_slo_definition_id=latest_id),
+        )
+    else:
+        # No group-level upgrade endpoint exists, so a group assignment is replaced. Delete first:
+        # creating a second assignment for the same SLO would leave the stale one scoring alongside
+        # the new one.
+        _delete_slo_assignment(client, doc.spec, existing)
+        _create_slo_assignment(client, doc.spec)
+
+
 def _update(client: Any, doc: ManifestDocument) -> None:
     """Update an existing entity via the client."""
     name = doc.metadata.get('name', doc.metadata.get('asset', ''))
@@ -811,6 +884,8 @@ def _update(client: Any, doc: ManifestDocument) -> None:
                     method_criteria=doc.spec.get('method_criteria'),
                 )
             )
+        case 'SLOAssignment':
+            _repoint_slo_assignment(client, doc, name)
         case 'SLOGroup':
             client.slo_groups.update(
                 name,
