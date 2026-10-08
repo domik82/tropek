@@ -1,5 +1,7 @@
 """Tests for HTTP session layer."""
 
+import gzip
+
 import httpx
 import pytest
 import respx
@@ -19,6 +21,23 @@ def session():
 
 
 class TestHttpSession:
+    @respx.mock
+    def test_requests_gzip_even_with_custom_headers(self):
+        # The API gzips large responses (heatmap ~10 MB -> ~0.6 MB). httpx asks for gzip by
+        # default; guard against a future headers= change silently replacing that default.
+        session = HttpSession(base_url='http://test-api:8080', api_key='key', headers={'X-Trace': '1'})
+        route = respx.get('http://test-api:8080/assets').mock(return_value=httpx.Response(200, json={}))
+        session.get('/assets')
+        assert 'gzip' in route.calls[0].request.headers['accept-encoding']
+
+    @respx.mock
+    def test_gzip_response_is_decoded(self, session):
+        body = gzip.compress(b'{"items": [], "total": 0}')
+        respx.get('http://test-api:8080/assets').mock(
+            return_value=httpx.Response(200, content=body, headers={'Content-Encoding': 'gzip'})
+        )
+        assert session.get('/assets').json() == {'items': [], 'total': 0}
+
     @respx.mock
     def test_get_success(self, session):
         respx.get('http://test-api:8080/assets').mock(return_value=httpx.Response(200, json={'items': [], 'total': 0}))

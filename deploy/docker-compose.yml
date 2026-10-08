@@ -64,6 +64,14 @@ services:
       TK_REDIS_PASSWORD: ${TK_REDIS_PASSWORD}
       TK_SECRET_KEY: ${TK_SECRET_KEY}
       TK_CONFIG_PATH: /app/config.yaml
+      # uvicorn worker processes. With one, every request shares a single event loop
+      # and core, so the UI's ~36 parallel page-load requests queue behind each other.
+      WEB_CONCURRENCY: ${TK_API_WORKERS:-4}
+      # The DB pool is PER PROCESS. config.yaml's 10+20 x 4 api processes + the worker's
+      # 30 = 150 connections, over Postgres' default max_connections=100. 4 x (5+5) + 30 = 70.
+      # Scale these down if you raise TK_API_WORKERS.
+      TK_DB_POOL_SIZE: ${TK_API_DB_POOL_SIZE:-5}
+      TK_DB_MAX_OVERFLOW: ${TK_API_DB_MAX_OVERFLOW:-5}
     volumes:
       - results_data:/data/results
     depends_on:

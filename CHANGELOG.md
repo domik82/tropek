@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+
+- **Responses were never compressed, so large ones were dominated by download time.** The grouped
+  heatmap for a ~60-column asset is ~10 MB of JSON. Over a VPN at ~0.8 MB/s that alone took ~9 s of a
+  ~12 s request. The API now gzips responses over 1 KB for clients that send `Accept-Encoding: gzip`
+  (Starlette `GZipMiddleware`, level 5), so direct `:8080` clients such as `tropek-client` and CI
+  pipelines benefit too. httpx and browsers already ask for gzip, so no client change is needed. The
+  ui nginx also gzips its static assets (`gzip_proxied any`), so the ~2.5 MB JS bundle ships as ~0.77 MB.
+  Measured on a load-test box: the heatmap went from 10.08 MB to 0.67 MB and ~9–12 s to ~3 s.
+- **The API served every request from one process, so concurrent requests queued on a single core.**
+  The image ran uvicorn with no `--workers`. A cached heatmap costs ~0.5 s of CPU, and the UI fires
+  ~36 requests on page load, so they serialised: 4 concurrent heatmaps took up to 2.2 s. The shipped
+  compose files now run 4 api processes (`TK_API_WORKERS`). Because the DB pool is per process, the
+  api pool also drops to 5 + 5 (`TK_API_DB_POOL_SIZE`, `TK_API_DB_MAX_OVERFLOW`) to stay under
+  Postgres' default `max_connections` of 100. The worker's pool is unchanged. 4 concurrent heatmaps
+  now finish in ≤0.9 s. The image's own default is still one process. See `docs/configuration.md`
+  → "API processes and DB pool sizing".
+
 ## [0.1.5-alpha.1] - 2026-09-16
 
 ### Fixed

@@ -68,6 +68,10 @@ services:
       TK_REDIS_PASSWORD: ${TK_REDIS_PASSWORD}
       TK_SECRET_KEY: ${TK_SECRET_KEY}
       TK_CONFIG_PATH: /app/config.yaml
+      # Same multi-process defaults as deploy/docker-compose.yml — see the notes there.
+      WEB_CONCURRENCY: ${TK_API_WORKERS:-4}
+      TK_DB_POOL_SIZE: ${TK_API_DB_POOL_SIZE:-5}
+      TK_DB_MAX_OVERFLOW: ${TK_API_DB_MAX_OVERFLOW:-5}
     volumes:
       - ./config.yaml:/app/config.yaml:ro
       - results_data:/data/results

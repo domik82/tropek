@@ -27,6 +27,37 @@ Environment variables always take precedence over `config.yaml` values.
 | `TK_DB_USER` | — | PostgreSQL user |
 | `TK_DB_PASSWORD` | — | PostgreSQL password |
 | `TK_DB_NAME` | `tropek` | Database name |
+| `TK_DB_POOL_SIZE` | `10` (config.yaml) | Connections kept open **per process** |
+| `TK_DB_MAX_OVERFLOW` | `20` (config.yaml) | Extra burst connections **per process** |
+
+### API processes and DB pool sizing
+
+The shipped compose files run the API as several uvicorn processes and give **the `api`
+service only** a smaller per-process pool. The worker keeps config.yaml's 10 + 20, which
+its `max_jobs: 10` concurrent jobs need.
+
+| Compose variable (`.env`) | Default | Sets on `api` |
+|---|---|---|
+| `TK_API_WORKERS` | `4` | `WEB_CONCURRENCY` (uvicorn `--workers`) |
+| `TK_API_DB_POOL_SIZE` | `5` | `TK_DB_POOL_SIZE` |
+| `TK_API_DB_MAX_OVERFLOW` | `5` | `TK_DB_MAX_OVERFLOW` |
+
+Why: a single uvicorn process runs every request on one event loop and one core. A
+cached grouped heatmap costs ~0.5 s of CPU, so the UI's parallel page-load requests
+queued behind each other (4 concurrent heatmaps: up to 2.2 s with 1 process, up to 0.9 s
+with 4).
+
+Budget: `TK_API_WORKERS × (pool + overflow) + worker 30` must stay below Postgres
+`max_connections` (default **100**, 3 reserved). Defaults give 4 × 10 + 30 = 70. If you
+raise `TK_API_WORKERS`, lower the per-process pool or raise `max_connections`.
+
+Running multiple processes is safe because all shared state lives in Postgres or Redis.
+Caches are Redis-backed, scheduled jobs (finalize sweeper, stuck-job watchdog) run in the
+arq worker, and `SessionMiddleware` commits before the response is sent, so a write is
+visible to every process by the time the client sees a 2xx.
+
+The image itself still defaults to **one** process (`WEB_CONCURRENCY` unset). Running it
+outside these compose files keeps the old behaviour until you set both variables.
 
 ### Redis connection
 
@@ -110,7 +141,7 @@ database:
   host: "timescaledb"     # overridden by TK_DB_HOST
   port: 5432              # overridden by TK_DB_PORT
   name: "tropek"          # overridden by TK_DB_NAME
-  pool_size: 10
+  pool_size: 10           # PER PROCESS — see "API processes and DB pool sizing" below
   max_overflow: 20
 
 cache:
