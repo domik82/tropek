@@ -4,15 +4,20 @@ from __future__ import annotations
 
 import uuid
 from datetime import UTC, datetime
+from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from tropek.config import get_settings
+from arq import Retry
+from tropek.config import JOB_TIMEOUT_MARGIN_SECONDS, get_settings
+from tropek.modules.quality_gate.workflows.execution.adapter_client import AdapterFetchError
 from tropek.modules.quality_gate.workflows.execution.evaluation_executor import DefinitionLoadError, EvaluationSnapshot
 from tropek.queue import (
     WorkerSettings,
+    _build_adapter_client,
     _run_change_point_phase,
     _sweeper_cron_seconds,
+    _worker_startup,
     detect_change_points_for_objectives,
     finalize_run_job,
     finalize_sweeper_job,
@@ -171,37 +176,40 @@ async def test_snapshot_none_skips_remaining_phases() -> None:
     mock_write.assert_not_awaited()
 
 
-# --- Adapter failure ---
+# --- Adapter fetch failure: retry, then fail ---
 
 
-async def test_adapter_failure_marks_failed() -> None:
-    """fetch_and_evaluate returns None -> mark_failed called."""
-    eval_id = uuid.uuid4()
-    snapshot = _make_snapshot(eval_id=eval_id)
+def _fetch_attempt(attempt: int) -> dict[str, Any]:
+    """An attempt-history entry as ``mark_pending_retry`` stores it."""
+    return {'attempt': attempt, 'cause': 'adapter returned 504', 'status': 504, 'elapsed_s': 1.0, 'at': 'earlier'}
 
-    # Sessions: phase1, phase2a, phase2b, mark_failed
-    sessions = [_mock_session() for _ in range(4)]
-    factory = _session_factory_from_list(sessions)
 
-    mock_eval_repo = AsyncMock()
-
+async def _run_job_with_fetch_error(
+    eval_id: uuid.UUID,
+    previous_attempts: int,
+    mock_eval_repo: AsyncMock,
+    error: AdapterFetchError | None = None,
+) -> None:
+    """Run the job with ``fetch_and_evaluate`` raising, the row already holding ``previous_attempts`` records."""
+    mock_eval_repo.get_by_id = AsyncMock(
+        return_value=MagicMock(
+            job_stats={'fetch_attempts': [_fetch_attempt(number) for number in range(1, previous_attempts + 1)]}
+        )
+    )
+    if error is None:
+        error = AdapterFetchError('adapter returned 504 after 3 attempts', attempts=3, last_status=504, elapsed_s=12.5)
+    # Sessions: phase1, phase2a, phase2b (raises), retry handling
+    factory = _session_factory_from_list([_mock_session() for _ in range(4)])
     with (
         patch('tropek.queue.get_session_factory', return_value=factory),
-        patch(
-            'tropek.queue.load_evaluation_snapshot',
-            new_callable=AsyncMock,
-            return_value=snapshot,
-        ),
-        patch(
-            'tropek.queue._load_definitions',
-            new_callable=AsyncMock,
-            return_value=(MagicMock(), MagicMock()),
-        ),
+        patch('tropek.queue.load_evaluation_snapshot', new_callable=AsyncMock, return_value=_make_snapshot(eval_id)),
+        patch('tropek.queue._load_definitions', new_callable=AsyncMock, return_value=(MagicMock(), MagicMock())),
         patch('tropek.queue.DataSourceRepository') as mock_ds_repo_cls,
+        patch('tropek.queue.fetch_and_evaluate', new_callable=AsyncMock, side_effect=error),
         patch(
-            'tropek.queue.fetch_and_evaluate',
+            'tropek.queue.write_results',
             new_callable=AsyncMock,
-            return_value=None,
+            side_effect=AssertionError('results must not be written after a failed fetch'),
         ),
         patch('tropek.queue.EvaluationRepository', return_value=mock_eval_repo),
         patch('tropek.queue.BaselineRepository'),
@@ -209,10 +217,109 @@ async def test_adapter_failure_marks_failed() -> None:
         _no_predecessor(),
     ):
         mock_ds_repo_cls.return_value.get_by_name = AsyncMock(return_value=MagicMock())
-
         await run_evaluation_job(_make_ctx(), str(eval_id))
 
-    mock_eval_repo.mark_failed.assert_awaited_once_with(eval_id, job_stats={'error': 'adapter query failed'})
+
+@pytest.mark.parametrize('previous_attempts', [0, get_settings().queue.max_retries - 1])
+async def test_transient_fetch_raises_retry_and_resets_to_pending(previous_attempts: int) -> None:
+    """Below the cap the evaluation goes back to pending and arq retries after a linear delay."""
+    eval_id = uuid.uuid4()
+    mock_eval_repo = AsyncMock()
+    attempt = previous_attempts + 1
+
+    with pytest.raises(Retry) as exc_info:
+        await _run_job_with_fetch_error(eval_id, previous_attempts, mock_eval_repo)
+
+    delay_ms = get_settings().queue.retry_delay_seconds * attempt * 1000
+    assert exc_info.value.defer_score == delay_ms
+    mock_eval_repo.mark_pending_retry.assert_awaited_once()
+    assert mock_eval_repo.mark_pending_retry.await_args.args == (eval_id,)
+    record = mock_eval_repo.mark_pending_retry.await_args.kwargs['attempt_record']
+    assert record['attempt'] == attempt
+    assert record['status'] == 504
+    assert record['cause'] == 'adapter returned 504 after 3 attempts'
+    mock_eval_repo.mark_failed.assert_not_awaited()
+
+
+async def test_data_errors_only_do_not_retry() -> None:
+    """A 200 whose errors are all ``data`` errors is evaluated and written, never retried (a bad query)."""
+    eval_id = uuid.uuid4()
+    slo_def = MagicMock(comparison=None, variables={}, total_score_pass_threshold=90.0)
+    slo_def.objectives = [
+        MagicMock(sli='rt', display_name='RT', pass_threshold=['<600'], warning_threshold=[], weight=1, key_sli=False)
+    ]
+    sli_def = MagicMock(mode='raw', indicators={'rt': 'up'})
+    mock_eval_repo = AsyncMock()
+    factory = _session_factory_from_list([_mock_session() for _ in range(5)])
+
+    with (
+        patch('tropek.queue.get_session_factory', return_value=factory),
+        patch('tropek.queue.load_evaluation_snapshot', new_callable=AsyncMock, return_value=_make_snapshot(eval_id)),
+        patch('tropek.queue._load_definitions', new_callable=AsyncMock, return_value=(slo_def, sli_def)),
+        patch('tropek.queue.DataSourceRepository') as mock_ds_repo_cls,
+        patch('tropek.queue.write_results', new_callable=AsyncMock) as mock_write,
+        patch('tropek.queue.write_sli_values_phase', new_callable=AsyncMock),
+        patch('tropek.queue._run_change_point_phase', new_callable=AsyncMock),
+        patch('tropek.queue.EvaluationRepository', return_value=mock_eval_repo),
+        patch('tropek.queue.BaselineRepository') as mock_baseline_repo_cls,
+        patch('tropek.queue.HttpAdapterClient') as mock_client_cls,
+        _no_predecessor(),
+    ):
+        mock_ds_repo_cls.return_value.get_by_name = AsyncMock(return_value=MagicMock())
+        mock_baseline_repo_cls.return_value.get_evaluation_baselines = AsyncMock(return_value=[])
+        mock_client_cls.return_value.query = AsyncMock(
+            return_value=({'rt': None}, {'rt': 'bad_data: parse error'}, {}, {'rt': 'data'})
+        )
+        await run_evaluation_job(_make_ctx(), str(eval_id))
+
+    mock_eval_repo.mark_pending_retry.assert_not_awaited()
+    mock_eval_repo.mark_failed.assert_not_awaited()
+    mock_write.assert_awaited_once()
+    assert mock_write.await_args.kwargs['fetch_result'].metrics_fetched == {'rt': None}
+
+
+async def test_retry_cap_marks_failed_with_attempt_history() -> None:
+    """With ``max_retries`` attempts already recorded the evaluation is failed with the full history."""
+    eval_id = uuid.uuid4()
+    mock_eval_repo = AsyncMock()
+    max_retries = get_settings().queue.max_retries
+
+    await _run_job_with_fetch_error(eval_id, max_retries, mock_eval_repo)
+
+    mock_eval_repo.mark_pending_retry.assert_not_awaited()
+    mock_eval_repo.mark_failed.assert_awaited_once()
+    assert mock_eval_repo.mark_failed.await_args.args == (eval_id,)
+    stats = mock_eval_repo.mark_failed.await_args.kwargs['job_stats']
+    assert stats['error'] == (
+        f'adapter query failed after {max_retries + 1} attempts: adapter returned 504 after 3 attempts'
+    )
+    assert [entry['attempt'] for entry in stats['fetch_attempts']] == list(range(1, max_retries + 2))
+
+
+async def test_non_retryable_fetch_error_marks_failed_on_the_first_attempt() -> None:
+    """A 4xx from the adapter will not change on a rerun, so the job is not retried."""
+    eval_id = uuid.uuid4()
+    mock_eval_repo = AsyncMock()
+    error = AdapterFetchError('adapter returned 400', attempts=1, last_status=400, elapsed_s=0.1, retryable=False)
+
+    await _run_job_with_fetch_error(eval_id, 0, mock_eval_repo, error=error)
+
+    mock_eval_repo.mark_pending_retry.assert_not_awaited()
+    mock_eval_repo.mark_failed.assert_awaited_once()
+    stats = mock_eval_repo.mark_failed.await_args.kwargs['job_stats']
+    assert stats['error'] == 'adapter query failed after 1 attempts: adapter returned 400'
+    assert len(stats['fetch_attempts']) == 1
+    assert stats['fetch_attempts'][0]['status'] == 400
+
+
+def test_adapter_client_is_built_with_the_job_deadline() -> None:
+    """The client stops starting attempts a margin before arq's job timeout would kill the job."""
+    with patch('tropek.queue.HttpAdapterClient') as mock_client_cls:
+        _build_adapter_client(None)
+
+    assert mock_client_cls.call_args.kwargs['deadline_seconds'] == (
+        get_settings().queue.job_timeout_seconds - JOB_TIMEOUT_MARGIN_SECONDS
+    )
 
 
 # --- Definition load error ---
@@ -374,6 +481,33 @@ def test_sweeper_cron_seconds_5() -> None:
 def test_sweeper_cron_seconds_rejects_non_divisor() -> None:
     with pytest.raises(ValueError, match='must divide 60'):
         _sweeper_cron_seconds(45)
+
+
+def test_worker_settings_apply_queue_timeouts() -> None:
+    queue_settings = get_settings().queue
+    assert WorkerSettings.job_timeout == queue_settings.job_timeout_seconds
+    # One spare try beyond the database-counted retries makes it unlikely that arq's own cap pre-empts
+    # mark_failed (cancellation reruns also count toward ``max_tries``).
+    assert WorkerSettings.max_tries == queue_settings.max_retries + 2
+    assert WorkerSettings.retry_jobs is True
+    assert WorkerSettings.keep_result == queue_settings.keep_result_seconds
+
+
+async def test_worker_startup_refuses_inconsistent_settings() -> None:
+    """The worker validates secrets and the timeout chain before opening any connection."""
+    settings = MagicMock()
+    settings.validate_required.side_effect = RuntimeError('required secrets not set: TK_SECRET_KEY')
+    ctx: dict[str, Any] = {}
+
+    with (
+        patch('tropek.queue.configure_logging'),
+        patch('tropek.queue.get_settings', return_value=settings),
+        pytest.raises(RuntimeError, match='required secrets not set'),
+    ):
+        await _worker_startup(ctx)
+
+    settings.validate_required.assert_called_once_with()
+    assert ctx == {}
 
 
 def test_worker_settings_registers_sweeper_job() -> None:

@@ -7,13 +7,20 @@ import logging
 from typing import Any
 
 from tropek_prometheus.config import Settings
+from tropek_prometheus.core.prometheus_client import PrometheusQueryError
 from tropek_prometheus.redis.repository import JobRepository
 
 logger = logging.getLogger(__name__)
 
+_IDLE_POLL_SECONDS = 0.1
+
 
 class Coordinator:
-    """Dequeues jobs and processes them with semaphore-limited concurrency."""
+    """Dequeues jobs and processes them with semaphore-limited concurrency.
+
+    ``run`` keeps up to ``max_concurrent_jobs`` jobs in flight, each as its own task; within a job,
+    ``max_concurrent_queries`` bounds the SLI queries running at once.
+    """
 
     def __init__(
         self,
@@ -27,6 +34,13 @@ class Coordinator:
         self._semaphore = asyncio.Semaphore(settings.max_concurrent_queries)
         self._job_semaphore = asyncio.Semaphore(settings.max_concurrent_jobs)
         self._running = False
+        self._running_jobs = 0
+        self._job_tasks: set[asyncio.Task[None]] = set()
+
+    @property
+    def running_jobs(self) -> int:
+        """Number of jobs currently being processed."""
+        return self._running_jobs
 
     async def _run_query(
         self,
@@ -70,7 +84,7 @@ class Coordinator:
                 return
 
             try:
-                values, errors, metadata = await strategy.execute(
+                values, errors, metadata, kinds = await strategy.execute(
                     sli_name=sli_name,
                     query_spec=query_spec,
                     variables=variables,
@@ -81,6 +95,7 @@ class Coordinator:
                 # A malformed spec must cost its own SLI, not the whole job: an exception escaping
                 # here would abandon every sibling query and leave the job running.
                 logger.exception('query failed: job=%s sli=%s', job_id, sli_name)
+                transient = isinstance(exc, PrometheusQueryError) and exc.transient
                 await self._repo.write_result(
                     job_id,
                     sli_name,
@@ -88,6 +103,7 @@ class Coordinator:
                     success=False,
                     message=f'{type(exc).__name__}: {exc}',
                     query_executed=query_executed,
+                    kind='transient' if transient else 'data',
                 )
                 return
 
@@ -99,23 +115,62 @@ class Coordinator:
                     success=name not in errors,
                     message=errors.get(name, ''),
                     query_executed=query_executed,
+                    kind=kinds.get(name, 'data'),
                 )
 
             if metadata is not None:
                 await self._repo.write_metadata(job_id, sli_name, metadata)
 
-    async def process_one(self) -> bool:
-        """Process a single job from the queue. Returns True if a job was processed."""
-        job_id = await self._repo.dequeue()
-        if job_id is None:
-            return False
+    async def _next_job(self) -> tuple[str, dict[str, Any]] | None:
+        """Dequeue the next job to run, expiring any cancelled or missing ones on the way.
 
-        logger.info('dequeued job: id=%s', job_id)
-        status = await self._repo.get_status(job_id)
-        if status is None or status['status'] == 'cancelled':
+        :returns: The job id and its status record, or ``None`` when the queue is empty.
+        :rtype: tuple[str, dict[str, Any]] | None
+        """
+        while True:
+            job_id = await self._repo.dequeue()
+            if job_id is None:
+                return None
+            logger.info('dequeued job: id=%s', job_id)
+            status = await self._repo.get_status(job_id)
+            if status is not None and status['status'] != 'cancelled':
+                return job_id, status
+            if status is not None:
+                await self._repo.expire_job_keys(job_id, self._settings.job_retention_seconds)
             logger.info('job skipped (cancelled or missing): id=%s', job_id)
-            return True
 
+    async def _execute(self, job_id: str, status: dict[str, Any]) -> None:
+        """Process one job, counting it in ``running_jobs`` while it runs."""
+        self._running_jobs += 1
+        try:
+            await self._process_job(job_id, status)
+        finally:
+            self._running_jobs -= 1
+
+    async def process_one(self) -> bool:
+        """Dequeue and process a single job in place. Returns True if a job was processed."""
+        job = await self._next_job()
+        if job is None:
+            return False
+        await self._execute(*job)
+        return True
+
+    async def _execute_and_release(self, job_id: str, status: dict[str, Any]) -> None:
+        """Run one job as a background task, then free its ``max_concurrent_jobs`` slot."""
+        try:
+            await self._execute(job_id, status)
+        except Exception:
+            logger.exception('coordinator error processing job: id=%s', job_id)
+        finally:
+            self._job_semaphore.release()
+
+    async def _process_job(self, job_id: str, status: dict[str, Any]) -> None:
+        """Run every query of a dequeued job under the job's timeout and record the outcome.
+
+        Args:
+            job_id: Job to process.
+            status: The job's status record, which carries its timeout.
+        """
         await self._repo.mark_running(job_id)
         queries = await self._repo.get_queries(job_id)
         variables = await self._repo.get_variables(job_id)
@@ -128,8 +183,10 @@ class Coordinator:
             end,
         )
 
-        tasks = [
-            self._run_query(
+        finished: set[str] = set()
+
+        async def run_and_track(name: str, spec: dict[str, Any]) -> None:
+            await self._run_query(
                 job_id=job_id,
                 sli_name=name,
                 query_spec=spec,
@@ -137,11 +194,19 @@ class Coordinator:
                 start=start,
                 end=end,
             )
-            for name, spec in queries.items()
-        ]
+            finished.add(name)
+
+        tasks = [run_and_track(name, spec) for name, spec in queries.items()]
+        timeout = int(status.get('timeout_seconds') or self._settings.default_job_timeout_seconds)
         # return_exceptions keeps one unexpected escape from cancelling its siblings mid-flight;
         # _run_query already records per-SLI failures, so anything arriving here is a bug worth logging.
-        outcomes = await asyncio.gather(*tasks, return_exceptions=True)
+        try:
+            outcomes = await asyncio.wait_for(asyncio.gather(*tasks, return_exceptions=True), timeout=timeout)
+        except TimeoutError:
+            # wait_for returns only after the cancelled gather has settled, so no _run_query is still
+            # running and none can write a result over the ones recorded below.
+            await self._fail_unfinished(job_id, queries, finished, timeout)
+            return
         for sli_name, outcome in zip(queries, outcomes, strict=True):
             if isinstance(outcome, BaseException):
                 logger.error('unhandled query error: job=%s sli=%s error=%r', job_id, sli_name, outcome)
@@ -152,24 +217,84 @@ class Coordinator:
             await self._repo.mark_completed(job_id, self._settings.job_retention_seconds)
             logger.info('job completed: id=%s', job_id)
         else:
+            await self._repo.expire_job_keys(job_id, self._settings.job_retention_seconds)
             logger.info('job cancelled: id=%s', job_id)
 
-        return True
+    async def _fail_unfinished(
+        self,
+        job_id: str,
+        queries: dict[str, dict[str, Any]],
+        finished: set[str],
+        timeout: int,
+    ) -> None:
+        """Record a transient failure for every query that did not finish, then mark the job timed out.
+
+        A job cancelled while it ran keeps its ``cancelled`` status and gets no synthetic results.
+
+        Args:
+            job_id: Job that exceeded its timeout.
+            queries: All queries of the job, by SLI name.
+            finished: SLI names whose query ran to completion.
+            timeout: The timeout that was exceeded, in seconds.
+        """
+        current = await self._repo.get_status(job_id)
+        if current is None or current['status'] == 'cancelled':
+            if current is not None:
+                await self._repo.expire_job_keys(job_id, self._settings.job_retention_seconds)
+            logger.info('job cancelled: id=%s', job_id)
+            return
+        unfinished = [name for name in queries if name not in finished]
+        for name in unfinished:
+            for indicator in self._indicator_names(name, queries[name]):
+                await self._repo.write_result(
+                    job_id,
+                    indicator,
+                    value=None,
+                    success=False,
+                    message=f'job timed out after {timeout}s',
+                    kind='transient',
+                )
+        await self._repo.mark_timed_out(job_id, self._settings.job_retention_seconds)
+        logger.warning('job timed out: id=%s timeout=%ds unfinished=%d', job_id, timeout, len(unfinished))
+
+    @staticmethod
+    def _indicator_names(sli_name: str, query_spec: dict[str, Any]) -> list[str]:
+        """Return the indicator names a query reports under: one per method for aggregated, else the SLI name.
+
+        Args:
+            sli_name: Name of the SLI.
+            query_spec: The SLI's query specification.
+
+        Returns:
+            Indicator names the query's strategy would have produced results for.
+        """
+        if query_spec.get('mode', 'raw') == 'aggregated':
+            return [f'{sli_name}.{method}' for method in query_spec.get('methods', [])]
+        return [sli_name]
 
     async def run(self) -> None:
-        """Main loop: continuously process jobs from the queue."""
+        """Main loop: start each dequeued job as a task, at most ``max_concurrent_jobs`` at once."""
         self._running = True
         logger.info('coordinator started, polling for jobs')
         while self._running:
-            async with self._job_semaphore:
-                try:
-                    processed = await self.process_one()
-                except Exception:
-                    logger.exception('coordinator error processing job')
-                    processed = False
-            if not processed:
-                await asyncio.sleep(0.1)
+            await self._job_semaphore.acquire()
+            try:
+                job = await self._next_job()
+            except Exception:
+                logger.exception('coordinator error dequeuing job')
+                job = None
+            if job is None:
+                self._job_semaphore.release()
+                await asyncio.sleep(_IDLE_POLL_SECONDS)
+                continue
+            task = asyncio.create_task(self._execute_and_release(*job))
+            self._job_tasks.add(task)
+            task.add_done_callback(self._job_tasks.discard)
 
-    def stop(self) -> None:
-        """Signal the run loop to stop after the current job."""
+    async def stop(self) -> None:
+        """Stop the run loop and cancel the jobs still running, waiting until they have unwound."""
         self._running = False
+        tasks = list(self._job_tasks)
+        for task in tasks:
+            task.cancel()
+        await asyncio.gather(*tasks, return_exceptions=True)

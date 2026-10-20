@@ -110,7 +110,7 @@ def test_missing_config_file_uses_defaults(tmp_path: Path) -> None:
 
     settings = config_module.get_settings()
     assert settings.database.host == 'localhost'
-    assert settings.queue.job_timeout_seconds == 120
+    assert settings.queue.job_timeout_seconds == 400
 
 
 def test_queue_sweeper_defaults(tmp_path: Path) -> None:

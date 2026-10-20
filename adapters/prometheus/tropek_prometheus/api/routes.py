@@ -4,10 +4,12 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import time
 from typing import Any
 
 from fastapi import APIRouter, Header, HTTPException, Request, Response
-from pydantic import BaseModel
+from fastapi.responses import JSONResponse
+from pydantic import BaseModel, Field
 
 from tropek_prometheus.api.schemas import JobSubmitRequest
 from tropek_prometheus.config import Settings
@@ -63,8 +65,14 @@ async def cancel_job(job_id: str, request: Request) -> Response:
 
 # ---------------------------------------------------------------------------
 # Synchronous /query — compatibility with the TROPEK worker adapter protocol.
-# Submits a job internally, polls until complete, returns {values, errors}.
+# Submits a job internally, polls until complete, returns {values, errors, metadata, error_kinds}.
 # ---------------------------------------------------------------------------
+
+# Seconds a caller's budget exceeds the job timeout by, so the job's own timeout (which records
+# per-query results) always fires before the endpoint gives up.
+BUDGET_GRACE_SECONDS = 5
+RETRY_AFTER_SECONDS = '5'
+_POLL_INTERVAL_SECONDS = 0.1
 
 
 class SyncQueryRequest(BaseModel):
@@ -74,15 +82,22 @@ class SyncQueryRequest(BaseModel):
     variables: dict[str, str] = {}
     start: str
     end: str
+    timeout_seconds: int | None = Field(default=None, ge=1)
 
 
-@sync_router.post('/query')
+@sync_router.post('/query', response_model=None)
 async def sync_query(
     body: SyncQueryRequest,
     request: Request,
     x_datasource_name: str = Header(default='default'),
-) -> dict[str, Any]:
-    """Submit queries, wait for results, return {values, errors}."""
+) -> Response | dict[str, Any]:
+    """Submit queries, wait for results within the caller's budget, return the results.
+
+    The job runs under ``timeout_seconds`` (capped at the configured maximum); the endpoint waits that
+    long plus a grace period. Responds 503 when the queue is full or the job was cancelled while the caller
+    waited, and 504 when the budget runs out, all with ``Retry-After``, so callers can tell "try again later"
+    from a real failure.
+    """
     logger.info(
         'sync /query: %d queries, datasource=%s, start=%s, end=%s',
         len(body.queries),
@@ -91,32 +106,51 @@ async def sync_query(
         body.end,
     )
     manager: JobManager = request.app.state.job_manager
-    result = await manager.submit(
-        queries=body.queries,
-        variables=body.variables,
-        timeout_seconds=None,
-        start=body.start,
-        end=body.end,
-    )
+    settings: Settings = request.app.state.settings
+    retry_headers = {'Retry-After': RETRY_AFTER_SECONDS}
+    try:
+        result = await manager.submit(
+            queries=body.queries,
+            variables=body.variables,
+            timeout_seconds=body.timeout_seconds,
+            start=body.start,
+            end=body.end,
+        )
+    except JobManager.QueueFullError:
+        return JSONResponse(status_code=503, content={'detail': 'queue full'}, headers=retry_headers)
     job_id = result['job_id']
     logger.info('sync /query: submitted job_id=%s, polling for completion', job_id)
 
-    # Poll until job finishes.  The coordinator's per-query timeout is
-    # QUERY_TIMEOUT_SECONDS (default 30s).  We allow 2x that so the job
-    # always finishes before this loop gives up.
-    settings: Settings = Settings()
-    max_polls = int(settings.query_timeout_seconds * 2 / 0.1)
-    for _ in range(max_polls):
+    job_timeout = min(body.timeout_seconds or settings.default_job_timeout_seconds, settings.max_job_timeout_seconds)
+    budget_seconds = job_timeout + BUDGET_GRACE_SECONDS
+    deadline = time.monotonic() + budget_seconds
+    while True:
         status = await manager.get_status(job_id)
-        if status and status.get('status') in ('completed', 'timed_out'):
+        job_state = status.get('status') if status else None
+        if status is not None and job_state in ('completed', 'timed_out'):
             break
-        await asyncio.sleep(0.1)
-    else:
-        logger.error('sync /query: job_id=%s did not complete in time', job_id)
-        raise HTTPException(status_code=504, detail='job did not complete in time')
+        if job_state == 'cancelled':
+            # Cancelled under the caller (DELETE /api/v1/query-jobs/{id}); its results are incomplete,
+            # so answer at once with a retryable status rather than waiting out the budget.
+            logger.warning('sync /query: job_id=%s was cancelled while the caller waited', job_id)
+            return JSONResponse(
+                status_code=503,
+                content={'detail': 'job was cancelled', 'job_id': job_id},
+                headers=retry_headers,
+            )
+        if time.monotonic() > deadline:
+            await manager.cancel(job_id)
+            logger.error('sync query budget exhausted: job_id=%s budget_s=%d', job_id, budget_seconds)
+            return JSONResponse(
+                status_code=504,
+                content={'detail': 'job did not complete within budget', 'job_id': job_id},
+                headers=retry_headers,
+            )
+        await asyncio.sleep(_POLL_INTERVAL_SECONDS)
 
     values: dict[str, float | None] = {}
     errors: dict[str, str] = {}
+    error_kinds: dict[str, str] = {}
     for indicator in status.get('results', []):
         name = indicator['indicator']
         if indicator.get('success'):
@@ -124,6 +158,8 @@ async def sync_query(
         else:
             values[name] = None
             errors[name] = indicator.get('message', 'unknown error')
+            # Results written before `kind` existed carry none and read as permanent failures.
+            error_kinds[name] = indicator.get('kind', 'data')
 
     logger.info(
         'sync /query: job_id=%s done, values=%d errors=%d',
@@ -132,4 +168,4 @@ async def sync_query(
         len(errors),
     )
     metadata = status.get('metadata', {})
-    return {'values': values, 'errors': errors, 'metadata': metadata}
+    return {'values': values, 'errors': errors, 'metadata': metadata, 'error_kinds': error_kinds}

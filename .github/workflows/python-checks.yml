@@ -29,6 +29,9 @@ jobs:
       - name: Mock adapter tests
         run: uv run --directory adapters/mock pytest tests/ -q
 
+      - name: Protocol package tests
+        run: uv run --directory adapters/protocol pytest tests/ -q
+
   integration:
     name: integration tests
     runs-on: ubuntu-latest

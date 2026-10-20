@@ -16,6 +16,7 @@ from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 from tropek.db.session import get_session
 from tropek.main import app
+from tropek.modules.quality_gate.repositories.evaluation import EvaluationRepository
 from tropek.queue import get_arq_pool
 
 
@@ -140,6 +141,36 @@ async def test_evaluate_batch_by_date(
     assert resp.status_code == 201
     body = resp.json()
     assert len(body['evaluation_ids']) == 2
+
+
+@pytest.mark.integration
+async def test_trigger_duplicate_409_mentions_refetch(
+    async_client: AsyncClient,
+    db_session: AsyncSession,
+    seeded_asset_with_slo_binding: tuple[str, list[str]],
+) -> None:
+    """Re-triggering an evaluated period answers 409 pointing at re-evaluate and refetch."""
+    asset_name, _ = seeded_asset_with_slo_binding
+    body = {
+        'asset_name': asset_name,
+        'eval_name': 'daily',
+        'period_start': '2026-01-15T00:00:00Z',
+        'period_end': '2026-01-15T23:59:59Z',
+    }
+    first = await async_client.post('/evaluations', json=body)
+    assert first.status_code == 201
+    slo_evaluation_id = uuid.UUID(first.json()['slo_evaluation_ids'][0])
+
+    in_progress = await async_client.post('/evaluations', json=body)
+    assert in_progress.status_code == 409
+    assert 'in progress' in in_progress.json()['detail']
+
+    await EvaluationRepository(db_session).mark_completed(slo_evaluation_id, result='pass', score=100.0)
+    duplicate = await async_client.post('/evaluations', json=body)
+
+    assert duplicate.status_code == 409
+    assert str(slo_evaluation_id) in duplicate.json()['detail']
+    assert 'refetch' in duplicate.json()['detail']
 
 
 @pytest.mark.integration

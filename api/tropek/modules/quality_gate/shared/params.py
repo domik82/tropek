@@ -29,3 +29,17 @@ class EvalCreateParams(StrictInput):
     data_source_name: str | None = None
     slo_definition_id: uuid.UUID | None = None
     sli_definition_id: uuid.UUID | None = None
+
+
+class RefetchScope(StrictInput):
+    """Parameters for EvaluationRepository.list_for_refetch().
+
+    ``period_from`` and ``period_to`` are both inclusive on ``period_start``.
+    """
+
+    asset_id: uuid.UUID
+    period_from: datetime
+    period_to: datetime
+    evaluation_name: str | None = None
+    slo_names: list[str] | None = None
+    only_failed: bool = False

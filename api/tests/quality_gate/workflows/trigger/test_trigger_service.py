@@ -7,7 +7,7 @@ from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from tropek.modules.common.exceptions import NotFoundError
+from tropek.modules.common.exceptions import ConflictError, NotFoundError
 from tropek.modules.quality_gate.schemas import EvaluateSingleRequest
 from tropek.modules.quality_gate.shared.dependencies import QualityGateRepos
 from tropek.modules.quality_gate.shared.exceptions import EvaluationError
@@ -33,8 +33,8 @@ def _make_evaluation(eval_id: uuid.UUID | None = None, status: str = 'pending') 
 
 
 def _make_repos() -> QualityGateRepos:
-    """Build a QualityGateRepos with all mock repositories."""
-    return QualityGateRepos(
+    """Build a QualityGateRepos with all mock repositories and no duplicate evaluations."""
+    repos = QualityGateRepos(
         eval_repo=AsyncMock(),
         eval_run_repo=AsyncMock(),
         annotation_repo=AsyncMock(),
@@ -51,6 +51,8 @@ def _make_repos() -> QualityGateRepos:
         ds_repo=AsyncMock(),
         session=AsyncMock(),
     )
+    repos.eval_repo.find_duplicate.return_value = None
+    return repos
 
 
 # -- trigger_evaluate ----------------------------------------------------------
@@ -200,6 +202,57 @@ async def test_trigger_evaluate_skips_unresolvable_slos() -> None:
 
     assert len(result.slo_evaluation_ids) == 1
     assert pool.enqueue_job.await_count == 1
+
+
+@pytest.mark.parametrize(
+    ('status', 'invalidated', 'expected_reason'),
+    [
+        ('pending', False, 'in progress'),
+        ('running', False, 'in progress'),
+        ('completed', True, 'invalidated; use re-evaluate to re-score it'),
+        (
+            'completed',
+            False,
+            'already evaluated; use re-evaluate to re-score stored data or refetch to fetch it again from the source',
+        ),
+        (
+            'partial',
+            False,
+            'already evaluated; use re-evaluate to re-score stored data or refetch to fetch it again from the source',
+        ),
+    ],
+)
+async def test_trigger_evaluate_duplicate_conflict_names_the_way_out(
+    status: str, invalidated: bool, expected_reason: str
+) -> None:
+    """A duplicate identity raises a status-aware 409 before anything is inserted or enqueued."""
+    repos = _make_repos()
+    repos.asset_repo.get_by_name.return_value = _make_asset()
+    repos.asset_group_repo.list_group_ids_for_asset.return_value = []
+    existing = _make_evaluation(status=status)
+    existing.invalidated = invalidated
+    repos.eval_repo.find_duplicate.return_value = existing
+    pool = AsyncMock()
+
+    service = TriggerService(repos, pool)
+    with (
+        patch(
+            'tropek.modules.quality_gate.workflows.trigger.trigger_service.resolve_all_slos_for_asset',
+            new_callable=AsyncMock,
+            return_value=['perf-slo'],
+        ),
+        patch(
+            'tropek.modules.quality_gate.workflows.trigger.trigger_service.resolve_single_trigger',
+            new_callable=AsyncMock,
+            return_value=MagicMock(asset_id=uuid.uuid4(), slo_name='perf-slo'),
+        ),
+        pytest.raises(ConflictError) as raised,
+    ):
+        await service.trigger_evaluate(_make_evaluate_request())
+
+    assert (raised.value.name, raised.value.reason) == (str(existing.id), expected_reason)
+    repos.eval_repo.create_pending.assert_not_awaited()
+    pool.enqueue_job.assert_not_awaited()
 
 
 async def test_trigger_evaluate_enqueues_per_child() -> None:

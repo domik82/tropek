@@ -17,7 +17,7 @@ from tropek_adapter_protocol.models import AdapterHealthResponse, AdapterQueryRe
 
 
 def assert_query_response_valid(data: dict[str, Any]) -> AdapterQueryResponse:
-    """Validate a raw JSON dict conforms to AdapterQueryResponse.
+    """Validate a raw JSON dict conforms to AdapterQueryResponse, including the error_kinds ⊆ errors rule.
 
     Raises pydantic.ValidationError with details if the response shape is wrong.
     Returns the parsed model on success.

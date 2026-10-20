@@ -92,9 +92,10 @@ export interface Indicator {
 
 export interface SliMetadata {
   mode: 'aggregated'
-  expectedSamples: number
-  actualSamples: number
-  missingPct: number
+  /** The sample counts are null when the adapter did not report them (e.g. an older adapter's failed fetch). */
+  expectedSamples: number | null
+  actualSamples: number | null
+  missingPct: number | null
   chunksFailed: number
 }
 
@@ -215,6 +216,26 @@ export interface ReEvaluateResponse {
   affectedEvaluations: number
   sloVersionUsed: number | null
   results: ReEvaluateResultItem[]
+}
+
+export interface RefetchInput {
+  assetName: string
+  /** Narrows the refetch to one evaluation name; null refetches every evaluation name of the asset. */
+  evaluationName: string | null
+  sloNames: string[]
+  from: string // ISO
+  to: string // ISO
+  onlyFailed: boolean
+  dryRun: boolean
+  reason: string | null
+}
+
+export interface RefetchResponse {
+  matched: number
+  refetched: number
+  skipped: { evaluationId: string; sloName: string; reason: string }[]
+  runIds: string[]
+  dryRun: boolean
 }
 
 export interface PinConflictInfo {

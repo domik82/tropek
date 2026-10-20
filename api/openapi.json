@@ -5243,6 +5243,207 @@
         "title": "ReEvaluateResponse",
         "type": "object"
       },
+      "RefetchRequest": {
+        "additionalProperties": false,
+        "description": "Request body for POST /evaluations/refetch.\n\n``from`` and ``to`` are inclusive on ``period_start`` and must carry a UTC offset.",
+        "properties": {
+          "asset_name": {
+            "pattern": "^[^\\x00]*$",
+            "title": "Asset Name",
+            "type": "string"
+          },
+          "dry_run": {
+            "default": false,
+            "title": "Dry Run",
+            "type": "boolean"
+          },
+          "evaluation_name": {
+            "anyOf": [
+              {
+                "pattern": "^[^\\x00]*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Evaluation Name"
+          },
+          "from": {
+            "format": "date-time",
+            "title": "From",
+            "type": "string"
+          },
+          "only_failed": {
+            "default": false,
+            "title": "Only Failed",
+            "type": "boolean"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "pattern": "^[^\\x00]*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "requested_by": {
+            "anyOf": [
+              {
+                "maxLength": 120,
+                "pattern": "^[^\\x00]*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Requested By"
+          },
+          "slo_names": {
+            "anyOf": [
+              {
+                "items": {
+                  "pattern": "^[^\\x00]*$",
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Slo Names"
+          },
+          "to": {
+            "format": "date-time",
+            "title": "To",
+            "type": "string"
+          }
+        },
+        "required": [
+          "asset_name",
+          "from",
+          "to"
+        ],
+        "title": "RefetchRequest",
+        "type": "object"
+      },
+      "RefetchResponse": {
+        "description": "Response body for both refetch endpoints.",
+        "properties": {
+          "dry_run": {
+            "title": "Dry Run",
+            "type": "boolean"
+          },
+          "matched": {
+            "title": "Matched",
+            "type": "integer"
+          },
+          "refetched": {
+            "title": "Refetched",
+            "type": "integer"
+          },
+          "run_ids": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "title": "Run Ids",
+            "type": "array"
+          },
+          "skipped": {
+            "items": {
+              "$ref": "#/components/schemas/RefetchSkipped"
+            },
+            "title": "Skipped",
+            "type": "array"
+          }
+        },
+        "required": [
+          "matched",
+          "refetched",
+          "skipped",
+          "run_ids",
+          "dry_run"
+        ],
+        "title": "RefetchResponse",
+        "type": "object"
+      },
+      "RefetchRunRequest": {
+        "additionalProperties": false,
+        "description": "Request body for POST /evaluation-run/{run_id}/refetch.",
+        "properties": {
+          "dry_run": {
+            "default": false,
+            "title": "Dry Run",
+            "type": "boolean"
+          },
+          "only_failed": {
+            "default": false,
+            "title": "Only Failed",
+            "type": "boolean"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "pattern": "^[^\\x00]*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "requested_by": {
+            "anyOf": [
+              {
+                "maxLength": 120,
+                "pattern": "^[^\\x00]*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Requested By"
+          }
+        },
+        "title": "RefetchRunRequest",
+        "type": "object"
+      },
+      "RefetchSkipped": {
+        "description": "A matched SLO evaluation that refetch left untouched.",
+        "properties": {
+          "evaluation_id": {
+            "format": "uuid",
+            "title": "Evaluation Id",
+            "type": "string"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          },
+          "slo_name": {
+            "title": "Slo Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "evaluation_id",
+          "slo_name",
+          "reason"
+        ],
+        "title": "RefetchSkipped",
+        "type": "object"
+      },
       "RestoreManyRequest": {
         "additionalProperties": false,
         "description": "Request body for PATCH /evaluations/restore.",
@@ -6803,23 +7004,44 @@
         "type": "object"
       },
       "SliMetadata": {
-        "description": "Per-metric aggregation fidelity info for a single indicator.",
+        "description": "Per-metric aggregation fidelity info for a single indicator.\n\nThe sample fields are optional: an adapter that failed to fetch a metric (or an older or third-party\nadapter) may report only ``mode`` and ``chunks_failed``, and that must not break the detail endpoint.",
         "properties": {
           "actual_samples": {
-            "title": "Actual Samples",
-            "type": "integer"
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Actual Samples"
           },
           "chunks_failed": {
             "title": "Chunks Failed",
             "type": "integer"
           },
           "expected_samples": {
-            "title": "Expected Samples",
-            "type": "integer"
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected Samples"
           },
           "missing_pct": {
-            "title": "Missing Pct",
-            "type": "number"
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Missing Pct"
           },
           "mode": {
             "const": "aggregated",
@@ -6829,9 +7051,6 @@
         },
         "required": [
           "mode",
-          "expected_samples",
-          "actual_samples",
-          "missing_pct",
           "chunks_failed"
         ],
         "title": "SliMetadata",
@@ -11361,6 +11580,77 @@
         "summary": "Create Run Annotation New"
       }
     },
+    "/evaluation-run/{run_id}/refetch": {
+      "post": {
+        "description": "Reset one evaluation run's SLO evaluations and fetch them again from the source.",
+        "operationId": "refetch_evaluation_run_evaluation_run__run_id__refetch_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Run Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RefetchRunRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RefetchResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Error"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Error"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Refetch Evaluation Run"
+      }
+    },
     "/evaluation/{eval_id}": {
       "get": {
         "description": "Get full evaluation detail (new singular URL: GET /evaluation/{id}).",
@@ -13257,6 +13547,65 @@
           }
         },
         "summary": "Re Evaluate From Evaluation Endpoint"
+      }
+    },
+    "/evaluations/refetch": {
+      "post": {
+        "description": "Reset an asset's SLO evaluations in a period and fetch them again from the source.",
+        "operationId": "refetch_evaluations_evaluations_refetch_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RefetchRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RefetchResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Error"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorMessage"
+                }
+              }
+            },
+            "description": "Error"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Refetch Evaluations"
       }
     },
     "/evaluations/restore": {

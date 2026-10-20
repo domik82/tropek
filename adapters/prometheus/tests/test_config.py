@@ -29,12 +29,15 @@ def test_default_settings(no_ambient_env: None):
     assert s.redis_url == 'redis://localhost:6379/0'
     assert s.redis_key_prefix == 'prom-sli:'
     assert s.max_concurrent_queries == 10
-    assert s.max_concurrent_jobs == 3
+    assert s.max_concurrent_jobs == 10
     assert s.max_queue_depth == 100
     assert s.max_queries_per_job == 400
-    assert s.default_job_timeout_seconds == 120
+    assert s.default_job_timeout_seconds == 300
     assert s.max_job_timeout_seconds == 600
-    assert s.query_timeout_seconds == 30
+    assert s.query_timeout_seconds == 60
+    assert s.prometheus_retry_attempts == 3
+    assert s.prometheus_retry_backoff_seconds == 1.0
+    assert s.max_concurrent_prometheus_requests == 8
     assert s.job_retention_seconds == 3600
     assert s.default_chunk_size == '4h'
     assert s.default_parallel_chunks == 3
@@ -102,3 +105,16 @@ def test_half_configured_credentials_warn(
         assert resolve_basic_auth(settings) is None
     assert 'PROMETHEUS_USERNAME' in caplog.text
     assert 'PROMETHEUS_PASSWORD' in caplog.text
+
+
+@pytest.mark.parametrize(
+    'overrides',
+    [
+        {'default_job_timeout_seconds': 601},
+        {'max_concurrent_prometheus_requests': 0},
+        {'prometheus_retry_attempts': 0},
+    ],
+)
+def test_invalid_limits_are_rejected(overrides: dict[str, int]) -> None:
+    with pytest.raises(ValueError, match='must'):
+        Settings(**overrides)

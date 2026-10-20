@@ -21,7 +21,7 @@ async def liveness() -> dict[str, str]:
 @router.get('/ready')
 async def readiness(request: Request) -> dict[str, Any]:
     """Return 200 with component status. Checks Prometheus reachability."""
-    settings = Settings()
+    settings: Settings = request.app.state.settings
     prom_url = f'{settings.prometheus_url.rstrip("/")}/-/ready'
     prom_ok = False
     try:
@@ -35,4 +35,7 @@ async def readiness(request: Request) -> dict[str, Any]:
         'status': 'ok' if prom_ok else 'degraded',
         'prometheus': 'ok' if prom_ok else 'unreachable',
         'prometheus_url': settings.prometheus_url,
+        'queue_depth': await request.app.state.job_manager.queue_depth(),
+        'running_jobs': request.app.state.coordinator.running_jobs,
+        'prometheus_in_flight': request.app.state.prometheus_client.in_flight,
     }

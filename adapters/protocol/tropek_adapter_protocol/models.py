@@ -12,9 +12,11 @@ import and use these models directly as FastAPI request/response types.
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any
+from typing import Any, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
+
+ErrorKind = Literal['transient', 'data']
 
 
 class AdapterQueryRequest(BaseModel):
@@ -31,6 +33,8 @@ class AdapterQueryRequest(BaseModel):
             Always includes TROPEK_ASSET, TROPEK_EVALUATION, and time range vars.
         start: ISO 8601 timestamp — evaluation period start (inclusive).
         end: ISO 8601 timestamp — evaluation period end (inclusive).
+        timeout_seconds: Optional caller budget in seconds. The adapter may cap it and must
+            answer before it elapses. None keeps the adapter's own default.
     """
 
     queries: dict[str, dict[str, Any]] = Field(
@@ -42,6 +46,11 @@ class AdapterQueryRequest(BaseModel):
     )
     start: datetime = Field(description='evaluation period start (ISO 8601)')
     end: datetime = Field(description='evaluation period end (ISO 8601)')
+    timeout_seconds: int | None = Field(
+        default=None,
+        ge=1,
+        description='caller budget in seconds; the adapter may cap it and must answer before it elapses',
+    )
 
 
 class AdapterQueryResponse(BaseModel):
@@ -55,11 +64,25 @@ class AdapterQueryResponse(BaseModel):
             failed to resolve. The TROPEK engine treats errored metrics as None.
         metadata: Optional per-metric metadata dict. Used for observability
             (e.g. sample counts, chunk stats). Not used in scoring.
+        error_kinds: Optional metric_name -> "transient" or "data" classification of
+            ``errors``. Every key must also be a key of ``errors``. A missing key means "data".
     """
 
     values: dict[str, float | None] = Field(default_factory=dict)
     errors: dict[str, str] = Field(default_factory=dict)
     metadata: dict[str, dict[str, Any]] = Field(default_factory=dict)
+    error_kinds: dict[str, ErrorKind] = Field(
+        default_factory=dict,
+        description="classification of `errors`: 'transient' = retry may succeed (timeout, 5xx, queue wait, "
+        "incomplete data); 'data' = the source has no answer (empty series, bad query). Missing key = 'data'.",
+    )
+
+    @model_validator(mode='after')
+    def _error_kinds_name_errored_metrics(self) -> AdapterQueryResponse:
+        unknown = set(self.error_kinds) - set(self.errors)
+        if unknown:
+            raise ValueError(f'error_kinds names metrics that are not in errors: {sorted(unknown)}')
+        return self
 
 
 class AdapterHealthResponse(BaseModel):

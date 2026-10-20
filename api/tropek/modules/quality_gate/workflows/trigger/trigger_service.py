@@ -8,7 +8,9 @@ from datetime import datetime
 import structlog
 from arq.connections import ArqRedis
 
-from tropek.modules.common.exceptions import DomainError, NotFoundError
+from tropek.db.models import SLOEvaluation
+from tropek.modules.common.exceptions import ConflictError, DomainError, NotFoundError
+from tropek.modules.quality_gate.evaluation_engine.constants import EvaluationStatus
 from tropek.modules.quality_gate.schemas import (
     EvaluateBatchRequest,
     EvaluateBatchResponse,
@@ -22,6 +24,15 @@ from tropek.modules.quality_gate.workflows.trigger.trigger_resolver import (
     resolve_all_slos_for_asset,
     resolve_single_trigger,
 )
+
+
+def _duplicate_reason(existing: SLOEvaluation) -> str:
+    """Return the 409 reason for re-triggering an identity that already has a non-failed evaluation."""
+    if existing.status in (EvaluationStatus.PENDING, EvaluationStatus.RUNNING):
+        return 'in progress'
+    if existing.invalidated:
+        return 'invalidated; use re-evaluate to re-score it'
+    return 'already evaluated; use re-evaluate to re-score stored data or refetch to fetch it again from the source'
 
 
 class TriggerService:
@@ -75,6 +86,16 @@ class TriggerService:
                     error=str(exc),
                 )
                 continue
+
+            existing = await self._repos.eval_repo.find_duplicate(
+                asset_id=ctx.asset_id,
+                slo_name=ctx.slo_name,
+                evaluation_name=request.eval_name,
+                period_start=request.period_start,
+                period_end=request.period_end,
+            )
+            if existing is not None:
+                raise ConflictError('evaluation', str(existing.id), _duplicate_reason(existing))
 
             slo_ev = await self._repos.eval_repo.create_pending(
                 EvalCreateParams(

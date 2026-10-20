@@ -119,6 +119,19 @@ export const evaluationHandlers = [
     return HttpResponse.json(makeReEvaluateResponse(body.from_date))
   }),
 
+  http.post('/api/evaluations/refetch', async ({ request }) => {
+    const body = await request.json() as { dry_run?: boolean; evaluation_name?: string | null }
+    // Narrowing to one evaluation name matches fewer SLO evaluations, as the real endpoint does.
+    const count = body.evaluation_name ? 1 : 2
+    return HttpResponse.json({
+      matched: count,
+      refetched: count,
+      skipped: [],
+      run_ids: [],
+      dry_run: body.dry_run ?? false,
+    })
+  }),
+
   http.post('/api/evaluations/re-evaluate/from-baseline', async () => {
     return HttpResponse.json(makeReEvaluateResponse(undefined))
   }),

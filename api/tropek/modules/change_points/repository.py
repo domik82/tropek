@@ -354,6 +354,33 @@ class ChangePointRepository:
             for row in result.all()
         }
 
+    async def delete_for_slo_range(
+        self,
+        *,
+        asset_id: uuid.UUID,
+        slo_name: str,
+        period_from: datetime,
+        period_to: datetime,
+    ) -> int:
+        """Delete every metric's change points of an asset and SLO within a period.
+
+        ``period_from`` and ``period_to`` are inclusive on ``period_start``. Returns the number
+        of rows deleted.
+        """
+        cursor = cast(
+            'CursorResult[Any]',
+            await self._session.execute(
+                delete(ChangePoint).where(
+                    ChangePoint.asset_id == asset_id,
+                    ChangePoint.slo_name == slo_name,
+                    ChangePoint.period_start >= period_from,
+                    ChangePoint.period_start <= period_to,
+                )
+            ),
+        )
+        await self._session.flush()
+        return cursor.rowcount
+
     @staticmethod
     def resolve_from_objective(
         objective: SLOObjective,

@@ -56,6 +56,12 @@ range. Additional variables come from the SLO definition.
 **Headers** — TROPEK sends `X-Datasource-Name` with the datasource name from the
 registry. Adapters may use this for routing or logging.
 
+**Optional fields:**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `timeout_seconds` | integer ≥ 1, or absent | Caller budget in seconds. The adapter may cap it and must answer before it elapses. Absent keeps the adapter's own default. |
+
 #### Response
 
 ```json
@@ -76,6 +82,17 @@ registry. Adapters may use this for routing or logging.
 Every metric from the request must appear in `values` or `errors` (or both).
 A `null` value in `values` means the metric resolved but returned no data.
 The `metadata` field is optional and is not used in scoring — it is for observability.
+
+`error_kinds` is optional and classifies the entries of `errors`, keyed by the same
+metric names (a key that is not in `errors` is rejected):
+
+| Kind | Meaning |
+|------|---------|
+| `transient` | A retry may succeed: timeout, 5xx, queue wait, incomplete data. |
+| `data` | The source has no answer: empty series, bad query. |
+
+A metric with no `error_kinds` entry counts as `data`. The engine retries the whole
+evaluation when any error is `transient`; a `data` error scores the metric as `error`.
 
 ### `GET /health`
 

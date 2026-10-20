@@ -10,14 +10,37 @@ from asyncpg import UniqueViolationError
 from sqlalchemy import ColumnElement, String, and_, cast, func, or_, select, tuple_, update
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import raiseload, selectinload
+from sqlalchemy.orm import aliased, raiseload, selectinload
 
 from tropek.cache.redis_cache import RedisCache
 from tropek.db.models import Asset, EvaluationAnnotation, EvaluationRun, IndicatorResultRow, SLOEvaluation
 from tropek.modules.common.exceptions import ConflictError
 from tropek.modules.quality_gate.evaluation_engine.constants import EvaluationStatus
-from tropek.modules.quality_gate.shared.params import EvalCreateParams
+from tropek.modules.quality_gate.repositories.indicator import IndicatorRepository
+from tropek.modules.quality_gate.repositories.sli_value import SLIValueRepository
+from tropek.modules.quality_gate.shared.params import EvalCreateParams, RefetchScope
 from tropek.modules.quality_gate.workflows.presentation.heatmap_cache import HeatmapColumnCache
+
+# Statuses a refetch may reset; ``pending`` / ``running`` rows belong to a live job.
+REFETCHABLE_STATUSES = (EvaluationStatus.COMPLETED, EvaluationStatus.PARTIAL, EvaluationStatus.FAILED)
+
+
+def _merged_job_stats(new_stats: dict[str, Any], *, drop_error: bool = False) -> ColumnElement[Any]:
+    """Build ``job_stats || new_stats``, optionally removing a stale ``error`` key first.
+
+    A terminal write merges rather than replaces so the ``refetch`` audit block, ``fetch_attempts``,
+    ``stuck_job_retries`` and ``worker_id`` written earlier in the row's life survive.
+
+    Args:
+        new_stats: Keys to write; they win over stored keys of the same name.
+        drop_error: Remove ``error`` (JSONB ``-``) before merging, for a successful outcome.
+
+    Returns:
+        The SQL expression for the new ``job_stats`` value.
+    """
+    if drop_error:
+        return SLOEvaluation.job_stats.op('-')(cast('error', String)).op('||')(cast(new_stats, JSONB))
+    return SLOEvaluation.job_stats.op('||')(cast(new_stats, JSONB))
 
 
 class EvaluationRepository:
@@ -55,19 +78,22 @@ class EvaluationRepository:
             return
         await self._heatmap_cache.delete(run_id)
 
-    async def _invalidate_caches_for(self, rows: list[SLOEvaluation]) -> None:
+    async def invalidate_caches_for(self, rows: list[SLOEvaluation]) -> None:
         """Invalidate baseline + heatmap caches once for a batch of affected rows.
 
         Collects the distinct ``(asset_id, slo_name)`` pairs and parent
         ``evaluation_id`` run ids from the affected rows and invalidates each
-        cache once — one delete per key, not one per row.
+        cache once — one delete per key, not one per row. Reads only those
+        scalar columns, so it is safe to call after the transaction commits.
 
-        This runs inside the request handler, so the delete happens *before*
-        ``SessionMiddleware`` commits the transaction: a concurrent reader in
-        that narrow window could repopulate a key with pre-commit data. The
-        cache is opportunistic (Redis failures are dropped; entries carry a
-        TTL), so a transient stale key self-heals on the next read or write —
-        the same pre-existing behaviour as the singular mutation methods.
+        The bulk mutation methods of this repository call it inside the request
+        handler, so the delete happens *before* ``SessionMiddleware`` commits
+        the transaction: a concurrent reader in that narrow window could
+        repopulate a key with pre-commit data. The cache is opportunistic
+        (Redis failures are dropped; entries carry a TTL), so a transient stale
+        key self-heals on the next read or write — the same pre-existing
+        behaviour as the singular mutation methods. Callers that commit
+        themselves (refetch) call it after the commit instead.
         """
         baseline_keys = {(row.asset_id, row.slo_name) for row in rows}
         for asset_id, slo_name in baseline_keys:
@@ -162,14 +188,14 @@ class EvaluationRepository:
         """Find an existing non-failed evaluation matching the identity tuple.
 
         Returns the existing evaluation if found, None otherwise.
-        Used by the router to produce status-aware 409 error messages before
+        Used by ``TriggerService`` to produce status-aware 409 error messages before
         attempting the insert. The partial unique index on the DB is the
         safety net for concurrent races — this check provides clean UX.
 
         Decision tree (see also uq_evaluations_identity index on the model):
           - No match → None (caller proceeds with create)
           - Match with status pending/running → caller returns 409 "in progress"
-          - Match with status completed/partial → caller returns 409 "use re-evaluate"
+          - Match with status completed/partial → caller returns 409 "use re-evaluate or refetch"
           - Match with invalidated=True → caller returns 409 "invalidated, use re-evaluate"
           - Failed evaluations are excluded (not matched here, not in the index)
         """
@@ -225,7 +251,8 @@ class EvaluationRepository:
 
         Records the stuck-job retry count in ``job_stats`` so the watchdog can cap
         retries. ``started_at`` is cleared so a re-run stamps it fresh via
-        ``mark_running``.
+        ``mark_running``. The counter is merged (JSONB ``||``) so the
+        ``fetch_attempts`` history of earlier adapter retries survives.
 
         Args:
             eval_id: Evaluation to requeue.
@@ -237,7 +264,32 @@ class EvaluationRepository:
             .values(
                 status=EvaluationStatus.PENDING,
                 started_at=None,
-                job_stats={'stuck_job_retries': stuck_job_retries},
+                job_stats=SLOEvaluation.job_stats.op('||')(
+                    cast({'stuck_job_retries': stuck_job_retries}, JSONB),
+                ),
+            )
+        )
+
+    async def mark_pending_retry(self, eval_id: uuid.UUID, *, attempt_record: dict[str, Any]) -> None:
+        """Return a running evaluation to pending after a transient fetch failure, appending the attempt.
+
+        Merges into ``job_stats`` with JSONB ``||`` so ``stuck_job_retries`` and earlier
+        ``fetch_attempts`` survive; ``started_at`` is cleared so the watchdog does not count the
+        wait as a stuck job and the retried run's ``mark_running`` stamps it fresh.
+
+        Args:
+            eval_id: Evaluation to return to pending.
+            attempt_record: The failed attempt, appended to ``job_stats['fetch_attempts']``.
+        """
+        job_stats = await self._session.scalar(select(SLOEvaluation.job_stats).where(SLOEvaluation.id == eval_id))
+        attempts = [*(job_stats or {}).get('fetch_attempts', []), attempt_record]
+        await self._session.execute(
+            update(SLOEvaluation)
+            .where(SLOEvaluation.id == eval_id)
+            .values(
+                status=EvaluationStatus.PENDING,
+                started_at=None,
+                job_stats=SLOEvaluation.job_stats.op('||')(cast({'fetch_attempts': attempts}, JSONB)),
             )
         )
 
@@ -289,7 +341,9 @@ class EvaluationRepository:
             total_points: Total weighted points possible.
             slo_name: Named SLO used, if any.
             slo_version: Version of the named SLO, if any.
-            job_stats: Optional dict of job execution stats to merge.
+            job_stats: Optional dict of job execution stats, merged into the stored ``job_stats`` (JSONB
+                ``||``) so ``refetch``, ``fetch_attempts``, ``stuck_job_retries`` and ``worker_id`` survive;
+                a stale ``error`` key is removed.
             compared_evaluation_ids: IDs of evaluations used for relative criteria.
             asset_id: Asset UUID for baseline cache invalidation.
             run_id: Parent EvaluationRun UUID for heatmap column cache invalidation.
@@ -303,7 +357,7 @@ class EvaluationRepository:
             'score': score,
             'achieved_points': achieved_points,
             'total_points': total_points,
-            'job_stats': merged_stats,
+            'job_stats': _merged_job_stats(merged_stats, drop_error=True),
         }
         if slo_name is not None:
             values['slo_name'] = slo_name
@@ -318,14 +372,15 @@ class EvaluationRepository:
 
         Args:
             eval_id: Evaluation to update.
-            job_stats: Job stats dict may include error, retry_count, etc.
+            job_stats: Job stats dict may include error, retry_count, etc.; merged into the stored
+                ``job_stats`` (JSONB ``||``) so the ``refetch`` audit block and earlier keys survive.
         """
         await self._session.execute(
             update(SLOEvaluation)
             .where(SLOEvaluation.id == eval_id)
             .values(
                 status=EvaluationStatus.FAILED,
-                job_stats=job_stats or {},
+                job_stats=_merged_job_stats(job_stats or {}),
             )
         )
 
@@ -334,12 +389,13 @@ class EvaluationRepository:
 
         Args:
             eval_id: Evaluation to update.
-            job_stats: Partial execution stats (indicators_attempted, _completed, etc.).
+            job_stats: Partial execution stats (indicators_attempted, _completed, etc.); merged into the
+                stored ``job_stats`` (JSONB ``||``) with a stale ``error`` key removed.
         """
         await self._session.execute(
             update(SLOEvaluation)
             .where(SLOEvaluation.id == eval_id)
-            .values(status=EvaluationStatus.PARTIAL, job_stats=job_stats or {})
+            .values(status=EvaluationStatus.PARTIAL, job_stats=_merged_job_stats(job_stats or {}, drop_error=True))
         )
 
     async def get_by_id(self, eval_id: uuid.UUID) -> SLOEvaluation | None:
@@ -647,7 +703,7 @@ class EvaluationRepository:
             .execution_options(synchronize_session='fetch')
         )
         rows = await self._fetch_by_ids(eval_ids)
-        await self._invalidate_caches_for(rows)
+        await self.invalidate_caches_for(rows)
         return rows
 
     async def restore_many(self, eval_ids: list[uuid.UUID]) -> list[SLOEvaluation]:
@@ -661,7 +717,7 @@ class EvaluationRepository:
             .execution_options(synchronize_session='fetch')
         )
         rows = await self._fetch_by_ids(eval_ids)
-        await self._invalidate_caches_for(rows)
+        await self.invalidate_caches_for(rows)
         return rows
 
     async def override_status_many(
@@ -702,7 +758,7 @@ class EvaluationRepository:
             .execution_options(synchronize_session='fetch')
         )
         rows = await self._fetch_by_ids(eligible_ids)
-        await self._invalidate_caches_for(rows)
+        await self.invalidate_caches_for(rows)
         return rows
 
     async def restore_override_many(self, eval_ids: list[uuid.UUID]) -> list[SLOEvaluation]:
@@ -733,7 +789,7 @@ class EvaluationRepository:
             .execution_options(synchronize_session='fetch')
         )
         rows = await self._fetch_by_ids(eligible_ids)
-        await self._invalidate_caches_for(rows)
+        await self.invalidate_caches_for(rows)
         return rows
 
     async def pin_baseline_many(
@@ -795,7 +851,7 @@ class EvaluationRepository:
             .execution_options(synchronize_session='fetch')
         )
         rows = await self._fetch_by_ids(pin_ids)
-        await self._invalidate_caches_for(rows)
+        await self.invalidate_caches_for(rows)
         return rows
 
     async def unpin_baseline_many(self, eval_ids: list[uuid.UUID]) -> list[SLOEvaluation]:
@@ -809,8 +865,101 @@ class EvaluationRepository:
             .execution_options(synchronize_session='fetch')
         )
         rows = await self._fetch_by_ids(eval_ids)
-        await self._invalidate_caches_for(rows)
+        await self.invalidate_caches_for(rows)
         return rows
+
+    async def list_for_refetch(self, scope: RefetchScope) -> list[SLOEvaluation]:
+        """List the asset's SLO evaluations that a refetch of ``scope`` would replace.
+
+        A failed row is skipped when a non-failed row with the same identity (asset, SLO, evaluation
+        name, period start and end) exists: the failed row was superseded by a retry, and resetting it
+        to ``pending`` would violate the partial unique index ``uq_slo_evaluations_identity``.
+
+        Args:
+            scope: Asset, inclusive ``period_start`` range and optional narrowing filters.
+
+        Returns:
+            Matching rows ordered by ``period_start`` then ``slo_name``.
+        """
+        sibling = aliased(SLOEvaluation)
+        superseded = (
+            select(sibling.id)
+            .where(
+                sibling.asset_id == SLOEvaluation.asset_id,
+                sibling.slo_name == SLOEvaluation.slo_name,
+                sibling.evaluation_name == SLOEvaluation.evaluation_name,
+                sibling.period_start == SLOEvaluation.period_start,
+                sibling.period_end == SLOEvaluation.period_end,
+                sibling.status != EvaluationStatus.FAILED,
+                sibling.id != SLOEvaluation.id,
+            )
+            .exists()
+        )
+        query = select(SLOEvaluation).where(
+            SLOEvaluation.asset_id == scope.asset_id,
+            SLOEvaluation.period_start >= scope.period_from,
+            SLOEvaluation.period_start <= scope.period_to,
+            or_(SLOEvaluation.status != EvaluationStatus.FAILED, ~superseded),
+        )
+        if scope.evaluation_name is not None:
+            query = query.where(SLOEvaluation.evaluation_name == scope.evaluation_name)
+        if scope.slo_names is not None:
+            query = query.where(SLOEvaluation.slo_name.in_(scope.slo_names))
+        if scope.only_failed:
+            query = query.where(SLOEvaluation.status == EvaluationStatus.FAILED)
+        result = await self._session.execute(query.order_by(SLOEvaluation.period_start, SLOEvaluation.slo_name))
+        return list(result.scalars().all())
+
+    async def reset_for_refetch(
+        self,
+        eval_ids: list[uuid.UUID],
+        *,
+        job_stats_by_id: dict[uuid.UUID, dict[str, Any]],
+    ) -> int:
+        """Return SLO evaluations to ``pending`` with their stored values and child rows removed.
+
+        Clears the result, score, points, start time, override fields and the SLI metadata (kept
+        inside ``job_stats``, which is replaced by the given dict, not merged). Deletes the
+        indicator rows and SLI values. Keeps the row id, ``evaluation_id``, annotations,
+        invalidation and baseline pin columns. Only a row still in a terminal status
+        (``REFETCHABLE_STATUSES``) is reset, so a concurrent refetch that already re-opened it is
+        not reset (and enqueued) a second time.
+
+        Args:
+            eval_ids: SLO evaluations to reset.
+            job_stats_by_id: New ``job_stats`` for each id.
+
+        Returns:
+            The number of rows reset; fewer than ``len(eval_ids)`` when a row left its terminal status.
+        """
+        indicator_repo = IndicatorRepository(self._session)
+        sli_value_repo = SLIValueRepository(self._session)
+        reset_count = 0
+        for eval_id in eval_ids:
+            reset_id = await self._session.scalar(
+                update(SLOEvaluation)
+                .where(SLOEvaluation.id == eval_id, SLOEvaluation.status.in_(REFETCHABLE_STATUSES))
+                .values(
+                    status=EvaluationStatus.PENDING,
+                    result=None,
+                    score=None,
+                    achieved_points=None,
+                    total_points=None,
+                    started_at=None,
+                    original_result=None,
+                    override_reason=None,
+                    override_author=None,
+                    job_stats=job_stats_by_id[eval_id],
+                )
+                .returning(SLOEvaluation.id)
+                .execution_options(synchronize_session='fetch')
+            )
+            if reset_id is None:
+                continue
+            reset_count += 1
+            await indicator_repo.delete_for_evaluation(eval_id)
+            await sli_value_repo.delete_sli_values(eval_id)
+        return reset_count
 
     async def get_by_run_id(self, run_id: uuid.UUID) -> list[SLOEvaluation]:
         """Fetch a run's SLO evaluations, each carrying only its non-hidden annotations.

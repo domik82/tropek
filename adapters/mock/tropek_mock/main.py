@@ -85,16 +85,23 @@ class QueryResponse(BaseModel):
     values: dict[str, float | None]
     errors: dict[str, str]
     metadata: dict[str, Any] = {}
+    error_kinds: dict[str, str] = {}
 
 
 @app.post('/query', response_model=QueryResponse)
 async def query_metrics(
     body: QueryRequest,
     x_datasource_name: str = Header(default='default'),
+    x_mock_transient: str | None = Header(default=None),
 ) -> QueryResponse:
-    """Execute metric queries against CSV data store."""
+    """Execute metric queries against CSV data store.
+
+    ``X-Mock-Transient: a,b`` marks metrics ``a`` and ``b`` as failed with a transient error,
+    so callers can exercise their retry path against the mock.
+    """
     values: dict[str, float | None] = {}
     errors: dict[str, str] = {}
+    error_kinds: dict[str, str] = {}
     metadata: dict[str, Any] = {}
 
     logger.info(
@@ -132,12 +139,18 @@ async def query_metrics(
             values.update(result.values)
             errors.update(result.errors)
 
+    if x_mock_transient:
+        for name in (part.strip() for part in x_mock_transient.split(',') if part.strip()):
+            values[name] = None
+            errors[name] = 'simulated transient failure'
+            error_kinds[name] = 'transient'
+
     logger.info(
         'query response: values=%s errors=%s',
         dict(values),
         dict(errors) if errors else '{}',
     )
-    return QueryResponse(values=values, errors=errors, metadata=metadata)
+    return QueryResponse(values=values, errors=errors, metadata=metadata, error_kinds=error_kinds)
 
 
 def _handle_aggregated(

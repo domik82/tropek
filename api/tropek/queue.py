@@ -12,12 +12,12 @@ from typing import Any, ClassVar, cast
 import httpx
 import redis.asyncio as aioredis
 import structlog
-from arq import create_pool, cron
+from arq import Retry, create_pool, cron
 from arq.connections import ArqRedis, RedisSettings
 from fastapi import Request
 
 from tropek.cache.redis_cache import RedisCache
-from tropek.config import get_settings
+from tropek.config import JOB_TIMEOUT_MARGIN_SECONDS, QueueSettings, get_settings
 from tropek.db.session import get_session_factory
 from tropek.logging_config import configure_logging
 from tropek.modules.change_points.worker_step import (
@@ -30,7 +30,11 @@ from tropek.modules.quality_gate.repositories.baseline import BaselineRepository
 from tropek.modules.quality_gate.repositories.evaluation import EvaluationRepository
 from tropek.modules.quality_gate.repositories.evaluation_run import EvaluationRunRepository
 from tropek.modules.quality_gate.repositories.indicator import IndicatorRepository
-from tropek.modules.quality_gate.workflows.execution.adapter_client import HttpAdapterClient
+from tropek.modules.quality_gate.workflows.execution.adapter_client import (
+    AdapterFetchError,
+    AdapterRetryPolicy,
+    HttpAdapterClient,
+)
 from tropek.modules.quality_gate.workflows.execution.evaluation_executor import (
     DefinitionLoadError,
     _load_definitions,
@@ -114,9 +118,14 @@ async def _event_loop_lag_monitor(interval_seconds: float = 0.5, warn_threshold_
 
 
 async def _worker_startup(ctx: dict[str, Any]) -> None:
-    """Initialize Redis cache, httpx client, and logging for worker processes."""
+    """Initialize Redis cache, httpx client, and logging for worker processes.
+
+    Refuses to start, before opening any connection, when secrets are missing or the timeout chain is
+    inconsistent (``Settings.validate_required``), as the API does at its startup.
+    """
     configure_logging(service_name='worker')
     settings = get_settings()
+    settings.validate_required()
     redis_client = aioredis.from_url(settings.cache.url)
     ctx['cache'] = RedisCache(redis_client)
     ctx['http_client'] = httpx.AsyncClient(
@@ -153,6 +162,68 @@ async def _mark_failed(session_factory: Any, eval_id: uuid.UUID, error: str) -> 
     async with session_factory() as session:
         await EvaluationRepository(session).mark_failed(eval_id, job_stats={'error': error})
         await session.commit()
+
+
+async def _handle_adapter_fetch_error(
+    session_factory: Any,
+    eval_id: uuid.UUID,
+    exc: AdapterFetchError,
+    queue_settings: QueueSettings,
+    log: Any,
+) -> None:
+    """Record a failed adapter fetch, then retry the job or store the evaluation ``failed``.
+
+    The attempt number is counted from ``job_stats['fetch_attempts']`` in the database, not from
+    arq's ``job_try``: a predecessor deferral re-enqueues a new arq job whose ``job_try`` restarts at 1.
+    Below the cap the evaluation goes back to ``pending`` and arq reruns the job after a linear delay
+    (``retry_delay_seconds * attempt``); at the cap, or at once when the error is not ``retryable`` (a 4xx,
+    a malformed answer), it is stored ``failed`` with the full attempt history.
+
+    Args:
+        session_factory: Async session factory.
+        eval_id: The SLO evaluation whose fetch failed.
+        exc: The fetch failure.
+        queue_settings: Supplies ``max_retries`` and ``retry_delay_seconds``.
+        log: Logger bound to the evaluation.
+
+    Raises:
+        Retry: While ``attempt <= max_retries``; arq reruns the job after the delay it carries.
+    """
+    async with session_factory() as session:
+        repo = EvaluationRepository(session)
+        row = await repo.get_by_id(eval_id)
+        previous = list((row.job_stats or {}).get('fetch_attempts', [])) if row else []
+        attempt = len(previous) + 1
+        record = {'attempt': attempt, **exc.as_attempt_record()}
+        retry = exc.retryable and attempt <= queue_settings.max_retries
+        if retry:
+            await repo.mark_pending_retry(eval_id, attempt_record=record)
+        else:
+            await repo.mark_failed(
+                eval_id,
+                job_stats={
+                    'error': f'adapter query failed after {attempt} attempts: {exc.cause}',
+                    'fetch_attempts': [*previous, record],
+                },
+            )
+        await session.commit()
+    if retry:
+        delay_seconds = queue_settings.retry_delay_seconds * attempt
+        log.warning('adapter fetch failed, job will retry', attempt=attempt, defer_s=delay_seconds, cause=exc.cause)
+        raise Retry(defer=timedelta(seconds=delay_seconds)) from exc
+    log.error(
+        'adapter fetch failed, evaluation marked failed',
+        attempts=attempt,
+        retryable=exc.retryable,
+        cause=exc.cause,
+    )
+
+
+def _build_heatmap_column_cache(cache: RedisCache | None, ttl_seconds: int) -> HeatmapColumnCache | None:
+    """Wrap the worker's Redis client in a heatmap column cache, or ``None`` without Redis."""
+    if cache is None or cache.client is None:
+        return None
+    return HeatmapColumnCache(cache.client, ttl_seconds=ttl_seconds)
 
 
 async def _run_change_point_phase(
@@ -220,6 +291,26 @@ async def _run_change_point_phase(
         log.warning('change point detection step failed, skipping', exc_info=True)
 
 
+def _build_adapter_client(http_client: httpx.AsyncClient | None) -> HttpAdapterClient:
+    """Build the adapter client with the retry policy, budget and job deadline from settings.
+
+    The deadline keeps ``JOB_TIMEOUT_MARGIN_SECONDS`` of arq's job timeout free, so an HTTP retry never
+    runs into the timeout (which would fail the job without a ``Retry`` and leave the row ``running``).
+    """
+    settings = get_settings()
+    reliability = settings.reliability
+    return HttpAdapterClient(
+        timeout=reliability.adapter_timeout_seconds,
+        http_client=http_client,
+        policy=AdapterRetryPolicy(
+            attempts=reliability.adapter_retry_attempts,
+            backoff_seconds=reliability.adapter_retry_backoff_seconds,
+        ),
+        budget_seconds=reliability.adapter_budget_seconds,
+        deadline_seconds=settings.queue.job_timeout_seconds - JOB_TIMEOUT_MARGIN_SECONDS,
+    )
+
+
 async def run_evaluation_job(ctx: dict[str, Any], eval_id_str: str, defer_count: int = 0) -> None:
     """Arq job — run evaluation in three phases with separate DB sessions.
 
@@ -228,7 +319,11 @@ async def run_evaluation_job(ctx: dict[str, Any], eval_id_str: str, defer_count:
     Phase 2b: HTTP query + evaluate (baselines need a read session).
     Phase 3: Write results (COMMIT immediately).
     Then enqueue a deduped finalize job for the parent run.
+
+    A failed adapter fetch returns the evaluation to ``pending`` and raises arq ``Retry`` until
+    ``queue.max_retries`` retries are spent (see ``_handle_adapter_fetch_error``).
     """
+    settings = get_settings()
     session_factory = get_session_factory()
     eval_id = uuid.UUID(eval_id_str)
     cache: RedisCache | None = ctx.get('cache')
@@ -278,35 +373,26 @@ async def run_evaluation_job(ctx: dict[str, Any], eval_id_str: str, defer_count:
 
     # Phase 2b: HTTP query + evaluate (baselines need a read session)
     http_client: httpx.AsyncClient | None = ctx.get('http_client')
-    adapter_client = HttpAdapterClient(
-        timeout=get_settings().reliability.adapter_timeout_seconds,
-        http_client=http_client,
-    )
+    adapter_client = _build_adapter_client(http_client)
 
-    async with session_factory() as session:
-        baseline_repo = BaselineRepository(session, cache=cache)
-        fetch_result = await fetch_and_evaluate(
-            snapshot=snapshot,
-            slo_def=slo_def,
-            sli_def=sli_def,
-            datasource=datasource,
-            adapter_client=adapter_client,
-            baseline_repo=baseline_repo,
-        )
-        await session.commit()
-
-    if fetch_result is None:
-        await _mark_failed(session_factory, eval_id, 'adapter query failed')
+    try:
+        async with session_factory() as session:
+            baseline_repo = BaselineRepository(session, cache=cache)
+            fetch_result = await fetch_and_evaluate(
+                snapshot=snapshot,
+                slo_def=slo_def,
+                sli_def=sli_def,
+                datasource=datasource,
+                adapter_client=adapter_client,
+                baseline_repo=baseline_repo,
+            )
+            await session.commit()
+    except AdapterFetchError as exc:
+        await _handle_adapter_fetch_error(session_factory, eval_id, exc, settings.queue, log)
         return
 
     # Phase 3a: Write evaluation result + indicator rows (COMMIT immediately)
-    settings = get_settings()
-    heatmap_column_cache: HeatmapColumnCache | None = None
-    if cache is not None and cache.client is not None:
-        heatmap_column_cache = HeatmapColumnCache(
-            cache.client,
-            ttl_seconds=settings.cache.ttl.heatmap_column,
-        )
+    heatmap_column_cache = _build_heatmap_column_cache(cache, settings.cache.ttl.heatmap_column)
     async with session_factory() as session:
         await write_results(
             session=session,
@@ -502,4 +588,11 @@ class WorkerSettings:
     on_startup = _worker_startup
     on_shutdown = _worker_shutdown
     max_jobs = get_settings().queue.max_jobs
+    job_timeout = get_settings().queue.job_timeout_seconds
+    # Retries are counted in the database (``job_stats.fetch_attempts``); arq's cap sits one try beyond
+    # ``max_retries + 1`` runs, which makes it unlikely to pre-empt the job's own final ``failed`` write
+    # (cancellation reruns also count toward ``max_tries``).
+    max_tries = get_settings().queue.max_retries + 2
+    retry_jobs = True
+    keep_result = get_settings().queue.keep_result_seconds
     redis_settings = _redis_settings()

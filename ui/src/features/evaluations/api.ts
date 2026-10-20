@@ -13,6 +13,8 @@ import type {
   PinConflictInfo,
   ReEvaluateInput,
   ReEvaluateResponse,
+  RefetchInput,
+  RefetchResponse,
   TrendPoint,
   TriggerEvaluationInput,
 } from './domain'
@@ -25,10 +27,12 @@ import {
   dtoToEvaluationNameEntry,
   dtoToEvaluationSummary,
   dtoToReEvaluateResponse,
+  dtoToRefetchResponse,
   dtoToSloTrends,
   dtoToTrendPoint,
   overrideStatusInputToDto,
   reEvaluateInputToDto,
+  refetchInputToDto,
   triggerEvaluationInputToDto,
   type AnnotationDto,
   type BulkActionResponseDto,
@@ -37,6 +41,7 @@ import {
   type EvaluationSummaryDto,
   type EvaluateSingleResponseDto,
   type ReEvaluateResponseDto,
+  type RefetchResponseDto,
   type SloTrendsResponseDto,
   type TrendPointDto,
 } from './mappers'
@@ -349,4 +354,18 @@ export async function reEvaluate(input: ReEvaluateInput): Promise<ReEvaluateResp
   }
   const body: ReEvaluateResponseDto = await res.json()
   return dtoToReEvaluateResponse(body)
+}
+
+export async function refetch(input: RefetchInput): Promise<RefetchResponse> {
+  const res = await fetch(`${BASE}/evaluations/refetch`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(refetchInputToDto(input)),
+  })
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}))
+    throw new Error(typeof body.detail === 'string' ? body.detail : `refetch: ${res.status}`)
+  }
+  const body: RefetchResponseDto = await res.json()
+  return dtoToRefetchResponse(body)
 }

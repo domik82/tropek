@@ -60,8 +60,12 @@ class AggregatedQueryStrategy:
         variables: dict[str, str],
         start: str,
         end: str,
-    ) -> tuple[dict[str, float | None], dict[str, str], dict[str, Any] | None]:
-        """Execute an aggregated query: fetch range data, compute stats."""
+    ) -> tuple[dict[str, float | None], dict[str, str], dict[str, Any] | None, dict[str, str]]:
+        """Execute an aggregated query: fetch range data, compute stats.
+
+        An incomplete fetch (any chunk failed) is an error for every method, never a statistic over
+        partial data. Its kind is ``'transient'`` when the last chunk failure may succeed on retry.
+        """
         query_template = query_spec['query_template']
         interval = query_spec['interval']
         method_strings: list[str] = query_spec['methods']
@@ -75,7 +79,7 @@ class AggregatedQueryStrategy:
             error_msg = f'window end must be after start: start={start} end={end}'
             bad_window_values: dict[str, float | None] = {f'{sli_name}.{m}': None for m in methods}
             bad_window_errors: dict[str, str] = {f'{sli_name}.{m}': error_msg for m in methods}
-            return bad_window_values, bad_window_errors, None
+            return bad_window_values, bad_window_errors, None, dict.fromkeys(bad_window_errors, 'data')
 
         # Substitute variables with $interval override
         try:
@@ -91,10 +95,10 @@ class AggregatedQueryStrategy:
             error_msg = str(exc)
             early_values: dict[str, float | None] = {f'{sli_name}.{m}': None for m in methods}
             early_errors: dict[str, str] = {f'{sli_name}.{m}': error_msg for m in methods}
-            return early_values, early_errors, None
+            return early_values, early_errors, None, dict.fromkeys(early_errors, 'data')
 
         # Fetch data (with chunking for long time ranges)
-        all_values, chunks_failed, series_count = await self._fetch_range(
+        all_values, chunks_failed, series_count, chunks_total, last_error = await self._fetch_range(
             sli_name=sli_name,
             query=query,
             start=start,
@@ -117,6 +121,26 @@ class AggregatedQueryStrategy:
 
         # Filter NaN for actual count (stats module also filters, but we need count for metadata)
         actual_samples = sum(1 for v in all_values if not math.isnan(v))
+        missing_pct = round((1 - actual_samples / expected_samples) * 100, 1)
+
+        # A statistic over partial data would be silently wrong, so an incomplete fetch is an error
+        # for every method. Whether a retry may help is the last failure's call. The metadata still
+        # carries the sample counts of the chunks that did arrive, as every aggregated result does.
+        if chunks_failed:
+            message = f'incomplete data: {chunks_failed} of {chunks_total} chunks failed (last: {last_error})'
+            kind = 'transient' if last_error is not None and last_error.transient else 'data'
+            failed_values: dict[str, float | None] = {f'{sli_name}.{m}': None for m in methods}
+            failed_errors = dict.fromkeys(failed_values, message)
+            failed_metadata: dict[str, Any] = {
+                'mode': 'aggregated',
+                'expected_samples': expected_samples,
+                'actual_samples': actual_samples,
+                'missing_pct': missing_pct,
+                'chunks_failed': chunks_failed,
+                'chunks_total': chunks_total,
+            }
+            logger.warning('aggregated result incomplete: sli=%s %s', sli_name, message)
+            return failed_values, failed_errors, failed_metadata, dict.fromkeys(failed_values, kind)
 
         # Compute statistics
         stats = compute_statistics(all_values, methods)
@@ -132,7 +156,6 @@ class AggregatedQueryStrategy:
                 errors[key] = 'no valid data points'
 
         # Build metadata
-        missing_pct = round((1 - actual_samples / expected_samples) * 100, 1)
         metadata: dict[str, Any] = {
             'mode': 'aggregated',
             'expected_samples': expected_samples,
@@ -149,7 +172,7 @@ class AggregatedQueryStrategy:
             expected_samples,
             chunks_failed,
         )
-        return values, errors, metadata
+        return values, errors, metadata, dict.fromkeys(errors, 'data')
 
     async def _fetch_range(
         self,
@@ -159,12 +182,13 @@ class AggregatedQueryStrategy:
         start: str,
         end: str,
         step: str,
-    ) -> tuple[list[float], int, int]:
+    ) -> tuple[list[float], int, int, int, PrometheusQueryError | None]:
         """Fetch range data, chunking if the window exceeds chunk_size.
 
-        Returns (all_values, chunks_failed_count, series_count). ``series_count`` is the widest
-        fan-out seen across chunks, so callers can scale a per-series expectation to match the
-        flattened values.
+        Returns (all_values, chunks_failed_count, series_count, chunks_total, last_error).
+        ``series_count`` is the widest fan-out seen across chunks, so callers can scale a per-series
+        expectation to match the flattened values. ``last_error`` is the last chunk failure in chunk
+        order, or ``None`` when every chunk succeeded.
         """
         step_seconds = _parse_duration_seconds(step)
         start_dt = datetime.fromisoformat(start)
@@ -174,7 +198,7 @@ class AggregatedQueryStrategy:
         if window_seconds <= self._chunk_size_seconds:
             try:
                 series = await self._client.range_query_series(query, start=start, end=end, step=step)
-                return [value for bucket in series for value in bucket], 0, len(series)
+                return [value for bucket in series for value in bucket], 0, len(series), 1, None
             except PrometheusQueryError as exc:
                 logger.warning(
                     'range query returned no data: sli=%s query=%s start=%s end=%s error=%s',
@@ -184,7 +208,7 @@ class AggregatedQueryStrategy:
                     end,
                     exc,
                 )
-                return [], 1, 0
+                return [], 1, 0, 1, exc
 
         # Split into chunks. Each chunk's query_range evaluates at both its endpoints, so the next
         # chunk starts one step past the previous chunk's end — otherwise the shared instant comes
@@ -202,7 +226,7 @@ class AggregatedQueryStrategy:
         # Process chunks with limited parallelism
         sem = asyncio.Semaphore(self._parallel_chunks)
 
-        async def _fetch_chunk(c_start: str, c_end: str) -> list[list[float]] | None:
+        async def _fetch_chunk(c_start: str, c_end: str) -> list[list[float]] | PrometheusQueryError:
             async with sem:
                 try:
                     return await self._client.range_query_series(query, start=c_start, end=c_end, step=step)
@@ -215,17 +239,19 @@ class AggregatedQueryStrategy:
                         c_end,
                         exc,
                     )
-                    return None
+                    return exc
 
         tasks = [_fetch_chunk(cs, ce) for cs, ce in chunks]
         results = await asyncio.gather(*tasks)
 
         series_count = 0
+        last_error: PrometheusQueryError | None = None
         for chunk_result in results:
-            if chunk_result is None:
+            if isinstance(chunk_result, PrometheusQueryError):
                 chunks_failed += 1
+                last_error = chunk_result
             else:
                 series_count = max(series_count, len(chunk_result))
                 all_values.extend(value for bucket in chunk_result for value in bucket)
 
-        return all_values, chunks_failed, series_count
+        return all_values, chunks_failed, series_count, len(chunks), last_error

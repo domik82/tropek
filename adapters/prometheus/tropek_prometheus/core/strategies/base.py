@@ -16,12 +16,15 @@ class QueryStrategy(Protocol):
         variables: dict[str, str],
         start: str,
         end: str,
-    ) -> tuple[dict[str, float | None], dict[str, str], dict[str, Any] | None]:
-        """Execute a query and return (values, errors, metadata).
+    ) -> tuple[dict[str, float | None], dict[str, str], dict[str, Any] | None, dict[str, str]]:
+        """Execute a query and return (values, errors, metadata, kinds).
 
         Returns:
             values: {metric_name: float_value} — for raw mode, single entry.
             errors: {metric_name: error_message} — for failed queries.
             metadata: Optional metadata dict (sample counts, etc.). None for raw mode.
+            kinds: {metric_name: 'transient' | 'data'} for exactly the keys of ``errors``. ``'transient'``
+                means a retry may succeed (the fetch failed); ``'data'`` means the source has no answer
+                (a rejected query, an unresolved variable, or a complete but empty result).
         """
         ...

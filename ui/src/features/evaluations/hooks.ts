@@ -19,6 +19,7 @@ import {
   overrideStatus,
   pinBaseline,
   reEvaluate,
+  refetch,
 } from './api'
 import { useTimeRange } from '@/lib/time-range-context'
 import type {
@@ -27,6 +28,7 @@ import type {
   EvaluationFilters,
   OverrideStatusInput,
   ReEvaluateInput,
+  RefetchInput,
 } from './domain'
 import type { ColumnDef } from './ui-types'
 import { FIXED_COLS, DEFAULT_VISIBLE_KEYS } from './constants'
@@ -235,6 +237,30 @@ export function useReEvaluate() {
       qc.invalidateQueries({ queryKey: evaluationKeys.allTrends })
       qc.invalidateQueries({ queryKey: evaluationKeys.allSloTrends })
     },
+  })
+}
+
+export function useRefetch() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (input: RefetchInput) => refetch(input),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: evaluationKeys.all })
+      qc.invalidateQueries({ queryKey: evaluationKeys.allNames })
+      qc.invalidateQueries({ queryKey: evaluationKeys.allHeatmaps })
+      qc.invalidateQueries({ queryKey: evaluationKeys.allTrends })
+      qc.invalidateQueries({ queryKey: evaluationKeys.allSloTrends })
+    },
+  })
+}
+
+/** Dry-run preview of what a refetch would touch; disabled while `input` is null. */
+export function useRefetchPreview(input: Omit<RefetchInput, 'dryRun'> | null) {
+  return useQuery({
+    queryKey: ['refetch-preview', input],
+    queryFn: () => refetch({ ...input!, dryRun: true }),
+    enabled: !!input,
+    staleTime: 0,
   })
 }
 

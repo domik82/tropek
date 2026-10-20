@@ -280,6 +280,20 @@ describe('SLIBreakdownTable grouped display', () => {
     expect(screen.getByText(/1440\/1440 samples/)).toBeInTheDocument()
   })
 
+  it('names the failed chunks when the adapter reported no sample counts', () => {
+    const countsMissing: Record<string, SliMetadata> = {
+      cpu: { mode: 'aggregated', expectedSamples: null, actualSamples: null, missingPct: null, chunksFailed: 2 },
+    }
+    render(
+      <SLIBreakdownTable
+        indicators={aggregatedIndicators}
+        sliMetadata={countsMissing}
+      />,
+    )
+    expect(screen.getByText('2 chunk(s) failed')).toBeInTheDocument()
+    expect(screen.queryByText(/low confidence/i)).not.toBeInTheDocument()
+  })
+
   it('works without sliMetadata (backward compatible)', () => {
     render(<SLIBreakdownTable indicators={aggregatedIndicators} />)
     expect(screen.getByText('cpu.mean')).toBeInTheDocument()

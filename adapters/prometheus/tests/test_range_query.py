@@ -11,7 +11,7 @@ from tropek_prometheus.core.prometheus_client import PrometheusClient, Prometheu
 
 @pytest.fixture
 def client() -> PrometheusClient:
-    return PrometheusClient(base_url='http://prom:9090', timeout=5.0)
+    return PrometheusClient(base_url='http://prom:9090', timeout=5.0, retry_backoff_seconds=0)
 
 
 @respx.mock

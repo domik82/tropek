@@ -23,8 +23,15 @@ const LOW_CONFIDENCE_THRESHOLD = 20
  */
 function hasCoverageGap(meta: SliMetadata): boolean {
   if (meta.chunksFailed > 0) return true
-  if (meta.expectedSamples <= 0) return false
+  if (meta.expectedSamples == null || meta.actualSamples == null || meta.expectedSamples <= 0) return false
   return meta.actualSamples < meta.expectedSamples
+}
+
+function coverageNote(meta: SliMetadata): string {
+  if (meta.expectedSamples == null || meta.actualSamples == null || meta.missingPct == null) {
+    return `${meta.chunksFailed} chunk(s) failed`
+  }
+  return `${meta.actualSamples}/${meta.expectedSamples} samples (${meta.missingPct.toFixed(1)}% missing)`
 }
 
 
@@ -152,7 +159,7 @@ export function SLIBreakdownTable({ indicators, sliMetadata, onIndicatorClick, r
           if (isGroup(item)) {
             const collapsed = collapsedGroups.has(item.prefix)
             const meta = item.metadata
-            const lowConfidence = meta && meta.missingPct > LOW_CONFIDENCE_THRESHOLD
+            const lowConfidence = meta?.missingPct != null && meta.missingPct > LOW_CONFIDENCE_THRESHOLD
             return (
               <GroupRows
                 key={item.prefix}
@@ -215,9 +222,7 @@ function GroupRows({ group, collapsed, lowConfidence, onToggle, selectedMetric, 
             }
             <span className="text-foreground">{group.prefix}</span>
             {meta && hasCoverageGap(meta) && (
-              <span className="text-xs text-muted-foreground font-mono">
-                {meta.actualSamples}/{meta.expectedSamples} samples ({meta.missingPct.toFixed(1)}% missing)
-              </span>
+              <span className="text-xs text-muted-foreground font-mono">{coverageNote(meta)}</span>
             )}
             {lowConfidence && (
               <span className="text-xs text-warning px-1.5 py-0.5 rounded bg-warning/10 border border-warning/20">

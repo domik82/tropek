@@ -52,6 +52,9 @@ from tropek.modules.quality_gate.schemas import (
     OverrideStatusRequest,
     PinBaselineManyRequest,
     PinBaselineRequest,
+    RefetchRequest,
+    RefetchResponse,
+    RefetchRunRequest,
     RestoreManyRequest,
     RestoreOverrideManyRequest,
     SloTrendsResponse,
@@ -85,6 +88,7 @@ from tropek.modules.quality_gate.workflows.re_evaluation.re_evaluation_service i
     re_evaluate_from_date,
     re_evaluate_from_evaluation,
 )
+from tropek.modules.quality_gate.workflows.refetch.refetch_service import refetch, refetch_run
 from tropek.modules.quality_gate.workflows.trigger.trigger_service import TriggerService
 from tropek.queue import get_arq_pool
 
@@ -427,6 +431,27 @@ async def re_evaluate_from_evaluation_endpoint(
         ) from e
     except ValueError as e:
         raise DomainValidationError(str(e)) from e
+
+
+@router.post('/evaluations/refetch', response_model=RefetchResponse)
+async def refetch_evaluations(
+    body: RefetchRequest,
+    repos: QualityGateRepos = Depends(get_qg_repos),
+    arq_pool: ArqRedis = Depends(get_arq_pool),
+) -> RefetchResponse:
+    """Reset an asset's SLO evaluations in a period and fetch them again from the source."""
+    return await refetch(body, repos, arq_pool)
+
+
+@router.post('/evaluation-run/{run_id}/refetch', response_model=RefetchResponse)
+async def refetch_evaluation_run(
+    run_id: uuid.UUID,
+    body: RefetchRunRequest,
+    repos: QualityGateRepos = Depends(get_qg_repos),
+    arq_pool: ArqRedis = Depends(get_arq_pool),
+) -> RefetchResponse:
+    """Reset one evaluation run's SLO evaluations and fetch them again from the source."""
+    return await refetch_run(run_id, body, repos, arq_pool)
 
 
 @router.get('/evaluations/names', response_model=list[EvaluationNameEntry])

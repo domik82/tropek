@@ -73,3 +73,15 @@ async def test_cancel_job(manager: JobManager):
     )
     cancelled = await manager.cancel(result['job_id'])
     assert cancelled is True
+
+
+@pytest.mark.asyncio
+async def test_cancel_job_applies_retention_ttl_to_its_keys(manager: JobManager):
+    submitted = await manager.submit({'cpu': {'mode': 'raw', 'query': 'x'}}, {}, None, 's', 'e')
+    job_id = submitted['job_id']
+
+    assert await manager.cancel(job_id) is True
+
+    repo = manager._repo
+    for suffix in ((), ('queries',)):
+        assert await repo._r.ttl(repo._key('job', job_id, *suffix)) > 0

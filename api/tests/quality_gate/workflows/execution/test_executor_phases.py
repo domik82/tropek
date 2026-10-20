@@ -2,14 +2,17 @@
 
 from __future__ import annotations
 
+import asyncio
 import uuid
 from datetime import UTC, datetime
 from types import SimpleNamespace
+from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
-import httpx
+import pytest
 from tropek.modules.quality_gate.evaluation_engine.constants import EvaluationOutcome
 from tropek.modules.quality_gate.evaluation_engine.result_models import EvaluationResult, IndicatorResult
+from tropek.modules.quality_gate.workflows.execution.adapter_client import AdapterFetchError
 from tropek.modules.quality_gate.workflows.execution.evaluation_executor import (
     EvaluationSnapshot,
     FetchAndEvaluateResult,
@@ -167,10 +170,8 @@ async def test_load_snapshot_returns_none_for_already_completed() -> None:
 # --- fetch_and_evaluate tests ---
 
 
-async def test_fetch_and_evaluate_returns_result() -> None:
-    """Phase 2 returns a FetchAndEvaluateResult on success."""
-    snapshot = _make_snapshot()
-
+def _make_fetch_inputs() -> dict[str, Any]:
+    """Definitions, datasource and baseline repository for one raw-mode ``response_time`` indicator."""
     slo_def = MagicMock()
     slo_def.objectives = [
         MagicMock(
@@ -196,76 +197,86 @@ async def test_fetch_and_evaluate_returns_result() -> None:
     datasource.adapter_url = 'http://adapter:8081'
     datasource.name = 'prometheus'
 
+    baseline_repo = AsyncMock()
+    baseline_repo.get_evaluation_baselines.return_value = []
+    return {
+        'snapshot': _make_snapshot(),
+        'slo_def': slo_def,
+        'sli_def': sli_def,
+        'datasource': datasource,
+        'baseline_repo': baseline_repo,
+    }
+
+
+async def test_fetch_and_evaluate_returns_result() -> None:
+    """Phase 2 returns a FetchAndEvaluateResult on success."""
     adapter_client = AsyncMock()
     adapter_client.query.return_value = (
         {'response_time': 500.0},
         {},
         {},
+        {},
     )
 
-    baseline_repo = AsyncMock()
-    baseline_repo.get_evaluation_baselines.return_value = []
+    result = await fetch_and_evaluate(adapter_client=adapter_client, **_make_fetch_inputs())
 
-    result = await fetch_and_evaluate(
-        snapshot=snapshot,
-        slo_def=slo_def,
-        sli_def=sli_def,
-        datasource=datasource,
-        adapter_client=adapter_client,
-        baseline_repo=baseline_repo,
-    )
-
-    assert result is not None
     assert isinstance(result, FetchAndEvaluateResult)
     assert result.metrics_fetched == {'response_time': 500.0}
     assert result.fetch_errors == {}
     adapter_client.query.assert_awaited_once()
 
 
-async def test_fetch_and_evaluate_returns_none_on_adapter_failure() -> None:
-    """Phase 2 returns None when adapter raises ConnectError."""
-    snapshot = _make_snapshot()
+async def test_fetch_and_evaluate_propagates_adapter_fetch_error() -> None:
+    """Phase 2 lets the client's AdapterFetchError reach the job, which decides whether to retry."""
+    adapter_client = AsyncMock()
+    adapter_client.query.side_effect = AdapterFetchError('ConnectError', attempts=3, last_status=None, elapsed_s=6.0)
 
-    slo_def = MagicMock()
-    slo_def.objectives = [
-        MagicMock(
-            sli='response_time',
-            display_name='RT',
-            pass_threshold=['<600'],
-            warning_threshold=[],
-            weight=1,
-            key_sli=False,
-        ),
-    ]
-    slo_def.total_score_pass_threshold = 90.0
-    slo_def.total_score_warning_threshold = 75.0
-    slo_def.comparison = None
-    slo_def.variables = {}
+    with pytest.raises(AdapterFetchError, match='ConnectError'):
+        await fetch_and_evaluate(adapter_client=adapter_client, **_make_fetch_inputs())
 
-    sli_def = MagicMock()
-    sli_def.mode = 'raw'
-    sli_def.indicators = {'response_time': 'up{job="api"}'}
-    sli_def.name = 'system-sli'
 
-    datasource = MagicMock()
-    datasource.adapter_url = 'http://adapter:8081'
-    datasource.name = 'prometheus'
+async def test_transient_error_kind_raises_adapter_fetch_error() -> None:
+    """A 200 with any transient error fails the whole fetch, naming the metric and its message."""
+    query_seconds = 0.02
+
+    async def slow_query(**_kwargs: Any) -> tuple[dict[str, Any], dict[str, str], dict[str, Any], dict[str, str]]:
+        await asyncio.sleep(query_seconds)
+        return (
+            {'response_time': None},
+            {'response_time': 'incomplete data: 1 of 6 chunks failed (last: timeout)'},
+            {},
+            {'response_time': 'transient'},
+        )
 
     adapter_client = AsyncMock()
-    adapter_client.query.side_effect = httpx.ConnectError('connection refused')
+    adapter_client.query.side_effect = slow_query
 
-    baseline_repo = AsyncMock()
+    with pytest.raises(AdapterFetchError) as exc_info:
+        await fetch_and_evaluate(adapter_client=adapter_client, **_make_fetch_inputs())
 
-    result = await fetch_and_evaluate(
-        snapshot=snapshot,
-        slo_def=slo_def,
-        sli_def=sli_def,
-        datasource=datasource,
-        adapter_client=adapter_client,
-        baseline_repo=baseline_repo,
+    assert exc_info.value.cause == (
+        'transient adapter errors for response_time: incomplete data: 1 of 6 chunks failed (last: timeout)'
+    )
+    assert exc_info.value.last_status == 200
+    assert exc_info.value.retryable is True
+    # The attempt record shows how long the adapter took, not 0.0.
+    assert exc_info.value.elapsed_s >= query_seconds
+
+
+async def test_data_error_kind_scores_none() -> None:
+    """A 200 with only data errors evaluates as before: the errored metric is None."""
+    adapter_client = AsyncMock()
+    adapter_client.query.return_value = (
+        {'response_time': 500.0},
+        {'response_time': 'no valid data points'},
+        {},
+        {'response_time': 'data'},
     )
 
-    assert result is None
+    result = await fetch_and_evaluate(adapter_client=adapter_client, **_make_fetch_inputs())
+
+    assert result.metrics_fetched == {'response_time': None}
+    assert result.fetch_errors == {'response_time': 'no valid data points'}
 
 
 # --- write_results tests ---

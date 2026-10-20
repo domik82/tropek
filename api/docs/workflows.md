@@ -164,10 +164,26 @@ Source: `workflows/execution/adapter_client.py`.
 
 `HttpAdapterClient` queries TROPEK-compatible metric adapters:
 
-- `query()` -- POSTs to `{adapter_url}/query` with `{queries, variables, start, end}`
+- `query()` -- POSTs to `{adapter_url}/query` with `{queries, variables, start, end, timeout_seconds}`;
+  `timeout_seconds` is the adapter budget (`reliability.adapter_timeout_seconds - 30`)
 - Sends `X-Datasource-Name` header
 - Returns `(metrics_fetched, fetch_errors, metadata)`
 - Supports injected `httpx.AsyncClient` or ephemeral client
+- Retries quick failures (transport errors other than timeouts, 429/502/503, a plain 504) up to
+  `reliability.adapter_retry_attempts` times with exponential backoff, honouring `Retry-After` (clamped to
+  60 s), but never starts an attempt that could outlast `queue.job_timeout_seconds - 60` (its deadline)
+- Does not retry long failures over HTTP: a read timeout or a 504 whose body says the adapter budget was
+  exhausted raises at once, as does any other non-2xx answer
+- Raises `AdapterFetchError` when retries or the deadline are exhausted, on a long failure or a non-retryable
+  status, on a malformed 2xx, or when the response carries a `transient` entry in `error_kinds`; the executor
+  lets it propagate. `retryable` is False for a 4xx other than 429 and for a malformed 2xx. `data` errors
+  still become `None` metrics that score `error`
+
+`run_evaluation_job` catches `AdapterFetchError`, returns the row to `pending`, appends the attempt to
+`job_stats.fetch_attempts` and raises arq `Retry` (`retry_delay_seconds × attempt`) up to `queue.max_retries`
+times. After that, or at once when the error is not `retryable`, the row is stored `failed` with
+`job_stats.error = 'adapter query failed after N attempts: …'`. The terminal writes merge into `job_stats`, so
+`fetch_attempts`, `refetch` and the watchdog's `stuck_job_retries` survive them.
 
 Two query modes:
 

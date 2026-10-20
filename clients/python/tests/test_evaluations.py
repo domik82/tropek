@@ -1,5 +1,8 @@
 """Tests for evaluation, annotation, annotation category, and trend endpoints."""
 
+import json
+from uuid import UUID
+
 import httpx
 import respx
 from tropek_client.models import (
@@ -18,6 +21,9 @@ from tropek_client.models import (
     InvalidateManyRequest,
     OverrideStatusManyRequest,
     PagedResponse,
+    RefetchRequest,
+    RefetchResponse,
+    RefetchRunRequest,
     RestoreManyRequest,
     TrendPoint,
 )
@@ -129,6 +135,46 @@ class TestEvaluations:
         )
         assert isinstance(result, EvaluateBatchResponse)
         assert b'"eval_name":"nightly"' in route.calls[0].request.content
+
+    @respx.mock
+    def test_refetch_posts_period_body(self, client):
+        route = respx.post(f'{BASE_URL}/evaluations/refetch').mock(
+            return_value=httpx.Response(
+                200,
+                json={
+                    'matched': 30,
+                    'refetched': 23,
+                    'skipped': [{'evaluation_id': UUID2, 'slo_name': 's', 'reason': 'status x'}],
+                    'run_ids': [UUID1],
+                    'dry_run': False,
+                },
+            )
+        )
+        body = RefetchRequest(
+            asset_name='a', from_=TIMESTAMP, to=TIMESTAMP, only_failed=True, reason='outage', requested_by='operator'
+        )
+        result = client.evaluations.refetch(body)
+        assert isinstance(result, RefetchResponse)
+        assert result.refetched == 23
+        assert result.skipped[0].reason == 'status x'
+        sent = json.loads(route.calls.last.request.content)
+        assert sent['from'] == '2026-03-01T00:00:00Z'
+        assert 'from_' not in sent
+        assert sent['only_failed'] is True
+        assert sent['requested_by'] == 'operator'
+
+    @respx.mock
+    def test_refetch_run(self, client):
+        route = respx.post(f'{BASE_URL}/evaluation-run/{UUID1}/refetch').mock(
+            return_value=httpx.Response(
+                200, json={'matched': 2, 'refetched': 2, 'skipped': [], 'run_ids': [UUID2], 'dry_run': True}
+            )
+        )
+        result = client.evaluations.refetch_run(UUID1, RefetchRunRequest(dry_run=True))
+        assert result.dry_run is True
+        assert result.run_ids == [UUID(UUID2)]
+        sent = json.loads(route.calls.last.request.content)
+        assert sent == {'only_failed': False, 'dry_run': True}
 
 
 class TestBulkActions:

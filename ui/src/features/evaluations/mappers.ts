@@ -26,6 +26,8 @@ import type {
   ReEvaluateInput,
   ReEvaluateResponse,
   ReEvaluateResultItem,
+  RefetchInput,
+  RefetchResponse,
   SliMetadata,
   TrendPoint,
   TrendTargetEntry,
@@ -49,6 +51,8 @@ export type TrendTargetsDto = components['schemas']['TrendTargets']
 export type TrendTargetEntryDto = components['schemas']['TrendTargetEntry']
 export type EvaluationNameEntryDto = components['schemas']['EvaluationNameEntry']
 export type ReEvaluateResponseDto = components['schemas']['ReEvaluateResponse']
+export type RefetchRequestDto = components['schemas']['RefetchRequest']
+export type RefetchResponseDto = components['schemas']['RefetchResponse']
 export type ReEvalResultItemDto = components['schemas']['ReEvalResultItem']
 export type EvaluateSingleRequestDto = components['schemas']['EvaluateSingleRequest']
 export type OverrideStatusRequestDto = components['schemas']['OverrideStatusRequest']
@@ -114,9 +118,9 @@ function dtoToFailingIndicator(dto: FailingIndicatorDto): FailingIndicator {
 function dtoToSliMetadata(dto: SliMetadataDto): SliMetadata {
   return {
     mode: dto.mode,
-    expectedSamples: dto.expected_samples,
-    actualSamples: dto.actual_samples,
-    missingPct: dto.missing_pct,
+    expectedSamples: dto.expected_samples ?? null,
+    actualSamples: dto.actual_samples ?? null,
+    missingPct: dto.missing_pct ?? null,
     chunksFailed: dto.chunks_failed,
   }
 }
@@ -584,6 +588,33 @@ export function dtoToReEvaluateResponse(
     affectedEvaluations: dto.affected_evaluations,
     sloVersionUsed: dto.slo_version_used,
     results: dto.results.map(dtoToReEvaluateResultItem),
+  }
+}
+
+export function refetchInputToDto(input: RefetchInput): RefetchRequestDto {
+  return {
+    asset_name: input.assetName,
+    evaluation_name: input.evaluationName,
+    from: input.from,
+    to: input.to,
+    slo_names: input.sloNames,
+    only_failed: input.onlyFailed,
+    dry_run: input.dryRun,
+    reason: input.reason,
+  }
+}
+
+export function dtoToRefetchResponse(dto: RefetchResponseDto): RefetchResponse {
+  return {
+    matched: dto.matched,
+    refetched: dto.refetched,
+    skipped: dto.skipped.map(item => ({
+      evaluationId: item.evaluation_id,
+      sloName: item.slo_name,
+      reason: item.reason,
+    })),
+    runIds: dto.run_ids,
+    dryRun: dto.dry_run,
   }
 }
 
