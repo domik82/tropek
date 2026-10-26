@@ -12,6 +12,7 @@ from fastapi import FastAPI
 from fastapi.openapi.utils import get_openapi
 from sqlalchemy.exc import IntegrityError
 from starlette.exceptions import HTTPException as StarletteHTTPException
+from starlette.middleware.gzip import GZipMiddleware
 
 from tropek.cache.redis_cache import RedisCache
 from tropek.config import get_settings
@@ -61,6 +62,13 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
 app = FastAPI(title='TROPEK API', version='0.1.1', lifespan=lifespan)
 app.add_middleware(SessionMiddleware, session_factory=get_session_factory())
+# Compress responses for clients that accept it. The grouped heatmap is ~10 MB of
+# repetitive JSON (~0.6 MB gzipped) — over a VPN it was ~9 s of download. Clients on
+# :8080 (Python client, CI pipelines) bypass the ui nginx, so the API compresses itself;
+# nginx sees Content-Encoding already set and passes these through untouched.
+# Level 5 instead of Starlette's default 9: near-identical ratio on JSON at a fraction
+# of the CPU, which runs on the event loop.
+app.add_middleware(GZipMiddleware, minimum_size=1024, compresslevel=5)
 
 # Domain exception handlers — convert domain errors to HTTP responses
 app.add_exception_handler(NotFoundError, not_found_handler)  # type: ignore[arg-type]
