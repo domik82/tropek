@@ -7,7 +7,7 @@ from datetime import datetime
 from typing import Any, NamedTuple, cast
 
 from pydantic import BaseModel
-from sqlalchemy import delete, func, select, update
+from sqlalchemy import delete, func, select, tuple_, update
 from sqlalchemy.engine import CursorResult
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -353,6 +353,24 @@ class ChangePointRepository:
             ): row.ChangePoint
             for row in result.all()
         }
+
+    async def delete_for_run_slo_pairs(self, *, pairs: list[tuple[uuid.UUID, str]]) -> int:
+        """Delete the untriaged change points of the given ``(evaluation run, SLO)`` pairs.
+
+        Triaged points are kept, and so are the points of any other pair, even of the same run or SLO.
+        Returns the number of rows deleted.
+        """
+        cursor = cast(
+            'CursorResult[Any]',
+            await self._session.execute(
+                delete(ChangePoint).where(
+                    tuple_(ChangePoint.evaluation_run_id, ChangePoint.slo_name).in_(pairs),
+                    ChangePoint.status == 'unprocessed',
+                )
+            ),
+        )
+        await self._session.flush()
+        return cursor.rowcount
 
     @staticmethod
     def resolve_from_objective(

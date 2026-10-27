@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import logging
 import sys
 from collections.abc import AsyncGenerator
@@ -136,6 +137,9 @@ def create_app(use_fakeredis: bool = False) -> FastAPI:
             base_url=settings.prometheus_url,
             timeout=settings.query_timeout_seconds,
             auth=auth,
+            retry_attempts=settings.prometheus_retry_attempts,
+            retry_backoff_seconds=settings.prometheus_retry_backoff_seconds,
+            max_in_flight=settings.max_concurrent_prometheus_requests,
         )
 
         strategies = {
@@ -150,14 +154,18 @@ def create_app(use_fakeredis: bool = False) -> FastAPI:
         app.state.job_manager = JobManager(repo, settings)
         app.state.coordinator = Coordinator(repo, settings, strategies)
         app.state.prometheus_ok = prom_ok
+        app.state.prometheus_client = prom_client
 
         coordinator_task = asyncio.create_task(app.state.coordinator.run())
         logger.info('adapter ready')
 
         yield
 
-        app.state.coordinator.stop()
+        # Stop the loop first so it cannot start a job, then cancel and await the jobs in flight.
         coordinator_task.cancel()
+        with contextlib.suppress(asyncio.CancelledError):
+            await coordinator_task
+        await app.state.coordinator.stop()
         if hasattr(redis_client, 'aclose'):
             await redis_client.aclose()
         logger.info('adapter shut down')
@@ -165,6 +173,7 @@ def create_app(use_fakeredis: bool = False) -> FastAPI:
     app = FastAPI(title='Prometheus SLI Adapter', lifespan=lifespan)
     # Set outside the lifespan so the guard is armed even for callers that skip startup.
     app.state.auth_token = settings.adapter_auth_token
+    app.state.settings = settings
     # `health` stays open for container healthchecks and the API's reachability probe, which carry
     # no credentials. Guarding the routers rather than individual routes means a route added later
     # is protected by default.

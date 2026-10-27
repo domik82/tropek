@@ -76,6 +76,7 @@ class JobRepository:
             'total_queries': int(data['total_queries']),
             'completed_count': int(data['completed_count']),
             'failed_count': int(data['failed_count']),
+            'timeout_seconds': int(data['timeout']),
             'completed_at': data.get('completed_at'),
             'duration_ms': int(data['duration_ms']) if 'duration_ms' in data else None,
         }
@@ -113,14 +114,26 @@ class JobRepository:
         success: bool,
         message: str,
         query_executed: str = '',
+        kind: str = 'data',
     ) -> None:
-        """Persist a single indicator result and increment the success or failure counter."""
+        """Persist a single indicator result and increment the success or failure counter.
+
+        Args:
+            job_id: Job the result belongs to.
+            indicator: Indicator name the result is stored under.
+            value: The computed value, or ``None`` on failure.
+            success: Whether the indicator was computed.
+            message: Failure description, empty on success.
+            query_executed: The query text that produced the result.
+            kind: ``'transient'`` when a retry may succeed, ``'data'`` otherwise. Only meaningful on failure.
+        """
         result = json.dumps(
             {
                 'value': value,
                 'success': success,
                 'message': message,
                 'query_executed': query_executed,
+                'kind': kind,
             }
         )
         await self._r.hset(self._key('job', job_id, 'results'), indicator, result)
@@ -130,9 +143,12 @@ class JobRepository:
             await self._r.hincrby(self._key('job', job_id), 'failed_count', 1)
 
     async def get_results(self, job_id: str) -> dict[str, dict[str, Any]]:
-        """Return all indicator results stored for a job."""
+        """Return all indicator results stored for a job; entries written before ``kind`` existed read as ``data``."""
         raw = await self._r.hgetall(self._key('job', job_id, 'results'))
-        return {_decode(k): json.loads(_decode(v)) for k, v in raw.items()}
+        results = {_decode(k): json.loads(_decode(v)) for k, v in raw.items()}
+        for result in results.values():
+            result.setdefault('kind', 'data')
+        return results
 
     async def write_metadata(self, job_id: str, sli_name: str, metadata: dict[str, Any]) -> None:
         """Store per-SLI metadata (sample counts, etc.) for a job."""
@@ -142,6 +158,17 @@ class JobRepository:
         """Return all per-SLI metadata for a job."""
         raw = await self._r.hgetall(self._key('job', job_id, 'metadata'))
         return {_decode(k): json.loads(_decode(v)) for k, v in raw.items()}
+
+    async def expire_job_keys(self, job_id: str, retention_seconds: int) -> None:
+        """Set the retention TTL on every key a job owns, so a finished job cannot outlive it.
+
+        Args:
+            job_id: Job whose keys expire.
+            retention_seconds: Time to keep the keys.
+        """
+        await self._r.expire(self._key('job', job_id), retention_seconds)
+        for suffix in ('queries', 'results', 'metadata'):
+            await self._r.expire(self._key('job', job_id, suffix), retention_seconds)
 
     async def mark_completed(self, job_id: str, retention_seconds: int) -> None:
         """Transition a job to completed, compute duration, and set TTL on all keys."""
@@ -160,19 +187,16 @@ class JobRepository:
                 'duration_ms': str(duration_ms),
             },
         )
-        await self._r.expire(job_key, retention_seconds)
-        await self._r.expire(self._key('job', job_id, 'results'), retention_seconds)
-        await self._r.expire(self._key('job', job_id, 'queries'), retention_seconds)
-        await self._r.expire(self._key('job', job_id, 'metadata'), retention_seconds)
+        await self.expire_job_keys(job_id, retention_seconds)
 
     async def mark_timed_out(self, job_id: str, retention_seconds: int) -> None:
-        """Transition a job to timed_out status and set TTL on the job key."""
+        """Transition a job to timed_out status and set TTL on all its keys."""
         now = datetime.now(UTC).isoformat()
         await self._r.hset(
             self._key('job', job_id),
             mapping={'status': 'timed_out', 'completed_at': now},
         )
-        await self._r.expire(self._key('job', job_id), retention_seconds)
+        await self.expire_job_keys(job_id, retention_seconds)
 
     async def cancel(self, job_id: str) -> bool:
         """Cancel a job; returns False if the job is already in a terminal state."""

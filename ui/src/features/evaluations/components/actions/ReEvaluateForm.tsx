@@ -1,8 +1,10 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useId, useMemo } from 'react'
 import { useReEvaluate } from '../../hooks'
 import { PinConflictError } from '../../api'
 import { Input } from '@/components/ui/input'
 import { ActionFormShell } from './ActionFormShell'
+import { RefetchModeFields } from './RefetchModeFields'
+import { useRefetchForm } from './useRefetchForm'
 import { SloScopeField } from './slo-scope/SloScopeField'
 import { SloScopeModal } from './slo-scope/SloScopeModal'
 import type { ReEvaluateMode, ReEvaluateResponse, PinConflictInfo } from '../../domain'
@@ -17,23 +19,59 @@ const ACTION_DEF = {
   confirmClasses: 'bg-entity-sli hover:bg-entity-sli/80',
 }
 
+const REFETCH_DESCRIPTION = 'Delete stored values for the selected SLOs and fetch them again from the source.'
+type FormMode = 'rescore' | 'refetch'
+
+const MODES: readonly (readonly [FormMode, string])[] = [
+  ['rescore', 'Re-score from stored data'],
+  ['refetch', 'Refetch from source'],
+]
+
 interface Props {
   scope: SloScopeResult
   columnEvalId: string
   assetName: string
+  /** The panel's evaluation name when it filters to exactly one; refetch is narrowed to it. */
+  evaluationName?: string
+  /** Re-score start date. */
   defaultFromDate?: string
+  /** Refetch start and end date: the selected column's day, so a refetch never defaults to the whole history. */
+  defaultRefetchDate?: string
   onComplete: () => void
 }
 
-export function ReEvaluateForm({ scope, columnEvalId, assetName, defaultFromDate, onComplete }: Props) {
+export function ReEvaluateForm({
+  scope,
+  columnEvalId,
+  assetName,
+  evaluationName,
+  defaultFromDate,
+  defaultRefetchDate,
+  onComplete,
+}: Props) {
+  const [mode, setMode] = useState<FormMode>('rescore')
   const [fromDate, setFromDate] = useState(defaultFromDate ?? '')
   const [fromBaseline, setFromBaseline] = useState(false)
   const [reEvalResult, setReEvalResult] = useState<ReEvaluateResponse | null>(null)
   const [pinConflict, setPinConflict] = useState<PinConflictInfo | null>(null)
   const [pickerOpen, setPickerOpen] = useState(false)
   const reEvaluate = useReEvaluate()
+  const fromDateId = useId()
+  const refetchAvailable = evaluationName !== undefined
+  const isRefetch = refetchAvailable && mode === 'refetch'
 
-  const canConfirm = (fromBaseline || !!fromDate) && scope.selected.size > 0
+  const sloNames = useMemo(() => [...scope.selected].sort(), [scope.selected])
+  const refetchForm = useRefetchForm({
+    assetName,
+    // Safe: `enabled` is false whenever evaluationName is undefined, so the empty string is never used.
+    evaluationName: evaluationName ?? '',
+    sloNames,
+    defaultRefetchDay: defaultRefetchDate,
+    enabled: isRefetch,
+  })
+
+  const canConfirmRescore = (fromBaseline || !!fromDate) && scope.selected.size > 0
+  const canConfirm = isRefetch ? refetchForm.canConfirm : canConfirmRescore
   void columnEvalId
 
   const submitReEval = useCallback(
@@ -67,8 +105,19 @@ export function ReEvaluateForm({ scope, columnEvalId, assetName, defaultFromDate
 
   const handleConfirm = useCallback(() => {
     if (!canConfirm) return
+    if (isRefetch) {
+      // A failed refetch keeps the form open; its error is rendered from refetchForm.error.
+      refetchForm.submit().then(onComplete).catch(() => undefined)
+      return
+    }
     submitReEval()
-  }, [canConfirm, submitReEval])
+  }, [canConfirm, isRefetch, refetchForm, onComplete, submitReEval])
+
+  const switchMode = (nextMode: FormMode) => {
+    setMode(nextMode)
+    refetchForm.setDeletionAcknowledged(false)
+    setPinConflict(null)
+  }
 
   if (reEvalResult) {
     return (
@@ -128,13 +177,29 @@ export function ReEvaluateForm({ scope, columnEvalId, assetName, defaultFromDate
 
   return (
     <ActionFormShell
-      actionDef={ACTION_DEF}
+      actionDef={isRefetch ? { ...ACTION_DEF, description: REFETCH_DESCRIPTION } : ACTION_DEF}
       onClose={onComplete}
       onConfirm={handleConfirm}
       canConfirm={canConfirm && !pinConflict}
-      isPending={reEvaluate.isPending}
+      isPending={reEvaluate.isPending || refetchForm.isPending}
       confirmLabel={'\u25B6 Run'}
     >
+      <div role='radiogroup' aria-label='Mode' className='flex flex-col gap-1'>
+        {MODES.filter(([value]) => value === 'rescore' || refetchAvailable).map(
+          ([value, label]) => (
+            <label key={value} className='flex items-center gap-2 text-sm text-foreground cursor-pointer'>
+              <input
+                type='radio'
+                name='re-evaluate-mode'
+                checked={(isRefetch ? 'refetch' : 'rescore') === value}
+                onChange={() => switchMode(value)}
+                className='accent-[var(--entity-sli)]'
+              />
+              {label}
+            </label>
+          ),
+        )}
+      </div>
       <SloScopeField scope={scope} onOpenPicker={() => setPickerOpen(true)} />
       <SloScopeModal
         open={pickerOpen}
@@ -146,7 +211,13 @@ export function ReEvaluateForm({ scope, columnEvalId, assetName, defaultFromDate
         }}
         onCancel={() => setPickerOpen(false)}
       />
-      {pinConflict && (
+      {isRefetch && refetchForm.error && (
+        <p className='text-xs text-fail bg-fail/10 border border-fail/20 rounded px-3 py-2'>
+          {refetchForm.error.message}
+        </p>
+      )}
+      {isRefetch && <RefetchModeFields form={refetchForm} />}
+      {!isRefetch && pinConflict && (
         <div className='text-xs border border-warning/30 bg-warning/5 rounded px-3 py-2 space-y-2'>
           <p className='text-warning'>
             Start date is before the baseline pin at{' '}
@@ -168,38 +239,45 @@ export function ReEvaluateForm({ scope, columnEvalId, assetName, defaultFromDate
           </div>
         </div>
       )}
-      {reEvaluate.isError && !pinConflict && (
+      {!isRefetch && reEvaluate.isError && !pinConflict && (
         <p className='text-xs text-fail bg-fail/10 border border-fail/20 rounded px-3 py-2'>
           {reEvaluate.error instanceof Error ? reEvaluate.error.message : 'Request failed'}
         </p>
       )}
-      <p className='text-xs text-muted-foreground'>
-        Re-score <span className='text-foreground'>{assetName}</span>
-      </p>
-      <label className='flex items-center gap-2 text-sm text-foreground cursor-pointer'>
-        <input
-          type='checkbox'
-          checked={fromBaseline}
-          onChange={e => {
-            setFromBaseline(e.target.checked)
-            setPinConflict(null)
-          }}
-          className='rounded border-border accent-[var(--entity-sli)]'
-        />
-        Run from last baseline
-      </label>
-      {!fromBaseline && (
-        <div>
-          <label className='block text-xs text-muted-foreground mb-1'>Start date</label>
-          <Input
-            type='datetime-local'
-            value={fromDate}
-            onChange={e => {
-              setFromDate(e.target.value)
+      {!isRefetch && (
+        <>
+        <p className='text-xs text-muted-foreground'>
+          Re-score <span className='text-foreground'>{assetName}</span>
+        </p>
+        <label className='flex items-center gap-2 text-sm text-foreground cursor-pointer'>
+          <input
+            type='checkbox'
+            checked={fromBaseline}
+            onChange={event => {
+              setFromBaseline(event.target.checked)
               setPinConflict(null)
             }}
+            className='rounded border-border accent-[var(--entity-sli)]'
           />
-        </div>
+          Run from last baseline
+        </label>
+        {!fromBaseline && (
+          <div>
+            <label htmlFor={fromDateId} className='block text-xs text-muted-foreground mb-1'>
+              Start date
+            </label>
+            <Input
+              id={fromDateId}
+              type='datetime-local'
+              value={fromDate}
+              onChange={event => {
+                setFromDate(event.target.value)
+                setPinConflict(null)
+              }}
+            />
+          </div>
+        )}
+        </>
       )}
     </ActionFormShell>
   )

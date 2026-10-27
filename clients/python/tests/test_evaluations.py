@@ -1,7 +1,12 @@
 """Tests for evaluation, annotation, annotation category, and trend endpoints."""
 
+import json
+from datetime import datetime
+
 import httpx
+import pytest
 import respx
+from pydantic import ValidationError
 from tropek_client.models import (
     AnnotationCategoryCreate,
     AnnotationCategoryRead,
@@ -18,6 +23,9 @@ from tropek_client.models import (
     InvalidateManyRequest,
     OverrideStatusManyRequest,
     PagedResponse,
+    RefetchRequest,
+    RefetchResponse,
+    RefetchRunRequest,
     RestoreManyRequest,
     TrendPoint,
 )
@@ -129,6 +137,55 @@ class TestEvaluations:
         )
         assert isinstance(result, EvaluateBatchResponse)
         assert b'"eval_name":"nightly"' in route.calls[0].request.content
+
+    @respx.mock
+    def test_refetch_posts_period_body(self, client):
+        route = respx.post(f'{BASE_URL}/evaluations/refetch').mock(
+            return_value=httpx.Response(
+                200,
+                json={
+                    'matched': 30,
+                    'refetched': 23,
+                    'run_ids': [UUID1],
+                    'dry_run': False,
+                },
+            )
+        )
+        body = RefetchRequest(
+            asset_name='a',
+            evaluation_name='daily',
+            from_=TIMESTAMP,
+            to=TIMESTAMP,
+            only_failed=True,
+            reason='outage',
+            requested_by='operator',
+        )
+        result = client.evaluations.refetch(body)
+        assert isinstance(result, RefetchResponse)
+        sent = json.loads(route.calls.last.request.content)
+        assert sent['from'] == '2026-03-01T00:00:00Z'
+        assert 'from_' not in sent
+        assert sent['only_failed'] is True
+        assert sent['requested_by'] == 'operator'
+
+    @respx.mock
+    def test_refetch_run(self, client):
+        route = respx.post(f'{BASE_URL}/evaluation-run/{UUID1}/refetch').mock(
+            return_value=httpx.Response(200, json={'matched': 2, 'refetched': 2, 'run_ids': [UUID2], 'dry_run': True})
+        )
+        result = client.evaluations.refetch_run(UUID1, RefetchRunRequest(dry_run=True))
+        assert isinstance(result, RefetchResponse)
+        sent = json.loads(route.calls.last.request.content)
+        assert sent == {'only_failed': False, 'dry_run': True}
+
+    def test_refetch_rejects_a_naive_datetime(self):
+        with pytest.raises(ValidationError, match='timezone'):
+            RefetchRequest(
+                asset_name='host-a',
+                evaluation_name='daily',
+                from_=datetime.fromisoformat('2026-01-01T00:00:00'),
+                to=TIMESTAMP,
+            )
 
 
 class TestBulkActions:

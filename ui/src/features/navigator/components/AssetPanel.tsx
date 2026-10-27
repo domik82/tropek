@@ -117,6 +117,11 @@ export function AssetPanel({ assetName, initialEvalId }: Props) {
     return [...evals].sort((a, b) => a.period.from.localeCompare(b.period.from))[0].period.from
   }, [evals])
 
+  const latestPeriodStart = useMemo(() => {
+    if (!evals.length) return undefined
+    return [...evals].sort((a, b) => b.period.from.localeCompare(a.period.from))[0].period.from
+  }, [evals])
+
   const effectiveEvalId = selectedEvalId ?? defaultEvalId
 
   // Parent evaluation_id (column key) — set directly from slot click,
@@ -552,7 +557,11 @@ export function AssetPanel({ assetName, initialEvalId }: Props) {
                   scope={scope}
                   columnEvalId={selectedColumnEvalId}
                   assetName={assetName}
+                  evaluationName={selectedNames?.length === 1 ? selectedNames[0] : undefined}
                   defaultFromDate={earliestPeriodStart?.slice(0, 16)}
+                  defaultRefetchDate={
+                    (selectedPeriodStart ?? latestPeriodStart)?.slice(0, 16)
+                  }
                   onComplete={() => setActiveAction(null)}
                 />
               )}

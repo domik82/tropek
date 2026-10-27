@@ -6,6 +6,17 @@
 // lib/ must not import from features/, so we use an inline structural type here.
 // The shapes are identical — TypeScript's structural typing ensures compatibility.
 
+// Mirrors Omit<RefetchInput, 'dryRun'> in features/evaluations/domain.ts (lib/ cannot import features/).
+type RefetchPreviewInput = {
+  assetName: string
+  evaluationName: string
+  sloNames: string[]
+  from: string
+  to: string
+  onlyFailed: boolean
+  reason: string | null
+}
+
 type EvalFilters = {
   group_name?: string
   asset_name?: string
@@ -35,6 +46,7 @@ export const evaluationKeys = {
     ['evaluation-names', scope] as const,
   columnAnnotations: (evaluationId: string) =>
     [...evaluationKeys.all, 'column-annotations', evaluationId] as const,
+  refetchPreview: (input: RefetchPreviewInput | null) => ['refetch-preview', input] as const,
 }
 
 export const assetKeys = {

@@ -53,6 +53,11 @@ from tropek.modules.quality_gate.schemas.re_evaluation import (
     ReEvalResultItem,
     ReEvaluateResponse,
 )
+from tropek.modules.quality_gate.schemas.refetch import (
+    RefetchRequest,
+    RefetchResponse,
+    RefetchRunRequest,
+)
 from tropek.modules.quality_gate.schemas.trend import (
     TREND_FRAGMENT_SCHEMA_VERSION,
     SloTrendsResponse,
@@ -107,6 +112,9 @@ __all__ = [
     'PinBaselineRequest',
     'ReEvalResultItem',
     'ReEvaluateResponse',
+    'RefetchRequest',
+    'RefetchResponse',
+    'RefetchRunRequest',
     'RestoreManyRequest',
     'RestoreOverrideManyRequest',
     'SloTrendsResponse',

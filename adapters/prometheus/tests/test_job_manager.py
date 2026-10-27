@@ -30,15 +30,17 @@ async def test_submit_job(manager: JobManager):
 
 
 @pytest.mark.asyncio
-async def test_submit_respects_max_timeout(manager: JobManager):
+async def test_submit_caps_timeout_to_max(manager: JobManager):
     result = await manager.submit(
         queries={'cpu': {'mode': 'raw', 'query': 'x'}},
         variables={},
         timeout_seconds=9999,
     )
-    # Should be capped to max_job_timeout_seconds (600)
+
+    assert result['timeout_seconds'] == Settings().max_job_timeout_seconds
     status = await manager.get_status(result['job_id'])
     assert status is not None
+    assert status['timeout_seconds'] == Settings().max_job_timeout_seconds
 
 
 @pytest.mark.asyncio
@@ -73,3 +75,15 @@ async def test_cancel_job(manager: JobManager):
     )
     cancelled = await manager.cancel(result['job_id'])
     assert cancelled is True
+
+
+@pytest.mark.asyncio
+async def test_cancel_job_applies_retention_ttl_to_its_keys(manager: JobManager):
+    submitted = await manager.submit({'cpu': {'mode': 'raw', 'query': 'x'}}, {}, None, 's', 'e')
+    job_id = submitted['job_id']
+
+    assert await manager.cancel(job_id) is True
+
+    repo = manager._repo
+    for suffix in ((), ('queries',)):
+        assert await repo._r.ttl(repo._key('job', job_id, *suffix)) > 0

@@ -72,6 +72,19 @@ class EvaluationRunRepository:
             update(EvaluationRun).where(EvaluationRun.id == run_id).values(status=EvaluationStatus.RUNNING)
         )
 
+    async def mark_pending(self, run_id: uuid.UUID) -> None:
+        """Return a run to pending so its refetched children can finalize it again.
+
+        The run has no completion timestamp. Its aggregate ``result`` and points are cleared so the
+        overall verdict does not show stale values while children are pending; ``finalize_if_all_done``
+        recomputes them once every child is terminal.
+        """
+        await self._session.execute(
+            update(EvaluationRun)
+            .where(EvaluationRun.id == run_id)
+            .values(status=EvaluationStatus.PENDING, result=None, achieved_points=None, total_points=None)
+        )
+
     async def finalize_if_all_done(self, run_id: uuid.UUID) -> EvaluationRun | None:
         """Finalize parent run by aggregating child results.
 

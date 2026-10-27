@@ -358,6 +358,18 @@ def test_build_detail_sli_metadata_from_job_stats() -> None:
     assert detail.sli_metadata['cpu'].missing_pct == 5.0
 
 
+def test_build_detail_accepts_metadata_without_sample_fields() -> None:
+    """An adapter whose fetch failed may store only the chunk counts; the detail must still build."""
+    ev = _make_evaluation(
+        job_stats={'sli_metadata': {'cpu': {'mode': 'aggregated', 'chunks_failed': 1, 'chunks_total': 6}}},
+    )
+    detail = build_detail(ev)
+    assert detail.sli_metadata is not None
+    assert detail.sli_metadata['cpu'].chunks_failed == 1
+    assert detail.sli_metadata['cpu'].expected_samples is None
+    assert detail.sli_metadata['cpu'].missing_pct is None
+
+
 def test_build_detail_sli_metadata_none_when_absent() -> None:
     """sli_metadata is None when job_stats has no sli_metadata key."""
     ev = _make_evaluation()

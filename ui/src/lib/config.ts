@@ -8,6 +8,11 @@ interface UIConfig {
   dataStartDate: string
   /** Pixels before the viewport at which a lazy trend group starts fetching. */
   trendPrefetchMarginPx: number
+  /**
+   * Quiet time after the last refetch-form edit before the dry-run preview is requested.
+   * UI-side default only: not served by /api/config/ui, like heatmapSlowThresholdDays.
+   */
+  refetchPreviewDebounceMs: number
 }
 
 const DEFAULTS: UIConfig = {
@@ -17,6 +22,7 @@ const DEFAULTS: UIConfig = {
   heatmapSlowThresholdDays: 30,
   dataStartDate: '2024-01-01',
   trendPrefetchMarginPx: 200,
+  refetchPreviewDebounceMs: 400,
 }
 
 let config: UIConfig = DEFAULTS

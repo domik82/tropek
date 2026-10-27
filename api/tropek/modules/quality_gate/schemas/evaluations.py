@@ -24,12 +24,16 @@ class AssetSnapshot(BaseModel):
 
 
 class SliMetadata(BaseModel):
-    """Per-metric aggregation fidelity info for a single indicator."""
+    """Per-metric aggregation fidelity info for a single indicator.
+
+    The sample fields are optional: an adapter that failed to fetch a metric (or an older or third-party
+    adapter) may report only ``mode`` and ``chunks_failed``, and that must not break the detail endpoint.
+    """
 
     mode: Literal['aggregated']
-    expected_samples: int
-    actual_samples: int
-    missing_pct: float
+    expected_samples: int | None = None
+    actual_samples: int | None = None
+    missing_pct: float | None = None
     chunks_failed: int
 
 

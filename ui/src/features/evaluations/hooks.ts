@@ -1,7 +1,7 @@
 // src/features/evaluations/hooks.ts
 // Custom hooks = service layer. Components never call fetch directly — they call these hooks.
 
-import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient, keepPreviousData, type QueryClient } from '@tanstack/react-query'
 import { useState, useEffect, useRef, useMemo } from 'react'
 import { evaluationKeys } from '@/lib/queryKeys'
 import {
@@ -19,6 +19,7 @@ import {
   overrideStatus,
   pinBaseline,
   reEvaluate,
+  refetch,
 } from './api'
 import { useTimeRange } from '@/lib/time-range-context'
 import type {
@@ -27,6 +28,7 @@ import type {
   EvaluationFilters,
   OverrideStatusInput,
   ReEvaluateInput,
+  RefetchInput,
 } from './domain'
 import type { ColumnDef } from './ui-types'
 import { FIXED_COLS, DEFAULT_VISIBLE_KEYS } from './constants'
@@ -114,39 +116,39 @@ export function useSloTrends(
 // ── Mutations ─────────────────────────────────────────────────────────────────
 
 export function useAddAnnotation(evalId: string) {
-  const qc = useQueryClient()
+  const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (payload: AnnotationCreateInput) =>
       addAnnotation(evalId, payload),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: evaluationKeys.detail(evalId) })
-      qc.invalidateQueries({ queryKey: [...evaluationKeys.all, 'column-annotations'] })
+      queryClient.invalidateQueries({ queryKey: evaluationKeys.detail(evalId) })
+      queryClient.invalidateQueries({ queryKey: [...evaluationKeys.all, 'column-annotations'] })
       // Trend charts overlay annotations via useTrendAnnotations — refetch so
       // the new note appears immediately alongside the existing ones.
-      qc.invalidateQueries({ queryKey: ['trend-annotations'] })
+      queryClient.invalidateQueries({ queryKey: ['trend-annotations'] })
       // Metric-heatmap carries has_notes per column — refetch so a newly added
       // note makes its indicator appear immediately.
-      qc.invalidateQueries({ queryKey: evaluationKeys.allHeatmaps })
+      queryClient.invalidateQueries({ queryKey: evaluationKeys.allHeatmaps })
     },
   })
 }
 
 export function useAddRunAnnotation(runId: string) {
-  const qc = useQueryClient()
+  const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (payload: AnnotationCreateInput) =>
       addRunAnnotation(runId, payload),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: evaluationKeys.detail(runId) })
-      qc.invalidateQueries({ queryKey: [...evaluationKeys.all, 'column-annotations'] })
-      qc.invalidateQueries({ queryKey: ['trend-annotations'] })
-      qc.invalidateQueries({ queryKey: evaluationKeys.allHeatmaps })
+      queryClient.invalidateQueries({ queryKey: evaluationKeys.detail(runId) })
+      queryClient.invalidateQueries({ queryKey: [...evaluationKeys.all, 'column-annotations'] })
+      queryClient.invalidateQueries({ queryKey: ['trend-annotations'] })
+      queryClient.invalidateQueries({ queryKey: evaluationKeys.allHeatmaps })
     },
   })
 }
 
 export function useHideAnnotation(evalId: string) {
-  const qc = useQueryClient()
+  const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (payload: { annotationId: string; reason: string; author?: string }) =>
       hideAnnotation(evalId, payload.annotationId, {
@@ -154,87 +156,111 @@ export function useHideAnnotation(evalId: string) {
         author: payload.author,
       }),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: evaluationKeys.detail(evalId) })
-      qc.invalidateQueries({ queryKey: evaluationKeys.all })
-      qc.invalidateQueries({ queryKey: [...evaluationKeys.all, 'column-annotations'] })
-      qc.invalidateQueries({ queryKey: ['trend-annotations'] })
+      queryClient.invalidateQueries({ queryKey: evaluationKeys.detail(evalId) })
+      queryClient.invalidateQueries({ queryKey: evaluationKeys.all })
+      queryClient.invalidateQueries({ queryKey: [...evaluationKeys.all, 'column-annotations'] })
+      queryClient.invalidateQueries({ queryKey: ['trend-annotations'] })
       // Hiding the last non-hidden annotation on a column flips has_notes back
       // to false — refetch the heatmap so the indicator disappears immediately.
-      qc.invalidateQueries({ queryKey: evaluationKeys.allHeatmaps })
+      queryClient.invalidateQueries({ queryKey: evaluationKeys.allHeatmaps })
     },
   })
 }
 
 export function useInvalidateEvaluation(evalId: string) {
-  const qc = useQueryClient()
+  const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (payload: { note: string; author: string }) =>
       invalidateEvaluation(evalId, payload.note),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: evaluationKeys.detail(evalId) })
-      qc.invalidateQueries({ queryKey: evaluationKeys.all })
-      qc.invalidateQueries({ queryKey: evaluationKeys.allNames })
-      qc.invalidateQueries({ queryKey: evaluationKeys.allHeatmaps })
-      qc.invalidateQueries({ queryKey: evaluationKeys.allTrends })
-      qc.invalidateQueries({ queryKey: evaluationKeys.allSloTrends })
+      queryClient.invalidateQueries({ queryKey: evaluationKeys.detail(evalId) })
+      queryClient.invalidateQueries({ queryKey: evaluationKeys.all })
+      queryClient.invalidateQueries({ queryKey: evaluationKeys.allNames })
+      queryClient.invalidateQueries({ queryKey: evaluationKeys.allHeatmaps })
+      queryClient.invalidateQueries({ queryKey: evaluationKeys.allTrends })
+      queryClient.invalidateQueries({ queryKey: evaluationKeys.allSloTrends })
     },
   })
 }
 
 export function useRestoreEvaluation(evalId: string) {
-  const qc = useQueryClient()
+  const queryClient = useQueryClient()
   return useMutation({
     mutationFn: () => restoreEvaluation(evalId),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: evaluationKeys.detail(evalId) })
-      qc.invalidateQueries({ queryKey: evaluationKeys.all })
-      qc.invalidateQueries({ queryKey: evaluationKeys.allNames })
-      qc.invalidateQueries({ queryKey: evaluationKeys.allHeatmaps })
-      qc.invalidateQueries({ queryKey: evaluationKeys.allTrends })
-      qc.invalidateQueries({ queryKey: evaluationKeys.allSloTrends })
+      queryClient.invalidateQueries({ queryKey: evaluationKeys.detail(evalId) })
+      queryClient.invalidateQueries({ queryKey: evaluationKeys.all })
+      queryClient.invalidateQueries({ queryKey: evaluationKeys.allNames })
+      queryClient.invalidateQueries({ queryKey: evaluationKeys.allHeatmaps })
+      queryClient.invalidateQueries({ queryKey: evaluationKeys.allTrends })
+      queryClient.invalidateQueries({ queryKey: evaluationKeys.allSloTrends })
     },
   })
 }
 
 export function useOverrideStatus(evalId: string) {
-  const qc = useQueryClient()
+  const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (input: OverrideStatusInput) => overrideStatus(evalId, input),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: evaluationKeys.detail(evalId) })
-      qc.invalidateQueries({ queryKey: evaluationKeys.all })
-      qc.invalidateQueries({ queryKey: evaluationKeys.allHeatmaps })
-      qc.invalidateQueries({ queryKey: evaluationKeys.allTrends })
-      qc.invalidateQueries({ queryKey: evaluationKeys.allSloTrends })
+      queryClient.invalidateQueries({ queryKey: evaluationKeys.detail(evalId) })
+      queryClient.invalidateQueries({ queryKey: evaluationKeys.all })
+      queryClient.invalidateQueries({ queryKey: evaluationKeys.allHeatmaps })
+      queryClient.invalidateQueries({ queryKey: evaluationKeys.allTrends })
+      queryClient.invalidateQueries({ queryKey: evaluationKeys.allSloTrends })
     },
   })
 }
 
 export function usePinBaseline(evalId: string) {
-  const qc = useQueryClient()
+  const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (payload: { reason: string; author: string }) =>
       pinBaseline(evalId, payload),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: evaluationKeys.detail(evalId) })
-      qc.invalidateQueries({ queryKey: evaluationKeys.all })
-      qc.invalidateQueries({ queryKey: evaluationKeys.allTrends })
-      qc.invalidateQueries({ queryKey: evaluationKeys.allSloTrends })
+      queryClient.invalidateQueries({ queryKey: evaluationKeys.detail(evalId) })
+      queryClient.invalidateQueries({ queryKey: evaluationKeys.all })
+      queryClient.invalidateQueries({ queryKey: evaluationKeys.allTrends })
+      queryClient.invalidateQueries({ queryKey: evaluationKeys.allSloTrends })
     },
   })
 }
 
+/** Refreshes every view that shows evaluation results, after a bulk re-score or refetch. */
+export function invalidateEvaluationViews(queryClient: QueryClient): void {
+  queryClient.invalidateQueries({ queryKey: evaluationKeys.all })
+  queryClient.invalidateQueries({ queryKey: evaluationKeys.allNames })
+  queryClient.invalidateQueries({ queryKey: evaluationKeys.allHeatmaps })
+  queryClient.invalidateQueries({ queryKey: evaluationKeys.allTrends })
+  queryClient.invalidateQueries({ queryKey: evaluationKeys.allSloTrends })
+}
+
 export function useReEvaluate() {
-  const qc = useQueryClient()
+  const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (input: ReEvaluateInput) => reEvaluate(input),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: evaluationKeys.all })
-      qc.invalidateQueries({ queryKey: evaluationKeys.allNames })
-      qc.invalidateQueries({ queryKey: evaluationKeys.allHeatmaps })
-      qc.invalidateQueries({ queryKey: evaluationKeys.allTrends })
-      qc.invalidateQueries({ queryKey: evaluationKeys.allSloTrends })
+    onSuccess: () => invalidateEvaluationViews(queryClient),
+  })
+}
+
+export function useRefetch() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (input: RefetchInput) => refetch(input),
+    onSuccess: () => invalidateEvaluationViews(queryClient),
+  })
+}
+
+/** Dry-run preview of what a refetch would touch; disabled while `input` is null. */
+export function useRefetchPreview(input: Omit<RefetchInput, 'dryRun'> | null) {
+  return useQuery({
+    queryKey: evaluationKeys.refetchPreview(input),
+    queryFn: () => {
+      if (input === null) throw new Error('refetch preview requested without an input')
+      return refetch({ ...input, dryRun: true })
     },
+    enabled: input !== null,
+    staleTime: 0,
   })
 }
 

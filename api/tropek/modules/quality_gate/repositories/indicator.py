@@ -93,3 +93,10 @@ class IndicatorRepository:
             delete(IndicatorResultRow).where(IndicatorResultRow.slo_evaluation_id == slo_evaluation_id)
         )
         await self._session.flush()
+
+    async def delete_for_evaluations(self, slo_evaluation_ids: list[uuid.UUID]) -> None:
+        """Delete the indicator rows of several SLO evaluations in one statement (used by refetch)."""
+        await self._session.execute(
+            delete(IndicatorResultRow).where(IndicatorResultRow.slo_evaluation_id.in_(slo_evaluation_ids))
+        )
+        await self._session.flush()

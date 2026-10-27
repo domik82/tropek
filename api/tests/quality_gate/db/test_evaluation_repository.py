@@ -8,10 +8,11 @@ from __future__ import annotations
 
 import uuid
 from datetime import UTC, datetime
+from typing import Any
 
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
-from tropek.db.models import Asset, AssetType
+from tropek.db.models import Asset, AssetType, SLOEvaluation
 from tropek.modules.quality_gate.repositories.annotation import AnnotationRepository
 from tropek.modules.quality_gate.repositories.baseline import BaselineRepository
 from tropek.modules.quality_gate.repositories.evaluation import EvaluationRepository
@@ -692,3 +693,76 @@ async def test_override_double_apply_preserves_original(db_session: AsyncSession
     assert ev2.original_result == 'fail'  # NOT "pass"
     assert ev2.result == 'warning'
     assert ev2.override_author == 'bob'
+
+
+async def _create_running_with_stats(db_session: AsyncSession, job_stats: dict[str, Any]) -> uuid.UUID:
+    """Create an evaluation holding ``job_stats``, then claim it as a worker would; returns its id."""
+    asset_id = await _create_asset(db_session)
+    repo = EvaluationRepository(db_session)
+    ev = await repo.create_pending(
+        EvalCreateParams(
+            evaluation_id=uuid.uuid4(),
+            evaluation_name='retry-test',
+            period_start=_START,
+            period_end=_END,
+            ingestion_mode='pull',
+            asset_snapshot=_make_snapshot(),
+            variables={},
+            asset_id=asset_id,
+            slo_name='test-slo',
+        )
+    )
+    eval_id = ev.id
+    ev.job_stats = job_stats
+    await db_session.flush()
+    await repo.mark_running(eval_id, 'worker-1')
+    return eval_id
+
+
+async def _reload(db_session: AsyncSession, eval_id: uuid.UUID) -> SLOEvaluation:
+    """Re-read the row from the database rather than the session's identity map."""
+    db_session.expire_all()
+    fetched = await EvaluationRepository(db_session).get_by_id(eval_id)
+    assert fetched is not None
+    return fetched
+
+
+_EARLIER_ATTEMPT = {'attempt': 1, 'cause': 'adapter returned 504', 'status': 504, 'elapsed_s': 1.5, 'at': 'a'}
+_LATER_ATTEMPT = {'attempt': 2, 'cause': 'ConnectError', 'status': None, 'elapsed_s': 0.2, 'at': 'b'}
+
+
+@pytest.mark.integration
+async def test_requeue_stuck_preserves_fetch_attempts(db_session: AsyncSession) -> None:
+    """The watchdog's requeue merges its counter instead of wiping the fetch-attempt history."""
+    eval_id = await _create_running_with_stats(db_session, {'fetch_attempts': [_EARLIER_ATTEMPT]})
+
+    await EvaluationRepository(db_session).requeue_stuck(eval_id, stuck_job_retries=1)
+
+    fetched = await _reload(db_session, eval_id)
+    assert fetched.status == 'pending'
+    assert fetched.started_at is None
+    assert fetched.job_stats == {
+        'fetch_attempts': [_EARLIER_ATTEMPT],
+        'stuck_job_retries': 1,
+        'worker_id': 'worker-1',
+    }
+
+
+@pytest.mark.integration
+async def test_mark_pending_retry_merges_job_stats_and_clears_started_at(db_session: AsyncSession) -> None:
+    """A retry appends the attempt, keeps the watchdog counter and returns the row to pending."""
+    eval_id = await _create_running_with_stats(
+        db_session, {'stuck_job_retries': 1, 'fetch_attempts': [_EARLIER_ATTEMPT]}
+    )
+    assert (await _reload(db_session, eval_id)).started_at is not None
+
+    await EvaluationRepository(db_session).mark_pending_retry(eval_id, attempt_record=_LATER_ATTEMPT)
+
+    fetched = await _reload(db_session, eval_id)
+    assert fetched.status == 'pending'
+    assert fetched.started_at is None
+    assert fetched.job_stats == {
+        'stuck_job_retries': 1,
+        'worker_id': 'worker-1',
+        'fetch_attempts': [_EARLIER_ATTEMPT, _LATER_ATTEMPT],
+    }

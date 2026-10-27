@@ -22,6 +22,12 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 logger = logging.getLogger(__name__)
 
+ADAPTER_BUDGET_MARGIN_SECONDS = 30
+ADAPTER_BUDGET_GRACE_SECONDS = 5  # the adapter's sync /query waits budget + this before answering 504
+ADAPTER_MAX_JOB_TIMEOUT_SECONDS = 600  # the adapter's max_job_timeout_seconds; a larger budget is capped there
+# Seconds of the job timeout kept free of adapter attempts, for evaluation, writes and change points.
+JOB_TIMEOUT_MARGIN_SECONDS = 60
+
 
 def _load_yaml() -> dict[str, Any]:
     path = Path(os.environ.get('TK_CONFIG_PATH', 'config.yaml'))
@@ -116,27 +122,38 @@ class QueueSettings(BaseSettings):
     max_jobs: int = _yaml.get('queue', {}).get('max_jobs', 10)
     max_retries: int = _yaml.get('queue', {}).get('max_retries', 3)
     retry_delay_seconds: int = _yaml.get('queue', {}).get('retry_delay_seconds', 10)
-    job_timeout_seconds: int = _yaml.get('queue', {}).get('job_timeout_seconds', 120)
+    job_timeout_seconds: int = _yaml.get('queue', {}).get('job_timeout_seconds', 400)
     keep_result_seconds: int = _yaml.get('queue', {}).get('keep_result_seconds', 3600)
     finalize_sweeper_interval_seconds: int = _yaml.get('queue', {}).get('finalize_sweeper_interval_seconds', 30)
     finalize_sweeper_batch_limit: int = _yaml.get('queue', {}).get('finalize_sweeper_batch_limit', 100)
 
+    @field_validator('max_retries')
+    @classmethod
+    def _validate_max_retries(cls, max_retries: int) -> int:
+        if max_retries < 0:
+            msg = f'max_retries must be >= 0, got {max_retries}'
+            raise ValueError(msg)
+        return max_retries
+
     @field_validator('finalize_sweeper_interval_seconds')
     @classmethod
-    def _validate_sweeper_interval(cls, v: int) -> int:
+    def _validate_sweeper_interval(cls, interval_seconds: int) -> int:
         allowed = {5, 10, 15, 20, 30, 60}
-        if v not in allowed:
-            msg = f'finalize_sweeper_interval_seconds must be one of {sorted(allowed)} (divisors of 60), got {v}'
+        if interval_seconds not in allowed:
+            msg = (
+                f'finalize_sweeper_interval_seconds must be one of {sorted(allowed)} (divisors of 60), '
+                f'got {interval_seconds}'
+            )
             raise ValueError(msg)
-        return v
+        return interval_seconds
 
     @field_validator('finalize_sweeper_batch_limit')
     @classmethod
-    def _validate_sweeper_batch_limit(cls, v: int) -> int:
-        if v < 1:
-            msg = f'finalize_sweeper_batch_limit must be >= 1, got {v}'
+    def _validate_sweeper_batch_limit(cls, batch_limit: int) -> int:
+        if batch_limit < 1:
+            msg = f'finalize_sweeper_batch_limit must be >= 1, got {batch_limit}'
             raise ValueError(msg)
-        return v
+        return batch_limit
 
 
 _queue_settings: QueueSettings = QueueSettings()
@@ -145,11 +162,11 @@ _queue_settings: QueueSettings = QueueSettings()
 class ReliabilitySettings(BaseSettings):
     """Timeout, retry, and watchdog settings for evaluation job reliability."""
 
-    adapter_timeout_seconds: int = _yaml.get('reliability', {}).get('adapter_timeout_seconds', 90)
+    adapter_timeout_seconds: int = _yaml.get('reliability', {}).get('adapter_timeout_seconds', 330)
     adapter_retry_attempts: int = _yaml.get('reliability', {}).get('adapter_retry_attempts', 3)
     adapter_retry_backoff_seconds: int = _yaml.get('reliability', {}).get('adapter_retry_backoff_seconds', 2)
     watchdog_interval_seconds: int = _yaml.get('reliability', {}).get('watchdog_interval_seconds', 60)
-    stuck_job_threshold_seconds: int = _yaml.get('reliability', {}).get('stuck_job_threshold_seconds', 180)
+    stuck_job_threshold_seconds: int = _yaml.get('reliability', {}).get('stuck_job_threshold_seconds', 600)
     max_stuck_job_retries: int = _yaml.get('reliability', {}).get('max_stuck_job_retries', 3)
     event_loop_lag_check_interval_seconds: float = _yaml.get('reliability', {}).get(
         'event_loop_lag_check_interval_seconds', 0.5
@@ -160,20 +177,82 @@ class ReliabilitySettings(BaseSettings):
 
     @field_validator('watchdog_interval_seconds')
     @classmethod
-    def _validate_watchdog_interval(cls, v: int) -> int:
+    def _validate_watchdog_interval(cls, interval_seconds: int) -> int:
         allowed = {5, 10, 15, 20, 30, 60}
-        if v not in allowed:
-            msg = f'watchdog_interval_seconds must be one of {sorted(allowed)} (divisors of 60), got {v}'
+        if interval_seconds not in allowed:
+            msg = f'watchdog_interval_seconds must be one of {sorted(allowed)} (divisors of 60), got {interval_seconds}'
             raise ValueError(msg)
-        return v
+        return interval_seconds
+
+    @field_validator('adapter_retry_attempts')
+    @classmethod
+    def _validate_adapter_retry_attempts(cls, attempts: int) -> int:
+        if attempts < 1:
+            msg = f'adapter_retry_attempts must be >= 1, got {attempts}'
+            raise ValueError(msg)
+        return attempts
+
+    @field_validator('adapter_retry_backoff_seconds')
+    @classmethod
+    def _validate_adapter_retry_backoff_seconds(cls, backoff_seconds: int) -> int:
+        if backoff_seconds < 0:
+            msg = f'adapter_retry_backoff_seconds must be >= 0, got {backoff_seconds}'
+            raise ValueError(msg)
+        return backoff_seconds
 
     @field_validator('max_stuck_job_retries')
     @classmethod
-    def _validate_max_stuck_job_retries(cls, v: int) -> int:
-        if v < 1:
-            msg = f'max_stuck_job_retries must be >= 1, got {v}'
+    def _validate_max_stuck_job_retries(cls, max_stuck_job_retries: int) -> int:
+        if max_stuck_job_retries < 1:
+            msg = f'max_stuck_job_retries must be >= 1, got {max_stuck_job_retries}'
             raise ValueError(msg)
-        return v
+        return max_stuck_job_retries
+
+    @property
+    def adapter_budget_seconds(self) -> int:
+        """Budget sent to the adapter as ``timeout_seconds``: the HTTP timeout minus a margin, floored."""
+        return max(ADAPTER_BUDGET_MARGIN_SECONDS, self.adapter_timeout_seconds - ADAPTER_BUDGET_MARGIN_SECONDS)
+
+
+def validate_timeout_chain(reliability: ReliabilitySettings, queue: QueueSettings) -> None:
+    """Refuse a settings combination in which one hop gives up before the hop it waits on.
+
+    The chain is: adapter budget + adapter grace < worker HTTP timeout, worker HTTP timeout + 60 s
+    < job timeout (one attempt plus evaluation work), job timeout < stuck-job threshold.
+
+    Args:
+        reliability: Reliability settings (adapter HTTP timeout, stuck-job threshold).
+        queue: Queue settings (job timeout).
+
+    Raises:
+        ValueError: If any hop of the chain is not larger than the hop it waits on.
+    """
+    adapter_timeout_floor = ADAPTER_BUDGET_MARGIN_SECONDS + ADAPTER_BUDGET_GRACE_SECONDS
+    if reliability.adapter_timeout_seconds <= adapter_timeout_floor:
+        msg = (
+            f'reliability.adapter_timeout_seconds must exceed {adapter_timeout_floor} '
+            f'(got {reliability.adapter_timeout_seconds})'
+        )
+        raise ValueError(msg)
+    if reliability.adapter_budget_seconds > ADAPTER_MAX_JOB_TIMEOUT_SECONDS:
+        msg = (
+            f'adapter budget {reliability.adapter_budget_seconds} exceeds the adapter maximum '
+            f'{ADAPTER_MAX_JOB_TIMEOUT_SECONDS}; lower reliability.adapter_timeout_seconds'
+        )
+        raise ValueError(msg)
+    # Strict: at exactly +60 the client's deadline equals one attempt, so any elapsed time refuses every attempt.
+    if queue.job_timeout_seconds <= reliability.adapter_timeout_seconds + JOB_TIMEOUT_MARGIN_SECONDS:
+        msg = (
+            f'queue.job_timeout_seconds must exceed adapter_timeout_seconds by more than {JOB_TIMEOUT_MARGIN_SECONDS} '
+            f'(got {queue.job_timeout_seconds} and {reliability.adapter_timeout_seconds})'
+        )
+        raise ValueError(msg)
+    if reliability.stuck_job_threshold_seconds <= queue.job_timeout_seconds:
+        msg = (
+            f'reliability.stuck_job_threshold_seconds must exceed job_timeout_seconds '
+            f'({reliability.stuck_job_threshold_seconds} <= {queue.job_timeout_seconds})'
+        )
+        raise ValueError(msg)
 
 
 class QualityGateInvalidateSettings(BaseSettings):
@@ -185,19 +264,19 @@ class QualityGateInvalidateSettings(BaseSettings):
 
     @field_validator('max_retries')
     @classmethod
-    def _validate_max_retries(cls, v: int) -> int:
-        if v < 0:
-            msg = f'max_retries must be >= 0, got {v}'
+    def _validate_max_retries(cls, max_retries: int) -> int:
+        if max_retries < 0:
+            msg = f'max_retries must be >= 0, got {max_retries}'
             raise ValueError(msg)
-        return v
+        return max_retries
 
     @field_validator('base_backoff_ms', 'max_backoff_ms')
     @classmethod
-    def _validate_backoff(cls, v: int) -> int:
-        if v <= 0:
-            msg = f'backoff milliseconds must be > 0, got {v}'
+    def _validate_backoff(cls, backoff_ms: int) -> int:
+        if backoff_ms <= 0:
+            msg = f'backoff milliseconds must be > 0, got {backoff_ms}'
             raise ValueError(msg)
-        return v
+        return backoff_ms
 
 
 class QualityGateSettings(BaseSettings):
@@ -269,6 +348,7 @@ class Settings(BaseSettings):
         Either TK_DATABASE_URL or TK_DB_PASSWORD must be set.
         Either TK_REDIS_URL or TK_REDIS_PASSWORD must be set.
         TK_SECRET_KEY is always required.
+        The worker timeout chain must be consistent (see ``validate_timeout_chain``).
         """
         missing = []
         if not os.environ.get('TK_DATABASE_URL') and not self.database.password.get_secret_value():
@@ -279,6 +359,7 @@ class Settings(BaseSettings):
             missing.append('TK_SECRET_KEY')
         if missing:
             raise RuntimeError(f'required secrets not set: {", ".join(missing)}')
+        validate_timeout_chain(self.reliability, self.queue)
 
     @property
     def database(self) -> DatabaseSettings:

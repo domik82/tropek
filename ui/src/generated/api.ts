@@ -908,6 +908,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/evaluation-run/{run_id}/refetch": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Refetch Evaluation Run
+         * @description Reset one evaluation run's SLO evaluations and fetch them again from the source.
+         */
+        post: operations["refetch_evaluation_run_evaluation_run__run_id__refetch_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/evaluation/{eval_id}": {
         parameters: {
             query?: never;
@@ -1393,6 +1413,26 @@ export interface paths {
          * @description Re-evaluate from the period_start of the given evaluation (new split endpoint).
          */
         post: operations["re_evaluate_from_evaluation_endpoint_evaluations_re_evaluate_from_evaluation__evaluation_id__post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/evaluations/refetch": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Refetch Evaluations
+         * @description Reset an asset's SLO evaluations in a period and fetch them again from the source.
+         */
+        post: operations["refetch_evaluations_evaluations_refetch_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3911,6 +3951,78 @@ export interface components {
             slo_version_used: number | null;
         };
         /**
+         * RefetchRequest
+         * @description Request body for POST /evaluations/refetch.
+         *
+         *     ``from`` and ``to`` are inclusive on ``period_start`` and must carry a UTC offset.
+         */
+        RefetchRequest: {
+            /** Asset Name */
+            asset_name: string;
+            /**
+             * Dry Run
+             * @default false
+             */
+            dry_run: boolean;
+            /** Evaluation Name */
+            evaluation_name: string;
+            /**
+             * From
+             * Format: date-time
+             */
+            from: string;
+            /**
+             * Only Failed
+             * @default false
+             */
+            only_failed: boolean;
+            /** Reason */
+            reason?: string | null;
+            /** Requested By */
+            requested_by?: string | null;
+            /** Slo Names */
+            slo_names?: string[] | null;
+            /**
+             * To
+             * Format: date-time
+             */
+            to: string;
+        };
+        /**
+         * RefetchResponse
+         * @description Response body for both refetch endpoints.
+         */
+        RefetchResponse: {
+            /** Dry Run */
+            dry_run: boolean;
+            /** Matched */
+            matched: number;
+            /** Refetched */
+            refetched: number;
+            /** Run Ids */
+            run_ids: string[];
+        };
+        /**
+         * RefetchRunRequest
+         * @description Request body for POST /evaluation-run/{run_id}/refetch.
+         */
+        RefetchRunRequest: {
+            /**
+             * Dry Run
+             * @default false
+             */
+            dry_run: boolean;
+            /**
+             * Only Failed
+             * @default false
+             */
+            only_failed: boolean;
+            /** Reason */
+            reason?: string | null;
+            /** Requested By */
+            requested_by?: string | null;
+        };
+        /**
          * RestoreManyRequest
          * @description Request body for PATCH /evaluations/restore.
          */
@@ -4499,16 +4611,19 @@ export interface components {
         /**
          * SliMetadata
          * @description Per-metric aggregation fidelity info for a single indicator.
+         *
+         *     The sample fields are optional: an adapter that failed to fetch a metric (or an older or third-party
+         *     adapter) may report only ``mode`` and ``chunks_failed``, and that must not break the detail endpoint.
          */
         SliMetadata: {
             /** Actual Samples */
-            actual_samples: number;
+            actual_samples?: number | null;
             /** Chunks Failed */
             chunks_failed: number;
             /** Expected Samples */
-            expected_samples: number;
+            expected_samples?: number | null;
             /** Missing Pct */
-            missing_pct: number;
+            missing_pct?: number | null;
             /**
              * Mode
              * @constant
@@ -7583,6 +7698,59 @@ export interface operations {
             };
         };
     };
+    refetch_evaluation_run_evaluation_run__run_id__refetch_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RefetchRunRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RefetchResponse"];
+                };
+            };
+            /** @description Error */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_evaluation_singular_evaluation__eval_id__get: {
         parameters: {
             query?: never;
@@ -8820,6 +8988,57 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ReEvaluateResponse"];
+                };
+            };
+            /** @description Error */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Error */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    refetch_evaluations_evaluations_refetch_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RefetchRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RefetchResponse"];
                 };
             };
             /** @description Error */

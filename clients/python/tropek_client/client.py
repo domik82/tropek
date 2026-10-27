@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from typing import Any
+from uuid import UUID
 
 from tropek_client._http import HttpSession
 from tropek_client.models import (
@@ -64,6 +65,9 @@ from tropek_client.models import (
     ReEvaluateFromDateRequest,
     ReEvaluateFromEvaluationRequest,
     ReEvaluateResponse,
+    RefetchRequest,
+    RefetchResponse,
+    RefetchRunRequest,
     RestoreManyRequest,
     RestoreOverrideManyRequest,
     SLIDefinitionCreate,
@@ -522,6 +526,20 @@ class _Evaluations:
             json=body.model_dump(mode='json', exclude_none=True),
         )
         return ReEvaluateResponse.model_validate(response.json())
+
+    def refetch(self, body: RefetchRequest) -> RefetchResponse:
+        """Refetch stored evaluations of an asset over a period from the source."""
+        response = self._http.post(
+            '/evaluations/refetch', json=body.model_dump(mode='json', by_alias=True, exclude_none=True)
+        )
+        return RefetchResponse.model_validate(response.json())
+
+    def refetch_run(self, run_id: UUID | str, body: RefetchRunRequest) -> RefetchResponse:
+        """Refetch the evaluations of one evaluation run from the source."""
+        response = self._http.post(
+            f'/evaluation-run/{run_id}/refetch', json=body.model_dump(mode='json', by_alias=True, exclude_none=True)
+        )
+        return RefetchResponse.model_validate(response.json())
 
     def names(self, *, asset_name: str | None = None, group_name: str | None = None) -> list[EvaluationNameEntry]:
         params: dict[str, str] = {}

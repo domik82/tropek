@@ -6,6 +6,7 @@ import logging
 from typing import Any
 
 from tropek_prometheus.core.prometheus_client import PrometheusClient, PrometheusQueryError
+from tropek_prometheus.core.strategies.models import ErrorKind, IndicatorOutcome, StrategyResult
 from tropek_prometheus.core.variable_substitutor import UnresolvedVariableError, substitute
 
 logger = logging.getLogger(__name__)
@@ -25,23 +26,30 @@ class RawQueryStrategy:
         variables: dict[str, str],
         start: str,
         end: str,
-    ) -> tuple[dict[str, float | None], dict[str, str], dict[str, Any] | None]:
-        """Execute a raw PromQL query and return (values, errors, metadata)."""
+    ) -> StrategyResult:
+        """Execute a raw PromQL query and return its single indicator outcome."""
         query_template = query_spec['query']
 
         try:
             query = substitute(query_template, variables, start_iso=start, end_iso=end)
-        except UnresolvedVariableError as exc:
-            logger.warning('variable substitution failed: sli=%s error=%s', sli_name, exc)
-            return {sli_name: None}, {sli_name: str(exc)}, None
+        except UnresolvedVariableError as substitution_error:
+            logger.warning('variable substitution failed: sli=%s error=%s', sli_name, substitution_error)
+            return StrategyResult(
+                indicators={sli_name: IndicatorOutcome(value=None, error=str(substitution_error), error_kind='data')}
+            )
 
         logger.info('executing query: sli=%s query=%s time=%s', sli_name, query, end)
 
         try:
             value = await self._client.instant_query(query, time=end)
-        except PrometheusQueryError as exc:
-            logger.warning('query returned no data: sli=%s error=%s query=%s time=%s', sli_name, exc, query, end)
-            return {sli_name: None}, {sli_name: str(exc)}, None
+        except PrometheusQueryError as query_error:
+            logger.warning(
+                'query returned no data: sli=%s error=%s query=%s time=%s', sli_name, query_error, query, end
+            )
+            kind: ErrorKind = 'transient' if query_error.transient else 'data'
+            return StrategyResult(
+                indicators={sli_name: IndicatorOutcome(value=None, error=str(query_error), error_kind=kind)}
+            )
 
         logger.info('query result: sli=%s value=%s', sli_name, value)
-        return {sli_name: value}, {}, None
+        return StrategyResult(indicators={sli_name: IndicatorOutcome(value=value)})

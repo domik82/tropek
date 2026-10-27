@@ -7,7 +7,6 @@ import uuid
 from datetime import datetime
 from typing import Any
 
-import httpx
 import structlog
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -24,7 +23,11 @@ from tropek.modules.quality_gate.repositories.evaluation import EvaluationReposi
 from tropek.modules.quality_gate.repositories.heatmap import HeatmapRepository
 from tropek.modules.quality_gate.repositories.indicator import IndicatorRepository, build_indicator_row_dicts
 from tropek.modules.quality_gate.repositories.sli_value import SLIValueRepository
-from tropek.modules.quality_gate.workflows.execution.adapter_client import HttpAdapterClient
+from tropek.modules.quality_gate.workflows.execution.adapter_client import (
+    AdapterFetchError,
+    ErrorKind,
+    HttpAdapterClient,
+)
 from tropek.modules.quality_gate.workflows.execution.evaluation_helpers import (
     build_eval_variables as _build_eval_variables_shared,
 )
@@ -237,12 +240,14 @@ def _log_adapter_response(
     metrics_fetched: dict[str, float | None],
     fetch_errors: dict[str, str],
     sli_metadata: dict[str, Any],
+    error_kinds: dict[str, ErrorKind],
 ) -> None:
     """Log adapter response and override errored metrics to None."""
     log.info(
         'adapter raw response',
         values=metrics_fetched,
         errors=fetch_errors,
+        error_kinds=error_kinds,
         metadata=sli_metadata,
     )
     for err_name in fetch_errors:
@@ -348,11 +353,11 @@ async def fetch_and_evaluate(
     datasource: DataSource,
     adapter_client: HttpAdapterClient,
     baseline_repo: BaselineRepository,
-) -> FetchAndEvaluateResult | None:
+) -> FetchAndEvaluateResult:
     """Phase 2: query adapter, resolve baselines, and evaluate.
 
-    Pure computation plus HTTP — no DB session needed.
-    Returns None if the adapter query fails.
+    Pure computation plus HTTP — no DB session needed. Metrics with a ``data`` error
+    are evaluated as ``None``; any ``transient`` error fails the fetch.
 
     Args:
         snapshot: Detached evaluation snapshot from phase 1.
@@ -361,6 +366,13 @@ async def fetch_and_evaluate(
         datasource: DataSource ORM object with adapter_url.
         adapter_client: HTTP adapter client for querying metrics.
         baseline_repo: Baseline repository for comparison queries.
+
+    Returns:
+        The evaluation result with the fetched metrics, errors and baselines.
+
+    Raises:
+        AdapterFetchError: The adapter could not be queried, or answered with a transient error
+            for at least one metric; the caller decides whether to retry.
     """
     log = logger.bind(evaluation_id=str(snapshot.eval_id))
 
@@ -392,8 +404,9 @@ async def fetch_and_evaluate(
     )
 
     # Query adapter
+    query_started = time.perf_counter()
     try:
-        metrics_fetched, fetch_errors, sli_metadata = await adapter_client.query(
+        metrics_fetched, fetch_errors, sli_metadata, error_kinds = await adapter_client.query(
             adapter_url=datasource.adapter_url,
             datasource_name=datasource.name,
             queries=query_specs,
@@ -402,11 +415,20 @@ async def fetch_and_evaluate(
             end=snapshot.period_end.isoformat(),
             token=datasource.token,
         )
-    except (httpx.ConnectError, httpx.ReadError, httpx.TimeoutException, httpx.HTTPStatusError):
+    except AdapterFetchError:
         log.exception('adapter query failed', adapter_url=datasource.adapter_url)
-        return None
+        raise
+    query_elapsed_s = time.perf_counter() - query_started
 
-    _log_adapter_response(log, metrics_fetched, fetch_errors, sli_metadata)
+    _log_adapter_response(log, metrics_fetched, fetch_errors, sli_metadata, error_kinds)
+
+    # One transient metric fails the whole fetch: the evaluation is one unit of work, retried by the job.
+    transient = sorted(name for name, kind in error_kinds.items() if kind == 'transient')
+    if transient:
+        detail = '; '.join(f'{name}: {fetch_errors.get(name, "")}' for name in transient)
+        raise AdapterFetchError(
+            f'transient adapter errors for {detail}', attempts=1, last_status=200, elapsed_s=query_elapsed_s
+        )
 
     # Resolve baselines (pin-aware, scoped to comparison series)
     comparison_name = resolve_comparison_name(snapshot.compare_to, snapshot.evaluation_name)

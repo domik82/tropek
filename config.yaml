@@ -28,7 +28,8 @@ queue:
   max_jobs: 10
   max_retries: 3
   retry_delay_seconds: 10
-  job_timeout_seconds: 120
+  # One adapter attempt + evaluation + change points; must exceed reliability.adapter_timeout_seconds.
+  job_timeout_seconds: 400
   keep_result_seconds: 3600
   # Periodic reconciler that rescues parent runs the fast-path finalize missed.
   # Interval must be a divisor of 60: 5, 10, 15, 20, 30, or 60.
@@ -37,14 +38,18 @@ queue:
   finalize_sweeper_batch_limit: 100
 
 reliability:
-  adapter_timeout_seconds: 30
+  # Timeout chain (validated at startup): adapter budget < adapter_timeout_seconds < queue.job_timeout_seconds
+  # < stuck_job_threshold_seconds. The budget sent to the adapter is adapter_timeout_seconds - 30 (here 300);
+  # the adapter answers within budget + 5 s, so the HTTP timeout leaves 25 s of headroom. The budget is
+  # capped by the adapter's max_job_timeout_seconds (600).
+  adapter_timeout_seconds: 330
   adapter_retry_attempts: 3
   adapter_retry_backoff_seconds: 2
   # Watchdog: recovers evaluations orphaned in 'running' (crashed/killed jobs). Interval
   # must divide 60: 5, 10, 15, 20, 30, or 60.
   watchdog_interval_seconds: 60
   # An eval 'running' longer than this is considered dead (must exceed job_timeout_seconds).
-  stuck_job_threshold_seconds: 180
+  stuck_job_threshold_seconds: 600
   # Recovered evals are re-enqueued up to this many times, then marked failed.
   max_stuck_job_retries: 3
   # Event-loop lag monitor (worker diagnostic): sleep this interval, warn when the

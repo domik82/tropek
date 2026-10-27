@@ -228,9 +228,9 @@ export function AssetPanelHeatmapView({
       for (const [metricName, dto] of Object.entries(summary?.sli_metadata ?? {})) {
         sliMetadata[metricName] = {
           mode: dto.mode,
-          expectedSamples: dto.expected_samples,
-          actualSamples: dto.actual_samples,
-          missingPct: dto.missing_pct,
+          expectedSamples: dto.expected_samples ?? null,
+          actualSamples: dto.actual_samples ?? null,
+          missingPct: dto.missing_pct ?? null,
           chunksFailed: dto.chunks_failed,
         }
       }

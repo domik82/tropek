@@ -1,3 +1,5 @@
+import json
+
 import fakeredis.aioredis
 import pytest
 from tropek_prometheus.redis.repository import JobRepository
@@ -108,3 +110,37 @@ async def test_queue_depth(repo: JobRepository):
         jid = await repo.create_job(queries={'x': {'mode': 'raw', 'query': 'x'}}, variables={}, timeout=120)
         await repo.enqueue(jid)
     assert await repo.queue_depth() == 3
+
+
+@pytest.mark.asyncio
+async def test_write_result_round_trips_kind(repo: JobRepository):
+    job_id = await repo.create_job(queries={'x': {'mode': 'raw', 'query': 'x'}}, variables={}, timeout=120)
+    await repo.write_result(job_id, 'a', value=None, success=False, message='down', kind='transient')
+
+    results = await repo.get_results(job_id)
+
+    assert results['a']['kind'] == 'transient'
+
+
+@pytest.mark.asyncio
+async def test_get_results_reads_entries_written_before_kind_existed_as_data(repo: JobRepository):
+    job_id = await repo.create_job(queries={'x': {'mode': 'raw', 'query': 'x'}}, variables={}, timeout=120)
+    legacy = json.dumps({'value': None, 'success': False, 'message': 'old', 'query_executed': ''})
+    await repo._r.hset(repo._key('job', job_id, 'results'), 'legacy', legacy)
+
+    results = await repo.get_results(job_id)
+
+    assert results['legacy']['kind'] == 'data'
+
+
+@pytest.mark.asyncio
+async def test_expire_job_keys_sets_ttl_on_every_job_key(repo: JobRepository):
+    job_id = await repo.create_job(queries={'x': {'mode': 'raw', 'query': 'x'}}, variables={}, timeout=120)
+    await repo.write_result(job_id, 'x', value=1.0, success=True, message='')
+    await repo.write_metadata(job_id, 'x', {'mode': 'raw'})
+    await repo.cancel(job_id)
+
+    await repo.expire_job_keys(job_id, 60)
+
+    for suffix in ((), ('queries',), ('results',), ('metadata',)):
+        assert await repo._r.ttl(repo._key('job', job_id, *suffix)) > 0

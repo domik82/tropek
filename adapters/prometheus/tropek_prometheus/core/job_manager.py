@@ -46,6 +46,7 @@ class JobManager:
             'created_at': datetime.now(UTC),
             'poll_url': f'/api/v1/query-jobs/{job_id}',
             'total_queries': len(queries),
+            'timeout_seconds': timeout,
         }
 
     async def get_status(self, job_id: str) -> dict[str, Any] | None:
@@ -57,6 +58,7 @@ class JobManager:
         result: dict[str, Any] = {
             'job_id': job_id,
             'status': status['status'],
+            'timeout_seconds': status['timeout_seconds'],
         }
 
         if status['status'] == 'running':
@@ -76,6 +78,13 @@ class JobManager:
 
         return result
 
+    async def queue_depth(self) -> int:
+        """Return the number of jobs waiting to be processed."""
+        return await self._repo.queue_depth()
+
     async def cancel(self, job_id: str) -> bool:
         """Cancel a job. Returns True if cancelled, False if already terminal."""
-        return await self._repo.cancel(job_id)
+        cancelled = await self._repo.cancel(job_id)
+        if cancelled:
+            await self._repo.expire_job_keys(job_id, self._settings.job_retention_seconds)
+        return cancelled

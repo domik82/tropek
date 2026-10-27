@@ -1,5 +1,8 @@
 // src/mocks/handlers/evaluations.ts
 import { http, HttpResponse } from 'msw'
+import type { components } from '@/generated/api'
+
+type RefetchRequestDto = components['schemas']['RefetchRequest']
 
 async function gen() {
   return import('../generate')
@@ -117,6 +120,19 @@ export const evaluationHandlers = [
   http.post('/api/evaluations/re-evaluate/from-date', async ({ request }) => {
     const body = await request.json() as { from_date?: string }
     return HttpResponse.json(makeReEvaluateResponse(body.from_date))
+  }),
+
+  http.post('/api/evaluations/refetch', async ({ request }) => {
+    const body = await request.json() as RefetchRequestDto
+    if (!body.evaluation_name) {
+      return HttpResponse.json({ detail: 'evaluation_name is required' }, { status: 422 })
+    }
+    return HttpResponse.json({
+      matched: 1,
+      refetched: 1,
+      run_ids: [],
+      dry_run: body.dry_run,
+    })
   }),
 
   http.post('/api/evaluations/re-evaluate/from-baseline', async () => {

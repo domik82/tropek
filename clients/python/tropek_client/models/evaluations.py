@@ -6,7 +6,7 @@ from datetime import datetime
 from typing import TYPE_CHECKING, Any, Literal
 from uuid import UUID
 
-from pydantic import BaseModel
+from pydantic import AwareDatetime, BaseModel, ConfigDict, Field
 
 from tropek_client.models.asset_groups import AssetScope
 from tropek_client.models.assets import AssetSnapshot
@@ -235,6 +235,40 @@ class UnpinBaselineManyRequest(BaseModel):
     """Request body to unpin the baseline on a batch of evaluations."""
 
     evaluation_ids: list[UUID]
+
+
+class RefetchRequest(BaseModel):
+    """Request body to refetch stored evaluations of one asset over a period from the source."""
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    asset_name: str
+    from_: AwareDatetime = Field(alias='from')
+    to: AwareDatetime
+    evaluation_name: str
+    slo_names: list[str] | None = Field(default=None, max_length=200)
+    only_failed: bool = False
+    dry_run: bool = False
+    reason: str | None = Field(default=None, max_length=500)
+    requested_by: str | None = Field(default=None, max_length=120)
+
+
+class RefetchRunRequest(BaseModel):
+    """Request body to refetch the evaluations of one evaluation run from the source."""
+
+    only_failed: bool = False
+    dry_run: bool = False
+    reason: str | None = Field(default=None, max_length=500)
+    requested_by: str | None = Field(default=None, max_length=120)
+
+
+class RefetchResponse(BaseModel):
+    """Response from a refetch operation."""
+
+    matched: int
+    refetched: int
+    run_ids: list[UUID]
+    dry_run: bool
 
 
 class BulkActionResult(BaseModel):

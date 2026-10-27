@@ -72,15 +72,16 @@ async def db_engine(db_url: str) -> AsyncGenerator[AsyncEngine, None]:  # noqa: 
     try:
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
-        # Seed the default annotation categories that migration 002 inserts
-        # in real deployments; integration tests rely on create_all, which
-        # does not run data migrations.
+        # Seed the default annotation categories that migrations 002 and 008
+        # insert in real deployments; integration tests rely on create_all,
+        # which does not run data migrations.
         async with AsyncSession(engine) as seed_session:
             for name, label, color, show_on_graph, is_system in (
                 ('failure', 'Failure', 'red', True, False),
                 ('info', 'Info', 'sky', True, False),
                 ('investigation', 'Investigation', 'amber', True, False),
                 ('re-evaluation', 'Re-eval', 'gray', False, True),
+                ('refetch', 'Refetch', 'gray', False, True),
             ):
                 seed_session.add(
                     AnnotationCategory(
