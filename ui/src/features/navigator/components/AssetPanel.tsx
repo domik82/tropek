@@ -557,10 +557,10 @@ export function AssetPanel({ assetName, initialEvalId }: Props) {
                   scope={scope}
                   columnEvalId={selectedColumnEvalId}
                   assetName={assetName}
-                  evaluationName={selectedNames?.length === 1 ? selectedNames[0] : null}
+                  evaluationName={selectedNames?.length === 1 ? selectedNames[0] : undefined}
                   defaultFromDate={earliestPeriodStart?.slice(0, 16)}
                   defaultRefetchDate={
-                    ((selectedColumnEvalId ? selectedPeriodStart : undefined) ?? latestPeriodStart)?.slice(0, 16)
+                    (selectedPeriodStart ?? latestPeriodStart)?.slice(0, 16)
                   }
                   onComplete={() => setActiveAction(null)}
                 />

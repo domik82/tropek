@@ -64,7 +64,6 @@ class JobStatusResponse(BaseModel):
     duration_ms: int | None = None
     results: list[dict[str, Any]] | None = None
     metadata: dict[str, Any] | None = None
-    timeout_seconds: int | None = None
 
 
 class IndicatorResult(BaseModel):
@@ -75,4 +74,3 @@ class IndicatorResult(BaseModel):
     success: bool
     message: str = ''
     query_executed: str = ''
-    kind: str = 'data'

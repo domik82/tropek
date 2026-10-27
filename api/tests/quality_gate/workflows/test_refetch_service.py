@@ -7,7 +7,6 @@ from datetime import UTC, datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from pydantic import ValidationError
 from structlog.testing import capture_logs
 from tropek.modules.common.exceptions import ConflictError
 from tropek.modules.quality_gate.schemas.refetch import RefetchRequest, RefetchRunRequest
@@ -60,13 +59,20 @@ def _make_repos(rows: list[MagicMock]) -> QualityGateRepos:
     )
     repos.asset_repo.get_by_name.return_value = MagicMock(id=uuid.uuid4())
     repos.eval_repo.list_for_refetch.return_value = rows
-    repos.eval_repo.reset_for_refetch.side_effect = lambda eval_ids, **_kwargs: len(eval_ids)
+    repos.eval_repo.reset_for_refetch.side_effect = lambda eval_ids, **_kwargs: list(eval_ids)
     return repos
 
 
 def _make_request(**overrides: object) -> RefetchRequest:
     return RefetchRequest.model_validate(
-        {'asset_name': 'asset-a', 'from': _DAY_ONE, 'to': _DAY_TWO, 'reason': 'adapter outage', **overrides}
+        {
+            'asset_name': 'asset-a',
+            'evaluation_name': 'daily',
+            'from': _DAY_ONE,
+            'to': _DAY_TWO,
+            'reason': 'adapter outage',
+            **overrides,
+        }
     )
 
 
@@ -76,14 +82,8 @@ def _assert_nothing_written(repos: QualityGateRepos, pool: AsyncMock, change_poi
     repos.eval_run_repo.mark_pending.assert_not_awaited()
     repos.annotation_repo.add_run_annotation.assert_not_awaited()
     repos.session.commit.assert_not_awaited()
-    change_point_repo.return_value.delete_for_slo_range.assert_not_awaited()
+    change_point_repo.return_value.delete_for_run_slo_pairs.assert_not_awaited()
     pool.enqueue_job.assert_not_awaited()
-
-
-def test_naive_bound_is_refused_by_the_schema() -> None:
-    """Comparing a naive with an aware bound raised ``TypeError`` (a 500); the schema refuses it instead."""
-    with pytest.raises(ValidationError, match='timezone'):
-        _make_request(**{'from': _DAY_ONE.replace(tzinfo=None)})
 
 
 async def test_dry_run_counts_without_changes() -> None:
@@ -93,43 +93,43 @@ async def test_dry_run_counts_without_changes() -> None:
     pool = AsyncMock()
 
     with patch(_CHANGE_POINT_REPO) as change_point_repo:
-        change_point_repo.return_value.delete_for_slo_range = AsyncMock()
+        change_point_repo.return_value.delete_for_run_slo_pairs = AsyncMock()
         response = await refetch(_make_request(dry_run=True), repos, pool)
 
     assert response.model_dump() == {
         'matched': 2,
         'refetched': 2,
-        'skipped': [],
         'run_ids': [run_id],
         'dry_run': True,
     }
     _assert_nothing_written(repos, pool, change_point_repo)
 
 
+@pytest.mark.parametrize('dry_run', [False, True])
 @pytest.mark.parametrize('blocking_status', ['pending', 'running'])
-async def test_running_row_raises_conflict_before_any_write(blocking_status: str) -> None:
+async def test_running_row_raises_conflict_before_any_write(blocking_status: str, dry_run: bool) -> None:
     run_id = uuid.uuid4()
     blocking = _make_row(run_id=run_id, status=blocking_status, slo_name='slo-b')
     repos = _make_repos([_make_row(run_id=run_id), blocking])
     pool = AsyncMock()
 
     with patch(_CHANGE_POINT_REPO) as change_point_repo:
-        change_point_repo.return_value.delete_for_slo_range = AsyncMock()
+        change_point_repo.return_value.delete_for_run_slo_pairs = AsyncMock()
         with pytest.raises(ConflictError, match=str(blocking.id)):
-            await refetch(_make_request(), repos, pool)
+            await refetch(_make_request(dry_run=dry_run), repos, pool)
 
     _assert_nothing_written(repos, pool, change_point_repo)
 
 
-async def test_only_failed_narrows_scope() -> None:
+async def test_request_maps_to_scope() -> None:
     asset_id = uuid.uuid4()
     run_id = uuid.uuid4()
     repos = _make_repos([])
     repos.asset_repo.get_by_name.return_value = MagicMock(id=asset_id)
-    run = MagicMock(id=run_id, asset_id=asset_id, period_start=_DAY_ONE, period_end=_DAY_TWO)
+    run = MagicMock(id=run_id, asset_id=asset_id, eval_name='daily', period_start=_DAY_ONE, period_end=_DAY_TWO)
     repos.eval_run_repo.get_by_id.return_value = run
 
-    await refetch(_make_request(only_failed=True, slo_names=['slo-a'], evaluation_name='daily'), repos, AsyncMock())
+    await refetch(_make_request(only_failed=True, slo_names=['slo-a']), repos, AsyncMock())
     await refetch_run(run_id, RefetchRunRequest(only_failed=True), repos, AsyncMock())
 
     by_period, by_run = [call.args[0] for call in repos.eval_repo.list_for_refetch.await_args_list]
@@ -141,24 +141,14 @@ async def test_only_failed_narrows_scope() -> None:
         slo_names=['slo-a'],
         only_failed=True,
     )
-    assert by_run == RefetchScope(asset_id=asset_id, period_from=_DAY_ONE, period_to=_DAY_TWO, only_failed=True)
-
-
-async def test_refetch_run_keeps_only_rows_of_that_run() -> None:
-    run_id = uuid.uuid4()
-    own = _make_row(run_id=run_id)
-    repos = _make_repos([own, _make_row(run_id=uuid.uuid4())])
-    repos.eval_run_repo.get_by_id.return_value = MagicMock(
-        id=run_id, asset_id=uuid.uuid4(), period_start=_DAY_ONE, period_end=_DAY_TWO
+    assert by_run == RefetchScope(
+        asset_id=asset_id,
+        period_from=_DAY_ONE,
+        period_to=_DAY_TWO,
+        evaluation_name='daily',
+        evaluation_id=run_id,
+        only_failed=True,
     )
-    pool = AsyncMock()
-
-    with patch(_CHANGE_POINT_REPO) as change_point_repo:
-        change_point_repo.return_value.delete_for_slo_range = AsyncMock()
-        response = await refetch_run(run_id, RefetchRunRequest(), repos, pool)
-
-    assert (response.matched, response.refetched, response.run_ids) == (1, 1, [run_id])
-    pool.enqueue_job.assert_awaited_once_with('run_evaluation_job', str(own.id))
 
 
 async def test_reset_enqueues_one_job_per_row_and_one_run_note() -> None:
@@ -178,7 +168,7 @@ async def test_reset_enqueues_one_job_per_row_and_one_run_note() -> None:
     pool.enqueue_job.side_effect = lambda *args: events.append('enqueue')
 
     with patch(_CHANGE_POINT_REPO) as change_point_repo:
-        change_point_repo.return_value.delete_for_slo_range = AsyncMock()
+        change_point_repo.return_value.delete_for_run_slo_pairs = AsyncMock()
         response = await refetch(_make_request(requested_by='operator'), repos, pool)
 
     assert (response.matched, response.refetched, response.dry_run) == (3, 3, False)
@@ -186,20 +176,13 @@ async def test_reset_enqueues_one_job_per_row_and_one_run_note() -> None:
 
     reset_call = repos.eval_repo.reset_for_refetch.await_args
     assert reset_call.args[0] == [row.id for row in rows]
-    first_stats = reset_call.kwargs['job_stats_by_id'][rows[0].id]['refetch']
-    assert first_stats['requested_by'] == 'operator'
-    assert first_stats['reason'] == 'adapter outage'
-    assert (first_stats['previous_result'], first_stats['previous_status']) == ('pass', 'completed')
+    audit = reset_call.kwargs['refetch_audit']
+    assert (audit['requested_by'], audit['reason']) == ('operator', 'adapter outage')
+    assert set(audit) == {'requested_at', 'requested_by', 'reason'}
 
-    deleted_ranges = {
-        (call.kwargs['slo_name'], call.kwargs['period_from'], call.kwargs['period_to'])
-        for call in change_point_repo.return_value.delete_for_slo_range.await_args_list
-    }
-    assert deleted_ranges == {
-        ('slo-a', _DAY_ONE, _DAY_ONE),
-        ('slo-b', _DAY_ONE, _DAY_ONE),
-        ('slo-a', _DAY_TWO, _DAY_TWO),
-    }
+    change_point_repo.return_value.delete_for_run_slo_pairs.assert_awaited_once_with(
+        pairs=sorted([(first_run, 'slo-a'), (first_run, 'slo-b'), (second_run, 'slo-a')])
+    )
 
     assert {call.args[0] for call in repos.eval_run_repo.mark_pending.await_args_list} == {first_run, second_run}
     notes = {
@@ -223,11 +206,11 @@ async def test_row_reopened_concurrently_raises_conflict_before_commit() -> None
     run_id = uuid.uuid4()
     rows = [_make_row(run_id=run_id), _make_row(run_id=run_id, slo_name='slo-b')]
     repos = _make_repos(rows)
-    repos.eval_repo.reset_for_refetch.side_effect = lambda eval_ids, **_kwargs: len(eval_ids) - 1
+    repos.eval_repo.reset_for_refetch.side_effect = lambda eval_ids, **_kwargs: list(eval_ids)[:-1]
     pool = AsyncMock()
 
     with patch(_CHANGE_POINT_REPO) as change_point_repo:
-        change_point_repo.return_value.delete_for_slo_range = AsyncMock()
+        change_point_repo.return_value.delete_for_run_slo_pairs = AsyncMock()
         with pytest.raises(ConflictError, match='changed status during the refetch'):
             await refetch(_make_request(), repos, pool)
 
@@ -244,7 +227,7 @@ async def test_failed_enqueue_logs_the_evaluations_left_without_a_job() -> None:
     pool.enqueue_job.side_effect = [None, ConnectionError('redis gone'), None]
 
     with patch(_CHANGE_POINT_REPO) as change_point_repo, capture_logs() as logs:
-        change_point_repo.return_value.delete_for_slo_range = AsyncMock()
+        change_point_repo.return_value.delete_for_run_slo_pairs = AsyncMock()
         with pytest.raises(ConnectionError):
             await refetch(_make_request(), repos, pool)
 

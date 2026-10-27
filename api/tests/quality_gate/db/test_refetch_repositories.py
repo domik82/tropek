@@ -7,8 +7,8 @@ from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import pytest
-from sqlalchemy import func, select
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import event, func, select
+from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession
 from tropek.db.models import (
     Asset,
     AssetType,
@@ -29,6 +29,8 @@ _DAY_ONE = datetime(2026, 3, 10, 0, 0, 0, tzinfo=UTC)
 _DAY_TWO = datetime(2026, 3, 11, 0, 0, 0, tzinfo=UTC)
 _SLO_A = 'refetch-slo-a'
 _SLO_B = 'refetch-slo-b'
+_REFETCH_AUDIT = {'requested_by': 'qa', 'reason': 'outage'}
+_REFETCH_BLOCK = {**_REFETCH_AUDIT, 'previous_result': 'pass', 'previous_status': 'completed'}
 
 
 async def _seed_asset(session: AsyncSession) -> uuid.UUID:
@@ -121,16 +123,16 @@ async def test_list_for_refetch_filters_by_range_name_slo_and_failed(db_session:
     )
     await _seed_slo_evaluation(db_session, asset_id=other_asset_id, slo_name=_SLO_A, period_start=_DAY_ONE)
     repo = EvaluationRepository(db_session)
-    base = {'asset_id': asset_id, 'period_from': _DAY_ONE, 'period_to': _DAY_TWO}
+    base = {'asset_id': asset_id, 'period_from': _DAY_ONE, 'period_to': _DAY_TWO, 'evaluation_name': 'daily'}
 
     everything = await repo.list_for_refetch(RefetchScope(**base))
-    assert {row.id for row in everything} == {day_one_a.id, day_one_b.id, day_two_a.id, weekly_a.id}
+    assert {row.id for row in everything} == {day_one_a.id, day_one_b.id, day_two_a.id}
     assert [row.period_start for row in everything] == sorted(row.period_start for row in everything)
 
     first_day_only = await repo.list_for_refetch(RefetchScope(**{**base, 'period_to': _DAY_ONE}))
-    assert {row.id for row in first_day_only} == {day_one_a.id, day_one_b.id, weekly_a.id}
+    assert {row.id for row in first_day_only} == {day_one_a.id, day_one_b.id}
 
-    by_name = await repo.list_for_refetch(RefetchScope(**base, evaluation_name='weekly'))
+    by_name = await repo.list_for_refetch(RefetchScope(**{**base, 'evaluation_name': 'weekly'}))
     assert [row.id for row in by_name] == [weekly_a.id]
 
     by_slo = await repo.list_for_refetch(RefetchScope(**base, slo_names=[_SLO_B]))
@@ -138,6 +140,22 @@ async def test_list_for_refetch_filters_by_range_name_slo_and_failed(db_session:
 
     only_failed = await repo.list_for_refetch(RefetchScope(**base, only_failed=True))
     assert [row.id for row in only_failed] == [day_one_b.id]
+
+
+@pytest.mark.integration
+async def test_list_for_refetch_filters_by_run(db_session: AsyncSession) -> None:
+    asset_id = await _seed_asset(db_session)
+    first = await _seed_slo_evaluation(db_session, asset_id=asset_id, slo_name=_SLO_A, period_start=_DAY_ONE)
+    second = await _seed_slo_evaluation(db_session, asset_id=asset_id, slo_name=_SLO_B, period_start=_DAY_ONE)
+    assert first.evaluation_id != second.evaluation_id
+    base = {'asset_id': asset_id, 'period_from': _DAY_ONE, 'period_to': _DAY_ONE, 'evaluation_name': 'daily'}
+    repo = EvaluationRepository(db_session)
+
+    both = await repo.list_for_refetch(RefetchScope(**base))
+    one_run = await repo.list_for_refetch(RefetchScope(**base, evaluation_id=first.evaluation_id))
+
+    assert {row.id for row in both} == {first.id, second.id}
+    assert [row.id for row in one_run] == [first.id]
 
 
 @pytest.mark.integration
@@ -165,10 +183,9 @@ async def test_reset_for_refetch_clears_results_and_children_but_keeps_annotatio
     await db_session.flush()
     await db_session.refresh(slo_eval)
     pinned_before = slo_eval.baseline_pinned_at
-    job_stats = {'refetch': {'reason': 'outage', 'previous_status': 'completed'}}
 
     repo = EvaluationRepository(db_session)
-    await repo.reset_for_refetch([slo_eval.id], job_stats_by_id={slo_eval.id: job_stats})
+    await repo.reset_for_refetch([slo_eval.id], refetch_audit=_REFETCH_AUDIT)
     await db_session.refresh(slo_eval)
 
     assert slo_eval.status == 'pending'
@@ -180,7 +197,8 @@ async def test_reset_for_refetch_clears_results_and_children_but_keeps_annotatio
     assert slo_eval.original_result is None
     assert slo_eval.override_reason is None
     assert slo_eval.override_author is None
-    assert slo_eval.job_stats == job_stats
+    # The row was overridden to 'fail' before the reset; the block records that old value.
+    assert slo_eval.job_stats == {'refetch': {**_REFETCH_BLOCK, 'previous_result': 'fail'}}
     assert await _count(db_session, SLIValue, SLIValue.slo_evaluation_id, slo_eval.id) == 0
     assert len(await IndicatorRepository(db_session).get_for_evaluation(slo_eval.id)) == 0
     assert await _count(db_session, EvaluationAnnotation, EvaluationAnnotation.slo_evaluation_id, slo_eval.id) == 1
@@ -197,20 +215,26 @@ async def test_reset_for_refetch_clears_results_and_children_but_keeps_annotatio
 
 
 @pytest.mark.integration
-async def test_delete_for_slo_range_only_touches_the_slo_and_period(db_session: AsyncSession) -> None:
+async def test_delete_for_run_slo_pairs_keeps_other_evaluations_and_triaged_points(db_session: AsyncSession) -> None:
     asset_id = await _seed_asset(db_session)
-    other_asset_id = await _seed_asset(db_session)
+    run_repo = EvaluationRunRepository(db_session)
+    daily = await run_repo.create(
+        asset_id=asset_id, eval_name='daily', period_start=_DAY_ONE, period_end=_DAY_ONE + timedelta(hours=1)
+    )
+    weekly = await run_repo.create(
+        asset_id=asset_id, eval_name='weekly', period_start=_DAY_ONE, period_end=_DAY_ONE + timedelta(hours=1)
+    )
     repo = ChangePointRepository(db_session)
 
-    async def insert(*, target_asset: uuid.UUID, slo_name: str, period_start: datetime) -> uuid.UUID:
+    async def insert(*, run_id: uuid.UUID, slo_name: str) -> uuid.UUID:
         change_point = await repo.insert_change_point(
             ChangePointInsertParams(
                 indicator_result_id=None,
-                evaluation_run_id=None,
-                asset_id=target_asset,
+                evaluation_run_id=run_id,
+                asset_id=asset_id,
                 slo_name=slo_name,
                 metric_name='cpu',
-                period_start=period_start,
+                period_start=_DAY_ONE,
                 detector='e_divisive',
                 direction='regression',
                 change_relative_pct=10.0,
@@ -223,20 +247,65 @@ async def test_delete_for_slo_range_only_touches_the_slo_and_period(db_session: 
         )
         return change_point.id
 
-    inside = await insert(target_asset=asset_id, slo_name=_SLO_A, period_start=_DAY_ONE)
-    inside_edge = await insert(target_asset=asset_id, slo_name=_SLO_A, period_start=_DAY_TWO)
-    outside_period = await insert(target_asset=asset_id, slo_name=_SLO_A, period_start=_DAY_TWO + timedelta(days=1))
-    other_slo = await insert(target_asset=asset_id, slo_name=_SLO_B, period_start=_DAY_ONE)
-    other_asset = await insert(target_asset=other_asset_id, slo_name=_SLO_A, period_start=_DAY_ONE)
+    untriaged = await insert(run_id=daily.id, slo_name=_SLO_A)
+    triaged = await insert(run_id=daily.id, slo_name=_SLO_A)
+    await repo.triage(triaged, status='confirmed')
+    other_slo = await insert(run_id=daily.id, slo_name=_SLO_B)
+    other_evaluation = await insert(run_id=weekly.id, slo_name=_SLO_A)
 
-    deleted = await repo.delete_for_slo_range(
-        asset_id=asset_id, slo_name=_SLO_A, period_from=_DAY_ONE, period_to=_DAY_TWO
+    deleted = await repo.delete_for_run_slo_pairs(pairs=[(daily.id, _SLO_A)])
+
+    assert deleted == 1
+    assert await repo.get_by_id(untriaged) is None
+    for survivor in (triaged, other_slo, other_evaluation):
+        assert await repo.get_by_id(survivor) is not None
+
+
+@pytest.mark.integration
+async def test_delete_for_run_slo_pairs_keeps_off_diagonal_points(db_session: AsyncSession) -> None:
+    """Resetting (run A, slo-a) and (run B, slo-b) must not touch (run A, slo-b) or (run B, slo-a)."""
+    asset_id = await _seed_asset(db_session)
+    run_repo = EvaluationRunRepository(db_session)
+    run_a = await run_repo.create(
+        asset_id=asset_id, eval_name='daily', period_start=_DAY_ONE, period_end=_DAY_ONE + timedelta(hours=1)
     )
+    run_b = await run_repo.create(
+        asset_id=asset_id, eval_name='daily', period_start=_DAY_TWO, period_end=_DAY_TWO + timedelta(hours=1)
+    )
+    repo = ChangePointRepository(db_session)
+
+    async def insert(*, run_id: uuid.UUID, slo_name: str) -> uuid.UUID:
+        change_point = await repo.insert_change_point(
+            ChangePointInsertParams(
+                indicator_result_id=None,
+                evaluation_run_id=run_id,
+                asset_id=asset_id,
+                slo_name=slo_name,
+                metric_name='cpu',
+                period_start=_DAY_ONE,
+                detector='e_divisive',
+                direction='regression',
+                change_relative_pct=10.0,
+                change_absolute=5.0,
+                pvalue=0.001,
+                pre_segment_mean=50.0,
+                post_segment_mean=55.0,
+                post_segment_std=1.0,
+            )
+        )
+        return change_point.id
+
+    a_slo_a = await insert(run_id=run_a.id, slo_name=_SLO_A)
+    b_slo_b = await insert(run_id=run_b.id, slo_name=_SLO_B)
+    a_slo_b = await insert(run_id=run_a.id, slo_name=_SLO_B)
+    b_slo_a = await insert(run_id=run_b.id, slo_name=_SLO_A)
+
+    deleted = await repo.delete_for_run_slo_pairs(pairs=[(run_a.id, _SLO_A), (run_b.id, _SLO_B)])
 
     assert deleted == 2
-    assert await repo.get_by_id(inside) is None
-    assert await repo.get_by_id(inside_edge) is None
-    for survivor in (outside_period, other_slo, other_asset):
+    assert await repo.get_by_id(a_slo_a) is None
+    assert await repo.get_by_id(b_slo_b) is None
+    for survivor in (a_slo_b, b_slo_a):
         assert await repo.get_by_id(survivor) is not None
 
 
@@ -269,7 +338,7 @@ async def test_list_for_refetch_skips_failed_row_superseded_by_a_retry(db_sessio
         db_session, asset_id=asset_id, slo_name=_SLO_B, period_start=_DAY_ONE, status='failed'
     )
     repo = EvaluationRepository(db_session)
-    base = {'asset_id': asset_id, 'period_from': _DAY_ONE, 'period_to': _DAY_ONE}
+    base = {'asset_id': asset_id, 'period_from': _DAY_ONE, 'period_to': _DAY_ONE, 'evaluation_name': 'daily'}
 
     everything = await repo.list_for_refetch(RefetchScope(**base))
     only_failed = await repo.list_for_refetch(RefetchScope(**base, only_failed=True))
@@ -277,11 +346,10 @@ async def test_list_for_refetch_skips_failed_row_superseded_by_a_retry(db_sessio
     assert failed.id not in {row.id for row in everything}
     assert {row.id for row in everything} == {completed.id, lone_failed.id}
     assert [row.id for row in only_failed] == [lone_failed.id]
-    job_stats: dict[uuid.UUID, dict[str, Any]] = {row.id: {'refetch': {}} for row in everything}
-    await repo.reset_for_refetch([row.id for row in everything], job_stats_by_id=job_stats)
+    reset_ids = await repo.reset_for_refetch([row.id for row in everything], refetch_audit=_REFETCH_AUDIT)
+    assert sorted(reset_ids) == sorted(row.id for row in everything)
 
 
-_REFETCH_STATS = {'refetch': {'reason': 'outage', 'previous_status': 'completed', 'previous_result': 'pass'}}
 _ATTEMPT = {'attempt': 1, 'cause': 'adapter returned 504: budget exhausted', 'status': 504, 'elapsed_s': 305.0}
 
 
@@ -291,7 +359,7 @@ async def test_refetched_row_run_to_completed_keeps_the_refetch_block(db_session
     asset_id = await _seed_asset(db_session)
     slo_eval = await _seed_slo_evaluation(db_session, asset_id=asset_id, slo_name=_SLO_A, period_start=_DAY_ONE)
     repo = EvaluationRepository(db_session)
-    await repo.reset_for_refetch([slo_eval.id], job_stats_by_id={slo_eval.id: _REFETCH_STATS})
+    await repo.reset_for_refetch([slo_eval.id], refetch_audit=_REFETCH_AUDIT)
 
     await repo.mark_running(slo_eval.id, worker_id='worker-1')
     await repo.mark_pending_retry(slo_eval.id, attempt_record=_ATTEMPT)
@@ -300,7 +368,7 @@ async def test_refetched_row_run_to_completed_keeps_the_refetch_block(db_session
     await db_session.refresh(slo_eval)
 
     assert slo_eval.status == 'completed'
-    assert slo_eval.job_stats['refetch'] == _REFETCH_STATS['refetch']
+    assert slo_eval.job_stats['refetch'] == _REFETCH_BLOCK
     assert slo_eval.job_stats['fetch_attempts'] == [_ATTEMPT]
     assert slo_eval.job_stats['worker_id'] == 'worker-1'
     assert slo_eval.job_stats['fetch_errors'] == {}
@@ -330,7 +398,7 @@ async def test_refetched_row_run_to_failed_keeps_refetch_and_fetch_attempts(db_s
     asset_id = await _seed_asset(db_session)
     slo_eval = await _seed_slo_evaluation(db_session, asset_id=asset_id, slo_name=_SLO_A, period_start=_DAY_ONE)
     repo = EvaluationRepository(db_session)
-    await repo.reset_for_refetch([slo_eval.id], job_stats_by_id={slo_eval.id: _REFETCH_STATS})
+    await repo.reset_for_refetch([slo_eval.id], refetch_audit=_REFETCH_AUDIT)
     await repo.mark_running(slo_eval.id, worker_id='worker-1')
     final_attempt = {**_ATTEMPT, 'attempt': 2}
 
@@ -341,7 +409,7 @@ async def test_refetched_row_run_to_failed_keeps_refetch_and_fetch_attempts(db_s
     await db_session.refresh(slo_eval)
 
     assert slo_eval.status == 'failed'
-    assert slo_eval.job_stats['refetch'] == _REFETCH_STATS['refetch']
+    assert slo_eval.job_stats['refetch'] == _REFETCH_BLOCK
     assert slo_eval.job_stats['fetch_attempts'] == [_ATTEMPT, final_attempt]
     assert slo_eval.job_stats['error'] == 'adapter query failed after 2 attempts: boom'
 
@@ -353,9 +421,51 @@ async def test_reset_for_refetch_skips_a_row_already_reopened(db_session: AsyncS
     slo_eval = await _seed_slo_evaluation(db_session, asset_id=asset_id, slo_name=_SLO_A, period_start=_DAY_ONE)
     repo = EvaluationRepository(db_session)
 
-    first = await repo.reset_for_refetch([slo_eval.id], job_stats_by_id={slo_eval.id: _REFETCH_STATS})
-    second = await repo.reset_for_refetch([slo_eval.id], job_stats_by_id={slo_eval.id: {'refetch': {}}})
+    first = await repo.reset_for_refetch([slo_eval.id], refetch_audit=_REFETCH_AUDIT)
+    second = await repo.reset_for_refetch([slo_eval.id], refetch_audit={'reason': 'second'})
     await db_session.refresh(slo_eval)
 
-    assert (first, second) == (1, 0)
-    assert slo_eval.job_stats == _REFETCH_STATS
+    assert (first, second) == ([slo_eval.id], [])
+    assert slo_eval.job_stats == {'refetch': _REFETCH_BLOCK}
+
+
+@pytest.mark.integration
+async def test_reset_for_refetch_is_one_statement_per_table_and_records_previous_values(
+    db_session: AsyncSession, db_engine: AsyncEngine
+) -> None:
+    asset_id = await _seed_asset(db_session)
+    completed = [
+        await _seed_slo_evaluation(db_session, asset_id=asset_id, slo_name=f'{_SLO_A}-{index}', period_start=_DAY_ONE)
+        for index in range(3)
+    ]
+    running = await _seed_slo_evaluation(db_session, asset_id=asset_id, slo_name=_SLO_B, period_start=_DAY_ONE)
+    await EvaluationRepository(db_session).mark_running(running.id, worker_id='worker-1')
+    for row in [*completed, running]:
+        await _seed_children(db_session, row)
+    audit = {'requested_at': '2026-10-26T00:00:00+00:00', 'requested_by': 'qa', 'reason': 'x'}
+    repo = EvaluationRepository(db_session)
+    statements: list[str] = []
+
+    def record_statement(_conn: Any, _cursor: Any, statement: str, *_rest: Any) -> None:
+        statements.append(statement)
+
+    engine = db_engine.sync_engine
+    event.listen(engine, 'before_cursor_execute', record_statement)
+    try:
+        reset_ids = await repo.reset_for_refetch([*(row.id for row in completed), running.id], refetch_audit=audit)
+    finally:
+        event.remove(engine, 'before_cursor_execute', record_statement)
+
+    assert sorted(reset_ids) == sorted(row.id for row in completed)
+    kinds = [statement.lstrip().upper().split(maxsplit=1)[0] for statement in statements]
+    assert (kinds.count('UPDATE'), kinds.count('DELETE')) == (1, 2)
+    await db_session.refresh(completed[0])
+    refetch_block = completed[0].job_stats['refetch']
+    assert refetch_block['previous_result'] == 'pass'
+    assert refetch_block['previous_status'] == 'completed'
+    assert refetch_block['reason'] == 'x'
+    assert refetch_block['requested_by'] == 'qa'
+    await db_session.refresh(running)
+    assert running.status == 'running'
+    assert await _count(db_session, SLIValue, SLIValue.slo_evaluation_id, running.id) == 1
+    assert len(await IndicatorRepository(db_session).get_for_evaluation(running.id)) == 1

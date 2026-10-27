@@ -122,7 +122,7 @@ _QUERY_ARGS: dict[str, Any] = {
     'end': 'e',
 }
 _OK_BODY = {'values': {'m': 1.0}, 'errors': {}, 'metadata': {}}
-_NO_WAIT = AdapterRetryPolicy(attempts=3, backoff_seconds=0, jitter=0)
+_NO_WAIT = AdapterRetryPolicy(max_attempts=3, backoff_seconds=0, jitter=0)
 
 
 def _client_for(handler: Callable[[httpx.Request], httpx.Response], **kwargs: Any) -> HttpAdapterClient:
@@ -172,13 +172,29 @@ async def test_504_budget_exhausted_goes_straight_to_the_job_retry() -> None:
 
 
 @pytest.mark.asyncio
-async def test_429_then_success_is_retried_over_http() -> None:
+@pytest.mark.parametrize(
+    'first_answer',
+    [
+        httpx.Response(429, headers={'Retry-After': '0'}),
+        httpx.Response(504),
+        httpx.Response(503, headers={'Retry-After': 'Wed, 21 Oct 2026 07:28:00 GMT'}),
+        httpx.ReadError('dropped'),
+        httpx.RemoteProtocolError('dropped'),
+        httpx.WriteError('dropped'),
+    ],
+    ids=['429', 'plain-504', '503-retry-after-http-date', 'read-error', 'remote-protocol-error', 'write-error'],
+)
+async def test_quick_failure_then_success_is_retried_over_http(
+    first_answer: httpx.Response | httpx.TransportError,
+) -> None:
     calls = {'n': 0}
 
     def handler(request: httpx.Request) -> httpx.Response:
         calls['n'] += 1
         if calls['n'] == 1:
-            return httpx.Response(429, headers={'Retry-After': '0'})
+            if isinstance(first_answer, httpx.TransportError):
+                raise first_answer
+            return first_answer
         return httpx.Response(200, json=_OK_BODY)
 
     values, _errors, _metadata, _kinds = await _client_for(handler).query(**_QUERY_ARGS)
@@ -226,33 +242,14 @@ async def test_deadline_stops_retrying_a_quick_failure() -> None:
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    'transport_error',
-    [httpx.ReadError, httpx.RemoteProtocolError, httpx.WriteError],
-)
-async def test_other_transport_errors_are_retried(transport_error: type[httpx.TransportError]) -> None:
-    calls = {'n': 0}
-
-    def handler(request: httpx.Request) -> httpx.Response:
-        calls['n'] += 1
-        if calls['n'] == 1:
-            raise transport_error('dropped', request=request)
-        return httpx.Response(200, json=_OK_BODY)
-
-    values, _errors, _metadata, _kinds = await _client_for(handler).query(**_QUERY_ARGS)
-
-    assert values == {'m': 1.0}
-    assert calls['n'] == 2
-
-
-@pytest.mark.asyncio
-@pytest.mark.parametrize(
     'response',
     [
         httpx.Response(200, content=b'<html>gateway</html>'),
         httpx.Response(200, json={'values': {'m': 'not a number'}}),
         httpx.Response(200, json=['not', 'an', 'object']),
+        httpx.Response(200, json={'errors': {'cpu_usage': 'boom'}, 'error_kinds': {'cpu_usage': 'foo'}}),
     ],
-    ids=['not-json', 'bad-values', 'not-an-object'],
+    ids=['not-json', 'bad-values', 'not-an-object', 'unknown-error-kind'],
 )
 async def test_malformed_2xx_is_a_non_retryable_fetch_error(response: httpx.Response) -> None:
     def handler(request: httpx.Request) -> httpx.Response:
@@ -268,68 +265,32 @@ async def test_malformed_2xx_is_a_non_retryable_fetch_error(response: httpx.Resp
 
 
 @pytest.mark.asyncio
-async def test_504_with_retry_after_then_success() -> None:
+@pytest.mark.parametrize(
+    ('first_failure', 'expected_last_status'),
+    [(502, 502), (httpx.ConnectError, None)],
+    ids=['502', 'connect-error'],
+)
+async def test_exhausted_attempts_raise_adapter_fetch_error(
+    first_failure: int | type[httpx.ConnectError], expected_last_status: int | None
+) -> None:
     calls = {'n': 0}
 
     def handler(request: httpx.Request) -> httpx.Response:
         calls['n'] += 1
-        if calls['n'] == 1:
-            return httpx.Response(504, headers={'Retry-After': '0'})
-        return httpx.Response(200, json=_OK_BODY)
-
-    values, _errors, _metadata, _kinds = await _client_for(handler).query(**_QUERY_ARGS)
-
-    assert values == {'m': 1.0}
-    assert calls['n'] == 2
-
-
-@pytest.mark.asyncio
-async def test_retry_after_http_date_is_ignored() -> None:
-    calls = {'n': 0}
-
-    def handler(request: httpx.Request) -> httpx.Response:
-        calls['n'] += 1
-        if calls['n'] == 1:
-            return httpx.Response(503, headers={'Retry-After': 'Wed, 21 Oct 2026 07:28:00 GMT'})
-        return httpx.Response(200, json=_OK_BODY)
-
-    values, _errors, _metadata, _kinds = await _client_for(handler).query(**_QUERY_ARGS)
-
-    assert values == {'m': 1.0}
-    assert calls['n'] == 2
-
-
-@pytest.mark.asyncio
-async def test_exhausted_attempts_raise_adapter_fetch_error() -> None:
-    calls = {'n': 0}
-
-    def handler(request: httpx.Request) -> httpx.Response:
-        calls['n'] += 1
-        return httpx.Response(502)
+        if isinstance(first_failure, int):
+            return httpx.Response(first_failure)
+        raise first_failure('refused', request=request)
 
     with pytest.raises(AdapterFetchError) as exc_info:
         await _client_for(handler).query(**_QUERY_ARGS)
 
     assert exc_info.value.attempts == 3
-    assert exc_info.value.last_status == 502
+    assert exc_info.value.last_status == expected_last_status
     assert calls['n'] == 3
-    record = exc_info.value.as_attempt_record()
-    assert set(record) == {'cause', 'status', 'elapsed_s', 'at'}
-    assert record['status'] == 502
-    assert datetime.fromisoformat(record['at']).tzinfo is not None
-
-
-@pytest.mark.asyncio
-async def test_exhausted_transport_errors_have_no_status() -> None:
-    def handler(request: httpx.Request) -> httpx.Response:
-        raise httpx.ConnectError('refused', request=request)
-
-    with pytest.raises(AdapterFetchError) as exc_info:
-        await _client_for(handler).query(**_QUERY_ARGS)
-
-    assert exc_info.value.attempts == 3
-    assert exc_info.value.last_status is None
-    assert 'ConnectError' in exc_info.value.cause
+    assert 'attempts' not in exc_info.value.cause, 'the count lives in http_attempts, not in the cause text'
+    attempt_record = exc_info.value.as_attempt(1)
+    assert attempt_record.http_attempts == 3
+    assert datetime.fromisoformat(attempt_record.at).tzinfo is not None
 
 
 @pytest.mark.asyncio
@@ -352,50 +313,31 @@ async def test_non_retryable_status_is_not_retried_over_http(status: int, retrya
 
 
 @pytest.mark.asyncio
-async def test_budget_is_sent_as_timeout_seconds() -> None:
+@pytest.mark.parametrize('budget_seconds', [300, None])
+async def test_budget_is_sent_as_timeout_seconds_only_when_set(budget_seconds: int | None) -> None:
     captured: list[dict[str, Any]] = []
 
     def handler(request: httpx.Request) -> httpx.Response:
         captured.append(json.loads(request.content))
         return httpx.Response(200, json=_OK_BODY)
 
-    await _client_for(handler, budget_seconds=300).query(**_QUERY_ARGS)
+    await _client_for(handler, budget_seconds=budget_seconds).query(**_QUERY_ARGS)
 
-    assert captured[0]['timeout_seconds'] == 300
-
-
-@pytest.mark.asyncio
-async def test_timeout_seconds_is_omitted_without_a_budget() -> None:
-    captured: list[dict[str, Any]] = []
-
-    def handler(request: httpx.Request) -> httpx.Response:
-        captured.append(json.loads(request.content))
-        return httpx.Response(200, json=_OK_BODY)
-
-    await _client_for(handler).query(**_QUERY_ARGS)
-
-    assert 'timeout_seconds' not in captured[0]
+    assert captured[0].get('timeout_seconds') == budget_seconds
+    assert ('timeout_seconds' in captured[0]) is (budget_seconds is not None)
 
 
 @pytest.mark.asyncio
-async def test_error_kinds_parsed_and_default_empty() -> None:
-    bodies = iter(
-        [
-            {'values': {'m': None}, 'errors': {'m': 'boom'}, 'metadata': {}, 'error_kinds': {'m': 'transient'}},
-            _OK_BODY,
-        ]
-    )
+async def test_error_kinds_are_parsed() -> None:
+    body = {'values': {'m': None}, 'errors': {'m': 'boom'}, 'metadata': {}, 'error_kinds': {'m': 'transient'}}
 
     def handler(request: httpx.Request) -> httpx.Response:
-        return httpx.Response(200, json=next(bodies))
+        return httpx.Response(200, json=body)
 
-    client = _client_for(handler)
-    _values, errors, _metadata, kinds = await client.query(**_QUERY_ARGS)
+    _values, errors, _metadata, kinds = await _client_for(handler).query(**_QUERY_ARGS)
+
     assert errors == {'m': 'boom'}
     assert kinds == {'m': 'transient'}
-
-    _values, _errors, _metadata, kinds = await client.query(**_QUERY_ARGS)
-    assert kinds == {}
 
 
 def test_backoff_caps_a_huge_retry_after() -> None:

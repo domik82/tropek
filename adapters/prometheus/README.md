@@ -91,7 +91,8 @@ Response 202:
   "status": "queued",
   "created_at": "2026-03-15T10:30:05Z",
   "poll_url": "/api/v1/query-jobs/a1b2c3d4-...",
-  "total_queries": 2
+  "total_queries": 2,
+  "timeout_seconds": 60
 }
 ```
 
@@ -151,13 +152,16 @@ Queries support `$VARIABLE` placeholders resolved before execution:
 | `PROMETHEUS_PASSWORD` | — | Optional basic auth password |
 | `REDIS_URL` | `redis://localhost:6379/0` | Redis connection URL |
 | `REDIS_KEY_PREFIX` | `prom-sli:` | Key namespace in Redis |
-| `MAX_CONCURRENT_QUERIES` | `10` | Max parallel Prometheus queries per job |
-| `MAX_CONCURRENT_JOBS` | `3` | Max jobs processing simultaneously |
+| `MAX_CONCURRENT_QUERIES` | `10` | Max parallel Prometheus queries across all jobs of the process; a job's timeout keeps running while its queries wait for a slot |
+| `MAX_CONCURRENT_JOBS` | `10` | Max jobs processing simultaneously |
 | `MAX_QUEUE_DEPTH` | `100` | Max pending jobs before 503 |
 | `MAX_QUERIES_PER_JOB` | `400` | Max queries in a single submit |
-| `DEFAULT_JOB_TIMEOUT_SECONDS` | `120` | Default job timeout |
+| `DEFAULT_JOB_TIMEOUT_SECONDS` | `300` | Default job timeout |
 | `MAX_JOB_TIMEOUT_SECONDS` | `600` | Maximum allowed timeout |
-| `QUERY_TIMEOUT_SECONDS` | `30` | Per-query HTTP timeout |
+| `QUERY_TIMEOUT_SECONDS` | `60` | Per-query HTTP timeout |
+| `PROMETHEUS_RETRY_ATTEMPTS` | `3` | Attempts per Prometheus request before a transient failure is reported |
+| `PROMETHEUS_RETRY_BACKOFF_SECONDS` | `1.0` | Base delay between attempts; doubles each retry, with jitter |
+| `MAX_CONCURRENT_PROMETHEUS_REQUESTS` | `8` | Process-wide cap on in-flight Prometheus requests |
 | `JOB_RETENTION_SECONDS` | `3600` | TTL for completed job data in Redis |
 | `LOG_LEVEL` | `INFO` | Logging level |
 

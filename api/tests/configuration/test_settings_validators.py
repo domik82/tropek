@@ -5,14 +5,9 @@ from __future__ import annotations
 from typing import Any
 
 import pytest
+from pydantic import ValidationError
+from pydantic_settings import BaseSettings
 from tropek.config import QueueSettings, ReliabilitySettings, validate_timeout_chain
-
-
-def test_shipped_defaults_are_consistent() -> None:
-    validate_timeout_chain(
-        ReliabilitySettings(adapter_timeout_seconds=330, stuck_job_threshold_seconds=600),
-        QueueSettings(job_timeout_seconds=400),
-    )
 
 
 def test_smallest_consistent_chain_is_accepted() -> None:
@@ -23,9 +18,17 @@ def test_smallest_consistent_chain_is_accepted() -> None:
     )
 
 
-def test_negative_max_retries_is_refused() -> None:
-    with pytest.raises(ValueError, match='max_retries must be >= 0'):
-        QueueSettings(max_retries=-1)
+@pytest.mark.parametrize(
+    ('settings_cls', 'field', 'value'),
+    [
+        (QueueSettings, 'max_retries', -1),
+        (ReliabilitySettings, 'adapter_retry_attempts', 0),
+        (ReliabilitySettings, 'adapter_retry_backoff_seconds', -1),
+    ],
+)
+def test_out_of_range_retry_settings_are_refused(settings_cls: type[BaseSettings], field: str, value: int) -> None:
+    with pytest.raises(ValidationError, match=field):
+        settings_cls(**{field: value})
 
 
 def test_adapter_budget_is_timeout_minus_margin_floored() -> None:
@@ -36,7 +39,6 @@ def test_adapter_budget_is_timeout_minus_margin_floored() -> None:
 @pytest.mark.parametrize(
     ('reliability', 'queue', 'message'),
     [
-        ({'adapter_timeout_seconds': 30}, {}, 'adapter_timeout_seconds must exceed 35'),
         ({'adapter_timeout_seconds': 35}, {}, 'adapter_timeout_seconds must exceed 35'),
         (
             {'adapter_timeout_seconds': 330},

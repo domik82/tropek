@@ -336,36 +336,40 @@ export class PinConflictError extends Error {
 
 export async function reEvaluate(input: ReEvaluateInput): Promise<ReEvaluateResponse> {
   const { endpoint, requestBody } = reEvaluateInputToDto(input)
-  const res = await fetch(`${BASE}${endpoint}`, {
+  const response = await fetch(`${BASE}${endpoint}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(requestBody),
   })
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({}))
-    if (res.status === 409 && body.detail?.pin_date) {
+  if (!response.ok) {
+    const errorBody = await response.json().catch(() => ({}))
+    if (response.status === 409 && errorBody.detail?.pin_date) {
       throw new PinConflictError({
-        pinDate: body.detail.pin_date,
-        pinEvaluationId: body.detail.pin_evaluation_id,
+        pinDate: errorBody.detail.pin_date,
+        pinEvaluationId: errorBody.detail.pin_evaluation_id,
       })
     }
-    const message = typeof body.detail === 'string' ? body.detail : `reEvaluate: ${res.status}`
+    const message = typeof errorBody.detail === 'string' ? errorBody.detail : `reEvaluate: ${response.status}`
     throw new Error(message)
   }
-  const body: ReEvaluateResponseDto = await res.json()
-  return dtoToReEvaluateResponse(body)
+  const responseDto: ReEvaluateResponseDto = await response.json()
+  return dtoToReEvaluateResponse(responseDto)
 }
 
 export async function refetch(input: RefetchInput): Promise<RefetchResponse> {
-  const res = await fetch(`${BASE}/evaluations/refetch`, {
+  const response = await fetch(`${BASE}/evaluations/refetch`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(refetchInputToDto(input)),
   })
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({}))
-    throw new Error(typeof body.detail === 'string' ? body.detail : `refetch: ${res.status}`)
+  if (!response.ok) {
+    const errorBody = await response.json().catch(() => ({}))
+    const detail = typeof errorBody.detail === 'string' ? errorBody.detail : null
+    if (response.status === 409 && detail !== null) {
+      throw new Error(`refetch refused: ${detail}`)
+    }
+    throw new Error(detail ?? `refetch: ${response.status}`)
   }
-  const body: RefetchResponseDto = await res.json()
-  return dtoToRefetchResponse(body)
+  const responseDto: RefetchResponseDto = await response.json()
+  return dtoToRefetchResponse(responseDto)
 }

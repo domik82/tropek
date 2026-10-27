@@ -57,7 +57,6 @@ from tropek.modules.quality_gate.schemas.refetch import (
     RefetchRequest,
     RefetchResponse,
     RefetchRunRequest,
-    RefetchSkipped,
 )
 from tropek.modules.quality_gate.schemas.trend import (
     TREND_FRAGMENT_SCHEMA_VERSION,
@@ -116,7 +115,6 @@ __all__ = [
     'RefetchRequest',
     'RefetchResponse',
     'RefetchRunRequest',
-    'RefetchSkipped',
     'RestoreManyRequest',
     'RestoreOverrideManyRequest',
     'SloTrendsResponse',

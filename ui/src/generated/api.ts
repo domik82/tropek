@@ -3965,7 +3965,7 @@ export interface components {
              */
             dry_run: boolean;
             /** Evaluation Name */
-            evaluation_name?: string | null;
+            evaluation_name: string;
             /**
              * From
              * Format: date-time
@@ -4001,8 +4001,6 @@ export interface components {
             refetched: number;
             /** Run Ids */
             run_ids: string[];
-            /** Skipped */
-            skipped: components["schemas"]["RefetchSkipped"][];
         };
         /**
          * RefetchRunRequest
@@ -4023,21 +4021,6 @@ export interface components {
             reason?: string | null;
             /** Requested By */
             requested_by?: string | null;
-        };
-        /**
-         * RefetchSkipped
-         * @description A matched SLO evaluation that refetch left untouched.
-         */
-        RefetchSkipped: {
-            /**
-             * Evaluation Id
-             * Format: uuid
-             */
-            evaluation_id: string;
-            /** Reason */
-            reason: string;
-            /** Slo Name */
-            slo_name: string;
         };
         /**
          * RestoreManyRequest

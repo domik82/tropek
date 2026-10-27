@@ -12,12 +12,11 @@ from arq.connections import ArqRedis
 from tropek.db.models import SLOEvaluation
 from tropek.modules.change_points.repository import ChangePointRepository
 from tropek.modules.common.exceptions import ConflictError, DomainValidationError, NotFoundError
-from tropek.modules.quality_gate.evaluation_engine.constants import EvaluationStatus
+from tropek.modules.quality_gate.repositories.evaluation import IN_PROGRESS_STATUSES, REFETCHABLE_STATUSES
 from tropek.modules.quality_gate.schemas.refetch import (
     RefetchRequest,
     RefetchResponse,
     RefetchRunRequest,
-    RefetchSkipped,
 )
 from tropek.modules.quality_gate.shared.dependencies import QualityGateRepos
 from tropek.modules.quality_gate.shared.params import RefetchScope
@@ -27,9 +26,6 @@ logger = structlog.get_logger()
 # Seeded annotation category (migration 008) used for the run-level refetch note.
 REFETCH_CATEGORY_NAME = 'refetch'
 MAX_RANGE_DAYS = 400
-
-_IN_PROGRESS = frozenset({EvaluationStatus.PENDING, EvaluationStatus.RUNNING})
-_REFETCHABLE = frozenset({EvaluationStatus.COMPLETED, EvaluationStatus.PARTIAL, EvaluationStatus.FAILED})
 
 
 def _validate_range(period_from: datetime, period_to: datetime) -> None:
@@ -57,7 +53,7 @@ async def refetch(request: RefetchRequest, repos: QualityGateRepos, arq_pool: Ar
         arq_pool: Queue the evaluation jobs are enqueued on.
 
     Returns:
-        Counts, skipped rows and the affected run ids.
+        Counts and the affected run ids.
 
     Raises:
         DomainValidationError: When the range is inverted or wider than ``MAX_RANGE_DAYS``.
@@ -98,7 +94,7 @@ async def refetch_run(
         arq_pool: Queue the evaluation jobs are enqueued on.
 
     Returns:
-        Counts, skipped rows and the run id.
+        Counts and the run id.
 
     Raises:
         NotFoundError: When the run does not exist.
@@ -111,9 +107,11 @@ async def refetch_run(
         asset_id=run.asset_id,
         period_from=run.period_start,
         period_to=run.period_end,
+        evaluation_name=run.eval_name,
+        evaluation_id=run_id,
         only_failed=request.only_failed,
     )
-    rows = [row for row in await repos.eval_repo.list_for_refetch(scope) if row.evaluation_id == run_id]
+    rows = await repos.eval_repo.list_for_refetch(scope)
     return await _refetch_rows(rows, request, repos, arq_pool)
 
 
@@ -123,32 +121,64 @@ async def _refetch_rows(
     repos: QualityGateRepos,
     arq_pool: ArqRedis,
 ) -> RefetchResponse:
-    """Reset the refetchable rows, commit, drop their caches, then enqueue one job per row.
+    """Plan the refetch of ``rows``; unless it is a dry run, reset the eligible rows and enqueue them."""
+    eligible, response = _plan_refetch(rows, dry_run=request.dry_run)
+    if request.dry_run or not eligible:
+        return response
+    await _reset_rows(eligible, reason=request.reason, requested_by=request.requested_by, repos=repos)
+    await _commit_and_enqueue(eligible, response, repos, arq_pool, requested_by=request.requested_by)
+    return response
 
-    The in-progress check runs before any write, so a 409 leaves everything unchanged.
+
+def _plan_refetch(rows: list[SLOEvaluation], *, dry_run: bool) -> tuple[list[SLOEvaluation], RefetchResponse]:
+    """Split the matched rows into the ones a refetch resets and build the response for them.
+
+    Pure: reads the rows, writes nothing. The in-progress check runs here, before any write, so a 409
+    leaves everything unchanged.
+
+    Args:
+        rows: SLO evaluations matched by the request's scope.
+        dry_run: Echoed into the response.
+
+    Returns:
+        The eligible rows (terminal status) and the response describing them.
+
+    Raises:
+        ConflictError: When a matched row is pending or running.
     """
-    in_progress = [row for row in rows if row.status in _IN_PROGRESS]
+    in_progress = [row for row in rows if row.status in IN_PROGRESS_STATUSES]
     if in_progress:
         raise ConflictError('evaluation', str(in_progress[0].id), 'in progress')
-    eligible = [row for row in rows if row.status in _REFETCHABLE]
-    skipped = [
-        RefetchSkipped(evaluation_id=row.id, slo_name=row.slo_name, reason=f'status {row.status}')
-        for row in rows
-        if row.status not in _REFETCHABLE
-    ]
+    eligible = [row for row in rows if row.status in REFETCHABLE_STATUSES]
     response = RefetchResponse(
         matched=len(rows),
         refetched=len(eligible),
-        skipped=skipped,
         run_ids=sorted({row.evaluation_id for row in eligible}),
-        dry_run=request.dry_run,
+        dry_run=dry_run,
     )
-    if request.dry_run or not eligible:
-        return response
+    return eligible, response
 
-    await _reset_rows(eligible, request, repos)
-    # Commit before touching Redis and the queue: a cache rebuilt between the delete and the commit
-    # would re-cache stale values, and a job must never start on uncommitted rows.
+
+async def _commit_and_enqueue(
+    eligible: list[SLOEvaluation],
+    response: RefetchResponse,
+    repos: QualityGateRepos,
+    arq_pool: ArqRedis,
+    *,
+    requested_by: str | None,
+) -> None:
+    """Commit the reset, drop the rows' caches, then enqueue one job per row.
+
+    Commit comes before touching Redis and the queue: a cache rebuilt between the delete and the commit
+    would re-cache stale values, and a job must never start on uncommitted rows.
+
+    Args:
+        eligible: Rows reset by ``_reset_rows``.
+        response: The planned response; its counts go into the success log.
+        repos: Repository bundle of the request.
+        arq_pool: Queue the evaluation jobs are enqueued on.
+        requested_by: Requesting user, or ``None`` for ``system``; goes into the success log.
+    """
     await repos.session.commit()
     await repos.eval_repo.invalidate_caches_for(eligible)
     if repos.trend_cache is not None:
@@ -165,19 +195,29 @@ async def _refetch_rows(
             raise
     logger.info(
         'evaluations refetched',
-        refetched=len(eligible),
+        refetched=response.refetched,
         run_count=len(response.run_ids),
-        requested_by=request.requested_by,
+        requested_by=requested_by,
     )
-    return response
 
 
 async def _reset_rows(
     eligible: list[SLOEvaluation],
-    request: RefetchRequest | RefetchRunRequest,
+    *,
+    reason: str | None,
+    requested_by: str | None,
     repos: QualityGateRepos,
 ) -> None:
-    """Reset the rows in place, delete their periods' change points and annotate and re-open their runs.
+    """Reset the rows in place, delete their runs' change points and annotate and re-open their runs.
+
+    ``reset_for_refetch`` is a bulk UPDATE that expires ``job_stats`` on the in-session ``eligible`` rows, so
+    never read ``row.job_stats`` after it.
+
+    Args:
+        eligible: Rows in a terminal status.
+        reason: Free-text reason stored in the audit block and the run note.
+        requested_by: Requesting user, or ``None`` for ``system``.
+        repos: Repository bundle of the request.
 
     Raises:
         ConflictError: When a row left its terminal status after it was listed; nothing is committed.
@@ -185,42 +225,46 @@ async def _reset_rows(
     category = await repos.category_repo.get_by_name(REFETCH_CATEGORY_NAME)
     if category is None:
         raise RuntimeError(f"seeded '{REFETCH_CATEGORY_NAME}' category missing")
-    requested_at = datetime.now(UTC).isoformat()
-    # Built before the reset: it overwrites status and result on the loaded rows.
-    job_stats_by_id = {
-        row.id: {
-            'refetch': {
-                'requested_at': requested_at,
-                'requested_by': request.requested_by,
-                'reason': request.reason,
-                'previous_result': row.result,
-                'previous_status': row.status,
-            }
-        }
-        for row in eligible
-    }
-    reset_count = await repos.eval_repo.reset_for_refetch([row.id for row in eligible], job_stats_by_id=job_stats_by_id)
-    if reset_count != len(eligible):
+    refetch_audit = {'requested_at': datetime.now(UTC).isoformat(), 'requested_by': requested_by, 'reason': reason}
+    reset_ids = await repos.eval_repo.reset_for_refetch([row.id for row in eligible], refetch_audit=refetch_audit)
+    if len(reset_ids) != len(eligible):
         # A concurrent refetch (or a job) re-opened a row after it was listed; resetting the rest and
         # enqueueing them again would run their jobs twice. Nothing is committed, so the request rolls back.
         raise ConflictError(
             'evaluation run', str(eligible[0].evaluation_id), 'an SLO evaluation changed status during the refetch'
         )
 
-    change_point_repo = ChangePointRepository(repos.session)
-    for asset_id, slo_name, period_start in dict.fromkeys(
-        (row.asset_id, row.slo_name, row.period_start) for row in eligible
-    ):
-        await change_point_repo.delete_for_slo_range(
-            asset_id=asset_id, slo_name=slo_name, period_from=period_start, period_to=period_start
-        )
+    await ChangePointRepository(repos.session).delete_for_run_slo_pairs(
+        pairs=sorted({(row.evaluation_id, row.slo_name) for row in eligible})
+    )
+    await _reopen_and_annotate_runs(
+        eligible, category_id=category.id, reason=reason, author=requested_by or 'system', repos=repos
+    )
 
-    note_suffix = f' — {request.reason}' if request.reason else ''
+
+async def _reopen_and_annotate_runs(
+    eligible: list[SLOEvaluation],
+    *,
+    category_id: uuid.UUID,
+    reason: str | None,
+    author: str,
+    repos: QualityGateRepos,
+) -> None:
+    """Mark each affected run pending again and leave one refetch note on it.
+
+    Args:
+        eligible: Rows that were reset; their runs are re-opened.
+        category_id: Annotation category of the refetch note.
+        reason: Free-text reason appended to the note.
+        author: Author of the note.
+        repos: Repository bundle of the request.
+    """
+    note_suffix = f' — {reason}' if reason else ''
     for run_id, row_count in Counter(row.evaluation_id for row in eligible).items():
         await repos.eval_run_repo.mark_pending(run_id)
         await repos.annotation_repo.add_run_annotation(
             run_id,
             content=f'refetched from source: {row_count} SLO evaluation(s){note_suffix}',
-            category_id=category.id,
-            author=request.requested_by or 'system',
+            category_id=category_id,
+            author=author,
         )

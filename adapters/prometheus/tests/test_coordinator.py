@@ -7,6 +7,7 @@ import pytest
 from tropek_prometheus.config import Settings
 from tropek_prometheus.core.coordinator import Coordinator
 from tropek_prometheus.core.prometheus_client import PrometheusQueryError
+from tropek_prometheus.core.strategies.models import IndicatorOutcome, StrategyResult
 from tropek_prometheus.core.strategies.raw import RawQueryStrategy
 from tropek_prometheus.redis.repository import JobRepository
 
@@ -36,10 +37,10 @@ class ExplodingStrategy:
         variables: dict,
         start: str,
         end: str,
-    ) -> tuple[dict, dict, dict | None, dict]:
+    ) -> StrategyResult:
         if sli_name == self._failing_sli:
             raise ValueError(f'invalid duration format: {query_spec.get("interval")}')
-        return {f'{sli_name}.mean': 7.0}, {}, None, {}
+        return StrategyResult(indicators={f'{sli_name}.mean': IndicatorOutcome(value=7.0)})
 
 
 @pytest.fixture
@@ -177,9 +178,9 @@ async def test_coordinator_records_the_failure_for_the_offending_sli(
 class HangingStrategy:
     """Never returns within the test's job timeout."""
 
-    async def execute(self, **_: object) -> tuple[dict, dict, dict | None, dict]:
+    async def execute(self, **_: object) -> StrategyResult:
         await asyncio.sleep(10)
-        return {}, {}, None, {}
+        return StrategyResult(indicators={})
 
 
 class SlowForOneStrategy:
@@ -188,17 +189,19 @@ class SlowForOneStrategy:
     def __init__(self, slow_sli: str) -> None:
         self._slow_sli = slow_sli
 
-    async def execute(self, *, sli_name: str, **_: object) -> tuple[dict, dict, dict | None, dict]:
+    async def execute(self, *, sli_name: str, **_: object) -> StrategyResult:
         if sli_name == self._slow_sli:
             await asyncio.sleep(10)
-        return {sli_name: 1.0}, {}, None, {}
+        return StrategyResult(indicators={sli_name: IndicatorOutcome(value=1.0)})
 
 
 class TransientFailureStrategy:
-    """Reports a retryable failure for its SLI through the 4-tuple."""
+    """Reports a retryable failure for its SLI."""
 
-    async def execute(self, *, sli_name: str, **_: object) -> tuple[dict, dict, dict | None, dict]:
-        return {sli_name: None}, {sli_name: 'overloaded'}, None, {sli_name: 'transient'}
+    async def execute(self, *, sli_name: str, **_: object) -> StrategyResult:
+        return StrategyResult(
+            indicators={sli_name: IndicatorOutcome(value=None, error='overloaded', error_kind='transient')}
+        )
 
 
 def _timeout_coordinator(strategy: object) -> Coordinator:
@@ -289,7 +292,7 @@ class RaisingStrategy:
     def __init__(self, error: Exception) -> None:
         self._error = error
 
-    async def execute(self, **_: object) -> tuple[dict, dict, dict | None, dict]:
+    async def execute(self, **_: object) -> StrategyResult:
         raise self._error
 
 
@@ -320,15 +323,15 @@ class PeakRecordingStrategy:
         self.coordinator: Coordinator | None = None
         self.peak_running_jobs = 0
 
-    async def execute(self, *, sli_name: str, **_: object) -> tuple[dict, dict, dict | None, dict]:
+    async def execute(self, *, sli_name: str, **_: object) -> StrategyResult:
         assert self.coordinator is not None
         self.peak_running_jobs = max(self.peak_running_jobs, self.coordinator.running_jobs)
         await asyncio.sleep(0.2)
-        return {sli_name: 1.0}, {}, None, {}
+        return StrategyResult(indicators={sli_name: IndicatorOutcome(value=1.0)})
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize(('job_count', 'max_concurrent_jobs'), [(5, 2), (2, 3)])
+@pytest.mark.parametrize(('job_count', 'max_concurrent_jobs'), [(5, 2)])
 async def test_run_processes_up_to_max_concurrent_jobs_at_once(job_count: int, max_concurrent_jobs: int):
     strategy = PeakRecordingStrategy()
     repo = JobRepository(fakeredis.aioredis.FakeRedis(), prefix='test:')

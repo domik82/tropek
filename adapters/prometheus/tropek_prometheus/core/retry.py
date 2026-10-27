@@ -7,6 +7,9 @@ import random
 
 MAX_BACKOFF_SECONDS = 60.0
 
+# Jitter needs no seeding or reproducibility; SystemRandom also avoids the shared global state of the ``random`` module.
+_jitter_random = random.SystemRandom()
+
 
 def compute_backoff(attempt: int, *, base_seconds: float, retry_after: str | None, jitter: float = 0.25) -> float:
     """Return the seconds to wait after a failed attempt, never less than 0 nor more than 60.
@@ -27,13 +30,13 @@ def compute_backoff(attempt: int, *, base_seconds: float, retry_after: str | Non
     delay: float | None = None
     if retry_after is not None:
         try:
-            parsed = float(retry_after)
+            retry_after_seconds = float(retry_after)
         except ValueError:
-            parsed = math.nan
-        if math.isfinite(parsed):
-            delay = parsed
+            retry_after_seconds = math.nan
+        if math.isfinite(retry_after_seconds):
+            delay = retry_after_seconds
     if delay is None:
         delay = base_seconds * (2.0 ** (attempt - 1))
         if jitter:
-            delay *= 1 + random.uniform(-jitter, jitter)  # noqa: S311 - not security sensitive
+            delay *= 1 + _jitter_random.uniform(-jitter, jitter)
     return min(max(delay, 0.0), MAX_BACKOFF_SECONDS)

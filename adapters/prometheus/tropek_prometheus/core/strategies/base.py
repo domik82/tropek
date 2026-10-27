@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import Any, Protocol
 
+from tropek_prometheus.core.strategies.models import StrategyResult
+
 
 class QueryStrategy(Protocol):
     """Each query mode implements this interface."""
@@ -16,15 +18,12 @@ class QueryStrategy(Protocol):
         variables: dict[str, str],
         start: str,
         end: str,
-    ) -> tuple[dict[str, float | None], dict[str, str], dict[str, Any] | None, dict[str, str]]:
-        """Execute a query and return (values, errors, metadata, kinds).
+    ) -> StrategyResult:
+        """Execute a query and return one outcome per indicator.
 
-        Returns:
-            values: {metric_name: float_value} — for raw mode, single entry.
-            errors: {metric_name: error_message} — for failed queries.
-            metadata: Optional metadata dict (sample counts, etc.). None for raw mode.
-            kinds: {metric_name: 'transient' | 'data'} for exactly the keys of ``errors``. ``'transient'``
-                means a retry may succeed (the fetch failed); ``'data'`` means the source has no answer
-                (a rejected query, an unresolved variable, or a complete but empty result).
+        Indicators are keyed by metric name (a single entry for raw mode). An outcome with ``error`` set
+        failed; its ``error_kind`` is ``'transient'`` when a retry may succeed (the fetch failed) and
+        ``'data'`` when the source has no answer (a rejected query, an unresolved variable, or a
+        complete but empty result). ``metadata`` carries sample counts and is ``None`` for raw mode.
         """
         ...

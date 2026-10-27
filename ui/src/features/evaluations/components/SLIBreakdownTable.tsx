@@ -28,10 +28,11 @@ function hasCoverageGap(meta: SliMetadata): boolean {
 }
 
 function coverageNote(meta: SliMetadata): string {
-  if (meta.expectedSamples == null || meta.actualSamples == null || meta.missingPct == null) {
-    return `${meta.chunksFailed} chunk(s) failed`
-  }
-  return `${meta.actualSamples}/${meta.expectedSamples} samples (${meta.missingPct.toFixed(1)}% missing)`
+  const chunkNote = `${meta.chunksFailed} chunk(s) failed`
+  if (meta.expectedSamples == null || meta.actualSamples == null) return chunkNote
+  const missing = meta.missingPct == null ? '' : ` (${meta.missingPct.toFixed(1)}% missing)`
+  const samples = `${meta.actualSamples}/${meta.expectedSamples} samples${missing}`
+  return meta.chunksFailed > 0 ? `${samples}, ${chunkNote}` : samples
 }
 
 

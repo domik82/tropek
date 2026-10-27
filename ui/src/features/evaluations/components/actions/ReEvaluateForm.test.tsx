@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, vi, beforeAll, beforeEach, afterEach, afterAll } from 'vitest'
 import { render, screen, cleanup, waitFor, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -34,7 +34,7 @@ beforeEach(() => {
   reEvalSpy.mockReset()
   reEvalSpy.mockResolvedValue({ affectedEvaluations: 1, sloVersionUsed: 3, results: [] })
   refetchSpy.mockReset()
-  refetchSpy.mockResolvedValue({ matched: 30, refetched: 23, skipped: [], runIds: ['r1'], dryRun: true })
+  refetchSpy.mockResolvedValue({ matched: 30, refetched: 23, runIds: ['r1'], dryRun: true })
   queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
 })
 afterEach(() => {
@@ -67,16 +67,25 @@ describe('ReEvaluateForm (scoped)', () => {
 
 const PREVIEW_TIMEOUT = { timeout: 3000 }
 
-function renderRefetchForm(onComplete = vi.fn(), evaluationName: string | null = 'daily') {
+interface RefetchFormOptions {
+  evaluationName?: string
+  defaultRefetchDate?: string
+  scope?: SloScopeResult
+}
+
+function renderRefetchForm(
+  onComplete = vi.fn(),
+  { evaluationName = 'daily', defaultRefetchDate = '2026-10-15T00:00', scope = makeScope() }: RefetchFormOptions = {},
+) {
   render(
     <QueryClientProvider client={queryClient}>
       <ReEvaluateForm
-        scope={makeScope()}
+        scope={scope}
         columnEvalId='col-1'
         assetName='checkout-api'
         evaluationName={evaluationName}
         defaultFromDate='2026-10-01T00:00'
-        defaultRefetchDate='2026-10-15T00:00'
+        defaultRefetchDate={defaultRefetchDate}
         onComplete={onComplete}
       />
     </QueryClientProvider>,
@@ -116,12 +125,97 @@ describe('ReEvaluateForm (refetch mode)', () => {
     expect(payload.evaluationName).toBe('daily')
   })
 
-  it('sends no evaluation name when the panel does not filter to exactly one', async () => {
+  it('hides refetch mode when the panel does not filter to one evaluation', () => {
+    render(
+      <QueryClientProvider client={queryClient}>
+        <ReEvaluateForm
+          scope={makeScope()}
+          columnEvalId='col-1'
+          assetName='checkout-api'
+          defaultRefetchDate='2026-10-15T00:00'
+          onComplete={vi.fn()}
+        />
+      </QueryClientProvider>,
+    )
+    expect(screen.queryByLabelText(/refetch from source/i)).toBeNull()
+    expect(screen.getByLabelText(/re-score from stored data/i)).toBeInTheDocument()
+  })
+
+  it('falls back to re-score when the evaluation filter goes away while in refetch mode', async () => {
     const user = userEvent.setup()
-    renderRefetchForm(vi.fn(), null)
+    const makeForm = (evaluationName?: string) => (
+      <QueryClientProvider client={queryClient}>
+        <ReEvaluateForm
+          scope={makeScope()}
+          columnEvalId='col-1'
+          assetName='checkout-api'
+          evaluationName={evaluationName}
+          defaultRefetchDate='2026-10-15T00:00'
+          onComplete={vi.fn()}
+        />
+      </QueryClientProvider>
+    )
+    const { rerender } = render(makeForm('daily'))
+    await user.click(screen.getByLabelText(/refetch from source/i))
+    expect(screen.queryByLabelText(/run from last baseline/i)).toBeNull()
+    rerender(makeForm(undefined))
+    expect(screen.getByLabelText(/run from last baseline/i)).toBeInTheDocument()
+    expect(screen.getByLabelText(/re-score from stored data/i)).toBeChecked()
+    expect(screen.queryByLabelText(/i understand/i)).toBeNull()
+  })
+
+  it('sends onlyFailed when the checkbox is ticked', async () => {
+    const user = userEvent.setup()
+    const onComplete = renderRefetchForm()
+    await user.click(screen.getByLabelText(/refetch from source/i))
+    await user.click(screen.getByLabelText(/only slo evaluations that failed/i))
+    await waitFor(() => expect(refetchSpy.mock.calls.at(-1)?.[0].onlyFailed).toBe(true), PREVIEW_TIMEOUT)
+    await user.click(screen.getByLabelText(/i understand/i))
+    await waitFor(() => expect(screen.getByRole('button', { name: /run/i })).toBeEnabled(), PREVIEW_TIMEOUT)
+    await user.click(screen.getByRole('button', { name: /run/i }))
+    await waitFor(() => expect(onComplete).toHaveBeenCalled())
+    expect(refetchSpy.mock.calls.at(-1)?.[0]).toMatchObject({ onlyFailed: true, dryRun: false })
+  })
+
+  it('keeps Run disabled while the preview is stale', async () => {
+    const user = userEvent.setup()
+    renderRefetchForm()
     await user.click(screen.getByLabelText(/refetch from source/i))
     await screen.findByText(/will refetch 23 of 30/i, undefined, PREVIEW_TIMEOUT)
-    expect(refetchSpy.mock.calls.at(-1)?.[0].evaluationName).toBeNull()
+    fireEvent.change(screen.getByLabelText(/end date/i), { target: { value: '2026-10-17T00:00' } })
+    // Confirm the new period before the debounced preview for it has run: the old preview must not unlock Run.
+    await user.click(screen.getByLabelText(/i understand/i))
+    expect(screen.getByLabelText(/i understand/i)).toBeChecked()
+    expect(screen.getByRole('button', { name: /run/i })).toBeDisabled()
+    await waitFor(() => expect(screen.getByRole('button', { name: /run/i })).toBeEnabled(), PREVIEW_TIMEOUT)
+  })
+
+  it('prompts for dates when the input is incomplete', async () => {
+    const user = userEvent.setup()
+    renderRefetchForm(vi.fn(), { defaultRefetchDate: '' })
+    await user.click(screen.getByLabelText(/refetch from source/i))
+    expect(screen.getByText('Pick a start and end date')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /run/i })).toBeDisabled()
+  })
+
+  it('says nothing to refetch, not checking, when the scope is empty', async () => {
+    const user = userEvent.setup()
+    renderRefetchForm(vi.fn(), { scope: { ...makeScope(), selected: new Set() } })
+    await user.click(screen.getByLabelText(/refetch from source/i))
+    expect(screen.getByText('Nothing to refetch')).toBeInTheDocument()
+    expect(screen.queryByText(/checking/i)).toBeNull()
+    expect(screen.getByRole('button', { name: /run/i })).toBeDisabled()
+  })
+
+  it('accepts a seconds-precision default', async () => {
+    const user = userEvent.setup()
+    const onComplete = renderRefetchForm(vi.fn(), { defaultRefetchDate: '2026-10-15T00:00:30' })
+    await user.click(screen.getByLabelText(/refetch from source/i))
+    await screen.findByText(/will refetch 23 of 30/i, undefined, PREVIEW_TIMEOUT)
+    await user.click(screen.getByLabelText(/i understand/i))
+    await user.click(screen.getByRole('button', { name: /run/i }))
+    await waitFor(() => expect(onComplete).toHaveBeenCalled())
+    expect(refetchSpy.mock.calls.at(-1)?.[0].from).toBe('2026-10-15T00:00:30.000Z')
   })
 
   it('keeps the re-score start date when refetch mode opens on the selected day', async () => {
@@ -135,7 +229,7 @@ describe('ReEvaluateForm (refetch mode)', () => {
   })
 
   it('shows Nothing to refetch and keeps Run disabled when the preview is empty', async () => {
-    refetchSpy.mockResolvedValue({ matched: 4, refetched: 0, skipped: [], runIds: [], dryRun: true })
+    refetchSpy.mockResolvedValue({ matched: 4, refetched: 0, runIds: [], dryRun: true })
     const user = userEvent.setup()
     renderRefetchForm()
     await user.click(screen.getByLabelText(/refetch from source/i))
@@ -164,5 +258,25 @@ describe('ReEvaluateForm (refetch mode)', () => {
     expect(screen.getByLabelText(/run from last baseline/i)).toBeInTheDocument()
     expect(screen.queryByText(/deleted and fetched again/i)).toBeNull()
     expect(screen.queryByLabelText(/i understand/i)).toBeNull()
+  })
+})
+
+describe('ReEvaluateForm (refetch dates are UTC)', () => {
+  beforeAll(() => {
+    vi.stubEnv('TZ', 'America/New_York')
+  })
+  afterAll(() => {
+    vi.unstubAllEnvs()
+  })
+
+  it('sends the typed dates as UTC whatever the machine time zone is', async () => {
+    const user = userEvent.setup()
+    const onComplete = renderRefetchForm()
+    await user.click(screen.getByLabelText(/refetch from source/i))
+    await screen.findByText(/will refetch 23 of 30/i, undefined, PREVIEW_TIMEOUT)
+    await user.click(screen.getByLabelText(/i understand/i))
+    await user.click(screen.getByRole('button', { name: /run/i }))
+    await waitFor(() => expect(onComplete).toHaveBeenCalled())
+    expect(refetchSpy.mock.calls.at(-1)?.[0].from).toMatch(/T00:00:00\.000Z$/)
   })
 })

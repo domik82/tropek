@@ -15,9 +15,11 @@ import structlog
 from arq import Retry, create_pool, cron
 from arq.connections import ArqRedis, RedisSettings
 from fastapi import Request
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
+from structlog.typing import FilteringBoundLogger
 
 from tropek.cache.redis_cache import RedisCache
-from tropek.config import JOB_TIMEOUT_MARGIN_SECONDS, QueueSettings, get_settings
+from tropek.config import JOB_TIMEOUT_MARGIN_SECONDS, get_settings
 from tropek.db.session import get_session_factory
 from tropek.logging_config import configure_logging
 from tropek.modules.change_points.worker_step import (
@@ -164,58 +166,87 @@ async def _mark_failed(session_factory: Any, eval_id: uuid.UUID, error: str) -> 
         await session.commit()
 
 
+def _fetch_retry_delay(attempt: int, *, retryable: bool, max_retries: int, retry_delay_seconds: int) -> int | None:
+    """Decide what a failed fetch attempt leads to.
+
+    Args:
+        attempt: The 1-based job-level attempt that just failed.
+        retryable: False when a rerun cannot help (a 4xx, a malformed answer).
+        max_retries: Retries allowed after the first attempt.
+        retry_delay_seconds: Delay unit; the wait grows linearly with ``attempt``.
+
+    Returns:
+        Seconds to wait before the job reruns, or ``None`` when the evaluation is to be stored ``failed``.
+    """
+    if not retryable or attempt > max_retries:
+        return None
+    return retry_delay_seconds * attempt
+
+
 async def _handle_adapter_fetch_error(
-    session_factory: Any,
+    session_factory: async_sessionmaker[AsyncSession],
     eval_id: uuid.UUID,
-    exc: AdapterFetchError,
-    queue_settings: QueueSettings,
-    log: Any,
+    fetch_error: AdapterFetchError,
+    *,
+    max_retries: int,
+    retry_delay_seconds: int,
+    log: FilteringBoundLogger,
 ) -> None:
     """Record a failed adapter fetch, then retry the job or store the evaluation ``failed``.
 
     The attempt number is counted from ``job_stats['fetch_attempts']`` in the database, not from
     arq's ``job_try``: a predecessor deferral re-enqueues a new arq job whose ``job_try`` restarts at 1.
-    Below the cap the evaluation goes back to ``pending`` and arq reruns the job after a linear delay
-    (``retry_delay_seconds * attempt``); at the cap, or at once when the error is not ``retryable`` (a 4xx,
-    a malformed answer), it is stored ``failed`` with the full attempt history.
+    ``_fetch_retry_delay`` decides: below the cap the evaluation goes back to ``pending`` and arq reruns the
+    job after a linear delay; at the cap, or at once when the error is not ``retryable`` (a 4xx, a malformed
+    answer), it is stored ``failed`` with the full attempt history.
 
     Args:
         session_factory: Async session factory.
         eval_id: The SLO evaluation whose fetch failed.
-        exc: The fetch failure.
-        queue_settings: Supplies ``max_retries`` and ``retry_delay_seconds``.
+        fetch_error: The fetch failure.
+        max_retries: Retries allowed after the first attempt.
+        retry_delay_seconds: Delay unit of the linear retry delay.
         log: Logger bound to the evaluation.
 
     Raises:
-        Retry: While ``attempt <= max_retries``; arq reruns the job after the delay it carries.
+        Retry: While a retry is due; arq reruns the job after the delay it carries.
     """
     async with session_factory() as session:
         repo = EvaluationRepository(session)
-        row = await repo.get_by_id(eval_id)
-        previous = list((row.job_stats or {}).get('fetch_attempts', [])) if row else []
-        attempt = len(previous) + 1
-        record = {'attempt': attempt, **exc.as_attempt_record()}
-        retry = exc.retryable and attempt <= queue_settings.max_retries
-        if retry:
-            await repo.mark_pending_retry(eval_id, attempt_record=record)
+        slo_evaluation = await repo.get_by_id(eval_id)
+        previous_attempts = list((slo_evaluation.job_stats or {}).get('fetch_attempts', [])) if slo_evaluation else []
+        attempt = len(previous_attempts) + 1
+        attempt_record = fetch_error.as_attempt(attempt).model_dump(mode='json')
+        delay_seconds = _fetch_retry_delay(
+            attempt,
+            retryable=fetch_error.retryable,
+            max_retries=max_retries,
+            retry_delay_seconds=retry_delay_seconds,
+        )
+        if delay_seconds is not None:
+            await repo.mark_pending_retry(eval_id, attempt_record=attempt_record)
         else:
             await repo.mark_failed(
                 eval_id,
                 job_stats={
-                    'error': f'adapter query failed after {attempt} attempts: {exc.cause}',
-                    'fetch_attempts': [*previous, record],
+                    'error': f'adapter query failed after {attempt} attempts: {fetch_error.cause}',
+                    'fetch_attempts': [*previous_attempts, attempt_record],
                 },
             )
         await session.commit()
-    if retry:
-        delay_seconds = queue_settings.retry_delay_seconds * attempt
-        log.warning('adapter fetch failed, job will retry', attempt=attempt, defer_s=delay_seconds, cause=exc.cause)
-        raise Retry(defer=timedelta(seconds=delay_seconds)) from exc
+    if delay_seconds is not None:
+        log.warning(
+            'adapter fetch failed, job will retry',
+            attempt=attempt,
+            defer_s=delay_seconds,
+            cause=fetch_error.cause,
+        )
+        raise Retry(defer=timedelta(seconds=delay_seconds)) from fetch_error
     log.error(
         'adapter fetch failed, evaluation marked failed',
         attempts=attempt,
-        retryable=exc.retryable,
-        cause=exc.cause,
+        retryable=fetch_error.retryable,
+        cause=fetch_error.cause,
     )
 
 
@@ -291,11 +322,12 @@ async def _run_change_point_phase(
         log.warning('change point detection step failed, skipping', exc_info=True)
 
 
-def _build_adapter_client(http_client: httpx.AsyncClient | None) -> HttpAdapterClient:
+def _build_adapter_client(http_client: httpx.AsyncClient | None, *, elapsed_seconds: float) -> HttpAdapterClient:
     """Build the adapter client with the retry policy, budget and job deadline from settings.
 
     The deadline keeps ``JOB_TIMEOUT_MARGIN_SECONDS`` of arq's job timeout free, so an HTTP retry never
     runs into the timeout (which would fail the job without a ``Retry`` and leave the row ``running``).
+    ``elapsed_seconds`` is the time since the job started; it is subtracted so the deadline counts from job start.
     """
     settings = get_settings()
     reliability = settings.reliability
@@ -303,11 +335,11 @@ def _build_adapter_client(http_client: httpx.AsyncClient | None) -> HttpAdapterC
         timeout=reliability.adapter_timeout_seconds,
         http_client=http_client,
         policy=AdapterRetryPolicy(
-            attempts=reliability.adapter_retry_attempts,
+            max_attempts=reliability.adapter_retry_attempts,
             backoff_seconds=reliability.adapter_retry_backoff_seconds,
         ),
         budget_seconds=reliability.adapter_budget_seconds,
-        deadline_seconds=settings.queue.job_timeout_seconds - JOB_TIMEOUT_MARGIN_SECONDS,
+        deadline_seconds=settings.queue.job_timeout_seconds - JOB_TIMEOUT_MARGIN_SECONDS - elapsed_seconds,
     )
 
 
@@ -323,6 +355,7 @@ async def run_evaluation_job(ctx: dict[str, Any], eval_id_str: str, defer_count:
     A failed adapter fetch returns the evaluation to ``pending`` and raises arq ``Retry`` until
     ``queue.max_retries`` retries are spent (see ``_handle_adapter_fetch_error``).
     """
+    job_started = time.monotonic()
     settings = get_settings()
     session_factory = get_session_factory()
     eval_id = uuid.UUID(eval_id_str)
@@ -360,9 +393,9 @@ async def run_evaluation_job(ctx: dict[str, Any], eval_id_str: str, defer_count:
             slo_def, sli_def = await _load_definitions(session, snapshot, cache=cache)
             datasource = await DataSourceRepository(session).get_by_name(snapshot.data_source_name)
             await session.commit()
-    except DefinitionLoadError as exc:
-        log.warning('definitions not found', reason=str(exc))
-        await _mark_failed(session_factory, eval_id, str(exc))
+    except DefinitionLoadError as definition_error:
+        log.warning('definitions not found', reason=str(definition_error))
+        await _mark_failed(session_factory, eval_id, str(definition_error))
         return
 
     if datasource is None:
@@ -373,7 +406,7 @@ async def run_evaluation_job(ctx: dict[str, Any], eval_id_str: str, defer_count:
 
     # Phase 2b: HTTP query + evaluate (baselines need a read session)
     http_client: httpx.AsyncClient | None = ctx.get('http_client')
-    adapter_client = _build_adapter_client(http_client)
+    adapter_client = _build_adapter_client(http_client, elapsed_seconds=time.monotonic() - job_started)
 
     try:
         async with session_factory() as session:
@@ -387,8 +420,15 @@ async def run_evaluation_job(ctx: dict[str, Any], eval_id_str: str, defer_count:
                 baseline_repo=baseline_repo,
             )
             await session.commit()
-    except AdapterFetchError as exc:
-        await _handle_adapter_fetch_error(session_factory, eval_id, exc, settings.queue, log)
+    except AdapterFetchError as fetch_error:
+        await _handle_adapter_fetch_error(
+            session_factory,
+            eval_id,
+            fetch_error,
+            max_retries=settings.queue.max_retries,
+            retry_delay_seconds=settings.queue.retry_delay_seconds,
+            log=log,
+        )
         return
 
     # Phase 3a: Write evaluation result + indicator rows (COMMIT immediately)
@@ -593,6 +633,5 @@ class WorkerSettings:
     # ``max_retries + 1`` runs, which makes it unlikely to pre-empt the job's own final ``failed`` write
     # (cancellation reruns also count toward ``max_tries``).
     max_tries = get_settings().queue.max_retries + 2
-    retry_jobs = True
     keep_result = get_settings().queue.keep_result_seconds
     redis_settings = _redis_settings()

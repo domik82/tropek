@@ -237,6 +237,11 @@ The API refuses to start (`Settings.validate_required()`) unless all of these ho
 - `queue.job_timeout_seconds` is greater than `reliability.adapter_timeout_seconds + 60`: one attempt plus the
   evaluation work (at exactly +60 the worker could never start an attempt within its deadline).
 - `reliability.stuck_job_threshold_seconds` is greater than `queue.job_timeout_seconds`.
+- `reliability.adapter_retry_attempts` is at least 1 and `reliability.adapter_retry_backoff_seconds` is at
+  least 0.
+
+The Prometheus adapter likewise refuses to start when `MAX_CONCURRENT_JOBS`, `MAX_CONCURRENT_QUERIES`,
+`MAX_CONCURRENT_PROMETHEUS_REQUESTS` or `PROMETHEUS_RETRY_ATTEMPTS` is below 1.
 
 The worker validates the same chain at startup. For what happens when the chain is exhausted and how to
 repair the evaluations that ended `failed`, see

@@ -7,7 +7,7 @@ from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from asyncpg import UniqueViolationError
-from sqlalchemy import ColumnElement, String, and_, cast, func, or_, select, tuple_, update
+from sqlalchemy import ColumnElement, String, and_, cast, func, literal, or_, select, tuple_, update
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased, raiseload, selectinload
@@ -23,6 +23,7 @@ from tropek.modules.quality_gate.workflows.presentation.heatmap_cache import Hea
 
 # Statuses a refetch may reset; ``pending`` / ``running`` rows belong to a live job.
 REFETCHABLE_STATUSES = (EvaluationStatus.COMPLETED, EvaluationStatus.PARTIAL, EvaluationStatus.FAILED)
+IN_PROGRESS_STATUSES = (EvaluationStatus.PENDING, EvaluationStatus.RUNNING)
 
 
 def _merged_job_stats(new_stats: dict[str, Any], *, drop_error: bool = False) -> ColumnElement[Any]:
@@ -876,7 +877,7 @@ class EvaluationRepository:
         to ``pending`` would violate the partial unique index ``uq_slo_evaluations_identity``.
 
         Args:
-            scope: Asset, inclusive ``period_start`` range and optional narrowing filters.
+            scope: Asset, inclusive ``period_start`` range and optional narrowing filters (run, SLOs, failed only).
 
         Returns:
             Matching rows ordered by ``period_start`` then ``slo_name``.
@@ -899,10 +900,11 @@ class EvaluationRepository:
             SLOEvaluation.asset_id == scope.asset_id,
             SLOEvaluation.period_start >= scope.period_from,
             SLOEvaluation.period_start <= scope.period_to,
+            SLOEvaluation.evaluation_name == scope.evaluation_name,
             or_(SLOEvaluation.status != EvaluationStatus.FAILED, ~superseded),
         )
-        if scope.evaluation_name is not None:
-            query = query.where(SLOEvaluation.evaluation_name == scope.evaluation_name)
+        if scope.evaluation_id is not None:
+            query = query.where(SLOEvaluation.evaluation_id == scope.evaluation_id)
         if scope.slo_names is not None:
             query = query.where(SLOEvaluation.slo_name.in_(scope.slo_names))
         if scope.only_failed:
@@ -914,52 +916,69 @@ class EvaluationRepository:
         self,
         eval_ids: list[uuid.UUID],
         *,
-        job_stats_by_id: dict[uuid.UUID, dict[str, Any]],
-    ) -> int:
+        refetch_audit: dict[str, str | None],
+    ) -> list[uuid.UUID]:
         """Return SLO evaluations to ``pending`` with their stored values and child rows removed.
 
         Clears the result, score, points, start time, override fields and the SLI metadata (kept
-        inside ``job_stats``, which is replaced by the given dict, not merged). Deletes the
+        inside ``job_stats``, which is replaced, not merged, by a ``refetch`` block). Deletes the
         indicator rows and SLI values. Keeps the row id, ``evaluation_id``, annotations,
         invalidation and baseline pin columns. Only a row still in a terminal status
         (``REFETCHABLE_STATUSES``) is reset, so a concurrent refetch that already re-opened it is
         not reset (and enqueued) a second time.
 
+        One UPDATE and one DELETE per child table, whatever the number of rows. The ``refetch`` block
+        is built in SQL, so ``previous_result`` and ``previous_status`` come from the row's own old values.
+
         Args:
             eval_ids: SLO evaluations to reset.
-            job_stats_by_id: New ``job_stats`` for each id.
+            refetch_audit: Text values for the ``refetch`` block of ``job_stats`` (``requested_at``,
+                ``requested_by``, ``reason``); ``None`` becomes JSON ``null``.
 
         Returns:
-            The number of rows reset; fewer than ``len(eval_ids)`` when a row left its terminal status.
+            The ids reset; fewer than ``len(eval_ids)`` when a row left its terminal status.
         """
-        indicator_repo = IndicatorRepository(self._session)
-        sli_value_repo = SLIValueRepository(self._session)
-        reset_count = 0
-        for eval_id in eval_ids:
-            reset_id = await self._session.scalar(
-                update(SLOEvaluation)
-                .where(SLOEvaluation.id == eval_id, SLOEvaluation.status.in_(REFETCHABLE_STATUSES))
-                .values(
-                    status=EvaluationStatus.PENDING,
-                    result=None,
-                    score=None,
-                    achieved_points=None,
-                    total_points=None,
-                    started_at=None,
-                    original_result=None,
-                    override_reason=None,
-                    override_author=None,
-                    job_stats=job_stats_by_id[eval_id],
+        if not eval_ids:
+            return []
+        audit_pairs: list[ColumnElement[Any]] = []
+        for key, audit_value in refetch_audit.items():
+            audit_pairs.extend([literal(key, String), literal(audit_value, String)])
+        job_stats = func.jsonb_build_object(
+            literal('refetch', String),
+            func.jsonb_build_object(
+                *audit_pairs,
+                literal('previous_result', String),
+                SLOEvaluation.result,
+                literal('previous_status', String),
+                SLOEvaluation.status,
+            ),
+        )
+        reset_ids = list(
+            (
+                await self._session.scalars(
+                    update(SLOEvaluation)
+                    .where(SLOEvaluation.id.in_(eval_ids), SLOEvaluation.status.in_(REFETCHABLE_STATUSES))
+                    .values(
+                        status=EvaluationStatus.PENDING,
+                        result=None,
+                        score=None,
+                        achieved_points=None,
+                        total_points=None,
+                        started_at=None,
+                        original_result=None,
+                        override_reason=None,
+                        override_author=None,
+                        job_stats=job_stats,
+                    )
+                    .returning(SLOEvaluation.id)
+                    .execution_options(synchronize_session='fetch')
                 )
-                .returning(SLOEvaluation.id)
-                .execution_options(synchronize_session='fetch')
-            )
-            if reset_id is None:
-                continue
-            reset_count += 1
-            await indicator_repo.delete_for_evaluation(eval_id)
-            await sli_value_repo.delete_sli_values(eval_id)
-        return reset_count
+            ).all()
+        )
+        if reset_ids:
+            await IndicatorRepository(self._session).delete_for_evaluations(reset_ids)
+            await SLIValueRepository(self._session).delete_sli_values_for_evaluations(reset_ids)
+        return reset_ids
 
     async def get_by_run_id(self, run_id: uuid.UUID) -> list[SLOEvaluation]:
         """Fetch a run's SLO evaluations, each carrying only its non-hidden annotations.

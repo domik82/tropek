@@ -40,6 +40,7 @@ class RefetchScope(StrictInput):
     asset_id: uuid.UUID
     period_from: datetime
     period_to: datetime
-    evaluation_name: str | None = None
+    evaluation_name: str
+    evaluation_id: uuid.UUID | None = None
     slo_names: list[str] | None = None
     only_failed: bool = False

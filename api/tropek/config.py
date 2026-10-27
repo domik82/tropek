@@ -129,28 +129,31 @@ class QueueSettings(BaseSettings):
 
     @field_validator('max_retries')
     @classmethod
-    def _validate_max_retries(cls, v: int) -> int:
-        if v < 0:
-            msg = f'max_retries must be >= 0, got {v}'
+    def _validate_max_retries(cls, max_retries: int) -> int:
+        if max_retries < 0:
+            msg = f'max_retries must be >= 0, got {max_retries}'
             raise ValueError(msg)
-        return v
+        return max_retries
 
     @field_validator('finalize_sweeper_interval_seconds')
     @classmethod
-    def _validate_sweeper_interval(cls, v: int) -> int:
+    def _validate_sweeper_interval(cls, interval_seconds: int) -> int:
         allowed = {5, 10, 15, 20, 30, 60}
-        if v not in allowed:
-            msg = f'finalize_sweeper_interval_seconds must be one of {sorted(allowed)} (divisors of 60), got {v}'
+        if interval_seconds not in allowed:
+            msg = (
+                f'finalize_sweeper_interval_seconds must be one of {sorted(allowed)} (divisors of 60), '
+                f'got {interval_seconds}'
+            )
             raise ValueError(msg)
-        return v
+        return interval_seconds
 
     @field_validator('finalize_sweeper_batch_limit')
     @classmethod
-    def _validate_sweeper_batch_limit(cls, v: int) -> int:
-        if v < 1:
-            msg = f'finalize_sweeper_batch_limit must be >= 1, got {v}'
+    def _validate_sweeper_batch_limit(cls, batch_limit: int) -> int:
+        if batch_limit < 1:
+            msg = f'finalize_sweeper_batch_limit must be >= 1, got {batch_limit}'
             raise ValueError(msg)
-        return v
+        return batch_limit
 
 
 _queue_settings: QueueSettings = QueueSettings()
@@ -174,20 +177,36 @@ class ReliabilitySettings(BaseSettings):
 
     @field_validator('watchdog_interval_seconds')
     @classmethod
-    def _validate_watchdog_interval(cls, v: int) -> int:
+    def _validate_watchdog_interval(cls, interval_seconds: int) -> int:
         allowed = {5, 10, 15, 20, 30, 60}
-        if v not in allowed:
-            msg = f'watchdog_interval_seconds must be one of {sorted(allowed)} (divisors of 60), got {v}'
+        if interval_seconds not in allowed:
+            msg = f'watchdog_interval_seconds must be one of {sorted(allowed)} (divisors of 60), got {interval_seconds}'
             raise ValueError(msg)
-        return v
+        return interval_seconds
+
+    @field_validator('adapter_retry_attempts')
+    @classmethod
+    def _validate_adapter_retry_attempts(cls, attempts: int) -> int:
+        if attempts < 1:
+            msg = f'adapter_retry_attempts must be >= 1, got {attempts}'
+            raise ValueError(msg)
+        return attempts
+
+    @field_validator('adapter_retry_backoff_seconds')
+    @classmethod
+    def _validate_adapter_retry_backoff_seconds(cls, backoff_seconds: int) -> int:
+        if backoff_seconds < 0:
+            msg = f'adapter_retry_backoff_seconds must be >= 0, got {backoff_seconds}'
+            raise ValueError(msg)
+        return backoff_seconds
 
     @field_validator('max_stuck_job_retries')
     @classmethod
-    def _validate_max_stuck_job_retries(cls, v: int) -> int:
-        if v < 1:
-            msg = f'max_stuck_job_retries must be >= 1, got {v}'
+    def _validate_max_stuck_job_retries(cls, max_stuck_job_retries: int) -> int:
+        if max_stuck_job_retries < 1:
+            msg = f'max_stuck_job_retries must be >= 1, got {max_stuck_job_retries}'
             raise ValueError(msg)
-        return v
+        return max_stuck_job_retries
 
     @property
     def adapter_budget_seconds(self) -> int:
@@ -245,19 +264,19 @@ class QualityGateInvalidateSettings(BaseSettings):
 
     @field_validator('max_retries')
     @classmethod
-    def _validate_max_retries(cls, v: int) -> int:
-        if v < 0:
-            msg = f'max_retries must be >= 0, got {v}'
+    def _validate_max_retries(cls, max_retries: int) -> int:
+        if max_retries < 0:
+            msg = f'max_retries must be >= 0, got {max_retries}'
             raise ValueError(msg)
-        return v
+        return max_retries
 
     @field_validator('base_backoff_ms', 'max_backoff_ms')
     @classmethod
-    def _validate_backoff(cls, v: int) -> int:
-        if v <= 0:
-            msg = f'backoff milliseconds must be > 0, got {v}'
+    def _validate_backoff(cls, backoff_ms: int) -> int:
+        if backoff_ms <= 0:
+            msg = f'backoff milliseconds must be > 0, got {backoff_ms}'
             raise ValueError(msg)
-        return v
+        return backoff_ms
 
 
 class QualityGateSettings(BaseSettings):

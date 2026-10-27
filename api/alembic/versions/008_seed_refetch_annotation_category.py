@@ -31,4 +31,9 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     """Downgrade schema."""
+    # evaluation_annotations.category_id is a foreign key without ON DELETE, so the notes go first.
+    op.execute("""
+        DELETE FROM evaluation_annotations
+        WHERE category_id IN (SELECT id FROM annotation_categories WHERE name = 'refetch')
+    """)
     op.execute("DELETE FROM annotation_categories WHERE name = 'refetch'")

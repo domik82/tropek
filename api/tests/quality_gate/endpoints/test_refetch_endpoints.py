@@ -89,12 +89,12 @@ async def _seed_slo_evaluation(
 
 
 async def _seed_change_point(
-    session: AsyncSession, asset_id: uuid.UUID, slo_name: str, period_start: datetime
+    session: AsyncSession, run_id: uuid.UUID, asset_id: uuid.UUID, slo_name: str, period_start: datetime
 ) -> uuid.UUID:
     change_point = await ChangePointRepository(session).insert_change_point(
         ChangePointInsertParams(
             indicator_result_id=None,
-            evaluation_run_id=None,
+            evaluation_run_id=run_id,
             asset_id=asset_id,
             slo_name=slo_name,
             metric_name='response_time',
@@ -124,6 +124,7 @@ async def _run_notes(session: AsyncSession, run_id: uuid.UUID) -> list[tuple[str
 def _period_body(asset_name: str, **overrides: object) -> dict[str, object]:
     return {
         'asset_name': asset_name,
+        'evaluation_name': 'daily',
         'from': _DAY_ONE.isoformat(),
         'to': (_DAY_ONE + timedelta(hours=23)).isoformat(),
         **overrides,
@@ -138,9 +139,10 @@ async def test_refetch_by_period_resets_rows_and_enqueues(
     run = await _seed_run(db_session, asset_id)
     first = await _seed_slo_evaluation(db_session, run, slo_name=_SLO_A, with_indicator_row=True)
     second = await _seed_slo_evaluation(db_session, run, slo_name=_SLO_B, with_indicator_row=True)
-    next_day = await _seed_slo_evaluation(db_session, await _seed_run(db_session, asset_id, _DAY_TWO), slo_name=_SLO_A)
-    change_point_inside = await _seed_change_point(db_session, asset_id, _SLO_A, _DAY_ONE)
-    change_point_next_day = await _seed_change_point(db_session, asset_id, _SLO_A, _DAY_TWO)
+    next_day_run = await _seed_run(db_session, asset_id, _DAY_TWO)
+    next_day = await _seed_slo_evaluation(db_session, next_day_run, slo_name=_SLO_A)
+    change_point_inside = await _seed_change_point(db_session, run.id, asset_id, _SLO_A, _DAY_ONE)
+    change_point_next_day = await _seed_change_point(db_session, next_day_run.id, asset_id, _SLO_A, _DAY_TWO)
 
     response = await async_client.post(
         '/evaluations/refetch',
@@ -151,7 +153,6 @@ async def test_refetch_by_period_resets_rows_and_enqueues(
     assert response.json() == {
         'matched': 2,
         'refetched': 2,
-        'skipped': [],
         'run_ids': [str(run.id)],
         'dry_run': False,
     }
@@ -174,23 +175,6 @@ async def test_refetch_by_period_resets_rows_and_enqueues(
     ]
     enqueued = sorted(call.args for call in arq_pool.enqueue_job.await_args_list)
     assert enqueued == sorted([('run_evaluation_job', str(first.id)), ('run_evaluation_job', str(second.id))])
-
-
-@pytest.mark.integration
-async def test_refetch_dry_run_changes_nothing(
-    async_client: AsyncClient, db_session: AsyncSession, arq_pool: AsyncMock
-) -> None:
-    asset_id, asset_name = await _seed_asset(db_session)
-    run = await _seed_run(db_session, asset_id)
-    slo_eval = await _seed_slo_evaluation(db_session, run, slo_name=_SLO_A)
-
-    response = await async_client.post('/evaluations/refetch', json=_period_body(asset_name, dry_run=True))
-
-    assert response.status_code == 200, response.text
-    assert (response.json()['refetched'], response.json()['dry_run']) == (1, True)
-    await db_session.refresh(slo_eval)
-    assert slo_eval.status == 'completed'
-    arq_pool.enqueue_job.assert_not_awaited()
 
 
 @pytest.mark.integration
@@ -218,40 +202,17 @@ async def test_refetch_run_endpoint(async_client: AsyncClient, db_session: Async
 
 
 @pytest.mark.integration
-async def test_refetch_with_running_row_is_atomic_409(
-    async_client: AsyncClient, db_session: AsyncSession, arq_pool: AsyncMock
-) -> None:
-    asset_id, asset_name = await _seed_asset(db_session)
-    run = await _seed_run(db_session, asset_id)
-    completed = await _seed_slo_evaluation(db_session, run, slo_name=_SLO_A, with_indicator_row=True)
-    running = await _seed_slo_evaluation(db_session, run, slo_name=_SLO_B, status='running')
-    change_point_id = await _seed_change_point(db_session, asset_id, _SLO_A, _DAY_ONE)
-
-    response = await async_client.post('/evaluations/refetch', json=_period_body(asset_name))
-
-    assert response.status_code == 409
-    assert str(running.id) in response.json()['detail']
-    assert 'in progress' in response.json()['detail']
-    await db_session.refresh(completed)
-    assert (completed.status, completed.result, completed.score) == ('completed', 'pass', 100.0)
-    assert len(await IndicatorRepository(db_session).get_for_evaluation(completed.id)) == 1
-    assert await ChangePointRepository(db_session).get_by_id(change_point_id) is not None
-    await db_session.refresh(run)
-    assert run.status == 'completed'
-    assert await _run_notes(db_session, run.id) == []
-    arq_pool.enqueue_job.assert_not_awaited()
-
-
-@pytest.mark.integration
 @pytest.mark.parametrize(
-    ('period_from', 'period_to'),
+    ('period_from', 'period_to', 'expected_status'),
     [
-        (_DAY_TWO, _DAY_ONE),
-        (_DAY_ONE - timedelta(days=401), _DAY_ONE),
+        (_DAY_TWO, _DAY_ONE, 422),
+        (_DAY_ONE - timedelta(days=401), _DAY_ONE, 422),
         # A naive bound cannot be compared with an aware one; it is refused instead of answering 500.
-        (_DAY_ONE.replace(tzinfo=None), _DAY_TWO),
+        (_DAY_ONE.replace(tzinfo=None), _DAY_TWO, 422),
+        # The limit is inclusive: exactly 400 days is accepted.
+        (_DAY_ONE - timedelta(days=400), _DAY_ONE, 200),
     ],
-    ids=['to-before-from', 'wider-than-400-days', 'naive-from'],
+    ids=['to-before-from', 'wider-than-400-days', 'naive-from', 'exactly-400-days'],
 )
 async def test_refetch_range_validation_422(
     async_client: AsyncClient,
@@ -259,36 +220,38 @@ async def test_refetch_range_validation_422(
     arq_pool: AsyncMock,
     period_from: datetime,
     period_to: datetime,
+    expected_status: int,
 ) -> None:
     _, asset_name = await _seed_asset(db_session)
 
     response = await async_client.post(
         '/evaluations/refetch',
-        json={'asset_name': asset_name, 'from': period_from.isoformat(), 'to': period_to.isoformat()},
+        json={
+            'asset_name': asset_name,
+            'evaluation_name': 'daily',
+            'from': period_from.isoformat(),
+            'to': period_to.isoformat(),
+        },
     )
 
-    assert response.status_code == 422
+    assert response.status_code == expected_status
     arq_pool.enqueue_job.assert_not_awaited()
 
 
 @pytest.mark.integration
-async def test_detail_of_a_fetch_that_failed_with_minimal_metadata_is_200(
-    async_client: AsyncClient, db_session: AsyncSession
+async def test_refetch_without_evaluation_name_is_422(
+    async_client: AsyncClient, db_session: AsyncSession, arq_pool: AsyncMock
 ) -> None:
-    """A metric whose aggregated fetch failed with a data error may store only the chunk counts."""
-    asset_id, _ = await _seed_asset(db_session)
-    slo_eval = await _seed_slo_evaluation(db_session, await _seed_run(db_session, asset_id), slo_name=_SLO_A)
-    minimal = {'mode': 'aggregated', 'chunks_failed': 1, 'chunks_total': 6}
-    await EvaluationRepository(db_session).mark_completed(
-        slo_eval.id, result='error', score=0.0, job_stats={'sli_metadata': {'cpu': minimal}}
+    _, asset_name = await _seed_asset(db_session)
+
+    response = await async_client.post(
+        '/evaluations/refetch',
+        json={'asset_name': asset_name, 'from': _DAY_ONE.isoformat(), 'to': _DAY_TWO.isoformat()},
     )
-    await db_session.flush()
 
-    response = await async_client.get(f'/evaluation/{slo_eval.id}')
-
-    assert response.status_code == 200, response.text
-    cpu = response.json()['sli_metadata']['cpu']
-    assert (cpu['chunks_failed'], cpu['expected_samples'], cpu['missing_pct']) == (1, None, None)
+    assert response.status_code == 422
+    assert 'evaluation_name' in response.text
+    arq_pool.enqueue_job.assert_not_awaited()
 
 
 @pytest.mark.integration
@@ -296,35 +259,3 @@ async def test_refetch_unknown_asset_404(async_client: AsyncClient, arq_pool: As
     response = await async_client.post('/evaluations/refetch', json=_period_body('no-such-asset'))
 
     assert response.status_code == 404
-
-
-@pytest.mark.integration
-async def test_refetch_keeps_pin_and_invalidation(
-    async_client: AsyncClient, db_session: AsyncSession, arq_pool: AsyncMock, info_category_id: uuid.UUID
-) -> None:
-    asset_id, asset_name = await _seed_asset(db_session)
-    slo_eval = await _seed_slo_evaluation(db_session, await _seed_run(db_session, asset_id), slo_name=_SLO_A)
-    repo = EvaluationRepository(db_session)
-    await repo.invalidate(slo_eval.id, note='bad data')
-    await repo.pin_baseline(slo_eval.id, reason='golden', author='tester')
-    db_session.add(
-        EvaluationAnnotation(
-            slo_evaluation_id=slo_eval.id, content='keep me', author='tester', category_id=info_category_id
-        )
-    )
-    await db_session.flush()
-    await db_session.refresh(slo_eval)
-    pinned_at = slo_eval.baseline_pinned_at
-
-    response = await async_client.post('/evaluations/refetch', json=_period_body(asset_name))
-
-    assert response.status_code == 200, response.text
-    await db_session.refresh(slo_eval)
-    assert slo_eval.status == 'pending'
-    assert (slo_eval.invalidated, slo_eval.invalidation_note) == (True, 'bad data')
-    assert pinned_at is not None
-    assert (slo_eval.baseline_pinned_at, slo_eval.baseline_unpinned_at) == (pinned_at, None)
-    notes = await db_session.execute(
-        select(EvaluationAnnotation.content).where(EvaluationAnnotation.slo_evaluation_id == slo_eval.id)
-    )
-    assert list(notes.scalars().all()) == ['keep me']

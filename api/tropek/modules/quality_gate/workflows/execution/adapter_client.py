@@ -7,13 +7,16 @@ import math
 import random
 import time
 from datetime import UTC, datetime
-from typing import Any
+from typing import Any, Literal
 
 import httpx
 import structlog
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 logger = structlog.get_logger()
+
+
+ErrorKind = Literal['transient', 'data']
 
 
 class AdapterQueryResponse(BaseModel):
@@ -22,7 +25,7 @@ class AdapterQueryResponse(BaseModel):
     values: dict[str, float | None] = Field(default_factory=dict)
     errors: dict[str, str] = Field(default_factory=dict)
     metadata: dict[str, dict[str, Any]] = Field(default_factory=dict)
-    error_kinds: dict[str, str] = Field(default_factory=dict)
+    error_kinds: dict[str, ErrorKind] = Field(default_factory=dict)
 
 
 _RETRYABLE_STATUS = frozenset({429, 502, 503, 504})
@@ -35,9 +38,22 @@ _MAX_BACKOFF_SECONDS = 60.0
 class AdapterRetryPolicy(BaseModel):
     """How the worker retries a failed hop to the adapter."""
 
-    attempts: int = Field(default=3, ge=1)
+    max_attempts: int = Field(default=3, ge=1)
     backoff_seconds: float = Field(default=2.0, ge=0)
     jitter: float = Field(default=0.25, ge=0, lt=1)
+
+
+class FetchAttempt(BaseModel):
+    """One failed job-level fetch attempt, as stored in ``job_stats['fetch_attempts']``."""
+
+    model_config = ConfigDict(frozen=True)
+
+    attempt: int
+    http_attempts: int
+    cause: str
+    status: int | None
+    elapsed_s: float
+    at: str
 
 
 class AdapterFetchError(Exception):
@@ -63,18 +79,26 @@ class AdapterFetchError(Exception):
         self.elapsed_s = elapsed_s
         self.retryable = retryable
 
-    def as_attempt_record(self) -> dict[str, Any]:
+    def as_attempt(self, attempt: int) -> FetchAttempt:
         """Describe this failure as one attempt-history entry.
 
+        Args:
+            attempt: The 1-based job-level attempt number this failure was.
+
         Returns:
-            Dict with ``cause``, ``status``, ``elapsed_s`` and ``at`` (ISO-8601 UTC timestamp).
+            The attempt record; its ``at`` is the current UTC time.
         """
-        return {
-            'cause': self.cause,
-            'status': self.last_status,
-            'elapsed_s': round(self.elapsed_s, 3),
-            'at': datetime.now(UTC).isoformat(),
-        }
+        return FetchAttempt(
+            attempt=attempt,
+            http_attempts=self.attempts,
+            cause=self.cause,
+            status=self.last_status,
+            elapsed_s=round(self.elapsed_s, 3),
+            at=datetime.now(UTC).isoformat(),
+        )
+
+
+_jitter_random = random.SystemRandom()
 
 
 def _compute_backoff(attempt: int, *, base_seconds: float, retry_after: str | None, jitter: float = 0.25) -> float:
@@ -103,7 +127,7 @@ def _compute_backoff(attempt: int, *, base_seconds: float, retry_after: str | No
     if delay is None:
         delay = base_seconds * (2.0 ** (attempt - 1))
         if jitter:
-            delay *= 1 + random.uniform(-jitter, jitter)  # noqa: S311 - not security sensitive
+            delay *= 1 + _jitter_random.uniform(-jitter, jitter)
     return min(max(delay, 0.0), _MAX_BACKOFF_SECONDS)
 
 
@@ -181,7 +205,7 @@ class HttpAdapterClient:
         self._http_client = http_client
         self._policy = policy or AdapterRetryPolicy()
         self._budget_seconds = budget_seconds
-        self._deadline = None if deadline_seconds is None else time.monotonic() + deadline_seconds
+        self._deadline_at = None if deadline_seconds is None else time.monotonic() + deadline_seconds
 
     async def query(
         self,
@@ -193,10 +217,10 @@ class HttpAdapterClient:
         start: str,
         end: str,
         token: str | None = None,
-    ) -> tuple[dict[str, float | None], dict[str, str], dict[str, Any], dict[str, str]]:
+    ) -> tuple[dict[str, float | None], dict[str, str], dict[str, Any], dict[str, ErrorKind]]:
         """Send metric queries to the adapter and return (values, errors, metadata, error_kinds).
 
-        Retries quick transport errors and 429/502/503/504 answers up to ``policy.attempts`` times within the
+        Retries quick transport errors and 429/502/503/504 answers up to ``policy.max_attempts`` times within the
         deadline, honouring a numeric ``Retry-After``; timeouts and a budget-exhausted 504 are not retried here
         (see the class docstring). The budget, when set, is sent as ``timeout_seconds``.
 
@@ -257,7 +281,7 @@ class HttpAdapterClient:
         metrics_fetched: dict[str, float | None] = dict(parsed.values)
         fetch_errors: dict[str, str] = dict(parsed.errors)
         metadata: dict[str, Any] = dict(parsed.metadata)
-        error_kinds: dict[str, str] = dict(parsed.error_kinds)
+        error_kinds: dict[str, ErrorKind] = dict(parsed.error_kinds)
         logger.info(
             'adapter response',
             url=url,
@@ -295,14 +319,14 @@ class HttpAdapterClient:
         started = time.perf_counter()
         last_cause = 'unknown'
         last_status: int | None = None
-        if self._misses_deadline(after_seconds=0.0):
+        if self._attempt_would_overrun_deadline(start_in_seconds=0.0):
             raise AdapterFetchError(
                 f'job deadline leaves less than one adapter attempt ({self._timeout}s)',
                 attempts=0,
                 last_status=None,
                 elapsed_s=0.0,
             )
-        for attempt in range(1, self._policy.attempts + 1):
+        for attempt in range(1, self._policy.max_attempts + 1):
             retry_after: str | None = None
             try:
                 response = await self._post_once(url, headers=headers, payload=payload)
@@ -321,7 +345,7 @@ class HttpAdapterClient:
                 last_cause, last_status = f'adapter returned {response.status_code}', response.status_code
                 _raise_unless_quick_failure(response, cause=last_cause, attempt=attempt, started=started)
                 retry_after = response.headers.get('Retry-After')
-            if attempt == self._policy.attempts:
+            if attempt == self._policy.max_attempts:
                 break
             delay = _compute_backoff(
                 attempt,
@@ -329,7 +353,7 @@ class HttpAdapterClient:
                 retry_after=retry_after,
                 jitter=self._policy.jitter,
             )
-            if self._misses_deadline(after_seconds=delay):
+            if self._attempt_would_overrun_deadline(start_in_seconds=delay):
                 raise AdapterFetchError(
                     f'{last_cause}; job deadline leaves no room for another attempt',
                     attempts=attempt,
@@ -340,23 +364,23 @@ class HttpAdapterClient:
                 'adapter request retried',
                 url=url,
                 attempt=attempt,
-                max_attempts=self._policy.attempts,
+                max_attempts=self._policy.max_attempts,
                 backoff_s=round(delay, 2),
                 cause=last_cause,
             )
             await asyncio.sleep(delay)
         raise AdapterFetchError(
-            f'{last_cause} after {self._policy.attempts} attempts',
-            attempts=self._policy.attempts,
+            last_cause,
+            attempts=self._policy.max_attempts,
             last_status=last_status,
             elapsed_s=time.perf_counter() - started,
         )
 
-    def _misses_deadline(self, *, after_seconds: float) -> bool:
-        """Tell whether an attempt starting ``after_seconds`` from now could still run past the deadline."""
-        if self._deadline is None:
+    def _attempt_would_overrun_deadline(self, *, start_in_seconds: float) -> bool:
+        """Tell whether an attempt starting ``start_in_seconds`` from now could still run past the deadline."""
+        if self._deadline_at is None:
             return False
-        return self._deadline - time.monotonic() - after_seconds < self._timeout
+        return self._deadline_at - time.monotonic() - start_in_seconds < self._timeout
 
     async def health(self, adapter_url: str) -> bool:
         """Check adapter health by hitting the /health endpoint.

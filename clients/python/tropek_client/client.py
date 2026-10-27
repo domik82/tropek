@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from typing import Any
+from uuid import UUID
 
 from tropek_client._http import HttpSession
 from tropek_client.models import (
@@ -533,7 +534,7 @@ class _Evaluations:
         )
         return RefetchResponse.model_validate(response.json())
 
-    def refetch_run(self, run_id: str, body: RefetchRunRequest) -> RefetchResponse:
+    def refetch_run(self, run_id: UUID | str, body: RefetchRunRequest) -> RefetchResponse:
         """Refetch the evaluations of one evaluation run from the source."""
         response = self._http.post(
             f'/evaluation-run/{run_id}/refetch', json=body.model_dump(mode='json', by_alias=True, exclude_none=True)

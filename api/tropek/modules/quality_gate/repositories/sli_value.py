@@ -36,6 +36,14 @@ class SLIValueRepository:
         """
         await self._session.execute(delete(SLIValue).where(SLIValue.slo_evaluation_id == slo_evaluation_id))
 
+    async def delete_sli_values_for_evaluations(self, slo_evaluation_ids: list[uuid.UUID]) -> None:
+        """Delete all SLI values of several evaluations in one statement (refetch).
+
+        Args:
+            slo_evaluation_ids: Evaluations whose SLI values should be deleted.
+        """
+        await self._session.execute(delete(SLIValue).where(SLIValue.slo_evaluation_id.in_(slo_evaluation_ids)))
+
     async def get_sli_values_for_eval(self, slo_evaluation_id: uuid.UUID) -> list[SLIValue]:
         """Fetch all SLI values for a given evaluation.
 

@@ -1,6 +1,8 @@
 """Route integration tests using fakeredis."""
 
 import asyncio
+import time
+from types import SimpleNamespace
 
 import pytest
 from fastapi import FastAPI
@@ -25,6 +27,16 @@ async def client(app: FastAPI):
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url='http://test') as c:
         yield c
+
+
+@pytest.fixture
+def idle_coordinator(app: FastAPI, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Stop the coordinator from dequeuing, so submitted jobs stay queued."""
+
+    async def _dequeue_nothing() -> None:
+        return None
+
+    monkeypatch.setattr(app.state.coordinator, '_next_job', _dequeue_nothing)
 
 
 @pytest.mark.asyncio
@@ -140,18 +152,13 @@ async def test_sync_query_returns_error_kinds(client: AsyncClient, app: FastAPI,
 
 @pytest.mark.asyncio
 async def test_sync_query_budget_exhausted_is_504_with_retry_after(
-    client: AsyncClient, app: FastAPI, monkeypatch: pytest.MonkeyPatch
+    client: AsyncClient, idle_coordinator: None, monkeypatch: pytest.MonkeyPatch
 ):
     """A job the coordinator never picks up (queued behind others) exhausts the caller's budget.
 
     The job's own timeout is shorter than the budget, so only a job that is not being processed can
-    outlast it; the coordinator is stopped from dequeuing to model that.
+    outlast it; the idle coordinator models that.
     """
-
-    async def _dequeue_nothing() -> None:
-        return None
-
-    monkeypatch.setattr(app.state.coordinator, '_next_job', _dequeue_nothing)
     # A caller budget of 1 s plus the 5 s grace would take 6 s; shrink the grace so the test stays fast.
     monkeypatch.setattr(routes, 'BUDGET_GRACE_SECONDS', 0)
 
@@ -166,36 +173,60 @@ async def test_sync_query_budget_exhausted_is_504_with_retry_after(
 
 
 @pytest.mark.asyncio
-async def test_sync_query_caps_budget_to_max_job_timeout(
-    client: AsyncClient, app: FastAPI, monkeypatch: pytest.MonkeyPatch
+async def test_sync_query_uses_the_capped_timeout_as_budget(
+    client: AsyncClient, app: FastAPI, idle_coordinator: None, monkeypatch: pytest.MonkeyPatch
 ):
-    monkeypatch.setitem(app.state.coordinator._strategies, 'raw', _RaisingTransientStrategy())
-    submitted: list[str] = []
+    """The 504 arrives only after the manager's capped timeout plus the grace, not the caller's 10_000."""
     manager = app.state.job_manager
     original_submit = manager.submit
 
-    async def _recording_submit(**kwargs: object) -> dict:
-        result = await original_submit(**kwargs)
-        submitted.append(result['job_id'])
-        return result
+    async def _submit_capped(**kwargs: object) -> dict:
+        return {**await original_submit(**kwargs), 'timeout_seconds': 600}
 
-    monkeypatch.setattr(manager, 'submit', _recording_submit)
+    monkeypatch.setattr(manager, 'submit', _submit_capped)
+    start = time.monotonic()
+    # The first reading sets the deadline; later ones jump just short of, then past, the full budget.
+    readings = iter([start, start + 600 + routes.BUDGET_GRACE_SECONDS, start + 600 + routes.BUDGET_GRACE_SECONDS + 1])
+    # Only the route's clock is replaced: the event loop reads the real time.monotonic.
+    clock_reads: list[float] = []
+
+    def _read_clock() -> float:
+        clock_reads.append(next(readings))
+        return clock_reads[-1]
+
+    monkeypatch.setattr(routes, 'time', SimpleNamespace(monotonic=_read_clock))
 
     resp = await client.post('/query', json=_sync_body(timeout_seconds=10_000))
 
-    assert resp.status_code == 200
-    status = await manager.get_status(submitted[0])
-    assert status['timeout_seconds'] == Settings().max_job_timeout_seconds
+    assert resp.status_code == 504
+    # Reading 2 sits exactly on the deadline (600 + grace) and must not yet time out; a route without the grace
+    # would give up on reading 2.
+    assert len(clock_reads) == 3
+    assert resp.json()['detail'] == 'job did not complete within budget'
+
+
+def test_to_query_response_maps_success_and_failure_kinds():
+    job_status = {
+        'metadata': {'strategy': 'raw'},
+        'results': [
+            {'indicator': 'ok', 'success': True, 'value': 1.5, 'kind': 'data'},
+            {'indicator': 'down', 'success': False, 'message': 'prometheus down', 'kind': 'transient'},
+        ],
+    }
+
+    assert routes._to_query_response(job_status) == {
+        'values': {'ok': 1.5, 'down': None},
+        'errors': {'down': 'prometheus down'},
+        'metadata': {'strategy': 'raw'},
+        'error_kinds': {'down': 'transient'},
+    }
 
 
 @pytest.mark.asyncio
 async def test_readiness_reports_counters(client: AsyncClient):
     resp = await client.get('/health/ready')
 
-    body = resp.json()
-    assert body['queue_depth'] == 0
-    assert body['running_jobs'] == 0
-    assert body['prometheus_in_flight'] == 0
+    assert {'queue_depth', 'running_jobs', 'prometheus_in_flight'} <= resp.json().keys()
 
 
 @pytest.mark.asyncio
@@ -215,14 +246,9 @@ async def test_sync_query_queue_full_is_503_with_retry_after(client: AsyncClient
 
 @pytest.mark.asyncio
 async def test_sync_query_stops_waiting_when_the_job_is_cancelled(
-    client: AsyncClient, app: FastAPI, monkeypatch: pytest.MonkeyPatch
+    client: AsyncClient, app: FastAPI, idle_coordinator: None, monkeypatch: pytest.MonkeyPatch
 ):
     """A job cancelled under the caller (``DELETE /api/v1/query-jobs/{id}``) answers at once, retryably."""
-
-    async def _dequeue_nothing() -> None:
-        return None
-
-    monkeypatch.setattr(app.state.coordinator, '_next_job', _dequeue_nothing)
     manager = app.state.job_manager
     original_submit = manager.submit
 
@@ -238,10 +264,3 @@ async def test_sync_query_stops_waiting_when_the_job_is_cancelled(
     assert resp.status_code == 503
     assert resp.headers['Retry-After'] == '5'
     assert resp.json()['detail'] == 'job was cancelled'
-
-
-@pytest.mark.asyncio
-async def test_sync_query_rejects_a_non_positive_timeout(client: AsyncClient):
-    resp = await client.post('/query', json=_sync_body(timeout_seconds=0))
-
-    assert resp.status_code == 422

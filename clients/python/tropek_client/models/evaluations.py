@@ -6,7 +6,7 @@ from datetime import datetime
 from typing import TYPE_CHECKING, Any, Literal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import AwareDatetime, BaseModel, ConfigDict, Field
 
 from tropek_client.models.asset_groups import AssetScope
 from tropek_client.models.assets import AssetSnapshot
@@ -243,10 +243,10 @@ class RefetchRequest(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
     asset_name: str
-    from_: datetime = Field(alias='from')
-    to: datetime
-    evaluation_name: str | None = None
-    slo_names: list[str] | None = None
+    from_: AwareDatetime = Field(alias='from')
+    to: AwareDatetime
+    evaluation_name: str
+    slo_names: list[str] | None = Field(default=None, max_length=200)
     only_failed: bool = False
     dry_run: bool = False
     reason: str | None = Field(default=None, max_length=500)
@@ -262,20 +262,11 @@ class RefetchRunRequest(BaseModel):
     requested_by: str | None = Field(default=None, max_length=120)
 
 
-class RefetchSkipped(BaseModel):
-    """A matched SLO evaluation that refetch left untouched."""
-
-    evaluation_id: UUID
-    slo_name: str
-    reason: str
-
-
 class RefetchResponse(BaseModel):
     """Response from a refetch operation."""
 
     matched: int
     refetched: int
-    skipped: list[RefetchSkipped]
     run_ids: list[UUID]
     dry_run: bool
 

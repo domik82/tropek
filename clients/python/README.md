@@ -183,8 +183,15 @@ Asset/group to SLO group with always-latest semantics.
 | `re_evaluate_from_date(scope, from_date, *, selector=, slo_version=, dry_run=, pin_strategy=)` | `dict` | Re-evaluate from date |
 | `re_evaluate_from_baseline(scope, *, selector=, slo_version=, dry_run=, pin_strategy=)` | `dict` | Re-evaluate from pinned baseline |
 | `re_evaluate_from_evaluation(evaluation_id, scope, *, selector=, slo_version=, dry_run=, pin_strategy=)` | `dict` | Re-evaluate from reference eval |
-| `refetch(body: RefetchRequest)` | `RefetchResponse` | Refetch stored evaluations of an asset over a period from the source |
-| `refetch_run(run_id, body: RefetchRunRequest)` | `RefetchResponse` | Refetch the evaluations of one evaluation run from the source |
+| `refetch(body)` | `RefetchResponse` | Refetch stored evaluations of an asset over a period from the source |
+| `refetch_run(run_id, body)` | `RefetchResponse` | Refetch the evaluations of one evaluation run from the source |
+
+Refetch: `from_` carries the request's `from` field, because `from` is a Python keyword. Both datetimes must be
+timezone-aware, and `evaluation_name` is required:
+
+```python
+client.evaluations.refetch(RefetchRequest(asset_name='host-a', evaluation_name='daily', from_=start, to=end))
+```
 
 Re-evaluation `scope` is `{'kind': 'asset', 'asset_name': '...'}` or
 `{'kind': 'group', 'group_name': '...'}`. `pin_strategy` can be `'skip_to_pin'` or

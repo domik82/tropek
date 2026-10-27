@@ -23,7 +23,11 @@ from tropek.modules.quality_gate.repositories.evaluation import EvaluationReposi
 from tropek.modules.quality_gate.repositories.heatmap import HeatmapRepository
 from tropek.modules.quality_gate.repositories.indicator import IndicatorRepository, build_indicator_row_dicts
 from tropek.modules.quality_gate.repositories.sli_value import SLIValueRepository
-from tropek.modules.quality_gate.workflows.execution.adapter_client import AdapterFetchError, HttpAdapterClient
+from tropek.modules.quality_gate.workflows.execution.adapter_client import (
+    AdapterFetchError,
+    ErrorKind,
+    HttpAdapterClient,
+)
 from tropek.modules.quality_gate.workflows.execution.evaluation_helpers import (
     build_eval_variables as _build_eval_variables_shared,
 )
@@ -236,7 +240,7 @@ def _log_adapter_response(
     metrics_fetched: dict[str, float | None],
     fetch_errors: dict[str, str],
     sli_metadata: dict[str, Any],
-    error_kinds: dict[str, str],
+    error_kinds: dict[str, ErrorKind],
 ) -> None:
     """Log adapter response and override errored metrics to None."""
     log.info(

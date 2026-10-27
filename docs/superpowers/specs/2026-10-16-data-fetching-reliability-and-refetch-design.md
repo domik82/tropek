@@ -225,6 +225,8 @@ job-level retry.
 
 ## 8. Refetch
 
+> Superseded by plan 2026-10-26, rulings R1 and R6: `evaluation_name` is required and `skipped` was removed.
+
 ### 8.1 API
 
 `POST /evaluations/refetch` — body `RefetchRequest`:

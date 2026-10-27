@@ -190,7 +190,9 @@ export function EvaluationDetailPage() {
                   scope={scope}
                   columnEvalId={ev.evaluationId}
                   assetName={ev.assetSnapshot.name}
+                  evaluationName={ev.evaluationName}
                   defaultFromDate={ev.period.from.slice(0, 16)}
+                  defaultRefetchDate={ev.period.from.slice(0, 16)}
                   onComplete={() => setActiveAction(null)}
                 />
               )}

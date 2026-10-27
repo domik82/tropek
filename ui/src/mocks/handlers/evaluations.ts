@@ -1,5 +1,8 @@
 // src/mocks/handlers/evaluations.ts
 import { http, HttpResponse } from 'msw'
+import type { components } from '@/generated/api'
+
+type RefetchRequestDto = components['schemas']['RefetchRequest']
 
 async function gen() {
   return import('../generate')
@@ -120,15 +123,15 @@ export const evaluationHandlers = [
   }),
 
   http.post('/api/evaluations/refetch', async ({ request }) => {
-    const body = await request.json() as { dry_run?: boolean; evaluation_name?: string | null }
-    // Narrowing to one evaluation name matches fewer SLO evaluations, as the real endpoint does.
-    const count = body.evaluation_name ? 1 : 2
+    const body = await request.json() as RefetchRequestDto
+    if (!body.evaluation_name) {
+      return HttpResponse.json({ detail: 'evaluation_name is required' }, { status: 422 })
+    }
     return HttpResponse.json({
-      matched: count,
-      refetched: count,
-      skipped: [],
+      matched: 1,
+      refetched: 1,
       run_ids: [],
-      dry_run: body.dry_run ?? false,
+      dry_run: body.dry_run,
     })
   }),
 

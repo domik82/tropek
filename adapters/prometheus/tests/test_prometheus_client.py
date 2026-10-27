@@ -145,56 +145,47 @@ async def test_range_query_retries_a_transport_error_then_succeeds(
 
 @respx.mock
 @pytest.mark.asyncio
-async def test_exhausted_read_errors_raise_a_transient_query_error(client: PrometheusClient):
-    """A dropped connection must reach the coordinator as transient, never as an unwrapped httpx error."""
-    respx.get('http://prom:9090/api/v1/query_range').mock(side_effect=httpx.ReadError('connection reset'))
-    with pytest.raises(PrometheusQueryError) as exc_info:
-        await client.range_query('up', start='s', end='e', step='1m')
-    assert exc_info.value.transient is True
+async def test_503_then_success_waits_the_retry_after_value(client: PrometheusClient, monkeypatch: pytest.MonkeyPatch):
+    delays: list[float] = []
 
+    async def record_sleep(seconds: float) -> None:
+        delays.append(seconds)
 
-@respx.mock
-@pytest.mark.asyncio
-async def test_503_then_success_with_retry_after(client: PrometheusClient):
+    monkeypatch.setattr(asyncio, 'sleep', record_sleep)
     route = respx.get('http://prom:9090/api/v1/query').mock(
-        side_effect=[Response(503, headers={'Retry-After': '0'}), Response(200, json=_scalar('2'))]
+        side_effect=[Response(503, headers={'Retry-After': '7'}), Response(200, json=_scalar('2'))]
     )
     assert await client.instant_query('up', time='t') == 2.0
     assert route.call_count == 2
+    assert delays == [7.0]
 
 
 @respx.mock
 @pytest.mark.asyncio
-async def test_exhausted_attempts_raise_transient(client: PrometheusClient):
-    route = respx.get('http://prom:9090/api/v1/query').mock(return_value=Response(502))
-    with pytest.raises(PrometheusQueryError) as exc:
-        await client.instant_query('up', time='t')
-    assert exc.value.transient is True
-    assert 'after 3 attempts' in str(exc.value)
-    assert route.call_count == 3
-
-
-@respx.mock
-@pytest.mark.asyncio
-async def test_bad_data_is_final_and_not_transient(client: PrometheusClient):
+@pytest.mark.parametrize(
+    ('status_code', 'expected_calls', 'expected_transient'),
+    [
+        (429, 3, True),
+        (500, 3, True),
+        (502, 3, True),
+        (503, 3, True),
+        (504, 3, True),
+        (400, 1, False),
+        (422, 1, False),
+    ],
+)
+async def test_status_decides_whether_the_request_is_retried(
+    client: PrometheusClient, status_code: int, expected_calls: int, expected_transient: bool
+):
     route = respx.get('http://prom:9090/api/v1/query').mock(
-        return_value=Response(400, json={'status': 'error', 'errorType': 'bad_data', 'error': 'parse error'})
+        return_value=Response(status_code, json={'status': 'error', 'errorType': 'bad_data', 'error': 'parse error'})
     )
-    with pytest.raises(PrometheusQueryError) as exc:
-        await client.instant_query('up(', time='t')
-    assert exc.value.transient is False
-    assert route.call_count == 1
-
-
-@respx.mock
-@pytest.mark.asyncio
-async def test_error_body_timeout_is_transient(client: PrometheusClient):
-    respx.get('http://prom:9090/api/v1/query').mock(
-        return_value=Response(200, json={'status': 'error', 'errorType': 'timeout', 'error': 'query timed out'})
-    )
-    with pytest.raises(PrometheusQueryError) as exc:
+    with pytest.raises(PrometheusQueryError) as error_info:
         await client.instant_query('up', time='t')
-    assert exc.value.transient is True
+    assert error_info.value.transient is expected_transient
+    assert route.call_count == expected_calls
+    if expected_transient:
+        assert 'after 3 attempts' in str(error_info.value)
 
 
 @pytest.mark.asyncio

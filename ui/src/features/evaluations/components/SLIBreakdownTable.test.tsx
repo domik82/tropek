@@ -291,7 +291,23 @@ describe('SLIBreakdownTable grouped display', () => {
       />,
     )
     expect(screen.getByText('2 chunk(s) failed')).toBeInTheDocument()
-    expect(screen.queryByText(/low confidence/i)).not.toBeInTheDocument()
+  })
+
+  it('names failed chunks beside the sample counts', () => {
+    const chunkFailed: Record<string, SliMetadata> = {
+      cpu: { ...sliMetadata.cpu, chunksFailed: 2 },
+    }
+    render(<SLIBreakdownTable indicators={aggregatedIndicators} sliMetadata={chunkFailed} />)
+    expect(screen.getByText(/1387\/1440 samples.*2 chunk\(s\) failed/)).toBeInTheDocument()
+  })
+
+  it('does not mention chunks when none failed', () => {
+    const gapOnly: Record<string, SliMetadata> = {
+      cpu: { ...sliMetadata.cpu, missingPct: null, chunksFailed: 0 },
+    }
+    render(<SLIBreakdownTable indicators={aggregatedIndicators} sliMetadata={gapOnly} />)
+    expect(screen.getByText('1387/1440 samples')).toBeInTheDocument()
+    expect(screen.queryByText(/chunk/)).not.toBeInTheDocument()
   })
 
   it('works without sliMetadata (backward compatible)', () => {

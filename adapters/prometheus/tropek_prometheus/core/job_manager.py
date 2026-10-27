@@ -46,6 +46,7 @@ class JobManager:
             'created_at': datetime.now(UTC),
             'poll_url': f'/api/v1/query-jobs/{job_id}',
             'total_queries': len(queries),
+            'timeout_seconds': timeout,
         }
 
     async def get_status(self, job_id: str) -> dict[str, Any] | None:

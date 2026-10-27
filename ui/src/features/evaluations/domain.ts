@@ -220,8 +220,8 @@ export interface ReEvaluateResponse {
 
 export interface RefetchInput {
   assetName: string
-  /** Narrows the refetch to one evaluation name; null refetches every evaluation name of the asset. */
-  evaluationName: string | null
+  /** The refetch is scoped to this one evaluation name. */
+  evaluationName: string
   sloNames: string[]
   from: string // ISO
   to: string // ISO
@@ -233,7 +233,6 @@ export interface RefetchInput {
 export interface RefetchResponse {
   matched: number
   refetched: number
-  skipped: { evaluationId: string; sloName: string; reason: string }[]
   runIds: string[]
   dryRun: boolean
 }

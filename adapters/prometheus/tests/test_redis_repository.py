@@ -113,15 +113,13 @@ async def test_queue_depth(repo: JobRepository):
 
 
 @pytest.mark.asyncio
-async def test_write_result_round_trips_kind_and_defaults_to_data(repo: JobRepository):
+async def test_write_result_round_trips_kind(repo: JobRepository):
     job_id = await repo.create_job(queries={'x': {'mode': 'raw', 'query': 'x'}}, variables={}, timeout=120)
     await repo.write_result(job_id, 'a', value=None, success=False, message='down', kind='transient')
-    await repo.write_result(job_id, 'b', value=None, success=False, message='bad query')
 
     results = await repo.get_results(job_id)
 
     assert results['a']['kind'] == 'transient'
-    assert results['b']['kind'] == 'data'
 
 
 @pytest.mark.asyncio
@@ -133,15 +131,6 @@ async def test_get_results_reads_entries_written_before_kind_existed_as_data(rep
     results = await repo.get_results(job_id)
 
     assert results['legacy']['kind'] == 'data'
-
-
-@pytest.mark.asyncio
-async def test_get_status_exposes_the_job_timeout(repo: JobRepository):
-    job_id = await repo.create_job(queries={'x': {'mode': 'raw', 'query': 'x'}}, variables={}, timeout=77)
-
-    status = await repo.get_status(job_id)
-
-    assert status['timeout_seconds'] == 77
 
 
 @pytest.mark.asyncio

@@ -5258,16 +5258,9 @@
             "type": "boolean"
           },
           "evaluation_name": {
-            "anyOf": [
-              {
-                "pattern": "^[^\\x00]*$",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Evaluation Name"
+            "pattern": "^[^\\x00]*$",
+            "title": "Evaluation Name",
+            "type": "string"
           },
           "from": {
             "format": "date-time",
@@ -5312,6 +5305,7 @@
                   "pattern": "^[^\\x00]*$",
                   "type": "string"
                 },
+                "maxItems": 200,
                 "type": "array"
               },
               {
@@ -5329,7 +5323,8 @@
         "required": [
           "asset_name",
           "from",
-          "to"
+          "to",
+          "evaluation_name"
         ],
         "title": "RefetchRequest",
         "type": "object"
@@ -5356,19 +5351,11 @@
             },
             "title": "Run Ids",
             "type": "array"
-          },
-          "skipped": {
-            "items": {
-              "$ref": "#/components/schemas/RefetchSkipped"
-            },
-            "title": "Skipped",
-            "type": "array"
           }
         },
         "required": [
           "matched",
           "refetched",
-          "skipped",
           "run_ids",
           "dry_run"
         ],
@@ -5417,31 +5404,6 @@
           }
         },
         "title": "RefetchRunRequest",
-        "type": "object"
-      },
-      "RefetchSkipped": {
-        "description": "A matched SLO evaluation that refetch left untouched.",
-        "properties": {
-          "evaluation_id": {
-            "format": "uuid",
-            "title": "Evaluation Id",
-            "type": "string"
-          },
-          "reason": {
-            "title": "Reason",
-            "type": "string"
-          },
-          "slo_name": {
-            "title": "Slo Name",
-            "type": "string"
-          }
-        },
-        "required": [
-          "evaluation_id",
-          "slo_name",
-          "reason"
-        ],
-        "title": "RefetchSkipped",
         "type": "object"
       },
       "RestoreManyRequest": {

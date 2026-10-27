@@ -1,6 +1,8 @@
 import type { ReactNode } from 'react'
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { EvaluationDetailPage } from './EvaluationDetailPage'
 import type { EvaluationDetail } from '@/features/evaluations'
@@ -11,13 +13,20 @@ vi.mock('@/lib/theme-context', () => ({
 
 const mockUseEvaluationDetail = vi.fn()
 
-vi.mock('@/features/evaluations/hooks', () => ({
-  useEvaluationDetail: (...args: unknown[]) => mockUseEvaluationDetail(...args),
-}))
+vi.mock('@/features/evaluations/hooks', async () => {
+  const actual = await vi.importActual<typeof import('@/features/evaluations/hooks')>('@/features/evaluations/hooks')
+  return {
+    ...actual,
+    useEvaluationDetail: (...args: unknown[]) => mockUseEvaluationDetail(...args),
+  }
+})
 
 vi.mock('@/features/evaluations/components/EvaluationSummaryCard', () => ({
-  EvaluationSummaryCard: ({ evaluation }: { evaluation: EvaluationDetail }) => (
-    <div data-testid="summary-card">{evaluation.evaluationName}</div>
+  EvaluationSummaryCard: ({ evaluation, actions }: { evaluation: EvaluationDetail; actions: ReactNode }) => (
+    <div data-testid="summary-card">
+      {evaluation.evaluationName}
+      {actions}
+    </div>
   ),
 }))
 
@@ -36,7 +45,12 @@ vi.mock('@/features/evaluations/components/EvaluationNotesSection', () => ({
 }))
 
 vi.mock('@/features/evaluations/components/EvaluationActions', () => ({
-  EvaluationActionsButton: () => <button data-testid="actions-btn">Actions</button>,
+  EvaluationActionsButton: ({ onSelectAction }: { onSelectAction: (action: 're-evaluate') => void }) => (
+    <>
+      <button data-testid="actions-btn">Actions</button>
+      <button onClick={() => onSelectAction('re-evaluate')}>Run Evaluations</button>
+    </>
+  ),
 }))
 
 vi.mock('@/features/evaluations/components/ActionPopover', () => ({
@@ -56,9 +70,13 @@ vi.mock('@/features/evaluations/components/actions/RestoreForm', () => ({
 vi.mock('@/features/evaluations/components/actions/BaselineForm', () => ({
   BaselineForm: () => <div data-testid="baseline-form">baseline</div>,
 }))
-vi.mock('@/features/evaluations/components/actions/ReEvaluateForm', () => ({
-  ReEvaluateForm: () => <div data-testid="reevaluate-form">reeval</div>,
-}))
+vi.mock('@/features/evaluations/api', async () => {
+  const actual = await vi.importActual<typeof import('@/features/evaluations/api')>('@/features/evaluations/api')
+  return {
+    ...actual,
+    refetch: vi.fn().mockResolvedValue({ matched: 1, refetched: 1, runIds: ['run-1'], dryRun: true }),
+  }
+})
 
 vi.mock('@/features/assets/hooks', () => ({
   useAssets: () => ({ data: [] }),
@@ -162,5 +180,25 @@ describe('EvaluationDetailPage', () => {
     mockUseEvaluationDetail.mockReturnValue({ data: makeEval(), isLoading: false })
     renderPage()
     expect(screen.getByTestId('summary-card')).toHaveTextContent('nightly-perf')
+  })
+
+  it('opens refetch mode on the evaluation day for the evaluation name', async () => {
+    const user = userEvent.setup()
+    const evaluation = makeEval()
+    mockUseEvaluationDetail.mockReturnValue({ data: evaluation, isLoading: false })
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    render(
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter initialEntries={['/evaluations/eval-1']}>
+          <Routes>
+            <Route path="/evaluations/:id" element={<EvaluationDetailPage />} />
+          </Routes>
+        </MemoryRouter>
+      </QueryClientProvider>,
+    )
+    await user.click(screen.getByRole('button', { name: 'Run Evaluations' }))
+    await user.click(screen.getByLabelText(/refetch from source/i))
+    expect(screen.getByLabelText(/start date/i)).toHaveValue(evaluation.period.from.slice(0, 16))
+    queryClient.clear()
   })
 })

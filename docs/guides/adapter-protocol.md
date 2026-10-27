@@ -94,6 +94,11 @@ metric names (a key that is not in `errors` is rejected):
 A metric with no `error_kinds` entry counts as `data`. The engine retries the whole
 evaluation when any error is `transient`; a `data` error scores the metric as `error`.
 
+An adapter that fetches a metric in chunks reports `transient` only when every failed chunk failed
+transiently. If one chunk failed permanently (for example a 4xx from the source), report the metric as
+`data`: a retry can never fix it. A value outside `transient` / `data` makes the whole response invalid and
+the evaluation is stored `failed` at once.
+
 ### `GET /health`
 
 Returns an `AdapterHealthResponse`. Used by TROPEK to check adapter availability

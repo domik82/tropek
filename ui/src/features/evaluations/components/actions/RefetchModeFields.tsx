@@ -1,25 +1,28 @@
+import { useId } from 'react'
 import { Input } from '@/components/ui/input'
 import type { RefetchResponse } from '../../domain'
+import type { RefetchFormState } from './useRefetchForm'
 
 interface Props {
-  fromDate: string
-  onFromDateChange: (value: string) => void
-  toDate: string
-  onToDateChange: (value: string) => void
-  onlyFailed: boolean
-  onOnlyFailedChange: (value: boolean) => void
-  confirmed: boolean
-  onConfirmedChange: (value: boolean) => void
-  preview: RefetchResponse | undefined
-  previewLoading: boolean
-  previewError: Error | null
+  form: RefetchFormState
 }
 
 const CHECKBOX_CLASSES = 'rounded border-border accent-[var(--entity-sli)]'
 
-function PreviewLine({ preview, previewLoading, previewError, fromDate, toDate }: Pick<Props, 'preview' | 'previewLoading' | 'previewError' | 'fromDate' | 'toDate'>) {
+interface PreviewLineProps {
+  preview: RefetchResponse | undefined
+  previewLoading: boolean
+  previewError: Error | null
+  fromDate: string
+  toDate: string
+}
+
+function PreviewLine({ preview, previewLoading, previewError, fromDate, toDate }: PreviewLineProps) {
   if (previewError) {
     return <p className='text-xs text-fail'>{previewError.message}</p>
+  }
+  if (!fromDate || !toDate) {
+    return <p className='text-xs text-muted-foreground'>Pick a start and end date</p>
   }
   if (!preview) {
     return <p className='text-xs text-muted-foreground'>{previewLoading ? 'Checking…' : 'Nothing to refetch'}</p>
@@ -34,59 +37,60 @@ function PreviewLine({ preview, previewLoading, previewError, fromDate, toDate }
   )
 }
 
-export function RefetchModeFields({
-  fromDate,
-  onFromDateChange,
-  toDate,
-  onToDateChange,
-  onlyFailed,
-  onOnlyFailedChange,
-  confirmed,
-  onConfirmedChange,
-  preview,
-  previewLoading,
-  previewError,
-}: Props) {
+export function RefetchModeFields({ form }: Props) {
+  const fromId = useId()
+  const toId = useId()
   return (
     <>
       <div>
-        <label htmlFor='refetch-from' className='block text-xs text-muted-foreground mb-1'>
+        <label htmlFor={fromId} className='block text-xs text-muted-foreground mb-1'>
           Start date (UTC)
         </label>
-        <Input id='refetch-from' type='datetime-local' value={fromDate} onChange={e => onFromDateChange(e.target.value)} />
+        <Input
+          id={fromId}
+          type='datetime-local'
+          value={form.fromDate}
+          onChange={event => form.setFromDate(event.target.value)}
+        />
       </div>
       <div>
-        <label htmlFor='refetch-to' className='block text-xs text-muted-foreground mb-1'>
+        <label htmlFor={toId} className='block text-xs text-muted-foreground mb-1'>
           End date (UTC)
         </label>
-        <Input id='refetch-to' type='datetime-local' value={toDate} onChange={e => onToDateChange(e.target.value)} />
+        <Input
+          id={toId}
+          type='datetime-local'
+          value={form.toDate}
+          onChange={event => form.setToDate(event.target.value)}
+        />
       </div>
       <label className='flex items-center gap-2 text-sm text-foreground cursor-pointer'>
         <input
           type='checkbox'
-          checked={onlyFailed}
-          onChange={e => onOnlyFailedChange(e.target.checked)}
+          checked={form.onlyFailed}
+          onChange={event => form.setOnlyFailed(event.target.checked)}
           className={CHECKBOX_CLASSES}
         />
         Only SLO evaluations that failed
       </label>
       <p className='text-xs text-fail bg-fail/10 border border-fail/20 rounded px-3 py-2'>
-        Stored values, SLI samples and change points for the selected SLOs between these dates are deleted and fetched
-        again from the source. If the source no longer holds this period, the data cannot be recovered without a
+        Stored values and SLI samples of the selected SLOs between these dates are deleted and fetched again from the
+        source, together with this evaluation's untriaged change points of those SLOs on those days (triaged change
+        points are kept). If the source no longer holds this period, the data cannot be recovered without a
         database restore.
       </p>
       <PreviewLine
-        preview={preview}
-        previewLoading={previewLoading}
-        previewError={previewError}
-        fromDate={fromDate}
-        toDate={toDate}
+        preview={form.previewQuery.data}
+        previewLoading={form.previewQuery.isLoading}
+        previewError={form.previewQuery.error}
+        fromDate={form.fromDate}
+        toDate={form.toDate}
       />
       <label className='flex items-center gap-2 text-sm text-foreground cursor-pointer'>
         <input
           type='checkbox'
-          checked={confirmed}
-          onChange={e => onConfirmedChange(e.target.checked)}
+          checked={form.deletionAcknowledged}
+          onChange={event => form.setDeletionAcknowledged(event.target.checked)}
           className={CHECKBOX_CLASSES}
         />
         I understand that the stored data for this period is deleted

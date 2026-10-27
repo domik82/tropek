@@ -9,8 +9,8 @@ from pydantic import AwareDatetime, BaseModel, Field
 
 from tropek.modules.common.schemas import SafeStr, StrictInput
 
-Reason = Annotated[SafeStr, Field(max_length=500)]
-RequestedBy = Annotated[SafeStr, Field(max_length=120)]
+RefetchReason = Annotated[SafeStr, Field(max_length=500)]
+RefetchRequester = Annotated[SafeStr, Field(max_length=120)]
 
 
 class RefetchRequest(StrictInput):
@@ -22,12 +22,12 @@ class RefetchRequest(StrictInput):
     asset_name: SafeStr
     from_: AwareDatetime = Field(alias='from')
     to: AwareDatetime
-    evaluation_name: SafeStr | None = None
-    slo_names: list[SafeStr] | None = None
+    evaluation_name: SafeStr
+    slo_names: list[SafeStr] | None = Field(default=None, max_length=200)
     only_failed: bool = False
     dry_run: bool = False
-    reason: Reason | None = None
-    requested_by: RequestedBy | None = None
+    reason: RefetchReason | None = None
+    requested_by: RefetchRequester | None = None
 
 
 class RefetchRunRequest(StrictInput):
@@ -35,16 +35,8 @@ class RefetchRunRequest(StrictInput):
 
     only_failed: bool = False
     dry_run: bool = False
-    reason: Reason | None = None
-    requested_by: RequestedBy | None = None
-
-
-class RefetchSkipped(BaseModel):
-    """A matched SLO evaluation that refetch left untouched."""
-
-    evaluation_id: uuid.UUID
-    slo_name: str
-    reason: str
+    reason: RefetchReason | None = None
+    requested_by: RefetchRequester | None = None
 
 
 class RefetchResponse(BaseModel):
@@ -52,6 +44,5 @@ class RefetchResponse(BaseModel):
 
     matched: int
     refetched: int
-    skipped: list[RefetchSkipped]
     run_ids: list[uuid.UUID]
     dry_run: bool

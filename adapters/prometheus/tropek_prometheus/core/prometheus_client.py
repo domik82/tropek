@@ -15,7 +15,6 @@ logger = logging.getLogger(__name__)
 
 HTTP_OK = 200
 _TRANSIENT_STATUS = frozenset({429, 500, 502, 503, 504})
-_TRANSIENT_ERROR_TYPES = frozenset({'timeout', 'canceled', 'unavailable', 'internal'})
 
 
 class PrometheusQueryError(Exception):
@@ -49,10 +48,10 @@ class PrometheusClient:
         self._timeout = timeout
         self._auth = auth
         self._retry_attempts = retry_attempts
-        self._retry_backoff = retry_backoff_seconds
-        self._semaphore = asyncio.Semaphore(max_in_flight)
+        self._retry_backoff_seconds = retry_backoff_seconds
+        self._request_slots = asyncio.Semaphore(max_in_flight)
         self._in_flight = 0
-        logger.info('prometheus client configured: url=%s timeout=%s', self._base_url, self._timeout)
+        logger.info(f'prometheus client configured: url={self._base_url} timeout={self._timeout}')
 
     @property
     def in_flight(self) -> int:
@@ -139,39 +138,43 @@ class PrometheusClient:
         url = f'{self._base_url}{path}'
         logger.info(f'prometheus query: GET {url} query={params.get("query", "?")}')
         auth = httpx.BasicAuth(*self._auth) if self._auth else None
-        last_error: PrometheusQueryError | None = None
-        for attempt in range(1, self._retry_attempts + 1):
-            async with self._semaphore:
+        attempt = 1
+        while True:
+            async with self._request_slots:
                 self._in_flight += 1
                 try:
-                    outcome = await self._attempt(path, params, auth)
+                    attempt_result = await self._get_once(path, params, auth)
                 finally:
                     self._in_flight -= 1
-            if isinstance(outcome, dict):
-                return outcome
-            last_error = outcome
-            if not outcome.transient or attempt == self._retry_attempts:
-                break
-            delay = compute_backoff(attempt, base_seconds=self._retry_backoff, retry_after=outcome.retry_after)
-            logger.warning(
-                'prometheus request retried: url=%s attempt=%d/%d backoff=%.2fs cause=%s',
-                url,
-                attempt,
-                self._retry_attempts,
-                delay,
-                outcome,
+            if isinstance(attempt_result, dict):
+                return attempt_result
+            if attempt_result.transient and attempt < self._retry_attempts:
+                delay = compute_backoff(
+                    attempt, base_seconds=self._retry_backoff_seconds, retry_after=attempt_result.retry_after
+                )
+                logger.warning(
+                    f'prometheus request retried: url={url} attempt={attempt}/{self._retry_attempts} '
+                    f'backoff={delay:.2f}s cause={attempt_result}'
+                )
+                await asyncio.sleep(delay)
+                attempt += 1
+                continue
+            logger.error(
+                f'prometheus request failed: url={url} cause={attempt_result}',
+                exc_info=attempt_result if attempt_result.__cause__ is not None else None,
             )
-            await asyncio.sleep(delay)
-        if last_error is None:  # only reachable when retry_attempts < 1
-            raise PrometheusQueryError('prometheus client is configured with no attempts')
-        if last_error.transient:
-            raise PrometheusQueryError(f'{last_error} (after {self._retry_attempts} attempts)', transient=True)
-        raise last_error
+            if attempt_result.transient:
+                raise PrometheusQueryError(
+                    f'{attempt_result} (after {self._retry_attempts} attempts)', transient=True
+                ) from attempt_result
+            raise attempt_result
 
-    async def _attempt(
+    async def _get_once(
         self, path: str, params: dict[str, str], auth: httpx.BasicAuth | None
     ) -> dict[str, Any] | PrometheusQueryError:
         """Perform one request and classify the outcome instead of raising.
+
+        Failures are not logged here: ``_get`` logs a retried attempt as a warning and the final one with its cause.
 
         Args:
             path: API path, e.g. ``/api/v1/query``.
@@ -180,41 +183,47 @@ class PrometheusClient:
 
         Returns:
             The ``data`` object on success, otherwise a ``PrometheusQueryError`` whose ``transient`` flag says
-            whether retrying can help.
+            whether retrying can help. A transport failure is attached as the error's ``__cause__``.
         """
-        url = f'{self._base_url}{path}'
         try:
             async with httpx.AsyncClient(base_url=self._base_url, timeout=self._timeout, auth=auth) as client:
-                resp = await client.get(path, params=params)
-        except httpx.ConnectError:
-            logger.exception('prometheus unreachable at %s', self._base_url)
-            return PrometheusQueryError(f'could not connect to prometheus at {self._base_url}', transient=True)
-        except httpx.TimeoutException:
-            logger.exception('prometheus request timed out: %s (timeout=%ss)', url, self._timeout)
-            return PrometheusQueryError(f'prometheus request timed out after {self._timeout}s', transient=True)
-        except httpx.TransportError as exc:
+                response = await client.get(path, params=params)
+        except httpx.ConnectError as transport_error:
+            return self._transport_failure(f'could not connect to prometheus at {self._base_url}', transport_error)
+        except httpx.TimeoutException as transport_error:
+            return self._transport_failure(f'prometheus request timed out after {self._timeout}s', transport_error)
+        except httpx.TransportError as transport_error:
             # A dropped or garbled connection (ReadError, RemoteProtocolError, ...) says nothing about the
             # query; escaping unwrapped it would be recorded as a data error and never retried.
-            logger.exception('prometheus transport error: %s', url)
-            return PrometheusQueryError(f'prometheus transport error: {type(exc).__name__}: {exc}', transient=True)
-        retry_after = resp.headers.get('Retry-After')
-        if resp.status_code != HTTP_OK:
-            logger.error('prometheus error: status=%d body=%s', resp.status_code, resp.text[:200])
-            return PrometheusQueryError(
-                f'prometheus returned {resp.status_code}: {resp.text[:200]}',
-                transient=resp.status_code in _TRANSIENT_STATUS,
-                retry_after=retry_after,
+            return self._transport_failure(
+                f'prometheus transport error: {type(transport_error).__name__}: {transport_error}', transport_error
             )
-        body: dict[str, Any] = resp.json()
+        if response.status_code != HTTP_OK:
+            return PrometheusQueryError(
+                f'prometheus returned {response.status_code}: {response.text[:200]}',
+                transient=response.status_code in _TRANSIENT_STATUS,
+                retry_after=response.headers.get('Retry-After'),
+            )
+        body: dict[str, Any] = response.json()
         if body.get('status') != 'success':
-            logger.error('prometheus query failed: %s', body.get('error', 'unknown'))
-            return PrometheusQueryError(
-                f'prometheus error: {body.get("error", "unknown")}',
-                transient=body.get('errorType') in _TRANSIENT_ERROR_TYPES,
-                retry_after=retry_after,
-            )
+            return PrometheusQueryError(f'prometheus error: {body.get("error", "unknown")}')
         data: dict[str, Any] = body['data']
         return data
+
+    @staticmethod
+    def _transport_failure(message: str, transport_error: httpx.TransportError) -> PrometheusQueryError:
+        """Build a transient error for a transport failure and keep the original as its cause.
+
+        Args:
+            message: Description of the failure.
+            transport_error: The httpx error, attached as ``__cause__`` so the final log keeps its traceback.
+
+        Returns:
+            A ``PrometheusQueryError`` with ``transient=True``.
+        """
+        error = PrometheusQueryError(message, transient=True)
+        error.__cause__ = transport_error
+        return error
 
     def _extract_scalar(self, data: dict[str, Any]) -> float:
         result_type = data['resultType']

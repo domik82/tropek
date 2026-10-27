@@ -608,11 +608,6 @@ export function dtoToRefetchResponse(dto: RefetchResponseDto): RefetchResponse {
   return {
     matched: dto.matched,
     refetched: dto.refetched,
-    skipped: dto.skipped.map(item => ({
-      evaluationId: item.evaluation_id,
-      sloName: item.slo_name,
-      reason: item.reason,
-    })),
     runIds: dto.run_ids,
     dryRun: dto.dry_run,
   }

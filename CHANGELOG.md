@@ -26,27 +26,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   adapter budget ran out goes straight here). An incomplete window is an error for every method of the
   metric, never a partial value. An evaluation is stored `failed` only after every retry is exhausted, or at
   once for a 4xx (other than 429) or an unreadable adapter answer, with `job_stats.error = 'adapter query
-  failed after N attempts: …'` and the attempt history in `job_stats.fetch_attempts`. The adapter also no
-  longer leaves a cancelled job's Redis keys without an expiry.
+  failed after N attempts: …'` and the attempt history in `job_stats.fetch_attempts`; each entry records
+  `http_attempts`, how many HTTP requests that job-level attempt made. A chunked metric is `transient` only when
+  every failed chunk was transient: one permanent failure (a 4xx from the source) makes it a `data` error,
+  because a retry can never fix it. The adapter also no longer leaves a cancelled job's Redis keys without an
+  expiry.
 
 ### Added
 
-- **Refetch from source** — `POST /evaluations/refetch` (an asset, a period, optional `evaluation_name`,
-  `slo_names`, `only_failed`, `dry_run`, `reason`) and `POST /evaluation-run/{run_id}/refetch` reset stored SLO
-  evaluations in place and fetch them again. The row id, annotations, invalidation and baseline pins are kept;
-  the result, score, points, overrides, SLI metadata, indicator results, SLI values and the period's change
-  points are deleted, and `job_stats.refetch` records who asked, why and the previous result. It answers 409
-  and changes nothing if any matched row is `pending` or `running`; `dry_run` previews the counts. Later days
+- **Refetch from source** — `POST /evaluations/refetch` (an asset, a period, a required `evaluation_name`,
+  optional `slo_names`, `only_failed`, `dry_run`, `reason`; `from` and `to` must carry a UTC offset) and
+  `POST /evaluation-run/{run_id}/refetch` reset stored SLO evaluations in place and fetch them again. The row
+  id, annotations, invalidation and baseline pins are kept; the result, score, points, overrides, SLI metadata,
+  indicator results and SLI values are deleted, and so are the untriaged change points of exactly the
+  refetched (run, SLO) pairs; triaged ones and those of other evaluation names are kept. `job_stats.refetch`
+  records who asked, why and the previous result. It answers 409 and changes nothing if any matched row is
+  `pending` or `running`; `dry_run` previews the counts, and the response has no `skipped` list. Later days
   are not re-scored. See [Repairing a Day That Failed to Fetch](docs/guides/repairing-a-failed-fetch.md)
 - **`refetch` and `refetch_run` on the Python client** — `client.evaluations.refetch(RefetchRequest(...))` and
-  `client.evaluations.refetch_run(run_id, RefetchRunRequest(...))`, returning `RefetchResponse`
-- **"Refetch from source" in the Run Evaluations dialog** — dates in UTC that start on the selected day, the
-  panel's evaluation name when it filters to exactly one, an "Only SLO evaluations that failed" filter, a
-  dry-run preview of what will be refetched, and an "I understand" confirmation that resets whenever the scope
-  changes
+  `client.evaluations.refetch_run(run_id, RefetchRunRequest(...))`, returning `RefetchResponse`; the client
+  rejects a `from` or `to` without a UTC offset before sending
+- **"Refetch from source" in the Run Evaluations dialog** — offered when the panel filters to exactly one
+  evaluation name, and on an evaluation's detail page (which uses that evaluation's name); dates in UTC that start
+  on the selected day, an "Only SLO evaluations that failed" filter, a dry-run preview of what will be refetched,
+  and an "I understand" confirmation that resets whenever the scope changes
 - **`timeout_seconds` (request) and `error_kinds` (response) in the adapter protocol** — both optional and
   additive, so existing adapters keep working. `error_kinds` marks each error `transient` (retry it) or
-  `data` (a property of the data; the default). The mock adapter returns a transient error on request with the
+  `data` (a property of the data; the default); any other value fails response validation as a malformed
+  answer and the evaluation is stored `failed` at once. The mock adapter returns a transient error on request with the
   `X-Mock-Transient` header
 - **A global limit on in-flight Prometheus requests** — `MAX_CONCURRENT_PROMETHEUS_REQUESTS` (default 8)
   bounds every request from every job and chunk, and `PROMETHEUS_RETRY_ATTEMPTS` /
@@ -54,14 +61,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - **The adapter's job timeout is enforced** — a job that outlives its timeout is marked `timed_out`, and every
   unfinished metric is reported as a `transient` error. Sync `POST /query` honours the caller's
   `timeout_seconds` (capped by `max_job_timeout_seconds`) and answers 504 with `Retry-After: 5` when the budget
-  is exhausted and 503 with `Retry-After` when the queue is full or the job was cancelled while it waited
+  is exhausted and 503 with `Retry-After` when the queue is full or the job was cancelled while it waited. The
+  202 body of `POST /query-jobs` carries the job's `timeout_seconds` (capped by `max_job_timeout_seconds`)
 - **Startup validation of the timeout chain** — the API and the worker refuse to start unless
   `reliability.adapter_timeout_seconds` is greater than 35 (the budget floor of 30 plus the adapter's 5 s
   grace), the adapter budget (`adapter_timeout_seconds - 30`) is at most 600 (the adapter's
   `max_job_timeout_seconds`), `queue.job_timeout_seconds` is greater than `reliability.adapter_timeout_seconds + 60`
   (one attempt plus evaluation work), and `reliability.stuck_job_threshold_seconds` is greater than
   `queue.job_timeout_seconds`. `queue.max_retries`
-  must not be negative, and the adapter requires `default_job_timeout_seconds <= max_job_timeout_seconds`
+  must not be negative, `reliability.adapter_retry_attempts` must be at least 1 and
+  `reliability.adapter_retry_backoff_seconds` at least 0. The adapter requires
+  `default_job_timeout_seconds <= max_job_timeout_seconds` and `MAX_CONCURRENT_JOBS`, `MAX_CONCURRENT_QUERIES`,
+  `MAX_CONCURRENT_PROMETHEUS_REQUESTS` and `PROMETHEUS_RETRY_ATTEMPTS` of at least 1
 - **`queue_depth`, `running_jobs` and `prometheus_in_flight` on the adapter's `/health/ready`**
 - **A `refetch` annotation category** (migration `008_seed_refetch_annotation_category`, data only)
 
