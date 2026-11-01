@@ -19,17 +19,17 @@ jobs:
       - uses: actions/checkout@v7
 
       - name: Lint api/Dockerfile
-        uses: hadolint/hadolint-action@v3.3.0
+        uses: hadolint/hadolint-action@v3.5.0
         with:
           dockerfile: api/Dockerfile
 
       - name: Lint ui/Dockerfile
-        uses: hadolint/hadolint-action@v3.3.0
+        uses: hadolint/hadolint-action@v3.5.0
         with:
           dockerfile: ui/Dockerfile
 
       - name: Lint adapters/prometheus/Dockerfile
-        uses: hadolint/hadolint-action@v3.3.0
+        uses: hadolint/hadolint-action@v3.5.0
         with:
           dockerfile: adapters/prometheus/Dockerfile
 
